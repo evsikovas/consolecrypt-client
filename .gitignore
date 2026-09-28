@@ -64,3 +64,10 @@ PROTOCOL_CHANGELOG.md
 .agents/
 docs/adr/
 docs/design/
+
+# Local deployment credentials (never publish).
+kubeconfig*.yaml
+kubeconfig*.yml
+кубкофиг*
+кубконфиг*
+почтыпароль.md

@@ -1,7 +1,10 @@
 <p align="center"><img src="docs/brand/consolecrypt.svg" alt="ConsoleCrypt" width="520"></p>
 <p align="center"><strong>Ваши серверы. Ваши ключи. Ваше рабочее пространство.</strong></p>
 <p align="center">
-<a href="https://git.evsikov.net/publics/consolecrypt/-/releases">Скачать</a> ·
+<a href="https://consolecrypt.evsikov.net/?lang=ru">Сайт RU</a> ·
+<a href="https://consolecrypt.evsikov.net/?lang=en">Website EN</a> ·
+<a href="https://consolecrypt.evsikov.net/account">Личный кабинет</a> ·
+<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.4">Скачать 0.1.4</a> ·
 <a href="docs/public/BUILD_WINDOWS.md">Собрать для Windows</a> ·
 <a href="docs/public/BUILDING.md">Сборка и свой сервер</a> ·
 <a href="https://git.evsikov.net/publics/consolecrypt/-/issues">Сообщить об ошибке</a>
@@ -9,7 +12,11 @@
 
 ConsoleCrypt — SSH-клиент с терминалом, SFTP, группами хостов, сниппетами и
 ИИ-помощником. Работает с локальным зашифрованным хранилищем; для синхронизации
-между устройствами можно подключить собственный сервер.
+между устройствами можно подключить собственный сервер или публичный
+**https://consolecrypt.evsikov.net**. Этот же адрес укажите в настройках сервера
+приложения. Учётные записи на разных серверах независимы.
+
+[Устройство публичного сервера и инструкция развёртывания](docs/public/HOSTING.md).
 
 **Предварительная версия.** Функции продолжают развиваться. Перед обновлением
 сохраняйте зашифрованную резервную копию хранилища и комплект восстановления.
@@ -35,21 +42,24 @@ SSH-соединения идут напрямую к вашим сервера�
 
 ## Скачать и установить
 
-Все готовые файлы и контрольные суммы находятся на **[странице релизов](https://git.evsikov.net/publics/consolecrypt/-/releases)**.
-Артефакты сборки не хранятся в Git.
+**Текущий релиз — [0.1.4](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.4)** для macOS, Windows и Android.
 
-| Платформа | Пакет | Установка |
-|---|---|---|
-| macOS 12+ · Apple Silicon и Intel | `.dmg` | Открыть образ, перенести ConsoleCrypt в Applications, запускать оттуда |
-| Android 11+ · ARM64 | `.apk` | Скачать на телефон и установить; подходит для Google Pixel с ARM64 |
-| Windows 10/11 · x64 | `*-windows-x64-setup.exe` | Запустить установщик; устанавливается для текущего пользователя |
+| Платформа | Версия | Скачать | Установка |
+|---|---|---|---|
+| macOS 12+ · Apple Silicon и Intel | **0.1.4+14** | [DMG](https://git.evsikov.net/-/project/14/uploads/e76ff8227da48f925c8312c255638183/ConsoleCrypt-0.1.4+14-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
+| Windows 10/11 · x64 | **0.1.4+13** | [EXE](https://git.evsikov.net/-/project/14/uploads/52619231ea411fba60f7cabe090b6e81/ConsoleCrypt-0.1.4+13-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/-/project/14/uploads/0b291dfaa98b4e40d38fc94617d8abf7/ConsoleCrypt-0.1.4+13-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
+| Android 11+ · ARM64 | **0.1.4+15** | [APK](https://git.evsikov.net/-/project/14/uploads/625efe8819e553debee0e8e3edb02d48/ConsoleCrypt-0.1.4+15-android-arm64.apk) | Скачайте APK на телефон и установите |
 
-Windows x64: установщик и ZIP версии **0.1.4+13** доступны в
-[релизе 0.1.4](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.4).
-Программа устанавливается без прав администратора в `%LOCALAPPDATA%\Programs\ConsoleCrypt`.
+[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/-/project/14/uploads/7cd7960087a79bbddee448d8d941c5ad/SHA256SUMS-0.1.4.txt) ·
+[Проверки macOS и Android](docs/public/RELEASE_0_1_4.md) ·
+[Проверки Windows](docs/public/WINDOWS_VALIDATION.md).
+
+Номер после `+` увеличивается при каждой сборке, поэтому он различается между
+платформами. Бинарные файлы публикуются через GitLab Releases и не хранятся в Git.
+
+На Windows программа устанавливается в `%LOCALAPPDATA%\Programs\ConsoleCrypt`.
 Хранилища находятся в `%LOCALAPPDATA%\consolecrypt\ConsoleCrypt\data` и сохраняются
-при обновлении и удалении приложения. [Отчёт о проверке Windows](docs/public/WINDOWS_VALIDATION.md).
-macOS и Android доступны в [релизе 0.1.2](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.2).
+при обновлении и удалении приложения.
 
 macOS-сборки пока без нотариализации Apple, APK использует тестовую подпись,
 Windows-установщик без цифровой подписи издателя. Это пакеты для предварительного
