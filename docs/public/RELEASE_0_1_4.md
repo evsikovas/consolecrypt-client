@@ -11,7 +11,7 @@
 `bash client/scripts/build-macos.sh --no-cli` → **0.1.4+14**, затем
 `bash client/scripts/build-android.sh` → **0.1.4+15**. Счётчик не сбрасывался.
 
-- Flutter 3.47.5 / Dart 3.13.4, Rust 1.98.0, Xcode 27.
+- Flutter 3.47.5 / Dart 3.13.4, Rust 1.98.1, Xcode 27.
 - Android SDK 36, NDK 28.2.13676358, Java 21.
 - macOS universal: arm64 + x86_64, настоящий cc_bridge.framework.
 - Android: min API 30 (Android 11), ARM64, настоящий libcc_bridge.so, CC_MOCK=false.
@@ -45,3 +45,7 @@ f309b5e447cf54c5948b486678cb64d0959d9d36acbb2a50961f254abbc9de95  ConsoleCrypt-0
 4c81f987c009a8c6986f4529fded817e06074e9ff79ca98b76539dd36ee2f108  ConsoleCrypt-0.1.4+14-macos-universal.dmg
 effc8f17896fb85ad8cfdd6066d8afeb28b97313f3e533c69a3c26e9c1a08516  ConsoleCrypt-0.1.4+15-android-arm64.apk
 ```
+
+Сайт обновлён до 0.1.5 (Helm revision 6); API/readiness и версии загрузок
+проверены на живом сервере, русская и английская подписи — в браузере.
+После проверок удалены 6.2 ГБ временных файлов Flutter build; пакеты сохранены.
