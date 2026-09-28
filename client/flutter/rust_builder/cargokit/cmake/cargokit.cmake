@@ -26,6 +26,12 @@ function(apply_cargokit target manifest_dir lib_name any_symbol_name)
         set(OUTPUT_LIB "${CMAKE_CURRENT_BINARY_DIR}/${CARGOKIT_LIB_FULL_NAME}")
     endif()
     set(CARGOKIT_TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/cargokit_build")
+    # Vendored OpenSSL's Perl scripts still use MAX_PATH on Windows. Allow
+    # packaging to keep Cargo's deeply nested build tree near the repo root.
+    if(WIN32 AND DEFINED ENV{CONSOLECRYPT_CARGO_TARGET_DIR})
+        set(CARGOKIT_TEMP_DIR "$ENV{CONSOLECRYPT_CARGO_TARGET_DIR}")
+        file(TO_CMAKE_PATH "${CARGOKIT_TEMP_DIR}" CARGOKIT_TEMP_DIR)
+    endif()
 
     if (FLUTTER_TARGET_PLATFORM)
         set(CARGOKIT_TARGET_PLATFORM "${FLUTTER_TARGET_PLATFORM}")

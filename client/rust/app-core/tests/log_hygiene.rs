@@ -75,6 +75,7 @@ async fn full_flows_at_trace_leak_no_secrets() {
     log::warn!(target: "hyper::proto", "hyper warn passes through");
     tracing::trace!(target: "log_hygiene", "trace level marker");
     log::debug!(target: "log_hygiene", "bridged debug marker");
+    log::info!(target: "log_hygiene", "bridged info marker");
 
     let tmp = tempfile::tempdir().unwrap();
     let mut secrets: Vec<String> = vec![
@@ -227,7 +228,13 @@ async fn full_flows_at_trace_leak_no_secrets() {
         "log bridge active"
     );
     assert!(logs.contains("trace level marker"), "TRACE level captured");
-    assert!(logs.contains("bridged debug marker"), "log records bridged");
+    assert!(logs.contains("bridged info marker"), "log records bridged");
+    // Release builds compile out log::debug through release_max_level_info.
+    assert_eq!(
+        logs.contains("bridged debug marker"),
+        log::STATIC_MAX_LEVEL >= log::LevelFilter::Debug,
+        "debug records follow the compile-time log level"
+    );
     let lower = logs.to_lowercase();
     for needle in ["authorization", "bearer ", "private key"] {
         assert!(!lower.contains(needle), "logs contain {needle:?}");

@@ -26,6 +26,7 @@ analyzer:
     # Vendored cargokit build tool (own package, resolved at build time).
     - rust_builder/**
     - android/**
+    - linux/**
 
 linter:
   rules:

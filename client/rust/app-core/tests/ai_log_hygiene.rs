@@ -50,6 +50,7 @@ async fn ai_flows_at_trace_leak_no_api_key() {
     .unwrap();
     tracing::trace!(target: "ai_log_hygiene", "trace level marker");
     log::debug!(target: "ai_log_hygiene", "bridged debug marker");
+    log::info!(target: "ai_log_hygiene", "bridged info marker");
 
     let tmp = tempfile::tempdir().unwrap();
     let app = app(tmp.path());
@@ -176,7 +177,13 @@ async fn ai_flows_at_trace_leak_no_api_key() {
     let logs = String::from_utf8_lossy(&capture.0.lock().unwrap()).into_owned();
     assert!(logs.len() > 1000, "capture works ({} bytes)", logs.len());
     assert!(logs.contains("trace level marker"), "TRACE captured");
-    assert!(logs.contains("bridged debug marker"), "log records bridged");
+    assert!(logs.contains("bridged info marker"), "log records bridged");
+    // Release builds compile out log::debug through release_max_level_info.
+    assert_eq!(
+        logs.contains("bridged debug marker"),
+        log::STATIC_MAX_LEVEL >= log::LevelFilter::Debug,
+        "debug records follow the compile-time log level"
+    );
     assert!(
         logs.contains("command approved to run"),
         "app-core AI events captured"

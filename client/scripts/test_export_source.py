@@ -55,7 +55,14 @@ class ExportTests(unittest.TestCase):
             root.mkdir()
             subprocess.run(['git', 'init', '-q', str(root)], check=True)
             (root / 'client').mkdir()
-            (root / 'client/leak.txt').symlink_to('/etc/passwd')
+            outside = Path(temp) / 'outside.txt'
+            outside.write_text('outside the exported tree')
+            try:
+                (root / 'client/leak.txt').symlink_to(outside)
+            except OSError as error:
+                if getattr(error, 'winerror', None) == 1314:
+                    self.skipTest('Windows requires Developer Mode or symlink privilege')
+                raise
             with self.assertRaises(ValueError):
                 module.export(root, Path(temp) / 'export')
 

@@ -129,11 +129,25 @@ async fn serves_identities_and_signs_ed25519_rsa_and_certificates() {
 
     drop(client);
     drop(agent);
-    assert!(!path.exists(), "socket removed on drop");
-    assert!(
-        !path.parent().unwrap().exists(),
-        "private dir removed on drop"
-    );
+    #[cfg(unix)]
+    {
+        assert!(!path.exists(), "socket removed on drop");
+        assert!(
+            !path.parent().unwrap().exists(),
+            "private dir removed on drop"
+        );
+    }
+    #[cfg(windows)]
+    {
+        // abort() releases the named pipe when Tokio next polls the listener.
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            while path.exists() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("named pipe removed after listener shutdown");
+    }
 }
 
 struct Deny;
@@ -274,7 +288,10 @@ async fn prepare_openssh_writes_no_secrets() {
         .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
         .collect();
     names.sort();
+    #[cfg(unix)]
     assert_eq!(names, vec!["agent.sock", "known_hosts", "ssh_config"]);
+    #[cfg(windows)]
+    assert_eq!(names, vec!["known_hosts", "ssh_config"]);
     for f in ["known_hosts", "ssh_config"] {
         let text = std::fs::read_to_string(session.join(f)).unwrap();
         assert!(!text.contains("PRIVATE KEY"), "{f}");

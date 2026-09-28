@@ -55,6 +55,8 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 Сборка загружает зависимости и может занять значительное время при первом запуске.
 Номер сборки автоматически увеличится. Скрипт проверяет ошибки инструментов,
 копирует всю папку Flutter и распространяемые DLL Visual C++, затем запускает Inno Setup.
+Rust и встроенный OpenSSL собираются в `target\windows-rust` у корня репозитория:
+это сокращает пути для Perl на Windows. Сохраняйте короткий путь самого клона.
 [Почему нужны все DLL и папка data](https://docs.flutter.dev/platform-integration/windows/building#building-your-own-zip-file-for-windows).
 
 Результат в `dist\windows\`:
@@ -67,6 +69,12 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 Установщик не требует администратора, добавляет пункт меню «Пуск», предлагает
 ярлык на рабочем столе и поддерживает удаление. Хранилища пользователя при удалении
 приложения сохраняются. Подписи издателя в локальной сборке нет.
+
+Приложение устанавливается только для текущего пользователя:
+`%LOCALAPPDATA%\Programs\ConsoleCrypt`. Хранилища и настройки сохраняются отдельно
+в `%LOCALAPPDATA%\consolecrypt\ConsoleCrypt\data`, ключи — в Windows Credential
+Manager текущего пользователя. Запуск от администратора не требуется.
+Обновление и удаление приложения не затрагивают каталог хранилищ.
 
 Без Inno Setup уберите `-Installer` — получите папку и ZIP. Уберите `-NoCli`,
 чтобы дополнительно собрать `consolecrypt-cli.exe`. `-Mock` предназначен только

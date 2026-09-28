@@ -50,8 +50,13 @@ SSH-соединения идут напрямую к вашим сервера�
 | Android 11+ · ARM64 | `.apk` | Скачать на телефон и установить; подходит для Google Pixel с ARM64 |
 | Windows 10/11 · x64 | `*-windows-x64-setup.exe` | Запустить установщик; устанавливается для текущего пользователя |
 
-В ранних релизах пакет Windows может ещё отсутствовать — ниже есть инструкция
-сборки. Наличие готового файла всегда указано в конкретном релизе.
+Windows x64: установщик и ZIP версии **0.1.4+13** доступны в
+[релизе 0.1.4](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.4).
+Программа устанавливается без прав администратора в `%LOCALAPPDATA%\Programs\ConsoleCrypt`.
+Хранилища находятся в `%LOCALAPPDATA%\consolecrypt\ConsoleCrypt\data` и сохраняются
+при обновлении и удалении приложения. [Отчёт о проверке Windows](docs/public/WINDOWS_VALIDATION.md).
+macOS и Android доступны в [релизе 0.1.2](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.2).
+
 macOS-сборки пока без нотариализации Apple, APK использует тестовую подпись,
 Windows-установщик без цифровой подписи издателя. Это пакеты для предварительного
 тестирования, не публикация в App Store, Google Play или Microsoft Store.

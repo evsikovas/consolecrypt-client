@@ -36,7 +36,12 @@ class SigningTests(unittest.TestCase):
             library = framework / "Versions/A/Engine"
             library.parent.mkdir(parents=True)
             library.write_bytes(bytes.fromhex("feedfacf") + b"test")
-            (framework / "Engine").symlink_to("Versions/A/Engine")
+            try:
+                (framework / "Engine").symlink_to("Versions/A/Engine")
+            except OSError as error:
+                if getattr(error, 'winerror', None) == 1314:
+                    self.skipTest('Windows requires Developer Mode or symlink privilege')
+                raise
             (app / "Contents/data.txt").write_text("resource")
             with patch.object(signing.subprocess, "run") as run:
                 signing.sign(app, CERT_A)
