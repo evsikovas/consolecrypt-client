@@ -55,7 +55,8 @@ Windows x64: установщик и ZIP версии **0.1.4+13** доступ�
 Программа устанавливается без прав администратора в `%LOCALAPPDATA%\Programs\ConsoleCrypt`.
 Хранилища находятся в `%LOCALAPPDATA%\consolecrypt\ConsoleCrypt\data` и сохраняются
 при обновлении и удалении приложения. [Отчёт о проверке Windows](docs/public/WINDOWS_VALIDATION.md).
-macOS и Android доступны в [релизе 0.1.2](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.2).
+В том же релизе **0.1.4** доступны универсальный DMG для macOS **0.1.4+14**
+и Android ARM64 APK **0.1.4+15**. [Проверки пакетов](docs/public/RELEASE_0_1_4.md).
 
 macOS-сборки пока без нотариализации Apple, APK использует тестовую подпись,
 Windows-установщик без цифровой подписи издателя. Это пакеты для предварительного
