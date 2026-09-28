@@ -1,6 +1,8 @@
 <p align="center"><img src="docs/brand/consolecrypt.svg" alt="ConsoleCrypt" width="520"></p>
 <p align="center"><strong>Ваши серверы. Ваши ключи. Ваше рабочее пространство.</strong></p>
 <p align="center">
+<a href="https://consolecrypt.evsikov.net">Сайт</a> ·
+<a href="https://consolecrypt.evsikov.net/account">Личный кабинет</a> ·
 <a href="https://git.evsikov.net/publics/consolecrypt/-/releases">Скачать</a> ·
 <a href="docs/public/BUILD_WINDOWS.md">Собрать для Windows</a> ·
 <a href="docs/public/BUILDING.md">Сборка и свой сервер</a> ·
@@ -9,7 +11,11 @@
 
 ConsoleCrypt — SSH-клиент с терминалом, SFTP, группами хостов, сниппетами и
 ИИ-помощником. Работает с локальным зашифрованным хранилищем; для синхронизации
-между устройствами можно подключить собственный сервер.
+между устройствами можно подключить собственный сервер или публичный
+**https://consolecrypt.evsikov.net**. Этот же адрес укажите в настройках сервера
+приложения. Учётные записи на разных серверах независимы.
+
+[Устройство публичного сервера и инструкция развёртывания](docs/public/HOSTING.md).
 
 **Предварительная версия.** Функции продолжают развиваться. Перед обновлением
 сохраняйте зашифрованную резервную копию хранилища и комплект восстановления.
