@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="148" viewBox="0 0 600 148" role="img" aria-label="ConsoleCrypt">
+  <rect width="600" height="148" rx="28" fill="#111827"/>
+  <g transform="translate(28 25) scale(3)" stroke="#4b89ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M16 2.5 27 7v8c0 7.2-4.5 11.5-11 14.5C9.5 26.5 5 22.2 5 15V7Z" fill="#4b89ff" fill-opacity=".09"/>
+    <path d="m10 11 4 4-4 4m7 0h5" fill="none"/>
+  </g>
+  <text x="139" y="87" font-family="Segoe UI,Arial,sans-serif" font-size="48" font-weight="600" letter-spacing="-1.5" fill="#f4f6fb">Console<tspan fill="#4b89ff">Crypt</tspan></text>
+</svg>

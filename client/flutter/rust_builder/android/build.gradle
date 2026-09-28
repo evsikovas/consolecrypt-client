@@ -1,0 +1,16 @@
+group 'io.consolecrypt.cc_bridge'
+version '1.0'
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'io.consolecrypt.cc_bridge'
+    compileSdk 36
+    defaultConfig { minSdk 30 }
+}
+
+apply from: '../cargokit/gradle/plugin.gradle'
+cargokit {
+    manifestDir = '../../../rust/bridge'
+    libname = 'cc_bridge'
+}

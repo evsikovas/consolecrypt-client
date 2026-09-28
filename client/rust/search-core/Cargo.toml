@@ -1,0 +1,27 @@
+[package]
+name = "cc-search-core"
+description = "Local-only search index"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[dependencies]
+cc-models.workspace = true
+# Workspace entry: bundled SQLCipher (incl. FTS5). Only one libsqlite3-sys may
+# be linked into the app, so never add a separate sqlite dependency here.
+rusqlite.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+chrono.workspace = true
+
+[lints]
+workspace = true

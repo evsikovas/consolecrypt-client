@@ -1,0 +1,29 @@
+# Build-only Flutter FFI plugin: cargokit compiles client/rust/bridge
+# (crate `cc-bridge`, library `cc_bridge`) during `flutter build` / `run` and
+# bundles it (macOS: static library force-loaded into the app; Windows: DLL
+# next to the executable). The Dart API lives in lib/src/rust (generated).
+# macOS also registers `CcBridgePlugin` (the `consolecrypt/local_auth`
+# channel: Touch ID for the device-envelope unlock).
+name: cc_bridge
+description: "Builds and bundles the ConsoleCrypt Rust core (cargokit)."
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.3.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        ffiPlugin: true
+      macos:
+        ffiPlugin: true
+        pluginClass: CcBridgePlugin
+      windows:
+        ffiPlugin: true

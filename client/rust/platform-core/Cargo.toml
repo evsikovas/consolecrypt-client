@@ -1,0 +1,47 @@
+[package]
+name = "cc-platform-core"
+description = "OS integration"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[features]
+default = ["os-keychain"]
+# OS secure store: macOS Keychain, Windows Credential Manager (keyring 4.x
+# ecosystem: keyring-core + the native store crates). Other platforms report
+# `SecureStoreError::Unsupported` for now.
+os-keychain = [
+    "dep:keyring-core",
+    "dep:apple-native-keyring-store",
+    "dep:windows-native-keyring-store",
+    "dep:android-native-keyring-store",
+]
+
+[dependencies]
+thiserror.workspace = true
+secrecy.workspace = true
+zeroize.workspace = true
+directories = "6"
+# Open files with the OS default application (Windows ShellExecuteW, xdg-open
+# fallbacks). MIT OR Apache-2.0. No features: `reveal` would pull zbus.
+opener = "0.8"
+keyring-core = { version = "1", optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1", optional = true, features = ["keychain"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-native-keyring-store = { version = "1", optional = true, default-features = false }
+
+[target.'cfg(target_os = "android")'.dependencies]
+android-native-keyring-store = { version = "1", optional = true }
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

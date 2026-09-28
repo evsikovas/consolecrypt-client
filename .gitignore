@@ -1,0 +1,66 @@
+# Rust
+target/
+**/target/
+*.rs.bk
+
+# Flutter / Dart
+client/flutter/.dart_tool/
+client/flutter/build/
+client/flutter/.flutter-plugins
+client/flutter/.flutter-plugins-dependencies
+client/flutter/**/Pods/
+client/flutter/**/ephemeral/
+*.iml
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!**/testdata/**/*.pub
+secrets/
+*.sqlite
+*.sqlite3
+*.db
+
+# Local tooling
+.claude/settings.local.json
+.claude/worktrees/
+
+# Build outputs of client/scripts/build-*.{sh,ps1}
+dist/
+
+# Local build caches, signing credentials and private export workspaces.
+**/__pycache__/
+**/*.pyc
+**/.gradle/
+**/.cxx/
+**/.dev-mail/
+**/local.properties
+**/key.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.mobileprovision
+
+# Private development notes do not belong in this public tree.
+AGENTS.md
+CLAUDE.md
+CLIENT_*.md
+SERVER_*.md
+PARALLEL_*.md
+PROTOCOL_CHANGELOG.md
+.codex/
+.claude/
+.agents/
+docs/adr/
+docs/design/

@@ -1,0 +1,57 @@
+[package]
+name = "cc-bridge"
+description = "flutter_rust_bridge surface of the ConsoleCrypt core (wraps app-core)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+# Built by cargokit (client/flutter/rust_builder): static library on macOS
+# (force-loaded into the app), DLL on Windows. `rlib` for tests/clippy.
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+cc-app-core.workspace = true
+# Public helper APIs the facade does not expose (ADR-0101 §8, bridge notes):
+# private-key inspection before import, `GET /v1/meta` probe, backup header.
+cc-ssh-core.workspace = true
+cc-sync-core.workspace = true
+cc-vault-core.workspace = true
+cc-protocol.workspace = true
+# Dart <-> Rust bindings (MIT). Exact pin: must equal the Dart package
+# `flutter_rust_bridge` in client/flutter/pubspec.yaml and the installed
+# `flutter_rust_bridge_codegen` (ADR-0101 §8).
+flutter_rust_bridge = "=2.13.0"
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+serde.workspace = true
+serde_json.workspace = true
+zeroize.workspace = true
+tracing.workspace = true
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.22"
+ndk-context = "0.1"
+rustls-platform-verifier = "0.7"
+
+[dev-dependencies]
+tempfile.workspace = true
+secrecy.workspace = true
+# In-process SFTP server + `AppCore::sftp_attach_client_for_tests` for the
+# bridge's SFTP / edit-session tests (never in production builds).
+cc-app-core = { workspace = true, features = ["test-harness"] }
+cc-sftp-core = { workspace = true, features = ["test-harness"] }
+
+# Workspace lints (client/rust/Cargo.toml) plus the `frb_expand` cfg used by
+# the generated code. `[lints] workspace = true` cannot be combined with
+# extra keys, so the workspace set is repeated here.
+[lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

@@ -1,0 +1,43 @@
+[package]
+name = "cc-crypto-core"
+description = "Cryptographic primitives and the v1 encrypted formats of ADR-0002"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[dependencies]
+cc-protocol.workspace = true
+cc-models.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+secrecy.workspace = true
+zeroize.workspace = true
+base64.workspace = true
+
+# RustCrypto — versions chosen so that digest 0.11 / crypto-common 0.2 /
+# rand_core 0.10 / getrandom 0.4 line up across every crate below.
+chacha20poly1305 = { version = "0.11", default-features = false, features = ["alloc", "zeroize"] }
+hkdf = "0.13"
+hmac = { version = "0.13", features = ["zeroize"] }
+sha2 = { version = "0.11", features = ["zeroize"] }
+argon2 = { version = "0.6", default-features = false, features = ["alloc", "zeroize"] }
+getrandom = "0.4"
+# dalek
+x25519-dalek = { version = "3", default-features = false, features = ["static_secrets", "zeroize", "precomputed-tables"] }
+ed25519-dalek = { version = "3", default-features = false, features = ["fast", "zeroize"] }
+# BIP-39 English word list + entropy encoding (CC0-1.0). Seed derivation is not used.
+bip39 = { version = "3", default-features = false, features = ["std", "zeroize"] }
+unicode-normalization = "0.1"
+
+[dev-dependencies]
+hex.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+
+[lints]
+workspace = true

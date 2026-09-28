@@ -1,0 +1,22 @@
+PODS:
+  - cc_bridge (0.1.0):
+    - FlutterMacOS
+  - FlutterMacOS (1.0.0)
+
+DEPENDENCIES:
+  - cc_bridge (from `Flutter/ephemeral/.symlinks/plugins/cc_bridge/macos`)
+  - FlutterMacOS (from `Flutter/ephemeral`)
+
+EXTERNAL SOURCES:
+  cc_bridge:
+    :path: Flutter/ephemeral/.symlinks/plugins/cc_bridge/macos
+  FlutterMacOS:
+    :path: Flutter/ephemeral
+
+SPEC CHECKSUMS:
+  cc_bridge: 78d2805a5cda806ba88e684b0375ba01e890590f
+  FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
+
+PODFILE CHECKSUM: 1e95c36afbfd1cb6423ceca4de7a8e1b256fb6ac
+
+COCOAPODS: 1.17.0

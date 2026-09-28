@@ -1,0 +1,13 @@
+.git
+dist
+**/target
+**/build
+**/.dart_tool
+**/.env
+**/.dev-mail
+**/*.key
+**/*.pem
+**/*.jks
+**/*.keystore
+**/*.db
+**/*.sqlite*

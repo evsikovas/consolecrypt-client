@@ -1,0 +1,2 @@
+-keep,includedescriptorclasses class org.rustls.platformverifier.** { *; }
+-keepclasseswithmembernames class * { native <methods>; }

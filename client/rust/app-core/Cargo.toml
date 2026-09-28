@@ -1,0 +1,69 @@
+[package]
+name = "cc-app-core"
+description = "Facade composing all cores into the application API consumed by Flutter (via flutter_rust_bridge) and by cc-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[features]
+default = ["os-keychain"]
+# OS secure store (macOS Keychain / Windows Credential Manager) for database
+# keys, device identities and session tokens. Production default.
+os-keychain = ["cc-platform-core/os-keychain"]
+# Plaintext, file-backed secure store (`<data>/secure-store.json`, 0600) for
+# headless/CI use of the `cc` CLI where no OS keychain is usable. INSECURE:
+# never enable it in the desktop app. Selected only explicitly at runtime.
+insecure-file-store = ["dep:base64"]
+# Test hooks for consumers' tests (never in production builds):
+# `AppCore::sftp_attach_client_for_tests` + sftp-core's in-process server.
+test-harness = ["cc-sftp-core/test-harness"]
+
+[dependencies]
+cc-protocol.workspace = true
+cc-models.workspace = true
+cc-crypto-core.workspace = true
+cc-platform-core.workspace = true
+cc-vault-core.workspace = true
+cc-storage-core.workspace = true
+cc-sync-core.workspace = true
+cc-ssh-core.workspace = true
+cc-ssh-agent-core.workspace = true
+cc-terminal-core.workspace = true
+cc-tunnel-core.workspace = true
+cc-sftp-core.workspace = true
+cc-search-core.workspace = true
+cc-ai-core.workspace = true
+tokio = { workspace = true, features = ["process"] }
+futures.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-log = "0.2"
+uuid.workspace = true
+chrono.workspace = true
+secrecy.workspace = true
+zeroize.workspace = true
+base64 = { workspace = true, optional = true }
+
+[dev-dependencies]
+cc-sync-core = { workspace = true, features = ["mock-server"] }
+cc-sftp-core = { workspace = true, features = ["test-harness"] }
+cc-ssh-core = { workspace = true, features = ["test-harness"] }
+tokio = { workspace = true, features = ["process", "test-util"] }
+reqwest.workspace = true
+tempfile.workspace = true
+log = "0.4"
+# MIT — in-process mock LLM HTTP servers for the AI integration tests
+# (same version as ai-core's dev-dependency).
+axum = "0.8"
+
+[lints]
+workspace = true

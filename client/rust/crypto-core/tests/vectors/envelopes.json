@@ -1,0 +1,100 @@
+{
+  "cases": [
+    {
+      "input": {
+        "iterations": 2,
+        "memory_kib": 19456,
+        "nonce": "202122232425262728292a2b2c2d2e2f3031323334353637",
+        "parallelism": 1,
+        "passphrase_utf8": "636f727265637420686f727365206261747465727920737461706c652043616665cc81",
+        "salt": "101112131415161718191a1b1c1d1e1f",
+        "type": "password",
+        "vault_id": "00000000-0000-7000-8000-000000000001",
+        "vrk": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      },
+      "name": "password",
+      "output": {
+        "aad": "636f6e736f6c6563727970742f76312f6161642f656e76656c6f706500000000000000700080000000000000010100000000000000000000000000000000",
+        "ciphertext": "8b52bb7ee9ed7fc5974e67d440e15c68f3158d832e5ea403854fbbb7e164d9328c46485a609c55a567e9671d7de0899a",
+        "envelope": {
+          "ciphertext": "i1K7funtf8WXTmfUQOFcaPMVjYMuXqQDhU+7t+Fk2TKMRkhaYJxVpWfpZx194Ima",
+          "kind": "vrk_v1",
+          "metadata": {
+            "algorithm": "argon2id_xchacha20poly1305_v1",
+            "kdf": {
+              "algorithm": "argon2id",
+              "iterations": 2,
+              "memory_kib": 19456,
+              "parallelism": 1,
+              "salt": "EBESExQVFhcYGRobHB0eHw=="
+            }
+          },
+          "nonce": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3",
+          "recipient_type": "password"
+        },
+        "passphrase_nfc_utf8": "636f727265637420686f727365206261747465727920737461706c6520436166c3a9",
+        "password_key": "44b8ba321e3847abceb12dcc0f333f7381389e8481a886a8381337e85a079115"
+      }
+    },
+    {
+      "input": {
+        "nonce": "606162636465666768696a6b6c6d6e6f7071727374757677",
+        "recovery_key": "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+        "type": "recovery",
+        "vault_id": "00000000-0000-7000-8000-000000000001",
+        "vrk": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      },
+      "name": "recovery",
+      "output": {
+        "aad": "636f6e736f6c6563727970742f76312f6161642f656e76656c6f706500000000000000700080000000000000010200000000000000000000000000000000",
+        "ciphertext": "6821e53ffd3a1506df8cdf37f23f2e6563e8b3ac56fbf744cc60cdb72eb17cbfb4aac404d5f04a2bf0517105b0223ec6",
+        "envelope": {
+          "ciphertext": "aCHlP/06FQbfjN838j8uZWPos6xW+/dEzGDNty6xfL+0qsQE1fBKK/BRcQWwIj7G",
+          "kind": "vrk_v1",
+          "metadata": {
+            "algorithm": "hkdf_sha256_xchacha20poly1305_v1"
+          },
+          "nonce": "YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3",
+          "recipient_type": "recovery"
+        },
+        "hkdf_info_utf8": "consolecrypt/v1/recovery-kek",
+        "recovery_kek": "a9e3a3e5f96dd03eaf06df613973135d3b33db685fe44075fc2cecfadd176fbe"
+      }
+    },
+    {
+      "input": {
+        "device_ed25519_seed": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+        "device_id": "00000000-0000-7000-8000-0000000000d1",
+        "device_x25519_secret": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+        "ephemeral_x25519_secret": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf",
+        "nonce": "e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7",
+        "type": "device",
+        "vault_id": "00000000-0000-7000-8000-000000000001",
+        "vrk": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      },
+      "name": "device",
+      "output": {
+        "aad": "636f6e736f6c6563727970742f76312f6161642f656e76656c6f7065000000000000007000800000000000000103000000000000700080000000000000d1",
+        "ciphertext": "9a72f45ddc6f1d3823085288eaca59f55fd251cff6d79490524c0396358d077c771aee5c26aabc3fca4f30e058cc8d70",
+        "device_x25519_public": "493e82fc74464a59268817623d2053c5eb8e2cc4a988b4fee179ec6b010d531d",
+        "envelope": {
+          "ciphertext": "mnL0XdxvHTgjCFKI6spZ9V/SUc/215SQUkwDljWNB3x3Gu5cJqq8P8pPMOBYzI1w",
+          "kind": "vrk_v1",
+          "metadata": {
+            "algorithm": "x25519_hkdf_sha256_xchacha20poly1305_v1",
+            "ephemeral_public_key": "3CzKMejkO72R3/fkdcyjNH60eBB9W9dlq6SuSjDDXUQ="
+          },
+          "nonce": "4OHi4+Tl5ufo6err7O3u7/Dx8vP09fb3",
+          "recipient_id": "00000000-0000-7000-8000-0000000000d1",
+          "recipient_type": "device"
+        },
+        "envelope_key": "64ae9f6c0d966cda0b1073510f50a6ac0a396832734e7da835ab5a816c691fb3",
+        "ephemeral_x25519_public": "dc2cca31e8e43bbd91dff7e475cca3347eb478107d5bd765aba4ae4a30c35d44",
+        "hkdf_info": "636f6e736f6c6563727970742f76312f6465766963652d656e76656c6f706500000000000070008000000000000001",
+        "hkdf_salt": "dc2cca31e8e43bbd91dff7e475cca3347eb478107d5bd765aba4ae4a30c35d44493e82fc74464a59268817623d2053c5eb8e2cc4a988b4fee179ec6b010d531d",
+        "shared_secret": "892a310492d3eea078c4b4a3576708d6d4f2c0eaf6ba96905f97d9a1834eae22"
+      }
+    }
+  ],
+  "description": "VRK envelopes (password: Argon2id v0x13 → XChaCha20-Poly1305; recovery: HKDF(RK) → XChaCha20-Poly1305; device: X25519 + HKDF → XChaCha20-Poly1305). AAD = envelope_aad(vault_id, recipient_code, recipient_id). Password case uses the server-floor Argon2 params to keep tests fast; production default is m=65536, t=3, p=1."
+}

@@ -1,0 +1,14 @@
+# flutter_rust_bridge v2 codegen config (ADR-0101 §8).
+# Regenerate after changing client/rust/bridge/src/api/**:
+#   cargo install flutter_rust_bridge_codegen --version 2.13.0 --locked
+#   cd client/flutter && flutter_rust_bridge_codegen generate
+rust_input: crate::api
+rust_root: ../rust/bridge/
+dart_output: lib/src/rust
+# `mod frb_generated;` is declared by hand in lib.rs (with lint allowances).
+add_mod_to_lib: false
+# Desktop only.
+web: false
+# 64-bit integers are plain Dart `int` (no BigInt): sizes, counters, ms.
+type_64bit_int: true
+dart_format_line_length: 120

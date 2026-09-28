@@ -1,0 +1,28 @@
+[package]
+name = "cc-tunnel-core"
+description = "Tunnel manager"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[dependencies]
+cc-models.workspace = true
+cc-ssh-core.workspace = true
+tokio.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+serde.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+cc-ssh-core = { workspace = true, features = ["test-harness"] }
+uuid.workspace = true
+base64.workspace = true
+
+[lints]
+workspace = true

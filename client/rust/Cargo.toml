@@ -1,0 +1,91 @@
+# ConsoleCrypt client Rust core. Separate workspace from server/ and crates/
+# (see docs/adr/ADR-0001). Crate ownership: CLIENT_ARCHITECTURE.md §Crates.
+#
+# Agents: add crate-specific dependencies in YOUR crate's Cargo.toml.
+# Only the integrator edits this file (members / workspace.dependencies).
+[workspace]
+resolver = "2"
+members = [
+    "crypto-core",
+    "platform-core",
+    "vault-core",
+    "storage-core",
+    "sync-core",
+    "ssh-core",
+    "ssh-agent-core",
+    "terminal-core",
+    "tunnel-core",
+    "sftp-core",
+    "search-core",
+    "ai-core",
+    "app-core",
+    "cc-cli",
+    "bridge",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"  # russh 0.63 requires 1.89
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/consolecrypt/consolecrypt"
+authors = ["Alexander Evsikov <i@evsikov.net>"]
+publish = false
+
+[workspace.dependencies]
+# shared contract
+cc-protocol = { path = "../../crates/protocol" }
+cc-models = { path = "../../crates/models" }
+
+# internal crates
+cc-crypto-core = { path = "crypto-core" }
+cc-platform-core = { path = "platform-core", default-features = false }
+cc-vault-core = { path = "vault-core" }
+cc-storage-core = { path = "storage-core" }
+cc-sync-core = { path = "sync-core" }
+cc-ssh-core = { path = "ssh-core" }
+cc-ssh-agent-core = { path = "ssh-agent-core" }
+cc-terminal-core = { path = "terminal-core" }
+cc-tunnel-core = { path = "tunnel-core" }
+cc-sftp-core = { path = "sftp-core" }
+cc-search-core = { path = "search-core" }
+cc-ai-core = { path = "ai-core" }
+cc-app-core = { path = "app-core" }
+
+# common third-party
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util", "fs"] }
+futures = "0.3"
+async-trait = "0.1"
+bytes = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+chrono = { version = "0.4", default-features = false, features = ["serde", "clock", "std"] }
+secrecy = "0.10"
+zeroize = { version = "1", features = ["zeroize_derive"] }
+base64 = "0.22"
+hex = "0.4"
+url = "2"
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "http2"] }
+tempfile = "3"
+# SQLite: exactly one libsqlite3-sys may be linked into the app, so every crate
+# that needs SQLite (storage-core, search-core) uses THIS entry. SQLCipher with
+# vendored OpenSSL gives an encrypted local DB (CLIENT_SPEC §2) incl. FTS5.
+rusqlite = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.dev.package."*"]
+opt-level = 1
+
+[profile.dev.package.argon2]
+opt-level = 3

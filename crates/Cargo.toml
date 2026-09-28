@@ -1,0 +1,29 @@
+# Shared crates used by both the client (client/rust) and the server (server/).
+# This is its own workspace so shared crates can be built and tested standalone;
+# client and server consume them via `path` dependencies and compile independently.
+[workspace]
+resolver = "2"
+members = ["protocol", "models"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/consolecrypt/consolecrypt"
+authors = ["Alexander Evsikov <i@evsikov.net>"]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+chrono = { version = "0.4", default-features = false, features = ["serde", "clock", "std"] }
+base64 = "0.22"
+thiserror = "2"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

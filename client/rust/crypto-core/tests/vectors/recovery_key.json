@@ -1,0 +1,38 @@
+{
+  "cases": [
+    {
+      "input": {
+        "recovery_key": "0000000000000000000000000000000000000000000000000000000000000000",
+        "vault_id": "00000000-0000-7000-8000-000000000001"
+      },
+      "name": "zero",
+      "output": {
+        "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art",
+        "qr_payload": "consolecrypt-recovery:v1:00000000-0000-7000-8000-000000000001:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    {
+      "input": {
+        "recovery_key": "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+        "vault_id": "00000000-0000-7000-8000-000000000001"
+      },
+      "name": "sequential",
+      "output": {
+        "mnemonic": "doctor anxiety move mass federal casual cancel citizen ensure give fatal pact agree powder essence melt film river bind regret remind concert just welcome",
+        "qr_payload": "consolecrypt-recovery:v1:00000000-0000-7000-8000-000000000001:QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8"
+      }
+    },
+    {
+      "input": {
+        "recovery_key": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "vault_id": "00000000-0000-7000-8000-000000000001"
+      },
+      "name": "ff",
+      "output": {
+        "mnemonic": "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo vote",
+        "qr_payload": "consolecrypt-recovery:v1:00000000-0000-7000-8000-000000000001:__________________________________________8"
+      }
+    }
+  ],
+  "description": "Recovery Key encodings: BIP-39 English 24-word mnemonic of the 32 bytes (entropy encoding only, no seed derivation) and QR payload consolecrypt-recovery:v1:<vault_id>:<base64url(RK), no padding>"
+}

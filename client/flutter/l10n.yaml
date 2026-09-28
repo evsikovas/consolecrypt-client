@@ -1,0 +1,10 @@
+# Flutter gen-l10n configuration (ADR-0101 "Localization").
+# English is the template; every key must exist in every app_<locale>.arb.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-dir: lib/l10n
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false
+required-resource-attributes: true
+format: true

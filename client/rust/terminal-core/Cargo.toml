@@ -1,0 +1,28 @@
+[package]
+name = "cc-terminal-core"
+description = "Terminal session management"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[dependencies]
+cc-models.workspace = true
+cc-ssh-core.workspace = true
+tokio.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+serde.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+cc-ssh-core = { workspace = true, features = ["test-harness"] }
+
+[lints]
+workspace = true

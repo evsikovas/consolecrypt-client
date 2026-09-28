@@ -1,0 +1,41 @@
+[package]
+name = "cc-ai-core"
+description = "AI Command Knowledge Base"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[dependencies]
+cc-models.workspace = true
+cc-search-core.workspace = true
+tokio = { workspace = true, features = ["rt", "sync", "time", "macros"] }
+futures.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+secrecy.workspace = true
+zeroize.workspace = true
+url.workspace = true
+chrono.workspace = true
+# `stream` adds Response::bytes_stream for SSE / NDJSON streaming.
+reqwest = { workspace = true, features = ["stream"] }
+# MIT OR Apache-2.0 — sanitizer / risk rules.
+regex = "1"
+# MIT — CancellationToken for explicit request cancellation.
+tokio-util = "0.7"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "net", "test-util"] }
+# MIT — in-process mock HTTP servers for provider tests (incl. streaming).
+axum = "0.8"
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

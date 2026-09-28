@@ -1,0 +1,47 @@
+[package]
+name = "cc-ssh-core"
+description = "Native SSH backend (russh)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# Docker-based SSH testbed (bastion1 -> bastion2 -> target) shared by the
+# integration tests of ssh-core, tunnel-core and sftp-core. Never enabled in
+# production builds.
+test-harness = []
+
+[dependencies]
+cc-models.workspace = true
+cc-protocol.workspace = true
+tokio.workspace = true
+futures.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+secrecy.workspace = true
+zeroize.workspace = true
+base64.workspace = true
+# SSH protocol (Apache-2.0). Re-exports ssh-key (Apache-2.0 OR MIT).
+russh = "0.63"
+# Same RustCrypto versions russh already links (MIT OR Apache-2.0).
+sha2 = "0.11"
+sha1 = "0.11"
+hmac = "0.13"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+tempfile.workspace = true
+cc-ssh-core = { path = ".", features = ["test-harness"] }
+
+[lints]
+workspace = true

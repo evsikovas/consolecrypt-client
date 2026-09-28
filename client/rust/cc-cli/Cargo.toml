@@ -1,0 +1,45 @@
+[package]
+name = "cc-cli"
+description = "Headless ConsoleCrypt client for end-to-end tests and power users"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "consolecrypt"
+path = "src/main.rs"
+
+[features]
+default = ["os-keychain"]
+os-keychain = ["cc-app-core/os-keychain"]
+
+[dependencies]
+# The CLI may run headless (CI, Linux servers) where no OS keychain exists:
+# `--secure-store file` (explicit, warned) uses the insecure file store.
+cc-app-core = { workspace = true, features = ["insecure-file-store"] }
+tokio = { workspace = true, features = ["process", "io-std", "signal"] }
+clap = { version = "4", features = ["derive", "env"] }
+rpassword = "7"
+crossterm = "0.29"
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+cc-app-core = { workspace = true, features = ["insecure-file-store"] }
+cc-sync-core = { workspace = true, features = ["mock-server"] }
+cc-protocol.workspace = true
+cc-ssh-core = { workspace = true, features = ["test-harness"] }
+secrecy.workspace = true
+uuid.workspace = true
+tokio.workspace = true
+tempfile.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

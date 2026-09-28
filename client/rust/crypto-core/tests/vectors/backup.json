@@ -1,0 +1,64 @@
+{
+  "cases": [
+    {
+      "input": {
+        "app_version": "0.1.0",
+        "created_at": "2026-09-26T12:00:00.123456789Z",
+        "objects": [
+          {
+            "deleted": true,
+            "object_id": "00000000-0000-7000-8000-00000000000f",
+            "revision": 5
+          },
+          {
+            "body": {
+              "ciphertext": "RSD9fEweGRNTWJbbuefiy2HN9WEh6xp80ZIxx431RUGEW67FunTD/EmIGin4i46S5kxEvnFwg9wItMy/kmNav2pWVzfInMjCQvqWlif+Yxr0Ff+EG4XXzq9IczK/3aoeDmU0C/ItvxCXLHdvLxE8liV8y05gohbFlyHpYah6XW0S/Y5eUkNSwP+23d2Si/BGUnFIZp80v2zjKtu/Gepi43eoo1+RExHSrWw4hy0rZwmGHbEZt9s9tE9uJGd45rXXW+vUfDmqQvlX+BYpPDqduWb3NCEDcMl41FnH2TYgHhRcSSuoKOaqKMyypna4Ctgn4TuqEk1P1WsUgUauEqCMiCrTCo2iExNZaGr+gVUNfUA=",
+              "format": 1,
+              "nonce": "MDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZH",
+              "wrapped_dek": "bRX8+uLsFIGjTLnmjvc/0Ombd24tYc8zN+z49rhtVObPb0rBNieSzxhYjqVM7cJT",
+              "wrapped_dek_nonce": "UFFSU1RVVldYWVpbXF1eX2BhYmNkZWZn"
+            },
+            "deleted": false,
+            "object_id": "00000000-0000-7000-8000-000000000002",
+            "revision": 2
+          }
+        ],
+        "password_envelope": {
+          "ciphertext": "MTFzT4BbP4N/u4Gjh+LdfVqJd38ised/pM6kYtezGtgIB6TTO0yzvaXaQ7ZedcBo",
+          "kind": "vrk_v1",
+          "metadata": {
+            "algorithm": "argon2id_xchacha20poly1305_v1",
+            "kdf": {
+              "algorithm": "argon2id",
+              "iterations": 2,
+              "memory_kib": 19456,
+              "parallelism": 1,
+              "salt": "EBESExQVFhcYGRobHB0eHw=="
+            }
+          },
+          "nonce": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3",
+          "recipient_type": "password"
+        },
+        "recovery_envelope": {
+          "ciphertext": "aCHlP/06FQbfjN838j8uZWPos6xW+/dEzGDNty6xfL+0qsQE1fBKK/BRcQWwIj7G",
+          "kind": "vrk_v1",
+          "metadata": {
+            "algorithm": "hkdf_sha256_xchacha20poly1305_v1"
+          },
+          "nonce": "YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3",
+          "recipient_type": "recovery"
+        },
+        "vault_id": "00000000-0000-7000-8000-000000000001",
+        "vrk": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      },
+      "name": "two_objects",
+      "output": {
+        "manifest": "636f6e736f6c6563727970742f76312f6261636b75702d6d616e6966657374000016636f6e736f6c6563727970742d6261636b75702f763100000000000070008000000000000001000000006ab7b3c0075bcd150005302e312e3001202122232425262728292a2b2c2d2e2f30313233343536373131734f805b3f837fbb81a387e2dd7d5a89777f22b1e77fa4cea462d7b31ad80807a4d33b4cb3bda5da43b65e75c068101112131415161718191a1b1c1d1e1f00004c00000000020000000102606162636465666768696a6b6c6d6e6f70717273747576776821e53ffd3a1506df8cdf37f23f2e6563e8b3ac56fbf744cc60cdb72eb17cbfb4aac404d5f04a2bf0517105b0223ec600000002000000000000700080000000000000020000000000000002000001303132333435363738393a3b3c3d3e3f4041424344454647505152535455565758595a5b5c5d5e5f60616263646566676d15fcfae2ec1481a34cb9e68ef73fd0e99b776e2d61cf3337ecf8f6b86d54e6cf6f4ac1362792cf18588ea54cedc2530000011096e03a1044a1facd10c4c3ea1b1e200d6ce099c64e9bd2cc2d38ca637b410ead0000000000007000800000000000000f000000000000000501",
+        "manifest_key": "c4f09feb7e920678c6b2100dd0be50adf55ca3553b78c06a77970707757f033c",
+        "manifest_key_hkdf_info_utf8": "consolecrypt/v1/backup-manifest-key",
+        "manifest_mac": "869e5735d229632c32d23492ef55edcfe9c6931f9056f4b6af7b2bbce8d7e639"
+      }
+    }
+  ],
+  "description": "Backup manifest MAC (.ccbackup v1, ADR-0106/ADR-0102): key = HKDF-SHA256(VRK, salt = vault_id, info = \"consolecrypt/v1/backup-manifest-key\"); mac = HMAC-SHA256(key, manifest) with the canonical manifest layout of VaultBackup::manifest_bytes (objects sorted by id)."
+}

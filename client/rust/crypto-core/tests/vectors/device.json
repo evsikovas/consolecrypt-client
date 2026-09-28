@@ -1,0 +1,61 @@
+{
+  "cases": [
+    {
+      "input": {
+        "device_id": "00000000-0000-7000-8000-0000000000d1",
+        "ed25519_seed": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+        "type": "verification_code",
+        "x25519_secret": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+      },
+      "name": "verification_code_1",
+      "output": {
+        "encryption_public_key": "493e82fc74464a59268817623d2053c5eb8e2cc4a988b4fee179ec6b010d531d",
+        "fingerprint_input": "636f6e736f6c6563727970742f76312f6465766963652d66696e6765727072696e7400000000000000700080000000000000d1493e82fc74464a59268817623d2053c5eb8e2cc4a988b4fee179ec6b010d531d4fd099ccd47d7893dfe9ec24414ecb0d9b5420232aad30d91c465be33cbe65c4",
+        "fingerprint_sha256": "9a1ea70b3a131f35b14666f65a16e6e82a71bd82f670c910f95d340cf1e55827",
+        "signing_public_key": "4fd099ccd47d7893dfe9ec24414ecb0d9b5420232aad30d91c465be33cbe65c4",
+        "verification_code": "27450 91110 63430 09826 80089 22117"
+      }
+    },
+    {
+      "input": {
+        "device_id": "00000000-0000-7000-8000-0000000000d2",
+        "ed25519_seed": "22232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f4041",
+        "type": "verification_code",
+        "x25519_secret": "1112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30"
+      },
+      "name": "verification_code_2",
+      "output": {
+        "encryption_public_key": "4d27bcee3135c4944b28d27dd809b07be10c35160d20131caa7e85575498d07c",
+        "fingerprint_input": "636f6e736f6c6563727970742f76312f6465766963652d66696e6765727072696e7400000000000000700080000000000000d24d27bcee3135c4944b28d27dd809b07be10c35160d20131caa7e85575498d07caf4927db60a3b8ab01a0d15ad475699935982c49a3d19c13779574fa94bec985",
+        "fingerprint_sha256": "c5bf76f904932947eb8b70067643d69e3f91dc8a9f4a2614b2f76e83cf6bc837",
+        "signing_public_key": "af4927db60a3b8ab01a0d15ad475699935982c49a3d19c13779574fa94bec985",
+        "verification_code": "02564 71723 51062 56554 09714 54187"
+      }
+    },
+    {
+      "input": {
+        "approver_device_id": "00000000-0000-7000-8000-0000000000d1",
+        "approver_ed25519_seed": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+        "approver_x25519_secret": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+        "issued_at": 1800000000,
+        "new_device_id": "00000000-0000-7000-8000-0000000000d2",
+        "new_encryption_public_key": "4d27bcee3135c4944b28d27dd809b07be10c35160d20131caa7e85575498d07c",
+        "new_signing_public_key": "af4927db60a3b8ab01a0d15ad475699935982c49a3d19c13779574fa94bec985",
+        "request_id": "00000000-0000-7000-8000-0000000000a1",
+        "type": "approval",
+        "vault_ids": [
+          "00000000-0000-7000-8000-000000000009",
+          "00000000-0000-7000-8000-000000000001",
+          "00000000-0000-7000-8000-000000000009"
+        ]
+      },
+      "name": "approval",
+      "output": {
+        "approver_signing_public_key": "4fd099ccd47d7893dfe9ec24414ecb0d9b5420232aad30d91c465be33cbe65c4",
+        "message": "636f6e736f6c6563727970742f76312f6465766963652d617070726f76616c00000000000000700080000000000000a1000000000000700080000000000000d1000000000000700080000000000000d24d27bcee3135c4944b28d27dd809b07be10c35160d20131caa7e85575498d07caf4927db60a3b8ab01a0d15ad475699935982c49a3d19c13779574fa94bec985000000006b49d200000000020000000000007000800000000000000100000000000070008000000000000009",
+        "signature": "67d61b925ef88704fd7aa3d6619a384b1e891b60c903269f71fa9137d614fe48bf5f9f2e9633d41b25c890016b650b7cba98728310f6125fa86caf2160a5a50b"
+      }
+    }
+  ],
+  "description": "Device verification code: SHA-256(device_fingerprint_input(device_id, X25519_pub, Ed25519_pub)) → 6 groups of 5 digits, group i = big-endian u40 of bytes [5i, 5i+5) mod 100000. Approval: Ed25519 over device_approval_message (vault ids sorted + deduplicated)."
+}

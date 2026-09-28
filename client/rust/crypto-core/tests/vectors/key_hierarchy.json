@@ -1,0 +1,79 @@
+{
+  "cases": [
+    {
+      "input": {
+        "vault_id": "00000000-0000-7000-8000-000000000001",
+        "vrk": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      },
+      "name": "sequential",
+      "output": {
+        "hkdf_salt": "00000000000070008000000000000001",
+        "kek": {
+          "history": {
+            "hkdf_info_utf8": "consolecrypt/v1/kek/history",
+            "okm": "73f43dd8331be7c8bc952adcff49a96cb040e1f7c6bde0b818a07731b70b5893"
+          },
+          "inventory": {
+            "hkdf_info_utf8": "consolecrypt/v1/kek/inventory",
+            "okm": "755a381b743b6a37dcd7a3963845dbe697174acece404a117f040958af9343b1"
+          },
+          "secrets": {
+            "hkdf_info_utf8": "consolecrypt/v1/kek/secrets",
+            "okm": "aea6673ca199c81acb263927723ccb0ced7787de31d02daee095012b586dbdc8"
+          },
+          "settings": {
+            "hkdf_info_utf8": "consolecrypt/v1/kek/settings",
+            "okm": "ebe3e4dcf70c693af015723ff9c92e6cd3eb5b890c20e3caf93420080fd858a6"
+          },
+          "snippets": {
+            "hkdf_info_utf8": "consolecrypt/v1/kek/snippets",
+            "okm": "149c4d3961b7d36b039094c493c5666df33398cdf92897370784b09a59f34a33"
+          }
+        },
+        "vault_access_key": {
+          "hkdf_info_utf8": "consolecrypt/v1/vault-access-key",
+          "okm": "3bc515dc31bbe0ccdf77ac6c9350e7beae930fbce75bcd3f6a63c7782e2fc053"
+        },
+        "vault_access_key_sha256": "9d98981aab6d5db397845691d973744a7be25966aa743191a3b045a9222d9eee"
+      }
+    },
+    {
+      "input": {
+        "vault_id": "0192f4a0-1b2c-7d3e-8f40-5a6b7c8d9e0f",
+        "vrk": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      },
+      "name": "other_vault",
+      "output": {
+        "hkdf_salt": "0192f4a01b2c7d3e8f405a6b7c8d9e0f",
+        "kek": {
+          "history": {
+            "hkdf_info_utf8": "consolecrypt/v1/kek/history",
+            "okm": "d37eafaffa8014344c91a1553540bb173c3bc1251a83d9909598cbf80b328fbe"
+          },
+          "inventory": {
+            "hkdf_info_utf8": "consolecrypt/v1/kek/inventory",
+            "okm": "cc7493f33020d25ae4a12dbf246c7845a3e8d2f4dee2148ef7111d156b26f614"
+          },
+          "secrets": {
+            "hkdf_info_utf8": "consolecrypt/v1/kek/secrets",
+            "okm": "586311d93669c52f625509aa451a31e0a81140bbeda1f245039da8c1b18f686e"
+          },
+          "settings": {
+            "hkdf_info_utf8": "consolecrypt/v1/kek/settings",
+            "okm": "ce247718e2934e4d388a013d0f5b34acb6a89c5753b7f64354e6a4d0fa4c9c08"
+          },
+          "snippets": {
+            "hkdf_info_utf8": "consolecrypt/v1/kek/snippets",
+            "okm": "2b12d08b624d72aeb06094f00a64acf389312f9f5a13b14d7c5bf210827be367"
+          }
+        },
+        "vault_access_key": {
+          "hkdf_info_utf8": "consolecrypt/v1/vault-access-key",
+          "okm": "166baaf4e805d29802a0519bdc44bf69c5c1c2cf4c083fcd9c0a525749fad1a3"
+        },
+        "vault_access_key_sha256": "ad5f7a4db2f83ec27273b2644eaf366046ecc13f304a356893669c18fcd771e2"
+      }
+    }
+  ],
+  "description": "KEKs and VAK: HKDF-SHA256(ikm = VRK, salt = vault_id (16 raw bytes), info = label), 32-byte output; verifier = SHA-256(VAK)"
+}

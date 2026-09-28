@@ -1,0 +1,20 @@
+Port 22
+ListenAddress 0.0.0.0
+HostKey /etc/ssh/ssh_host_ed25519_key
+HostKey /etc/ssh/ssh_host_rsa_key
+PermitRootLogin no
+PubkeyAuthentication yes
+PasswordAuthentication yes
+KbdInteractiveAuthentication no
+AuthorizedKeysFile .ssh/authorized_keys
+TrustedUserCAKeys /etc/ssh/user_ca.pub
+AllowTcpForwarding yes
+AllowStreamLocalForwarding no
+GatewayPorts no
+X11Forwarding no
+PermitTTY yes
+MaxAuthTries 10
+MaxSessions 20
+LogLevel INFO
+Subsystem sftp internal-sftp
+Include /etc/ssh/sshd_config.d/*.conf
