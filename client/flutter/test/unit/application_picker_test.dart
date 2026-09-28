@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:consolecrypt/core/bridge/rust_backup.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/services/errors.dart';
@@ -38,17 +40,22 @@ void main() {
     addTearDown(() => FileSelectorPlatform.instance = previous);
   });
   const service = NativeFileDialogService();
-  test('native panel filters app bundles, starts in Applications and returns paths unchanged', () async {
-    for (final path in [
-      '/Applications/Visual Studio Code.app',
-      '/Applications/Zed.app',
-      '/Users/demo/Мои программы/Editor.app',
-    ]) {
+  test('native panel uses platform application filters and returns paths unchanged', () async {
+    final paths = Platform.isWindows
+        ? [r'C:\Program Files\Microsoft VS Code\Code.exe', r'C:\Users\demo\Мои программы\Editor.exe']
+        : ['/Applications/Visual Studio Code.app', '/Applications/Zed.app', '/Users/demo/Мои программы/Editor.app'];
+    for (final path in paths) {
       picker.selection = XFile(path);
       expect(await service.chooseApplication(label: 'Программы', confirmButtonText: 'Выбрать программу'), path);
-      expect(picker.directory, '/Applications');
+      expect(picker.directory, Platform.isMacOS ? '/Applications' : isNull);
       expect(picker.confirmLabel, 'Выбрать программу');
-      expect(picker.groups!.single.uniformTypeIdentifiers, ['com.apple.application-bundle']);
+      if (Platform.isMacOS) {
+        expect(picker.groups!.single.uniformTypeIdentifiers, ['com.apple.application-bundle']);
+      } else if (Platform.isWindows) {
+        expect(picker.groups!.single.extensions, ['exe']);
+      } else {
+        expect(picker.groups, isEmpty);
+      }
     }
     picker.selection = null;
     expect(await service.chooseApplication(label: 'Applications', confirmButtonText: 'Choose'), isNull);

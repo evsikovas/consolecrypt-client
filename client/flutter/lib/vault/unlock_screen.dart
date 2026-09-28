@@ -73,7 +73,8 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> with WidgetsBinding
     await _guard(() async {
       try {
         await ref.read(vaultServiceProvider).unlockWithPassphrase(secret);
-        _passphrase.clear();
+        // The vault event can navigate away before the bridge future returns.
+        if (mounted) _passphrase.clear();
       } finally {
         secret.wipe();
       }

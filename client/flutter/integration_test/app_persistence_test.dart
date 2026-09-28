@@ -101,7 +101,7 @@ Future<void> _scenario(WidgetTester tester) async {
   await tester.pumpWidget(const ProviderScope(child: ConsoleCryptApp()));
 
   // Welcome → "Use locally" → passphrase → Recovery Kit → 3 words → notice.
-  final local = find.descendant(of: find.byKey(const ValueKey('option-local')), matching: find.byType(FilledButton));
+  final local = find.byKey(const ValueKey('welcome-local'));
   await pumpUntil(tester, local);
   await tester.tap(local);
   await enterKey(tester, 'new-passphrase', _passphrase);
@@ -131,6 +131,9 @@ Future<void> _scenario(WidgetTester tester) async {
   await pumpUntil(tester, find.text('persisted-host'));
 
   if (_memoryStore) return; // keys do not survive a restart then
+
+  // Reopening the last profile is opt-in; exercise that explicit preference.
+  await rust.services.settings.updateLocal(rust.services.settings.currentLocal.copyWith(reopenLastProfile: true));
 
   // Restart: UI gone, core shut down (SQLCipher closed), then both again.
   await tester.pumpWidget(const SizedBox.shrink());

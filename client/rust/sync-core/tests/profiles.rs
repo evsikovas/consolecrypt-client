@@ -92,6 +92,7 @@ async fn local_profile_works_without_server_or_outbox() {
         .unwrap_err();
     assert!(matches!(err, SyncError::LocalProfile));
     assert_eq!(server.hits(paths::SYNC_PUSH), 0);
+    storage.close().await;
 }
 
 #[tokio::test]
@@ -153,7 +154,9 @@ async fn enable_sync_uploads_and_resumes_after_interruption_and_restart() {
         ProfileKind::Synced
     );
 
-    // "Restart": drop everything and reopen the database file.
+    // "Restart": finish background work before reopening the database file.
+    engine.stop().await;
+    storage.close().await;
     drop((engine, store, storage));
     let storage = Storage::open(&db_path, DatabaseKey::from_bytes(DB_KEY))
         .await
@@ -201,6 +204,10 @@ async fn enable_sync_uploads_and_resumes_after_interruption_and_restart() {
     assert!(
         matches!(s.payload.object, VaultObject::Secret(ref x) if x.value.expose_secret() == "s3cret-local")
     );
+    engine.stop().await;
+    b.engine.stop().await;
+    storage.close().await;
+    b.storage.close().await;
 }
 
 #[tokio::test]
@@ -295,12 +302,17 @@ async fn reconnect_merges_local_changes_with_the_server_copy() {
     assert_eq!(name_of(&b.store, y.id).await.as_deref(), Some("y-local"));
     assert_eq!(name_of(&b.store, n.id).await.as_deref(), Some("n"));
     assert_eq!(b.store.list().await.unwrap().0.len(), 5);
+    engine.stop().await;
+    for client in [&a, &b] {
+        client.engine.stop().await;
+        client.storage.close().await;
+    }
 }
 
 #[tokio::test]
 async fn disconnect_revokes_device_and_keeps_local_data() {
     let server = MockServer::start().await;
-    let (a, _b, vault) = two_devices(&server).await;
+    let (a, b, vault) = two_devices(&server).await;
     let h1 = Host::new("h1", "10.0.4.1");
     let h2 = Host::new("h2", "10.0.4.2");
     a.engine.put(p(h1.clone())).await.unwrap();
@@ -344,4 +356,8 @@ async fn disconnect_revokes_device_and_keeps_local_data() {
     ));
     assert_eq!(a.store.outbox_counts().await.unwrap().total(), 0);
     let _ = Arc::strong_count(&a.codec);
+    for client in [&a, &b] {
+        client.engine.stop().await;
+        client.storage.close().await;
+    }
 }

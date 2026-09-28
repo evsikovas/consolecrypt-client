@@ -109,6 +109,8 @@ async fn account_logout_password_change_and_reset() {
         .await
         .unwrap();
     assert_eq!(local.logout().await.unwrap_err().code(), "local_profile");
+    local.shutdown().await.unwrap();
+    app.shutdown().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -258,6 +260,7 @@ async fn reveal_secret_plan_preview_errors_and_snippets() {
         .unwrap();
     assert!(r.command.is_none());
     assert_eq!(r.field_errors[0].name, "service");
+    app.shutdown().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -358,6 +361,7 @@ async fn recovery_flag_hints_enable_sync_progress_and_device_unlock() {
     assert!(!closed.active);
     assert_eq!(closed.server_url.as_deref(), Some(url.as_str()));
     assert_eq!(closed.email.as_deref(), Some("hint@example.org"));
+    app.shutdown().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -450,4 +454,5 @@ async fn backup_schedule_runs_due_backups_with_retention() {
     .unwrap();
     assert!(app.backup_now().await.is_err());
     assert!(app.backup_schedule().await.unwrap().last_error.is_some());
+    app.shutdown().await.unwrap();
 }

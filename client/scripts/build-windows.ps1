@@ -44,6 +44,7 @@ $Src = $Repo
 $TmpWt = $null
 $OriginalLocation = Get-Location
 $OriginalCargoTarget = $env:CARGO_TARGET_DIR
+$OriginalBridgeTarget = $env:CONSOLECRYPT_CARGO_TARGET_DIR
 try {
     if ($Debug -and $Installer) { throw 'Installers require a release build; remove -Debug' }
     foreach ($tool in @('flutter', 'cargo', 'rustup', 'perl', 'git', 'python')) {
@@ -57,6 +58,9 @@ try {
         $Src = $TmpWt
     }
     $Mode = if ($Debug) { 'debug' } else { 'release' }
+    # OpenSSL adds long source paths below Cargo's target directory. Keep it
+    # out of Flutter's deeply nested build/windows/.../plugins directory.
+    $env:CONSOLECRYPT_CARGO_TARGET_DIR = Join-Path $Src 'target\windows-rust'
     $Out = Join-Path $Repo 'dist\windows'
     New-Item -ItemType Directory -Force -Path $Out | Out-Null
     $BuildVersion = & python (Join-Path $Repo 'client\scripts\bump-version.py') --root $Repo --source-root $Src
@@ -108,5 +112,6 @@ try {
 finally {
     Set-Location $OriginalLocation
     $env:CARGO_TARGET_DIR = $OriginalCargoTarget
+    $env:CONSOLECRYPT_CARGO_TARGET_DIR = $OriginalBridgeTarget
     if ($TmpWt -and (Test-Path $TmpWt)) { & git -C $Repo worktree remove --force $TmpWt }
 }

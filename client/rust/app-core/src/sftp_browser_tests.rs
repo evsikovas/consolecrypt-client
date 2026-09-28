@@ -110,7 +110,12 @@ async fn browse_stat_resolve_create_duplicate_preview() {
     assert_eq!(css.kind, "dir");
     let index = list.iter().find(|e| e.name == "index.html").unwrap();
     assert_eq!((index.kind.as_str(), index.size), ("file", 11));
-    assert!(index.owner.is_some() && index.uid.is_some());
+    assert!(index.owner.is_some());
+    #[cfg(unix)]
+    assert!(index.uid.is_some());
+    // The local Windows test server has no Unix UID in filesystem metadata.
+    #[cfg(windows)]
+    assert!(index.uid.is_none());
     #[cfg(unix)]
     {
         let link = list.iter().find(|e| e.name == "home").unwrap();

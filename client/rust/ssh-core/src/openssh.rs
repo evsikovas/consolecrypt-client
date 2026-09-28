@@ -487,6 +487,15 @@ mod tests {
         let mut o = OpenSshOptions::new("/a", "/c");
         o.include_forwards = true;
         o.request_tty = Some(true);
+        #[cfg(windows)]
+        {
+            assert!(matches!(
+                build_openssh_command(&client(), &p, &o),
+                Err(SshError::Unsupported(_))
+            ));
+            // Windows has no nc-based ProxyCommand; forwards still work.
+            p.proxy = None;
+        }
         let cmd = build_openssh_command(&client(), &p, &o).unwrap();
         let c = &cmd.config;
         assert!(
