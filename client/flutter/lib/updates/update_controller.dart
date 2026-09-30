@@ -60,6 +60,9 @@ class UpdateController extends Notifier<UpdateState> {
         exit(0);
       }
     } on Object catch (error) {
+      // A verified cache can change or an installer can fail to launch. A retry
+      // must fetch fresh bytes rather than repeatedly reusing a bad file.
+      _installer = null;
       if (ref.mounted) state = UpdateState(phase: UpdatePhase.failed, release: release, error: _error(error));
     }
   }

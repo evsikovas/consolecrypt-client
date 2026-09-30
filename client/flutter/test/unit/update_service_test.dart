@@ -165,6 +165,62 @@ void main() {
     await retry;
     expect(container.read(updateControllerProvider).phase, UpdatePhase.current);
   });
+  test('failed installer retries fetch fresh bytes; Android permission retry keeps verified bytes', () async {
+    final release = (await verify(await envelope()))!;
+    final fake = _InstallService(release);
+    final container = ProviderContainer(overrides: [updateServiceProvider.overrideWithValue(fake)]);
+    addTearDown(container.dispose);
+    addTearDown(() => fake.folder.delete(recursive: true));
+    final controller = container.read(updateControllerProvider.notifier);
+    await controller.check();
+    fake.failNext = true;
+    await controller.downloadAndInstall();
+    expect(container.read(updateControllerProvider).phase, UpdatePhase.failed);
+    expect(fake.downloads, 1);
+    fake.permissionNext = true;
+    await controller.downloadAndInstall();
+    expect(fake.downloads, 2);
+    expect(container.read(updateControllerProvider).phase, UpdatePhase.permission);
+    await controller.downloadAndInstall();
+    expect(fake.downloads, 2);
+    expect(fake.installs, 3);
+    expect(container.read(updateControllerProvider).phase, UpdatePhase.opened);
+  });
+}
+
+class _InstallService extends UpdateService {
+  _InstallService(this.release);
+  final UpdateRelease release;
+  final Directory folder = Directory.systemTemp.createTempSync('consolecrypt-installer-test-');
+  int downloads = 0;
+  int installs = 0;
+  bool failNext = false;
+  bool permissionNext = false;
+  @override
+  Future<UpdateRelease?> check() async => release;
+  @override
+  Future<File> download(UpdateRelease release, void Function(double) progress) async {
+    downloads++;
+    final file = File('${folder.path}/${release.fileName}');
+    await file.writeAsBytes([1, 2, 3]);
+    progress(1);
+    return file;
+  }
+
+  @override
+  Future<UpdateInstallResult> install(File file, UpdateRelease release) async {
+    installs++;
+    await verifyInstaller(file, release);
+    if (failNext) {
+      failNext = false;
+      throw const UpdateException('installer');
+    }
+    if (permissionNext) {
+      permissionNext = false;
+      return UpdateInstallResult.androidPermission;
+    }
+    return UpdateInstallResult.opened;
+  }
 }
 
 class _CheckService extends UpdateService {
