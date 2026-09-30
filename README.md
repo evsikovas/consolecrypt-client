@@ -4,7 +4,7 @@
 <a href="https://consolecrypt.evsikov.net/?lang=ru">Сайт RU</a> ·
 <a href="https://consolecrypt.evsikov.net/?lang=en">Website EN</a> ·
 <a href="https://consolecrypt.evsikov.net/account">Личный кабинет</a> ·
-<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.10">Скачать 0.1.10</a> ·
+<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.13">Скачать 0.1.13</a> ·
 <a href="docs/public/BUILD_WINDOWS.md">Собрать для Windows</a> ·
 <a href="docs/public/BUILDING.md">Сборка и свой сервер</a> ·
 <a href="https://git.evsikov.net/publics/consolecrypt/-/issues">Сообщить об ошибке</a>
@@ -43,16 +43,18 @@ SSH-соединения идут напрямую к вашим сервера�
 
 ## Скачать и установить
 
-**Текущий релиз — [0.1.10](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.10)** для macOS, Windows и Android.
+**Текущий релиз — [0.1.13](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.13)** для macOS, Windows и Android.
 
 | Платформа | Версия | Скачать | Установка |
 |---|---|---|---|
-| macOS 12+ · Apple Silicon и Intel | **0.1.10+1209** | [DMG](https://git.evsikov.net/-/project/14/uploads/f7e88b021c03c8b62010d730f8d8c310/ConsoleCrypt-0.1.10+1209-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
-| Windows 10/11 · x64 | **0.1.10+1208** | [EXE](https://git.evsikov.net/-/project/14/uploads/3afe51f904fc00230f8581573129bbc4/ConsoleCrypt-0.1.10+1208-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/-/project/14/uploads/36be607d44d1008f0275810f39bdcf13/ConsoleCrypt-0.1.10+1208-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
-| Android 11+ · ARM64 | **0.1.10+22** | [APK](https://git.evsikov.net/-/project/14/uploads/f10a9b9d10cd950829e3f06bc368a36d/ConsoleCrypt-0.1.10+22-android-arm64.apk) | Скачайте APK на телефон и установите |
+| macOS 12+ · Apple Silicon и Intel | **0.1.13+1222** | [DMG](https://git.evsikov.net/-/project/14/uploads/a2d450f3a1fc3b3687b9cf285e0d13df/ConsoleCrypt-0.1.13+1222-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
+| Windows 10/11 · x64 | **0.1.13+1221** | [EXE](https://git.evsikov.net/-/project/14/uploads/f72511e397118ee7da30d3a47926653b/ConsoleCrypt-0.1.13+1221-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/-/project/14/uploads/787794ca8147a2d6a21a162a5799aea8/ConsoleCrypt-0.1.13+1221-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
+| Android 11+ · ARM64 | **0.1.13+27** | [APK](https://git.evsikov.net/-/project/14/uploads/b3dccd562f6c619a839dddc79c006444/ConsoleCrypt-0.1.13+27-android-arm64.apk) | Скачайте APK на телефон и установите |
 
-[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/-/project/14/uploads/8e474eb14b89b1b0b8853a5d90e0522b/SHA256SUMS-0.1.10.txt) ·
-[Проверки выпуска 0.1.10](docs/public/RELEASE_0_1_10.md).
+[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/-/project/14/uploads/ebc89673711aaf13bb189b5c06d413cf/SHA256SUMS-0.1.13.txt) ·
+[Проверки выпуска 0.1.13](docs/public/RELEASE_0_1_13.md) · [Как работают обновления](docs/public/UPDATES.md).
+
+В настройках есть автопроверка при запуске, ручная проверка и скачивание новой версии с проверкой цифровой подписи. Для перехода с 0.1.10 или более ранней версии установите этот релиз вручную; следующие обновления можно получать через приложение.
 
 Номер после `+` увеличивается при каждой сборке, поэтому он различается между
 платформами. Бинарные файлы публикуются через GitLab Releases и не хранятся в Git.
