@@ -6,7 +6,7 @@ $Repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 function Add-BuildPath([string]$Directory) {
     if ($Directory -and (Test-Path $Directory)) { $env:Path = $Directory + ';' + $env:Path }
 }
-Add-BuildPath $env:CC_CI_FLUTTER_ROOT
+if ($env:CC_CI_FLUTTER_ROOT) { Add-BuildPath (Join-Path $env:CC_CI_FLUTTER_ROOT 'bin') }
 if ($env:FLUTTER_ROOT) { Add-BuildPath (Join-Path $env:FLUTTER_ROOT 'bin') }
 foreach ($path in @('C:\dev\flutter\bin', 'C:\src\flutter\bin', 'C:\tools\flutter\bin', 'C:\flutter\bin', 'C:\Strawberry\perl\bin', 'C:\Strawberry\c\bin')) { Add-BuildPath $path }
 $Profiles = @($env:USERPROFILE)
@@ -25,10 +25,10 @@ foreach ($buildProfileRoot in ($Profiles | Select-Object -Unique)) {
     if (Test-Path $pythonBase) { foreach ($python in (Get-ChildItem $pythonBase -Directory -Filter 'Python3*' | Sort-Object Name -Descending)) { Add-BuildPath $python.FullName } }
     Add-BuildPath (Join-Path $buildProfileRoot 'AppData\Local\Programs\Inno Setup 6')
 }
-# Bootstrap only the missing Flutter SDK from the official, verified tag.
+# Bootstrap missing SDKs from official releases with pinned verification.
 # This dedicated runner cache is outside the checkout and never enters Git.
+$runnerTools = if ($env:CC_CI_TOOLS_DIR) { $env:CC_CI_TOOLS_DIR } else { Join-Path $env:SystemDrive 'GitLab-Runner\tools' }
 if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
-    $runnerTools = if ($env:CC_CI_TOOLS_DIR) { $env:CC_CI_TOOLS_DIR } else { Join-Path $env:SystemDrive 'GitLab-Runner\tools' }
     $flutterSdk = Join-Path $runnerTools 'flutter-3.47.5'
     if (-not (Test-Path (Join-Path $flutterSdk 'bin\flutter.bat'))) {
         New-Item -ItemType Directory -Force $runnerTools | Out-Null
@@ -38,6 +38,19 @@ if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
     $flutterRevision = & git -C $flutterSdk rev-parse HEAD
     if ($LASTEXITCODE -ne 0 -or "$flutterRevision".Trim() -ne '6a19cca56475dbfba1478ee68d7bd0c2ef891da1') { throw 'Flutter SDK revision does not match the verified release' }
     Add-BuildPath (Join-Path $flutterSdk 'bin')
+}
+if (-not (Get-Command perl -ErrorAction SilentlyContinue)) {
+    $perlSdk = Join-Path $runnerTools 'perl-5.40.5.1'
+    if (-not (Test-Path (Join-Path $perlSdk 'perl\bin\perl.exe'))) {
+        New-Item -ItemType Directory -Force $runnerTools | Out-Null
+        $perlArchive = Join-Path $runnerTools 'strawberry-perl-5.40.5.1-64bit-portable.zip'
+        Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54051_64bit/strawberry-perl-5.40.5.1-64bit-portable.zip' -OutFile $perlArchive
+        if ((Get-FileHash $perlArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne '6619fe7eeef921ccddb4aac3972fb602a0c690a3074205b863ade998d7bc79a6') { throw 'Strawberry Perl archive checksum mismatch' }
+        Expand-Archive -Path $perlArchive -DestinationPath $perlSdk -Force
+        Remove-Item $perlArchive
+    }
+    Add-BuildPath (Join-Path $perlSdk 'c\bin')
+    Add-BuildPath (Join-Path $perlSdk 'perl\bin')
 }
 $missing = @()
 foreach ($tool in @('flutter', 'cargo', 'rustup', 'perl', 'python')) {
