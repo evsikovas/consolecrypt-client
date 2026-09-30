@@ -26,7 +26,9 @@ class ExportTests(unittest.TestCase):
                      'server/.env', 'server/.env.production', 'client/key.p12',
                      'client/secret.pem', 'client/app.apk', 'server/user.sqlite',
                      'client/flutter/android/local.properties', '/etc/passwd',
-                     'client/../private/file', 'client/.git/config'):
+                     'client/../private/file', 'client/.git/config',
+                     'server/deploy/evsikov.values.yaml', 'server/web/index.html',
+                     'server/.local/credentials.json'):
             with self.subTest(path=path):
                 self.assertFalse(module.publishable(path))
 

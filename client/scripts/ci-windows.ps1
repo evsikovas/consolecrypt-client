@@ -12,22 +12,38 @@ foreach ($path in @('C:\dev\flutter\bin', 'C:\src\flutter\bin', 'C:\tools\flutte
 $Profiles = @($env:USERPROFILE)
 $UsersRoot = Join-Path $env:SystemDrive 'Users'
 if (Test-Path $UsersRoot) { $Profiles += @(Get-ChildItem $UsersRoot -Directory | ForEach-Object { $_.FullName }) }
-foreach ($profile in ($Profiles | Select-Object -Unique)) {
-    if (-not $profile) { continue }
-    foreach ($relative in @('flutter\bin', 'dev\flutter\bin', 'tools\flutter\bin', 'AppData\Local\flutter\bin')) { Add-BuildPath (Join-Path $profile $relative) }
-    $cargo = Join-Path $profile '.cargo'
-    $rustup = Join-Path $profile '.rustup'
+foreach ($buildProfileRoot in ($Profiles | Select-Object -Unique)) {
+    if (-not $buildProfileRoot) { continue }
+    foreach ($relative in @('flutter\bin', 'dev\flutter\bin', 'tools\flutter\bin', 'AppData\Local\flutter\bin', 'scoop\apps\flutter\current\bin')) { Add-BuildPath (Join-Path $buildProfileRoot $relative) }
+    $cargo = Join-Path $buildProfileRoot '.cargo'
+    $rustup = Join-Path $buildProfileRoot '.rustup'
     if (-not (Get-Command cargo -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $cargo 'bin\cargo.exe')) -and (Test-Path $rustup)) {
         $env:CARGO_HOME = $cargo; $env:RUSTUP_HOME = $rustup
         Add-BuildPath (Join-Path $cargo 'bin')
     }
-    $pythonBase = Join-Path $profile 'AppData\Local\Programs\Python'
+    $pythonBase = Join-Path $buildProfileRoot 'AppData\Local\Programs\Python'
     if (Test-Path $pythonBase) { foreach ($python in (Get-ChildItem $pythonBase -Directory -Filter 'Python3*' | Sort-Object Name -Descending)) { Add-BuildPath $python.FullName } }
-    Add-BuildPath (Join-Path $profile 'AppData\Local\Programs\Inno Setup 6')
+    Add-BuildPath (Join-Path $buildProfileRoot 'AppData\Local\Programs\Inno Setup 6')
 }
+# Bootstrap only the missing Flutter SDK from the official, verified tag.
+# This dedicated runner cache is outside the checkout and never enters Git.
+if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
+    $runnerTools = if ($env:CC_CI_TOOLS_DIR) { $env:CC_CI_TOOLS_DIR } else { Join-Path $env:SystemDrive 'GitLab-Runner\tools' }
+    $flutterSdk = Join-Path $runnerTools 'flutter-3.47.5'
+    if (-not (Test-Path (Join-Path $flutterSdk 'bin\flutter.bat'))) {
+        New-Item -ItemType Directory -Force $runnerTools | Out-Null
+        & git clone --depth 1 --branch 3.47.5 https://github.com/flutter/flutter.git $flutterSdk
+        if ($LASTEXITCODE -ne 0) { throw 'Official Flutter SDK checkout failed' }
+    }
+    $flutterRevision = & git -C $flutterSdk rev-parse HEAD
+    if ($LASTEXITCODE -ne 0 -or "$flutterRevision".Trim() -ne '6a19cca56475dbfba1478ee68d7bd0c2ef891da1') { throw 'Flutter SDK revision does not match the verified release' }
+    Add-BuildPath (Join-Path $flutterSdk 'bin')
+}
+$missing = @()
 foreach ($tool in @('flutter', 'cargo', 'rustup', 'perl', 'python')) {
-    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "Build tool '$tool' is missing in the runner service account. Install prerequisites from docs/public/BUILD_WINDOWS.md or set CC_CI_FLUTTER_ROOT to Flutter's bin directory." }
+    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { $missing += $tool }
 }
+if ($missing.Count) { throw "Missing runner build tools: $($missing -join ', '). See docs/public/BUILD_WINDOWS.md." }
 function Invoke-Checked {
     param([string]$Command, [string[]]$Arguments)
     & $Command @Arguments

@@ -19,7 +19,7 @@ ROOT_FILES = {
 PRIVATE_DIRS = {
     '.git', '.github', '.codex', '.claude', '.agents', '.idea', '.vscode',
     'target', 'build', 'dist', '.dart_tool', '.gradle', '.cxx', 'Pods',
-    'ephemeral', '__pycache__', '.dev-mail', 'secrets',
+    'ephemeral', '__pycache__', '.dev-mail', 'secrets', '.local',
 }
 PRIVATE_NAMES = {
     'AGENTS.md', 'CLAUDE.md', '.DS_Store', 'local.properties', 'key.properties',
@@ -38,6 +38,8 @@ def publishable(name: str) -> bool:
         return False
     if name in ROOT_FILES:
         return True
+    if name.startswith('server/web/') or name.startswith('server/deploy/evsikov.'):
+        return False
     if not path.parts or path.parts[0] not in {'client', 'crates', 'server', 'docs'}:
         return False
     if any(part in PRIVATE_DIRS for part in path.parts):
