@@ -221,7 +221,14 @@ class _TerminalCard extends ConsumerWidget {
             Positioned.fill(
               child: IndexedStack(
                 index: state.activeIndex.clamp(0, state.tabs.length - 1),
-                children: [for (final tab in state.tabs) TerminalPane(key: ValueKey(tab.sessionId), tab: tab)],
+                children: [
+                  for (final tab in state.tabs)
+                    TerminalPane(
+                      key: ValueKey(tab.sessionId),
+                      tab: tab,
+                      active: identical(tab, active) && docked == null,
+                    ),
+                ],
               ),
             ),
             if (docked != null)

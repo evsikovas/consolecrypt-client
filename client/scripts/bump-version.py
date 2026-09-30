@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Bump the client release/build and keep Dart/native version metadata in sync."""
 import argparse
+import os
 from pathlib import Path
 import re
 
@@ -44,6 +45,13 @@ def bump(root, part='build', source_root=None):
     elif part != 'build':
         raise ValueError('Unknown version part')
     build += 1
+    # Native jobs use a project-wide GitLab job ID, so fresh checkouts and
+    # retries cannot reuse a build number on different operating systems.
+    ci_build = os.environ.get('CC_BUILD_NUMBER')
+    if ci_build is not None:
+        if part != 'build' or not ci_build.isdecimal() or int(ci_build) <= 0:
+            raise ValueError('CC_BUILD_NUMBER must be a positive integer for a native build')
+        build = max(build, int(ci_build))
     if build > 2100000000:
         raise ValueError('Android versionCode limit reached')
     release = f'{major}.{minor}.{patch}'

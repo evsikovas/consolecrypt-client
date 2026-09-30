@@ -1,21 +1,58 @@
+stages: [build]
+
 include:
   - local: server/ci/registry.yml
 
-stages: [build]
-
-# Requires a Windows shell runner with Flutter, Rust, C++, Perl, Python and Inno Setup.
-# Manual by design: do not start expensive native builds on every source push.
+# Dedicated shell runners test each OS before packaging.
 build-windows:
   stage: build
   tags: [windows]
-  when: manual
-  allow_failure: true
+  resource_group: consolecrypt-windows
+  timeout: 3h
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: [client/**/*, crates/**/*, .gitlab-ci.yml, rust-toolchain.toml]
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: true
   script:
-    - powershell -NoProfile -ExecutionPolicy Bypass -File client/scripts/build-windows.ps1 -Installer -NoCli
+    - powershell -NoProfile -ExecutionPolicy Bypass -File client/scripts/ci-windows.ps1
   artifacts:
     name: "ConsoleCrypt-windows-$CI_COMMIT_SHORT_SHA"
     paths:
       - dist/windows/*-setup.exe
+      - dist/windows/ConsoleCrypt-windows.zip
       - dist/windows/*.sha256
       - dist/windows/ConsoleCrypt.version
-    expire_in: 30 days
+    expire_in: 90 days
+
+build-macos:
+  stage: build
+  tags: [macos, arm64]
+  resource_group: consolecrypt-macos
+  timeout: 3h
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: [client/**/*, crates/**/*, .gitlab-ci.yml, rust-toolchain.toml]
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: true
+  script:
+    - export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.cargo/bin:$PATH"
+    - cd client/flutter
+    - flutter pub get
+    - flutter analyze
+    - flutter test
+    - cd ../..
+    - python3 -m unittest discover -s client/scripts -p 'test_bump_version.py' -v
+    - CC_BUILD_NUMBER="$CI_JOB_ID" bash client/scripts/build-macos.sh --no-cli
+    - CC_VERSION="$(cat dist/macos/ConsoleCrypt.version)"
+    - cp dist/macos/ConsoleCrypt.dmg "dist/macos/ConsoleCrypt-${CC_VERSION}-macos-universal.dmg"
+    - shasum -a 256 "dist/macos/ConsoleCrypt-${CC_VERSION}-macos-universal.dmg" > dist/macos/SHA256SUMS.txt
+  artifacts:
+    name: "ConsoleCrypt-macos-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - dist/macos/ConsoleCrypt-*-macos-universal.dmg
+      - dist/macos/SHA256SUMS.txt
+      - dist/macos/ConsoleCrypt.version
+    expire_in: 90 days

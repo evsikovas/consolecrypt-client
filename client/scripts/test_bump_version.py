@@ -2,6 +2,7 @@ import importlib.util
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('bump_version', Path(__file__).with_name('bump-version.py'))
 versioning = importlib.util.module_from_spec(spec)
@@ -16,6 +17,19 @@ def fixture(root, version='0.1.0+1'):
 
 
 class VersionTests(unittest.TestCase):
+    def test_native_ci_builds_use_unique_job_numbers_and_validate_them(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fixture(root)
+            with patch.dict('os.environ', {'CC_BUILD_NUMBER': '400'}):
+                self.assertEqual(versioning.bump(root), '0.1.0+400')
+            with patch.dict('os.environ', {'CC_BUILD_NUMBER': '401'}):
+                self.assertEqual(versioning.bump(root), '0.1.0+401')
+            for value in ['-1', 'oops', '2100000001']:
+                with patch.dict('os.environ', {'CC_BUILD_NUMBER': value}), self.assertRaises(ValueError):
+                    versioning.bump(root)
+            self.assertEqual(versioning.read_version(root)[2], (0, 1, 0, 401))
+
     def test_feature_and_repeated_builds_increase_numbers_and_keep_metadata_in_sync(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
