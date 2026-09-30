@@ -71,3 +71,7 @@ kubeconfig*.yml
 кубкофиг*
 кубконфиг*
 почтыпароль.md
+
+# Private instance overrides and generated credentials.
+.local/
+server/deploy/evsikov.*
