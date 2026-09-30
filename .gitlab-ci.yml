@@ -1,5 +1,9 @@
 stages: [build]
 
+variables:
+  # Keep only reproducible native caches between jobs on dedicated runners.
+  GIT_CLEAN_FLAGS: '-ffdx -e target/ -e client/flutter/build/ -e client/flutter/.dart_tool/ -e client/flutter/macos/Pods/'
+
 include:
   - local: server/ci/registry.yml
 
