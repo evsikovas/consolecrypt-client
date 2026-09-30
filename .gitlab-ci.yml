@@ -1,3 +1,6 @@
+include:
+  - local: server/ci/registry.yml
+
 stages: [build]
 
 # Requires a Windows shell runner with Flutter, Rust, C++, Perl, Python and Inno Setup.
