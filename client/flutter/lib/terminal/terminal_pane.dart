@@ -28,6 +28,7 @@ class TerminalPane extends ConsumerStatefulWidget {
 class _TerminalPaneState extends ConsumerState<TerminalPane> {
   final _focus = FocusNode();
   final _view = GlobalKey<TerminalViewState>();
+  final _scroll = ScrollController();
   bool? _previousPointerSuspension;
 
   void _activate() {
@@ -63,6 +64,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
   void dispose() {
     _restorePointerInput();
     _focus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -94,6 +96,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
             key: _view,
             controller: tab.controller,
             focusNode: _focus,
+            scrollController: _scroll,
             autofocus: widget.active,
             keyboardType: TextInputType.text,
             theme: AppTheme.terminalTheme(Theme.of(context).brightness, scheme: scheme, custom: custom),
@@ -139,7 +142,28 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
                   return KeyEventResult.handled;
                 }
               }
-              return dispatcher.handleKeyEvent(event) ? KeyEventResult.handled : KeyEventResult.ignored;
+              if (dispatcher.handleKeyEvent(event)) return KeyEventResult.handled;
+              // Windows can deliver the Unicode WM_CHAR value on KeyEvent
+              // without forwarding it to xterm's custom TextInputClient.
+              // Consume printable hardware input here: returning handled also
+              // prevents a second WM_CHAR insertion by Flutter's text plugin.
+              // xterm skips this callback during native IME composition, so
+              // composed/dead-key input still commits through TextInput.
+              if (widget.active && AppPlatform.isWindows && (event is KeyDownEvent || event is KeyRepeatEvent)) {
+                final keys = HardwareKeyboard.instance;
+                final altGr = keys.isControlPressed && keys.isLogicalKeyPressed(LogicalKeyboardKey.altRight);
+                final text = event.character;
+                if (!keys.isMetaPressed &&
+                    ((!keys.isControlPressed && !keys.isAltPressed) || altGr) &&
+                    text != null &&
+                    text.isNotEmpty &&
+                    text.runes.every((rune) => rune >= 0x20 && rune != 0x7f)) {
+                  tab.terminal.textInput(text);
+                  if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
             },
           ),
         ),

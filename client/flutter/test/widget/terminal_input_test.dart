@@ -23,6 +23,25 @@ Future<(ProviderContainer, TerminalTab)> openTerminal(WidgetTester tester) async
 }
 
 void main() {
+  testWidgets('Windows hardware letters use layout Unicode and consume the OS key exactly once', (tester) async {
+    final (_, tab) = await openTerminal(tester);
+    final output = <String>[];
+    tab.terminal.onOutput = output.add;
+    expect(await tester.sendKeyDownEvent(LogicalKeyboardKey.keyA, character: 'ф'), isTrue);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.keyA);
+    expect(output.join(), 'ф');
+    expect(await tester.sendKeyEvent(LogicalKeyboardKey.keyZ, character: 'Я'), isTrue);
+    expect(await tester.sendKeyEvent(LogicalKeyboardKey.backquote, character: 'ё'), isTrue);
+    expect(await tester.sendKeyEvent(LogicalKeyboardKey.space, character: ' '), isTrue);
+    expect(await tester.sendKeyDownEvent(LogicalKeyboardKey.keyL, character: 'l'), isTrue);
+    expect(await tester.sendKeyRepeatEvent(LogicalKeyboardKey.keyL, character: 'l'), isTrue);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.keyL);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect(output.join(), 'фЯё ll\r');
+    expect(tester.testTextInput.isRegistered, isTrue);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   testWidgets('one click after losing focus and selecting text reopens native Unicode input', (tester) async {
     final (_, tab) = await openTerminal(tester);
     final output = <String>[];
