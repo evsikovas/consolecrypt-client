@@ -106,6 +106,10 @@ define_id!(
     EnvelopeId
 );
 define_id!(
+    /// An independently authorized shared item (ADR-0008), never a personal vault.
+    ShareId
+);
+define_id!(
     /// A login session (refresh-token family). Server-generated.
     SessionId
 );
