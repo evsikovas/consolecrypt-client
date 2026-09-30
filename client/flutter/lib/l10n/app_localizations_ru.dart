@@ -4867,4 +4867,66 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get screenCaptureError =>
       'Не удалось прочитать или применить настройку скриншотов. Обновите её состояние и попробуйте ещё раз.';
+
+  @override
+  String get updatesTitle => 'Обновления';
+
+  @override
+  String get updateAutomatic => 'Проверять обновления при запуске';
+
+  @override
+  String get updatePrivacyHelp =>
+      'Используются только версия приложения и платформа. Данные хранилища, пароли и токены аккаунта не отправляются.';
+
+  @override
+  String get updateCheck => 'Проверить обновления';
+
+  @override
+  String updateCurrentVersion(String version) {
+    return 'Установлена версия: $version';
+  }
+
+  @override
+  String get updateChecking => 'Проверяем обновления…';
+
+  @override
+  String get updateCurrent => 'У вас последняя версия.';
+
+  @override
+  String updateAvailable(String version) {
+    return 'Доступна версия $version';
+  }
+
+  @override
+  String get updateDownloadInstall => 'Скачать и установить';
+
+  @override
+  String updateDownloading(int percent) {
+    return 'Скачивание: $percent%';
+  }
+
+  @override
+  String get updateInstalling => 'Проверяем файл и запускаем установщик…';
+
+  @override
+  String get updateInstallHelp =>
+      'Установщик обновит ConsoleCrypt и может закрыть приложение вместе с SSH-сеансами. Профили и хранилища сохранятся. На Android нужно подтвердить установку в системном окне.';
+
+  @override
+  String get updateMacInstallHelp =>
+      'Откроется проверенный DMG. Завершите ConsoleCrypt, перетащите новое приложение в Applications и подтвердите замену. Профили и хранилища сохранятся.';
+
+  @override
+  String get updateAndroidPermission =>
+      'Разрешите ConsoleCrypt установку обновлений в открывшихся настройках Android, затем снова нажмите «Скачать и установить».';
+
+  @override
+  String get updateInstallerOpened => 'Системный установщик открыт. Завершите установку в нём.';
+
+  @override
+  String get updateFailed => 'Не удалось выполнить обновление.';
+
+  @override
+  String get updateFailedHelp =>
+      'Проверьте соединение и попробуйте снова. Файлы с неверной подписью или контрольной суммой не устанавливаются.';
 }

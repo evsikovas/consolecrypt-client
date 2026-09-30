@@ -8239,6 +8239,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not read or apply the screenshot setting. Refresh its status and try again.'**
   String get screenCaptureError;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Updates'**
+  String get updatesTitle;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates at startup'**
+  String get updateAutomatic;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Only the app version and platform are used. Vault data, passwords and account tokens are never sent.'**
+  String get updatePrivacyHelp;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get updateCheck;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Installed version: {version}'**
+  String updateCurrentVersion(String version);
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for updates…'**
+  String get updateChecking;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'You have the latest version.'**
+  String get updateCurrent;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} is available'**
+  String updateAvailable(String version);
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Download and install'**
+  String get updateDownloadInstall;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading: {percent}%'**
+  String updateDownloading(int percent);
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying and starting the installer…'**
+  String get updateInstalling;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'The installer will update ConsoleCrypt and may close the application and its SSH sessions. Your profiles and vaults will be preserved. Android asks you to confirm installation.'**
+  String get updateInstallHelp;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'The verified DMG will open. Quit ConsoleCrypt, drag the new application into Applications and confirm replacement. Your profiles and vaults will be preserved.'**
+  String get updateMacInstallHelp;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Allow ConsoleCrypt to install updates in the Android settings that opened, then press Download and install again.'**
+  String get updateAndroidPermission;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'The system installer is open. Complete installation there.'**
+  String get updateInstallerOpened;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Could not complete the update.'**
+  String get updateFailed;
+
+  /// Application update interface
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again. Files that fail signature or checksum verification are never installed.'**
+  String get updateFailedHelp;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

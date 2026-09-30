@@ -17,6 +17,7 @@ import 'package:consolecrypt/settings/screen_capture_settings.dart';
 import 'package:consolecrypt/settings/settings_dialogs.dart';
 import 'package:consolecrypt/settings/sftp_settings.dart';
 import 'package:consolecrypt/sync/enable_sync_dialog.dart';
+import 'package:consolecrypt/updates/update_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -48,6 +49,8 @@ class SettingsScreen extends ConsumerWidget {
           _TerminalSection(),
           SizedBox(height: GlassSpacing.s16),
           SftpSettingsSection(),
+          SizedBox(height: GlassSpacing.s16),
+          UpdateSettingsSection(),
           SizedBox(height: GlassSpacing.s16),
           _AboutSection(),
         ],

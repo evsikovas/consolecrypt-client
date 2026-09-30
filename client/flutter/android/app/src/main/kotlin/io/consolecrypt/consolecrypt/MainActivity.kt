@@ -3,6 +3,10 @@ package io.consolecrypt.consolecrypt
 import android.app.KeyguardManager
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import androidx.core.content.FileProvider
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
 import android.os.CancellationSignal
@@ -46,6 +50,37 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         applyScreenCaptureAllowed(savedScreenCaptureAllowed())
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/updates").setMethodCallHandler { call, result ->
+            val cache = File(cacheDir, "updates")
+            when (call.method) {
+                "cacheDirectory" -> if (cache.isDirectory || cache.mkdirs()) result.success(cache.absolutePath)
+                    else result.error("storage", "Update cache unavailable", null)
+                "install" -> try {
+                    val source = File(call.argument<String>("path") ?: "").canonicalFile
+                    require(source.isFile && source.extension == "apk" && source.path.startsWith(cache.canonicalPath + File.separator))
+                    val archive = packageManager.getPackageArchiveInfo(source.path, PackageManager.GET_SIGNING_CERTIFICATES)
+                        ?: throw IllegalArgumentException("Invalid APK")
+                    val current = packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+                    require(archive.packageName == packageName && archive.versionName == call.argument<String>("version"))
+                    require(archive.longVersionCode > current.longVersionCode)
+                    val incoming = archive.signingInfo?.apkContentsSigners ?: throw IllegalArgumentException("Missing signer")
+                    val existing = current.signingInfo?.apkContentsSigners ?: throw IllegalArgumentException("Missing signer")
+                    require(incoming.size == existing.size && incoming.all { signer -> existing.any { it == signer } })
+                    if (!packageManager.canRequestPackageInstalls()) {
+                        startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                        result.success("permission")
+                    } else {
+                        val uri = FileProvider.getUriForFile(this, "$packageName.updates", source)
+                        startActivity(Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        })
+                        result.success("opened")
+                    }
+                } catch (_: Exception) { result.error("installer", "Cannot install this update", null) }
+                else -> result.notImplemented()
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/screen_capture").setMethodCallHandler { call, result ->
             when (call.method) {
                 "getAllowed" -> result.success(screenCaptureAllowed())

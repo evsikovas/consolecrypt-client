@@ -99,6 +99,7 @@ final class LocalSettings {
     this.sidebarStyle = SidebarStyle.floating,
     this.workspacePanelStyle = WorkspacePanelStyle.floating,
     this.sftpDefaultEditor,
+    this.checkUpdatesAutomatically = true,
   });
 
   final AppThemeMode themeMode;
@@ -144,6 +145,9 @@ final class LocalSettings {
   /// Application paths must never travel in vault sync.
   final AppRef? sftpDefaultEditor;
 
+  /// Only release metadata is fetched. Installers require user confirmation.
+  final bool checkUpdatesAutomatically;
+
   LocalSettings copyWith({
     AppThemeMode? themeMode,
     double? uiFontScale,
@@ -163,6 +167,7 @@ final class LocalSettings {
     WorkspacePanelStyle? workspacePanelStyle,
     AppRef? sftpDefaultEditor,
     bool resetSftpDefaultEditor = false,
+    bool? checkUpdatesAutomatically,
   }) => LocalSettings(
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
@@ -180,5 +185,6 @@ final class LocalSettings {
     sidebarStyle: sidebarStyle ?? this.sidebarStyle,
     workspacePanelStyle: workspacePanelStyle ?? this.workspacePanelStyle,
     sftpDefaultEditor: resetSftpDefaultEditor ? null : (sftpDefaultEditor ?? this.sftpDefaultEditor),
+    checkUpdatesAutomatically: checkUpdatesAutomatically ?? this.checkUpdatesAutomatically,
   );
 }

@@ -4679,4 +4679,66 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get screenCaptureError => 'Could not read or apply the screenshot setting. Refresh its status and try again.';
+
+  @override
+  String get updatesTitle => 'Updates';
+
+  @override
+  String get updateAutomatic => 'Check for updates at startup';
+
+  @override
+  String get updatePrivacyHelp =>
+      'Only the app version and platform are used. Vault data, passwords and account tokens are never sent.';
+
+  @override
+  String get updateCheck => 'Check for updates';
+
+  @override
+  String updateCurrentVersion(String version) {
+    return 'Installed version: $version';
+  }
+
+  @override
+  String get updateChecking => 'Checking for updates…';
+
+  @override
+  String get updateCurrent => 'You have the latest version.';
+
+  @override
+  String updateAvailable(String version) {
+    return 'Version $version is available';
+  }
+
+  @override
+  String get updateDownloadInstall => 'Download and install';
+
+  @override
+  String updateDownloading(int percent) {
+    return 'Downloading: $percent%';
+  }
+
+  @override
+  String get updateInstalling => 'Verifying and starting the installer…';
+
+  @override
+  String get updateInstallHelp =>
+      'The installer will update ConsoleCrypt and may close the application and its SSH sessions. Your profiles and vaults will be preserved. Android asks you to confirm installation.';
+
+  @override
+  String get updateMacInstallHelp =>
+      'The verified DMG will open. Quit ConsoleCrypt, drag the new application into Applications and confirm replacement. Your profiles and vaults will be preserved.';
+
+  @override
+  String get updateAndroidPermission =>
+      'Allow ConsoleCrypt to install updates in the Android settings that opened, then press Download and install again.';
+
+  @override
+  String get updateInstallerOpened => 'The system installer is open. Complete installation there.';
+
+  @override
+  String get updateFailed => 'Could not complete the update.';
+
+  @override
+  String get updateFailedHelp =>
+      'Check your connection and try again. Files that fail signature or checksum verification are never installed.';
 }

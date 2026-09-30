@@ -6619,5 +6619,88 @@
   "screenCaptureError": "Could not read or apply the screenshot setting. Refresh its status and try again.",
   "@screenCaptureError": {
     "description": "Screen capture privacy preference: screenCaptureError"
+  },
+  "updatesTitle": "Updates",
+  "updateAutomatic": "Check for updates at startup",
+  "updatePrivacyHelp": "Only the app version and platform are used. Vault data, passwords and account tokens are never sent.",
+  "updateCheck": "Check for updates",
+  "updateCurrentVersion": "Installed version: {version}",
+  "@updateCurrentVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    },
+    "description": "Application update interface"
+  },
+  "updateChecking": "Checking for updates…",
+  "updateCurrent": "You have the latest version.",
+  "updateAvailable": "Version {version} is available",
+  "@updateAvailable": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    },
+    "description": "Application update interface"
+  },
+  "updateDownloadInstall": "Download and install",
+  "updateDownloading": "Downloading: {percent}%",
+  "@updateDownloading": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    },
+    "description": "Application update interface"
+  },
+  "updateInstalling": "Verifying and starting the installer…",
+  "updateInstallHelp": "The installer will update ConsoleCrypt and may close the application and its SSH sessions. Your profiles and vaults will be preserved. Android asks you to confirm installation.",
+  "updateMacInstallHelp": "The verified DMG will open. Quit ConsoleCrypt, drag the new application into Applications and confirm replacement. Your profiles and vaults will be preserved.",
+  "updateAndroidPermission": "Allow ConsoleCrypt to install updates in the Android settings that opened, then press Download and install again.",
+  "updateInstallerOpened": "The system installer is open. Complete installation there.",
+  "updateFailed": "Could not complete the update.",
+  "updateFailedHelp": "Check your connection and try again. Files that fail signature or checksum verification are never installed.",
+  "@updatesTitle": {
+    "description": "Application update interface"
+  },
+  "@updateAutomatic": {
+    "description": "Application update interface"
+  },
+  "@updatePrivacyHelp": {
+    "description": "Application update interface"
+  },
+  "@updateCheck": {
+    "description": "Application update interface"
+  },
+  "@updateChecking": {
+    "description": "Application update interface"
+  },
+  "@updateCurrent": {
+    "description": "Application update interface"
+  },
+  "@updateDownloadInstall": {
+    "description": "Application update interface"
+  },
+  "@updateInstalling": {
+    "description": "Application update interface"
+  },
+  "@updateInstallHelp": {
+    "description": "Application update interface"
+  },
+  "@updateMacInstallHelp": {
+    "description": "Application update interface"
+  },
+  "@updateAndroidPermission": {
+    "description": "Application update interface"
+  },
+  "@updateInstallerOpened": {
+    "description": "Application update interface"
+  },
+  "@updateFailed": {
+    "description": "Application update interface"
+  },
+  "@updateFailedHelp": {
+    "description": "Application update interface"
   }
 }

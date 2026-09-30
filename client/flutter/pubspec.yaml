@@ -3,7 +3,7 @@ description: "ConsoleCrypt desktop client UI: zero-knowledge E2EE SSH client (Fl
 # Never published to pub.dev; distributed as a desktop application.
 publish_to: 'none'
 
-version: 0.1.11+23
+version: 0.1.12+24
 
 environment:
   sdk: ^3.13.4
@@ -46,6 +46,9 @@ dependencies:
   # Drop files from Finder/Explorer into the SFTP browser = upload (Apache-2.0;
   # MixinNetwork). Drop-in only; drag-out is deferred (lib/sftp/widgets/sftp_drop_target.dart).
   desktop_drop: ^0.8.4
+  # Authenticate update feeds (Apache-2.0) and installer digests (BSD-3-Clause).
+  cryptography: ^2.9.0
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

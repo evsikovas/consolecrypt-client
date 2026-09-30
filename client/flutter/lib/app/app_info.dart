@@ -11,8 +11,8 @@ const kAppCopyright = 'Copyright © 2026 $kAppAuthor';
 
 /// Generated together with pubspec.yaml by client/scripts/bump-version.py.
 /// Native bundles, About and the core all use this release/build identity.
-const kAppVersion = '0.1.11';
-const kAppBuildNumber = 23;
+const kAppVersion = '0.1.12';
+const kAppBuildNumber = 24;
 const kAppFullVersion = '$kAppVersion+$kAppBuildNumber';
 
 /// SPDX licence expression of the client (ADR-0005).

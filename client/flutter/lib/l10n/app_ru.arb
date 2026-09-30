@@ -1477,5 +1477,88 @@
   "screenCaptureError": "Не удалось прочитать или применить настройку скриншотов. Обновите её состояние и попробуйте ещё раз.",
   "@screenCaptureError": {
     "description": "Screen capture privacy preference: screenCaptureError"
+  },
+  "updatesTitle": "Обновления",
+  "updateAutomatic": "Проверять обновления при запуске",
+  "updatePrivacyHelp": "Используются только версия приложения и платформа. Данные хранилища, пароли и токены аккаунта не отправляются.",
+  "updateCheck": "Проверить обновления",
+  "updateCurrentVersion": "Установлена версия: {version}",
+  "updateChecking": "Проверяем обновления…",
+  "updateCurrent": "У вас последняя версия.",
+  "updateAvailable": "Доступна версия {version}",
+  "updateDownloadInstall": "Скачать и установить",
+  "updateDownloading": "Скачивание: {percent}%",
+  "updateInstalling": "Проверяем файл и запускаем установщик…",
+  "updateInstallHelp": "Установщик обновит ConsoleCrypt и может закрыть приложение вместе с SSH-сеансами. Профили и хранилища сохранятся. На Android нужно подтвердить установку в системном окне.",
+  "updateMacInstallHelp": "Откроется проверенный DMG. Завершите ConsoleCrypt, перетащите новое приложение в Applications и подтвердите замену. Профили и хранилища сохранятся.",
+  "updateAndroidPermission": "Разрешите ConsoleCrypt установку обновлений в открывшихся настройках Android, затем снова нажмите «Скачать и установить».",
+  "updateInstallerOpened": "Системный установщик открыт. Завершите установку в нём.",
+  "updateFailed": "Не удалось выполнить обновление.",
+  "updateFailedHelp": "Проверьте соединение и попробуйте снова. Файлы с неверной подписью или контрольной суммой не устанавливаются.",
+  "@updateCurrentVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    },
+    "description": "Application update interface"
+  },
+  "@updateAvailable": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    },
+    "description": "Application update interface"
+  },
+  "@updateDownloading": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    },
+    "description": "Application update interface"
+  },
+  "@updatesTitle": {
+    "description": "Application update interface"
+  },
+  "@updateAutomatic": {
+    "description": "Application update interface"
+  },
+  "@updatePrivacyHelp": {
+    "description": "Application update interface"
+  },
+  "@updateCheck": {
+    "description": "Application update interface"
+  },
+  "@updateChecking": {
+    "description": "Application update interface"
+  },
+  "@updateCurrent": {
+    "description": "Application update interface"
+  },
+  "@updateDownloadInstall": {
+    "description": "Application update interface"
+  },
+  "@updateInstalling": {
+    "description": "Application update interface"
+  },
+  "@updateInstallHelp": {
+    "description": "Application update interface"
+  },
+  "@updateMacInstallHelp": {
+    "description": "Application update interface"
+  },
+  "@updateAndroidPermission": {
+    "description": "Application update interface"
+  },
+  "@updateInstallerOpened": {
+    "description": "Application update interface"
+  },
+  "@updateFailed": {
+    "description": "Application update interface"
+  },
+  "@updateFailedHelp": {
+    "description": "Application update interface"
   }
 }
