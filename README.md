@@ -4,7 +4,7 @@
 <a href="https://consolecrypt.evsikov.net/?lang=ru">Сайт RU</a> ·
 <a href="https://consolecrypt.evsikov.net/?lang=en">Website EN</a> ·
 <a href="https://consolecrypt.evsikov.net/account">Личный кабинет</a> ·
-<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.4">Скачать 0.1.4</a> ·
+<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.10">Скачать 0.1.10</a> ·
 <a href="docs/public/BUILD_WINDOWS.md">Собрать для Windows</a> ·
 <a href="docs/public/BUILDING.md">Сборка и свой сервер</a> ·
 <a href="https://git.evsikov.net/publics/consolecrypt/-/issues">Сообщить об ошибке</a>
@@ -43,17 +43,16 @@ SSH-соединения идут напрямую к вашим сервера�
 
 ## Скачать и установить
 
-**Текущий релиз — [0.1.4](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.4)** для macOS, Windows и Android.
+**Текущий релиз — [0.1.10](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.10)** для macOS, Windows и Android.
 
 | Платформа | Версия | Скачать | Установка |
 |---|---|---|---|
-| macOS 12+ · Apple Silicon и Intel | **0.1.4+14** | [DMG](https://git.evsikov.net/-/project/14/uploads/e76ff8227da48f925c8312c255638183/ConsoleCrypt-0.1.4+14-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
-| Windows 10/11 · x64 | **0.1.4+13** | [EXE](https://git.evsikov.net/-/project/14/uploads/52619231ea411fba60f7cabe090b6e81/ConsoleCrypt-0.1.4+13-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/-/project/14/uploads/0b291dfaa98b4e40d38fc94617d8abf7/ConsoleCrypt-0.1.4+13-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
-| Android 11+ · ARM64 | **0.1.4+15** | [APK](https://git.evsikov.net/-/project/14/uploads/625efe8819e553debee0e8e3edb02d48/ConsoleCrypt-0.1.4+15-android-arm64.apk) | Скачайте APK на телефон и установите |
+| macOS 12+ · Apple Silicon и Intel | **0.1.10+1209** | [DMG](https://git.evsikov.net/-/project/14/uploads/f7e88b021c03c8b62010d730f8d8c310/ConsoleCrypt-0.1.10+1209-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
+| Windows 10/11 · x64 | **0.1.10+1208** | [EXE](https://git.evsikov.net/-/project/14/uploads/3afe51f904fc00230f8581573129bbc4/ConsoleCrypt-0.1.10+1208-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/-/project/14/uploads/36be607d44d1008f0275810f39bdcf13/ConsoleCrypt-0.1.10+1208-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
+| Android 11+ · ARM64 | **0.1.10+22** | [APK](https://git.evsikov.net/-/project/14/uploads/f10a9b9d10cd950829e3f06bc368a36d/ConsoleCrypt-0.1.10+22-android-arm64.apk) | Скачайте APK на телефон и установите |
 
-[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/-/project/14/uploads/7cd7960087a79bbddee448d8d941c5ad/SHA256SUMS-0.1.4.txt) ·
-[Проверки macOS и Android](docs/public/RELEASE_0_1_4.md) ·
-[Проверки Windows](docs/public/WINDOWS_VALIDATION.md).
+[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/-/project/14/uploads/8e474eb14b89b1b0b8853a5d90e0522b/SHA256SUMS-0.1.10.txt) ·
+[Проверки выпуска 0.1.10](docs/public/RELEASE_0_1_10.md).
 
 Номер после `+` увеличивается при каждой сборке, поэтому он различается между
 платформами. Бинарные файлы публикуются через GitLab Releases и не хранятся в Git.
