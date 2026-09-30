@@ -52,6 +52,22 @@ if (-not (Get-Command perl -ErrorAction SilentlyContinue)) {
     Add-BuildPath (Join-Path $perlSdk 'c\bin')
     Add-BuildPath (Join-Path $perlSdk 'perl\bin')
 }
+foreach ($innoBase in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
+    if ($innoBase) { Add-BuildPath (Join-Path $innoBase 'Inno Setup 6') }
+}
+if (-not (Get-Command ISCC.exe -ErrorAction SilentlyContinue)) {
+    $innoSdk = Join-Path $runnerTools 'inno-6.7.3'
+    if (-not (Test-Path (Join-Path $innoSdk 'ISCC.exe'))) {
+        New-Item -ItemType Directory -Force $runnerTools | Out-Null
+        $innoInstaller = Join-Path $runnerTools 'innosetup-6.7.3.exe'
+        Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe' -OutFile $innoInstaller
+        if ((Get-FileHash $innoInstaller -Algorithm SHA256).Hash.ToLowerInvariant() -ne '9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732') { throw 'Inno Setup installer checksum mismatch' }
+        $innoInstall = Start-Process -FilePath $innoInstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', ('/DIR="' + $innoSdk + '"')) -Wait -PassThru
+        if ($innoInstall.ExitCode -ne 0 -or -not (Test-Path (Join-Path $innoSdk 'ISCC.exe'))) { throw 'Inno Setup installation failed' }
+        Remove-Item $innoInstaller
+    }
+    Add-BuildPath $innoSdk
+}
 $missing = @()
 foreach ($tool in @('flutter', 'cargo', 'rustup', 'perl', 'python')) {
     if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { $missing += $tool }
