@@ -1,0 +1,22 @@
+PODS:
+  - cc_bridge (0.1.0):
+    - Flutter
+  - Flutter (1.0.0)
+
+DEPENDENCIES:
+  - cc_bridge (from `.symlinks/plugins/cc_bridge/ios`)
+  - Flutter (from `Flutter`)
+
+EXTERNAL SOURCES:
+  cc_bridge:
+    :path: ".symlinks/plugins/cc_bridge/ios"
+  Flutter:
+    :path: Flutter
+
+SPEC CHECKSUMS:
+  cc_bridge: 2afaa0edad239b551847b684f618851f744971b2
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+
+PODFILE CHECKSUM: e1bdbc0cb4674261af7b864b27699894ce279ab0
+
+COCOAPODS: 1.17.0

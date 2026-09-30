@@ -46,6 +46,12 @@ pub enum AppError {
     /// The operation needs the vault unlocked.
     #[error("the vault is locked")]
     VaultLocked,
+    /// The independent OS checkpoint and encrypted cache need explicit
+    /// reconciliation; no automatic trust reset or rollback is permitted.
+    #[error(
+        "shared cache requires signed-history reconciliation; its trusted checkpoint was preserved"
+    )]
+    SharingReconciliationRequired,
     /// The profile has no vault yet (synced profile before create/join).
     #[error("this profile has no vault yet; create or join one")]
     NoVault,
@@ -277,6 +283,7 @@ impl AppError {
             AppError::Storage(_) => "storage",
             AppError::SecureStore(_) => "secure_store",
             AppError::Crypto(_) => "crypto",
+            AppError::SharingReconciliationRequired => "sharing_reconciliation_required",
             AppError::Unsupported(_) => "unsupported",
             AppError::Cancelled => "cancelled",
             AppError::AiNotConfigured => "ai_not_configured",

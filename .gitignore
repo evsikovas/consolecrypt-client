@@ -52,6 +52,16 @@ dist/
 *.pfx
 *.mobileprovision
 
+# Local deployment credentials (never publish).
+kubeconfig*.yaml
+kubeconfig*.yml
+кубкофиг*
+кубконфиг*
+почтыпароль.md
+
+# Private deployment overrides and generated analytics credentials.
+.local/
+
 # Private development notes do not belong in this public tree.
 AGENTS.md
 CLAUDE.md
@@ -64,14 +74,3 @@ PROTOCOL_CHANGELOG.md
 .agents/
 docs/adr/
 docs/design/
-
-# Local deployment credentials (never publish).
-kubeconfig*.yaml
-kubeconfig*.yml
-кубкофиг*
-кубконфиг*
-почтыпароль.md
-
-# Private instance overrides and generated credentials.
-.local/
-server/deploy/evsikov.*

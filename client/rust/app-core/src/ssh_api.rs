@@ -8,13 +8,66 @@ use crate::dto::*;
 use crate::error::{AppError, AppResult};
 use crate::inventory::host_of;
 use crate::session::{AppCtx, Unlocked};
-use cc_models::ObjectId;
-use cc_terminal_core::{TerminalId, TerminalSize};
-use std::path::Path;
+use cc_terminal_core::{TerminalError, TerminalId, TerminalSize, TerminalStatus};
+use std::{future::Future, path::Path};
 use tokio::sync::{broadcast, mpsc};
 
 fn parse_terminal_id(s: &str) -> AppResult<TerminalId> {
     uuid::Uuid::parse_str(s.trim()).map_err(|_| AppError::invalid("terminal_id", "not a valid id"))
+}
+
+/// The manager retains closed sessions for scrollback, including their output
+/// sender. A terminal's final status, rather than broadcast closure, therefore
+/// ends an attachment. Dropping the consumer also releases an idle attachment.
+async fn forward_terminal_output(
+    mut output: broadcast::Receiver<bytes::Bytes>,
+    closed: impl Future<Output = Result<TerminalStatus, TerminalError>>,
+    tx: mpsc::Sender<TerminalChunk>,
+) {
+    tokio::pin!(closed);
+    let mut output_open = true;
+    let status = loop {
+        tokio::select! {
+            biased;
+            _ = tx.closed() => return,
+            status = &mut closed => break status,
+            next = output.recv(), if output_open => {
+                let chunk = match next {
+                    Ok(bytes) => TerminalChunk::Data(bytes.to_vec()),
+                    Err(broadcast::error::RecvError::Lagged(_)) => TerminalChunk::Lagged,
+                    Err(broadcast::error::RecvError::Closed) => {
+                        output_open = false;
+                        continue;
+                    }
+                };
+                if tx.send(chunk).await.is_err() {
+                    return;
+                }
+            }
+        }
+    };
+
+    // The pump publishes its final status after its last output. Preserve any
+    // queued bytes (and a lag notice) before sending exactly one final chunk.
+    loop {
+        let chunk = match output.try_recv() {
+            Ok(bytes) => TerminalChunk::Data(bytes.to_vec()),
+            Err(broadcast::error::TryRecvError::Lagged(_)) => TerminalChunk::Lagged,
+            Err(broadcast::error::TryRecvError::Empty | broadcast::error::TryRecvError::Closed) => {
+                break;
+            }
+        };
+        if tx.send(chunk).await.is_err() {
+            return;
+        }
+    }
+    let status = status
+        .map(|s| TerminalStatusDto::from(&s))
+        .unwrap_or(TerminalStatusDto::Closed {
+            exit_status: None,
+            reason: None,
+        });
+    let _ = tx.send(TerminalChunk::Closed(status)).await;
 }
 
 /// A running OpenSSH invocation prepared for the caller to spawn with
@@ -30,8 +83,8 @@ pub struct OpenSshCommandDto {
 impl AppCore {
     /// Human-readable route (`user@hop -> … -> user@target`) and warnings.
     pub async fn describe_connection(&self, host_id: String) -> AppResult<ConnectionRouteDto> {
-        let (_, u) = self.unlocked().await?;
-        let plan = u.ssh.plan(parse_id("host_id", &host_id)?).await?;
+        let prepared = self.sharing_prepare_connection(&host_id).await?;
+        let plan = prepared.plan;
         Ok(ConnectionRouteDto {
             route: plan.describe(),
             warnings: plan.warnings.clone(),
@@ -40,10 +93,10 @@ impl AppCore {
 
     /// Run `command` on a host (through its jump chain) and collect output.
     pub async fn exec(&self, host_id: String, command: String) -> AppResult<ExecResultDto> {
-        let (_, u) = self.unlocked().await?;
-        let id = parse_id("host_id", &host_id)?;
-        host_of(&u, id)?;
-        u.ssh.exec(id, &command).await
+        let prepared = self.sharing_prepare_connection(&host_id).await?;
+        prepared
+            .run(prepared.unlocked.ssh.exec_plan(&prepared.plan, &command))
+            .await
     }
 
     // ---- terminals -------------------------------------------------------------
@@ -56,15 +109,26 @@ impl AppCore {
         cols: u32,
         rows: u32,
     ) -> AppResult<TerminalInfoDto> {
-        let (_, u) = self.unlocked().await?;
-        let id = parse_id("host_id", &host_id)?;
-        let plan = u.ssh.plan(id).await?;
-        let tid = u
-            .ssh
-            .terminals
-            .open(plan, TerminalSize { cols, rows })
+        let prepared = self.sharing_prepare_connection(&host_id).await?;
+        let tid = prepared
+            .run(async {
+                Ok(prepared
+                    .unlocked
+                    .ssh
+                    .terminals
+                    .open(prepared.plan.clone(), TerminalSize { cols, rows })
+                    .await?)
+            })
             .await?;
-        self.terminal_info(tid.to_string()).await
+        let i = prepared.unlocked.ssh.terminals.info(tid)?;
+        Ok(TerminalInfoDto {
+            id: i.id.to_string(),
+            host_id: i.host_id.to_string(),
+            title: i.title,
+            status: (&i.status).into(),
+            cols: i.size.cols,
+            rows: i.size.rows,
+        })
     }
 
     pub async fn terminal_info(&self, terminal_id: String) -> AppResult<TerminalInfoDto> {
@@ -130,33 +194,8 @@ impl AppCore {
         let att = u.ssh.terminals.attach(tid)?;
         let (tx, rx) = mpsc::channel(256);
         let ssh = u.ssh.clone();
-        let mut output = att.output;
         tokio::spawn(async move {
-            loop {
-                match output.recv().await {
-                    Ok(b) => {
-                        if tx.send(TerminalChunk::Data(b.to_vec())).await.is_err() {
-                            return;
-                        }
-                    }
-                    Err(broadcast::error::RecvError::Lagged(_)) => {
-                        if tx.send(TerminalChunk::Lagged).await.is_err() {
-                            return;
-                        }
-                    }
-                    Err(broadcast::error::RecvError::Closed) => break,
-                }
-            }
-            let status = ssh
-                .terminals
-                .wait_closed(tid)
-                .await
-                .map(|s| TerminalStatusDto::from(&s))
-                .unwrap_or(TerminalStatusDto::Closed {
-                    exit_status: None,
-                    reason: None,
-                });
-            let _ = tx.send(TerminalChunk::Closed(status)).await;
+            forward_terminal_output(att.output, ssh.terminals.wait_closed(tid), tx).await;
         });
         Ok(TerminalAttachment {
             snapshot: att.snapshot,
@@ -196,7 +235,20 @@ impl AppCore {
     /// Start a saved tunnel over a (shared) connection to its host.
     pub async fn start_tunnel(&self, tunnel_id: String) -> AppResult<TunnelStatusDto> {
         let (_, u) = self.unlocked().await?;
-        start_tunnel_on(&u, parse_id("tunnel_id", &tunnel_id)?).await
+        let id = parse_id("tunnel_id", &tunnel_id)?;
+        let tunnel = u
+            .working()
+            .tunnel(id)
+            .ok_or_else(|| AppError::not_found("tunnel", id))?;
+        let current = self
+            .sharing_prepare_connection(&tunnel.host_id.to_string())
+            .await?;
+        if !std::sync::Arc::ptr_eq(&u, &current.unlocked) {
+            return Err(AppError::invalid("shared_host", "profile changed"));
+        }
+        current
+            .run(start_tunnel_plan(&current.unlocked, &tunnel, &current.plan))
+            .await
     }
 
     pub async fn stop_tunnel(&self, tunnel_id: String) -> AppResult<()> {
@@ -223,8 +275,10 @@ impl AppCore {
 
     /// Open an SFTP session to a host; returns its id.
     pub async fn sftp_open(&self, host_id: String) -> AppResult<String> {
-        let (_, u) = self.unlocked().await?;
-        u.ssh.sftp_open(parse_id("host_id", &host_id)?).await
+        let prepared = self.sharing_prepare_connection(&host_id).await?;
+        prepared
+            .run(prepared.unlocked.ssh.sftp_open_plan(&prepared.plan))
+            .await
     }
 
     /// Close an SFTP session: its edit sessions are stopped first (final
@@ -354,10 +408,14 @@ impl AppCore {
         command: Option<String>,
         tty: bool,
     ) -> AppResult<OpenSshCommandDto> {
-        let (_, u) = self.unlocked().await?;
-        let (session_id, program, args, env) = u
-            .ssh
-            .prepare_openssh(parse_id("host_id", &host_id)?, command, tty)
+        let prepared = self.sharing_prepare_connection(&host_id).await?;
+        let (session_id, program, args, env) = prepared
+            .run(
+                prepared
+                    .unlocked
+                    .ssh
+                    .prepare_openssh_plan(&prepared.plan, command, tty),
+            )
             .await?;
         Ok(OpenSshCommandDto {
             session_id,
@@ -385,24 +443,53 @@ impl AppCore {
 }
 
 /// Start one saved tunnel of the unlocked vault.
-pub(crate) async fn start_tunnel_on(u: &Unlocked, id: ObjectId) -> AppResult<TunnelStatusDto> {
-    let t = u
-        .working()
-        .tunnel(id)
-        .ok_or_else(|| AppError::not_found("tunnel", id))?;
-    let session = u.ssh.shared_session(t.host_id).await?;
-    let status = u.ssh.tunnels.start(&t, session).await?;
+pub(crate) async fn start_tunnel_plan(
+    u: &Unlocked,
+    t: &cc_models::tunnel::Tunnel,
+    plan: &cc_ssh_core::ConnectionPlan,
+) -> AppResult<TunnelStatusDto> {
+    if t.host_id != plan.host_id {
+        return Err(AppError::invalid(
+            "tunnel",
+            "host changed during verification",
+        ));
+    }
+    let session = u.ssh.shared_session_plan(plan).await?;
+    let status = u.ssh.tunnels.start(t, session).await?;
     Ok((&status).into())
 }
 
 /// Start every `auto_start` tunnel that is not running yet.
-pub(crate) async fn auto_start_tunnels(u: &Unlocked, ctx: &AppCtx) -> Vec<TunnelFailureDto> {
+pub(crate) async fn auto_start_tunnels(
+    u: &std::sync::Arc<Unlocked>,
+    ctx: &AppCtx,
+) -> Vec<TunnelFailureDto> {
     let mut failures = Vec::new();
     for t in u.working().tunnels().into_iter().filter(|t| t.auto_start) {
         if u.ssh.tunnels.status(t.id).is_some() {
             continue;
         }
-        if let Err(e) = start_tunnel_on(u, t.id).await {
+        // Session startup has no trusted sharing transcript yet. Require the
+        // explicit start path which verifies current ACL/history before SSH.
+        let result = async {
+            let plan = u.ssh.plan(t.host_id).await?;
+            for hop in plan.all_hops() {
+                let host = host_of(u, hop.host_id)?;
+                if crate::sharing_bindings::host_sharing_binding(&host)?.is_some() {
+                    return Err(AppError::invalid(
+                        "auto_start",
+                        "shared_host_requires_verification",
+                    ));
+                }
+            }
+            let prepared = crate::sharing_bindings::PreparedSharingConnection {
+                unlocked: u.clone(),
+                plan,
+            };
+            prepared.run(start_tunnel_plan(u, &t, &prepared.plan)).await
+        }
+        .await;
+        if let Err(e) = result {
             tracing::warn!(tunnel_id = %t.id, error = %e, "auto-start tunnel failed");
             ctx.emit(AppEvent::TunnelFailed {
                 tunnel_id: t.id.to_string(),
@@ -415,4 +502,261 @@ pub(crate) async fn auto_start_tunnels(u: &Unlocked, ctx: &AppCtx) -> Vec<Tunnel
         }
     }
     failures
+}
+
+#[cfg(test)]
+mod attachment_tests {
+    use super::*;
+    use async_trait::async_trait;
+    use bytes::Bytes;
+    use cc_models::{host::HostKeyPolicy, ObjectId};
+    use cc_ssh_core::{ConnectionPlan, Endpoint, PtyRequest, ShellChannel, ShellEvent, ShellInput};
+    use cc_terminal_core::{OpenedShell, ShellOpener, TerminalManager};
+    use std::{sync::Arc, time::Duration};
+    use tokio::{task::JoinHandle, time::timeout};
+
+    struct MockShellOpener {
+        fail: bool,
+    }
+
+    #[async_trait]
+    impl ShellOpener for MockShellOpener {
+        async fn open_shell(
+            &self,
+            _plan: &ConnectionPlan,
+            _pty: PtyRequest,
+        ) -> Result<OpenedShell, TerminalError> {
+            if self.fail {
+                return Err(TerminalError::Open("mock connection failed".into()));
+            }
+            let (channel, mut remote) = ShellChannel::pair(64);
+            tokio::spawn(async move {
+                while let Some(input) = remote.inputs.recv().await {
+                    match input {
+                        ShellInput::Data(bytes) if bytes.as_ref() == b"finish" => {
+                            for bytes in
+                                [b"first\r\n".as_slice(), "последняя строка\r\n".as_bytes()]
+                            {
+                                if remote
+                                    .events
+                                    .send(ShellEvent::Data(Bytes::copy_from_slice(bytes)))
+                                    .await
+                                    .is_err()
+                                {
+                                    return;
+                                }
+                            }
+                            let _ = remote.events.send(ShellEvent::ExitStatus(0)).await;
+                            let _ = remote.events.send(ShellEvent::Closed).await;
+                            return;
+                        }
+                        ShellInput::Data(bytes) => {
+                            if remote.events.send(ShellEvent::Data(bytes)).await.is_err() {
+                                return;
+                            }
+                        }
+                        ShellInput::Close => {
+                            let _ = remote.events.send(ShellEvent::Closed).await;
+                            return;
+                        }
+                        ShellInput::Resize { .. } | ShellInput::Eof => {}
+                    }
+                }
+            });
+            Ok(OpenedShell {
+                channel,
+                session: None,
+            })
+        }
+    }
+
+    fn manager(fail: bool) -> Arc<TerminalManager> {
+        Arc::new(TerminalManager::new(Arc::new(MockShellOpener { fail })))
+    }
+
+    fn plan() -> ConnectionPlan {
+        ConnectionPlan {
+            host_id: ObjectId::new(),
+            name: "generated attachment test".into(),
+            target: Endpoint::new("127.0.0.1", 22),
+            username: "test".into(),
+            credential: None,
+            host_key_policy: HostKeyPolicy::Ask,
+            route: vec![],
+            proxy: None,
+            forwards: vec![],
+            backend: cc_models::host::SshBackend::Native,
+            keepalive_secs: Some(2),
+            agent_forwarding: false,
+            warnings: vec![],
+        }
+    }
+
+    fn forward(
+        manager: Arc<TerminalManager>,
+        id: TerminalId,
+        output: broadcast::Receiver<Bytes>,
+        capacity: usize,
+    ) -> (mpsc::Receiver<TerminalChunk>, JoinHandle<()>) {
+        let (tx, rx) = mpsc::channel(capacity);
+        let task = tokio::spawn(async move {
+            forward_terminal_output(output, manager.wait_closed(id), tx).await;
+        });
+        (rx, task)
+    }
+
+    async fn collect(
+        mut rx: mpsc::Receiver<TerminalChunk>,
+        task: JoinHandle<()>,
+    ) -> Vec<TerminalChunk> {
+        timeout(Duration::from_secs(2), async {
+            let mut chunks = Vec::new();
+            while let Some(chunk) = rx.recv().await {
+                chunks.push(chunk);
+            }
+            task.await.unwrap();
+            chunks
+        })
+        .await
+        .expect("attachment must finish while the manager retains the session")
+    }
+
+    fn finished_output() -> Vec<TerminalChunk> {
+        vec![
+            TerminalChunk::Data(b"first\r\n".to_vec()),
+            TerminalChunk::Data("последняя строка\r\n".as_bytes().to_vec()),
+            TerminalChunk::Closed(TerminalStatusDto::Closed {
+                exit_status: Some(0),
+                reason: None,
+            }),
+        ]
+    }
+
+    #[tokio::test]
+    async fn attachment_reports_live_close_without_removing_the_session() {
+        let manager = manager(false);
+        let id = manager.open(plan(), TerminalSize::default()).await.unwrap();
+        let attachment = manager.attach(id).unwrap();
+        let (rx, task) = forward(manager.clone(), id, attachment.output, 1);
+        manager.write(id, b"finish").await.unwrap();
+
+        assert_eq!(collect(rx, task).await, finished_output());
+        assert_eq!(manager.list().len(), 1);
+        assert!(manager.status(id).unwrap().is_terminal());
+        let mut retained = manager.attach(id).unwrap();
+        assert_eq!(
+            retained.output.try_recv(),
+            Err(broadcast::error::TryRecvError::Empty),
+            "the retained sender is still open"
+        );
+    }
+
+    #[tokio::test]
+    async fn attachment_drains_queued_bytes_before_one_final_chunk() {
+        let manager = manager(false);
+        let id = manager.open(plan(), TerminalSize::default()).await.unwrap();
+        let attachment = manager.attach(id).unwrap();
+        manager.write(id, b"finish").await.unwrap();
+        timeout(Duration::from_secs(2), manager.wait_closed(id))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(attachment.output.len(), 2);
+
+        let (rx, task) = forward(manager.clone(), id, attachment.output, 1);
+        assert_eq!(collect(rx, task).await, finished_output());
+        assert_eq!(manager.list().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn attachment_reports_retained_failed_connection() {
+        let manager = manager(true);
+        // spawn_open preserves a failed tab so it can offer reconnect.
+        let id = manager.spawn_open(plan(), TerminalSize::default());
+        let attachment = manager.attach(id).unwrap();
+        let status = timeout(Duration::from_secs(2), manager.wait_closed(id))
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(matches!(status, TerminalStatus::Failed(_)));
+        let (rx, task) = forward(manager.clone(), id, attachment.output, 1);
+
+        assert_eq!(
+            collect(rx, task).await,
+            vec![TerminalChunk::Closed((&status).into())]
+        );
+        assert_eq!(manager.list().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn late_attachment_reports_close_without_duplicating_its_snapshot() {
+        let manager = manager(false);
+        let id = manager.open(plan(), TerminalSize::default()).await.unwrap();
+        manager.write(id, b"finish").await.unwrap();
+        let status = timeout(Duration::from_secs(2), manager.wait_closed(id))
+            .await
+            .unwrap()
+            .unwrap();
+        let attachment = manager.attach(id).unwrap();
+        assert_eq!(
+            attachment.snapshot,
+            "first\r\nпоследняя строка\r\n".as_bytes()
+        );
+        let (rx, task) = forward(manager.clone(), id, attachment.output, 1);
+
+        assert_eq!(
+            collect(rx, task).await,
+            vec![TerminalChunk::Closed((&status).into())]
+        );
+    }
+
+    #[tokio::test]
+    async fn dropping_idle_attachment_stops_its_task_without_closing_the_shell() {
+        let manager = manager(false);
+        let id = manager.open(plan(), TerminalSize::default()).await.unwrap();
+        let attachment = manager.attach(id).unwrap();
+        let (rx, task) = forward(manager.clone(), id, attachment.output, 1);
+        tokio::task::yield_now().await;
+        drop(rx);
+        timeout(Duration::from_secs(2), task)
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(manager.status(id).unwrap(), TerminalStatus::Connected);
+        manager.close(id).await.unwrap();
+        timeout(Duration::from_secs(2), manager.wait_closed(id))
+            .await
+            .unwrap()
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn dropping_backpressured_attachment_stops_its_task() {
+        let manager = manager(false);
+        let id = manager.open(plan(), TerminalSize::default()).await.unwrap();
+        let attachment = manager.attach(id).unwrap();
+        let (rx, task) = forward(manager.clone(), id, attachment.output, 1);
+        manager.write(id, b"echo").await.unwrap();
+        manager.write(id, b"echo").await.unwrap();
+        timeout(Duration::from_secs(2), async {
+            while rx.len() != 1 || manager.scrollback_tail(id, 8).unwrap().len() != 8 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        drop(rx);
+        timeout(Duration::from_secs(2), task)
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(manager.status(id).unwrap(), TerminalStatus::Connected);
+        manager.close(id).await.unwrap();
+        timeout(Duration::from_secs(2), manager.wait_closed(id))
+            .await
+            .unwrap()
+            .unwrap();
+    }
 }

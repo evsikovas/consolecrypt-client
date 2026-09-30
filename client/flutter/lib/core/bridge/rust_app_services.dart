@@ -7,10 +7,12 @@ import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_account.dart';
 import 'package:consolecrypt/core/bridge/rust_backend.dart';
 import 'package:consolecrypt/core/bridge/rust_backup.dart';
+import 'package:consolecrypt/core/bridge/rust_enrollment.dart';
 import 'package:consolecrypt/core/bridge/rust_inventory.dart';
 import 'package:consolecrypt/core/bridge/rust_prompts.dart';
 import 'package:consolecrypt/core/bridge/rust_sessions.dart';
 import 'package:consolecrypt/core/bridge/rust_sftp_browser.dart';
+import 'package:consolecrypt/core/bridge/rust_sharing.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
 import 'package:consolecrypt/src/rust/frb_generated.dart';
@@ -82,11 +84,12 @@ final class RustAppServices {
     await loadLibrary();
     final dataDir =
         options.dataDir ??
-        (Platform.isAndroid
-            ? await const MethodChannel('consolecrypt/android').invokeMethod<String>('dataDirectory')
+        (Platform.isAndroid || Platform.isIOS
+            ? await MethodChannel(Platform.isIOS ? 'consolecrypt/ios' : 'consolecrypt/android')
+                  .invokeMethod<String>('dataDirectory')
             : null);
-    if (Platform.isAndroid && dataDir == null) {
-      throw StateError('Android private storage unavailable');
+    if ((Platform.isAndroid || Platform.isIOS) && (dataDir == null || dataDir.isEmpty)) {
+      throw StateError('Mobile private storage unavailable');
     }
     final info = await guard(
       () => rs_app.coreInit(
@@ -139,6 +142,8 @@ final class RustAppServices {
       files: const NativeFileDialogService(),
       sftpBrowser: sftpBrowser,
       prompts: prompts,
+      sharing: RustSharingService(hub),
+      enrollment: const RustEnrollmentService(),
       onDispose: dispose,
     );
     final exitListener = options.hookAppExit

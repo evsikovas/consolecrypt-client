@@ -14,6 +14,44 @@ import 'package:material_ui/material_ui.dart';
 import '../helpers/test_app.dart';
 
 void main() {
+  testWidgets('iOS uses Apple updates without probing the desktop update server', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    final source = backend.services;
+    final production = AppServices(
+      profiles: source.profiles,
+      auth: source.auth,
+      vault: source.vault,
+      inventory: source.inventory,
+      terminal: source.terminal,
+      sftp: source.sftp,
+      tunnels: source.tunnels,
+      snippets: source.snippets,
+      ai: source.ai,
+      devices: source.devices,
+      sync: source.sync,
+      settings: source.settings,
+      backups: source.backups,
+      files: source.files,
+    );
+    final fake = _Service();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appServicesProvider.overrideWithValue(production), updateServiceProvider.overrideWithValue(fake)],
+        child: const MaterialApp(
+          localizationsDelegates: [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: UpdateNoticeScope(child: UpdateSettingsSection())),
+        ),
+      ),
+    );
+    await settle(tester);
+    expect(find.textContaining('App Store, TestFlight or Xcode'), findsOneWidget);
+    expect(find.byKey(const ValueKey('updates-check')), findsNothing);
+    expect(find.byKey(const ValueKey('updates-automatic')), findsNothing);
+    expect(fake.checks, 0);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   for (final automatic in [true, false]) {
     testWidgets('startup respects persisted automatic=$automatic; manual check always works', (tester) async {
       final backend = testBackend();

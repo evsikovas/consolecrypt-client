@@ -27,6 +27,7 @@ mod approval;
 mod backup;
 mod calibrate;
 mod create;
+mod device_sharing;
 mod error;
 mod identity;
 mod recovery_kit;

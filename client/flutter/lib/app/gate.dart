@@ -76,6 +76,7 @@ abstract final class AppRoutes {
   static const sync = '/sync';
   static const backups = '/backups';
   static const settings = '/settings';
+  static const sharing = '/sharing';
 
   /// Profile-creation routes, reachable from every stage ("Add profile").
   static const profileCreation = {welcome, login, restore};
@@ -94,6 +95,7 @@ abstract final class AppRoutes {
     sync,
     backups,
     settings,
+    sharing,
   ];
 }
 

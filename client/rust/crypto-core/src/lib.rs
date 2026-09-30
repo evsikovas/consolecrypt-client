@@ -33,6 +33,8 @@ mod keys;
 mod object;
 mod recovery;
 mod rng;
+pub mod sharing;
+pub mod sharing_enrollment;
 
 #[cfg(test)]
 mod vectors;

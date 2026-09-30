@@ -112,10 +112,14 @@ final class RustTerminalService implements TerminalService {
       s.frames = rs_ssh
           .terminalAttach(terminalId: rustId)
           .listen(
-            (f) => _onFrame(s, f),
-            onError: (Object e) => _disconnected(s, toAppException(e).message),
+            (f) {
+              if (!s.closed && s.rustId == rustId) _onFrame(s, f);
+            },
+            onError: (Object e) {
+              if (!s.closed && s.rustId == rustId) _disconnected(s, toAppException(e).message);
+            },
             onDone: () {
-              if (s.connected) _disconnected(s, null);
+              if (!s.closed && s.rustId == rustId && s.connected) _disconnected(s, null);
             },
           );
     } on AppException catch (e) {
@@ -297,10 +301,16 @@ final class RustTerminalService implements TerminalService {
     final s = _session(id);
     if (s.connecting) return;
     final old = s.rustId;
-    s.rustId = null;
-    await s.frames?.cancel();
-    s.frames = null;
+    final oldFrames = s.frames;
+    s
+      ..rustId = null
+      ..frames = null
+      ..connected = false;
+    // FRB's async stream cancellation waits for a producer frame. End the
+    // old Rust attachment before awaiting cancellation of an idle stream.
     if (old != null) await _closeRust(old);
+    await oldFrames?.cancel();
+    if (s.closed || s.rustId != null) return;
     await _connect(s, reconnect: true);
   }
 
@@ -316,10 +326,16 @@ final class RustTerminalService implements TerminalService {
   Future<void> close(TerminalSessionId id) async {
     final s = _sessions.remove(id);
     if (s == null) return;
-    s.closed = true;
-    await s.frames?.cancel();
     final rustId = s.rustId;
+    final oldFrames = s.frames;
+    s
+      ..closed = true
+      ..connected = false
+      ..rustId = null
+      ..frames = null;
+    // Close the producer first so a pending FRB cancellation can finish.
     if (rustId != null) await _closeRust(rustId);
+    await oldFrames?.cancel();
     if (s.promptRequest case final request?) {
       try {
         if (s.promptKind == _PromptKind.hostKey) {
@@ -389,9 +405,10 @@ final class RustSftpService implements SftpService {
 
   @override
   Future<String> localHome() async {
-    if (Platform.isAndroid) {
-      final root = await const MethodChannel('consolecrypt/android').invokeMethod<String>('dataDirectory');
-      if (root == null) throw StateError('Android private storage unavailable');
+    if (Platform.isAndroid || Platform.isIOS) {
+      final root = await MethodChannel(Platform.isIOS ? 'consolecrypt/ios' : 'consolecrypt/android')
+          .invokeMethod<String>('dataDirectory');
+      if (root == null || root.isEmpty) throw StateError('Mobile private storage unavailable');
       return (await Directory('$root/files').create(recursive: true)).path;
     }
     return Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? Directory.current.path;

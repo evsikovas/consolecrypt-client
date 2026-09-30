@@ -18,6 +18,7 @@ Future<T?> showAppDialog<T>(
 }) => showGlassDialog<T>(
   context,
   builder: builder,
+  opaque: secure,
   variant: secure ? GlassVariant.secure : GlassVariant.thick,
   barrierDismissible: barrierDismissible,
 );
@@ -34,10 +35,12 @@ Future<bool> showConfirmDialog(
   required String message,
   required String confirmLabel,
   bool destructive = false,
+  bool secure = false,
   Widget? extra,
 }) async {
   final result = await showAppDialog<bool>(
     context,
+    secure: secure,
     builder: (context) {
       final l10n = context.l10n;
       return GlassDialog(

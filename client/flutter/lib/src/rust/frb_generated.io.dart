@@ -8,10 +8,12 @@ import 'api/ai.dart';
 import 'api/app.dart';
 import 'api/backup.dart';
 import 'api/credentials.dart';
+import 'api/enrollment.dart';
 import 'api/error.dart';
 import 'api/inventory.dart';
 import 'api/profiles.dart';
 import 'api/sftp.dart';
+import 'api/sharing.dart';
 import 'api/ssh.dart';
 import 'api/sync.dart';
 
@@ -173,6 +175,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   TransferUpdate dco_decode_transfer_update(dynamic raw);
 
   @protected
+  int dco_decode_u_16(dynamic raw);
+
+  @protected
   int dco_decode_u_32(dynamic raw);
 
   @protected
@@ -326,6 +331,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   TransferUpdate sse_decode_transfer_update(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_u_16(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer);
 
   @protected
@@ -477,6 +485,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_transfer_update(TransferUpdate self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);

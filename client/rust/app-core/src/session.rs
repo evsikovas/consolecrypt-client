@@ -173,6 +173,8 @@ pub(crate) struct Session {
     vault_id: RwLock<Option<VaultId>>,
     unlocked: tokio::sync::RwLock<Option<Arc<Unlocked>>>,
     pub pending_kit: Mutex<Option<PendingKit>>,
+    /// Serializes sharing actions; contains no plaintext or device keys.
+    pub sharing_gate: tokio::sync::Mutex<()>,
 }
 
 impl std::fmt::Debug for Session {
@@ -195,6 +197,10 @@ pub(crate) struct Unlocked {
     pub edit: Arc<crate::edit::EditRuntime>,
     /// SFTP transfer jobs.
     pub transfers: Arc<crate::transfers::TransferManager>,
+    /// In-flight sharing operations drop transient plaintext immediately on
+    /// lock, before potentially slower SSH/edit shutdown finishes.
+    pub sharing_shutdown: tokio::sync::watch::Sender<bool>,
+    pub enrollment: crate::sharing_api::enrollment::EnrollmentRuntime,
     event_stream: tokio::sync::Mutex<Option<EventStream>>,
     tasks: Mutex<Vec<JoinHandle<()>>>,
     engine_tasks: Mutex<Vec<JoinHandle<()>>>,
@@ -268,6 +274,8 @@ impl Unlocked {
     /// Lock: stop everything, zeroize keys, drop caches. Edit sessions go
     /// first (their final uploads need SFTP), then transfers.
     async fn shutdown(&self) {
+        self.sharing_shutdown.send_replace(true);
+        self.enrollment.clear();
         self.edit.stop_all().await;
         self.transfers.cancel_all();
         self.ai.shutdown().await;
@@ -323,6 +331,7 @@ impl Session {
             vault_id: RwLock::new(vault_id),
             unlocked: tokio::sync::RwLock::new(None),
             pending_kit: Mutex::new(None),
+            sharing_gate: tokio::sync::Mutex::new(()),
         }))
     }
 
@@ -488,6 +497,8 @@ impl Session {
             ai: ai.clone(),
             edit: edit.clone(),
             transfers: crate::transfers::TransferManager::new(self.ctx.clone()),
+            sharing_shutdown: tokio::sync::watch::channel(false).0,
+            enrollment: crate::sharing_api::enrollment::EnrollmentRuntime::default(),
             event_stream: tokio::sync::Mutex::new(None),
             tasks: Mutex::new(Vec::new()),
             engine_tasks: Mutex::new(Vec::new()),

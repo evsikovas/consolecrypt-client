@@ -1191,7 +1191,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get welcomeLocalBody =>
-      'Everything stays encrypted on this machine. No server, no account, no network traffic for sync. You can enable sync later.';
+      'Everything stays encrypted on this device. No server, no account, no network traffic for sync. You can enable sync later.';
 
   @override
   String get welcomeProfileNameLabel => 'Profile name';
@@ -4741,4 +4741,408 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get updateFailedHelp =>
       'Check your connection and try again. Files that fail signature or checksum verification are never installed.';
+
+  @override
+  String get updateAppleHelp =>
+      'On iOS, updates are installed through the App Store, TestFlight or Xcode, depending on how the app was installed.';
+
+  @override
+  String get sharingTitle => 'Sharing';
+
+  @override
+  String get sharingSubtitle => 'Selected data for verified devices on this server.';
+
+  @override
+  String get sharingUnavailable => 'Sharing is unavailable on this server.';
+
+  @override
+  String get sharingLocal => 'Connect a profile to a server to share.';
+
+  @override
+  String get sharingReceived => 'Available to me';
+
+  @override
+  String get sharingOwned => 'Shared by me';
+
+  @override
+  String get sharingPublish => 'Share…';
+
+  @override
+  String get sharingPublishConfirm => 'Share';
+
+  @override
+  String get sharingEmpty => 'No shared items yet.';
+
+  @override
+  String get sharingInvitation => 'Invitation — verify the owner';
+
+  @override
+  String get sharingAccept => 'Verify and accept';
+
+  @override
+  String get sharingRefresh => 'Refresh shared data';
+
+  @override
+  String get sharingIdentity => 'My device verification code';
+
+  @override
+  String get sharingVerifyHelp =>
+      'Compare this code with your colleague using an independent channel. Login and email do not verify device keys.';
+
+  @override
+  String get sharingCode => 'Verification code';
+
+  @override
+  String get sharingConfirmed => 'The code matches the code on my colleague’s device';
+
+  @override
+  String get sharingEmail => 'Colleague’s email';
+
+  @override
+  String get sharingFind => 'Find devices';
+
+  @override
+  String get sharingSelectDevice => 'Select and verify recipient devices';
+
+  @override
+  String get sharingReader => 'Read';
+
+  @override
+  String get sharingEditor => 'Edit';
+
+  @override
+  String get sharingReaderHelp => 'Can read and keep copies; cannot change the shared item.';
+
+  @override
+  String get sharingEditorHelp => 'Can read and edit content; the owner manages access.';
+
+  @override
+  String get sharingPreview => 'What will be shared';
+
+  @override
+  String get sharingExclude =>
+      'Passwords, SSH keys, personal references, terminal history and AI keys are excluded. Check commands and free text before sharing.';
+
+  @override
+  String get sharingIncludeNotes => 'Include host notes';
+
+  @override
+  String get sharingSecretWarning =>
+      'The recipient can read and keep this secret. Revoking access cannot remove copies already read. SSH access also requires changing credentials on the target server.';
+
+  @override
+  String get sharingSecretConfirmed => 'I understand and allow this secret to be shared with the selected devices';
+
+  @override
+  String get sharingHost => 'Host';
+
+  @override
+  String get sharingSnippet => 'Snippet';
+
+  @override
+  String get sharingGroup => 'Shared collection';
+
+  @override
+  String get sharingSecret => 'Secret';
+
+  @override
+  String get sharingDevice => 'Device';
+
+  @override
+  String get sharingOwner => 'Owner';
+
+  @override
+  String get sharingMembers => 'Members';
+
+  @override
+  String get sharingVerified => 'Verified';
+
+  @override
+  String get sharingBlocked => 'Review required';
+
+  @override
+  String get sharingDeleted => 'Deleted';
+
+  @override
+  String get sharingRevision => 'Revision';
+
+  @override
+  String get sharingQueue => 'Send queue';
+
+  @override
+  String get sharingFlush => 'Send pending changes';
+
+  @override
+  String get sharingPending => 'Pending';
+
+  @override
+  String get sharingConflictHelp =>
+      'Access or content changed. Refresh the item and review changes before sending again.';
+
+  @override
+  String get sharingRevoke => 'Revoke access';
+
+  @override
+  String get sharingRevokeHelp => 'Future updates will use a new key. Copies already read remain with the recipient.';
+
+  @override
+  String get sharingStop => 'Delete shared item';
+
+  @override
+  String get sharingStopHelp =>
+      'The shared item will be deleted for participants. Personal copies and data already read remain.';
+
+  @override
+  String get sharingCopyPersonal => 'Save a personal copy';
+
+  @override
+  String get sharingCopyHelp =>
+      'The copy is saved in your personal vault. Credentials are configured separately and are not shared with colleagues.';
+
+  @override
+  String get sharingSaved => 'Done';
+
+  @override
+  String get sharingEdit => 'Edit shared item';
+
+  @override
+  String get sharingChangeSaved => 'The change was saved or queued for sending.';
+
+  @override
+  String get sharingName => 'Name';
+
+  @override
+  String get sharingAddress => 'Address';
+
+  @override
+  String get sharingPort => 'Port';
+
+  @override
+  String get sharingUsername => 'Username';
+
+  @override
+  String get sharingNotes => 'Notes';
+
+  @override
+  String get sharingDescription => 'Description';
+
+  @override
+  String get sharingCommand => 'Command';
+
+  @override
+  String get sharingNoDevices => 'No devices found. Check the address and your colleague’s email verification.';
+
+  @override
+  String get sharingNoAutoRun => 'Received commands never run automatically.';
+
+  @override
+  String get sharingOwnerDeviceOnly => 'Manage access on the owner device that created this item.';
+
+  @override
+  String get sharingWorking => 'Preparing secure sharing…';
+
+  @override
+  String get sharingCopyCode => 'Copy verification code';
+
+  @override
+  String get sharingAddRecipient => 'Add recipient';
+
+  @override
+  String get sharingRefreshCopy => 'Refresh personal copy';
+
+  @override
+  String get sharingManageAccess => 'Manage access';
+
+  @override
+  String get sharingReviewQueue => 'Review queue';
+
+  @override
+  String get sharingQueueHelp =>
+      'Changes are paused when access or content changes. Review the current item; discard an obsolete request before creating a new change.';
+
+  @override
+  String get sharingDiscard => 'Discard queued request';
+
+  @override
+  String get sharingDiscardHelp =>
+      'Remove this request from this device? Changes already accepted by the server remain. Discarding a request does not revoke published access.';
+
+  @override
+  String get sharingReconcile => 'Verify history';
+
+  @override
+  String get sharingReconcileHelp =>
+      'The local copy is behind the protected checkpoint. Compare the owner’s code. The app will verify the complete signed history and reject missing or conflicting revisions.';
+
+  @override
+  String get sharingEndpointChanged =>
+      'The shared host address or port changed. Review and confirm the new endpoint before connecting with your credentials.';
+
+  @override
+  String get sharingTunnelVerify => 'Verify access to the shared host before starting the tunnel manually.';
+
+  @override
+  String get sharingPromptPassword => 'Ask for password when connecting';
+
+  @override
+  String get sharingRefreshHost => 'Refresh shared host';
+
+  @override
+  String get sharingRefreshHostHelp =>
+      'Review the address and port in Sharing. Apply the updated endpoint to your personal copy? Your other connection settings are preserved.';
+
+  @override
+  String get sharingDetachHost => 'Detach personal copy';
+
+  @override
+  String get sharingDetachHostHelp =>
+      'This copy will stop checking changes and access to the shared host. Colleagues keep their own access and copies.';
+
+  @override
+  String get sharingCollectionHelp =>
+      'Choose independently shared items. A group contains references only and grants no access to their contents.';
+
+  @override
+  String get sharingCollectionEmpty => 'Share the required items separately first.';
+
+  @override
+  String get sharingCollectionUnavailable => 'Item unavailable: separate access is required.';
+
+  @override
+  String get sharingCollectionChildren => 'Group items';
+
+  @override
+  String get sharingSecretSelection => 'Secret to share';
+
+  @override
+  String get sharingSecretPrimary => 'Password or private key';
+
+  @override
+  String get sharingSecretPassphrase => 'Key passphrase (separate item)';
+
+  @override
+  String get enrollmentTitle => 'New personal devices';
+
+  @override
+  String get enrollmentHelp =>
+      'A permission applies to one shared item. A colleague’s trusted device confirms their new device; the owner stays online to grant access. Personal vault data is never transferred.';
+
+  @override
+  String get enrollmentCreate => 'Allow new devices';
+
+  @override
+  String get enrollmentAnchor => 'Trusted confirming device';
+
+  @override
+  String get enrollmentExpiry => 'Permission lifetime';
+
+  @override
+  String get enrollmentQuota => 'Number of new devices';
+
+  @override
+  String get enrollmentOneDay => '1 day';
+
+  @override
+  String get enrollmentSevenDays => '7 days';
+
+  @override
+  String get enrollmentThirtyDays => '30 days';
+
+  @override
+  String get enrollmentAutomatic => 'Automatically accept confirmed devices';
+
+  @override
+  String get enrollmentAutomaticHelp =>
+      'Only after code comparison on the trusted device, while the owner is online. The new device cannot exceed the selected permissions.';
+
+  @override
+  String get enrollmentDisable => 'Disable permission';
+
+  @override
+  String get enrollmentDisableHelp =>
+      'This permission will stop admitting new devices. Remove previously admitted devices separately in Manage access. Disabling remains recorded on this device even if the server is unreachable.';
+
+  @override
+  String get enrollmentExport => 'Package for the new device';
+
+  @override
+  String get enrollmentRequests => 'Device requests';
+
+  @override
+  String get enrollmentPrepare => 'I’m on the new device';
+
+  @override
+  String get enrollmentEndorse => 'Confirm another device';
+
+  @override
+  String get enrollmentSubmit => 'Continue adding a device';
+
+  @override
+  String get enrollmentPackage => 'Device package';
+
+  @override
+  String get enrollmentPackageHelp =>
+      'Transfer this public package between your devices. It contains keys and signed confirmations, without passwords or shared item content. Code comparison is still required.';
+
+  @override
+  String get enrollmentPreview => 'Review package';
+
+  @override
+  String get enrollmentCodeHelp =>
+      'Compare the full code on the new and trusted device in person or through an independent channel. Confirm only an exact match. The code identifies this specific request.';
+
+  @override
+  String get enrollmentCopyPackage => 'Copy package';
+
+  @override
+  String get enrollmentSavePackage => 'Save package to file';
+
+  @override
+  String get enrollmentOpenPackage => 'Open package from file';
+
+  @override
+  String get enrollmentPending => 'My device requests';
+
+  @override
+  String get enrollmentWait =>
+      'Request sent. Keep this device and the owner’s device online. Continue when the owner sends a verification challenge.';
+
+  @override
+  String get enrollmentChallenge => 'Verify device keys';
+
+  @override
+  String get enrollmentRespond => 'Continue verification';
+
+  @override
+  String get enrollmentAccept => 'Grant access';
+
+  @override
+  String get enrollmentManualConfirmed => 'I approve adding this device with the displayed permissions';
+
+  @override
+  String get enrollmentActive => 'Active';
+
+  @override
+  String get enrollmentDisabled => 'Disabled';
+
+  @override
+  String get enrollmentRequested => 'Awaiting verification';
+
+  @override
+  String get enrollmentChallenged => 'Awaiting device response';
+
+  @override
+  String get enrollmentResponded => 'Device keys verified';
+
+  @override
+  String get enrollmentAccepted => 'Access granted';
+
+  @override
+  String get enrollmentExpired => 'Expired';
+
+  @override
+  String get enrollmentBlocked => 'Current access and history must be reviewed';
+
+  @override
+  String get enrollmentCreateConfirmed => 'I authorize adding this user’s own devices within the selected limits';
 }

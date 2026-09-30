@@ -38,7 +38,7 @@ final class LocalAuthChannel {
 
   /// Queries the OS (never throws; unsupported on errors / other platforms).
   Future<LocalAuthAvailability> availability() async {
-    if (!Platform.isMacOS && !Platform.isAndroid) return LocalAuthAvailability.unsupported;
+    if (!Platform.isMacOS && !Platform.isAndroid && !Platform.isIOS) return LocalAuthAvailability.unsupported;
     try {
       final r = await _channel.invokeMapMethod<String, Object?>('availability');
       final kind = switch (r?['kind']) {
@@ -57,7 +57,7 @@ final class LocalAuthChannel {
 
   /// Shows the OS prompt with [reason]; `true` only on success.
   Future<bool> authenticate(String reason) async {
-    if (!Platform.isMacOS && !Platform.isAndroid) return false;
+    if (!Platform.isMacOS && !Platform.isAndroid && !Platform.isIOS) return false;
     try {
       return await _channel.invokeMethod<bool>('authenticate', {'reason': reason}) ?? false;
     } on PlatformException {

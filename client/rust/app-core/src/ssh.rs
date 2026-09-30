@@ -447,7 +447,7 @@ pub(crate) struct SshRuntime {
     pub planner: ConnectionPlanner,
     pub terminals: TerminalManager,
     pub tunnels: TunnelManager,
-    pool: tokio::sync::Mutex<HashMap<ObjectId, Arc<SshSession>>>,
+    pool: tokio::sync::Mutex<HashMap<ObjectId, (ConnectionPlan, Arc<SshSession>)>>,
     sftp: tokio::sync::Mutex<HashMap<String, SftpEntry>>,
     openssh: std::sync::Mutex<HashMap<String, OpenSshPrepared>>,
 }
@@ -507,32 +507,53 @@ impl SshRuntime {
         Ok(self.planner.plan(host_id).await?)
     }
 
-    /// A fresh native connection to `host_id` (through its jump chain).
-    pub(crate) async fn connect(&self, host_id: ObjectId) -> AppResult<SshSession> {
-        let plan = self.plan(host_id).await?;
-        tracing::info!(host_id = %host_id, route = %plan.describe(), "ssh connect");
-        Ok(self.connector.connect(&plan).await?)
-    }
-
-    /// A shared native connection (tunnels, SFTP), reconnecting if closed.
-    pub(crate) async fn shared_session(&self, host_id: ObjectId) -> AppResult<Arc<SshSession>> {
+    /// A shared connection to the exact already verified route. A pool entry
+    /// for an older endpoint/route is never reused for a different plan.
+    pub(crate) async fn shared_session_plan(
+        &self,
+        plan: &ConnectionPlan,
+    ) -> AppResult<Arc<SshSession>> {
         let mut pool = self.pool.lock().await;
-        if let Some(s) = pool.get(&host_id) {
-            if !s.is_closed() {
+        if let Some((previous, s)) = pool.get(&plan.host_id) {
+            if previous == plan && !s.is_closed() {
                 return Ok(s.clone());
             }
         }
-        let s = Arc::new(self.connect(host_id).await?);
-        pool.insert(host_id, s.clone());
+        let s = Arc::new(self.connector.connect(plan).await?);
+        pool.insert(plan.host_id, (plan.clone(), s.clone()));
         Ok(s)
     }
 
     /// Run a command (native, or OpenSSH for `backend = OpenSsh` hosts).
+    /// Legacy session-only callers have no AppCore sharing transcript. They
+    /// may use private routes only; a shared route requires a verified plan.
     pub(crate) async fn exec(&self, host_id: ObjectId, command: &str) -> AppResult<ExecResultDto> {
         let plan = self.plan(host_id).await?;
+        for hop in plan.all_hops() {
+            let host = self
+                .resolver
+                .writer
+                .working
+                .host(hop.host_id)
+                .ok_or_else(|| AppError::not_found("host", hop.host_id))?;
+            if crate::sharing_bindings::host_sharing_binding(&host)?.is_some() {
+                return Err(AppError::invalid(
+                    "shared_host",
+                    "shared_route_requires_verified_plan",
+                ));
+            }
+        }
+        self.exec_plan(&plan, command).await
+    }
+
+    pub(crate) async fn exec_plan(
+        &self,
+        plan: &ConnectionPlan,
+        command: &str,
+    ) -> AppResult<ExecResultDto> {
         match plan.backend {
             SshBackend::Native => {
-                let session = self.connector.connect(&plan).await?;
+                let session = self.connector.connect(plan).await?;
                 let out = session.exec(command).await;
                 let _ = session.disconnect().await;
                 let out = out?;
@@ -545,7 +566,7 @@ impl SshRuntime {
             }
             SshBackend::OpenSsh => {
                 let launch = launch_openssh(
-                    &plan,
+                    plan,
                     &self.resolver,
                     &self.known_hosts,
                     Some(command.to_owned()),
@@ -569,14 +590,13 @@ impl SshRuntime {
 
     /// Prepare an interactive/exec OpenSSH invocation to be spawned by the
     /// caller with inherited stdio. Returns (id, program, args, env).
-    pub(crate) async fn prepare_openssh(
+    pub(crate) async fn prepare_openssh_plan(
         &self,
-        host_id: ObjectId,
+        plan: &ConnectionPlan,
         command: Option<String>,
         tty: bool,
     ) -> AppResult<(String, String, Vec<String>, Vec<(String, String)>)> {
-        let plan = self.plan(host_id).await?;
-        let launch = launch_openssh(&plan, &self.resolver, &self.known_hosts, command, tty).await?;
+        let launch = launch_openssh(plan, &self.resolver, &self.known_hosts, command, tty).await?;
         let id = uuid::Uuid::new_v4().to_string();
         let program = launch.command.program.to_string_lossy().to_string();
         let args = launch.command.args.clone();
@@ -602,10 +622,12 @@ impl SshRuntime {
 
     // ---- sftp ------------------------------------------------------------------
 
-    pub(crate) async fn sftp_open(&self, host_id: ObjectId) -> AppResult<String> {
-        let session = self.shared_session(host_id).await?;
+    pub(crate) async fn sftp_open_plan(&self, plan: &ConnectionPlan) -> AppResult<String> {
+        let session = self.shared_session_plan(plan).await?;
         let client = SftpClient::open(&session).await?;
-        Ok(self.sftp_register(host_id, client, Some(session)).await)
+        Ok(self
+            .sftp_register(plan.host_id, client, Some(session))
+            .await)
     }
 
     /// Register an SFTP client under a new session id.
@@ -677,7 +699,13 @@ impl SshRuntime {
         for e in sftp {
             let _ = e.client.close().await;
         }
-        let pool: Vec<Arc<SshSession>> = self.pool.lock().await.drain().map(|(_, s)| s).collect();
+        let pool: Vec<Arc<SshSession>> = self
+            .pool
+            .lock()
+            .await
+            .drain()
+            .map(|(_, (_, s))| s)
+            .collect();
         for s in pool {
             let _ = s.disconnect().await;
         }

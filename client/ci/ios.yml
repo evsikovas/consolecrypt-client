@@ -1,0 +1,31 @@
+# Opt-in previews: no Apple account, provisioning profile or signing secret.
+ios-regression:
+  stage: build
+  tags: [macos, arm64]
+  resource_group: consolecrypt-macos
+  timeout: 3h
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: true
+  script:
+    - bash client/scripts/ci-ios.sh --test-only
+
+build-ios-preview:
+  stage: build
+  tags: [macos, arm64]
+  resource_group: consolecrypt-macos
+  timeout: 3h
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: true
+  script:
+    - bash client/scripts/ci-ios.sh --build-only
+  artifacts:
+    name: "ConsoleCrypt-ios-simulator-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip
+      - dist/ios/*.sha256
+      - dist/ios/ConsoleCrypt-simulator-universal.version
+    expire_in: 90 days

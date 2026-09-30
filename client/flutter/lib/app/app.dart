@@ -14,6 +14,7 @@ import 'package:consolecrypt/core/glass/glass_scope.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/sharing/enrollment_automation.dart';
 import 'package:consolecrypt/updates/update_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -57,7 +58,9 @@ class ConsoleCryptApp extends ConsumerWidget {
         child: ColoredBox(
           color: AppPlatform.isMobile ? GlassTokens.of(context).ambient.base : Colors.transparent,
           child: UpdateNoticeScope(
-            child: DesignGalleryShortcut(child: AppCommandsScope(child: child ?? const SizedBox.shrink())),
+            child: EnrollmentAutomationScope(
+              child: DesignGalleryShortcut(child: AppCommandsScope(child: child ?? const SizedBox.shrink())),
+            ),
           ),
         ),
       ),

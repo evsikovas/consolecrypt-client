@@ -22,6 +22,7 @@ cc-ssh-core.workspace = true
 cc-sync-core.workspace = true
 cc-vault-core.workspace = true
 cc-protocol.workspace = true
+cc-models.workspace = true
 # Dart <-> Rust bindings (MIT). Exact pin: must equal the Dart package
 # `flutter_rust_bridge` in client/flutter/pubspec.yaml and the installed
 # `flutter_rust_bridge_codegen` (ADR-0101 §8).

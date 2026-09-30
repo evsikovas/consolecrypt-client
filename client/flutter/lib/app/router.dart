@@ -13,6 +13,7 @@ import 'package:consolecrypt/hosts/hosts_screen.dart';
 import 'package:consolecrypt/hosts/known_hosts_screen.dart';
 import 'package:consolecrypt/settings/settings_screen.dart';
 import 'package:consolecrypt/sftp/sftp_screen.dart';
+import 'package:consolecrypt/sharing/sharing_screen.dart';
 import 'package:consolecrypt/sync/sync_screen.dart';
 import 'package:consolecrypt/terminal/terminal_screen.dart';
 import 'package:consolecrypt/tunnels/tunnels_screen.dart';
@@ -29,7 +30,20 @@ import 'package:material_ui/material_ui.dart';
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
 /// Branch order of the shell (sidebar order).
-enum ShellBranch { hosts, groups, credentials, knownHosts, terminal, sftp, tunnels, devices, sync, backups, settings }
+enum ShellBranch {
+  hosts,
+  groups,
+  credentials,
+  knownHosts,
+  terminal,
+  sftp,
+  tunnels,
+  devices,
+  sync,
+  backups,
+  settings,
+  sharing,
+}
 
 Page<void> _page(Widget child) => NoTransitionPage<void>(child: child);
 
@@ -101,6 +115,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           _branch(AppRoutes.sync, const SyncScreen()),
           _branch(AppRoutes.backups, const BackupsScreen()),
           _branch(AppRoutes.settings, const SettingsScreen()),
+          _branch(AppRoutes.sharing, const SharingScreen()),
         ],
       ),
     ],

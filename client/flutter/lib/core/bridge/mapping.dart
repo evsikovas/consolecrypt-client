@@ -244,6 +244,7 @@ AppErrorCode _serverCode(String? protocolCode) => switch (protocolCode) {
   'gone' => AppErrorCode.requestExpired,
   'payload_too_large' => AppErrorCode.payloadTooLarge,
   'invalid_proof' => AppErrorCode.invalidProof,
+  'sharing_reconciliation_required' => AppErrorCode.sharingReconciliationRequired,
   'upgrade_required' => AppErrorCode.incompatibleServer,
   'rate_limited' => AppErrorCode.rateLimited,
   'unavailable' => AppErrorCode.serverUnavailable,

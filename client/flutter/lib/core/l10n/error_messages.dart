@@ -73,6 +73,7 @@ String errorCodeMessage(AppLocalizations l, AppErrorCode code, {Map<String, Stri
   AppErrorCode.payloadTooLarge => l.errorPayloadTooLarge,
   AppErrorCode.invalidProof => l.errorInvalidProof,
   AppErrorCode.serverUnavailable => l.errorServerUnavailable,
+  AppErrorCode.sharingReconciliationRequired => l.sharingReconcileHelp,
 };
 
 String? _reasonMessage(AppLocalizations l, AppException e) {
@@ -135,6 +136,11 @@ String? _reasonMessage(AppLocalizations l, AppException e) {
 /// Localized text for a model [ValidationError] (`field` = snake_case
 /// cc-models field name, `rule` = its English reason).
 String validationMessage(AppLocalizations l, String field, String rule) {
+  if (field == 'shared_host' && (rule == 'endpoint_changed_review' || rule == 'exact_endpoint_confirmation_required')) {
+    return l.sharingEndpointChanged;
+  }
+  if (field == 'shared_host' && rule == 'shared_route_requires_verified_plan') return l.sharingTunnelVerify;
+  if (field == 'auto_start' && rule == 'shared_host_requires_verification') return l.sharingTunnelVerify;
   if (field == 'jump_chain') return l.validationJumpChainSelf;
   final name = switch (field) {
     'name' => l.validationFieldName,

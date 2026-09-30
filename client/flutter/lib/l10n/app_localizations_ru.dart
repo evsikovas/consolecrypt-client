@@ -1262,7 +1262,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get welcomeLocalBody =>
-      'Все данные хранятся на этом компьютере в зашифрованном виде. Без сервера, без аккаунта, без сетевого трафика синхронизации. Синхронизацию можно включить позже.';
+      'Все данные хранятся на этом устройстве в зашифрованном виде. Без сервера, без аккаунта, без сетевого трафика синхронизации. Синхронизацию можно включить позже.';
 
   @override
   String get welcomeProfileNameLabel => 'Имя профиля';
@@ -4929,4 +4929,411 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get updateFailedHelp =>
       'Проверьте соединение и попробуйте снова. Файлы с неверной подписью или контрольной суммой не устанавливаются.';
+
+  @override
+  String get updateAppleHelp =>
+      'На iOS обновления устанавливаются через App Store, TestFlight или Xcode, в зависимости от способа установки приложения.';
+
+  @override
+  String get sharingTitle => 'Совместный доступ';
+
+  @override
+  String get sharingSubtitle => 'Выбранные данные для проверенных устройств коллег на этом сервере.';
+
+  @override
+  String get sharingUnavailable => 'Совместный доступ недоступен на этом сервере.';
+
+  @override
+  String get sharingLocal => 'Для совместного доступа подключите профиль к серверу.';
+
+  @override
+  String get sharingReceived => 'Доступно мне';
+
+  @override
+  String get sharingOwned => 'Я поделился';
+
+  @override
+  String get sharingPublish => 'Поделиться…';
+
+  @override
+  String get sharingPublishConfirm => 'Поделиться';
+
+  @override
+  String get sharingEmpty => 'Здесь пока нет общих объектов.';
+
+  @override
+  String get sharingInvitation => 'Приглашение — проверьте владельца';
+
+  @override
+  String get sharingAccept => 'Проверить и принять';
+
+  @override
+  String get sharingRefresh => 'Обновить общие данные';
+
+  @override
+  String get sharingIdentity => 'Код моего устройства';
+
+  @override
+  String get sharingVerifyHelp =>
+      'Сравните этот код с кодом коллеги по независимому каналу. Вход в аккаунт и электронная почта не подтверждают ключи устройства.';
+
+  @override
+  String get sharingCode => 'Код проверки';
+
+  @override
+  String get sharingConfirmed => 'Код совпадает с кодом на устройстве коллеги';
+
+  @override
+  String get sharingEmail => 'Электронная почта коллеги';
+
+  @override
+  String get sharingFind => 'Найти устройства';
+
+  @override
+  String get sharingSelectDevice => 'Выберите и проверьте устройства получателя';
+
+  @override
+  String get sharingReader => 'Чтение';
+
+  @override
+  String get sharingEditor => 'Редактирование';
+
+  @override
+  String get sharingReaderHelp => 'Может читать и сохранять копии; не может менять общий объект.';
+
+  @override
+  String get sharingEditorHelp => 'Может читать и менять содержимое; доступом управляет владелец.';
+
+  @override
+  String get sharingPreview => 'Что будет передано';
+
+  @override
+  String get sharingExclude =>
+      'Пароли, SSH-ключи, личные ссылки, история терминала и ключи ИИ не включаются. Проверьте команды и свободный текст перед отправкой.';
+
+  @override
+  String get sharingIncludeNotes => 'Включить заметки хоста';
+
+  @override
+  String get sharingSecretWarning =>
+      'Получатель сможет прочитать и сохранить секрет. Отзыв доступа не удалит уже прочитанные копии. Для SSH-доступа также нужна смена учётных данных на сервере.';
+
+  @override
+  String get sharingSecretConfirmed => 'Я понимаю и разрешаю передать этот секрет выбранным устройствам';
+
+  @override
+  String get sharingHost => 'Хост';
+
+  @override
+  String get sharingSnippet => 'Сниппет';
+
+  @override
+  String get sharingGroup => 'Общая коллекция';
+
+  @override
+  String get sharingSecret => 'Секрет';
+
+  @override
+  String get sharingDevice => 'Устройство';
+
+  @override
+  String get sharingOwner => 'Владелец';
+
+  @override
+  String get sharingMembers => 'Участники';
+
+  @override
+  String get sharingVerified => 'Проверено';
+
+  @override
+  String get sharingBlocked => 'Требуется проверка';
+
+  @override
+  String get sharingDeleted => 'Удалено';
+
+  @override
+  String get sharingRevision => 'Версия';
+
+  @override
+  String get sharingQueue => 'Очередь отправки';
+
+  @override
+  String get sharingFlush => 'Отправить ожидающие изменения';
+
+  @override
+  String get sharingPending => 'Ожидает отправки';
+
+  @override
+  String get sharingConflictHelp =>
+      'Права или содержимое изменились. Обновите объект и проверьте изменения перед повторной отправкой.';
+
+  @override
+  String get sharingRevoke => 'Отозвать доступ';
+
+  @override
+  String get sharingRevokeHelp =>
+      'Будущие изменения будут зашифрованы новым ключом. Прочитанные копии останутся у получателя.';
+
+  @override
+  String get sharingStop => 'Удалить общий объект';
+
+  @override
+  String get sharingStopHelp =>
+      'Общий объект будет удалён для участников. Личные копии и уже прочитанные данные сохранятся.';
+
+  @override
+  String get sharingCopyPersonal => 'Сохранить личную копию';
+
+  @override
+  String get sharingCopyHelp =>
+      'Копия сохранится в вашем личном хранилище. Учётные данные задаются отдельно и не передаются коллегам.';
+
+  @override
+  String get sharingSaved => 'Готово';
+
+  @override
+  String get sharingEdit => 'Изменить общий объект';
+
+  @override
+  String get sharingChangeSaved => 'Изменение сохранено или поставлено в очередь отправки.';
+
+  @override
+  String get sharingName => 'Название';
+
+  @override
+  String get sharingAddress => 'Адрес';
+
+  @override
+  String get sharingPort => 'Порт';
+
+  @override
+  String get sharingUsername => 'Имя пользователя';
+
+  @override
+  String get sharingNotes => 'Заметки';
+
+  @override
+  String get sharingDescription => 'Описание';
+
+  @override
+  String get sharingCommand => 'Команда';
+
+  @override
+  String get sharingNoDevices => 'Доступных устройств не найдено. Проверьте адрес и подтверждение почты коллеги.';
+
+  @override
+  String get sharingNoAutoRun => 'Полученные команды никогда не выполняются автоматически.';
+
+  @override
+  String get sharingOwnerDeviceOnly =>
+      'Управление доступом доступно на устройстве владельца, которое создало этот объект.';
+
+  @override
+  String get sharingWorking => 'Подготовка защищённого обмена…';
+
+  @override
+  String get sharingCopyCode => 'Копировать код';
+
+  @override
+  String get sharingAddRecipient => 'Добавить получателя';
+
+  @override
+  String get sharingRefreshCopy => 'Обновить личную копию';
+
+  @override
+  String get sharingManageAccess => 'Управление доступом';
+
+  @override
+  String get sharingReviewQueue => 'Посмотреть очередь';
+
+  @override
+  String get sharingQueueHelp =>
+      'После изменения прав или содержимого отправка приостанавливается. Проверьте актуальный элемент; ненужный запрос можно удалить и создать новое изменение.';
+
+  @override
+  String get sharingDiscard => 'Убрать из очереди';
+
+  @override
+  String get sharingDiscardHelp =>
+      'Удалить этот запрос с устройства? Уже принятые сервером изменения остаются. Удаление запроса не отменяет опубликованный доступ.';
+
+  @override
+  String get sharingReconcile => 'Проверить историю';
+
+  @override
+  String get sharingReconcileHelp =>
+      'Локальная копия отстаёт от сохранённой защищённой отметки. Сверьте код владельца. Приложение проверит полную подписанную историю; пропуски или другая ветка будут отклонены.';
+
+  @override
+  String get sharingEndpointChanged =>
+      'Адрес или порт общего хоста изменился. Проверьте новые значения и подтвердите обновление перед подключением со своими учётными данными.';
+
+  @override
+  String get sharingTunnelVerify => 'Для общего хоста сначала проверьте доступ и запустите туннель вручную.';
+
+  @override
+  String get sharingPromptPassword => 'Спрашивать пароль при подключении';
+
+  @override
+  String get sharingRefreshHost => 'Обновить общий хост';
+
+  @override
+  String get sharingRefreshHostHelp =>
+      'Проверьте адрес и порт в разделе «Общий доступ». Подтвердить их обновление в личной копии? Остальные настройки подключения останутся вашими.';
+
+  @override
+  String get sharingDetachHost => 'Сделать независимой копией';
+
+  @override
+  String get sharingDetachHostHelp =>
+      'Эта копия больше не будет проверять изменения и доступ к общему хосту. У коллег останутся их права и копии.';
+
+  @override
+  String get sharingCollectionHelp =>
+      'Выберите уже опубликованные элементы. Группа хранит только ссылки и не даёт доступ к их содержимому.';
+
+  @override
+  String get sharingCollectionEmpty => 'Сначала поделитесь нужными элементами отдельно.';
+
+  @override
+  String get sharingCollectionUnavailable => 'Элемент недоступен: нужен отдельный доступ.';
+
+  @override
+  String get sharingCollectionChildren => 'Элементы группы';
+
+  @override
+  String get sharingSecretSelection => 'Передаваемый секрет';
+
+  @override
+  String get sharingSecretPrimary => 'Пароль или приватный ключ';
+
+  @override
+  String get sharingSecretPassphrase => 'Парольная фраза ключа (отдельно)';
+
+  @override
+  String get enrollmentTitle => 'Новые собственные устройства';
+
+  @override
+  String get enrollmentHelp =>
+      'Разрешение относится к одному общему элементу. Уже проверенное устройство коллеги подтверждает его новое устройство; владелец остаётся онлайн для выдачи доступа. Данные личного хранилища не передаются.';
+
+  @override
+  String get enrollmentCreate => 'Разрешить новые устройства';
+
+  @override
+  String get enrollmentAnchor => 'Устройство для подтверждения';
+
+  @override
+  String get enrollmentExpiry => 'Срок разрешения';
+
+  @override
+  String get enrollmentQuota => 'Количество новых устройств';
+
+  @override
+  String get enrollmentOneDay => '1 день';
+
+  @override
+  String get enrollmentSevenDays => '7 дней';
+
+  @override
+  String get enrollmentThirtyDays => '30 дней';
+
+  @override
+  String get enrollmentAutomatic => 'Принимать подтверждённые устройства автоматически';
+
+  @override
+  String get enrollmentAutomaticHelp =>
+      'Только после сверки кода на уже проверенном устройстве, пока владелец онлайн. Новое устройство не сможет превысить выбранные права.';
+
+  @override
+  String get enrollmentDisable => 'Отключить разрешение';
+
+  @override
+  String get enrollmentDisableHelp =>
+      'Новые устройства больше не получат доступ по этому разрешению. Уже добавленные устройства удаляются отдельно в управлении доступом. Отключение сохранится на этом устройстве даже без связи с сервером.';
+
+  @override
+  String get enrollmentExport => 'Пакет для нового устройства';
+
+  @override
+  String get enrollmentRequests => 'Запросы устройств';
+
+  @override
+  String get enrollmentPrepare => 'Я на новом устройстве';
+
+  @override
+  String get enrollmentEndorse => 'Подтвердить другое устройство';
+
+  @override
+  String get enrollmentSubmit => 'Продолжить добавление устройства';
+
+  @override
+  String get enrollmentPackage => 'Пакет устройства';
+
+  @override
+  String get enrollmentPackageHelp =>
+      'Передайте этот публичный пакет между своими устройствами. Он содержит ключи и подписанные подтверждения, без паролей и содержимого общих элементов. Сверка кода остаётся обязательной.';
+
+  @override
+  String get enrollmentPreview => 'Проверить пакет';
+
+  @override
+  String get enrollmentCodeHelp =>
+      'Сравните весь код на новом и уже проверенном устройстве лично или по независимому каналу. Подтвердите только полное совпадение. Код относится именно к этому запросу.';
+
+  @override
+  String get enrollmentCopyPackage => 'Скопировать пакет';
+
+  @override
+  String get enrollmentSavePackage => 'Сохранить пакет в файл';
+
+  @override
+  String get enrollmentOpenPackage => 'Открыть пакет из файла';
+
+  @override
+  String get enrollmentPending => 'Мои запросы устройств';
+
+  @override
+  String get enrollmentWait =>
+      'Запрос отправлен. Держите это устройство и устройство владельца онлайн. Продолжите проверку, когда владелец отправит запрос подтверждения.';
+
+  @override
+  String get enrollmentChallenge => 'Проверить ключи устройства';
+
+  @override
+  String get enrollmentRespond => 'Продолжить проверку';
+
+  @override
+  String get enrollmentAccept => 'Предоставить доступ';
+
+  @override
+  String get enrollmentManualConfirmed => 'Подтверждаю добавление этого устройства с указанными правами';
+
+  @override
+  String get enrollmentActive => 'Действует';
+
+  @override
+  String get enrollmentDisabled => 'Отключено';
+
+  @override
+  String get enrollmentRequested => 'Ожидает проверки';
+
+  @override
+  String get enrollmentChallenged => 'Ожидает ответа устройства';
+
+  @override
+  String get enrollmentResponded => 'Ключи подтверждены';
+
+  @override
+  String get enrollmentAccepted => 'Доступ предоставлен';
+
+  @override
+  String get enrollmentExpired => 'Срок истёк';
+
+  @override
+  String get enrollmentBlocked => 'Нужна проверка актуальных прав и истории';
+
+  @override
+  String get enrollmentCreateConfirmed =>
+      'Разрешаю добавлять собственные устройства этого пользователя в выбранных пределах';
 }

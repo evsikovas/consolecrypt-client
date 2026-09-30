@@ -9,6 +9,11 @@ import 'package:flutter/widgets.dart';
 abstract final class AppPlatform {
   static bool get isMacOS => defaultTargetPlatform == TargetPlatform.macOS;
 
+  static bool get isIOS => defaultTargetPlatform == TargetPlatform.iOS;
+
+  /// iOS updates are installed through Apple's distribution mechanisms.
+  static bool get supportsDirectUpdates => isMacOS || isWindows || defaultTargetPlatform == TargetPlatform.android;
+
   static bool get isMobile =>
       defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
 

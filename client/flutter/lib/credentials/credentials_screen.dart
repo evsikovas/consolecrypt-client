@@ -10,6 +10,7 @@ import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/credentials/credential_dialogs.dart';
+import 'package:consolecrypt/sharing/sharing_secrets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -243,6 +244,12 @@ class _CredentialDetailsDialogState extends ConsumerState<CredentialDetailsDialo
                 padding: const EdgeInsets.all(GlassSpacing.s8),
                 child: SelectableText(c.certificate!, style: mono),
               ),
+            ],
+            if (ref.watch(activeProfileProvider)?.isSynced == true) ...[
+              if (c.secretId != null) GlassButton(label: l10n.sharingPublish, icon: Icons.share_outlined,
+                onPressed: () => showSharingSecretPublish(context, credential: c)),
+              if (c.passphraseSecretId != null) GlassButton(label: l10n.sharingSecretPassphrase, icon: Icons.share_outlined,
+                onPressed: () => showSharingSecretPublish(context, credential: c, passphrase: true)),
             ],
             if (isPassword) ...[
               const SizedBox(height: GlassSpacing.s12),

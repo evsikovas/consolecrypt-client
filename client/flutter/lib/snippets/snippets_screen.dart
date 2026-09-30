@@ -8,13 +8,15 @@ import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/risk_badge.dart';
+import 'package:consolecrypt/sharing/sharing_dialogs.dart';
+import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/snippets/run_flow.dart';
 import 'package:consolecrypt/snippets/snippet_editor.dart';
 import 'package:consolecrypt/snippets/starter_catalog_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-enum _SnippetAction { edit, move, runMany, delete }
+enum _SnippetAction { edit, move, runMany, share, delete }
 
 class SnippetsScreen extends ConsumerStatefulWidget {
   const SnippetsScreen({super.key, this.embedded = false});
@@ -51,6 +53,8 @@ class _SnippetsScreenState extends ConsumerState<SnippetsScreen> {
       GlassMenuItem(value: _SnippetAction.runMany, label: l.snippetRunMany, icon: Icons.playlist_play_rounded),
       GlassMenuItem(value: _SnippetAction.edit, label: l.commonEdit, icon: Icons.edit_rounded),
       GlassMenuItem(value: _SnippetAction.move, label: l.snippetMovePackage, icon: Icons.folder_open_rounded),
+      if (ref.read(activeProfileProvider)?.isSynced == true)
+        GlassMenuItem(value: _SnippetAction.share, label: l.sharingPublish, icon: Icons.share_outlined),
       const GlassMenuDivider(),
       GlassMenuItem(value: _SnippetAction.delete, label: l.commonDelete, icon: Icons.delete_rounded, destructive: true),
     ];
@@ -60,6 +64,8 @@ class _SnippetsScreenState extends ConsumerState<SnippetsScreen> {
     switch (action) {
       case _SnippetAction.edit:
         await showSnippetEditor(context, snippet: s);
+      case _SnippetAction.share:
+        await showSharingPublish(context, kind: SharingKind.snippet, objectId: s.id.value);
       case _SnippetAction.delete:
         await _delete(s);
       case _SnippetAction.runMany:

@@ -1646,7 +1646,7 @@
   "@welcomeLocalTitle": {
     "description": "Option card: local profile without a server."
   },
-  "welcomeLocalBody": "Everything stays encrypted on this machine. No server, no account, no network traffic for sync. You can enable sync later.",
+  "welcomeLocalBody": "Everything stays encrypted on this device. No server, no account, no network traffic for sync. You can enable sync later.",
   "@welcomeLocalBody": {
     "description": "Option card body: local profile."
   },
@@ -6702,5 +6702,517 @@
   },
   "@updateFailedHelp": {
     "description": "Application update interface"
+  },
+  "updateAppleHelp": "On iOS, updates are installed through the App Store, TestFlight or Xcode, depending on how the app was installed.",
+  "@updateAppleHelp": {
+    "description": "iOS update distribution help"
+  },
+  "sharingTitle": "Sharing",
+  "sharingSubtitle": "Selected data for verified devices on this server.",
+  "sharingUnavailable": "Sharing is unavailable on this server.",
+  "sharingLocal": "Connect a profile to a server to share.",
+  "sharingReceived": "Available to me",
+  "sharingOwned": "Shared by me",
+  "sharingPublish": "Share…",
+  "sharingPublishConfirm": "Share",
+  "sharingEmpty": "No shared items yet.",
+  "sharingInvitation": "Invitation — verify the owner",
+  "sharingAccept": "Verify and accept",
+  "sharingRefresh": "Refresh shared data",
+  "sharingIdentity": "My device verification code",
+  "sharingVerifyHelp": "Compare this code with your colleague using an independent channel. Login and email do not verify device keys.",
+  "sharingCode": "Verification code",
+  "sharingConfirmed": "The code matches the code on my colleague’s device",
+  "sharingEmail": "Colleague’s email",
+  "sharingFind": "Find devices",
+  "sharingSelectDevice": "Select and verify recipient devices",
+  "sharingReader": "Read",
+  "sharingEditor": "Edit",
+  "sharingReaderHelp": "Can read and keep copies; cannot change the shared item.",
+  "sharingEditorHelp": "Can read and edit content; the owner manages access.",
+  "sharingPreview": "What will be shared",
+  "sharingExclude": "Passwords, SSH keys, personal references, terminal history and AI keys are excluded. Check commands and free text before sharing.",
+  "sharingIncludeNotes": "Include host notes",
+  "sharingSecretWarning": "The recipient can read and keep this secret. Revoking access cannot remove copies already read. SSH access also requires changing credentials on the target server.",
+  "sharingSecretConfirmed": "I understand and allow this secret to be shared with the selected devices",
+  "sharingHost": "Host",
+  "sharingSnippet": "Snippet",
+  "sharingGroup": "Shared collection",
+  "sharingSecret": "Secret",
+  "sharingDevice": "Device",
+  "sharingOwner": "Owner",
+  "sharingMembers": "Members",
+  "sharingVerified": "Verified",
+  "sharingBlocked": "Review required",
+  "sharingDeleted": "Deleted",
+  "sharingRevision": "Revision",
+  "sharingQueue": "Send queue",
+  "sharingFlush": "Send pending changes",
+  "sharingPending": "Pending",
+  "sharingConflictHelp": "Access or content changed. Refresh the item and review changes before sending again.",
+  "sharingRevoke": "Revoke access",
+  "sharingRevokeHelp": "Future updates will use a new key. Copies already read remain with the recipient.",
+  "sharingStop": "Delete shared item",
+  "sharingStopHelp": "The shared item will be deleted for participants. Personal copies and data already read remain.",
+  "sharingCopyPersonal": "Save a personal copy",
+  "sharingCopyHelp": "The copy is saved in your personal vault. Credentials are configured separately and are not shared with colleagues.",
+  "sharingSaved": "Done",
+  "sharingEdit": "Edit shared item",
+  "sharingChangeSaved": "The change was saved or queued for sending.",
+  "sharingName": "Name",
+  "sharingAddress": "Address",
+  "sharingPort": "Port",
+  "sharingUsername": "Username",
+  "sharingNotes": "Notes",
+  "sharingDescription": "Description",
+  "sharingCommand": "Command",
+  "sharingNoDevices": "No devices found. Check the address and your colleague’s email verification.",
+  "sharingNoAutoRun": "Received commands never run automatically.",
+  "sharingOwnerDeviceOnly": "Manage access on the owner device that created this item.",
+  "sharingWorking": "Preparing secure sharing…",
+  "sharingCopyCode": "Copy verification code",
+  "sharingAddRecipient": "Add recipient",
+  "sharingRefreshCopy": "Refresh personal copy",
+  "@sharingTitle": {
+    "description": "Selective sharing: Title"
+  },
+  "@sharingSubtitle": {
+    "description": "Selective sharing: Subtitle"
+  },
+  "@sharingUnavailable": {
+    "description": "Selective sharing: Unavailable"
+  },
+  "@sharingLocal": {
+    "description": "Selective sharing: Local"
+  },
+  "@sharingReceived": {
+    "description": "Selective sharing: Received"
+  },
+  "@sharingOwned": {
+    "description": "Selective sharing: Owned"
+  },
+  "@sharingPublish": {
+    "description": "Selective sharing: Publish"
+  },
+  "@sharingPublishConfirm": {
+    "description": "Selective sharing: PublishConfirm"
+  },
+  "@sharingEmpty": {
+    "description": "Selective sharing: Empty"
+  },
+  "@sharingInvitation": {
+    "description": "Selective sharing: Invitation"
+  },
+  "@sharingAccept": {
+    "description": "Selective sharing: Accept"
+  },
+  "@sharingRefresh": {
+    "description": "Selective sharing: Refresh"
+  },
+  "@sharingIdentity": {
+    "description": "Selective sharing: Identity"
+  },
+  "@sharingVerifyHelp": {
+    "description": "Selective sharing: VerifyHelp"
+  },
+  "@sharingCode": {
+    "description": "Selective sharing: Code"
+  },
+  "@sharingConfirmed": {
+    "description": "Selective sharing: Confirmed"
+  },
+  "@sharingEmail": {
+    "description": "Selective sharing: Email"
+  },
+  "@sharingFind": {
+    "description": "Selective sharing: Find"
+  },
+  "@sharingSelectDevice": {
+    "description": "Selective sharing: SelectDevice"
+  },
+  "@sharingReader": {
+    "description": "Selective sharing: Reader"
+  },
+  "@sharingEditor": {
+    "description": "Selective sharing: Editor"
+  },
+  "@sharingReaderHelp": {
+    "description": "Selective sharing: ReaderHelp"
+  },
+  "@sharingEditorHelp": {
+    "description": "Selective sharing: EditorHelp"
+  },
+  "@sharingPreview": {
+    "description": "Selective sharing: Preview"
+  },
+  "@sharingExclude": {
+    "description": "Selective sharing: Exclude"
+  },
+  "@sharingIncludeNotes": {
+    "description": "Selective sharing: IncludeNotes"
+  },
+  "@sharingSecretWarning": {
+    "description": "Selective sharing: SecretWarning"
+  },
+  "@sharingSecretConfirmed": {
+    "description": "Selective sharing: SecretConfirmed"
+  },
+  "@sharingHost": {
+    "description": "Selective sharing: Host"
+  },
+  "@sharingSnippet": {
+    "description": "Selective sharing: Snippet"
+  },
+  "@sharingGroup": {
+    "description": "Selective sharing: Group"
+  },
+  "@sharingSecret": {
+    "description": "Selective sharing: Secret"
+  },
+  "@sharingDevice": {
+    "description": "Selective sharing: Device"
+  },
+  "@sharingOwner": {
+    "description": "Selective sharing: Owner"
+  },
+  "@sharingMembers": {
+    "description": "Selective sharing: Members"
+  },
+  "@sharingVerified": {
+    "description": "Selective sharing: Verified"
+  },
+  "@sharingBlocked": {
+    "description": "Selective sharing: Blocked"
+  },
+  "@sharingDeleted": {
+    "description": "Selective sharing: Deleted"
+  },
+  "@sharingRevision": {
+    "description": "Selective sharing: Revision"
+  },
+  "@sharingQueue": {
+    "description": "Selective sharing: Queue"
+  },
+  "@sharingFlush": {
+    "description": "Selective sharing: Flush"
+  },
+  "@sharingPending": {
+    "description": "Selective sharing: Pending"
+  },
+  "@sharingConflictHelp": {
+    "description": "Selective sharing: ConflictHelp"
+  },
+  "@sharingRevoke": {
+    "description": "Selective sharing: Revoke"
+  },
+  "@sharingRevokeHelp": {
+    "description": "Selective sharing: RevokeHelp"
+  },
+  "@sharingStop": {
+    "description": "Selective sharing: Stop"
+  },
+  "@sharingStopHelp": {
+    "description": "Selective sharing: StopHelp"
+  },
+  "@sharingCopyPersonal": {
+    "description": "Selective sharing: CopyPersonal"
+  },
+  "@sharingCopyHelp": {
+    "description": "Selective sharing: CopyHelp"
+  },
+  "@sharingSaved": {
+    "description": "Selective sharing: Saved"
+  },
+  "@sharingEdit": {
+    "description": "Selective sharing: Edit"
+  },
+  "@sharingChangeSaved": {
+    "description": "Selective sharing: ChangeSaved"
+  },
+  "@sharingName": {
+    "description": "Selective sharing: Name"
+  },
+  "@sharingAddress": {
+    "description": "Selective sharing: Address"
+  },
+  "@sharingPort": {
+    "description": "Selective sharing: Port"
+  },
+  "@sharingUsername": {
+    "description": "Selective sharing: Username"
+  },
+  "@sharingNotes": {
+    "description": "Selective sharing: Notes"
+  },
+  "@sharingDescription": {
+    "description": "Selective sharing: Description"
+  },
+  "@sharingCommand": {
+    "description": "Selective sharing: Command"
+  },
+  "@sharingNoDevices": {
+    "description": "Selective sharing: NoDevices"
+  },
+  "@sharingNoAutoRun": {
+    "description": "Selective sharing: NoAutoRun"
+  },
+  "@sharingOwnerDeviceOnly": {
+    "description": "Selective sharing: OwnerDeviceOnly"
+  },
+  "@sharingWorking": {
+    "description": "Selective sharing: Working"
+  },
+  "@sharingCopyCode": {
+    "description": "Selective sharing: CopyCode"
+  },
+  "@sharingAddRecipient": {
+    "description": "Selective sharing: AddRecipient"
+  },
+  "@sharingRefreshCopy": {
+    "description": "Selective sharing: RefreshCopy"
+  },
+  "sharingManageAccess": "Manage access",
+  "@sharingManageAccess": {
+    "description": "Selective sharing interface."
+  },
+  "sharingReviewQueue": "Review queue",
+  "@sharingReviewQueue": {
+    "description": "Selective sharing interface."
+  },
+  "sharingQueueHelp": "Changes are paused when access or content changes. Review the current item; discard an obsolete request before creating a new change.",
+  "@sharingQueueHelp": {
+    "description": "Selective sharing interface."
+  },
+  "sharingDiscard": "Discard queued request",
+  "@sharingDiscard": {
+    "description": "Selective sharing interface."
+  },
+  "sharingDiscardHelp": "Remove this request from this device? Changes already accepted by the server remain. Discarding a request does not revoke published access.",
+  "@sharingDiscardHelp": {
+    "description": "Selective sharing interface."
+  },
+  "sharingReconcile": "Verify history",
+  "@sharingReconcile": {
+    "description": "Selective sharing interface."
+  },
+  "sharingReconcileHelp": "The local copy is behind the protected checkpoint. Compare the owner’s code. The app will verify the complete signed history and reject missing or conflicting revisions.",
+  "@sharingReconcileHelp": {
+    "description": "Selective sharing interface."
+  },
+  "sharingEndpointChanged": "The shared host address or port changed. Review and confirm the new endpoint before connecting with your credentials.",
+  "@sharingEndpointChanged": {
+    "description": "Selective sharing interface."
+  },
+  "sharingTunnelVerify": "Verify access to the shared host before starting the tunnel manually.",
+  "@sharingTunnelVerify": {
+    "description": "Selective sharing interface."
+  },
+  "sharingPromptPassword": "Ask for password when connecting",
+  "@sharingPromptPassword": {
+    "description": "Selective sharing interface."
+  },
+  "sharingRefreshHost": "Refresh shared host",
+  "@sharingRefreshHost": {
+    "description": "Selective sharing interface."
+  },
+  "sharingRefreshHostHelp": "Review the address and port in Sharing. Apply the updated endpoint to your personal copy? Your other connection settings are preserved.",
+  "@sharingRefreshHostHelp": {
+    "description": "Selective sharing interface."
+  },
+  "sharingDetachHost": "Detach personal copy",
+  "@sharingDetachHost": {
+    "description": "Selective sharing interface."
+  },
+  "sharingDetachHostHelp": "This copy will stop checking changes and access to the shared host. Colleagues keep their own access and copies.",
+  "@sharingDetachHostHelp": {
+    "description": "Selective sharing interface."
+  },
+  "sharingCollectionHelp": "Choose independently shared items. A group contains references only and grants no access to their contents.",
+  "@sharingCollectionHelp": {
+    "description": "Selective sharing interface."
+  },
+  "sharingCollectionEmpty": "Share the required items separately first.",
+  "@sharingCollectionEmpty": {
+    "description": "Selective sharing interface."
+  },
+  "sharingCollectionUnavailable": "Item unavailable: separate access is required.",
+  "@sharingCollectionUnavailable": {
+    "description": "Selective sharing interface."
+  },
+  "sharingCollectionChildren": "Group items",
+  "@sharingCollectionChildren": {
+    "description": "Selective sharing interface."
+  },
+  "sharingSecretSelection": "Secret to share",
+  "@sharingSecretSelection": {
+    "description": "Selective sharing interface."
+  },
+  "sharingSecretPrimary": "Password or private key",
+  "@sharingSecretPrimary": {
+    "description": "Selective sharing interface."
+  },
+  "sharingSecretPassphrase": "Key passphrase (separate item)",
+  "@sharingSecretPassphrase": {
+    "description": "Selective sharing interface."
+  },
+  "enrollmentTitle": "New personal devices",
+  "@enrollmentTitle": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentHelp": "A permission applies to one shared item. A colleague’s trusted device confirms their new device; the owner stays online to grant access. Personal vault data is never transferred.",
+  "@enrollmentHelp": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentCreate": "Allow new devices",
+  "@enrollmentCreate": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentAnchor": "Trusted confirming device",
+  "@enrollmentAnchor": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentExpiry": "Permission lifetime",
+  "@enrollmentExpiry": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentQuota": "Number of new devices",
+  "@enrollmentQuota": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentOneDay": "1 day",
+  "@enrollmentOneDay": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentSevenDays": "7 days",
+  "@enrollmentSevenDays": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentThirtyDays": "30 days",
+  "@enrollmentThirtyDays": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentAutomatic": "Automatically accept confirmed devices",
+  "@enrollmentAutomatic": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentAutomaticHelp": "Only after code comparison on the trusted device, while the owner is online. The new device cannot exceed the selected permissions.",
+  "@enrollmentAutomaticHelp": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentDisable": "Disable permission",
+  "@enrollmentDisable": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentDisableHelp": "This permission will stop admitting new devices. Remove previously admitted devices separately in Manage access. Disabling remains recorded on this device even if the server is unreachable.",
+  "@enrollmentDisableHelp": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentExport": "Package for the new device",
+  "@enrollmentExport": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentRequests": "Device requests",
+  "@enrollmentRequests": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentPrepare": "I’m on the new device",
+  "@enrollmentPrepare": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentEndorse": "Confirm another device",
+  "@enrollmentEndorse": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentSubmit": "Continue adding a device",
+  "@enrollmentSubmit": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentPackage": "Device package",
+  "@enrollmentPackage": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentPackageHelp": "Transfer this public package between your devices. It contains keys and signed confirmations, without passwords or shared item content. Code comparison is still required.",
+  "@enrollmentPackageHelp": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentPreview": "Review package",
+  "@enrollmentPreview": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentCodeHelp": "Compare the full code on the new and trusted device in person or through an independent channel. Confirm only an exact match. The code identifies this specific request.",
+  "@enrollmentCodeHelp": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentCopyPackage": "Copy package",
+  "@enrollmentCopyPackage": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentSavePackage": "Save package to file",
+  "@enrollmentSavePackage": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentOpenPackage": "Open package from file",
+  "@enrollmentOpenPackage": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentPending": "My device requests",
+  "@enrollmentPending": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentWait": "Request sent. Keep this device and the owner’s device online. Continue when the owner sends a verification challenge.",
+  "@enrollmentWait": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentChallenge": "Verify device keys",
+  "@enrollmentChallenge": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentRespond": "Continue verification",
+  "@enrollmentRespond": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentAccept": "Grant access",
+  "@enrollmentAccept": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentManualConfirmed": "I approve adding this device with the displayed permissions",
+  "@enrollmentManualConfirmed": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentActive": "Active",
+  "@enrollmentActive": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentDisabled": "Disabled",
+  "@enrollmentDisabled": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentRequested": "Awaiting verification",
+  "@enrollmentRequested": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentChallenged": "Awaiting device response",
+  "@enrollmentChallenged": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentResponded": "Device keys verified",
+  "@enrollmentResponded": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentAccepted": "Access granted",
+  "@enrollmentAccepted": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentExpired": "Expired",
+  "@enrollmentExpired": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentBlocked": "Current access and history must be reviewed",
+  "@enrollmentBlocked": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentCreateConfirmed": "I authorize adding this user’s own devices within the selected limits",
+  "@enrollmentCreateConfirmed": {
+    "description": "Verified own-device enrollment interface."
   }
 }

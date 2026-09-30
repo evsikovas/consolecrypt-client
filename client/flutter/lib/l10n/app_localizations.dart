@@ -2195,7 +2195,7 @@ abstract class AppLocalizations {
   /// Option card body: local profile.
   ///
   /// In en, this message translates to:
-  /// **'Everything stays encrypted on this machine. No server, no account, no network traffic for sync. You can enable sync later.'**
+  /// **'Everything stays encrypted on this device. No server, no account, no network traffic for sync. You can enable sync later.'**
   String get welcomeLocalBody;
 
   /// Field label: name of the new local profile.
@@ -8341,6 +8341,774 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Check your connection and try again. Files that fail signature or checksum verification are never installed.'**
   String get updateFailedHelp;
+
+  /// iOS update distribution help
+  ///
+  /// In en, this message translates to:
+  /// **'On iOS, updates are installed through the App Store, TestFlight or Xcode, depending on how the app was installed.'**
+  String get updateAppleHelp;
+
+  /// Selective sharing: Title
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing'**
+  String get sharingTitle;
+
+  /// Selective sharing: Subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Selected data for verified devices on this server.'**
+  String get sharingSubtitle;
+
+  /// Selective sharing: Unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing is unavailable on this server.'**
+  String get sharingUnavailable;
+
+  /// Selective sharing: Local
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a profile to a server to share.'**
+  String get sharingLocal;
+
+  /// Selective sharing: Received
+  ///
+  /// In en, this message translates to:
+  /// **'Available to me'**
+  String get sharingReceived;
+
+  /// Selective sharing: Owned
+  ///
+  /// In en, this message translates to:
+  /// **'Shared by me'**
+  String get sharingOwned;
+
+  /// Selective sharing: Publish
+  ///
+  /// In en, this message translates to:
+  /// **'Share…'**
+  String get sharingPublish;
+
+  /// Selective sharing: PublishConfirm
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get sharingPublishConfirm;
+
+  /// Selective sharing: Empty
+  ///
+  /// In en, this message translates to:
+  /// **'No shared items yet.'**
+  String get sharingEmpty;
+
+  /// Selective sharing: Invitation
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation — verify the owner'**
+  String get sharingInvitation;
+
+  /// Selective sharing: Accept
+  ///
+  /// In en, this message translates to:
+  /// **'Verify and accept'**
+  String get sharingAccept;
+
+  /// Selective sharing: Refresh
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh shared data'**
+  String get sharingRefresh;
+
+  /// Selective sharing: Identity
+  ///
+  /// In en, this message translates to:
+  /// **'My device verification code'**
+  String get sharingIdentity;
+
+  /// Selective sharing: VerifyHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Compare this code with your colleague using an independent channel. Login and email do not verify device keys.'**
+  String get sharingVerifyHelp;
+
+  /// Selective sharing: Code
+  ///
+  /// In en, this message translates to:
+  /// **'Verification code'**
+  String get sharingCode;
+
+  /// Selective sharing: Confirmed
+  ///
+  /// In en, this message translates to:
+  /// **'The code matches the code on my colleague’s device'**
+  String get sharingConfirmed;
+
+  /// Selective sharing: Email
+  ///
+  /// In en, this message translates to:
+  /// **'Colleague’s email'**
+  String get sharingEmail;
+
+  /// Selective sharing: Find
+  ///
+  /// In en, this message translates to:
+  /// **'Find devices'**
+  String get sharingFind;
+
+  /// Selective sharing: SelectDevice
+  ///
+  /// In en, this message translates to:
+  /// **'Select and verify recipient devices'**
+  String get sharingSelectDevice;
+
+  /// Selective sharing: Reader
+  ///
+  /// In en, this message translates to:
+  /// **'Read'**
+  String get sharingReader;
+
+  /// Selective sharing: Editor
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get sharingEditor;
+
+  /// Selective sharing: ReaderHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Can read and keep copies; cannot change the shared item.'**
+  String get sharingReaderHelp;
+
+  /// Selective sharing: EditorHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Can read and edit content; the owner manages access.'**
+  String get sharingEditorHelp;
+
+  /// Selective sharing: Preview
+  ///
+  /// In en, this message translates to:
+  /// **'What will be shared'**
+  String get sharingPreview;
+
+  /// Selective sharing: Exclude
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords, SSH keys, personal references, terminal history and AI keys are excluded. Check commands and free text before sharing.'**
+  String get sharingExclude;
+
+  /// Selective sharing: IncludeNotes
+  ///
+  /// In en, this message translates to:
+  /// **'Include host notes'**
+  String get sharingIncludeNotes;
+
+  /// Selective sharing: SecretWarning
+  ///
+  /// In en, this message translates to:
+  /// **'The recipient can read and keep this secret. Revoking access cannot remove copies already read. SSH access also requires changing credentials on the target server.'**
+  String get sharingSecretWarning;
+
+  /// Selective sharing: SecretConfirmed
+  ///
+  /// In en, this message translates to:
+  /// **'I understand and allow this secret to be shared with the selected devices'**
+  String get sharingSecretConfirmed;
+
+  /// Selective sharing: Host
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get sharingHost;
+
+  /// Selective sharing: Snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Snippet'**
+  String get sharingSnippet;
+
+  /// Selective sharing: Group
+  ///
+  /// In en, this message translates to:
+  /// **'Shared collection'**
+  String get sharingGroup;
+
+  /// Selective sharing: Secret
+  ///
+  /// In en, this message translates to:
+  /// **'Secret'**
+  String get sharingSecret;
+
+  /// Selective sharing: Device
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get sharingDevice;
+
+  /// Selective sharing: Owner
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get sharingOwner;
+
+  /// Selective sharing: Members
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get sharingMembers;
+
+  /// Selective sharing: Verified
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get sharingVerified;
+
+  /// Selective sharing: Blocked
+  ///
+  /// In en, this message translates to:
+  /// **'Review required'**
+  String get sharingBlocked;
+
+  /// Selective sharing: Deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted'**
+  String get sharingDeleted;
+
+  /// Selective sharing: Revision
+  ///
+  /// In en, this message translates to:
+  /// **'Revision'**
+  String get sharingRevision;
+
+  /// Selective sharing: Queue
+  ///
+  /// In en, this message translates to:
+  /// **'Send queue'**
+  String get sharingQueue;
+
+  /// Selective sharing: Flush
+  ///
+  /// In en, this message translates to:
+  /// **'Send pending changes'**
+  String get sharingFlush;
+
+  /// Selective sharing: Pending
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get sharingPending;
+
+  /// Selective sharing: ConflictHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Access or content changed. Refresh the item and review changes before sending again.'**
+  String get sharingConflictHelp;
+
+  /// Selective sharing: Revoke
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke access'**
+  String get sharingRevoke;
+
+  /// Selective sharing: RevokeHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Future updates will use a new key. Copies already read remain with the recipient.'**
+  String get sharingRevokeHelp;
+
+  /// Selective sharing: Stop
+  ///
+  /// In en, this message translates to:
+  /// **'Delete shared item'**
+  String get sharingStop;
+
+  /// Selective sharing: StopHelp
+  ///
+  /// In en, this message translates to:
+  /// **'The shared item will be deleted for participants. Personal copies and data already read remain.'**
+  String get sharingStopHelp;
+
+  /// Selective sharing: CopyPersonal
+  ///
+  /// In en, this message translates to:
+  /// **'Save a personal copy'**
+  String get sharingCopyPersonal;
+
+  /// Selective sharing: CopyHelp
+  ///
+  /// In en, this message translates to:
+  /// **'The copy is saved in your personal vault. Credentials are configured separately and are not shared with colleagues.'**
+  String get sharingCopyHelp;
+
+  /// Selective sharing: Saved
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get sharingSaved;
+
+  /// Selective sharing: Edit
+  ///
+  /// In en, this message translates to:
+  /// **'Edit shared item'**
+  String get sharingEdit;
+
+  /// Selective sharing: ChangeSaved
+  ///
+  /// In en, this message translates to:
+  /// **'The change was saved or queued for sending.'**
+  String get sharingChangeSaved;
+
+  /// Selective sharing: Name
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get sharingName;
+
+  /// Selective sharing: Address
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get sharingAddress;
+
+  /// Selective sharing: Port
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get sharingPort;
+
+  /// Selective sharing: Username
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get sharingUsername;
+
+  /// Selective sharing: Notes
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get sharingNotes;
+
+  /// Selective sharing: Description
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get sharingDescription;
+
+  /// Selective sharing: Command
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get sharingCommand;
+
+  /// Selective sharing: NoDevices
+  ///
+  /// In en, this message translates to:
+  /// **'No devices found. Check the address and your colleague’s email verification.'**
+  String get sharingNoDevices;
+
+  /// Selective sharing: NoAutoRun
+  ///
+  /// In en, this message translates to:
+  /// **'Received commands never run automatically.'**
+  String get sharingNoAutoRun;
+
+  /// Selective sharing: OwnerDeviceOnly
+  ///
+  /// In en, this message translates to:
+  /// **'Manage access on the owner device that created this item.'**
+  String get sharingOwnerDeviceOnly;
+
+  /// Selective sharing: Working
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing secure sharing…'**
+  String get sharingWorking;
+
+  /// Selective sharing: CopyCode
+  ///
+  /// In en, this message translates to:
+  /// **'Copy verification code'**
+  String get sharingCopyCode;
+
+  /// Selective sharing: AddRecipient
+  ///
+  /// In en, this message translates to:
+  /// **'Add recipient'**
+  String get sharingAddRecipient;
+
+  /// Selective sharing: RefreshCopy
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh personal copy'**
+  String get sharingRefreshCopy;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage access'**
+  String get sharingManageAccess;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Review queue'**
+  String get sharingReviewQueue;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes are paused when access or content changes. Review the current item; discard an obsolete request before creating a new change.'**
+  String get sharingQueueHelp;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard queued request'**
+  String get sharingDiscard;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this request from this device? Changes already accepted by the server remain. Discarding a request does not revoke published access.'**
+  String get sharingDiscardHelp;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify history'**
+  String get sharingReconcile;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'The local copy is behind the protected checkpoint. Compare the owner’s code. The app will verify the complete signed history and reject missing or conflicting revisions.'**
+  String get sharingReconcileHelp;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'The shared host address or port changed. Review and confirm the new endpoint before connecting with your credentials.'**
+  String get sharingEndpointChanged;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify access to the shared host before starting the tunnel manually.'**
+  String get sharingTunnelVerify;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for password when connecting'**
+  String get sharingPromptPassword;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh shared host'**
+  String get sharingRefreshHost;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the address and port in Sharing. Apply the updated endpoint to your personal copy? Your other connection settings are preserved.'**
+  String get sharingRefreshHostHelp;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Detach personal copy'**
+  String get sharingDetachHost;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'This copy will stop checking changes and access to the shared host. Colleagues keep their own access and copies.'**
+  String get sharingDetachHostHelp;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose independently shared items. A group contains references only and grants no access to their contents.'**
+  String get sharingCollectionHelp;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Share the required items separately first.'**
+  String get sharingCollectionEmpty;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Item unavailable: separate access is required.'**
+  String get sharingCollectionUnavailable;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Group items'**
+  String get sharingCollectionChildren;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Secret to share'**
+  String get sharingSecretSelection;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Password or private key'**
+  String get sharingSecretPrimary;
+
+  /// Selective sharing interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Key passphrase (separate item)'**
+  String get sharingSecretPassphrase;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'New personal devices'**
+  String get enrollmentTitle;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'A permission applies to one shared item. A colleague’s trusted device confirms their new device; the owner stays online to grant access. Personal vault data is never transferred.'**
+  String get enrollmentHelp;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow new devices'**
+  String get enrollmentCreate;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Trusted confirming device'**
+  String get enrollmentAnchor;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission lifetime'**
+  String get enrollmentExpiry;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Number of new devices'**
+  String get enrollmentQuota;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'1 day'**
+  String get enrollmentOneDay;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'7 days'**
+  String get enrollmentSevenDays;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'30 days'**
+  String get enrollmentThirtyDays;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically accept confirmed devices'**
+  String get enrollmentAutomatic;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Only after code comparison on the trusted device, while the owner is online. The new device cannot exceed the selected permissions.'**
+  String get enrollmentAutomaticHelp;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable permission'**
+  String get enrollmentDisable;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'This permission will stop admitting new devices. Remove previously admitted devices separately in Manage access. Disabling remains recorded on this device even if the server is unreachable.'**
+  String get enrollmentDisableHelp;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Package for the new device'**
+  String get enrollmentExport;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Device requests'**
+  String get enrollmentRequests;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'I’m on the new device'**
+  String get enrollmentPrepare;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm another device'**
+  String get enrollmentEndorse;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue adding a device'**
+  String get enrollmentSubmit;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Device package'**
+  String get enrollmentPackage;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer this public package between your devices. It contains keys and signed confirmations, without passwords or shared item content. Code comparison is still required.'**
+  String get enrollmentPackageHelp;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Review package'**
+  String get enrollmentPreview;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare the full code on the new and trusted device in person or through an independent channel. Confirm only an exact match. The code identifies this specific request.'**
+  String get enrollmentCodeHelp;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy package'**
+  String get enrollmentCopyPackage;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Save package to file'**
+  String get enrollmentSavePackage;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Open package from file'**
+  String get enrollmentOpenPackage;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'My device requests'**
+  String get enrollmentPending;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Request sent. Keep this device and the owner’s device online. Continue when the owner sends a verification challenge.'**
+  String get enrollmentWait;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify device keys'**
+  String get enrollmentChallenge;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue verification'**
+  String get enrollmentRespond;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant access'**
+  String get enrollmentAccept;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'I approve adding this device with the displayed permissions'**
+  String get enrollmentManualConfirmed;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get enrollmentActive;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get enrollmentDisabled;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting verification'**
+  String get enrollmentRequested;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting device response'**
+  String get enrollmentChallenged;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Device keys verified'**
+  String get enrollmentResponded;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Access granted'**
+  String get enrollmentAccepted;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get enrollmentExpired;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Current access and history must be reviewed'**
+  String get enrollmentBlocked;
+
+  /// Verified own-device enrollment interface.
+  ///
+  /// In en, this message translates to:
+  /// **'I authorize adding this user’s own devices within the selected limits'**
+  String get enrollmentCreateConfirmed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

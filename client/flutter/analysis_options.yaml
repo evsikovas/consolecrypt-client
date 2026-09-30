@@ -27,6 +27,7 @@ analyzer:
     - rust_builder/**
     - android/**
     - linux/**
+    - ios/**
 
 linter:
   rules:

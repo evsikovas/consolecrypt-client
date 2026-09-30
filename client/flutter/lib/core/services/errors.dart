@@ -51,6 +51,7 @@ enum AppErrorCode {
 
   /// Server `Unavailable` (503) — reachable but temporarily not serving.
   serverUnavailable,
+  sharingReconciliationRequired,
 }
 
 /// Optional refinement of an [AppErrorCode] so the UI can show a precise,

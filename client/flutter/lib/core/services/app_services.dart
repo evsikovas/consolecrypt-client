@@ -2,6 +2,7 @@ import 'package:consolecrypt/core/services/ai_service.dart';
 import 'package:consolecrypt/core/services/auth_service.dart';
 import 'package:consolecrypt/core/services/backup_service.dart';
 import 'package:consolecrypt/core/services/devices_service.dart';
+import 'package:consolecrypt/core/services/enrollment_service.dart';
 import 'package:consolecrypt/core/services/file_dialog_service.dart';
 import 'package:consolecrypt/core/services/inventory_service.dart';
 import 'package:consolecrypt/core/services/profile_service.dart';
@@ -9,6 +10,7 @@ import 'package:consolecrypt/core/services/prompt_service.dart';
 import 'package:consolecrypt/core/services/settings_service.dart';
 import 'package:consolecrypt/core/services/sftp_browser_service.dart';
 import 'package:consolecrypt/core/services/sftp_service.dart';
+import 'package:consolecrypt/core/services/sharing_service.dart';
 import 'package:consolecrypt/core/services/snippet_service.dart';
 import 'package:consolecrypt/core/services/sync_service.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
@@ -27,6 +29,7 @@ export 'package:consolecrypt/core/services/prompt_service.dart';
 export 'package:consolecrypt/core/services/settings_service.dart';
 export 'package:consolecrypt/core/services/sftp_browser_service.dart';
 export 'package:consolecrypt/core/services/sftp_service.dart';
+export 'package:consolecrypt/core/services/sharing_service.dart';
 export 'package:consolecrypt/core/services/snippet_service.dart';
 export 'package:consolecrypt/core/services/sync_service.dart';
 export 'package:consolecrypt/core/services/terminal_service.dart';
@@ -68,6 +71,8 @@ final class AppServices {
     required this.files,
     this.sftpBrowser,
     this.prompts,
+    this.sharing,
+    this.enrollment,
     this.developer,
     this.onDispose,
   });
@@ -95,6 +100,8 @@ final class AppServices {
   /// Host-key / password / passphrase prompts outside terminal tabs
   /// (SFTP, tunnels, exec). `null`: such prompts are declined.
   final PromptService? prompts;
+  final SharingService? sharing;
+  final EnrollmentService? enrollment;
   final DeveloperControls? developer;
   final Future<void> Function()? onDispose;
 

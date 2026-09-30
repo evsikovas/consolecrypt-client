@@ -193,14 +193,24 @@ final class RustBackupService implements BackupService {
 final class NativeFileDialogService implements FileDialogService {
   const NativeFileDialogService();
 
-  static List<fs.XTypeGroup> _groups(List<String> extensions) =>
-      extensions.isEmpty ? const [] : [fs.XTypeGroup(label: extensions.join(', '), extensions: extensions)];
+  static List<fs.XTypeGroup> _groups(List<String> extensions) => extensions.isEmpty
+      ? const []
+      : [
+          fs.XTypeGroup(
+            label: extensions.join(', '),
+            extensions: extensions,
+            // iOS document pickers require UTIs; custom .ccbackup has no
+            // registered UTI. The core validates the chosen file format.
+            uniformTypeIdentifiers: Platform.isIOS ? const ['public.data'] : const [],
+          ),
+        ];
 
   @override
   Future<String?> chooseSaveFile({required String suggestedName, List<String> extensions = const []}) async {
-    if (Platform.isAndroid) {
-      final root = await const MethodChannel('consolecrypt/android').invokeMethod<String>('dataDirectory');
-      if (root == null) throw StateError('Android private storage unavailable');
+    if (Platform.isAndroid || Platform.isIOS) {
+      final root = await MethodChannel(Platform.isIOS ? 'consolecrypt/ios' : 'consolecrypt/android')
+          .invokeMethod<String>('dataDirectory');
+      if (root == null || root.isEmpty) throw StateError('Mobile private storage unavailable');
       final dir = await Directory('$root/exports').create(recursive: true);
       final name = suggestedName.replaceAll(RegExp(r'[\\/\x00-\x1f]'), '_');
       final staging = await Directory(dir.path).createTemp('export-');
@@ -211,8 +221,10 @@ final class NativeFileDialogService implements FileDialogService {
 
   @override
   Future<bool> finishSaveFile(String path) async =>
-      !Platform.isAndroid ||
-      (await const MethodChannel('consolecrypt/android').invokeMethod<bool>('exportFile', {'path': path}) ?? false);
+      (!Platform.isAndroid && !Platform.isIOS) ||
+      (await MethodChannel(Platform.isIOS ? 'consolecrypt/ios' : 'consolecrypt/android')
+              .invokeMethod<bool>('exportFile', {'path': path}) ??
+          false);
 
   @override
   Future<String?> chooseOpenFile({List<String> extensions = const []}) async =>

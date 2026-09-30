@@ -6,6 +6,7 @@ variables:
 
 include:
   - local: server/ci/registry.yml
+  - local: client/ci/ios.yml
 
 # Dedicated shell runners test each OS before packaging.
 build-windows:

@@ -10,6 +10,11 @@ import 'package:consolecrypt/groups/group_dialogs.dart';
 import 'package:consolecrypt/groups/group_tree.dart';
 import 'package:consolecrypt/hosts/inventory_navigation.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
+import 'package:consolecrypt/sharing/sharing_collections.dart';
+import 'package:consolecrypt/sharing/sharing_dialogs.dart';
+import 'package:consolecrypt/sharing/sharing_management.dart';
+import 'package:consolecrypt/sharing/sharing_models.dart';
+import 'package:consolecrypt/sharing/sharing_providers.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -275,6 +280,10 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                     ),
                   ),
                   if (group != null) ...[
+                    if (ref.watch(activeProfileProvider)?.isSynced == true)
+                      GlassIconButton(key: const ValueKey('inventory-share-group'), tooltip: l.sharingPublish,
+                        icon: Icons.share_outlined, style: GlassIconButtonStyle.plain,
+                        onPressed: () => showSharingGroupPublish(context, groupId: group.id.value)),
                     GlassIconButton(
                       key: const ValueKey('inventory-group-settings'),
                       tooltip: l.inventoryGroupSettings,
@@ -552,7 +561,7 @@ class _GroupCard extends StatelessWidget {
   }
 }
 
-enum _HostAction { connect, group, sftp, edit, delete }
+enum _HostAction { connect, group, sftp, edit, share, refreshShared, detachShared, delete }
 
 class _HostTile extends ConsumerWidget {
   const _HostTile({required this.host, required this.groupName, required this.onDelete, this.cards = false});
@@ -640,12 +649,18 @@ class _HostTile extends ConsumerWidget {
               ),
             const GlassMenuDivider(),
             GlassMenuItem(value: _HostAction.sftp, label: l10n.hostsOpenSftp, icon: Icons.folder_copy_rounded),
+            if (ref.watch(activeProfileProvider)?.isSynced == true)
+              GlassMenuItem(value: _HostAction.share, label: l10n.sharingPublish, icon: Icons.share_outlined),
             GlassMenuItem(
               key: ValueKey('host-edit-menu-${host.name}'),
               value: _HostAction.edit,
               label: l10n.commonEdit,
               icon: Icons.edit_rounded,
             ),
+            if (host.metadata.containsKey('cc.shared.share') || host.metadata.containsKey('cc.shared.instance')) ...[
+              GlassMenuItem(value: _HostAction.refreshShared, label: l10n.sharingRefreshHost, icon: Icons.refresh_rounded),
+              GlassMenuItem(value: _HostAction.detachShared, label: l10n.sharingDetachHost, icon: Icons.link_off_rounded),
+            ],
             const GlassMenuDivider(),
             GlassMenuItem(
               value: _HostAction.delete,
@@ -659,6 +674,8 @@ class _HostTile extends ConsumerWidget {
             switch (v) {
               case _HostAction.connect:
                 await connectToHost(context, ref, host);
+              case _HostAction.share:
+                await showSharingPublish(context, kind: SharingKind.host, objectId: host.id.value);
               case _HostAction.group:
                 await _chooseGroup(context, ref);
               case _HostAction.sftp:
@@ -666,6 +683,15 @@ class _HostTile extends ConsumerWidget {
                 if (context.mounted) context.go(AppRoutes.sftp);
               case _HostAction.edit:
                 context.go(AppRoutes.editHost(host.id));
+              case _HostAction.refreshShared:
+                await showSharingBoundHost(context, host);
+              case _HostAction.detachShared:
+                final profile = ref.read(sharingSessionScopeProvider);
+                final ok = await showConfirmDialog(context, title: l10n.sharingDetachHost,
+                  message: l10n.sharingDetachHostHelp, confirmLabel: l10n.sharingDetachHost);
+                if (ok && context.mounted && sharingSessionCurrent(ref, profile)) {
+                  await runWithFeedback(context, () => ref.read(sharingServiceProvider).detachHost(host.id.value));
+                }
               case _HostAction.delete:
                 onDelete();
             }

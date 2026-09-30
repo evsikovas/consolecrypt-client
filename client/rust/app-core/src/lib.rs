@@ -37,6 +37,8 @@ mod credentials;
 mod devices;
 pub mod dto;
 mod edit;
+pub mod enrollment_dto;
+mod enrollment_highwater;
 pub mod error;
 mod host_auth;
 mod inventory;
@@ -48,6 +50,12 @@ mod recovery;
 mod secrets;
 mod session;
 mod sftp_browser;
+mod sharing_api;
+mod sharing_bindings;
+pub mod sharing_dto;
+pub mod sharing_highwater;
+pub mod sharing_projection;
+pub mod sharing_state;
 mod snippets;
 mod ssh;
 mod ssh_api;
@@ -66,6 +74,7 @@ pub use edit::{
     AppRefDto, EditConflictResolutionDto, EditLeftoverDto, EditSessionDto, EditStatusDto,
     EditStopModeDto, EditStopOutcomeDto, OpenWithDto, RemoteMetaDto,
 };
+pub use enrollment_dto::*;
 pub use error::{AppError, AppResult};
 pub use host_auth::{AgentKind, HostAuth, HostAuthMode, META_AUTH_PROMPT, META_INLINE_CREDENTIAL};
 pub use plan::{
@@ -75,6 +84,7 @@ pub use plan::{
 pub use sftp_browser::{
     normalize_remote_path, RemoteFileInfoDto, SftpPreviewDto, MAX_PREVIEW_BYTES,
 };
+pub use sharing_dto::*;
 pub use snippets::SnippetSearchHitDto;
 pub use ssh_api::OpenSshCommandDto;
 pub use transfers::{

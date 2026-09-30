@@ -14,5 +14,8 @@ pub mod error;
 pub mod inventory;
 pub mod profiles;
 pub mod sftp;
+pub mod sharing;
 pub mod ssh;
 pub mod sync;
+
+pub mod enrollment;

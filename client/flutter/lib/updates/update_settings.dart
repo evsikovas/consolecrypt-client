@@ -48,6 +48,14 @@ class UpdateSettingsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
+    if (AppPlatform.isIOS) {
+      return SectionCard(
+        key: const ValueKey('settings-updates'),
+        title: l.updatesTitle,
+        icon: Icons.system_update_alt_rounded,
+        child: Text(l.updateAppleHelp),
+      );
+    }
     final settings = ref.read(settingsServiceProvider);
     final local = ref.watch(localSettingsProvider).value ?? const LocalSettings();
     final state = ref.watch(updateControllerProvider);
@@ -120,6 +128,7 @@ class _UpdateNoticeScopeState extends ConsumerState<UpdateNoticeScope> {
   String? _dismissed;
   @override
   Widget build(BuildContext context) {
+    if (!AppPlatform.supportsDirectUpdates) return widget.child;
     final settings = ref.watch(localSettingsProvider).value;
     if (!_started && settings != null) {
       _started = true;

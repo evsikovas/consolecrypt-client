@@ -350,7 +350,7 @@
   "welcomeTitleAddProfile": "Добавить профиль",
   "welcomeSubtitle": "SSH-клиент со сквозным шифрованием. Хосты, ключи, пароли и сниппеты шифруются на этом устройстве ключом, который есть только у вас.",
   "welcomeLocalTitle": "Работать локально (без аккаунта)",
-  "welcomeLocalBody": "Все данные хранятся на этом компьютере в зашифрованном виде. Без сервера, без аккаунта, без сетевого трафика синхронизации. Синхронизацию можно включить позже.",
+  "welcomeLocalBody": "Все данные хранятся на этом устройстве в зашифрованном виде. Без сервера, без аккаунта, без сетевого трафика синхронизации. Синхронизацию можно включить позже.",
   "welcomeProfileNameLabel": "Имя профиля",
   "welcomeLocalAction": "Работать локально",
   "welcomeServerTitle": "Подключиться к серверу",
@@ -1560,5 +1560,514 @@
   },
   "@updateFailedHelp": {
     "description": "Application update interface"
+  },
+  "updateAppleHelp": "На iOS обновления устанавливаются через App Store, TestFlight или Xcode, в зависимости от способа установки приложения.",
+  "sharingTitle": "Совместный доступ",
+  "sharingSubtitle": "Выбранные данные для проверенных устройств коллег на этом сервере.",
+  "sharingUnavailable": "Совместный доступ недоступен на этом сервере.",
+  "sharingLocal": "Для совместного доступа подключите профиль к серверу.",
+  "sharingReceived": "Доступно мне",
+  "sharingOwned": "Я поделился",
+  "sharingPublish": "Поделиться…",
+  "sharingPublishConfirm": "Поделиться",
+  "sharingEmpty": "Здесь пока нет общих объектов.",
+  "sharingInvitation": "Приглашение — проверьте владельца",
+  "sharingAccept": "Проверить и принять",
+  "sharingRefresh": "Обновить общие данные",
+  "sharingIdentity": "Код моего устройства",
+  "sharingVerifyHelp": "Сравните этот код с кодом коллеги по независимому каналу. Вход в аккаунт и электронная почта не подтверждают ключи устройства.",
+  "sharingCode": "Код проверки",
+  "sharingConfirmed": "Код совпадает с кодом на устройстве коллеги",
+  "sharingEmail": "Электронная почта коллеги",
+  "sharingFind": "Найти устройства",
+  "sharingSelectDevice": "Выберите и проверьте устройства получателя",
+  "sharingReader": "Чтение",
+  "sharingEditor": "Редактирование",
+  "sharingReaderHelp": "Может читать и сохранять копии; не может менять общий объект.",
+  "sharingEditorHelp": "Может читать и менять содержимое; доступом управляет владелец.",
+  "sharingPreview": "Что будет передано",
+  "sharingExclude": "Пароли, SSH-ключи, личные ссылки, история терминала и ключи ИИ не включаются. Проверьте команды и свободный текст перед отправкой.",
+  "sharingIncludeNotes": "Включить заметки хоста",
+  "sharingSecretWarning": "Получатель сможет прочитать и сохранить секрет. Отзыв доступа не удалит уже прочитанные копии. Для SSH-доступа также нужна смена учётных данных на сервере.",
+  "sharingSecretConfirmed": "Я понимаю и разрешаю передать этот секрет выбранным устройствам",
+  "sharingHost": "Хост",
+  "sharingSnippet": "Сниппет",
+  "sharingGroup": "Общая коллекция",
+  "sharingSecret": "Секрет",
+  "sharingDevice": "Устройство",
+  "sharingOwner": "Владелец",
+  "sharingMembers": "Участники",
+  "sharingVerified": "Проверено",
+  "sharingBlocked": "Требуется проверка",
+  "sharingDeleted": "Удалено",
+  "sharingRevision": "Версия",
+  "sharingQueue": "Очередь отправки",
+  "sharingFlush": "Отправить ожидающие изменения",
+  "sharingPending": "Ожидает отправки",
+  "sharingConflictHelp": "Права или содержимое изменились. Обновите объект и проверьте изменения перед повторной отправкой.",
+  "sharingRevoke": "Отозвать доступ",
+  "sharingRevokeHelp": "Будущие изменения будут зашифрованы новым ключом. Прочитанные копии останутся у получателя.",
+  "sharingStop": "Удалить общий объект",
+  "sharingStopHelp": "Общий объект будет удалён для участников. Личные копии и уже прочитанные данные сохранятся.",
+  "sharingCopyPersonal": "Сохранить личную копию",
+  "sharingCopyHelp": "Копия сохранится в вашем личном хранилище. Учётные данные задаются отдельно и не передаются коллегам.",
+  "sharingSaved": "Готово",
+  "sharingEdit": "Изменить общий объект",
+  "sharingChangeSaved": "Изменение сохранено или поставлено в очередь отправки.",
+  "sharingName": "Название",
+  "sharingAddress": "Адрес",
+  "sharingPort": "Порт",
+  "sharingUsername": "Имя пользователя",
+  "sharingNotes": "Заметки",
+  "sharingDescription": "Описание",
+  "sharingCommand": "Команда",
+  "sharingNoDevices": "Доступных устройств не найдено. Проверьте адрес и подтверждение почты коллеги.",
+  "sharingNoAutoRun": "Полученные команды никогда не выполняются автоматически.",
+  "sharingOwnerDeviceOnly": "Управление доступом доступно на устройстве владельца, которое создало этот объект.",
+  "sharingWorking": "Подготовка защищённого обмена…",
+  "sharingCopyCode": "Копировать код",
+  "sharingAddRecipient": "Добавить получателя",
+  "sharingRefreshCopy": "Обновить личную копию",
+  "@sharingTitle": {
+    "description": "Selective sharing: Title"
+  },
+  "@sharingSubtitle": {
+    "description": "Selective sharing: Subtitle"
+  },
+  "@sharingUnavailable": {
+    "description": "Selective sharing: Unavailable"
+  },
+  "@sharingLocal": {
+    "description": "Selective sharing: Local"
+  },
+  "@sharingReceived": {
+    "description": "Selective sharing: Received"
+  },
+  "@sharingOwned": {
+    "description": "Selective sharing: Owned"
+  },
+  "@sharingPublish": {
+    "description": "Selective sharing: Publish"
+  },
+  "@sharingPublishConfirm": {
+    "description": "Selective sharing: PublishConfirm"
+  },
+  "@sharingEmpty": {
+    "description": "Selective sharing: Empty"
+  },
+  "@sharingInvitation": {
+    "description": "Selective sharing: Invitation"
+  },
+  "@sharingAccept": {
+    "description": "Selective sharing: Accept"
+  },
+  "@sharingRefresh": {
+    "description": "Selective sharing: Refresh"
+  },
+  "@sharingIdentity": {
+    "description": "Selective sharing: Identity"
+  },
+  "@sharingVerifyHelp": {
+    "description": "Selective sharing: VerifyHelp"
+  },
+  "@sharingCode": {
+    "description": "Selective sharing: Code"
+  },
+  "@sharingConfirmed": {
+    "description": "Selective sharing: Confirmed"
+  },
+  "@sharingEmail": {
+    "description": "Selective sharing: Email"
+  },
+  "@sharingFind": {
+    "description": "Selective sharing: Find"
+  },
+  "@sharingSelectDevice": {
+    "description": "Selective sharing: SelectDevice"
+  },
+  "@sharingReader": {
+    "description": "Selective sharing: Reader"
+  },
+  "@sharingEditor": {
+    "description": "Selective sharing: Editor"
+  },
+  "@sharingReaderHelp": {
+    "description": "Selective sharing: ReaderHelp"
+  },
+  "@sharingEditorHelp": {
+    "description": "Selective sharing: EditorHelp"
+  },
+  "@sharingPreview": {
+    "description": "Selective sharing: Preview"
+  },
+  "@sharingExclude": {
+    "description": "Selective sharing: Exclude"
+  },
+  "@sharingIncludeNotes": {
+    "description": "Selective sharing: IncludeNotes"
+  },
+  "@sharingSecretWarning": {
+    "description": "Selective sharing: SecretWarning"
+  },
+  "@sharingSecretConfirmed": {
+    "description": "Selective sharing: SecretConfirmed"
+  },
+  "@sharingHost": {
+    "description": "Selective sharing: Host"
+  },
+  "@sharingSnippet": {
+    "description": "Selective sharing: Snippet"
+  },
+  "@sharingGroup": {
+    "description": "Selective sharing: Group"
+  },
+  "@sharingSecret": {
+    "description": "Selective sharing: Secret"
+  },
+  "@sharingDevice": {
+    "description": "Selective sharing: Device"
+  },
+  "@sharingOwner": {
+    "description": "Selective sharing: Owner"
+  },
+  "@sharingMembers": {
+    "description": "Selective sharing: Members"
+  },
+  "@sharingVerified": {
+    "description": "Selective sharing: Verified"
+  },
+  "@sharingBlocked": {
+    "description": "Selective sharing: Blocked"
+  },
+  "@sharingDeleted": {
+    "description": "Selective sharing: Deleted"
+  },
+  "@sharingRevision": {
+    "description": "Selective sharing: Revision"
+  },
+  "@sharingQueue": {
+    "description": "Selective sharing: Queue"
+  },
+  "@sharingFlush": {
+    "description": "Selective sharing: Flush"
+  },
+  "@sharingPending": {
+    "description": "Selective sharing: Pending"
+  },
+  "@sharingConflictHelp": {
+    "description": "Selective sharing: ConflictHelp"
+  },
+  "@sharingRevoke": {
+    "description": "Selective sharing: Revoke"
+  },
+  "@sharingRevokeHelp": {
+    "description": "Selective sharing: RevokeHelp"
+  },
+  "@sharingStop": {
+    "description": "Selective sharing: Stop"
+  },
+  "@sharingStopHelp": {
+    "description": "Selective sharing: StopHelp"
+  },
+  "@sharingCopyPersonal": {
+    "description": "Selective sharing: CopyPersonal"
+  },
+  "@sharingCopyHelp": {
+    "description": "Selective sharing: CopyHelp"
+  },
+  "@sharingSaved": {
+    "description": "Selective sharing: Saved"
+  },
+  "@sharingEdit": {
+    "description": "Selective sharing: Edit"
+  },
+  "@sharingChangeSaved": {
+    "description": "Selective sharing: ChangeSaved"
+  },
+  "@sharingName": {
+    "description": "Selective sharing: Name"
+  },
+  "@sharingAddress": {
+    "description": "Selective sharing: Address"
+  },
+  "@sharingPort": {
+    "description": "Selective sharing: Port"
+  },
+  "@sharingUsername": {
+    "description": "Selective sharing: Username"
+  },
+  "@sharingNotes": {
+    "description": "Selective sharing: Notes"
+  },
+  "@sharingDescription": {
+    "description": "Selective sharing: Description"
+  },
+  "@sharingCommand": {
+    "description": "Selective sharing: Command"
+  },
+  "@sharingNoDevices": {
+    "description": "Selective sharing: NoDevices"
+  },
+  "@sharingNoAutoRun": {
+    "description": "Selective sharing: NoAutoRun"
+  },
+  "@sharingOwnerDeviceOnly": {
+    "description": "Selective sharing: OwnerDeviceOnly"
+  },
+  "@sharingWorking": {
+    "description": "Selective sharing: Working"
+  },
+  "@sharingCopyCode": {
+    "description": "Selective sharing: CopyCode"
+  },
+  "@sharingAddRecipient": {
+    "description": "Selective sharing: AddRecipient"
+  },
+  "@sharingRefreshCopy": {
+    "description": "Selective sharing: RefreshCopy"
+  },
+  "sharingManageAccess": "Управление доступом",
+  "@sharingManageAccess": {
+    "description": "Selective sharing interface."
+  },
+  "sharingReviewQueue": "Посмотреть очередь",
+  "@sharingReviewQueue": {
+    "description": "Selective sharing interface."
+  },
+  "sharingQueueHelp": "После изменения прав или содержимого отправка приостанавливается. Проверьте актуальный элемент; ненужный запрос можно удалить и создать новое изменение.",
+  "@sharingQueueHelp": {
+    "description": "Selective sharing interface."
+  },
+  "sharingDiscard": "Убрать из очереди",
+  "@sharingDiscard": {
+    "description": "Selective sharing interface."
+  },
+  "sharingDiscardHelp": "Удалить этот запрос с устройства? Уже принятые сервером изменения остаются. Удаление запроса не отменяет опубликованный доступ.",
+  "@sharingDiscardHelp": {
+    "description": "Selective sharing interface."
+  },
+  "sharingReconcile": "Проверить историю",
+  "@sharingReconcile": {
+    "description": "Selective sharing interface."
+  },
+  "sharingReconcileHelp": "Локальная копия отстаёт от сохранённой защищённой отметки. Сверьте код владельца. Приложение проверит полную подписанную историю; пропуски или другая ветка будут отклонены.",
+  "@sharingReconcileHelp": {
+    "description": "Selective sharing interface."
+  },
+  "sharingEndpointChanged": "Адрес или порт общего хоста изменился. Проверьте новые значения и подтвердите обновление перед подключением со своими учётными данными.",
+  "@sharingEndpointChanged": {
+    "description": "Selective sharing interface."
+  },
+  "sharingTunnelVerify": "Для общего хоста сначала проверьте доступ и запустите туннель вручную.",
+  "@sharingTunnelVerify": {
+    "description": "Selective sharing interface."
+  },
+  "sharingPromptPassword": "Спрашивать пароль при подключении",
+  "@sharingPromptPassword": {
+    "description": "Selective sharing interface."
+  },
+  "sharingRefreshHost": "Обновить общий хост",
+  "@sharingRefreshHost": {
+    "description": "Selective sharing interface."
+  },
+  "sharingRefreshHostHelp": "Проверьте адрес и порт в разделе «Общий доступ». Подтвердить их обновление в личной копии? Остальные настройки подключения останутся вашими.",
+  "@sharingRefreshHostHelp": {
+    "description": "Selective sharing interface."
+  },
+  "sharingDetachHost": "Сделать независимой копией",
+  "@sharingDetachHost": {
+    "description": "Selective sharing interface."
+  },
+  "sharingDetachHostHelp": "Эта копия больше не будет проверять изменения и доступ к общему хосту. У коллег останутся их права и копии.",
+  "@sharingDetachHostHelp": {
+    "description": "Selective sharing interface."
+  },
+  "sharingCollectionHelp": "Выберите уже опубликованные элементы. Группа хранит только ссылки и не даёт доступ к их содержимому.",
+  "@sharingCollectionHelp": {
+    "description": "Selective sharing interface."
+  },
+  "sharingCollectionEmpty": "Сначала поделитесь нужными элементами отдельно.",
+  "@sharingCollectionEmpty": {
+    "description": "Selective sharing interface."
+  },
+  "sharingCollectionUnavailable": "Элемент недоступен: нужен отдельный доступ.",
+  "@sharingCollectionUnavailable": {
+    "description": "Selective sharing interface."
+  },
+  "sharingCollectionChildren": "Элементы группы",
+  "@sharingCollectionChildren": {
+    "description": "Selective sharing interface."
+  },
+  "sharingSecretSelection": "Передаваемый секрет",
+  "@sharingSecretSelection": {
+    "description": "Selective sharing interface."
+  },
+  "sharingSecretPrimary": "Пароль или приватный ключ",
+  "@sharingSecretPrimary": {
+    "description": "Selective sharing interface."
+  },
+  "sharingSecretPassphrase": "Парольная фраза ключа (отдельно)",
+  "@sharingSecretPassphrase": {
+    "description": "Selective sharing interface."
+  },
+  "enrollmentTitle": "Новые собственные устройства",
+  "@enrollmentTitle": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentHelp": "Разрешение относится к одному общему элементу. Уже проверенное устройство коллеги подтверждает его новое устройство; владелец остаётся онлайн для выдачи доступа. Данные личного хранилища не передаются.",
+  "@enrollmentHelp": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentCreate": "Разрешить новые устройства",
+  "@enrollmentCreate": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentAnchor": "Устройство для подтверждения",
+  "@enrollmentAnchor": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentExpiry": "Срок разрешения",
+  "@enrollmentExpiry": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentQuota": "Количество новых устройств",
+  "@enrollmentQuota": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentOneDay": "1 день",
+  "@enrollmentOneDay": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentSevenDays": "7 дней",
+  "@enrollmentSevenDays": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentThirtyDays": "30 дней",
+  "@enrollmentThirtyDays": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentAutomatic": "Принимать подтверждённые устройства автоматически",
+  "@enrollmentAutomatic": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentAutomaticHelp": "Только после сверки кода на уже проверенном устройстве, пока владелец онлайн. Новое устройство не сможет превысить выбранные права.",
+  "@enrollmentAutomaticHelp": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentDisable": "Отключить разрешение",
+  "@enrollmentDisable": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentDisableHelp": "Новые устройства больше не получат доступ по этому разрешению. Уже добавленные устройства удаляются отдельно в управлении доступом. Отключение сохранится на этом устройстве даже без связи с сервером.",
+  "@enrollmentDisableHelp": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentExport": "Пакет для нового устройства",
+  "@enrollmentExport": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentRequests": "Запросы устройств",
+  "@enrollmentRequests": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentPrepare": "Я на новом устройстве",
+  "@enrollmentPrepare": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentEndorse": "Подтвердить другое устройство",
+  "@enrollmentEndorse": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentSubmit": "Продолжить добавление устройства",
+  "@enrollmentSubmit": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentPackage": "Пакет устройства",
+  "@enrollmentPackage": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentPackageHelp": "Передайте этот публичный пакет между своими устройствами. Он содержит ключи и подписанные подтверждения, без паролей и содержимого общих элементов. Сверка кода остаётся обязательной.",
+  "@enrollmentPackageHelp": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentPreview": "Проверить пакет",
+  "@enrollmentPreview": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentCodeHelp": "Сравните весь код на новом и уже проверенном устройстве лично или по независимому каналу. Подтвердите только полное совпадение. Код относится именно к этому запросу.",
+  "@enrollmentCodeHelp": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentCopyPackage": "Скопировать пакет",
+  "@enrollmentCopyPackage": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentSavePackage": "Сохранить пакет в файл",
+  "@enrollmentSavePackage": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentOpenPackage": "Открыть пакет из файла",
+  "@enrollmentOpenPackage": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentPending": "Мои запросы устройств",
+  "@enrollmentPending": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentWait": "Запрос отправлен. Держите это устройство и устройство владельца онлайн. Продолжите проверку, когда владелец отправит запрос подтверждения.",
+  "@enrollmentWait": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentChallenge": "Проверить ключи устройства",
+  "@enrollmentChallenge": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentRespond": "Продолжить проверку",
+  "@enrollmentRespond": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentAccept": "Предоставить доступ",
+  "@enrollmentAccept": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentManualConfirmed": "Подтверждаю добавление этого устройства с указанными правами",
+  "@enrollmentManualConfirmed": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentActive": "Действует",
+  "@enrollmentActive": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentDisabled": "Отключено",
+  "@enrollmentDisabled": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentRequested": "Ожидает проверки",
+  "@enrollmentRequested": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentChallenged": "Ожидает ответа устройства",
+  "@enrollmentChallenged": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentResponded": "Ключи подтверждены",
+  "@enrollmentResponded": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentAccepted": "Доступ предоставлен",
+  "@enrollmentAccepted": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentExpired": "Срок истёк",
+  "@enrollmentExpired": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentBlocked": "Нужна проверка актуальных прав и истории",
+  "@enrollmentBlocked": {
+    "description": "Verified own-device enrollment interface."
+  },
+  "enrollmentCreateConfirmed": "Разрешаю добавлять собственные устройства этого пользователя в выбранных пределах",
+  "@enrollmentCreateConfirmed": {
+    "description": "Verified own-device enrollment interface."
   }
 }

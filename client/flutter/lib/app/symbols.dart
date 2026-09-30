@@ -6,6 +6,7 @@ enum AppSymbol {
   groups,
   credentials,
   knownHosts,
+  sharing,
   terminal,
   sftp,
   tunnels,
@@ -82,6 +83,12 @@ class _SymbolPainter extends CustomPainter {
           ink,
         );
         path(const [Offset(8, 12), Offset(11, 15), Offset(16, 9)]);
+      case AppSymbol.sharing:
+        canvas.drawCircle(const Offset(6, 12), 3, ink);
+        canvas.drawCircle(const Offset(18, 5), 3, ink);
+        canvas.drawCircle(const Offset(18, 19), 3, ink);
+        line(8.6, 10.5, 15.4, 6.5);
+        line(8.6, 13.5, 15.4, 17.5);
       case AppSymbol.terminal:
         box(2, 3, 20, 18, 3);
         path(const [Offset(6, 8), Offset(10, 12), Offset(6, 16)]);

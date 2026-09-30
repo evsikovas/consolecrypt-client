@@ -48,6 +48,9 @@ sha2 = { version = "0.11", optional = true }
 ed25519-dalek = { version = "3", optional = true }
 
 [dev-dependencies]
+cc-crypto-core.workspace = true
+base64.workspace = true
+zeroize.workspace = true
 tracing-log = "0.2"
 # Enables the mock server for this crate's own integration tests.
 cc-sync-core = { path = ".", features = ["mock-server"] }

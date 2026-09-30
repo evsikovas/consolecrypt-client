@@ -570,6 +570,7 @@ name = "cc-bridge"
 version = "0.1.0"
 dependencies = [
  "cc-app-core",
+ "cc-models",
  "cc-protocol",
  "cc-sftp-core",
  "cc-ssh-core",
@@ -629,6 +630,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "subtle",
  "thiserror 2.0.21",
  "unicode-normalization",
  "uuid",
@@ -779,7 +781,9 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "axum",
+ "base64 0.22.1",
  "bytes",
+ "cc-crypto-core",
  "cc-models",
  "cc-protocol",
  "cc-storage-core",
@@ -803,6 +807,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]

@@ -50,6 +50,7 @@ String shellBranchLabel(ShellBranch branch, AppLocalizations l) => switch (branc
   ShellBranch.sync => l.navSync,
   ShellBranch.backups => l.navBackups,
   ShellBranch.settings => l.navSettings,
+  ShellBranch.sharing => l.sharingTitle,
 };
 
 const _navItems = [
@@ -57,6 +58,7 @@ const _navItems = [
   _NavItem(ShellBranch.groups, Icons.account_tree_rounded),
   _NavItem(ShellBranch.credentials, Icons.key_rounded),
   _NavItem(ShellBranch.knownHosts, Icons.verified_user_outlined),
+  _NavItem(ShellBranch.sharing, Icons.people_outline_rounded, syncedOnly: true),
   _NavItem(ShellBranch.terminal, Icons.terminal_rounded),
   _NavItem(ShellBranch.sftp, Icons.folder_copy_rounded),
   _NavItem(ShellBranch.tunnels, Icons.swap_horiz_rounded),
@@ -79,6 +81,7 @@ const _liveToolbarBranches = {
   ShellBranch.sync,
   ShellBranch.backups,
   ShellBranch.settings,
+  ShellBranch.sharing,
 };
 
 /// User-collapsed sidebar (session-scoped; windows < 1000 px are always

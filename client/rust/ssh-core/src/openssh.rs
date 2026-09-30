@@ -40,6 +40,9 @@ pub fn is_cygwin_like(path: &Path) -> bool {
 }
 
 fn candidate_paths() -> Vec<PathBuf> {
+    if cfg!(any(target_os = "ios", target_os = "android")) {
+        return Vec::new();
+    }
     let mut v = Vec::new();
     if cfg!(windows) {
         if let Some(root) = std::env::var_os("SystemRoot") {
@@ -69,6 +72,9 @@ fn candidate_paths() -> Vec<PathBuf> {
 
 /// Run `ssh -V` and return the banner (printed on stderr).
 pub fn openssh_version(path: &Path) -> Option<String> {
+    if cfg!(any(target_os = "ios", target_os = "android")) {
+        return None;
+    }
     let out = Command::new(path).arg("-V").output().ok()?;
     let text = if out.stderr.is_empty() {
         out.stdout
@@ -244,6 +250,11 @@ pub fn build_openssh_command(
     plan: &ConnectionPlan,
     opts: &OpenSshOptions,
 ) -> Result<OpenSshCommand, SshError> {
+    if cfg!(any(target_os = "ios", target_os = "android")) {
+        return Err(SshError::Unsupported(
+            "the system OpenSSH backend is unavailable on mobile; use native SSH".into(),
+        ));
+    }
     let hops = plan.all_hops();
     let agent = opts.agent_socket.to_string_lossy().to_string();
     let mut config =

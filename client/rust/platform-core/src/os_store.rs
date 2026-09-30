@@ -38,8 +38,15 @@ impl OsSecureStore {
 
     fn entry(&self, name: &str) -> Result<Entry, SecureStoreError> {
         validate_secret_name(name)?;
+        #[cfg(target_os = "ios")]
+        let modifiers = Some(std::collections::HashMap::from([(
+            "access-policy",
+            "when-unlocked-this-device-only",
+        )]));
+        #[cfg(not(target_os = "ios"))]
+        let modifiers: Option<std::collections::HashMap<&str, &str>> = None;
         self.store
-            .build(&self.service, name, None)
+            .build(&self.service, name, modifiers.as_ref())
             .map_err(map_error)
     }
 }
@@ -58,6 +65,17 @@ fn platform_store() -> Result<Arc<CredentialStore>, SecureStoreError> {
     Ok(store)
 }
 
+#[cfg(target_os = "ios")]
+fn platform_store() -> Result<Arc<CredentialStore>, SecureStoreError> {
+    // Default app access group, explicitly local: device identity and local
+    // SQLCipher keys must never migrate through iCloud Keychain or backups.
+    let configuration = std::collections::HashMap::from([("cloud-sync", "false")]);
+    let store: Arc<CredentialStore> =
+        apple_native_keyring_store::protected::Store::new_with_configuration(&configuration)
+            .map_err(map_error)?;
+    Ok(store)
+}
+
 #[cfg(target_os = "android")]
 fn platform_store() -> Result<Arc<CredentialStore>, SecureStoreError> {
     // AES-GCM ciphertext in private SharedPreferences; the wrapping key
@@ -71,7 +89,12 @@ fn platform_store() -> Result<Arc<CredentialStore>, SecureStoreError> {
 // (`zbus-secret-service-keyring-store`) behind this feature — the D-Bus stack
 // is not needed by current desktop/mobile targets; next: add it once a Linux
 // desktop build is planned, with a headless encrypted-file fallback.
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android",
+    target_os = "ios"
+)))]
 fn platform_store() -> Result<Arc<CredentialStore>, SecureStoreError> {
     Err(SecureStoreError::Unsupported(
         "no OS secure store for this platform yet",

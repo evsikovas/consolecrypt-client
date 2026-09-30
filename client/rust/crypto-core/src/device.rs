@@ -90,6 +90,12 @@ impl DeviceSecretKeys {
         x25519(&self.encryption, their_public)
     }
 
+    /// Sign a crate-owned canonical message. Public entry points must bind a
+    /// specific domain and validate the operation before reaching this helper.
+    pub(crate) fn sign_message(&self, message: &[u8]) -> [u8; ED25519_SIGNATURE_LEN] {
+        self.signing.sign(message).to_bytes()
+    }
+
     /// Ed25519-sign a device approval (ADR-0004 step 4).
     ///
     /// Call only after the user confirmed that the verification code of
