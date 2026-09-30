@@ -4,7 +4,7 @@
 <a href="https://consolecrypt.evsikov.net/?lang=ru">Сайт RU</a> ·
 <a href="https://consolecrypt.evsikov.net/?lang=en">Website EN</a> ·
 <a href="https://consolecrypt.evsikov.net/account">Личный кабинет</a> ·
-<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.13">Скачать 0.1.13</a> ·
+<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.20">Скачать 0.1.20</a> ·
 <a href="docs/public/BUILD_WINDOWS.md">Собрать для Windows</a> ·
 <a href="docs/public/BUILDING.md">Сборка и свой сервер</a> ·
 <a href="https://git.evsikov.net/publics/consolecrypt/-/issues">Сообщить об ошибке</a>
@@ -31,6 +31,10 @@ ConsoleCrypt — SSH-клиент с терминалом, SFTP, группам�
 - **ИИ-помощник:** Ollama, LM Studio и совместимые с OpenAI API провайдеры; просмотр команд перед выполнением.
 - **Настройка внешнего вида:** светлая и тёмная темы, синий акцент по умолчанию,
   размер текста, собственные цвета терминала, всплывающая или закреплённая правая панель.
+- **Совместная работа:** выбранные хосты, сниппеты, коллекции и отдельные секреты,
+  проверка устройств, роли и отзыв доступа. [Руководство общего доступа](docs/public/SHARING.md).
+- **iOS:** предварительный порт с нативным Rust-ядром, SSH/SFTP и Keychain;
+  [сборка Simulator и подпись для телефона](docs/public/BUILD_IOS.md).
 - **Защита данных:** зашифрованное хранилище и резервные копии, автоблокировка,
   подтверждение новых SSH-ключей хостов и устройств синхронизации.
 - **Android:** интерфейс для телефона, биометрическая разблокировка при доступности
@@ -43,16 +47,18 @@ SSH-соединения идут напрямую к вашим сервера�
 
 ## Скачать и установить
 
-**Текущий релиз — [0.1.13](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.13)** для macOS, Windows и Android.
+**Текущий релиз — [0.1.20](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.20)** для macOS, Windows и Android.
 
 | Платформа | Версия | Скачать | Установка |
 |---|---|---|---|
-| macOS 12+ · Apple Silicon и Intel | **0.1.13+1222** | [DMG](https://git.evsikov.net/-/project/14/uploads/a2d450f3a1fc3b3687b9cf285e0d13df/ConsoleCrypt-0.1.13+1222-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
-| Windows 10/11 · x64 | **0.1.13+1221** | [EXE](https://git.evsikov.net/-/project/14/uploads/f72511e397118ee7da30d3a47926653b/ConsoleCrypt-0.1.13+1221-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/-/project/14/uploads/787794ca8147a2d6a21a162a5799aea8/ConsoleCrypt-0.1.13+1221-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
-| Android 11+ · ARM64 | **0.1.13+27** | [APK](https://git.evsikov.net/-/project/14/uploads/b3dccd562f6c619a839dddc79c006444/ConsoleCrypt-0.1.13+27-android-arm64.apk) | Скачайте APK на телефон и установите |
+| macOS 12+ · Apple Silicon и Intel | **0.1.20+1232** | [DMG](https://git.evsikov.net/-/project/14/uploads/a164ea612c767eb96bd4444f9374ea9f/ConsoleCrypt-0.1.20+1232-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
+| Windows 10/11 · x64 | **0.1.20+1231** | [EXE](https://git.evsikov.net/-/project/14/uploads/ce22c65cee6462d6a9fb11d6a369f9d9/ConsoleCrypt-0.1.20+1231-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/-/project/14/uploads/6e9730e9ced6c50bfada90eece00d142/ConsoleCrypt-0.1.20+1231-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
+| Android 11+ · ARM64 | **0.1.20+49** | [APK](https://git.evsikov.net/-/project/14/uploads/9eec0eb0eba7925e1c37807aac4e8597/ConsoleCrypt-0.1.20+49-android-arm64.apk) | Скачайте APK на телефон и установите |
 
-[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/-/project/14/uploads/ebc89673711aaf13bb189b5c06d413cf/SHA256SUMS-0.1.13.txt) ·
-[Проверки выпуска 0.1.13](docs/public/RELEASE_0_1_13.md) · [Как работают обновления](docs/public/UPDATES.md).
+iOS Simulator на Mac: **0.1.20+48**, [две части ZIP и инструкция](docs/public/BUILD_IOS.md). Для настоящего iPhone нужна отдельная подпись; ZIP на телефон не устанавливается.
+
+[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/-/project/14/uploads/4f7cafb394296ed935e1efced770ce73/SHA256SUMS-0.1.20.txt) ·
+[Проверки выпуска 0.1.20](docs/public/RELEASE_0_1_20.md) · [Как работают обновления](docs/public/UPDATES.md).
 
 В настройках есть автопроверка при запуске, ручная проверка и скачивание новой версии с проверкой цифровой подписи. Для перехода с 0.1.10 или более ранней версии установите этот релиз вручную; следующие обновления можно получать через приложение.
 
