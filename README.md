@@ -17,7 +17,8 @@ ConsoleCrypt — SSH-клиент с терминалом, SFTP, группам�
 **https://consolecrypt.evsikov.net**. Этот же адрес укажите в настройках сервера
 приложения. Учётные записи на разных серверах независимы.
 
-[Сервер и инструкция развёртывания](docs/public/HOSTING.md).
+Запуск своего сервера: [Docker Compose](docs/public/HOSTING.md#docker-compose)
+или [Kubernetes / Helm](docs/public/HOSTING.md#kubernetes-helm).
 Сайт и кабинет находятся в отдельном [репозитории consolecrypt-site](https://git.evsikov.net/publics/consolecrypt-site) и выпускаются независимо от API.
 
 **Предварительная версия.** Функции продолжают развиваться. Перед обновлением
