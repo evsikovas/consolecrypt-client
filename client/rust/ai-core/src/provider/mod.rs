@@ -16,6 +16,7 @@
 //!   sent (see [`crate::sanitizer`]).
 
 mod http;
+pub(crate) use http::MAX_OUTPUT_BYTES;
 mod ollama;
 mod openai;
 

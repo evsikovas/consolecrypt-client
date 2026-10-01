@@ -22,8 +22,8 @@ use crate::policy::{HostRef, ProposalOrigin, RunProposal};
 use crate::provider::{ChatEvent, ChatRequest, ChatStream, LlmProvider, Message, ResponseFormat};
 use crate::risk::{classify, combine_with_ai, RiskLevel};
 use crate::sanitizer::{
-    rules_classify_secret_key, secret_spans, Category, PrivacyProfile, PromptBuilder, Rehydrator,
-    SanitizeReport, SanitizerSession,
+    rules_classify_secret_key, secret_spans, Category, PrivacyProfile, PromptBuilder, Rehydrated,
+    Rehydrator, SanitizeReport, SanitizerSession,
 };
 use crate::snippet::VariableForm;
 use cc_models::snippet::{template_variables, SnippetSource, SnippetVariable};
@@ -178,6 +178,7 @@ pub struct AskStream {
     inner: ChatStream,
     rehydrator: Rehydrator,
     raw: String,
+    emitted: usize,
     done: bool,
 }
 
@@ -211,14 +212,33 @@ impl Stream for AskStream {
                 Poll::Pending => return Poll::Pending,
                 Poll::Ready(None) | Poll::Ready(Some(Ok(ChatEvent::Done { .. }))) => {
                     self.done = true;
-                    let rest = self.rehydrator.finish();
+                    let remaining = crate::provider::MAX_OUTPUT_BYTES.saturating_sub(self.emitted);
+                    let Some(rest) = self.rehydrator.finish_bounded(remaining) else {
+                        return Poll::Ready(Some(Err(AiError::InvalidResponse(
+                            "AI answer exceeds the size limit".into(),
+                        ))));
+                    };
+                    self.emitted += rest.len();
                     if !rest.is_empty() {
                         return Poll::Ready(Some(Ok(rest)));
                     }
                 }
                 Poll::Ready(Some(Ok(ChatEvent::Delta(d)))) => {
+                    if d.len() > crate::provider::MAX_OUTPUT_BYTES.saturating_sub(self.raw.len()) {
+                        self.done = true;
+                        return Poll::Ready(Some(Err(AiError::InvalidResponse(
+                            "AI answer exceeds the size limit".into(),
+                        ))));
+                    }
                     self.raw.push_str(&d);
-                    let out = self.rehydrator.push(&d);
+                    let remaining = crate::provider::MAX_OUTPUT_BYTES.saturating_sub(self.emitted);
+                    let Some(out) = self.rehydrator.push_bounded(&d, remaining) else {
+                        self.done = true;
+                        return Poll::Ready(Some(Err(AiError::InvalidResponse(
+                            "AI answer exceeds the size limit".into(),
+                        ))));
+                    };
+                    self.emitted += out.len();
                     if !out.is_empty() {
                         return Poll::Ready(Some(Ok(out)));
                     }
@@ -329,7 +349,7 @@ impl AiAssistant {
     /// Chat with a structured format; retry once as plain text if the server
     /// rejects the format.
     pub(crate) async fn complete(&self, mut req: ChatRequest) -> Result<String> {
-        match self.provider.chat(&req).await {
+        let content = match self.provider.chat(&req).await {
             Err(AiError::Http {
                 status: 400 | 422, ..
             }) if req.response_format != ResponseFormat::Text => {
@@ -338,7 +358,11 @@ impl AiAssistant {
                 Ok(self.provider.chat(&req).await?.content)
             }
             other => other.map(|r| r.content),
+        }?;
+        if content.len() > crate::provider::MAX_OUTPUT_BYTES {
+            return Err(answer_too_large());
         }
+        Ok(content)
     }
 
     // ------------------------------------------------------------------
@@ -384,8 +408,14 @@ impl AiAssistant {
     ) -> Result<AskAnswer> {
         let req = self.ask_request(conv, question, opts).await;
         let resp = self.provider.chat(&req).await?;
+        if resp.content.len() > crate::provider::MAX_OUTPUT_BYTES {
+            return Err(answer_too_large());
+        }
+        let r = conv
+            .session
+            .rehydrate_bounded(&resp.content, crate::provider::MAX_OUTPUT_BYTES)
+            .ok_or_else(answer_too_large)?;
         conv.record_answer(&resp.content, self.options.max_history);
-        let r = conv.session.rehydrate(&resp.content);
         Ok(AskAnswer {
             text: r.text,
             unresolved_secrets: r.unresolved_secrets,
@@ -406,6 +436,7 @@ impl AiAssistant {
             inner,
             rehydrator: conv.session.rehydrator(),
             raw: String::new(),
+            emitted: 0,
             done: false,
         })
     }
@@ -421,21 +452,26 @@ impl AiAssistant {
         mut s: CommandSuggestion,
         target: CommandTarget,
         host: Option<&HostContext>,
-    ) -> CommandProposal {
-        let r = session.rehydrate(&s.command);
+    ) -> Result<CommandProposal> {
+        let mut hydrate = answer_rehydration(session);
+        let r = hydrate(&s.command)?;
         s.command = r.text;
-        s.explanation = session.rehydrate(&s.explanation).text;
+        s.explanation = hydrate(&s.explanation)?.text;
         s.alternatives = s
             .alternatives
             .iter()
-            .map(|a| session.rehydrate(a).text)
-            .collect();
-        s.diagnosis = s.diagnosis.map(|d| session.rehydrate(&d).text);
+            .map(|a| hydrate(a).map(|r| r.text))
+            .collect::<Result<_>>()?;
+        s.diagnosis = s
+            .diagnosis
+            .map(|d| hydrate(&d).map(|r| r.text))
+            .transpose()?;
         for v in &mut s.variables {
             v.default = v
                 .default
                 .take()
-                .map(|d| session.rehydrate(&d).text)
+                .map(|d| hydrate(&d).map(|r| r.text))
+                .transpose()?
                 .filter(|d| default_allowed(&v.name, d));
         }
         let host_ref = host.map(|h| HostRef {
@@ -457,14 +493,14 @@ impl AiAssistant {
             let meta: Vec<SnippetVariable> = s.variables.iter().map(to_snippet_var).collect();
             VariableForm::from_template(&s.command, &meta)
         });
-        CommandProposal {
+        Ok(CommandProposal {
             target,
             unresolved_secrets: r.unresolved_secrets,
             suggestion: s,
             run,
             form,
             redactions: session.report().clone(),
-        }
+        })
     }
 
     /// Generate Command.
@@ -501,7 +537,7 @@ impl AiAssistant {
         );
         let text = self.complete(chat).await?;
         let suggestion = parse_command_output(&text);
-        Ok(self.finalize_command(&session, suggestion, target, host.as_ref()))
+        self.finalize_command(&session, suggestion, target, host.as_ref())
     }
 
     /// Fix Last Error.
@@ -537,7 +573,7 @@ impl AiAssistant {
         );
         let text = self.complete(chat).await?;
         let suggestion = parse_command_output(&text);
-        Ok(self.finalize_command(&session, suggestion, target, host.as_ref()))
+        self.finalize_command(&session, suggestion, target, host.as_ref())
     }
 
     /// Explain Command.
@@ -577,22 +613,23 @@ impl AiAssistant {
         );
         let text = self.complete(chat).await?;
         let e = parse_explanation(&text);
+        let mut hydrate = answer_rehydration(&session);
         let explanation = Explanation {
-            summary: session.rehydrate(&e.summary).text,
+            summary: hydrate(&e.summary)?.text,
             parts: e
                 .parts
                 .into_iter()
                 .map(|mut p| {
-                    p.text = session.rehydrate(&p.text).text;
-                    p.meaning = session.rehydrate(&p.meaning).text;
-                    p
+                    p.text = hydrate(&p.text)?.text;
+                    p.meaning = hydrate(&p.meaning)?.text;
+                    Ok(p)
                 })
-                .collect(),
+                .collect::<Result<_>>()?,
             warnings: e
                 .warnings
                 .iter()
-                .map(|w| session.rehydrate(w).text)
-                .collect(),
+                .map(|w| hydrate(w).map(|r| r.text))
+                .collect::<Result<_>>()?,
             ..e
         };
         let effective_risk = combine_with_ai(local.level, explanation.risk_suggestion);
@@ -614,9 +651,11 @@ impl AiAssistant {
         raw: RawSnippet,
         target: CommandTarget,
         fallback_name: &str,
-    ) -> SnippetDraft {
-        let rh = |s: &str| session.map_or_else(|| s.to_owned(), |ss| ss.rehydrate(s).text);
-        let template = rh(&raw.template);
+    ) -> Result<SnippetDraft> {
+        let local_session = SanitizerSession::new(PrivacyProfile::Local);
+        let mut hydrate = answer_rehydration(session.unwrap_or(&local_session));
+        let mut rh = |s: &str| hydrate(s).map(|r| r.text);
+        let template = rh(&raw.template)?;
         let scrubbed = scrub_secrets(&template);
         let template = scrubbed.template;
         let mut variables: Vec<SnippetVariable> = Vec::new();
@@ -634,25 +673,26 @@ impl AiAssistant {
                     required: true,
                 },
             };
-            var.description = rh(&var.description);
+            var.description = rh(&var.description)?;
             var.default = var
                 .default
                 .map(|d| rh(&d))
+                .transpose()?
                 .filter(|d| default_allowed(&var.name, d));
             variables.push(var);
         }
         let local = classify(&template, target.dialect()).level;
         let risk = combine_with_ai(local, raw.risk_suggestion);
         let name = if raw.name.trim().is_empty() {
-            fallback_name.chars().take(60).collect::<String>()
+            rh(&fallback_name.chars().take(60).collect::<String>())?
         } else {
-            rh(&raw.name)
+            rh(&raw.name)?
         };
-        let mut tags = raw.tags.iter().map(|t| rh(t)).collect::<Vec<_>>();
+        let mut tags = raw.tags.iter().map(|t| rh(t)).collect::<Result<Vec<_>>>()?;
         tags.push(cc_search_core::snippet_type_tag(target.snippet_type()).to_owned());
-        SnippetDraft {
+        Ok(SnippetDraft {
             name: name.trim().to_owned(),
-            description: rh(&raw.description),
+            description: rh(&raw.description)?,
             snippet_type: target.snippet_type(),
             shell: None,
             template,
@@ -668,7 +708,7 @@ impl AiAssistant {
             },
             secrets_removed: scrubbed.secrets_removed,
             parse_quality: raw.parse_quality,
-        }
+        })
     }
 
     /// Create Snippet from a description.
@@ -703,7 +743,7 @@ impl AiAssistant {
         );
         let text = self.complete(chat).await?;
         let parsed = parse_snippet_output(&text);
-        Ok(self.finalize_snippet(Some(&session), parsed, target, &req.description))
+        self.finalize_snippet(Some(&session), parsed, target, &req.description)
     }
 
     /// Convert a terminal command into a parameterized snippet. Local rules
@@ -742,7 +782,7 @@ impl AiAssistant {
             parse_quality: ParseQuality::Json,
         };
         if !req.use_llm {
-            let mut d = self.finalize_snippet(None, local_raw, target, &fallback_name);
+            let mut d = self.finalize_snippet(None, local_raw, target, &fallback_name)?;
             d.secrets_removed += local.secrets_removed;
             return Ok(d);
         }
@@ -787,7 +827,7 @@ impl AiAssistant {
                     .and_then(|l| l.default.clone());
             }
         }
-        let mut d = self.finalize_snippet(Some(&session), parsed, target, &fallback_name);
+        let mut d = self.finalize_snippet(Some(&session), parsed, target, &fallback_name)?;
         d.secrets_removed += local.secrets_removed;
         Ok(d)
     }
@@ -829,5 +869,95 @@ fn to_snippet_var(v: &SuggestedVariable) -> SnippetVariable {
         description: v.description.clone(),
         default: v.default.clone(),
         required: true,
+    }
+}
+
+fn answer_too_large() -> AiError {
+    AiError::InvalidResponse("AI answer exceeds the size limit".into())
+}
+
+/// One budget covers all fields of a structured answer, not just each field.
+fn answer_rehydration(session: &SanitizerSession) -> impl FnMut(&str) -> Result<Rehydrated> + '_ {
+    let mut remaining = crate::provider::MAX_OUTPUT_BYTES;
+    move |text| {
+        let result = session
+            .rehydrate_bounded(text, remaining)
+            .ok_or_else(answer_too_large)?;
+        remaining -= result.text.len();
+        Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod stream_limit_tests {
+    use super::*;
+    use futures::StreamExt;
+
+    #[test]
+    fn structured_fields_share_one_rehydration_budget() {
+        let mut session = SanitizerSession::new(PrivacyProfile::Strict);
+        let literal = format!("public-host-{}", "a".repeat(16 * 1024));
+        session.add_literal(Category::Host, &literal);
+        session.sanitize(&literal);
+        let mut hydrate = answer_rehydration(&session);
+        assert_eq!(
+            hydrate(&"<HOST_1>".repeat(256)).unwrap().text.len(),
+            literal.len() * 256
+        );
+        assert!(matches!(
+            hydrate(&"<HOST_1>".repeat(256)),
+            Err(AiError::InvalidResponse(_))
+        ));
+    }
+
+    #[tokio::test]
+    async fn accumulated_answer_is_bounded_before_appending_and_stops_once() {
+        let limit = crate::provider::MAX_OUTPUT_BYTES;
+        let mut stream = AskStream {
+            inner: Box::pin(futures::stream::iter([
+                Ok(ChatEvent::Delta("x".repeat(limit))),
+                Ok(ChatEvent::Delta("y".into())),
+                Ok(ChatEvent::Delta("must not be delivered".into())),
+            ])),
+            rehydrator: SanitizerSession::new(PrivacyProfile::Standard).rehydrator(),
+            raw: String::new(),
+            emitted: 0,
+            done: false,
+        };
+        assert!(stream.next().await.unwrap().is_ok());
+        assert_eq!(stream.raw.len(), limit);
+        assert!(matches!(
+            stream.next().await,
+            Some(Err(AiError::InvalidResponse(_)))
+        ));
+        assert_eq!(stream.raw.len(), limit);
+        assert!(stream.next().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn rehydrated_answer_is_bounded_before_expanding_long_placeholders() {
+        let mut session = SanitizerSession::new(PrivacyProfile::Strict);
+        let literal = format!("public-host-{}", "a".repeat(16 * 1024));
+        session.add_literal(Category::Host, &literal);
+        assert_eq!(session.sanitize(&literal).as_str(), "<HOST_1>");
+        let mut stream = AskStream {
+            inner: Box::pin(futures::stream::iter([
+                Ok(ChatEvent::Delta("<HOST_1>".repeat(256))),
+                Ok(ChatEvent::Delta("<HOST_1>".repeat(256))),
+                Ok(ChatEvent::Delta("must not be delivered".into())),
+            ])),
+            rehydrator: session.rehydrator(),
+            raw: String::new(),
+            emitted: 0,
+            done: false,
+        };
+        let first = stream.next().await.unwrap().unwrap();
+        assert_eq!(first.len(), literal.len() * 256);
+        assert!(matches!(
+            stream.next().await,
+            Some(Err(AiError::InvalidResponse(_)))
+        ));
+        assert!(stream.emitted <= crate::provider::MAX_OUTPUT_BYTES);
+        assert!(stream.next().await.is_none());
     }
 }

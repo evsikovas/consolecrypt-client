@@ -3,7 +3,7 @@ description: "ConsoleCrypt desktop client UI: zero-knowledge E2EE SSH client (Fl
 # Never published to pub.dev; distributed as a desktop application.
 publish_to: 'none'
 
-version: 0.2.0+57
+version: 0.2.1+60
 
 environment:
   sdk: ^3.13.4
@@ -19,7 +19,8 @@ dependencies:
   # Declarative routing with redirects and stateful shell (BSD-3-Clause).
   go_router: ^18.0.1
   # Terminal emulator widget (MIT). Wrapped by lib/terminal/terminal_pane.dart.
-  xterm: ^4.0.0
+  xterm:
+    path: vendor/xterm
   # Recovery Kit QR code (BSD-3-Clause).
   qr_flutter: ^4.1.0
   material_ui: ^1.4.0

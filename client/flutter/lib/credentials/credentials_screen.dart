@@ -135,22 +135,59 @@ class CredentialDetailsDialog extends ConsumerStatefulWidget {
 class _CredentialDetailsDialogState extends ConsumerState<CredentialDetailsDialog> {
   String? _revealed;
   Timer? _hideTimer;
+  Object? _profile;
+  Object? _vault;
+  int _generation = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _profile = ref.read(activeProfileProvider)?.id;
+    _vault = ref.read(vaultStatusProvider).value?.vaultId;
+  }
+
+  bool get _currentSession =>
+      mounted &&
+      _profile != null &&
+      ref.read(activeProfileProvider)?.id == _profile &&
+      ref.read(vaultStatusProvider).value?.vaultId == _vault &&
+      ref.read(vaultStatusProvider).value?.isUnlocked == true;
+
+  void _forget() {
+    _generation++;
+    _hideTimer?.cancel();
+    _hideTimer = null;
+    _revealed = null;
+  }
 
   @override
   void dispose() {
-    _hideTimer?.cancel();
-    _revealed = null;
+    _forget();
     super.dispose();
   }
 
-  Future<SecretText?> _fetch() =>
-      runWithFeedback(context, () => ref.read(inventoryServiceProvider).revealCredentialSecret(widget.credential.id));
+  Future<SecretText?> _fetch() async {
+    if (!_currentSession) return null;
+    final generation = _generation;
+    final secret = await runWithFeedback(
+      context,
+      () => ref.read(inventoryServiceProvider).revealCredentialSecret(widget.credential.id),
+    );
+    if (!_currentSession || generation != _generation) {
+      secret?.wipe();
+      return null;
+    }
+    return secret;
+  }
 
   Future<void> _reveal() async {
     final secret = await _fetch();
-    if (secret == null || !mounted) return;
-    setState(() => _revealed = secret.expose());
-    secret.wipe();
+    if (secret == null) return;
+    try {
+      setState(() => _revealed = secret.expose());
+    } finally {
+      secret.wipe();
+    }
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 20), () {
       if (mounted) setState(() => _revealed = null);
@@ -159,9 +196,13 @@ class _CredentialDetailsDialogState extends ConsumerState<CredentialDetailsDialo
 
   Future<void> _copy() async {
     final secret = await _fetch();
-    if (secret == null || !mounted) return;
-    await copySecretWithNotice(context, ref, secret.expose(), what: context.l10n.copyWhatPassword);
-    secret.wipe();
+    if (secret == null) return;
+    try {
+      if (!mounted) return;
+      await copySecretWithNotice(context, ref, secret.expose(), what: context.l10n.copyWhatPassword);
+    } finally {
+      secret.wipe();
+    }
   }
 
   Future<void> _delete() async {
@@ -180,6 +221,12 @@ class _CredentialDetailsDialogState extends ConsumerState<CredentialDetailsDialo
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(activeProfileProvider.select((p) => p?.id), (before, after) {
+      if (before != after) setState(_forget);
+    });
+    ref.listen(vaultStatusProvider.select((s) => s.value?.isUnlocked ?? false), (_, unlocked) {
+      if (!unlocked) setState(_forget);
+    });
     final l10n = context.l10n;
     final c = widget.credential;
     final isPassword = c.kind == CredentialKind.password;
@@ -246,10 +293,18 @@ class _CredentialDetailsDialogState extends ConsumerState<CredentialDetailsDialo
               ),
             ],
             if (ref.watch(activeProfileProvider)?.isSynced == true) ...[
-              if (c.secretId != null) GlassButton(label: l10n.sharingPublish, icon: Icons.share_outlined,
-                onPressed: () => showSharingSecretPublish(context, credential: c)),
-              if (c.passphraseSecretId != null) GlassButton(label: l10n.sharingSecretPassphrase, icon: Icons.share_outlined,
-                onPressed: () => showSharingSecretPublish(context, credential: c, passphrase: true)),
+              if (c.secretId != null)
+                GlassButton(
+                  label: l10n.sharingPublish,
+                  icon: Icons.share_outlined,
+                  onPressed: () => showSharingSecretPublish(context, credential: c),
+                ),
+              if (c.passphraseSecretId != null)
+                GlassButton(
+                  label: l10n.sharingSecretPassphrase,
+                  icon: Icons.share_outlined,
+                  onPressed: () => showSharingSecretPublish(context, credential: c, passphrase: true),
+                ),
             ],
             if (isPassword) ...[
               const SizedBox(height: GlassSpacing.s12),

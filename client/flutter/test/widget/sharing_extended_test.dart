@@ -516,6 +516,15 @@ void main() {
       return null;
     });
     addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    const nativeClipboard = MethodChannel('consolecrypt/clipboard');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(nativeClipboard, (call) async {
+      expect(call.method, 'copySecret');
+      final arguments = call.arguments as Map;
+      expect(arguments['clearAfterMilliseconds'], 30000);
+      clipboard = arguments['text'] as String;
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(nativeClipboard, null));
     showSharingSecret(_context(tester), _item('secret', SharingKind.secret)).ignore();
     await settle(tester);
     await tapKey(tester, 'sharing-secret-reveal');

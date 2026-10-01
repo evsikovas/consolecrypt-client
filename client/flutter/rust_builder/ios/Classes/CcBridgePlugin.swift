@@ -1,10 +1,12 @@
 import Flutter
 import Foundation
+import CoreFoundation
 import LocalAuthentication
 import UIKit
 
 /// Keeps all key material in the Rust core/iOS Keychain. The channels expose
-/// only user presence, a private container path and explicit file export.
+/// only user presence, a private container path, explicit file export and
+/// user-requested secret copying with native pasteboard privacy options.
 public final class CcBridgePlugin: NSObject, FlutterPlugin {
   private weak var registrar: FlutterPluginRegistrar?
   private var authentication: LAContext?
@@ -13,7 +15,7 @@ public final class CcBridgePlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
     let instance = CcBridgePlugin()
     instance.registrar = registrar
-    for name in ["consolecrypt/local_auth", "consolecrypt/ios", "consolecrypt/accessibility"] {
+    for name in ["consolecrypt/local_auth", "consolecrypt/ios", "consolecrypt/accessibility", "consolecrypt/clipboard"] {
       let channel = FlutterMethodChannel(name: name, binaryMessenger: registrar.messenger())
       if name == "consolecrypt/accessibility" {
         channel.setMethodCallHandler { call, result in
@@ -39,9 +41,30 @@ public final class CcBridgePlugin: NSObject, FlutterPlugin {
       catch { result(FlutterError(code: "storage", message: "Private app storage unavailable", details: nil)) }
     case "exportFile":
       exportFile(arguments: call.arguments as? [String: Any], result: result)
+    case "copySecret":
+      copySecret(arguments: call.arguments as? [String: Any], result: result)
     default:
       result(FlutterMethodNotImplemented)
     }
+  }
+
+  private func copySecret(arguments: [String: Any]?, result: @escaping FlutterResult) {
+    guard let text = arguments?["text"] as? String,
+          let milliseconds = arguments?["clearAfterMilliseconds"] as? NSNumber,
+          CFGetTypeID(milliseconds) != CFBooleanGetTypeID(),
+          milliseconds.doubleValue.isFinite,
+          milliseconds.doubleValue >= 1, milliseconds.doubleValue <= 86_400_000,
+          milliseconds.doubleValue == Double(milliseconds.int64Value) else {
+      result(FlutterError(code: "bad_args", message: "Invalid secret clipboard request", details: nil))
+      return
+    }
+    // System expiry survives suspension/termination, while localOnly prevents
+    // Handoff to another device. Plain public copies retain Flutter's default.
+    UIPasteboard.general.setItems([["public.utf8-plain-text": text]], options: [
+      .localOnly: true,
+      .expirationDate: Date().addingTimeInterval(milliseconds.doubleValue / 1_000),
+    ])
+    result(nil)
   }
 
   private func availability() -> [String: Any] {

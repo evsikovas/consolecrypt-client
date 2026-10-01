@@ -2,7 +2,7 @@
 //! `/v1/chat/completions` (SSE streaming), `/v1/embeddings`, `/v1/models`,
 //! `/v1/responses`.
 
-use super::http::{decode_stream, join, Framing, HttpClient, StreamDecoder};
+use super::http::{decode_json, decode_stream, join, Framing, HttpClient, StreamDecoder};
 use super::{
     single_shot_stream, Capabilities, ChatEvent, ChatRequest, ChatResponse, ChatStream,
     EmbeddingRequest, EmbeddingResponse, LlmProvider, Message, ModelInfo, ProviderSettings,
@@ -349,10 +349,7 @@ impl LlmProvider for OpenAiCompatibleProvider {
             data: Vec<Model>,
         }
         let resp = self.http.get(self.url("models")).await?;
-        let m: Models = resp
-            .json()
-            .await
-            .map_err(|_| AiError::InvalidResponse("unexpected /models response".into()))?;
+        let m: Models = decode_json(resp, "unexpected /models response").await?;
         Ok(m.data
             .into_iter()
             .map(|m| ModelInfo {
@@ -369,10 +366,7 @@ impl LlmProvider for OpenAiCompatibleProvider {
             .http
             .post_json(self.url("chat/completions"), &body, false)
             .await?;
-        let c: OaCompletion = resp
-            .json()
-            .await
-            .map_err(|_| AiError::InvalidResponse("unexpected chat completion response".into()))?;
+        let c: OaCompletion = decode_json(resp, "unexpected chat completion response").await?;
         if let Some(e) = &c.error {
             return Err(provider_error(e));
         }
@@ -459,10 +453,7 @@ impl LlmProvider for OpenAiCompatibleProvider {
             .http
             .post_json(self.url("responses"), &body, false)
             .await?;
-        let v: Value = resp
-            .json()
-            .await
-            .map_err(|_| AiError::InvalidResponse("unexpected /responses response".into()))?;
+        let v: Value = decode_json(resp, "unexpected /responses response").await?;
         if let Some(e) = v.get("error").filter(|e| !e.is_null()) {
             return Err(provider_error(e));
         }
@@ -564,10 +555,7 @@ impl LlmProvider for OpenAiCompatibleProvider {
             #[serde(default)]
             model: Option<String>,
         }
-        let out: Out = resp
-            .json()
-            .await
-            .map_err(|_| AiError::InvalidResponse("unexpected /embeddings response".into()))?;
+        let out: Out = decode_json(resp, "unexpected /embeddings response").await?;
         let mut items: Vec<(usize, Vec<f32>)> = out
             .data
             .into_iter()

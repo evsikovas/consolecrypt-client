@@ -204,6 +204,10 @@ class _GlassSurfaceState extends State<GlassSurface> with SingleTickerProviderSt
     if (widget.padding != null) content = Padding(padding: widget.padding!, child: content);
     // Overlays materialize: the child fades, the backdrop filter never does.
     if (widget.overlay) content = Opacity(opacity: widget.presence.clamp(0.0, 1.0), child: content);
+    // The outer boundary isolates this pane from its neighbours. A separate
+    // content layer is also needed: otherwise a spinner, caret or streaming
+    // child reruns the static fill and expensive blurred shadows every frame.
+    if (widget.repaintBoundary) content = RepaintBoundary(child: content);
 
     final light = resolved.hotspot ? _ensureLight() : null;
     content = Stack(

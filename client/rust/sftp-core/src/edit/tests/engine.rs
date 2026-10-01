@@ -10,6 +10,169 @@ use std::time::Duration;
 const HOST: &str = "host-1";
 const FILE: &str = "/srv/app/config.php";
 
+#[derive(Debug)]
+struct PausedChooser {
+    entered: tokio::sync::Notify,
+    finished: tokio::sync::Notify,
+    paused: std::sync::atomic::AtomicBool,
+    release: std::sync::Mutex<std::sync::mpsc::Receiver<()>>,
+}
+
+impl EditOpener for PausedChooser {
+    fn open(&self, _path: &Path, _with: &OpenWith) -> Result<ChooseOutcome, OpenError> {
+        if self.paused.load(std::sync::atomic::Ordering::SeqCst) {
+            self.entered.notify_one();
+            self.release.lock().unwrap().recv().unwrap();
+            self.finished.notify_one();
+        }
+        Ok(ChooseOutcome::Opened { app: None })
+    }
+}
+
+#[tokio::test]
+async fn shutdown_cancels_pending_chooser_without_registering_or_retaining_new_copy() {
+    assert_chooser_shutdown(false).await;
+}
+
+#[tokio::test]
+async fn shutdown_cancels_pending_resume_and_preserves_only_existing_leftover() {
+    assert_chooser_shutdown(true).await;
+}
+
+async fn assert_chooser_shutdown(resume: bool) {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("edit");
+    let config = cfg(&root);
+    let remote = FakeRemote::new();
+    remote.put(FILE, b"synthetic public file", 0o600);
+    let existing = if resume {
+        let previous = EditManager::new(config.clone(), FakeOpener::new()).unwrap();
+        let s = previous
+            .open(remote.clone(), HOST, FILE, OpenWith::Default)
+            .await
+            .unwrap();
+        s.stop(StopMode::KeepFiles).await.unwrap();
+        Some(s.id())
+    } else {
+        None
+    };
+    let (release, receiver) = std::sync::mpsc::channel();
+    let opener = Arc::new(PausedChooser {
+        entered: tokio::sync::Notify::new(),
+        finished: tokio::sync::Notify::new(),
+        paused: std::sync::atomic::AtomicBool::new(true),
+        release: std::sync::Mutex::new(receiver),
+    });
+    let manager = EditManager::new(config, opener.clone()).unwrap();
+    let captured = manager.clone();
+    let remote_for_open = remote.clone();
+    let pending = tokio::spawn(async move {
+        if let Some(id) = existing {
+            captured
+                .resume(remote_for_open, id, Some(OpenWith::Choose))
+                .await
+        } else {
+            captured
+                .open(remote_for_open, HOST, FILE, OpenWith::Choose)
+                .await
+        }
+    });
+    opener.entered.notified().await;
+    assert!(manager.shutdown(StopMode::UploadOrKeep).await.is_empty());
+    let stopped = tokio::time::timeout(Duration::from_secs(2), pending).await;
+    // Always release the fake blocking UI before making assertions.
+    release.send(()).unwrap();
+    assert!(matches!(stopped.unwrap().unwrap(), Err(EditError::Closed)));
+    assert!(manager.sessions().is_empty());
+    assert_eq!(manager.leftovers().unwrap().len(), usize::from(resume));
+    assert!(matches!(
+        manager.open(remote, HOST, FILE, OpenWith::Default).await,
+        Err(EditError::Closed)
+    ));
+}
+
+#[tokio::test]
+async fn shutdown_cancels_existing_session_reopen_and_uploads_modified_copy() {
+    assert_active_chooser_shutdown(false).await;
+}
+
+#[tokio::test]
+async fn shutdown_cancels_conflict_remote_copy_chooser_and_finishes_upload() {
+    assert_active_chooser_shutdown(true).await;
+}
+
+async fn assert_active_chooser_shutdown(resolve: bool) {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("edit");
+    let (release, receiver) = std::sync::mpsc::channel();
+    let opener = Arc::new(PausedChooser {
+        entered: tokio::sync::Notify::new(),
+        finished: tokio::sync::Notify::new(),
+        paused: std::sync::atomic::AtomicBool::new(false),
+        release: std::sync::Mutex::new(receiver),
+    });
+    let manager = EditManager::new(cfg(&root), opener.clone()).unwrap();
+    let remote = FakeRemote::new();
+    remote.put(FILE, b"synthetic public original", 0o600);
+    let session = manager
+        .open(remote.clone(), HOST, FILE, OpenWith::Default)
+        .await
+        .unwrap();
+    if resolve {
+        remote.edit_by_other(FILE, b"synthetic public remote revision");
+        std::fs::write(session.local_path(), b"synthetic public local revision").unwrap();
+        assert!(matches!(
+            session.sync_now().await.unwrap(),
+            EditStatus::Conflict { .. }
+        ));
+    }
+    opener
+        .paused
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    let captured = session.clone();
+    let pending = tokio::spawn(async move {
+        if resolve {
+            captured
+                .resolve(ConflictResolution::KeepRemoteCopyLocally)
+                .await
+        } else {
+            captured.reopen(Some(OpenWith::Choose)).await.map(|()| None)
+        }
+    });
+    opener.entered.notified().await;
+    // A final save while the actor is inside the chooser must still upload
+    // when shutdown interrupts the UI wait and processes its Stop command.
+    std::fs::write(session.local_path(), b"synthetic public local revision").unwrap();
+    let stopped = tokio::time::timeout(
+        Duration::from_secs(2),
+        manager.shutdown(StopMode::UploadOrKeep),
+    )
+    .await;
+    // Release/join the blocking fake on both the failing baseline and success;
+    // the production actor must not need this signal to complete shutdown.
+    release.send(()).unwrap();
+    tokio::time::timeout(Duration::from_secs(2), opener.finished.notified())
+        .await
+        .unwrap();
+    let reopened = tokio::time::timeout(Duration::from_secs(2), pending)
+        .await
+        .unwrap()
+        .unwrap();
+    let outcomes = stopped.expect("shutdown waited for a registered session's chooser");
+    assert_eq!(outcomes.len(), 1);
+    assert!(matches!(
+        outcomes[0].1,
+        Ok(StopOutcome::Closed { uploaded: true })
+    ));
+    if !resolve {
+        assert!(matches!(reopened, Err(EditError::Closed)));
+    }
+    assert!(manager.sessions().is_empty());
+    assert!(manager.leftovers().unwrap().is_empty());
+    assert!(!session.local_path().exists());
+    assert!(remote.data(FILE).unwrap() == b"synthetic public local revision");
+}
+
 struct Fx {
     _tmp: tempfile::TempDir,
     root: std::path::PathBuf,

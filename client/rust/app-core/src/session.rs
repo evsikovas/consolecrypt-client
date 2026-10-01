@@ -275,6 +275,7 @@ impl Unlocked {
     /// first (their final uploads need SFTP), then transfers.
     async fn shutdown(&self) {
         self.sharing_shutdown.send_replace(true);
+        self.edit.begin_shutdown();
         self.enrollment.clear();
         self.edit.stop_all().await;
         self.transfers.cancel_all();

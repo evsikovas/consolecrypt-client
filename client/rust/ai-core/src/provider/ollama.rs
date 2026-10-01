@@ -1,7 +1,7 @@
 //! Ollama native API: `/api/chat` (NDJSON streaming), `/api/embed`,
 //! `/api/tags`.
 
-use super::http::{decode_stream, join, Framing, HttpClient, StreamDecoder};
+use super::http::{decode_json, decode_stream, join, Framing, HttpClient, StreamDecoder};
 use super::{
     single_shot_stream, Capabilities, ChatEvent, ChatRequest, ChatResponse, ChatStream,
     EmbeddingRequest, EmbeddingResponse, LlmProvider, Message, ModelInfo, ProviderSettings,
@@ -225,10 +225,7 @@ impl LlmProvider for OllamaProvider {
             models: Vec<Tag>,
         }
         let resp = self.http.get(self.url("api/tags")).await?;
-        let t: Tags = resp
-            .json()
-            .await
-            .map_err(|_| AiError::InvalidResponse("unexpected /api/tags response".into()))?;
+        let t: Tags = decode_json(resp, "unexpected /api/tags response").await?;
         Ok(t.models
             .into_iter()
             .map(|m| ModelInfo {
@@ -245,10 +242,7 @@ impl LlmProvider for OllamaProvider {
             .http
             .post_json(self.url("api/chat"), &body, false)
             .await?;
-        let c: OlChat = resp
-            .json()
-            .await
-            .map_err(|_| AiError::InvalidResponse("unexpected /api/chat response".into()))?;
+        let c: OlChat = decode_json(resp, "unexpected /api/chat response").await?;
         if let Some(e) = c.error {
             return Err(AiError::Provider(sanitize_for_error(&e)));
         }
@@ -305,10 +299,7 @@ impl LlmProvider for OllamaProvider {
             #[serde(default)]
             model: Option<String>,
         }
-        let out: Out = resp
-            .json()
-            .await
-            .map_err(|_| AiError::InvalidResponse("unexpected /api/embed response".into()))?;
+        let out: Out = decode_json(resp, "unexpected /api/embed response").await?;
         if out.embeddings.len() != req.inputs.len() {
             return Err(AiError::InvalidResponse(format!(
                 "expected {} embeddings, got {}",

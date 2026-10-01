@@ -70,12 +70,20 @@ final class AiChatState {
 // next: add save/list conversation calls to AiService at M7.
 class AiChatController extends Notifier<AiChatState> {
   StreamSubscription<AiStreamEvent>? _sub;
+  int _generation = 0;
 
   @override
   AiChatState build() {
-    ref.onDispose(() => unawaited(_sub?.cancel()));
+    ref.onDispose(() {
+      _generation++;
+      unawaited(_sub?.cancel());
+      _sub = null;
+    });
     ref.listen(activeProfileProvider.select((p) => p?.id), (prev, next) {
-      if (prev != next) clear();
+      if (prev != next) clear(resetProvider: true);
+    });
+    ref.listen(vaultStatusProvider.select((s) => s.value?.isUnlocked ?? false), (_, unlocked) {
+      if (!unlocked) clear();
     });
     return const AiChatState();
   }
@@ -91,36 +99,60 @@ class AiChatController extends Notifier<AiChatState> {
 
   Future<void> send(String text, {AiContextSelection context = AiContextSelection.none}) async {
     final prompt = text.trim();
-    if (prompt.isEmpty || state.isStreaming) return;
+    final profile = ref.read(activeProfileProvider)?.id;
+    final vault = ref.read(vaultStatusProvider).value;
+    if (prompt.isEmpty || state.isStreaming || profile == null || vault?.isUnlocked != true) return;
     final providers = ref.read(aiProvidersProvider).value ?? const <AiProviderConfig>[];
     final providerId = effectiveProviderId(providers);
     if (providerId == null) {
       state = state.copyWith(error: AiChatError.noProvider);
       return;
     }
+    final generation = ++_generation;
+    bool current() =>
+        ref.mounted &&
+        generation == _generation &&
+        ref.read(activeProfileProvider)?.id == profile &&
+        ref.read(vaultStatusProvider).value?.isUnlocked == true &&
+        ref.read(vaultStatusProvider).value?.vaultId == vault?.vaultId;
     final history = [...state.messages, ChatMessage.now(ChatRole.user, prompt)];
     state = state.copyWith(messages: history, streaming: '', clearError: true, providerId: providerId);
-    await _sub?.cancel();
-    _sub = ref.read(aiServiceProvider).chat(providerId: providerId, history: history, context: context).listen((event) {
-      switch (event) {
-        case AiDelta(:final text):
-          state = state.copyWith(streaming: (state.streaming ?? '') + text);
-        case AiCompleted(:final fullText, :final report):
-          state = state.copyWith(
-            messages: [...state.messages, ChatMessage.now(ChatRole.assistant, fullText)],
-            clearStreaming: true,
-            lastReport: report,
-          );
-        case AiFailed(:final message):
-          state = state.copyWith(error: AiChatError.requestFailed, errorDetail: message, clearStreaming: true);
-      }
-    }, onError: (Object e) => state = state.copyWith(error: AiChatError.requestFailed, clearStreaming: true));
+    final previous = _sub;
+    _sub = null;
+    await previous?.cancel();
+    if (!current()) return;
+    _sub = ref
+        .read(aiServiceProvider)
+        .chat(providerId: providerId, history: history, context: context)
+        .listen(
+          (event) {
+            if (!current()) return;
+            switch (event) {
+              case AiDelta(:final text):
+                state = state.copyWith(streaming: (state.streaming ?? '') + text);
+              case AiCompleted(:final fullText, :final report):
+                state = state.copyWith(
+                  messages: [...state.messages, ChatMessage.now(ChatRole.assistant, fullText)],
+                  clearStreaming: true,
+                  lastReport: report,
+                );
+              case AiFailed(:final message):
+                state = state.copyWith(error: AiChatError.requestFailed, errorDetail: message, clearStreaming: true);
+            }
+          },
+          onError: (Object e) {
+            if (current()) state = state.copyWith(error: AiChatError.requestFailed, clearStreaming: true);
+          },
+        );
   }
 
   /// Stops streaming; keeps what arrived so far.
   Future<void> stop() async {
-    await _sub?.cancel();
+    final generation = ++_generation;
+    final previous = _sub;
     _sub = null;
+    await previous?.cancel();
+    if (!ref.mounted || generation != _generation) return;
     final partial = state.streaming;
     if (partial == null || partial.isEmpty) {
       state = state.copyWith(clearStreaming: true);
@@ -134,10 +166,11 @@ class AiChatController extends Notifier<AiChatState> {
     );
   }
 
-  void clear() {
+  void clear({bool resetProvider = false}) {
+    _generation++;
     unawaited(_sub?.cancel());
     _sub = null;
-    state = AiChatState(providerId: state.providerId);
+    state = AiChatState(providerId: resetProvider ? null : state.providerId);
   }
 }
 

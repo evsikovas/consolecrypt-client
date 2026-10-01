@@ -17,7 +17,7 @@ use cc_platform_core::ChooseOutcome;
 use chrono::Utc;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, watch};
 use uuid::Uuid;
 
 const EVENT_CAPACITY: usize = 256;
@@ -27,13 +27,14 @@ struct Inner {
     opener: Arc<dyn EditOpener>,
     registry: Registry,
     events: broadcast::Sender<EditEvent>,
+    shutdown: watch::Sender<bool>,
 }
 
 /// Manages the edit sessions of one profile. Cheap to clone.
 ///
 /// Lifecycle hooks for the facade: "Stop editing" → [`EditSession::stop`]
 /// with [`StopMode::Upload`]; disconnect of a host → [`EditManager::stop_host`];
-/// vault lock / app quit → [`EditManager::stop_all`] with
+/// vault lock / app quit → [`EditManager::shutdown`] with
 /// [`StopMode::UploadOrKeep`]; app start → [`EditManager::leftovers`]
 /// ("Recover unsaved edits?" → [`EditManager::resume`] or
 /// [`EditManager::discard_leftover`]).
@@ -60,6 +61,9 @@ struct OpeningGuard {
 impl OpeningGuard {
     fn acquire(registry: &Registry, keys: Vec<SessionKey>, path: &str) -> Result<Self, EditError> {
         let mut r = lock(registry);
+        if r.closed {
+            return Err(EditError::Closed);
+        }
         if keys.iter().any(|k| r.opening.contains(k)) {
             return Err(EditError::Busy(path.to_string()));
         }
@@ -68,6 +72,22 @@ impl OpeningGuard {
             registry: registry.clone(),
             keys,
         })
+    }
+}
+
+/// Cancellation must clean a newly downloaded plaintext working copy too,
+/// including while an OS chooser is still running on its blocking thread.
+struct PendingWorkingCopy {
+    dir: PathBuf,
+    overwrite_limit: u64,
+    committed: bool,
+}
+
+impl Drop for PendingWorkingCopy {
+    fn drop(&mut self) {
+        if !self.committed {
+            let _ = secure_remove_dir(&self.dir, self.overwrite_limit);
+        }
     }
 }
 
@@ -101,6 +121,7 @@ impl EditManager {
                 opener,
                 registry: Registry::default(),
                 events,
+                shutdown: watch::channel(false).0,
             }),
         })
     }
@@ -156,12 +177,16 @@ impl EditManager {
         }
     }
 
-    fn register(&self, session: &EditSession) {
+    fn register(&self, session: &EditSession) -> Result<(), EditError> {
         let mut r = lock(&self.inner.registry);
+        if r.closed {
+            return Err(EditError::Closed);
+        }
         for k in session.keys() {
             r.by_key.insert(k.clone(), session.id());
         }
         r.by_id.insert(session.id(), session.clone());
+        Ok(())
     }
 
     fn emit(&self, session_id: Uuid, status: EditStatus) {
@@ -172,6 +197,24 @@ impl EditManager {
     /// `with` and upload every save. If the file is already being edited the
     /// existing session is returned and its working copy opened again.
     pub async fn open(
+        &self,
+        remote: Arc<dyn EditRemote>,
+        host_id: &str,
+        remote_path: &str,
+        with: OpenWith,
+    ) -> Result<EditSession, EditError> {
+        let mut shutdown = self.inner.shutdown.subscribe();
+        if *shutdown.borrow() {
+            return Err(EditError::Closed);
+        }
+        tokio::select! {
+            biased;
+            _ = shutdown.changed() => Err(EditError::Closed),
+            result = self.open_active(remote, host_id, remote_path, with) => result,
+        }
+    }
+
+    async fn open_active(
         &self,
         remote: Arc<dyn EditRemote>,
         host_id: &str,
@@ -217,6 +260,11 @@ impl EditManager {
             .map_err(|e| EditError::local(&cfg.root, e))?;
         let dir = cfg.root.join(id.to_string());
         create_session_dir(&dir).map_err(|e| EditError::local(&dir, e))?;
+        let mut working_copy = PendingWorkingCopy {
+            dir: dir.clone(),
+            overwrite_limit: cfg.secure_overwrite_limit,
+            committed: false,
+        };
         let result = match std::fs::canonicalize(&dir) {
             Ok(canonical) => {
                 self.open_in(
@@ -227,8 +275,9 @@ impl EditManager {
             Err(e) => Err(EditError::local(&dir, e)),
         };
         if result.is_err() {
-            let _ = secure_remove_dir(&dir, cfg.secure_overwrite_limit);
             self.emit(id, EditStatus::Closed);
+        } else {
+            working_copy.committed = true;
         }
         result
     }
@@ -284,6 +333,7 @@ impl EditManager {
                 base,
                 created_at: Utc::now(),
                 open_with: with.clone(),
+                shutdown: self.inner.shutdown.subscribe(),
             },
             keys,
             Arc::downgrade(&self.inner.registry),
@@ -304,14 +354,14 @@ impl EditManager {
             return Err(EditError::Cancelled);
         }
         actor.remember_choice(with, &outcome);
-        self.register(&session);
+        self.register(&session)?;
         session_set_synced(&session);
         tokio::spawn(actor.run(rx));
         Ok(session)
     }
 
-    /// Stop every session (vault lock / app quit: use
-    /// [`StopMode::UploadOrKeep`]).
+    /// Stop registered sessions, allowing later opens. Vault lock / app quit
+    /// must use [`Self::shutdown`] to cancel pending editor UI too.
     pub async fn stop_all(&self, mode: StopMode) -> Vec<(Uuid, Result<StopOutcome, EditError>)> {
         let sessions: Vec<_> = lock(&self.inner.registry).by_id.values().cloned().collect();
         let mut out = Vec::with_capacity(sessions.len());
@@ -319,6 +369,18 @@ impl EditManager {
             out.push((s.id(), s.stop(mode).await));
         }
         out
+    }
+
+    /// Permanently cancel pending opens/resumes before stopping registered
+    /// sessions. A fresh unlocked vault constructs a fresh manager.
+    pub fn begin_shutdown(&self) {
+        lock(&self.inner.registry).closed = true;
+        self.inner.shutdown.send_replace(true);
+    }
+
+    pub async fn shutdown(&self, mode: StopMode) -> Vec<(Uuid, Result<StopOutcome, EditError>)> {
+        self.begin_shutdown();
+        self.stop_all(mode).await
     }
 
     /// Stop the sessions of one host (before / after disconnecting it).
@@ -380,6 +442,23 @@ impl EditManager {
         session_id: Uuid,
         with: Option<OpenWith>,
     ) -> Result<EditSession, EditError> {
+        let mut shutdown = self.inner.shutdown.subscribe();
+        if *shutdown.borrow() {
+            return Err(EditError::Closed);
+        }
+        tokio::select! {
+            biased;
+            _ = shutdown.changed() => Err(EditError::Closed),
+            result = self.resume_active(remote, session_id, with) => result,
+        }
+    }
+
+    async fn resume_active(
+        &self,
+        remote: Arc<dyn EditRemote>,
+        session_id: Uuid,
+        with: Option<OpenWith>,
+    ) -> Result<EditSession, EditError> {
         if lock(&self.inner.registry).by_id.contains_key(&session_id) {
             return Err(EditError::InvalidState("session is active"));
         }
@@ -410,6 +489,7 @@ impl EditManager {
                 base: m.base,
                 created_at: m.created_at,
                 open_with: open_with.clone(),
+                shutdown: self.inner.shutdown.subscribe(),
             },
             keys,
             Arc::downgrade(&self.inner.registry),
@@ -427,7 +507,7 @@ impl EditManager {
             }
             actor.remember_choice(with, &outcome);
         }
-        self.register(&session);
+        self.register(&session)?;
         session_set_synced(&session);
         actor.request_check();
         tokio::spawn(actor.run(rx));

@@ -872,13 +872,17 @@ struct AskJob {
 
 impl AskJob {
     async fn fail(&self, e: AppError) {
-        let _ = self
-            .tx
-            .send(AiAskChunk::Error {
-                code: e.code().to_owned(),
-                message: e.message(),
-            })
-            .await;
+        let chunk = AiAskChunk::Error {
+            code: e.code().to_owned(),
+            message: e.message(),
+        };
+        if self.token.is_cancelled() {
+            // A stopped UI may no longer drain its queue. Release the
+            // conversation and HTTP stream even if no error slot is free.
+            let _ = self.tx.try_send(chunk);
+        } else {
+            send_ask_chunk(&self.tx, &self.token, chunk).await;
+        }
     }
 
     async fn run(self, state: Arc<tokio::sync::Mutex<ConversationState>>) {
@@ -906,7 +910,7 @@ impl AskJob {
             match item {
                 Some(Ok(text)) => {
                     answer.push_str(&text);
-                    if self.tx.send(AiAskChunk::Delta { text }).await.is_err() {
+                    if !send_ask_chunk(&self.tx, &self.token, AiAskChunk::Delta { text }).await {
                         return; // receiver dropped: abort (drops the HTTP stream)
                     }
                 }
@@ -963,7 +967,19 @@ impl AskJob {
             redactions: SanitizerReportDto::from_report(st.conv.redactions()),
             persisted,
         };
-        let _ = self.tx.send(AiAskChunk::Done(summary)).await;
+        send_ask_chunk(&self.tx, &self.token, AiAskChunk::Done(summary)).await;
+    }
+}
+
+async fn send_ask_chunk(
+    tx: &mpsc::Sender<AiAskChunk>,
+    token: &CancellationToken,
+    chunk: AiAskChunk,
+) -> bool {
+    tokio::select! {
+        biased;
+        () = token.cancelled() => false,
+        result = tx.send(chunk) => result.is_ok(),
     }
 }
 

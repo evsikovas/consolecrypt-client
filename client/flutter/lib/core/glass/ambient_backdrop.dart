@@ -26,13 +26,27 @@ class AmbientBackdrop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
-    final backdrop = RepaintBoundary(
-      child: CustomPaint(
-        key: const ValueKey('ambient-backdrop'),
-        isComplex: true,
-        painter: AmbientPainter(spec: tokens.ambient, expressive: expressive, localProfileCue: localProfileCue),
-        child: const SizedBox.expand(),
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
+    Widget paint(ui.Image? grainTile) => CustomPaint(
+      key: const ValueKey('ambient-backdrop'),
+      isComplex: true,
+      painter: AmbientPainter(
+        spec: tokens.ambient,
+        expressive: expressive,
+        localProfileCue: localProfileCue,
+        grainTile: grainTile,
+        devicePixelRatio: dpr,
       ),
+      child: const SizedBox.expand(),
+    );
+    final backdrop = RepaintBoundary(
+      child: tokens.ambient.grain <= 0
+          ? paint(null)
+          : FutureBuilder<ui.Image>(
+              future: _AmbientGrain.load(),
+              initialData: _AmbientGrain.cached,
+              builder: (context, snapshot) => paint(snapshot.data),
+            ),
     );
     final c = child;
     if (c == null) return backdrop;
@@ -47,11 +61,19 @@ class AmbientBackdrop extends StatelessWidget {
 
 /// Painter of [AmbientBackdrop] (public for the gallery and tests).
 class AmbientPainter extends CustomPainter {
-  AmbientPainter({required this.spec, this.expressive = false, this.localProfileCue = false});
+  AmbientPainter({
+    required this.spec,
+    this.expressive = false,
+    this.localProfileCue = false,
+    this.grainTile,
+    this.devicePixelRatio = 1,
+  });
 
   final AmbientSpec spec;
   final bool expressive;
   final bool localProfileCue;
+  final ui.Image? grainTile;
+  final double devicePixelRatio;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -66,52 +88,75 @@ class AmbientPainter extends CustomPainter {
       final color = b.color.withValues(alpha: alpha);
       canvas.drawRect(rect, Paint()..shader = ui.Gradient.radial(center, radius, [color, color.withValues(alpha: 0)]));
     }
-    if (spec.grain > 0) _paintGrain(canvas, size);
+    if (spec.grain > 0 && grainTile != null) _paintGrain(canvas, rect);
   }
 
-  /// Deterministic monochrome grain against banding (dark mode).
-  void _paintGrain(Canvas canvas, Size size) {
-    final count = math.min((size.width * size.height / 48).floor(), 24000);
-    if (count <= 0) return;
-    final light = Float32List(count);
-    final dark = Float32List(count);
-    var seed = 0x2545F491;
-    int next() => seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    var l = 0;
-    var d = 0;
-    for (var i = 0; i < count ~/ 2; i++) {
-      final x = next() % 100000 / 100000 * size.width;
-      final y = next() % 100000 / 100000 * size.height;
-      if (next().isEven) {
-        light[l++] = x;
-        light[l++] = y;
-      } else {
-        dark[d++] = x;
-        dark[d++] = y;
-      }
-    }
-    final alpha = spec.grain * 2;
-    canvas
-      ..drawRawPoints(
-        ui.PointMode.points,
-        Float32List.sublistView(light, 0, l),
-        Paint()
-          ..color = Color.fromRGBO(255, 255, 255, alpha)
-          ..strokeWidth = 1,
-      )
-      ..drawRawPoints(
-        ui.PointMode.points,
-        Float32List.sublistView(dark, 0, d),
-        Paint()
-          ..color = Color.fromRGBO(0, 0, 0, alpha)
-          ..strokeWidth = 1,
-      );
+  /// One cached tile shades every physical pixel. Sparse points left almost
+  /// all of the dark 8-bit gradient unchanged, so its contours stayed visible.
+  /// Overlay noise is centred on neutral grey: it does not whiten the blue
+  /// background, and needs neither a live shader filter nor a saveLayer.
+  void _paintGrain(Canvas canvas, Rect rect) {
+    final shader = ui.ImageShader(
+      grainTile!,
+      ui.TileMode.repeated,
+      ui.TileMode.repeated,
+      Matrix4.diagonal3Values(1 / devicePixelRatio, 1 / devicePixelRatio, 1).storage,
+    );
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = shader
+        ..blendMode = BlendMode.overlay
+        ..color = Color.fromRGBO(255, 255, 255, (spec.grain * 4).clamp(0.0, 1.0))
+        ..filterQuality = FilterQuality.none
+        ..isAntiAlias = false,
+    );
+    shader.dispose();
   }
 
   @override
   bool shouldRepaint(AmbientPainter oldDelegate) =>
-      oldDelegate.spec.base != spec.base ||
-      oldDelegate.spec.grain != spec.grain ||
+      oldDelegate.spec != spec ||
       oldDelegate.expressive != expressive ||
-      oldDelegate.localProfileCue != localProfileCue;
+      oldDelegate.localProfileCue != localProfileCue ||
+      oldDelegate.grainTile != grainTile ||
+      oldDelegate.devicePixelRatio != devicePixelRatio;
+}
+
+/// Process-wide, deterministic 64 KiB texture. It is generated and decoded
+/// once, never regenerated on resize, theme changes or streaming frames.
+abstract final class _AmbientGrain {
+  static const side = 128;
+  static ui.Image? cached;
+  static Future<ui.Image>? _pending;
+
+  static Future<ui.Image> load() => _pending ??= _create();
+
+  static Future<ui.Image> _create() async {
+    final pixels = Uint8List(side * side * 4);
+    var seed = 0x2545F491;
+    for (var i = 0; i < pixels.length; i += 4) {
+      seed ^= (seed << 13) & 0xffffffff;
+      seed ^= seed >>> 17;
+      seed ^= (seed << 5) & 0xffffffff;
+      seed &= 0xffffffff;
+      final value = seed & 0xff;
+      pixels[i] = value;
+      pixels[i + 1] = value;
+      pixels[i + 2] = value;
+      pixels[i + 3] = 255;
+    }
+    final buffer = await ui.ImmutableBuffer.fromUint8List(pixels);
+    final descriptor = ui.ImageDescriptor.raw(buffer, width: side, height: side, pixelFormat: ui.PixelFormat.rgba8888);
+    ui.Codec? codec;
+    try {
+      codec = await descriptor.instantiateCodec();
+      final frame = await codec.getNextFrame();
+      return cached = frame.image;
+    } finally {
+      codec?.dispose();
+      descriptor.dispose();
+      buffer.dispose();
+    }
+  }
 }

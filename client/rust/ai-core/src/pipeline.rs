@@ -383,7 +383,7 @@ pub(crate) async fn run(
                             .map(|h| h.document.id)
                     })
                     .collect();
-                let proposal = a.finalize_command(&session, suggestion, target, host.as_ref());
+                let proposal = a.finalize_command(&session, suggestion, target, host.as_ref())?;
                 stages.push(StageReport {
                     stage,
                     ran: true,

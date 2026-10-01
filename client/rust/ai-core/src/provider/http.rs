@@ -14,6 +14,44 @@ use std::time::Duration;
 use url::Url;
 use zeroize::Zeroizing;
 
+// Bounds apply to hostile or broken providers, including streaming bodies
+// without a newline. They comfortably exceed ordinary chat/model responses
+// and embedding batches, but prevent unbounded process memory growth.
+pub(crate) const MAX_JSON_BYTES: usize = 32 * 1024 * 1024;
+pub(crate) const MAX_STREAM_BYTES: usize = 32 * 1024 * 1024;
+pub(crate) const MAX_OUTPUT_BYTES: usize = 8 * 1024 * 1024;
+const MAX_ERROR_BYTES: usize = 64 * 1024;
+const MAX_LINE_BYTES: usize = 1024 * 1024;
+const MAX_SSE_EVENT_BYTES: usize = 2 * 1024 * 1024;
+
+fn oversized_response() -> AiError {
+    AiError::InvalidResponse("AI provider response exceeds the size limit".into())
+}
+
+async fn bounded_body(resp: reqwest::Response, limit: usize) -> Result<Vec<u8>> {
+    if resp.content_length().is_some_and(|n| n > limit as u64) {
+        return Err(oversized_response());
+    }
+    let mut body = Vec::new();
+    let mut stream = resp.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(map_err)?;
+        if chunk.len() > limit.saturating_sub(body.len()) {
+            return Err(oversized_response());
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
+}
+
+pub(crate) async fn decode_json<T: serde::de::DeserializeOwned>(
+    resp: reqwest::Response,
+    reason: &'static str,
+) -> Result<T> {
+    let body = bounded_body(resp, MAX_JSON_BYTES).await?;
+    serde_json::from_slice(&body).map_err(|_| AiError::InvalidResponse(reason.into()))
+}
+
 /// reqwest client configured for one provider.
 #[derive(Clone)]
 pub(crate) struct HttpClient {
@@ -136,8 +174,8 @@ async fn check_status(resp: reqwest::Response) -> Result<reqwest::Response> {
         .get(RETRY_AFTER)
         .and_then(|v| v.to_str().ok())
         .and_then(|s| s.trim().parse::<u64>().ok());
-    let body = resp.text().await.unwrap_or_default();
-    let message = extract_error_message(&body);
+    let body = bounded_body(resp, MAX_ERROR_BYTES).await?;
+    let message = extract_error_message(&String::from_utf8_lossy(&body));
     tracing::debug!(status = code, "AI provider returned an error status");
     Err(match code {
         401 | 403 => AiError::Auth { status: code },
@@ -166,25 +204,32 @@ pub(crate) struct SseParser {
     buf: Vec<u8>,
     data: Vec<String>,
     event: Option<String>,
+    data_bytes: usize,
 }
 
 impl SseParser {
-    pub(crate) fn push(&mut self, chunk: &[u8]) -> Vec<SseEvent> {
-        self.buf.extend_from_slice(chunk);
+    pub(crate) fn push(&mut self, chunk: &[u8]) -> Result<Vec<SseEvent>> {
         let mut out = Vec::new();
-        while let Some(pos) = self.buf.iter().position(|b| *b == b'\n') {
-            let mut line: Vec<u8> = self.buf.drain(..=pos).collect();
+        for part in chunk.split_inclusive(|b| *b == b'\n') {
+            if part.len() > MAX_LINE_BYTES.saturating_sub(self.buf.len()) {
+                return Err(oversized_response());
+            }
+            self.buf.extend_from_slice(part);
+            if !part.ends_with(b"\n") {
+                continue;
+            }
+            let mut line = std::mem::take(&mut self.buf);
             line.pop();
             if line.last() == Some(&b'\r') {
                 line.pop();
             }
             let line = String::from_utf8_lossy(&line).into_owned();
-            self.line(&line, &mut out);
+            self.line(&line, &mut out)?;
         }
-        out
+        Ok(out)
     }
 
-    fn line(&mut self, line: &str, out: &mut Vec<SseEvent>) {
+    fn line(&mut self, line: &str, out: &mut Vec<SseEvent>) -> Result<()> {
         if line.is_empty() {
             if !self.data.is_empty() {
                 out.push(SseEvent {
@@ -192,13 +237,14 @@ impl SseParser {
                     data: self.data.join("\n"),
                 });
                 self.data.clear();
+                self.data_bytes = 0;
             } else {
                 self.event = None;
             }
-            return;
+            return Ok(());
         }
         if line.starts_with(':') {
-            return;
+            return Ok(());
         }
         let (field, value) = match line.find(':') {
             Some(i) => {
@@ -208,23 +254,31 @@ impl SseParser {
             None => (line, ""),
         };
         match field {
-            "data" => self.data.push(value.to_owned()),
+            "data" => {
+                let bytes = value.len().saturating_add(1);
+                if bytes > MAX_SSE_EVENT_BYTES.saturating_sub(self.data_bytes) {
+                    return Err(oversized_response());
+                }
+                self.data_bytes += bytes;
+                self.data.push(value.to_owned());
+            }
             "event" => self.event = Some(value.to_owned()),
             _ => {}
         }
+        Ok(())
     }
 
-    pub(crate) fn finish(&mut self) -> Vec<SseEvent> {
+    pub(crate) fn finish(&mut self) -> Result<Vec<SseEvent>> {
         let mut out = Vec::new();
         if !self.buf.is_empty() {
             let rest = std::mem::take(&mut self.buf);
             let line = String::from_utf8_lossy(&rest)
                 .trim_end_matches('\r')
                 .to_owned();
-            self.line(&line, &mut out);
+            self.line(&line, &mut out)?;
         }
-        self.line("", &mut out);
-        out
+        self.line("", &mut out)?;
+        Ok(out)
     }
 }
 
@@ -235,17 +289,23 @@ pub(crate) struct LineParser {
 }
 
 impl LineParser {
-    pub(crate) fn push(&mut self, chunk: &[u8]) -> Vec<String> {
-        self.buf.extend_from_slice(chunk);
+    pub(crate) fn push(&mut self, chunk: &[u8]) -> Result<Vec<String>> {
         let mut out = Vec::new();
-        while let Some(pos) = self.buf.iter().position(|b| *b == b'\n') {
-            let line: Vec<u8> = self.buf.drain(..=pos).collect();
+        for part in chunk.split_inclusive(|b| *b == b'\n') {
+            if part.len() > MAX_LINE_BYTES.saturating_sub(self.buf.len()) {
+                return Err(oversized_response());
+            }
+            self.buf.extend_from_slice(part);
+            if !part.ends_with(b"\n") {
+                continue;
+            }
+            let line = std::mem::take(&mut self.buf);
             let s = String::from_utf8_lossy(&line).trim().to_owned();
             if !s.is_empty() {
                 out.push(s);
             }
         }
-        out
+        Ok(out)
     }
 
     pub(crate) fn finish(&mut self) -> Option<String> {
@@ -277,6 +337,7 @@ struct DecodeState<D> {
     queue: VecDeque<Result<ChatEvent>>,
     finished: bool,
     eof: bool,
+    received: usize,
 }
 
 impl<D: StreamDecoder> DecodeState<D> {
@@ -304,6 +365,7 @@ pub(crate) fn decode_stream<D: StreamDecoder>(
         queue: VecDeque::new(),
         finished: false,
         eof: false,
+        received: 0,
     };
     futures::stream::unfold(st, |mut st| async move {
         loop {
@@ -319,11 +381,22 @@ pub(crate) fn decode_stream<D: StreamDecoder>(
             }
             match st.body.next().await {
                 Some(Ok(bytes)) => {
+                    if bytes.len() > MAX_STREAM_BYTES.saturating_sub(st.received) {
+                        st.queue.push_back(Err(oversized_response()));
+                        continue;
+                    }
+                    st.received += bytes.len();
                     let payloads = match st.framing {
-                        Framing::Sse => st.sse.push(&bytes).into_iter().map(|e| e.data).collect(),
+                        Framing::Sse => st
+                            .sse
+                            .push(&bytes)
+                            .map(|events| events.into_iter().map(|e| e.data).collect()),
                         Framing::Ndjson => st.lines.push(&bytes),
                     };
-                    st.feed(payloads);
+                    match payloads {
+                        Ok(payloads) => st.feed(payloads),
+                        Err(e) => st.queue.push_back(Err(e)),
+                    }
                 }
                 Some(Err(e)) => st.queue.push_back(Err(match map_err(e) {
                     AiError::Transport(m) => AiError::Transport(format!("stream interrupted: {m}")),
@@ -332,10 +405,19 @@ pub(crate) fn decode_stream<D: StreamDecoder>(
                 None => {
                     st.eof = true;
                     let payloads = match st.framing {
-                        Framing::Sse => st.sse.finish().into_iter().map(|e| e.data).collect(),
-                        Framing::Ndjson => st.lines.finish().into_iter().collect(),
+                        Framing::Sse => st
+                            .sse
+                            .finish()
+                            .map(|events| events.into_iter().map(|e| e.data).collect()),
+                        Framing::Ndjson => Ok(st.lines.finish().into_iter().collect()),
                     };
-                    st.feed(payloads);
+                    match payloads {
+                        Ok(payloads) => st.feed(payloads),
+                        Err(e) => {
+                            st.queue.push_back(Err(e));
+                            continue;
+                        }
+                    }
                     let tail = st.decoder.on_eof();
                     st.queue.extend(tail);
                 }
@@ -359,16 +441,85 @@ pub(crate) fn join(base: &Url, path: &str) -> Url {
 mod tests {
     use super::*;
 
+    async fn test_response(body: axum::body::Body) -> reqwest::Response {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let body = std::sync::Arc::new(std::sync::Mutex::new(Some(body)));
+        let app = axum::Router::new().route(
+            "/",
+            axum::routing::get(move || {
+                let body = body.lock().unwrap().take().unwrap();
+                async move { body }
+            }),
+        );
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let response = reqwest::get(format!("http://{addr}/")).await.unwrap();
+        // This fixture lives only inside the individual test's Tokio runtime.
+        drop(server);
+        response
+    }
+
+    #[tokio::test]
+    async fn bounded_body_checks_both_content_length_and_chunked_transfer() {
+        let response = test_response(axum::body::Body::from(vec![b'x'; 1025])).await;
+        assert!(matches!(
+            bounded_body(response, 1024).await,
+            Err(AiError::InvalidResponse(_))
+        ));
+        let chunks = futures::stream::iter(
+            (0..3).map(|_| Ok::<_, std::convert::Infallible>(Bytes::from(vec![b'x'; 512]))),
+        );
+        let response = test_response(axum::body::Body::from_stream(chunks)).await;
+        assert!(response.content_length().is_none());
+        assert!(matches!(
+            bounded_body(response, 1024).await,
+            Err(AiError::InvalidResponse(_))
+        ));
+        let response = test_response(axum::body::Body::from(vec![b'x'; 1024])).await;
+        assert_eq!(bounded_body(response, 1024).await.unwrap().len(), 1024);
+    }
+
+    struct CommentDecoder;
+    impl StreamDecoder for CommentDecoder {
+        fn on_payload(&mut self, _payload: &str) -> Vec<Result<ChatEvent>> {
+            vec![Ok(ChatEvent::Delta("unexpected".into()))]
+        }
+        fn on_eof(&mut self) -> Vec<Result<ChatEvent>> {
+            Vec::new()
+        }
+    }
+
+    #[tokio::test]
+    async fn streaming_total_limit_ends_once_even_for_valid_small_lines() {
+        // Comments produce no chat output, so this exercises the total body
+        // cap independently of the per-line/event/answer caps.
+        let chunk = Bytes::from(b": public comment\n".repeat(4096));
+        let count = MAX_STREAM_BYTES / chunk.len() + 1;
+        let chunks = futures::stream::iter(
+            (0..count).map(move |_| Ok::<_, std::convert::Infallible>(chunk.clone())),
+        );
+        let response = test_response(axum::body::Body::from_stream(chunks)).await;
+        let mut stream = decode_stream(response, Framing::Sse, CommentDecoder);
+        assert!(matches!(
+            stream.next().await,
+            Some(Err(AiError::InvalidResponse(_)))
+        ));
+        assert!(stream.next().await.is_none());
+    }
+
     #[test]
     fn sse_parser_handles_chunking_comments_and_crlf() {
         let mut p = SseParser::default();
-        let mut evs = p.push(b": keep-alive\r\ndata: {\"a\":");
+        let mut evs = p.push(b": keep-alive\r\ndata: {\"a\":").unwrap();
         assert!(evs.is_empty());
-        evs.extend(p.push(b"1}\r\n\r\nevent: x\ndata: line1\ndata: line2\n\n"));
-        evs.extend(p.push("data: é".as_bytes().split_at(7).0));
-        evs.extend(p.push(&"data: é".as_bytes()[7..]));
-        evs.extend(p.push(b"\n\ndata: [DONE]"));
-        evs.extend(p.finish());
+        evs.extend(
+            p.push(b"1}\r\n\r\nevent: x\ndata: line1\ndata: line2\n\n")
+                .unwrap(),
+        );
+        evs.extend(p.push("data: é".as_bytes().split_at(7).0).unwrap());
+        evs.extend(p.push(&"data: é".as_bytes()[7..]).unwrap());
+        evs.extend(p.push(b"\n\ndata: [DONE]").unwrap());
+        evs.extend(p.finish().unwrap());
         assert_eq!(evs.len(), 4);
         assert_eq!(evs[0].data, "{\"a\":1}");
         assert_eq!(evs[1].event.as_deref(), Some("x"));
@@ -380,11 +531,38 @@ mod tests {
     #[test]
     fn line_parser() {
         let mut p = LineParser::default();
-        let mut l = p.push(b"{\"a\":1}\n{\"b\"");
-        l.extend(p.push(b":2}\n\n"));
+        let mut l = p.push(b"{\"a\":1}\n{\"b\"").unwrap();
+        l.extend(p.push(b":2}\n\n").unwrap());
         assert_eq!(l, vec!["{\"a\":1}", "{\"b\":2}"]);
-        p.push(b"{\"c\":3}");
+        p.push(b"{\"c\":3}").unwrap();
         assert_eq!(p.finish().as_deref(), Some("{\"c\":3}"));
+    }
+
+    #[test]
+    fn framing_rejects_oversized_unterminated_lines_and_sse_events() {
+        let chunk = vec![b'x'; 64 * 1024];
+        let mut sse = SseParser::default();
+        let mut lines = LineParser::default();
+        for _ in 0..MAX_LINE_BYTES / chunk.len() {
+            assert!(sse.push(&chunk).unwrap().is_empty());
+            assert!(lines.push(&chunk).unwrap().is_empty());
+        }
+        assert!(sse.push(b"x").is_err());
+        assert!(lines.push(b"x").is_err());
+        let mut sse = SseParser::default();
+        let data = format!("data: {}\n", "x".repeat(64 * 1024));
+        for _ in 0..30 {
+            assert!(sse.push(data.as_bytes()).is_ok());
+        }
+        assert!(sse.push(data.as_bytes()).is_ok());
+        assert!(sse.push(data.as_bytes()).is_err());
+    }
+
+    #[test]
+    fn a_large_chunk_of_small_frames_is_valid() {
+        let chunk = b"data: ok\n\n".repeat(MAX_LINE_BYTES / 10 + 1);
+        let events = SseParser::default().push(&chunk).unwrap();
+        assert_eq!(events.len(), MAX_LINE_BYTES / 10 + 1);
     }
 
     #[test]

@@ -599,7 +599,9 @@ final class RustSettingsService implements SettingsService {
 /// snippet drafts). Provider configs and API keys live in the vault; keys
 /// are write-only.
 final class RustAiService implements AiService {
-  RustAiService(this._hub);
+  RustAiService(this._hub) {
+    _hub.onSessionReset.add(_conversations.clear);
+  }
 
   final RustBackend _hub;
 

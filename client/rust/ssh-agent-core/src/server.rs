@@ -14,7 +14,7 @@ use cc_ssh_core::russh::keys::ssh_key::private::KeypairData;
 use cc_ssh_core::russh::keys::ssh_key::{Certificate, HashAlg, PrivateKey, Signature};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::sync::watch;
 
@@ -108,7 +108,9 @@ struct Identity {
 /// Protocol engine (transport independent).
 pub struct AgentService {
     identities: Vec<Identity>,
-    by_blob: HashMap<Vec<u8>, Arc<AgentKey>>,
+    // None is a terminal revocation. The same lock serializes signing with
+    // shutdown so an already accepted connection cannot sign after stop.
+    by_blob: Mutex<Option<HashMap<Vec<u8>, Arc<AgentKey>>>>,
     confirm: Option<Arc<dyn SignConfirm>>,
 }
 
@@ -145,7 +147,7 @@ impl AgentService {
         }
         Self {
             identities,
-            by_blob,
+            by_blob: Mutex::new(Some(by_blob)),
             confirm: None,
         }
     }
@@ -160,6 +162,13 @@ impl AgentService {
         self.identities.len()
     }
 
+    fn stop(&self) {
+        self.by_blob
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .take();
+    }
+
     /// Handle one request payload; returns the response payload.
     pub async fn handle(&self, req: &[u8]) -> Vec<u8> {
         let Some((&kind, mut rest)) = req.split_first() else {
@@ -167,6 +176,14 @@ impl AgentService {
         };
         match kind {
             SSH_AGENTC_REQUEST_IDENTITIES => {
+                if self
+                    .by_blob
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner())
+                    .is_none()
+                {
+                    return vec![SSH_AGENT_FAILURE];
+                }
                 let mut out = vec![SSH_AGENT_IDENTITIES_ANSWER];
                 put_u32(&mut out, self.identities.len() as u32);
                 for id in &self.identities {
@@ -183,15 +200,25 @@ impl AgentService {
                 ) else {
                     return vec![SSH_AGENT_FAILURE];
                 };
-                let Some(key) = self.by_blob.get(blob) else {
-                    return vec![SSH_AGENT_FAILURE];
-                };
                 if let Some(c) = &self.confirm {
-                    if !c.confirm(&key.fingerprint(), &key.comment).await {
-                        tracing::info!(fingerprint = %key.fingerprint(), "agent signature denied by user");
+                    // Only public metadata crosses this await. Shutdown drops
+                    // every key even if a confirmation UI never resolves.
+                    let metadata = {
+                        let keys = self.by_blob.lock().unwrap_or_else(|p| p.into_inner());
+                        let Some(key) = keys.as_ref().and_then(|keys| keys.get(blob)) else {
+                            return vec![SSH_AGENT_FAILURE];
+                        };
+                        (key.fingerprint(), key.comment.clone())
+                    };
+                    if !c.confirm(&metadata.0, &metadata.1).await {
+                        tracing::info!(fingerprint = %metadata.0, "agent signature denied by user");
                         return vec![SSH_AGENT_FAILURE];
                     }
                 }
+                let keys = self.by_blob.lock().unwrap_or_else(|p| p.into_inner());
+                let Some(key) = keys.as_ref().and_then(|keys| keys.get(blob)) else {
+                    return vec![SSH_AGENT_FAILURE];
+                };
                 match key.sign(data, flags) {
                     Some(sig) => {
                         tracing::debug!(fingerprint = %key.fingerprint(), "agent signed a request");
@@ -249,6 +276,64 @@ fn get_u32(r: &mut &[u8]) -> Option<u32> {
     Some(u32::from_be_bytes([h[0], h[1], h[2], h[3]]))
 }
 
+#[cfg(test)]
+mod shutdown_tests {
+    use super::*;
+    use cc_ssh_core::keys::{generate_key, load_private_key, KeyGenAlgorithm};
+    use tokio::sync::Notify;
+
+    struct PausedConfirmation {
+        entered: Notify,
+        release: Notify,
+    }
+
+    #[async_trait]
+    impl SignConfirm for PausedConfirmation {
+        async fn confirm(&self, _fingerprint: &str, _comment: &str) -> bool {
+            self.entered.notify_one();
+            self.release.notified().await;
+            true
+        }
+    }
+
+    #[tokio::test]
+    async fn shutdown_drops_keys_and_denies_a_previously_started_confirmation() {
+        let generated = generate_key(KeyGenAlgorithm::Ed25519, "runtime only", None).unwrap();
+        let private = load_private_key(&generated.private_openssh, None).unwrap();
+        let blob = key_blob(private.public_key().key_data());
+        let confirm = Arc::new(PausedConfirmation {
+            entered: Notify::new(),
+            release: Notify::new(),
+        });
+        let service = Arc::new(
+            AgentService::new(vec![AgentKey::new(private, None, "public label").unwrap()])
+                .with_confirm(confirm.clone()),
+        );
+        let weak_key = {
+            let keys = service.by_blob.lock().unwrap();
+            Arc::downgrade(keys.as_ref().unwrap().get(&blob).unwrap())
+        };
+        let mut request = vec![SSH_AGENTC_SIGN_REQUEST];
+        put_string(&mut request, &blob);
+        put_string(&mut request, b"public synthetic challenge");
+        put_u32(&mut request, 0);
+        let captured = service.clone();
+        let pending = tokio::spawn(async move { captured.handle(&request).await });
+        confirm.entered.notified().await;
+        service.stop();
+        assert!(
+            weak_key.upgrade().is_none(),
+            "confirmation retained the private key"
+        );
+        confirm.release.notify_one();
+        assert_eq!(pending.await.unwrap(), vec![SSH_AGENT_FAILURE]);
+        assert_eq!(
+            service.handle(&[SSH_AGENTC_REQUEST_IDENTITIES]).await,
+            vec![SSH_AGENT_FAILURE]
+        );
+    }
+}
+
 fn get_string<'a>(r: &mut &'a [u8]) -> Option<&'a [u8]> {
     let len = get_u32(r)? as usize;
     if r.len() < len {
@@ -273,6 +358,7 @@ pub struct AgentHandle {
     dir: Option<PathBuf>,
     shutdown: watch::Sender<bool>,
     task: tokio::task::JoinHandle<()>,
+    service: Arc<AgentService>,
 }
 
 impl std::fmt::Debug for AgentHandle {
@@ -298,6 +384,7 @@ impl AgentHandle {
 
 impl Drop for AgentHandle {
     fn drop(&mut self) {
+        self.service.stop();
         let _ = self.shutdown.send(true);
         self.task.abort();
         if let Some(dir) = &self.dir {
@@ -340,10 +427,15 @@ mod platform {
         };
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))?;
         let (shutdown, mut rx) = watch::channel(false);
+        let handle_service = service.clone();
         let task = tokio::spawn(async move {
+            // JoinSet aborts all accepted connections when this listener is
+            // stopped/dropped, and reaps completed connections while running.
+            let mut connections = tokio::task::JoinSet::new();
             loop {
                 tokio::select! {
                     _ = rx.changed() => break,
+                    _ = connections.join_next(), if !connections.is_empty() => {},
                     accepted = listener.accept() => {
                         let Ok((stream, _)) = accepted else { continue };
                         // Defense in depth: only our own user may talk to the agent.
@@ -355,7 +447,7 @@ mod platform {
                             }
                         }
                         let svc = service.clone();
-                        tokio::spawn(async move {
+                        connections.spawn(async move {
                             if let Err(e) = svc.serve_connection(stream).await {
                                 tracing::debug!("agent connection ended: {e}");
                             }
@@ -369,6 +461,7 @@ mod platform {
             dir: Some(dir),
             shutdown,
             task,
+            service: handle_service,
         })
     }
 }
@@ -396,10 +489,13 @@ mod platform {
             .create(&name)?;
         let (shutdown, mut rx) = watch::channel(false);
         let pipe = name.clone();
+        let handle_service = service.clone();
         let task = tokio::spawn(async move {
+            let mut connections = tokio::task::JoinSet::new();
             loop {
                 tokio::select! {
                     _ = rx.changed() => break,
+                    _ = connections.join_next(), if !connections.is_empty() => {},
                     connected = server.connect() => {
                         if connected.is_err() {
                             break;
@@ -410,7 +506,7 @@ mod platform {
                         };
                         let current = std::mem::replace(&mut server, next);
                         let svc = service.clone();
-                        tokio::spawn(async move {
+                        connections.spawn(async move {
                             let _ = svc.serve_connection(current).await;
                         });
                     }
@@ -422,6 +518,7 @@ mod platform {
             dir: None,
             shutdown,
             task,
+            service: handle_service,
         })
     }
 }

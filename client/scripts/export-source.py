@@ -16,6 +16,7 @@ ROOT_FILES = {
     '.gitignore', '.gitattributes', '.dockerignore', '.gitlab-ci.yml',
     'rust-toolchain.toml',
 }
+PUBLIC_DOCUMENTS = {'server/deploy/native/README.md'}
 PRIVATE_DIRS = {
     '.git', '.github', '.codex', '.claude', '.agents', '.idea', '.vscode',
     'target', 'build', 'dist', '.dart_tool', '.gradle', '.cxx', 'Pods',
@@ -23,12 +24,12 @@ PRIVATE_DIRS = {
 }
 PRIVATE_NAMES = {
     'AGENTS.md', 'CLAUDE.md', '.DS_Store', 'local.properties', 'key.properties',
-    '.flutter-plugins', '.flutter-plugins-dependencies', '.env',
+    '.flutter-plugins', '.flutter-plugins-dependencies', '.env', 'server.json',
 }
 PRIVATE_SUFFIXES = {
     '.key', '.pem', '.p12', '.pfx', '.jks', '.keystore', '.mobileprovision',
     '.db', '.sqlite', '.sqlite3', '.log', '.pyc', '.apk', '.dmg', '.exe',
-    '.zip', '.dylib', '.dll', '.so', '.a', '.o',
+    '.zip', '.dylib', '.dll', '.so', '.a', '.o', '.env',
 }
 
 
@@ -46,13 +47,14 @@ def publishable(name: str) -> bool:
         return False
     if path.name in PRIVATE_NAMES or path.suffix.lower() in PRIVATE_SUFFIXES:
         return False
-    if path.name.startswith('.env') and path.name != '.env.example':
+    lowered_name = path.name.lower()
+    if (lowered_name.startswith('.env') or '.env.' in lowered_name) and not lowered_name.endswith('.env.example'):
         return False
     if path.parts[0] == 'docs':
         return name.startswith('docs/public/') or name == 'docs/brand/consolecrypt.svg'
     # Keep only curated user-facing docs; vendored license notices are retained.
     if path.suffix.lower() == '.md':
-        return path.name.upper() in {'LICENSE.MD', 'NOTICE.MD', 'COPYING.MD'}
+        return name in PUBLIC_DOCUMENTS or path.name.upper() in {'LICENSE.MD', 'NOTICE.MD', 'COPYING.MD'}
     return True
 
 

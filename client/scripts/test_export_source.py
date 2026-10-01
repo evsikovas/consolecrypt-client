@@ -16,7 +16,8 @@ class ExportTests(unittest.TestCase):
                      'crates/models/src/lib.rs', 'server/migrations/001.sql',
                      'client/flutter/rust_builder/cargokit/LICENSE',
                      'client/packaging/macos/installer-background.png',
-                     'server/.env.example', 'docs/public/BUILD_WINDOWS.md'):
+                     'server/.env.example', 'server/server.env.example',
+                     'server/deploy/native/README.md', 'docs/public/BUILD_WINDOWS.md'):
             with self.subTest(path=path):
                 self.assertTrue(module.publishable(path))
 
@@ -24,7 +25,9 @@ class ExportTests(unittest.TestCase):
         for path in ('LICENSE-MIT', 'LICENSE-APACHE', 'AGENTS.md', 'CLIENT_PLAN.md', 'docs/adr/design.md',
                      'client/AGENTS.md', 'client/packaging/macos/background-prompts.md',
                      'client/flutter/.dart_tool/cache', 'client/rust/target/release/app',
-                     'server/.env', 'server/.env.production', 'client/key.p12',
+                     'server/.env', 'server/.env.production', 'server/server.env',
+                     'server/server.env.production', 'server/SERVER.ENV', 'server/server.json',
+                     'client/config.env', 'client/key.p12',
                      'client/secret.pem', 'client/app.apk', 'server/user.sqlite',
                      'client/flutter/android/local.properties', '/etc/passwd',
                      'client/../private/file', 'client/.git/config',

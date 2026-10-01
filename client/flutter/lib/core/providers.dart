@@ -97,8 +97,11 @@ final groupByIdProvider = Provider<Map<ObjectId, Group>>(
 
 /// Clipboard with auto-clear duration from settings.
 final secureClipboardProvider = Provider<SecureClipboard>((ref) {
-  final seconds = ref.watch(localSettingsProvider).value?.clipboardClearSeconds ?? 30;
+  final seconds = ref.read(localSettingsProvider).value?.clipboardClearSeconds ?? 30;
   final clipboard = SecureClipboard(clearAfter: Duration(seconds: seconds));
+  ref.listen(localSettingsProvider.select((s) => s.value?.clipboardClearSeconds), (_, seconds) {
+    if (seconds != null) clipboard.updateClearAfter(Duration(seconds: seconds));
+  });
   ref.onDispose(clipboard.dispose);
   return clipboard;
 });

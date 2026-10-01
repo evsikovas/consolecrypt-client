@@ -19,7 +19,7 @@ class StartupErrorApp extends StatelessWidget {
 
   String get _details {
     final e = toAppException(error);
-    return e.code.name == 'internal' && error is! Exception ? error.toString() : '${e.code.name}: ${e.message}';
+    return '${e.code.name}: ${e.message}';
   }
 
   @override

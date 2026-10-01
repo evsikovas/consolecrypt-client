@@ -447,6 +447,44 @@ async fn server_email(server: &MockServer, a: &Client) -> String {
 }
 
 #[tokio::test]
+async fn websocket_1011_reconnects_without_forgetting_credentials() {
+    let server = MockServer::start().await;
+    let (_a, b, _vault) = two_devices(&server).await;
+    assert!(b.api.is_authenticated().await.unwrap());
+    let mut cfg = EventStreamConfig::default();
+    cfg.backoff.initial = Duration::from_millis(10);
+    cfg.backoff.max = Duration::from_millis(50);
+    let events = EventStream::spawn(b.api.clone(), cfg);
+    let mut rx = events.subscribe();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            match rx.recv().await.unwrap() {
+                WsEvent::Event(cc_protocol::events::ServerEvent::Hello { .. }) => break,
+                WsEvent::Terminated { .. } => panic!("unexpected terminal session error"),
+                _ => {}
+            }
+        }
+    }).await.unwrap();
+    // An unavailable server-side session DB is a transient condition,
+    // unlike the authenticated application close code for revocation.
+    server.close_websockets(1011);
+    tokio::time::timeout(Duration::from_secs(5), async {
+        let mut disconnected = false;
+        loop {
+            match rx.recv().await.unwrap() {
+                WsEvent::Disconnected { .. } => disconnected = true,
+                WsEvent::Event(cc_protocol::events::ServerEvent::Hello { .. }) if disconnected => break,
+                WsEvent::Terminated { .. } => panic!("transient close revoked the session"),
+                _ => {}
+            }
+        }
+    }).await.unwrap();
+    assert!(b.api.is_authenticated().await.unwrap());
+    assert!(b.api.me().await.is_ok());
+    events.shutdown().await;
+}
+
+#[tokio::test]
 async fn websocket_vault_changed_triggers_pull() {
     let server = MockServer::start().await;
     let (a, b, _vault) = two_devices(&server).await;

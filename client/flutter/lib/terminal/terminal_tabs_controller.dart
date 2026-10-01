@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:consolecrypt/terminal/terminal_output.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xterm/xterm.dart';
@@ -111,9 +112,10 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
       tab.title = title;
       _touch();
     };
-    // Incremental decoding: multi-byte sequences may be split across chunks.
+    // Incremental UTF-8 + bounded parser turns keep a large attach snapshot or
+    // dense live output from starving window input and frame scheduling.
     tab
-      .._output = const Utf8Decoder(allowMalformed: true).bind(handle.output).listen(terminal.write)
+      .._output = yieldingTerminalOutput(handle.output).listen(terminal.write)
       .._events = handle.events.listen((e) => _onEvent(tab, e));
     _open.add(tab);
     final tabs = [...state.tabs, tab];

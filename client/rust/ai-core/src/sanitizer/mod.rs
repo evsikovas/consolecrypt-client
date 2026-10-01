@@ -423,6 +423,10 @@ impl SanitizerSession {
         rehydrate_with(&self.reverse, text)
     }
 
+    pub(crate) fn rehydrate_bounded(&self, text: &str, limit: usize) -> Option<Rehydrated> {
+        rehydrate_with_limit(&self.reverse, text, limit)
+    }
+
     /// An owned, `'static` re-hydrator (for streams).
     pub fn rehydrator(&self) -> Rehydrator {
         Rehydrator {
@@ -433,29 +437,54 @@ impl SanitizerSession {
 }
 
 fn rehydrate_with(map: &ReverseMap, text: &str) -> Rehydrated {
+    rehydrate_with_limit(map, text, usize::MAX).expect("unbounded rehydration")
+}
+
+fn rehydrate_with_limit(map: &ReverseMap, text: &str, limit: usize) -> Option<Rehydrated> {
     let mut unresolved = Vec::new();
     let mut unknown = Vec::new();
-    let out = PLACEHOLDER.replace_all(text, |c: &regex::Captures<'_>| {
+    let mut out = String::with_capacity(text.len().min(limit));
+    let mut offset = 0;
+    for c in PLACEHOLDER.captures_iter(text) {
+        let matched = c.get(0)?;
+        let prefix = &text[offset..matched.start()];
+        if prefix.len() > limit.saturating_sub(out.len()) {
+            return None;
+        }
+        out.push_str(prefix);
         let whole = c.get(0).map_or("", |m| m.as_str());
-        if let Some(orig) = map.0.get(whole) {
-            return orig.to_string();
-        }
-        match Category::from_label(&c[1]) {
-            Some(cat) if cat.is_secret() => {
-                if !unresolved.iter().any(|u| u == whole) {
-                    unresolved.push(whole.to_owned());
+        let replacement = if let Some(orig) = map.0.get(whole) {
+            orig.as_str()
+        } else {
+            match Category::from_label(&c[1]) {
+                Some(cat) if cat.is_secret() => {
+                    if !unresolved.iter().any(|u| u == whole) {
+                        unresolved.push(whole.to_owned());
+                    }
                 }
+                Some(_) if !unknown.iter().any(|u| u == whole) => unknown.push(whole.to_owned()),
+                _ => {}
             }
-            Some(_) if !unknown.iter().any(|u| u == whole) => unknown.push(whole.to_owned()),
-            _ => {}
+            whole
+        };
+        // Check borrowed replacement length before making a potentially
+        // amplified allocation (e.g. repeated long host-name placeholders).
+        if replacement.len() > limit.saturating_sub(out.len()) {
+            return None;
         }
-        whole.to_owned()
-    });
-    Rehydrated {
-        text: out.into_owned(),
+        out.push_str(replacement);
+        offset = matched.end();
+    }
+    let suffix = &text[offset..];
+    if suffix.len() > limit.saturating_sub(out.len()) {
+        return None;
+    }
+    out.push_str(suffix);
+    Some(Rehydrated {
+        text: out,
         unresolved_secrets: unresolved,
         unknown_placeholders: unknown,
-    }
+    })
 }
 
 /// Incremental re-hydration of streamed model output. Holds back a possibly
@@ -483,6 +512,11 @@ impl Rehydrator {
 
     /// Feed a chunk; returns text that is safe to emit now.
     pub fn push(&mut self, chunk: &str) -> String {
+        self.push_bounded(chunk, usize::MAX)
+            .expect("unbounded rehydration")
+    }
+
+    pub(crate) fn push_bounded(&mut self, chunk: &str, limit: usize) -> Option<String> {
         self.pending.push_str(chunk);
         // Hold back from the last '<' if it could still become a placeholder.
         let cut = match self.pending.rfind('<') {
@@ -498,13 +532,18 @@ impl Rehydrator {
             _ => self.pending.len(),
         };
         let ready: String = self.pending.drain(..cut).collect();
-        rehydrate_with(&self.map, &ready).text
+        rehydrate_with_limit(&self.map, &ready, limit).map(|r| r.text)
     }
 
     /// Flush the remainder at end of stream.
     pub fn finish(&mut self) -> String {
+        self.finish_bounded(usize::MAX)
+            .expect("unbounded rehydration")
+    }
+
+    pub(crate) fn finish_bounded(&mut self, limit: usize) -> Option<String> {
         let rest = std::mem::take(&mut self.pending);
-        rehydrate_with(&self.map, &rest).text
+        rehydrate_with_limit(&self.map, &rest, limit).map(|r| r.text)
     }
 }
 

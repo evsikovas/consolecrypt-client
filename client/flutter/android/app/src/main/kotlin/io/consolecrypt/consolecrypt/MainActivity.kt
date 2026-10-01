@@ -3,6 +3,8 @@ package io.consolecrypt.consolecrypt
 import android.app.KeyguardManager
 import android.app.Activity
 import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
@@ -11,6 +13,7 @@ import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
 import android.os.CancellationSignal
 import android.os.Bundle
+import android.os.PersistableBundle
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -50,6 +53,35 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         applyScreenCaptureAllowed(savedScreenCaptureAllowed())
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/clipboard").setMethodCallHandler { call, result ->
+            if (call.method != "copySecret") {
+                result.notImplemented()
+                return@setMethodCallHandler
+            }
+            val text = call.argument<Any>("text") as? String
+            val milliseconds = when (val value = call.argument<Any>("clearAfterMilliseconds")) {
+                is Int -> value.toLong()
+                is Long -> value
+                else -> null
+            }
+            if (text == null || milliseconds == null || milliseconds !in 1..86_400_000L) {
+                result.error("bad_args", "Invalid secret clipboard request", null)
+                return@setMethodCallHandler
+            }
+            try {
+                val clip = ClipData.newPlainText("", text)
+                // The API 33 constant's literal also works on our API 30 minimum.
+                // Android's preview must never show the copied secret. The Dart
+                // owner still clears it on timeout/disposal; Android has no TTL API.
+                clip.description.extras = PersistableBundle().apply {
+                    putBoolean("android.content.extra.IS_SENSITIVE", true)
+                }
+                getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+                result.success(null)
+            } catch (_: Exception) {
+                result.error("clipboard", "Secret clipboard unavailable", null)
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/updates").setMethodCallHandler { call, result ->
             val cache = File(cacheDir, "updates")
             when (call.method) {

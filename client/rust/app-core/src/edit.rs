@@ -416,7 +416,7 @@ impl EditRuntime {
     /// Stop every session (lock / shutdown), keeping files on failure.
     pub(crate) async fn stop_all(&self) {
         let Ok(m) = self.manager() else { return };
-        for (id, r) in m.stop_all(StopMode::UploadOrKeep).await {
+        for (id, r) in m.shutdown(StopMode::UploadOrKeep).await {
             match r {
                 Ok(o) => {
                     tracing::info!(session = %id, outcome = ?EditStopOutcomeDto::from(&o), "edit session stopped (lock)")
@@ -425,6 +425,12 @@ impl EditRuntime {
             }
         }
         self.owners().clear();
+    }
+
+    pub(crate) fn begin_shutdown(&self) {
+        if let Ok(m) = self.manager() {
+            m.begin_shutdown();
+        }
     }
 
     /// Number of leftovers (announced after unlock).

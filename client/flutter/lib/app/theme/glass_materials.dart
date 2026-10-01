@@ -227,6 +227,13 @@ final class AmbientBlob {
   final Offset center;
   final double radius;
   final Color color;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AmbientBlob && other.center == center && other.radius == radius && other.color == color;
+
+  @override
+  int get hashCode => Object.hash(center, radius, color);
 }
 
 /// The static ambient backdrop the glass "refracts" (layer 1).
@@ -242,6 +249,17 @@ final class AmbientSpec {
 
   /// Monochrome grain amplitude against banding (dark mode only).
   final double grain;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AmbientSpec &&
+      other.base == base &&
+      listEquals(other.blobs, blobs) &&
+      other.localCueBlob == localCueBlob &&
+      other.grain == grain;
+
+  @override
+  int get hashCode => Object.hash(base, Object.hashAll(blobs), localCueBlob, grain);
 
   static AmbientSpec resolve(Brightness brightness) {
     final dark = brightness == Brightness.dark;

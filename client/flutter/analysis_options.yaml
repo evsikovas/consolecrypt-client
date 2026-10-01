@@ -25,6 +25,9 @@ analyzer:
     - lib/src/rust/**
     # Vendored cargokit build tool (own package, resolved at build time).
     - rust_builder/**
+    # xterm upstream sources retain their own style; the local parser patch
+    # is covered by first-party terminal regression tests.
+    - vendor/xterm/**
     - android/**
     - linux/**
     - ios/**

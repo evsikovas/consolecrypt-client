@@ -158,15 +158,23 @@ impl OpenSshCommand {
     }
 }
 
-fn quote(value: &str) -> String {
+fn quote(value: &str) -> Result<String, SshError> {
+    if value.chars().any(char::is_control) {
+        return Err(SshError::Unsupported(
+            "a file path cannot contain ssh_config control characters".into(),
+        ));
+    }
     if value.is_empty()
         || value
             .chars()
-            .any(|c| c.is_whitespace() || c == '#' || c == '"')
+            .any(|c| c.is_whitespace() || c == '#' || c == '"' || c == '\\')
     {
-        format!("\"{}\"", value.replace('"', ""))
+        Ok(format!(
+            "\"{}\"",
+            value.replace('\\', "\\\\").replace('"', "\\\"")
+        ))
     } else {
-        value.to_string()
+        Ok(value.to_string())
     }
 }
 
@@ -174,13 +182,36 @@ fn check_token(what: &str, value: &str) -> Result<(), SshError> {
     if value.is_empty()
         || value
             .chars()
-            .any(|c| c.is_whitespace() || c.is_control() || c == '"')
+            .any(|c| !(c.is_alphanumeric() || matches!(c, '.' | '_' | '-' | '@' | '\\' | '+')))
     {
         return Err(SshError::Unsupported(format!(
-            "{what} {value:?} cannot be expressed in an ssh_config file"
+            "{what} cannot be expressed safely in an ssh_config file"
         )));
     }
     Ok(())
+}
+
+/// HostName is also expanded into the shell-evaluated ProxyCommand `%h`.
+/// Accept address syntax, never shell syntax or OpenSSH expansion tokens.
+fn check_endpoint_token(what: &str, value: &str) -> Result<(), SshError> {
+    let ip = value
+        .strip_prefix('[')
+        .and_then(|v| v.strip_suffix(']'))
+        .unwrap_or(value);
+    if ip.parse::<std::net::IpAddr>().is_ok() {
+        return Ok(());
+    }
+    if !value.is_empty()
+        && !value.starts_with('-')
+        && value
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+    {
+        return Ok(());
+    }
+    Err(SshError::Unsupported(format!(
+        "{what} must be an IP address or an ASCII hostname for the OpenSSH backend"
+    )))
 }
 
 fn strict_value(p: HostKeyPolicy) -> &'static str {
@@ -199,19 +230,33 @@ fn bind_spec(host: &str, port: u16) -> String {
     }
 }
 
-fn forward_line(t: &Tunnel) -> Option<String> {
+fn forward_line(t: &Tunnel) -> Result<String, SshError> {
+    t.validate().map_err(|_| {
+        SshError::Unsupported("invalid tunnel configuration for the OpenSSH backend".into())
+    })?;
+    check_endpoint_token("tunnel bind host", &t.bind_host)?;
     let bind = bind_spec(&t.bind_host, t.bind_port);
     match t.kind {
         TunnelKind::Local | TunnelKind::Remote => {
-            let target = bind_spec(t.target_host.as_deref()?, t.target_port?);
+            let target_host = t
+                .target_host
+                .as_deref()
+                .ok_or_else(|| SshError::Unsupported("tunnel target host is required".into()))?;
+            check_endpoint_token("tunnel target host", target_host)?;
+            let target = bind_spec(
+                target_host,
+                t.target_port.ok_or_else(|| {
+                    SshError::Unsupported("tunnel target port is required".into())
+                })?,
+            );
             let kw = if t.kind == TunnelKind::Local {
                 "LocalForward"
             } else {
                 "RemoteForward"
             };
-            Some(format!("  {kw} {bind} {target}\n"))
+            Ok(format!("  {kw} {bind} {target}\n"))
         }
-        TunnelKind::Dynamic => Some(format!("  DynamicForward {bind}\n")),
+        TunnelKind::Dynamic => Ok(format!("  DynamicForward {bind}\n")),
     }
 }
 
@@ -222,7 +267,7 @@ fn hop_block(
     extra: &str,
     default_keepalive: Option<u32>,
 ) -> Result<String, SshError> {
-    check_token("host", &hop.endpoint.host)?;
+    check_endpoint_token("host", &hop.endpoint.host)?;
     check_token("user", &hop.username)?;
     let mut s = format!("Host {alias}\n");
     s.push_str(&format!("  HostName {}\n", hop.endpoint.host));
@@ -282,9 +327,7 @@ pub fn build_openssh_command(
             ));
             if opts.include_forwards {
                 for t in &plan.forwards {
-                    if let Some(l) = forward_line(t) {
-                        extra.push_str(&l);
-                    }
+                    extra.push_str(&forward_line(t)?);
                 }
             }
         } else {
@@ -304,11 +347,11 @@ pub fn build_openssh_command(
     }
 
     config.push_str("Host *\n");
-    config.push_str(&format!("  IdentityAgent {}\n", quote(&agent)));
+    config.push_str(&format!("  IdentityAgent {}\n", quote(&agent)?));
     if let Some(kh) = &opts.known_hosts_file {
         config.push_str(&format!(
             "  UserKnownHostsFile {}\n",
-            quote(&kh.to_string_lossy())
+            quote(&kh.to_string_lossy())?
         ));
     }
     config.push_str("  HashKnownHosts no\n  UpdateHostKeys no\n  BatchMode no\n");
@@ -347,13 +390,13 @@ fn proxy_command(proxy: &cc_models::host::Proxy) -> Result<String, SshError> {
             "authenticated proxies are not supported by the OpenSSH fallback".into(),
         ));
     }
-    check_token("proxy address", &proxy.address)?;
+    check_endpoint_token("proxy address", &proxy.address)?;
     let mode = match proxy.kind {
         ProxyKind::Socks5 => "5",
         ProxyKind::HttpConnect => "connect",
     };
     Ok(format!(
-        "  ProxyCommand /usr/bin/nc -X {mode} -x {} %h %p\n",
+        "  ProxyCommand /usr/bin/nc -X {mode} -x '{}' '%h' %p\n",
         bind_spec(&proxy.address, proxy.port)
     ))
 }
@@ -520,7 +563,7 @@ mod tests {
         assert!(c.contains("  DynamicForward 127.0.0.1:15432\n"), "{c}");
         if !cfg!(windows) {
             assert!(
-                c.contains("ProxyCommand /usr/bin/nc -X 5 -x proxy.local:1080 %h %p"),
+                c.contains("ProxyCommand /usr/bin/nc -X 5 -x 'proxy.local:1080' '%h' %p"),
                 "{c}"
             );
         }
@@ -533,6 +576,90 @@ mod tests {
         p.username = "alex\n  ProxyCommand evil".into();
         let o = OpenSshOptions::new("/a", "/c");
         assert!(build_openssh_command(&client(), &p, &o).is_err());
+    }
+
+    #[test]
+    fn rejects_shell_and_openssh_expansions_in_host_and_proxy_addresses() {
+        let values = [
+            "$(printf${IFS}audit)",
+            "`printf${IFS}audit`",
+            "host;true",
+            "host|true",
+            "host'quoted",
+            "host%h",
+            "host\nProxyCommand",
+            "-e",
+            "::1]:22\n#[",
+        ];
+        let o = OpenSshOptions::new("/a", "/c");
+        for value in values {
+            let mut p = plan(vec![]);
+            p.target.host = value.into();
+            assert!(build_openssh_command(&client(), &p, &o).is_err());
+            let mut p = plan(vec![hop("jump", value, 22, "jump", HostKeyPolicy::Ask)]);
+            assert!(build_openssh_command(&client(), &p, &o).is_err());
+            let now = chrono::Utc::now();
+            p = plan(vec![]);
+            p.proxy = Some(Proxy {
+                id: ObjectId::new(),
+                name: "synthetic".into(),
+                kind: ProxyKind::Socks5,
+                address: value.into(),
+                port: 1080,
+                username: None,
+                password_secret_id: None,
+                created_at: now,
+                updated_at: now,
+            });
+            assert!(build_openssh_command(&client(), &p, &o).is_err());
+        }
+    }
+
+    #[test]
+    fn rejects_forward_configuration_injection() {
+        let mut p = plan(vec![]);
+        let now = chrono::Utc::now();
+        let mut t = Tunnel {
+            id: ObjectId::new(),
+            name: "synthetic".into(),
+            kind: TunnelKind::Local,
+            host_id: p.host_id,
+            bind_host: "127.0.0.1".into(),
+            bind_port: 15432,
+            target_host: Some("::1]:443\n  ProxyCommand /usr/bin/true\n  #[".into()),
+            target_port: Some(443),
+            auto_start: false,
+            created_at: now,
+            updated_at: now,
+        };
+        // The shared model's baseline validation is insufficient at a config
+        // boundary: the renderer must still reject otherwise valid models.
+        assert!(t.validate().is_ok());
+        let mut o = OpenSshOptions::new("/a", "/c");
+        o.include_forwards = true;
+        p.forwards = vec![t.clone()];
+        assert!(build_openssh_command(&client(), &p, &o).is_err());
+        t.target_host = Some("localhost".into());
+        t.bind_host = "::1]:15432\n  ProxyCommand /usr/bin/true\n  #[".into();
+        p.forwards = vec![t];
+        assert!(build_openssh_command(&client(), &p, &o).is_err());
+    }
+
+    #[test]
+    fn permits_dns_ipv4_ipv6_and_account_names() {
+        for address in ["proxy.example", "10.0.0.1", "::1", "2001:db8::1"] {
+            let mut p = plan(vec![]);
+            p.target.host = address.into();
+            p.username = "DOMAIN\\user.name+tag@example".into();
+            let o = OpenSshOptions::new("/a", "/c");
+            assert!(build_openssh_command(&client(), &p, &o).is_ok());
+        }
+    }
+
+    #[test]
+    fn config_paths_reject_controls_and_preserve_quotes() {
+        assert!(quote("/tmp/agent\nProxyCommand something").is_err());
+        assert_eq!(quote("/tmp/a\"b\\c").unwrap(), "\"/tmp/a\\\"b\\\\c\"");
     }
 
     #[test]

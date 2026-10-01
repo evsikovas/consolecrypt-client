@@ -139,6 +139,7 @@ class RenderGlassBackdrop extends RenderBackdropFilter {
   ValueChanged<bool>? onRefractionChanged;
   bool _refracting = false;
   ui.FragmentShader? _shader;
+  ui.ImageFilter? _frostedFilter;
 
   @override
   bool get alwaysNeedsCompositing => enabled && child != null;
@@ -169,6 +170,7 @@ class RenderGlassBackdrop extends RenderBackdropFilter {
   set sigma(double value) {
     if (value == _sigma) return;
     _sigma = value;
+    _frostedFilter = null;
     markNeedsPaint();
   }
 
@@ -177,6 +179,7 @@ class RenderGlassBackdrop extends RenderBackdropFilter {
   set saturation(double value) {
     if (value == _saturation) return;
     _saturation = value;
+    _frostedFilter = null;
     markNeedsPaint();
   }
 
@@ -217,11 +220,19 @@ class RenderGlassBackdrop extends RenderBackdropFilter {
   /// Whether the last paint used the refraction shader.
   bool get isRefracting => _refracting;
 
-  ui.ImageFilter _buildFilter() {
+  ui.ImageFilter _buildFrostedFilter() {
     ui.ImageFilter filter = ui.ImageFilter.blur(sigmaX: _sigma, sigmaY: _sigma, tileMode: ui.TileMode.clamp);
     if (_saturation != 1) {
       filter = ui.ImageFilter.compose(outer: ui.ColorFilter.matrix(glassSaturationMatrix(_saturation)), inner: filter);
     }
+    return filter;
+  }
+
+  ui.ImageFilter _buildFilter() {
+    // Windows/frosted filters do not depend on layout. Reuse the same engine
+    // objects instead of allocating a blur, matrix and composition per paint.
+    // Only the optional refraction shader below needs current screen bounds.
+    var filter = _frostedFilter ??= _buildFrostedFilter();
     var refracting = false;
     final program = _program;
     if (program != null && !_refraction.isNone && ui.ImageFilter.isShaderFilterSupported && attached) {

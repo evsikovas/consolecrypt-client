@@ -47,6 +47,7 @@ pub(crate) struct RegistryInner {
     pub by_id: HashMap<Uuid, EditSession>,
     pub by_key: HashMap<SessionKey, Uuid>,
     pub opening: HashSet<SessionKey>,
+    pub closed: bool,
 }
 
 pub(crate) type Registry = Arc<Mutex<RegistryInner>>;
@@ -202,6 +203,8 @@ pub(crate) struct NewSession {
     pub base: BaseVersion,
     pub created_at: DateTime<Utc>,
     pub open_with: OpenWith,
+    /// Interrupt only editor UI waits; final uploads still finish on Stop.
+    pub shutdown: watch::Receiver<bool>,
 }
 
 enum Local {
@@ -307,6 +310,7 @@ pub(crate) struct Actor {
     remote: Arc<dyn EditRemote>,
     opener: Arc<dyn EditOpener>,
     cfg: Arc<EditConfig>,
+    shutdown: watch::Receiver<bool>,
     id: Uuid,
     host_id: String,
     remote_path: String,
@@ -378,6 +382,7 @@ impl Actor {
             remote,
             opener,
             cfg,
+            shutdown: n.shutdown,
             id: n.id,
             host_id: n.host_id,
             remote_path: n.remote_path,
@@ -444,6 +449,21 @@ impl Actor {
     /// Ask for an immediate check of the working copy (resume).
     pub(crate) fn request_check(&self) {
         self.changed.notify_one();
+    }
+
+    async fn open_editor(&self, path: PathBuf, with: OpenWith) -> Result<ChooseOutcome, EditError> {
+        let mut shutdown = self.shutdown.clone();
+        if *shutdown.borrow() {
+            return Err(EditError::Closed);
+        }
+        // The platform chooser itself runs on a blocking thread. Stop must
+        // not wait behind that UI: interrupt its async wait, then let the
+        // actor process Stop and finish its upload/working-copy cleanup.
+        tokio::select! {
+            biased;
+            _ = shutdown.changed() => Err(EditError::Closed),
+            result = open_in_editor(self.opener.clone(), path, with) => result,
+        }
     }
 
     pub(crate) async fn run(mut self, mut rx: mpsc::Receiver<Cmd>) {
@@ -790,9 +810,7 @@ impl Actor {
                 self.remote_removed_by_us = false;
                 self.save_manifest();
                 self.shared.info().remote_copies.push(copy.clone());
-                if let Err(e) =
-                    open_in_editor(self.opener.clone(), copy.clone(), self.open_with.clone()).await
-                {
+                if let Err(e) = self.open_editor(copy.clone(), self.open_with.clone()).await {
                     tracing::debug!(session = %self.id, error = %e, "cannot open remote copy");
                 }
                 // The working copy stays; its next save uploads against the
@@ -833,7 +851,7 @@ impl Actor {
 
     async fn reopen(&mut self, with: Option<OpenWith>) -> Result<(), EditError> {
         let with = with.unwrap_or_else(|| self.open_with.clone());
-        let outcome = open_in_editor(self.opener.clone(), self.work.clone(), with.clone()).await?;
+        let outcome = self.open_editor(self.work.clone(), with.clone()).await?;
         if outcome == ChooseOutcome::Cancelled {
             return Err(EditError::Cancelled);
         }

@@ -16,6 +16,39 @@ use std::sync::Mutex;
 
 const PASSPHRASE: &str = "correct horse vault passphrase 42";
 
+#[tokio::test]
+async fn cancelling_a_full_answer_queue_releases_the_pending_sender() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.send(AiAskChunk::Delta {
+        text: "public first chunk".into(),
+    })
+    .await
+    .unwrap();
+    let token = CancellationToken::new();
+    let captured = token.clone();
+    let pending = tokio::spawn(async move {
+        send_ask_chunk(
+            &tx,
+            &captured,
+            AiAskChunk::Delta {
+                text: "must not queue".into(),
+            },
+        )
+        .await
+    });
+    tokio::task::yield_now().await;
+    assert!(!pending.is_finished());
+    token.cancel();
+    assert!(
+        !tokio::time::timeout(std::time::Duration::from_secs(1), pending)
+            .await
+            .unwrap()
+            .unwrap()
+    );
+    assert!(matches!(rx.recv().await, Some(AiAskChunk::Delta { .. })));
+    assert!(rx.recv().await.is_none());
+}
+
 /// Records what would have been executed / typed.
 #[derive(Default)]
 struct FakeBackend {

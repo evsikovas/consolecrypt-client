@@ -38,6 +38,40 @@ fn verify(identity: &AgentIdentity, data: &[u8], out: &[u8]) -> Signature {
 }
 
 #[tokio::test]
+async fn stopping_agent_revokes_already_connected_clients() {
+    let dir = tempfile::tempdir().unwrap();
+    let (_, private) = gen(KeyGenAlgorithm::Ed25519, "runtime audit");
+    let agent = start_agent(
+        AgentService::new(vec![AgentKey::new(private, None, "runtime audit").unwrap()]),
+        &AgentListenOptions {
+            parent_dir: Some(dir.path().to_path_buf()),
+        },
+    )
+    .await
+    .unwrap();
+    let path = agent.path().to_path_buf();
+    let mut client = os_agent::connect_agent(Some(&path)).await.unwrap();
+    let identities = client.request_identities().await.unwrap();
+    assert_eq!(identities.len(), 1);
+    agent.stop();
+    let response = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        client.sign_request(&identities[0], None, b"public synthetic challenge".to_vec()),
+    )
+    .await;
+    assert!(
+        response.is_ok(),
+        "stopped agent left the connection hanging"
+    );
+    assert!(
+        response.unwrap().is_err(),
+        "stopped agent signed on an existing connection"
+    );
+    #[cfg(unix)]
+    assert!(!path.exists());
+}
+
+#[tokio::test]
 async fn serves_identities_and_signs_ed25519_rsa_and_certificates() {
     let dir = tempfile::tempdir().unwrap();
     let (_, ed) = gen(KeyGenAlgorithm::Ed25519, "ed");
