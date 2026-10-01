@@ -24,6 +24,7 @@ class GlassToolbar extends StatelessWidget {
     this.center,
     this.trailing = const [],
     this.leadingInset = 0,
+    this.leadingMaxWidth,
     this.padding = const EdgeInsets.symmetric(horizontal: GlassSpacing.s12),
   });
 
@@ -33,6 +34,10 @@ class GlassToolbar extends StatelessWidget {
 
   /// Extra leading space (78 when the traffic lights move into the band).
   final double leadingInset;
+
+  /// Bounds the title group so the centre can use all remaining width.
+  /// A null value retains the balanced layout used by the design gallery.
+  final double? leadingMaxWidth;
   final EdgeInsetsGeometry padding;
 
   @override
@@ -51,14 +56,35 @@ class GlassToolbar extends StatelessWidget {
       height: GlassSizes.toolbarBand,
       child: Padding(
         padding: padding.add(EdgeInsetsDirectional.only(start: leadingInset)),
-        child: Row(
-          children: [
-            ...spaced(leading, flexible: true),
-            const SizedBox(width: GlassSpacing.toolbarGroupGap),
-            Expanded(child: center == null ? const SizedBox.shrink() : Center(child: wrap(center!))),
-            const SizedBox(width: GlassSpacing.toolbarGroupGap),
-            ...spaced(trailing),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) => Row(
+            children: [
+              ...spaced(
+                leadingMaxWidth == null
+                    ? leading
+                    : [
+                        for (final item in leading)
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: (constraints.maxWidth * .25).clamp(0.0, leadingMaxWidth!).toDouble(),
+                            ),
+                            child: item,
+                          ),
+                      ],
+                flexible: leadingMaxWidth == null,
+              ),
+              const SizedBox(width: GlassSpacing.toolbarGroupGap),
+              Expanded(
+                child: center == null
+                    ? const SizedBox.shrink()
+                    : leadingMaxWidth == null
+                    ? Center(child: wrap(center!))
+                    : wrap(center!),
+              ),
+              const SizedBox(width: GlassSpacing.toolbarGroupGap),
+              ...spaced(trailing),
+            ],
+          ),
         ),
       ),
     );

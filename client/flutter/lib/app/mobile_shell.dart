@@ -29,7 +29,7 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
     final branch = ShellBranch.values[widget.navigationShell.currentIndex];
     final toolsOpen = ref.watch(workspaceToolsProvider.select((s) => s.selected != null));
     final profile = ref.watch(activeProfileProvider);
-    final selected = _more ? 3 : _primary.indexOf(branch);
+    final selected = _more ? 3 : _primary.indexOf(_navigationBranch(branch));
     final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
     return PopScope(
       canPop: !toolsOpen && !_more && branch == ShellBranch.hosts,

@@ -55,7 +55,6 @@ String shellBranchLabel(ShellBranch branch, AppLocalizations l) => switch (branc
 
 const _navItems = [
   _NavItem(ShellBranch.hosts, Icons.dns_rounded),
-  _NavItem(ShellBranch.groups, Icons.account_tree_rounded),
   _NavItem(ShellBranch.credentials, Icons.key_rounded),
   _NavItem(ShellBranch.knownHosts, Icons.verified_user_outlined),
   _NavItem(ShellBranch.sharing, Icons.people_outline_rounded, syncedOnly: true),
@@ -67,6 +66,9 @@ const _navItems = [
   _NavItem(ShellBranch.backups, Icons.save_alt_rounded),
   _NavItem(ShellBranch.settings, Icons.settings_rounded),
 ];
+
+// Older /groups links still open the group browser inside the Hosts section.
+ShellBranch _navigationBranch(ShellBranch branch) => branch == ShellBranch.groups ? ShellBranch.hosts : branch;
 
 /// Branches whose content scrolls in lists: the only routes where one
 /// toolbar group may use a live backdrop (§3 rule 1). Terminal, SFTP and AI
@@ -348,7 +350,7 @@ class _Sidebar extends ConsumerWidget {
             leading: AppSymbolIcon(AppSymbol.values.byName(item.branch.name)),
             label: shellBranchLabel(item.branch, l10n),
             compact: compact,
-            selected: navigationShell.currentIndex == item.branch.index,
+            selected: _navigationBranch(ShellBranch.values[navigationShell.currentIndex]) == item.branch,
             badge: switch (item.branch) {
               ShellBranch.terminal when tabs > 0 => '$tabs',
               ShellBranch.devices when pending > 0 => '$pending',
@@ -631,6 +633,7 @@ class _ShellToolbar extends ConsumerWidget {
     final pageHasPrimary = location.startsWith('${AppRoutes.hosts}/');
     return GlassToolbar(
       leadingInset: leadingInset,
+      leadingMaxWidth: 220,
       leading: [
         GlassToolbarGroup(
           children: [
@@ -646,14 +649,11 @@ class _ShellToolbar extends ConsumerWidget {
           ],
         ),
       ],
-      center: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
-        child: _SearchCapsule(
-          backdrop: live,
-          placeholder: l10n.shellSearchPlaceholder,
-          shortcut: palette.shortcutLabel,
-          onPressed: () => dispatcher.invoke(AppCommandId.commandPalette),
-        ),
+      center: _SearchCapsule(
+        backdrop: live,
+        placeholder: l10n.shellSearchPlaceholder,
+        shortcut: palette.shortcutLabel,
+        onPressed: () => dispatcher.invoke(AppCommandId.commandPalette),
       ),
       trailing: [
         GlassIconButton(

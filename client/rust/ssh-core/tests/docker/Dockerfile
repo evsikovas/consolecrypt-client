@@ -2,7 +2,7 @@
 # Nothing secret is baked in: host keys, user password, authorized keys and
 # CA keys are provided/generated at container start.
 FROM alpine:3.20
-RUN apk add --no-cache openssh-server openssh-keygen busybox-extras \
+RUN apk add --no-cache openssh-server openssh-keygen busybox-extras bash \
  && adduser -D -s /bin/sh tester \
  && mkdir -p /home/tester/.ssh /srv/www \
  && chmod 700 /home/tester/.ssh \

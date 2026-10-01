@@ -22,6 +22,15 @@ void main() {
         expect(find.descendant(of: connection, matching: find.byType(Text)), findsNothing);
         final search = find.byKey(const ValueKey('open-palette'));
         expect(tester.getSize(search).width, width == 1600 ? greaterThan(420) : greaterThan(150));
+        final toolbar = tester.getRect(find.byType(GlassToolbar));
+        final menu = tester.getRect(find.byKey(const ValueKey('shell-menu')));
+        expect(toolbar.right - menu.right, closeTo(12, 1), reason: 'unused toolbar width belongs to search');
+        expect(
+          tester.getRect(connection).left - tester.getRect(search).right,
+          closeTo(12, 1),
+          reason: 'search stretches to the connection action',
+        );
+        if (width == 1600) expect(tester.getSize(search).width, greaterThan(700));
         expect(tester.takeException(), isNull);
 
         final sync = find.byKey(const ValueKey('sync-indicator'));

@@ -278,7 +278,7 @@ void main() {
           await tapKey(tester, 'sftp-toolbar-quicklook');
         }
         if (screen.startsWith('inventory-')) {
-          await tester.tap(find.byKey(const ValueKey('nav-groups')));
+          await tester.tap(find.byKey(const ValueKey('inventory-nav-groups')));
           for (var i = 0; i < 12; i++) {
             await tester.pump(const Duration(milliseconds: 100));
           }

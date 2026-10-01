@@ -141,6 +141,8 @@ pub struct PtyRequest {
     pub pix_width: u32,
     pub pix_height: u32,
     /// Environment variables to request (servers may refuse; ignored then).
+    /// Defaults request UTF-8 character handling without changing the remote
+    /// language or number/date formats. Explicit caller values replace these.
     pub env: Vec<(String, String)>,
 }
 
@@ -152,7 +154,7 @@ impl Default for PtyRequest {
             rows: 24,
             pix_width: 0,
             pix_height: 0,
-            env: Vec::new(),
+            env: vec![("LC_CTYPE".into(), "C.UTF-8".into())],
         }
     }
 }
@@ -1283,7 +1285,9 @@ impl SshSession {
             pty.rows,
             pty.pix_width,
             pty.pix_height,
-            &[],
+            // The emulator sends UTF-8. Let canonical-mode erase remove a
+            // whole scalar; older servers ignore this OpenSSH mode extension.
+            &[(russh::Pty::IUTF8, 1)],
         )
         .await?;
         ch.request_shell(true).await?;

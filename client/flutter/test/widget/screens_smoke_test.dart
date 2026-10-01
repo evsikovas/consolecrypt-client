@@ -8,7 +8,6 @@ import '../helpers/test_app.dart';
 
 const _branches = [
   'hosts',
-  'groups',
   'credentials',
   'knownHosts',
   'terminal',
@@ -117,7 +116,7 @@ void main() {
       await tapKey(tester, 'nav-snippets');
       await openAndClose('snippet editor', () => tapKey(tester, 'add-snippet'));
 
-      await tapKey(tester, 'nav-groups');
+      await tapKey(tester, 'nav-hosts');
       await openAndClose('group dialog', () => tapKey(tester, 'add-group'));
 
       await tapKey(tester, 'nav-settings');

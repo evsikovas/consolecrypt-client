@@ -1,3 +1,6 @@
+import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
@@ -13,7 +16,9 @@ void main() {
     addTearDown(backend.dispose);
     await backend.debugSignInDemoAndUnlock();
     await pumpApp(tester, backend);
-    await tapKey(tester, 'nav-groups');
+    expect(find.byKey(const ValueKey('nav-groups')), findsNothing);
+    expect(tester.widget<GlassSidebarItem>(find.byKey(const ValueKey('nav-hosts'))).selected, isTrue);
+    await tapKey(tester, 'inventory-nav-groups');
     expect(find.byKey(const ValueKey('inventory-group-Production')), findsOneWidget);
     expect(find.byKey(const ValueKey('host-prod-db-1')), findsNothing);
     await tapKey(tester, 'inventory-group-Production');
@@ -35,6 +40,22 @@ void main() {
     await tapKey(tester, 'host-prod-db-1');
     final c = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
     expect(c.read(terminalTabsProvider).tabs, hasLength(1));
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('legacy group links highlight Hosts without duplicating the sidebar', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend);
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    container.read(routerProvider).go(AppRoutes.groups);
+    await settle(tester);
+    expect(find.byKey(const ValueKey('nav-groups')), findsNothing);
+    expect(tester.widget<GlassSidebarItem>(find.byKey(const ValueKey('nav-hosts'))).selected, isTrue);
+    expect(find.byKey(const ValueKey('inventory-group-Production')), findsOneWidget);
+    await tapKey(tester, 'nav-hosts');
+    expect(find.byKey(const ValueKey('inventory-nav-groups')), findsOneWidget);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
