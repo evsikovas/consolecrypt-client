@@ -5,7 +5,7 @@
 <a href="https://consolecrypt.evsikov.net/?lang=en">Website EN</a> ·
 <a href="https://consolecrypt.evsikov.net/guide">Руководство</a> ·
 <a href="https://consolecrypt.evsikov.net/account">Личный кабинет</a> ·
-<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.1">Скачать 0.2.1</a> ·
+<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.2">Скачать 0.2.2</a> ·
 <a href="docs/public/BUILD_WINDOWS.md">Собрать для Windows</a> ·
 <a href="docs/public/BUILDING.md">Сборка и свой сервер</a> ·
 <a href="https://git.evsikov.net/publics/consolecrypt/-/issues">Сообщить об ошибке</a>
@@ -38,7 +38,7 @@ ConsoleCrypt — SSH-клиент с терминалом, SFTP, группам�
 - **Настройка внешнего вида:** светлая и тёмная темы, синий акцент по умолчанию,
   размер текста, собственные цвета терминала, всплывающая или закреплённая правая панель.
 - **Совместная работа:** выбранные хосты, сниппеты, коллекции и отдельные секреты,
-  проверка устройств, роли и отзыв доступа. [Руководство общего доступа](docs/public/SHARING.md).
+  проверка устройств, роли и отзыв доступа. Отдельные вкладки показывают полученные и опубликованные объекты; добавление устройств вынесено в собственный блок. [Руководство общего доступа](docs/public/SHARING.md).
 - **iOS:** предварительный порт с нативным Rust-ядром, SSH/SFTP и Keychain;
   [сборка Simulator и подпись для телефона](docs/public/BUILD_IOS.md).
 - **Защита данных:** зашифрованное хранилище и резервные копии, автоблокировка,
@@ -53,20 +53,20 @@ SSH-соединения идут напрямую к вашим сервера�
 
 ## Скачать и установить
 
-**Текущий релиз — [0.2.1](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.1)** для macOS, Windows и Android.
+**Текущий релиз — [0.2.2](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.2)** для macOS, Windows и Android.
 
 | Платформа | Версия | Скачать | Установка |
 |---|---|---|---|
-| macOS 12+ · Apple Silicon и Intel | **0.2.1+1281** | [DMG](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.1/ConsoleCrypt-0.2.1%2B1281-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
-| Windows 10/11 · x64 | **0.2.1+1280** | [EXE](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.1/ConsoleCrypt-0.2.1%2B1280-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.1/ConsoleCrypt-0.2.1%2B1280-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
-| Android 11+ · ARM64 | **0.2.1+61** | [APK](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.1/ConsoleCrypt-0.2.1%2B61-android-arm64.apk) | Скачайте APK на телефон и установите |
+| macOS 12+ · Apple Silicon и Intel | **0.2.2+1293** | [DMG](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.2/ConsoleCrypt-0.2.2%2B1293-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
+| Windows 10/11 · x64 | **0.2.2+1292** | [EXE](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.2/ConsoleCrypt-0.2.2%2B1292-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.2/ConsoleCrypt-0.2.2%2B1292-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
+| Android 11+ · ARM64 | **0.2.2+64** | [APK](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.2/ConsoleCrypt-0.2.2%2B64-android-arm64.apk) | Скачайте APK на телефон и установите |
 
-iOS Simulator на Mac: **0.2.1+62**, [две части ZIP и инструкция](docs/public/BUILD_IOS.md). Для настоящего iPhone нужна отдельная подпись; ZIP на телефон не устанавливается.
+iOS Simulator на Mac: **0.2.2+65**, [две части ZIP и инструкция](docs/public/BUILD_IOS.md). Для настоящего iPhone нужна отдельная подпись; ZIP на телефон не устанавливается.
 
-[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.1/SHA256SUMS-0.2.1.txt) ·
-[Проверки выпуска 0.2.1](docs/public/RELEASE_0_2_1.md) · [Как работают обновления](docs/public/UPDATES.md).
+[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.2/SHA256SUMS-0.2.2.txt) ·
+[Проверки выпуска 0.2.2](docs/public/RELEASE_0_2_2.md) · [Как работают обновления](docs/public/UPDATES.md).
 
-В настройках есть автопроверка при запуске, ручная проверка и скачивание новой версии с проверкой цифровой подписи. Для перехода с 0.1.10 или более ранней версии установите этот релиз вручную; следующие обновления можно получать через приложение.
+В настройках есть автопроверка при запуске, ручная проверка и скачивание новой версии с проверкой цифровой подписи. Для перехода с 0.1.10 или более ранней версии установите этот релиз вручную. На macOS при переходе с 0.2.1 и старее скачайте DMG через браузер и один раз замените приложение в Applications. В 0.2.2 следующие обновления сохраняются через системный диалог «Сохранить и открыть», чтобы macOS разрешала запуск новой копии. Профили и хранилища сохраняются.
 
 Номер после `+` увеличивается при каждой сборке, поэтому он различается между
 платформами. Бинарные файлы публикуются через GitLab Releases и не хранятся в Git.

@@ -20,7 +20,7 @@
 Отмена диалога не запускает установку; повторная попытка использует проверенную
 загрузку. Существующие файлы не перезаписываются.
 
-**Переход с macOS 0.2.1 и более ранних версий:** если после обновления появляется
+**Переход с ConsoleCrypt 0.2.1 и более ранних версий на macOS:** если после обновления появляется
 «Не удаётся открыть программу», скачайте DMG 0.2.2 с
 [сайта через браузер](https://consolecrypt.evsikov.net/download?lang=ru)
 и один раз замените приложение в Applications. Старый загрузчик помечал DMG как
@@ -50,7 +50,7 @@ Cancelling the save dialog leaves the verified download ready for retry;
 existing files are never overwritten. Signed release metadata and SHA-256 verification protect
 the installer; account credentials and vault data are never sent.
 
-If macOS 0.2.1 or an older in-app updater produced an app that cannot open,
+If ConsoleCrypt 0.2.1 or an older in-app updater on macOS produced an app that cannot open,
 download 0.2.2 once through your browser and replace the app in Applications.
 The old downloader set a sandbox no-user-consent quarantine mark. Version 0.2.2
 uses a system-approved save location and keeps App Sandbox and Gatekeeper enabled.
