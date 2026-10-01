@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:consolecrypt/core/models/models.dart';
@@ -36,6 +37,9 @@ final class TerminalTab {
 
   /// Input typed/inserted before the session is connected.
   final List<String> _pending = [];
+  final Queue<Uint8List> _input = Queue();
+  int _inputGeneration = 0;
+  bool _sendingInput = false;
   // Cancelled by TerminalTabsController.close / closeAll / dispose.
   // ignore: cancel_subscriptions
   StreamSubscription<String>? _output;
@@ -124,8 +128,10 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   }
 
   void _onEvent(TerminalTab tab, TerminalEvent event) {
+    if (!_open.contains(tab)) return;
     switch (event) {
       case TerminalStateChanged(:final state, :final message):
+        if (!tab.isConnected || state != SessionConnectionState.connected) _invalidateInput(tab);
         tab
           ..state = state
           ..message = message;
@@ -156,8 +162,46 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     if (tab.isConnected) _send(tab, data);
   }
 
-  void _send(TerminalTab tab, String data) =>
-      unawaited(ref.read(terminalServiceProvider).write(tab.sessionId, Uint8List.fromList(utf8.encode(data))));
+  void _send(TerminalTab tab, String data) {
+    if (!_open.contains(tab) || !tab.isConnected || data.isEmpty) return;
+    tab._input.add(Uint8List.fromList(utf8.encode(data)));
+    if (tab._sendingInput) return;
+    tab._sendingInput = true;
+    unawaited(_drainInput(tab, tab._inputGeneration));
+  }
+
+  // Await the native write before dispatching the next input event. Otherwise
+  // async bridge calls can deliver a later key (including Enter) first.
+  Future<void> _drainInput(TerminalTab tab, int generation) async {
+    while (_open.contains(tab) && tab.isConnected && generation == tab._inputGeneration && tab._input.isNotEmpty) {
+      final bytes = tab._input.removeFirst();
+      try {
+        await _service.write(tab.sessionId, bytes);
+      } catch (_) {
+        if (_open.contains(tab) && generation == tab._inputGeneration) {
+          _invalidateInput(tab);
+          tab
+            ..state = SessionConnectionState.disconnected
+            ..message = null;
+          _touch();
+        }
+      } finally {
+        bytes.fillRange(0, bytes.length, 0);
+      }
+    }
+    if (generation == tab._inputGeneration) tab._sendingInput = false;
+  }
+
+  // Queued input belongs to one connection. An already-dispatched native
+  // write cannot be recalled, but its completion must not affect a new one.
+  void _invalidateInput(TerminalTab tab) {
+    tab._inputGeneration++;
+    for (final bytes in tab._input) {
+      bytes.fillRange(0, bytes.length, 0);
+    }
+    tab._input.clear();
+    tab._sendingInput = false;
+  }
 
   void _sendOrQueue(TerminalTab tab, String data) {
     if (tab.isConnected) {
@@ -185,10 +229,17 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     await ref.read(terminalServiceProvider).answerPassword(tab.sessionId, password);
   }
 
-  Future<void> reconnect(TerminalTab tab) => ref.read(terminalServiceProvider).reconnect(tab.sessionId);
+  Future<void> reconnect(TerminalTab tab) async {
+    if (!_open.contains(tab)) return;
+    _invalidateInput(tab);
+    tab.state = SessionConnectionState.reconnecting;
+    _touch();
+    await _service.reconnect(tab.sessionId);
+  }
 
   Future<void> close(TerminalTab tab) async {
     _open.remove(tab);
+    _invalidateInput(tab);
     await tab._output?.cancel();
     await tab._events?.cancel();
     final tabs = [...state.tabs]..remove(tab);
@@ -208,6 +259,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
 
   void _closeSessions() {
     for (final tab in List.of(_open)) {
+      _invalidateInput(tab);
       unawaited(tab._output?.cancel());
       unawaited(tab._events?.cancel());
       unawaited(_service.close(tab.sessionId));

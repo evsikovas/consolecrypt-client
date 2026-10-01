@@ -568,6 +568,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncStateSynced => 'Synced';
 
   @override
+  String get syncStateSyncedShort => 'Sync';
+
+  @override
   String syncStateSyncedAgo(String ago) {
     return 'Synced $ago';
   }

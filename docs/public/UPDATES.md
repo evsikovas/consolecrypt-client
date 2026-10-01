@@ -21,11 +21,14 @@
 загрузку. Существующие файлы не перезаписываются.
 
 **Переход с ConsoleCrypt 0.2.1 и более ранних версий на macOS:** если после обновления появляется
-«Не удаётся открыть программу», скачайте DMG 0.2.2 с
+«Не удаётся открыть программу», скачайте актуальный DMG с
 [сайта через браузер](https://consolecrypt.evsikov.net/download?lang=ru)
 и один раз замените приложение в Applications. Старый загрузчик помечал DMG как
 созданный без согласия пользователя; эта метка переносилась на приложение.
-В 0.2.2 используется системное разрешение на сохранение установщика. Защита
+Повторное скачивание кнопкой в старом приложении повторяет проблему даже с
+новым установщиком: исправление загрузчика начинает работать только после
+первого запуска исправленной копии. В версиях начиная с 0.2.2 используется
+системное разрешение на сохранение установщика. Защита
 macOS и sandbox остаются включены, хранилище и связку ключей удалять не нужно.
 
 Список релизов подписан Ed25519; клиент содержит только открытый ключ проверки.
@@ -51,7 +54,10 @@ existing files are never overwritten. Signed release metadata and SHA-256 verifi
 the installer; account credentials and vault data are never sent.
 
 If ConsoleCrypt 0.2.1 or an older in-app updater on macOS produced an app that cannot open,
-download 0.2.2 once through your browser and replace the app in Applications.
+download the latest DMG once through your browser and replace the app in Applications.
 The old downloader set a sandbox no-user-consent quarantine mark. Version 0.2.2
 uses a system-approved save location and keeps App Sandbox and Gatekeeper enabled.
+Downloading again with the old app repeats the problem even with a new installer;
+the fixed downloader becomes available after the first successful launch of the
+replacement app.
 Do not delete your vault or Keychain.

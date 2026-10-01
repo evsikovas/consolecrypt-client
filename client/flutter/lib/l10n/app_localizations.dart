@@ -1100,6 +1100,12 @@ abstract class AppLocalizations {
   /// **'Synced'**
   String get syncStateSynced;
 
+  /// Compact desktop toolbar label for a successfully synced profile; full status is in the tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get syncStateSyncedShort;
+
   /// Sync indicator; {ago} is a relative time.
   ///
   /// In en, this message translates to:

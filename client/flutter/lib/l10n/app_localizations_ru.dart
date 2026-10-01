@@ -615,6 +615,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get syncStateSynced => 'Синхронизировано';
 
   @override
+  String get syncStateSyncedShort => 'Синх.';
+
+  @override
   String syncStateSyncedAgo(String ago) {
     return 'Синхронизировано $ago';
   }

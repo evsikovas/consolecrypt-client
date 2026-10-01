@@ -168,6 +168,7 @@
   "shellApprovalBannerMessage": "Устройство «{device}» ({platform}) запросило доступ к вашему хранилищу {ago}. Одобряйте только после сравнения кодов проверки.",
   "syncStateLocalOnly": "Только локально",
   "syncStateSynced": "Синхронизировано",
+  "syncStateSyncedShort": "Синх.",
   "syncStateSyncedAgo": "Синхронизировано {ago}",
   "syncStateSyncing": "Синхронизация…",
   "syncStateOffline": "Офлайн",

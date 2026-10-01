@@ -450,10 +450,14 @@ String describeSyncTooltip(SyncStatus status, AppLocalizations l10n) {
 /// Sync / "Local only" status pill (§4.1). A click opens a glass popover
 /// with the last sync, server, pending changes and "Sync now".
 class SyncStatusPill extends ConsumerWidget {
-  const SyncStatusPill({super.key, this.compact = false});
+  const SyncStatusPill({super.key, this.compact = false, this.shortLabel = false});
 
   /// Icon-only (compact sidebar footer).
   final bool compact;
+
+  /// A short successful-sync label leaves more room for desktop search.
+  /// Other states keep their descriptive labels and truthful status colours.
+  final bool shortLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -485,7 +489,7 @@ class SyncStatusPill extends ConsumerWidget {
     return Builder(
       builder: (context) => GlassStatusPill(
         key: const ValueKey('sync-indicator'),
-        label: p.label,
+        label: shortLabel && status.state == SyncState.idle ? l10n.syncStateSyncedShort : p.label,
         tone: p.tone,
         icon: p.icon,
         pulsing: p.pulsing,
@@ -620,64 +624,49 @@ class _ShellToolbar extends ConsumerWidget {
     final newTab = commandFor(AppCommandId.newTerminalTab);
     final title = shellTitle(l10n, branch, location, hosts);
     final live = _liveToolbarBranches.contains(branch) ? BackdropMode.live : BackdropMode.static;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Narrow bands: the primary action drops its label, the pill moves to
-        // the sidebar (compact) and the search capsule shrinks to its icon.
-        final roomy = constraints.maxWidth >= 860;
-        // One tinted action per view (§4.2): editors own theirs ("Save"), so
-        // the toolbar's New connection steps back to plain glass there.
-        final pageHasPrimary = location.startsWith('${AppRoutes.hosts}/');
-        return GlassToolbar(
-          leadingInset: leadingInset,
-          leading: [
-            GlassToolbarGroup(
-              children: [
-                if (canCollapse)
-                  GlassIconButton(
-                    key: const ValueKey('toggle-sidebar'),
-                    icon: Icons.view_sidebar_rounded,
-                    tooltip: l10n.shellToggleSidebar,
-                    style: GlassIconButtonStyle.plain,
-                    onPressed: () => ref.read(sidebarCollapsedProvider.notifier).toggle(),
-                  ),
-                GlassToolbarTitle(title),
-              ],
-            ),
-          ],
-          center: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: _SearchCapsule(
-              backdrop: live,
-              placeholder: l10n.shellSearchPlaceholder,
-              shortcut: palette.shortcutLabel,
-              onPressed: () => dispatcher.invoke(AppCommandId.commandPalette),
-            ),
-          ),
-          trailing: [
-            if (roomy)
-              GlassButton(
-                key: const ValueKey('new-connection'),
-                style: pageHasPrimary ? GlassButtonStyle.glass : GlassButtonStyle.prominent,
-                label: l10n.shellNewConnection,
-                icon: Icons.add_rounded,
-                size: GlassControlSize.lg,
-                tooltip: l10n.shellNewConnectionTooltip(newTab.shortcutLabel),
-                onPressed: () => dispatcher.invoke(AppCommandId.newTerminalTab),
-              )
-            else
+    // The connection action stays circular at every desktop width. Search
+    // uses the released space; compact windows move status to the sidebar.
+    // One tinted action per view (§4.2): editors own theirs ("Save"), so
+    // the toolbar's New connection steps back to plain glass there.
+    final pageHasPrimary = location.startsWith('${AppRoutes.hosts}/');
+    return GlassToolbar(
+      leadingInset: leadingInset,
+      leading: [
+        GlassToolbarGroup(
+          children: [
+            if (canCollapse)
               GlassIconButton(
-                key: const ValueKey('new-connection'),
-                icon: Icons.add_rounded,
-                style: pageHasPrimary ? GlassIconButtonStyle.glass : GlassIconButtonStyle.prominent,
-                tooltip: l10n.shellNewConnectionTooltip(newTab.shortcutLabel),
-                onPressed: () => dispatcher.invoke(AppCommandId.newTerminalTab),
+                key: const ValueKey('toggle-sidebar'),
+                icon: Icons.view_sidebar_rounded,
+                tooltip: l10n.shellToggleSidebar,
+                style: GlassIconButtonStyle.plain,
+                onPressed: () => ref.read(sidebarCollapsedProvider.notifier).toggle(),
               ),
-            if (!compact) const SyncStatusPill(),
-            const _OverflowMenu(),
+            GlassToolbarTitle(title),
           ],
-        );
-      },
+        ),
+      ],
+      center: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 640),
+        child: _SearchCapsule(
+          backdrop: live,
+          placeholder: l10n.shellSearchPlaceholder,
+          shortcut: palette.shortcutLabel,
+          onPressed: () => dispatcher.invoke(AppCommandId.commandPalette),
+        ),
+      ),
+      trailing: [
+        GlassIconButton(
+          key: const ValueKey('new-connection'),
+          icon: Icons.add_rounded,
+          size: 40,
+          style: pageHasPrimary ? GlassIconButtonStyle.glass : GlassIconButtonStyle.prominent,
+          tooltip: l10n.shellNewConnectionTooltip(newTab.shortcutLabel),
+          onPressed: () => dispatcher.invoke(AppCommandId.newTerminalTab),
+        ),
+        if (!compact) const SyncStatusPill(shortLabel: true),
+        const _OverflowMenu(),
+      ],
     );
   }
 }

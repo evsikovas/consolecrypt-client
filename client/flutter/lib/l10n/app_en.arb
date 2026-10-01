@@ -787,6 +787,10 @@
     "description": "Sync indicator: local profile."
   },
   "syncStateSynced": "Synced",
+  "syncStateSyncedShort": "Sync",
+  "@syncStateSyncedShort": {
+    "description": "Compact desktop toolbar label for a successfully synced profile; full status is in the tooltip."
+  },
   "@syncStateSynced": {
     "description": "Sync indicator."
   },
