@@ -8,8 +8,11 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/errors.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/risk_badge.dart';
 import 'package:consolecrypt/snippets/run_flow.dart';
+import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,7 +22,7 @@ import 'package:material_ui/material_ui.dart';
 /// navigator must not leave a stale "open" flag behind).
 final Expando<bool> _paletteOpen = Expando<bool>('command palette open'); // l10n-ignore: Expando debug name
 
-/// Cmd/Ctrl+K overlay: search snippets, quick actions, AI command
+/// Cmd/Ctrl+K overlay: search hosts/snippets, quick actions, AI command
 /// generation. Results are only inserted/run after an explicit action.
 Future<void> showCommandPalette(BuildContext context, {String? selectedText, ObjectId? hostId}) async {
   final navigator = Navigator.of(context, rootNavigator: true);
@@ -44,7 +47,121 @@ AiProviderConfig? defaultProvider(List<AiProviderConfig> providers) =>
 enum _AiError { noProvider, failed }
 
 /// Result groups of the palette (caption headers, §4.8).
-enum _Group { ai, snippets, actions }
+enum _Group { hosts, snippets, ai, actions }
+
+/// Metadata-only labels from the planner; no credential secret is loaded.
+typedef PaletteHostEndpoint = ({String? username, int? port});
+
+final _hostEndpointsProvider = FutureProvider.autoDispose<Map<ObjectId, PaletteHostEndpoint>>((ref) async {
+  final hosts = ref.watch(hostsProvider).value ?? const <Host>[];
+  ref.watch(groupsProvider);
+  ref.watch(credentialsProvider);
+  ref.watch(activeProfileProvider.select((profile) => profile?.id));
+  final phase = ref.watch(vaultStatusProvider.select((status) => status.value?.phase));
+  if (phase != VaultPhase.unlocked) return const {};
+  final inventory = ref.watch(inventoryServiceProvider);
+  final endpoints = <ObjectId, PaletteHostEndpoint>{};
+  var next = 0;
+  Future<void> resolveNext() async {
+    while (ref.mounted && next < hosts.length) {
+      final host = hosts[next++];
+      if (host.username != null && host.port != null) {
+        endpoints[host.id] = (username: host.username, port: host.port);
+        continue;
+      }
+      try {
+        final effective = await inventory.resolveEffective(host);
+        if (!ref.mounted) return;
+        endpoints[host.id] = (username: effective.username.value, port: effective.port.value);
+      } on AppException {
+        // A malformed/deleted host stays searchable by saved metadata.
+        // Opening it still uses normal core validation and error feedback.
+        if (!ref.mounted) return;
+      }
+    }
+  }
+
+  // Bound local planner work for large inventories. Names/IPs are searchable
+  // while previews load; no search request goes to an AI provider.
+  await Future.wait(List.generate(hosts.length.clamp(0, 4), (_) => resolveNext()));
+  return Map.unmodifiable(endpoints);
+});
+
+/// Local search with name/address matches before username matches. Notes and
+/// credentials are deliberately outside this index.
+List<Host> searchPaletteHosts(
+  List<Host> hosts, {
+  required String query,
+  Map<ObjectId, PaletteHostEndpoint> endpoints = const {},
+  int limit = 8,
+}) {
+  if (limit <= 0) return const [];
+  final q = query.trim().toLowerCase();
+  final terms = q.split(RegExp(r'\s+'));
+  String username(Host host) => (endpoints[host.id]?.username ?? host.username ?? '').toLowerCase();
+  String address(Host host) => host.address.toLowerCase();
+  final matches = hosts.where((host) {
+    if (q.isEmpty) return true;
+    final connection = _hostConnectionLabel(host, endpoints[host.id]).toLowerCase();
+    final text = '${host.name.toLowerCase()} ${address(host)} ${username(host)} $connection';
+    return terms.every(text.contains);
+  }).toList();
+  int rank(Host host) {
+    final primary = [host.name.toLowerCase(), address(host)];
+    if (primary.contains(q)) return 0;
+    if (primary.any((value) => value.startsWith(q))) return 1;
+    if (primary.any((value) => value.contains(q))) return 2;
+    if (terms.every(primary.join(' ').contains)) return 3;
+    return 4;
+  }
+
+  matches.sort((a, b) {
+    var result = rank(a).compareTo(rank(b));
+    if (result == 0) result = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    if (result == 0) result = address(a).compareTo(address(b));
+    if (result == 0) result = username(a).compareTo(username(b));
+    return result == 0 ? a.id.value.compareTo(b.id.value) : result;
+  });
+  return matches.take(limit).toList();
+}
+
+String _hostConnectionLabel(Host host, PaletteHostEndpoint? endpoint) {
+  final username = endpoint?.username ?? host.username;
+  final port = endpoint?.port ?? host.port;
+  final address = host.address.contains(':') && !host.address.startsWith('[') ? '[${host.address}]' : host.address;
+  return '${username == null || username.isEmpty ? '' : '$username@'}$address${port == null ? '' : ':$port'}';
+}
+
+/// Palette queries stay local even if semantic snippet search elsewhere uses
+/// an embedding provider. A host query must never become an embedding request.
+List<SnippetSearchHit> searchPaletteSnippets(List<Snippet> snippets, {required String query, int limit = 8}) {
+  if (limit <= 0) return const [];
+  final q = query.trim().toLowerCase();
+  final terms = q.split(RegExp(r'\s+'));
+  bool exact(Snippet snippet) =>
+      q.isNotEmpty && (snippet.name.toLowerCase() == q || snippet.template.toLowerCase() == q);
+  final matches = snippets.where((snippet) {
+    if (q.isEmpty) return true;
+    final text = '${snippet.name} ${snippet.description} ${snippet.template} ${snippet.tags.join(' ')}'.toLowerCase();
+    return terms.every(text.contains);
+  }).toList();
+  matches.sort((a, b) {
+    if (exact(a) != exact(b)) return exact(a) ? -1 : 1;
+    var result = b.usageCount.compareTo(a.usageCount);
+    if (result == 0) {
+      result = (b.lastUsedAt?.millisecondsSinceEpoch ?? 0).compareTo(a.lastUsedAt?.millisecondsSinceEpoch ?? 0);
+    }
+    return result == 0 ? a.name.toLowerCase().compareTo(b.name.toLowerCase()) : result;
+  });
+  return [
+    for (final snippet in matches.take(limit))
+      SnippetSearchHit(
+        snippet: snippet,
+        score: exact(snippet) ? 1 : 0,
+        matchKind: exact(snippet) ? SearchMatchKind.exact : SearchMatchKind.text,
+      ),
+  ];
+}
 
 final class _Item {
   const _Item({
@@ -55,6 +172,7 @@ final class _Item {
     this.subtitle,
     this.trailing,
     this.key,
+    this.enabled = true,
   });
 
   final _Group group;
@@ -64,6 +182,7 @@ final class _Item {
   final Widget? trailing;
   final VoidCallback onSelect;
   final Key? key;
+  final bool enabled;
 }
 
 class CommandPalette extends ConsumerStatefulWidget {
@@ -80,9 +199,9 @@ class CommandPalette extends ConsumerStatefulWidget {
 class _CommandPaletteState extends ConsumerState<CommandPalette> {
   final _input = TextEditingController();
   final _focus = FocusNode();
-  List<SnippetSearchHit> _hits = const [];
   int _selected = 0;
-  Timer? _debounce;
+  Key? _keyboardSelection;
+  ObjectId? _openingHost;
 
   // AI generation state.
   StreamSubscription<AiStreamEvent>? _generation;
@@ -97,41 +216,41 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
   bool _generating = false;
 
   @override
-  void initState() {
-    super.initState();
-    unawaited(_search(''));
-  }
-
-  @override
   void dispose() {
-    _debounce?.cancel();
     unawaited(_generation?.cancel());
     _input.dispose();
     _focus.dispose();
     super.dispose();
   }
 
-  Future<void> _search(String q) async {
-    final hits = await ref.read(snippetServiceProvider).search(q, limit: 8);
-    if (mounted) {
-      setState(() {
-        _hits = hits;
-        _selected = 0;
-      });
-    }
-  }
-
   void _onChanged(String q) {
     setState(() {
+      _selected = 0;
+      _keyboardSelection = null;
       _command = null;
       _streamed = '';
       _aiError = null;
     });
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 120), () => _search(q));
   }
 
   void _close() => Navigator.of(context).pop();
+
+  Future<void> _connect(ObjectId hostId) async {
+    if (_openingHost != null || ref.read(appStageProvider) != AppStage.unlocked) return;
+    final host = ref.read(hostByIdProvider)[hostId];
+    if (host == null) return;
+    final router = GoRouter.of(context);
+    setState(() => _openingHost = hostId);
+    try {
+      final tab = await runWithFeedback(context, () => ref.read(terminalTabsProvider.notifier).open(host));
+      if (tab != null && mounted) {
+        _close();
+        router.go(AppRoutes.terminal);
+      }
+    } finally {
+      if (mounted) setState(() => _openingHost = null);
+    }
+  }
 
   Future<void> _generate(String request) async {
     final provider = defaultProvider(ref.read(aiProvidersProvider).value ?? const []);
@@ -187,17 +306,28 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     final l10n = context.l10n;
     final q = _input.text.trim();
     final router = GoRouter.of(context);
+    final aiProviders = ref.watch(aiProvidersProvider);
+    final endpointState = ref.watch(_hostEndpointsProvider);
+    final endpoints = endpointState.isLoading
+        ? const <ObjectId, PaletteHostEndpoint>{}
+        : endpointState.value ?? const <ObjectId, PaletteHostEndpoint>{};
+    final hosts = searchPaletteHosts(ref.watch(hostsProvider).value ?? const [], query: q, endpoints: endpoints);
+    final snippets = searchPaletteSnippets(ref.watch(snippetsProvider).value ?? const [], query: q);
     final items = <_Item>[
-      if (q.isNotEmpty)
+      for (final host in hosts)
         _Item(
-          group: _Group.ai,
-          key: const ValueKey('palette-generate'),
-          icon: Icons.auto_awesome_rounded,
-          title: l10n.paletteGenerateCommand(q),
-          subtitle: l10n.paletteGenerateSubtitle,
-          onSelect: () => _generate(q),
+          group: _Group.hosts,
+          key: ValueKey('palette-host-${host.id.value}'),
+          icon: Icons.dns_outlined,
+          title: host.name,
+          subtitle: _hostConnectionLabel(host, endpoints[host.id]),
+          enabled: _openingHost == null,
+          trailing: _openingHost == host.id
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : Icon(Icons.terminal_rounded, size: 16, semanticLabel: l10n.commonConnect),
+          onSelect: () => unawaited(_connect(host.id)),
         ),
-      for (final h in _hits)
+      for (final h in snippets)
         _Item(
           group: _Group.snippets,
           key: ValueKey('palette-snippet-${h.snippet.name}'),
@@ -209,6 +339,16 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
             final ran = await runSnippetFlow(context, ref, h.snippet);
             if (ran && mounted) _close();
           },
+        ),
+      if (q.isNotEmpty)
+        _Item(
+          group: _Group.ai,
+          key: const ValueKey('palette-generate'),
+          icon: Icons.auto_awesome_rounded,
+          title: l10n.paletteGenerateCommand(q),
+          subtitle: l10n.paletteGenerateSubtitle,
+          enabled: !aiProviders.isLoading,
+          onSelect: () => _generate(q),
         ),
     ];
     final actions = <_Item>[
@@ -264,18 +404,26 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event, List<_Item> items) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    if (items.isEmpty) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      setState(() => _selected = (_selected + 1).clamp(0, items.length - 1));
+      setState(() {
+        _selected = (_selected + 1).clamp(0, items.length - 1);
+        _keyboardSelection = items[_selected].key;
+      });
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-      setState(() => _selected = (_selected - 1).clamp(0, items.length - 1));
+      setState(() {
+        _selected = (_selected - 1).clamp(0, items.length - 1);
+        _keyboardSelection = items[_selected].key;
+      });
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
   }
 
   String _groupLabel(AppLocalizations l10n, _Group g) => switch (g) {
+    _Group.hosts => l10n.navHosts,
     _Group.ai => l10n.paletteGroupAi,
     _Group.snippets => l10n.navSnippets,
     _Group.actions => l10n.paletteGroupActions,
@@ -301,7 +449,12 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
           item: item,
           selected: i == selected,
           onHover: () {
-            if (_selected != i) setState(() => _selected = i);
+            if (_selected != i) {
+              setState(() {
+                _selected = i;
+                _keyboardSelection = null;
+              });
+            }
           },
         ),
       );
@@ -332,7 +485,14 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
                     ).copyWith(filled: false),
                     onChanged: _onChanged,
                     onSubmitted: (_) {
-                      if (items.isNotEmpty) items[selected].onSelect();
+                      if (_openingHost == null && items.isNotEmpty && items[selected].enabled) {
+                        final item = items[selected];
+                        // An unmatched host search must not send its query to
+                        // AI. Choose the AI row by arrow keys or click first.
+                        if (item.group != _Group.ai || (item.key != null && _keyboardSelection == item.key)) {
+                          item.onSelect();
+                        }
+                      }
                       _focus.requestFocus();
                     },
                   ),
@@ -494,15 +654,16 @@ class _PaletteRow extends StatelessWidget {
     final radius = GlassRadii.concentric(tokens.radii.palette, GlassSpacing.s8);
     return Semantics(
       button: true,
+      enabled: item.enabled,
       selected: selected,
-      label: item.title,
+      label: item.subtitle == null ? item.title : '${item.title}, ${item.subtitle}',
       child: MouseRegion(
-        cursor: SystemMouseCursors.click,
+        cursor: item.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
         onEnter: (_) => onHover(),
         child: GestureDetector(
           key: item.key,
           behavior: HitTestBehavior.opaque,
-          onTap: item.onSelect,
+          onTap: item.enabled ? item.onSelect : null,
           child: ExcludeSemantics(
             child: DecoratedBox(
               decoration: ShapeDecoration(

@@ -579,7 +579,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get shellSearchPlaceholder => 'Поиск сниппетов или вопрос ИИ…';
+  String get shellSearchPlaceholder => 'Поиск хостов, сниппетов или вопрос ИИ…';
 
   @override
   String get shellOfflineTooltip =>
@@ -2978,7 +2978,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get paletteLockVault => 'Заблокировать хранилище';
 
   @override
-  String get paletteSearchHint => 'Найдите сниппет, выберите действие или опишите команду…';
+  String get paletteSearchHint => 'Найдите хост по имени или IP, сниппет, действие или опишите команду…';
 
   @override
   String get paletteAskSelectionHint => 'Спросите о выделенном выводе терминала…';
@@ -5336,4 +5336,17 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get enrollmentCreateConfirmed =>
       'Разрешаю добавлять собственные устройства этого пользователя в выбранных пределах';
+
+  @override
+  String glassOpenTerminalTabs(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Открыто $count терминала',
+      many: 'Открыто $count терминалов',
+      few: 'Открыто $count терминала',
+      one: 'Открыт $count терминал',
+    );
+    return '$_temp0';
+  }
 }

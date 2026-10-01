@@ -161,7 +161,7 @@
   "navBackups": "Резервные копии",
   "navSettings": "Настройки",
   "shellLockVaultTooltip": "Заблокировать хранилище ({shortcut})",
-  "shellSearchPlaceholder": "Поиск сниппетов или вопрос ИИ…",
+  "shellSearchPlaceholder": "Поиск хостов, сниппетов или вопрос ИИ…",
   "shellOfflineTooltip": "Сервер синхронизации недоступен. Хосты, ключи и SSH продолжают работать; изменения поставлены в очередь.",
   "shellNewTabTooltip": "Новая вкладка терминала ({shortcut})",
   "shellApprovalBannerTitle": "{count, plural, one{{count} запрос на подтверждение устройства} few{{count} запроса на подтверждение устройств} many{{count} запросов на подтверждение устройств} other{{count} запроса на подтверждение устройств}}",
@@ -839,7 +839,7 @@
   "paletteNewHost": "Новый хост",
   "paletteOpenAiChat": "Открыть ИИ-чат",
   "paletteLockVault": "Заблокировать хранилище",
-  "paletteSearchHint": "Найдите сниппет, выберите действие или опишите команду…",
+  "paletteSearchHint": "Найдите хост по имени или IP, сниппет, действие или опишите команду…",
   "paletteAskSelectionHint": "Спросите о выделенном выводе терминала…",
   "paletteAiSuggestion": "Предложение ИИ",
   "paletteThinking": "ИИ думает…",
@@ -2069,5 +2069,14 @@
   "enrollmentCreateConfirmed": "Разрешаю добавлять собственные устройства этого пользователя в выбранных пределах",
   "@enrollmentCreateConfirmed": {
     "description": "Verified own-device enrollment interface."
+  },
+  "glassOpenTerminalTabs": "{count, plural, one{Открыт {count} терминал} few{Открыто {count} терминала} many{Открыто {count} терминалов} other{Открыто {count} терминала}}",
+  "@glassOpenTerminalTabs": {
+    "description": "Accessible label and tooltip for the total number of terminal tabs when the strip overflows.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

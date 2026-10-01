@@ -64,6 +64,7 @@ const _allowed = {
   // Product metadata (lib/app/app_info.dart): proper name and SPDX expression.
   'Alexander Evsikov',
   'AGPL-3.0-only',
+  'AGPL-3.0',
 };
 
 /// Files owned by another stream, with the reason they are exempt.

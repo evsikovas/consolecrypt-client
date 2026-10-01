@@ -153,7 +153,10 @@ void main() {
     await tapKey(tester, 'palette-generate');
     await settle(tester);
     expect(find.byKey(const ValueKey('palette-ai-panel')), findsOneWidget);
-    expect(find.text('df -h'), findsOneWidget);
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('palette-ai-panel')), matching: find.text('df -h')),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('run-confirmation')), findsNothing, reason: 'never auto-runs');
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 

@@ -1,5 +1,6 @@
 #include "win32_window.h"
 
+#include <algorithm>
 #include <dwmapi.h>
 #include <flutter_windows.h>
 
@@ -139,10 +140,24 @@ bool Win32Window::Create(const std::wstring& title,
   UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
   double scale_factor = dpi / 96.0;
 
+  int width = Scale(size.width, scale_factor);
+  int height = Scale(size.height, scale_factor);
+  int x = Scale(origin.x, scale_factor);
+  int y = Scale(origin.y, scale_factor);
+  MONITORINFO monitor_info{};
+  monitor_info.cbSize = sizeof(monitor_info);
+  if (GetMonitorInfo(monitor, &monitor_info)) {
+    const RECT& work = monitor_info.rcWork;
+    const int margin = Scale(16, scale_factor);
+    width = (std::min)(width, (std::max)(1, static_cast<int>(work.right - work.left) - 2 * margin));
+    height = (std::min)(height, (std::max)(1, static_cast<int>(work.bottom - work.top) - 2 * margin));
+    x = work.left + (work.right - work.left - width) / 2;
+    y = work.top + (work.bottom - work.top - height) / 2;
+  }
+
   HWND window = CreateWindow(
       window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
-      Scale(origin.x, scale_factor), Scale(origin.y, scale_factor),
-      Scale(size.width, scale_factor), Scale(size.height, scale_factor),
+      x, y, width, height,
       nullptr, nullptr, GetModuleHandle(nullptr), this);
 
   if (!window) {

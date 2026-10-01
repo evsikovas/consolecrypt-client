@@ -1061,7 +1061,7 @@ abstract class AppLocalizations {
   /// Top bar button that opens the command palette.
   ///
   /// In en, this message translates to:
-  /// **'Search snippets or ask AI…'**
+  /// **'Search hosts, snippets or ask AI…'**
   String get shellSearchPlaceholder;
 
   /// Tooltip of the Offline chip.
@@ -5129,7 +5129,7 @@ abstract class AppLocalizations {
   /// Command palette input hint.
   ///
   /// In en, this message translates to:
-  /// **'Search snippets, run an action, or describe a command…'**
+  /// **'Find a host by name or IP, a snippet, an action, or describe a command…'**
   String get paletteSearchHint;
 
   /// Command palette input hint when terminal text is selected.
@@ -9109,6 +9109,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I authorize adding this user’s own devices within the selected limits'**
   String get enrollmentCreateConfirmed;
+
+  /// Accessible label and tooltip for the total number of terminal tabs when the strip overflows.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 open terminal} other{{count} open terminals}}'**
+  String glassOpenTerminalTabs(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

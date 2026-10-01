@@ -534,7 +534,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get shellSearchPlaceholder => 'Search snippets or ask AI…';
+  String get shellSearchPlaceholder => 'Search hosts, snippets or ask AI…';
 
   @override
   String get shellOfflineTooltip =>
@@ -2850,7 +2850,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paletteLockVault => 'Lock vault';
 
   @override
-  String get paletteSearchHint => 'Search snippets, run an action, or describe a command…';
+  String get paletteSearchHint => 'Find a host by name or IP, a snippet, an action, or describe a command…';
 
   @override
   String get paletteAskSelectionHint => 'Ask about the selected terminal output…';
@@ -5145,4 +5145,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enrollmentCreateConfirmed => 'I authorize adding this user’s own devices within the selected limits';
+
+  @override
+  String glassOpenTerminalTabs(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count open terminals',
+      one: '1 open terminal',
+    );
+    return '$_temp0';
+  }
 }

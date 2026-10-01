@@ -81,7 +81,9 @@ String _snippetPreview() => jsonEncode({
 
 class _Sharing implements SharingService {
   int publications = 0, accepts = 0, flushes = 0, discoveries = 0, edits = 0;
-  bool failFlush = false;
+  bool failFlush = false, enabled = true;
+  AppException? statusError;
+  int statusCalls = 0, onlineLists = 0;
   SharingIdentity currentIdentity = _owner;
   List<SharingGrant>? publishedGrants, rotatedGrants;
   List<SharingItem> items = [];
@@ -98,7 +100,16 @@ class _Sharing implements SharingService {
   @override
   Future<List<SharingOutboxEntry>> outbox() async => [];
   @override
-  Future<SharingStatus> status() async => SharingStatus(enabled: true, instance: 'instance', identity: currentIdentity);
+  Future<SharingStatus> status() async {
+    statusCalls++;
+    if (statusError != null) throw statusError!;
+    return SharingStatus(
+      enabled: enabled,
+      instance: enabled ? 'instance' : null,
+      identity: enabled ? currentIdentity : null,
+    );
+  }
+
   @override
   Future<List<SharingIdentity>> discover(String email) async {
     discoveries++;
@@ -125,7 +136,11 @@ class _Sharing implements SharingService {
   }
 
   @override
-  Future<List<SharingItem>> list({bool refresh = false}) async => delayedList == null ? items : delayedList!.future;
+  Future<List<SharingItem>> list({bool refresh = false}) async {
+    if (refresh) onlineLists++;
+    return delayedList == null ? items : delayedList!.future;
+  }
+
   @override
   Future<SharingInvitation> inspect(String id) async => SharingInvitation(_item(), _owner);
   @override
@@ -518,6 +533,48 @@ void main() {
     expect(find.text('echo explicit-only'), findsOneWidget);
     expect(tester.takeException(), isNull);
   }, variant: const TargetPlatformVariant({TargetPlatform.android}));
+
+  testWidgets('refresh discovers sharing enabled after the screen first loaded', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final sharing = _Sharing()..enabled = false;
+    await _pump(tester, backend, sharing);
+    await _openSharing(tester);
+    expect(find.text('Sharing is unavailable on this server.'), findsOneWidget);
+    sharing.enabled = true;
+    final refresh = find.byWidgetPredicate((w) => w is GlassIconButton && w.tooltip == 'Refresh shared data');
+    expect(tester.widget<GlassIconButton>(refresh).onPressed, isNotNull);
+    await tester.tap(refresh);
+    await settle(tester);
+    expect(sharing.statusCalls, greaterThanOrEqualTo(2));
+    expect(sharing.onlineLists, 1);
+    expect(find.text('Sharing is unavailable on this server.'), findsNothing);
+    expect(find.text('No shared items yet.'), findsOneWidget);
+    expect(sharing.publications, 0);
+    expect(sharing.discoveries, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('capability connection error has precise feedback and can be retried', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final sharing = _Sharing()..statusError = const AppException(AppErrorCode.serverUnreachable, 'fixture offline');
+    await _pump(tester, backend, sharing);
+    await _openSharing(tester);
+    expect(find.text('Server unreachable. Check the URL and your connection.'), findsOneWidget);
+    expect(find.text('Sharing is unavailable on this server.'), findsNothing);
+    sharing.statusError = null;
+    final refresh = find.byWidgetPredicate((w) => w is GlassIconButton && w.tooltip == 'Refresh shared data');
+    expect(tester.widget<GlassIconButton>(refresh).onPressed, isNotNull);
+    await tester.tap(refresh);
+    await settle(tester);
+    expect(sharing.onlineLists, 1);
+    expect(find.text('No shared items yet.'), findsOneWidget);
+    expect(sharing.publications, 0);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('unsupported sharing service does not discover or publish', (tester) async {
     final backend = testBackend();

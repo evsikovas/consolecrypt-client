@@ -741,7 +741,7 @@
       }
     }
   },
-  "shellSearchPlaceholder": "Search snippets or ask AI…",
+  "shellSearchPlaceholder": "Search hosts, snippets or ask AI…",
   "@shellSearchPlaceholder": {
     "description": "Top bar button that opens the command palette."
   },
@@ -3969,7 +3969,7 @@
   "@paletteLockVault": {
     "description": "Command palette quick action: lock the vault."
   },
-  "paletteSearchHint": "Search snippets, run an action, or describe a command…",
+  "paletteSearchHint": "Find a host by name or IP, a snippet, an action, or describe a command…",
   "@paletteSearchHint": {
     "description": "Command palette input hint."
   },
@@ -7214,5 +7214,14 @@
   "enrollmentCreateConfirmed": "I authorize adding this user’s own devices within the selected limits",
   "@enrollmentCreateConfirmed": {
     "description": "Verified own-device enrollment interface."
+  },
+  "glassOpenTerminalTabs": "{count, plural, one{1 open terminal} other{{count} open terminals}}",
+  "@glassOpenTerminalTabs": {
+    "description": "Accessible label and tooltip for the total number of terminal tabs when the strip overflows.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

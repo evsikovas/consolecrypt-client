@@ -34,6 +34,7 @@ final class GlassStrings {
   String get newTab => _l.glassNewTab;
   String get scrollTabsLeft => _l.glassScrollTabsLeft;
   String get scrollTabsRight => _l.glassScrollTabsRight;
+  String openTerminalTabs(int count) => _l.glassOpenTerminalTabs(count);
   String get tabConnected => _l.glassTabConnected;
   String get tabReconnecting => _l.glassTabReconnecting;
   String get tabDisconnected => _l.glassTabDisconnected;

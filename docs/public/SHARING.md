@@ -5,6 +5,21 @@
 должны использовать один сервер синхронизации; он должен поддерживать и
 разрешать соответствующие функции. Локальный профиль не отправляет данные.
 
+## Проверить поддержку сервера
+
+В публичном сервере `https://consolecrypt.evsikov.net` доступны выбранные хосты,
+сниппеты, общие коллекции, отдельные секреты и подтверждённое добавление собственных
+устройств. В своём сервере администратор включает эти возможности отдельно:
+[настройки Docker Compose и Helm](HOSTING.md). Включение функции не публикует
+личные данные: отправка выбранного элемента требует явного действия владельца.
+
+В клиенте **0.2.0 и новее** нажмите **Совместный доступ → Обновить общие данные**,
+чтобы повторно проверить возможности сервера после их включения или сетевой
+ошибки. Кнопка доступна для разблокированного профиля синхронизации. Приложение
+показывает отдельно ошибки соединения, авторизации и защищённого хранилища ОС;
+они не означают, что функция отключена. В старой версии кнопка может быть
+неактивна после ранее неудачной проверки — сначала обновите клиент.
+
 ## Начать совместную работу
 
 1. Коллега входит на тот же сервер и открывает **Общий доступ → Код устройства**.
@@ -83,6 +98,13 @@
 глобальную свежесть при недоступном или недобросовестном сервере.
 
 ## English
+
+The public server at `https://consolecrypt.evsikov.net` enables selective sharing,
+collections, individual secrets and verified enrollment of additional devices.
+Enabling support does not publish personal items automatically. In client **0.2.0
+and later**, use **Sharing → Refresh shared data** after support is enabled or a
+connection fails. Connection and authentication errors are shown separately from
+unavailable support. Upgrade an older client if its refresh button stays disabled.
 
 Share selected hosts, snippets, collections or individual secrets with verified
 devices on the same compatible server. Compare the entire device code over an

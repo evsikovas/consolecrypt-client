@@ -82,46 +82,66 @@ class GlassTabStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: AppPlatform.isMobile ? 54 : GlassSizes.tabTrack,
-      child: Row(
-        children: [
-          Expanded(
-            child: GlassSurface(
-              variant: GlassVariant.thin,
-              shape: const StadiumBorder(),
-              child: Padding(
-                padding: const EdgeInsets.all(3),
-                child: _EdgeFadeScroll(
-                  activeIndex: activeIndex,
-                  children: [
-                    for (final (i, tab) in tabs.indexed)
-                      _TabChip(
-                        key: tab.key,
-                        tab: tab,
-                        active: i == activeIndex,
-                        onSelect: () => onSelect(i),
-                        onClose: onClose == null ? null : () => onClose!(i),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // A narrow desktop workspace must keep space for its tabs and count.
+        // Keep the track subtree stable when the session actions move below it.
+        final stackActions = trailing != null && constraints.maxWidth < 600;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: AppPlatform.isMobile ? 54 : GlassSizes.tabTrack,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GlassSurface(
+                      variant: GlassVariant.thin,
+                      shape: const StadiumBorder(),
+                      child: Padding(
+                        padding: const EdgeInsets.all(3),
+                        child: _EdgeFadeScroll(
+                          activeIndex: activeIndex,
+                          children: [
+                            for (final (i, tab) in tabs.indexed)
+                              _TabChip(
+                                key: tab.key,
+                                tab: tab,
+                                active: i == activeIndex,
+                                onSelect: () => onSelect(i),
+                                onClose: onClose == null ? null : () => onClose!(i),
+                              ),
+                          ],
+                        ),
                       ),
+                    ),
+                  ),
+                  if (onAdd != null) ...[
+                    const SizedBox(width: GlassSpacing.s6),
+                    GlassIconButton(
+                      key: const ValueKey('glass-tab-add'),
+                      icon: Icons.add_rounded,
+                      tooltip: GlassStrings.of(context).newTab,
+                      size: GlassSizes.tab,
+                      iconSize: GlassSizes.iconRow,
+                      onPressed: onAdd,
+                    ),
                   ],
-                ),
+                  if (trailing != null && !stackActions) ...[
+                    const SizedBox(width: GlassSpacing.toolbarGroupGap),
+                    trailing!,
+                  ],
+                ],
               ),
             ),
-          ),
-          if (onAdd != null) ...[
-            const SizedBox(width: GlassSpacing.s6),
-            GlassIconButton(
-              key: const ValueKey('glass-tab-add'),
-              icon: Icons.add_rounded,
-              tooltip: GlassStrings.of(context).newTab,
-              size: GlassSizes.tab,
-              iconSize: GlassSizes.iconRow,
-              onPressed: onAdd,
-            ),
+            if (stackActions) ...[
+              const SizedBox(height: GlassSpacing.s6),
+              Align(alignment: AlignmentDirectional.centerEnd, child: trailing!),
+            ],
           ],
-          if (trailing != null) ...[const SizedBox(width: GlassSpacing.toolbarGroupGap), trailing!],
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -465,6 +485,25 @@ class _EdgeFadeScrollState extends State<_EdgeFadeScroll> {
                 style: GlassIconButtonStyle.plain,
                 size: GlassSizes.tab,
                 onPressed: _fadeEnd ? () => _page(1) : null,
+              ),
+            if (_overflow)
+              Tooltip(
+                message: strings.openTerminalTabs(widget.children.length),
+                excludeFromSemantics: true,
+                child: Semantics(
+                  label: strings.openTerminalTabs(widget.children.length),
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 4, end: 6),
+                    child: ExcludeSemantics(
+                      child: Text(
+                        '(${widget.children.length})',
+                        key: const ValueKey('glass-tabs-count'),
+                        style: GlassTokens.of(context).typography.caption
+                            .copyWith(color: GlassTokens.of(context).secondaryLabel),
+                      ),
+                    ),
+                  ),
+                ),
               ),
           ],
         );

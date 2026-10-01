@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:consolecrypt/core/glass/glass.dart';
+import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/sharing/enrollment_owner.dart';
@@ -27,10 +29,21 @@ class _SharingScreenState extends ConsumerState<SharingScreen> {
   bool _owned = false, _busy = false;
   Future<void> _refresh() async {
     if (_busy) return;
+    final scope = ref.read(sharingSessionScopeProvider);
+    final service = ref.read(sharingServiceProvider);
     setState(() => _busy = true);
-    await runWithFeedback(context, () => ref.read(sharingServiceProvider).list(refresh: true));
+    await runWithFeedback(context, () async {
+      // Recheck support even after an unavailable/error result. The retained
+      // shell page must not require signing out after a server flag changes.
+      final status = await ref.refresh(sharingStatusProvider.future);
+      if (!mounted || !identical(scope, ref.read(sharingSessionScopeProvider))) return;
+      if (status.enabled && !status.locked) await service.list(refresh: true);
+    });
     if (mounted) {
-      refreshSharing(ref);
+      if (identical(scope, ref.read(sharingSessionScopeProvider))) {
+        ref.invalidate(sharingItemsProvider);
+        ref.invalidate(sharingOutboxProvider);
+      }
       setState(() => _busy = false);
     }
   }
@@ -96,7 +109,7 @@ class _SharingScreenState extends ConsumerState<SharingScreen> {
         GlassIconButton(
           icon: Icons.refresh_rounded,
           tooltip: l.sharingRefresh,
-          onPressed: _busy || status.value?.enabled != true ? null : _refresh,
+          onPressed: _busy || local || !unlocked || status.isLoading ? null : _refresh,
         ),
       ],
       body: Column(
@@ -107,7 +120,18 @@ class _SharingScreenState extends ConsumerState<SharingScreen> {
             SectionCard(
               title: l.sharingTitle,
               icon: Icons.info_outline,
-              child: Text(local ? l.sharingLocal : l.sharingUnavailable),
+              child: Text(
+                local
+                    ? l.sharingLocal
+                    : status.hasError &&
+                          !(status.error is AppException &&
+                              [
+                                AppErrorCode.unsupported,
+                                AppErrorCode.notFound,
+                              ].contains((status.error as AppException).code))
+                    ? errorMessage(l, status.error!)
+                    : l.sharingUnavailable,
+              ),
             ),
           if (unlocked && status.value?.enabled == true) ...[
             if (status.value?.supportsOwnerOnlineEnrollment == true)

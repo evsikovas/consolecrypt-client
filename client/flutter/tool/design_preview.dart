@@ -7,6 +7,8 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:consolecrypt/ai/ai_chat_controller.dart';
+import 'package:consolecrypt/ai/command_palette.dart';
+import 'package:consolecrypt/app/about.dart';
 import 'package:consolecrypt/app/app.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
@@ -209,6 +211,59 @@ void main() {
             await tester.enterText(find.byKey(const ValueKey('snippet-template')), 'df -h');
             await settle(tester);
           }
+        }
+        if (screen == 'terminal-selection-scroll' || screen == 'terminal-tabs-overflow') {
+          final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+          final tabs = container.read(terminalTabsProvider.notifier);
+          final host = backend.inventory.currentHosts.firstWhere((h) => h.name == 'raspberry-pi');
+          final tab = await tabs.open(host);
+          if (screen == 'terminal-tabs-overflow') {
+            for (var i = 0; i < 7; i++) {
+              await tabs.open(host);
+            }
+            tabs.activate(3);
+          }
+          container.read(routerProvider).go(AppRoutes.terminal);
+          await settle(tester);
+          if (screen == 'terminal-selection-scroll') {
+            tab.terminal.write('\x1b[2J\x1b[H');
+            tab.terminal.write(
+              [
+                for (var i = 0; i < 100; i++)
+                  '[${i.toString().padLeft(3, '0')}] web-01.example.test  service=nginx  status=ready  request=/healthz\r\n',
+              ].join(),
+            );
+            await settle(tester);
+            final view = tester.widget<TerminalView>(find.byType(TerminalView).first);
+            final position = view.scrollController!.position;
+            view.scrollController!.jumpTo(position.maxScrollExtent / 2);
+            await settle(tester);
+            tab.controller.setSelection(
+              tab.terminal.buffer.createAnchor(0, 32),
+              tab.terminal.buffer.createAnchor(84, 67),
+            );
+            await settle(tester);
+            expect(tab.controller.selection, isNotNull);
+            expect(position.extentBefore, greaterThan(0));
+            expect(position.extentAfter, greaterThan(0));
+          } else {
+            expect(find.text('(8)'), findsOneWidget);
+            expect(find.byKey(const ValueKey('glass-tabs-count')), findsOneWidget);
+          }
+        }
+        if (screen == 'host-palette') {
+          showCommandPalette(tester.element(find.byType(Navigator).first)).ignore();
+          await settle(tester);
+          await tester.enterText(find.byKey(const ValueKey('palette-input')), 'prod');
+          await settle(tester);
+          expect(find.text('prod-web-1'), findsWidgets);
+          expect(find.text('prod-db-1'), findsWidgets);
+        }
+        if (screen == 'about-license') {
+          showAboutConsoleCrypt(tester.element(find.byType(Navigator).first)).ignore();
+          await settle(tester);
+          expect(find.text('AGPL-3.0'), findsNWidgets(2));
+          expect(find.text('AGPL-3.0-only'), findsNothing);
         }
         if (screen == 'sftp-settings') {
           await tapKey(tester, 'nav-settings');
@@ -493,6 +548,14 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
     case 'terminal-menu':
       expect(find.byKey(const ValueKey('terminal-menu-ask-ai')), findsOneWidget);
       expect(find.byKey(const ValueKey('terminal-menu-snippet')), findsOneWidget);
+    case 'terminal-selection-scroll':
+      expect(find.byType(TerminalView), findsWidgets);
+    case 'terminal-tabs-overflow':
+      expect(find.text('(8)'), findsOneWidget);
+    case 'host-palette':
+      expect(find.byKey(const ValueKey('command-palette')), findsOneWidget);
+    case 'about-license':
+      expect(find.text('AGPL-3.0'), findsNWidgets(2));
     case 'sftp-preview':
       expect(find.byKey(const ValueKey('sftp-preview-line-numbers')), findsOneWidget);
       expect(find.byKey(const ValueKey('sftp-quicklook-text')), findsOneWidget);
