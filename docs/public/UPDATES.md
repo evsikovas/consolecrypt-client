@@ -25,6 +25,7 @@
 [сайта через браузер](https://consolecrypt.evsikov.net/download?lang=ru)
 и один раз замените приложение в Applications. Старый загрузчик помечал DMG как
 созданный без согласия пользователя; эта метка переносилась на приложение.
+Такое возможно и для копии новой версии, скачанной старым загрузчиком.
 Повторное скачивание кнопкой в старом приложении повторяет проблему даже с
 новым установщиком: исправление загрузчика начинает работать только после
 первого запуска исправленной копии. В версиях начиная с 0.2.2 используется
@@ -57,6 +58,7 @@ If ConsoleCrypt 0.2.1 or an older in-app updater on macOS produced an app that c
 download the latest DMG once through your browser and replace the app in Applications.
 The old downloader set a sandbox no-user-consent quarantine mark. Version 0.2.2
 uses a system-approved save location and keeps App Sandbox and Gatekeeper enabled.
+A newer version downloaded by the old app can inherit the same restriction.
 Downloading again with the old app repeats the problem even with a new installer;
 the fixed downloader becomes available after the first successful launch of the
 replacement app.

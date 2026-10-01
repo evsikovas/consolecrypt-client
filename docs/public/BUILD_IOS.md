@@ -39,10 +39,10 @@ xcrun simctl launch booted io.consolecrypt.consolecrypt
 Для ZIP сначала проверьте SHA-256, затем распакуйте `Runner.app` и установите
 его той же командой. Этот ZIP не является IPA для установки на iPhone.
 
-### Готовый архив из релиза 0.2.3
+### Готовый архив из релиза 0.2.4
 
-В [релизе v0.2.3](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.3)
-скачайте обе части `ConsoleCrypt-0.2.3+68-ios-simulator-universal.zip.001`
+В [релизе v0.2.4](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.4)
+скачайте обе части `ConsoleCrypt-0.2.4+72-ios-simulator-universal.zip.001`
 и `.zip.002`, а также файл контрольных сумм. Сохраните их в одной папке,
 файл контрольных сумм — под именем `SHA256SUMS`. Архив опубликован двумя
 частями; объединение восстанавливает проверенный ZIP без изменения приложения. Отдельные части распаковывать не нужно.
@@ -50,10 +50,10 @@ xcrun simctl launch booted io.consolecrypt.consolecrypt
 В Terminal перейдите в эту папку и выполните:
 
 ```sh
-cat ConsoleCrypt-0.2.3+68-ios-simulator-universal.zip.001 \
-    ConsoleCrypt-0.2.3+68-ios-simulator-universal.zip.002 \
-    > ConsoleCrypt-0.2.3+68-ios-simulator-universal.zip
-awk '$2 == "ConsoleCrypt-0.2.3+68-ios-simulator-universal.zip" { print }' SHA256SUMS \
+cat ConsoleCrypt-0.2.4+72-ios-simulator-universal.zip.001 \
+    ConsoleCrypt-0.2.4+72-ios-simulator-universal.zip.002 \
+    > ConsoleCrypt-0.2.4+72-ios-simulator-universal.zip
+awk '$2 == "ConsoleCrypt-0.2.4+72-ios-simulator-universal.zip" { print }' SHA256SUMS \
     | shasum -a 256 -c -
 ```
 
@@ -61,7 +61,7 @@ awk '$2 == "ConsoleCrypt-0.2.3+68-ios-simulator-universal.zip" { print }' SHA256
 этой проверки не требуется. Продолжайте только после результата `OK`:
 
 ```sh
-unzip ConsoleCrypt-0.2.3+68-ios-simulator-universal.zip
+unzip ConsoleCrypt-0.2.4+72-ios-simulator-universal.zip
 xcrun simctl install booted Runner.app
 xcrun simctl launch booted io.consolecrypt.consolecrypt
 ```

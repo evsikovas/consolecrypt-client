@@ -5,7 +5,7 @@
 <a href="https://consolecrypt.evsikov.net/?lang=en">Website EN</a> ·
 <a href="https://consolecrypt.evsikov.net/guide">Руководство</a> ·
 <a href="https://consolecrypt.evsikov.net/account">Личный кабинет</a> ·
-<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.3">Скачать 0.2.3</a> ·
+<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.4">Скачать 0.2.4</a> ·
 <a href="docs/public/BUILD_WINDOWS.md">Собрать для Windows</a> ·
 <a href="docs/public/BUILDING.md">Сборка и свой сервер</a> ·
 <a href="https://git.evsikov.net/publics/consolecrypt/-/issues">Сообщить об ошибке</a>
@@ -53,20 +53,20 @@ SSH-соединения идут напрямую к вашим сервера�
 
 ## Скачать и установить
 
-**Текущий релиз — [0.2.3](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.3)** для macOS, Windows и Android.
+**Текущий релиз — [0.2.4](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.4)** для macOS, Windows и Android.
 
 | Платформа | Версия | Скачать | Установка |
 |---|---|---|---|
-| macOS 12+ · Apple Silicon и Intel | **0.2.3+1310** | [DMG](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.3/ConsoleCrypt-0.2.3%2B1310-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
-| Windows 10/11 · x64 | **0.2.3+1309** | [EXE](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.3/ConsoleCrypt-0.2.3%2B1309-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.3/ConsoleCrypt-0.2.3%2B1309-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
-| Android 11+ · ARM64 | **0.2.3+67** | [APK](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.3/ConsoleCrypt-0.2.3%2B67-android-arm64.apk) | Скачайте APK на телефон и установите |
+| macOS 12+ · Apple Silicon и Intel | **0.2.4+1333** | [DMG](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.4/ConsoleCrypt-0.2.4%2B1333-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
+| Windows 10/11 · x64 | **0.2.4+1332** | [EXE](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.4/ConsoleCrypt-0.2.4%2B1332-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.4/ConsoleCrypt-0.2.4%2B1332-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
+| Android 11+ · ARM64 | **0.2.4+71** | [APK](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.4/ConsoleCrypt-0.2.4%2B71-android-arm64.apk) | Скачайте APK на телефон и установите |
 
-iOS Simulator на Mac: **0.2.3+68**, [две части ZIP и инструкция](docs/public/BUILD_IOS.md). Для настоящего iPhone нужна отдельная подпись; ZIP на телефон не устанавливается.
+iOS Simulator на Mac: **0.2.4+72**, [две части ZIP и инструкция](docs/public/BUILD_IOS.md). Для настоящего iPhone нужна отдельная подпись; ZIP на телефон не устанавливается.
 
-[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.3/SHA256SUMS-0.2.3.txt) ·
-[Проверки выпуска 0.2.3](docs/public/RELEASE_0_2_3.md) · [Как работают обновления](docs/public/UPDATES.md).
+[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.4/SHA256SUMS-0.2.4.txt) ·
+[Проверки выпуска 0.2.4](docs/public/RELEASE_0_2_4.md) · [Как работают обновления](docs/public/UPDATES.md).
 
-В настройках есть автопроверка при запуске, ручная проверка и скачивание новой версии с проверкой цифровой подписи. Для перехода с 0.1.10 или более ранней версии установите этот релиз вручную. На macOS при переходе со старой кнопки обновления скачайте DMG через браузер и один раз замените приложение в Applications. Это нужно и для копии 0.2.2 или 0.2.3, если она была скачана старым приложением и не открывается: повторное скачивание старой кнопкой может снова перенести тот же запрет запуска. Начиная с 0.2.2 следующие обновления сохраняются через системный диалог «Сохранить и открыть», чтобы macOS разрешала запуск новой копии. Профили и хранилища сохраняются.
+В настройках есть автопроверка при запуске, ручная проверка и скачивание новой версии с проверкой цифровой подписи. Для перехода с 0.1.10 или более ранней версии установите этот релиз вручную. На macOS при переходе со старой кнопки обновления скачайте DMG через браузер и один раз замените приложение в Applications. Это нужно и для любой новой копии, если она была скачана старым приложением и не открывается: повторное скачивание старой кнопкой может снова перенести тот же запрет запуска. Начиная с 0.2.2 следующие обновления сохраняются через системный диалог «Сохранить и открыть», чтобы macOS разрешала запуск новой копии. Профили и хранилища сохраняются.
 
 Номер после `+` увеличивается при каждой сборке, поэтому он различается между
 платформами. Бинарные файлы публикуются через GitLab Releases и не хранятся в Git.
@@ -87,7 +87,9 @@ Windows-установщик без цифровой подписи издате
 4. В **Хостах** нажмите **Новый хост**, укажите адрес, имя пользователя, порт и учётные данные.
 5. Нажмите карточку хоста или значок терминала. При первом подключении сверьте отпечаток SSH-ключа с администратором сервера.
 
-В меню хоста можно открыть SFTP, изменить хост или перенести его в группу.
+В левой панели оставлен раздел **Хосты**: группы, вложенные группы и их настройки доступны внутри него. В меню хоста можно открыть SFTP, изменить хост или перенести его в группу.
+
+Встроенный SSH запрашивает UTF-8 для ввода кириллицы и корректного удаления символов. После обновления откройте новую SSH-сессию. Если сервер запрещает запросы окружения, не поддерживает `C.UTF-8` или принудительно задаёт `LC_ALL=C`, администратору нужно настроить UTF-8 на сервере. Явно выбранный системный OpenSSH backend не изменён.
 Сниппеты и ИИ доступны в правой панели на компьютере и через мобильную навигацию
 на телефоне. После работы с панелью одного клика по терминалу достаточно для
 продолжения ввода. Длинный вывод можно прокручивать колесом или трекпадом, сохраняя
