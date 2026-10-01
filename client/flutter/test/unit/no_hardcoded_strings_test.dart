@@ -63,7 +63,7 @@ const _allowed = {
   'Segoe UI Variable Display',
   // Product metadata (lib/app/app_info.dart): proper name and SPDX expression.
   'Alexander Evsikov',
-  'MIT OR Apache-2.0',
+  'AGPL-3.0-only',
 };
 
 /// Files owned by another stream, with the reason they are exempt.

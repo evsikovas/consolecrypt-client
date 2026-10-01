@@ -75,11 +75,21 @@ flutter build macos "--$MODE" ${DEFINES[@]+"${DEFINES[@]}"}
 APP_DIR="build/macos/Build/Products/$( [[ $MODE == release ]] && echo Release || echo Debug )"
 rm -rf "$OUT/ConsoleCrypt.app"
 ditto "$APP_DIR/ConsoleCrypt.app" "$OUT/ConsoleCrypt.app"
+if [[ -f "$SRC/LICENSE" ]]; then
+  cp "$SRC/LICENSE" "$OUT/ConsoleCrypt.app/Contents/Resources/LICENSE"
+else
+  # Historical commits retain the licenses originally published with them.
+  cp "$SRC/LICENSE-MIT" "$SRC/LICENSE-APACHE" "$OUT/ConsoleCrypt.app/Contents/Resources/"
+fi
 
 if [[ -n "$SIGN_IDENTITY" ]]; then
   echo "==> signing with a stable identity"
   python3 "$SRC/client/scripts/sign-macos.py" --identity "$SIGN_IDENTITY" --app "$OUT/ConsoleCrypt.app"
+else
+  # The added license changes the resource seal of Flutter's ad-hoc bundle.
+  codesign --force --sign - --preserve-metadata=identifier,entitlements "$OUT/ConsoleCrypt.app"
 fi
+codesign --verify --deep --strict "$OUT/ConsoleCrypt.app"
 
 echo "==> packaging"
 rm -f "$OUT/ConsoleCrypt-macos.zip" "$OUT/ConsoleCrypt.dmg"

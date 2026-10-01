@@ -10,7 +10,7 @@ Pod::Spec.new do |s|
   s.summary          = 'ConsoleCrypt Rust core (flutter_rust_bridge, cargokit).'
   s.description      = 'Builds and links the ConsoleCrypt Rust core (client/rust/bridge).'
   s.homepage         = 'https://github.com/consolecrypt/consolecrypt'
-  s.license          = { :type => 'MIT OR Apache-2.0' }
+  s.license          = { :type => 'AGPL-3.0-only' }
   s.author           = { 'The ConsoleCrypt Contributors' => 'noreply@consolecrypt.io' }
 
   s.source           = { :path => '.' }

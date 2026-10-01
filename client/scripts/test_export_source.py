@@ -11,7 +11,8 @@ spec.loader.exec_module(module)
 
 class ExportTests(unittest.TestCase):
     def test_build_sources_and_licenses_are_kept(self):
-        for path in ('client/flutter/pubspec.lock', 'client/rust/Cargo.lock',
+        for path in ('LICENSE', 'client/flutter/assets/licenses/AGPL-3.0-only.txt',
+                     'client/flutter/pubspec.lock', 'client/rust/Cargo.lock',
                      'crates/models/src/lib.rs', 'server/migrations/001.sql',
                      'client/flutter/rust_builder/cargokit/LICENSE',
                      'client/packaging/macos/installer-background.png',
@@ -20,7 +21,7 @@ class ExportTests(unittest.TestCase):
                 self.assertTrue(module.publishable(path))
 
     def test_private_notes_builds_credentials_are_excluded(self):
-        for path in ('AGENTS.md', 'CLIENT_PLAN.md', 'docs/adr/design.md',
+        for path in ('LICENSE-MIT', 'LICENSE-APACHE', 'AGENTS.md', 'CLIENT_PLAN.md', 'docs/adr/design.md',
                      'client/AGENTS.md', 'client/packaging/macos/background-prompts.md',
                      'client/flutter/.dart_tool/cache', 'client/rust/target/release/app',
                      'server/.env', 'server/.env.production', 'client/key.p12',

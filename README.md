@@ -134,7 +134,7 @@ git clone ssh://git@git.evsikov.net:2222/publics/consolecrypt.git
 
 **Alexander Evsikov** · [i@evsikov.net](mailto:i@evsikov.net)
 
-Клиент и общие библиотеки: [MIT](LICENSE-MIT) или [Apache-2.0](LICENSE-APACHE),
-на ваш выбор. Сервер: [AGPL-3.0-only](server/LICENSE).
+Клиент, сервер, общие библиотеки и документация ConsoleCrypt:
+[GNU AGPL-3.0-only](LICENSE). [Подробности лицензирования →](docs/public/LICENSING.md)
 Сторонние компоненты сохраняют свои лицензии.
 Уязвимости: [порядок сообщения](SECURITY.md).

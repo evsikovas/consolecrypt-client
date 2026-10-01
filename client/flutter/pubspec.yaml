@@ -3,7 +3,7 @@ description: "ConsoleCrypt desktop client UI: zero-knowledge E2EE SSH client (Fl
 # Never published to pub.dev; distributed as a desktop application.
 publish_to: 'none'
 
-version: 0.1.21+50
+version: 0.1.22+53
 
 environment:
   sdk: ^3.13.4
@@ -71,3 +71,4 @@ flutter:
   # docs/brand/generate_icons.swift). Used only through lib/app/brand.dart.
   assets:
     - assets/brand/
+    - assets/licenses/

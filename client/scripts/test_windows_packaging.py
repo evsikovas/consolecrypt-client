@@ -21,7 +21,7 @@ class WindowsPackagingTest(unittest.TestCase):
             scripts.mkdir(parents=True)
             for name in ('build-windows.ps1', 'bump-version.py'):
                 shutil.copy2(ROOT / 'client/scripts' / name, scripts / name)
-            for name in ('client/flutter/pubspec.yaml', 'client/flutter/lib/app/app_info.dart', 'LICENSE-MIT', 'LICENSE-APACHE'):
+            for name in ('client/flutter/pubspec.yaml', 'client/flutter/lib/app/app_info.dart', 'LICENSE'):
                 target = repo / name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(ROOT / name, target)
@@ -76,7 +76,8 @@ class WindowsPackagingTest(unittest.TestCase):
             self.assertTrue(installers[0].with_suffix('.exe.sha256').exists())
             with zipfile.ZipFile(output / 'ConsoleCrypt-windows.zip') as archive:
                 self.assertTrue({'ConsoleCrypt.exe', 'cc_bridge.dll', 'vcruntime140_1.dll',
-                                 'data/icudtl.dat'} <= set(archive.namelist()))
+                                 'data/icudtl.dat', 'LICENSE'} <= set(archive.namelist()))
+                self.assertEqual(archive.read('LICENSE'), (ROOT / 'LICENSE').read_bytes())
             version = (output / 'ConsoleCrypt.version').read_text()
             env['CC_FAKE_FLUTTER_FAIL'] = '1'
             result = subprocess.run(command, env=env, text=True, capture_output=True)

@@ -23,6 +23,27 @@ allow = [
     "BSL-1.0",
 ]
 
+# ConsoleCrypt code is AGPL; third-party policy remains unchanged.
+exceptions = [
+    { name = "cc-ai-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-app-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-bridge", allow = ["AGPL-3.0-only"] },
+    { name = "cc-cli", allow = ["AGPL-3.0-only"] },
+    { name = "cc-crypto-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-platform-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-search-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-sftp-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-ssh-agent-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-ssh-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-storage-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-sync-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-terminal-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-tunnel-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-vault-core", allow = ["AGPL-3.0-only"] },
+    { name = "cc-models", allow = ["AGPL-3.0-only"] },
+    { name = "cc-protocol", allow = ["AGPL-3.0-only"] },
+]
+
 # allo-isolate (flutter_rust_bridge's Dart isolate glue) ships only a
 # LICENSE file with the Apache-2.0 text and no `license` field.
 [[licenses.clarify]]

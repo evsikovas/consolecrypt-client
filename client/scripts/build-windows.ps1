@@ -83,7 +83,12 @@ try {
     foreach ($required in @('ConsoleCrypt.exe', 'flutter_windows.dll', 'cc_bridge.dll', 'data\icudtl.dat')) {
         if (-not (Test-Path (Join-Path $AppOut $required))) { throw "Incomplete Flutter bundle: $required" }
     }
-    Copy-Item (Join-Path $Src 'LICENSE-MIT'), (Join-Path $Src 'LICENSE-APACHE') $AppOut -Force
+    if (Test-Path (Join-Path $Src 'LICENSE')) {
+        Copy-Item (Join-Path $Src 'LICENSE') $AppOut -Force
+    } else {
+        # Historical commits retain the licenses originally published with them.
+        Copy-Item (Join-Path $Src 'LICENSE-MIT'), (Join-Path $Src 'LICENSE-APACHE') $AppOut -Force
+    }
     if (-not $NoCli) {
         Set-Location (Join-Path $Src 'client\rust')
         $env:CARGO_TARGET_DIR = Join-Path $Src 'client\rust\target\dist'

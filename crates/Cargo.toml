@@ -9,7 +9,7 @@ members = ["protocol", "models"]
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
-license = "MIT OR Apache-2.0"
+license = "AGPL-3.0-only"
 repository = "https://github.com/consolecrypt/consolecrypt"
 authors = ["Alexander Evsikov <i@evsikov.net>"]
 

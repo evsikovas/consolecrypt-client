@@ -12,7 +12,7 @@ import shutil
 import subprocess
 
 ROOT_FILES = {
-    'README.md', 'SECURITY.md', 'LICENSE-MIT', 'LICENSE-APACHE', 'AUTHORS',
+    'README.md', 'SECURITY.md', 'LICENSE', 'AUTHORS',
     '.gitignore', '.gitattributes', '.dockerignore', '.gitlab-ci.yml',
     'rust-toolchain.toml',
 }

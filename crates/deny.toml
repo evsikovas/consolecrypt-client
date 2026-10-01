@@ -23,6 +23,12 @@ allow = [
     "BSL-1.0",
 ]
 
+# ConsoleCrypt code is AGPL; third-party policy remains unchanged.
+exceptions = [
+    { name = "cc-models", allow = ["AGPL-3.0-only"] },
+    { name = "cc-protocol", allow = ["AGPL-3.0-only"] },
+]
+
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
