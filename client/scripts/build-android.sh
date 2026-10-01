@@ -22,7 +22,15 @@ apk='build/app/outputs/flutter-apk/app-release.apk'
 # Rust library, and the Dart AOT image. No 4 KiB-only ELF may ship.
 python3 "$client_dir/scripts/verify-android-apk.py" "$apk"
 mkdir -p -- "$repo_dir/dist/android"
-cp -- "$apk" "$repo_dir/dist/android/ConsoleCrypt-android-arm64.apk"
+# Replace the directory entry, never truncate an existing inode: the latest
+# alias may be hardlinked to a retained release. Stage on the same filesystem
+# so a failed copy keeps the previous alias intact and rename is atomic.
+apk_destination="$repo_dir/dist/android/ConsoleCrypt-android-arm64.apk"
+apk_temporary="$(mktemp "$apk_destination.tmp.XXXXXX")"
+trap 'rm -f -- "$apk_temporary"' EXIT
+cp -- "$apk" "$apk_temporary"
+mv -f -- "$apk_temporary" "$apk_destination"
+trap - EXIT
 printf '%s\n' "$build_version" > "$repo_dir/dist/android/ConsoleCrypt.version"
 (cd -- "$repo_dir/dist/android" && shasum -a 256 ConsoleCrypt-android-arm64.apk > ConsoleCrypt-android-arm64.apk.sha256)
 echo "$repo_dir/dist/android/ConsoleCrypt-android-arm64.apk"
