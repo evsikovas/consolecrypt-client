@@ -39,10 +39,10 @@ xcrun simctl launch booted io.consolecrypt.consolecrypt
 Для ZIP сначала проверьте SHA-256, затем распакуйте `Runner.app` и установите
 его той же командой. Этот ZIP не является IPA для установки на iPhone.
 
-### Готовый архив из релиза 0.1.20
+### Готовый архив из релиза 0.1.21
 
-В [релизе v0.1.20](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.20)
-скачайте обе части `ConsoleCrypt-0.1.20+48-ios-simulator-universal.zip.001`
+В [релизе v0.1.21](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.21)
+скачайте обе части `ConsoleCrypt-0.1.21+52-ios-simulator-universal.zip.001`
 и `.zip.002`, а также файл контрольных сумм. Сохраните их в одной папке,
 файл контрольных сумм — под именем `SHA256SUMS`. Архив разделён только из-за
 ограничения GitLab на размер файла; объединение восстанавливает проверенный
@@ -51,10 +51,10 @@ ZIP без изменения приложения. Отдельные част�
 В Terminal перейдите в эту папку и выполните:
 
 ```sh
-cat ConsoleCrypt-0.1.20+48-ios-simulator-universal.zip.001 \
-    ConsoleCrypt-0.1.20+48-ios-simulator-universal.zip.002 \
-    > ConsoleCrypt-0.1.20+48-ios-simulator-universal.zip
-awk '$2 == "ConsoleCrypt-0.1.20+48-ios-simulator-universal.zip" { print }' SHA256SUMS \
+cat ConsoleCrypt-0.1.21+52-ios-simulator-universal.zip.001 \
+    ConsoleCrypt-0.1.21+52-ios-simulator-universal.zip.002 \
+    > ConsoleCrypt-0.1.21+52-ios-simulator-universal.zip
+awk '$2 == "ConsoleCrypt-0.1.21+52-ios-simulator-universal.zip" { print }' SHA256SUMS \
     | shasum -a 256 -c -
 ```
 
@@ -62,7 +62,7 @@ awk '$2 == "ConsoleCrypt-0.1.20+48-ios-simulator-universal.zip" { print }' SHA25
 этой проверки не требуется. Продолжайте только после результата `OK`:
 
 ```sh
-unzip ConsoleCrypt-0.1.20+48-ios-simulator-universal.zip
+unzip ConsoleCrypt-0.1.21+52-ios-simulator-universal.zip
 xcrun simctl install booted Runner.app
 xcrun simctl launch booted io.consolecrypt.consolecrypt
 ```
@@ -154,7 +154,7 @@ client/scripts/build-ios.sh --device
 пять секунд; финальная очистка прошла без таймаутов. Это отдельная тестовая
 сборка: product ZIP создаётся следующим запуском `--build-only`.
 
-Отдельное приложение `0.1.20+48` затем собрано, установлено и запущено в
+Отдельное приложение `0.1.21+52` затем собрано, установлено и запущено в
 Simulator. Проверены версия внутри ZIP, файл версии и SHA-256; Runner и App
 framework содержат ARM64 и Intel Simulator slices. Этот архив остаётся
 предварительной сборкой для Simulator, а не установочным IPA для телефона.
