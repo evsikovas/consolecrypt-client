@@ -3,9 +3,9 @@
 <p align="center">
 <a href="https://consolecrypt.evsikov.net/?lang=ru">Сайт RU</a> ·
 <a href="https://consolecrypt.evsikov.net/?lang=en">Website EN</a> ·
-<a href="https://consolecrypt.evsikov.net/guide">Руководство со снимками</a> ·
+<a href="https://consolecrypt.evsikov.net/guide">Руководство</a> ·
 <a href="https://consolecrypt.evsikov.net/account">Личный кабинет</a> ·
-<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.21">Скачать 0.1.21</a> ·
+<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.22">Скачать 0.1.22</a> ·
 <a href="docs/public/BUILD_WINDOWS.md">Собрать для Windows</a> ·
 <a href="docs/public/BUILDING.md">Сборка и свой сервер</a> ·
 <a href="https://git.evsikov.net/publics/consolecrypt/-/issues">Сообщить об ошибке</a>
@@ -49,18 +49,18 @@ SSH-соединения идут напрямую к вашим сервера�
 
 ## Скачать и установить
 
-**Текущий релиз — [0.1.21](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.21)** для macOS, Windows и Android.
+**Текущий релиз — [0.1.22](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.22)** для macOS, Windows и Android.
 
 | Платформа | Версия | Скачать | Установка |
 |---|---|---|---|
-| macOS 12+ · Apple Silicon и Intel | **0.1.21+1238** | [DMG](https://git.evsikov.net/-/project/14/uploads/41e18a7ec7aedf5e07d695a56ab0f127/ConsoleCrypt-0.1.21+1238-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
-| Windows 10/11 · x64 | **0.1.21+1237** | [EXE](https://git.evsikov.net/-/project/14/uploads/d322f97c6b54c4ac64f86336b6f51ce8/ConsoleCrypt-0.1.21+1237-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/-/project/14/uploads/935d35252e3e29e7f9d04c491d41b764/ConsoleCrypt-0.1.21+1237-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
-| Android 11+ · ARM64 | **0.1.21+51** | [APK](https://git.evsikov.net/-/project/14/uploads/22b8990dd3f4d60d60f24aafddf689cc/ConsoleCrypt-0.1.21+51-android-arm64.apk) | Скачайте APK на телефон и установите |
+| macOS 12+ · Apple Silicon и Intel | **0.1.22+1245** | [DMG](https://git.evsikov.net/-/project/14/uploads/ca2522540fcb386df236ff5d7a14d7d9/ConsoleCrypt-0.1.22+1245-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
+| Windows 10/11 · x64 | **0.1.22+1244** | [EXE](https://git.evsikov.net/-/project/14/uploads/f6c998a7956a6ddece1da561a4d6c27a/ConsoleCrypt-0.1.22+1244-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/-/project/14/uploads/7362a6fa5694ae502e0cccdf4f8dabae/ConsoleCrypt-0.1.22+1244-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
+| Android 11+ · ARM64 | **0.1.22+55** | [APK](https://git.evsikov.net/-/project/14/uploads/b220e44bc747a931fc810e05989248db/ConsoleCrypt-0.1.22+55-android-arm64.apk) | Скачайте APK на телефон и установите |
 
-iOS Simulator на Mac: **0.1.21+52**, [две части ZIP и инструкция](docs/public/BUILD_IOS.md). Для настоящего iPhone нужна отдельная подпись; ZIP на телефон не устанавливается.
+iOS Simulator на Mac: **0.1.22+56**, [две части ZIP и инструкция](docs/public/BUILD_IOS.md). Для настоящего iPhone нужна отдельная подпись; ZIP на телефон не устанавливается.
 
-[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/-/project/14/uploads/b34140167394d2c996051416b3d4afa7/SHA256SUMS-0.1.21.txt) ·
-[Проверки выпуска 0.1.21](docs/public/RELEASE_0_1_21.md) · [Как работают обновления](docs/public/UPDATES.md).
+[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/-/project/14/uploads/bd9a7de755ab95377a8469fa5827188b/SHA256SUMS-0.1.22.txt) ·
+[Проверки выпуска 0.1.22](docs/public/RELEASE_0_1_22.md) · [Как работают обновления](docs/public/UPDATES.md).
 
 В настройках есть автопроверка при запуске, ручная проверка и скачивание новой версии с проверкой цифровой подписи. Для перехода с 0.1.10 или более ранней версии установите этот релиз вручную; следующие обновления можно получать через приложение.
 
