@@ -8,10 +8,12 @@ import 'package:consolecrypt/updates/update_controller.dart';
 import 'package:consolecrypt/updates/update_service.dart';
 import 'package:crypto/crypto.dart';
 import 'package:cryptography/cryptography.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   final clock = DateTime.utc(2026, 9, 30);
   late SimpleKeyPair key;
   late String publicKey;
@@ -186,6 +188,72 @@ void main() {
     expect(fake.installs, 3);
     expect(container.read(updateControllerProvider).phase, UpdatePhase.opened);
   });
+  test('cancelling the macOS save panel preserves a verified download for retry', () async {
+    final release = (await verify(await envelope()))!;
+    final fake = _InstallService(release)..cancelNext = true;
+    final container = ProviderContainer(overrides: [updateServiceProvider.overrideWithValue(fake)]);
+    addTearDown(container.dispose);
+    addTearDown(() => fake.folder.delete(recursive: true));
+    final controller = container.read(updateControllerProvider.notifier);
+    await controller.check();
+    await controller.downloadAndInstall();
+    expect(container.read(updateControllerProvider).phase, UpdatePhase.ready);
+    expect(container.read(updateControllerProvider).error, isNull);
+    await controller.downloadAndInstall();
+    expect(fake.downloads, 1);
+    expect(fake.installs, 2);
+    expect(container.read(updateControllerProvider).phase, UpdatePhase.opened);
+  });
+  test('macOS hands only verified DMG bytes to the native consent flow', () async {
+    if (!Platform.isMacOS) return;
+    const channel = MethodChannel('test/macos-update-consent');
+    final calls = <MethodCall>[];
+    var outcome = 'opened';
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return outcome;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    final folder = await Directory.systemTemp.createTemp('consolecrypt-update-test-');
+    addTearDown(() => folder.delete(recursive: true));
+    final release = UpdateRelease(
+      version: '0.2.2',
+      build: 1400,
+      platform: 'macos-universal',
+      url: Uri.parse('https://git.evsikov.net/releases/client.dmg'),
+      bytes: 3,
+      sha256: sha256.convert([1, 2, 3]).toString(),
+      notes: const {},
+    );
+    final file = File('${folder.path}/${release.fileName}');
+    await file.writeAsBytes([1, 2, 3]);
+    final service = UpdateService(macosChannel: channel);
+    expect(
+      await service.install(file, release, macosSaveTitle: 'Save verified update', macosSavePrompt: 'Save'),
+      UpdateInstallResult.opened,
+    );
+    expect(calls.single.method, 'saveAndOpen');
+    expect(calls.single.arguments, {
+      'path': file.path,
+      'fileName': release.fileName,
+      'bytes': 3,
+      'sha256': release.sha256,
+      'title': 'Save verified update',
+      'prompt': 'Save',
+    });
+    outcome = 'cancelled';
+    expect(await service.install(file, release), UpdateInstallResult.cancelled);
+    outcome = 'destination_exists';
+    await expectLater(
+      service.install(file, release),
+      throwsA(isA<UpdateException>().having((e) => e.code, 'code', 'destination_exists')),
+    );
+    final before = calls.length;
+    await file.writeAsBytes([3, 2, 1]);
+    await expectLater(service.install(file, release), throwsA(isA<UpdateException>()));
+    expect(calls.length, before);
+  });
 }
 
 class _InstallService extends UpdateService {
@@ -196,6 +264,7 @@ class _InstallService extends UpdateService {
   int installs = 0;
   bool failNext = false;
   bool permissionNext = false;
+  bool cancelNext = false;
   @override
   Future<UpdateRelease?> check() async => release;
   @override
@@ -208,12 +277,21 @@ class _InstallService extends UpdateService {
   }
 
   @override
-  Future<UpdateInstallResult> install(File file, UpdateRelease release) async {
+  Future<UpdateInstallResult> install(
+    File file,
+    UpdateRelease release, {
+    String? macosSaveTitle,
+    String? macosSavePrompt,
+  }) async {
     installs++;
     await verifyInstaller(file, release);
     if (failNext) {
       failNext = false;
       throw const UpdateException('installer');
+    }
+    if (cancelNext) {
+      cancelNext = false;
+      return UpdateInstallResult.cancelled;
     }
     if (permissionNext) {
       permissionNext = false;

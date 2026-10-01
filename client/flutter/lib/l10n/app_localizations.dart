@@ -8315,7 +8315,7 @@ abstract class AppLocalizations {
   /// Application update interface
   ///
   /// In en, this message translates to:
-  /// **'The verified DMG will open. Quit ConsoleCrypt, drag the new application into Applications and confirm replacement. Your profiles and vaults will be preserved.'**
+  /// **'After the download, choose where to save the verified DMG in the macOS save dialog. The installer will open. Quit ConsoleCrypt, drag the app into Applications and confirm replacement. Your profiles and vaults are preserved.'**
   String get updateMacInstallHelp;
 
   /// Application update interface
@@ -8401,6 +8401,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No shared items yet.'**
   String get sharingEmpty;
+
+  /// Incoming sharing tab explanation
+  ///
+  /// In en, this message translates to:
+  /// **'Items your colleagues shared with you. Verify the owner before accepting access.'**
+  String get sharingReceivedHelp;
+
+  /// Owned sharing tab explanation
+  ///
+  /// In en, this message translates to:
+  /// **'Manage the items you shared, recipient permissions, and access revocation.'**
+  String get sharingOwnedHelp;
+
+  /// Incoming sharing empty state title
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been shared with you yet'**
+  String get sharingReceivedEmpty;
+
+  /// Incoming sharing empty state instructions
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a colleague on this server to share an item, then refresh this page. Compare the owner’s device code before accepting it.'**
+  String get sharingReceivedEmptyHelp;
+
+  /// Owned sharing empty state title
+  ///
+  /// In en, this message translates to:
+  /// **'You haven’t shared anything yet'**
+  String get sharingOwnedEmpty;
+
+  /// Owned sharing empty state instructions
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Share from an item’s menu. Select the recipients and verify their device codes. Only the items you choose are shared.'**
+  String get sharingOwnedEmptyHelp;
+
+  /// Separate device enrollment action section
+  ///
+  /// In en, this message translates to:
+  /// **'Access on another device'**
+  String get sharingDevicesTitle;
+
+  /// Device enrollment section explanation
+  ///
+  /// In en, this message translates to:
+  /// **'Add a device to existing shared access. Device verification and the owner’s permissions still apply.'**
+  String get sharingDevicesHelp;
+
+  /// Compact label for preparing a new-device request
+  ///
+  /// In en, this message translates to:
+  /// **'Add this device'**
+  String get sharingDevicePrepare;
+
+  /// Compact label for endorsing another device
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm another device'**
+  String get sharingDeviceEndorse;
+
+  /// Compact label for submitting an endorsed device request
+  ///
+  /// In en, this message translates to:
+  /// **'Continue adding a device'**
+  String get sharingDeviceContinue;
+
+  /// Expand secondary device enrollment tools
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get sharingDeviceMore;
+
+  /// Secondary device enrollment and recovery tools explanation
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with an already confirmed device package, or verify signed history to restore local request state. These actions do not grant access by themselves.'**
+  String get sharingDeviceMoreHelp;
 
   /// Selective sharing: Invitation
   ///
@@ -9115,6 +9193,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, one{1 open terminal} other{{count} open terminals}}'**
   String glassOpenTerminalTabs(int count);
+
+  /// macOS update saved and opened; explain manual app replacement
+  ///
+  /// In en, this message translates to:
+  /// **'The DMG has been saved and opened. Quit ConsoleCrypt, replace the app in Applications, then launch it again.'**
+  String get updateMacInstallerOpened;
+
+  /// Title of native save panel for an authenticated macOS update
+  ///
+  /// In en, this message translates to:
+  /// **'Save ConsoleCrypt update'**
+  String get updateMacSaveTitle;
+
+  /// Native save panel confirmation button for macOS updater
+  ///
+  /// In en, this message translates to:
+  /// **'Save and open'**
+  String get updateMacSavePrompt;
+
+  /// Choose a new DMG filename; the updater never overwrites existing files
+  ///
+  /// In en, this message translates to:
+  /// **'This file already exists. Retry installation and choose another name or folder for the new DMG.'**
+  String get updateMacDestinationExists;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

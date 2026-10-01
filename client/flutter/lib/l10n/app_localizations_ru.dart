@@ -4914,7 +4914,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get updateMacInstallHelp =>
-      'Откроется проверенный DMG. Завершите ConsoleCrypt, перетащите новое приложение в Applications и подтвердите замену. Профили и хранилища сохранятся.';
+      'После загрузки выберите, куда сохранить проверенный DMG, в системном диалоге macOS. Откроется установщик. Завершите ConsoleCrypt, перетащите приложение в Applications и подтвердите замену. Профили и хранилища сохранятся.';
 
   @override
   String get updateAndroidPermission =>
@@ -4960,6 +4960,50 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get sharingEmpty => 'Здесь пока нет общих объектов.';
+
+  @override
+  String get sharingReceivedHelp =>
+      'Объекты, которыми с вами поделились коллеги. Проверьте владельца, прежде чем принять доступ.';
+
+  @override
+  String get sharingOwnedHelp => 'Управляйте переданными объектами, правами получателей и отзывом доступа.';
+
+  @override
+  String get sharingReceivedEmpty => 'Вам пока ничего не передали';
+
+  @override
+  String get sharingReceivedEmptyHelp =>
+      'Попросите коллегу на этом сервере поделиться объектом, затем обновите страницу. Перед принятием сравните код устройства владельца.';
+
+  @override
+  String get sharingOwnedEmpty => 'Вы пока ничем не поделились';
+
+  @override
+  String get sharingOwnedEmptyHelp =>
+      'Выберите «Поделиться» в меню нужного объекта. Укажите получателей и проверьте коды их устройств. Передаются только выбранные вами объекты.';
+
+  @override
+  String get sharingDevicesTitle => 'Доступ на другом устройстве';
+
+  @override
+  String get sharingDevicesHelp =>
+      'Добавьте устройство к уже полученному общему доступу. Проверка устройства и разрешения владельца сохраняются.';
+
+  @override
+  String get sharingDevicePrepare => 'Добавить это устройство';
+
+  @override
+  String get sharingDeviceEndorse => 'Подтвердить устройство';
+
+  @override
+  String get sharingDeviceContinue => 'Продолжить добавление';
+
+  @override
+  String get sharingDeviceMore => 'Другие действия';
+
+  @override
+  String get sharingDeviceMoreHelp =>
+      'Продолжите с уже подтверждённым пакетом устройства или проверьте подписанную историю для восстановления локального запроса. Сами по себе эти действия не предоставляют доступ.';
 
   @override
   String get sharingInvitation => 'Приглашение — проверьте владельца';
@@ -5349,4 +5393,18 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get updateMacInstallerOpened =>
+      'DMG сохранён и открыт. Завершите ConsoleCrypt, перенесите приложение в Applications с заменой и запустите его снова.';
+
+  @override
+  String get updateMacSaveTitle => 'Сохранить обновление ConsoleCrypt';
+
+  @override
+  String get updateMacSavePrompt => 'Сохранить и открыть';
+
+  @override
+  String get updateMacDestinationExists =>
+      'Этот файл уже существует. Повторите установку и выберите другое имя или папку для нового DMG.';
 }

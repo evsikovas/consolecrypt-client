@@ -10,5 +10,8 @@
 	<true/>
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
+	<!-- Executable downloads require an explicit NSSavePanel selection. -->
+	<key>com.apple.security.files.user-selected.executable</key>
+	<true/>
 </dict>
 </plist>

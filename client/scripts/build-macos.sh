@@ -68,6 +68,7 @@ echo "==> Flutter app ($MODE)"
 cd "$SRC/client/flutter"
 BUILD_VERSION="$(python3 "$REPO/client/scripts/bump-version.py" --root "$REPO" --source-root "$SRC")"
 echo "==> version $BUILD_VERSION"
+python3 -m unittest discover -s "$SRC/client/scripts" -p 'test_macos_updates.py' -v
 flutter pub get
 DEFINES=()
 [[ "$MOCK" == 1 ]] && DEFINES+=(--dart-define=CC_MOCK=true)

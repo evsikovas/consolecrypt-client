@@ -14,9 +14,19 @@
 На Windows запускается установщик для текущего пользователя; приложение
 закрывает соединения и базу данных перед выходом. На Android необходимо
 разрешить установку обновлений из ConsoleCrypt и подтвердить системное окно.
-На macOS открывается DMG: завершите приложение, перетащите новую копию в
-Applications и подтвердите замену. Это обычная установка с разрешением пользователя,
-а не бесшумная замена защищённого приложения.
+На macOS после загрузки выберите новую папку или имя DMG в системном диалоге
+**Сохранить и открыть**. Сохранённый файл проверяется по SHA-256 и открывается:
+завершите приложение, перетащите новую копию в Applications и подтвердите замену.
+Отмена диалога не запускает установку; повторная попытка использует проверенную
+загрузку. Существующие файлы не перезаписываются.
+
+**Переход с macOS 0.2.1 и более ранних версий:** если после обновления появляется
+«Не удаётся открыть программу», скачайте DMG 0.2.2 с
+[сайта через браузер](https://consolecrypt.evsikov.net/download?lang=ru)
+и один раз замените приложение в Applications. Старый загрузчик помечал DMG как
+созданный без согласия пользователя; эта метка переносилась на приложение.
+В 0.2.2 используется системное разрешение на сохранение установщика. Защита
+macOS и sandbox остаются включены, хранилище и связку ключей удалять не нужно.
 
 Список релизов подписан Ed25519; клиент содержит только открытый ключ проверки.
 Файлы проверяются по SHA-256 после скачивания и ещё раз перед запуском.
@@ -34,6 +44,14 @@ Open **Settings → Updates** to enable/disable startup checks, check manually,
 and download a newer version. Checking never installs anything or interrupts
 SSH sessions. Installation requires confirmation and preserves profiles and vaults.
 Windows runs the per-user installer, Android uses the system installation
-confirmation, and macOS opens a verified DMG for the standard Applications
-replacement workflow. Signed release metadata and SHA-256 verification protect
+confirmation. On macOS, choose a new DMG filename or folder in the system
+**Save and open** dialog, quit ConsoleCrypt, and replace the app in Applications.
+Cancelling the save dialog leaves the verified download ready for retry;
+existing files are never overwritten. Signed release metadata and SHA-256 verification protect
 the installer; account credentials and vault data are never sent.
+
+If macOS 0.2.1 or an older in-app updater produced an app that cannot open,
+download 0.2.2 once through your browser and replace the app in Applications.
+The old downloader set a sandbox no-user-consent quarantine mark. Version 0.2.2
+uses a system-approved save location and keeps App Sandbox and Gatekeeper enabled.
+Do not delete your vault or Keychain.

@@ -92,6 +92,7 @@ class _SharingScreenState extends ConsumerState<SharingScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final tokens = GlassTokens.of(context);
     final status = ref.watch(sharingStatusProvider);
     final items = ref.watch(sharingItemsProvider);
     final local = ref.watch(activeProfileProvider)?.isLocal ?? true;
@@ -112,117 +113,250 @@ class _SharingScreenState extends ConsumerState<SharingScreen> {
           onPressed: _busy || local || !unlocked || status.isLoading ? null : _refresh,
         ),
       ],
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (status.isLoading || _busy) const LinearProgressIndicator(),
-          if (local || status.hasError || status.value?.enabled == false)
-            SectionCard(
-              title: l.sharingTitle,
-              icon: Icons.info_outline,
-              child: Text(
-                local
-                    ? l.sharingLocal
-                    : status.hasError &&
-                          !(status.error is AppException &&
-                              [
-                                AppErrorCode.unsupported,
-                                AppErrorCode.notFound,
-                              ].contains((status.error as AppException).code))
-                    ? errorMessage(l, status.error!)
-                    : l.sharingUnavailable,
-              ),
-            ),
-          if (unlocked && status.value?.enabled == true) ...[
-            if (status.value?.supportsOwnerOnlineEnrollment == true)
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  GlassButton(
-                    label: l.enrollmentPrepare,
-                    icon: Icons.add_to_home_screen_rounded,
-                    onPressed: () => showEnrollmentPairing(context, EnrollmentPairingFlow.prepare),
+      body: ScrollEdgeEffect(
+        bottom: true,
+        child: CustomScrollView(
+          key: const ValueKey('sharing-workspace-scroll'),
+          slivers: [
+            if (status.isLoading || _busy) const SliverToBoxAdapter(child: LinearProgressIndicator()),
+            if (local || status.hasError || status.value?.enabled == false)
+              SliverToBoxAdapter(
+                child: SectionCard(
+                  title: l.sharingTitle,
+                  icon: Icons.info_outline,
+                  child: Text(
+                    local
+                        ? l.sharingLocal
+                        : status.hasError &&
+                              !(status.error is AppException &&
+                                  [
+                                    AppErrorCode.unsupported,
+                                    AppErrorCode.notFound,
+                                  ].contains((status.error as AppException).code))
+                        ? errorMessage(l, status.error!)
+                        : l.sharingUnavailable,
                   ),
-                  GlassButton(
-                    label: l.enrollmentEndorse,
-                    icon: Icons.verified_user_outlined,
-                    onPressed: () => showEnrollmentPairing(context, EnrollmentPairingFlow.endorse),
-                  ),
-                  GlassButton(
-                    label: l.enrollmentSubmit,
-                    icon: Icons.devices_outlined,
-                    onPressed: () => showEnrollmentPairing(context, EnrollmentPairingFlow.submit),
-                  ),
-                  GlassButton(
-                    label: l.sharingReconcile,
-                    icon: Icons.history_rounded,
-                    onPressed: () => showEnrollmentPairing(context, EnrollmentPairingFlow.restore),
-                  ),
-                  GlassButton(
-                    label: l.enrollmentRequests,
-                    icon: Icons.pending_actions_rounded,
-                    onPressed: () => showEnrollmentPending(context),
-                  ),
-                ],
-              ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ChoiceChip(
-                  key: const ValueKey('sharing-incoming'),
-                  label: Text(l.sharingReceived),
-                  selected: !_owned,
-                  onSelected: (_) => setState(() => _owned = false),
                 ),
-                ChoiceChip(
-                  key: const ValueKey('sharing-owned'),
-                  label: Text(l.sharingOwned),
-                  selected: _owned,
-                  onSelected: (_) => setState(() => _owned = true),
-                ),
-              ],
-            ),
-            if ((status.value?.pending ?? 0) + (status.value?.blocked ?? 0) > 0) ...[
-              const SizedBox(height: 12),
-              SectionCard(
-                title: l.sharingQueue,
-                icon: Icons.cloud_upload_outlined,
+              ),
+            if (unlocked && status.value?.enabled == true) ...[
+              SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      '${l.sharingPending}: ${status.value!.pending} · ${l.sharingBlocked}: ${status.value!.blocked}',
-                    ),
-                    if (status.value!.blocked > 0) Text(l.sharingConflictHelp),
                     Wrap(
+                      key: const ValueKey('sharing-navigation'),
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        GlassButton(label: l.sharingFlush, onPressed: _busy ? null : _flush),
-                        GlassButton(label: l.sharingReviewQueue, onPressed: () => showSharingQueue(context)),
+                        ChoiceChip(
+                          key: const ValueKey('sharing-incoming'),
+                          label: Text(l.sharingReceived),
+                          avatar: Icon(
+                            Icons.move_to_inbox_outlined,
+                            size: 18,
+                            color: !_owned ? tokens.palette.onAccent : tokens.palette.label,
+                          ),
+                          showCheckmark: false,
+                          selectedColor: tokens.palette.accentFill,
+                          labelStyle: tokens.typography.body.copyWith(
+                            color: !_owned ? tokens.palette.onAccent : tokens.palette.label,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          selected: !_owned,
+                          onSelected: (_) => setState(() => _owned = false),
+                        ),
+                        ChoiceChip(
+                          key: const ValueKey('sharing-owned'),
+                          label: Text(l.sharingOwned),
+                          avatar: Icon(
+                            Icons.share_outlined,
+                            size: 18,
+                            color: _owned ? tokens.palette.onAccent : tokens.palette.label,
+                          ),
+                          showCheckmark: false,
+                          selectedColor: tokens.palette.accentFill,
+                          labelStyle: tokens.typography.body.copyWith(
+                            color: _owned ? tokens.palette.onAccent : tokens.palette.label,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          selected: _owned,
+                          onSelected: (_) => setState(() => _owned = true),
+                        ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _owned ? l.sharingOwnedHelp : l.sharingReceivedHelp,
+                      style: GlassTokens.of(context).typography.body
+                          .copyWith(color: GlassTokens.of(context).secondaryLabel),
+                    ),
+                    const SizedBox(height: 20),
+                    if (status.value?.supportsOwnerOnlineEnrollment == true) ...[
+                      const _SharingDeviceActions(),
+                      const SizedBox(height: 20),
+                    ],
                   ],
                 ),
               ),
-            ],
-            const SizedBox(height: 12),
-            Expanded(
-              child: items.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, _) => Center(child: Text(l.sharingBlocked)),
+              if ((status.value?.pending ?? 0) + (status.value?.blocked ?? 0) > 0) ...[
+                SliverToBoxAdapter(
+                  child: SectionCard(
+                    title: l.sharingQueue,
+                    icon: Icons.cloud_upload_outlined,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          '${l.sharingPending}: ${status.value!.pending} · ${l.sharingBlocked}: ${status.value!.blocked}',
+                        ),
+                        if (status.value!.blocked > 0) Text(l.sharingConflictHelp),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            GlassButton(label: l.sharingFlush, onPressed: _busy ? null : _flush),
+                            GlassButton(label: l.sharingReviewQueue, onPressed: () => showSharingQueue(context)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              ],
+              items.when(
+                loading: () => const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+                error: (_, _) => SliverToBoxAdapter(
+                  child: InfoBanner(message: l.sharingBlocked, tone: BannerTone.warning),
+                ),
                 data: (all) {
                   final shown = all.where((i) => i.owned == _owned && i.trust != SharingTrust.deleted).toList();
-                  if (shown.isEmpty) return Center(child: Text(l.sharingEmpty));
-                  return ListView.separated(
+                  if (shown.isEmpty) {
+                    return SliverToBoxAdapter(
+                      child: ContentSurface(
+                        key: const ValueKey('sharing-empty'),
+                        child: EmptyState(
+                          compact: true,
+                          icon: _owned ? Icons.share_outlined : Icons.move_to_inbox_outlined,
+                          title: _owned ? l.sharingOwnedEmpty : l.sharingReceivedEmpty,
+                          message: _owned ? l.sharingOwnedEmptyHelp : l.sharingReceivedEmptyHelp,
+                        ),
+                      ),
+                    );
+                  }
+                  return SliverList.separated(
                     itemCount: shown.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (_, index) => _SharingTile(shown[index], status.value!),
                   );
                 },
               ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Device enrollment is a separate task from publishing or accepting an item.
+/// Keep its less common recovery tools out of the primary navigation row.
+class _SharingDeviceActions extends StatefulWidget {
+  const _SharingDeviceActions();
+  @override
+  State<_SharingDeviceActions> createState() => _SharingDeviceActionsState();
+}
+
+class _SharingDeviceActionsState extends State<_SharingDeviceActions> {
+  bool _more = false;
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return SectionCard(
+      key: const ValueKey('sharing-device-actions'),
+      title: l.sharingDevicesTitle,
+      subtitle: l.sharingDevicesHelp,
+      icon: Icons.devices_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              GlassButton(
+                key: const ValueKey('sharing-device-prepare'),
+                label: l.sharingDevicePrepare,
+                tooltip: l.enrollmentPrepare,
+                icon: Icons.add_to_home_screen_rounded,
+                onPressed: () => showEnrollmentPairing(context, EnrollmentPairingFlow.prepare),
+              ),
+              GlassButton(
+                key: const ValueKey('sharing-device-endorse'),
+                label: l.sharingDeviceEndorse,
+                tooltip: l.enrollmentEndorse,
+                icon: Icons.verified_user_outlined,
+                onPressed: () => showEnrollmentPairing(context, EnrollmentPairingFlow.endorse),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              GlassButton.plain(
+                key: const ValueKey('sharing-device-requests'),
+                label: l.enrollmentRequests,
+                icon: Icons.pending_actions_rounded,
+                onPressed: () => showEnrollmentPending(context),
+              ),
+              Semantics(
+                expanded: _more,
+                child: GlassButton.plain(
+                  key: const ValueKey('sharing-device-more'),
+                  label: l.sharingDeviceMore,
+                  icon: _more ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  onPressed: () => setState(() => _more = !_more),
+                ),
+              ),
+            ],
+          ),
+          if (_more) ...[
+            const SizedBox(height: 12),
+            Divider(height: 1, color: GlassTokens.of(context).surfaces.separator),
+            const SizedBox(height: 12),
+            Text(
+              l.sharingDeviceMoreHelp,
+              style: GlassTokens.of(context).typography.callout.copyWith(color: GlassTokens.of(context).secondaryLabel),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                GlassButton(
+                  key: const ValueKey('sharing-device-continue'),
+                  label: l.sharingDeviceContinue,
+                  tooltip: l.enrollmentSubmit,
+                  icon: Icons.devices_outlined,
+                  onPressed: () => showEnrollmentPairing(context, EnrollmentPairingFlow.submit),
+                ),
+                GlassButton(
+                  key: const ValueKey('sharing-device-restore'),
+                  label: l.sharingReconcile,
+                  icon: Icons.history_rounded,
+                  onPressed: () => showEnrollmentPairing(context, EnrollmentPairingFlow.restore),
+                ),
+              ],
             ),
           ],
         ],

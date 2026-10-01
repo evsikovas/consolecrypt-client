@@ -4726,7 +4726,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get updateMacInstallHelp =>
-      'The verified DMG will open. Quit ConsoleCrypt, drag the new application into Applications and confirm replacement. Your profiles and vaults will be preserved.';
+      'After the download, choose where to save the verified DMG in the macOS save dialog. The installer will open. Quit ConsoleCrypt, drag the app into Applications and confirm replacement. Your profiles and vaults are preserved.';
 
   @override
   String get updateAndroidPermission =>
@@ -4772,6 +4772,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sharingEmpty => 'No shared items yet.';
+
+  @override
+  String get sharingReceivedHelp => 'Items your colleagues shared with you. Verify the owner before accepting access.';
+
+  @override
+  String get sharingOwnedHelp => 'Manage the items you shared, recipient permissions, and access revocation.';
+
+  @override
+  String get sharingReceivedEmpty => 'Nothing has been shared with you yet';
+
+  @override
+  String get sharingReceivedEmptyHelp =>
+      'Ask a colleague on this server to share an item, then refresh this page. Compare the owner’s device code before accepting it.';
+
+  @override
+  String get sharingOwnedEmpty => 'You haven’t shared anything yet';
+
+  @override
+  String get sharingOwnedEmptyHelp =>
+      'Choose Share from an item’s menu. Select the recipients and verify their device codes. Only the items you choose are shared.';
+
+  @override
+  String get sharingDevicesTitle => 'Access on another device';
+
+  @override
+  String get sharingDevicesHelp =>
+      'Add a device to existing shared access. Device verification and the owner’s permissions still apply.';
+
+  @override
+  String get sharingDevicePrepare => 'Add this device';
+
+  @override
+  String get sharingDeviceEndorse => 'Confirm another device';
+
+  @override
+  String get sharingDeviceContinue => 'Continue adding a device';
+
+  @override
+  String get sharingDeviceMore => 'More actions';
+
+  @override
+  String get sharingDeviceMoreHelp =>
+      'Continue with an already confirmed device package, or verify signed history to restore local request state. These actions do not grant access by themselves.';
 
   @override
   String get sharingInvitation => 'Invitation — verify the owner';
@@ -5156,4 +5199,18 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get updateMacInstallerOpened =>
+      'The DMG has been saved and opened. Quit ConsoleCrypt, replace the app in Applications, then launch it again.';
+
+  @override
+  String get updateMacSaveTitle => 'Save ConsoleCrypt update';
+
+  @override
+  String get updateMacSavePrompt => 'Save and open';
+
+  @override
+  String get updateMacDestinationExists =>
+      'This file already exists. Retry installation and choose another name or folder for the new DMG.';
 }

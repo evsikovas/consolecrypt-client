@@ -10,6 +10,9 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:consolecrypt/core/services/enrollment_service.dart';
+import 'package:consolecrypt/sharing/enrollment_models.dart';
+import 'package:consolecrypt/sharing/enrollment_pairing.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
@@ -81,7 +84,7 @@ String _snippetPreview() => jsonEncode({
 
 class _Sharing implements SharingService {
   int publications = 0, accepts = 0, flushes = 0, discoveries = 0, edits = 0;
-  bool failFlush = false, enabled = true;
+  bool failFlush = false, enabled = true, enrollmentEnabled = false;
   AppException? statusError;
   int statusCalls = 0, onlineLists = 0;
   SharingIdentity currentIdentity = _owner;
@@ -107,6 +110,7 @@ class _Sharing implements SharingService {
       enabled: enabled,
       instance: enabled ? 'instance' : null,
       identity: enabled ? currentIdentity : null,
+      supportsOwnerOnlineEnrollment: enrollmentEnabled,
     );
   }
 
@@ -194,6 +198,15 @@ class _Sharing implements SharingService {
   Future<Credential> copySecretCredential(String shareId) async => throw UnsupportedError('Fixture has no secret');
 }
 
+class _Enrollment extends UnavailableEnrollmentService {
+  int pendingCalls = 0;
+  @override
+  Future<List<EnrollmentRequest>> pendingRequests() async {
+    pendingCalls++;
+    return const [];
+  }
+}
+
 SharingItem _item({bool owned = false, String? preview, SharingRole role = SharingRole.reader}) => SharingItem(
   id: 'share',
   itemId: 'item',
@@ -220,6 +233,7 @@ Future<void> _pump(
   _Sharing sharing, {
   AppLocale locale = AppLocale.en,
   Size size = const Size(1600, 1000),
+  _Enrollment? enrollment,
 }) async {
   setTestLocale(backend, locale);
   tester.view.physicalSize = size;
@@ -230,6 +244,7 @@ Future<void> _pump(
       overrides: [
         appServicesProvider.overrideWithValue(backend.services),
         sharingServiceProvider.overrideWithValue(sharing),
+        if (enrollment != null) enrollmentServiceProvider.overrideWithValue(enrollment),
       ],
       retry: (_, _) => null,
       child: const ConsoleCryptApp(),
@@ -260,6 +275,110 @@ Finder _buttonIn(Type dialog, String label) => find.descendant(
 bool _enabled(WidgetTester tester, Finder finder) => tester.widget<GlassButton>(finder).onPressed != null;
 
 void main() {
+  testWidgets('sharing workspace device tools respect capability and preserve the request route', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final sharing = _Sharing();
+    final enrollment = _Enrollment();
+    await _pump(tester, backend, sharing, enrollment: enrollment);
+    await _openSharing(tester);
+    expect(find.byKey(const ValueKey('sharing-device-actions')), findsNothing);
+    expect(find.byKey(const ValueKey('sharing-navigation')), findsOneWidget);
+    sharing.enrollmentEnabled = true;
+    final refresh = find.byWidgetPredicate((w) => w is GlassIconButton && w.tooltip == 'Refresh shared data');
+    await tester.tap(refresh);
+    await settle(tester);
+    await tapKey(tester, 'sharing-device-requests');
+    expect(find.byType(EnrollmentPendingDialog), findsOneWidget);
+    expect(enrollment.pendingCalls, 1);
+    expect(sharing.publications + sharing.accepts, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('sharing workspace prioritizes tabs and explains both empty collections', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final sharing = _Sharing()..enrollmentEnabled = true;
+    await _pump(tester, backend, sharing);
+    await _openSharing(tester);
+    final tabs = find.byKey(const ValueKey('sharing-navigation'));
+    final devices = find.byKey(const ValueKey('sharing-device-actions'));
+    expect(tabs, findsOneWidget);
+    expect(devices, findsOneWidget);
+    expect(tester.getBottomLeft(tabs).dy, lessThan(tester.getTopLeft(devices).dy));
+    expect(find.text('Nothing has been shared with you yet'), findsOneWidget);
+    await tapKey(tester, 'sharing-owned');
+    expect(find.text('You haven’t shared anything yet'), findsOneWidget);
+    expect(find.text('Nothing has been shared with you yet'), findsNothing);
+    expect(sharing.publications + sharing.accepts, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('sharing workspace groups continuation tools without bypassing device approval', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final sharing = _Sharing()..enrollmentEnabled = true;
+    await _pump(tester, backend, sharing);
+    await _openSharing(tester);
+    expect(find.text('Continue adding a device'), findsNothing);
+    expect(find.text('Verify history'), findsNothing);
+    await tapKey(tester, 'sharing-device-more');
+    await tapKey(tester, 'sharing-device-continue');
+    expect(
+      tester.widget<EnrollmentPairingDialog>(find.byType(EnrollmentPairingDialog)).flow,
+      EnrollmentPairingFlow.submit,
+    );
+    expect(isEnabled(tester, 'enrollment-continue'), false);
+    expect(find.byKey(const ValueKey('enrollment-code-confirmed')), findsNothing);
+    final close = find.descendant(of: find.byType(EnrollmentPairingDialog), matching: find.text('Cancel'));
+    await tester.tap(close);
+    await settle(tester);
+    await tapKey(tester, 'sharing-device-restore');
+    expect(
+      tester.widget<EnrollmentPairingDialog>(find.byType(EnrollmentPairingDialog)).flow,
+      EnrollmentPairingFlow.restore,
+    );
+    expect(isEnabled(tester, 'enrollment-continue'), false);
+    expect(sharing.publications + sharing.accepts + sharing.edits, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('sharing workspace Russian phone wraps actions and scrolls to empty collection', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await backend.services.settings.updateLocal(backend.services.settings.currentLocal.copyWith(uiFontScale: 1.4));
+    final sharing = _Sharing()..enrollmentEnabled = true;
+    await _pump(tester, backend, sharing, locale: AppLocale.ru, size: const Size(412, 915));
+    await _openSharing(tester);
+    final prepare = find.byKey(const ValueKey('sharing-device-prepare'));
+    final endorse = find.byKey(const ValueKey('sharing-device-endorse'));
+    expect(tester.getTopLeft(endorse).dy, greaterThan(tester.getTopLeft(prepare).dy));
+    await tapKey(tester, 'sharing-device-more');
+    final scroll = find
+        .descendant(of: find.byKey(const ValueKey('sharing-workspace-scroll')), matching: find.byType(Scrollable))
+        .first;
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('sharing-empty')), 240, scrollable: scroll);
+    await settle(tester);
+    expect(find.text('Вам пока ничего не передали'), findsOneWidget);
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('sharing-device-restore')), -240, scrollable: scroll);
+    await settle(tester);
+    for (final key in [
+      'sharing-device-prepare',
+      'sharing-device-endorse',
+      'sharing-device-continue',
+      'sharing-device-restore',
+    ]) {
+      final rect = tester.getRect(find.byKey(ValueKey(key), skipOffstage: false));
+      expect(rect.left, greaterThanOrEqualTo(0));
+      expect(rect.right, lessThanOrEqualTo(412));
+    }
+    expect(tester.takeException(), isNull);
+  }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
+
   testWidgets('publish requires independent device confirmation and failed dispatch does not duplicate publication', (
     tester,
   ) async {
@@ -550,7 +669,7 @@ void main() {
     expect(sharing.statusCalls, greaterThanOrEqualTo(2));
     expect(sharing.onlineLists, 1);
     expect(find.text('Sharing is unavailable on this server.'), findsNothing);
-    expect(find.text('No shared items yet.'), findsOneWidget);
+    expect(find.text('Nothing has been shared with you yet'), findsOneWidget);
     expect(sharing.publications, 0);
     expect(sharing.discoveries, 0);
     expect(tester.takeException(), isNull);
@@ -571,7 +690,7 @@ void main() {
     await tester.tap(refresh);
     await settle(tester);
     expect(sharing.onlineLists, 1);
-    expect(find.text('No shared items yet.'), findsOneWidget);
+    expect(find.text('Nothing has been shared with you yet'), findsOneWidget);
     expect(sharing.publications, 0);
     expect(tester.takeException(), isNull);
   });

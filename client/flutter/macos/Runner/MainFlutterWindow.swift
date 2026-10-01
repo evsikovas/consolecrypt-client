@@ -4,6 +4,7 @@ import macos_window_utils
 
 class MainFlutterWindow: NSWindow {
   private var accessibilityBridge: AccessibilityBridge?
+  private var updateBridge: UpdateBridge?
 
   override func awakeFromNib() {
     // macos_window_utils (MIT) hosts the Flutter view so the Dart side can
@@ -29,6 +30,7 @@ class MainFlutterWindow: NSWindow {
     let flutterViewController = windowUtilsViewController.flutterViewController
     RegisterGeneratedPlugins(registry: flutterViewController)
     accessibilityBridge = AccessibilityBridge(messenger: flutterViewController.engine.binaryMessenger)
+    updateBridge = UpdateBridge(messenger: flutterViewController.engine.binaryMessenger, window: self)
 
     super.awakeFromNib()
   }

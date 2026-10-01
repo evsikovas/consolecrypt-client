@@ -141,12 +141,17 @@ Future<UpdateRelease?> verifyUpdateFeed(
   }
 }
 
-enum UpdateInstallResult { opened, exitWindows, androidPermission }
+enum UpdateInstallResult { opened, exitWindows, androidPermission, cancelled }
 
 class UpdateService {
-  UpdateService({HttpClient Function()? clientFactory, this.publicKey = updateVerificationKey})
-    : _clientFactory = clientFactory ?? HttpClient.new;
+  UpdateService({
+    HttpClient Function()? clientFactory,
+    this.publicKey = updateVerificationKey,
+    MethodChannel? macosChannel,
+  }) : _clientFactory = clientFactory ?? HttpClient.new,
+       _macos = macosChannel ?? const MethodChannel('consolecrypt/macos_updates');
   final HttpClient Function() _clientFactory;
+  final MethodChannel _macos;
   final String publicKey;
   static const _android = MethodChannel('consolecrypt/updates');
 
@@ -248,7 +253,12 @@ class UpdateService {
     }
   }
 
-  Future<UpdateInstallResult> install(File file, UpdateRelease release) async {
+  Future<UpdateInstallResult> install(
+    File file,
+    UpdateRelease release, {
+    String? macosSaveTitle,
+    String? macosSavePrompt,
+  }) async {
     if (release.platform != platform) throw const UpdateException('platform');
     await verifyInstaller(file, release);
     if (Platform.isWindows) {
@@ -260,8 +270,19 @@ class UpdateService {
       return UpdateInstallResult.exitWindows;
     }
     if (Platform.isMacOS) {
-      final result = await Process.run('/usr/bin/open', [file.path]);
-      if (result.exitCode != 0) throw const UpdateException('installer');
+      // Opening the sandbox cache directly propagates quarantine's
+      // no-user-consent bit to the app copied out of the DMG. The native
+      // bridge creates fresh verified bytes at an NSSavePanel-approved URL.
+      final result = await _macos.invokeMethod<String>('saveAndOpen', {
+        'path': file.path,
+        'fileName': release.fileName,
+        'bytes': release.bytes,
+        'sha256': release.sha256,
+        'title': macosSaveTitle ?? 'ConsoleCrypt',
+        'prompt': macosSavePrompt,
+      });
+      if (result == 'cancelled') return UpdateInstallResult.cancelled;
+      if (result != 'opened') throw UpdateException(result == 'destination_exists' ? result! : 'installer');
       return UpdateInstallResult.opened;
     }
     if (Platform.isAndroid) {

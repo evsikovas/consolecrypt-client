@@ -35,7 +35,7 @@ class UpdateController extends Notifier<UpdateState> {
     }
   }
 
-  Future<void> downloadAndInstall() async {
+  Future<void> downloadAndInstall({String? macosSaveTitle, String? macosSavePrompt}) async {
     final release = state.release;
     if (release == null || state.busy) return;
     final service = ref.read(updateServiceProvider);
@@ -48,10 +48,19 @@ class UpdateController extends Notifier<UpdateState> {
       }
       if (!ref.mounted) return;
       state = UpdateState(phase: UpdatePhase.installing, release: release, progress: 1);
-      final outcome = await service.install(_installer!, release);
+      final outcome = await service.install(
+        _installer!,
+        release,
+        macosSaveTitle: macosSaveTitle,
+        macosSavePrompt: macosSavePrompt,
+      );
       if (!ref.mounted) return;
       state = UpdateState(
-        phase: outcome == UpdateInstallResult.androidPermission ? UpdatePhase.permission : UpdatePhase.opened,
+        phase: switch (outcome) {
+          UpdateInstallResult.androidPermission => UpdatePhase.permission,
+          UpdateInstallResult.cancelled => UpdatePhase.ready,
+          _ => UpdatePhase.opened,
+        },
         release: release,
         progress: 1,
       );

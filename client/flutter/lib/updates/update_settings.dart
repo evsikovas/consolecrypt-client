@@ -27,7 +27,9 @@ Future<void> confirmInstallUpdate(BuildContext context, WidgetRef ref) async {
     ),
   );
   if (approved == true && context.mounted) {
-    await ref.read(updateControllerProvider.notifier).downloadAndInstall();
+    await ref
+        .read(updateControllerProvider.notifier)
+        .downloadAndInstall(macosSaveTitle: l.updateMacSaveTitle, macosSavePrompt: l.updateMacSavePrompt);
   }
 }
 
@@ -39,7 +41,7 @@ String updateStatus(AppLocalizations l, UpdateState state) => switch (state.phas
   UpdatePhase.downloading => l.updateDownloading((state.progress * 100).round()),
   UpdatePhase.installing => l.updateInstalling,
   UpdatePhase.permission => l.updateAndroidPermission,
-  UpdatePhase.opened => l.updateInstallerOpened,
+  UpdatePhase.opened => AppPlatform.isMacOS ? l.updateMacInstallerOpened : l.updateInstallerOpened,
   UpdatePhase.failed => l.updateFailed,
 };
 
@@ -85,7 +87,10 @@ class UpdateSettingsSection extends ConsumerWidget {
               child: LinearProgressIndicator(value: state.progress),
             ),
           if (state.phase == UpdatePhase.failed)
-            Padding(padding: const EdgeInsets.only(top: 8), child: Text(l.updateFailedHelp)),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(state.error == 'destination_exists' ? l.updateMacDestinationExists : l.updateFailedHelp),
+            ),
           const SizedBox(height: GlassSpacing.s12),
           Wrap(
             spacing: GlassSpacing.s8,
