@@ -112,9 +112,9 @@
 
 In **0.2.2 and later**, **Available to me** lists received items and
 **Shared by me** lists items whose access you manage. A separate device card
-offers **Add this device**, **Confirm a device** and **Device requests**.
-**More actions** contains **Continue device enrollment** and signed history
-verification. **My device code** remains available in the page header.
+offers **Add this device**, **Confirm another device** and **Device requests**.
+**More actions** contains **Continue adding a device** and signed history
+verification. **My device verification code** remains available in the page header.
 Switching tabs or importing a packet does not grant access by itself.
 
 The public server at `https://consolecrypt.evsikov.net` enables selective sharing,
