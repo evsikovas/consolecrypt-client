@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=ConsoleCrypt
+Comment=SSH, SFTP and encrypted workspaces
+Comment[ru]=SSH, SFTP и зашифрованное рабочее пространство
+Exec=consolecrypt
+Icon=io.consolecrypt.consolecrypt
+Terminal=false
+Categories=Network;RemoteAccess;
+Keywords=SSH;SFTP;terminal;server;
+StartupWMClass=io.consolecrypt.consolecrypt

@@ -29,7 +29,7 @@ PRIVATE_NAMES = {
 PRIVATE_SUFFIXES = {
     '.key', '.pem', '.p12', '.pfx', '.jks', '.keystore', '.mobileprovision',
     '.db', '.sqlite', '.sqlite3', '.log', '.pyc', '.apk', '.dmg', '.exe',
-    '.zip', '.dylib', '.dll', '.so', '.a', '.o', '.env',
+    '.zip', '.deb', '.rpm', '.dylib', '.dll', '.so', '.a', '.o', '.env',
 }
 
 

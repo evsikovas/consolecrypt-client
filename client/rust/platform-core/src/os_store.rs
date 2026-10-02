@@ -85,10 +85,8 @@ fn platform_store() -> Result<Arc<CredentialStore>, SecureStoreError> {
     Ok(store)
 }
 
-// TODO(platform): Linux/other desktops — add the Secret Service store
-// (`zbus-secret-service-keyring-store`) behind this feature — the D-Bus stack
-// is not needed by current desktop/mobile targets; next: add it once a Linux
-// desktop build is planned, with a headless encrypted-file fallback.
+// Linux uses the strict Secret Service backend in linux_secret_service.rs.
+// Other unsupported targets must fail closed; no file-based fallback.
 #[cfg(not(any(
     target_os = "macos",
     target_os = "windows",

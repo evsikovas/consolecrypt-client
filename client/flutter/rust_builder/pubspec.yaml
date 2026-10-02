@@ -30,3 +30,5 @@ flutter:
         pluginClass: CcBridgePlugin
       windows:
         ffiPlugin: true
+      linux:
+        ffiPlugin: true

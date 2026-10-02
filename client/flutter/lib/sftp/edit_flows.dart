@@ -44,7 +44,7 @@ Future<void> openInEditor(
       final editor = ref.read(settingsServiceProvider).currentLocal.sftpDefaultEditor;
       if (editor != null) openWith = OpenWithApp(editor);
     }
-    if (openWith is OpenWithChoose && AppPlatform.isMacOS) {
+    if (openWith is OpenWithChoose && (AppPlatform.isMacOS || AppPlatform.isLinux)) {
       final appPath = await ref
           .read(fileDialogServiceProvider)
           .chooseApplication(label: l10n.sftpApplications, confirmButtonText: l10n.sftpChooseApplication);

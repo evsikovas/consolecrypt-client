@@ -6711,6 +6711,14 @@
   "@updateAppleHelp": {
     "description": "iOS update distribution help"
   },
+  "updateLinuxHelp": "On Linux, download the latest .deb or .rpm package for your distribution from the official website and install it with your package manager. Use the same method to update the app.",
+  "@updateLinuxHelp": {
+    "description": "Linux installation and manual package update help"
+  },
+  "updateLinuxDownloadPage": "Official download page",
+  "@updateLinuxDownloadPage": {
+    "description": "Label for the selectable official Linux download page address"
+  },
   "sharingTitle": "Sharing",
   "sharingSubtitle": "Selected data for verified devices on this server.",
   "sharingUnavailable": "Sharing is unavailable on this server.",

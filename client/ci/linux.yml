@@ -1,0 +1,30 @@
+# Linux packages use Docker on the already registered Mac runner. The source
+# snapshot and Linux toolchain are isolated from its SDK and login keyring.
+build-linux:
+  stage: build
+  tags: [macos, arm64]
+  resource_group: consolecrypt-macos
+  timeout: 3h
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+        - client/**/*
+        - crates/**/*
+        - rust-toolchain.toml
+        - .gitlab-ci.yml
+      when: on_success
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: true
+  script:
+    - bash client/scripts/ci-linux.sh
+  artifacts:
+    name: 'ConsoleCrypt-linux-$CI_COMMIT_SHORT_SHA'
+    expire_in: 90 days
+    paths:
+      - dist/linux/*.deb
+      - dist/linux/*.rpm
+      - dist/linux/*.SHA256SUMS
+      - dist/linux/*.json
+      - dist/linux/acceptance/linux-ffi-integration.json
+      - dist/linux/ConsoleCrypt.version

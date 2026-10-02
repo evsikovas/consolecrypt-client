@@ -11,14 +11,15 @@ publish.workspace = true
 
 [features]
 default = ["os-keychain"]
-# OS secure store: macOS Keychain, Windows Credential Manager (keyring 4.x
-# ecosystem: keyring-core + the native store crates). Other platforms report
-# `SecureStoreError::Unsupported` for now.
+# OS secure store: native keychains plus Linux Secret Service. Linux never
+# falls back to files, the transient session collection, or a plaintext bus.
 os-keychain = [
     "dep:keyring-core",
     "dep:apple-native-keyring-store",
     "dep:windows-native-keyring-store",
     "dep:android-native-keyring-store",
+    "dep:secret-service",
+    "dep:base64",
 ]
 
 [dependencies]
@@ -44,6 +45,14 @@ windows-native-keyring-store = { version = "1", optional = true, default-feature
 
 [target.'cfg(target_os = "android")'.dependencies]
 android-native-keyring-store = { version = "1", optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Blocking API owns its async-io executor, including when AppCore calls it from
+# a Tokio blocking worker. DH encrypts the session bus; no libsecret C ABI.
+secret-service = { version = "5.2", optional = true, default-features = false, features = ["rt-async-io-crypto-rust"] }
+# KWallet's Secret Service accepts UTF-8 values, including binary device keys
+# encoded inside the encrypted item. Buffers are zeroized after use.
+base64 = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.consolecrypt.consolecrypt</id>
+  <name>ConsoleCrypt</name>
+  <summary>SSH, SFTP and encrypted workspaces</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-only</project_license>
+  <description>
+    <p>Manage servers, files and snippets in one application. Work locally or use end-to-end encrypted synchronization and sharing.</p>
+    <p>Requires a graphical desktop and an unlocked Secret Service keyring.</p>
+  </description>
+  <launchable type="desktop-id">io.consolecrypt.consolecrypt.desktop</launchable>
+  <url type="homepage">https://consolecrypt.evsikov.net</url>
+  <url type="bugtracker">https://git.evsikov.net/publics/consolecrypt/-/issues</url>
+  <provides><binary>consolecrypt</binary></provides>
+  <content_rating type="oars-1.1"/>
+</component>

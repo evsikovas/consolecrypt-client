@@ -4938,6 +4938,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'На iOS обновления устанавливаются через App Store, TestFlight или Xcode, в зависимости от способа установки приложения.';
 
   @override
+  String get updateLinuxHelp =>
+      'На Linux скачайте с официального сайта последнюю версию пакета .deb или .rpm для своего дистрибутива и установите через менеджер пакетов. Для обновления приложения используйте тот же способ.';
+
+  @override
+  String get updateLinuxDownloadPage => 'Официальная страница загрузки';
+
+  @override
   String get sharingTitle => 'Совместный доступ';
 
   @override

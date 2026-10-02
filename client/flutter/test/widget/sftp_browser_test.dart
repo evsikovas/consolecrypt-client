@@ -86,6 +86,36 @@ String _editStatus(WidgetTester tester, String fileName) {
 }
 
 void main() {
+  testWidgets('Linux Open With selects an executable, reuses it and preserves the saved editor', (tester) async {
+    final backend = await _openBrowser(tester);
+    const savedEditor = AppRef(AppRefKind.path, '/usr/bin/code');
+    final settings = backend.services.settings;
+    await settings.updateLocal(settings.currentLocal.copyWith(sftpDefaultEditor: savedEditor));
+    await _doubleClick(tester, '$_home/README.md');
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    expect(container.read(editSessionsProvider).requireValue.single.app, savedEditor);
+    expect(backend.files.applicationChoices, 0);
+
+    backend.files.applicationPath = '/usr/bin/zed';
+    await _click(tester, '$_home/notes.txt');
+    await tapKey(tester, 'sftp-toolbar-actions');
+    await tapKey(tester, 'sftp-action-openWith');
+    expect(backend.files.applicationChoices, 1);
+    final session = container.read(editSessionsProvider).requireValue.singleWhere((s) => s.fileName == 'notes.txt');
+    expect(session.app, const AppRef(AppRefKind.path, '/usr/bin/zed'));
+    expect(settings.currentLocal.sftpDefaultEditor, savedEditor);
+    await tapKey(tester, 'sftp-edit-reopen-notes.txt');
+    expect(backend.files.applicationChoices, 1, reason: 'reopening reuses the selected executable');
+    expect(
+      container.read(editSessionsProvider).requireValue.singleWhere((s) => s.fileName == 'notes.txt').app,
+      session.app,
+    );
+    await _debugEdit(tester, 'notes.txt', 'sftp-debug-save');
+    expect(container.read(editSessionsProvider).requireValue.singleWhere((s) => s.fileName == 'notes.txt').uploads, 1);
+    expect(_editStatus(tester, 'notes.txt'), 'Synced');
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
   testWidgets('normal Open uses the saved editor; Open With overrides one file without changing it', (tester) async {
     final b = await _openBrowser(tester);
     final settings = b.services.settings;
@@ -144,7 +174,7 @@ void main() {
     expect(find.text('Internal error. Please try again.'), findsNothing);
     expect(find.text('Cancelled.'), findsNothing);
     expect(tester.takeException(), isNull);
-  }, variant: const TargetPlatformVariant({TargetPlatform.macOS}));
+  }, variant: const TargetPlatformVariant({TargetPlatform.macOS, TargetPlatform.linux}));
 
   testWidgets('Windows Open With still uses the core system chooser', (tester) async {
     final backend = await _openBrowser(tester);

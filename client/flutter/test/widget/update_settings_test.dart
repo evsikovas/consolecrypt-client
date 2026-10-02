@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/settings.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -14,6 +15,58 @@ import 'package:material_ui/material_ui.dart';
 import '../helpers/test_app.dart';
 
 void main() {
+  for (final language in ['en', 'ru']) {
+    testWidgets('Linux $language explains package updates without unsupported updater controls', (tester) async {
+      final backend = testBackend();
+      addTearDown(backend.dispose);
+      final source = backend.services;
+      // Keep production startup behavior enabled, without native or network services.
+      final services = AppServices(
+        profiles: source.profiles,
+        auth: source.auth,
+        vault: source.vault,
+        inventory: source.inventory,
+        terminal: source.terminal,
+        sftp: source.sftp,
+        tunnels: source.tunnels,
+        snippets: source.snippets,
+        ai: source.ai,
+        devices: source.devices,
+        sync: source.sync,
+        settings: source.settings,
+        backups: source.backups,
+        files: source.files,
+      );
+      final fake = _Service(offer: true);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appServicesProvider.overrideWithValue(services), updateServiceProvider.overrideWithValue(fake)],
+          child: MaterialApp(
+            locale: Locale(language),
+            localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(
+              body: UpdateNoticeScope(child: SingleChildScrollView(child: UpdateSettingsSection())),
+            ),
+          ),
+        ),
+      );
+      await settle(tester);
+      expect(AppPlatform.supportsDirectUpdates, isFalse);
+      expect(find.textContaining('.deb'), findsOneWidget);
+      expect(find.textContaining('.rpm'), findsOneWidget);
+      expect(find.text(language == 'ru' ? 'Официальная страница загрузки' : 'Official download page'), findsOneWidget);
+      final address = tester.widget<SelectableText>(find.byKey(const ValueKey('updates-linux-download-page')));
+      expect(address.data, 'https://consolecrypt.evsikov.net/download?lang=$language');
+      expect(find.byKey(const ValueKey('updates-check')), findsNothing);
+      expect(find.byKey(const ValueKey('updates-automatic')), findsNothing);
+      expect(find.byKey(const ValueKey('updates-install')), findsNothing);
+      expect(fake.checks, 0);
+      expect(fake.downloads, 0);
+      expect(source.settings.currentLocal.checkUpdatesAutomatically, isTrue);
+      expect(tester.takeException(), isNull);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+  }
   testWidgets('iOS uses Apple updates without probing the desktop update server', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);

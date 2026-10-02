@@ -1563,6 +1563,14 @@
     "description": "Application update interface"
   },
   "updateAppleHelp": "На iOS обновления устанавливаются через App Store, TestFlight или Xcode, в зависимости от способа установки приложения.",
+  "updateLinuxHelp": "На Linux скачайте с официального сайта последнюю версию пакета .deb или .rpm для своего дистрибутива и установите через менеджер пакетов. Для обновления приложения используйте тот же способ.",
+  "@updateLinuxHelp": {
+    "description": "Linux installation and manual package update help"
+  },
+  "updateLinuxDownloadPage": "Официальная страница загрузки",
+  "@updateLinuxDownloadPage": {
+    "description": "Label for the selectable official Linux download page address"
+  },
   "sharingTitle": "Совместный доступ",
   "sharingSubtitle": "Выбранные данные для проверенных устройств коллег на этом сервере.",
   "sharingUnavailable": "Совместный доступ недоступен на этом сервере.",

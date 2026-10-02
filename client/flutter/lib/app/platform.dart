@@ -19,6 +19,8 @@ abstract final class AppPlatform {
 
   static bool get isWindows => defaultTargetPlatform == TargetPlatform.windows;
 
+  static bool get isLinux => defaultTargetPlatform == TargetPlatform.linux;
+
   /// Cmd on Apple platforms, Ctrl elsewhere.
   static bool get usesMeta =>
       defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.iOS;

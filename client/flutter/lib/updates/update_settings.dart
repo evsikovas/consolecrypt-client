@@ -58,6 +58,27 @@ class UpdateSettingsSection extends ConsumerWidget {
         child: Text(l.updateAppleHelp),
       );
     }
+    if (AppPlatform.isLinux) {
+      final language = l.localeName.split('_').first;
+      final downloadPage = Uri.https('consolecrypt.evsikov.net', '/download', {'lang': language});
+      return SectionCard(
+        key: const ValueKey('settings-updates'),
+        title: l.updatesTitle,
+        icon: Icons.system_update_alt_rounded,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l.updateCurrentVersion(kAppFullVersion)),
+            const SizedBox(height: GlassSpacing.s12),
+            Text(l.updateLinuxHelp),
+            const SizedBox(height: GlassSpacing.s12),
+            Text(l.updateLinuxDownloadPage),
+            const SizedBox(height: GlassSpacing.s4),
+            SelectableText(downloadPage.toString(), key: const ValueKey('updates-linux-download-page')),
+          ],
+        ),
+      );
+    }
     final settings = ref.read(settingsServiceProvider);
     final local = ref.watch(localSettingsProvider).value ?? const LocalSettings();
     final state = ref.watch(updateControllerProvider);

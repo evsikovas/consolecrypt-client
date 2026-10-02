@@ -8354,6 +8354,18 @@ abstract class AppLocalizations {
   /// **'On iOS, updates are installed through the App Store, TestFlight or Xcode, depending on how the app was installed.'**
   String get updateAppleHelp;
 
+  /// Linux installation and manual package update help
+  ///
+  /// In en, this message translates to:
+  /// **'On Linux, download the latest .deb or .rpm package for your distribution from the official website and install it with your package manager. Use the same method to update the app.'**
+  String get updateLinuxHelp;
+
+  /// Label for the selectable official Linux download page address
+  ///
+  /// In en, this message translates to:
+  /// **'Official download page'**
+  String get updateLinuxDownloadPage;
+
   /// Selective sharing: Title
   ///
   /// In en, this message translates to:
