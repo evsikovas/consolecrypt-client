@@ -5,7 +5,7 @@
 <a href="https://consolecrypt.evsikov.net/?lang=en">Website EN</a> ·
 <a href="https://consolecrypt.evsikov.net/guide">Руководство</a> ·
 <a href="https://consolecrypt.evsikov.net/account">Личный кабинет</a> ·
-<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.4">Скачать 0.2.4</a> ·
+<a href="https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.5">Скачать 0.2.5</a> ·
 <a href="docs/public/BUILD_WINDOWS.md">Собрать для Windows</a> ·
 <a href="docs/public/BUILDING.md">Сборка и свой сервер</a> ·
 <a href="https://git.evsikov.net/publics/consolecrypt/-/issues">Сообщить об ошибке</a>
@@ -39,6 +39,7 @@ ConsoleCrypt — SSH-клиент с терминалом, SFTP, группам�
   размер текста, собственные цвета терминала, всплывающая или закреплённая правая панель.
 - **Совместная работа:** выбранные хосты, сниппеты, коллекции и отдельные секреты,
   проверка устройств, роли и отзыв доступа. Отдельные вкладки показывают полученные и опубликованные объекты; добавление устройств вынесено в собственный блок. [Руководство общего доступа](docs/public/SHARING.md).
+- **Linux:** пакеты DEB/RPM для x86-64, системная ключница Secret Service и выбор внешнего SFTP-редактора. [Установка и сборка](docs/public/BUILD_LINUX.md).
 - **iOS:** предварительный порт с нативным Rust-ядром, SSH/SFTP и Keychain;
   [сборка Simulator и подпись для телефона](docs/public/BUILD_IOS.md).
 - **Защита данных:** зашифрованное хранилище и резервные копии, автоблокировка,
@@ -53,20 +54,22 @@ SSH-соединения идут напрямую к вашим сервера�
 
 ## Скачать и установить
 
-**Текущий релиз — [0.2.4](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.4)** для macOS, Windows и Android.
+**Текущий релиз — [0.2.5](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.5)** для macOS, Windows, Android и Linux x86-64.
 
 | Платформа | Версия | Скачать | Установка |
 |---|---|---|---|
-| macOS 12+ · Apple Silicon и Intel | **0.2.4+1333** | [DMG](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.4/ConsoleCrypt-0.2.4%2B1333-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
-| Windows 10/11 · x64 | **0.2.4+1332** | [EXE](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.4/ConsoleCrypt-0.2.4%2B1332-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.4/ConsoleCrypt-0.2.4%2B1332-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
-| Android 11+ · ARM64 | **0.2.4+71** | [APK](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.4/ConsoleCrypt-0.2.4%2B71-android-arm64.apk) | Скачайте APK на телефон и установите |
+| macOS 12+ · Apple Silicon и Intel | **0.2.5+1354** | [DMG](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B1354-macos-universal.dmg) | Перенесите ConsoleCrypt в Applications и запускайте оттуда |
+| Windows 10/11 · x64 | **0.2.5+1353** | [EXE](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B1353-windows-x64-setup.exe) · [ZIP](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B1353-windows-x64-portable.zip) | Запустите установщик без прав администратора или распакуйте ZIP целиком |
+| Android 11+ · ARM64 | **0.2.5+75** | [APK](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B75-android-arm64.apk) | Скачайте APK на телефон и установите |
+| Linux x86-64 · Ubuntu 22.04 / Debian 12 | **0.2.5+1358** | [DEB](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B1358-linux-x64.deb) | Установите через `apt`; нужна разблокированная ключница Secret Service |
+| Linux x86-64 · Fedora 43 | **0.2.5+1358** | [RPM](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B1358-linux-x64.rpm) | Установите через `dnf`; нужна разблокированная ключница Secret Service |
 
-iOS Simulator на Mac: **0.2.4+72**, [две части ZIP и инструкция](docs/public/BUILD_IOS.md). Для настоящего iPhone нужна отдельная подпись; ZIP на телефон не устанавливается.
+iOS Simulator на Mac: **0.2.5+76**, [ZIP, часть 1](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B76-ios-simulator-universal.zip.001) · [часть 2](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B76-ios-simulator-universal.zip.002) · [инструкция](docs/public/BUILD_IOS.md). Для настоящего iPhone нужна отдельная подпись; ZIP на телефон не устанавливается.
 
-[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.4/SHA256SUMS-0.2.4.txt) ·
-[Проверки выпуска 0.2.4](docs/public/RELEASE_0_2_4.md) · [Как работают обновления](docs/public/UPDATES.md).
+[Контрольные суммы SHA-256 для всех пакетов](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/SHA256SUMS-0.2.5.txt) ·
+[Проверки выпуска 0.2.5](docs/public/RELEASE_0_2_5.md) · [Как работают обновления](docs/public/UPDATES.md).
 
-В настройках есть автопроверка при запуске, ручная проверка и скачивание новой версии с проверкой цифровой подписи. Для перехода с 0.1.10 или более ранней версии установите этот релиз вручную. На macOS при переходе со старой кнопки обновления скачайте DMG через браузер и один раз замените приложение в Applications. Это нужно и для любой новой копии, если она была скачана старым приложением и не открывается: повторное скачивание старой кнопкой может снова перенести тот же запрет запуска. Начиная с 0.2.2 следующие обновления сохраняются через системный диалог «Сохранить и открыть», чтобы macOS разрешала запуск новой копии. Профили и хранилища сохраняются.
+На Windows, macOS и Android в настройках есть автопроверка при запуске, ручная проверка и скачивание новой версии с проверкой подписи списка релизов. На Linux скачайте новый DEB/RPM и обновите приложение через менеджер пакетов; автоматической установки и подписанной ленты обновлений Linux в этом выпуске нет. Для перехода с 0.1.10 или более ранней версии установите этот релиз вручную. На macOS при переходе со старой кнопки обновления скачайте DMG через браузер и один раз замените приложение в Applications. Это нужно и для любой новой копии, если она была скачана старым приложением и не открывается: повторное скачивание старой кнопкой может снова перенести тот же запрет запуска. Начиная с 0.2.2 следующие обновления сохраняются через системный диалог «Сохранить и открыть», чтобы macOS разрешала запуск новой копии. Профили и хранилища сохраняются.
 
 Номер после `+` увеличивается при каждой сборке, поэтому он различается между
 платформами. Бинарные файлы публикуются через GitLab Releases и не хранятся в Git.
@@ -123,7 +126,7 @@ git clone ssh://git@git.evsikov.net:2222/publics/consolecrypt.git
 ```
 
 Готовый установщик, ZIP и SHA-256 появятся в `dist/windows/`.
-[Сборка macOS/Android и запуск своего сервера →](docs/public/BUILDING.md)
+[Сборка macOS/Android/Linux и запуск своего сервера →](docs/public/BUILDING.md)
 
 ## Состав проекта
 
@@ -138,6 +141,26 @@ git clone ssh://git@git.evsikov.net:2222/publics/consolecrypt.git
 Зависимости загружаются при сборке; lock-файлы включены в репозиторий.
 Дистрибутивы и история релизов — в GitLab Releases.
 [Как выпускать новую версию →](docs/public/RELEASING.md)
+
+## English
+
+ConsoleCrypt is an SSH/SFTP workspace with host groups, snippets, an optional AI
+assistant and encrypted sync/team sharing. Version **0.2.5** adds Linux x86-64
+DEB/RPM packages. Downloads and exact platform build numbers are in the table
+above; [Linux installation](docs/public/BUILD_LINUX.md) explains `apt`/`dnf` and
+the required existing unlocked persistent Secret Service keyring.
+Linux updates are manual package-manager updates. Signed in-app update metadata
+is supported on Windows, macOS and Android, not Linux or iOS.
+
+The iOS **0.2.5+76** ZIP parts are for Simulator on Mac, not an iPhone IPA.
+Windows installers have not been executed on a physical Windows machine for this
+release; macOS is not Apple-notarized and Android retains its preview signer.
+See [release checks and limits](docs/public/RELEASE_0_2_5.md).
+
+If an old macOS in-app downloader produced an app that cannot launch, download
+the DMG once through your browser, quit ConsoleCrypt, replace it in Applications,
+and open that copy. Keep your profiles, vaults and Keychain. Subsequent updates
+use the system **Save and open** dialog; security protections stay enabled.
 
 ## Автор и лицензии
 

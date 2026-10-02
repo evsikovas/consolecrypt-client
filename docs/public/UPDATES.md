@@ -1,6 +1,6 @@
 # Обновления ConsoleCrypt
 
-С версии 0.1.12 в настройках есть раздел **Обновления**:
+С версии 0.1.12 на Windows, macOS и Android в настройках есть раздел **Обновления**:
 
 - **Проверять обновления при запуске** — сохранённый на этом устройстве
   переключатель. Когда он выключен, запросов при запуске нет.
@@ -38,13 +38,26 @@ macOS и sandbox остаются включены, хранилище и свя
 блокируют установку. Хранилища, пароли и токены аккаунта не отправляются
 серверу обновлений. Он не имеет доступа к серверу синхронизации или его БД.
 
-Публикация и ключ подписи управляются вне публичного репозитория. Новый релиз
-становится доступен после публикации пакетов всех платформ и списка SHA-256.
+Публикация и ключ подписи управляются вне публичного репозитория. Обновление
+становится доступно после публикации пакета поддерживаемой платформы,
+контрольных сумм и подписанных метаданных.
 Сервис проверяет релизы каждые пять минут.
+
+## Linux и iOS
+
+На Linux в **Настройки → Обновления** показаны текущая версия и
+[страница новых пакетов](https://consolecrypt.evsikov.net/download?lang=ru).
+Скачайте DEB или RPM и установите его через `apt` или `dnf`, как описано в
+[инструкции Linux](BUILD_LINUX.md). Номер сборки входит в версию пакета.
+Автопроверка, подписанная лента и автоматическая установка обновлений Linux
+в этом выпуске не поддерживаются. Профили и системную ключницу удалять не нужно.
+
+На iOS настольный загрузчик отключён. Новый Simulator ZIP устанавливается
+по [инструкции](BUILD_IOS.md); настоящий iPhone требует отдельной подписи.
 
 ## English
 
-Open **Settings → Updates** to enable/disable startup checks, check manually,
+On Windows, macOS and Android, open **Settings → Updates** to enable/disable startup checks, check manually,
 and download a newer version. Checking never installs anything or interrupts
 SSH sessions. Installation requires confirmation and preserves profiles and vaults.
 Windows runs the per-user installer, Android uses the system installation
@@ -63,3 +76,11 @@ Downloading again with the old app repeats the problem even with a new installer
 the fixed downloader becomes available after the first successful launch of the
 replacement app.
 Do not delete your vault or Keychain.
+
+
+On Linux, **Settings → Updates** shows the current version and the
+[download page](https://consolecrypt.evsikov.net/download?lang=en). Download a new
+DEB/RPM and update through `apt`/`dnf`. Linux has no startup update checks,
+signed updater feed or automatic package installation in this release.
+Keep your profiles and system keyring. On iOS, install a new Simulator archive
+manually; an actual iPhone still requires separate signing.

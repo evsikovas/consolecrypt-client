@@ -3,6 +3,10 @@
 Первая Linux-версия предназначена для **x86-64** и графического рабочего стола.
 Пакет `.deb` используется в Debian/Ubuntu, `.rpm` — в Fedora.
 Пакеты содержат клиент, Rust bridge, Flutter engine, иконку и пункт меню приложений.
+Базовая сборка — **Ubuntu 22.04**; установка пакетов и запуск проверены
+в изолированных **Debian 12** и **Fedora 43** с X11 и программным рендерингом.
+Текущий выпуск — **0.2.5+1358**: [DEB](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B1358-linux-x64.deb) ·
+[RPM](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B1358-linux-x64.rpm).
 Сервер синхронизации устанавливается отдельно: [Docker и Kubernetes](HOSTING.md).
 
 ## Системная ключница
@@ -21,7 +25,7 @@
 Откройте терминал в каталоге скачивания и подставьте точное имя полученного файла:
 
 ```sh
-sudo apt install ./ConsoleCrypt-<версия>+<сборка>-linux-x64.deb
+sudo apt install ./ConsoleCrypt-0.2.5+1358-linux-x64.deb
 consolecrypt
 ```
 
@@ -32,7 +36,7 @@ consolecrypt
 ## Установка `.rpm`
 
 ```sh
-sudo dnf install ./ConsoleCrypt-<версия>+<сборка>-linux-x64.rpm
+sudo dnf install ./ConsoleCrypt-0.2.5+1358-linux-x64.rpm
 consolecrypt
 ```
 
@@ -44,7 +48,8 @@ consolecrypt
 В **Настройки → Обновления** показаны текущая версия и адрес новых пакетов.
 Скачайте новый пакет и повторите команду `apt install` или `dnf install`.
 Устанавливаемая версия содержит номер сборки, поэтому менеджер пакетов различает
-повторные сборки одного выпуска. Автоматической замены приложения на Linux пока нет.
+повторные сборки одного выпуска. Автоматической замены приложения и подписанной ленты обновлений Linux
+в этом выпуске нет.
 
 ```sh
 # Debian/Ubuntu
@@ -90,6 +95,16 @@ SSH-ключи и Kubernetes-конфигурация в контейнер не
 
 ## Проверки и ограничения
 
+GitLab [build-linux 1358](https://git.evsikov.net/publics/consolecrypt/-/jobs/1358)
+прошёл две интеграции Rust bridge и один полный сценарий UI: создание хранилища,
+сохранение хоста, перезапуск и разблокировка с настоящей тестовой Secret Service.
+Готовые DEB/RPM отдельно установлены в Debian 12 и Fedora 43: проверены
+зависимости, обновление `0.2.5-79 → 0.2.5-1358`, удаление/повторная установка,
+нативные библиотеки и экран приветствия. Проверка сохранности использовала
+только синтетические маркеры в отдельном HOME/ключнице; она не подтверждает
+миграцию настоящего пользовательского хранилища.
+
+
 ```sh
 python3 -m unittest discover -s client/scripts -p test_linux_packaging.py -v
 (cd client/rust && cargo test --locked -p cc-platform-core --features os-keychain)
@@ -105,7 +120,31 @@ python3 -m unittest discover -s client/scripts -p test_linux_packaging.py -v
 с ключами `-X`/`-x`. Fedora Ncat и другие варианты `nc` с иными параметрами
 для этого режима не подходят. Для обычных подключений выбирайте основной backend.
 
-Linux ARM64, Flatpak/AppImage и RPM для RHEL пока не проверены и не входят в этот выпуск.
+Linux ARM64, Flatpak/AppImage, RPM для RHEL, физический GPU и Wayland пока
+не проверены и не входят в подтверждённую матрицу этого выпуска.
 
 Полная лицензия AGPL-3.0-only включена в пакет. Лицензии сторонних компонентов
 сохраняются в Flutter notices и вложенных файлах лицензий.
+
+
+## English
+
+ConsoleCrypt **0.2.5+1358** targets Linux x86-64. The build baseline is Ubuntu
+22.04; DEB/RPM installation and an actual welcome-screen launch passed in
+isolated Debian 12 and Fedora 43 using software X11 rendering.
+Install the linked DEB with `sudo apt install ./ConsoleCrypt-0.2.5+1358-linux-x64.deb`
+or the RPM with `sudo dnf install ./ConsoleCrypt-0.2.5+1358-linux-x64.rpm`.
+Then run `consolecrypt` as your regular desktop user, without `sudo`.
+
+An existing unlocked default persistent Secret Service keyring and session
+D-Bus are required; GNOME Keyring is a suitable provider. The app does not create
+or unlock it and has no plaintext-key fallback. Download future DEB/RPM packages
+and update with the package manager: Linux has no signed in-app updater feed
+or automatic installation. Keep your profiles, encrypted backups and keyring.
+
+CI passed real Rust-core storage and UI restart/unlock tests. Package upgrade,
+removal and reinstall preserved owned synthetic HOME/keyring markers only;
+this was not a migration test of a real user's vault. Physical GPU, Wayland,
+Linux ARM64, RHEL and Flatpak/AppImage remain outside the verified matrix.
+The optional System OpenSSH proxy mode requires OpenBSD-compatible `nc`;
+the default native SSH backend has no such requirement.

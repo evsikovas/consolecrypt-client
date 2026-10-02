@@ -23,7 +23,7 @@ client/scripts/build-macos.sh --no-cli
 
 ## Android · ARM64
 
-Предварительная сборка для Android 11+ (API 30), включая Pixel:
+Предварительная сборка для Android 11+ (API 30), ARM64:
 
 - JDK 17;
 - Android SDK platform 36, build-tools 36.0.0;
@@ -63,7 +63,11 @@ client/scripts/build-linux.sh
 ```
 
 Результат: два пакета в `dist/linux/`, SHA-256 и точная версия.
-Для запуска нужен графический сеанс с разблокированной ключницей Secret Service.
+Базовое окружение пакетов — Ubuntu 22.04 x86-64; установка проверена в
+Debian 12 и Fedora 43. Для запуска нужны D-Bus графического сеанса и уже
+созданная разблокированная основная ключница Secret Service. Обновляйте Linux
+вручную через `apt`/`dnf`; подписанная лента обновлений и автоматическая
+установка Linux не поддерживаются. Физический GPU и Wayland не проверены.
 
 ## iOS · предварительный порт
 
@@ -102,3 +106,14 @@ docker compose -f server/docker-compose.yml --env-file server/.env up -d --build
 параметры почты, регистрации, лимитов и хранения приведены в `server/.env.example`.
 Резервируйте PostgreSQL и проверяйте восстановление. Сервер не может восстановить
 забытую парольную фразу хранилища: сохраните комплект восстановления на клиенте.
+
+
+## English
+
+Clone the whole repository, including `crates/`, and preserve the dependency
+lock files. Use the platform scripts above; each native packaging run reserves
+a new build number. Linux x86-64 packages use an Ubuntu 22.04 baseline and were
+installed in isolated Debian 12 and Fedora 43. A graphical session, session
+D-Bus and an existing unlocked persistent Secret Service keyring are required.
+Linux updates are manual DEB/RPM package-manager updates. See the linked
+platform guides for prerequisites, package signing limits and iOS device signing.

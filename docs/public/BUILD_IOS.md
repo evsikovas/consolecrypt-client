@@ -39,29 +39,32 @@ xcrun simctl launch booted io.consolecrypt.consolecrypt
 Для ZIP сначала проверьте SHA-256, затем распакуйте `Runner.app` и установите
 его той же командой. Этот ZIP не является IPA для установки на iPhone.
 
-### Готовый архив из релиза 0.2.4
+### Готовый архив из релиза 0.2.5
 
-В [релизе v0.2.4](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.4)
-скачайте обе части `ConsoleCrypt-0.2.4+72-ios-simulator-universal.zip.001`
-и `.zip.002`, а также файл контрольных сумм. Сохраните их в одной папке,
-файл контрольных сумм — под именем `SHA256SUMS`. Архив опубликован двумя
+В [релизе v0.2.5](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.2.5)
+скачайте [часть 1](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B76-ios-simulator-universal.zip.001),
+[часть 2](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B76-ios-simulator-universal.zip.002)
+и [SHA256SUMS-0.2.5.txt](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/SHA256SUMS-0.2.5.txt).
+Сохраните все три файла в одной папке. Архив опубликован двумя
 частями; объединение восстанавливает проверенный ZIP без изменения приложения. Отдельные части распаковывать не нужно.
 
-В Terminal перейдите в эту папку и выполните:
+В Terminal перейдите в эту папку и проверьте обе части:
 
 ```sh
-cat ConsoleCrypt-0.2.4+72-ios-simulator-universal.zip.001 \
-    ConsoleCrypt-0.2.4+72-ios-simulator-universal.zip.002 \
-    > ConsoleCrypt-0.2.4+72-ios-simulator-universal.zip
-awk '$2 == "ConsoleCrypt-0.2.4+72-ios-simulator-universal.zip" { print }' SHA256SUMS \
-    | shasum -a 256 -c -
+awk '$2 == "ConsoleCrypt-0.2.5+76-ios-simulator-universal.zip.001" || \
+     $2 == "ConsoleCrypt-0.2.5+76-ios-simulator-universal.zip.002" { print; n++ } \
+     END { if (n != 2) exit 1 }' SHA256SUMS-0.2.5.txt > ios-parts.SHA256SUMS \
+    && shasum -a 256 -c ios-parts.SHA256SUMS
 ```
 
-Проверяется строка целого ZIP, поэтому скачивать остальные пакеты релиза для
-этой проверки не требуется. Продолжайте только после результата `OK`:
+В списке контрольных сумм указаны две опубликованные части. Продолжайте
+только после двух результатов `OK` — по одному для `.001` и `.002`:
 
 ```sh
-unzip ConsoleCrypt-0.2.4+72-ios-simulator-universal.zip
+cat ConsoleCrypt-0.2.5+76-ios-simulator-universal.zip.001 \
+    ConsoleCrypt-0.2.5+76-ios-simulator-universal.zip.002 \
+    > ConsoleCrypt-0.2.5+76-ios-simulator-universal.zip
+unzip ConsoleCrypt-0.2.5+76-ios-simulator-universal.zip
 xcrun simctl install booted Runner.app
 xcrun simctl launch booted io.consolecrypt.consolecrypt
 ```
@@ -142,7 +145,7 @@ client/scripts/build-ios.sh --device
 
 ## Что уже проверено и что осталось
 
-Последний полный нативный прогон `0.1.20+47` на Simulator прошёл обе
+Ранее выполненный полный нативный прогон `0.1.20+47` на Simulator прошёл обе
 интеграционные проверки. Проверены настоящее Rust-ядро, создание локального
 профиля, SQLCipher, хранение хоста, сохранение Keychain после перезапуска ядра,
 разблокировка парольной фразой и блокировка хранилища. SSH-проверка включает
@@ -153,13 +156,16 @@ client/scripts/build-ios.sh --device
 пять секунд; финальная очистка прошла без таймаутов. Это отдельная тестовая
 сборка: product ZIP создаётся следующим запуском `--build-only`.
 
-Отдельное приложение `0.1.21+52` затем собрано, установлено и запущено в
-Simulator. Проверены версия внутри ZIP, файл версии и SHA-256; Runner и App
-framework содержат ARM64 и Intel Simulator slices. Этот архив остаётся
-предварительной сборкой для Simulator, а не установочным IPA для телефона.
+Текущий готовый архив — **0.2.5+76**. Проверены версия, целостность ZIP,
+SHA-256, подпись и ARM64/x86-64 Simulator slices в Runner, App, Flutter и
+Rust bridge. Обе части побайтно восстанавливают исходный ZIP. Приложение
+установлено и запущено в отдельном временном Simulator: подтверждён экран
+приветствия без подключения аккаунта, хранилища или SSH-хоста. Это проверка
+запуска текущего продукта, а не повтор полного SSH/SFTP-прогона выше и не
+проверка настоящего iPhone.
 
 Фундамент Rust также проверен компиляцией для физического ARM64 iPhone.
-Последний полный прогон выше выполнен в Simulator и не подтверждает
+Полный прогон выше выполнен в Simulator и не подтверждает
 установку или работу на настоящем телефоне.
 
 На физическом устройстве ещё нужно проверить Face ID/Touch ID, блокировку
@@ -192,3 +198,15 @@ framework содержат ARM64 и Intel Simulator slices. Этот архив 
 
 Результат Simulator не заменяет этот checklist. Не публикуйте реальные
 пароли, приватные SSH-ключи или содержимое рабочего терминала в отчёте.
+
+
+## English
+
+Download both **0.2.5+76** Simulator ZIP parts and `SHA256SUMS-0.2.5.txt` using
+the links above. Verify both published parts against their checksum entries,
+join them, then install
+`Runner.app` with `xcrun simctl install`. The current archive contains ARM64 and
+x86-64 Simulator slices and passed an isolated welcome-screen launch check.
+The full SSH/SFTP regression described above is a separate earlier test.
+This is not an iPhone-installable IPA; a physical device requires Xcode signing
+and separate keyboard, biometrics, network and background acceptance checks.
