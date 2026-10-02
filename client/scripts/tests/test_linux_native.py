@@ -18,11 +18,12 @@ SUITE = "integration_test/rust_core_test.dart"
 
 
 class NativeReporterTest(unittest.TestCase):
-    def run_reporter(self, *, completed=True, missing=False, exit_code=0, large=False, error=False):
-        marker = os.urandom(32).hex()  # generated diagnostic payload, never printed
+    def run_reporter(self, *, completed=True, missing=False, exit_code=0, large=False, error=False, compiler=False):
+        marker = os.urandom(12 if compiler else 32).hex()  # generated payload, never printed
         events = [{"type": "print", "message": marker}]
         if error:
-            events.append({"type": "error", "message": marker, "stackTrace": marker})
+            message = "lib/example.dart:12:3: Error: " + marker if compiler else marker
+            events.append({"type": "error", "message": message, "stackTrace": marker})
         if large:
             events.append({"type": "print", "message": marker * 10000})
         for index, name in enumerate(sorted(HARNESS.SUITES[SUITE])):
@@ -43,7 +44,7 @@ class NativeReporterTest(unittest.TestCase):
             fake.chmod(0o700)
             log, stdout = io.StringIO(), io.StringIO()
             with redirect_stdout(stdout):
-                result = HARNESS.run_flutter(str(fake), SUITE, dict(os.environ), 10, log)
+                result = HARNESS.run_flutter(str(fake), SUITE, dict(os.environ), 10, log, compiler_diagnostics=compiler)
             recorded = log.getvalue() + stdout.getvalue() + json.dumps(result)
             self.assertFalse(marker in recorded, "untrusted diagnostic payload must never be logged")
             return result
@@ -61,6 +62,11 @@ class NativeReporterTest(unittest.TestCase):
         for option in ({"completed": False}, {"missing": True}, {"exit_code": 1}, {"error": True}):
             with self.subTest(option=option):
                 self.assertFalse(self.run_reporter(**option)["success"])
+
+    def test_failed_receipt_and_output_retain_only_fixed_compiler_category(self):
+        result = self.run_reporter(error=True, compiler=True)
+        self.assertFalse(result["success"])
+        self.assertEqual(result["failure_signals"], ["dart_compiler_error"])
 
     def test_compiler_filter_rejects_runtime_auth_and_credentials(self):
         for line in (

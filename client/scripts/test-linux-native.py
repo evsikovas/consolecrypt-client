@@ -507,6 +507,7 @@ def run_flutter(
             if compiler_diagnostics and not names:
                 safe = safe_compiler_line(line, str(Path(env["HOME"]).parent))
                 if safe is not None:
+                    failure_signals.add(safe)
                     emit("PRETEST_COMPILER " + safe)
             return
         if not isinstance(event, dict):
@@ -550,6 +551,7 @@ def run_flutter(
                     for compiler_line in message.splitlines():
                         safe = safe_compiler_line(compiler_line.encode("utf-8"), str(Path(env["HOME"]).parent))
                         if safe is not None:
+                            failure_signals.add(safe)
                             emit("PRETEST_COMPILER " + safe)
                 if "timed out waiting for" in message:
                     failure_signals.add("ui_finder_timeout")
@@ -612,6 +614,9 @@ def run_flutter(
         "ui_diagnostics": ui_diagnostics,
     }
     result["success"] = code == 0 and done_success and passed == SUITES[suite] and not timed_out and reported_errors == 0
+    if not result["success"]:
+        for category in sorted(failure_signals):
+            emit("FAILURE_CATEGORY " + category)
     emit(f"SUITE {'PASS' if result['success'] else 'FAIL'} {suite}: {len(passed)}/{len(SUITES[suite])}")
     return result
 
