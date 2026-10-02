@@ -319,16 +319,21 @@ def known_file_failure(line: bytes) -> dict | None:
 
 
 def safe_compiler_line(line: bytes, private_root: str) -> str | None:
-    """Opt-in diagnosis before any test starts; never runtime/test payloads."""
+    """Return only a fixed diagnostic category, never source text or paths."""
     text = line.decode("utf-8", errors="replace").strip()
     if re.search(r"VM.?service|vm-service|https?://|wss?://|auth|password|passphrase|recovery|secret|token|-----BEGIN|Unhandled|Exception|TestFailure", text, re.I):
         return None
     if re.search(r"[A-Za-z0-9+_=-]{48,}", text):
         return None
-    compiler = re.match(r"(?:[^\n]*\.dart:\d+:\d+: Error:|CMake Error|ninja: (?:error|build stopped)|clang(?:\+\+)?: error:|error(?:\[[A-Z]\d+\])?:|Failed to build Linux application)", text)
-    if compiler is None:
-        return None
-    return text.replace(private_root, "<owned-temp>")[:1024]
+    categories = (
+        (r"[^\n]*\.dart:\d+:\d+: Error:", "dart_compiler_error"),
+        (r"CMake Error", "cmake_error"),
+        (r"ninja: (?:error|build stopped)", "ninja_error"),
+        (r"clang(?:\+\+)?: error:", "clang_error"),
+        (r"error(?:\[[A-Z]\d+\])?:", "rust_compiler_error"),
+        (r"Failed to build Linux application", "linux_build_failure"),
+    )
+    return next((category for pattern, category in categories if re.match(pattern, text)), None)
 
 
 def installed_smoke(app: Path, env: dict[str, str], receipts: Path, trace: str | None = None) -> dict:
@@ -617,7 +622,7 @@ def main() -> int:
     parser.add_argument("--timeout", type=int, default=2400, help="seconds per native suite")
     parser.add_argument("--installed-app", type=Path, help="installed release first-frame smoke instead of SDK integration tests")
     parser.add_argument("--trace-known-files", action="store_true", help="installed smoke only: allowlisted failed file syscalls; never save raw trace")
-    parser.add_argument("--compiler-diagnostics", action="store_true", help="filtered compiler/build lines only, before testStart; never test/runtime payloads")
+    parser.add_argument("--compiler-diagnostics", action="store_true", help="fixed compiler/build categories only, before testStart; no raw text or paths")
     parser.add_argument("--keyring-fixture", type=Path, default=ROOT / "client/rust/platform-core/tests/run_linux_secret_service.py")
     args = parser.parse_args()
     if sys.platform != "linux" or os.environ.get("CC_LINUX_DISPOSABLE_BUILDER") != "1":

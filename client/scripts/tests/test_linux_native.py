@@ -72,7 +72,21 @@ class NativeReporterTest(unittest.TestCase):
         ):
             self.assertIsNone(HARNESS.safe_compiler_line(line, "/tmp/owned"))
         safe = HARNESS.safe_compiler_line(b"CMake Error at /tmp/owned/generated.cmake:12 (include)", "/tmp/owned")
-        self.assertEqual(safe, "CMake Error at <owned-temp>/generated.cmake:12 (include)")
+        self.assertEqual(safe, "cmake_error")
+
+    def test_short_compiler_suffix_payloads_and_paths_are_never_forwarded(self):
+        marker = os.urandom(12).hex()
+        for prefix, expected in (
+            ("error: ", "rust_compiler_error"),
+            ("CMake Error ", "cmake_error"),
+            ("lib/example.dart:12:3: Error: ", "dart_compiler_error"),
+            ("ninja: error: ", "ninja_error"),
+            ("clang: error: ", "clang_error"),
+        ):
+            with self.subTest(category=expected):
+                result = HARNESS.safe_compiler_line((prefix + marker).encode(), "/tmp/owned")
+                self.assertEqual(result, expected)
+                self.assertNotIn(marker, result)
 
     def test_file_trace_cannot_emit_private_or_traversing_paths(self):
         for path in ("/tmp/owned/home/keyring", "/home/user/vault.db", "/opt/consolecrypt/../../tmp/owned"):
