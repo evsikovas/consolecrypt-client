@@ -75,6 +75,8 @@ pub(super) fn reset_modifier_state(manager: &RdpManager, id: &str) -> Result<(),
     for (code, extended) in [
         (0x1d, false),
         (0x38, false),
+        (0x1d, true),
+        (0x38, true),
         (0x2a, false),
         (0x36, false),
         (0x5b, true),
@@ -220,13 +222,34 @@ async fn roundtrip(manager: &RdpManager, id: &str) -> Result<(), &'static str> {
             ],
         )
         .map_err(|e| e.code())?;
+    window_settle(manager, id, "edit-focus").await?;
     ctrl_key(manager, id, 0x1e)?;
+    super::live_redirect_tests::wait_run_selection(manager, id).await?;
+    manager
+        .send_input(id, vec![key(0x0e, true, false), key(0x0e, false, false)])
+        .map_err(|e| e.code())?;
+    super::live_redirect_tests::wait_run_edit(manager, id, true).await?;
+    let before_typing = manager
+        .diagnostics(id)
+        .map_err(|e| e.code())?
+        .input_pdus_written;
     manager
         .send_input(id, vec![Input::UnicodeText("CC-input-probe".to_owned())])
         .map_err(|e| e.code())?;
     window_settle(manager, id, "input-probe").await?;
+    let typed_pdus = manager
+        .diagnostics(id)
+        .map_err(|e| e.code())?
+        .input_pdus_written
+        .saturating_sub(before_typing);
     let baseline = copy_back(manager, id).await?;
     if baseline.as_str() != "CC-input-probe" {
+        let prefix = baseline
+            .chars()
+            .zip("CC-input-probe".chars())
+            .take_while(|(actual, expected)| actual == expected)
+            .count();
+        println!("RDP synthetic probe metadata: expected_chars={} actual_chars={} common_prefix_chars={} typed_pdus_written={}", "CC-input-probe".chars().count(), baseline.chars().count(), prefix, typed_pdus);
         return Err("test_input_probe_mismatch");
     }
     println!("RDP confirmed paste acceptance: input_and_remote_copy_probe_pass");

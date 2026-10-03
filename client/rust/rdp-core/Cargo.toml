@@ -27,6 +27,7 @@ cap-fs-ext = "=4.0.3"
 rfd = { version = "=0.15.4", default-features = false, features = ["xdg-portal", "tokio"] }
 
 [dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
 ironrdp-bulk = "=0.1.1"
 rcgen = "0.14"
 serde.workspace = true

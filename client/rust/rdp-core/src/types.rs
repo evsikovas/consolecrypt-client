@@ -76,6 +76,26 @@ pub struct SessionDiagnostics {
     pub last_write_read_ahead: usize,
     #[cfg(test)]
     pub last_write_flush_started: bool,
+    #[cfg(test)]
+    pub last_write_progress_samples: [usize; 3],
+    #[cfg(test)]
+    pub last_write_last_progress_ms: u64,
+    #[cfg(test)]
+    pub last_write_elapsed_ms: u64,
+    #[cfg(test)]
+    pub last_write_read_packets: Vec<WriteReadPacketDiagnostic>,
+}
+
+/// Test-only protocol header metadata. Never includes a body or remote string.
+#[cfg(test)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WriteReadPacketDiagnostic {
+    pub action: &'static str,
+    pub length: usize,
+    pub channel: Option<u16>,
+    pub channel_kind: &'static str,
+    pub control: &'static str,
+    pub static_flags: u32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

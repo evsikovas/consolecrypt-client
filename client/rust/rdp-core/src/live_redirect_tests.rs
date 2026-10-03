@@ -63,14 +63,27 @@ async fn settle(manager: &RdpManager, id: &str, duration: Duration) -> Result<()
                     // These fields are source-defined static categories, never
                     // remote diagnostics, paths, command text or file contents.
                     println!(
-                        "RDP test-only failed session metadata: stage={} code={} write_attempted={} write_accepted={} write_read_ahead={} write_flush_started={}",
+                        "RDP test-only failed session metadata: stage={} code={} write_attempted={} write_accepted={} write_read_ahead={} write_flush_started={} progress_1s={} progress_5s={} progress_9s={} last_progress_ms={} elapsed_ms={}",
                         diagnostic.last_stage,
                         e.code(),
                         diagnostic.last_write_attempted,
                         diagnostic.last_write_accepted,
                         diagnostic.last_write_read_ahead,
                         diagnostic.last_write_flush_started,
+                        diagnostic.last_write_progress_samples[0],
+                        diagnostic.last_write_progress_samples[1],
+                        diagnostic.last_write_progress_samples[2],
+                        diagnostic.last_write_last_progress_ms,
+                        diagnostic.last_write_elapsed_ms,
                     );
+                    for packet in &diagnostic.last_write_read_packets {
+                        println!(
+                            "RDP test-only write read packet: action={} length={} channel={} channel_kind={} control={} static_flags={:08x}",
+                            packet.action, packet.length,
+                            packet.channel.map(u32::from).unwrap_or(0),
+                            packet.channel_kind, packet.control, packet.static_flags,
+                        );
+                    }
                 }
                 return Err(e.code());
             }
@@ -171,7 +184,7 @@ fn run_edit_selected(frame: &crate::Frame, edit: (u16, u16)) -> bool {
     }
     blue >= 128
 }
-async fn wait_run_selection(manager: &RdpManager, id: &str) -> Result<(), &'static str> {
+pub(super) async fn wait_run_selection(manager: &RdpManager, id: &str) -> Result<(), &'static str> {
     let until = Instant::now() + Duration::from_secs(15);
     while Instant::now() < until {
         let mut poll = manager.poll(id).map_err(|e| e.code())?;
@@ -194,7 +207,7 @@ async fn wait_run_selection(manager: &RdpManager, id: &str) -> Result<(), &'stat
     }
     Err("run_edit_not_selected")
 }
-async fn wait_run_edit(
+pub(super) async fn wait_run_edit(
     manager: &RdpManager,
     id: &str,
     require_empty: bool,
@@ -786,25 +799,32 @@ async fn receive(manager: &RdpManager, id: &str) -> Result<Zeroizing<String>, &'
 #[tokio::test]
 #[ignore = "requires an authorized disposable Windows target and a private mode-0600 JSON config"]
 async fn live_clipboard_and_selected_folder_roundtrip() {
-    if let Err(code) = run(false, false).await {
+    if let Err(code) = run(false, false, false).await {
         panic!("RDP channel acceptance failed: {code}");
     }
 }
 #[tokio::test]
 #[ignore = "requires owner-authorized Windows config and synthetic selected folder only"]
 async fn live_selected_folder_real_windows_operations() {
-    if let Err(code) = run(true, false).await {
+    if let Err(code) = run(true, false, false).await {
         panic!("RDP folder acceptance failed: {code}");
     }
 }
 #[tokio::test]
 #[ignore = "requires owner-authorized Windows config; scoped readonly/write/large-file IO only"]
 async fn live_selected_folder_core_windows_operations() {
-    if let Err(code) = run(true, true).await {
+    if let Err(code) = run(true, true, false).await {
         panic!("RDP core folder acceptance failed: {code}");
     }
 }
-async fn run(files_only: bool, core_only: bool) -> Result<(), &'static str> {
+#[tokio::test]
+#[ignore = "requires owner-authorized Windows config; stable writable large-file IO only"]
+async fn live_selected_folder_stable_writable_windows_operations() {
+    if let Err(code) = run(true, true, true).await {
+        panic!("RDP stable-writable folder acceptance failed: {code}");
+    }
+}
+async fn run(files_only: bool, core_only: bool, stable_writable: bool) -> Result<(), &'static str> {
     let path =
         PathBuf::from(std::env::var_os("CC_RDP_TEST_CONFIG").ok_or("configuration_missing")?);
     let meta = std::fs::metadata(&path).map_err(|_| "configuration_unavailable")?;
@@ -850,8 +870,8 @@ async fn run(files_only: bool, core_only: bool) -> Result<(), &'static str> {
         .map_err(|e| e.code())?;
     let mut permissions = SessionPermissions {
         clipboard_enabled: true,
-        directory_grant_id: None,
-        directory_writable: false,
+        directory_grant_id: stable_writable.then(|| grant.id.clone()),
+        directory_writable: stable_writable,
     };
     let id = manager
         .connect_with_permissions(
@@ -994,10 +1014,12 @@ async fn run(files_only: bool, core_only: bool) -> Result<(), &'static str> {
         }
         println!("RDP channel phase: clipboard_send_and_receive_pass");
     }
-    permissions.directory_grant_id = Some(grant.id);
-    manager
-        .set_permissions(&id, permissions.clone())
-        .map_err(|e| e.code())?;
+    if !stable_writable {
+        permissions.directory_grant_id = Some(grant.id);
+        manager
+            .set_permissions(&id, permissions.clone())
+            .map_err(|e| e.code())?;
+    }
     wait_folder(&manager, &id).await?;
 
     // One PowerShell worker remains in memory across the folder capability
@@ -1008,6 +1030,10 @@ async fn run(files_only: bool, core_only: bool) -> Result<(), &'static str> {
     let written = format!("CC-RDP-WRITE-{} / Привет", uuid::Uuid::new_v4());
     let write_go = format!("cc-{}-write.go", uuid::Uuid::new_v4().simple());
     let operations_go = format!("cc-{}-operations.go", uuid::Uuid::new_v4().simple());
+    let write_go_progress =
+        crate::directory::TestFileProgress::new(&write_go).map_err(|_| "folder_fixture")?;
+    let operations_go_progress =
+        crate::directory::TestFileProgress::new(&operations_go).map_err(|_| "folder_fixture")?;
     let remote_temp = format!("cc-rdp-{}.bin", uuid::Uuid::new_v4());
     let operations_script = format!(
         r#"$ErrorActionPreference='Stop';$root='\\tsclient\ConsoleCrypt\';$t=Join-Path $env:TEMP '{remote_temp}';$phase='enum';[IO.File]::WriteAllText($root+'operations.stage',$phase);try{{
@@ -1031,18 +1057,42 @@ async fn run(files_only: bool, core_only: bool) -> Result<(), &'static str> {
         [IO.File]::WriteAllText($root+'operations.stage','complete');$result='PASS';
     }}catch{{$result='FAIL_'+$phase}}finally{{Remove-Item -LiteralPath $t -ErrorAction SilentlyContinue}};[IO.File]::WriteAllText($root+'operations.result',$result)"#
     );
+    let readonly_script = if stable_writable {
+        String::new()
+    } else {
+        format!(
+            r#"$ok=$false;try{{$ok=[IO.File]::ReadAllText($root+'sentinel.txt') -ceq '{sentinel}';try{{[IO.File]::WriteAllText($root+'sentinel.txt','forbidden');$ok=$false}}catch{{}}}}catch{{}};
+            if($ok){{$m='{}'}}else{{$m='{}'}};[IO.File]::ReadAllText($root+$m)|Out-Null;"#,
+            readonly_completion.pass_name, readonly_completion.fail_name
+        )
+    };
     let mut worker = format!(
         r#"$ErrorActionPreference='Stop';$root='\\tsclient\ConsoleCrypt\';
         function Wait-Owner($name){{$deadline=[DateTime]::UtcNow.AddSeconds(60);while(-not [IO.File]::Exists($root+$name)){{if([DateTime]::UtcNow -ge $deadline){{throw 'phase_timeout'}};Start-Sleep -Milliseconds 100}};[IO.File]::ReadAllText($root+$name)|Out-Null}};
-        $ok=$false;try{{$ok=[IO.File]::ReadAllText($root+'sentinel.txt') -ceq '{sentinel}';try{{[IO.File]::WriteAllText($root+'sentinel.txt','forbidden');$ok=$false}}catch{{}}}}catch{{}};
-        if($ok){{$m='{}'}}else{{$m='{}'}};[IO.File]::ReadAllText($root+$m)|Out-Null;
+        {readonly_script}
         Wait-Owner '{write_go}';[IO.File]::ReadAllText($root+'{}')|Out-Null;
         try{{$p=$root+'roundtrip.txt';[IO.File]::WriteAllText($p,'{written}');if([IO.File]::ReadAllText($p) -ceq '{written}'){{$v='PASS'}}else{{$v='FAIL'}};[IO.File]::WriteAllText($root+'writable.result',$v)}}catch{{[IO.File]::WriteAllText($root+'writable.result','FAIL')}};
         Wait-Owner '{operations_go}';"#,
-        readonly_completion.pass_name, readonly_completion.fail_name, writable_start.pass_name
+        writable_start.pass_name
     );
     worker.push_str(&operations_script);
-    let loader = command_file(&manager, &id, folder.path(), &worker).await?;
+    if stable_writable {
+        // This mode isolates wire framing/IO: no topology transition or cached
+        // negative path lookup is a prerequisite for the large-copy proof.
+        std::fs::write(folder.path().join(&write_go), b"1").map_err(|_| "folder_fixture")?;
+        std::fs::write(folder.path().join(&operations_go), b"1").map_err(|_| "folder_fixture")?;
+        println!("RDP channel phase: stable_writable_from_connection_start");
+    }
+    let loader = match command_file(&manager, &id, folder.path(), &worker).await {
+        Ok(loader) => loader,
+        Err(code) => {
+            println!(
+                "RDP test-only observed file stage: {}",
+                observed_file_stage(folder.path())
+            );
+            return Err(code);
+        }
+    };
     println!(
         "RDP test-only worker loader: opened={} read={} denied={} other_failure={}",
         loader.opened(),
@@ -1050,31 +1100,41 @@ async fn run(files_only: bool, core_only: bool) -> Result<(), &'static str> {
         loader.denied(),
         loader.other_failure()
     );
-    let until = Instant::now() + Duration::from_secs(30);
-    while readonly_completion.result().is_none() && Instant::now() < until {
-        settle(&manager, &id, Duration::from_millis(100)).await?;
+    if !stable_writable {
+        let until = Instant::now() + Duration::from_secs(30);
+        while readonly_completion.result().is_none() && Instant::now() < until {
+            settle(&manager, &id, Duration::from_millis(100)).await?;
+        }
+        match readonly_completion.result() {
+            Some(true) => println!("RDP channel phase: readonly_read_and_write_denial_pass"),
+            Some(false) => return Err("readonly_remote_mismatch"),
+            None => return Err("readonly_completion_timeout"),
+        }
+        if std::fs::read_to_string(folder.path().join("sentinel.txt"))
+            .map_err(|_| "folder_fixture")?
+            != sentinel
+        {
+            return Err("readonly_local_changed");
+        }
+        permissions.directory_writable = true;
+        manager
+            .set_permissions(&id, permissions.clone())
+            .map_err(|e| e.code())?;
+        wait_folder(&manager, &id).await?;
+        std::fs::write(folder.path().join(&write_go), b"1").map_err(|_| "folder_fixture")?;
     }
-    match readonly_completion.result() {
-        Some(true) => println!("RDP channel phase: readonly_read_and_write_denial_pass"),
-        Some(false) => return Err("readonly_remote_mismatch"),
-        None => return Err("readonly_completion_timeout"),
-    }
-    if std::fs::read_to_string(folder.path().join("sentinel.txt")).map_err(|_| "folder_fixture")?
-        != sentinel
-    {
-        return Err("readonly_local_changed");
-    }
-    permissions.directory_writable = true;
-    manager
-        .set_permissions(&id, permissions.clone())
-        .map_err(|e| e.code())?;
-    wait_folder(&manager, &id).await?;
-    std::fs::write(folder.path().join(&write_go), b"1").map_err(|_| "folder_fixture")?;
     let launch_started = Instant::now();
     while writable_start.result().is_none() && launch_started.elapsed() < Duration::from_secs(60) {
         settle(&manager, &id, Duration::from_millis(100)).await?;
     }
     println!("RDP test-only writable launch: opened={} read={} denied={} other_failure={} body_started={} elapsed_seconds={}", loader.opened(), loader.read(), loader.denied(), loader.other_failure(), writable_start.result() == Some(true), launch_started.elapsed().as_secs());
+    println!(
+        "RDP test-only write-go progress: opened={} read={} denied={} other_failure={}",
+        write_go_progress.opened(),
+        write_go_progress.read(),
+        write_go_progress.denied(),
+        write_go_progress.other_failure()
+    );
     snapshot("writable-launch-final")?;
     if writable_start.result() != Some(true) {
         return Err("writable_body_start_timeout");
@@ -1087,21 +1147,55 @@ async fn run(files_only: bool, core_only: bool) -> Result<(), &'static str> {
         return Err("writable_local_mismatch");
     }
     println!("RDP channel phase: writable_roundtrip_pass");
-    std::fs::write(folder.path().join(&operations_go), b"1").map_err(|_| "folder_fixture")?;
-    let until = Instant::now() + Duration::from_secs(30);
+    if !stable_writable {
+        std::fs::write(folder.path().join(&operations_go), b"1").map_err(|_| "folder_fixture")?;
+    }
+    // The 1MiB fixture performs several full read/hash/write cycles. Preserve
+    // that workload while allowing measured slow but progressing channel IO;
+    // the transport retains independent idle and absolute write limits.
+    let operations_started = Instant::now();
+    let until = operations_started + Duration::from_secs(12 * 60);
+    let mut last_phase = "unobserved";
+    let mut last_report = Instant::now();
     // Create and write are separate RDP requests. An existing empty result is
     // not a completed marker and must not become a spurious "unknown" failure.
     while !std::fs::metadata(folder.path().join("operations.result"))
         .is_ok_and(|metadata| metadata.is_file() && metadata.len() > 0)
         && Instant::now() < until
     {
+        let phase = observed_file_stage(folder.path());
+        if phase != last_phase {
+            println!("RDP test-only operation phase: {phase}");
+            last_phase = phase;
+        }
+        if last_report.elapsed() >= Duration::from_secs(20) {
+            if let Ok(diagnostic) = manager.diagnostics(&id) {
+                println!(
+                    "RDP test-only operation progress: phase={} elapsed_seconds={} transport_stage={} write_attempted={} write_accepted={} write_read_ahead={} last_write_progress_ms={}",
+                    phase, operations_started.elapsed().as_secs(), diagnostic.last_stage,
+                    diagnostic.last_write_attempted, diagnostic.last_write_accepted,
+                    diagnostic.last_write_read_ahead, diagnostic.last_write_last_progress_ms,
+                );
+            }
+            last_report = Instant::now();
+        }
         if let Err(code) = settle(&manager, &id, Duration::from_millis(200)).await {
+            println!("RDP test-only operations-go progress: opened={} read={} denied={} other_failure={}", operations_go_progress.opened(), operations_go_progress.read(), operations_go_progress.denied(), operations_go_progress.other_failure());
             println!(
                 "RDP test-only observed file stage: {}",
                 observed_file_stage(folder.path())
             );
             return Err(code);
         }
+    }
+    if !std::fs::metadata(folder.path().join("operations.result"))
+        .is_ok_and(|metadata| metadata.is_file() && metadata.len() > 0)
+    {
+        println!(
+            "RDP test-only observed file stage: {}",
+            observed_file_stage(folder.path())
+        );
+        return Err("operations_completion_timeout");
     }
     if std::fs::metadata(folder.path().join("operations.result"))
         .map_err(|_| "operations_result_missing")?
@@ -1143,7 +1237,11 @@ async fn run(files_only: bool, core_only: bool) -> Result<(), &'static str> {
     println!("RDP channel phase: binary_1mib_sha256_nested_enum_overwrite_rename_delete_pass");
     if core_only {
         manager.shutdown();
-        println!("RDP core folder acceptance: PASS (readonly, writable, 1MiB SHA256, nested Unicode, overwrite, rename, delete; lifecycle separate)");
+        if stable_writable {
+            println!("RDP stable-writable folder acceptance: PASS (writable, 1MiB SHA256, nested Unicode, overwrite, rename, delete; readonly/mode change/lifecycle separate)");
+        } else {
+            println!("RDP core folder acceptance: PASS (readonly, writable, 1MiB SHA256, nested Unicode, overwrite, rename, delete; lifecycle separate)");
+        }
         return Ok(());
     }
     manager

@@ -908,6 +908,10 @@ impl RdpdrBackend for DirectoryBackend {
                 {
                     let category = if r.path.contains(':') {
                         "stream_or_namespace"
+                    } else if r.path.ends_with("-write.go") {
+                        "synthetic_write_go"
+                    } else if r.path.ends_with("-operations.go") {
+                        "synthetic_operations_go"
                     } else if r.path.ends_with("sentinel.txt") {
                         "synthetic_sentinel"
                     } else if r.path.contains("cc-") && r.path.ends_with(".ps1") {
@@ -934,8 +938,9 @@ impl RdpdrBackend for DirectoryBackend {
                         "other"
                     };
                     println!(
-                        "RDP test-only create metadata: category={category} access={:08x} options={:08x} disposition={disposition} status={outcome}",
-                        r.desired_access.bits(), r.create_options.bits()
+                        "RDP test-only create metadata: category={category} access={:08x} options={:08x} disposition={disposition} status={outcome} requested_device={} current_device={}",
+                        r.desired_access.bits(), r.create_options.bits(),
+                        r.device_io_request.device_id, guard.drive_id,
                     );
                 }
                 one(RdpdrPdu::DeviceCreateResponse(DeviceCreateResponse {

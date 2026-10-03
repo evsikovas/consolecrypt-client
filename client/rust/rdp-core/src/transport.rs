@@ -46,6 +46,8 @@ const MAX_PDU: usize = 1024 * 1024;
 const MAX_WRITE_BATCH: usize = 2 * 1024 * 1024;
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
+const LARGE_WRITE_THRESHOLD: usize = 64 * 1024;
+const LARGE_WRITE_BUDGET: Duration = Duration::from_secs(120);
 
 #[cfg(test)]
 fn record_write_progress(
@@ -59,6 +61,101 @@ fn record_write_progress(
     }
 }
 
+#[cfg(test)]
+fn write_read_packet_metadata(
+    bytes: &[u8],
+    context: Option<(u16, Option<u16>)>,
+) -> Vec<crate::types::WriteReadPacketDiagnostic> {
+    let mut packets = Vec::new();
+    let mut offset = 0;
+    while offset < bytes.len() && packets.len() < 8 {
+        let Ok(Some(info)) = pdu::find_size(&bytes[offset..]) else {
+            break;
+        };
+        if info.length == 0 || info.length > bytes.len() - offset {
+            break;
+        }
+        let packet = &bytes[offset..offset + info.length];
+        offset += info.length;
+        let mut entry = crate::types::WriteReadPacketDiagnostic {
+            action: match info.action {
+                pdu::Action::FastPath => "fastpath",
+                pdu::Action::X224 => "x224",
+            },
+            length: info.length,
+            channel: None,
+            channel_kind: "none",
+            control: "none",
+            static_flags: 0,
+        };
+        if info.action == pdu::Action::X224 {
+            if let Ok(data) = pdu::mcs::decode_send_data_indication(packet) {
+                entry.channel = Some(data.channel_id);
+                let data_bytes = data.user_data;
+                match context {
+                    Some((io, _)) if data.channel_id == io => {
+                        entry.channel_kind = "io";
+                        if data_bytes.len() >= 6
+                            && usize::from(u16::from_le_bytes([data_bytes[0], data_bytes[1]]))
+                                == data_bytes.len()
+                        {
+                            let control = u16::from_le_bytes([data_bytes[2], data_bytes[3]]) & 0xf;
+                            entry.control = match control {
+                                1 => "demand_active",
+                                3 => "confirm_active",
+                                6 => "deactivate_all",
+                                10 => "redirect",
+                                7 if data_bytes.len() >= 18 => match data_bytes[14] {
+                                    2 => "update",
+                                    0x14 => "control",
+                                    0x1b => "pointer",
+                                    0x1f => "synchronize",
+                                    0x26 => "session_info",
+                                    0x29 => "keyboard_indicators",
+                                    0x2f => "error_info",
+                                    0x38 => "frame_ack",
+                                    _ => "other_data",
+                                },
+                                _ => "other_share",
+                            };
+                        } else {
+                            entry.control = "non_share";
+                        }
+                    }
+                    Some((_, Some(message))) if data.channel_id == message => {
+                        entry.channel_kind = "message";
+                        if data_bytes.len() >= 10 {
+                            entry.control = match u16::from_le_bytes([data_bytes[8], data_bytes[9]])
+                            {
+                                0x0001 | 0x1001 => "rtt_request",
+                                0x0014 | 0x0114 | 0x1014 => "bandwidth_start",
+                                2 => "bandwidth_payload",
+                                0x002b | 0x0429 | 0x0629 => "bandwidth_stop",
+                                0x0840 | 0x0880 | 0x08c0 => "network_characteristics",
+                                _ => "other_message",
+                            };
+                        }
+                    }
+                    Some(_) => {
+                        entry.channel_kind = "static";
+                        if data_bytes.len() >= 8 {
+                            // Only known header bits: never retain the header/body bytes.
+                            entry.static_flags =
+                                u32::from_le_bytes(data_bytes[4..8].try_into().unwrap())
+                                    & 0x00e0_00f3;
+                        }
+                    }
+                    None => {
+                        entry.channel_kind = "unknown";
+                    }
+                }
+            }
+        }
+        packets.push(entry);
+    }
+    packets
+}
+
 /// Unlike the upstream framed helper this checks hinted length BEFORE reserving memory.
 struct BoundedIo<S> {
     stream: Option<S>,
@@ -67,6 +164,8 @@ struct BoundedIo<S> {
     read_ahead: bool,
     #[cfg(test)]
     write_diagnostics: Option<Arc<Mutex<SessionState>>>,
+    #[cfg(test)]
+    write_metadata_context: Option<(u16, Option<u16>)>,
 }
 impl<S> Drop for BoundedIo<S> {
     fn drop(&mut self) {
@@ -82,6 +181,8 @@ impl<S: AsyncRead + AsyncWrite + Unpin> BoundedIo<S> {
             read_ahead: false,
             #[cfg(test)]
             write_diagnostics: None,
+            #[cfg(test)]
+            write_metadata_context: None,
         }
     }
     async fn fill(&mut self) -> Result<(), RdpError> {
@@ -179,14 +280,25 @@ impl<S: AsyncRead + AsyncWrite + Unpin> BoundedIo<S> {
         #[cfg(test)]
         let diagnostic = self.write_diagnostics.clone();
         #[cfg(test)]
+        let started = std::time::Instant::now();
+        #[cfg(test)]
         record_write_progress(&diagnostic, |d| {
             d.last_write_attempted = data.len();
             d.last_write_accepted = 0;
             d.last_write_read_ahead = 0;
             d.last_write_flush_started = false;
+            d.last_write_progress_samples = [0; 3];
+            d.last_write_last_progress_ms = 0;
+            d.last_write_elapsed_ms = 0;
+            d.last_write_read_packets.clear();
         });
         let stopped = self.stopped.clone();
-        tokio::time::timeout(WRITE_TIMEOUT, async {
+        let total_budget = if data.len() > LARGE_WRITE_THRESHOLD {
+            LARGE_WRITE_BUDGET
+        } else {
+            WRITE_TIMEOUT
+        };
+        let result = tokio::time::timeout(total_budget, async {
             let stream = self.stream.as_mut().ok_or(RdpError::Connection)?;
             // A peer may need to finish graphics/channel output before receiving
             // this reply. A write-only await can fill both TCP directions and
@@ -199,28 +311,43 @@ impl<S: AsyncRead + AsyncWrite + Unpin> BoundedIo<S> {
                     if stopped.load(Ordering::Acquire) {
                         return Err(RdpError::SessionNotFound);
                     }
-                    let n = writer
-                        .write(&data[offset..])
+                    // Large framed replies may progress slowly on a working
+                    // peer. Only accepted output advances this idle budget;
+                    // incoming traffic never extends it or the absolute cap.
+                    let n = tokio::time::timeout(WRITE_TIMEOUT, writer.write(&data[offset..]))
                         .await
+                        .map_err(|_| RdpError::Timeout)?
                         .map_err(|_| RdpError::Connection)?;
                     if n == 0 {
                         return Err(RdpError::Connection);
                     }
                     offset += n;
                     #[cfg(test)]
-                    record_write_progress(&diagnostic, |d| d.last_write_accepted = offset);
+                    record_write_progress(&diagnostic, |d| {
+                        d.last_write_accepted = offset;
+                        d.last_write_last_progress_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+                    });
                 }
                 #[cfg(test)]
                 record_write_progress(&diagnostic, |d| d.last_write_flush_started = true);
-                writer.flush().await.map_err(|_| RdpError::Connection)
+                tokio::time::timeout(WRITE_TIMEOUT, writer.flush())
+                    .await
+                    .map_err(|_| RdpError::Timeout)?
+                    .map_err(|_| RdpError::Connection)
             };
             tokio::pin!(writing);
+            #[cfg(test)]
+            let mut sampling = tokio::time::interval(Duration::from_secs(1));
             loop {
                 if stopped.load(Ordering::Acquire) {
                     return Err(RdpError::SessionNotFound);
                 }
                 let mut chunk = Zeroizing::new([0u8; 8192]);
                 let available = chunk.len().min(MAX_PDU.saturating_sub(self.buffered.len()));
+                #[cfg(test)]
+                let sample_tick = sampling.tick();
+                #[cfg(not(test))]
+                let sample_tick = std::future::pending::<tokio::time::Instant>();
                 tokio::select! {
                     biased;
                     result = &mut writing => return result,
@@ -232,11 +359,30 @@ impl<S: AsyncRead + AsyncWrite + Unpin> BoundedIo<S> {
                         record_write_progress(&diagnostic, |d| d.last_write_read_ahead += n);
                     },
                     _ = std::future::ready(()), if available == 0 => return Err(RdpError::Protocol),
+                    _ = sample_tick => {
+                        #[cfg(test)]
+                        {
+                        let sample = match started.elapsed().as_secs() { 1 => Some(0), 5 => Some(1), 9 => Some(2), _ => None };
+                        if let Some(index) = sample {
+                            record_write_progress(&diagnostic, |d| d.last_write_progress_samples[index] = d.last_write_accepted);
+                        }
+                        }
+                    },
                 }
             }
         })
         .await
-        .map_err(|_| RdpError::Timeout)?
+        .unwrap_or(Err(RdpError::Timeout));
+        #[cfg(test)]
+        {
+            let packets = write_read_packet_metadata(&self.buffered, self.write_metadata_context);
+            record_write_progress(&diagnostic, |d| {
+                d.last_write_elapsed_ms =
+                    u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+                d.last_write_read_packets = packets;
+            });
+        }
+        result
     }
     fn into_stream(mut self) -> Result<S, RdpError> {
         if self.buffered.is_empty() {
@@ -532,6 +678,10 @@ pub(crate) async fn run(
     let activation_factory = result.activation_factory;
     let io_channel_id = result.io_channel_id;
     let message_channel_id = result.message_channel_id;
+    #[cfg(test)]
+    {
+        io.write_metadata_context = Some((io_channel_id, message_channel_id));
+    }
     let mut image = DecodedImage::new(
         PixelFormat::RgbA32,
         result.desktop_size.width,
@@ -1360,16 +1510,43 @@ mod tests {
         assert!(frame.len() <= MAX_WRITE_BATCH);
         let mut offset = 0;
         let mut pdus = 0;
+        let mut assembled = Vec::new();
         while offset < frame.len() {
             let info = pdu::find_size(&frame[offset..]).unwrap().unwrap();
             assert!(info.length > 0 && info.length <= MAX_PDU);
             assert_eq!(info.action, pdu::Action::X224);
+            let request = ironrdp::core::decode::<pdu::x224::X224<pdu::mcs::SendDataRequest<'_>>>(
+                &frame[offset..offset + info.length],
+            )
+            .unwrap()
+            .0;
+            assert_eq!(request.channel_id, 1004);
+            assert_eq!(request.initiator_id, 1002);
+            assert!(request.user_data.len() <= ironrdp::svc::CHANNEL_CHUNK_LENGTH + 8);
+            let whole_length =
+                u32::from_le_bytes(request.user_data[0..4].try_into().unwrap()) as usize;
+            assert_eq!(whole_length, MAX_PDU + 20);
+            let flags = u32::from_le_bytes(request.user_data[4..8].try_into().unwrap());
+            assert_eq!(flags & 1 != 0, pdus == 0);
+            assert_eq!(flags & 2 != 0, offset + info.length == frame.len());
+            assert_eq!(
+                flags & 0x00e0_0000,
+                0,
+                "no compressed flag on uncompressed body"
+            );
+            assembled.extend_from_slice(&request.user_data[8..]);
             offset += info.length;
             assert!(offset <= frame.len());
             pdus += 1;
         }
         assert_eq!(offset, frame.len());
         assert!(pdus > 1);
+        assert_eq!(assembled.len(), MAX_PDU + 20);
+        assert_eq!(
+            u32::from_le_bytes(assembled[16..20].try_into().unwrap()) as usize,
+            MAX_PDU
+        );
+        assert!(assembled[20..].iter().all(|byte| *byte == 17));
         let committed = Arc::new(Mutex::new(Vec::new()));
         let stream = BufferedWriter {
             buffered: Vec::new(),
@@ -1410,6 +1587,62 @@ mod tests {
         );
         assert_eq!(io.exact(incoming.len()).await.unwrap(), incoming);
         task.await.unwrap();
+    }
+
+    #[test]
+    fn write_read_header_metadata_is_bounded_and_never_retains_remote_body() {
+        use std::borrow::Cow;
+        let body = uuid::Uuid::new_v4().to_string();
+        let mut channel = Vec::new();
+        channel.extend_from_slice(&(body.len() as u32).to_le_bytes());
+        channel.extend_from_slice(&0x23u32.to_le_bytes());
+        channel.extend_from_slice(body.as_bytes());
+        let frame = ironrdp::core::encode_vec(&pdu::x224::X224(pdu::mcs::SendDataIndication {
+            initiator_id: 1002,
+            channel_id: 1004,
+            user_data: Cow::Borrowed(&channel),
+        }))
+        .unwrap();
+        let packets = write_read_packet_metadata(&frame.repeat(16), Some((1003, Some(1005))));
+        assert_eq!(packets.len(), 8);
+        assert!(packets
+            .iter()
+            .all(|packet| packet.channel_kind == "static" && packet.static_flags == 0x23));
+        assert!(!format!("{packets:?}").contains(&body));
+        assert!(write_read_packet_metadata(&frame[..3], Some((1003, None))).is_empty());
+    }
+
+    #[tokio::test]
+    async fn unicode_fastpath_split_preserves_all_events_and_exact_wire_lengths() {
+        use pdu::input::fast_path::FastPathInput;
+        let mut database = Database::new();
+        let events = input_events(&mut database, &Input::UnicodeText("CC-input-probe".into()));
+        assert_eq!(events.len(), 28);
+        let mut decoded = Vec::new();
+        let mut frames = Vec::new();
+        for (index, events) in events.chunks(15).enumerate() {
+            let frame =
+                ironrdp::core::encode_vec(&FastPathInput::new(events.to_vec()).unwrap()).unwrap();
+            assert_eq!(frame.len(), [47, 41][index]);
+            assert_eq!(pdu::find_size(&frame).unwrap().unwrap().length, frame.len());
+            let packet = ironrdp::core::decode::<FastPathInput>(&frame).unwrap();
+            assert_eq!(packet.input_events().len(), [15, 13][index]);
+            decoded.extend_from_slice(packet.input_events());
+            frames.push(frame);
+        }
+        assert_eq!(decoded, events);
+        let expected = frames.concat();
+        let committed = Arc::new(Mutex::new(Vec::new()));
+        let stream = BufferedWriter {
+            buffered: Vec::new(),
+            committed: committed.clone(),
+        };
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.read_ahead = true;
+        for frame in frames {
+            io.write(&frame).await.unwrap();
+        }
+        assert_eq!(committed.lock().unwrap().as_slice(), expected.as_slice());
     }
 
     #[tokio::test]
@@ -1465,16 +1698,159 @@ mod tests {
         task.await.unwrap();
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn duplex_write_stalled_peer_keeps_original_deadline() {
         let (stream, _peer) = tokio::io::duplex(64);
         let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
         io.read_ahead = true;
-        let began = std::time::Instant::now();
+        let began = tokio::time::Instant::now();
         assert_eq!(io.write(&vec![17; MAX_PDU]).await, Err(RdpError::Timeout));
-        assert!(began.elapsed() >= WRITE_TIMEOUT);
-        assert!(began.elapsed() < WRITE_TIMEOUT + Duration::from_secs(2));
+        assert_eq!(began.elapsed(), WRITE_TIMEOUT);
         assert!(io.buffered.is_empty());
+    }
+
+    struct PacedIo {
+        next_write: std::pin::Pin<Box<tokio::time::Sleep>>,
+        next_read: Option<std::pin::Pin<Box<tokio::time::Sleep>>>,
+        every: Duration,
+        chunk: usize,
+        accepted: usize,
+        stalled_flush: bool,
+    }
+    impl PacedIo {
+        fn new(every: Duration, chunk: usize, incoming: bool) -> Self {
+            Self {
+                next_write: Box::pin(tokio::time::sleep(every)),
+                next_read: incoming.then(|| Box::pin(tokio::time::sleep(Duration::from_secs(1)))),
+                every,
+                chunk,
+                accepted: 0,
+                stalled_flush: false,
+            }
+        }
+    }
+    impl AsyncRead for PacedIo {
+        fn poll_read(
+            mut self: std::pin::Pin<&mut Self>,
+            cx: &mut std::task::Context<'_>,
+            buffer: &mut tokio::io::ReadBuf<'_>,
+        ) -> std::task::Poll<std::io::Result<()>> {
+            let Some(next) = self.next_read.as_mut() else {
+                return std::task::Poll::Pending;
+            };
+            if std::future::Future::poll(next.as_mut(), cx).is_pending() {
+                return std::task::Poll::Pending;
+            }
+            buffer.put_slice(&[29]);
+            next.as_mut()
+                .reset(tokio::time::Instant::now() + Duration::from_secs(1));
+            std::task::Poll::Ready(Ok(()))
+        }
+    }
+    impl AsyncWrite for PacedIo {
+        fn poll_write(
+            mut self: std::pin::Pin<&mut Self>,
+            cx: &mut std::task::Context<'_>,
+            bytes: &[u8],
+        ) -> std::task::Poll<std::io::Result<usize>> {
+            if self.chunk == 0
+                || std::future::Future::poll(self.next_write.as_mut(), cx).is_pending()
+            {
+                return std::task::Poll::Pending;
+            }
+            let n = self.chunk.min(bytes.len());
+            self.accepted += n;
+            let until = tokio::time::Instant::now() + self.every;
+            self.next_write.as_mut().reset(until);
+            std::task::Poll::Ready(Ok(n))
+        }
+        fn poll_flush(
+            self: std::pin::Pin<&mut Self>,
+            _: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<std::io::Result<()>> {
+            if self.stalled_flush {
+                std::task::Poll::Pending
+            } else {
+                std::task::Poll::Ready(Ok(()))
+            }
+        }
+        fn poll_shutdown(
+            self: std::pin::Pin<&mut Self>,
+            _: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<std::io::Result<()>> {
+            std::task::Poll::Ready(Ok(()))
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn slow_large_write_completes_beyond_ten_seconds_with_real_progress() {
+        let stream = PacedIo::new(Duration::from_secs(5), LARGE_WRITE_THRESHOLD, false);
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.read_ahead = true;
+        let began = tokio::time::Instant::now();
+        assert_eq!(io.write(&vec![17; LARGE_WRITE_THRESHOLD * 3]).await, Ok(()));
+        assert_eq!(began.elapsed(), Duration::from_secs(15));
+        assert_eq!(
+            io.stream.as_ref().unwrap().accepted,
+            LARGE_WRITE_THRESHOLD * 3
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn incoming_traffic_never_extends_stalled_output_idle_deadline() {
+        let stream = PacedIo::new(Duration::from_secs(1), 0, true);
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.read_ahead = true;
+        let began = tokio::time::Instant::now();
+        assert_eq!(
+            io.write(&vec![17; LARGE_WRITE_THRESHOLD + 1]).await,
+            Err(RdpError::Timeout)
+        );
+        assert_eq!(began.elapsed(), WRITE_TIMEOUT);
+        assert!(io.buffered.len() >= 9);
+        assert_eq!(io.stream.as_ref().unwrap().accepted, 0);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn hostile_output_trickle_cannot_extend_large_absolute_cap() {
+        let stream = PacedIo::new(Duration::from_secs(9), 1, true);
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.read_ahead = true;
+        let began = tokio::time::Instant::now();
+        assert_eq!(
+            io.write(&vec![17; LARGE_WRITE_THRESHOLD + 1]).await,
+            Err(RdpError::Timeout)
+        );
+        assert_eq!(began.elapsed(), LARGE_WRITE_BUDGET);
+        assert_eq!(io.stream.as_ref().unwrap().accepted, 13);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn small_write_keeps_absolute_budget_even_with_output_progress() {
+        let stream = PacedIo::new(Duration::from_secs(5), 16, false);
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.read_ahead = true;
+        let began = tokio::time::Instant::now();
+        assert_eq!(io.write(&[17; 48]).await, Err(RdpError::Timeout));
+        assert_eq!(began.elapsed(), WRITE_TIMEOUT);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn accepted_body_does_not_extend_stalled_flush_idle_budget() {
+        let mut stream = PacedIo::new(Duration::from_secs(1), MAX_WRITE_BATCH, false);
+        stream.stalled_flush = true;
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.read_ahead = true;
+        let began = tokio::time::Instant::now();
+        assert_eq!(
+            io.write(&vec![17; LARGE_WRITE_THRESHOLD + 1]).await,
+            Err(RdpError::Timeout)
+        );
+        assert_eq!(began.elapsed(), Duration::from_secs(11));
+        assert_eq!(
+            io.stream.as_ref().unwrap().accepted,
+            LARGE_WRITE_THRESHOLD + 1
+        );
     }
 
     #[tokio::test]
