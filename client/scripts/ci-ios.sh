@@ -194,6 +194,17 @@ else
   export CC_BUILD_NUMBER="${CI_JOB_ID:-${CC_BUILD_NUMBER:-}}"
   [[ -n "$CC_BUILD_NUMBER" ]] || unset CC_BUILD_NUMBER
   bash "$client_dir/scripts/build-ios.sh" --simulator
+  if [[ -n "${CI_JOB_ID:-}" ]]; then
+    # GitLab uploads all artifact paths as one archive. Preserve the full native
+    # ZIP outside this checkout before the next job cleans dist/, and publish
+    # only a small receipt. Public release upload remains a separate operation.
+    preview_version="$(cat "$repo_dir/dist/ios/ConsoleCrypt-simulator-universal.version")"
+    python3 "$client_dir/scripts/retain-ios-preview.py" \
+      --archive "$repo_dir/dist/ios/ConsoleCrypt-$preview_version-ios-simulator-universal.zip" \
+      --source "${CI_COMMIT_SHA:?CI source SHA is required for retained previews}" \
+      --job "$CI_JOB_ID" \
+      --public-dir "$repo_dir/dist/ios/ci-preview"
+  fi
   app='build/ios/iphonesimulator/Runner.app'
   xcrun simctl install "$simulator_id" "$app"
   xcrun simctl launch "$simulator_id" io.consolecrypt.consolecrypt

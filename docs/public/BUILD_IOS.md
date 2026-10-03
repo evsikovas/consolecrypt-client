@@ -87,6 +87,34 @@ flutter test integration_test/ios_core_test.dart -d <SIMULATOR_UDID> \
 
 ## SSH/SFTP regression и GitLab CI
 
+### Что содержит артефакт iOS preview в GitLab
+
+Начиная с 0.3, CI сохраняет полный Simulator ZIP на Mac runner **вне checkout**:
+`$HOME/.cache/consolecrypt/ios-preview/<полный source SHA>/<job ID>/`.
+Каталог имеет права `0700`, ZIP — `0600`. Следующая очистка исходников не удаляет
+этот архив. Сохранение проверяет native bundle ID/версию/job ID, CRC и SHA-256;
+оно не является отдельной проверкой работы приложения на iPhone.
+
+Скачанный **CI artifact** содержит только три небольших файла:
+`ConsoleCrypt-ios-preview.json`, `SHA256SUMS-ios-preview.txt` и
+`README-ios-preview.txt`. В нём нет приложения. Получите полный ZIP у владельца
+Mac runner и сверьте SHA-256 из квитанции перед распаковкой. Если job завершился
+ошибкой после сохранения, квитанция ещё не означает успешную проверку запуска.
+
+GitLab отправляет все artifact paths одним архивом. Разделение ZIP на части
+внутри этого же artifact не уменьшает общий размер запроса и не решает ошибку
+`413 Request Entity Too Large`. Полный ZIP не отправляется в CI artifact;
+публичный релиз с отдельно проверенными частями публикуется отдельным процессом.
+Локальная `build-ios.sh --simulator` по-прежнему выдаёт полный архив в `dist/ios/`.
+
+The iOS preview **CI artifact contains metadata/checksums only**, not the app.
+The full ZIP is retained privately on the macOS runner, outside its checkout,
+under `$HOME/.cache/consolecrypt/ios-preview/<source SHA>/<job ID>/`. Obtain it
+from the runner owner and verify the recorded SHA-256 before extracting it.
+Splitting files within one CI artifact does not avoid its aggregate upload
+limit. Public release downloads are a separate reviewed publication; these
+previews are for Simulator and are not installable iPhone IPAs.
+
 Для полного теста на Simulator нужен запущенный Docker. Из корня:
 
 ```sh
@@ -116,13 +144,16 @@ client/scripts/ci-ios.sh --build-only
 Этот запуск компилирует продукт, устанавливает и запускает его в собственном
 временном Simulator. Архив, SHA-256 и версия остаются в `dist/ios`.
 
-В GitLab файл `client/ci/ios.yml` предоставляет два ручных задания:
-`ios-regression` и `build-ios-preview`. Сначала запустите regression, затем
-preview. Runner должен иметь теги `macos` и `arm64`, Xcode/runtime, Flutter,
+В GitLab файл `client/ci/ios.yml` предоставляет задания `ios-regression` и
+`build-ios-preview`. Regression запускается вручную; preview автоматически
+запускается только на точной ветке `codex/rdp-0.3-source`, на остальных ветках —
+вручную. Runner должен иметь теги `macos` и `arm64`, Xcode/runtime, Flutter,
 Rust, CocoaPods, Python; для regression также нужен Docker. Оба задания делят
 `resource_group: consolecrypt-macos` с macOS-сборкой. Каждое компилирует только
 один нативный bundle и использует свой `CI_JOB_ID` как нижнюю границу номера.
-Артефакты preview хранятся 90 дней. Apple signing secrets не требуются.
+Небольшие CI-квитанции preview хранятся 90 дней; срок хранения полного ZIP
+в отдельном локальном кэше контролирует владелец runner. Apple signing secrets
+не требуются.
 
 ## Настоящий iPhone
 

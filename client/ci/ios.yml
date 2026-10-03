@@ -25,11 +25,13 @@ build-ios-preview:
       allow_failure: true
   script:
     - python3 -m unittest discover -s client/scripts -p 'test_release_ci.py' -v
+    - python3 -m unittest discover -s client/scripts -p 'test_ios_preview_archive.py' -v
     - bash client/scripts/ci-ios.sh --build-only
   artifacts:
     name: "ConsoleCrypt-ios-simulator-$CI_COMMIT_SHORT_SHA"
+    when: always
     paths:
-      - dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip
-      - dist/ios/*.sha256
-      - dist/ios/ConsoleCrypt-simulator-universal.version
+      - dist/ios/ci-preview/ConsoleCrypt-ios-preview.json
+      - dist/ios/ci-preview/SHA256SUMS-ios-preview.txt
+      - dist/ios/ci-preview/README-ios-preview.txt
     expire_in: 90 days
