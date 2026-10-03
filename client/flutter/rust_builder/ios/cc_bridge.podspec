@@ -10,6 +10,8 @@ Pod::Spec.new do |s|
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
   s.frameworks = 'LocalAuthentication', 'Security', 'SystemConfiguration'
+  # RDP graphics enables flate2's native zlib backend in the Rust static library.
+  s.libraries = 'z'
   s.platform = :ios, '15.0'
   s.swift_version = '5.0'
   s.script_phase = {

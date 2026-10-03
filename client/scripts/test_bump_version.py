@@ -17,6 +17,42 @@ def fixture(root, version='0.1.0+1'):
 
 
 class VersionTests(unittest.TestCase):
+    def test_ci_ids_below_or_equal_to_source_floor_do_not_reuse_a_counter(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fixture(root, '0.3.0+1362')
+            for job in ('1361', '1362'):
+                with patch.dict('os.environ', {'CC_BUILD_NUMBER': job}), self.assertRaisesRegex(ValueError, 'source build floor'):
+                    versioning.bump(root)
+                self.assertEqual(versioning.read_version(root)[2][-1], 1362)
+            with patch.dict('os.environ', {'CC_BUILD_NUMBER': '1363'}):
+                self.assertEqual(versioning.bump(root), '0.3.0+1363')
+            self.assertEqual(versioning.bump(root), '0.3.0+1364')
+
+    def test_dev_revision_and_native_build_preserve_channel_and_continuous_counter(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fixture(root, '0.3.0-dev.1+82')
+            self.assertEqual(versioning.bump(root), '0.3.0-dev.1+83')
+            self.assertEqual(versioning.bump(root, 'dev'), '0.3.0-dev.2+84')
+            self.assertEqual(versioning.bump(root), '0.3.0-dev.2+85')
+            self.assertEqual(versioning.native_version('0.3.0-dev.2+85'), '0.3.0+85')
+            self.assertIn("kAppVersion = '0.3.0-dev.2'", (root / 'client/flutter/lib/app/app_info.dart').read_text())
+
+    def test_dev_cannot_modify_stable_checkout_or_parse_untrusted_prerelease(self):
+        with TemporaryDirectory() as tmp:
+            root, stable = Path(tmp) / 'dev', Path(tmp) / 'stable'
+            fixture(root, '0.3.0-dev.1+82')
+            fixture(stable, '0.2.5+81')
+            with self.assertRaisesRegex(ValueError, 'stable and dev'):
+                versioning.bump(root, source_root=stable)
+            self.assertEqual(versioning.read_version(root)[2][-1], 82)
+            self.assertEqual(versioning.read_version(stable)[2][-1], 81)
+        for version in ['0.3.0-dev.0+82', '0.3.0-dev.01+82', '0.3.0-rc.1+82', '0.3.0-dev.1+082',
+                        '0.3.0-dev.1+82\n', '0.3.0-dev.1+82;touch', '0.3.0-dev.1١+82']:
+            with self.subTest(version=version), self.assertRaises(ValueError):
+                versioning.native_version(version)
+
     def test_native_ci_builds_use_unique_job_numbers_and_validate_them(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -368,7 +368,7 @@ final class RustBackend {
   Future<void> reload(Set<String> kinds) async {
     if (!isUnlocked) return;
     final jobs = <Future<void>>[];
-    if (kinds.contains('host')) jobs.add(_loadHosts());
+    if (kinds.contains('host') || kinds.contains('rdp_host')) jobs.add(_loadHosts());
     if (kinds.contains('group')) jobs.add(_loadGroups());
     if (kinds.contains('jump_profile')) jobs.add(_loadJumpProfiles());
     if (kinds.contains('credential') || kinds.contains('secret')) jobs.add(_loadCredentials());

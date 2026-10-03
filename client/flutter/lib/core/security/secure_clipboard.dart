@@ -43,8 +43,20 @@ class SecureClipboard {
     _marker = null;
   });
 
-  /// Copies a secret and schedules clearing it.
-  Future<void> copySecret(String value) => _enqueue(() async {
+  bool _operationCurrent(bool Function()? isCurrent) {
+    try {
+      return isCurrent?.call() != false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Copies a secret and schedules clearing it. [isCurrent] optionally guards
+  /// delayed scoped operations. If an already-started OS write finishes after
+  /// revocation, compare-and-clear removes only the value this call wrote.
+  Future<void> copySecret(String value, {bool Function()? isCurrent}) => _enqueue(() async {
+    // A revoked operation queued behind another OS write must never start.
+    if (!_operationCurrent(isCurrent)) return;
     if (_disposed) throw StateError('Clipboard owner disposed');
     final deadline = clearAfter;
     if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
@@ -61,7 +73,7 @@ class SecureClipboard {
     // Retain a digest, never the plaintext or a short String.hashCode.
     final marker = sha256.convert(utf8.encode(value));
     _marker = marker;
-    if (_disposed) {
+    if (_disposed || !_operationCurrent(isCurrent)) {
       await _clearIfUnchanged(marker);
     } else {
       _timer = Timer(deadline, () => _enqueue(() => _clearIfUnchanged(marker)).ignore());

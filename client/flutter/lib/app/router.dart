@@ -11,6 +11,7 @@ import 'package:consolecrypt/groups/groups_screen.dart';
 import 'package:consolecrypt/hosts/host_editor_screen.dart';
 import 'package:consolecrypt/hosts/hosts_screen.dart';
 import 'package:consolecrypt/hosts/known_hosts_screen.dart';
+import 'package:consolecrypt/rdp/rdp_screen.dart';
 import 'package:consolecrypt/settings/settings_screen.dart';
 import 'package:consolecrypt/sftp/sftp_screen.dart';
 import 'package:consolecrypt/sharing/sharing_screen.dart';
@@ -43,6 +44,7 @@ enum ShellBranch {
   backups,
   settings,
   sharing,
+  rdp,
 }
 
 Page<void> _page(Widget child) => NoTransitionPage<void>(child: child);
@@ -116,6 +118,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           _branch(AppRoutes.backups, const BackupsScreen()),
           _branch(AppRoutes.settings, const SettingsScreen()),
           _branch(AppRoutes.sharing, const SharingScreen()),
+          _branch(AppRoutes.rdp, const RdpScreen()),
         ],
       ),
     ],

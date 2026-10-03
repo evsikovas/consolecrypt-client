@@ -3,6 +3,7 @@
 import struct
 import sys
 import zipfile
+from pathlib import Path
 
 PAGE = 16384
 
@@ -41,8 +42,17 @@ def verify_elf(data, name):
     verify_relro(writable, relros)
 
 
-def verify_apk(path):
+def verify_distribution_notices(apk, expected_notice):
+    assert apk.testzip() is None, 'APK CRC verification failed'
+    assert b'GNU AFFERO GENERAL PUBLIC LICENSE' in apk.read(
+        'assets/flutter_assets/assets/licenses/AGPL-3.0-only.txt'), 'Full AGPL licence missing'
+    assert apk.read('assets/flutter_assets/assets/licenses/RDP-THIRD-PARTY-NOTICES.txt') == Path(expected_notice).read_bytes(), 'RDP third-party notice missing or stale'
+
+
+def verify_apk(path, expected_notice=None):
     with zipfile.ZipFile(path) as apk:
+        if expected_notice is not None:
+            verify_distribution_notices(apk, expected_notice)
         libraries = [n for n in apk.namelist() if n.startswith('lib/') and n.endswith('.so')]
         for required in ('libcc_bridge.so', 'libflutter.so', 'libapp.so'):
             assert f'lib/arm64-v8a/{required}' in libraries, f'{required} missing'
@@ -53,4 +63,4 @@ def verify_apk(path):
 
 
 if __name__ == '__main__':
-    verify_apk(sys.argv[1])
+    verify_apk(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)

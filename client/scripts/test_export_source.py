@@ -11,7 +11,9 @@ spec.loader.exec_module(module)
 
 class ExportTests(unittest.TestCase):
     def test_build_sources_and_licenses_are_kept(self):
-        for path in ('LICENSE', 'client/flutter/assets/licenses/AGPL-3.0-only.txt',
+        for path in ('LICENSE', 'PROTOCOL_CHANGELOG.md', 'client/flutter/assets/licenses/AGPL-3.0-only.txt',
+                     'client/rust/rdp-core/vendor/PROVENANCE.md',
+                     'client/flutter/assets/licenses/RDP-THIRD-PARTY-NOTICES.txt',
                      'client/flutter/pubspec.lock', 'client/rust/Cargo.lock',
                      'crates/models/src/lib.rs', 'server/migrations/001.sql',
                      'client/flutter/rust_builder/cargokit/LICENSE',
@@ -29,6 +31,8 @@ class ExportTests(unittest.TestCase):
                      'server/server.env.production', 'server/SERVER.ENV', 'server/server.json',
                      'client/config.env', 'client/key.p12',
                      'client/secret.pem', 'client/app.apk', 'server/user.sqlite',
+                     'windows_password.txt', 'client/windows_password.txt',
+                     'client/docs/RDP_DEV_SPEC.md',
                      'client/flutter/android/local.properties', '/etc/passwd',
                      'client/../private/file', 'client/.git/config',
                      'server/deploy/evsikov.values.yaml', 'server/web/index.html',

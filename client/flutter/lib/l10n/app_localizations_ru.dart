@@ -4293,8 +4293,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aboutLicenseServer => 'Сервер синхронизации';
 
   @override
-  String get aboutOpenSource =>
-      'ConsoleCrypt — программа с открытым исходным кодом. Сервер никогда не видит ваше хранилище: всё шифруется на ваших устройствах.';
+  String get aboutOpenSource => 'ConsoleCrypt — программа с открытым исходным кодом. Ваши подключения в безопасности.';
 
   @override
   String get settingsAboutTitle => 'О программе';
@@ -5417,4 +5416,204 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get updateMacDestinationExists =>
       'Этот файл уже существует. Повторите установку и выберите другое имя или папку для нового DMG.';
+
+  @override
+  String get rdpTitle => 'Удалённый рабочий стол';
+
+  @override
+  String get rdpNewConnection => 'Новое RDP-подключение';
+
+  @override
+  String get rdpEmptyTitle => 'Рабочий стол во вкладке';
+
+  @override
+  String get rdpEmptyHelp => 'Укажите сервер Windows и учётную запись. Сначала проверьте сертификат сервера.';
+
+  @override
+  String get rdpLocked => 'Разблокируйте хранилище, чтобы открыть RDP.';
+
+  @override
+  String get rdpConnecting => 'Подключение…';
+
+  @override
+  String get rdpConnected => 'Подключено';
+
+  @override
+  String get rdpDisconnected => 'Соединение закрыто. Для нового входа создайте подключение.';
+
+  @override
+  String get rdpConnectionFailed => 'Не удалось подключиться. Проверьте адрес, учётную запись и сертификат.';
+
+  @override
+  String get rdpSecureAttention => 'Ctrl + Alt + Delete';
+
+  @override
+  String get rdpResize => 'Экран 1920 × 1080';
+
+  @override
+  String get rdpExpand => 'Развернуть рабочую область';
+
+  @override
+  String get rdpCollapse => 'Свернуть рабочую область';
+
+  @override
+  String get rdpAddress => 'Адрес сервера';
+
+  @override
+  String get rdpPort => 'Порт';
+
+  @override
+  String get rdpUsername => 'Пользователь';
+
+  @override
+  String get rdpDomain => 'Домен (необязательно)';
+
+  @override
+  String get rdpPassword => 'Пароль Windows';
+
+  @override
+  String get rdpCredentialsHelp =>
+      'Пароль используется только для этого входа и не сохраняется. До подтверждения сертификата он не отправляется серверу.';
+
+  @override
+  String get rdpInvalidForm => 'Введите адрес, порт от 1 до 65535, пользователя и пароль.';
+
+  @override
+  String get rdpCertificateTitle => 'Проверьте сертификат RDP';
+
+  @override
+  String get rdpCertificateHelp =>
+      'Сравните весь отпечаток с данными администратора по доверенному каналу. Подтверждение действует только для этого подключения. Если отпечаток не совпадает, отмените вход.';
+
+  @override
+  String get rdpFingerprint => 'SHA-256 сертификата';
+
+  @override
+  String get rdpCertificateConfirm => 'Я сверил весь отпечаток сертификата';
+
+  @override
+  String get rdpCertificateChanged =>
+      'Сертификат сервера изменился. Вход заблокирован; создайте новое подключение и сверьте отпечаток.';
+
+  @override
+  String get rdpAuthenticationFailed => 'Windows отклонила вход. Проверьте пользователя, домен и пароль.';
+
+  @override
+  String get rdpResizeUnavailable => 'Сервер не поддерживает этот размер экрана. Продолжайте с исходным размером.';
+
+  @override
+  String get rdpWorkspaceHelp =>
+      'Рабочий стол во вкладке. Буфер обмена и выбранная папка доступны только с вашего разрешения.';
+
+  @override
+  String get rdpPermissions => 'Разрешения сеанса';
+
+  @override
+  String get rdpAllowClipboard => 'Разрешить текстовый буфер обмена';
+
+  @override
+  String get rdpClipboardHelp =>
+      'Текст передаётся только по кнопкам отправки и получения. По умолчанию доступ выключен.';
+
+  @override
+  String get rdpFolderHelp =>
+      'Предоставьте удалённому компьютеру доступ только к выбранной папке. По умолчанию — только чтение.';
+
+  @override
+  String get rdpSelectFolder => 'Выбрать папку…';
+
+  @override
+  String get rdpStopFolder => 'Отключить папку';
+
+  @override
+  String get rdpNoFolder => 'Папка не предоставлена';
+
+  @override
+  String get rdpAllowFolderWrite => 'Разрешить запись в папку';
+
+  @override
+  String get rdpFolderWriteHelp => 'Удалённый компьютер сможет создавать, изменять и удалять файлы в этой папке.';
+
+  @override
+  String get rdpFolderUnsupported => 'Передача папки недоступна на этом устройстве.';
+
+  @override
+  String get rdpPermissionsFailed => 'Не удалось применить разрешения. Попробуйте ещё раз.';
+
+  @override
+  String get rdpClipboardReceived => 'Текст получен. Буфер обмена очистится по настройкам безопасности.';
+
+  @override
+  String get rdpClipboardSent => 'Текст отправлен на удалённый компьютер.';
+
+  @override
+  String get rdpClipboardFailed => 'Не удалось передать текст буфера обмена.';
+
+  @override
+  String get rdpSendClipboard => 'Отправить текст буфера обмена';
+
+  @override
+  String get rdpReceiveClipboard => 'Получить текст буфера обмена';
+
+  @override
+  String get rdpSavedPasswordHelp => 'Пароль будет взят из зашифрованной учётной записи этого хоста.';
+
+  @override
+  String get hostProtocolLabel => 'Тип подключения';
+
+  @override
+  String get hostRdpConnectionHelp =>
+      'RDP подключается напрямую. Порт и учётная запись задаются для этого хоста; настройки SSH-группы не применяются.';
+
+  @override
+  String get hostRdpPasswordOnly => 'Для RDP выберите парольную учётную запись.';
+
+  @override
+  String get hostRdpUsernameRequired => 'Введите имя пользователя Windows';
+
+  @override
+  String get rdpFolderPending => 'Windows подключает папку…';
+
+  @override
+  String get rdpFolderReady => 'Папка подключена. Откройте её в Проводнике Windows.';
+
+  @override
+  String get rdpFolderDenied =>
+      'Windows отклонила подключение папки. Попросите администратора разрешить перенаправление дисков; удалённый рабочий стол продолжает работать.';
+
+  @override
+  String get rdpFolderUnavailable =>
+      'Windows не подключила папку. Проверьте, разрешено ли перенаправление дисков на сервере, затем подключитесь заново.';
+
+  @override
+  String get rdpFolderChooseFailed =>
+      'Не удалось открыть выбранную папку. Проверьте доступ к ней и выберите папку снова.';
+
+  @override
+  String get rdpFolderChooseLimit =>
+      'Не удалось выбрать ещё одну папку. Отмените лишний выбор или закройте ненужные сеансы и попробуйте снова.';
+
+  @override
+  String get rdpFolderOpenHelp =>
+      'После подключения откройте «Этот компьютер» в Проводнике Windows или вставьте этот путь в адресную строку:';
+
+  @override
+  String get rdpFolderWindowsPath => '\\\\tsclient\\ConsoleCrypt';
+
+  @override
+  String get rdpFolderLimits =>
+      'До 256 МиБ на файл и до 512 МиБ записи за сеанс. Ссылки и специальные файлы недоступны. Изменение папки прерывает открытые в ней файлы.';
+
+  @override
+  String get rdpClipboardUnavailable =>
+      'Текстовый буфер обмена ещё не готов или запрещён сервером. Подождите и попробуйте снова; если ошибка повторится, проверьте настройки перенаправления с администратором.';
+
+  @override
+  String get rdpClipboardLimit => 'Можно передать только текст размером до 64 КиБ.';
+
+  @override
+  String get rdpClipboardBusy => 'Предыдущий запрос буфера обмена ещё обрабатывается. Подождите и попробуйте снова.';
+
+  @override
+  String get rdpClipboardEmpty => 'В буфере обмена нет доступного текста.';
 }

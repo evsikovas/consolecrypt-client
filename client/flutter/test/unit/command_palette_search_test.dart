@@ -13,6 +13,20 @@ Host host(String id, String name, String address, {String? username, String note
 );
 
 void main() {
+  test('RDP default endpoint is searchable without SSH inheritance', () {
+    final rdp = Host(
+      id: ObjectId.generate(),
+      name: 'Desktop',
+      address: 'windows.example.test',
+      protocol: HostProtocol.rdp,
+      username: 'operator',
+      createdAt: DateTime.utc(2026),
+      updatedAt: DateTime.utc(2026),
+    );
+    expect(searchPaletteHosts([rdp], query: 'windows.example.test:3389'), [rdp]);
+    expect(searchPaletteHosts([rdp], query: 'windows.example.test:22'), isEmpty);
+  });
+
   test('exact IP/name precedes partial name and username matches', () {
     final user = host('user', 'A server', '192.0.2.1', username: 'db');
     final partial = host('partial', 'Database db cluster', '192.0.2.2');

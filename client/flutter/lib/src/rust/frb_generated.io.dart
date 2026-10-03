@@ -12,6 +12,8 @@ import 'api/enrollment.dart';
 import 'api/error.dart';
 import 'api/inventory.dart';
 import 'api/profiles.dart';
+import 'api/rdp.dart';
+import 'api/rdp_hosts.dart';
 import 'api/sftp.dart';
 import 'api/sharing.dart';
 import 'api/ssh.dart';
@@ -79,6 +81,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   OsAuthKindChoice dco_decode_box_autoadd_os_auth_kind_choice(dynamic raw);
 
   @protected
+  RdpConnection dco_decode_box_autoadd_rdp_connection(dynamic raw);
+
+  @protected
+  RdpDirectoryGrant dco_decode_box_autoadd_rdp_directory_grant(dynamic raw);
+
+  @protected
+  RdpPermissions dco_decode_box_autoadd_rdp_permissions(dynamic raw);
+
+  @protected
+  RdpPixels dco_decode_box_autoadd_rdp_pixels(dynamic raw);
+
+  @protected
+  RdpSavedHostTicket dco_decode_box_autoadd_rdp_saved_host_ticket(dynamic raw);
+
+  @protected
   int dco_decode_box_autoadd_u_32(dynamic raw);
 
   @protected
@@ -106,6 +123,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   HostKeyAnswer dco_decode_host_key_answer(dynamic raw);
 
   @protected
+  int dco_decode_i_16(dynamic raw);
+
+  @protected
   int dco_decode_i_32(dynamic raw);
 
   @protected
@@ -127,6 +147,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<RdpInputMessage> dco_decode_list_rdp_input_message(dynamic raw);
+
+  @protected
   List<(String, String)> dco_decode_list_record_string_string(dynamic raw);
 
   @protected
@@ -142,6 +165,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   OsAuthKindChoice? dco_decode_opt_box_autoadd_os_auth_kind_choice(dynamic raw);
 
   @protected
+  RdpDirectoryGrant? dco_decode_opt_box_autoadd_rdp_directory_grant(dynamic raw);
+
+  @protected
+  RdpPixels? dco_decode_opt_box_autoadd_rdp_pixels(dynamic raw);
+
+  @protected
   int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
 
   @protected
@@ -149,6 +178,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   OsAuthKindChoice dco_decode_os_auth_kind_choice(dynamic raw);
+
+  @protected
+  RdpCapabilities dco_decode_rdp_capabilities(dynamic raw);
+
+  @protected
+  RdpCertificate dco_decode_rdp_certificate(dynamic raw);
+
+  @protected
+  RdpConnection dco_decode_rdp_connection(dynamic raw);
+
+  @protected
+  RdpDirectoryGrant dco_decode_rdp_directory_grant(dynamic raw);
+
+  @protected
+  RdpInputMessage dco_decode_rdp_input_message(dynamic raw);
+
+  @protected
+  RdpPermissions dco_decode_rdp_permissions(dynamic raw);
+
+  @protected
+  RdpPixels dco_decode_rdp_pixels(dynamic raw);
+
+  @protected
+  RdpPoll dco_decode_rdp_poll(dynamic raw);
+
+  @protected
+  RdpSavedHostTicket dco_decode_rdp_saved_host_ticket(dynamic raw);
+
+  @protected
+  RdpSessionInfo dco_decode_rdp_session_info(dynamic raw);
 
   @protected
   (String, String) dco_decode_record_string_string(dynamic raw);
@@ -235,6 +294,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   OsAuthKindChoice sse_decode_box_autoadd_os_auth_kind_choice(SseDeserializer deserializer);
 
   @protected
+  RdpConnection sse_decode_box_autoadd_rdp_connection(SseDeserializer deserializer);
+
+  @protected
+  RdpDirectoryGrant sse_decode_box_autoadd_rdp_directory_grant(SseDeserializer deserializer);
+
+  @protected
+  RdpPermissions sse_decode_box_autoadd_rdp_permissions(SseDeserializer deserializer);
+
+  @protected
+  RdpPixels sse_decode_box_autoadd_rdp_pixels(SseDeserializer deserializer);
+
+  @protected
+  RdpSavedHostTicket sse_decode_box_autoadd_rdp_saved_host_ticket(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
@@ -262,6 +336,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   HostKeyAnswer sse_decode_host_key_answer(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_i_16(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
@@ -283,6 +360,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<RdpInputMessage> sse_decode_list_rdp_input_message(SseDeserializer deserializer);
+
+  @protected
   List<(String, String)> sse_decode_list_record_string_string(SseDeserializer deserializer);
 
   @protected
@@ -298,6 +378,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   OsAuthKindChoice? sse_decode_opt_box_autoadd_os_auth_kind_choice(SseDeserializer deserializer);
 
   @protected
+  RdpDirectoryGrant? sse_decode_opt_box_autoadd_rdp_directory_grant(SseDeserializer deserializer);
+
+  @protected
+  RdpPixels? sse_decode_opt_box_autoadd_rdp_pixels(SseDeserializer deserializer);
+
+  @protected
   int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
@@ -305,6 +391,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   OsAuthKindChoice sse_decode_os_auth_kind_choice(SseDeserializer deserializer);
+
+  @protected
+  RdpCapabilities sse_decode_rdp_capabilities(SseDeserializer deserializer);
+
+  @protected
+  RdpCertificate sse_decode_rdp_certificate(SseDeserializer deserializer);
+
+  @protected
+  RdpConnection sse_decode_rdp_connection(SseDeserializer deserializer);
+
+  @protected
+  RdpDirectoryGrant sse_decode_rdp_directory_grant(SseDeserializer deserializer);
+
+  @protected
+  RdpInputMessage sse_decode_rdp_input_message(SseDeserializer deserializer);
+
+  @protected
+  RdpPermissions sse_decode_rdp_permissions(SseDeserializer deserializer);
+
+  @protected
+  RdpPixels sse_decode_rdp_pixels(SseDeserializer deserializer);
+
+  @protected
+  RdpPoll sse_decode_rdp_poll(SseDeserializer deserializer);
+
+  @protected
+  RdpSavedHostTicket sse_decode_rdp_saved_host_ticket(SseDeserializer deserializer);
+
+  @protected
+  RdpSessionInfo sse_decode_rdp_session_info(SseDeserializer deserializer);
 
   @protected
   (String, String) sse_decode_record_string_string(SseDeserializer deserializer);
@@ -391,6 +507,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_os_auth_kind_choice(OsAuthKindChoice self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_rdp_connection(RdpConnection self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_rdp_directory_grant(RdpDirectoryGrant self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_rdp_permissions(RdpPermissions self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_rdp_pixels(RdpPixels self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_rdp_saved_host_ticket(RdpSavedHostTicket self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
 
   @protected
@@ -418,6 +549,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_host_key_answer(HostKeyAnswer self, SseSerializer serializer);
 
   @protected
+  void sse_encode_i_16(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
@@ -439,6 +573,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_rdp_input_message(List<RdpInputMessage> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_record_string_string(List<(String, String)> self, SseSerializer serializer);
 
   @protected
@@ -454,6 +591,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_os_auth_kind_choice(OsAuthKindChoice? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_rdp_directory_grant(RdpDirectoryGrant? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_rdp_pixels(RdpPixels? self, SseSerializer serializer);
+
+  @protected
   void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
 
   @protected
@@ -461,6 +604,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_os_auth_kind_choice(OsAuthKindChoice self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rdp_capabilities(RdpCapabilities self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rdp_certificate(RdpCertificate self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rdp_connection(RdpConnection self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rdp_directory_grant(RdpDirectoryGrant self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rdp_input_message(RdpInputMessage self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rdp_permissions(RdpPermissions self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rdp_pixels(RdpPixels self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rdp_poll(RdpPoll self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rdp_saved_host_ticket(RdpSavedHostTicket self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rdp_session_info(RdpSessionInfo self, SseSerializer serializer);
 
   @protected
   void sse_encode_record_string_string((String, String) self, SseSerializer serializer);

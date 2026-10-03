@@ -74,3 +74,9 @@ PROTOCOL_CHANGELOG.md
 .agents/
 docs/adr/
 docs/design/
+
+# Local RDP specification and test credentials.
+windows_password.txt
+**/windows_password.txt
+client/docs/RDP_DEV_SPEC.md
+client/docs/RDP_DEV_*.md

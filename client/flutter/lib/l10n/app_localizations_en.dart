@@ -4107,8 +4107,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutLicenseServer => 'Sync server';
 
   @override
-  String get aboutOpenSource =>
-      'ConsoleCrypt is open source. The server never sees your vault: everything is encrypted on your devices.';
+  String get aboutOpenSource => 'ConsoleCrypt is open-source software. Your connections are secure.';
 
   @override
   String get settingsAboutTitle => 'About';
@@ -5223,4 +5222,202 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get updateMacDestinationExists =>
       'This file already exists. Retry installation and choose another name or folder for the new DMG.';
+
+  @override
+  String get rdpTitle => 'Remote desktop';
+
+  @override
+  String get rdpNewConnection => 'New RDP connection';
+
+  @override
+  String get rdpEmptyTitle => 'A desktop in a tab';
+
+  @override
+  String get rdpEmptyHelp => 'Enter a Windows server and account. Verify the server certificate before signing in.';
+
+  @override
+  String get rdpLocked => 'Unlock your vault to open RDP.';
+
+  @override
+  String get rdpConnecting => 'Connecting…';
+
+  @override
+  String get rdpConnected => 'Connected';
+
+  @override
+  String get rdpDisconnected => 'Connection closed. Create a connection to sign in again.';
+
+  @override
+  String get rdpConnectionFailed => 'Connection failed. Check the address, account and certificate.';
+
+  @override
+  String get rdpSecureAttention => 'Ctrl + Alt + Delete';
+
+  @override
+  String get rdpResize => 'Screen 1920 × 1080';
+
+  @override
+  String get rdpExpand => 'Expand workspace';
+
+  @override
+  String get rdpCollapse => 'Collapse workspace';
+
+  @override
+  String get rdpAddress => 'Server address';
+
+  @override
+  String get rdpPort => 'Port';
+
+  @override
+  String get rdpUsername => 'Username';
+
+  @override
+  String get rdpDomain => 'Domain (optional)';
+
+  @override
+  String get rdpPassword => 'Windows password';
+
+  @override
+  String get rdpCredentialsHelp =>
+      'The password is used for this sign-in only and is not saved. It is not sent before you confirm the certificate.';
+
+  @override
+  String get rdpInvalidForm => 'Enter an address, a port from 1 to 65535, username and password.';
+
+  @override
+  String get rdpCertificateTitle => 'Verify the RDP certificate';
+
+  @override
+  String get rdpCertificateHelp =>
+      'Compare the entire fingerprint with your administrator over a trusted channel. Confirmation applies only to this connection. Cancel if it does not match.';
+
+  @override
+  String get rdpFingerprint => 'Certificate SHA-256';
+
+  @override
+  String get rdpCertificateConfirm => 'I compared the entire certificate fingerprint';
+
+  @override
+  String get rdpCertificateChanged =>
+      'The server certificate changed. Sign-in was blocked; create a new connection and verify the fingerprint.';
+
+  @override
+  String get rdpAuthenticationFailed => 'Windows rejected sign-in. Check the username, domain and password.';
+
+  @override
+  String get rdpResizeUnavailable => 'The server does not support this screen size. Continue at the original size.';
+
+  @override
+  String get rdpWorkspaceHelp =>
+      'Remote desktop in a tab. Clipboard and a selected folder are available only with your permission.';
+
+  @override
+  String get rdpPermissions => 'Session permissions';
+
+  @override
+  String get rdpAllowClipboard => 'Allow text clipboard';
+
+  @override
+  String get rdpClipboardHelp => 'Text is exchanged only when you choose Send or Receive. Access is off by default.';
+
+  @override
+  String get rdpFolderHelp => 'Give the remote computer access only to a selected folder. Read-only by default.';
+
+  @override
+  String get rdpSelectFolder => 'Select folder…';
+
+  @override
+  String get rdpStopFolder => 'Disconnect folder';
+
+  @override
+  String get rdpNoFolder => 'No folder shared';
+
+  @override
+  String get rdpAllowFolderWrite => 'Allow writes to this folder';
+
+  @override
+  String get rdpFolderWriteHelp =>
+      'The remote computer will be able to create, change and delete files in this folder.';
+
+  @override
+  String get rdpFolderUnsupported => 'Folder sharing is unavailable on this device.';
+
+  @override
+  String get rdpPermissionsFailed => 'Could not apply permissions. Try again.';
+
+  @override
+  String get rdpClipboardReceived => 'Text received. The clipboard will expire according to your security settings.';
+
+  @override
+  String get rdpClipboardSent => 'Text sent to the remote computer.';
+
+  @override
+  String get rdpClipboardFailed => 'Could not exchange clipboard text.';
+
+  @override
+  String get rdpSendClipboard => 'Send clipboard text';
+
+  @override
+  String get rdpReceiveClipboard => 'Receive clipboard text';
+
+  @override
+  String get rdpSavedPasswordHelp => 'The password will be taken from this host’s encrypted credential.';
+
+  @override
+  String get hostProtocolLabel => 'Connection type';
+
+  @override
+  String get hostRdpConnectionHelp =>
+      'RDP connects directly. The port and credential are set for this host; SSH group settings do not apply.';
+
+  @override
+  String get hostRdpPasswordOnly => 'Select a password credential for RDP.';
+
+  @override
+  String get hostRdpUsernameRequired => 'Enter the Windows username';
+
+  @override
+  String get rdpFolderPending => 'Windows is connecting the folder…';
+
+  @override
+  String get rdpFolderReady => 'Folder connected. Open it in Windows File Explorer.';
+
+  @override
+  String get rdpFolderDenied =>
+      'Windows rejected the folder. Ask your administrator to allow drive redirection; the remote desktop remains connected.';
+
+  @override
+  String get rdpFolderUnavailable =>
+      'Windows did not connect the folder. Check that drive redirection is allowed on the server, then reconnect.';
+
+  @override
+  String get rdpFolderChooseFailed => 'Could not open the selected folder. Check access to it and select it again.';
+
+  @override
+  String get rdpFolderChooseLimit =>
+      'Could not select another folder. Cancel unused selections or close unneeded sessions and try again.';
+
+  @override
+  String get rdpFolderOpenHelp =>
+      'Once connected, open This PC in Windows File Explorer or enter this path in the address bar:';
+
+  @override
+  String get rdpFolderWindowsPath => '\\\\tsclient\\ConsoleCrypt';
+
+  @override
+  String get rdpFolderLimits =>
+      'Up to 256 MiB per file and 512 MiB of writes per session. Links and special files are unavailable. Changing the folder interrupts files currently open in it.';
+
+  @override
+  String get rdpClipboardUnavailable =>
+      'The text clipboard is not ready or is disabled by the server. Wait and try again; if the error persists, check redirection settings with your administrator.';
+
+  @override
+  String get rdpClipboardLimit => 'Only text up to 64 KiB can be transferred.';
+
+  @override
+  String get rdpClipboardBusy => 'The previous clipboard request is still being processed. Wait and try again.';
+
+  @override
+  String get rdpClipboardEmpty => 'No text is available in the clipboard.';
 }

@@ -4,6 +4,8 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 APP="${1:-$REPO/dist/macos/ConsoleCrypt.app}"
 DEST="${2:-$REPO/dist/macos/ConsoleCrypt.dmg}"
+[[ "$(basename "$APP")" == ConsoleCrypt.app ]] || { echo 'Expected the stable application bundle.' >&2; exit 1; }
+[[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Contents/Info.plist")" == io.consolecrypt.consolecrypt ]] || { echo 'Refusing to package a development bundle as stable.' >&2; exit 1; }
 ASSETS="$REPO/client/packaging/macos"
 TOOLS="$REPO/dist/macos/.packaging-tools"
 if [[ -z "${DMGBUILD:-}" ]]; then

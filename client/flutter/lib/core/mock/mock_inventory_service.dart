@@ -811,6 +811,10 @@ final class MockInventoryService extends VaultScopedMock implements InventorySer
     Map<String, String>? metadata,
   }) => Host(
     id: h.id,
+    protocol: h.protocol,
+    rdpDomain: h.rdpDomain,
+    rdpWidth: h.rdpWidth,
+    rdpHeight: h.rdpHeight,
     name: h.name,
     address: h.address,
     port: h.port,

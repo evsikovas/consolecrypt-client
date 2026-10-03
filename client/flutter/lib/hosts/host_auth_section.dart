@@ -57,7 +57,7 @@ final class HostAuthDraft extends ChangeNotifier {
     if (host == null) return HostAuthDraft._(HostAuthMode.password);
     final id = host.credentialId;
     if (id == null) {
-      return host.promptsForPassword
+      return host.isRdp || host.promptsForPassword
           ? (HostAuthDraft._(HostAuthMode.password)..savePassword = false)
           : HostAuthDraft._(HostAuthMode.inherit);
     }
@@ -197,9 +197,16 @@ final class HostAuthDraft extends ChangeNotifier {
 
 /// "Authentication" card of the host editor.
 class HostAuthSection extends ConsumerWidget {
-  const HostAuthSection({required this.draft, required this.onChanged, super.key, this.groupName});
+  const HostAuthSection({
+    required this.draft,
+    required this.onChanged,
+    super.key,
+    this.groupName,
+    this.passwordOnly = false,
+  });
 
   final HostAuthDraft draft;
+  final bool passwordOnly;
 
   /// Called after any change (to refresh the effective preview).
   final VoidCallback onChanged;
@@ -213,7 +220,10 @@ class HostAuthSection extends ConsumerWidget {
   }
 
   Future<void> _useExisting(BuildContext context) async {
-    final picked = await showAppDialog<Credential>(context, builder: (_) => const _CredentialPickerDialog());
+    final picked = await showAppDialog<Credential>(
+      context,
+      builder: (_) => _CredentialPickerDialog(passwordOnly: passwordOnly),
+    );
     if (picked != null) {
       draft.link(picked);
       onChanged();
@@ -247,16 +257,18 @@ class HostAuthSection extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            GlassSegmented<HostAuthMode>(
-              key: const ValueKey('auth-mode'),
-              inChrome: false,
-              expand: true,
-              segments: [
-                for (final m in HostAuthMode.values) GlassSegment(value: m, icon: m.icon, label: m.localized(l10n)),
-              ],
-              selected: draft.mode,
-              onChanged: (m) => _update((d) => d.mode = m),
-            ),
+            if (!passwordOnly)
+              GlassSegmented<HostAuthMode>(
+                key: const ValueKey('auth-mode'),
+                inChrome: false,
+                expand: true,
+                segments: [
+                  for (final m in HostAuthMode.values.where((m) => !passwordOnly || m == HostAuthMode.password))
+                    GlassSegment(value: m, icon: m.icon, label: m.localized(l10n)),
+                ],
+                selected: draft.mode,
+                onChanged: (m) => _update((d) => d.mode = m),
+              ),
             const SizedBox(height: GlassSpacing.s12),
             switch (draft.mode) {
               HostAuthMode.password => _passwordMode(context, credentials),
@@ -537,11 +549,14 @@ class _LinkedCredential extends StatelessWidget {
 /// "Use existing credential…": all credentials (shared across hosts) plus
 /// "+ New credential…".
 class _CredentialPickerDialog extends ConsumerWidget {
-  const _CredentialPickerDialog();
+  const _CredentialPickerDialog({this.passwordOnly = false});
+  final bool passwordOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final credentials = ref.watch(credentialsProvider).value ?? const <Credential>[];
+    final credentials = (ref.watch(credentialsProvider).value ?? const <Credential>[])
+        .where((c) => !passwordOnly || c.kind == CredentialKind.password)
+        .toList();
     final hosts = ref.watch(hostsProvider).value ?? const <Host>[];
     final l10n = context.l10n;
     final tokens = GlassTokens.of(context);
@@ -575,8 +590,12 @@ class _CredentialPickerDialog extends ConsumerWidget {
       leadingAction: GlassButton.plain(
         key: const ValueKey('picker-new-credential'),
         onPressed: () async {
-          final created = await showNewCredentialChooser(context);
-          if (created != null && context.mounted) closeDialog(context, created);
+          final created = passwordOnly
+              ? await showCreateCredentialDialog(context, NewCredentialKind.password)
+              : await showNewCredentialChooser(context);
+          if (created != null && (!passwordOnly || created.kind == CredentialKind.password) && context.mounted) {
+            closeDialog(context, created);
+          }
         },
         icon: Icons.add_rounded,
         label: l10n.hostAuthPickerNew,

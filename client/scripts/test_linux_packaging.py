@@ -3,11 +3,13 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import struct
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('linux_packaging', ROOT / 'client/scripts/package-linux.py')
@@ -35,6 +37,9 @@ class LinuxPackagingTest(unittest.TestCase):
             path.write_bytes(header)
         (self.bundle / 'data/flutter_assets').mkdir(parents=True)
         (self.bundle / 'data/icudtl.dat').write_bytes(b'fixture data')
+        self.rdp_notice = self.bundle / 'data/flutter_assets/assets/licenses/RDP-THIRD-PARTY-NOTICES.txt'
+        self.rdp_notice.parent.mkdir(parents=True)
+        shutil.copyfile(ROOT / 'client/rust/rdp-core/THIRD_PARTY_NOTICES.txt', self.rdp_notice)
 
     def tearDown(self):
         self.temporary.cleanup()
@@ -44,6 +49,8 @@ class LinuxPackagingTest(unittest.TestCase):
         receipt = packaging.stage_bundle(ROOT, self.bundle, stage, '0.2.5+123')
         app = stage / 'opt/consolecrypt'
         self.assertEqual((app / 'LICENSE').read_bytes(), (ROOT / 'LICENSE').read_bytes())
+        self.assertEqual((app / 'RDP-THIRD-PARTY-NOTICES.txt').read_bytes(), self.rdp_notice.read_bytes())
+        self.assertEqual((stage / 'usr/share/doc/consolecrypt/RDP-THIRD-PARTY-NOTICES.txt').read_bytes(), self.rdp_notice.read_bytes())
         self.assertEqual((app / 'ConsoleCrypt.version').read_text(), '0.2.5+123\n')
         self.assertEqual(json.loads((app / 'package-info.json').read_text()), receipt)
         self.assertEqual(receipt['deb_version'], '0.2.5-123')
@@ -57,6 +64,14 @@ class LinuxPackagingTest(unittest.TestCase):
         self.assertEqual((app / 'lib/libcc_bridge.so').stat().st_mode & 0o777, 0o644)
         self.assertFalse((stage / 'DEBIAN').exists())
         self.assertFalse((app / 'private-source').exists())
+
+    def test_missing_or_stale_rdp_notice_rejects_package(self):
+        self.rdp_notice.write_bytes(b'stale notice')
+        with self.assertRaisesRegex(ValueError, 'current third-party notice'):
+            packaging.stage_bundle(ROOT, self.bundle, self.folder / 'stage', '0.3.0+1363')
+        self.rdp_notice.unlink()
+        with self.assertRaisesRegex(ValueError, 'current third-party notice'):
+            packaging.stage_bundle(ROOT, self.bundle, self.folder / 'stage', '0.3.0+1363')
 
     def test_reject_missing_native_core_wrong_architecture_and_symlinks(self):
         native = self.bundle / 'lib/libcc_bridge.so'
@@ -118,6 +133,58 @@ class LinuxPackagingTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'new staging'):
             linux_stage.stage(repo, output)
 
+    def test_file_chooser_portal_metadata_does_not_force_a_desktop_backend(self):
+        # Capture the actual generated control/spec. These mock tools create
+        # only synthetic metadata fixtures; they do not build or install an app.
+        metadata = {}
+
+        def package_tool(command, *, check):
+            self.assertTrue(check)
+            if command[0] == 'dpkg-deb':
+                metadata['deb'] = (Path(command[-2]) / 'DEBIAN/control').read_text()
+                Path(command[-1]).write_bytes(b'synthetic package metadata fixture')
+            elif command[0] == 'rpmbuild':
+                metadata['rpm'] = Path(command[-1]).read_text()
+                top = Path(command[3].removeprefix('_topdir '))
+                rpm = top / 'RPMS/x86_64/fixture.rpm'
+                rpm.parent.mkdir(parents=True)
+                rpm.write_bytes(b'synthetic package metadata fixture')
+            else:
+                self.fail('Unexpected packaging subprocess')
+
+        with mock.patch.object(packaging.shutil, 'which', return_value='/synthetic/tool'), \
+                mock.patch.object(packaging.subprocess, 'run', side_effect=package_tool):
+            packaging.build_packages(ROOT, self.bundle, self.folder / 'metadata-only', '0.3.0+1363')
+        depends = next(line for line in metadata['deb'].splitlines() if line.startswith('Depends:'))
+        requires = [line for line in metadata['rpm'].splitlines() if line.startswith('Requires:')]
+        self.assertIn('xdg-desktop-portal', [part.strip() for part in depends.removeprefix('Depends:').split(',')])
+        self.assertIn('Requires: xdg-desktop-portal', requires)
+        for backend in ('xdg-desktop-portal-gtk', 'xdg-desktop-portal-gnome', 'xdg-desktop-portal-kde'):
+            self.assertNotIn(backend, depends)
+            self.assertFalse(any(backend in line for line in requires))
+            self.assertIn(backend, metadata['deb'])
+            self.assertIn('Suggests: ' + backend, metadata['rpm'])
+        self.assertIn('libgles2', depends)
+        self.assertIn('Requires: libGLESv2.so.2()(64bit)', requires)
+
+    def test_linux_acceptance_image_has_file_chooser_and_wayland_headers(self):
+        # rfd's ashpd backend enables Wayland client_system. Native compile
+        # needs its pkg-config headers; a real picker test needs both the
+        # frontend and a FileChooser provider on the fixture's own session bus.
+        dockerfile = (ROOT / 'client/ci/linux/Dockerfile').read_text()
+        installations = re.findall(
+            r'RUN apt-get update && apt-get install -y --no-install-recommends \\\n(.*?)    && rm -rf /var/lib/apt/lists/\*',
+            dockerfile, re.S,
+        )
+        packages = set(' '.join(installations).replace('\\', ' ').split())
+        self.assertTrue(installations, 'Expected explicit isolated-image apt dependencies')
+        for package in ('libwayland-dev', 'xdg-desktop-portal', 'xdg-desktop-portal-gtk'):
+            with self.subTest(package=package):
+                self.assertIn(package, packages)
+        # GTK is a fixture provider only, not a forced user-desktop selection.
+        self.assertIn('gnome-keyring', packages)
+        self.assertIn('xvfb', packages)
+
     @unittest.skipUnless(os.uname().sysname == 'Linux' and
                          all(shutil.which(tool) for tool in ('gcc', 'dpkg-deb', 'rpm', 'rpmbuild')),
                          'real Linux packaging toolchain required')
@@ -136,6 +203,7 @@ class LinuxPackagingTest(unittest.TestCase):
         self.assertEqual(subprocess.check_output(['dpkg-deb', '-f', str(deb), 'Version'], text=True).strip(), '0.2.5-123')
         deb_dependencies = subprocess.check_output(['dpkg-deb', '-f', str(deb), 'Depends'], text=True)
         self.assertIn('libgles2', deb_dependencies)
+        self.assertIn('xdg-desktop-portal', deb_dependencies)
         self.assertEqual(subprocess.check_output(['rpm', '-qp', '--qf', '%{VERSION}-%{RELEASE} %{ARCH}', str(rpm)], text=True),
                          '0.2.5-123 x86_64')
         extracted = self.folder / 'extracted'
@@ -148,6 +216,7 @@ class LinuxPackagingTest(unittest.TestCase):
         rpm_dependencies = subprocess.check_output(['rpm', '-qp', '--requires', str(rpm)], text=True)
         self.assertIn('libc.so.6', rpm_dependencies)
         self.assertIn('libGLESv2.so.2()(64bit)', rpm_dependencies)
+        self.assertIn('xdg-desktop-portal', rpm_dependencies)
         with self.assertRaisesRegex(ValueError, 'fresh build number'):
             packaging.build_packages(ROOT, self.bundle, output, '0.2.5+123')
 

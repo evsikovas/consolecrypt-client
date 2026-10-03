@@ -25,6 +25,10 @@ class WindowsPackagingTest(unittest.TestCase):
                 target = repo / name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(ROOT / name, target)
+            notice = repo / 'client/rust/rdp-core/THIRD_PARTY_NOTICES.txt'
+            notice.parent.mkdir(parents=True)
+            shutil.copyfile(ROOT / 'client/rust/rdp-core/THIRD_PARTY_NOTICES.txt', notice)
+            (scripts / 'verify-release-identity.py').write_text('raise SystemExit(0)\n')
             binaries = base / 'bin'
             binaries.mkdir()
 
@@ -76,8 +80,9 @@ class WindowsPackagingTest(unittest.TestCase):
             self.assertTrue(installers[0].with_suffix('.exe.sha256').exists())
             with zipfile.ZipFile(output / 'ConsoleCrypt-windows.zip') as archive:
                 self.assertTrue({'ConsoleCrypt.exe', 'cc_bridge.dll', 'vcruntime140_1.dll',
-                                 'data/icudtl.dat', 'LICENSE'} <= set(archive.namelist()))
+                                 'data/icudtl.dat', 'LICENSE', 'RDP-THIRD-PARTY-NOTICES.txt'} <= set(archive.namelist()))
                 self.assertEqual(archive.read('LICENSE'), (ROOT / 'LICENSE').read_bytes())
+                self.assertEqual(archive.read('RDP-THIRD-PARTY-NOTICES.txt'), notice.read_bytes())
             version = (output / 'ConsoleCrypt.version').read_text()
             env['CC_FAKE_FLUTTER_FAIL'] = '1'
             result = subprocess.run(command, env=env, text=True, capture_output=True)

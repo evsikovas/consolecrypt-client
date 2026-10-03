@@ -587,6 +587,9 @@ impl AppCore {
     /// unsaved draft (empty / unknown id) or edited values of a stored host;
     /// nothing is saved and no connection is made.
     pub async fn plan_preview(&self, host: HostDto) -> AppResult<PlanPreviewDto> {
+        if host.protocol == crate::HostProtocol::Rdp {
+            return Err(AppError::invalid("protocol", "RDP has no SSH route"));
+        }
         let (_, u) = self.unlocked().await?;
         let parsed = match host.id.trim() {
             "" => None,

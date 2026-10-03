@@ -49,6 +49,10 @@ pub fn make_conflict_copy(payload: &ObjectPayload, new_id: ObjectId) -> ObjectPa
         }
     }
     match &mut p.object {
+        VaultObject::RdpHost(o) => {
+            o.host.id = new_id;
+            suffix(&mut o.host.name);
+        }
         VaultObject::Host(o) => {
             o.id = new_id;
             suffix(&mut o.name);
@@ -100,6 +104,7 @@ pub fn make_conflict_copy(payload: &ObjectPayload, new_id: ObjectId) -> ObjectPa
 /// Last-modified time used for LWW.
 pub fn payload_updated_at(payload: &ObjectPayload) -> Timestamp {
     match &payload.object {
+        VaultObject::RdpHost(o) => o.updated_at,
         VaultObject::Host(o) => o.updated_at,
         VaultObject::Group(o) => o.updated_at,
         VaultObject::JumpProfile(o) => o.updated_at,

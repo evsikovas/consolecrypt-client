@@ -7,7 +7,7 @@ ARG RUST_VERSION=1.98
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl git unzip xz-utils zip python3 \
-    clang cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev \
+    clang cmake ninja-build pkg-config libgtk-3-dev libwayland-dev libstdc++-12-dev \
     build-essential perl libssl-dev file binutils dpkg-dev rpm \
     desktop-file-utils dbus dbus-x11 gnome-keyring xvfb xauth \
     && rm -rf /var/lib/apt/lists/*
@@ -33,8 +33,11 @@ RUN git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/f
 
 # Flutter Impeller loads GLES at runtime rather than declaring an ELF NEEDED
 # entry. Keep the same graphics/font runtime explicit in the isolated tests.
+# The fixture's private D-Bus needs a FileChooser provider for native RDP folder
+# selection. GTK is this isolated image's provider, not a user-desktop mandate.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgles2 libegl1 libgl1-mesa-dri fonts-dejavu-core \
+    xdg-desktop-portal xdg-desktop-portal-gtk \
     && rm -rf /var/lib/apt/lists/*
 
 # Only a curated source snapshot is mounted at /work. Never mount a login's

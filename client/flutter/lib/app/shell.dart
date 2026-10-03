@@ -51,6 +51,7 @@ String shellBranchLabel(ShellBranch branch, AppLocalizations l) => switch (branc
   ShellBranch.backups => l.navBackups,
   ShellBranch.settings => l.navSettings,
   ShellBranch.sharing => l.sharingTitle,
+  ShellBranch.rdp => l.rdpTitle,
 };
 
 const _navItems = [
@@ -59,6 +60,7 @@ const _navItems = [
   _NavItem(ShellBranch.knownHosts, Icons.verified_user_outlined),
   _NavItem(ShellBranch.sharing, Icons.people_outline_rounded, syncedOnly: true),
   _NavItem(ShellBranch.terminal, Icons.terminal_rounded),
+  _NavItem(ShellBranch.rdp, Icons.desktop_windows_outlined),
   _NavItem(ShellBranch.sftp, Icons.folder_copy_rounded),
   _NavItem(ShellBranch.tunnels, Icons.swap_horiz_rounded),
   _NavItem(ShellBranch.devices, Icons.devices_rounded, syncedOnly: true),
@@ -347,7 +349,9 @@ class _Sidebar extends ConsumerWidget {
           GlassSidebarItem(
             key: ValueKey('nav-${item.branch.name}'),
             icon: item.icon,
-            leading: AppSymbolIcon(AppSymbol.values.byName(item.branch.name)),
+            leading: item.branch == ShellBranch.rdp
+                ? Icon(item.icon)
+                : AppSymbolIcon(AppSymbol.values.byName(item.branch.name)),
             label: shellBranchLabel(item.branch, l10n),
             compact: compact,
             selected: _navigationBranch(ShellBranch.values[navigationShell.currentIndex]) == item.branch,

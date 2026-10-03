@@ -56,6 +56,154 @@ void _clipboard(WidgetTester tester, {Future<Object?> Function(MethodCall)? hand
 }
 
 void main() {
+  testWidgets('Windows Shift Insert pastes once through bracketed paste and never sends Insert', (tester) async {
+    final (_, _, tab) = await _open(tester);
+    tab.terminal.write('\x1b[?2004h');
+    final writes = <String>[];
+    tab.terminal.onOutput = writes.add;
+    var reads = 0;
+    _clipboard(
+      tester,
+      handler: (call) async {
+        if (call.method != 'Clipboard.getData') return null;
+        reads++;
+        return {'text': 'Привет 🌐'};
+      },
+    );
+    await tester.tap(find.byType(TerminalView).first);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.insert);
+    await settle(tester);
+    // A held key's repeat must neither repaste nor leak an Insert sequence.
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.insert);
+    await settle(tester);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.insert);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    expect(reads, 1);
+    expect(writes, ['\x1b[200~Привет 🌐\x1b[201~']);
+    writes.clear();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+    expect(reads, 2);
+    expect(writes, ['\x1b[200~Привет 🌐\x1b[201~']);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('Windows Shift Insert uses multiline confirmation and cancellation sends nothing', (tester) async {
+    final (_, _, tab) = await _open(tester);
+    final writes = <String>[];
+    tab.terminal.onOutput = writes.add;
+    var reads = 0;
+    _clipboard(
+      tester,
+      handler: (call) async {
+        if (call.method != 'Clipboard.getData') return null;
+        reads++;
+        return {'text': 'echo first\necho second\n'};
+      },
+    );
+    await tester.tap(find.byType(TerminalView).first);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.insert);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await settle(tester);
+    expect(reads, 1);
+    expect(writes, isEmpty);
+    expect(find.byKey(const ValueKey('confirm-cancel')), findsOneWidget);
+    await tapKey(tester, 'confirm-cancel');
+    expect(writes, isEmpty);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('Windows Shift Insert drops clipboard read after the active session changes', (tester) async {
+    final (_, c, tab) = await _open(tester);
+    final read = Completer<Object?>();
+    final writes = <String>[];
+    var reads = 0;
+    tab.terminal.onOutput = writes.add;
+    _clipboard(
+      tester,
+      handler: (call) {
+        if (call.method != 'Clipboard.getData') return Future.value();
+        reads++;
+        return read.future;
+      },
+    );
+    await tester.tap(find.byType(TerminalView).first);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.insert);
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.insert);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.insert);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    final other = await c.read(terminalTabsProvider.notifier).open(tab.host);
+    other.terminal.onOutput = writes.add;
+    read.complete({'text': 'late clipboard'});
+    await settle(tester);
+    expect(reads, 1);
+    expect(writes, isEmpty);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('Windows ordinary Insert and additional modifiers stay remote keys without reading clipboard', (
+    tester,
+  ) async {
+    final (_, _, tab) = await _open(tester);
+    final writes = <String>[];
+    tab.terminal.onOutput = writes.add;
+    var reads = 0;
+    _clipboard(
+      tester,
+      handler: (call) async {
+        if (call.method == 'Clipboard.getData') reads++;
+        return null;
+      },
+    );
+    await tester.tap(find.byType(TerminalView).first);
+    for (final modifiers in [
+      <LogicalKeyboardKey>[],
+      [LogicalKeyboardKey.controlLeft],
+      [LogicalKeyboardKey.shiftLeft, LogicalKeyboardKey.controlLeft],
+      [LogicalKeyboardKey.shiftLeft, LogicalKeyboardKey.altLeft],
+      [LogicalKeyboardKey.shiftLeft, LogicalKeyboardKey.metaLeft],
+    ]) {
+      for (final modifier in modifiers) {
+        await tester.sendKeyDownEvent(modifier);
+      }
+      await tester.sendKeyEvent(LogicalKeyboardKey.insert);
+      for (final modifier in modifiers.reversed) {
+        await tester.sendKeyUpEvent(modifier);
+      }
+    }
+    await settle(tester);
+    expect(reads, 0);
+    expect(writes, ['\x1b[2~', '\x1b[2;5~', '\x1b[2;6~', '\x1b[2;4~', '\x1b[2;2~']);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('Shift Insert remains a remote key outside Windows', (tester) async {
+    final (_, _, tab) = await _open(tester);
+    final writes = <String>[];
+    tab.terminal.onOutput = writes.add;
+    var reads = 0;
+    _clipboard(
+      tester,
+      handler: (call) async {
+        if (call.method == 'Clipboard.getData') reads++;
+        return null;
+      },
+    );
+    await tester.tap(find.byType(TerminalView).first);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.insert);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await settle(tester);
+    expect(reads, 0);
+    expect(writes, ['\x1b[2;2~']);
+    expect(tester.takeException(), isNull);
+  }, variant: const TargetPlatformVariant({TargetPlatform.macOS, TargetPlatform.linux}));
+
   testWidgets('right click preserves selection and copies exact indentation without reading the clipboard', (
     tester,
   ) async {

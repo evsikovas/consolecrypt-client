@@ -87,6 +87,9 @@ try {
 Push-Location $Repo
 try {
     Invoke-Checked python @('-m', 'unittest', 'discover', '-s', 'client/scripts', '-p', 'test_bump_version.py', '-v')
+    Invoke-Checked python @('-m', 'unittest', 'discover', '-s', 'client/scripts', '-p', 'test_release_identity.py', '-v')
+    Invoke-Checked python @('-m', 'unittest', 'discover', '-s', 'client/scripts', '-p', 'test_release_ci.py', '-v')
+    Invoke-Checked python @('client/scripts/verify-release-identity.py')
     if ($env:CI_JOB_ID) { $env:CC_BUILD_NUMBER = $env:CI_JOB_ID }
     & (Join-Path $PSScriptRoot 'build-windows.ps1') -Installer -NoCli
     if ($LASTEXITCODE -ne 0) { throw 'Windows packaging failed' }

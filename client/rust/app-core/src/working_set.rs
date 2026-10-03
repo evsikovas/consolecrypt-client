@@ -187,6 +187,9 @@ impl WorkingSet {
     pub(crate) fn kind_of(&self, id: ObjectId) -> Option<ObjectKind> {
         self.read().entries.get(&id).map(Entry::kind)
     }
+    pub(crate) fn revision_of(&self, id: ObjectId) -> Option<i64> {
+        self.read().entries.get(&id).map(|e| e.revision)
+    }
 
     pub(crate) fn secret_kind(&self, id: ObjectId) -> Option<SecretKind> {
         match self.read().entries.get(&id).map(|e| &e.item) {
@@ -225,6 +228,7 @@ impl WorkingSet {
     }
 
     typed!(host, hosts, Host, Host);
+    typed!(rdp_host, rdp_hosts, RdpHost, cc_models::rdp::RdpHost);
     typed!(group, groups, Group, Group);
     typed!(jump_profile, jump_profiles, JumpProfile, JumpProfile);
     typed!(proxy, proxies, Proxy, Proxy);

@@ -56,7 +56,11 @@ if [[ -n "$SIGN_IDENTITY" ]]; then
   # Fail early if no matching certificate/private-key identity is available.
   python3 "$SRC/client/scripts/sign-macos.py" --identity "$SIGN_IDENTITY" --check
 fi
+if [[ -d "$SRC/client/rust/rdp-core" ]]; then
+  python3 "$SRC/client/scripts/verify-release-identity.py" --root "$SRC"
+fi
 if [[ "$MODE" == release ]]; then
+  export FLUTTER_MACOS_ARM64_ONLY=false
   # Release apps are universal (Apple Silicon + Intel).
   rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
 fi
@@ -70,17 +74,28 @@ BUILD_VERSION="$(python3 "$REPO/client/scripts/bump-version.py" --root "$REPO" -
 echo "==> version $BUILD_VERSION"
 python3 -m unittest discover -s "$SRC/client/scripts" -p 'test_macos_updates.py' -v
 flutter pub get
+# Refresh local RDP zlib pod linkage even if Flutter cached plugin metadata.
+(cd macos && pod install)
 DEFINES=()
 [[ "$MOCK" == 1 ]] && DEFINES+=(--dart-define=CC_MOCK=true)
 flutter build macos "--$MODE" ${DEFINES[@]+"${DEFINES[@]}"}
 APP_DIR="build/macos/Build/Products/$( [[ $MODE == release ]] && echo Release || echo Debug )"
+BUILT_APP="$APP_DIR/ConsoleCrypt.app"
+[[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$BUILT_APP/Contents/Info.plist")" == io.consolecrypt.consolecrypt ]] || { echo 'Refusing a non-production macOS bundle.' >&2; exit 1; }
+ACTUAL_VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$BUILT_APP/Contents/Info.plist")"
+ACTUAL_BUILD="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$BUILT_APP/Contents/Info.plist")"
+[[ "$ACTUAL_VERSION+$ACTUAL_BUILD" == "$BUILD_VERSION" ]] || { echo 'Native macOS metadata does not match the reserved build.' >&2; exit 1; }
 rm -rf "$OUT/ConsoleCrypt.app"
-ditto "$APP_DIR/ConsoleCrypt.app" "$OUT/ConsoleCrypt.app"
+ditto "$BUILT_APP" "$OUT/ConsoleCrypt.app"
 if [[ -f "$SRC/LICENSE" ]]; then
   cp "$SRC/LICENSE" "$OUT/ConsoleCrypt.app/Contents/Resources/LICENSE"
 else
   # Historical commits retain the licenses originally published with them.
   cp "$SRC/LICENSE-MIT" "$SRC/LICENSE-APACHE" "$OUT/ConsoleCrypt.app/Contents/Resources/"
+fi
+
+if [[ -d "$SRC/client/rust/rdp-core" ]]; then
+  cp "$SRC/client/rust/rdp-core/THIRD_PARTY_NOTICES.txt" "$OUT/ConsoleCrypt.app/Contents/Resources/RDP-THIRD-PARTY-NOTICES.txt"
 fi
 
 if [[ -n "$SIGN_IDENTITY" ]]; then

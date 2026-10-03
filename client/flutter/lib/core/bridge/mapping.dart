@@ -285,6 +285,10 @@ ServerInfo serverInfoFromJson(Json j) => ServerInfo(
 // ---- inventory ---------------------------------------------------------------------
 
 Host hostFromJson(Json j) => Host(
+  protocol: j['protocol'] == 'rdp' ? HostProtocol.rdp : HostProtocol.ssh,
+  rdpDomain: _str(j['rdp_domain']),
+  rdpWidth: _int(j['rdp_width']) ?? 1280,
+  rdpHeight: _int(j['rdp_height']) ?? 720,
   id: ObjectId(j['id']! as String),
   name: j['name']! as String,
   address: j['address']! as String,
@@ -310,6 +314,10 @@ Json hostToJson(Host h, {Json? base}) => {
   'proxy_command': null,
   'auth_mode': 'inherit',
   ...?base,
+  'protocol': h.protocol.name,
+  'rdp_domain': h.rdpDomain,
+  'rdp_width': h.rdpWidth,
+  'rdp_height': h.rdpHeight,
   'id': h.id.value,
   'name': h.name,
   'address': h.address,

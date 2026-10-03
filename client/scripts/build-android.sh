@@ -3,6 +3,9 @@
 set -euo pipefail
 client_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 repo_dir="$(cd -- "$client_dir/.." && pwd)"
+if [[ -d "$client_dir/rust/rdp-core" ]]; then
+  python3 "$client_dir/scripts/verify-release-identity.py" --root "$repo_dir"
+fi
 export PATH="$HOME/.cargo/bin:$PATH"
 export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
 export CARGO_INCREMENTAL=0
@@ -11,6 +14,9 @@ if [[ ! -d "$ANDROID_HOME/platforms/android-36" ]]; then
   exit 1
 fi
 export PATH="$ANDROID_HOME/cmake/3.22.1/bin:$PATH"
+# Reuse the existing preview signer; never generate a replacement key silently.
+signer_home="${ANDROID_USER_HOME:-$HOME/.android}"
+[[ -f "$signer_home/debug.keystore" ]] || { echo 'Existing Android preview signer is required; no key is created.' >&2; exit 1; }
 cd -- "$client_dir/flutter"
 build_version="$(python3 "$client_dir/scripts/bump-version.py" --root "$repo_dir")"
 echo "==> version $build_version"
@@ -20,7 +26,11 @@ apk='build/app/outputs/flutter-apk/app-release.apk'
 "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$apk"
 # Check every native library, including Flutter, SQLCipher/OpenSSL in the
 # Rust library, and the Dart AOT image. No 4 KiB-only ELF may ship.
-python3 "$client_dir/scripts/verify-android-apk.py" "$apk"
+if [[ -d "$client_dir/rust/rdp-core" ]]; then
+  python3 "$client_dir/scripts/verify-android-apk.py" "$apk" "$client_dir/rust/rdp-core/THIRD_PARTY_NOTICES.txt"
+else
+  python3 "$client_dir/scripts/verify-android-apk.py" "$apk"
+fi
 mkdir -p -- "$repo_dir/dist/android"
 # Replace the directory entry, never truncate an existing inode: the latest
 # alias may be hardlinked to a retained release. Stage on the same filesystem

@@ -5871,7 +5871,7 @@
   "@aboutLicenseServer": {
     "description": "About dialog: licence row label for the self-hosted sync server; the value is an SPDX expression (not translated)."
   },
-  "aboutOpenSource": "ConsoleCrypt is open source. The server never sees your vault: everything is encrypted on your devices.",
+  "aboutOpenSource": "ConsoleCrypt is open-source software. Your connections are secure.",
   "@aboutOpenSource": {
     "description": "About dialog: short open-source and zero-knowledge statement."
   },
@@ -6729,31 +6729,57 @@
   "sharingPublishConfirm": "Share",
   "sharingEmpty": "No shared items yet.",
   "sharingReceivedHelp": "Items your colleagues shared with you. Verify the owner before accepting access.",
-  "@sharingReceivedHelp": { "description": "Incoming sharing tab explanation" },
+  "@sharingReceivedHelp": {
+    "description": "Incoming sharing tab explanation"
+  },
   "sharingOwnedHelp": "Manage the items you shared, recipient permissions, and access revocation.",
-  "@sharingOwnedHelp": { "description": "Owned sharing tab explanation" },
+  "@sharingOwnedHelp": {
+    "description": "Owned sharing tab explanation"
+  },
   "sharingReceivedEmpty": "Nothing has been shared with you yet",
-  "@sharingReceivedEmpty": { "description": "Incoming sharing empty state title" },
+  "@sharingReceivedEmpty": {
+    "description": "Incoming sharing empty state title"
+  },
   "sharingReceivedEmptyHelp": "Ask a colleague on this server to share an item, then refresh this page. Compare the owner’s device code before accepting it.",
-  "@sharingReceivedEmptyHelp": { "description": "Incoming sharing empty state instructions" },
+  "@sharingReceivedEmptyHelp": {
+    "description": "Incoming sharing empty state instructions"
+  },
   "sharingOwnedEmpty": "You haven’t shared anything yet",
-  "@sharingOwnedEmpty": { "description": "Owned sharing empty state title" },
+  "@sharingOwnedEmpty": {
+    "description": "Owned sharing empty state title"
+  },
   "sharingOwnedEmptyHelp": "Choose Share from an item’s menu. Select the recipients and verify their device codes. Only the items you choose are shared.",
-  "@sharingOwnedEmptyHelp": { "description": "Owned sharing empty state instructions" },
+  "@sharingOwnedEmptyHelp": {
+    "description": "Owned sharing empty state instructions"
+  },
   "sharingDevicesTitle": "Access on another device",
-  "@sharingDevicesTitle": { "description": "Separate device enrollment action section" },
+  "@sharingDevicesTitle": {
+    "description": "Separate device enrollment action section"
+  },
   "sharingDevicesHelp": "Add a device to existing shared access. Device verification and the owner’s permissions still apply.",
-  "@sharingDevicesHelp": { "description": "Device enrollment section explanation" },
+  "@sharingDevicesHelp": {
+    "description": "Device enrollment section explanation"
+  },
   "sharingDevicePrepare": "Add this device",
-  "@sharingDevicePrepare": { "description": "Compact label for preparing a new-device request" },
+  "@sharingDevicePrepare": {
+    "description": "Compact label for preparing a new-device request"
+  },
   "sharingDeviceEndorse": "Confirm another device",
-  "@sharingDeviceEndorse": { "description": "Compact label for endorsing another device" },
+  "@sharingDeviceEndorse": {
+    "description": "Compact label for endorsing another device"
+  },
   "sharingDeviceContinue": "Continue adding a device",
-  "@sharingDeviceContinue": { "description": "Compact label for submitting an endorsed device request" },
+  "@sharingDeviceContinue": {
+    "description": "Compact label for submitting an endorsed device request"
+  },
   "sharingDeviceMore": "More actions",
-  "@sharingDeviceMore": { "description": "Expand secondary device enrollment tools" },
+  "@sharingDeviceMore": {
+    "description": "Expand secondary device enrollment tools"
+  },
   "sharingDeviceMoreHelp": "Continue with an already confirmed device package, or verify signed history to restore local request state. These actions do not grant access by themselves.",
-  "@sharingDeviceMoreHelp": { "description": "Secondary device enrollment and recovery tools explanation" },
+  "@sharingDeviceMoreHelp": {
+    "description": "Secondary device enrollment and recovery tools explanation"
+  },
   "sharingInvitation": "Invitation — verify the owner",
   "sharingAccept": "Verify and accept",
   "sharingRefresh": "Refresh shared data",
@@ -7266,8 +7292,264 @@
   "updateMacSaveTitle": "Save ConsoleCrypt update",
   "updateMacSavePrompt": "Save and open",
   "updateMacDestinationExists": "This file already exists. Retry installation and choose another name or folder for the new DMG.",
-  "@updateMacInstallerOpened": {"description": "macOS update saved and opened; explain manual app replacement"},
-  "@updateMacSaveTitle": {"description": "Title of native save panel for an authenticated macOS update"},
-  "@updateMacSavePrompt": {"description": "Native save panel confirmation button for macOS updater"},
-  "@updateMacDestinationExists": {"description": "Choose a new DMG filename; the updater never overwrites existing files"}
+  "@updateMacInstallerOpened": {
+    "description": "macOS update saved and opened; explain manual app replacement"
+  },
+  "@updateMacSaveTitle": {
+    "description": "Title of native save panel for an authenticated macOS update"
+  },
+  "@updateMacSavePrompt": {
+    "description": "Native save panel confirmation button for macOS updater"
+  },
+  "@updateMacDestinationExists": {
+    "description": "Choose a new DMG filename; the updater never overwrites existing files"
+  },
+  "rdpTitle": "Remote desktop",
+  "@rdpTitle": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpNewConnection": "New RDP connection",
+  "@rdpNewConnection": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpEmptyTitle": "A desktop in a tab",
+  "@rdpEmptyTitle": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpEmptyHelp": "Enter a Windows server and account. Verify the server certificate before signing in.",
+  "@rdpEmptyHelp": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpLocked": "Unlock your vault to open RDP.",
+  "@rdpLocked": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpConnecting": "Connecting…",
+  "@rdpConnecting": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpConnected": "Connected",
+  "@rdpConnected": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpDisconnected": "Connection closed. Create a connection to sign in again.",
+  "@rdpDisconnected": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpConnectionFailed": "Connection failed. Check the address, account and certificate.",
+  "@rdpConnectionFailed": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpSecureAttention": "Ctrl + Alt + Delete",
+  "@rdpSecureAttention": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpResize": "Screen 1920 × 1080",
+  "@rdpResize": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpExpand": "Expand workspace",
+  "@rdpExpand": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpCollapse": "Collapse workspace",
+  "@rdpCollapse": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpAddress": "Server address",
+  "@rdpAddress": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpPort": "Port",
+  "@rdpPort": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpUsername": "Username",
+  "@rdpUsername": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpDomain": "Domain (optional)",
+  "@rdpDomain": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpPassword": "Windows password",
+  "@rdpPassword": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpCredentialsHelp": "The password is used for this sign-in only and is not saved. It is not sent before you confirm the certificate.",
+  "@rdpCredentialsHelp": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpInvalidForm": "Enter an address, a port from 1 to 65535, username and password.",
+  "@rdpInvalidForm": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpCertificateTitle": "Verify the RDP certificate",
+  "@rdpCertificateTitle": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpCertificateHelp": "Compare the entire fingerprint with your administrator over a trusted channel. Confirmation applies only to this connection. Cancel if it does not match.",
+  "@rdpCertificateHelp": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpFingerprint": "Certificate SHA-256",
+  "@rdpFingerprint": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpCertificateConfirm": "I compared the entire certificate fingerprint",
+  "@rdpCertificateConfirm": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpCertificateChanged": "The server certificate changed. Sign-in was blocked; create a new connection and verify the fingerprint.",
+  "@rdpCertificateChanged": {
+    "description": "Safe localized RDP connection failure. No transport payload."
+  },
+  "rdpAuthenticationFailed": "Windows rejected sign-in. Check the username, domain and password.",
+  "@rdpAuthenticationFailed": {
+    "description": "Safe localized RDP connection failure. No transport payload."
+  },
+  "rdpResizeUnavailable": "The server does not support this screen size. Continue at the original size.",
+  "@rdpResizeUnavailable": {
+    "description": "RDP server cannot resize; the existing connection stays active."
+  },
+  "rdpWorkspaceHelp": "Remote desktop in a tab. Clipboard and a selected folder are available only with your permission.",
+  "@rdpWorkspaceHelp": {
+    "description": "RDP session UI."
+  },
+  "rdpPermissions": "Session permissions",
+  "@rdpPermissions": {
+    "description": "RDP session UI."
+  },
+  "rdpAllowClipboard": "Allow text clipboard",
+  "@rdpAllowClipboard": {
+    "description": "RDP session UI."
+  },
+  "rdpClipboardHelp": "Text is exchanged only when you choose Send or Receive. Access is off by default.",
+  "@rdpClipboardHelp": {
+    "description": "RDP session UI."
+  },
+  "rdpFolderHelp": "Give the remote computer access only to a selected folder. Read-only by default.",
+  "@rdpFolderHelp": {
+    "description": "RDP session UI."
+  },
+  "rdpSelectFolder": "Select folder…",
+  "@rdpSelectFolder": {
+    "description": "RDP session UI."
+  },
+  "rdpStopFolder": "Disconnect folder",
+  "@rdpStopFolder": {
+    "description": "RDP session UI."
+  },
+  "rdpNoFolder": "No folder shared",
+  "@rdpNoFolder": {
+    "description": "RDP session UI."
+  },
+  "rdpAllowFolderWrite": "Allow writes to this folder",
+  "@rdpAllowFolderWrite": {
+    "description": "RDP session UI."
+  },
+  "rdpFolderWriteHelp": "The remote computer will be able to create, change and delete files in this folder.",
+  "@rdpFolderWriteHelp": {
+    "description": "RDP session UI."
+  },
+  "rdpFolderUnsupported": "Folder sharing is unavailable on this device.",
+  "@rdpFolderUnsupported": {
+    "description": "RDP session UI."
+  },
+  "rdpPermissionsFailed": "Could not apply permissions. Try again.",
+  "@rdpPermissionsFailed": {
+    "description": "RDP session UI."
+  },
+  "rdpClipboardReceived": "Text received. The clipboard will expire according to your security settings.",
+  "@rdpClipboardReceived": {
+    "description": "RDP session UI."
+  },
+  "rdpClipboardSent": "Text sent to the remote computer.",
+  "@rdpClipboardSent": {
+    "description": "RDP session UI."
+  },
+  "rdpClipboardFailed": "Could not exchange clipboard text.",
+  "@rdpClipboardFailed": {
+    "description": "RDP session UI."
+  },
+  "rdpSendClipboard": "Send clipboard text",
+  "@rdpSendClipboard": {
+    "description": "RDP session UI."
+  },
+  "rdpReceiveClipboard": "Receive clipboard text",
+  "@rdpReceiveClipboard": {
+    "description": "RDP session UI."
+  },
+  "rdpSavedPasswordHelp": "The password will be taken from this host’s encrypted credential.",
+  "@rdpSavedPasswordHelp": {
+    "description": "RDP session UI."
+  },
+  "hostProtocolLabel": "Connection type",
+  "@hostProtocolLabel": {
+    "description": "RDP host editor."
+  },
+  "hostRdpConnectionHelp": "RDP connects directly. The port and credential are set for this host; SSH group settings do not apply.",
+  "@hostRdpConnectionHelp": {
+    "description": "RDP host editor."
+  },
+  "hostRdpPasswordOnly": "Select a password credential for RDP.",
+  "@hostRdpPasswordOnly": {
+    "description": "RDP host editor."
+  },
+  "hostRdpUsernameRequired": "Enter the Windows username",
+  "@hostRdpUsernameRequired": {
+    "description": "RDP host editor."
+  },
+  "rdpFolderPending": "Windows is connecting the folder…",
+  "@rdpFolderPending": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderReady": "Folder connected. Open it in Windows File Explorer.",
+  "@rdpFolderReady": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderDenied": "Windows rejected the folder. Ask your administrator to allow drive redirection; the remote desktop remains connected.",
+  "@rdpFolderDenied": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderUnavailable": "Windows did not connect the folder. Check that drive redirection is allowed on the server, then reconnect.",
+  "@rdpFolderUnavailable": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderChooseFailed": "Could not open the selected folder. Check access to it and select it again.",
+  "@rdpFolderChooseFailed": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderChooseLimit": "Could not select another folder. Cancel unused selections or close unneeded sessions and try again.",
+  "@rdpFolderChooseLimit": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderOpenHelp": "Once connected, open This PC in Windows File Explorer or enter this path in the address bar:",
+  "@rdpFolderOpenHelp": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderWindowsPath": "\\\\tsclient\\ConsoleCrypt",
+  "@rdpFolderWindowsPath": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderLimits": "Up to 256 MiB per file and 512 MiB of writes per session. Links and special files are unavailable. Changing the folder interrupts files currently open in it.",
+  "@rdpFolderLimits": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpClipboardUnavailable": "The text clipboard is not ready or is disabled by the server. Wait and try again; if the error persists, check redirection settings with your administrator.",
+  "@rdpClipboardUnavailable": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpClipboardLimit": "Only text up to 64 KiB can be transferred.",
+  "@rdpClipboardLimit": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpClipboardBusy": "The previous clipboard request is still being processed. Wait and try again.",
+  "@rdpClipboardBusy": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpClipboardEmpty": "No text is available in the clipboard.",
+  "@rdpClipboardEmpty": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  }
 }

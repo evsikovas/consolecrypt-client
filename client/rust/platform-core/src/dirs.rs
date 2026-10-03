@@ -174,6 +174,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn production_default_preserves_pre_rdp_directory_identity() {
+        let prior = directories::ProjectDirs::from("io", "consolecrypt", "ConsoleCrypt").unwrap();
+        let current = AppDirs::system().unwrap();
+        assert_eq!(current.root(), prior.data_local_dir());
+        assert_eq!(DATA_DIR_ENV, "CONSOLECRYPT_DATA_DIR");
+        let dev = directories::ProjectDirs::from("io", "consolecrypt", "ConsoleCryptDev").unwrap();
+        assert_ne!(current.root(), dev.data_local_dir());
+        // Pure path resolution: no user directories are opened or created.
+    }
+
+    #[test]
     fn profile_layout() {
         let tmp = tempfile::tempdir().unwrap();
         let dirs = AppDirs::with_root(tmp.path());

@@ -30,7 +30,7 @@ class _HostPickerDialogState extends ConsumerState<_HostPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final hosts = (ref.watch(hostsProvider).value ?? const <Host>[]).where((h) => h.id != widget.exclude).where((h) {
+    final hosts = (ref.watch(hostsProvider).value ?? const <Host>[]).where((h) => !h.isRdp && h.id != widget.exclude).where((h) {
       final q = _query.toLowerCase();
       return q.isEmpty ||
           h.name.toLowerCase().contains(q) ||

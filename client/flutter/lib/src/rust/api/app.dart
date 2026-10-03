@@ -65,9 +65,7 @@ Future<void> uiStoreSet({required String key, String? value}) =>
 
 /// Start-up configuration from Dart.
 class CoreConfig {
-  /// Data root; `None` = `CONSOLECRYPT_DATA_DIR` or the platform default
-  /// (`~/Library/Application Support/io.consolecrypt.ConsoleCrypt`,
-  /// `%LOCALAPPDATA%\consolecrypt\ConsoleCrypt\data`).
+  /// Data root; `None` = `CONSOLECRYPT_DATA_DIR` or the platform default.
   final String? dataDir;
   final SecureStoreChoice secureStore;
 

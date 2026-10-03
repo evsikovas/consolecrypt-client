@@ -346,6 +346,13 @@ impl AppCore {
             .map(|h| format!("host '{}'", h.name))
             .chain(
                 u.working()
+                    .rdp_hosts()
+                    .iter()
+                    .filter(|h| h.credential_id == Some(id))
+                    .map(|h| format!("RDP host '{}'", h.name)),
+            )
+            .chain(
+                u.working()
                     .groups()
                     .iter()
                     .filter(|g| g.inherited_credential_id == Some(id))

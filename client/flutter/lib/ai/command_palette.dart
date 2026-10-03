@@ -11,6 +11,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/risk_badge.dart';
+import 'package:consolecrypt/rdp/rdp_launcher.dart';
 import 'package:consolecrypt/snippets/run_flow.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
@@ -55,7 +56,7 @@ typedef PaletteHostEndpoint = ({String? username, int? port});
 final _hostEndpointsProvider = FutureProvider.autoDispose<Map<ObjectId, PaletteHostEndpoint>>((ref) async {
   final hosts = ref.watch(hostsProvider).value ?? const <Host>[];
   ref.watch(groupsProvider);
-  ref.watch(credentialsProvider);
+  final credentials = ref.watch(credentialByIdProvider);
   ref.watch(activeProfileProvider.select((profile) => profile?.id));
   final phase = ref.watch(vaultStatusProvider.select((status) => status.value?.phase));
   if (phase != VaultPhase.unlocked) return const {};
@@ -65,6 +66,13 @@ final _hostEndpointsProvider = FutureProvider.autoDispose<Map<ObjectId, PaletteH
   Future<void> resolveNext() async {
     while (ref.mounted && next < hosts.length) {
       final host = hosts[next++];
+      if (host.isRdp) {
+        endpoints[host.id] = (
+          username: host.username ?? credentials[host.credentialId]?.username,
+          port: host.port ?? defaultRdpPort,
+        );
+        continue;
+      }
       if (host.username != null && host.port != null) {
         endpoints[host.id] = (username: host.username, port: host.port);
         continue;
@@ -127,7 +135,7 @@ List<Host> searchPaletteHosts(
 
 String _hostConnectionLabel(Host host, PaletteHostEndpoint? endpoint) {
   final username = endpoint?.username ?? host.username;
-  final port = endpoint?.port ?? host.port;
+  final port = endpoint?.port ?? host.port ?? (host.isRdp ? defaultRdpPort : null);
   final address = host.address.contains(':') && !host.address.startsWith('[') ? '[${host.address}]' : host.address;
   return '${username == null || username.isEmpty ? '' : '$username@'}$address${port == null ? '' : ':$port'}';
 }
@@ -242,10 +250,12 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     final router = GoRouter.of(context);
     setState(() => _openingHost = hostId);
     try {
-      final tab = await runWithFeedback(context, () => ref.read(terminalTabsProvider.notifier).open(host));
+      final Object? tab = host.isRdp
+          ? await RdpLauncher.openSavedHost(context, ref, host)
+          : await runWithFeedback(context, () => ref.read(terminalTabsProvider.notifier).open(host));
       if (tab != null && mounted) {
         _close();
-        router.go(AppRoutes.terminal);
+        router.go(host.isRdp ? AppRoutes.rdp : AppRoutes.terminal);
       }
     } finally {
       if (mounted) setState(() => _openingHost = null);
@@ -324,7 +334,11 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
           enabled: _openingHost == null,
           trailing: _openingHost == host.id
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : Icon(Icons.terminal_rounded, size: 16, semanticLabel: l10n.commonConnect),
+              : Icon(
+                  host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
+                  size: 16,
+                  semanticLabel: l10n.commonConnect,
+                ),
           onSelect: () => unawaited(_connect(host.id)),
         ),
       for (final h in snippets)

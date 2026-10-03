@@ -40,6 +40,8 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
   final _address = TextEditingController();
   final _port = TextEditingController();
   final _username = TextEditingController();
+  final _domain = TextEditingController();
+  HostProtocol _protocol = HostProtocol.ssh;
   final _keepalive = TextEditingController();
   final _notes = TextEditingController();
 
@@ -78,7 +80,7 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
 
   @override
   void dispose() {
-    for (final c in [_name, _address, _port, _username, _keepalive, _notes]) {
+    for (final c in [_name, _address, _port, _username, _domain, _keepalive, _notes]) {
       c.dispose();
     }
     _auth?.dispose();
@@ -87,6 +89,8 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
 
   void _load(Host h) {
     _original = h;
+    _protocol = h.protocol;
+    _domain.text = h.rdpDomain ?? '';
     _name.text = h.name;
     _address.text = h.address;
     _port.text = h.port?.toString() ?? '';
@@ -115,17 +119,21 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
       id: _id,
       name: _name.text.trim(),
       address: _address.text.trim(),
+      protocol: _protocol,
+      rdpDomain: _domain.text.trim().isEmpty ? null : _domain.text.trim(),
+      rdpWidth: _original?.rdpWidth ?? 1280,
+      rdpHeight: _original?.rdpHeight ?? 720,
       port: int.tryParse(_port.text.trim()),
       username: _username.text.trim().isEmpty ? null : _username.text.trim(),
       credentialId: forPreview ? previewId : _original?.credentialId,
       groupId: _groupId,
-      jumpChain: _jumpMode == JumpMode.custom ? _chain : const [],
-      jumpProfileId: _jumpMode == JumpMode.profile ? _jumpProfileId : null,
-      proxyId: _original?.proxyId,
+      jumpChain: _protocol == HostProtocol.ssh && _jumpMode == JumpMode.custom ? _chain : const [],
+      jumpProfileId: _protocol == HostProtocol.ssh && _jumpMode == JumpMode.profile ? _jumpProfileId : null,
+      proxyId: _protocol == HostProtocol.ssh ? _original?.proxyId : null,
       hostKeyPolicy: _policy,
-      backend: _backend,
+      backend: _protocol == HostProtocol.ssh ? _backend : SshBackend.native,
       keepaliveSecs: int.tryParse(_keepalive.text.trim()),
-      agentForwarding: _agentForwarding,
+      agentForwarding: _protocol == HostProtocol.ssh && _agentForwarding,
       tags: _tags,
       notes: _notes.text,
       metadata: overridesGroup
@@ -138,6 +146,10 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
 
   void _recompute() {
     if (!mounted) return;
+    if (_protocol == HostProtocol.rdp) {
+      setState(() => _effective = null);
+      return;
+    }
     final next = ref.read(inventoryServiceProvider).resolveEffective(_draft(forPreview: true));
     setState(() {
       _effective = next;
@@ -162,7 +174,9 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
       if (g.inheritedCredentialId != null) inherits = true;
       cursor = g.parentId;
     }
-    if (_isNew) _auth?.setDefaultMode(inherits ? HostAuthMode.inherit : HostAuthMode.password);
+    if (_isNew && _protocol == HostProtocol.ssh) {
+      _auth?.setDefaultMode(inherits ? HostAuthMode.inherit : HostAuthMode.password);
+    }
   }
 
   Future<void> _save() async {
@@ -234,10 +248,13 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
     }
     final wide = MediaQuery.sizeOf(context).width > 1250;
     final form = _buildForm(context, hosts, groups, groupsById, profiles);
-    final effective = _EffectivePanel(
-      future: _effective,
-      credentialOverride: _auth?.previewLabel(l10n, credentialsById),
-    );
+    final effective = _protocol == HostProtocol.rdp
+        ? SectionCard(
+            title: _protocol.name.toUpperCase(),
+            icon: Icons.desktop_windows_rounded,
+            child: Text(l10n.hostRdpConnectionHelp),
+          )
+        : _EffectivePanel(future: _effective, credentialOverride: _auth?.previewLabel(l10n, credentialsById));
     final originalName = _original?.name;
     return PageScaffold(
       title: _isNew
@@ -299,6 +316,29 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SectionCard(
+            title: l10n.hostProtocolLabel,
+            icon: Icons.swap_horiz_rounded,
+            child: GlassSegmented<HostProtocol>(
+              key: const ValueKey('host-protocol'),
+              inChrome: false,
+              expand: true,
+              segments: const [
+                GlassSegment(value: HostProtocol.ssh, label: 'SSH'),
+                GlassSegment(value: HostProtocol.rdp, label: 'RDP'), // l10n-ignore: protocol identifier
+              ],
+              selected: _protocol,
+              onChanged: !_isNew
+                  ? null
+                  : (protocol) => _set(() {
+                      _protocol = protocol;
+                      _port.text = protocol == HostProtocol.rdp ? '3389' : '';
+                      _auth?.dispose();
+                      _auth = HostAuthDraft.forHost(null, const {});
+                    }),
+            ),
+          ),
+          const SizedBox(height: GlassSpacing.s16),
+          SectionCard(
             title: l10n.hostEditorConnectionSection,
             icon: Icons.dns_rounded,
             child: Column(
@@ -340,7 +380,7 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                         decoration: InputDecoration(
                           labelText: l10n.hostEditorPortLabel,
-                          hintText: l10n.hostEditorPortHint,
+                          hintText: _protocol == HostProtocol.rdp ? '3389' : l10n.hostEditorPortHint,
                         ),
                         validator: _validatePort,
                       ),
@@ -351,6 +391,8 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
                 TextFormField(
                   key: const ValueKey('host-username'),
                   controller: _username,
+                  validator: (v) =>
+                      _protocol == HostProtocol.rdp && (v ?? '').trim().isEmpty ? l10n.hostRdpUsernameRequired : null,
                   autocorrect: false,
                   decoration: InputDecoration(
                     labelText: l10n.hostEditorUsernameLabel,
@@ -358,6 +400,15 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
                   ),
                 ),
                 const SizedBox(height: GlassSpacing.s12),
+                if (_protocol == HostProtocol.rdp) ...[
+                  TextFormField(
+                    key: const ValueKey('host-rdp-domain'),
+                    controller: _domain,
+                    autocorrect: false,
+                    decoration: InputDecoration(labelText: l10n.rdpDomain),
+                  ),
+                  const SizedBox(height: GlassSpacing.s12),
+                ],
                 DropdownButtonFormField<ObjectId?>(
                   isExpanded: true,
                   borderRadius: menuRadius,
@@ -376,117 +427,120 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
           ),
           const SizedBox(height: GlassSpacing.s16),
           HostAuthSection(
+            passwordOnly: _protocol == HostProtocol.rdp,
             draft: _auth!,
             onChanged: _recompute,
             groupName: _groupId == null ? null : groupPathName(groupsById, _groupId),
           ),
           const SizedBox(height: GlassSpacing.s16),
-          SectionCard(
-            title: l10n.hostEditorJumpSection,
-            icon: Icons.alt_route_rounded,
-            subtitle: l10n.hostEditorJumpSubtitle,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                GlassSegmented<JumpMode>(
-                  key: const ValueKey('jump-mode'),
-                  inChrome: false,
-                  expand: true,
-                  segments: [
-                    GlassSegment(value: JumpMode.inherit, label: l10n.hostEditorJumpInherit),
-                    GlassSegment(value: JumpMode.profile, label: l10n.hostEditorJumpProfile),
-                    GlassSegment(value: JumpMode.custom, label: l10n.hostEditorJumpCustom),
-                  ],
-                  selected: _jumpMode,
-                  onChanged: (m) => _set(() => _jumpMode = m),
-                ),
-                const SizedBox(height: GlassSpacing.s12),
-                switch (_jumpMode) {
-                  JumpMode.inherit => Text(
-                    l10n.hostEditorJumpInheritHelp,
-                    style: tokens.typography.body.copyWith(color: tokens.secondaryLabel),
+          if (_protocol == HostProtocol.ssh) ...[
+            SectionCard(
+              title: l10n.hostEditorJumpSection,
+              icon: Icons.alt_route_rounded,
+              subtitle: l10n.hostEditorJumpSubtitle,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  GlassSegmented<JumpMode>(
+                    key: const ValueKey('jump-mode'),
+                    inChrome: false,
+                    expand: true,
+                    segments: [
+                      GlassSegment(value: JumpMode.inherit, label: l10n.hostEditorJumpInherit),
+                      GlassSegment(value: JumpMode.profile, label: l10n.hostEditorJumpProfile),
+                      GlassSegment(value: JumpMode.custom, label: l10n.hostEditorJumpCustom),
+                    ],
+                    selected: _jumpMode,
+                    onChanged: (m) => _set(() => _jumpMode = m),
                   ),
-                  JumpMode.profile => DropdownButtonFormField<ObjectId?>(
+                  const SizedBox(height: GlassSpacing.s12),
+                  switch (_jumpMode) {
+                    JumpMode.inherit => Text(
+                      l10n.hostEditorJumpInheritHelp,
+                      style: tokens.typography.body.copyWith(color: tokens.secondaryLabel),
+                    ),
+                    JumpMode.profile => DropdownButtonFormField<ObjectId?>(
+                      isExpanded: true,
+                      borderRadius: menuRadius,
+                      initialValue: profiles.any((p) => p.id == _jumpProfileId) ? _jumpProfileId : null,
+                      decoration: InputDecoration(labelText: l10n.hostEditorJumpProfile),
+                      items: [
+                        for (final p in profiles)
+                          DropdownMenuItem(
+                            value: p.id,
+                            child: Text(l10n.hostEditorJumpProfileItem(p.chain.length, p.name)),
+                          ),
+                      ],
+                      onChanged: (v) => _set(() => _jumpProfileId = v),
+                    ),
+                    JumpMode.custom => JumpChainEditor(
+                      chain: _chain,
+                      hosts: hosts.where((h) => h.id != _id && !h.isRdp).toList(),
+                      targetLabel: _name.text.isEmpty ? l10n.hostEditorThisHost : _name.text,
+                      onChanged: (c) => _set(() => _chain = c),
+                    ),
+                  },
+                ],
+              ),
+            ),
+            const SizedBox(height: GlassSpacing.s16),
+            SectionCard(
+              title: l10n.hostEditorSecuritySection,
+              icon: Icons.verified_user_rounded,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    l10n.hostEditorHostKeyPolicy,
+                    style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
+                  ),
+                  const SizedBox(height: GlassSpacing.s6),
+                  GlassSegmented<HostKeyPolicy>(
+                    key: const ValueKey('host-key-policy'),
+                    inChrome: false,
+                    expand: true,
+                    segments: [for (final p in HostKeyPolicy.values) GlassSegment(value: p, label: p.localized(l10n))],
+                    selected: _policy,
+                    onChanged: (p) => setState(() => _policy = p),
+                  ),
+                  const SizedBox(height: GlassSpacing.s4),
+                  Text(
+                    _policy.localizedDescription(l10n),
+                    style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                  ),
+                  const SizedBox(height: GlassSpacing.s12),
+                  DropdownButtonFormField<SshBackend>(
                     isExpanded: true,
                     borderRadius: menuRadius,
-                    initialValue: profiles.any((p) => p.id == _jumpProfileId) ? _jumpProfileId : null,
-                    decoration: InputDecoration(labelText: l10n.hostEditorJumpProfile),
+                    initialValue: _backend,
+                    decoration: InputDecoration(labelText: l10n.hostEditorSshBackend),
                     items: [
-                      for (final p in profiles)
-                        DropdownMenuItem(
-                          value: p.id,
-                          child: Text(l10n.hostEditorJumpProfileItem(p.chain.length, p.name)),
-                        ),
+                      for (final b in SshBackend.values) DropdownMenuItem(value: b, child: Text(b.localized(l10n))),
                     ],
-                    onChanged: (v) => _set(() => _jumpProfileId = v),
+                    onChanged: (v) => setState(() => _backend = v ?? SshBackend.native),
                   ),
-                  JumpMode.custom => JumpChainEditor(
-                    chain: _chain,
-                    hosts: hosts.where((h) => h.id != _id).toList(),
-                    targetLabel: _name.text.isEmpty ? l10n.hostEditorThisHost : _name.text,
-                    onChanged: (c) => _set(() => _chain = c),
+                  const SizedBox(height: GlassSpacing.s12),
+                  TextFormField(
+                    controller: _keepalive,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(
+                      labelText: l10n.hostEditorKeepalive,
+                      hintText: l10n.hostEditorKeepaliveHint,
+                    ),
                   ),
-                },
-              ],
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    value: _agentForwarding,
+                    onChanged: (v) => setState(() => _agentForwarding = v),
+                    title: Text(l10n.hostEditorAgentForwarding),
+                    subtitle: Text(l10n.hostEditorAgentForwardingHelp),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: GlassSpacing.s16),
-          SectionCard(
-            title: l10n.hostEditorSecuritySection,
-            icon: Icons.verified_user_rounded,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  l10n.hostEditorHostKeyPolicy,
-                  style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
-                ),
-                const SizedBox(height: GlassSpacing.s6),
-                GlassSegmented<HostKeyPolicy>(
-                  key: const ValueKey('host-key-policy'),
-                  inChrome: false,
-                  expand: true,
-                  segments: [for (final p in HostKeyPolicy.values) GlassSegment(value: p, label: p.localized(l10n))],
-                  selected: _policy,
-                  onChanged: (p) => setState(() => _policy = p),
-                ),
-                const SizedBox(height: GlassSpacing.s4),
-                Text(
-                  _policy.localizedDescription(l10n),
-                  style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
-                ),
-                const SizedBox(height: GlassSpacing.s12),
-                DropdownButtonFormField<SshBackend>(
-                  isExpanded: true,
-                  borderRadius: menuRadius,
-                  initialValue: _backend,
-                  decoration: InputDecoration(labelText: l10n.hostEditorSshBackend),
-                  items: [
-                    for (final b in SshBackend.values) DropdownMenuItem(value: b, child: Text(b.localized(l10n))),
-                  ],
-                  onChanged: (v) => setState(() => _backend = v ?? SshBackend.native),
-                ),
-                const SizedBox(height: GlassSpacing.s12),
-                TextFormField(
-                  controller: _keepalive,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: InputDecoration(
-                    labelText: l10n.hostEditorKeepalive,
-                    hintText: l10n.hostEditorKeepaliveHint,
-                  ),
-                ),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  value: _agentForwarding,
-                  onChanged: (v) => setState(() => _agentForwarding = v),
-                  title: Text(l10n.hostEditorAgentForwarding),
-                  subtitle: Text(l10n.hostEditorAgentForwardingHelp),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: GlassSpacing.s16),
+            const SizedBox(height: GlassSpacing.s16),
+          ],
           SectionCard(
             title: l10n.hostEditorOrganisationSection,
             icon: Icons.label_rounded,

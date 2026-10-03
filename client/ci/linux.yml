@@ -6,6 +6,9 @@ build-linux:
   resource_group: consolecrypt-macos
   timeout: 3h
   rules:
+    - if: '$CI_COMMIT_BRANCH == "codex/rdp-0.3-source"'
+      when: on_success
+      allow_failure: false
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       changes:
         - client/**/*
@@ -17,6 +20,7 @@ build-linux:
       when: manual
       allow_failure: true
   script:
+    - python3 -m unittest discover -s client/scripts -p 'test_release_ci.py' -v
     - bash client/scripts/ci-linux.sh
   artifacts:
     when: always

@@ -12,11 +12,14 @@ import shutil
 import subprocess
 
 ROOT_FILES = {
-    'README.md', 'SECURITY.md', 'LICENSE', 'AUTHORS',
+    'README.md', 'SECURITY.md', 'LICENSE', 'AUTHORS', 'PROTOCOL_CHANGELOG.md',
     '.gitignore', '.gitattributes', '.dockerignore', '.gitlab-ci.yml',
     'rust-toolchain.toml',
 }
-PUBLIC_DOCUMENTS = {'server/deploy/native/README.md'}
+PUBLIC_DOCUMENTS = {
+    'server/deploy/native/README.md',
+    'client/rust/rdp-core/vendor/PROVENANCE.md',
+}
 PRIVATE_DIRS = {
     '.git', '.github', '.codex', '.claude', '.agents', '.idea', '.vscode',
     'target', 'build', 'dist', '.dart_tool', '.gradle', '.cxx', 'Pods',
@@ -25,6 +28,7 @@ PRIVATE_DIRS = {
 PRIVATE_NAMES = {
     'AGENTS.md', 'CLAUDE.md', '.DS_Store', 'local.properties', 'key.properties',
     '.flutter-plugins', '.flutter-plugins-dependencies', '.env', 'server.json',
+    'windows_password.txt',
 }
 PRIVATE_SUFFIXES = {
     '.key', '.pem', '.p12', '.pfx', '.jks', '.keystore', '.mobileprovision',
@@ -80,7 +84,7 @@ def export(root: Path, destination: Path) -> list[str]:
     with (destination / '.gitignore').open('a') as ignore:
         ignore.write('\n# Private development notes do not belong in this public tree.\n'
                      'AGENTS.md\nCLAUDE.md\nCLIENT_*.md\nSERVER_*.md\n'
-                     'PARALLEL_*.md\nPROTOCOL_CHANGELOG.md\n'
+                     'PARALLEL_*.md\n'
                      '.codex/\n.claude/\n.agents/\ndocs/adr/\ndocs/design/\n')
     return selected
 

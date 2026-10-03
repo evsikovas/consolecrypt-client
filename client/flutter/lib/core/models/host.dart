@@ -3,6 +3,9 @@ import 'package:consolecrypt/core/models/validation.dart';
 
 /// Mirrors `cc_models::host::DEFAULT_SSH_PORT`.
 const int defaultSshPort = 22;
+const int defaultRdpPort = 3389;
+
+enum HostProtocol { ssh, rdp }
 
 /// Mirrors `cc_models::host::HostKeyPolicy`.
 enum HostKeyPolicy {
@@ -44,6 +47,10 @@ final class Host {
     required this.address,
     required this.createdAt,
     required this.updatedAt,
+    this.protocol = HostProtocol.ssh,
+    this.rdpDomain,
+    this.rdpWidth = 1280,
+    this.rdpHeight = 720,
     this.port,
     this.username,
     this.credentialId,
@@ -66,18 +73,23 @@ final class Host {
   }
 
   final ObjectId id;
+  final HostProtocol protocol;
+  final String? rdpDomain;
+  final int rdpWidth;
+  final int rdpHeight;
+  bool get isRdp => protocol == HostProtocol.rdp;
   final String name;
 
   /// Hostname or IP literal.
   final String address;
 
-  /// `null` = inherit from group, else 22.
+  /// SSH: inherit from group, else 22. RDP: use 3389; never inherits SSH options.
   final int? port;
 
-  /// `null` = inherit from group.
+  /// SSH may inherit from the group. RDP uses only explicit connection credentials.
   final String? username;
 
-  /// `null` = inherit from group.
+  /// SSH may inherit from the group. RDP uses only explicit connection credentials.
   final ObjectId? credentialId;
   final ObjectId? groupId;
 
@@ -103,6 +115,10 @@ final class Host {
   /// Change membership without altering explicit connection/authentication fields.
   Host withGroup(ObjectId? value) => Host(
     id: id,
+    protocol: protocol,
+    rdpDomain: rdpDomain,
+    rdpWidth: rdpWidth,
+    rdpHeight: rdpHeight,
     name: name,
     address: address,
     createdAt: createdAt,

@@ -28,6 +28,23 @@ fn exists(ws: &WorkingSet, id: ObjectId, kind: ObjectKind, field: &str) -> AppRe
 /// Referential integrity of an object about to be saved.
 pub(crate) fn validate_refs(ws: &WorkingSet, obj: &VaultObject) -> AppResult<()> {
     match obj {
+        VaultObject::RdpHost(h) => {
+            h.validate()?;
+            if let Some(g) = h.group_id {
+                exists(ws, g, ObjectKind::Group, "group_id")?;
+            }
+            if let Some(c) = h.credential_id {
+                if !ws
+                    .credential(c)
+                    .is_some_and(|c| c.kind == cc_models::credential::CredentialKind::Password)
+                {
+                    return Err(AppError::invalid(
+                        "credential_id",
+                        "RDP requires a password credential",
+                    ));
+                }
+            }
+        }
         VaultObject::Host(h) => {
             if let Some(c) = h.credential_id {
                 exists(ws, c, ObjectKind::Credential, "credential_id")?;
@@ -115,6 +132,7 @@ fn referrers(ws: &WorkingSet, id: ObjectId) -> Vec<String> {
     let mut out = Vec::new();
     for o in ws.objects() {
         let hit = match &o {
+            VaultObject::RdpHost(h) => h.credential_id == Some(id) || h.group_id == Some(id),
             VaultObject::Host(h) => {
                 h.credential_id == Some(id)
                     || h.group_id == Some(id)
@@ -132,6 +150,7 @@ fn referrers(ws: &WorkingSet, id: ObjectId) -> Vec<String> {
         };
         if hit {
             out.push(match &o {
+                VaultObject::RdpHost(h) => format!("RDP host '{}'", h.name),
                 VaultObject::Host(h) => format!("host '{}'", h.name),
                 VaultObject::Group(g) => format!("group '{}'", g.name),
                 VaultObject::JumpProfile(p) => format!("jump profile '{}'", p.name),
@@ -209,6 +228,7 @@ impl AppCore {
             .iter()
             .map(HostDto::from_model)
             .collect();
+        v.extend(u.working().rdp_hosts().iter().map(HostDto::from_rdp));
         v.sort_by_key(|a| a.name.to_lowercase());
         Ok(v)
     }
@@ -219,6 +239,7 @@ impl AppCore {
         u.working()
             .host(id)
             .map(|h| HostDto::from_model(&h))
+            .or_else(|| u.working().rdp_host(id).map(|h| HostDto::from_rdp(&h)))
             .ok_or_else(|| AppError::not_found("host", id))
     }
 
@@ -240,6 +261,26 @@ impl AppCore {
     }
 
     pub async fn save_host(&self, host: HostDto) -> AppResult<HostDto> {
+        if host.protocol == HostProtocol::Rdp {
+            let (_, u) = self.unlocked().await?;
+            let id = if host.id.trim().is_empty() {
+                ObjectId::new()
+            } else {
+                parse_id("id", &host.id)?
+            };
+            let existing = u.working().rdp_host(id);
+            if !host.id.trim().is_empty() && existing.is_none() {
+                return Err(AppError::invalid(
+                    "protocol",
+                    "cannot change the connection type of an existing host",
+                ));
+            }
+            let h = host.to_rdp_model(id, existing.as_ref())?;
+            let object = VaultObject::RdpHost(h.clone());
+            validate_refs(u.working(), &object)?;
+            u.writer.put(object).await?;
+            return Ok(HostDto::from_rdp(&h));
+        }
         self.save_dto(host, WorkingSet::host, VaultObject::Host)
             .await
     }
@@ -247,6 +288,17 @@ impl AppCore {
     /// Delete a host and its tunnels; refused while other hosts or jump
     /// profiles route through it.
     pub async fn delete_host(&self, id: String) -> AppResult<()> {
+        let (_, u) = self.unlocked().await?;
+        let object_id = parse_id("id", &id)?;
+        if let Some(h) = u.working().rdp_host(object_id) {
+            ensure_unreferenced(u.working(), object_id, "RDP host")?;
+            let inline = crate::host_auth::inline_credential(&h.host);
+            u.writer.delete(object_id).await?;
+            if let Some(c) = inline {
+                crate::host_auth::delete_credential_if_unused(&u, c).await?;
+            }
+            return Ok(());
+        }
         let (id, u) = self.delete_object(&id, ObjectKind::Host).await?;
         ensure_unreferenced(u.working(), id, "host")?;
         for t in u

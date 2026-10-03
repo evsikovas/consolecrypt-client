@@ -16,7 +16,8 @@ import tempfile
 VERSION = re.compile(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\+([1-9][0-9]*)')
 REQUIRED_ELFS = ('consolecrypt', 'lib/libapp.so', 'lib/libflutter_linux_gtk.so', 'lib/libcc_bridge.so')
 DEB_DEPENDS = ('libc6 (>= 2.35), libstdc++6 (>= 11), libgcc-s1, '
-               'libgtk-3-0 (>= 3.22), libglib2.0-0 (>= 2.56), libblkid1, libepoxy0, liblzma5, libgl1, libegl1, libgles2')
+               'libgtk-3-0 (>= 3.22), libglib2.0-0 (>= 2.56), libblkid1, libepoxy0, liblzma5, libgl1, libegl1, libgles2, '
+               'xdg-desktop-portal')
 
 
 def digest(path: Path) -> str:
@@ -57,12 +58,19 @@ def stage_bundle(root: Path, bundle: Path, stage: Path, version: str) -> dict:
     license_file = root / 'LICENSE'
     if 'GNU AFFERO GENERAL PUBLIC LICENSE' not in license_file.read_text():
         raise ValueError('The distribution must include the full AGPL licence')
+    rdp_notice = root / 'client/rust/rdp-core/THIRD_PARTY_NOTICES.txt'
+    if (root / 'client/rust/rdp-core').is_dir():
+        packaged_notice = bundle / 'data/flutter_assets/assets/licenses/RDP-THIRD-PARTY-NOTICES.txt'
+        if not rdp_notice.is_file() or not packaged_notice.is_file() or packaged_notice.read_bytes() != rdp_notice.read_bytes():
+            raise ValueError('The RDP release bundle must include the current third-party notice')
     installation = stage / 'opt/consolecrypt'
     shutil.copytree(bundle, installation)
     for path in installation.rglob('*'):
         path.chmod(0o755 if path.is_dir() else 0o644)
     (installation / 'consolecrypt').chmod(0o755)
     shutil.copy2(license_file, installation / 'LICENSE')
+    if rdp_notice.is_file():
+        shutil.copy2(rdp_notice, installation / 'RDP-THIRD-PARTY-NOTICES.txt')
     receipt = {
         'version': version, 'platform': 'linux-x64', 'deb_version': f'{release}-{build}',
         'rpm_version': release, 'rpm_release': build,
@@ -86,6 +94,8 @@ def stage_bundle(root: Path, bundle: Path, stage: Path, version: str) -> dict:
     documentation = stage / 'usr/share/doc/consolecrypt'
     documentation.mkdir(parents=True)
     shutil.copy2(license_file, documentation / 'LICENSE')
+    if rdp_notice.is_file():
+        shutil.copy2(rdp_notice, documentation / 'RDP-THIRD-PARTY-NOTICES.txt')
     (documentation / 'copyright').write_text(
         'ConsoleCrypt\nCopyright 2026 Alexander Evsikov <i@evsikov.net>\n'
         'First-party software: AGPL-3.0-only. Full text: LICENSE.\n'
@@ -118,7 +128,10 @@ def build_packages(root: Path, bundle: Path, output: Path, version: str) -> dict
             f'Package: consolecrypt\nVersion: {release}-{build}\nArchitecture: amd64\n'
             f'Maintainer: Alexander Evsikov <i@evsikov.net>\nSection: net\nPriority: optional\n'
             f'Installed-Size: {installed_size}\nDepends: {DEB_DEPENDS}\n'
-            'Recommends: gnome-keyring, libgl1-mesa-dri, fonts-dejavu-core\nSuggests: openssh-client\n'
+            # The rfd XDG picker requires the frontend; let the desktop choose
+            # its FileChooser provider instead of forcing GTK onto KDE/GNOME.
+            'Recommends: gnome-keyring, libgl1-mesa-dri, fonts-dejavu-core\n'
+            'Suggests: openssh-client, xdg-desktop-portal-gtk | xdg-desktop-portal-gnome | xdg-desktop-portal-kde\n'
             'Homepage: https://consolecrypt.evsikov.net\n'
             'Description: SSH, SFTP and encrypted workspaces for Linux\n'
             ' Manage hosts, snippets and team sharing. Requires a graphical desktop\n'
@@ -135,10 +148,13 @@ def build_packages(root: Path, bundle: Path, output: Path, version: str) -> dict
             'Summary: SSH, SFTP and encrypted workspaces for Linux\nLicense: AGPL-3.0-only\n'
             'URL: https://consolecrypt.evsikov.net\nBuildArch: x86_64\n'
             'Requires: gtk3 >= 3.22\nRequires: glib2 >= 2.56\nRequires: dbus\n'
+            'Requires: xdg-desktop-portal\n'
             # Impeller dlopens GLES, so ELF dependency discovery cannot find it.
             'Requires: mesa-libGL\nRequires: mesa-libEGL\nRequires: libGLESv2.so.2()(64bit)\n'
             'Recommends: gnome-keyring\nRecommends: mesa-dri-drivers\n'
             'Recommends: dejavu-sans-mono-fonts\nSuggests: openssh-clients\n'
+            'Suggests: xdg-desktop-portal-gtk\nSuggests: xdg-desktop-portal-gnome\n'
+            'Suggests: xdg-desktop-portal-kde\n'
             '%description\nManage hosts, snippets and team sharing. Requires a graphical desktop\n'
             'and an unlocked Secret Service keyring on its session D-Bus.\n'
             '%prep\n%build\n%install\n'

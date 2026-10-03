@@ -153,7 +153,7 @@ void main() {
       expect(host.inlineCredentialId, const ObjectId('c1'));
       expect(host.createdAt, DateTime.fromMillisecondsSinceEpoch(1700000000000, isUtc: true));
       final back = hostToJson(host, base: hostJson);
-      expect(back, hostJson);
+      expect(back, {...hostJson, 'protocol': 'ssh', 'rdp_domain': null, 'rdp_width': 1280, 'rdp_height': 720});
       // A brand-new draft still produces every field app-core requires.
       final fresh = hostToJson(Host.create(name: 'x', address: 'y'));
       expect(fresh.keys, containsAll(hostJson.keys));

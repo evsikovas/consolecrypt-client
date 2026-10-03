@@ -35,8 +35,12 @@ mkdir -p build/app/outputs/flutter-apk
 printf 'new test artifact' > build/app/outputs/flutter-apk/app-release.apk
 ''')
         self.environment = os.environ.copy()
+        android_user = self.base / 'android-user'
+        android_user.mkdir()
+        (android_user / 'debug.keystore').write_bytes(b'synthetic marker; not opened')
         self.environment.update({
             'ANDROID_HOME': str(sdk),
+            'ANDROID_USER_HOME': str(android_user),
             'PATH': str(self.binaries) + os.pathsep + self.environment['PATH'],
         })
         self.output = self.repo / 'dist/android'
@@ -73,6 +77,16 @@ printf 'new test artifact' > build/app/outputs/flutter-apk/app-release.apk
         )
         self.assertEqual((self.output / 'ConsoleCrypt.version').read_text(), '0.0.2+2\n')
         self.assertEqual(list(self.output.glob('*.tmp.*')), [])
+
+    def test_missing_preview_signer_fails_before_compilation_without_key_creation(self):
+        signer = Path(self.environment['ANDROID_USER_HOME']) / 'debug.keystore'
+        signer.unlink()
+        result = self.run_packaging()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('no key is created', result.stderr)
+        self.assertFalse(signer.exists())
+        self.assertFalse((self.flutter / 'build').exists())
+        self.assertEqual(self.alias.read_bytes(), b'previous test artifact')
 
     def test_failed_copy_preserves_alias_and_cleans_staging(self):
         self.executable(self.binaries / 'cp', '#!/bin/sh\nexit 23\n')

@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/groups/group_dialogs.dart';
 import 'package:consolecrypt/groups/group_tree.dart';
 import 'package:consolecrypt/hosts/inventory_navigation.dart';
+import 'package:consolecrypt/rdp/rdp_launcher.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/sharing/sharing_collections.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
@@ -53,6 +54,11 @@ List<Host> filterHosts(
 }
 
 Future<void> connectToHost(BuildContext context, WidgetRef ref, Host host) async {
+  if (host.isRdp) {
+    final tab = await RdpLauncher.openSavedHost(context, ref, host);
+    if (tab != null && context.mounted) context.go(AppRoutes.rdp);
+    return;
+  }
   final tab = await runWithFeedback(context, () => ref.read(terminalTabsProvider.notifier).open(host));
   if (tab != null && context.mounted) context.go(AppRoutes.terminal);
 }
@@ -281,9 +287,13 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                   ),
                   if (group != null) ...[
                     if (ref.watch(activeProfileProvider)?.isSynced == true)
-                      GlassIconButton(key: const ValueKey('inventory-share-group'), tooltip: l.sharingPublish,
-                        icon: Icons.share_outlined, style: GlassIconButtonStyle.plain,
-                        onPressed: () => showSharingGroupPublish(context, groupId: group.id.value)),
+                      GlassIconButton(
+                        key: const ValueKey('inventory-share-group'),
+                        tooltip: l.sharingPublish,
+                        icon: Icons.share_outlined,
+                        style: GlassIconButtonStyle.plain,
+                        onPressed: () => showSharingGroupPublish(context, groupId: group.id.value),
+                      ),
                     GlassIconButton(
                       key: const ValueKey('inventory-group-settings'),
                       tooltip: l.inventoryGroupSettings,
@@ -595,7 +605,9 @@ class _HostTile extends ConsumerWidget {
     final l10n = context.l10n;
     final hasGroups = ref.watch(groupByIdProvider).isNotEmpty;
     final userPart = host.username == null ? '' : '${host.username}@';
-    final portPart = host.port == null || host.port == defaultSshPort ? '' : ':${host.port}';
+    final portPart = host.port == null || host.port == (host.isRdp ? defaultRdpPort : defaultSshPort)
+        ? ''
+        : ':${host.port}';
     final connected = ref.watch(terminalTabsProvider).tabs.any((tab) => tab.host.id == host.id && tab.isConnected);
     final heading = Row(
       children: [
@@ -628,7 +640,7 @@ class _HostTile extends ConsumerWidget {
         GlassIconButton(
           key: ValueKey('connect-${host.name}'),
           onPressed: () => connectToHost(context, ref, host),
-          icon: Icons.terminal_rounded,
+          icon: host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
           tooltip: l10n.commonConnect,
         ),
         const SizedBox(width: GlassSpacing.s4),
@@ -638,7 +650,7 @@ class _HostTile extends ConsumerWidget {
               key: ValueKey('host-connect-menu-${host.name}'),
               value: _HostAction.connect,
               label: l10n.commonConnect,
-              icon: Icons.terminal_rounded,
+              icon: host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
             ),
             if (hasGroups)
               GlassMenuItem(
@@ -648,8 +660,9 @@ class _HostTile extends ConsumerWidget {
                 icon: Icons.drive_file_move_rounded,
               ),
             const GlassMenuDivider(),
-            GlassMenuItem(value: _HostAction.sftp, label: l10n.hostsOpenSftp, icon: Icons.folder_copy_rounded),
-            if (ref.watch(activeProfileProvider)?.isSynced == true)
+            if (!host.isRdp)
+              GlassMenuItem(value: _HostAction.sftp, label: l10n.hostsOpenSftp, icon: Icons.folder_copy_rounded),
+            if (!host.isRdp && ref.watch(activeProfileProvider)?.isSynced == true)
               GlassMenuItem(value: _HostAction.share, label: l10n.sharingPublish, icon: Icons.share_outlined),
             GlassMenuItem(
               key: ValueKey('host-edit-menu-${host.name}'),
@@ -658,8 +671,16 @@ class _HostTile extends ConsumerWidget {
               icon: Icons.edit_rounded,
             ),
             if (host.metadata.containsKey('cc.shared.share') || host.metadata.containsKey('cc.shared.instance')) ...[
-              GlassMenuItem(value: _HostAction.refreshShared, label: l10n.sharingRefreshHost, icon: Icons.refresh_rounded),
-              GlassMenuItem(value: _HostAction.detachShared, label: l10n.sharingDetachHost, icon: Icons.link_off_rounded),
+              GlassMenuItem(
+                value: _HostAction.refreshShared,
+                label: l10n.sharingRefreshHost,
+                icon: Icons.refresh_rounded,
+              ),
+              GlassMenuItem(
+                value: _HostAction.detachShared,
+                label: l10n.sharingDetachHost,
+                icon: Icons.link_off_rounded,
+              ),
             ],
             const GlassMenuDivider(),
             GlassMenuItem(
@@ -687,8 +708,12 @@ class _HostTile extends ConsumerWidget {
                 await showSharingBoundHost(context, host);
               case _HostAction.detachShared:
                 final profile = ref.read(sharingSessionScopeProvider);
-                final ok = await showConfirmDialog(context, title: l10n.sharingDetachHost,
-                  message: l10n.sharingDetachHostHelp, confirmLabel: l10n.sharingDetachHost);
+                final ok = await showConfirmDialog(
+                  context,
+                  title: l10n.sharingDetachHost,
+                  message: l10n.sharingDetachHostHelp,
+                  confirmLabel: l10n.sharingDetachHost,
+                );
                 if (ok && context.mounted && sharingSessionCurrent(ref, profile)) {
                   await runWithFeedback(context, () => ref.read(sharingServiceProvider).detachHost(host.id.value));
                 }
@@ -792,7 +817,7 @@ class _HostTile extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      host.tags.isEmpty ? 'SSH' : host.tags.join(' · '),
+                      host.tags.isEmpty ? (host.isRdp ? 'RDP' : 'SSH') : host.tags.join(' · '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: t.caption.copyWith(color: tokens.secondaryLabel),

@@ -216,6 +216,14 @@ mod tests {
     use secrecy::ExposeSecret;
 
     #[test]
+    fn production_secret_service_preserves_existing_item_namespace() {
+        assert_eq!(DEFAULT_SERVICE, "io.consolecrypt.ConsoleCrypt");
+        assert_ne!(DEFAULT_SERVICE, "io.consolecrypt.ConsoleCrypt.Dev");
+        assert!(validate_secret_name(DEFAULT_SERVICE).is_ok());
+        // No D-Bus connection, collection unlock or user item lookup.
+    }
+
+    #[test]
     fn text_encoding_roundtrips_all_binary_values_and_portable_limit() {
         for value in [
             Vec::new(),

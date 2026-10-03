@@ -57,6 +57,9 @@ try {
         Invoke-Checked git @('-C', $Repo, 'worktree', 'add', '--detach', $TmpWt, $Commit)
         $Src = $TmpWt
     }
+    if (Test-Path (Join-Path $Src 'client\rust\rdp-core')) {
+        Invoke-Checked python @((Join-Path $Src 'client\scripts\verify-release-identity.py'), '--root', $Src)
+    }
     $Mode = if ($Debug) { 'debug' } else { 'release' }
     # OpenSSL adds long source paths below Cargo's target directory. Keep it
     # out of Flutter's deeply nested build/windows/.../plugins directory.
@@ -88,6 +91,9 @@ try {
     } else {
         # Historical commits retain the licenses originally published with them.
         Copy-Item (Join-Path $Src 'LICENSE-MIT'), (Join-Path $Src 'LICENSE-APACHE') $AppOut -Force
+    }
+    if (Test-Path (Join-Path $Src 'client\rust\rdp-core')) {
+        Copy-Item (Join-Path $Src 'client\rust\rdp-core\THIRD_PARTY_NOTICES.txt') (Join-Path $AppOut 'RDP-THIRD-PARTY-NOTICES.txt')
     }
     if (-not $NoCli) {
         Set-Location (Join-Path $Src 'client\rust')

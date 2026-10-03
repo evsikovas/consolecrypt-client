@@ -157,6 +157,9 @@ pub enum AppError {
     /// Other SSH failure.
     #[error("ssh: {0}")]
     Ssh(String),
+    /// Sanitized RDP error; never contains remote messages or credentials.
+    #[error("remote desktop: {0}")]
+    Rdp(cc_rdp_core::RdpError),
     /// Tunnel failure.
     #[error("tunnel: {0}")]
     Tunnel(String),
@@ -271,6 +274,7 @@ impl AppError {
             AppError::SshPassphraseRequired(_) => "ssh_passphrase_required",
             AppError::SshConnect(_) => "ssh_connect",
             AppError::Ssh(_) => "ssh",
+            AppError::Rdp(_) => "rdp",
             AppError::Tunnel(_) => "tunnel",
             AppError::Sftp(_) => "sftp",
             AppError::RemoteNotFound { .. } => "not_found",

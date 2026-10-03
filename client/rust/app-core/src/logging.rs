@@ -28,6 +28,11 @@ use tracing_subscriber::{EnvFilter, Layer};
 /// Default directives when the user supplies none.
 pub const DEFAULT_DIRECTIVES: &str = "warn,cc_app_core=info,cc_sync_core=info";
 
+// RDP dependency diagnostics may contain authentication tokens, desktop data
+// or typed text. Only our sanitized bridge errors are exposed to the user.
+const RDP_SAFE_LOG_DIRECTIVES: &[&str] =
+    &["cc_rdp_core=off", "ironrdp=off", "sspi=off", "picky=off"];
+
 /// `EnvFilter` from `user_directives` (e.g. `RUST_LOG` or a `-v` level;
 /// `None`/empty → [`DEFAULT_DIRECTIVES`]) with every
 /// [`SAFE_LOG_DIRECTIVES`] entry appended last. Invalid user directives are
@@ -40,7 +45,7 @@ pub fn env_filter(user_directives: Option<&str>) -> EnvFilter {
     let mut filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::WARN.into())
         .parse_lossy(user);
-    for d in SAFE_LOG_DIRECTIVES {
+    for d in SAFE_LOG_DIRECTIVES.iter().chain(RDP_SAFE_LOG_DIRECTIVES) {
         match d.parse() {
             Ok(directive) => filter = filter.add_directive(directive),
             // The constant is ours; a parse failure is a bug caught by tests.
@@ -54,7 +59,7 @@ pub fn env_filter(user_directives: Option<&str>) -> EnvFilter {
 /// [`SAFE_LOG_DIRECTIVES`] regardless of the user's directives.
 pub fn safe_targets() -> Targets {
     let mut t = Targets::new().with_default(LevelFilter::TRACE);
-    for d in SAFE_LOG_DIRECTIVES {
+    for d in SAFE_LOG_DIRECTIVES.iter().chain(RDP_SAFE_LOG_DIRECTIVES) {
         if let Some((target, level)) = d.split_once('=') {
             if let Ok(level) = level.parse::<LevelFilter>() {
                 t = t.with_target(target, level);
@@ -119,6 +124,33 @@ pub fn verbosity_directives(verbose: u8) -> &'static str {
 mod tests {
     use super::*;
     use tracing_subscriber::layer::Filter;
+
+    #[test]
+    fn rdp_diagnostics_cannot_be_enabled_by_more_specific_user_filters() {
+        let filter = filter(Some(
+            "trace,sspi::credssp=trace,ironrdp_connector::credssp=trace",
+        ));
+        let targets = safe_targets();
+        for target in [
+            "cc_rdp_core",
+            "ironrdp_connector::credssp",
+            "ironrdp_session::fast_path",
+            "ironrdp_pdu::input",
+            "sspi::credssp",
+            "picky::key",
+        ] {
+            assert!(
+                !targets.would_enable(target, &tracing::Level::ERROR),
+                "{target}"
+            );
+        }
+        let _ = filter.max_level_hint();
+        for directive in RDP_SAFE_LOG_DIRECTIVES {
+            directive
+                .parse::<tracing_subscriber::filter::Directive>()
+                .unwrap();
+        }
+    }
 
     #[test]
     fn safe_directives_parse_and_cap_targets() {

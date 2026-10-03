@@ -155,6 +155,14 @@ mod tests {
     use super::*;
     use secrecy::ExposeSecret;
 
+    #[test]
+    fn production_keychain_service_preserves_existing_item_namespace() {
+        assert_eq!(DEFAULT_SERVICE, "io.consolecrypt.ConsoleCrypt");
+        assert_ne!(DEFAULT_SERVICE, "io.consolecrypt.ConsoleCrypt.Dev");
+        assert!(validate_secret_name(DEFAULT_SERVICE).is_ok());
+        // Do not instantiate an OS entry or query the user's Keychain.
+    }
+
     /// Touches the real OS keychain (may prompt on macOS). Run manually:
     /// `cargo test -p cc-platform-core -- --ignored os_store`.
     #[test]

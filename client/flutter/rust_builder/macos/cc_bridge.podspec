@@ -18,6 +18,8 @@ Pod::Spec.new do |s|
   s.dependency 'FlutterMacOS'
   # Touch ID prompt of the `consolecrypt/local_auth` channel (CcBridgePlugin).
   s.frameworks = 'LocalAuthentication'
+  # RDP graphics enables flate2's native zlib backend in the Rust static library.
+  s.libraries = 'z'
 
   s.platform = :osx, '10.15'
   s.swift_version = '5.0'

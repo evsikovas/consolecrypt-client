@@ -191,6 +191,8 @@ pub(crate) struct Unlocked {
     pub codec: Arc<VaultCodec>,
     pub writer: VaultWriter,
     pub ssh: Arc<SshRuntime>,
+    /// RDP sessions belong to this unlock lifetime, never to the global bridge.
+    pub rdp: Arc<cc_rdp_core::RdpManager>,
     /// AI runtime: search index, providers, conversations, approvals.
     pub ai: Arc<crate::ai::AiSession>,
     /// "Edit in the default app" sessions (ADR-0108).
@@ -275,6 +277,8 @@ impl Unlocked {
     /// first (their final uploads need SFTP), then transfers.
     async fn shutdown(&self) {
         self.sharing_shutdown.send_replace(true);
+        // Fence in-flight RDP connects before waiting for SFTP/SSH cleanup.
+        self.rdp.shutdown();
         self.edit.begin_shutdown();
         self.enrollment.clear();
         self.edit.stop_all().await;
@@ -495,6 +499,7 @@ impl Session {
             codec,
             writer: writer.clone(),
             ssh: ssh.clone(),
+            rdp: Arc::new(cc_rdp_core::RdpManager::new()),
             ai: ai.clone(),
             edit: edit.clone(),
             transfers: crate::transfers::TransferManager::new(self.ctx.clone()),
@@ -700,6 +705,7 @@ async fn emit_reload(writer: &VaultWriter, ctx: &AppCtx) {
     let mut by_kind: HashMap<ObjectKind, Vec<String>> = HashMap::new();
     for kind in [
         ObjectKind::Host,
+        ObjectKind::RdpHost,
         ObjectKind::Group,
         ObjectKind::JumpProfile,
         ObjectKind::Proxy,

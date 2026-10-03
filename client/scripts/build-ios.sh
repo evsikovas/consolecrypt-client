@@ -4,6 +4,9 @@
 set -euo pipefail
 client_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 repo_dir="$(cd -- "$client_dir/.." && pwd)"
+if [[ -d "$client_dir/rust/rdp-core" ]]; then
+  python3 "$client_dir/scripts/verify-release-identity.py" --root "$repo_dir"
+fi
 mode="${1:---simulator}"
 if [[ "$mode" != '--simulator' && "$mode" != '--device' ]]; then
   echo 'Usage: build-ios.sh [--simulator|--device]' >&2
@@ -38,6 +41,10 @@ actual_build="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app/Info.pl
 if [[ "$actual_version+$actual_build" != "$build_version" ]]; then
   echo 'Native iOS bundle version does not match the reserved version.' >&2
   exit 1
+fi
+[[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Info.plist")" == io.consolecrypt.consolecrypt ]] || { echo 'Refusing a non-production iOS bundle.' >&2; exit 1; }
+if [[ -d "$client_dir/rust/rdp-core" ]]; then
+  cmp "$client_dir/rust/rdp-core/THIRD_PARTY_NOTICES.txt" "$app/Frameworks/App.framework/flutter_assets/assets/licenses/RDP-THIRD-PARTY-NOTICES.txt"
 fi
 out_dir="$repo_dir/dist/ios"
 mkdir -p -- "$out_dir"

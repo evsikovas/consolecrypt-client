@@ -13,6 +13,8 @@ pub mod credentials;
 pub mod error;
 pub mod inventory;
 pub mod profiles;
+pub mod rdp;
+pub mod rdp_hosts;
 pub mod sftp;
 pub mod sharing;
 pub mod ssh;

@@ -156,6 +156,7 @@ pub(crate) fn owner_of(u: &Unlocked, credential_id: ObjectId) -> Option<Host> {
     u.working()
         .hosts()
         .into_iter()
+        .chain(u.working().rdp_hosts().into_iter().map(|h| h.host))
         .find(|h| inline_credential(h) == Some(credential_id))
 }
 
@@ -186,6 +187,10 @@ pub(crate) async fn delete_credential_if_unused(u: &Unlocked, id: ObjectId) -> A
         .iter()
         .any(|h| h.credential_id == Some(id))
         || u.working()
+            .rdp_hosts()
+            .iter()
+            .any(|h| h.credential_id == Some(id))
+        || u.working()
             .groups()
             .iter()
             .any(|g| g.inherited_credential_id == Some(id));
@@ -206,6 +211,14 @@ impl AppCore {
     /// Creates/updates/deletes the host-owned inline credential atomically
     /// from the caller's point of view (rolled back if the host save fails).
     pub async fn save_host_with_auth(&self, host: HostDto, auth: HostAuth) -> AppResult<HostDto> {
+        if host.protocol == crate::HostProtocol::Rdp
+            && matches!(auth, HostAuth::Agent { .. } | HostAuth::Inherit)
+        {
+            return Err(AppError::invalid(
+                "auth",
+                "RDP requires an explicit password credential or password prompt",
+            ));
+        }
         let (_, u) = self.unlocked().await?;
         let existing = if host.id.trim().is_empty() {
             None
@@ -214,9 +227,39 @@ impl AppCore {
             Some(
                 u.working()
                     .host(id)
+                    .or_else(|| u.working().rdp_host(id).map(|h| h.host))
                     .ok_or_else(|| AppError::not_found("host", id))?,
             )
         };
+        // Reject a type change before updating any existing inline password.
+        if let Some(existing) = &existing {
+            let is_rdp = u.working().rdp_host(existing.id).is_some();
+            if is_rdp != (host.protocol == crate::HostProtocol::Rdp) {
+                return Err(AppError::invalid(
+                    "protocol",
+                    "connection type is immutable",
+                ));
+            }
+        }
+        if host.protocol == crate::HostProtocol::Rdp {
+            let id = existing
+                .as_ref()
+                .map(|h| h.id)
+                .unwrap_or_else(ObjectId::new);
+            host.to_rdp_model(id, u.working().rdp_host(id).as_ref())?;
+            if let HostAuth::Credential { credential_id } = &auth {
+                let id = parse_id("credential_id", credential_id)?;
+                if u.working()
+                    .credential(id)
+                    .is_none_or(|c| c.kind != cc_models::credential::CredentialKind::Password)
+                {
+                    return Err(AppError::invalid(
+                        "credential",
+                        "RDP requires a password credential",
+                    ));
+                }
+            }
+        }
         let old_inline = existing.as_ref().and_then(inline_credential);
         let mut dto = host;
         dto.metadata.remove(META_AUTH_PROMPT);

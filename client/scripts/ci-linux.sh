@@ -27,5 +27,5 @@ docker run --rm --platform linux/amd64 \
   --env "CC_BUILD_NUMBER=${CI_JOB_ID:?Run this entry point as a GitLab native build job}" \
   --mount "type=bind,source=$task_dir/source,target=/work" \
   consolecrypt-linux-builder:3.47.5-rust1.98 \
-  bash -c 'python3 -m unittest discover -s client/scripts -p test_linux_packaging.py -v && python3 -m unittest discover -s client/scripts/tests -p test_linux_native.py -v && python3 -m unittest discover -s client/scripts/tests -p test_linux_ci.py -v && CC_LINUX_DISPOSABLE_BUILDER=1 python3 client/scripts/test-linux-native.py --compiler-diagnostics --receipts /work/dist/linux/acceptance && bash client/scripts/build-linux.sh'
+  bash -c 'python3 client/scripts/verify-release-identity.py && python3 -m unittest discover -s client/scripts -p test_release_identity.py -v && python3 -m unittest discover -s client/scripts -p test_linux_packaging.py -v && python3 -m unittest discover -s client/scripts/tests -p test_linux_native.py -v && python3 -m unittest discover -s client/scripts/tests -p test_linux_ci.py -v && CC_LINUX_DISPOSABLE_BUILDER=1 python3 client/scripts/test-linux-native.py --compiler-diagnostics --receipts /work/dist/linux/acceptance && bash client/scripts/build-linux.sh'
 python3 client/scripts/export-linux-artifacts.py "$task_dir/source" "$repo_dir"

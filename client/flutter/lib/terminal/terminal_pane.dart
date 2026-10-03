@@ -299,6 +299,17 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
                   unawaited(pasteIntoTerminal(context, ref, tab));
                   return KeyEventResult.handled;
                 }
+                if (AppPlatform.isWindows &&
+                    event.logicalKey == LogicalKeyboardKey.insert &&
+                    keys.isShiftPressed &&
+                    !keys.isControlPressed &&
+                    !keys.isAltPressed &&
+                    !keys.isMetaPressed) {
+                  // Consume held-key repeats too, without duplicating the paste
+                  // or forwarding an Insert escape sequence to the remote app.
+                  if (event is KeyDownEvent) unawaited(pasteIntoTerminal(context, ref, tab));
+                  return KeyEventResult.handled;
+                }
                 if (primary &&
                     !keys.isAltPressed &&
                     !keys.isShiftPressed &&

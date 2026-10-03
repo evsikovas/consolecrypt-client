@@ -32,8 +32,7 @@ final class RustCoreOptions {
     this.hookAppExit = true,
   });
 
-  /// `null` = platform default (`~/Library/Application Support/
-  /// io.consolecrypt.ConsoleCrypt`; inside the macOS sandbox container).
+  /// `null` = the ConsoleCrypt platform data directory.
   final String? dataDir;
 
   /// `null` = `io.consolecrypt.ConsoleCrypt`.

@@ -1183,7 +1183,7 @@
   "aboutLicenses": "Лицензии",
   "aboutLicenseClient": "Клиент для компьютера",
   "aboutLicenseServer": "Сервер синхронизации",
-  "aboutOpenSource": "ConsoleCrypt — программа с открытым исходным кодом. Сервер никогда не видит ваше хранилище: всё шифруется на ваших устройствах.",
+  "aboutOpenSource": "ConsoleCrypt — программа с открытым исходным кодом. Ваши подключения в безопасности.",
   "settingsAboutTitle": "О программе",
   "settingsAppearanceTitle": "Оформление",
   "settingsSecurityTitle": "Безопасность",
@@ -1581,31 +1581,57 @@
   "sharingPublishConfirm": "Поделиться",
   "sharingEmpty": "Здесь пока нет общих объектов.",
   "sharingReceivedHelp": "Объекты, которыми с вами поделились коллеги. Проверьте владельца, прежде чем принять доступ.",
-  "@sharingReceivedHelp": { "description": "Incoming sharing tab explanation" },
+  "@sharingReceivedHelp": {
+    "description": "Incoming sharing tab explanation"
+  },
   "sharingOwnedHelp": "Управляйте переданными объектами, правами получателей и отзывом доступа.",
-  "@sharingOwnedHelp": { "description": "Owned sharing tab explanation" },
+  "@sharingOwnedHelp": {
+    "description": "Owned sharing tab explanation"
+  },
   "sharingReceivedEmpty": "Вам пока ничего не передали",
-  "@sharingReceivedEmpty": { "description": "Incoming sharing empty state title" },
+  "@sharingReceivedEmpty": {
+    "description": "Incoming sharing empty state title"
+  },
   "sharingReceivedEmptyHelp": "Попросите коллегу на этом сервере поделиться объектом, затем обновите страницу. Перед принятием сравните код устройства владельца.",
-  "@sharingReceivedEmptyHelp": { "description": "Incoming sharing empty state instructions" },
+  "@sharingReceivedEmptyHelp": {
+    "description": "Incoming sharing empty state instructions"
+  },
   "sharingOwnedEmpty": "Вы пока ничем не поделились",
-  "@sharingOwnedEmpty": { "description": "Owned sharing empty state title" },
+  "@sharingOwnedEmpty": {
+    "description": "Owned sharing empty state title"
+  },
   "sharingOwnedEmptyHelp": "Выберите «Поделиться» в меню нужного объекта. Укажите получателей и проверьте коды их устройств. Передаются только выбранные вами объекты.",
-  "@sharingOwnedEmptyHelp": { "description": "Owned sharing empty state instructions" },
+  "@sharingOwnedEmptyHelp": {
+    "description": "Owned sharing empty state instructions"
+  },
   "sharingDevicesTitle": "Доступ на другом устройстве",
-  "@sharingDevicesTitle": { "description": "Separate device enrollment action section" },
+  "@sharingDevicesTitle": {
+    "description": "Separate device enrollment action section"
+  },
   "sharingDevicesHelp": "Добавьте устройство к уже полученному общему доступу. Проверка устройства и разрешения владельца сохраняются.",
-  "@sharingDevicesHelp": { "description": "Device enrollment section explanation" },
+  "@sharingDevicesHelp": {
+    "description": "Device enrollment section explanation"
+  },
   "sharingDevicePrepare": "Добавить это устройство",
-  "@sharingDevicePrepare": { "description": "Compact label for preparing a new-device request" },
+  "@sharingDevicePrepare": {
+    "description": "Compact label for preparing a new-device request"
+  },
   "sharingDeviceEndorse": "Подтвердить устройство",
-  "@sharingDeviceEndorse": { "description": "Compact label for endorsing another device" },
+  "@sharingDeviceEndorse": {
+    "description": "Compact label for endorsing another device"
+  },
   "sharingDeviceContinue": "Продолжить добавление",
-  "@sharingDeviceContinue": { "description": "Compact label for submitting an endorsed device request" },
+  "@sharingDeviceContinue": {
+    "description": "Compact label for submitting an endorsed device request"
+  },
   "sharingDeviceMore": "Другие действия",
-  "@sharingDeviceMore": { "description": "Expand secondary device enrollment tools" },
+  "@sharingDeviceMore": {
+    "description": "Expand secondary device enrollment tools"
+  },
   "sharingDeviceMoreHelp": "Продолжите с уже подтверждённым пакетом устройства или проверьте подписанную историю для восстановления локального запроса. Сами по себе эти действия не предоставляют доступ.",
-  "@sharingDeviceMoreHelp": { "description": "Secondary device enrollment and recovery tools explanation" },
+  "@sharingDeviceMoreHelp": {
+    "description": "Secondary device enrollment and recovery tools explanation"
+  },
   "sharingInvitation": "Приглашение — проверьте владельца",
   "sharingAccept": "Проверить и принять",
   "sharingRefresh": "Обновить общие данные",
@@ -2118,8 +2144,264 @@
   "updateMacSaveTitle": "Сохранить обновление ConsoleCrypt",
   "updateMacSavePrompt": "Сохранить и открыть",
   "updateMacDestinationExists": "Этот файл уже существует. Повторите установку и выберите другое имя или папку для нового DMG.",
-  "@updateMacInstallerOpened": {"description": "macOS update saved and opened; explain manual app replacement"},
-  "@updateMacSaveTitle": {"description": "Title of native save panel for an authenticated macOS update"},
-  "@updateMacSavePrompt": {"description": "Native save panel confirmation button for macOS updater"},
-  "@updateMacDestinationExists": {"description": "Choose a new DMG filename; the updater never overwrites existing files"}
+  "@updateMacInstallerOpened": {
+    "description": "macOS update saved and opened; explain manual app replacement"
+  },
+  "@updateMacSaveTitle": {
+    "description": "Title of native save panel for an authenticated macOS update"
+  },
+  "@updateMacSavePrompt": {
+    "description": "Native save panel confirmation button for macOS updater"
+  },
+  "@updateMacDestinationExists": {
+    "description": "Choose a new DMG filename; the updater never overwrites existing files"
+  },
+  "rdpTitle": "Удалённый рабочий стол",
+  "@rdpTitle": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpNewConnection": "Новое RDP-подключение",
+  "@rdpNewConnection": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpEmptyTitle": "Рабочий стол во вкладке",
+  "@rdpEmptyTitle": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpEmptyHelp": "Укажите сервер Windows и учётную запись. Сначала проверьте сертификат сервера.",
+  "@rdpEmptyHelp": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpLocked": "Разблокируйте хранилище, чтобы открыть RDP.",
+  "@rdpLocked": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpConnecting": "Подключение…",
+  "@rdpConnecting": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpConnected": "Подключено",
+  "@rdpConnected": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpDisconnected": "Соединение закрыто. Для нового входа создайте подключение.",
+  "@rdpDisconnected": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpConnectionFailed": "Не удалось подключиться. Проверьте адрес, учётную запись и сертификат.",
+  "@rdpConnectionFailed": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpSecureAttention": "Ctrl + Alt + Delete",
+  "@rdpSecureAttention": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpResize": "Экран 1920 × 1080",
+  "@rdpResize": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpExpand": "Развернуть рабочую область",
+  "@rdpExpand": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpCollapse": "Свернуть рабочую область",
+  "@rdpCollapse": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpAddress": "Адрес сервера",
+  "@rdpAddress": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpPort": "Порт",
+  "@rdpPort": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpUsername": "Пользователь",
+  "@rdpUsername": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpDomain": "Домен (необязательно)",
+  "@rdpDomain": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpPassword": "Пароль Windows",
+  "@rdpPassword": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpCredentialsHelp": "Пароль используется только для этого входа и не сохраняется. До подтверждения сертификата он не отправляется серверу.",
+  "@rdpCredentialsHelp": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpInvalidForm": "Введите адрес, порт от 1 до 65535, пользователя и пароль.",
+  "@rdpInvalidForm": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpCertificateTitle": "Проверьте сертификат RDP",
+  "@rdpCertificateTitle": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpCertificateHelp": "Сравните весь отпечаток с данными администратора по доверенному каналу. Подтверждение действует только для этого подключения. Если отпечаток не совпадает, отмените вход.",
+  "@rdpCertificateHelp": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpFingerprint": "SHA-256 сертификата",
+  "@rdpFingerprint": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpCertificateConfirm": "Я сверил весь отпечаток сертификата",
+  "@rdpCertificateConfirm": {
+    "description": "ConsoleCrypt RDP direct-connection interface."
+  },
+  "rdpCertificateChanged": "Сертификат сервера изменился. Вход заблокирован; создайте новое подключение и сверьте отпечаток.",
+  "@rdpCertificateChanged": {
+    "description": "Safe localized RDP connection failure. No transport payload."
+  },
+  "rdpAuthenticationFailed": "Windows отклонила вход. Проверьте пользователя, домен и пароль.",
+  "@rdpAuthenticationFailed": {
+    "description": "Safe localized RDP connection failure. No transport payload."
+  },
+  "rdpResizeUnavailable": "Сервер не поддерживает этот размер экрана. Продолжайте с исходным размером.",
+  "@rdpResizeUnavailable": {
+    "description": "RDP server cannot resize; the existing connection stays active."
+  },
+  "rdpWorkspaceHelp": "Рабочий стол во вкладке. Буфер обмена и выбранная папка доступны только с вашего разрешения.",
+  "@rdpWorkspaceHelp": {
+    "description": "RDP session UI."
+  },
+  "rdpPermissions": "Разрешения сеанса",
+  "@rdpPermissions": {
+    "description": "RDP session UI."
+  },
+  "rdpAllowClipboard": "Разрешить текстовый буфер обмена",
+  "@rdpAllowClipboard": {
+    "description": "RDP session UI."
+  },
+  "rdpClipboardHelp": "Текст передаётся только по кнопкам отправки и получения. По умолчанию доступ выключен.",
+  "@rdpClipboardHelp": {
+    "description": "RDP session UI."
+  },
+  "rdpFolderHelp": "Предоставьте удалённому компьютеру доступ только к выбранной папке. По умолчанию — только чтение.",
+  "@rdpFolderHelp": {
+    "description": "RDP session UI."
+  },
+  "rdpSelectFolder": "Выбрать папку…",
+  "@rdpSelectFolder": {
+    "description": "RDP session UI."
+  },
+  "rdpStopFolder": "Отключить папку",
+  "@rdpStopFolder": {
+    "description": "RDP session UI."
+  },
+  "rdpNoFolder": "Папка не предоставлена",
+  "@rdpNoFolder": {
+    "description": "RDP session UI."
+  },
+  "rdpAllowFolderWrite": "Разрешить запись в папку",
+  "@rdpAllowFolderWrite": {
+    "description": "RDP session UI."
+  },
+  "rdpFolderWriteHelp": "Удалённый компьютер сможет создавать, изменять и удалять файлы в этой папке.",
+  "@rdpFolderWriteHelp": {
+    "description": "RDP session UI."
+  },
+  "rdpFolderUnsupported": "Передача папки недоступна на этом устройстве.",
+  "@rdpFolderUnsupported": {
+    "description": "RDP session UI."
+  },
+  "rdpPermissionsFailed": "Не удалось применить разрешения. Попробуйте ещё раз.",
+  "@rdpPermissionsFailed": {
+    "description": "RDP session UI."
+  },
+  "rdpClipboardReceived": "Текст получен. Буфер обмена очистится по настройкам безопасности.",
+  "@rdpClipboardReceived": {
+    "description": "RDP session UI."
+  },
+  "rdpClipboardSent": "Текст отправлен на удалённый компьютер.",
+  "@rdpClipboardSent": {
+    "description": "RDP session UI."
+  },
+  "rdpClipboardFailed": "Не удалось передать текст буфера обмена.",
+  "@rdpClipboardFailed": {
+    "description": "RDP session UI."
+  },
+  "rdpSendClipboard": "Отправить текст буфера обмена",
+  "@rdpSendClipboard": {
+    "description": "RDP session UI."
+  },
+  "rdpReceiveClipboard": "Получить текст буфера обмена",
+  "@rdpReceiveClipboard": {
+    "description": "RDP session UI."
+  },
+  "rdpSavedPasswordHelp": "Пароль будет взят из зашифрованной учётной записи этого хоста.",
+  "@rdpSavedPasswordHelp": {
+    "description": "RDP session UI."
+  },
+  "hostProtocolLabel": "Тип подключения",
+  "@hostProtocolLabel": {
+    "description": "RDP host editor."
+  },
+  "hostRdpConnectionHelp": "RDP подключается напрямую. Порт и учётная запись задаются для этого хоста; настройки SSH-группы не применяются.",
+  "@hostRdpConnectionHelp": {
+    "description": "RDP host editor."
+  },
+  "hostRdpPasswordOnly": "Для RDP выберите парольную учётную запись.",
+  "@hostRdpPasswordOnly": {
+    "description": "RDP host editor."
+  },
+  "hostRdpUsernameRequired": "Введите имя пользователя Windows",
+  "@hostRdpUsernameRequired": {
+    "description": "RDP host editor."
+  },
+  "rdpFolderPending": "Windows подключает папку…",
+  "@rdpFolderPending": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderReady": "Папка подключена. Откройте её в Проводнике Windows.",
+  "@rdpFolderReady": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderDenied": "Windows отклонила подключение папки. Попросите администратора разрешить перенаправление дисков; удалённый рабочий стол продолжает работать.",
+  "@rdpFolderDenied": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderUnavailable": "Windows не подключила папку. Проверьте, разрешено ли перенаправление дисков на сервере, затем подключитесь заново.",
+  "@rdpFolderUnavailable": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderChooseFailed": "Не удалось открыть выбранную папку. Проверьте доступ к ней и выберите папку снова.",
+  "@rdpFolderChooseFailed": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderChooseLimit": "Не удалось выбрать ещё одну папку. Отмените лишний выбор или закройте ненужные сеансы и попробуйте снова.",
+  "@rdpFolderChooseLimit": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderOpenHelp": "После подключения откройте «Этот компьютер» в Проводнике Windows или вставьте этот путь в адресную строку:",
+  "@rdpFolderOpenHelp": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderWindowsPath": "\\\\tsclient\\ConsoleCrypt",
+  "@rdpFolderWindowsPath": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpFolderLimits": "До 256 МиБ на файл и до 512 МиБ записи за сеанс. Ссылки и специальные файлы недоступны. Изменение папки прерывает открытые в ней файлы.",
+  "@rdpFolderLimits": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpClipboardUnavailable": "Текстовый буфер обмена ещё не готов или запрещён сервером. Подождите и попробуйте снова; если ошибка повторится, проверьте настройки перенаправления с администратором.",
+  "@rdpClipboardUnavailable": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpClipboardLimit": "Можно передать только текст размером до 64 КиБ.",
+  "@rdpClipboardLimit": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpClipboardBusy": "Предыдущий запрос буфера обмена ещё обрабатывается. Подождите и попробуйте снова.",
+  "@rdpClipboardBusy": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpClipboardEmpty": "В буфере обмена нет доступного текста.",
+  "@rdpClipboardEmpty": {
+    "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  }
 }

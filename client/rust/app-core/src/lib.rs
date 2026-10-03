@@ -46,6 +46,8 @@ pub mod logging;
 mod plan;
 mod profile_hints;
 mod prompts;
+mod rdp;
+mod rdp_hosts;
 mod recovery;
 mod secrets;
 mod session;
@@ -68,6 +70,12 @@ mod writer;
 pub use account::RevealedSecret;
 pub use app::AppCore;
 pub use backup::{BackupFrequencyDto, BackupInfoDto, BackupScheduleDto};
+pub use cc_rdp_core::{
+    CertificateInfo as RdpCertificateInfo, ConnectConfig as RdpConnectConfig,
+    DirectoryGrant as RdpDirectoryGrant, Input as RdpInput, MouseButton as RdpMouseButton,
+    PollResult as RdpPollResult, RdpError, SessionCapabilities as RdpSessionCapabilities,
+    SessionPermissions as RdpSessionPermissions, SessionStatus as RdpSessionStatus,
+};
 pub use config::{current_platform, default_device_name, AppConfig, KdfPolicy, SecureStoreKind};
 pub use dto::*;
 pub use edit::{
@@ -81,6 +89,7 @@ pub use plan::{
     PlanDiagnosticDto, PlanPreviewDto, PlanSeverityDto, ResolvedValueDto, RouteHopDto,
     ValueSourceDto,
 };
+pub use rdp_hosts::RdpSavedHostTicket;
 pub use sftp_browser::{
     normalize_remote_path, RemoteFileInfoDto, SftpPreviewDto, MAX_PREVIEW_BYTES,
 };

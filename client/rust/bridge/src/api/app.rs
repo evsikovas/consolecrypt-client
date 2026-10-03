@@ -34,9 +34,7 @@ pub enum KdfChoice {
 /// Start-up configuration from Dart.
 #[derive(Debug, Clone)]
 pub struct CoreConfig {
-    /// Data root; `None` = `CONSOLECRYPT_DATA_DIR` or the platform default
-    /// (`~/Library/Application Support/io.consolecrypt.ConsoleCrypt`,
-    /// `%LOCALAPPDATA%\consolecrypt\ConsoleCrypt\data`).
+    /// Data root; `None` = `CONSOLECRYPT_DATA_DIR` or the platform default.
     pub data_dir: Option<String>,
     pub secure_store: SecureStoreChoice,
     /// Keychain service name; `None` = `io.consolecrypt.ConsoleCrypt`.

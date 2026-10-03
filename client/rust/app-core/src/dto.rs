@@ -255,9 +255,25 @@ pub struct RecoveryCheckDto {
 
 // ---- inventory -------------------------------------------------------------------
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HostProtocol {
+    #[default]
+    Ssh,
+    Rdp,
+}
+
 /// Host (editable). Empty `id` = create.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HostDto {
+    #[serde(default)]
+    pub protocol: HostProtocol,
+    #[serde(default)]
+    pub rdp_domain: Option<String>,
+    #[serde(default = "cc_models::rdp::default_width")]
+    pub rdp_width: u16,
+    #[serde(default = "cc_models::rdp::default_height")]
+    pub rdp_height: u16,
     pub id: String,
     pub name: String,
     pub address: String,
@@ -303,6 +319,10 @@ impl EditableDto for HostDto {
     }
     fn from_model(h: &Host) -> Self {
         Self {
+            protocol: HostProtocol::Ssh,
+            rdp_domain: None,
+            rdp_width: cc_models::rdp::default_width(),
+            rdp_height: cc_models::rdp::default_height(),
             id: h.id.to_string(),
             name: h.name.clone(),
             address: h.address.clone(),
@@ -334,6 +354,29 @@ impl EditableDto for HostDto {
 }
 
 impl HostDto {
+    pub(crate) fn from_rdp(h: &cc_models::rdp::RdpHost) -> Self {
+        let mut dto = Self::from_model(&h.host);
+        dto.protocol = HostProtocol::Rdp;
+        dto.rdp_domain = h.domain.clone();
+        dto.rdp_width = h.desktop_width;
+        dto.rdp_height = h.desktop_height;
+        dto
+    }
+    pub(crate) fn to_rdp_model(
+        &self,
+        id: ObjectId,
+        existing: Option<&cc_models::rdp::RdpHost>,
+    ) -> AppResult<cc_models::rdp::RdpHost> {
+        let host = self.to_model(id, existing.map(|h| &h.host))?;
+        let h = cc_models::rdp::RdpHost {
+            host,
+            domain: clean_opt(&self.rdp_domain),
+            desktop_width: self.rdp_width,
+            desktop_height: self.rdp_height,
+        };
+        h.validate()?;
+        Ok(h)
+    }
     /// The model without cc-models validation (planner previews of drafts
     /// being edited). Malformed ids are still refused.
     pub(crate) fn to_model_unchecked(

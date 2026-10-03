@@ -253,7 +253,8 @@ class _TunnelEditorDialogState extends ConsumerState<TunnelEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final hosts = [...ref.watch(hostsProvider).value ?? const <Host>[]]..sort((a, b) => a.name.compareTo(b.name));
+    final hosts = (ref.watch(hostsProvider).value ?? const <Host>[]).where((h) => !h.isRdp).toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
     final digits = [FilteringTextInputFormatter.digitsOnly];
     final remote = _kind == TunnelKind.remote;
     final l10n = context.l10n;

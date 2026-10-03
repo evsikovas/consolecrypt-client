@@ -4,6 +4,9 @@
 set -euo pipefail
 client_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 repo_dir="$(cd -- "$client_dir/.." && pwd)"
+if [[ -d "$client_dir/rust/rdp-core" ]]; then
+  python3 "$client_dir/scripts/verify-release-identity.py" --root "$repo_dir"
+fi
 if [[ "$(uname -s)" != Linux || "$(uname -m)" != x86_64 ]]; then
   echo 'This packaging entry point requires Linux x86-64.' >&2
   exit 1

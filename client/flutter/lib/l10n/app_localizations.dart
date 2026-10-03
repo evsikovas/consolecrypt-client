@@ -7193,7 +7193,7 @@ abstract class AppLocalizations {
   /// About dialog: short open-source and zero-knowledge statement.
   ///
   /// In en, this message translates to:
-  /// **'ConsoleCrypt is open source. The server never sees your vault: everything is encrypted on your devices.'**
+  /// **'ConsoleCrypt is open-source software. Your connections are secure.'**
   String get aboutOpenSource;
 
   /// Settings section title: product information (version, author, licences).
@@ -9235,6 +9235,378 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This file already exists. Retry installation and choose another name or folder for the new DMG.'**
   String get updateMacDestinationExists;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote desktop'**
+  String get rdpTitle;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'New RDP connection'**
+  String get rdpNewConnection;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'A desktop in a tab'**
+  String get rdpEmptyTitle;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a Windows server and account. Verify the server certificate before signing in.'**
+  String get rdpEmptyHelp;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock your vault to open RDP.'**
+  String get rdpLocked;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get rdpConnecting;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get rdpConnected;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection closed. Create a connection to sign in again.'**
+  String get rdpDisconnected;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed. Check the address, account and certificate.'**
+  String get rdpConnectionFailed;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Ctrl + Alt + Delete'**
+  String get rdpSecureAttention;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen 1920 × 1080'**
+  String get rdpResize;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand workspace'**
+  String get rdpExpand;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse workspace'**
+  String get rdpCollapse;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Server address'**
+  String get rdpAddress;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get rdpPort;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get rdpUsername;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Domain (optional)'**
+  String get rdpDomain;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows password'**
+  String get rdpPassword;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'The password is used for this sign-in only and is not saved. It is not sent before you confirm the certificate.'**
+  String get rdpCredentialsHelp;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an address, a port from 1 to 65535, username and password.'**
+  String get rdpInvalidForm;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify the RDP certificate'**
+  String get rdpCertificateTitle;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare the entire fingerprint with your administrator over a trusted channel. Confirmation applies only to this connection. Cancel if it does not match.'**
+  String get rdpCertificateHelp;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate SHA-256'**
+  String get rdpFingerprint;
+
+  /// ConsoleCrypt RDP direct-connection interface.
+  ///
+  /// In en, this message translates to:
+  /// **'I compared the entire certificate fingerprint'**
+  String get rdpCertificateConfirm;
+
+  /// Safe localized RDP connection failure. No transport payload.
+  ///
+  /// In en, this message translates to:
+  /// **'The server certificate changed. Sign-in was blocked; create a new connection and verify the fingerprint.'**
+  String get rdpCertificateChanged;
+
+  /// Safe localized RDP connection failure. No transport payload.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows rejected sign-in. Check the username, domain and password.'**
+  String get rdpAuthenticationFailed;
+
+  /// RDP server cannot resize; the existing connection stays active.
+  ///
+  /// In en, this message translates to:
+  /// **'The server does not support this screen size. Continue at the original size.'**
+  String get rdpResizeUnavailable;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote desktop in a tab. Clipboard and a selected folder are available only with your permission.'**
+  String get rdpWorkspaceHelp;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Session permissions'**
+  String get rdpPermissions;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow text clipboard'**
+  String get rdpAllowClipboard;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Text is exchanged only when you choose Send or Receive. Access is off by default.'**
+  String get rdpClipboardHelp;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Give the remote computer access only to a selected folder. Read-only by default.'**
+  String get rdpFolderHelp;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Select folder…'**
+  String get rdpSelectFolder;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect folder'**
+  String get rdpStopFolder;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'No folder shared'**
+  String get rdpNoFolder;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow writes to this folder'**
+  String get rdpAllowFolderWrite;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'The remote computer will be able to create, change and delete files in this folder.'**
+  String get rdpFolderWriteHelp;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder sharing is unavailable on this device.'**
+  String get rdpFolderUnsupported;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not apply permissions. Try again.'**
+  String get rdpPermissionsFailed;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Text received. The clipboard will expire according to your security settings.'**
+  String get rdpClipboardReceived;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Text sent to the remote computer.'**
+  String get rdpClipboardSent;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not exchange clipboard text.'**
+  String get rdpClipboardFailed;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Send clipboard text'**
+  String get rdpSendClipboard;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive clipboard text'**
+  String get rdpReceiveClipboard;
+
+  /// RDP session UI.
+  ///
+  /// In en, this message translates to:
+  /// **'The password will be taken from this host’s encrypted credential.'**
+  String get rdpSavedPasswordHelp;
+
+  /// RDP host editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection type'**
+  String get hostProtocolLabel;
+
+  /// RDP host editor.
+  ///
+  /// In en, this message translates to:
+  /// **'RDP connects directly. The port and credential are set for this host; SSH group settings do not apply.'**
+  String get hostRdpConnectionHelp;
+
+  /// RDP host editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a password credential for RDP.'**
+  String get hostRdpPasswordOnly;
+
+  /// RDP host editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the Windows username'**
+  String get hostRdpUsernameRequired;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows is connecting the folder…'**
+  String get rdpFolderPending;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder connected. Open it in Windows File Explorer.'**
+  String get rdpFolderReady;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows rejected the folder. Ask your administrator to allow drive redirection; the remote desktop remains connected.'**
+  String get rdpFolderDenied;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows did not connect the folder. Check that drive redirection is allowed on the server, then reconnect.'**
+  String get rdpFolderUnavailable;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the selected folder. Check access to it and select it again.'**
+  String get rdpFolderChooseFailed;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not select another folder. Cancel unused selections or close unneeded sessions and try again.'**
+  String get rdpFolderChooseLimit;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'Once connected, open This PC in Windows File Explorer or enter this path in the address bar:'**
+  String get rdpFolderOpenHelp;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'\\\\tsclient\\ConsoleCrypt'**
+  String get rdpFolderWindowsPath;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to 256 MiB per file and 512 MiB of writes per session. Links and special files are unavailable. Changing the folder interrupts files currently open in it.'**
+  String get rdpFolderLimits;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'The text clipboard is not ready or is disabled by the server. Wait and try again; if the error persists, check redirection settings with your administrator.'**
+  String get rdpClipboardUnavailable;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'Only text up to 64 KiB can be transferred.'**
+  String get rdpClipboardLimit;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'The previous clipboard request is still being processed. Wait and try again.'**
+  String get rdpClipboardBusy;
+
+  /// RDP selected folder or explicit text clipboard status. No transport details.
+  ///
+  /// In en, this message translates to:
+  /// **'No text is available in the clipboard.'**
+  String get rdpClipboardEmpty;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

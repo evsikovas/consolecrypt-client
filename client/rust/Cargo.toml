@@ -14,6 +14,7 @@ members = [
     "ssh-core",
     "ssh-agent-core",
     "terminal-core",
+    "rdp-core",
     "tunnel-core",
     "sftp-core",
     "search-core",
@@ -22,6 +23,9 @@ members = [
     "cc-cli",
     "bridge",
 ]
+
+[patch.crates-io]
+ironrdp-connector = { path = "rdp-core/vendor/ironrdp-connector" }
 
 [workspace.package]
 version = "0.1.0"
@@ -46,6 +50,7 @@ cc-sync-core = { path = "sync-core" }
 cc-ssh-core = { path = "ssh-core" }
 cc-ssh-agent-core = { path = "ssh-agent-core" }
 cc-terminal-core = { path = "terminal-core" }
+cc-rdp-core = { path = "rdp-core" }
 cc-tunnel-core = { path = "tunnel-core" }
 cc-sftp-core = { path = "sftp-core" }
 cc-search-core = { path = "search-core" }

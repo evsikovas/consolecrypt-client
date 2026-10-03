@@ -33,6 +33,7 @@ cc-sync-core.workspace = true
 cc-ssh-core.workspace = true
 cc-ssh-agent-core.workspace = true
 cc-terminal-core.workspace = true
+cc-rdp-core.workspace = true
 cc-tunnel-core.workspace = true
 cc-sftp-core.workspace = true
 cc-search-core.workspace = true
