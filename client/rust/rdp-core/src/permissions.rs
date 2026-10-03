@@ -95,6 +95,9 @@ pub(crate) struct RedirectState {
     pub local_text: Option<Zeroizing<String>>,
     pub offers: crate::clipboard_offers::ClipboardOffers,
     pub received_text: Option<Zeroizing<String>>,
+    // A local Receive reservation is distinct from an actually dispatched,
+    // ID-less wire request. Only the latter needs a late-response tombstone.
+    pub prepared_request: Option<(u64, u64)>,
     pub pending_request: Option<u64>,
     pub actions: VecDeque<ClipboardAction>,
 }
@@ -132,6 +135,7 @@ impl RedirectState {
             local_text: None,
             offers: Default::default(),
             received_text: None,
+            prepared_request: None,
             pending_request: None,
             actions: VecDeque::new(),
         }
@@ -151,6 +155,7 @@ impl RedirectState {
         self.offers.content_changed();
         self.local_text = None;
         self.received_text = None;
+        self.prepared_request = None;
         // CLIPRDR has no request ID. Drain a cancelled wire request before allowing
         // another one, so a late response can never satisfy a newer user action.
         if self.pending_request.is_some() {

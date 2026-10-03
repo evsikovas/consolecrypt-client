@@ -9,6 +9,7 @@ pub(crate) const CONFIRM_TIMEOUT: Duration = Duration::from_secs(10);
 pub(crate) struct PasteFence {
     generation: u64,
     sequence: u64,
+    expires: Instant,
 }
 
 struct Waiter {
@@ -32,6 +33,7 @@ struct Ticket {
 }
 pub(crate) struct ClipboardOffers {
     sequence: u64,
+    content_sequence: u64,
     next_id: u64,
     waiter: Option<Waiter>,
     flight: Option<Flight>,
@@ -42,6 +44,7 @@ impl Default for ClipboardOffers {
     fn default() -> Self {
         Self {
             sequence: 1,
+            content_sequence: 1,
             next_id: 1,
             waiter: None,
             flight: None,
@@ -81,14 +84,25 @@ impl ClipboardOffers {
         });
         Ok(id)
     }
+    pub fn sequence(&self) -> u64 {
+        self.sequence
+    }
+    pub fn content_sequence(&self) -> u64 {
+        self.content_sequence
+    }
+    pub fn content_matches(&self, sequence: u64) -> bool {
+        self.content_sequence == sequence
+    }
+    pub fn sequence_matches(&self, sequence: u64) -> bool {
+        self.sequence == sequence
+    }
     pub fn in_flight(&self) -> bool {
         self.flight.is_some()
     }
-    pub fn begin_advertisement(
-        &mut self,
+    pub fn can_begin_advertisement(
+        &self,
         generation: u64,
         enabled: bool,
-        text: Option<&Zeroizing<String>>,
         confirmed_id: Option<u64>,
     ) -> bool {
         if self.flight.is_some() {
@@ -105,6 +119,18 @@ impl ClipboardOffers {
             if !valid {
                 return false;
             }
+        }
+        true
+    }
+    pub fn begin_advertisement(
+        &mut self,
+        generation: u64,
+        enabled: bool,
+        text: Option<&Zeroizing<String>>,
+        confirmed_id: Option<u64>,
+    ) -> bool {
+        if !self.can_begin_advertisement(generation, enabled, confirmed_id) {
+            return false;
         }
         self.advertised_text = enabled.then(|| text.cloned()).flatten();
         self.flight = Some(Flight {
@@ -165,6 +191,7 @@ impl ClipboardOffers {
     }
     pub fn content_changed(&mut self) {
         self.cancel_interaction();
+        self.content_sequence = self.content_sequence.saturating_add(1);
         self.advertised_text = None;
     }
     pub fn cancel_confirmation(&mut self, id: u64) -> bool {
@@ -221,14 +248,39 @@ impl ClipboardOffers {
                 RdpError::PermissionDenied
             });
         }
+        let expires = self
+            .ticket
+            .as_ref()
+            .expect("ticket validated above")
+            .expires;
         self.ticket = None;
         Ok(PasteFence {
             generation,
             sequence: self.sequence,
+            expires,
         })
     }
     pub fn dispatch_authorized(&self, fence: PasteFence, generation: u64, enabled: bool) -> bool {
-        enabled && generation == fence.generation && self.sequence == fence.sequence
+        enabled
+            && generation == fence.generation
+            && self.sequence == fence.sequence
+            && Instant::now() < fence.expires
+    }
+    // The writer attempted dispatch but accepted no plaintext. No ACK can be
+    // expected for this slot, so it must not become a permanent wire tombstone.
+    pub fn abandon_unsent_advertisement(&mut self) {
+        if let Some(flight) = self.flight.take() {
+            if self
+                .waiter
+                .as_ref()
+                .is_some_and(|w| Some(w.id) == flight.confirmed_id)
+            {
+                if let Some(waiter) = self.waiter.take() {
+                    let _ = waiter.done.send(Err(RdpError::ClipboardUnavailable));
+                }
+            }
+            self.advertised_text = None;
+        }
     }
     pub fn cancel_ticket(&mut self, value: &str) {
         if self

@@ -52,6 +52,7 @@ impl CliprdrBackend for TextBackend {
     fn on_remote_copy(&mut self, formats: &[ClipboardFormat]) {
         if let Ok(mut s) = self.state.lock() {
             s.offers.content_changed();
+            s.prepared_request = None;
             s.clipboard_counts[0] = s.clipboard_counts[0].saturating_add(1);
             s.remote_unicode = formats.iter().any(|f| {
                 f.id == ClipboardFormatId::CF_UNICODETEXT
@@ -119,7 +120,12 @@ fn decode_text(bytes: &[u8]) -> Option<Zeroizing<String>> {
     Some(text)
 }
 
-pub(crate) type ClipboardFrame = (u64, Zeroizing<Vec<u8>>);
+pub(crate) struct Advertisement {
+    pub confirmed_id: Option<u64>,
+    pub enabled: bool,
+    pub text: Option<Zeroizing<String>>,
+}
+pub(crate) type ClipboardFrame = (u64, Zeroizing<Vec<u8>>, Option<Advertisement>, u64, bool);
 
 pub(crate) fn flush(
     active: &mut ActiveStage,
@@ -136,6 +142,8 @@ pub(crate) fn flush(
         let Some(action) = s.actions.pop_front() else {
             break;
         };
+        let mut advertisement = None;
+        let mut request = false;
         let next = match action {
             ClipboardAction::Advertise | ClipboardAction::AdvertiseConfirmed(_) => {
                 if s.offers.in_flight() {
@@ -146,15 +154,15 @@ pub(crate) fn flush(
                     ClipboardAction::AdvertiseConfirmed(id) => Some(id),
                     _ => None,
                 };
-                let generation = s.generation;
                 let enabled = s.enabled();
                 let text = s.local_text.clone();
-                if !s
-                    .offers
-                    .begin_advertisement(generation, enabled, text.as_ref(), confirmed_id)
-                {
-                    continue;
-                }
+                // The native writer opens the ID-less ACK slot at dispatch,
+                // not while this message waits behind a file response.
+                advertisement = Some(Advertisement {
+                    confirmed_id,
+                    enabled,
+                    text,
+                });
                 let formats = if s.enabled() && s.local_text.is_some() {
                     vec![ClipboardFormat {
                         id: ClipboardFormatId::CF_UNICODETEXT,
@@ -166,11 +174,16 @@ pub(crate) fn flush(
                 channel.initiate_copy(&formats)
             }
             ClipboardAction::Request => {
-                if !s.enabled() || !s.ready || !s.remote_unicode {
+                if !s.enabled()
+                    || !s.ready
+                    || !s.remote_unicode
+                    || s.pending_request.is_some()
+                    || s.prepared_request.is_some()
+                {
                     continue;
                 }
-                s.pending_request = Some(s.generation);
-                s.clipboard_counts[1] = s.clipboard_counts[1].saturating_add(1);
+                s.prepared_request = Some((s.generation, s.offers.content_sequence()));
+                request = true;
                 channel.initiate_paste(ClipboardFormatId::CF_UNICODETEXT)
             }
             ClipboardAction::Respond(generation, unicode) => {
@@ -193,16 +206,33 @@ pub(crate) fn flush(
             }
         }
         .map_err(|_| RdpError::Protocol)?;
-        messages.push(next);
+        messages.push((next, advertisement, request));
+        // Bound generated-but-not-yet-dispatched plaintext to one action.
+        break;
     }
     let generation = s.generation;
+    let sequence = s.offers.sequence();
+    let content_sequence = s.offers.content_sequence();
     drop(s);
     messages
         .into_iter()
-        .map(|message| {
+        .map(|(message, advertisement, request)| {
+            let sequence = if advertisement.is_some() {
+                sequence
+            } else {
+                content_sequence
+            };
             active
                 .process_svc_processor_messages(message)
-                .map(|bytes| (generation, Zeroizing::new(bytes)))
+                .map(|bytes| {
+                    (
+                        generation,
+                        Zeroizing::new(bytes),
+                        advertisement,
+                        sequence,
+                        request,
+                    )
+                })
                 .map_err(|_| RdpError::Protocol)
         })
         .collect()

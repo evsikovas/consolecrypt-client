@@ -487,6 +487,7 @@ impl RdpManager {
             return Err(RdpError::ClipboardUnavailable);
         }
         if s.pending_request.is_some()
+            || s.prepared_request.is_some()
             || s.actions
                 .iter()
                 .any(|a| matches!(a, ClipboardAction::Request))

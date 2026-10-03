@@ -6,8 +6,9 @@ use crate::{
 };
 use ironrdp::{
     connector::{
-        self, connection_activation::ConnectionActivationState, ClientConnector,
-        ClientConnectorState, Config, Credentials, Sequence,
+        self,
+        connection_activation::{ConnectionActivationSequence, ConnectionActivationState},
+        ClientConnector, ClientConnectorState, Config, Credentials, Sequence,
     },
     core::WriteBuf,
     displaycontrol::client::DisplayControlClient,
@@ -27,6 +28,7 @@ use ironrdp::{
 };
 use secrecy::{ExposeSecret, SecretString};
 use std::{
+    collections::VecDeque,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -48,6 +50,8 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
 const LARGE_WRITE_THRESHOLD: usize = 64 * 1024;
 const LARGE_WRITE_BUDGET: Duration = Duration::from_secs(120);
+#[path = "transport_writer.rs"]
+mod ordered_writer;
 
 #[cfg(test)]
 fn record_write_progress(
@@ -160,6 +164,7 @@ fn write_read_packet_metadata(
 struct BoundedIo<S> {
     stream: Option<S>,
     buffered: Vec<u8>,
+    max_buffer: usize,
     stopped: Arc<AtomicBool>,
     read_ahead: bool,
     #[cfg(test)]
@@ -172,11 +177,12 @@ impl<S> Drop for BoundedIo<S> {
         self.buffered.zeroize();
     }
 }
-impl<S: AsyncRead + AsyncWrite + Unpin> BoundedIo<S> {
+impl<S: AsyncRead + Unpin> BoundedIo<S> {
     fn new(stream: S, stopped: Arc<AtomicBool>) -> Self {
         Self {
             stream: Some(stream),
             buffered: Vec::new(),
+            max_buffer: MAX_PDU,
             stopped,
             read_ahead: false,
             #[cfg(test)]
@@ -189,11 +195,11 @@ impl<S: AsyncRead + AsyncWrite + Unpin> BoundedIo<S> {
         if self.stopped.load(Ordering::Acquire) {
             return Err(RdpError::SessionNotFound);
         }
-        if self.buffered.len() >= MAX_PDU {
+        if self.buffered.len() >= self.max_buffer {
             return Err(RdpError::Protocol);
         }
         let mut chunk = Zeroizing::new([0; 8192]);
-        let max = chunk.len().min(MAX_PDU - self.buffered.len());
+        let max = chunk.len().min(self.max_buffer - self.buffered.len());
         let n = self
             .stream
             .as_mut()
@@ -236,7 +242,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> BoundedIo<S> {
     async fn pdu(&mut self) -> Result<(pdu::Action, Zeroizing<Vec<u8>>), RdpError> {
         loop {
             if let Some(info) = pdu::find_size(&self.buffered).map_err(|_| RdpError::Protocol)? {
-                if info.length == 0 || info.length > MAX_PDU {
+                if info.length == 0 || info.length > self.max_buffer {
                     return Err(RdpError::Protocol);
                 }
                 while self.buffered.len() < info.length {
@@ -255,6 +261,17 @@ impl<S: AsyncRead + AsyncWrite + Unpin> BoundedIo<S> {
             self.fill().await?;
         }
         Ok(self.take(n))
+    }
+}
+impl<S: AsyncRead + AsyncWrite + Unpin> BoundedIo<S> {
+    fn into_active(
+        mut self,
+    ) -> Result<(BoundedIo<tokio::io::ReadHalf<S>>, tokio::io::WriteHalf<S>), RdpError> {
+        let stream = self.stream.take().ok_or(RdpError::Connection)?;
+        let (reader, writer) = tokio::io::split(stream);
+        let mut input = BoundedIo::new(reader, self.stopped.clone());
+        input.buffered = std::mem::take(&mut self.buffered);
+        Ok((input, writer))
     }
     async fn write(&mut self, data: &[u8]) -> Result<(), RdpError> {
         if self.stopped.load(Ordering::Acquire) {
@@ -603,7 +620,7 @@ async fn nla<S: AsyncRead + AsyncWrite + Unpin>(
 pub(crate) async fn run(
     settings: ConnectConfig,
     password: SecretString,
-    mut receiver: mpsc::Receiver<SessionCommand>,
+    receiver: mpsc::Receiver<SessionCommand>,
     state: Arc<Mutex<SessionState>>,
     stopped: Arc<AtomicBool>,
     redirects: crate::permissions::SharedRedirect,
@@ -682,7 +699,7 @@ pub(crate) async fn run(
     {
         io.write_metadata_context = Some((io_channel_id, message_channel_id));
     }
-    let mut image = DecodedImage::new(
+    let image = DecodedImage::new(
         PixelFormat::RgbA32,
         result.desktop_size.width,
         result.desktop_size.height,
@@ -693,7 +710,10 @@ pub(crate) async fn run(
     let dvc_id = result
         .static_channels
         .get_channel_id_by_type::<DrdynvcClient>();
-    let mut active = ActiveStageBuilder {
+    let clipboard_channel_id = result
+        .static_channels
+        .get_channel_id_by_type::<ironrdp::cliprdr::CliprdrClient>();
+    let active = ActiveStageBuilder {
         static_channels: result.static_channels,
         user_channel_id: result.user_channel_id,
         io_channel_id: result.io_channel_id,
@@ -705,40 +725,156 @@ pub(crate) async fn run(
     }
     .build();
     state.lock().map_err(|_| RdpError::Connection)?.status = SessionStatus::Connected;
+    run_active(
+        io,
+        receiver,
+        state,
+        redirects,
+        notify,
+        ActiveRuntime {
+            active,
+            image,
+            activation_factory,
+            activation_context,
+            io_channel_id,
+            message_channel_id,
+            drive_channel_id,
+            dvc_id,
+            clipboard_channel_id,
+            initial_permissions,
+            initial_drive_id,
+            #[cfg(test)]
+            initial_output: Vec::new(),
+        },
+    )
+    .await
+}
+
+struct ActiveRuntime {
+    active: ironrdp::session::ActiveStage,
+    image: DecodedImage,
+    activation_factory: connector::connection_activation::ConnectionActivationFactory,
+    activation_context: ActivationContext,
+    io_channel_id: u16,
+    message_channel_id: Option<u16>,
+    drive_channel_id: Option<u16>,
+    dvc_id: Option<u16>,
+    clipboard_channel_id: Option<u16>,
+    initial_permissions: crate::SessionPermissions,
+    initial_drive_id: u32,
+    #[cfg(test)]
+    initial_output: Vec<Zeroizing<Vec<u8>>>,
+}
+
+async fn run_active<S: AsyncRead + AsyncWrite + Unpin>(
+    io: BoundedIo<S>,
+    mut receiver: mpsc::Receiver<SessionCommand>,
+    state: Arc<Mutex<SessionState>>,
+    redirects: crate::permissions::SharedRedirect,
+    notify: Arc<tokio::sync::Notify>,
+    runtime: ActiveRuntime,
+) -> Result<(), RdpError> {
+    let ActiveRuntime {
+        mut active,
+        mut image,
+        activation_factory,
+        activation_context,
+        io_channel_id,
+        message_channel_id,
+        drive_channel_id,
+        dvc_id,
+        clipboard_channel_id,
+        initial_permissions,
+        initial_drive_id,
+        #[cfg(test)]
+        initial_output,
+    } = runtime;
     let mut announced_permissions = initial_permissions;
     let mut announced_drive_id = initial_drive_id;
     let mut database = Database::new();
     let mut limits =
         crate::limits::DecoderLimits::with_dvc_channel(dvc_id).with_drive_channel(drive_channel_id);
-    'active: loop {
+    let (mut input, output) = io.into_active()?;
+    let mut writer = ordered_writer::Writer::new(output, io_channel_id, message_channel_id);
+    #[cfg(test)]
+    for bytes in initial_output {
+        writer.enqueue(bytes, ordered_writer::Purpose::Protocol)?;
+    }
+    let mut commands = VecDeque::new();
+    let mut deferred = VecDeque::<(pdu::Action, Zeroizing<Vec<u8>>)>::new();
+    let mut deferred_bytes = 0usize;
+    let mut drive_request_prefix = Vec::with_capacity(24);
+    let mut activation: Option<(ConnectionActivationSequence, tokio::time::Instant)> = None;
+    loop {
+        if input.stopped.load(Ordering::Acquire) {
+            return Err(RdpError::SessionNotFound);
+        }
+        writer.check_deadlines()?;
+        if activation
+            .as_ref()
+            .is_some_and(|(_, deadline)| tokio::time::Instant::now() >= *deadline)
+        {
+            return Err(RdpError::Timeout);
+        }
         state
             .lock()
             .map_err(|_| RdpError::Connection)?
-            .resize_available = active
-            .get_dvc::<DisplayControlClient>()
-            .is_some_and(|channel| channel.channel_id().is_some());
-        let (outputs, from_input) = tokio::select! {
-            packet=io.pdu()=>{
-                set_stage(&state, "active_read")?;
-                let (action,packet)=packet?;
-                observe_drive_handshake(action, &packet, drive_channel_id, &redirects)?;
-                set_stage(&state, "redirect_guard")?;
-                reject_redirect(action,&packet,io_channel_id)?;
-                set_stage(&state, "decoder_guard")?;
-                limits.check(action,&packet,io_channel_id,message_channel_id)?;
-                set_stage(&state, "active_decode")?;
-                (active.process(&mut image,action,&packet).map_err(|error| decode_failure(&state, &error))?,false)
-            },
-            _=notify.notified()=>{(Vec::new(),false)},
-            command=receiver.recv()=>{
-                set_stage(&state, "input_encode")?;
-                let Some(command)=command else { return Ok(()); };
-                let inputs = match command {
-                    SessionCommand::Inputs(inputs) => inputs,
-                    SessionCommand::ConfirmedPaste {ticket, done} => {
+            .resize_available = activation.is_none()
+            && active
+                .get_dvc::<DisplayControlClient>()
+                .is_some_and(|channel| channel.channel_id().is_some());
+
+        // Encode inputs only at an output boundary, with a separately prepared
+        // Database committed only after the writer actually accepts plaintext.
+        if activation.is_none() && writer.can_generate_input() {
+            if let Some(command) = commands.pop_front() {
+                let mut next_database = copy_input_database(&database);
+                let mut bytes = Zeroizing::new(Vec::new());
+                let mut pdus = 0u64;
+                let mut event_count = 0u64;
+                let purpose = match command {
+                    SessionCommand::Inputs(inputs) => {
+                        for input in &inputs {
+                            match input {
+                                Input::Resize { width, height } => {
+                                    if let Some(frame) = active.encode_resize(
+                                        u32::from(*width),
+                                        u32::from(*height),
+                                        Some(100),
+                                        None,
+                                    ) {
+                                        bytes.extend_from_slice(
+                                            &frame.map_err(|_| RdpError::Protocol)?,
+                                        );
+                                        pdus += 1;
+                                    }
+                                }
+                                _ => {
+                                    let events = input_events(&mut next_database, input);
+                                    event_count += events.len() as u64;
+                                    encode_input_frames(
+                                        &mut active,
+                                        &mut image,
+                                        &events,
+                                        &mut bytes,
+                                        &mut pdus,
+                                    )?;
+                                }
+                            }
+                        }
+                        ordered_writer::Purpose::Input {
+                            pdus,
+                            database: Some(next_database),
+                        }
+                    }
+                    SessionCommand::ConfirmedPaste { ticket, done } => {
                         if done.is_closed() {
-                            redirects.lock().map_err(|_| RdpError::Connection)?.offers.cancel_ticket(&ticket);
-                            continue 'active;
+                            redirects
+                                .lock()
+                                .map_err(|_| RdpError::Connection)?
+                                .offers
+                                .cancel_ticket(&ticket);
+                            continue;
                         }
                         let fence = {
                             let mut s = redirects.lock().map_err(|_| RdpError::Connection)?;
@@ -748,254 +884,469 @@ pub(crate) async fn run(
                         };
                         let fence = match fence {
                             Ok(fence) => fence,
-                            Err(error) => { let _ = done.send(Err(error)); continue 'active; }
-                        };
-                        // All releases and Ctrl+V transitions are encoded as one
-                        // transaction and written only after a final native fence check.
-                        let mut events = input_events(&mut database, &Input::ReleaseAll);
-                        for (code, down) in [(0x1d, true), (0x2f, true), (0x2f, false), (0x1d, false)] {
-                            events.extend(input_events(&mut database, &Input::Scancode { code, down, extended: false }));
-                        }
-                        let mut bytes = Zeroizing::new(Vec::new());
-                        let mut pdus = 0u64;
-                        for chunk in events.chunks(15) {
-                            for output in active.process_fastpath_input(&mut image,chunk).map_err(|_| RdpError::Protocol)? {
-                                match output {
-                                    ActiveStageOutput::ResponseFrame(frame) => { bytes.extend_from_slice(&frame); pdus += 1; }
-                                    _ => return Err(RdpError::Protocol),
-                                }
+                            Err(error) => {
+                                let _ = done.send(Err(error));
+                                continue;
                             }
-                        }
-                        let authorized = {
-                            let s = redirects.lock().map_err(|_| RdpError::Connection)?;
-                            s.offers.dispatch_authorized(fence, s.generation, s.enabled())
                         };
-                        if !authorized || done.is_closed() {
-                            let _ = done.send(Err(RdpError::ClipboardUnavailable));
-                            continue 'active;
-                        }
-                        io.write(&bytes).await?;
+                        let mut events = input_events(&mut next_database, &Input::ReleaseAll);
+                        for (code, down) in
+                            [(0x1d, true), (0x2f, true), (0x2f, false), (0x1d, false)]
                         {
-                            let mut s = state.lock().map_err(|_| RdpError::Connection)?;
-                            s.diagnostics.input_batches = s.diagnostics.input_batches.saturating_add(1);
-                            s.diagnostics.input_events = s.diagnostics.input_events.saturating_add(events.len() as u64);
-                            s.diagnostics.input_pdus_written = s.diagnostics.input_pdus_written.saturating_add(pdus);
+                            events.extend(input_events(
+                                &mut next_database,
+                                &Input::Scancode {
+                                    code,
+                                    down,
+                                    extended: false,
+                                },
+                            ));
                         }
-                        let _ = done.send(Ok(()));
-                        continue 'active;
+                        event_count = events.len() as u64;
+                        encode_input_frames(
+                            &mut active,
+                            &mut image,
+                            &events,
+                            &mut bytes,
+                            &mut pdus,
+                        )?;
+                        ordered_writer::Purpose::Paste {
+                            fence,
+                            done,
+                            pdus,
+                            database: Some(next_database),
+                        }
                     }
                 };
-                let mut outputs=Vec::new();
-                let mut event_count=0u64;
-                for input in &inputs {
-                    match input {
-                        Input::Resize{width,height}=>{
-                            if let Some(frame)=active.encode_resize(u32::from(*width),u32::from(*height),Some(100),None) {
-                                outputs.push(ActiveStageOutput::ResponseFrame(frame.map_err(|_|RdpError::Protocol)?));
-                            }
-                        },
-                        _=>{
-                            let events=input_events(&mut database,input);
-                            event_count=event_count.saturating_add(events.len() as u64);
-                            // FastPathInput has a four-bit event count, so never emit >15 per PDU.
-                            for chunk in events.chunks(15) { outputs.extend(active.process_fastpath_input(&mut image,chunk).map_err(|_|RdpError::Protocol)?); }
-                        }
-                    }
+                if bytes.len() > ordered_writer::INTERACTIVE_RESERVE {
+                    return Err(RdpError::Protocol);
                 }
-                {let mut state=state.lock().map_err(|_|RdpError::Connection)?;state.diagnostics.input_batches=state.diagnostics.input_batches.saturating_add(1);state.diagnostics.input_events=state.diagnostics.input_events.saturating_add(event_count);}
-                (outputs,true)
-            }
-        };
-        for output in outputs {
-            match output {
-                ActiveStageOutput::ResponseFrame(bytes) => {
-                    set_stage(&state, "response_write")?;
-                    io.write(&Zeroizing::new(bytes)).await?;
-                    if from_input {
-                        let mut state = state.lock().map_err(|_| RdpError::Connection)?;
-                        state.diagnostics.input_pdus_written =
-                            state.diagnostics.input_pdus_written.saturating_add(1);
-                    }
-                }
-                ActiveStageOutput::GraphicsUpdate(_) => publish_frame(&state, &image)?,
-                ActiveStageOutput::Terminate(_) => return Ok(()),
-                ActiveStageOutput::DeactivateAll => {
-                    {
-                        let mut state = state.lock().map_err(|_| RdpError::Connection)?;
-                        state.diagnostics.last_stage = "reactivation";
-                        state.diagnostics.reactivations_started =
-                            state.diagnostics.reactivations_started.saturating_add(1);
-                    }
-                    limits.require_reactivation_boundary()?;
-                    let mut activation = activation_factory.create();
-                    tokio::time::timeout(CONNECT_TIMEOUT, async {
-                        loop {
-                            // Activation hints describe only the main RDP sequence. Service
-                            // channel packets may interleave; dispatch them instead of dropping
-                            // them while waiting for DemandActive/finalization packets.
-                            let mut out = WriteBuf::new();
-                            let written = if let Some(hint) = activation.next_pdu_hint() {
-                                let (action, packet) = io.pdu().await?;
-                                let service_channel = action == pdu::Action::X224
-                                    && pdu::mcs::decode_send_data_indication(&packet)
-                                        .is_ok_and(|d| d.channel_id != io_channel_id);
-                                let matched = hint
-                                    .find_size(&packet)
-                                    .map_err(|_| RdpError::Protocol)?
-                                    .is_some_and(|(matched, _)| matched);
-                                if service_channel || !matched {
-                                    reject_redirect(action, &packet, io_channel_id)?;
-                                    limits.check(
-                                        action,
-                                        &packet,
-                                        io_channel_id,
-                                        message_channel_id,
-                                    )?;
-                                    let outputs = active
-                                        .process(&mut image, action, &packet)
-                                        .map_err(|e| decode_failure(&state, &e))?;
-                                    for output in outputs {
-                                        match output {
-                                            ActiveStageOutput::ResponseFrame(bytes) => {
-                                                io.write(&Zeroizing::new(bytes)).await?
-                                            }
-                                            ActiveStageOutput::GraphicsUpdate(_) => {
-                                                publish_frame(&state, &image)?
-                                            }
-                                            ActiveStageOutput::Terminate(_) => {
-                                                return Err(RdpError::Connection)
-                                            }
-                                            ActiveStageOutput::MultitransportRequest(_) => {
-                                                return Err(RdpError::Protocol)
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-                                    for (generation, bytes) in
-                                        crate::clipboard::flush(&mut active, &redirects)?
-                                    {
-                                        let current = {
-                                            let s = redirects
-                                                .lock()
-                                                .map_err(|_| RdpError::Connection)?;
-                                            !s.closed && s.generation == generation
-                                        };
-                                        if current && !bytes.is_empty() {
-                                            io.write(&bytes).await?;
-                                        }
-                                    }
-                                    continue;
-                                }
-                                activation.step(&packet, &mut out)
-                            } else {
-                                activation.step_no_input(&mut out)
-                            }
-                            .map_err(|_| RdpError::Protocol)?;
-                            if written.size().is_some() {
-                                io.write(out.filled()).await?;
-                            }
-                            if let ConnectionActivationState::Finalized {
-                                desktop_size,
-                                share_id,
-                                enable_server_pointer,
-                                pointer_software_rendering,
-                            } = activation.connection_activation_state()
-                            {
-                                let next_context = ActivationContext {
-                                    io_channel_id: activation.io_channel_id(),
-                                    user_channel_id: activation.user_channel_id(),
-                                    share_id,
-                                    enable_server_pointer,
-                                    pointer_software_rendering,
-                                };
-                                if activation_context != next_context {
-                                    set_stage(&state, "reactivation_context_changed")?;
-                                    return Err(RdpError::Protocol);
-                                }
-                                // Keep the existing FastPath codec and bulk histories. A resize
-                                // changes the image, not the transport compression dictionary.
-                                image = resized_image(desktop_size.width, desktop_size.height)?;
-                                active.set_share_id(share_id);
-                                active.set_enable_server_pointer(enable_server_pointer);
-                                {
-                                    let mut state =
-                                        state.lock().map_err(|_| RdpError::Connection)?;
-                                    state.diagnostics.last_stage = "reactivated";
-                                    state.diagnostics.reactivations_completed =
-                                        state.diagnostics.reactivations_completed.saturating_add(1);
-                                }
-                                break Ok::<_, RdpError>(());
-                            }
-                        }
-                    })
-                    .await
-                    .map_err(|_| RdpError::Timeout)??;
-                }
-                ActiveStageOutput::MultitransportRequest(_) => return Err(RdpError::Protocol),
-                ActiveStageOutput::PointerDefault
-                | ActiveStageOutput::PointerHidden
-                | ActiveStageOutput::PointerPosition { .. }
-                | ActiveStageOutput::PointerBitmap(_)
-                | ActiveStageOutput::AutoDetect(_) => {}
+                writer.enqueue(bytes, purpose)?;
+                let mut s = state.lock().map_err(|_| RdpError::Connection)?;
+                s.diagnostics.input_batches = s.diagnostics.input_batches.saturating_add(1);
+                s.diagnostics.input_events = s.diagnostics.input_events.saturating_add(event_count);
             }
         }
-        for (generation, bytes) in crate::clipboard::flush(&mut active, &redirects)? {
-            let authorized = {
-                let current = redirects.lock().map_err(|_| RdpError::Connection)?;
-                !current.closed && current.generation == generation
-            };
-            if authorized && !bytes.is_empty() {
-                io.write(&bytes).await?;
+        // Clipboard metadata and snapshots are prepared only with sufficient
+        // headroom. The writer opens the ACK slot at actual dispatch.
+        if writer.at_boundary()
+            && !writer.has_clipboard()
+            && writer.channel_available(clipboard_channel_id)
+            && writer.remaining() >= ordered_writer::INTERACTIVE_RESERVE
+        {
+            for (generation, bytes, advertisement, sequence, request) in
+                crate::clipboard::flush(&mut active, &redirects)?
+            {
+                writer.enqueue(
+                    bytes,
+                    ordered_writer::Purpose::Clipboard {
+                        generation,
+                        sequence,
+                        advertisement,
+                        request,
+                    },
+                )?;
             }
         }
         let permissions = {
             let s = redirects.lock().map_err(|_| RdpError::Connection)?;
-            if s.drive_ready {
-                Some((s.permissions.clone(), s.drive_id))
-            } else {
-                None
-            }
+            s.drive_ready.then(|| (s.permissions.clone(), s.drive_id))
         };
-        if let Some((permissions, drive_id)) = permissions {
-            if needs_drive_update(
-                &permissions,
-                drive_id,
-                &announced_permissions,
-                announced_drive_id,
-            ) {
-                let mut messages = Vec::new();
-                if let Some(channel) = active.get_svc_processor_mut::<ironrdp::rdpdr::Rdpdr>() {
-                    if let Some(removed) = channel.remove_device(announced_drive_id) {
-                        messages.push(ironrdp::svc::SvcMessage::from(
-                            ironrdp::rdpdr::pdu::RdpdrPdu::ClientDeviceListRemove(removed),
-                        ));
+        if writer.at_boundary()
+            && writer.channel_available(drive_channel_id)
+            && writer.remaining() >= ordered_writer::INTERACTIVE_RESERVE
+        {
+            if let Some((permissions, drive_id)) = permissions {
+                if needs_drive_update(
+                    &permissions,
+                    drive_id,
+                    &announced_permissions,
+                    announced_drive_id,
+                ) {
+                    let mut messages = Vec::new();
+                    if let Some(channel) = active.get_svc_processor_mut::<ironrdp::rdpdr::Rdpdr>() {
+                        if let Some(removed) = channel.remove_device(announced_drive_id) {
+                            messages.push(ironrdp::svc::SvcMessage::from(
+                                ironrdp::rdpdr::pdu::RdpdrPdu::ClientDeviceListRemove(removed),
+                            ));
+                        }
+                        if permissions.directory_grant_id.is_some() {
+                            messages.push(ironrdp::svc::SvcMessage::from(
+                                ironrdp::rdpdr::pdu::RdpdrPdu::ClientDeviceListAnnounce(
+                                    channel.add_drive(drive_id, "ConsoleCrypt".into()),
+                                ),
+                            ));
+                        }
                     }
-                    if permissions.directory_grant_id.is_some() {
-                        messages.push(ironrdp::svc::SvcMessage::from(
-                            ironrdp::rdpdr::pdu::RdpdrPdu::ClientDeviceListAnnounce(
-                                channel.add_drive(drive_id, "ConsoleCrypt".into()),
-                            ),
-                        ));
+                    if !messages.is_empty() {
+                        let bytes = Zeroizing::new(active.process_svc_processor_messages(ironrdp::svc::SvcProcessorMessages::<ironrdp::rdpdr::Rdpdr>::new(messages)).map_err(|_| RdpError::Protocol)?);
+                        writer.enqueue(bytes, ordered_writer::Purpose::Protocol)?;
+                    }
+                    announced_permissions = permissions;
+                    announced_drive_id = drive_id;
+                }
+            }
+        }
+
+        // Only drive requests whose response would exceed the aggregate output
+        // budget wait; other service channels, graphics and commands keep running.
+        let mut packet = None;
+        let mut packet_from_deferred = false;
+        if deferred.front().is_some_and(|(action, bytes)| {
+            drive_reply_budget(*action, bytes, drive_channel_id)
+                + ordered_writer::INTERACTIVE_RESERVE
+                <= writer.remaining()
+        }) {
+            let next = deferred.pop_front().expect("front checked");
+            deferred_bytes -= next.1.len();
+            packet = Some(next);
+            packet_from_deferred = true;
+        }
+        if packet.is_none() {
+            input.max_buffer = MAX_PDU.saturating_sub(deferred_bytes);
+            let deadline = writer
+                .next_deadline()
+                .into_iter()
+                .chain(activation.as_ref().map(|(_, deadline)| *deadline))
+                .min();
+            tokio::select! {
+                result = writer.progress(&redirects, &mut database), if !writer.is_empty() => {
+                    if let Some(completed) = result? {
+                        match completed.purpose {
+                            ordered_writer::Purpose::Input { pdus, .. } => {
+                                if completed.accepted > 0 { state.lock().map_err(|_| RdpError::Connection)?.diagnostics.input_pdus_written += pdus; }
+                            },
+                            ordered_writer::Purpose::Paste { done, pdus, .. } => {
+                                if completed.accepted > 0 {
+                                    state.lock().map_err(|_| RdpError::Connection)?.diagnostics.input_pdus_written += pdus;
+                                    let _ = done.send(Ok(()));
+                                } else { let _ = done.send(Err(RdpError::ClipboardUnavailable)); }
+                            },
+                            _ => {},
+                        }
+                    }
+                    continue;
+                },
+                result = input.pdu() => { packet = Some(result?); },
+                command = receiver.recv(), if commands.len() < 128 => {
+                    let Some(command) = command else { return Ok(()); };
+                    commands.push_back(command);
+                    continue;
+                },
+                _ = notify.notified() => continue,
+                _ = async { match deadline { Some(deadline) => tokio::time::sleep_until(deadline).await, None => std::future::pending().await } } => { return Err(RdpError::Timeout); },
+            }
+        }
+        let (action, packet) = packet.expect("selected packet");
+        let is_drive = drive_channel_id.is_some_and(|channel| {
+            action == pdu::Action::X224
+                && pdu::mcs::decode_send_data_indication(&packet)
+                    .is_ok_and(|data| data.channel_id == channel)
+        });
+        if is_drive
+            && !packet_from_deferred
+            && (!deferred.is_empty()
+                || drive_reply_budget(action, &packet, drive_channel_id)
+                    + ordered_writer::INTERACTIVE_RESERVE
+                    > writer.remaining())
+        {
+            if deferred.len() >= 128
+                || packet.len() > MAX_PDU.saturating_sub(deferred_bytes + input.buffered.len())
+            {
+                return Err(RdpError::Protocol);
+            }
+            deferred_bytes += packet.len();
+            deferred.push_back((action, packet));
+            continue;
+        }
+        set_stage(&state, "active_read")?;
+        observe_drive_handshake(action, &packet, drive_channel_id, &redirects)?;
+        reject_redirect(action, &packet, io_channel_id)?;
+        limits.check(action, &packet, io_channel_id, message_channel_id)?;
+        let read_response =
+            classify_drive_read(action, &packet, drive_channel_id, &mut drive_request_prefix);
+        let outputs = if let Some((sequence, _)) = activation.as_mut() {
+            let service_channel = action == pdu::Action::X224
+                && pdu::mcs::decode_send_data_indication(&packet)
+                    .is_ok_and(|d| d.channel_id != io_channel_id);
+            let matched = sequence.next_pdu_hint().is_some_and(|hint| {
+                hint.find_size(&packet)
+                    .is_ok_and(|size| size.is_some_and(|(matched, _)| matched))
+            });
+            if service_channel || !matched {
+                active
+                    .process(&mut image, action, &packet)
+                    .map_err(|e| decode_failure(&state, &e))?
+            } else {
+                let mut out = WriteBuf::new();
+                let written = sequence
+                    .step(&packet, &mut out)
+                    .map_err(|_| RdpError::Protocol)?;
+                if written.size().is_some() {
+                    writer.enqueue(
+                        Zeroizing::new(out.filled().to_vec()),
+                        ordered_writer::Purpose::Protocol,
+                    )?;
+                }
+                while sequence.next_pdu_hint().is_none()
+                    && !matches!(
+                        sequence.connection_activation_state(),
+                        ConnectionActivationState::Finalized { .. }
+                    )
+                {
+                    let mut out = WriteBuf::new();
+                    let written = sequence
+                        .step_no_input(&mut out)
+                        .map_err(|_| RdpError::Protocol)?;
+                    if written.size().is_some() {
+                        writer.enqueue(
+                            Zeroizing::new(out.filled().to_vec()),
+                            ordered_writer::Purpose::Protocol,
+                        )?;
                     }
                 }
-                if !messages.is_empty() {
-                    let bytes = Zeroizing::new(
-                        active
-                            .process_svc_processor_messages(ironrdp::svc::SvcProcessorMessages::<
-                                ironrdp::rdpdr::Rdpdr,
-                            >::new(
-                                messages
-                            ))
-                            .map_err(|_| RdpError::Protocol)?,
-                    );
-                    io.write(&bytes).await?;
+                if let ConnectionActivationState::Finalized {
+                    desktop_size,
+                    share_id,
+                    enable_server_pointer,
+                    pointer_software_rendering,
+                } = sequence.connection_activation_state()
+                {
+                    let next = ActivationContext {
+                        io_channel_id: sequence.io_channel_id(),
+                        user_channel_id: sequence.user_channel_id(),
+                        share_id,
+                        enable_server_pointer,
+                        pointer_software_rendering,
+                    };
+                    if activation_context != next {
+                        return Err(RdpError::Protocol);
+                    }
+                    image = resized_image(desktop_size.width, desktop_size.height)?;
+                    active.set_share_id(share_id);
+                    active.set_enable_server_pointer(enable_server_pointer);
+                    state
+                        .lock()
+                        .map_err(|_| RdpError::Connection)?
+                        .diagnostics
+                        .reactivations_completed += 1;
+                    activation = None;
                 }
-                announced_permissions = permissions;
-                announced_drive_id = drive_id;
+                Vec::new()
+            }
+        } else {
+            set_stage(&state, "active_decode")?;
+            active
+                .process(&mut image, action, &packet)
+                .map_err(|error| decode_failure(&state, &error))?
+        };
+        for output in outputs {
+            match output {
+                ActiveStageOutput::ResponseFrame(bytes) => {
+                    let bytes = Zeroizing::new(bytes);
+                    let purpose = drive_response_purpose(&bytes, drive_channel_id, read_response)?;
+                    writer.enqueue(bytes, purpose)?;
+                }
+                ActiveStageOutput::GraphicsUpdate(_) => publish_frame(&state, &image)?,
+                ActiveStageOutput::Terminate(_) => return Ok(()),
+                ActiveStageOutput::DeactivateAll => {
+                    if activation.is_some() {
+                        return Err(RdpError::Protocol);
+                    }
+                    limits.require_reactivation_boundary()?;
+                    state
+                        .lock()
+                        .map_err(|_| RdpError::Connection)?
+                        .diagnostics
+                        .reactivations_started += 1;
+                    activation = Some((
+                        activation_factory.create(),
+                        tokio::time::Instant::now() + CONNECT_TIMEOUT,
+                    ));
+                }
+                ActiveStageOutput::MultitransportRequest(_) => return Err(RdpError::Protocol),
+                _ => {}
             }
         }
     }
 }
+
+// Track only the fixed public RDPDR IO header, not a file payload. This prevents
+// ambiguous READ/WRITE/query response layouts from selecting a wrong fallback.
+fn classify_drive_read(
+    action: pdu::Action,
+    packet: &[u8],
+    drive: Option<u16>,
+    prefix: &mut Vec<u8>,
+) -> bool {
+    if action != pdu::Action::X224 {
+        return false;
+    }
+    let Ok(data) = pdu::mcs::decode_send_data_indication(packet) else {
+        return false;
+    };
+    if Some(data.channel_id) != drive || data.user_data.len() < 8 {
+        return false;
+    }
+    let b = data.user_data;
+    let n = (24usize.saturating_sub(prefix.len())).min(b.len() - 8);
+    prefix.extend_from_slice(&b[8..8 + n]);
+    if u32::from_le_bytes(b[4..8].try_into().unwrap()) & 2 == 0 {
+        return false;
+    }
+    let read = prefix.len() >= 24
+        && prefix[..4] == [0x72, 0x44, 0x52, 0x49]
+        && u32::from_le_bytes(prefix[16..20].try_into().unwrap()) == 3;
+    prefix.clear();
+    read
+}
+
+fn drive_response_purpose(
+    bytes: &[u8],
+    drive: Option<u16>,
+    read_response: bool,
+) -> Result<ordered_writer::Purpose, RdpError> {
+    if !read_response {
+        return Ok(ordered_writer::Purpose::Protocol);
+    }
+    let Some(drive) = drive else {
+        return Ok(ordered_writer::Purpose::Protocol);
+    };
+    let Some(info) = pdu::find_size(bytes).map_err(|_| RdpError::Protocol)? else {
+        return Err(RdpError::Protocol);
+    };
+    if info.action != pdu::Action::X224 {
+        return Ok(ordered_writer::Purpose::Protocol);
+    }
+    let data = ironrdp::core::decode::<pdu::x224::X224<pdu::mcs::SendDataRequest<'_>>>(
+        &bytes[..info.length],
+    )
+    .map_err(|_| RdpError::Protocol)?
+    .0;
+    let b = data.user_data.as_ref();
+    if data.channel_id != drive || b.len() < 28 || b[8..12] != [0x72, 0x44, 0x43, 0x49] {
+        return Ok(ordered_writer::Purpose::Protocol);
+    }
+    let length = u32::from_le_bytes(b[..4].try_into().unwrap());
+    let body_length = u32::from_le_bytes(b[24..28].try_into().unwrap());
+    if length != body_length.saturating_add(20) || b[20..24] != [0, 0, 0, 0] {
+        return Ok(ordered_writer::Purpose::Protocol);
+    }
+    use ironrdp::rdpdr::pdu::{
+        efs::{DeviceIoResponse, DeviceReadResponse, NtStatus},
+        RdpdrPdu,
+    };
+    let drive_id = u32::from_le_bytes(b[12..16].try_into().unwrap());
+    let denied = ironrdp::svc::client_encode_svc_messages(
+        vec![ironrdp::svc::SvcMessage::from(
+            RdpdrPdu::DeviceReadResponse(DeviceReadResponse {
+                device_io_reply: DeviceIoResponse {
+                    device_id: drive_id,
+                    completion_id: u32::from_le_bytes(b[16..20].try_into().unwrap()),
+                    io_status: NtStatus::ACCESS_DENIED,
+                },
+                read_data: Vec::new(),
+            }),
+        )],
+        drive,
+        data.initiator_id,
+    )
+    .map_err(|_| RdpError::Protocol)?;
+    Ok(ordered_writer::Purpose::Drive {
+        drive_id,
+        denied: Zeroizing::new(denied),
+    })
+}
+
+fn copy_input_database(database: &Database) -> Database {
+    let mut copy = Database::new();
+    let mut operations = vec![Operation::MouseMove(database.mouse_position())];
+    for idx in 0..512 {
+        let code = Scancode::from_u8(idx >= 256, (idx % 256) as u8);
+        if database.is_key_pressed(code) {
+            operations.push(Operation::KeyPressed(code));
+        }
+    }
+    for idx in 0..5 {
+        let button = ironrdp::input::MouseButton::from_idx(idx).expect("bounded button");
+        if database.is_mouse_button_pressed(button) {
+            operations.push(Operation::MouseButtonPressed(button));
+        }
+    }
+    // Every Unicode scalar is one down/up transaction in input_events(), so no
+    // Unicode key remains held between input batches.
+    let _ = copy.apply(operations);
+    copy
+}
+
+fn encode_input_frames(
+    active: &mut ironrdp::session::ActiveStage,
+    image: &mut DecodedImage,
+    events: &[pdu::input::fast_path::FastPathInputEvent],
+    bytes: &mut Vec<u8>,
+    pdus: &mut u64,
+) -> Result<(), RdpError> {
+    for chunk in events.chunks(15) {
+        for output in active
+            .process_fastpath_input(image, chunk)
+            .map_err(|_| RdpError::Protocol)?
+        {
+            match output {
+                ActiveStageOutput::ResponseFrame(frame) => {
+                    bytes.extend_from_slice(&frame);
+                    *pdus += 1;
+                }
+                ActiveStageOutput::GraphicsUpdate(_) => {}
+                _ => return Err(RdpError::Protocol),
+            }
+        }
+    }
+    Ok(())
+}
+
+fn drive_reply_budget(action: pdu::Action, packet: &[u8], drive: Option<u16>) -> usize {
+    if action != pdu::Action::X224 {
+        return 0;
+    }
+    let Ok(data) = pdu::mcs::decode_send_data_indication(packet) else {
+        return 0;
+    };
+    if Some(data.channel_id) != drive {
+        return 0;
+    }
+    let b = data.user_data;
+    if b.len() >= 8 {
+        let flags = u32::from_le_bytes(b[4..8].try_into().unwrap());
+        if flags & 3 == 2 {
+            // LAST may complete a fragmented READ whose header is retained by
+            // the channel decoder. Reserve its maximum response before decode.
+            let inner = crate::directory::MAX_IO + 20;
+            return inner + inner.div_ceil(1600) * 23;
+        }
+        if flags & 2 == 0 {
+            return 0;
+        }
+    }
+    // Single-fragment DR_DEVICE_IOREQUEST/IRP_MJ_READ: reserve the entire bounded
+    // reply before ActiveStage can read/allocate its plaintext.
+    if b.len() >= 36
+        && u32::from_le_bytes(b[4..8].try_into().unwrap()) & 3 == 3
+        && b[8..12] == [0x72, 0x44, 0x52, 0x49]
+        && u32::from_le_bytes(b[24..28].try_into().unwrap()) == 3
+    {
+        let len = usize::try_from(u32::from_le_bytes(b[32..36].try_into().unwrap()))
+            .unwrap_or(usize::MAX)
+            .min(crate::directory::MAX_IO);
+        let inner = len + 20;
+        inner + inner.div_ceil(1600) * 23
+    } else {
+        4096
+    }
+}
+
+#[cfg(test)]
+#[path = "transport_active_tests.rs"]
+mod actor_tests;
 
 fn needs_drive_update(
     current: &crate::SessionPermissions,
