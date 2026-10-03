@@ -5,8 +5,8 @@
 Пакеты содержат клиент, Rust bridge, Flutter engine, иконку и пункт меню приложений.
 Базовая сборка — **Ubuntu 22.04**; установка пакетов и запуск проверены
 в изолированных **Debian 12** и **Fedora 43** с X11 и программным рендерингом.
-Текущий выпуск — **0.2.5+1358**: [DEB](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B1358-linux-x64.deb) ·
-[RPM](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.2.5/ConsoleCrypt-0.2.5%2B1358-linux-x64.rpm).
+Текущий выпуск — **0.3.0+1378**: [DEB](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.0/ConsoleCrypt-0.3.0%2B1378-linux-x64.deb) ·
+[RPM](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.0/ConsoleCrypt-0.3.0%2B1378-linux-x64.rpm).
 Сервер синхронизации устанавливается отдельно: [Docker и Kubernetes](HOSTING.md).
 
 ## Системная ключница
@@ -45,7 +45,7 @@
 Откройте терминал в каталоге скачивания и подставьте точное имя полученного файла:
 
 ```sh
-sudo apt install ./ConsoleCrypt-0.2.5+1358-linux-x64.deb
+sudo apt install ./ConsoleCrypt-0.3.0+1378-linux-x64.deb
 consolecrypt
 ```
 
@@ -56,7 +56,7 @@ consolecrypt
 ## Установка `.rpm`
 
 ```sh
-sudo dnf install ./ConsoleCrypt-0.2.5+1358-linux-x64.rpm
+sudo dnf install ./ConsoleCrypt-0.3.0+1378-linux-x64.rpm
 consolecrypt
 ```
 
@@ -156,11 +156,11 @@ Linux ARM64, Flatpak/AppImage, RPM для RHEL, физический GPU и Wayl
 
 ## English
 
-ConsoleCrypt **0.2.5+1358** targets Linux x86-64. The build baseline is Ubuntu
+ConsoleCrypt **0.3.0+1378** targets Linux x86-64. The build baseline is Ubuntu
 22.04; DEB/RPM installation and an actual welcome-screen launch passed in
 isolated Debian 12 and Fedora 43 using software X11 rendering.
-Install the linked DEB with `sudo apt install ./ConsoleCrypt-0.2.5+1358-linux-x64.deb`
-or the RPM with `sudo dnf install ./ConsoleCrypt-0.2.5+1358-linux-x64.rpm`.
+Install the linked DEB with `sudo apt install ./ConsoleCrypt-0.3.0+1378-linux-x64.deb`
+or the RPM with `sudo dnf install ./ConsoleCrypt-0.3.0+1378-linux-x64.rpm`.
 Then run `consolecrypt` as your regular desktop user, without `sudo`.
 
 An existing unlocked default persistent Secret Service keyring and session

@@ -39,6 +39,12 @@ Microsoft RDP. RDP-трафик идёт напрямую, без сервера
 Windows может запрещать эти возможности. Передача RDP-хостов коллегам пока
 недоступна. iOS остаётся предварительной сборкой для Simulator.
 
+## Известное ограничение
+
+При смене подключённой папки в активном RDP-сеансе возможно отключение сеанса.
+Если это произошло, подключитесь заново и выберите нужную папку. Исправление
+готовится для следующей версии.
+
 ## English
 
 **Added support for RDP connections.** Save SSH and RDP connections in Hosts,
@@ -61,3 +67,5 @@ The [guide](https://consolecrypt.evsikov.net/guide?lang=en#rdp) explains setup,
 certificate verification and permissions. Clipboard supports text up to 64 KiB;
 folder redirection is available on desktop platforms with a 256 MiB per-file
 limit. Sharing RDP hosts with colleagues is not yet available.
+
+Known limitation: changing the redirected folder during an active RDP session may disconnect it. Reconnect and select the intended folder if this occurs. A fix is planned for a later version.
