@@ -47,11 +47,26 @@ const MAX_WRITE_BATCH: usize = 2 * 1024 * 1024;
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
 
+#[cfg(test)]
+fn record_write_progress(
+    state: &Option<Arc<Mutex<SessionState>>>,
+    f: impl FnOnce(&mut crate::SessionDiagnostics),
+) {
+    if let Some(state) = state {
+        if let Ok(mut state) = state.lock() {
+            f(&mut state.diagnostics);
+        }
+    }
+}
+
 /// Unlike the upstream framed helper this checks hinted length BEFORE reserving memory.
 struct BoundedIo<S> {
     stream: Option<S>,
     buffered: Vec<u8>,
     stopped: Arc<AtomicBool>,
+    read_ahead: bool,
+    #[cfg(test)]
+    write_diagnostics: Option<Arc<Mutex<SessionState>>>,
 }
 impl<S> Drop for BoundedIo<S> {
     fn drop(&mut self) {
@@ -64,6 +79,9 @@ impl<S: AsyncRead + AsyncWrite + Unpin> BoundedIo<S> {
             stream: Some(stream),
             buffered: Vec::new(),
             stopped,
+            read_ahead: false,
+            #[cfg(test)]
+            write_diagnostics: None,
         }
     }
     async fn fill(&mut self) -> Result<(), RdpError> {
@@ -144,13 +162,78 @@ impl<S: AsyncRead + AsyncWrite + Unpin> BoundedIo<S> {
         if data.len() > MAX_WRITE_BATCH {
             return Err(RdpError::Protocol);
         }
+        if !self.read_ahead {
+            // X224 negotiation must not consume bytes for the following TLS
+            // handshake. Keep the upgrade boundary write-only and empty.
+            return tokio::time::timeout(WRITE_TIMEOUT, async {
+                let stream = self.stream.as_mut().ok_or(RdpError::Connection)?;
+                stream
+                    .write_all(data)
+                    .await
+                    .map_err(|_| RdpError::Connection)?;
+                stream.flush().await.map_err(|_| RdpError::Connection)
+            })
+            .await
+            .map_err(|_| RdpError::Timeout)?;
+        }
+        #[cfg(test)]
+        let diagnostic = self.write_diagnostics.clone();
+        #[cfg(test)]
+        record_write_progress(&diagnostic, |d| {
+            d.last_write_attempted = data.len();
+            d.last_write_accepted = 0;
+            d.last_write_read_ahead = 0;
+            d.last_write_flush_started = false;
+        });
+        let stopped = self.stopped.clone();
         tokio::time::timeout(WRITE_TIMEOUT, async {
             let stream = self.stream.as_mut().ok_or(RdpError::Connection)?;
-            stream
-                .write_all(data)
-                .await
-                .map_err(|_| RdpError::Connection)?;
-            stream.flush().await.map_err(|_| RdpError::Connection)
+            // A peer may need to finish graphics/channel output before receiving
+            // this reply. A write-only await can fill both TCP directions and
+            // deadlock. Split only this borrowed stream; retain the sole ordered
+            // writer and preserve read-ahead in the existing bounded input buffer.
+            let (mut reader, mut writer) = tokio::io::split(stream);
+            let writing = async {
+                let mut offset = 0;
+                while offset < data.len() {
+                    if stopped.load(Ordering::Acquire) {
+                        return Err(RdpError::SessionNotFound);
+                    }
+                    let n = writer
+                        .write(&data[offset..])
+                        .await
+                        .map_err(|_| RdpError::Connection)?;
+                    if n == 0 {
+                        return Err(RdpError::Connection);
+                    }
+                    offset += n;
+                    #[cfg(test)]
+                    record_write_progress(&diagnostic, |d| d.last_write_accepted = offset);
+                }
+                #[cfg(test)]
+                record_write_progress(&diagnostic, |d| d.last_write_flush_started = true);
+                writer.flush().await.map_err(|_| RdpError::Connection)
+            };
+            tokio::pin!(writing);
+            loop {
+                if stopped.load(Ordering::Acquire) {
+                    return Err(RdpError::SessionNotFound);
+                }
+                let mut chunk = Zeroizing::new([0u8; 8192]);
+                let available = chunk.len().min(MAX_PDU.saturating_sub(self.buffered.len()));
+                tokio::select! {
+                    biased;
+                    result = &mut writing => return result,
+                    result = reader.read(&mut chunk[..available]), if available > 0 => {
+                        let n = result.map_err(|_| RdpError::Connection)?;
+                        if n == 0 { return Err(RdpError::Connection); }
+                        self.buffered.extend_from_slice(&chunk[..n]);
+                        #[cfg(test)]
+                        record_write_progress(&diagnostic, |d| d.last_write_read_ahead += n);
+                    },
+                    _ = std::future::ready(()), if available == 0 => return Err(RdpError::Protocol),
+                }
+            }
         })
         .await
         .map_err(|_| RdpError::Timeout)?
@@ -391,6 +474,10 @@ pub(crate) async fn run(
             .await?;
             connector.mark_security_upgrade_as_done();
             let mut io = BoundedIo::new(stream, stopped);
+            #[cfg(test)]
+            {
+                io.write_diagnostics = Some(state.clone());
+            }
             nla(&mut io, &mut connector, &settings, password, public_key).await?;
             connector.attach_static_channel(ironrdp::cliprdr::CliprdrClient::new(Box::new(
                 crate::clipboard::TextBackend::new(redirects.clone()),
@@ -433,6 +520,8 @@ pub(crate) async fn run(
         .await
         .map_err(|_| RdpError::Timeout)??;
     validate_dimensions(result.desktop_size.width, result.desktop_size.height)?;
+    // Only activated TLS sessions need duplex service/graphics progress.
+    io.read_ahead = true;
     let activation_context = ActivationContext {
         io_channel_id: result.io_channel_id,
         user_channel_id: result.user_channel_id,
@@ -1253,7 +1342,7 @@ mod tests {
             svc::SvcMessage,
         };
         let payload = vec![17; 1024 * 1024];
-        let frame = SvcMessage::from(RdpdrPdu::DeviceReadResponse(DeviceReadResponse {
+        let message = SvcMessage::from(RdpdrPdu::DeviceReadResponse(DeviceReadResponse {
             device_io_reply: DeviceIoResponse::new(
                 DeviceIoRequest {
                     device_id: 1,
@@ -1265,16 +1354,29 @@ mod tests {
                 NtStatus::SUCCESS,
             ),
             read_data: payload,
-        }))
-        .encode_unframed_pdu()
-        .unwrap();
+        }));
+        let frame = ironrdp::svc::client_encode_svc_messages(vec![message], 1004, 1002).unwrap();
         assert!(frame.len() > MAX_PDU);
+        assert!(frame.len() <= MAX_WRITE_BATCH);
+        let mut offset = 0;
+        let mut pdus = 0;
+        while offset < frame.len() {
+            let info = pdu::find_size(&frame[offset..]).unwrap().unwrap();
+            assert!(info.length > 0 && info.length <= MAX_PDU);
+            assert_eq!(info.action, pdu::Action::X224);
+            offset += info.length;
+            assert!(offset <= frame.len());
+            pdus += 1;
+        }
+        assert_eq!(offset, frame.len());
+        assert!(pdus > 1);
         let committed = Arc::new(Mutex::new(Vec::new()));
         let stream = BufferedWriter {
             buffered: Vec::new(),
             committed: committed.clone(),
         };
         let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.read_ahead = true;
         io.write(&frame).await.unwrap();
         assert_eq!(committed.lock().unwrap().as_slice(), frame.as_slice());
         assert_eq!(
@@ -1282,6 +1384,138 @@ mod tests {
             Err(RdpError::Protocol)
         );
         assert_eq!(committed.lock().unwrap().len(), frame.len());
+    }
+
+    #[tokio::test]
+    async fn large_write_makes_progress_while_peer_input_is_drained_and_preserved() {
+        // Model a duplex peer which must finish its pending graphics/channel
+        // bytes before it can receive the large drive response. Both directions
+        // exceed the bounded socket buffers; a write-only await deadlocks.
+        let (stream, mut peer) = tokio::io::duplex(4096);
+        let outgoing = vec![17u8; 1024 * 1024];
+        let incoming = vec![29u8; 64 * 1024];
+        let expected = outgoing.clone();
+        let peer_bytes = incoming.clone();
+        let task = tokio::spawn(async move {
+            peer.write_all(&peer_bytes).await.unwrap();
+            let mut actual = vec![0; expected.len()];
+            peer.read_exact(&mut actual).await.unwrap();
+            assert_eq!(actual, expected);
+        });
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.read_ahead = true;
+        assert_eq!(
+            tokio::time::timeout(Duration::from_secs(1), io.write(&outgoing)).await,
+            Ok(Ok(()))
+        );
+        assert_eq!(io.exact(incoming.len()).await.unwrap(), incoming);
+        task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn tls_large_write_progresses_with_bidirectional_bounded_backpressure() {
+        use rustls::pki_types::{PrivatePkcs8KeyDer, ServerName};
+        use tokio_rustls::{TlsAcceptor, TlsConnector};
+        let generated = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
+        let cert = generated.cert.der().clone();
+        let provider = Arc::new(rustls::crypto::ring::default_provider());
+        let server = rustls::ServerConfig::builder_with_provider(provider.clone())
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_no_client_auth()
+            .with_single_cert(
+                vec![cert.clone()],
+                PrivatePkcs8KeyDer::from(generated.signing_key.serialize_der()).into(),
+            )
+            .unwrap();
+        let mut roots = rustls::RootCertStore::empty();
+        roots.add(cert).unwrap();
+        let client = rustls::ClientConfig::builder_with_provider(provider)
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+        let (client_stream, server_stream) = tokio::io::duplex(1024);
+        let incoming = vec![29u8; 64 * 1024];
+        let peer_bytes = incoming.clone();
+        let outgoing = vec![17u8; MAX_PDU];
+        let expected = outgoing.clone();
+        let task = tokio::spawn(async move {
+            let mut stream = TlsAcceptor::from(Arc::new(server))
+                .accept(server_stream)
+                .await
+                .unwrap();
+            stream.write_all(&peer_bytes).await.unwrap();
+            stream.flush().await.unwrap();
+            let mut actual = vec![0; expected.len()];
+            stream.read_exact(&mut actual).await.unwrap();
+            assert_eq!(actual, expected);
+        });
+        let stream = TlsConnector::from(Arc::new(client))
+            .connect(ServerName::try_from("localhost").unwrap(), client_stream)
+            .await
+            .unwrap();
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.read_ahead = true;
+        assert_eq!(
+            tokio::time::timeout(Duration::from_secs(2), io.write(&outgoing)).await,
+            Ok(Ok(()))
+        );
+        assert_eq!(io.exact(incoming.len()).await.unwrap(), incoming);
+        task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn duplex_write_stalled_peer_keeps_original_deadline() {
+        let (stream, _peer) = tokio::io::duplex(64);
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.read_ahead = true;
+        let began = std::time::Instant::now();
+        assert_eq!(io.write(&vec![17; MAX_PDU]).await, Err(RdpError::Timeout));
+        assert!(began.elapsed() >= WRITE_TIMEOUT);
+        assert!(began.elapsed() < WRITE_TIMEOUT + Duration::from_secs(2));
+        assert!(io.buffered.is_empty());
+    }
+
+    #[tokio::test]
+    async fn negotiation_write_keeps_tls_preface_unread_for_upgrade() {
+        let (stream, mut peer) = tokio::io::duplex(64);
+        peer.write_all(&[22, 3, 3, 0, 0]).await.unwrap();
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.write(&[1, 2, 3]).await.unwrap();
+        assert!(io.buffered.is_empty());
+        let mut stream = io.into_stream().unwrap();
+        let mut preface = [0; 5];
+        stream.read_exact(&mut preface).await.unwrap();
+        assert_eq!(preface, [22, 3, 3, 0, 0]);
+    }
+
+    #[tokio::test]
+    async fn duplex_write_read_ahead_fails_closed_at_existing_input_bound() {
+        let (stream, mut peer) = tokio::io::duplex(4096);
+        let task = tokio::spawn(async move {
+            let _ = peer.write_all(&vec![29; MAX_PDU + 1]).await;
+            std::future::pending::<()>().await;
+        });
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.read_ahead = true;
+        assert_eq!(
+            tokio::time::timeout(Duration::from_secs(1), io.write(&vec![17; MAX_PDU])).await,
+            Ok(Err(RdpError::Protocol))
+        );
+        assert_eq!(io.buffered.len(), MAX_PDU);
+        assert!(io.buffered.capacity() <= MAX_PDU);
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn duplex_write_closed_peer_fails_without_claiming_success() {
+        let (stream, peer) = tokio::io::duplex(64);
+        drop(peer);
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.read_ahead = true;
+        assert_eq!(io.write(&[17]).await, Err(RdpError::Connection));
+        assert!(io.buffered.is_empty());
     }
 
     #[derive(Debug)]

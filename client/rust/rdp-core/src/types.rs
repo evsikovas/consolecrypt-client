@@ -68,6 +68,14 @@ pub struct SessionDiagnostics {
     pub decode_kind: &'static str,
     pub decode_site: &'static str,
     pub decode_subkind: &'static str,
+    #[cfg(test)]
+    pub last_write_attempted: usize,
+    #[cfg(test)]
+    pub last_write_accepted: usize,
+    #[cfg(test)]
+    pub last_write_read_ahead: usize,
+    #[cfg(test)]
+    pub last_write_flush_started: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
