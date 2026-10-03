@@ -63,9 +63,13 @@ async fn settle(manager: &RdpManager, id: &str, duration: Duration) -> Result<()
                     // These fields are source-defined static categories, never
                     // remote diagnostics, paths, command text or file contents.
                     println!(
-                        "RDP test-only failed session metadata: stage={} code={}",
+                        "RDP test-only failed session metadata: stage={} code={} write_attempted={} write_accepted={} write_read_ahead={} write_flush_started={}",
                         diagnostic.last_stage,
-                        e.code()
+                        e.code(),
+                        diagnostic.last_write_attempted,
+                        diagnostic.last_write_accepted,
+                        diagnostic.last_write_read_ahead,
+                        diagnostic.last_write_flush_started,
                     );
                 }
                 return Err(e.code());
@@ -150,6 +154,46 @@ fn run_edit_empty(frame: &crate::Frame, edit: (u16, u16)) -> bool {
         })
     })
 }
+fn run_edit_selected(frame: &crate::Frame, edit: (u16, u16)) -> bool {
+    // The observed Run history selection fills the edit interior in Windows
+    // blue. Ignore its fixed blue border and isolated antialiased glyph pixels.
+    let width = usize::from(frame.width);
+    let y = usize::from(edit.1);
+    let mut blue = 0;
+    for row in y - 4..y + 5 {
+        for x in 100..390 {
+            let offset = (row * width + x) * 4;
+            let pixel = &frame.rgba[offset..offset + 3];
+            if pixel[0] < 50 && (100..=160).contains(&pixel[1]) && pixel[2] > 180 {
+                blue += 1;
+            }
+        }
+    }
+    blue >= 128
+}
+async fn wait_run_selection(manager: &RdpManager, id: &str) -> Result<(), &'static str> {
+    let until = Instant::now() + Duration::from_secs(15);
+    while Instant::now() < until {
+        let mut poll = manager.poll(id).map_err(|e| e.code())?;
+        let mut selected = false;
+        if let Some(frame) = &mut poll.frame {
+            record_frame(frame)?;
+            selected = run_dialog_edit(frame)
+                .is_some_and(|edit| run_edit_empty(frame, edit) || run_edit_selected(frame, edit));
+            frame.rgba.zeroize();
+        }
+        match poll.status {
+            SessionStatus::Failed(error) => return Err(error.code()),
+            SessionStatus::Disconnected => return Err("disconnected"),
+            _ => {}
+        }
+        if selected {
+            return Ok(());
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    Err("run_edit_not_selected")
+}
 async fn wait_run_edit(
     manager: &RdpManager,
     id: &str,
@@ -225,12 +269,21 @@ fn run_readiness_requires_static_dialog_chrome_and_valid_frame() {
     }
     assert_eq!(run_dialog_edit(&frame), Some((230, 540)));
     assert!(run_edit_empty(&frame, (230, 540)));
+    assert!(!run_edit_selected(&frame, (230, 540)));
     let typed_offset = ((top + 110) * 1280 + 120) * 4;
     frame.rgba[typed_offset..typed_offset + 3].copy_from_slice(&[30, 30, 30]);
     assert!(
         !run_edit_empty(&frame, (230, 540)),
         "visible residual text is not a cleared edit"
     );
+    assert!(!run_edit_selected(&frame, (230, 540)));
+    for row in top + 107..top + 116 {
+        for x in 100..130 {
+            let offset = (row * 1280 + x) * 4;
+            frame.rgba[offset..offset + 3].copy_from_slice(&[0, 121, 214]);
+        }
+    }
+    assert!(run_edit_selected(&frame, (230, 540)));
     let icon_offset = ((top + 60) * 1280 + 33) * 4;
     frame.rgba[icon_offset..icon_offset + 3].copy_from_slice(&[255, 255, 255]);
     assert_eq!(
@@ -337,7 +390,11 @@ async fn prepare_run(manager: &RdpManager, id: &str) -> Result<(), &'static str>
             ],
         )
         .map_err(|e| e.code())?;
+    // Drain the actual pointer/focus repaint before sending a selection chord.
+    // A queued click alone is not evidence that Windows has focused the edit.
+    settle(manager, id, Duration::from_millis(700)).await?;
     super::clipboard_live_tests::ctrl_key(manager, id, 0x1e)?;
+    wait_run_selection(manager, id).await?;
     manager
         .send_input(
             id,
