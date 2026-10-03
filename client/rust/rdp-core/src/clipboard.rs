@@ -42,8 +42,16 @@ impl CliprdrBackend for TextBackend {
         }
     }
     fn on_process_negotiated_capabilities(&mut self, _: ClipboardGeneralCapabilityFlags) {}
+    fn on_format_list_response(&mut self, ok: bool) {
+        if let Ok(mut s) = self.state.lock() {
+            let generation = s.generation;
+            let enabled = s.enabled();
+            s.offers.acknowledge(ok, generation, enabled);
+        }
+    }
     fn on_remote_copy(&mut self, formats: &[ClipboardFormat]) {
         if let Ok(mut s) = self.state.lock() {
+            s.offers.content_changed();
             s.clipboard_counts[0] = s.clipboard_counts[0].saturating_add(1);
             s.remote_unicode = formats.iter().any(|f| {
                 f.id == ClipboardFormatId::CF_UNICODETEXT
@@ -60,6 +68,11 @@ impl CliprdrBackend for TextBackend {
     }
     fn on_format_data_request(&mut self, request: FormatDataRequest) {
         if let Ok(mut s) = self.state.lock() {
+            #[cfg(test)]
+            {
+                let index = usize::from(request.format != ClipboardFormatId::CF_UNICODETEXT);
+                s.clipboard_send_counts[index] = s.clipboard_send_counts[index].saturating_add(1);
+            }
             let generation = s.generation;
             let _ = s.enqueue(ClipboardAction::Respond(
                 generation,
@@ -117,9 +130,31 @@ pub(crate) fn flush(
         return Ok(Vec::new());
     };
     let mut messages = Vec::new();
-    while let Some(action) = s.actions.pop_front() {
+    // Process each queued action at most once. An ID-less FormatList ACK must
+    // drain before ANY subsequent advertisement, including empty/revoke offers.
+    for _ in 0..s.actions.len() {
+        let Some(action) = s.actions.pop_front() else {
+            break;
+        };
         let next = match action {
-            ClipboardAction::Advertise => {
+            ClipboardAction::Advertise | ClipboardAction::AdvertiseConfirmed(_) => {
+                if s.offers.in_flight() {
+                    s.actions.push_back(action);
+                    continue;
+                }
+                let confirmed_id = match action {
+                    ClipboardAction::AdvertiseConfirmed(id) => Some(id),
+                    _ => None,
+                };
+                let generation = s.generation;
+                let enabled = s.enabled();
+                let text = s.local_text.clone();
+                if !s
+                    .offers
+                    .begin_advertisement(generation, enabled, text.as_ref(), confirmed_id)
+                {
+                    continue;
+                }
                 let formats = if s.enabled() && s.local_text.is_some() {
                     vec![ClipboardFormat {
                         id: ClipboardFormatId::CF_UNICODETEXT,
@@ -140,13 +175,20 @@ pub(crate) fn flush(
             }
             ClipboardAction::Respond(generation, unicode) => {
                 let response = if unicode && generation == s.generation && s.enabled() {
-                    s.local_text
+                    s.offers
+                        .advertised_text
                         .as_ref()
                         .map(|text| FormatDataResponse::new_unicode_string(text).into_owned())
                         .unwrap_or_else(|| FormatDataResponse::new_error().into_owned())
                 } else {
                     FormatDataResponse::new_error().into_owned()
                 };
+                #[cfg(test)]
+                {
+                    let index = if response.is_error() { 3 } else { 2 };
+                    s.clipboard_send_counts[index] =
+                        s.clipboard_send_counts[index].saturating_add(1);
+                }
                 channel.submit_format_data(response)
             }
         }
@@ -268,6 +310,109 @@ mod tests {
                 .map(|v| v.as_str()),
             Some("new-synthetic")
         );
+    }
+
+    #[test]
+    fn real_cliprdr_ack_hook_correlates_only_the_serialized_current_offer() {
+        use ironrdp::svc::{SvcMessage, SvcProcessor};
+        use tokio::sync::oneshot;
+        let s = state(true);
+        let mut channel = CliprdrClient::new(Box::new(TextBackend::new(s.clone())));
+        let (done, mut receiver) = oneshot::channel();
+        let id = {
+            let mut state = s.lock().unwrap();
+            assert!(state.offers.begin_advertisement(1, true, None, None));
+            state.offers.begin_confirmation(1, done).unwrap()
+        };
+        let ack = SvcMessage::from(ClipboardPdu::FormatListResponse(FormatListResponse::Ok))
+            .encode_unframed_pdu()
+            .unwrap();
+        channel.process(&ack).unwrap();
+        assert!(s.lock().unwrap().ready);
+        assert_eq!(
+            receiver.try_recv(),
+            Err(oneshot::error::TryRecvError::Empty)
+        );
+        {
+            let mut state = s.lock().unwrap();
+            let text = Zeroizing::new("synthetic / Привет".to_owned());
+            assert!(state
+                .offers
+                .begin_advertisement(1, true, Some(&text), Some(id)));
+        }
+        channel.process(&ack).unwrap();
+        let ticket = receiver.try_recv().unwrap().unwrap();
+        let mut state = s.lock().unwrap();
+        state.offers.queue_paste(&ticket, 1, true).unwrap();
+        state.offers.consume_paste(&ticket, 1, true).unwrap();
+        assert!(state.offers.consume_paste(&ticket, 1, true).is_err());
+    }
+
+    #[test]
+    fn release_all_after_committed_paste_preserves_the_delayed_wire_response_body() {
+        use ironrdp::{
+            session::ActiveStageBuilder,
+            svc::{StaticChannelSet, SvcMessage, SvcProcessor},
+        };
+        use std::any::TypeId;
+        use tokio::sync::oneshot;
+        let s = state(true);
+        let mut channel = CliprdrClient::new(Box::new(TextBackend::new(s.clone())));
+        let ack = SvcMessage::from(ClipboardPdu::FormatListResponse(FormatListResponse::Ok))
+            .encode_unframed_pdu()
+            .unwrap();
+        let (done, mut receiver) = oneshot::channel();
+        let expected = Zeroizing::new("synthetic delayed / Привет".to_owned());
+        {
+            let mut state = s.lock().unwrap();
+            let id = state.offers.begin_confirmation(1, done).unwrap();
+            assert!(state
+                .offers
+                .begin_advertisement(1, true, Some(&expected), Some(id)));
+        }
+        channel.process(&ack).unwrap();
+        {
+            let ticket = receiver.try_recv().unwrap().unwrap();
+            let mut state = s.lock().unwrap();
+            state.offers.queue_paste(&ticket, 1, true).unwrap();
+            state.offers.consume_paste(&ticket, 1, true).unwrap();
+            state.offers.cancel_interaction(); // Exact manager ReleaseAll behavior.
+        }
+        let request = SvcMessage::from(ClipboardPdu::FormatDataRequest(FormatDataRequest {
+            format: ClipboardFormatId::CF_UNICODETEXT,
+        }))
+        .encode_unframed_pdu()
+        .unwrap();
+        channel.process(&request).unwrap();
+        let mut channels = StaticChannelSet::new();
+        channels.insert(channel);
+        channels.attach_channel_id(TypeId::of::<CliprdrClient>(), 1004);
+        let mut active = ActiveStageBuilder {
+            static_channels: channels,
+            user_channel_id: 1002,
+            io_channel_id: 1003,
+            message_channel_id: None,
+            share_id: 1,
+            compression_type: None,
+            enable_server_pointer: false,
+            pointer_software_rendering: true,
+        }
+        .build();
+        let frames = flush(&mut active, &s).unwrap();
+        assert_eq!(frames.len(), 1);
+        let expected_wire = Zeroizing::new(
+            expected
+                .encode_utf16()
+                .flat_map(u16::to_le_bytes)
+                .collect::<Vec<_>>(),
+        );
+        assert!(frames[0]
+            .1
+            .windows(expected_wire.len())
+            .any(|part| part == expected_wire.as_slice()));
+        assert_eq!(s.lock().unwrap().clipboard_send_counts, [1, 0, 1, 0]);
+        s.lock().unwrap().clear_text();
+        assert!(s.lock().unwrap().offers.advertised_text.is_none());
     }
 }
 

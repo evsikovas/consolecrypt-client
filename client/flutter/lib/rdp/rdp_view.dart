@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:consolecrypt/rdp/rdp_service.dart';
@@ -21,11 +22,19 @@ class RdpView extends StatefulWidget {
     required this.height,
     required this.enabled,
     required this.onInput,
+    this.localClipboardEnabled = false,
+    this.onPaste,
+    this.onInteractionCancelled,
   });
   final RdpFrame? frame;
   final int width, height;
   final bool enabled;
   final ValueChanged<List<RdpInput>> onInput;
+
+  /// Immediate native cancellation, independent of the ordinary input FIFO.
+  final VoidCallback? onInteractionCancelled;
+  final bool localClipboardEnabled;
+  final Future<void> Function(bool Function() isInputCurrent)? onPaste;
   @override
   State<RdpView> createState() => _RdpViewState();
 }
@@ -42,6 +51,9 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
   int _decodeGeneration = 0;
   Size _viewport = Size.zero;
   int _buttons = 0;
+  int _inputGeneration = 0;
+  bool _pastePending = false;
+  final Set<PhysicalKeyboardKey> _pasteKeys = {};
 
   @override
   void initState() {
@@ -53,8 +65,19 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
   @override
   void didUpdateWidget(RdpView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.localClipboardEnabled != widget.localClipboardEnabled || oldWidget.enabled != widget.enabled) {
+      _inputGeneration++;
+    }
     if (!widget.enabled) {
-      if (oldWidget.enabled) oldWidget.onInput(const [RdpReleaseAllInput()]);
+      if (oldWidget.enabled) {
+        _held.clear();
+        _buttons = 0;
+        if (oldWidget.onInteractionCancelled != null) {
+          oldWidget.onInteractionCancelled!();
+        } else {
+          oldWidget.onInput(const [RdpReleaseAllInput()]);
+        }
+      }
       _focus.unfocus();
       _dropImages();
     } else if (!oldWidget.enabled || !identical(widget.frame, oldWidget.frame)) {
@@ -107,7 +130,9 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
     if (_focus.hasFocus && widget.enabled) {
       _openInput();
     } else {
-      _releaseHeld();
+      _inputGeneration++;
+      _pasteKeys.clear();
+      _releaseHeld(cancelInteraction: true);
       _connection?.close();
       _connection = null;
       _editing = _empty;
@@ -137,7 +162,14 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
     if (widget.enabled) widget.onInput(events);
   }
 
-  void _releaseHeld() {
+  void _releaseHeld({bool cancelInteraction = false}) {
+    if (cancelInteraction && widget.onInteractionCancelled != null) {
+      _held.clear();
+      _buttons = 0;
+      // didUpdateWidget already cancelled the previously enabled view.
+      if (widget.enabled) widget.onInteractionCancelled!();
+      return;
+    }
     if (_held.isNotEmpty) {
       _send([for (final code in _held.values) RdpScancodeInput(code.$1, extended: code.$2, down: false)]);
       _held.clear();
@@ -152,14 +184,43 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
   KeyEventResult _key(FocusNode node, KeyEvent event) {
     if (!widget.enabled) return KeyEventResult.ignored;
     if (event is KeyUpEvent) {
+      if (_pasteKeys.remove(event.physicalKey)) return KeyEventResult.handled;
       final code = _held.remove(event.physicalKey);
       if (code == null) return KeyEventResult.ignored;
       _send([RdpScancodeInput(code.$1, extended: code.$2, down: false)]);
       return KeyEventResult.handled;
     }
+    if (event is KeyRepeatEvent && _pasteKeys.contains(event.physicalKey)) return KeyEventResult.handled;
     // IME owns printable keys until composition is committed. Navigation and
     // editing keys must also stay local while the candidate window is open.
     if (_editing.composing.isValid && !_editing.composing.isCollapsed) return KeyEventResult.ignored;
+    final keys = HardwareKeyboard.instance;
+    final apple = defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.iOS;
+    final primary = apple ? keys.isMetaPressed && !keys.isControlPressed : keys.isControlPressed && !keys.isMetaPressed;
+    if (widget.localClipboardEnabled &&
+        event.logicalKey == LogicalKeyboardKey.keyV &&
+        primary &&
+        !keys.isShiftPressed &&
+        !keys.isAltPressed &&
+        (event is KeyDownEvent || event is KeyRepeatEvent)) {
+      _pasteKeys.add(event.physicalKey);
+      // A second distinct shortcut is also consumed while the first is pending.
+      // Releasing here would cancel the acknowledged offer we are awaiting.
+      if (_pastePending) return KeyEventResult.handled;
+      // The modifier down may already be remote. Release it before awaiting the
+      // clipboard; the eventual paste is one guarded native Ctrl+V transaction.
+      _releaseHeld();
+      if (event is KeyDownEvent && !_pastePending && widget.onPaste != null) {
+        _pastePending = true;
+        final generation = _inputGeneration;
+        unawaited(
+          widget.onPaste!(() => mounted && widget.enabled && _focus.hasFocus && generation == _inputGeneration)
+              .whenComplete(() => _pastePending = false)
+              .catchError((Object _) {}),
+        );
+      }
+      return KeyEventResult.handled;
+    }
     // Windows may deliver layout Unicode on WM_CHAR-backed KeyEvent without
     // forwarding it to a custom TextInputClient. Consume it once here, as the
     // terminal does; handled suppresses the engine's duplicate text insertion.
@@ -238,7 +299,7 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
             key: const ValueKey('rdp-input-surface'),
             onPointerDown: (event) => _pointer(event, down: true),
             onPointerUp: (event) => _pointer(event, down: false),
-            onPointerCancel: (_) => _releaseHeld(),
+            onPointerCancel: (_) => _releaseHeld(cancelInteraction: true),
             onPointerMove: (event) => _pointer(event, down: false, moving: true),
             onPointerHover: (event) => _pointer(event, down: false, moving: true),
             onPointerSignal: (event) {
@@ -307,7 +368,8 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
 
   @override
   void dispose() {
-    _releaseHeld();
+    _inputGeneration++;
+    _releaseHeld(cancelInteraction: true);
     _focus.removeListener(_focusChanged);
     _connection?.close();
     _focus.dispose();

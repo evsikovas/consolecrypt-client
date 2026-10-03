@@ -5513,7 +5513,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get rdpClipboardHelp =>
-      'Текст передаётся только по кнопкам отправки и получения. По умолчанию доступ выключен.';
+      'Ctrl+V (⌘V на Mac) передаёт и вставляет текст. Кнопки отправки и получения — отдельный обмен. По умолчанию доступ выключен.';
 
   @override
   String get rdpFolderHelp =>

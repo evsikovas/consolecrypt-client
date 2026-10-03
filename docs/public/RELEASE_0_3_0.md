@@ -8,8 +8,9 @@ Windows-компьютеры теперь можно держать рядом �
 
 - **Рабочие столы во вкладках.** До четырёх параллельных RDP-сеансов, панель
   вкладок в стиле терминала и независимое закрытие подключений.
-- **Обмен текстом.** Явные действия отправки и получения Unicode-текста;
-  разрешение включается отдельно для каждого сеанса.
+- **Обмен текстом.** Ctrl+V (⌘V на macOS) передаёт локальный текст и сразу
+  вставляет его в активный RDP-сеанс. Разрешение включается отдельно для каждого
+  сеанса; кнопки отправки и получения также доступны.
 - **Обмен файлами.** Выберите папку на macOS, Windows или Linux. Она появится
   как перенаправленный диск в Windows. По умолчанию доступна только для чтения;
   запись включается отдельно.
@@ -42,6 +43,9 @@ switch between up to four remote desktop tabs, and explicitly enable text
 clipboard or access to one selected local folder. Folder access is read-only
 by default; writing requires a separate opt-in. No IronRDP add-on is needed
 on Windows, and the sync server does not relay RDP traffic.
+
+With clipboard access enabled, Ctrl+V (⌘V on macOS) sends and pastes local text
+into the active RDP session without a separate click on Send.
 
 The SSH terminal on Windows also accepts Shift+Insert for pasting, alongside
 Ctrl+V, with the same review for multiline text.

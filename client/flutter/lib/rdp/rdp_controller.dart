@@ -23,6 +23,16 @@ final class RdpTab extends ChangeNotifier {
   RdpDirectoryGrant? directory;
   RdpFolderState folderState;
   int _permissionEpoch = 0;
+  int get permissionEpoch => _permissionEpoch;
+  bool _clipboardPastePending = false;
+  bool get clipboardPastePending => _clipboardPastePending;
+
+  void setClipboardPastePending(bool value) {
+    if (clipboardPastePending == value) return;
+    _clipboardPastePending = value;
+    if (!closed) notifyListeners();
+  }
+
   Future<void> _permissionTail = Future.value();
   RdpStatus status = const RdpStatus(RdpPhase.connecting);
   RdpFrame? frame;
@@ -32,6 +42,8 @@ final class RdpTab extends ChangeNotifier {
   int _lastSequence = -1;
   Future<void> _inputTail = Future.value();
   int _queuedInputs = 0;
+  int _inputEpoch = 0;
+  int get interactionEpoch => _inputEpoch;
 }
 
 final class RdpWorkspaceController extends ChangeNotifier {
@@ -53,6 +65,7 @@ final class RdpWorkspaceController extends ChangeNotifier {
   /// Indexed-shell branches remain mounted while offstage. Polling pauses
   /// while another section is selected; the native connection stays open.
   void setVisible(bool visible) {
+    if (_visible && !visible && _active != null) cancelInteraction(_active!);
     _visible = visible;
   }
 
@@ -118,6 +131,7 @@ final class RdpWorkspaceController extends ChangeNotifier {
       }
       final tab = RdpTab(info, options, title: title, hostId: hostId, permissions: permissions, directory: directory);
       _tabs.add(tab);
+      if (_active != null) cancelInteraction(_active!);
       _active = tab;
       notifyListeners();
       return tab;
@@ -162,8 +176,37 @@ final class RdpWorkspaceController extends ChangeNotifier {
 
   void activate(RdpTab tab) {
     if (_disposed || !_tabs.contains(tab) || tab.closed) return;
+    if (!identical(_active, tab) && _active != null) cancelInteraction(_active!);
     _active = tab;
     notifyListeners();
+  }
+
+  /// Interaction cancellation must reach native code even while a confirmed
+  /// clipboard paste occupies the ordinary FIFO. Native ReleaseAll invalidates
+  /// its waiter/ticket before enqueueing key releases. Preserve the old tail as
+  /// well as this cancellation acknowledgement as barriers for fresh input.
+  void cancelInteraction(RdpTab tab) {
+    tab._inputEpoch++;
+    if (_disposed || tab.closed || tab.status.phase != RdpPhase.connected) return;
+    final previous = tab._inputTail;
+    final cancellation = _cancelNativeInteraction(tab);
+    tab._inputTail = Future.wait<void>([previous, cancellation]).then<void>((_) {});
+  }
+
+  Future<void> _cancelNativeInteraction(RdpTab tab) async {
+    try {
+      await service.sendInput(tab.info.id, const [RdpReleaseAllInput()]);
+    } catch (error) {
+      // A failed release cannot be ignored: remote modifiers/buttons might
+      // remain down. Close the session rather than resume fresh interaction.
+      if (!_disposed && !tab.closed) {
+        tab.status = RdpStatus(RdpPhase.failed, errorCode: error is RdpFailure ? error.code : 'transport');
+        tab.frame = null;
+        tab.notifyListeners();
+        notifyListeners();
+        await _disconnect(tab.info.id);
+      }
+    }
   }
 
   Future<void> _pollActive() async {
@@ -180,7 +223,12 @@ final class RdpWorkspaceController extends ChangeNotifier {
     final permissionEpoch = tab._permissionEpoch;
     try {
       final result = await service.pollFrame(tab.info.id);
-      if (_disposed || tab.closed || !_tabs.contains(tab)) return;
+      if (_disposed ||
+          tab.closed ||
+          !_tabs.contains(tab) ||
+          (tab.status.phase != RdpPhase.connected && tab.status.phase != RdpPhase.connecting)) {
+        return;
+      }
       final statusChanged = tab.status.phase != result.status.phase || tab.status.errorCode != result.status.errorCode;
       var changed = statusChanged;
       tab.status = result.status;
@@ -215,7 +263,14 @@ final class RdpWorkspaceController extends ChangeNotifier {
   /// A bounded FIFO: a delayed native write cannot reorder keys/buttons.
   /// Queue overflow fails the session instead of silently dropping key-up.
   void send(RdpTab tab, List<RdpInput> inputs) {
-    if (_disposed || tab.closed || tab.status.phase != RdpPhase.connected || inputs.isEmpty) return;
+    if (_disposed ||
+        !_visible ||
+        !identical(_active, tab) ||
+        tab.closed ||
+        tab.status.phase != RdpPhase.connected ||
+        inputs.isEmpty) {
+      return;
+    }
     if (inputs.length > 64 ||
         tab._queuedInputs + inputs.length > 256 ||
         inputs.any((input) => input is RdpUnicodeInput && input.text.length > 4096)) {
@@ -227,18 +282,28 @@ final class RdpWorkspaceController extends ChangeNotifier {
       return;
     }
     final batch = List<RdpInput>.unmodifiable(inputs);
+    final epoch = tab._inputEpoch;
     tab._queuedInputs += batch.length;
     tab._inputTail = tab._inputTail.then((_) async {
       try {
-        if (!_disposed && !tab.closed && tab.status.phase == RdpPhase.connected) {
+        if (!_disposed &&
+            _visible &&
+            identical(_active, tab) &&
+            !tab.closed &&
+            epoch == tab._inputEpoch &&
+            tab.status.phase == RdpPhase.connected) {
           await service.sendInput(tab.info.id, batch);
-          if (!_disposed && !tab.closed && tab.noticeCode != null && batch.any((event) => event is RdpResizeInput)) {
+          if (!_disposed &&
+              !tab.closed &&
+              epoch == tab._inputEpoch &&
+              tab.noticeCode != null &&
+              batch.any((event) => event is RdpResizeInput)) {
             tab.noticeCode = null;
             tab.notifyListeners();
           }
         }
       } catch (error) {
-        if (!_disposed && !tab.closed) {
+        if (!_disposed && !tab.closed && epoch == tab._inputEpoch) {
           if (error is RdpFailure &&
               (error.code == 'resize_unavailable' || error.code == 'frame_limit') &&
               batch.every((event) => event is RdpResizeInput)) {
@@ -256,6 +321,27 @@ final class RdpWorkspaceController extends ChangeNotifier {
         tab._queuedInputs -= batch.length;
       }
     });
+  }
+
+  /// The explicit clipboard read, acknowledgement and guarded paste occupy one
+  /// FIFO position, so subsequent typed keys cannot overtake that user action.
+  Future<void> queueClipboardPaste(RdpTab tab, Future<void> Function() action, {required bool Function() isCurrent}) {
+    final generation = _generation;
+    final epoch = tab._inputEpoch;
+    final result = tab._inputTail.then((_) async {
+      if (_disposed ||
+          !_visible ||
+          !identical(_active, tab) ||
+          tab.closed ||
+          generation != _generation ||
+          epoch != tab._inputEpoch ||
+          !isCurrent()) {
+        throw const RdpFailure('cancelled');
+      }
+      await action();
+    });
+    tab._inputTail = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    return result;
   }
 
   Future<void> close(RdpTab tab) async {

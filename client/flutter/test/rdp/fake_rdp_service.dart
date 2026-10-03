@@ -20,6 +20,11 @@ final class FakeRdpService implements RdpService {
   final permissionCalls = <RdpSessionPermissions>[];
   final releasedGrants = <String>[];
   final clipboardOffers = <String>[];
+  final pasteCommits = <(String, String)>[];
+  final callOrder = <String>[];
+  Completer<String>? confirmedOfferGate;
+  Completer<void>? pasteCommitGate;
+  RdpFailure? confirmedOfferFailure;
   RdpSessionPermissions currentPermissions = const RdpSessionPermissions();
   RdpCapabilities supported = const RdpCapabilities(clipboardSupported: true, folderSupported: true);
   RdpDirectoryGrant? pickedDirectory;
@@ -104,6 +109,21 @@ final class FakeRdpService implements RdpService {
   }
 
   @override
+  Future<String> offerClipboardTextConfirmed(String sessionId, String text) async {
+    callOrder.add('confirmed-offer');
+    clipboardOffers.add(text);
+    if (confirmedOfferFailure != null) throw confirmedOfferFailure!;
+    return confirmedOfferGate?.future ?? 'opaque-confirmed-${clipboardOffers.length}';
+  }
+
+  @override
+  Future<void> commitClipboardPaste(String sessionId, String ticket) async {
+    callOrder.add('commit');
+    pasteCommits.add((sessionId, ticket));
+    await pasteCommitGate?.future;
+  }
+
+  @override
   Future<void> requestClipboardText(String sessionId) async {
     clipboardRequests++;
     if (clipboardFailure != null) throw clipboardFailure!;
@@ -123,6 +143,7 @@ final class FakeRdpService implements RdpService {
 
   @override
   Future<void> sendInput(String sessionId, List<RdpInput> batch) async {
+    callOrder.add('input');
     inputs.add(batch);
     inputSessionIds.add(sessionId);
     if (inputFailure != null) throw inputFailure!;

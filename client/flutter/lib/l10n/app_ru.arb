@@ -2276,7 +2276,7 @@
   "@rdpAllowClipboard": {
     "description": "RDP session UI."
   },
-  "rdpClipboardHelp": "Текст передаётся только по кнопкам отправки и получения. По умолчанию доступ выключен.",
+  "rdpClipboardHelp": "Ctrl+V (⌘V на Mac) передаёт и вставляет текст. Кнопки отправки и получения — отдельный обмен. По умолчанию доступ выключен.",
   "@rdpClipboardHelp": {
     "description": "RDP session UI."
   },

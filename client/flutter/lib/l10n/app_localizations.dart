@@ -9419,7 +9419,7 @@ abstract class AppLocalizations {
   /// RDP session UI.
   ///
   /// In en, this message translates to:
-  /// **'Text is exchanged only when you choose Send or Receive. Access is off by default.'**
+  /// **'Ctrl+V (⌘V on Mac) sends and pastes text. Send and Receive exchange text separately. Access is off by default.'**
   String get rdpClipboardHelp;
 
   /// RDP session UI.

@@ -55,6 +55,14 @@ Future<void> rdpOfferClipboardText({required String sessionId, required String t
 Future<void> rdpRequestClipboardText({required String sessionId}) =>
     RustLib.instance.api.crateApiRdpRdpRequestClipboardText(sessionId: sessionId);
 
+/// Returns an opaque, single-use paste ticket only after this exact offer is acknowledged.
+Future<String> rdpOfferClipboardTextConfirmed({required String sessionId, required String text}) =>
+    RustLib.instance.api.crateApiRdpRdpOfferClipboardTextConfirmed(sessionId: sessionId, text: text);
+
+/// Explicit commit after the UI rechecks the captured tab/profile/permission epoch.
+Future<void> rdpCommitClipboardPaste({required String sessionId, required String ticket}) =>
+    RustLib.instance.api.crateApiRdpRdpCommitClipboardPaste(sessionId: sessionId, ticket: ticket);
+
 Future<String?> rdpTakeClipboardText({required String sessionId}) =>
     RustLib.instance.api.crateApiRdpRdpTakeClipboardText(sessionId: sessionId);
 

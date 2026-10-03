@@ -17,7 +17,7 @@ use std::{
 };
 use tokio::sync::Notify;
 use tokio::{
-    sync::{mpsc, watch},
+    sync::{mpsc, oneshot, watch},
     task::JoinHandle,
 };
 use zeroize::Zeroize;
@@ -41,11 +41,54 @@ impl SessionState {
 #[derive(Debug)]
 struct Session {
     state: Arc<Mutex<SessionState>>,
-    input: mpsc::Sender<Vec<Input>>,
+    input: mpsc::Sender<SessionCommand>,
     task: JoinHandle<()>,
     stopped: Arc<AtomicBool>,
     redirects: SharedRedirect,
     notify: Arc<Notify>,
+}
+pub(crate) enum SessionCommand {
+    Inputs(Vec<Input>),
+    ConfirmedPaste {
+        ticket: String,
+        done: oneshot::Sender<Result<(), RdpError>>,
+    },
+}
+impl std::fmt::Debug for SessionCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("SessionCommand(<redacted>)")
+    }
+}
+struct ConfirmationCancellation {
+    redirects: SharedRedirect,
+    notify: Arc<Notify>,
+    id: u64,
+    armed: bool,
+}
+impl Drop for ConfirmationCancellation {
+    fn drop(&mut self) {
+        if self.armed {
+            if let Ok(mut s) = self.redirects.lock() {
+                if s.offers.cancel_confirmation(self.id) {
+                    s.local_text = None;
+                    s.actions.retain(|action| !matches!(action, ClipboardAction::AdvertiseConfirmed(id) if *id == self.id));
+                    let _ = s.enqueue(ClipboardAction::Advertise);
+                    self.notify.notify_one();
+                }
+            }
+        }
+    }
+}
+struct PasteCancellation {
+    redirects: SharedRedirect,
+    ticket: String,
+}
+impl Drop for PasteCancellation {
+    fn drop(&mut self) {
+        if let Ok(mut s) = self.redirects.lock() {
+            s.offers.cancel_ticket(&self.ticket);
+        }
+    }
 }
 #[derive(Debug)]
 struct Inner {
@@ -322,10 +365,113 @@ impl RdpManager {
         if !s.ready {
             return Err(RdpError::ClipboardUnavailable);
         }
+        s.offers.ordinary_changed()?;
         s.enqueue(ClipboardAction::Advertise)?;
         s.local_text = Some(text);
         session.notify.notify_one();
         Ok(())
+    }
+    /// Acknowledges exactly this offer; never injects keys on a delayed ACK.
+    pub async fn offer_clipboard_text_confirmed(
+        &self,
+        id: &str,
+        text: String,
+    ) -> Result<String, RdpError> {
+        let text = Zeroizing::new(text);
+        if text.len() > MAX_CLIPBOARD_TEXT || text.contains('\0') {
+            return Err(RdpError::ClipboardLimit);
+        }
+        if text.is_empty() {
+            return Err(RdpError::ClipboardUnavailable);
+        }
+        let (receiver, mut cancellation) = {
+            let inner = self.inner.lock().map_err(|_| RdpError::Connection)?;
+            if inner.closed {
+                return Err(RdpError::SessionNotFound);
+            }
+            let session = inner.sessions.get(id).ok_or(RdpError::SessionNotFound)?;
+            let mut s = session.redirects.lock().map_err(|_| RdpError::Connection)?;
+            if !s.enabled() {
+                return Err(RdpError::PermissionDenied);
+            }
+            if !s.ready {
+                return Err(RdpError::ClipboardUnavailable);
+            }
+            if s.actions.len() >= 16 {
+                return Err(RdpError::InputQueueFull);
+            }
+            let (done, receiver) = oneshot::channel();
+            let generation = s.generation;
+            let offer_id = s.offers.begin_confirmation(generation, done)?;
+            s.local_text = Some(text);
+            s.actions
+                .push_back(ClipboardAction::AdvertiseConfirmed(offer_id));
+            session.notify.notify_one();
+            (
+                receiver,
+                ConfirmationCancellation {
+                    redirects: session.redirects.clone(),
+                    notify: session.notify.clone(),
+                    id: offer_id,
+                    armed: true,
+                },
+            )
+        };
+        let result = tokio::time::timeout(crate::clipboard_offers::CONFIRM_TIMEOUT, receiver)
+            .await
+            .map_err(|_| RdpError::Timeout)?
+            .map_err(|_| RdpError::SessionNotFound)??;
+        cancellation.armed = false;
+        Ok(result)
+    }
+    /// The caller rechecks focus/profile before this explicit, single-use commit.
+    pub async fn commit_clipboard_paste(&self, id: &str, ticket: String) -> Result<(), RdpError> {
+        if ticket.len() != 36 || uuid::Uuid::parse_str(&ticket).is_err() {
+            return Err(RdpError::ClipboardUnavailable);
+        }
+        let (receiver, _cancellation) = {
+            let inner = self.inner.lock().map_err(|_| RdpError::Connection)?;
+            if inner.closed {
+                return Err(RdpError::SessionNotFound);
+            }
+            let session = inner.sessions.get(id).ok_or(RdpError::SessionNotFound)?;
+            if session
+                .state
+                .lock()
+                .map_err(|_| RdpError::Connection)?
+                .status
+                != SessionStatus::Connected
+            {
+                return Err(RdpError::Connection);
+            }
+            let mut s = session.redirects.lock().map_err(|_| RdpError::Connection)?;
+            let generation = s.generation;
+            let enabled = s.enabled();
+            s.offers.queue_paste(&ticket, generation, enabled)?;
+            let (done, receiver) = oneshot::channel();
+            if session
+                .input
+                .try_send(SessionCommand::ConfirmedPaste {
+                    ticket: ticket.clone(),
+                    done,
+                })
+                .is_err()
+            {
+                s.offers.cancel_ticket(&ticket);
+                return Err(RdpError::InputQueueFull);
+            }
+            (
+                receiver,
+                PasteCancellation {
+                    redirects: session.redirects.clone(),
+                    ticket,
+                },
+            )
+        };
+        tokio::time::timeout(crate::clipboard_offers::CONFIRM_TIMEOUT, receiver)
+            .await
+            .map_err(|_| RdpError::Timeout)?
+            .map_err(|_| RdpError::SessionNotFound)?
     }
     pub fn request_clipboard_text(&self, id: &str) -> Result<(), RdpError> {
         let inner = self.inner.lock().map_err(|_| RdpError::Connection)?;
@@ -403,9 +549,20 @@ impl RdpManager {
                 return Err(RdpError::ResizeUnavailable);
             }
         }
+        if inputs
+            .iter()
+            .any(|input| matches!(input, Input::ReleaseAll))
+        {
+            session
+                .redirects
+                .lock()
+                .map_err(|_| RdpError::Connection)?
+                .offers
+                .cancel_interaction();
+        }
         session
             .input
-            .try_send(inputs)
+            .try_send(SessionCommand::Inputs(inputs))
             .map_err(|_| RdpError::InputQueueFull)
     }
     /// Aggregate transport counters only; never typed text or packet bodies.
@@ -497,6 +654,13 @@ mod permission_tests {
         manager: &RdpManager,
         permissions: SessionPermissions,
     ) -> (String, SharedRedirect) {
+        let (id, redirects, _) = local_session_with_receiver(manager, permissions);
+        (id, redirects)
+    }
+    fn local_session_with_receiver(
+        manager: &RdpManager,
+        permissions: SessionPermissions,
+    ) -> (String, SharedRedirect, mpsc::Receiver<SessionCommand>) {
         let mut inner = manager.inner.lock().unwrap();
         let adopted_grant = permissions.directory_grant_id.clone();
         let folder = resolve_folder(&inner, &permissions).unwrap();
@@ -513,7 +677,7 @@ mod permission_tests {
             resize_available: false,
             diagnostics: Default::default(),
         }));
-        let (input, _receiver) = mpsc::channel(1);
+        let (input, receiver) = mpsc::channel(1);
         let id = uuid::Uuid::new_v4().to_string();
         let task = tokio::spawn(std::future::pending());
         inner.sessions.insert(
@@ -530,7 +694,242 @@ mod permission_tests {
         if let Some(grant) = adopted_grant {
             inner.grants.remove(&grant);
         }
-        (id, redirects)
+        (id, redirects, receiver)
+    }
+
+    #[tokio::test]
+    async fn dropping_confirmed_future_cancels_only_its_offer_and_drains_old_ack() {
+        let manager = Arc::new(RdpManager::new());
+        let (id, state) = local_session(
+            &manager,
+            SessionPermissions {
+                clipboard_enabled: true,
+                ..Default::default()
+            },
+        );
+        let cloned = manager.clone();
+        let cloned_id = id.clone();
+        let pending = tokio::spawn(async move {
+            cloned
+                .offer_clipboard_text_confirmed(&cloned_id, "old synthetic".into())
+                .await
+        });
+        tokio::task::yield_now().await;
+        {
+            let mut state = state.lock().unwrap();
+            let offer_id = state
+                .actions
+                .iter()
+                .find_map(|action| match action {
+                    ClipboardAction::AdvertiseConfirmed(id) => Some(*id),
+                    _ => None,
+                })
+                .unwrap();
+            let text = state.local_text.clone();
+            assert!(state
+                .offers
+                .begin_advertisement(1, true, text.as_ref(), Some(offer_id)));
+        }
+        pending.abort();
+        assert!(pending.await.unwrap_err().is_cancelled());
+        assert!(state.lock().unwrap().local_text.is_none());
+        assert!(state.lock().unwrap().offers.in_flight());
+
+        let cloned = manager.clone();
+        let cloned_id = id.clone();
+        let next = tokio::spawn(async move {
+            cloned
+                .offer_clipboard_text_confirmed(&cloned_id, "new synthetic".into())
+                .await
+        });
+        tokio::task::yield_now().await;
+        {
+            let mut state = state.lock().unwrap();
+            state.offers.acknowledge(true, 1, true);
+        }
+        tokio::task::yield_now().await;
+        assert!(!next.is_finished());
+        {
+            let mut state = state.lock().unwrap();
+            let offer_id = state
+                .actions
+                .iter()
+                .find_map(|action| match action {
+                    ClipboardAction::AdvertiseConfirmed(id) => Some(*id),
+                    _ => None,
+                })
+                .unwrap();
+            let text = state.local_text.clone();
+            assert!(state
+                .offers
+                .begin_advertisement(1, true, text.as_ref(), Some(offer_id)));
+            state.offers.acknowledge(true, 1, true);
+        }
+        assert!(next.await.unwrap().is_ok());
+        manager.shutdown();
+    }
+
+    #[tokio::test]
+    async fn lock_and_blur_cancel_confirmed_offer_without_waiting_for_network() {
+        for lock in [false, true] {
+            let manager = Arc::new(RdpManager::new());
+            let (id, _, _receiver) = local_session_with_receiver(
+                &manager,
+                SessionPermissions {
+                    clipboard_enabled: true,
+                    ..Default::default()
+                },
+            );
+            let cloned = manager.clone();
+            let cloned_id = id.clone();
+            let pending = tokio::spawn(async move {
+                cloned
+                    .offer_clipboard_text_confirmed(&cloned_id, "synthetic".into())
+                    .await
+            });
+            tokio::task::yield_now().await;
+            if lock {
+                manager.shutdown();
+            } else {
+                manager.send_input(&id, vec![Input::ReleaseAll]).unwrap();
+            }
+            assert_eq!(pending.await.unwrap(), Err(RdpError::ClipboardUnavailable));
+            if lock {
+                assert_eq!(
+                    manager
+                        .offer_clipboard_text_confirmed(&id, "synthetic".into())
+                        .await,
+                    Err(RdpError::SessionNotFound)
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn queued_confirmed_commit_is_denied_after_revoke_before_dispatch() {
+        let manager = Arc::new(RdpManager::new());
+        let (id, state, mut receiver) = local_session_with_receiver(
+            &manager,
+            SessionPermissions {
+                clipboard_enabled: true,
+                ..Default::default()
+            },
+        );
+        let (done, confirmation) = oneshot::channel();
+        {
+            let mut state = state.lock().unwrap();
+            let offer_id = state.offers.begin_confirmation(1, done).unwrap();
+            let text = Zeroizing::new("synthetic".to_owned());
+            assert!(state
+                .offers
+                .begin_advertisement(1, true, Some(&text), Some(offer_id)));
+            state.offers.acknowledge(true, 1, true);
+        }
+        let ticket = confirmation.await.unwrap().unwrap();
+        let cloned = manager.clone();
+        let cloned_id = id.clone();
+        let commit =
+            tokio::spawn(async move { cloned.commit_clipboard_paste(&cloned_id, ticket).await });
+        let SessionCommand::ConfirmedPaste { ticket, done } = receiver.recv().await.unwrap() else {
+            panic!("expected guarded commit");
+        };
+        manager
+            .set_permissions(&id, SessionPermissions::default())
+            .unwrap();
+        let result = {
+            let mut state = state.lock().unwrap();
+            let generation = state.generation;
+            let enabled = state.enabled();
+            state
+                .offers
+                .consume_paste(&ticket, generation, enabled)
+                .map(|_| ())
+        };
+        assert_eq!(result, Err(RdpError::PermissionDenied));
+        done.send(result).unwrap();
+        assert_eq!(commit.await.unwrap(), Err(RdpError::PermissionDenied));
+        manager.shutdown();
+    }
+
+    #[tokio::test]
+    async fn cancelled_queued_commit_never_becomes_a_later_paste() {
+        let manager = Arc::new(RdpManager::new());
+        let (id, state, mut receiver) = local_session_with_receiver(
+            &manager,
+            SessionPermissions {
+                clipboard_enabled: true,
+                ..Default::default()
+            },
+        );
+        let (done, confirmation) = oneshot::channel();
+        {
+            let mut state = state.lock().unwrap();
+            let offer_id = state.offers.begin_confirmation(1, done).unwrap();
+            let text = Zeroizing::new("synthetic".to_owned());
+            assert!(state
+                .offers
+                .begin_advertisement(1, true, Some(&text), Some(offer_id)));
+            state.offers.acknowledge(true, 1, true);
+        }
+        let ticket = confirmation.await.unwrap().unwrap();
+        let cloned = manager.clone();
+        let cloned_id = id.clone();
+        let commit =
+            tokio::spawn(async move { cloned.commit_clipboard_paste(&cloned_id, ticket).await });
+        let SessionCommand::ConfirmedPaste { ticket, done } = receiver.recv().await.unwrap() else {
+            panic!("expected guarded commit");
+        };
+        commit.abort();
+        assert!(commit.await.unwrap_err().is_cancelled());
+        assert!(done.is_closed());
+        assert!(state
+            .lock()
+            .unwrap()
+            .offers
+            .consume_paste(&ticket, 1, true)
+            .is_err());
+        manager.shutdown();
+    }
+
+    #[tokio::test]
+    async fn real_confirmation_timeout_keeps_old_ack_as_a_draining_tombstone() {
+        let manager = Arc::new(RdpManager::new());
+        let (id, state) = local_session(
+            &manager,
+            SessionPermissions {
+                clipboard_enabled: true,
+                ..Default::default()
+            },
+        );
+        let cloned = manager.clone();
+        let cloned_id = id.clone();
+        let pending = tokio::spawn(async move {
+            cloned
+                .offer_clipboard_text_confirmed(&cloned_id, "synthetic".into())
+                .await
+        });
+        tokio::task::yield_now().await;
+        {
+            let mut state = state.lock().unwrap();
+            let offer_id = state
+                .actions
+                .iter()
+                .find_map(|action| match action {
+                    ClipboardAction::AdvertiseConfirmed(id) => Some(*id),
+                    _ => None,
+                })
+                .unwrap();
+            let text = state.local_text.clone();
+            assert!(state
+                .offers
+                .begin_advertisement(1, true, text.as_ref(), Some(offer_id)));
+        }
+        assert_eq!(pending.await.unwrap(), Err(RdpError::Timeout));
+        assert!(state.lock().unwrap().offers.in_flight());
+        assert!(state.lock().unwrap().local_text.is_none());
+        state.lock().unwrap().offers.acknowledge(true, 1, true);
+        assert!(!state.lock().unwrap().offers.in_flight());
+        manager.shutdown();
     }
     #[tokio::test]
     async fn clipboard_requires_opt_in_and_bounded_explicit_request() {
@@ -771,3 +1170,7 @@ mod permission_tests {
 #[cfg(test)]
 #[path = "live_redirect_tests.rs"]
 mod live_redirect_tests;
+
+#[cfg(test)]
+#[path = "clipboard_live_tests.rs"]
+mod clipboard_live_tests;

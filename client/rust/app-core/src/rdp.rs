@@ -102,6 +102,35 @@ impl AppCore {
             .request_clipboard_text(&id)
             .map_err(AppError::Rdp)
     }
+    pub async fn rdp_offer_clipboard_text_confirmed(
+        &self,
+        id: String,
+        text: Zeroizing<String>,
+    ) -> AppResult<String> {
+        let session = self.session().await?;
+        let unlocked = session.unlocked().await?;
+        let ticket = unlocked
+            .rdp
+            .offer_clipboard_text_confirmed(&id, text.to_string())
+            .await
+            .map_err(AppError::Rdp)?;
+        // Manager shutdown cancels pending acknowledgements; never return a ticket
+        // through a locked/replaced profile after this network await.
+        session.unlocked().await?;
+        unlocked.rdp.permissions(&id).map_err(AppError::Rdp)?;
+        Ok(ticket)
+    }
+    pub async fn rdp_commit_clipboard_paste(&self, id: String, ticket: String) -> AppResult<()> {
+        let session = self.session().await?;
+        let unlocked = session.unlocked().await?;
+        unlocked
+            .rdp
+            .commit_clipboard_paste(&id, ticket)
+            .await
+            .map_err(AppError::Rdp)?;
+        session.unlocked().await?;
+        Ok(())
+    }
     pub async fn rdp_take_clipboard_text(
         &self,
         id: String,

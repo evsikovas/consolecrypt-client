@@ -13,6 +13,9 @@ use std::collections::HashMap;
 const MAX_FASTPATH_ACCUMULATED: usize = 64 * 1024 * 1024;
 const MAX_FASTPATH_FRAGMENTS: usize = 1024;
 const MAX_CHANNEL_MESSAGE: usize = 1024 * 1024;
+// Only the negotiated RDPDR channel needs room for a bounded file chunk plus
+// its request headers. Clipboard, DVC and unassigned channels keep the old cap.
+const MAX_DRIVE_CHANNEL_MESSAGE: usize = crate::directory::MAX_IO + 64 * 1024;
 const MAX_STATIC_CHANNELS: usize = 16;
 // ironrdp-bulk 0.1.1 uses a fixed 65,536-byte decompression output buffer.
 const BULK_FRAGMENT_BOUND: usize = 65_536;
@@ -22,6 +25,7 @@ pub(crate) struct DecoderLimits {
     fragments: Option<(usize, usize)>,
     channels: HashMap<u16, ChannelMessage>,
     dvc_channel: Option<u16>,
+    drive_channel: Option<u16>,
 }
 #[derive(Debug, Default)]
 struct ChannelMessage {
@@ -37,6 +41,11 @@ impl DecoderLimits {
             dvc_channel,
             ..Default::default()
         }
+    }
+    pub(crate) fn with_drive_channel(mut self, drive_channel: Option<u16>) -> Self {
+        // An ambiguous assignment must not relax the DVC guard.
+        self.drive_channel = drive_channel.filter(|id| Some(*id) != self.dvc_channel);
+        self
     }
     /// FastPath fragments cannot straddle a graphics activation: the retained codec
     /// must not carry an unbounded unfinished update past a freshly reset guard.
@@ -121,7 +130,12 @@ impl DecoderLimits {
         let declared =
             u32::from_le_bytes(packet[0..4].try_into().map_err(|_| RdpError::Protocol)?) as usize;
         let flags = u32::from_le_bytes(packet[4..8].try_into().map_err(|_| RdpError::Protocol)?);
-        if declared > MAX_CHANNEL_MESSAGE {
+        let maximum = if self.drive_channel == Some(id) {
+            MAX_DRIVE_CHANNEL_MESSAGE
+        } else {
+            MAX_CHANNEL_MESSAGE
+        };
+        if declared > maximum {
             return Err(RdpError::FrameLimit);
         }
         if !self.channels.contains_key(&id) && self.channels.len() >= MAX_STATIC_CHANNELS {
@@ -134,7 +148,7 @@ impl DecoderLimits {
             .bytes
             .checked_add(data.len())
             .ok_or(RdpError::FrameLimit)?;
-        if state.bytes > MAX_CHANNEL_MESSAGE {
+        if state.bytes > maximum {
             return Err(RdpError::FrameLimit);
         }
         let copied = data.len().min(state.prefix.len() - state.prefix_len);
@@ -308,6 +322,53 @@ mod tests {
             .unwrap();
         assert_eq!(
             limits.static_channel(1004, &svc(MAX_CHANNEL_MESSAGE as u32, 1, &[0])),
+            Err(RdpError::FrameLimit)
+        );
+    }
+    #[test]
+    fn only_negotiated_drive_channel_accepts_one_mib_file_chunk_with_headers() {
+        let mut limits = DecoderLimits::with_dvc_channel(Some(1004)).with_drive_channel(Some(1005));
+        let size = crate::directory::MAX_IO + 56;
+        let half = vec![0; size / 2];
+        let tail = vec![0; size - half.len()];
+        limits
+            .static_channel(1005, &svc(size as u32, 1, &half))
+            .unwrap();
+        limits
+            .static_channel(1005, &svc(size as u32, 2, &tail))
+            .unwrap();
+        for other in [1004, 1006] {
+            assert_eq!(
+                limits.static_channel(other, &svc(size as u32, 3, &[0])),
+                Err(RdpError::FrameLimit)
+            );
+        }
+        assert_eq!(
+            limits.static_channel(1005, &svc((MAX_DRIVE_CHANNEL_MESSAGE + 1) as u32, 3, &[0])),
+            Err(RdpError::FrameLimit)
+        );
+        let mut unnegotiated = DecoderLimits::default();
+        assert_eq!(
+            unnegotiated.static_channel(1005, &svc(size as u32, 3, &[0])),
+            Err(RdpError::FrameLimit)
+        );
+        let mut ambiguous =
+            DecoderLimits::with_dvc_channel(Some(1005)).with_drive_channel(Some(1005));
+        assert_eq!(
+            ambiguous.static_channel(1005, &svc(size as u32, 3, &[0])),
+            Err(RdpError::FrameLimit)
+        );
+    }
+    #[test]
+    fn drive_channel_fragments_remain_bounded_despite_forged_first_or_length() {
+        let mut limits = DecoderLimits::default().with_drive_channel(Some(1005));
+        let half = vec![0; MAX_DRIVE_CHANNEL_MESSAGE / 2];
+        // Match upstream behavior: FIRST never clears unfinished accumulation.
+        for _ in 0..2 {
+            limits.static_channel(1005, &svc(1, 1, &half)).unwrap();
+        }
+        assert_eq!(
+            limits.static_channel(1005, &svc(1, 1, &[0])),
             Err(RdpError::FrameLimit)
         );
     }

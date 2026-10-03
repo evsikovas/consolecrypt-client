@@ -1,6 +1,8 @@
 use crate::{
-    manager::SessionState, tls, types::validate_dimensions, CertificateInfo, ConnectConfig, Frame,
-    Input, MouseButton, RdpError, SessionStatus,
+    manager::{SessionCommand, SessionState},
+    tls,
+    types::validate_dimensions,
+    CertificateInfo, ConnectConfig, Frame, Input, MouseButton, RdpError, SessionStatus,
 };
 use ironrdp::{
     connector::{
@@ -39,6 +41,9 @@ use tokio::{
 use zeroize::{Zeroize, Zeroizing};
 
 const MAX_PDU: usize = 1024 * 1024;
+// Writes contain a batch of framed SVC fragments, rather than one inbound PDU.
+// A bounded 1MiB drive reply has additional RDPDR/MCS/SVC framing overhead.
+const MAX_WRITE_BATCH: usize = 2 * 1024 * 1024;
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -136,7 +141,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> BoundedIo<S> {
         if self.stopped.load(Ordering::Acquire) {
             return Err(RdpError::SessionNotFound);
         }
-        if data.len() > MAX_PDU {
+        if data.len() > MAX_WRITE_BATCH {
             return Err(RdpError::Protocol);
         }
         tokio::time::timeout(WRITE_TIMEOUT, async {
@@ -369,7 +374,7 @@ async fn nla<S: AsyncRead + AsyncWrite + Unpin>(
 pub(crate) async fn run(
     settings: ConnectConfig,
     password: SecretString,
-    mut receiver: mpsc::Receiver<Vec<Input>>,
+    mut receiver: mpsc::Receiver<SessionCommand>,
     state: Arc<Mutex<SessionState>>,
     stopped: Arc<AtomicBool>,
     redirects: crate::permissions::SharedRedirect,
@@ -464,8 +469,9 @@ pub(crate) async fn run(
     let mut announced_permissions = initial_permissions;
     let mut announced_drive_id = initial_drive_id;
     let mut database = Database::new();
-    let mut limits = crate::limits::DecoderLimits::with_dvc_channel(dvc_id);
-    loop {
+    let mut limits =
+        crate::limits::DecoderLimits::with_dvc_channel(dvc_id).with_drive_channel(drive_channel_id);
+    'active: loop {
         state
             .lock()
             .map_err(|_| RdpError::Connection)?
@@ -485,9 +491,61 @@ pub(crate) async fn run(
                 (active.process(&mut image,action,&packet).map_err(|error| decode_failure(&state, &error))?,false)
             },
             _=notify.notified()=>{(Vec::new(),false)},
-            inputs=receiver.recv()=>{
+            command=receiver.recv()=>{
                 set_stage(&state, "input_encode")?;
-                let Some(inputs)=inputs else { return Ok(()); };
+                let Some(command)=command else { return Ok(()); };
+                let inputs = match command {
+                    SessionCommand::Inputs(inputs) => inputs,
+                    SessionCommand::ConfirmedPaste {ticket, done} => {
+                        if done.is_closed() {
+                            redirects.lock().map_err(|_| RdpError::Connection)?.offers.cancel_ticket(&ticket);
+                            continue 'active;
+                        }
+                        let fence = {
+                            let mut s = redirects.lock().map_err(|_| RdpError::Connection)?;
+                            let generation = s.generation;
+                            let enabled = s.enabled();
+                            s.offers.consume_paste(&ticket, generation, enabled)
+                        };
+                        let fence = match fence {
+                            Ok(fence) => fence,
+                            Err(error) => { let _ = done.send(Err(error)); continue 'active; }
+                        };
+                        // All releases and Ctrl+V transitions are encoded as one
+                        // transaction and written only after a final native fence check.
+                        let mut events = input_events(&mut database, &Input::ReleaseAll);
+                        for (code, down) in [(0x1d, true), (0x2f, true), (0x2f, false), (0x1d, false)] {
+                            events.extend(input_events(&mut database, &Input::Scancode { code, down, extended: false }));
+                        }
+                        let mut bytes = Zeroizing::new(Vec::new());
+                        let mut pdus = 0u64;
+                        for chunk in events.chunks(15) {
+                            for output in active.process_fastpath_input(&mut image,chunk).map_err(|_| RdpError::Protocol)? {
+                                match output {
+                                    ActiveStageOutput::ResponseFrame(frame) => { bytes.extend_from_slice(&frame); pdus += 1; }
+                                    _ => return Err(RdpError::Protocol),
+                                }
+                            }
+                        }
+                        let authorized = {
+                            let s = redirects.lock().map_err(|_| RdpError::Connection)?;
+                            s.offers.dispatch_authorized(fence, s.generation, s.enabled())
+                        };
+                        if !authorized || done.is_closed() {
+                            let _ = done.send(Err(RdpError::ClipboardUnavailable));
+                            continue 'active;
+                        }
+                        io.write(&bytes).await?;
+                        {
+                            let mut s = state.lock().map_err(|_| RdpError::Connection)?;
+                            s.diagnostics.input_batches = s.diagnostics.input_batches.saturating_add(1);
+                            s.diagnostics.input_events = s.diagnostics.input_events.saturating_add(events.len() as u64);
+                            s.diagnostics.input_pdus_written = s.diagnostics.input_pdus_written.saturating_add(pdus);
+                        }
+                        let _ = done.send(Ok(()));
+                        continue 'active;
+                    }
+                };
                 let mut outputs=Vec::new();
                 let mut event_count=0u64;
                 for input in &inputs {
@@ -1180,6 +1238,50 @@ mod tests {
         stopped.store(true, Ordering::Release);
         assert_eq!(io.write(&[4]).await, Err(RdpError::SessionNotFound));
         assert_eq!(*committed.lock().unwrap(), vec![1, 2, 3]);
+    }
+
+    #[tokio::test]
+    async fn bounded_large_drive_response_including_headers_can_be_written() {
+        use ironrdp::{
+            rdpdr::pdu::{
+                efs::{
+                    DeviceIoRequest, DeviceIoResponse, DeviceReadResponse, MajorFunction,
+                    MinorFunction, NtStatus,
+                },
+                RdpdrPdu,
+            },
+            svc::SvcMessage,
+        };
+        let payload = vec![17; 1024 * 1024];
+        let frame = SvcMessage::from(RdpdrPdu::DeviceReadResponse(DeviceReadResponse {
+            device_io_reply: DeviceIoResponse::new(
+                DeviceIoRequest {
+                    device_id: 1,
+                    file_id: 1,
+                    completion_id: 1,
+                    major_function: MajorFunction::Read,
+                    minor_function: MinorFunction::from(0),
+                },
+                NtStatus::SUCCESS,
+            ),
+            read_data: payload,
+        }))
+        .encode_unframed_pdu()
+        .unwrap();
+        assert!(frame.len() > MAX_PDU);
+        let committed = Arc::new(Mutex::new(Vec::new()));
+        let stream = BufferedWriter {
+            buffered: Vec::new(),
+            committed: committed.clone(),
+        };
+        let mut io = BoundedIo::new(stream, Arc::new(AtomicBool::new(false)));
+        io.write(&frame).await.unwrap();
+        assert_eq!(committed.lock().unwrap().as_slice(), frame.as_slice());
+        assert_eq!(
+            io.write(&vec![0; MAX_WRITE_BATCH + 1]).await,
+            Err(RdpError::Protocol)
+        );
+        assert_eq!(committed.lock().unwrap().len(), frame.len());
     }
 
     #[derive(Debug)]

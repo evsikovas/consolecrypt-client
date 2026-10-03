@@ -5318,7 +5318,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdpAllowClipboard => 'Allow text clipboard';
 
   @override
-  String get rdpClipboardHelp => 'Text is exchanged only when you choose Send or Receive. Access is off by default.';
+  String get rdpClipboardHelp =>
+      'Ctrl+V (⌘V on Mac) sends and pastes text. Send and Receive exchange text separately. Access is off by default.';
 
   @override
   String get rdpFolderHelp => 'Give the remote computer access only to a selected folder. Read-only by default.';

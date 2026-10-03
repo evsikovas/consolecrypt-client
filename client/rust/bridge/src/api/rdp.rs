@@ -254,6 +254,31 @@ pub async fn rdp_request_clipboard_text(session_id: String) -> Result<(), Bridge
     })
     .await
 }
+/// Returns an opaque, single-use paste ticket only after this exact offer is acknowledged.
+pub async fn rdp_offer_clipboard_text_confirmed(
+    session_id: String,
+    text: String,
+) -> Result<String, BridgeError> {
+    let text = Zeroizing::new(text);
+    with_core(move |c| async move {
+        c.rdp_offer_clipboard_text_confirmed(session_id, text)
+            .await
+            .map_err(error)
+    })
+    .await
+}
+/// Explicit commit after the UI rechecks the captured tab/profile/permission epoch.
+pub async fn rdp_commit_clipboard_paste(
+    session_id: String,
+    ticket: String,
+) -> Result<(), BridgeError> {
+    with_core(move |c| async move {
+        c.rdp_commit_clipboard_paste(session_id, ticket)
+            .await
+            .map_err(error)
+    })
+    .await
+}
 pub async fn rdp_take_clipboard_text(session_id: String) -> Result<Option<String>, BridgeError> {
     with_core(move |c| async move {
         Ok(c.rdp_take_clipboard_text(session_id)

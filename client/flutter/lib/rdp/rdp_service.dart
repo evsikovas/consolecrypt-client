@@ -238,6 +238,13 @@ abstract interface class RdpService {
   Future<RdpSessionPermissions> permissions(String sessionId);
   Future<void> setPermissions(String sessionId, RdpSessionPermissions permissions);
   Future<void> offerClipboardText(String sessionId, String text);
+
+  /// Returns a one-use opaque ticket only after the current format list is
+  /// acknowledged. A caller must recheck its UI origin before committing it.
+  Future<String> offerClipboardTextConfirmed(String sessionId, String text);
+
+  /// Native dispatch rechecks the ticket, offer and permission generation.
+  Future<void> commitClipboardPaste(String sessionId, String ticket);
   Future<void> requestClipboardText(String sessionId);
   Future<String?> takeClipboardText(String sessionId);
   Future<RdpPollResult> pollFrame(String sessionId);
@@ -278,6 +285,11 @@ final class UnavailableRdpService implements RdpService {
       throw const RdpFailure('unavailable');
   @override
   Future<void> offerClipboardText(String sessionId, String text) async => throw const RdpFailure('unavailable');
+  @override
+  Future<String> offerClipboardTextConfirmed(String sessionId, String text) async =>
+      throw const RdpFailure('unavailable');
+  @override
+  Future<void> commitClipboardPaste(String sessionId, String ticket) async => throw const RdpFailure('unavailable');
   @override
   Future<void> requestClipboardText(String sessionId) async => throw const RdpFailure('unavailable');
   @override

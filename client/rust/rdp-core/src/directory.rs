@@ -18,6 +18,11 @@ use ironrdp::{
     },
     svc::SvcMessage,
 };
+#[cfg(test)]
+use std::sync::{
+    atomic::{AtomicU8, Ordering},
+    Arc, Mutex, OnceLock, Weak,
+};
 use std::{
     collections::HashMap,
     io::{self, Read, Seek, SeekFrom, Write},
@@ -25,9 +30,154 @@ use std::{
 };
 use zeroize::Zeroize;
 
+// Acceptance-only completion observation. A readonly script cannot publish a
+// host filesystem result, so it reads exactly one nonce file after its checks.
+// Only a successful data READ counts; metadata probes/enumeration do not.
+#[cfg(test)]
+type TestReadSignals = HashMap<String, (Weak<AtomicU8>, u8)>;
+#[cfg(test)]
+fn test_read_signals() -> &'static Mutex<TestReadSignals> {
+    static SIGNALS: OnceLock<Mutex<TestReadSignals>> = OnceLock::new();
+    SIGNALS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+#[cfg(test)]
+pub(crate) struct TestReadCompletion {
+    pub pass_name: String,
+    pub fail_name: String,
+    value: Arc<AtomicU8>,
+}
+#[cfg(test)]
+impl TestReadCompletion {
+    pub(crate) fn new(folder: &std::path::Path) -> io::Result<Self> {
+        let nonce = uuid::Uuid::new_v4();
+        let pass_name = format!("cc-complete-{nonce}-pass.txt");
+        let fail_name = format!("cc-complete-{nonce}-fail.txt");
+        std::fs::write(folder.join(&pass_name), b"1")?;
+        std::fs::write(folder.join(&fail_name), b"0")?;
+        let value = Arc::new(AtomicU8::new(0));
+        let mut signals = test_read_signals().lock().map_err(|_| denied())?;
+        if signals.len() > 30 {
+            return Err(denied());
+        }
+        signals.insert(pass_name.clone(), (Arc::downgrade(&value), 1));
+        signals.insert(fail_name.clone(), (Arc::downgrade(&value), 2));
+        Ok(Self {
+            pass_name,
+            fail_name,
+            value,
+        })
+    }
+    pub(crate) fn result(&self) -> Option<bool> {
+        match self.value.load(Ordering::Acquire) {
+            1 => Some(true),
+            2 => Some(false),
+            _ => None,
+        }
+    }
+}
+#[cfg(test)]
+impl Drop for TestReadCompletion {
+    fn drop(&mut self) {
+        if let Ok(mut signals) = test_read_signals().lock() {
+            signals.remove(&self.pass_name);
+            signals.remove(&self.fail_name);
+        }
+    }
+}
+#[cfg(test)]
+fn observe_test_read(parts: &[String]) {
+    if parts.len() != 1 {
+        return;
+    }
+    if let Ok(signals) = test_read_signals().lock() {
+        if let Some((signal, result)) = signals.get(&parts[0]) {
+            if let Some(value) = signal.upgrade() {
+                if *result == 2 {
+                    value.store(2, Ordering::Release);
+                } else {
+                    let _ = value.compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
+                }
+            }
+        }
+    }
+}
+
+// Acceptance-only loader progress for one exact generated script basename.
+// This keeps launch/load failures separate from file-operation failures.
+#[cfg(test)]
+type TestFileSignals = HashMap<String, Weak<AtomicU8>>;
+#[cfg(test)]
+fn test_file_signals() -> &'static Mutex<TestFileSignals> {
+    static SIGNALS: OnceLock<Mutex<TestFileSignals>> = OnceLock::new();
+    SIGNALS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+#[cfg(test)]
+pub(crate) struct TestFileProgress {
+    name: String,
+    value: Arc<AtomicU8>,
+}
+#[cfg(test)]
+impl TestFileProgress {
+    pub(crate) fn new(name: &str) -> io::Result<Self> {
+        if name.is_empty() || name.contains(['\\', '/', ':']) {
+            return Err(denied());
+        }
+        let value = Arc::new(AtomicU8::new(0));
+        let mut signals = test_file_signals().lock().map_err(|_| denied())?;
+        if signals.len() >= 16 || signals.contains_key(name) {
+            return Err(denied());
+        }
+        signals.insert(name.into(), Arc::downgrade(&value));
+        Ok(Self {
+            name: name.into(),
+            value,
+        })
+    }
+    pub(crate) fn opened(&self) -> bool {
+        self.value.load(Ordering::Acquire) & 1 != 0
+    }
+    pub(crate) fn read(&self) -> bool {
+        self.value.load(Ordering::Acquire) & 2 != 0
+    }
+    pub(crate) fn denied(&self) -> bool {
+        self.value.load(Ordering::Acquire) & 4 != 0
+    }
+    pub(crate) fn other_failure(&self) -> bool {
+        self.value.load(Ordering::Acquire) & 8 != 0
+    }
+}
+#[cfg(test)]
+impl Drop for TestFileProgress {
+    fn drop(&mut self) {
+        if let Ok(mut signals) = test_file_signals().lock() {
+            signals.remove(&self.name);
+        }
+    }
+}
+#[cfg(test)]
+fn observe_test_file(parts: &[String], success_bit: u8, status: NtStatus) {
+    if parts.len() != 1 {
+        return;
+    }
+    if let Ok(signals) = test_file_signals().lock() {
+        if let Some(value) = signals.get(&parts[0]).and_then(Weak::upgrade) {
+            let bit = if status == NtStatus::SUCCESS {
+                success_bit
+            } else if status == NtStatus::ACCESS_DENIED {
+                4
+            } else {
+                8
+            };
+            value.fetch_or(bit, Ordering::AcqRel);
+        }
+    }
+}
+
 pub(crate) const DRIVE_ID: u32 = 1;
 const MAX_HANDLES: usize = 128;
-const MAX_IO: usize = 64 * 1024;
+// Windows Copy-Item issues full 1 MiB reads. Short successful reads are treated
+// as EOF by that path, so accept bounded whole requests rather than truncating.
+pub(crate) const MAX_IO: usize = 1024 * 1024;
 const MAX_FILE_SIZE: u64 = 256 * 1024 * 1024;
 const MAX_ENUMERATED: usize = 10_000;
 const MAX_SESSION_WRITTEN: u64 = 512 * 1024 * 1024;
@@ -221,11 +371,17 @@ impl DirectoryBackend {
         {
             return Err(denied());
         }
-        if req.create_options.intersects(
-            CreateOptions::FILE_OPEN_BY_FILE_ID | CreateOptions::FILE_OPEN_REPARSE_POINT,
-        ) {
+        if req
+            .create_options
+            .contains(CreateOptions::FILE_OPEN_BY_FILE_ID)
+        {
             return Err(denied());
         }
+        // Windows uses OPEN_REPARSE_POINT for ordinary metadata probes too.
+        // The flag is ignored for non-reparse files (CreateFile documentation).
+        // Keep descriptor-relative no-follow opens and validate the opened object;
+        // actual links/reparse points/hardlinks remain forbidden below.
+        // https://learn.microsoft.com/windows/win32/api/fileapi/nf-fileapi-createfilea
         let dir_request = req
             .create_options
             .contains(CreateOptions::FILE_DIRECTORY_FILE);
@@ -352,9 +508,14 @@ impl DirectoryBackend {
         };
         safe_file(file)?;
         file.seek(SeekFrom::Start(req.offset))?;
-        let mut bytes = vec![0; req.length as usize];
-        let count = file.read(&mut bytes)?;
-        bytes.truncate(count);
+        // Fill the requested bounded range until actual EOF. A short underlying
+        // filesystem read must not look like EOF to the remote copy operation.
+        let mut bytes = Vec::with_capacity(req.length as usize);
+        file.take(u64::from(req.length)).read_to_end(&mut bytes)?;
+        #[cfg(test)]
+        if !bytes.is_empty() {
+            observe_test_read(&handle.parts);
+        }
         Ok(bytes)
     }
     fn write(&mut self, req: &DeviceWriteRequest) -> io::Result<usize> {
@@ -674,6 +835,36 @@ impl RdpdrBackend for DirectoryBackend {
         let guard = shared.lock().map_err(|_| {
             ironrdp::pdu::decode_err!(io::Error::from(io::ErrorKind::PermissionDenied))
         })?;
+        #[cfg(test)]
+        let mut guard = guard;
+        #[cfg(test)]
+        {
+            let slot = match &req {
+                ServerDriveIoRequest::ServerCreateDriveRequest(_) => 0,
+                ServerDriveIoRequest::ServerDriveQueryInformationRequest(_)
+                | ServerDriveIoRequest::ServerDriveQueryDirectoryRequest(_)
+                | ServerDriveIoRequest::ServerDriveQueryVolumeInformationRequest(_) => 1,
+                ServerDriveIoRequest::DeviceReadRequest(_) => 2,
+                ServerDriveIoRequest::DeviceWriteRequest(_) => 3,
+                _ => 4,
+            };
+            guard.drive_operation_counts[slot] += 1;
+        }
+        macro_rules! count_status {
+            ($value:expr) => {{
+                #[cfg(test)]
+                {
+                    let slot = match $value {
+                        NtStatus::SUCCESS => 0,
+                        NtStatus::ACCESS_DENIED => 1,
+                        NtStatus::NO_SUCH_FILE => 2,
+                        NtStatus::NOT_SUPPORTED => 3,
+                        _ => 4,
+                    };
+                    guard.drive_status_counts[slot] += 1;
+                }
+            }};
+        }
         // Directory capabilities have their own epoch. Clipboard-only permission
         // changes must not interrupt a file handle or an unrelated transfer.
         if u64::from(guard.drive_id) != self.generation {
@@ -700,6 +891,53 @@ impl RdpdrBackend for DirectoryBackend {
                     Ok((id, info)) => (NtStatus::SUCCESS, id, info),
                     Err(e) => (status(e), 0, Information::empty()),
                 };
+                count_status!(status);
+                #[cfg(test)]
+                observe_test_file(
+                    &r.path
+                        .trim_start_matches('\\')
+                        .split('\\')
+                        .map(String::from)
+                        .collect::<Vec<_>>(),
+                    1,
+                    status,
+                );
+                #[cfg(test)]
+                if std::env::var_os("CC_RDP_TEST_CREATE_METADATA").as_deref()
+                    == Some(std::ffi::OsStr::new("1"))
+                {
+                    let category = if r.path.contains(':') {
+                        "stream_or_namespace"
+                    } else if r.path.ends_with("sentinel.txt") {
+                        "synthetic_sentinel"
+                    } else if r.path.contains("cc-") && r.path.ends_with(".ps1") {
+                        "synthetic_script"
+                    } else if r.path.is_empty() || r.path == "\\" {
+                        "root"
+                    } else {
+                        "other"
+                    };
+                    let disposition = match r.create_disposition {
+                        CreateDisposition::FILE_OPEN => "open",
+                        CreateDisposition::FILE_CREATE => "create",
+                        CreateDisposition::FILE_OPEN_IF => "open_if",
+                        CreateDisposition::FILE_OVERWRITE => "overwrite",
+                        CreateDisposition::FILE_OVERWRITE_IF => "overwrite_if",
+                        CreateDisposition::FILE_SUPERSEDE => "supersede",
+                        _ => "other",
+                    };
+                    let outcome = if status == NtStatus::SUCCESS {
+                        "success"
+                    } else if status == NtStatus::ACCESS_DENIED {
+                        "denied"
+                    } else {
+                        "other"
+                    };
+                    println!(
+                        "RDP test-only create metadata: category={category} access={:08x} options={:08x} disposition={disposition} status={outcome}",
+                        r.desired_access.bits(), r.create_options.bits()
+                    );
+                }
                 one(RdpdrPdu::DeviceCreateResponse(DeviceCreateResponse {
                     device_io_reply: DeviceIoResponse::new(r.device_io_request, status),
                     file_id: id,
@@ -707,6 +945,11 @@ impl RdpdrBackend for DirectoryBackend {
                 }))
             }
             ServerDriveIoRequest::DeviceReadRequest(r) => {
+                #[cfg(test)]
+                let observed_parts = self
+                    .handles
+                    .get(&r.device_io_request.file_id)
+                    .map(|h| h.parts.clone());
                 let result = if root.is_some() {
                     self.read(&r)
                 } else {
@@ -716,6 +959,30 @@ impl RdpdrBackend for DirectoryBackend {
                     Ok(b) => (NtStatus::SUCCESS, b),
                     Err(e) => (status(e), Vec::new()),
                 };
+                count_status!(status);
+                #[cfg(test)]
+                if let Some(parts) = observed_parts {
+                    if !bytes.is_empty() || status != NtStatus::SUCCESS {
+                        observe_test_file(&parts, 2, status);
+                    }
+                }
+                #[cfg(test)]
+                if std::env::var_os("CC_RDP_TEST_CREATE_METADATA").as_deref()
+                    == Some(std::ffi::OsStr::new("1"))
+                {
+                    let outcome = if status == NtStatus::SUCCESS {
+                        "success"
+                    } else if status == NtStatus::ACCESS_DENIED {
+                        "denied"
+                    } else {
+                        "other"
+                    };
+                    println!(
+                        "RDP test-only read metadata: requested={} returned={} status={outcome}",
+                        r.length,
+                        bytes.len()
+                    );
+                }
                 one(RdpdrPdu::DeviceReadResponse(DeviceReadResponse {
                     device_io_reply: DeviceIoResponse::new(r.device_io_request, status),
                     read_data: bytes,
@@ -731,6 +998,23 @@ impl RdpdrBackend for DirectoryBackend {
                     Ok(n) => (NtStatus::SUCCESS, n as u32),
                     Err(e) => (status(e), 0),
                 };
+                count_status!(status);
+                #[cfg(test)]
+                if std::env::var_os("CC_RDP_TEST_CREATE_METADATA").as_deref()
+                    == Some(std::ffi::OsStr::new("1"))
+                {
+                    let outcome = if status == NtStatus::SUCCESS {
+                        "success"
+                    } else if status == NtStatus::ACCESS_DENIED {
+                        "denied"
+                    } else {
+                        "other"
+                    };
+                    println!(
+                        "RDP test-only write metadata: requested={} written={length} status={outcome}",
+                        r.write_data.len()
+                    );
+                }
                 r.write_data.zeroize();
                 one(RdpdrPdu::DeviceWriteResponse(DeviceWriteResponse {
                     device_io_reply: DeviceIoResponse::new(r.device_io_request, status),
@@ -746,6 +1030,7 @@ impl RdpdrBackend for DirectoryBackend {
                     Ok(()) => NtStatus::SUCCESS,
                     Err(e) => status(e),
                 };
+                count_status!(status);
                 one(RdpdrPdu::DeviceCloseResponse(DeviceCloseResponse {
                     device_io_response: DeviceIoResponse::new(r.device_io_request, status),
                 }))
@@ -761,6 +1046,7 @@ impl RdpdrBackend for DirectoryBackend {
                     Ok(None) => (NtStatus::NOT_SUPPORTED, None),
                     Err(e) => (status(e), None),
                 };
+                count_status!(status);
                 one(RdpdrPdu::ClientDriveQueryInformationResponse(
                     ClientDriveQueryInformationResponse {
                         device_io_response: DeviceIoResponse::new(r.device_io_request, status),
@@ -782,6 +1068,7 @@ impl RdpdrBackend for DirectoryBackend {
                     Ok(None) => (NtStatus::NO_MORE_FILES, None),
                     Err(e) => (status(e), None),
                 };
+                count_status!(status);
                 one(RdpdrPdu::ClientDriveQueryDirectoryResponse(
                     ClientDriveQueryDirectoryResponse {
                         device_io_reply: DeviceIoResponse::new(r.device_io_request, status),
@@ -800,6 +1087,7 @@ impl RdpdrBackend for DirectoryBackend {
                     Ok(()) => NtStatus::SUCCESS,
                     Err(e) => status(e),
                 };
+                count_status!(status);
                 one(RdpdrPdu::ClientDriveSetInformationResponse(
                     ClientDriveSetInformationResponse::new(&r, status)
                         .map_err(|error| ironrdp::pdu::encode_err!(error))?,
@@ -974,6 +1262,175 @@ mod tests {
             offset: 0,
         }
     }
+
+    #[test]
+    fn windows_large_read_requests_return_bounded_chunks_without_loss() {
+        let (temp, _, mut backend) = fixture(false);
+        let source: Vec<u8> = (0..1024 * 1024).map(|i| (i * 17) as u8).collect();
+        std::fs::write(temp.path().join("large.bin"), &source).unwrap();
+        let id = opened(
+            &mut backend,
+            create("large.bin", false, CreateDisposition::FILE_OPEN),
+        );
+        let mut actual = Vec::new();
+        while actual.len() < source.len() {
+            let mut request = read_req(id, source.len() as u32);
+            request.offset = actual.len() as u64;
+            let response = reply(&mut backend, request.into());
+            assert_eq!(reply_status(&response), NtStatus::SUCCESS);
+            let count = u32::from_le_bytes(response[16..20].try_into().unwrap()) as usize;
+            assert!(count > 0 && count <= MAX_IO);
+            assert_eq!(response.len(), 20 + count);
+            actual.extend_from_slice(&response[20..]);
+        }
+        assert_eq!(actual, source);
+        assert_eq!(
+            reply_status(&reply(
+                &mut backend,
+                read_req(id, (MAX_IO + 1) as u32).into()
+            )),
+            NtStatus::ACCESS_DENIED
+        );
+        let mut overflow = read_req(id, 1);
+        overflow.offset = u64::MAX;
+        assert_eq!(
+            reply_status(&reply(&mut backend, overflow.into())),
+            NtStatus::ACCESS_DENIED
+        );
+        let mut outside = read_req(id, 1);
+        outside.offset = MAX_FILE_SIZE;
+        assert_eq!(
+            reply_status(&reply(&mut backend, outside.into())),
+            NtStatus::ACCESS_DENIED
+        );
+        let mut eof = read_req(id, source.len() as u32);
+        eof.offset = source.len() as u64;
+        let response = reply(&mut backend, eof.into());
+        assert_eq!(reply_status(&response), NtStatus::SUCCESS);
+        assert_eq!(response.len(), 20);
+    }
+    #[test]
+    fn completion_observer_requires_exact_successful_data_read_and_failure_is_sticky() {
+        let (temp, _, mut backend) = fixture(false);
+        let probe = TestReadCompletion::new(temp.path()).unwrap();
+        let pass = opened(
+            &mut backend,
+            create(&probe.pass_name, false, CreateDisposition::FILE_OPEN),
+        );
+        assert_eq!(probe.result(), None, "metadata/open is not completion");
+        reply(&mut backend, read_req(pass, 0).into());
+        assert_eq!(probe.result(), None, "empty reads are not completion");
+        reply(&mut backend, read_req(pass, 1).into());
+        assert_eq!(probe.result(), Some(true));
+        let fail = opened(
+            &mut backend,
+            create(&probe.fail_name, false, CreateDisposition::FILE_OPEN),
+        );
+        reply(&mut backend, read_req(fail, 1).into());
+        assert_eq!(probe.result(), Some(false));
+        reply(&mut backend, read_req(pass, 1).into());
+        assert_eq!(probe.result(), Some(false));
+        let names = (probe.pass_name.clone(), probe.fail_name.clone());
+        drop(probe);
+        let registry = test_read_signals().lock().unwrap();
+        assert!(!registry.contains_key(&names.0) && !registry.contains_key(&names.1));
+    }
+
+    #[test]
+    fn script_loader_progress_is_exact_and_requires_nonempty_read() {
+        let (temp, _, mut backend) = fixture(false);
+        let name = format!("cc-{}.ps1", uuid::Uuid::new_v4().simple());
+        std::fs::write(temp.path().join(&name), b"synthetic").unwrap();
+        let progress = TestFileProgress::new(&name).unwrap();
+        assert!(!progress.opened() && !progress.read());
+        let id = opened(
+            &mut backend,
+            create(&name, false, CreateDisposition::FILE_OPEN),
+        );
+        assert!(progress.opened() && !progress.read());
+        reply(&mut backend, read_req(id, 0).into());
+        assert!(!progress.read());
+        reply(&mut backend, read_req(id, 64).into());
+        assert!(progress.read() && !progress.denied() && !progress.other_failure());
+        reply(
+            &mut backend,
+            create(&name, true, CreateDisposition::FILE_OVERWRITE).into(),
+        );
+        assert!(progress.denied());
+        assert!(TestFileProgress::new("nested/script.ps1").is_err());
+        drop(progress);
+        assert!(!test_file_signals().lock().unwrap().contains_key(&name));
+    }
+
+    #[test]
+    fn windows_read_attributes_reparse_flag_accepts_only_regular_confined_objects() {
+        let (temp, _, mut backend) = fixture(false);
+        std::fs::write(temp.path().join("sample.txt"), b"synthetic").unwrap();
+        std::fs::create_dir(temp.path().join("nested")).unwrap();
+        // Exact real Windows Get-Content metadata request: READ_ATTRIBUTES,
+        // FILE_OPEN_REPARSE_POINT, FILE_OPEN. This previously returned ACCESS_DENIED.
+        let mut probe = create("\\sample.txt", false, CreateDisposition::FILE_OPEN);
+        probe.desired_access = DesiredAccess::from_bits_retain(0x0000_0080);
+        probe.create_options = CreateOptions::from_bits_retain(0x0020_0000);
+        let id = opened(&mut backend, probe.clone());
+        assert_eq!(
+            &reply(&mut backend, read_req(id, 64).into())[20..],
+            b"synthetic"
+        );
+        probe.path = "\\nested".into();
+        opened(&mut backend, probe.clone());
+        probe.path = "\\..\\outside".into();
+        assert_eq!(
+            reply_status(&reply(&mut backend, probe.clone().into())),
+            NtStatus::ACCESS_DENIED
+        );
+        probe.path = "\\sample.txt:Zone.Identifier".into();
+        assert_eq!(
+            reply_status(&reply(&mut backend, probe.clone().into())),
+            NtStatus::ACCESS_DENIED
+        );
+        probe.path = "\\sample.txt".into();
+        probe.desired_access |= DesiredAccess::FILE_WRITE_DATA_OR_FILE_ADD_FILE;
+        assert_eq!(
+            reply_status(&reply(&mut backend, probe.into())),
+            NtStatus::ACCESS_DENIED
+        );
+
+        #[cfg(unix)]
+        {
+            let outside = tempfile::tempdir().unwrap();
+            std::fs::write(outside.path().join("outside.txt"), b"synthetic-outside").unwrap();
+            std::os::unix::fs::symlink(
+                outside.path().join("outside.txt"),
+                temp.path().join("link"),
+            )
+            .unwrap();
+            std::fs::hard_link(
+                outside.path().join("outside.txt"),
+                temp.path().join("hardlink"),
+            )
+            .unwrap();
+            for path in ["\\link", "\\hardlink"] {
+                let mut probe = create(path, false, CreateDisposition::FILE_OPEN);
+                probe.desired_access = DesiredAccess::from_bits_retain(0x80);
+                probe.create_options = CreateOptions::FILE_OPEN_REPARSE_POINT;
+                assert_eq!(
+                    reply_status(&reply(&mut backend, probe.into())),
+                    NtStatus::ACCESS_DENIED
+                );
+            }
+            assert_eq!(
+                std::fs::read(outside.path().join("outside.txt")).unwrap(),
+                b"synthetic-outside"
+            );
+        }
+
+        let (writable, _, mut backend) = fixture(true);
+        let mut new = create("new.txt", true, CreateDisposition::FILE_CREATE);
+        new.create_options |= CreateOptions::FILE_OPEN_REPARSE_POINT;
+        opened(&mut backend, new);
+        assert!(writable.path().join("new.txt").is_file());
+    }
     fn write_req(file: u32, data: &[u8]) -> DeviceWriteRequest {
         DeviceWriteRequest {
             device_io_request: header(file, MajorFunction::Write),
@@ -1131,7 +1588,10 @@ mod tests {
             NtStatus::SUCCESS
         );
         assert_ne!(
-            reply_status(&reply(&mut b, read_req(id, (MAX_IO + 1) as u32).into())),
+            reply_status(&reply(
+                &mut b,
+                read_req(id, (MAX_FILE_SIZE + 1) as u32).into()
+            )),
             NtStatus::SUCCESS
         );
         let mut huge = write_req(id, b"a");

@@ -84,6 +84,14 @@ try {
     Invoke-Checked flutter @('analyze')
     Invoke-Checked flutter @('test')
 } finally { Pop-Location }
+# Exercise the Windows filesystem and native RDP input/clipboard code on the
+# actual runner OS before packaging. Live server tests remain opt-in and use no
+# runner credentials during this unit/integration pass.
+$OriginalNativeTestTarget = $env:CARGO_TARGET_DIR
+try {
+    $env:CARGO_TARGET_DIR = Join-Path $Repo 'target\windows-rdp-tests'
+    Invoke-Checked cargo @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-rdp-core', '--all-targets')
+} finally { $env:CARGO_TARGET_DIR = $OriginalNativeTestTarget }
 Push-Location $Repo
 try {
     Invoke-Checked python @('-m', 'unittest', 'discover', '-s', 'client/scripts', '-p', 'test_bump_version.py', '-v')

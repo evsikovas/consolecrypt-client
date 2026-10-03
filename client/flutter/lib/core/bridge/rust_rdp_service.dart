@@ -140,6 +140,12 @@ final class RustRdpService implements RdpService {
   Future<void> offerClipboardText(String sessionId, String text) =>
       _guard(() => native.rdpOfferClipboardText(sessionId: sessionId, text: text));
   @override
+  Future<String> offerClipboardTextConfirmed(String sessionId, String text) =>
+      _guard(() => native.rdpOfferClipboardTextConfirmed(sessionId: sessionId, text: text));
+  @override
+  Future<void> commitClipboardPaste(String sessionId, String ticket) =>
+      _guard(() => native.rdpCommitClipboardPaste(sessionId: sessionId, ticket: ticket));
+  @override
   Future<void> requestClipboardText(String sessionId) =>
       _guard(() => native.rdpRequestClipboardText(sessionId: sessionId));
   @override

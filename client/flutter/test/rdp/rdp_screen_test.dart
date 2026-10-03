@@ -18,6 +18,7 @@ import 'package:consolecrypt/rdp/rdp_launcher.dart';
 import 'package:consolecrypt/rdp/rdp_providers.dart';
 import 'package:consolecrypt/rdp/rdp_screen.dart';
 import 'package:consolecrypt/rdp/rdp_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -122,6 +123,39 @@ Future<void> _approve(WidgetTester tester) async {
   await tapKey(tester, 'rdp-certificate-accept');
 }
 
+Future<void> _pasteShortcut(WidgetTester tester) async {
+  await tester.tap(find.byKey(const ValueKey('rdp-input-surface')));
+  await tester.pump();
+  final modifier = defaultTargetPlatform == TargetPlatform.macOS
+      ? LogicalKeyboardKey.metaLeft
+      : LogicalKeyboardKey.controlLeft;
+  await tester.sendKeyDownEvent(modifier);
+  await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+  await tester.sendKeyUpEvent(modifier);
+}
+
+void _mockLocalClipboard(Future<Object?> Function() read) {
+  final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+    if (call.method == 'Clipboard.getData') return read();
+    return null;
+  });
+  addTearDown(() => messenger.setMockMethodCallHandler(SystemChannels.platform, null));
+}
+
+Future<void> _enableClipboard(WidgetTester tester) async {
+  await tapKey(tester, 'rdp-permissions');
+  await tapKey(tester, 'rdp-allow-clipboard');
+  await tapKey(tester, 'rdp-permissions-apply');
+}
+
+Future<void> _connectedWithClipboard(WidgetTester tester, _Fixture fixture) async {
+  await fixture.pump(tester);
+  await _fill(tester);
+  await _approve(tester);
+  await _enableClipboard(tester);
+}
+
 const _guideCapture = bool.fromEnvironment('CC_RDP_GUIDE_CAPTURE');
 const _guideOutput = String.fromEnvironment('CC_RDP_GUIDE_OUTPUT', defaultValue: '../../.local/verification/rdp-guide');
 Future<void> _loadGuideFonts(WidgetTester tester) async {
@@ -160,6 +194,360 @@ Future<void> _captureGuide(WidgetTester tester, String name) async {
 }
 
 void main() {
+  testWidgets('allowed RDP paste shortcut reads fresh local text without first clicking Send', (tester) async {
+    final fixture = _Fixture();
+    var reads = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.getData') {
+          reads++;
+          return {'text': 'Fresh demo / Привет'};
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await fixture.pump(tester);
+    await _fill(tester);
+    await _approve(tester);
+    await tapKey(tester, 'rdp-permissions');
+    await tapKey(tester, 'rdp-allow-clipboard');
+    await tapKey(tester, 'rdp-permissions-apply');
+    await _pasteShortcut(tester);
+    await settle(tester);
+    expect(reads, 1);
+    expect(fixture.service.clipboardOffers, ['Fresh demo / Привет']);
+    expect(fixture.service.pasteCommits, [('rdp-1', 'opaque-confirmed-1')]);
+    expect(fixture.service.clipboardRequests, 0);
+    await fixture.dispose(tester);
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS}));
+
+  testWidgets('disabled clipboard exchange keeps remote Ctrl V and never reads local clipboard', (tester) async {
+    final fixture = _Fixture();
+    var reads = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.getData') reads++;
+        return null;
+      },
+    );
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await fixture.pump(tester);
+    await _fill(tester);
+    await _approve(tester);
+    fixture.service.inputs.clear();
+    await _pasteShortcut(tester);
+    await settle(tester);
+    expect(reads, 0);
+    expect(fixture.service.clipboardOffers, isEmpty);
+    expect(
+      fixture.service.inputs
+          .expand((batch) => batch)
+          .whereType<RdpScancodeInput>()
+          .map((key) => (key.code, key.down))
+          .toList(),
+      [(0x1d, true), (0x2f, true), (0x2f, false), (0x1d, false)],
+    );
+    await fixture.dispose(tester);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('RDP paste waits for exact ACK and commits once before later typing', (tester) async {
+    final fixture = _Fixture();
+    var reads = 0;
+    _mockLocalClipboard(() async {
+      reads++;
+      return {'text': reads == 1 ? 'First demo' : 'Second demo'};
+    });
+    await _connectedWithClipboard(tester, fixture);
+    fixture.service.confirmedOfferGate = Completer<String>();
+    await tester.tap(find.byKey(const ValueKey('rdp-input-surface')));
+    await tester.pump();
+    fixture.service.inputs.clear();
+    fixture.service.callOrder.clear();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    expect(await tester.sendKeyDownEvent(LogicalKeyboardKey.keyV), isTrue);
+    expect(await tester.sendKeyRepeatEvent(LogicalKeyboardKey.keyV), isTrue);
+    expect(await tester.sendKeyRepeatEvent(LogicalKeyboardKey.keyV), isTrue);
+    expect(await tester.sendKeyUpEvent(LogicalKeyboardKey.keyV), isTrue);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+    expect(reads, 1);
+    expect(fixture.service.pasteCommits, isEmpty);
+    expect(fixture.service.inputs.expand((batch) => batch).whereType<RdpScancodeInput>().map((k) => (k.code, k.down)), [
+      (0x1d, true),
+      (0x1d, false),
+    ]);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyX, character: 'x');
+    await tester.pump();
+    expect(fixture.service.inputs.expand((batch) => batch).whereType<RdpUnicodeInput>(), isEmpty);
+    fixture.service.confirmedOfferGate!.complete('exact-ack');
+    await settle(tester);
+    expect(fixture.service.pasteCommits, [('rdp-1', 'exact-ack')]);
+    expect(fixture.service.callOrder, ['input', 'input', 'input', 'confirmed-offer', 'commit', 'input']);
+    expect(fixture.service.inputs.expand((batch) => batch).whereType<RdpUnicodeInput>().single.text, 'x');
+    // A subsequent explicit shortcut reads the new clipboard rather than
+    // silently reusing the first offer or its single-use ticket.
+    fixture.service.confirmedOfferGate = null;
+    await _pasteShortcut(tester);
+    await settle(tester);
+    expect(reads, 2);
+    expect(fixture.service.clipboardOffers, ['First demo', 'Second demo']);
+    expect(fixture.service.pasteCommits, [('rdp-1', 'exact-ack'), ('rdp-1', 'opaque-confirmed-2')]);
+    await fixture.dispose(tester);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('RDP clipboard read waits behind already queued modifier writes', (tester) async {
+    final fixture = _Fixture();
+    var reads = 0;
+    _mockLocalClipboard(() async {
+      reads++;
+      return {'text': 'Demo'};
+    });
+    await _connectedWithClipboard(tester, fixture);
+    await tester.tap(find.byKey(const ValueKey('rdp-input-surface')));
+    await settle(tester);
+    fixture.service.inputGate = Completer<void>();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+    expect(reads, 0);
+    expect(fixture.service.pasteCommits, isEmpty);
+    fixture.service.inputGate!.complete();
+    await settle(tester);
+    expect(reads, 1);
+    expect(fixture.service.pasteCommits, hasLength(1));
+    await fixture.dispose(tester);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  for (final cancellation in ['focus', 'tab']) {
+    testWidgets('priority release cancels a confirmed paste before held commit dispatch on $cancellation', (
+      tester,
+    ) async {
+      final fixture = _Fixture();
+      _mockLocalClipboard(() async => {'text': 'Demo'});
+      await _connectedWithClipboard(tester, fixture);
+      if (cancellation == 'tab') {
+        await _fill(tester);
+        await _approve(tester);
+        await _enableClipboard(tester);
+      }
+      final commit = Completer<void>();
+      fixture.service.pasteCommitGate = commit;
+      try {
+        await _pasteShortcut(tester);
+        await settle(tester);
+        expect(fixture.service.pasteCommits, hasLength(1));
+        final releases = fixture.service.inputs.expand((batch) => batch).whereType<RdpReleaseAllInput>().length;
+        await tester.sendKeyEvent(LogicalKeyboardKey.keyX, character: 'x');
+        await tester.pump();
+        if (cancellation == 'focus') {
+          FocusManager.instance.primaryFocus!.unfocus();
+        } else {
+          // Controller transition must invalidate synchronously, even before
+          // Flutter disposes the previous view on the following frame.
+          final container = ProviderScope.containerOf(tester.element(find.byType(RdpScreen)));
+          final controller = container.read(rdpWorkspaceProvider);
+          controller.activate(controller.tabs.first);
+        }
+        await tester.pump();
+        expect(
+          fixture.service.inputs.expand((batch) => batch).whereType<RdpReleaseAllInput>().length,
+          greaterThan(releases),
+        );
+        expect(commit.isCompleted, isFalse);
+        commit.complete();
+        await settle(tester);
+        expect(fixture.service.inputs.expand((batch) => batch).whereType<RdpUnicodeInput>(), isEmpty);
+        if (cancellation == 'focus') {
+          await tester.tap(find.byKey(const ValueKey('rdp-input-surface')));
+          await tester.pump();
+          await tester.sendKeyEvent(LogicalKeyboardKey.keyF, character: 'f');
+          await settle(tester);
+          expect(fixture.service.inputs.expand((batch) => batch).whereType<RdpUnicodeInput>().single.text, 'f');
+        }
+      } finally {
+        if (!commit.isCompleted) commit.complete();
+        await fixture.dispose(tester);
+      }
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  }
+
+  testWidgets('a local read cannot resume after switching away and back without an intervening frame', (tester) async {
+    final fixture = _Fixture();
+    final read = Completer<Object?>();
+    _mockLocalClipboard(() => read.future);
+    await _connectedWithClipboard(tester, fixture);
+    await _fill(tester);
+    await _approve(tester);
+    await _enableClipboard(tester);
+    final controller = ProviderScope.containerOf(tester.element(find.byType(RdpScreen))).read(rdpWorkspaceProvider);
+    final original = controller.active!;
+    try {
+      await _pasteShortcut(tester);
+      await settle(tester);
+      controller.activate(controller.tabs.first);
+      controller.activate(original);
+      // No old-view dispose or focus listener has run between transitions.
+      read.complete({'text': 'Demo'});
+      await settle(tester);
+      expect(fixture.service.clipboardOffers, isEmpty);
+      expect(fixture.service.pasteCommits, isEmpty);
+      expect(original.clipboardPastePending, isFalse);
+    } finally {
+      if (!read.isCompleted) read.complete({'text': 'Demo'});
+      await fixture.dispose(tester);
+    }
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('a second distinct shortcut while ACK is pending does not cancel the first paste', (tester) async {
+    final fixture = _Fixture();
+    var reads = 0;
+    _mockLocalClipboard(() async {
+      reads++;
+      return {'text': 'Demo'};
+    });
+    await _connectedWithClipboard(tester, fixture);
+    final ack = Completer<String>();
+    fixture.service.confirmedOfferGate = ack;
+    fixture.service.inputs.clear();
+    try {
+      await _pasteShortcut(tester);
+      await settle(tester);
+      await _pasteShortcut(tester);
+      await settle(tester);
+      expect(reads, 1);
+      ack.complete('one-ack');
+      await settle(tester);
+      expect(fixture.service.pasteCommits, hasLength(1));
+      expect(fixture.service.inputs.expand((batch) => batch).whereType<RdpReleaseAllInput>(), hasLength(1));
+    } finally {
+      if (!ack.isCompleted) ack.complete('one-ack');
+      await fixture.dispose(tester);
+    }
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  for (final cancellation in ['tab', 'lock', 'profile', 'focus', 'permission']) {
+    testWidgets('late clipboard ACK cannot paste after $cancellation change', (tester) async {
+      final fixture = _Fixture();
+      _mockLocalClipboard(() async => {'text': 'Demo'});
+      await _connectedWithClipboard(tester, fixture);
+      if (cancellation == 'tab') {
+        await _fill(tester);
+        await _approve(tester);
+        await _enableClipboard(tester);
+      }
+      final container = ProviderScope.containerOf(tester.element(find.byType(RdpScreen)));
+      final controller = container.read(rdpWorkspaceProvider);
+      final tab = controller.active!;
+      fixture.service.confirmedOfferGate = Completer<String>();
+      await _pasteShortcut(tester);
+      await settle(tester);
+      expect(fixture.service.clipboardOffers, ['Demo']);
+      switch (cancellation) {
+        case 'tab':
+          await tester.tap(find.byKey(const ValueKey('rdp-tab-rdp-1')));
+          await settle(tester);
+        case 'lock':
+          fixture.status.value = const VaultStatus(phase: VaultPhase.locked);
+          await tester.pump();
+          fixture.status.value = const VaultStatus(phase: VaultPhase.unlocked);
+          await settle(tester);
+        case 'profile':
+          final next = Profile(
+            id: ProfileId.generate(),
+            name: 'Other synthetic workspace',
+            kind: ProfileKind.local,
+            createdAt: DateTime.now().toUtc(),
+          );
+          fixture.profiles.value = ProfilesState(profiles: [next], activeId: next.id);
+          await settle(tester);
+        case 'focus':
+          FocusManager.instance.primaryFocus!.unfocus();
+          await tester.pump();
+          await tester.tap(find.byKey(const ValueKey('rdp-input-surface')));
+          await tester.pump();
+        case 'permission':
+          // Even a revoke/re-enable without a rendered intermediate disabled
+          // state invalidates the captured permission epoch.
+          await controller.setPermissions(tab, const RdpSessionPermissions());
+          await controller.setPermissions(tab, const RdpSessionPermissions(clipboardEnabled: true));
+          await tester.pump();
+      }
+      fixture.service.confirmedOfferGate!.complete('late-ack');
+      await settle(tester);
+      expect(fixture.service.pasteCommits, isEmpty);
+      expect(tab.clipboardPastePending, isFalse);
+      await fixture.dispose(tester);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  }
+
+  testWidgets('a late local read after lock never offers its text', (tester) async {
+    final fixture = _Fixture();
+    final read = Completer<Object?>();
+    _mockLocalClipboard(() => read.future);
+    await _connectedWithClipboard(tester, fixture);
+    await _pasteShortcut(tester);
+    await settle(tester);
+    fixture.status.value = const VaultStatus(phase: VaultPhase.locked);
+    await tester.pump();
+    read.complete({'text': 'Demo'});
+    await settle(tester);
+    expect(fixture.service.clipboardOffers, isEmpty);
+    expect(fixture.service.pasteCommits, isEmpty);
+    await fixture.dispose(tester);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  for (final invalid in ['empty', 'limit', 'utf8', 'nul', 'refused']) {
+    testWidgets('RDP local clipboard $invalid consumes shortcut without pasting old remote text', (tester) async {
+      final fixture = _Fixture();
+      _mockLocalClipboard(
+        () async => {
+          'text': switch (invalid) {
+            'empty' => '',
+            'limit' => 'x' * 65537,
+            'utf8' => 'я' * 32769,
+            'nul' => 'demo\x00text',
+            _ => 'Demo',
+          },
+        },
+      );
+      await _connectedWithClipboard(tester, fixture);
+      if (invalid == 'refused') fixture.service.confirmedOfferFailure = const RdpFailure('clipboard_unavailable');
+      fixture.service.inputs.clear();
+      await _pasteShortcut(tester);
+      await settle(tester);
+      expect(fixture.service.pasteCommits, isEmpty);
+      expect(fixture.service.clipboardOffers.length, invalid == 'refused' ? 1 : 0);
+      expect(
+        fixture.service.inputs.expand((batch) => batch).whereType<RdpScancodeInput>().any((k) => k.code == 0x2f),
+        isFalse,
+      );
+      final context = tester.element(find.byType(RdpScreen));
+      final label = invalid == 'empty'
+          ? context.l10n.rdpClipboardEmpty
+          : invalid == 'refused'
+          ? context.l10n.rdpClipboardUnavailable
+          : context.l10n.rdpClipboardLimit;
+      expect(find.text(label), findsOneWidget);
+      expect(ProviderScope.containerOf(context).read(rdpWorkspaceProvider).active!.status.phase, RdpPhase.connected);
+      await fixture.dispose(tester);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  }
+
   if (_guideCapture) {
     for (final language in ['ru', 'en']) {
       testWidgets('demo RDP guide tabs and permissions $language', (tester) async {
@@ -374,7 +762,7 @@ void main() {
     await fixture.dispose(tester);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
-  testWidgets('clipboard is opt-in and exchange uses explicit buttons only', (tester) async {
+  testWidgets('clipboard is opt-in and toolbar Send never performs a paste', (tester) async {
     final fixture = _Fixture();
     var clipboardReads = 0;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -407,6 +795,7 @@ void main() {
     expect(clipboardReads, 0);
     expect(fixture.service.clipboardRequests, 0);
     await tapKey(tester, 'rdp-send-clipboard');
+    expect(fixture.service.pasteCommits, isEmpty);
     expect(clipboardReads, 1);
     expect(fixture.service.clipboardOffers.length, 1);
     fixture.service.remoteClipboard = 'Демонстрационный текст';

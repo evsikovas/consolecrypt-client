@@ -12,6 +12,62 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+String _clipboardFailureLabel(AppLocalizations l, Object error) => switch (error is RdpFailure ? error.code : null) {
+  'clipboard_unavailable' => l.rdpClipboardUnavailable,
+  'clipboard_limit' => l.rdpClipboardLimit,
+  'input_queue_full' => l.rdpClipboardBusy,
+  'clipboard_empty' => l.rdpClipboardEmpty,
+  _ => l.rdpClipboardFailed,
+};
+
+String _checkedClipboardText(String? text) {
+  if (text == null || text.isEmpty) throw const RdpFailure('clipboard_empty');
+  if (text.length > 65536 || text.contains('\x00') || utf8.encode(text).length > 65536) {
+    throw const RdpFailure('clipboard_limit');
+  }
+  return text;
+}
+
+Future<void> pasteLocalRdpClipboard(
+  BuildContext context,
+  WidgetRef ref,
+  RdpTab tab,
+  bool Function() isInputCurrent,
+) async {
+  final scope = ref.read(rdpScopeProvider);
+  final controller = ref.read(rdpWorkspaceProvider);
+  final service = ref.read(rdpServiceProvider);
+  final epoch = tab.permissionEpoch;
+  final interactionEpoch = tab.interactionEpoch;
+  final l = context.l10n;
+  bool current() =>
+      context.mounted &&
+      isInputCurrent() &&
+      rdpScopeCurrent(ref, scope) &&
+      !tab.closed &&
+      tab.status.phase == RdpPhase.connected &&
+      tab.permissions.clipboardEnabled &&
+      tab.permissionEpoch == epoch &&
+      tab.interactionEpoch == interactionEpoch &&
+      identical(controller.active, tab);
+  if (tab.clipboardPastePending || !current()) return;
+  tab.setClipboardPastePending(true);
+  try {
+    await controller.queueClipboardPaste(tab, () async {
+      final value = await Clipboard.getData(Clipboard.kTextPlain);
+      if (!current()) return;
+      final text = _checkedClipboardText(value?.text);
+      final ticket = await service.offerClipboardTextConfirmed(tab.info.id, text);
+      if (!current()) return;
+      await service.commitClipboardPaste(tab.info.id, ticket);
+    }, isCurrent: current);
+  } catch (error) {
+    if (context.mounted && current()) showSnack(context, _clipboardFailureLabel(l, error), error: true);
+  } finally {
+    tab.setClipboardPastePending(false);
+  }
+}
+
 /// Text exchange is explicit in both directions. Enabling the channel never
 /// reads or sends the system clipboard in the background.
 class RdpClipboardActions extends ConsumerStatefulWidget {
@@ -59,22 +115,14 @@ class _RdpClipboardActionsState extends ConsumerState<RdpClipboardActions> {
       } else {
         final value = await Clipboard.getData(Clipboard.kTextPlain);
         if (!_current(scope)) return;
-        final text = value?.text;
-        if (text == null || text.isEmpty) throw const RdpFailure('clipboard_empty');
-        if (utf8.encode(text).length > 65536) throw const RdpFailure('clipboard_limit');
+        final text = _checkedClipboardText(value?.text);
         await service.offerClipboardText(sessionId, text);
         if (mounted && _current(scope)) showSnack(context, context.l10n.rdpClipboardSent);
       }
     } catch (error) {
       if (mounted && _current(scope)) {
         final l = context.l10n;
-        final message = switch (error is RdpFailure ? error.code : null) {
-          'clipboard_unavailable' => l.rdpClipboardUnavailable,
-          'clipboard_limit' => l.rdpClipboardLimit,
-          'input_queue_full' => l.rdpClipboardBusy,
-          'clipboard_empty' => l.rdpClipboardEmpty,
-          _ => l.rdpClipboardFailed,
-        };
+        final message = _clipboardFailureLabel(l, error);
         showSnack(context, message, error: true);
       }
     } finally {
@@ -84,7 +132,11 @@ class _RdpClipboardActionsState extends ConsumerState<RdpClipboardActions> {
 
   @override
   Widget build(BuildContext context) {
-    final enabled = !_busy && widget.tab.permissions.clipboardEnabled && widget.tab.status.phase == RdpPhase.connected;
+    final enabled =
+        !_busy &&
+        !widget.tab.clipboardPastePending &&
+        widget.tab.permissions.clipboardEnabled &&
+        widget.tab.status.phase == RdpPhase.connected;
     return GlassToolbarGroup(
       children: [
         GlassIconButton(

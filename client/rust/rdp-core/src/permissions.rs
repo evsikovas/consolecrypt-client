@@ -50,6 +50,7 @@ impl std::fmt::Debug for GrantedDirectory {
 #[derive(Clone, Copy)]
 pub(crate) enum ClipboardAction {
     Advertise,
+    AdvertiseConfirmed(u64),
     Request,
     Respond(u64, bool),
 }
@@ -84,8 +85,15 @@ pub(crate) struct RedirectState {
     pub folder_status: FolderStatus,
     pub folder_pending_since: Instant,
     pub clipboard_counts: [u64; 5],
+    #[cfg(test)]
+    pub clipboard_send_counts: [u64; 4],
+    #[cfg(test)]
+    pub drive_operation_counts: [u64; 5],
+    #[cfg(test)]
+    pub drive_status_counts: [u64; 5],
     pub drive_handshake: u8,
     pub local_text: Option<Zeroizing<String>>,
+    pub offers: crate::clipboard_offers::ClipboardOffers,
     pub received_text: Option<Zeroizing<String>>,
     pub pending_request: Option<u64>,
     pub actions: VecDeque<ClipboardAction>,
@@ -114,8 +122,15 @@ impl RedirectState {
             folder_status,
             folder_pending_since: Instant::now(),
             clipboard_counts: [0; 5],
+            #[cfg(test)]
+            clipboard_send_counts: [0; 4],
+            #[cfg(test)]
+            drive_operation_counts: [0; 5],
+            #[cfg(test)]
+            drive_status_counts: [0; 5],
             drive_handshake: 0,
             local_text: None,
+            offers: Default::default(),
             received_text: None,
             pending_request: None,
             actions: VecDeque::new(),
@@ -133,6 +148,7 @@ impl RedirectState {
         }
     }
     pub fn clear_text(&mut self) {
+        self.offers.content_changed();
         self.local_text = None;
         self.received_text = None;
         // CLIPRDR has no request ID. Drain a cancelled wire request before allowing
@@ -154,6 +170,14 @@ impl RedirectState {
         !self.closed && self.permissions.clipboard_enabled
     }
     pub fn enqueue(&mut self, action: ClipboardAction) -> Result<(), RdpError> {
+        if matches!(action, ClipboardAction::Advertise)
+            && self
+                .actions
+                .iter()
+                .any(|queued| matches!(queued, ClipboardAction::Advertise))
+        {
+            return Ok(());
+        }
         if self.actions.len() >= 16 {
             return Err(RdpError::InputQueueFull);
         }

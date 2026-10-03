@@ -12,6 +12,114 @@ Future<RdpTab> _connect(RdpWorkspaceController controller) async =>
     (await controller.connect(_options, Uint8List(0), List.filled(64, 'a').join(), isCurrent: () => true))!;
 
 void main() {
+  testWidgets('failed priority release closes input and a late poll cannot revive it', (tester) async {
+    final service = FakeRdpService();
+    final controller = RdpWorkspaceController(service);
+    final tab = await _connect(controller);
+    await tester.pump(const Duration(milliseconds: 67));
+    final poll = Completer<RdpPollResult>();
+    service.pollGate = poll;
+    await tester.pump(const Duration(milliseconds: 67));
+    service.inputFailure = const RdpFailure('input_queue_full');
+    controller.cancelInteraction(tab);
+    await tester.pump();
+    expect(tab.status.phase, RdpPhase.failed);
+    expect(service.disconnected, [tab.info.id]);
+    poll.complete(const RdpPollResult(status: RdpStatus(RdpPhase.connected)));
+    await tester.pump();
+    controller.send(tab, const [RdpUnicodeInput('blocked')]);
+    await tester.pump();
+    expect(tab.status.phase, RdpPhase.failed);
+    expect(service.inputs.expand((batch) => batch).whereType<RdpUnicodeInput>(), isEmpty);
+    controller.dispose();
+    await tester.pump();
+  });
+
+  testWidgets(
+    'visibility cancellation bypasses clipboard FIFO and fences fresh input until native cancellation settles',
+    (tester) async {
+      final service = FakeRdpService();
+      final controller = RdpWorkspaceController(service);
+      final tab = await _connect(controller);
+      await tester.pump(const Duration(milliseconds: 67));
+      final heldPaste = Completer<void>();
+      final cancel = Completer<void>();
+      service.inputGate = cancel;
+      final paste = controller.queueClipboardPaste(tab, () => heldPaste.future, isCurrent: () => true);
+      try {
+        await tester.pump();
+        controller.send(tab, const [RdpUnicodeInput('stale')]);
+        controller.setVisible(false);
+        expect(service.inputs.single.single, isA<RdpReleaseAllInput>());
+        controller.setVisible(true);
+        controller.send(tab, const [RdpUnicodeInput('fresh')]);
+        heldPaste.complete();
+        await paste;
+        await tester.pump();
+        expect(service.inputs, hasLength(1));
+        cancel.complete();
+        await tester.pump();
+        expect(service.inputs.expand((batch) => batch).whereType<RdpUnicodeInput>().single.text, 'fresh');
+        expect(tab.status.phase, RdpPhase.connected);
+      } finally {
+        if (!heldPaste.isCompleted) heldPaste.complete();
+        if (!cancel.isCompleted) cancel.complete();
+        await paste;
+        controller.dispose();
+        await tester.pump();
+      }
+    },
+  );
+
+  testWidgets('clipboard transaction holds one FIFO place and cancellation does not poison later input', (
+    tester,
+  ) async {
+    final service = FakeRdpService();
+    final controller = RdpWorkspaceController(service);
+    final tab = await _connect(controller);
+    await tester.pump(const Duration(milliseconds: 67));
+    service.inputGate = Completer<void>();
+    controller.send(tab, const [RdpScancodeInput(0x1d, down: false)]);
+    var started = false;
+    var current = true;
+    final pending = controller.queueClipboardPaste(tab, () async {
+      started = true;
+    }, isCurrent: () => current);
+    final cancellation = expectLater(pending, throwsA(isA<RdpFailure>()));
+    controller.send(tab, const [RdpUnicodeInput('x')]);
+    await tester.pump();
+    expect(started, isFalse);
+    expect(service.inputs, hasLength(1));
+    current = false;
+    service.inputGate!.complete();
+    await cancellation;
+    await tester.pump();
+    expect(started, isFalse);
+    expect(service.inputs, hasLength(2));
+    expect(service.inputs.last.single, isA<RdpUnicodeInput>());
+    expect(tab.status.phase, RdpPhase.connected);
+    controller.dispose();
+    await tester.pump();
+  });
+
+  testWidgets('clipboard ACK failure leaves session and input FIFO usable', (tester) async {
+    final service = FakeRdpService();
+    final controller = RdpWorkspaceController(service);
+    final tab = await _connect(controller);
+    await tester.pump(const Duration(milliseconds: 67));
+    final pending = controller.queueClipboardPaste(tab, () async {
+      throw const RdpFailure('clipboard_unavailable');
+    }, isCurrent: () => true);
+    await expectLater(pending, throwsA(isA<RdpFailure>()));
+    controller.send(tab, const [RdpUnicodeInput('Привет')]);
+    await tester.pump();
+    expect(service.inputs, hasLength(1));
+    expect(tab.status.phase, RdpPhase.connected);
+    expect(service.disconnected, isEmpty);
+    controller.dispose();
+    await tester.pump();
+  });
+
   testWidgets('clipboard-only permission change preserves an accepted folder', (tester) async {
     final service = FakeRdpService()
       ..nextPoll = const RdpPollResult(status: RdpStatus(RdpPhase.connected), folderState: RdpFolderState.ready);
