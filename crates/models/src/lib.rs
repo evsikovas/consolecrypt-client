@@ -20,6 +20,7 @@ pub mod history;
 pub mod host;
 pub mod known_host;
 pub mod note;
+pub mod rdp;
 pub mod secret;
 pub mod settings;
 pub mod snippet;
@@ -69,6 +70,7 @@ impl KekClass {
 #[serde(rename_all = "snake_case")]
 pub enum ObjectKind {
     Host,
+    RdpHost,
     Group,
     JumpProfile,
     Proxy,
@@ -88,6 +90,7 @@ impl ObjectKind {
     pub const fn kek_class(&self) -> KekClass {
         match self {
             ObjectKind::Host
+            | ObjectKind::RdpHost
             | ObjectKind::Group
             | ObjectKind::JumpProfile
             | ObjectKind::Proxy
@@ -107,6 +110,7 @@ impl ObjectKind {
 #[serde(tag = "kind", content = "data", rename_all = "snake_case")]
 pub enum VaultObject {
     Host(host::Host),
+    RdpHost(rdp::RdpHost),
     Group(group::Group),
     JumpProfile(host::JumpProfile),
     Proxy(host::Proxy),
@@ -126,6 +130,7 @@ impl VaultObject {
     pub fn kind(&self) -> ObjectKind {
         match self {
             VaultObject::Host(_) => ObjectKind::Host,
+            VaultObject::RdpHost(_) => ObjectKind::RdpHost,
             VaultObject::Group(_) => ObjectKind::Group,
             VaultObject::JumpProfile(_) => ObjectKind::JumpProfile,
             VaultObject::Proxy(_) => ObjectKind::Proxy,
@@ -145,6 +150,7 @@ impl VaultObject {
     pub fn id(&self) -> ObjectId {
         match self {
             VaultObject::Host(o) => o.id,
+            VaultObject::RdpHost(o) => o.host.id,
             VaultObject::Group(o) => o.id,
             VaultObject::JumpProfile(o) => o.id,
             VaultObject::Proxy(o) => o.id,
