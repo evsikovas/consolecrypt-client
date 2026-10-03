@@ -165,14 +165,28 @@ pub async fn core_init(config: CoreConfig) -> Result<CoreInfo, BridgeError> {
     let _ = cc_app_core::logging::init(directives.as_deref());
     let app_config = app_config(&config);
     let auth = os_auth();
-    let core = run(async move {
+    // OS keychain initialization is blocking. In particular, Secret Service's
+    // blocking executor must never be entered from a Tokio async worker.
+    let core = run(initialize_blocking(move || {
         AppCore::with_os_authenticator(app_config, auth).map_err(BridgeError::from)
-    })
+    }))
     .await?;
     let out = info(&core, false);
     state::set_core(Some(core));
     tracing::info!(data_dir = %out.data_dir, "bridge core initialized");
     Ok(out)
+}
+
+/// Keep blocking construction off the core's async workers. Join failures
+/// have a fixed message: a panic payload may contain sensitive backend data.
+async fn initialize_blocking<T, F>(construct: F) -> Result<T, BridgeError>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, BridgeError> + Send + 'static,
+{
+    tokio::task::spawn_blocking(construct)
+        .await
+        .map_err(|_| BridgeError::internal("core initialization task failed"))?
 }
 
 /// Close the open profile (locks the vault, stops sync/SSH, closes the
@@ -369,6 +383,43 @@ pub fn ui_store_set(key: String, value: Option<String>) -> Result<(), BridgeErro
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn blocking_initialization_can_enter_a_sync_executor_from_the_core_runtime() {
+        let result = state::tests::futures_lite_block_on(run(initialize_blocking(|| {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            Ok(runtime.block_on(async { 7 }))
+        })));
+        assert_eq!(result.unwrap(), 7);
+    }
+
+    #[test]
+    fn blocking_initialization_preserves_structured_errors() {
+        let result = state::tests::futures_lite_block_on(run(initialize_blocking(|| {
+            Err::<(), _>(BridgeError::new(
+                "secure_store",
+                "test provider unavailable",
+            ))
+        })));
+        let error = result.unwrap_err();
+        assert_eq!(error.code, "secure_store");
+        assert_eq!(error.message, "test provider unavailable");
+    }
+
+    #[test]
+    fn blocking_initialization_sanitizes_join_failure() {
+        let result = state::tests::futures_lite_block_on(run(initialize_blocking(
+            || -> Result<(), BridgeError> {
+                panic!("synthetic constructor failure");
+            },
+        )));
+        let error = result.unwrap_err();
+        assert_eq!(error.code, "internal");
+        assert_eq!(error.message, "core initialization task failed");
+    }
 
     #[test]
     fn ui_store_roundtrip_is_atomic_and_private() {
