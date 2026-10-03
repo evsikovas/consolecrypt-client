@@ -5451,10 +5451,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get rdpResize => 'Экран 1920 × 1080';
 
   @override
-  String get rdpExpand => 'Развернуть рабочую область';
+  String get rdpExpand => 'Во весь экран';
 
   @override
-  String get rdpCollapse => 'Свернуть рабочую область';
+  String get rdpCollapse => 'Выйти из полного экрана';
 
   @override
   String get rdpAddress => 'Адрес сервера';
@@ -5616,4 +5616,25 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get rdpClipboardEmpty => 'В буфере обмена нет доступного текста.';
+
+  @override
+  String get rdpPinBar => 'Закрепить панель подключения';
+
+  @override
+  String get rdpUnpinBar => 'Скрывать панель автоматически';
+
+  @override
+  String get rdpConnections => 'Переключить подключение';
+
+  @override
+  String get rdpMinimize => 'Свернуть окно';
+
+  @override
+  String get rdpDisconnect => 'Закрыть этот сеанс';
+
+  @override
+  String get rdpShowBar => 'Показать панель подключения (Ctrl+Alt+Home)';
+
+  @override
+  String get rdpFullscreenFailed => 'Не удалось изменить полноэкранный режим. Используйте кнопки управления окном.';
 }

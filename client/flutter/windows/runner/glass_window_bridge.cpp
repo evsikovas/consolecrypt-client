@@ -112,6 +112,32 @@ GlassWindowBridge::GlassWindowBridge(flutter::BinaryMessenger* messenger,
       [this](const flutter::MethodCall<flutter::EncodableValue>& call,
              std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
                  result) {
+        if (call.method_name() == "beginRdpFullscreen") {
+          result->Success(flutter::EncodableValue(BeginFullscreen()));
+          return;
+        }
+        if (call.method_name() == "endRdpFullscreen") {
+          if (EndFullscreen()) result->Success();
+          else result->Error("fullscreen_restore", "Could not restore window.");
+          return;
+        }
+        if (call.method_name() == "isRdpFullscreenRestored") {
+          result->Success(flutter::EncodableValue(!fullscreen_ && restore_succeeded_));
+          return;
+        }
+        if (call.method_name() == "isFullscreen") {
+          result->Success(flutter::EncodableValue(IsFullscreen()));
+          return;
+        }
+        if (call.method_name() == "minimize") {
+          ShowWindow(window_, SW_MINIMIZE);
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "isRdpMinimized") {
+          result->Success(flutter::EncodableValue(IsIconic(window_) != FALSE));
+          return;
+        }
         if (call.method_name() != "setCaptionColors") {
           result->NotImplemented();
           return;
@@ -145,7 +171,59 @@ GlassWindowBridge::~GlassWindowBridge() {
   }
 }
 
+bool GlassWindowBridge::IsFullscreen() const {
+  if (!fullscreen_ || (GetWindowLongPtr(window_, GWL_STYLE) & WS_OVERLAPPEDWINDOW) != 0) return false;
+  if (IsIconic(window_)) return true;  // OS minimize preserves fullscreen on restore.
+  RECT bounds;
+  MONITORINFO monitor = {sizeof(MONITORINFO)};
+  return GetWindowRect(window_, &bounds) &&
+      GetMonitorInfo(MonitorFromWindow(window_, MONITOR_DEFAULTTONEAREST), &monitor) &&
+      EqualRect(&bounds, &monitor.rcMonitor);
+}
+
+bool GlassWindowBridge::BeginFullscreen() {
+  if (fullscreen_) return true;
+  if (!GetWindowPlacement(window_, &previous_placement_)) return false;
+  previous_style_ = GetWindowLongPtr(window_, GWL_STYLE);
+  previous_ex_style_ = GetWindowLongPtr(window_, GWL_EXSTYLE);
+  // Save placement before SW_RESTORE so a previously maximized window is
+  // restored as maximized, with its original normal rectangle intact.
+  ShowWindow(window_, SW_RESTORE);
+  SetWindowLongPtr(window_, GWL_STYLE, previous_style_ & ~(WS_OVERLAPPEDWINDOW | WS_MAXIMIZE | WS_MINIMIZE));
+  SetWindowLongPtr(window_, GWL_EXSTYLE,
+                   previous_ex_style_ & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE |
+                                          WS_EX_CLIENTEDGE | WS_EX_STATICEDGE));
+  fullscreen_ = true;
+  restore_succeeded_ = false;
+  if (FitFullscreenMonitor()) return true;
+  EndFullscreen();
+  return false;
+}
+
+bool GlassWindowBridge::FitFullscreenMonitor() {
+  if (!fullscreen_) return false;
+  MONITORINFO monitor = {sizeof(MONITORINFO)};
+  if (!GetMonitorInfo(MonitorFromWindow(window_, MONITOR_DEFAULTTONEAREST), &monitor)) return false;
+  const RECT& rect = monitor.rcMonitor;  // Full monitor, including taskbar area.
+  return SetWindowPos(window_, HWND_TOP, rect.left, rect.top,
+                       rect.right - rect.left, rect.bottom - rect.top,
+                       SWP_FRAMECHANGED | SWP_NOOWNERZORDER) != FALSE;
+}
+
+bool GlassWindowBridge::EndFullscreen() {
+  if (!fullscreen_ && restore_succeeded_) return true;
+  fullscreen_ = false;
+  SetWindowLongPtr(window_, GWL_STYLE, previous_style_);
+  SetWindowLongPtr(window_, GWL_EXSTYLE, previous_ex_style_);
+  const bool placed = SetWindowPlacement(window_, &previous_placement_) != FALSE;
+  const bool framed = SetWindowPos(window_, nullptr, 0, 0, 0, 0,
+      SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED) != FALSE;
+  restore_succeeded_ = placed && framed;
+  return restore_succeeded_;
+}
+
 void GlassWindowBridge::OnWindowMessage(UINT message) {
+  if (message == WM_DISPLAYCHANGE && fullscreen_) FitFullscreenMonitor();
   switch (message) {
     case WM_SETTINGCHANGE:
     case WM_THEMECHANGED:

@@ -18,6 +18,8 @@ import 'package:consolecrypt/rdp/rdp_launcher.dart';
 import 'package:consolecrypt/rdp/rdp_providers.dart';
 import 'package:consolecrypt/rdp/rdp_screen.dart';
 import 'package:consolecrypt/rdp/rdp_service.dart';
+import 'package:consolecrypt/rdp/rdp_view.dart';
+import 'package:consolecrypt/rdp/rdp_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -30,16 +32,45 @@ import 'fake_rdp_service.dart';
 
 class _RecordedClipboard extends SecureClipboard {
   int writes = 0, byteCount = 0;
+  Completer<void>? copyGate;
   @override
   Future<void> copySecret(String value, {bool Function()? isCurrent}) async {
+    await copyGate?.future;
     if (isCurrent?.call() == false) return;
     writes++;
     byteCount = utf8.encode(value).length;
   }
 }
 
+class _Window extends RdpWindow {
+  final calls = <String>[];
+  bool fullscreen = true;
+  bool failEntry = false;
+  Completer<void>? entryGate;
+  @override
+  bool get desktop => true;
+  @override
+  Future<void> enter() async {
+    calls.add('enter');
+    await entryGate?.future;
+    if (failEntry) throw PlatformException(code: 'native_failure');
+  }
+
+  @override
+  Future<bool> isFullscreen() async => fullscreen;
+  @override
+  Future<void> leave() async {
+    calls.add('leave');
+  }
+
+  @override
+  Future<void> minimize() async {
+    calls.add('minimize');
+  }
+}
+
 class _Fixture {
-  _Fixture() {
+  _Fixture({_Window? nativeWindow}) : window = nativeWindow ?? _Window() {
     profile = Profile(
       id: ProfileId.generate(),
       name: 'Synthetic workspace',
@@ -54,6 +85,7 @@ class _Fixture {
   final service = FakeRdpService();
   final budget = GlassBackdropBudget();
   final clipboard = _RecordedClipboard();
+  final _Window window;
   Host? savedHost;
 
   Future<void> pump(WidgetTester tester, {String language = 'en', Size size = const Size(1200, 900)}) async {
@@ -70,6 +102,7 @@ class _Fixture {
           profilesProvider.overrideWith((_) => profiles.stream),
           vaultStatusProvider.overrideWith((_) => status.stream),
           rdpServiceProvider.overrideWithValue(service),
+          rdpWindowProvider.overrideWithValue(window),
           secureClipboardProvider.overrideWithValue(clipboard),
         ],
         child: MaterialApp(
@@ -178,8 +211,8 @@ Future<void> _loadGuideFonts(WidgetTester tester) async {
   });
 }
 
-Future<void> _captureGuide(WidgetTester tester, String name) async {
-  final boundary = tester.renderObject<RenderRepaintBoundary>(find.byKey(const ValueKey('rdp-demo-surface')));
+Future<void> _captureGuide(WidgetTester tester, String name, {String surfaceKey = 'rdp-demo-surface'}) async {
+  final boundary = tester.renderObject<RenderRepaintBoundary>(find.byKey(ValueKey(surfaceKey)));
   await tester.runAsync(() async {
     final image = await boundary.toImage();
     try {
@@ -194,6 +227,212 @@ Future<void> _captureGuide(WidgetTester tester, String name) async {
 }
 
 void main() {
+  testWidgets('fullscreen replaces shell with one monitor-sized view and restores live session', (tester) async {
+    final fixture = _Fixture();
+    await _connectedWithClipboard(tester, fixture);
+    await tapKey(tester, 'rdp-expand');
+    expect(fixture.window.calls, ['enter']);
+    expect(find.byKey(const ValueKey('rdp-new-connection')), findsNothing);
+    expect(find.byType(RdpView), findsOneWidget);
+    expect(tester.getRect(find.byType(RdpView)), const Rect.fromLTWH(0, 0, 1200, 900));
+    await tester.tap(find.byKey(const ValueKey('rdp-input-surface')));
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(fixture.window.calls, ['enter']); // Escape belongs to the remote OS.
+    expect(fixture.service.inputs.expand((b) => b).whereType<RdpScancodeInput>().any((e) => e.code == 1), isTrue);
+    await tapKey(tester, 'rdp-fullscreen-restore');
+    expect(fixture.window.calls, ['enter', 'leave']);
+    expect(fixture.service.disconnected, isEmpty);
+    expect(find.byKey(const ValueKey('rdp-new-connection')), findsOneWidget);
+    expect(find.byType(RdpView), findsOneWidget);
+    await fixture.dispose(tester);
+  });
+
+  testWidgets('fullscreen bar hides, reveals at top edge, pins and supports local shortcut', (tester) async {
+    final fixture = _Fixture();
+    await _connectedWithClipboard(tester, fixture);
+    await tapKey(tester, 'rdp-expand');
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pump(const Duration(milliseconds: 250));
+    final slide = find.ancestor(
+      of: find.byKey(const ValueKey('rdp-fullscreen-bar')),
+      matching: find.byType(AnimatedSlide),
+    );
+    expect(tester.widget<AnimatedSlide>(slide).offset.dy, lessThan(0));
+    final pointer = await tester.createGesture(kind: ui.PointerDeviceKind.mouse);
+    await pointer.addPointer(location: const Offset(100, 500));
+    await pointer.moveTo(const Offset(600, 2));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(tester.widget<AnimatedSlide>(slide).offset, Offset.zero);
+    await tester.pump(const Duration(milliseconds: 250));
+    await tapKey(tester, 'rdp-fullscreen-pin');
+    await pointer.moveTo(const Offset(100, 500));
+    await tester.tap(find.byKey(const ValueKey('rdp-input-surface')));
+    await tester.pump(const Duration(seconds: 5));
+    expect(tester.widget<AnimatedSlide>(slide).offset, Offset.zero);
+    await tapKey(tester, 'rdp-fullscreen-pin');
+    await tester.tap(find.byKey(const ValueKey('rdp-input-surface')));
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.home);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+    expect(tester.widget<AnimatedSlide>(slide).offset, Offset.zero);
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'rdp-connection-bar');
+    expect(fixture.service.inputs.expand((b) => b).whereType<RdpScancodeInput>().any((e) => e.code == 0x47), isFalse);
+    await pointer.removePointer();
+    await tapKey(tester, 'rdp-fullscreen-restore');
+    await fixture.dispose(tester);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('minimize restores window before minimizing and keeps RDP connected', (tester) async {
+    final fixture = _Fixture();
+    await _connectedWithClipboard(tester, fixture);
+    await tapKey(tester, 'rdp-expand');
+    await tapKey(tester, 'rdp-fullscreen-minimize');
+    expect(fixture.window.calls, ['enter', 'leave', 'minimize']);
+    expect(fixture.service.disconnected, isEmpty);
+    await fixture.dispose(tester);
+  });
+
+  testWidgets('fullscreen disconnect closes only active session and exits when last tab closes', (tester) async {
+    final fixture = _Fixture();
+    await _connectedWithClipboard(tester, fixture);
+    await tapKey(tester, 'rdp-expand');
+    await tapKey(tester, 'rdp-fullscreen-close');
+    expect(fixture.service.disconnected, ['rdp-1']);
+    expect(fixture.window.calls, ['enter', 'leave']);
+    expect(find.byKey(const ValueKey('rdp-empty-connect')), findsOneWidget);
+    await fixture.dispose(tester);
+  });
+
+  testWidgets('native exit and vault lock remove fullscreen route and restore window', (tester) async {
+    final fixture = _Fixture();
+    await _connectedWithClipboard(tester, fixture);
+    await tapKey(tester, 'rdp-expand');
+    fixture.window.fullscreen = false;
+    await settle(tester);
+    expect(fixture.window.calls, ['enter', 'leave']);
+    fixture.window.fullscreen = true;
+    await tapKey(tester, 'rdp-expand');
+    fixture.status.value = const VaultStatus(phase: VaultPhase.locked);
+    await settle(tester);
+    expect(find.byType(RdpView), findsNothing);
+    expect(fixture.window.calls, ['enter', 'leave', 'enter', 'leave']);
+    expect(fixture.service.disconnected, ['rdp-1']);
+    await fixture.dispose(tester);
+  });
+
+  testWidgets('late native entry after locking is unwound without exposing remote desktop', (tester) async {
+    final fixture = _Fixture();
+    await _connectedWithClipboard(tester, fixture);
+    fixture.window.entryGate = Completer<void>();
+    await tapKey(tester, 'rdp-expand');
+    fixture.status.value = const VaultStatus(phase: VaultPhase.locked);
+    await settle(tester);
+    fixture.window.entryGate!.complete();
+    await settle(tester);
+    expect(find.byKey(const ValueKey('rdp-fullscreen-bar')), findsNothing);
+    expect(fixture.window.calls, ['enter', 'leave']);
+    await fixture.dispose(tester);
+  });
+
+  testWidgets('disposed screen retains exclusive window lease until late native entry restores', (tester) async {
+    final window = _Window()..entryGate = Completer<void>();
+    final old = _Fixture(nativeWindow: window);
+    await _connectedWithClipboard(tester, old);
+    await tapKey(tester, 'rdp-expand');
+    await old.dispose(tester);
+    final next = _Fixture(nativeWindow: window);
+    await _connectedWithClipboard(tester, next);
+    await tapKey(tester, 'rdp-expand');
+    expect(window.calls, ['enter']); // No second native lease can race the first.
+    expect(find.byKey(const ValueKey('rdp-fullscreen-bar')), findsNothing);
+    window.entryGate!.complete();
+    await settle(tester);
+    expect(window.calls, ['enter', 'leave']);
+    await tapKey(tester, 'rdp-expand');
+    expect(window.calls, ['enter', 'leave', 'enter']);
+    await tapKey(tester, 'rdp-fullscreen-restore');
+    expect(window.calls, ['enter', 'leave', 'enter', 'leave']);
+    await next.dispose(tester);
+  });
+
+  testWidgets('lifecycle guard cancels fullscreen paste even when platform retains input focus', (tester) async {
+    final fixture = _Fixture();
+    _mockLocalClipboard(() async => {'text': 'Synthetic text'});
+    await _connectedWithClipboard(tester, fixture);
+    await tapKey(tester, 'rdp-expand');
+    fixture.service.confirmedOfferGate = Completer<String>();
+    await _pasteShortcut(tester);
+    await settle(tester);
+    expect(fixture.service.clipboardOffers, ['Synthetic text']);
+    final priorFocus = FocusManager.instance.primaryFocus;
+    final releases = fixture.service.inputs.expand((b) => b).whereType<RdpReleaseAllInput>().length;
+    final observer = tester.state(find.byType(RdpView)) as WidgetsBindingObserver;
+    observer.didChangeAppLifecycleState(AppLifecycleState.inactive);
+    expect(FocusManager.instance.primaryFocus, priorFocus);
+    await settle(tester);
+    expect(fixture.service.inputs.expand((b) => b).whereType<RdpReleaseAllInput>().length, greaterThan(releases));
+    fixture.service.confirmedOfferGate!.complete('late-ack');
+    await settle(tester);
+    expect(fixture.service.pasteCommits, isEmpty);
+    final before = fixture.service.inputs.length;
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyX, character: 'x');
+    await tester.pump();
+    expect(fixture.service.inputs.length, before);
+    observer.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await tester.pump();
+    fixture.service.confirmedOfferGate = null;
+    await _pasteShortcut(tester);
+    await settle(tester);
+    expect(fixture.service.pasteCommits.length, 1);
+    await tapKey(tester, 'rdp-fullscreen-restore');
+    await fixture.dispose(tester);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  for (final operation in ['send', 'receive', 'os-write']) {
+    testWidgets('manual clipboard $operation cannot resume after opt out and back in', (tester) async {
+      final fixture = _Fixture();
+      final local = Completer<Object?>();
+      _mockLocalClipboard(() => local.future);
+      await _connectedWithClipboard(tester, fixture);
+      if (operation == 'receive') fixture.service.clipboardGate = Completer<String?>();
+      if (operation == 'os-write') {
+        fixture.service.remoteClipboard = 'Synthetic remote text';
+        fixture.clipboard.copyGate = Completer<void>();
+      }
+      await tapKey(tester, operation == 'send' ? 'rdp-send-clipboard' : 'rdp-receive-clipboard');
+      final context = tester.element(find.byType(RdpScreen));
+      final controller = ProviderScope.containerOf(context).read(rdpWorkspaceProvider);
+      final tab = controller.active!;
+      await controller.setPermissions(tab, const RdpSessionPermissions());
+      await controller.setPermissions(tab, const RdpSessionPermissions(clipboardEnabled: true));
+      if (operation == 'send') local.complete({'text': 'Synthetic local text'});
+      if (operation == 'receive') fixture.service.clipboardGate!.complete('Synthetic remote text');
+      if (operation == 'os-write') fixture.clipboard.copyGate!.complete();
+      await settle(tester);
+      expect(fixture.service.clipboardOffers, isEmpty);
+      expect(fixture.clipboard.writes, 0);
+      await fixture.dispose(tester);
+    });
+  }
+
+  testWidgets('failed native fullscreen entry restores workspace instead of pretending success', (tester) async {
+    final fixture = _Fixture();
+    await _connectedWithClipboard(tester, fixture);
+    fixture.window.failEntry = true;
+    await tapKey(tester, 'rdp-expand');
+    expect(fixture.window.calls, ['enter', 'leave']);
+    expect(find.byKey(const ValueKey('rdp-fullscreen-bar')), findsNothing);
+    expect(find.byKey(const ValueKey('rdp-new-connection')), findsOneWidget);
+    expect(fixture.service.disconnected, isEmpty);
+    await fixture.dispose(tester);
+  });
+
   testWidgets('allowed RDP paste shortcut reads fresh local text without first clicking Send', (tester) async {
     final fixture = _Fixture();
     var reads = 0;
@@ -560,6 +799,10 @@ void main() {
         }
         expect(tester.widget<GlassTabStrip>(find.byType(GlassTabStrip)).tabs.length, 2);
         await _captureGuide(tester, 'rdp-tabs-$language');
+        await tapKey(tester, 'rdp-expand');
+        await tapKey(tester, 'rdp-fullscreen-pin');
+        await _captureGuide(tester, 'rdp-fullscreen-bar-$language', surfaceKey: 'rdp-fullscreen-bar-surface');
+        await tapKey(tester, 'rdp-fullscreen-restore');
         await tapKey(tester, 'rdp-permissions');
         expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('rdp-allow-clipboard'))).value, isFalse);
         fixture.service.pickedDirectory = const RdpDirectoryGrant(id: 'demo-grant', name: 'Demo documents');

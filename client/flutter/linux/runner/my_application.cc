@@ -14,6 +14,54 @@ struct _MyApplication {
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 
+// Fullscreen is owned by the window manager; retain the prior mode so a
+// maximized window and an already-fullscreen window restore correctly.
+struct FullscreenState {
+  GtkWindow* window;
+  gboolean leased = FALSE;
+  gboolean was_fullscreen = FALSE;
+  gboolean restore_fullscreen = FALSE;
+};
+
+static gboolean is_fullscreen(GtkWindow* window) {
+  GdkWindow* native = gtk_widget_get_window(GTK_WIDGET(window));
+  return native && (gdk_window_get_state(native) & GDK_WINDOW_STATE_FULLSCREEN);
+}
+
+static void window_method_call(FlMethodChannel* channel, FlMethodCall* call, gpointer data) {
+  auto* state = static_cast<FullscreenState*>(data);
+  const gchar* method = fl_method_call_get_name(call);
+  g_autoptr(FlValue) value = nullptr;
+  g_autoptr(FlMethodResponse) response = nullptr;
+  if (g_strcmp0(method, "beginRdpFullscreen") == 0) {
+    if (!state->leased) {
+      state->was_fullscreen = is_fullscreen(state->window);
+      state->leased = TRUE;
+    }
+    gtk_window_fullscreen(state->window);
+    value = fl_value_new_bool(TRUE);
+  } else if (g_strcmp0(method, "endRdpFullscreen") == 0) {
+    if (state->leased) {
+      state->leased = FALSE;
+      state->restore_fullscreen = state->was_fullscreen && is_fullscreen(state->window);
+      if (!state->was_fullscreen) gtk_window_unfullscreen(state->window);
+    }
+  } else if (g_strcmp0(method, "isRdpFullscreenRestored") == 0) {
+    value = fl_value_new_bool(!state->leased && is_fullscreen(state->window) == state->restore_fullscreen);
+  } else if (g_strcmp0(method, "isFullscreen") == 0) {
+    value = fl_value_new_bool(is_fullscreen(state->window));
+  } else if (g_strcmp0(method, "minimize") == 0) {
+    gtk_window_iconify(state->window);
+  } else if (g_strcmp0(method, "isRdpMinimized") == 0) {
+    GdkWindow* native = gtk_widget_get_window(GTK_WIDGET(state->window));
+    value = fl_value_new_bool(native && (gdk_window_get_state(native) & GDK_WINDOW_STATE_ICONIFIED));
+  } else {
+    response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+  }
+  if (response == nullptr) response = FL_METHOD_RESPONSE(fl_method_success_response_new(value));
+  fl_method_call_respond(call, response, nullptr);
+}
+
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
@@ -75,6 +123,17 @@ static void my_application_activate(GApplication* application) {
   gtk_widget_realize(GTK_WIDGET(view));
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
+
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  FlMethodChannel* window_channel = fl_method_channel_new(
+      fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+      "consolecrypt/window", FL_METHOD_CODEC(codec));
+  // Channel and handler state have exactly the top-level window's lifetime.
+  auto* fullscreen = new FullscreenState{window};
+  fl_method_channel_set_method_call_handler(window_channel, window_method_call,
+      fullscreen, [](gpointer data) { delete static_cast<FullscreenState*>(data); });
+  g_object_set_data_full(G_OBJECT(window), "consolecrypt-window-channel", window_channel, g_object_unref);
+
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }

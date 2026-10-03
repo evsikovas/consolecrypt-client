@@ -9305,13 +9305,13 @@ abstract class AppLocalizations {
   /// ConsoleCrypt RDP direct-connection interface.
   ///
   /// In en, this message translates to:
-  /// **'Expand workspace'**
+  /// **'Full screen'**
   String get rdpExpand;
 
   /// ConsoleCrypt RDP direct-connection interface.
   ///
   /// In en, this message translates to:
-  /// **'Collapse workspace'**
+  /// **'Exit full screen'**
   String get rdpCollapse;
 
   /// ConsoleCrypt RDP direct-connection interface.
@@ -9607,6 +9607,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No text is available in the clipboard.'**
   String get rdpClipboardEmpty;
+
+  /// RDP full-screen window control.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin connection bar'**
+  String get rdpPinBar;
+
+  /// RDP full-screen window control.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-hide connection bar'**
+  String get rdpUnpinBar;
+
+  /// RDP full-screen window control.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch connection'**
+  String get rdpConnections;
+
+  /// RDP full-screen window control.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize window'**
+  String get rdpMinimize;
+
+  /// RDP full-screen window control.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect this session'**
+  String get rdpDisconnect;
+
+  /// RDP full-screen window control.
+  ///
+  /// In en, this message translates to:
+  /// **'Show connection bar (Ctrl+Alt+Home)'**
+  String get rdpShowBar;
+
+  /// RDP full-screen window control.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not change full-screen mode. Try the window controls.'**
+  String get rdpFullscreenFailed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

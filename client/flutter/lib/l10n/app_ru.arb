@@ -2200,11 +2200,11 @@
   "@rdpResize": {
     "description": "ConsoleCrypt RDP direct-connection interface."
   },
-  "rdpExpand": "Развернуть рабочую область",
+  "rdpExpand": "Во весь экран",
   "@rdpExpand": {
     "description": "ConsoleCrypt RDP direct-connection interface."
   },
-  "rdpCollapse": "Свернуть рабочую область",
+  "rdpCollapse": "Выйти из полного экрана",
   "@rdpCollapse": {
     "description": "ConsoleCrypt RDP direct-connection interface."
   },
@@ -2403,5 +2403,33 @@
   "rdpClipboardEmpty": "В буфере обмена нет доступного текста.",
   "@rdpClipboardEmpty": {
     "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpPinBar": "Закрепить панель подключения",
+  "@rdpPinBar": {
+    "description": "RDP full-screen window control."
+  },
+  "rdpUnpinBar": "Скрывать панель автоматически",
+  "@rdpUnpinBar": {
+    "description": "RDP full-screen window control."
+  },
+  "rdpConnections": "Переключить подключение",
+  "@rdpConnections": {
+    "description": "RDP full-screen window control."
+  },
+  "rdpMinimize": "Свернуть окно",
+  "@rdpMinimize": {
+    "description": "RDP full-screen window control."
+  },
+  "rdpDisconnect": "Закрыть этот сеанс",
+  "@rdpDisconnect": {
+    "description": "RDP full-screen window control."
+  },
+  "rdpShowBar": "Показать панель подключения (Ctrl+Alt+Home)",
+  "@rdpShowBar": {
+    "description": "RDP full-screen window control."
+  },
+  "rdpFullscreenFailed": "Не удалось изменить полноэкранный режим. Используйте кнопки управления окном.",
+  "@rdpFullscreenFailed": {
+    "description": "RDP full-screen window control."
   }
 }

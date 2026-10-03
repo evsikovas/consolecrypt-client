@@ -25,6 +25,7 @@ class RdpView extends StatefulWidget {
     this.localClipboardEnabled = false,
     this.onPaste,
     this.onInteractionCancelled,
+    this.onShowConnectionBar,
   });
   final RdpFrame? frame;
   final int width, height;
@@ -33,13 +34,16 @@ class RdpView extends StatefulWidget {
 
   /// Immediate native cancellation, independent of the ordinary input FIFO.
   final VoidCallback? onInteractionCancelled;
+
+  /// Local escape hatch in fullscreen; plain Escape still reaches the server.
+  final VoidCallback? onShowConnectionBar;
   final bool localClipboardEnabled;
   final Future<void> Function(bool Function() isInputCurrent)? onPaste;
   @override
   State<RdpView> createState() => _RdpViewState();
 }
 
-class _RdpViewState extends State<RdpView> with TextInputClient {
+class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInputClient {
   final _focus = FocusNode(debugLabel: 'rdp-input');
   TextInputConnection? _connection;
   static const _empty = TextEditingValue(text: '\u200b', selection: TextSelection.collapsed(offset: 1));
@@ -53,13 +57,39 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
   int _buttons = 0;
   int _inputGeneration = 0;
   bool _pastePending = false;
+  bool _appActive = true;
+  bool get _acceptsInput => widget.enabled && _appActive;
   final Set<PhysicalKeyboardKey> _pasteKeys = {};
+  final Set<PhysicalKeyboardKey> _localKeys = {};
 
   @override
   void initState() {
     super.initState();
+    _appActive =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    WidgetsBinding.instance.addObserver(this);
     _focus.addListener(_focusChanged);
     _offer(widget.frame);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final active = state == AppLifecycleState.resumed;
+    if (_appActive == active) return;
+    _inputGeneration++;
+    if (!active) {
+      // OS Alt+Tab/minimize can retain Flutter's primary FocusNode. Cancel a
+      // pending clipboard ACK and held input before deactivating dispatch.
+      _pasteKeys.clear();
+      _localKeys.clear();
+      _releaseHeld(cancelInteraction: true);
+      _connection?.close();
+      _connection = null;
+      _editing = _empty;
+    }
+    _appActive = active;
+    if (active && _focus.hasFocus) _openInput();
   }
 
   @override
@@ -118,20 +148,21 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
   }
 
   void _activate() {
-    if (!widget.enabled) return;
+    if (!_acceptsInput) return;
     _focus.requestFocus();
     _openInput();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.enabled && _focus.hasFocus) _openInput();
+      if (mounted && _acceptsInput && _focus.hasFocus) _openInput();
     });
   }
 
   void _focusChanged() {
-    if (_focus.hasFocus && widget.enabled) {
+    if (_focus.hasFocus && _acceptsInput) {
       _openInput();
     } else {
       _inputGeneration++;
       _pasteKeys.clear();
+      _localKeys.clear();
       _releaseHeld(cancelInteraction: true);
       _connection?.close();
       _connection = null;
@@ -140,7 +171,7 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
   }
 
   void _openInput() {
-    if (!widget.enabled || !_focus.hasFocus) return;
+    if (!_acceptsInput || !_focus.hasFocus) return;
     if (_connection?.attached != true) {
       _connection = TextInput.attach(
         this,
@@ -159,7 +190,7 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
   }
 
   void _send(List<RdpInput> events) {
-    if (widget.enabled) widget.onInput(events);
+    if (_acceptsInput) widget.onInput(events);
   }
 
   void _releaseHeld({bool cancelInteraction = false}) {
@@ -182,8 +213,9 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
   }
 
   KeyEventResult _key(FocusNode node, KeyEvent event) {
-    if (!widget.enabled) return KeyEventResult.ignored;
+    if (!_acceptsInput) return KeyEventResult.ignored;
     if (event is KeyUpEvent) {
+      if (_localKeys.remove(event.physicalKey)) return KeyEventResult.handled;
       if (_pasteKeys.remove(event.physicalKey)) return KeyEventResult.handled;
       final code = _held.remove(event.physicalKey);
       if (code == null) return KeyEventResult.ignored;
@@ -195,6 +227,17 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
     // editing keys must also stay local while the candidate window is open.
     if (_editing.composing.isValid && !_editing.composing.isCollapsed) return KeyEventResult.ignored;
     final keys = HardwareKeyboard.instance;
+    if (widget.onShowConnectionBar != null &&
+        event.logicalKey == LogicalKeyboardKey.home &&
+        keys.isControlPressed &&
+        keys.isAltPressed &&
+        !keys.isMetaPressed &&
+        !keys.isShiftPressed) {
+      _localKeys.add(event.physicalKey);
+      _releaseHeld(cancelInteraction: true);
+      widget.onShowConnectionBar!();
+      return KeyEventResult.handled;
+    }
     final apple = defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.iOS;
     final primary = apple ? keys.isMetaPressed && !keys.isControlPressed : keys.isControlPressed && !keys.isMetaPressed;
     if (widget.localClipboardEnabled &&
@@ -214,7 +257,7 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
         _pastePending = true;
         final generation = _inputGeneration;
         unawaited(
-          widget.onPaste!(() => mounted && widget.enabled && _focus.hasFocus && generation == _inputGeneration)
+          widget.onPaste!(() => mounted && _acceptsInput && _focus.hasFocus && generation == _inputGeneration)
               .whenComplete(() => _pastePending = false)
               .catchError((Object _) {}),
         );
@@ -262,7 +305,7 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
   }
 
   void _pointer(PointerEvent event, {required bool down, bool moving = false}) {
-    if (!widget.enabled) return;
+    if (!_acceptsInput) return;
     if (down) _activate();
     final point = _point(event.localPosition);
     if (point == null) {
@@ -303,7 +346,7 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
             onPointerMove: (event) => _pointer(event, down: false, moving: true),
             onPointerHover: (event) => _pointer(event, down: false, moving: true),
             onPointerSignal: (event) {
-              if (!widget.enabled || event is! PointerScrollEvent) return;
+              if (!_acceptsInput || event is! PointerScrollEvent) return;
               final point = _point(event.localPosition);
               if (point == null) return;
               GestureBinding.instance.pointerSignalResolver.register(
@@ -333,7 +376,7 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
   AutofillScope? get currentAutofillScope => null;
   @override
   void updateEditingValue(TextEditingValue value) {
-    if (!widget.enabled || !_focus.hasFocus) return;
+    if (!_acceptsInput || !_focus.hasFocus) return;
     _editing = value;
     if (value.composing.isValid && !value.composing.isCollapsed) return;
     final text = value.text.startsWith('\u200b') ? value.text.substring(1) : value.text;
@@ -355,6 +398,8 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
 
   @override
   void connectionClosed() {
+    _inputGeneration++;
+    _releaseHeld(cancelInteraction: true);
     _connection = null;
     _editing = _empty;
   }
@@ -368,6 +413,7 @@ class _RdpViewState extends State<RdpView> with TextInputClient {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _inputGeneration++;
     _releaseHeld(cancelInteraction: true);
     _focus.removeListener(_focusChanged);

@@ -5257,10 +5257,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdpResize => 'Screen 1920 × 1080';
 
   @override
-  String get rdpExpand => 'Expand workspace';
+  String get rdpExpand => 'Full screen';
 
   @override
-  String get rdpCollapse => 'Collapse workspace';
+  String get rdpCollapse => 'Exit full screen';
 
   @override
   String get rdpAddress => 'Server address';
@@ -5421,4 +5421,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdpClipboardEmpty => 'No text is available in the clipboard.';
+
+  @override
+  String get rdpPinBar => 'Pin connection bar';
+
+  @override
+  String get rdpUnpinBar => 'Auto-hide connection bar';
+
+  @override
+  String get rdpConnections => 'Switch connection';
+
+  @override
+  String get rdpMinimize => 'Minimize window';
+
+  @override
+  String get rdpDisconnect => 'Disconnect this session';
+
+  @override
+  String get rdpShowBar => 'Show connection bar (Ctrl+Alt+Home)';
+
+  @override
+  String get rdpFullscreenFailed => 'Could not change full-screen mode. Try the window controls.';
 }

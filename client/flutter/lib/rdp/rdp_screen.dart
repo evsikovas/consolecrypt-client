@@ -8,11 +8,13 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/rdp/rdp_clipboard.dart';
 import 'package:consolecrypt/rdp/rdp_controller.dart';
+import 'package:consolecrypt/rdp/rdp_fullscreen.dart';
 import 'package:consolecrypt/rdp/rdp_guard.dart';
 import 'package:consolecrypt/rdp/rdp_permissions.dart';
 import 'package:consolecrypt/rdp/rdp_providers.dart';
 import 'package:consolecrypt/rdp/rdp_service.dart';
 import 'package:consolecrypt/rdp/rdp_view.dart';
+import 'package:consolecrypt/rdp/rdp_window.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -30,13 +32,55 @@ class RdpScreen extends ConsumerStatefulWidget {
 }
 
 class _RdpScreenState extends ConsumerState<RdpScreen> {
-  bool _expanded = false;
+  bool _fullscreen = false;
   RdpWorkspaceController? _controller;
 
   Future<void> _newConnection() async {
     final scope = ref.read(rdpScopeProvider);
     if (!scope.unlocked) return;
     await showAppDialog<RdpTab>(context, secure: true, builder: (_) => RdpConnectionDialog(scope: scope));
+  }
+
+  Future<void> _openFullscreen() async {
+    if (_fullscreen) return;
+    final scope = ref.read(rdpScopeProvider);
+    final controller = ref.read(rdpWorkspaceProvider);
+    final tab = controller.active;
+    if (!scope.unlocked || tab == null || tab.closed) return;
+    final window = ref.read(rdpWindowProvider);
+    final lease = window.acquire();
+    if (lease == null) {
+      showSnack(context, context.l10n.rdpFullscreenFailed, error: true);
+      return;
+    }
+    controller.cancelInteraction(tab);
+    setState(() => _fullscreen = true);
+    var minimize = false;
+    try {
+      await lease.enter();
+      if (!mounted || !rdpScopeCurrent(ref, scope) || controller.active == null) return;
+      minimize =
+          await Navigator.of(context, rootNavigator: true).push<bool>(
+            PageRouteBuilder<bool>(
+              settings: const RouteSettings(name: 'rdp-fullscreen'),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+              pageBuilder: (_, _, _) => RdpFullscreen(scope: scope, controller: controller, window: window),
+            ),
+          ) ==
+          true;
+    } catch (_) {
+      if (mounted && rdpScopeCurrent(ref, scope)) showSnack(context, context.l10n.rdpFullscreenFailed, error: true);
+    } finally {
+      // Includes lock/profile disposal and a native entry that finishes late.
+      // The native lease restores the original placement, including maximized.
+      try {
+        await lease.restore(minimize: minimize);
+      } catch (_) {
+        if (mounted && rdpScopeCurrent(ref, scope)) showSnack(context, context.l10n.rdpFullscreenFailed, error: true);
+      }
+      if (mounted) setState(() => _fullscreen = false);
+    }
   }
 
   @override
@@ -52,10 +96,11 @@ class _RdpScreenState extends ConsumerState<RdpScreen> {
     final scope = ref.watch(rdpScopeProvider);
     final controller = ref.watch(rdpWorkspaceProvider);
     final visible = TickerMode.valuesOf(context).enabled;
-    controller.setVisible(visible);
+    controller.setVisible(visible || _fullscreen);
     _controller = controller;
     final l = context.l10n;
     if (!scope.unlocked) return Center(child: Text(l.rdpLocked));
+    if (_fullscreen) return const SizedBox.shrink();
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
@@ -152,9 +197,9 @@ class _RdpScreenState extends ConsumerState<RdpScreen> {
                           RdpClipboardActions(key: ValueKey('rdp-clipboard-${active.info.id}'), tab: active),
                           GlassIconButton(
                             key: const ValueKey('rdp-expand'),
-                            icon: _expanded ? Icons.fullscreen_exit : Icons.fullscreen,
-                            tooltip: _expanded ? l.rdpCollapse : l.rdpExpand,
-                            onPressed: () => setState(() => _expanded = !_expanded),
+                            icon: Icons.fullscreen,
+                            tooltip: l.rdpExpand,
+                            onPressed: _openFullscreen,
                           ),
                         ],
                       ),
@@ -186,21 +231,19 @@ class _RdpScreenState extends ConsumerState<RdpScreen> {
         );
         return GlassBlurSuppressor(
           budget: GlassScope.of(context).budget,
-          child: _expanded
-              ? Padding(padding: const EdgeInsets.all(8), child: body)
-              : PageScaffold(
-                  title: l.rdpTitle,
-                  subtitle: l.rdpWorkspaceHelp,
-                  actions: [
-                    GlassButton.prominent(
-                      key: const ValueKey('rdp-new-connection'),
-                      label: l.rdpNewConnection,
-                      icon: Icons.add,
-                      onPressed: controller.canConnect ? _newConnection : null,
-                    ),
-                  ],
-                  body: body,
-                ),
+          child: PageScaffold(
+            title: l.rdpTitle,
+            subtitle: l.rdpWorkspaceHelp,
+            actions: [
+              GlassButton.prominent(
+                key: const ValueKey('rdp-new-connection'),
+                label: l.rdpNewConnection,
+                icon: Icons.add,
+                onPressed: controller.canConnect ? _newConnection : null,
+              ),
+            ],
+            body: body,
+          ),
         );
       },
     );

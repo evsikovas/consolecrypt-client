@@ -49,13 +49,22 @@ class GlassWindowBridge {
 
   // Called for every top-level window message; never consumes it.
   void OnWindowMessage(UINT message);
+  bool IsFullscreen() const;
+  bool FitFullscreenMonitor();
 
  private:
   static Signals ReadSignals();
   static flutter::EncodableMap ToMap(const Signals& signals);
   void SendSignalsIfChanged();
 
+  bool BeginFullscreen();
+  bool EndFullscreen();
   HWND window_;
+  bool fullscreen_ = false;
+  bool restore_succeeded_ = true;
+  LONG_PTR previous_style_ = 0;
+  LONG_PTR previous_ex_style_ = 0;
+  WINDOWPLACEMENT previous_placement_ = {sizeof(WINDOWPLACEMENT)};
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       accessibility_channel_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>

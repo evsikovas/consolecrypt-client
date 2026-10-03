@@ -71,6 +71,12 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
 
   switch (message) {
+    case WM_DPICHANGED:
+      if (glass_bridge_ && glass_bridge_->IsFullscreen()) {
+        glass_bridge_->FitFullscreenMonitor();
+        return 0;
+      }
+      break;
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;

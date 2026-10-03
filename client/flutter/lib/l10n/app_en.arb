@@ -7348,11 +7348,11 @@
   "@rdpResize": {
     "description": "ConsoleCrypt RDP direct-connection interface."
   },
-  "rdpExpand": "Expand workspace",
+  "rdpExpand": "Full screen",
   "@rdpExpand": {
     "description": "ConsoleCrypt RDP direct-connection interface."
   },
-  "rdpCollapse": "Collapse workspace",
+  "rdpCollapse": "Exit full screen",
   "@rdpCollapse": {
     "description": "ConsoleCrypt RDP direct-connection interface."
   },
@@ -7551,5 +7551,33 @@
   "rdpClipboardEmpty": "No text is available in the clipboard.",
   "@rdpClipboardEmpty": {
     "description": "RDP selected folder or explicit text clipboard status. No transport details."
+  },
+  "rdpPinBar": "Pin connection bar",
+  "@rdpPinBar": {
+    "description": "RDP full-screen window control."
+  },
+  "rdpUnpinBar": "Auto-hide connection bar",
+  "@rdpUnpinBar": {
+    "description": "RDP full-screen window control."
+  },
+  "rdpConnections": "Switch connection",
+  "@rdpConnections": {
+    "description": "RDP full-screen window control."
+  },
+  "rdpMinimize": "Minimize window",
+  "@rdpMinimize": {
+    "description": "RDP full-screen window control."
+  },
+  "rdpDisconnect": "Disconnect this session",
+  "@rdpDisconnect": {
+    "description": "RDP full-screen window control."
+  },
+  "rdpShowBar": "Show connection bar (Ctrl+Alt+Home)",
+  "@rdpShowBar": {
+    "description": "RDP full-screen window control."
+  },
+  "rdpFullscreenFailed": "Could not change full-screen mode. Try the window controls.",
+  "@rdpFullscreenFailed": {
+    "description": "RDP full-screen window control."
   }
 }

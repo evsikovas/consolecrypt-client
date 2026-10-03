@@ -83,6 +83,8 @@ class _RdpClipboardActionsState extends ConsumerState<RdpClipboardActions> {
       mounted &&
       rdpScopeCurrent(ref, scope) &&
       TickerMode.valuesOf(context).enabled &&
+      (WidgetsBinding.instance.lifecycleState == null ||
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) &&
       !widget.tab.closed &&
       widget.tab.permissions.clipboardEnabled &&
       widget.tab.status.phase == RdpPhase.connected &&
@@ -91,6 +93,12 @@ class _RdpClipboardActionsState extends ConsumerState<RdpClipboardActions> {
   Future<void> _exchange({required bool receive}) async {
     final scope = ref.read(rdpScopeProvider);
     if (_busy || !_current(scope)) return;
+    final permissionEpoch = widget.tab.permissionEpoch;
+    final interactionEpoch = widget.tab.interactionEpoch;
+    bool current() =>
+        _current(scope) &&
+        widget.tab.permissionEpoch == permissionEpoch &&
+        widget.tab.interactionEpoch == interactionEpoch;
     final service = ref.read(rdpServiceProvider);
     final clipboard = ref.read(secureClipboardProvider);
     final sessionId = widget.tab.info.id;
@@ -100,27 +108,27 @@ class _RdpClipboardActionsState extends ConsumerState<RdpClipboardActions> {
         await service.requestClipboardText(sessionId);
         String? text;
         for (var attempt = 0; attempt < 50; attempt++) {
-          if (!_current(scope)) return;
+          if (!current()) return;
           text = await service.takeClipboardText(sessionId);
           if (text != null) break;
           await Future<void>.delayed(const Duration(milliseconds: 100));
         }
-        if (!_current(scope)) return;
+        if (!current()) return;
         if (text == null) throw const RdpFailure('clipboard_empty');
         if (utf8.encode(text).length > 65536) throw const RdpFailure('clipboard_limit');
         // The remote text may be a password; respect the existing expiry and
         // sensitive native clipboard path rather than copying it permanently.
-        await clipboard.copySecret(text, isCurrent: () => _current(scope));
-        if (mounted && _current(scope)) showSnack(context, context.l10n.rdpClipboardReceived);
+        await clipboard.copySecret(text, isCurrent: current);
+        if (mounted && current()) showSnack(context, context.l10n.rdpClipboardReceived);
       } else {
         final value = await Clipboard.getData(Clipboard.kTextPlain);
-        if (!_current(scope)) return;
+        if (!current()) return;
         final text = _checkedClipboardText(value?.text);
         await service.offerClipboardText(sessionId, text);
-        if (mounted && _current(scope)) showSnack(context, context.l10n.rdpClipboardSent);
+        if (mounted && current()) showSnack(context, context.l10n.rdpClipboardSent);
       }
     } catch (error) {
-      if (mounted && _current(scope)) {
+      if (mounted && current()) {
         final l = context.l10n;
         final message = _clipboardFailureLabel(l, error);
         showSnack(context, message, error: true);

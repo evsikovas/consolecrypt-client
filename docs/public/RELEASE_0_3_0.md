@@ -8,6 +8,9 @@ Windows-компьютеры теперь можно держать рядом �
 
 - **Рабочие столы во вкладках.** До четырёх параллельных RDP-сеансов, панель
   вкладок в стиле терминала и независимое закрытие подключений.
+- **Настоящий полный экран.** Рабочий стол занимает весь экран компьютера.
+  Выдвижная панель сверху позволяет переключить подключение, свернуть окно,
+  вернуться к обычному размеру и закрыть сеанс.
 - **Обмен текстом.** Ctrl+V (⌘V на macOS) передаёт локальный текст и сразу
   вставляет его в активный RDP-сеанс. Разрешение включается отдельно для каждого
   сеанса; кнопки отправки и получения также доступны.
@@ -46,6 +49,10 @@ on Windows, and the sync server does not relay RDP traffic.
 
 With clipboard access enabled, Ctrl+V (⌘V on macOS) sends and pastes local text
 into the active RDP session without a separate click on Send.
+
+True fullscreen fills the display. Move to the top edge to reveal the connection
+bar, switch sessions, minimize the window, restore its size or disconnect.
+Ctrl+Alt+Home also reveals the bar.
 
 The SSH terminal on Windows also accepts Shift+Insert for pasting, alongside
 Ctrl+V, with the same review for multiline text.
