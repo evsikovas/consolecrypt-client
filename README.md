@@ -1,101 +1,105 @@
+**English** | [Русский](README.ru.md)
+
 <p align="center"><img src="docs/brand/consolecrypt.svg" width="80" alt="ConsoleCrypt"></p>
 
-# ConsoleCrypt — клиенты
+# ConsoleCrypt — clients
 
-Приложение с открытым исходным кодом для работы с серверами: SSH, RDP, SFTP,
-зашифрованное хранилище подключений и совместная работа. Можно работать локально,
-подключить собственный сервер синхронизации или публичный сервер ConsoleCrypt.
+An open-source application for working with servers: SSH, RDP, SFTP, an encrypted
+vault for connections and credentials, and collaboration. Work locally, connect
+your own sync server, or use the public ConsoleCrypt server.
 
-[Скачать 0.3.1](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.3.1) ·
-[Руководство](https://github.com/evsikovas/consolecrypt-docs) ·
-[Сайт](https://consolecrypt.evsikov.net) ·
-[Сервер и протокол](https://github.com/evsikovas/consolecrypt-server)
+[Download 0.3.1](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.3.1) ·
+[User guide](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/en.md) ·
+[Website](https://consolecrypt.evsikov.net/?lang=en) ·
+[Server and protocol](https://github.com/evsikovas/consolecrypt-server)
 
-![Интерфейс ConsoleCrypt: хосты, группы и поиск подключений](docs/images/workspace.png)
+![ConsoleCrypt interface: hosts, groups, and connection search](docs/images/workspace.png)
 
-*Хосты и группы в ConsoleCrypt. На скриншоте — демонстрационные данные.*
+*Hosts and groups in ConsoleCrypt. The screenshot uses demonstration data.*
 
-## Возможности
+## Features
 
-- **SSH:** несколько вкладок, пароль и ключи, проверка ключа сервера, jump-хосты,
-  туннели и история терминала. Соединение идёт непосредственно с устройства к хосту.
-- **RDP:** удалённый рабочий стол Windows через IronRDP, параллельные вкладки,
-  полноэкранный режим, обмен текстом через буфер и перенаправление выбранной папки
-  с отдельным разрешением на запись. Работает с обычным Microsoft RDP-сервером;
-  устанавливать IronRDP на удалённый Windows не нужно.
-- **Хосты и группы:** сохранённые подключения SSH/RDP, учётные данные, поиск
-  по имени и адресу, выбор хоста из общей кнопки «+».
-- **SFTP:** передача и просмотр файлов, редактирование во внешней программе
-  на компьютере, выбор редактора по умолчанию.
-- **Сниппеты:** сохранение команд, наборы, поиск, редактирование и синхронизация.
-- **ИИ:** объяснение выбранного вывода и ошибок, подготовка команд; выбор
-  совместимого провайдера, включая локальные модели. Действия требуют подтверждения;
-  подсистема ИИ не получает доступ к хранилищу секретов.
-- **Защищённое рабочее пространство:** шифрование хранилища, отдельные профили,
-  блокировка, восстановление и зашифрованные резервные копии.
-- **Синхронизация:** зашифрованные данные между доверенными устройствами;
-  содержимое хранилища сервер не расшифровывает.
-- **Совместный доступ:** выбранные SSH-подключения, группы, секреты и сниппеты,
-  проверка устройств получателя и управление доступом. Требуется поддержка
-  соответствующих возможностей выбранным сервером. Отзыв доступа не удаляет
-  уже сохранённые получателем копии.
-- **Интерфейс:** светлая и тёмная темы, цветовые акценты, палитра терминала,
-  боковые инструменты, русский и английский языки.
+- **SSH:** multiple terminal tabs, password and key authentication, host key
+  verification, jump hosts, tunnels, and terminal history. Connections go directly
+  from your device to the target host.
+- **RDP:** Windows remote desktops through IronRDP, parallel session tabs,
+  full-screen mode, text clipboard sharing, and redirection of a selected folder
+  with separate write permission. Works with a standard Microsoft RDP server;
+  you do not need to install IronRDP on the remote Windows machine.
+- **Hosts and groups:** saved SSH/RDP connections, credentials, search by name
+  or address, and a host picker accessible from the global “+” button.
+- **SFTP:** file transfer and preview, editing in an external desktop application,
+  and a configurable default editor.
+- **Snippets:** save commands, organize collections, search, edit, and sync them.
+- **AI:** explain selected output and errors, and prepare commands. Choose a
+  compatible provider, including local models. Actions require confirmation;
+  the AI subsystem has no access to the secrets vault.
+- **Protected workspace:** an encrypted vault, separate profiles, locking,
+  recovery, and encrypted backups.
+- **Synchronization:** encrypted data shared between trusted devices;
+  the server cannot decrypt vault contents.
+- **Selective sharing:** selected SSH connections, groups, secrets, and snippets,
+  with recipient device verification and access management. The chosen server
+  must support the corresponding features. Revoking access does not erase copies
+  the recipient has already saved.
+- **Interface:** light and dark themes, accent colors, terminal palettes,
+  side panels, and Russian and English translations.
 
-## Платформы и установка
+## Platforms and installation
 
-| Платформа | Пакет | Статус |
+| Platform | Package | Status |
 |---|---|---|
-| macOS Intel / Apple Silicon | Universal DMG | Перенесите приложение в Applications |
-| Windows x64 | EXE / portable ZIP | Установщик или распаковка ZIP |
-| Linux x64 | DEB / RPM | Нужны графический сеанс и разблокированная постоянная ключница Secret Service |
-| Android ARM64 | APK | Предварительная мобильная версия, Android 11+ |
-| iOS | Universal Simulator ZIP | Предварительный порт для Xcode Simulator; не установщик для iPhone |
+| macOS Intel / Apple Silicon | Universal DMG | Move the application to Applications |
+| Windows x64 | EXE / portable ZIP | Run the installer or extract the ZIP |
+| Linux x64 | DEB / RPM | Requires a graphical session and an unlocked persistent Secret Service keyring |
+| Android ARM64 | APK | Mobile preview, Android 11+ |
+| iOS | Universal Simulator ZIP | Preview for Xcode Simulator; not an iPhone installer |
 
-Сравните SHA-256 скачанного файла с `SHA256SUMS-0.3.1.txt` в релизе.
-Linux-пакеты устанавливаются через `sudo apt install ./имя.deb` или
-`sudo dnf install ./имя.rpm`. Детальные требования — в руководствах ниже.
-На мобильных платформах действуют ограничения фоновой работы ОС; внешние
-десктопные редакторы и перенаправление RDP-папок на Android/iOS недоступны.
-RDP проверялся на macOS и Windows
-с Windows Server; Simulator-сборка не означает проверку на физическом iPhone.
+Compare the downloaded file's SHA-256 with `SHA256SUMS-0.3.1.txt` in the release.
+Install Linux packages with `sudo apt install ./package.deb` or
+`sudo dnf install ./package.rpm`. See the guides below for detailed requirements.
+Mobile operating systems restrict background activity; external desktop editors
+and RDP folder redirection are unavailable on Android/iOS.
+RDP has been tested on macOS and Windows with Windows Server. A Simulator build
+does not establish compatibility with a physical iPhone.
 
-RDP поддерживает до четырёх сеансов. Буфер передаёт текст до 64 КиБ, без
-изображений и файлов. Через выбранную папку передаются файлы до 256 МиБ;
-лимит попыток записи за сеанс — 512 МиБ. Совместный доступ к сохранённым
-RDP-хостам пока не поддерживается. Для синхронизации RDP-хостов обновите
-все устройства хранилища до версии 0.3 или новее.
+RDP supports up to four sessions. The clipboard transfers text up to 64 KiB,
+without images or files. Selected-folder transfers support files up to 256 MiB,
+with a 512 MiB limit on attempted writes per session. Sharing saved RDP hosts
+with other users is not yet supported. To sync RDP hosts, update every device
+using the vault to version 0.3 or later.
 
-## Начало работы
+## Getting started
 
-1. Выберите локальный профиль или подключитесь к серверу синхронизации.
-2. Создайте хранилище и сохраните ключ восстановления в безопасном месте.
-3. В «Хостах» добавьте SSH- или RDP-подключение и заполните соответствующие поля.
-4. Проверьте идентичность удалённого сервера и подключитесь.
-5. При необходимости разрешите RDP-буфер или выберите конкретную общую папку.
+1. Choose a local profile or connect to a sync server.
+2. Create a vault and store the recovery key somewhere safe.
+3. In Hosts, add an SSH or RDP connection and fill in the relevant fields.
+4. Verify the remote server's identity and connect.
+5. If needed, allow RDP clipboard sharing or select a specific shared folder.
 
-SSH/RDP/SFTP-трафик не проходит через сервер синхронизации. Сервер обслуживает
-учётные записи и зашифрованные данные, но видит email и служебные метаданные.
-Не передавайте секреты провайдеру ИИ в выбранном тексте самостоятельно.
+SSH/RDP/SFTP traffic does not pass through the sync server. The server handles
+accounts and encrypted data, but it can see email addresses and operational
+metadata. Do not include secrets in text you choose to send to an AI provider.
 
-## Состав исходников
+## Source layout
 
-- `client/flutter/` — общий Flutter-интерфейс и платформенные интеграции.
-- `client/rust/` — криптография, хранилище, синхронизация, SSH/RDP/SFTP, ИИ и FFI.
-- `crates/models/` — модели данных, используемые внутри зашифрованного хранилища.
-- `client/scripts/` — сборка, упаковка и проверки пакетов.
-- `docs/public/` — инструкции для сборки, выпуска и диагностики.
+- `client/flutter/` — shared Flutter interface and platform integrations.
+- `client/rust/` — cryptography, storage, sync, SSH/RDP/SFTP, AI, and FFI.
+- `crates/models/` — data models used inside the encrypted vault.
+- `client/scripts/` — build, packaging, and package verification scripts.
+- `docs/public/` — build, release, and troubleshooting guides.
 
-Wire-протокол развивается в репозитории сервера. Актуальный `main` клиента
-использует закреплённый Git-коммит `cc-protocol`; его загрузка не требует сборки
-серверного приложения. Исторические теги содержат свою совместимую копию
-протокола, чтобы исходники опубликованных выпусков оставались самостоятельными.
+The wire protocol is maintained in the server repository. The client's current
+`main` branch pins `cc-protocol` to a specific Git commit; fetching it does not
+require building the server application. Historical tags include their matching
+protocol copy so published release sources remain self-contained.
 
-## Сборка
+## Building
 
-Установите Rust через rustup (версия закреплена в `rust-toolchain.toml`), Flutter
-и нативные инструменты выбранной платформы. Точные версии SDK и дополнительные
-зависимости указаны в [BUILDING.md](docs/public/BUILDING.md).
+Install Rust through rustup (the version is pinned in `rust-toolchain.toml`),
+Flutter, and the native tools for your platform. Exact SDK versions and additional
+dependencies are listed in [BUILDING.md](docs/public/BUILDING.md).
+The detailed platform build guides are currently in Russian.
 
 ```sh
 git clone https://github.com/evsikovas/consolecrypt-client.git
@@ -105,20 +109,21 @@ flutter pub get
 cd ../..
 ```
 
-| Платформа | Команда из корня репозитория | Инструкция |
+| Platform | Command from the repository root | Guide |
 |---|---|---|
-| macOS | `bash client/scripts/build-macos.sh --no-cli` | [Сборка](docs/public/BUILDING.md) |
+| macOS | `bash client/scripts/build-macos.sh --no-cli` | [Building](docs/public/BUILDING.md) |
 | Windows | `powershell -File client/scripts/build-windows.ps1` | [Windows](docs/public/BUILD_WINDOWS.md) |
 | Linux | `bash client/scripts/build-linux.sh` | [Linux](docs/public/BUILD_LINUX.md) |
 | Android | `bash client/scripts/build-android.sh` | [Android](docs/public/BUILDING.md#android--arm64) |
 | iOS Simulator | `bash client/scripts/build-ios.sh` | [iOS](docs/public/BUILD_IOS.md) |
 
-Результаты находятся в `dist/`. Для macOS/iOS нужен Mac с Xcode; для Windows —
-MSVC/Windows SDK. Приватные ключи подписи и локальные настройки не входят в Git.
-Повторная сборка другим Android-ключом не сможет обновить установленный APK
-поверх него. Не меняйте подписи и номера сборок при подготовке обновлений.
+Build outputs are placed in `dist/`. macOS/iOS builds require a Mac with Xcode;
+Windows builds require MSVC and the Windows SDK. Private signing keys and local
+configuration are not included in Git. An APK built with a different Android key
+cannot update the installed application in place. Preserve signing identities
+and maintain increasing build numbers when preparing updates.
 
-## Проверка исходников
+## Testing
 
 ```sh
 cargo test --locked --manifest-path crates/Cargo.toml
@@ -129,25 +134,26 @@ flutter analyze
 flutter test
 ```
 
-Тесты, которым нужны нативная библиотека, системная ключница или настоящий
-SSH/RDP-сервер, имеют дополнительные условия. Не запускайте Flutter-тесты
-параллельно с нативной сборкой в одной рабочей папке.
+Tests that need a native library, a system keyring, or a real SSH/RDP server have
+additional prerequisites. Do not run Flutter tests alongside a native build
+in the same working directory.
 
-## Релиз 0.3.1 и переход на GitHub
+## Release 0.3.1 and the GitHub migration
 
-0.3.1 — косметические правки отступов и выбора SSH/RDP-хостов; подробности в
-[заметках выпуска](docs/public/RELEASE_0_3_1.md). Известное ограничение: смена
-общей папки или её прав во время RDP-сеанса иногда обрывает соединение.
-Сохраните удалённую работу перед изменением и при необходимости подключитесь снова.
+Version 0.3.1 fixes page spacing and SSH/RDP host selection; see the
+[release notes](docs/public/RELEASE_0_3_1.md). Known limitation: changing a shared
+folder or its permissions during an RDP session can sometimes disconnect it.
+Save your remote work before making changes and reconnect if necessary.
 
-GitHub-релиз содержит копии уже опубликованных установщиков, без пересборки.
-Рабочие сборки, сайт, сервер и автообновления пока остаются на GitLab и прежней
-инфраструктуре. GitHub Actions не включён. См. [MIGRATION.md](MIGRATION.md).
+The GitHub release contains copies of the existing installers, without rebuilding
+them. Production builds, the website, the server, and update delivery remain on
+GitLab and the existing infrastructure for now. GitHub Actions is not enabled.
+See [MIGRATION.md](MIGRATION.md).
 
-## Лицензия и сообщения об ошибках
+## License and issue reporting
 
-Текущий собственный код — [AGPL-3.0-only](LICENSE). Сторонние компоненты сохраняют
-свои лицензии и уведомления; исторические выпуски сохраняют свои условия.
-Автор: Alexander Evsikov. Уязвимости сообщайте по [SECURITY.md](SECURITY.md),
-остальные воспроизводимые проблемы — через Issues. Не прикладывайте пароли,
-приватные ключи, токены или содержимое реального хранилища.
+Current first-party code is licensed under [AGPL-3.0-only](LICENSE). Third-party
+components retain their own licenses and notices; historical releases retain
+their original terms. Author: Alexander Evsikov. Report vulnerabilities as
+described in [SECURITY.md](SECURITY.md), and other reproducible problems through
+Issues. Do not attach passwords, private keys, tokens, or real vault contents.
