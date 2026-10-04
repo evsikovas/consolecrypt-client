@@ -80,3 +80,25 @@ windows_password.txt
 **/windows_password.txt
 client/docs/RDP_DEV_SPEC.md
 client/docs/RDP_DEV_*.md
+
+# Private development/operator material is never part of this repository.
+.local/
+.agents/
+.codex/
+.claude/
+AGENTS.md
+CLAUDE.md
+*_SPEC.md
+*_PLAN.md
+*_ARCHITECTURE.md
+PARALLEL_*.md
+windows_password.txt
+*.env
+.env*
+!*.env.example
+!.env.example
+*.p12
+*.pfx
+*.keystore
+*.jks
+kubeconfig*

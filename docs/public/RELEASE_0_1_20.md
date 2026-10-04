@@ -89,7 +89,7 @@ SSH credentials на целевом сервере. Перед обновлен�
 зашифрованную резервную копию и комплект восстановления.
 
 [Релиз и SHA-256](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.1.20)
-· [Обновления](UPDATES.md) · [Свой сервер](HOSTING.md).
+· [Обновления](UPDATES.md) · [Свой сервер](https://github.com/evsikovas/consolecrypt-server/blob/main/docs/public/HOSTING.md).
 
 English: this release adds selective end-to-end encrypted sharing, verified
 Reader/Editor devices and explicit owner-online device enrollment. The client

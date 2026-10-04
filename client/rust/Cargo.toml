@@ -32,13 +32,13 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.89"  # russh 0.63 requires 1.89
 license = "AGPL-3.0-only"
-repository = "https://github.com/consolecrypt/consolecrypt"
+repository = "https://github.com/evsikovas/consolecrypt-client"
 authors = ["Alexander Evsikov <i@evsikov.net>"]
 publish = false
 
 [workspace.dependencies]
 # shared contract
-cc-protocol = { path = "../../crates/protocol" }
+cc-protocol = { git = "https://github.com/evsikovas/consolecrypt-server.git", rev = "06294c0796e6a04e9a1d346883223a4fb91bdee8" }
 cc-models = { path = "../../crates/models" }
 
 # internal crates

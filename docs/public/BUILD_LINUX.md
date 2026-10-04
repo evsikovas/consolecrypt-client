@@ -7,7 +7,7 @@
 в изолированных **Debian 12** и **Fedora 43** с X11 и программным рендерингом.
 Текущий выпуск — **0.3.0+1378**: [DEB](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.0/ConsoleCrypt-0.3.0%2B1378-linux-x64.deb) ·
 [RPM](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.0/ConsoleCrypt-0.3.0%2B1378-linux-x64.rpm).
-Сервер синхронизации устанавливается отдельно: [Docker и Kubernetes](HOSTING.md).
+Сервер синхронизации устанавливается отдельно: [Docker и Kubernetes](https://github.com/evsikovas/consolecrypt-server/blob/main/docs/public/HOSTING.md).
 
 ## Системная ключница
 

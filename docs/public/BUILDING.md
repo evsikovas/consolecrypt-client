@@ -90,30 +90,7 @@ python3 -m unittest discover -s client/scripts -p 'test_*.py'
 
 ## Свой сервер
 
-Для локального профиля сервер не нужен. Для синхронизации между устройствами
-можно запустить сервер из этого репозитория (Docker и Compose):
-
-```sh
-cp server/.env.example server/.env
-# Откройте server/.env и замените CC_POSTGRES_PASSWORD на случайный пароль.
-docker compose -f server/docker-compose.yml --env-file server/.env up -d --build
-```
-
-В `.env` задайте `CC_SOURCE_CODE_URL=https://git.evsikov.net/publics/consolecrypt`
-(для изменённого сервера — адрес именно ваших исходников).
-По умолчанию HTTP доступен на порту 8080, PostgreSQL хранит данные в Docker volume.
-Для удалённого доступа настройте HTTPS через reverse proxy и публичный адрес;
-параметры почты, регистрации, лимитов и хранения приведены в `server/.env.example`.
-Резервируйте PostgreSQL и проверяйте восстановление. Сервер не может восстановить
-забытую парольную фразу хранилища: сохраните комплект восстановления на клиенте.
-
-
-## English
-
-Clone the whole repository, including `crates/`, and preserve the dependency
-lock files. Use the platform scripts above; each native packaging run reserves
-a new build number. Linux x86-64 packages use an Ubuntu 22.04 baseline and were
-installed in isolated Debian 12 and Fedora 43. A graphical session, session
-D-Bus and an existing unlocked persistent Secret Service keyring are required.
-Linux updates are manual DEB/RPM package-manager updates. See the linked
-platform guides for prerequisites, package signing limits and iOS device signing.
+Локальный профиль работает без сервера. Для синхронизации используйте
+[отдельный репозиторий сервера и протокола](https://github.com/evsikovas/consolecrypt-server).
+Инструкция Docker/SMTP и команды запуска находятся в его README и HOSTING.md.
+Серверный код не входит в актуальный main клиентского репозитория.

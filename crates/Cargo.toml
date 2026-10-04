@@ -3,14 +3,14 @@
 # client and server consume them via `path` dependencies and compile independently.
 [workspace]
 resolver = "2"
-members = ["protocol", "models"]
+members = ["models"]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
 license = "AGPL-3.0-only"
-repository = "https://github.com/consolecrypt/consolecrypt"
+repository = "https://github.com/evsikovas/consolecrypt-client"
 authors = ["Alexander Evsikov <i@evsikov.net>"]
 
 [workspace.dependencies]
