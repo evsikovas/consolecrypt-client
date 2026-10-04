@@ -39,21 +39,21 @@ xcrun simctl launch booted io.consolecrypt.consolecrypt
 Для ZIP сначала проверьте SHA-256, затем распакуйте `Runner.app` и установите
 его той же командой. Этот ZIP не является IPA для установки на iPhone.
 
-### Готовый архив из релиза 0.3.0
+### Готовый архив из релиза 0.3.1
 
-В [релизе v0.3.0](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.3.0)
-скачайте [часть 1](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.0/ConsoleCrypt-0.3.0%2B1377-ios-simulator-universal.zip.001),
-[часть 2](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.0/ConsoleCrypt-0.3.0%2B1377-ios-simulator-universal.zip.002)
-и [SHA256SUMS-0.3.0.txt](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.0/SHA256SUMS-0.3.0.txt).
+В [релизе v0.3.1](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.3.1)
+скачайте [часть 1](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.1/ConsoleCrypt-0.3.1%2B1389-ios-simulator-universal.zip.001),
+[часть 2](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.1/ConsoleCrypt-0.3.1%2B1389-ios-simulator-universal.zip.002)
+и [SHA256SUMS-0.3.1.txt](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.1/SHA256SUMS-0.3.1.txt).
 Сохраните все три файла в одной папке. Архив опубликован двумя
 частями; объединение восстанавливает проверенный ZIP без изменения приложения. Отдельные части распаковывать не нужно.
 
 В Terminal перейдите в эту папку и проверьте обе части:
 
 ```sh
-awk '$2 == "ConsoleCrypt-0.3.0+1377-ios-simulator-universal.zip.001" || \
-     $2 == "ConsoleCrypt-0.3.0+1377-ios-simulator-universal.zip.002" { print; n++ } \
-     END { if (n != 2) exit 1 }' SHA256SUMS-0.3.0.txt > ios-parts.SHA256SUMS \
+awk '$2 == "ConsoleCrypt-0.3.1+1389-ios-simulator-universal.zip.001" || \
+     $2 == "ConsoleCrypt-0.3.1+1389-ios-simulator-universal.zip.002" { print; n++ } \
+     END { if (n != 2) exit 1 }' SHA256SUMS-0.3.1.txt > ios-parts.SHA256SUMS \
     && shasum -a 256 -c ios-parts.SHA256SUMS
 ```
 
@@ -61,10 +61,10 @@ awk '$2 == "ConsoleCrypt-0.3.0+1377-ios-simulator-universal.zip.001" || \
 только после двух результатов `OK` — по одному для `.001` и `.002`:
 
 ```sh
-cat ConsoleCrypt-0.3.0+1377-ios-simulator-universal.zip.001 \
-    ConsoleCrypt-0.3.0+1377-ios-simulator-universal.zip.002 \
-    > ConsoleCrypt-0.3.0+1377-ios-simulator-universal.zip
-unzip ConsoleCrypt-0.3.0+1377-ios-simulator-universal.zip
+cat ConsoleCrypt-0.3.1+1389-ios-simulator-universal.zip.001 \
+    ConsoleCrypt-0.3.1+1389-ios-simulator-universal.zip.002 \
+    > ConsoleCrypt-0.3.1+1389-ios-simulator-universal.zip
+unzip ConsoleCrypt-0.3.1+1389-ios-simulator-universal.zip
 xcrun simctl install booted Runner.app
 xcrun simctl launch booted io.consolecrypt.consolecrypt
 ```
@@ -187,7 +187,7 @@ client/scripts/build-ios.sh --device
 пять секунд; финальная очистка прошла без таймаутов. Это отдельная тестовая
 сборка: product ZIP создаётся следующим запуском `--build-only`.
 
-Текущий готовый архив — **0.3.0+1377**. Проверены версия, целостность ZIP,
+Текущий готовый архив — **0.3.1+1389**. Проверены версия, целостность ZIP,
 SHA-256, подпись и ARM64/x86-64 Simulator slices в Runner, App, Flutter и
 Rust bridge. Обе части побайтно восстанавливают исходный ZIP. Приложение
 установлено и запущено в отдельном временном Simulator: подтверждён экран
@@ -233,7 +233,7 @@ Rust bridge. Обе части побайтно восстанавливают �
 
 ## English
 
-Download both **0.3.0+1377** Simulator ZIP parts and `SHA256SUMS-0.3.0.txt` using
+Download both **0.3.1+1389** Simulator ZIP parts and `SHA256SUMS-0.3.1.txt` using
 the links above. Verify both published parts against their checksum entries,
 join them, then install
 `Runner.app` with `xcrun simctl install`. The current archive contains ARM64 and
