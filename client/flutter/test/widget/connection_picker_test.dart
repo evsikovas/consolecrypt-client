@@ -167,6 +167,26 @@ void main() {
     }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   }
 
+  testWidgets('RDP new host replaces a retained SSH draft with the requested protocol', (tester) async {
+    final f = await _pump(tester, empty: true);
+    f.container.read(routerProvider).go(AppRoutes.newHost);
+    await settle(tester);
+    expect(
+      tester.widget<GlassSegmented<HostProtocol>>(find.byKey(const ValueKey('host-protocol'))).selected,
+      HostProtocol.ssh,
+    );
+    await enterKey(tester, 'host-name', 'Unfinished SSH draft');
+    await tapKey(tester, 'nav-rdp');
+    await tapKey(tester, 'rdp-empty-connect');
+    await tapKey(tester, 'host-picker-new');
+    expect(
+      tester.widget<GlassSegmented<HostProtocol>>(find.byKey(const ValueKey('host-protocol'))).selected,
+      HostProtocol.rdp,
+    );
+    expect(tester.widget<TextFormField>(find.byKey(const ValueKey('host-name'))).controller!.text, isEmpty);
+    expect(find.byKey(const ValueKey('host-rdp-domain')), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   testWidgets('locking the workspace dismisses the connection chooser without connecting', (tester) async {
     final f = await _pump(tester);
     await tapKey(tester, 'new-connection');

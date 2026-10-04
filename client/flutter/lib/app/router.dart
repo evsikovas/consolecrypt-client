@@ -95,6 +95,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'new',
                 pageBuilder: (context, state) => _page(
                   HostEditorScreen(
+                    key: ValueKey('new-host-${state.uri.queryParameters['protocol'] == 'rdp' ? 'rdp' : 'ssh'}'),
                     initialProtocol: state.uri.queryParameters['protocol'] == 'rdp'
                         ? HostProtocol.rdp
                         : HostProtocol.ssh,
