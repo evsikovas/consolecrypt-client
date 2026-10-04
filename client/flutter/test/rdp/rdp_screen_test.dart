@@ -13,6 +13,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/rdp/rdp_launcher.dart';
 import 'package:consolecrypt/rdp/rdp_providers.dart';
@@ -142,8 +143,17 @@ class _Fixture {
   }
 }
 
+// Exercise the direct dialog independently of the saved-host picker; picker
+// navigation and protocol selection are covered in connection_picker_test.
+Future<void> _openConnectionForm(WidgetTester tester) async {
+  final context = tester.element(find.byType(RdpScreen));
+  final scope = ProviderScope.containerOf(context).read(rdpScopeProvider);
+  unawaited(showAppDialog<void>(context, secure: true, builder: (_) => RdpConnectionDialog(scope: scope)));
+  await settle(tester);
+}
+
 Future<void> _fill(WidgetTester tester) async {
-  await tapKey(tester, 'rdp-new-connection');
+  await _openConnectionForm(tester);
   await enterKey(tester, 'rdp-address', 'example.test');
   await enterKey(tester, 'rdp-username', 'demo');
   final runtimeValue = List.generate(24, (_) => Random.secure().nextInt(10)).join();
@@ -232,7 +242,7 @@ void main() {
     await _connectedWithClipboard(tester, fixture);
     await tapKey(tester, 'rdp-expand');
     expect(fixture.window.calls, ['enter']);
-    expect(find.byKey(const ValueKey('rdp-new-connection')), findsNothing);
+    expect(find.byType(RdpScreen), findsNothing);
     expect(find.byType(RdpView), findsOneWidget);
     expect(tester.getRect(find.byType(RdpView)), const Rect.fromLTWH(0, 0, 1200, 900));
     await tester.tap(find.byKey(const ValueKey('rdp-input-surface')));
@@ -243,7 +253,7 @@ void main() {
     await tapKey(tester, 'rdp-fullscreen-restore');
     expect(fixture.window.calls, ['enter', 'leave']);
     expect(fixture.service.disconnected, isEmpty);
-    expect(find.byKey(const ValueKey('rdp-new-connection')), findsOneWidget);
+    expect(find.byType(RdpScreen), findsOneWidget);
     expect(find.byType(RdpView), findsOneWidget);
     await fixture.dispose(tester);
   });
@@ -428,7 +438,7 @@ void main() {
     await tapKey(tester, 'rdp-expand');
     expect(fixture.window.calls, ['enter', 'leave']);
     expect(find.byKey(const ValueKey('rdp-fullscreen-bar')), findsNothing);
-    expect(find.byKey(const ValueKey('rdp-new-connection')), findsOneWidget);
+    expect(find.byType(RdpScreen), findsOneWidget);
     expect(fixture.service.disconnected, isEmpty);
     await fixture.dispose(tester);
   });
@@ -1126,7 +1136,7 @@ void main() {
     final fixture = _Fixture();
     fixture.service.pickedDirectory = const RdpDirectoryGrant(id: 'opaque-demo-grant', name: 'Demo documents');
     await fixture.pump(tester);
-    await tapKey(tester, 'rdp-new-connection');
+    await _openConnectionForm(tester);
     await tapKey(tester, 'rdp-pick-folder');
     final writable = tester.widget<CheckboxListTile>(find.byKey(const ValueKey('rdp-allow-folder-write')));
     expect(writable.value, isFalse);
@@ -1153,7 +1163,7 @@ void main() {
       final fixture = _Fixture();
       fixture.service.pickedDirectory = const RdpDirectoryGrant(id: 'demo-choice', name: 'Demo documents');
       await fixture.pump(tester, language: language, size: const Size(420, 880));
-      await tapKey(tester, 'rdp-new-connection');
+      await _openConnectionForm(tester);
       await tapKey(tester, 'rdp-pick-folder');
       final l = tester.element(find.byType(RdpScreen)).l10n;
       expect(find.text(l.rdpFolderWindowsPath), findsOneWidget);
@@ -1233,7 +1243,7 @@ void main() {
     final fixture = _Fixture();
     fixture.service.pickerFailure = const RdpFailure('directory_grant_unavailable');
     await fixture.pump(tester);
-    await tapKey(tester, 'rdp-new-connection');
+    await _openConnectionForm(tester);
     await tapKey(tester, 'rdp-pick-folder');
     final l = tester.element(find.byType(RdpScreen)).l10n;
     expect(find.text(l.rdpFolderChooseFailed), findsOneWidget);
@@ -1249,7 +1259,7 @@ void main() {
     final fixture = _Fixture();
     fixture.service.supported = const RdpCapabilities(clipboardSupported: true, folderSupported: false);
     await fixture.pump(tester);
-    await tapKey(tester, 'rdp-new-connection');
+    await _openConnectionForm(tester);
     expect(isEnabled(tester, 'rdp-pick-folder'), isFalse);
     expect(find.text(tester.element(find.byType(RdpScreen)).l10n.rdpFolderUnsupported), findsOneWidget);
     expect(fixture.service.folderPicks, 0);
@@ -1278,7 +1288,7 @@ void main() {
     final fixture = _Fixture();
     fixture.service.pickedDirectory = const RdpDirectoryGrant(id: 'choice-1', name: 'Demo one');
     await fixture.pump(tester);
-    await tapKey(tester, 'rdp-new-connection');
+    await _openConnectionForm(tester);
     await tapKey(tester, 'rdp-pick-folder');
     fixture.service.pickedDirectory = const RdpDirectoryGrant(id: 'choice-2', name: 'Demo two');
     await tapKey(tester, 'rdp-pick-folder');
@@ -1292,7 +1302,7 @@ void main() {
     final fixture = _Fixture();
     fixture.service.pickerGate = Completer();
     await fixture.pump(tester);
-    await tapKey(tester, 'rdp-new-connection');
+    await _openConnectionForm(tester);
     await tapKey(tester, 'rdp-pick-folder');
     fixture.status.value = const VaultStatus(phase: VaultPhase.locked);
     await settle(tester);
@@ -1410,7 +1420,7 @@ void main() {
     testWidgets('direct connection form fits compact $language layout without saved defaults', (tester) async {
       final fixture = _Fixture();
       await fixture.pump(tester, language: language, size: const Size(420, 880));
-      await tapKey(tester, 'rdp-new-connection');
+      await _openConnectionForm(tester);
       final address = tester.widget<TextField>(find.byKey(const ValueKey('rdp-address')));
       expect(address.controller!.text.isEmpty, isTrue);
       expect(tester.takeException(), isNull);

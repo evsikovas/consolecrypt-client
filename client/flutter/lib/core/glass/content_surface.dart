@@ -98,9 +98,11 @@ enum ScrollEdgeStyle {
 }
 
 /// Replaces bar backgrounds: [ScrollEdgeStyle.soft] fades scrolling content
-/// over [extent] px at the chosen edges; [ScrollEdgeEffect.hard] pins
-/// [header] on an opaque band with a separator. One style per edge.
-class ScrollEdgeEffect extends StatelessWidget {
+/// over [extent] px at edges with more content outside the viewport. At the
+/// start/end of a list its first/last row stays fully visible instead of
+/// appearing underneath a header. [ScrollEdgeEffect.hard] pins [header] on
+/// an opaque band with a separator. One style per edge.
+class ScrollEdgeEffect extends StatefulWidget {
   const ScrollEdgeEffect({required this.child, super.key, this.top = true, this.bottom = false, this.extent = 24})
     : style = ScrollEdgeStyle.soft,
       header = null;
@@ -119,8 +121,29 @@ class ScrollEdgeEffect extends StatelessWidget {
   final Widget? header;
 
   @override
+  State<ScrollEdgeEffect> createState() => _ScrollEdgeEffectState();
+}
+
+class _ScrollEdgeEffectState extends State<ScrollEdgeEffect> {
+  bool _above = false;
+  bool _below = false;
+
+  void _updateMetrics(ScrollMetrics metrics) {
+    // A nested or horizontal list must not fade its containing page.
+    if (metrics.axis != Axis.vertical || !metrics.hasContentDimensions) return;
+    final reversed = metrics.axisDirection == AxisDirection.up;
+    final above = (reversed ? metrics.extentAfter : metrics.extentBefore) > 0.5;
+    final below = (reversed ? metrics.extentBefore : metrics.extentAfter) > 0.5;
+    if (above == _above && below == _below) return;
+    setState(() {
+      _above = above;
+      _below = below;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (style == ScrollEdgeStyle.hard) {
+    if (widget.style == ScrollEdgeStyle.hard) {
       final s = GlassTokens.of(context).surfaces;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -130,29 +153,43 @@ class ScrollEdgeEffect extends StatelessWidget {
               color: s.contentSolid,
               border: Border(bottom: BorderSide(color: s.separator)),
             ),
-            child: header,
+            child: widget.header,
           ),
-          Expanded(child: child),
+          Expanded(child: widget.child),
         ],
       );
     }
-    return ShaderMask(
-      blendMode: BlendMode.dstIn,
-      shaderCallback: (bounds) {
-        final f = bounds.height <= 0 ? 0.0 : (extent / bounds.height).clamp(0.0, 0.5);
-        return LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            top ? const Color(0x00000000) : const Color(0xFF000000),
-            const Color(0xFF000000),
-            const Color(0xFF000000),
-            bottom ? const Color(0x00000000) : const Color(0xFF000000),
-          ],
-          stops: [0, f, 1 - f, 1],
-        ).createShader(bounds);
+    return NotificationListener<ScrollMetricsNotification>(
+      onNotification: (notification) {
+        if (notification.depth == 0) _updateMetrics(notification.metrics);
+        return false;
       },
-      child: child,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification.depth == 0) _updateMetrics(notification.metrics);
+          return false;
+        },
+        // Keep the same mask/child tree while scrolling so text fields and
+        // scroll positions retain their state when an edge becomes visible.
+        child: ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (bounds) {
+            final f = bounds.height <= 0 ? 0.0 : (widget.extent / bounds.height).clamp(0.0, 0.5);
+            return LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                widget.top && _above ? const Color(0x00000000) : const Color(0xFF000000),
+                const Color(0xFF000000),
+                const Color(0xFF000000),
+                widget.bottom && _below ? const Color(0x00000000) : const Color(0xFF000000),
+              ],
+              stops: [0, f, 1 - f, 1],
+            ).createShader(bounds);
+          },
+          child: widget.child,
+        ),
+      ),
     );
   }
 }

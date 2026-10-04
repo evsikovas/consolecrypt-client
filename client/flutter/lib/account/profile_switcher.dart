@@ -180,7 +180,10 @@ class ProfileSwitcher extends ConsumerWidget {
                         ? 32
                         : math.max(
                             36.0,
-                            (tokens.typography.bodyEmph.fontSize! + tokens.typography.caption.fontSize!) * 1.2 + 4,
+                            (MediaQuery.textScalerOf(context).scale(tokens.typography.bodyEmph.fontSize!) +
+                                        MediaQuery.textScalerOf(context).scale(tokens.typography.caption.fontSize!)) *
+                                    1.2 +
+                                4,
                           ),
                     width: compact ? 32 : null,
                     child: compact

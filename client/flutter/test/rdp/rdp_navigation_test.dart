@@ -3,6 +3,7 @@ import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/rdp/rdp_providers.dart';
+import 'package:consolecrypt/rdp/rdp_screen.dart';
 import 'package:consolecrypt/rdp/rdp_service.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,7 +38,7 @@ void main() {
     await settle(tester);
     expect(tester.takeException(), isNull);
     await tapKey(tester, 'nav-rdp');
-    final container = ProviderScope.containerOf(tester.element(find.byKey(const ValueKey('rdp-new-connection'))));
+    final container = ProviderScope.containerOf(tester.element(find.byType(RdpScreen)));
     await container
         .read(rdpWorkspaceProvider)
         .connect(

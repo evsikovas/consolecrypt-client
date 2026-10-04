@@ -25,10 +25,11 @@ enum JumpMode { inherit, profile, custom }
 /// chain; the "Effective settings" panel shows what app-core's Connection
 /// Planner resolves, with the source of every value.
 class HostEditorScreen extends ConsumerStatefulWidget {
-  const HostEditorScreen({super.key, this.hostId, this.initialGroupId});
+  const HostEditorScreen({super.key, this.hostId, this.initialGroupId, this.initialProtocol = HostProtocol.ssh});
 
   final ObjectId? hostId;
   final ObjectId? initialGroupId;
+  final HostProtocol initialProtocol;
 
   @override
   ConsumerState<HostEditorScreen> createState() => _HostEditorScreenState();
@@ -71,6 +72,8 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
   @override
   void initState() {
     super.initState();
+    _protocol = widget.initialProtocol;
+    if (_protocol == HostProtocol.rdp) _port.text = '3389';
     _id = widget.hostId ?? ObjectId.generate();
     _createdAt = DateTime.now().toUtc();
     for (final c in [_name, _address, _port, _username]) {

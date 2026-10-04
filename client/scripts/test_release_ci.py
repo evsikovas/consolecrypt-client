@@ -8,7 +8,7 @@ import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-CANDIDATE = 'codex/rdp-0.3-source'
+CANDIDATE = 'codex/cosmetic-0.3.1'
 JOBS = {
     'build-windows': ('.gitlab-ci.yml', '[windows]', 'consolecrypt-windows'),
     'build-macos': ('.gitlab-ci.yml', '[macos, arm64]', 'consolecrypt-macos'),

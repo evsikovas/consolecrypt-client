@@ -75,7 +75,9 @@ class PageScaffold extends StatelessWidget {
               )
             else if (MediaQuery.sizeOf(context).width >= 600 || MediaQuery.viewInsetsOf(context).bottom == 0)
               Padding(
-                padding: EdgeInsets.fromLTRB(pad, GlassSpacing.s16, pad, GlassSpacing.s20),
+                // Keep the page heading and its actions clear of the shell
+                // toolbar, with an equal gap before the first content row.
+                padding: EdgeInsets.fromLTRB(pad, GlassSpacing.s24, pad, GlassSpacing.s24),
                 // Actions may take at most 60 % of the width and wrap onto more lines,
                 // so long (e.g. Russian) button labels never squeeze the subtitle.
                 child: LayoutBuilder(

@@ -17,7 +17,7 @@ build-ios-preview:
   resource_group: consolecrypt-macos
   timeout: 3h
   rules:
-    - if: '$CI_COMMIT_BRANCH == "codex/rdp-0.3-source"'
+    - if: '$CI_COMMIT_BRANCH == "codex/cosmetic-0.3.1"'
       when: on_success
       allow_failure: false
     - if: '$CI_COMMIT_BRANCH'

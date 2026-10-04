@@ -19,6 +19,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/hosts/connection_picker.dart';
 import 'package:consolecrypt/sftp/edit_flows.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -627,7 +628,6 @@ class _ShellToolbar extends ConsumerWidget {
     final dispatcher = ref.read(appCommandDispatcherProvider);
     final hosts = ref.watch(hostByIdProvider);
     final palette = commandFor(AppCommandId.commandPalette);
-    final newTab = commandFor(AppCommandId.newTerminalTab);
     final title = shellTitle(l10n, branch, location, hosts);
     final live = _liveToolbarBranches.contains(branch) ? BackdropMode.live : BackdropMode.static;
     // The connection action stays circular at every desktop width. Search
@@ -665,8 +665,8 @@ class _ShellToolbar extends ConsumerWidget {
           icon: Icons.add_rounded,
           size: 40,
           style: pageHasPrimary ? GlassIconButtonStyle.glass : GlassIconButtonStyle.prominent,
-          tooltip: l10n.shellNewConnectionTooltip(newTab.shortcutLabel),
-          onPressed: () => dispatcher.invoke(AppCommandId.newTerminalTab),
+          tooltip: l10n.shellNewConnection,
+          onPressed: () => showConnectionPicker(context, ref),
         ),
         if (!compact) const SyncStatusPill(shortLabel: true),
         const _OverflowMenu(),

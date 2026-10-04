@@ -2,10 +2,12 @@ import 'dart:typed_data';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
+import 'package:consolecrypt/hosts/connection_picker.dart';
 import 'package:consolecrypt/rdp/rdp_clipboard.dart';
 import 'package:consolecrypt/rdp/rdp_controller.dart';
 import 'package:consolecrypt/rdp/rdp_fullscreen.dart';
@@ -35,11 +37,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> {
   bool _fullscreen = false;
   RdpWorkspaceController? _controller;
 
-  Future<void> _newConnection() async {
-    final scope = ref.read(rdpScopeProvider);
-    if (!scope.unlocked) return;
-    await showAppDialog<RdpTab>(context, secure: true, builder: (_) => RdpConnectionDialog(scope: scope));
-  }
+  Future<void> _newConnection() => showConnectionPicker(context, ref, protocol: HostProtocol.rdp);
 
   Future<void> _openFullscreen() async {
     if (_fullscreen) return;
@@ -139,7 +137,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> {
                   message: l.rdpEmptyHelp,
                   action: GlassButton.prominent(
                     key: const ValueKey('rdp-empty-connect'),
-                    label: l.rdpNewConnection,
+                    label: l.hostPickerDefaultTitle,
                     icon: Icons.add,
                     onPressed: controller.canConnect ? _newConnection : null,
                   ),
@@ -231,19 +229,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> {
         );
         return GlassBlurSuppressor(
           budget: GlassScope.of(context).budget,
-          child: PageScaffold(
-            title: l.rdpTitle,
-            subtitle: l.rdpWorkspaceHelp,
-            actions: [
-              GlassButton.prominent(
-                key: const ValueKey('rdp-new-connection'),
-                label: l.rdpNewConnection,
-                icon: Icons.add,
-                onPressed: controller.canConnect ? _newConnection : null,
-              ),
-            ],
-            body: body,
-          ),
+          child: PageScaffold(title: l.rdpTitle, subtitle: l.rdpWorkspaceHelp, body: body),
         );
       },
     );

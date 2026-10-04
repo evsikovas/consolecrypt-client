@@ -95,6 +95,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'new',
                 pageBuilder: (context, state) => _page(
                   HostEditorScreen(
+                    initialProtocol: state.uri.queryParameters['protocol'] == 'rdp'
+                        ? HostProtocol.rdp
+                        : HostProtocol.ssh,
                     initialGroupId: state.uri.queryParameters['group'] == null
                         ? null
                         : ObjectId(state.uri.queryParameters['group']!),

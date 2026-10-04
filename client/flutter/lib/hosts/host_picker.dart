@@ -8,35 +8,48 @@ import 'package:consolecrypt/hosts/hosts_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Searchable host chooser (new terminal tab, SFTP, snippet target) on a
-/// glass dialog. [title] defaults to "Connect to host".
-Future<Host?> showHostPicker(BuildContext context, {String? title, ObjectId? exclude}) => showAppDialog<Host>(
+/// Searchable host chooser. SSH-only callers keep their default filter; a
+/// null [protocol] includes both SSH and RDP connections.
+Future<Host?> showHostPicker(
+  BuildContext context, {
+  String? title,
+  ObjectId? exclude,
+  HostProtocol? protocol = HostProtocol.ssh,
+  VoidCallback? onCreate,
+}) => showAppDialog<Host>(
   context,
-  builder: (_) => _HostPickerDialog(title: title, exclude: exclude),
+  builder: (_) => HostPickerDialog(title: title, exclude: exclude, protocol: protocol, onCreate: onCreate),
 );
 
-class _HostPickerDialog extends ConsumerStatefulWidget {
-  const _HostPickerDialog({this.title, this.exclude});
+class HostPickerDialog extends ConsumerStatefulWidget {
+  const HostPickerDialog({super.key, this.title, this.exclude, this.protocol = HostProtocol.ssh, this.onCreate});
 
   final String? title;
   final ObjectId? exclude;
+  final HostProtocol? protocol;
+  final VoidCallback? onCreate;
 
   @override
-  ConsumerState<_HostPickerDialog> createState() => _HostPickerDialogState();
+  ConsumerState<HostPickerDialog> createState() => _HostPickerDialogState();
 }
 
-class _HostPickerDialogState extends ConsumerState<_HostPickerDialog> {
+class _HostPickerDialogState extends ConsumerState<HostPickerDialog> {
   String _query = '';
 
   @override
   Widget build(BuildContext context) {
-    final hosts = (ref.watch(hostsProvider).value ?? const <Host>[]).where((h) => !h.isRdp && h.id != widget.exclude).where((h) {
-      final q = _query.toLowerCase();
-      return q.isEmpty ||
-          h.name.toLowerCase().contains(q) ||
-          h.address.toLowerCase().contains(q) ||
-          h.tags.any((t) => t.contains(q));
-    }).toList()..sort((a, b) => a.name.compareTo(b.name));
+    final hosts =
+        (ref.watch(hostsProvider).value ?? const <Host>[])
+            .where((h) => (widget.protocol == null || h.protocol == widget.protocol) && h.id != widget.exclude)
+            .where((h) {
+              final q = _query.trim().toLowerCase();
+              return q.isEmpty ||
+                  h.name.toLowerCase().contains(q) ||
+                  h.address.toLowerCase().contains(q) ||
+                  h.tags.any((t) => t.toLowerCase().contains(q));
+            })
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
     final tokens = GlassTokens.of(context);
     final t = tokens.typography;
     final l10n = context.l10n;
@@ -71,7 +84,19 @@ class _HostPickerDialogState extends ConsumerState<_HostPickerDialog> {
                         return ListTile(
                           key: ValueKey('pick-${h.name}'),
                           leading: HostAvatar(host: h, size: 28),
-                          title: Text(h.name, style: t.bodyEmph.copyWith(color: tokens.palette.label)),
+                          title: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  h.name,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: t.bodyEmph.copyWith(color: tokens.palette.label),
+                                ),
+                              ),
+                              const SizedBox(width: GlassSpacing.s8),
+                              Text(h.isRdp ? 'RDP' : 'SSH', style: t.caption.copyWith(color: tokens.secondaryLabel)),
+                            ],
+                          ),
                           subtitle: Text(h.address, style: t.mono.copyWith(fontSize: 12, color: tokens.secondaryLabel)),
                           trailing: h.tags.isEmpty ? null : SizedBox(width: 140, child: TagChips(tags: h.tags)),
                           onTap: () => closeDialog(context, h),
@@ -83,6 +108,17 @@ class _HostPickerDialogState extends ConsumerState<_HostPickerDialog> {
         ),
       ),
       secondaryActions: [GlassButton(label: l10n.commonCancel, onPressed: () => closeDialog<Host>(context))],
+      primaryAction: widget.onCreate == null
+          ? null
+          : GlassButton(
+              key: const ValueKey('host-picker-new'),
+              label: l10n.hostsNewHost,
+              icon: Icons.add_rounded,
+              onPressed: () {
+                closeDialog<Host>(context);
+                widget.onCreate!();
+              },
+            ),
     );
   }
 }
