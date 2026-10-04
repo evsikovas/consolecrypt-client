@@ -11,6 +11,10 @@
 [Сайт](https://consolecrypt.evsikov.net) ·
 [Сервер и протокол](https://github.com/evsikovas/consolecrypt-server)
 
+![Интерфейс ConsoleCrypt: хосты, группы и поиск подключений](docs/images/workspace.png)
+
+*Хосты и группы в ConsoleCrypt. На скриншоте — демонстрационные данные.*
+
 ## Возможности
 
 - **SSH:** несколько вкладок, пароль и ключи, проверка ключа сервера, jump-хосты,
