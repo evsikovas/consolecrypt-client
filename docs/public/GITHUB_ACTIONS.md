@@ -19,6 +19,21 @@ must bind its work/temp directory at the same absolute path inside and outside
 its container: `ci-linux.sh` starts a sibling builder with a source snapshot.
 Use a dedicated builder, not the production server.
 
+On Windows, enable Developer Mode so Flutter can create plugin symlinks, and
+choose a short work directory when registering the runner:
+
+```powershell
+.\config.cmd --url https://github.com/evsikovas/consolecrypt-client --work C:\cc-ghw --labels consolecrypt,client
+```
+
+Enter the repository registration token at the interactive prompt. The verified
+Windows runner uses `C:\cc-ghw`. A longer nested workspace reached 260 characters
+inside vendored OpenSSL and made its native Perl configuration fail even though
+the file existed. The short directory resolved the failure; enabling symlinks or
+Windows long-path support alone does not fix this Perl limit. When relocating an
+existing runner, wait until it is idle and preserve its configuration and old
+checkout/cache until the new location is verified.
+
 ## Build numbering
 
 `client/scripts/github-build-number.py` sets:
@@ -33,6 +48,14 @@ Retries receive new numbers. Attempts above 99 and Android versionCode overflow
 fail closed. Do not reset/recreate this workflow and reuse its run-number sequence
 without raising the baseline above all published builds. Do not publish an older
 run after a newer run has already shipped.
+
+Windows native `FILEVERSION` and Inno Setup version components are limited to
+`65535`. Packaging currently puts the full build number in the fourth component.
+Before exceeding that limit, change and test the Windows metadata representation
+while preserving the complete application/update version and monotonic Android
+`versionCode`. With the current formula, run 56 exceeds the Windows limit even
+on its first attempt; many retries can reach it sooner. The 0.3.2 packages are
+below this limit. Do not reset the GitHub run sequence to work around it.
 
 ## Signing and credentials
 
