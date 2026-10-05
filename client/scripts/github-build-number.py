@@ -24,8 +24,12 @@ def build_number(run, attempt, platform):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('platform', choices=PLATFORMS)
+    parser.add_argument('--print-only', action='store_true')
     args = parser.parse_args()
     number = build_number(os.environ['GITHUB_RUN_NUMBER'], os.environ['GITHUB_RUN_ATTEMPT'], args.platform)
+    if args.print_only:
+        print(number)
+        return
     with Path(os.environ['GITHUB_ENV']).open('a', encoding='utf-8') as output:
         output.write(f'CC_BUILD_NUMBER={number}\n')
     print(f'Reserved {args.platform} build {number}')

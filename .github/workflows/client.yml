@@ -74,10 +74,6 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - name: Reserve build number
-        run: |
-          python client/scripts/github-build-number.py windows
-          if ($LASTEXITCODE -ne 0) { throw 'Build identity reservation failed' }
       - name: Check and package Windows
         run: |
           & client/scripts/ci-windows.ps1

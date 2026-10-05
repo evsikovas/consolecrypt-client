@@ -78,6 +78,13 @@ function Invoke-Checked {
     & $Command @Arguments
     if ($LASTEXITCODE -ne 0) { throw "$Command failed (exit $LASTEXITCODE)" }
 }
+# Resolve Python/toolchain paths before reserving a GitHub build number.
+if ($env:GITHUB_RUN_NUMBER) {
+    $githubBuild = & python (Join-Path $PSScriptRoot 'github-build-number.py') windows --print-only
+    if ($LASTEXITCODE -ne 0 -or "$githubBuild" -notmatch '^\d+$') { throw 'GitHub build identity reservation failed' }
+    $env:CC_BUILD_NUMBER = "$githubBuild".Trim()
+    Write-Host "Reserved Windows build $env:CC_BUILD_NUMBER"
+}
 Push-Location (Join-Path $Repo 'client\flutter')
 try {
     Invoke-Checked flutter @('pub', 'get')
