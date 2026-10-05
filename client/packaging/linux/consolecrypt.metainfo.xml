@@ -10,8 +10,8 @@
     <p>Requires a graphical desktop and an unlocked Secret Service keyring.</p>
   </description>
   <launchable type="desktop-id">io.consolecrypt.consolecrypt.desktop</launchable>
-  <url type="homepage">https://consolecrypt.evsikov.net</url>
-  <url type="bugtracker">https://git.evsikov.net/publics/consolecrypt/-/issues</url>
+  <url type="homepage">https://consolecrypt.dev</url>
+  <url type="bugtracker">https://github.com/evsikovas/consolecrypt-client/issues</url>
   <provides><binary>consolecrypt</binary></provides>
   <content_rating type="oars-1.1"/>
 </component>

@@ -3,7 +3,7 @@ Pod::Spec.new do |s|
   s.version = '0.1.0'
   s.summary = 'ConsoleCrypt Rust core and iOS secure platform channels.'
   s.description = 'Links the native Rust core and implements local authentication and private storage.'
-  s.homepage = 'https://git.evsikov.net/publics/consolecrypt'
+  s.homepage = 'https://github.com/evsikovas/consolecrypt-client'
   s.license = { :type => 'AGPL-3.0-only' }
   s.author = { 'ConsoleCrypt Contributors' => 'i@evsikov.net' }
   s.source = { :path => '.' }
