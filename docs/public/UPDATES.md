@@ -22,7 +22,7 @@
 
 **Переход с ConsoleCrypt 0.2.1 и более ранних версий на macOS:** если после обновления появляется
 «Не удаётся открыть программу», скачайте актуальный DMG с
-[сайта через браузер](https://consolecrypt.evsikov.net/download?lang=ru)
+[сайта через браузер](https://consolecrypt.dev/download?lang=ru)
 и один раз замените приложение в Applications. Старый загрузчик помечал DMG как
 созданный без согласия пользователя; эта метка переносилась на приложение.
 Такое возможно и для копии новой версии, скачанной старым загрузчиком.
@@ -46,7 +46,7 @@ macOS и sandbox остаются включены, хранилище и свя
 ## Linux и iOS
 
 На Linux в **Настройки → Обновления** показаны текущая версия и
-[страница новых пакетов](https://consolecrypt.evsikov.net/download?lang=ru).
+[страница новых пакетов](https://consolecrypt.dev/download?lang=ru).
 Скачайте DEB или RPM и установите его через `apt` или `dnf`, как описано в
 [инструкции Linux](BUILD_LINUX.md). Номер сборки входит в версию пакета.
 Автопроверка, подписанная лента и автоматическая установка обновлений Linux
@@ -79,7 +79,7 @@ Do not delete your vault or Keychain.
 
 
 On Linux, **Settings → Updates** shows the current version and the
-[download page](https://consolecrypt.evsikov.net/download?lang=en). Download a new
+[download page](https://consolecrypt.dev/download?lang=en). Download a new
 DEB/RPM and update through `apt`/`dnf`. Linux has no startup update checks,
 signed updater feed or automatic package installation in this release.
 Keep your profiles and system keyring. On iOS, install a new Simulator archive

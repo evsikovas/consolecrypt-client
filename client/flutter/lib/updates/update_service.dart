@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 
 const updateFeedUrl = String.fromEnvironment(
   'CC_UPDATE_FEED',
-  defaultValue: 'https://updates.consolecrypt.evsikov.net/stable.json',
+  defaultValue: 'https://updates.consolecrypt.dev/stable.json',
 );
 
 /// A PUBLIC trust anchor, never a signing key. Private publisher material is
@@ -69,12 +69,23 @@ bool newerVersion(String candidate, String current) {
   return false;
 }
 
-bool safeUpdateUrl(Uri url) =>
-    url.scheme == 'https' &&
-    url.userInfo.isEmpty &&
-    url.port == 443 &&
-    !url.hasFragment &&
-    const {'git.evsikov.net', 'updates.consolecrypt.evsikov.net'}.contains(url.host);
+bool safeUpdateUrl(Uri url) {
+  if (url.scheme != 'https' || url.userInfo.isNotEmpty || url.port != 443 || url.hasFragment) return false;
+  // Keep the legacy hosts during migration: already installed clients still
+  // retrieve 0.3.2 from their original signed feed without foreign redirects.
+  if (const {'git.evsikov.net', 'updates.consolecrypt.evsikov.net', 'updates.consolecrypt.dev'}.contains(url.host)) {
+    return true;
+  }
+  if (url.host == 'github.com') {
+    return RegExp(r'^/evsikovas/consolecrypt-client/releases/download/v\d+\.\d+\.\d+/ConsoleCrypt-[^/]+$')
+            .hasMatch(url.path) &&
+        !url.hasQuery;
+  }
+  // GitHub redirects release downloads to this exact CDN host. Installer
+  // length and SHA-256 remain authenticated by the existing Ed25519 key.
+  return url.host == 'release-assets.githubusercontent.com' &&
+      RegExp(r'^/github-production-release-asset/\d+/[^/]+$').hasMatch(url.path);
+}
 
 /// Authenticates the exact signed bytes BEFORE reading any installer URL.
 Future<UpdateRelease?> verifyUpdateFeed(

@@ -2,8 +2,9 @@
 
 This repository was extracted from the published ConsoleCrypt GitLab main history on 2026-10-04.
 The original repository remains operational: https://git.evsikov.net/publics/consolecrypt.
-GitLab CI, production deployment, DNS, analytics, signing and update delivery have not been switched to GitHub.
-There are no active GitHub Actions workflows in this migration.
+Version 0.3.2 introduces native builds through GitHub Actions and the public
+consolecrypt.dev addresses. Build artifacts and production publication remain
+separate steps; see [GITHUB_ACTIONS.md](docs/public/GITHUB_ACTIONS.md).
 
 Перенесены необходимые исходники и публичная документация. Внутренние ТЗ, планы,
 локальные настройки, секреты и рабочие данные не включены. История отфильтрована:
@@ -13,5 +14,10 @@ There are no active GitHub Actions workflows in this migration.
 
 Client release 0.3.1 binaries are byte-for-byte copies of the published GitLab release,
 built from original source commit `02ba6a8a28c04741b80ce0086f8411a6cfa08ff4`.
-This migration does not announce a new application update or change installed clients.
+The 0.3.1 source migration did not announce an update or modify installed clients.
+The 0.3.2 transition retains native app identities and the original signed-update
+public key. Existing profiles retain their saved URLs and sharing trust pins.
+Old clients need actual installer bytes on their previously trusted update host;
+a redirect to GitHub or a new hostname is incompatible with their allowlist.
+Keep the old API origin as an alias of the same server instance and database.
 Historical license notices remain applicable to their original versions.

@@ -1,0 +1,178 @@
+name: Client packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, codex/github-release-0.3.2]
+
+# No pull_request / pull_request_target trigger on persistent native runners.
+# Publishing the release, signed feed and website is a separate reviewed step.
+permissions:
+  contents: read
+
+concurrency:
+  group: consolecrypt-client-packages
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  macos:
+    if: github.repository == 'evsikovas/consolecrypt-client' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/codex/github-release-0.3.2')
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 180
+    env:
+      CC_CODESIGN_IDENTITY: ${{ vars.CC_CODESIGN_IDENTITY }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Native toolchain and version
+        run: |
+          echo '/opt/homebrew/bin' >> "$GITHUB_PATH"
+          echo '/usr/local/bin' >> "$GITHUB_PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          python3 client/scripts/github-build-number.py macos
+      - name: Regression checks
+        run: |
+          python3 -m unittest discover -s client/scripts -p 'test_*version.py' -v
+          python3 -m unittest discover -s client/scripts -p 'test_github_build_number.py' -v
+          python3 -m unittest discover -s client/scripts -p 'test_release_identity.py' -v
+          python3 client/scripts/verify-release-identity.py
+          cd client/flutter
+          flutter pub get
+          flutter analyze
+          flutter test
+      - name: Build universal macOS installer
+        run: |
+          bash client/scripts/build-macos.sh --no-cli
+          version="$(cat dist/macos/ConsoleCrypt.version)"
+          cp dist/macos/ConsoleCrypt.dmg "dist/macos/ConsoleCrypt-$version-macos-universal.dmg"
+          cd dist/macos
+          shasum -a 256 "ConsoleCrypt-$version-macos-universal.dmg" > SHA256SUMS-macos.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: macos-${{ github.run_number }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          path: |
+            dist/macos/ConsoleCrypt-*-macos-universal.dmg
+            dist/macos/SHA256SUMS-macos.txt
+            dist/macos/ConsoleCrypt.version
+
+  windows:
+    if: github.repository == 'evsikovas/consolecrypt-client' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/codex/github-release-0.3.2')
+    runs-on: [self-hosted, Windows, X64, consolecrypt, client]
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Reserve build number
+        run: |
+          python client/scripts/github-build-number.py windows
+          if ($LASTEXITCODE -ne 0) { throw 'Build identity reservation failed' }
+      - name: Check and package Windows
+        run: |
+          & client/scripts/ci-windows.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Windows build failed' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-${{ github.run_number }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          path: |
+            dist/windows/*-setup.exe
+            dist/windows/ConsoleCrypt-windows.zip
+            dist/windows/*.sha256
+            dist/windows/ConsoleCrypt.version
+
+  linux:
+    if: github.repository == 'evsikovas/consolecrypt-client' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/codex/github-release-0.3.2')
+    runs-on: [self-hosted, Linux, X64, consolecrypt, client, linux-docker]
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Reserve build number
+        run: python3 client/scripts/github-build-number.py linux
+      - name: Build and check native Linux DEB and RPM
+        run: bash client/scripts/ci-linux.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-${{ github.run_number }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          path: |
+            dist/linux/*.deb
+            dist/linux/*.rpm
+            dist/linux/*.SHA256SUMS
+            dist/linux/*.json
+            dist/linux/acceptance/linux-ffi-integration.json
+            dist/linux/ConsoleCrypt.version
+
+  android:
+    needs: macos
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 180
+    env:
+      ANDROID_HOME: ${{ vars.ANDROID_HOME }}
+      JAVA_HOME: ${{ vars.JAVA_HOME }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Native toolchain and version
+        run: |
+          echo '/opt/homebrew/bin' >> "$GITHUB_PATH"
+          echo '/usr/local/bin' >> "$GITHUB_PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          python3 client/scripts/github-build-number.py android
+      - name: Build APK with the existing runner signer
+        run: bash client/scripts/build-android.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-${{ github.run_number }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          path: |
+            dist/android/ConsoleCrypt-android-arm64.apk
+            dist/android/ConsoleCrypt-android-arm64.apk.sha256
+            dist/android/ConsoleCrypt.version
+
+  ios:
+    needs: android
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Native toolchain and version
+        run: |
+          echo '/opt/homebrew/bin' >> "$GITHUB_PATH"
+          echo '/usr/local/bin' >> "$GITHUB_PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          python3 client/scripts/github-build-number.py ios
+      - name: Build and launch an isolated iOS Simulator preview
+        run: bash client/scripts/ci-ios.sh --build-only
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ios-${{ github.run_number }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          path: |
+            dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip
+            dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip.sha256
+            dist/ios/ConsoleCrypt-simulator-universal.version

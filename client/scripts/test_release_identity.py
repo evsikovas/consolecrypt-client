@@ -75,7 +75,7 @@ class ReleaseIdentityTest(unittest.TestCase):
     def test_stable_updates_retain_original_signed_anchor_and_native_install_entrypoints(self):
         path = self.root / 'client/flutter/lib/updates/update_service.dart'
         original = path.read_text()
-        for removed in (policy.STABLE_UPDATE_KEY, 'https://updates.consolecrypt.evsikov.net/stable.json'):
+        for removed in (policy.STABLE_UPDATE_KEY, 'https://updates.consolecrypt.dev/stable.json'):
             path.write_text(original.replace(removed, 'disabled'))
             with self.subTest(field=removed), self.assertRaises(ValueError):
                 policy.verify(self.root)

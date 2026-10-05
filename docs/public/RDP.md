@@ -95,5 +95,5 @@ Ctrl+V работает с буфером самой удалённой Windows 
 соединения закрываются, временный доступ прекращается. Политика Windows-сервера
 может запрещать буфер обмена или перенаправленные диски.
 
-[Иллюстрированное руководство RU](https://consolecrypt.evsikov.net/guide?lang=ru#rdp)
-· [English guide](https://consolecrypt.evsikov.net/guide?lang=en#rdp)
+[Иллюстрированное руководство RU](https://consolecrypt.dev/guide?lang=ru#rdp)
+· [English guide](https://consolecrypt.dev/guide?lang=en#rdp)

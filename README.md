@@ -8,9 +8,9 @@ An open-source application for working with servers: SSH, RDP, SFTP, an encrypte
 vault for connections and credentials, and collaboration. Work locally, connect
 your own sync server, or use the public ConsoleCrypt server.
 
-[Download 0.3.1](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.3.1) ·
+[Download 0.3.2](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.3.2) ·
 [User guide](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/en.md) ·
-[Website](https://consolecrypt.evsikov.net/?lang=en) ·
+[Website](https://consolecrypt.dev/?lang=en) ·
 [Server and protocol](https://github.com/evsikovas/consolecrypt-server)
 
 ![ConsoleCrypt interface: hosts, groups, and connection search](docs/images/workspace.png)
@@ -55,7 +55,7 @@ your own sync server, or use the public ConsoleCrypt server.
 | Android ARM64 | APK | Mobile preview, Android 11+ |
 | iOS | Universal Simulator ZIP | Preview for Xcode Simulator; not an iPhone installer |
 
-Compare the downloaded file's SHA-256 with `SHA256SUMS-0.3.1.txt` in the release.
+Compare the downloaded file's SHA-256 with `SHA256SUMS-0.3.2.txt` in the release.
 Install Linux packages with `sudo apt install ./package.deb` or
 `sudo dnf install ./package.rpm`. See the guides below for detailed requirements.
 Mobile operating systems restrict background activity; external desktop editors
@@ -138,17 +138,17 @@ Tests that need a native library, a system keyring, or a real SSH/RDP server hav
 additional prerequisites. Do not run Flutter tests alongside a native build
 in the same working directory.
 
-## Release 0.3.1 and the GitHub migration
+## Release 0.3.2 and the GitHub migration
 
-Version 0.3.1 fixes page spacing and SSH/RDP host selection; see the
-[release notes](docs/public/RELEASE_0_3_1.md). Known limitation: changing a shared
-folder or its permissions during an RDP session can sometimes disconnect it.
-Save your remote work before making changes and reconnect if necessary.
+Version 0.3.2 moves builds to GitHub Actions and updates website, source and
+signed update-feed addresses to consolecrypt.dev. See the
+[release notes](docs/public/RELEASE_0_3_2.md) and [release workflow](docs/public/GITHUB_ACTIONS.md).
+Existing profiles retain their saved server addresses and trust pins; do not
+recreate your vault or change a working profile's URL to follow this migration.
 
-The GitHub release contains copies of the existing installers, without rebuilding
-them. Production builds, the website, the server, and update delivery remain on
-GitLab and the existing infrastructure for now. GitHub Actions is not enabled.
-See [MIGRATION.md](MIGRATION.md).
+Known limitation: changing a shared folder or its permissions during an RDP
+session can sometimes disconnect it. Save remote work before making changes
+and reconnect if necessary. [Migration details](MIGRATION.md).
 
 ## License and issue reporting
 

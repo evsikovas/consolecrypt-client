@@ -60,7 +60,7 @@ class UpdateSettingsSection extends ConsumerWidget {
     }
     if (AppPlatform.isLinux) {
       final language = l.localeName.split('_').first;
-      final downloadPage = Uri.https('consolecrypt.evsikov.net', '/download', {'lang': language});
+      final downloadPage = Uri.https('consolecrypt.dev', '/download', {'lang': language});
       return SectionCard(
         key: const ValueKey('settings-updates'),
         title: l.updatesTitle,

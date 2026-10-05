@@ -5,9 +5,7 @@
 Пакеты содержат клиент, Rust bridge, Flutter engine, иконку и пункт меню приложений.
 Базовая сборка — **Ubuntu 22.04**; установка пакетов и запуск проверены
 в изолированных **Debian 12** и **Fedora 43** с X11 и программным рендерингом.
-Текущий выпуск — **0.3.0+1378**: [DEB](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.0/ConsoleCrypt-0.3.0%2B1378-linux-x64.deb) ·
-[RPM](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.0/ConsoleCrypt-0.3.0%2B1378-linux-x64.rpm).
-Сервер синхронизации устанавливается отдельно: [Docker и Kubernetes](https://github.com/evsikovas/consolecrypt-server/blob/main/docs/public/HOSTING.md).
+Текущий выпуск — **0.3.2**: DEB и RPM находятся во [вложениях GitHub-релиза](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.3.2).
 
 ## Системная ключница
 
@@ -41,7 +39,7 @@
 
 ## Установка `.deb`
 
-Скачайте пакет на [странице загрузки](https://consolecrypt.evsikov.net/download?lang=ru).
+Скачайте пакет на [странице загрузки](https://consolecrypt.dev/download?lang=ru).
 Откройте терминал в каталоге скачивания и подставьте точное имя полученного файла:
 
 ```sh

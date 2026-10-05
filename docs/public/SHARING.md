@@ -7,7 +7,7 @@
 
 ## Проверить поддержку сервера
 
-В публичном сервере `https://consolecrypt.evsikov.net` доступны выбранные хосты,
+В публичном сервере `https://sync.consolecrypt.dev` доступны выбранные хосты,
 сниппеты, общие коллекции, отдельные секреты и подтверждённое добавление собственных
 устройств. В своём сервере администратор включает эти возможности отдельно:
 [настройки Docker Compose и Helm](https://github.com/evsikovas/consolecrypt-server/blob/main/docs/public/HOSTING.md). Включение функции не публикует
@@ -117,7 +117,7 @@ offers **Add this device**, **Confirm another device** and **Device requests**.
 verification. **My device verification code** remains available in the page header.
 Switching tabs or importing a packet does not grant access by itself.
 
-The public server at `https://consolecrypt.evsikov.net` enables selective sharing,
+The public server at `https://sync.consolecrypt.dev` enables selective sharing,
 collections, individual secrets and verified enrollment of additional devices.
 Enabling support does not publish personal items automatically. In client **0.2.0
 and later**, use **Sharing → Refresh shared data** after support is enabled or a

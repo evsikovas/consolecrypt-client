@@ -40,7 +40,7 @@ flutter doctor -v
 ```powershell
 New-Item -ItemType Directory -Force C:\dev | Out-Null
 Set-Location C:\dev
-git clone https://git.evsikov.net/publics/consolecrypt.git
+git clone https://github.com/evsikovas/consolecrypt-client.git
 Set-Location consolecrypt
 .\client\scripts\build-windows.ps1 -Installer -NoCli
 ```

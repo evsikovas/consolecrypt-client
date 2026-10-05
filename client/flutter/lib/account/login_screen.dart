@@ -187,7 +187,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               autocorrect: false,
               decoration: InputDecoration(
                 labelText: l10n.loginServerUrlLabel,
-                hintText: 'https://sync.example.org',
+                hintText: 'https://sync.consolecrypt.dev',
                 suffixIcon: reauth
                     ? null
                     : Padding(

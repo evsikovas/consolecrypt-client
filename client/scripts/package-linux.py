@@ -100,7 +100,7 @@ def stage_bundle(root: Path, bundle: Path, stage: Path, version: str) -> dict:
         'ConsoleCrypt\nCopyright 2026 Alexander Evsikov <i@evsikov.net>\n'
         'First-party software: AGPL-3.0-only. Full text: LICENSE.\n'
         'Third-party notices: /opt/consolecrypt/data/flutter_assets/NOTICES.Z\n'
-        'Sources: https://git.evsikov.net/publics/consolecrypt\n')
+        'Sources: https://github.com/evsikovas/consolecrypt-client\n')
     return receipt
 
 
@@ -132,7 +132,7 @@ def build_packages(root: Path, bundle: Path, output: Path, version: str) -> dict
             # its FileChooser provider instead of forcing GTK onto KDE/GNOME.
             'Recommends: gnome-keyring, libgl1-mesa-dri, fonts-dejavu-core\n'
             'Suggests: openssh-client, xdg-desktop-portal-gtk | xdg-desktop-portal-gnome | xdg-desktop-portal-kde\n'
-            'Homepage: https://consolecrypt.evsikov.net\n'
+            'Homepage: https://consolecrypt.dev\n'
             'Description: SSH, SFTP and encrypted workspaces for Linux\n'
             ' Manage hosts, snippets and team sharing. Requires a graphical desktop\n'
             ' and an unlocked Secret Service keyring on its session D-Bus.\n')
@@ -146,7 +146,7 @@ def build_packages(root: Path, bundle: Path, output: Path, version: str) -> dict
             '%global _build_id_links none\n'
             f'Name: consolecrypt\nVersion: {release}\nRelease: {build}\n'
             'Summary: SSH, SFTP and encrypted workspaces for Linux\nLicense: AGPL-3.0-only\n'
-            'URL: https://consolecrypt.evsikov.net\nBuildArch: x86_64\n'
+            'URL: https://consolecrypt.dev\nBuildArch: x86_64\n'
             'Requires: gtk3 >= 3.22\nRequires: glib2 >= 2.56\nRequires: dbus\n'
             'Requires: xdg-desktop-portal\n'
             # Impeller dlopens GLES, so ELF dependency discovery cannot find it.

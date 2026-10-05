@@ -57,7 +57,7 @@ void main() {
       expect(find.textContaining('.rpm'), findsOneWidget);
       expect(find.text(language == 'ru' ? 'Официальная страница загрузки' : 'Official download page'), findsOneWidget);
       final address = tester.widget<SelectableText>(find.byKey(const ValueKey('updates-linux-download-page')));
-      expect(address.data, 'https://consolecrypt.evsikov.net/download?lang=$language');
+      expect(address.data, 'https://consolecrypt.dev/download?lang=$language');
       expect(find.byKey(const ValueKey('updates-check')), findsNothing);
       expect(find.byKey(const ValueKey('updates-automatic')), findsNothing);
       expect(find.byKey(const ValueKey('updates-install')), findsNothing);

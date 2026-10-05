@@ -8,11 +8,13 @@ const kAppName = 'ConsoleCrypt';
 const kAppAuthor = 'Alexander Evsikov';
 const kAppAuthorEmail = 'i@evsikov.net';
 const kAppCopyright = 'Copyright © 2026 $kAppAuthor';
+const kAppWebsite = 'https://consolecrypt.dev';
+const kAppSourceUrl = 'https://github.com/evsikovas/consolecrypt-client';
 
 /// Generated together with pubspec.yaml by client/scripts/bump-version.py.
 /// Native bundles, About and the core all use this release/build identity.
-const kAppVersion = '0.3.1';
-const kAppBuildNumber = 1382;
+const kAppVersion = '0.3.2';
+const kAppBuildNumber = 1394;
 const kAppFullVersion = '$kAppVersion+$kAppBuildNumber';
 
 /// SPDX licence expression of the client (ADR-0005).

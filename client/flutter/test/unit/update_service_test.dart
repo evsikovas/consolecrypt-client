@@ -46,6 +46,35 @@ void main() {
   Future<UpdateRelease?> verify(List<int> bytes) =>
       verifyUpdateFeed(bytes, platform: 'windows-x64', currentVersion: '0.1.10', publicKey: publicKey, now: clock);
 
+  test('transition accepts signed assets on the new domain and exact GitHub release path', () async {
+    expect(updateFeedUrl, 'https://updates.consolecrypt.dev/stable.json');
+    final asset = (payload['platforms']! as Map<String, Object?>)['windows-x64']! as Map<String, Object?>;
+    for (final url in [
+      'https://updates.consolecrypt.dev/releases/0.3.2/ConsoleCrypt-0.3.2+11012-windows-x64-setup.exe',
+      'https://updates.consolecrypt.evsikov.net/releases/0.3.2/client.exe',
+      'https://github.com/evsikovas/consolecrypt-client/releases/download/v0.3.2/ConsoleCrypt-0.3.2%2B11012-windows-x64-setup.exe',
+      'https://release-assets.githubusercontent.com/github-production-release-asset/123/asset-id?signature=example',
+    ]) {
+      asset['url'] = url;
+      expect((await verify(await envelope()))!.url, Uri.parse(url));
+    }
+    for (final url in [
+      'https://github.com/attacker/consolecrypt-client/releases/download/v0.3.2/ConsoleCrypt-installer.exe',
+      'https://github.com/evsikovas/other/releases/download/v0.3.2/ConsoleCrypt-installer.exe',
+      'https://github.com/evsikovas/consolecrypt-client/archive/refs/heads/main.zip',
+      'https://github.com/evsikovas/consolecrypt-client/releases/download/v0.3.2/ConsoleCrypt.exe?next=other',
+      'https://github.com.evil.invalid/evsikovas/consolecrypt-client/releases/download/v0.3.2/ConsoleCrypt.exe',
+      'https://release-assets.githubusercontent.com/other/file.exe',
+      'https://raw.githubusercontent.com/evsikovas/consolecrypt-client/main/client.exe',
+      'https://updates.consolecrypt.dev:8443/client.exe',
+      'https://user@updates.consolecrypt.dev/client.exe',
+      'http://updates.consolecrypt.dev/client.exe',
+    ]) {
+      asset['url'] = url;
+      await expectLater(verify(await envelope()), throwsA(isA<UpdateException>()), reason: url);
+    }
+  });
+
   test('authenticates a runtime-generated signature and selects the Windows installer', () async {
     final release = await verify(await envelope());
     expect(release!.version, '0.2.0');

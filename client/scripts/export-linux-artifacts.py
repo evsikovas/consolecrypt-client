@@ -32,7 +32,7 @@ def read_file(parent, name, limit):
 
 
 def export(source, destination):
-    job = int(os.environ["CI_JOB_ID"])
+    job = int(os.environ.get("CC_BUILD_NUMBER") or os.environ["CI_JOB_ID"])
     if job <= 0:
         raise ValueError("invalid build number")
     match = re.search(r"^version: (\d+\.\d+\.\d+)\+\d+\s*$", (destination / "client/flutter/pubspec.yaml").read_text(), re.M)

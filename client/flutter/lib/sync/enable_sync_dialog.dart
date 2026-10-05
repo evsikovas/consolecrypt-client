@@ -166,7 +166,7 @@ class _EnableSyncWizardState extends ConsumerState<EnableSyncWizard> {
                 keyboardType: TextInputType.url,
                 decoration: InputDecoration(
                   labelText: l10n.enableSyncDialogServerUrl,
-                  hintText: 'https://sync.example.org',
+                  hintText: 'https://sync.consolecrypt.dev',
                 ),
                 onSubmitted: (_) => _checkServer(),
               ),

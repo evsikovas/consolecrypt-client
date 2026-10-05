@@ -60,7 +60,7 @@ def verify(root):
             ['set(BINARY_NAME "consolecrypt")', 'set(APPLICATION_ID "' + STABLE_BUNDLE_ID + '")'], [STABLE_BUNDLE_ID + '.dev'])
     require(root, 'client/packaging/linux/consolecrypt.desktop', ['Name=ConsoleCrypt', 'Exec=consolecrypt'], ['consolecrypt-dev'])
     require(root, 'client/flutter/lib/updates/update_service.dart',
-            ['https://updates.consolecrypt.evsikov.net/stable.json', STABLE_UPDATE_KEY, 'verifyUpdateFeed(', 'verifyInstaller('], ['updates_disabled'])
+            ['https://updates.consolecrypt.dev/stable.json', STABLE_UPDATE_KEY, 'verifyUpdateFeed(', 'verifyInstaller('], ['updates_disabled'])
     require(root, 'client/flutter/macos/Runner/UpdateBridge.swift', ['saveAndOpen', 'VerifiedUpdateExport.write'], ['updates_disabled'])
     for platform in ['ios', 'macos']:
         require(root, f'client/flutter/rust_builder/{platform}/cc_bridge.podspec', ["s.libraries = 'z'"])

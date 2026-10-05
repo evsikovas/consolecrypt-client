@@ -23,7 +23,7 @@ void main() {
   test('all platform bundles include the complete project licence', () {
     final license = File('../../LICENSE').readAsStringSync();
     expect(license, contains('GNU AFFERO GENERAL PUBLIC LICENSE'));
-    expect(license, File('../../server/LICENSE').readAsStringSync());
+    // The server has its own repository; verify the client-bundled license here.
     expect(File('assets/licenses/AGPL-3.0-only.txt').readAsStringSync(), license);
     expect(File('pubspec.yaml').readAsStringSync(), contains('assets/licenses/'));
   });

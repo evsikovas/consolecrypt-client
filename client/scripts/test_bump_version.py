@@ -1,4 +1,5 @@
 import importlib.util
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -17,6 +18,10 @@ def fixture(root, version='0.1.0+1'):
 
 
 class VersionTests(unittest.TestCase):
+    def setUp(self):
+        self.enterContext(patch.dict(os.environ))
+        os.environ.pop('CC_BUILD_NUMBER', None)
+
     def test_ci_ids_below_or_equal_to_source_floor_do_not_reuse_a_counter(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

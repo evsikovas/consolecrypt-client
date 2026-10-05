@@ -55,7 +55,8 @@ if sys.argv[1] == 'run':
     state['source'] = str(source)
     state['compiler_diagnostics'] = '--compiler-diagnostics' in sys.argv[-1]
     build_env = sys.argv[sys.argv.index('--env') + 1]
-    assert build_env == 'CC_BUILD_NUMBER=' + os.environ['CI_JOB_ID']
+    build_number = os.environ.get('CC_BUILD_NUMBER') or os.environ['CI_JOB_ID']
+    assert build_env == 'CC_BUILD_NUMBER=' + build_number
     outside = Path(os.environ['CC_CI_TEST_OUTSIDE'])
     mode = os.environ.get('CC_CI_TEST_RECEIPT_MODE', 'regular')
     if mode == 'dist_symlink':
@@ -94,7 +95,7 @@ if sys.argv[1] == 'run':
     (private / 'login.keyring').write_bytes(marker)
     (acceptance / 'other-private.json').write_bytes(marker)
     (source / 'raw-diagnostic').write_bytes(marker)
-    version = '0.2.5+' + os.environ['CI_JOB_ID']
+    version = '0.2.5+' + build_number
     prefix = 'ConsoleCrypt-' + version + '-linux-x64'
     payloads = {
         prefix + '.deb': b'simulated DEB package\n',
@@ -125,8 +126,8 @@ if sys.argv[1] == 'run':
     else:
         sidecar.write_text(sums)
     manifest = {
-        'version': version, 'platform': 'linux-x64', 'deb_version': '0.2.5-' + os.environ['CI_JOB_ID'],
-        'rpm_version': '0.2.5', 'rpm_release': os.environ['CI_JOB_ID'],
+        'version': version, 'platform': 'linux-x64', 'deb_version': '0.2.5-' + build_number,
+        'rpm_version': '0.2.5', 'rpm_release': build_number,
         'native_sha256': {name: hashlib.sha256(name.encode()).hexdigest() for name in (
             'consolecrypt', 'lib/libapp.so', 'lib/libflutter_linux_gtk.so', 'lib/libcc_bridge.so',
         )},
@@ -241,6 +242,13 @@ class LinuxCiRetentionTest(unittest.TestCase):
         self.assertEqual(json.loads(receipt.read_text()), SAFE_RECEIPT | {"success": success})
         self.assertFalse(any(self.marker.encode() in path.read_bytes() for path in files.values()),
                          "only safe receipt/package files may be retained")
+
+    def test_github_build_number_works_without_legacy_job_id(self):
+        self.env['CC_BUILD_NUMBER'] = str(JOB)
+        del self.env['CI_JOB_ID']
+        result, _ = self.run_ci(0)
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(self.retained_files()['ConsoleCrypt.version'].read_text(), VERSION + '\n')
 
     def test_docker_failure_retains_only_safe_receipt_and_original_exit(self):
         result, _ = self.run_ci(23)
