@@ -1,0 +1,54 @@
+name: Signed update feeds
+
+on:
+  schedule:
+    - cron: '23 7 * * *'
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch-main:
+    if: github.repository == 'evsikovas/consolecrypt-client' && github.event_name == 'release' && !github.event.release.draft && !github.event.release.prerelease
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      # A release event uses a tag ref. It cannot access the signing key here;
+      # request a separate run whose workflow and scripts come from main.
+      - name: Request trusted-main publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST \
+            repos/evsikovas/consolecrypt-client/actions/workflows/update-feeds.yml/dispatches \
+            -f ref=main
+
+  publish:
+    if: github.repository == 'evsikovas/consolecrypt-client' && github.event.repository.default_branch == 'main' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    concurrency:
+      group: consolecrypt-signed-update-feeds
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Test publisher with ephemeral test keys
+        run: node --test client/scripts/test_publish_update_feeds.mjs
+      - name: Verify installers and renew signed feeds when due
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: node client/scripts/publish-update-feeds.mjs
