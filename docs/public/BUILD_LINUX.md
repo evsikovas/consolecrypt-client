@@ -6,7 +6,7 @@ Linux-версия предназначена для **x86-64** и графич�
 Базовая сборка — **Ubuntu 22.04**. Отдельная проверка установки и запуска
 в **Debian 12** и **Fedora 43** с X11 и программным рендерингом выполнена
 для исторической версии 0.2.5; результаты текущего CI приведены ниже.
-Текущий выпуск — **0.4.1**: DEB и RPM находятся во [вложениях GitHub-релиза](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.4.1).
+Текущий выпуск — **0.5.2**: DEB и RPM находятся во [вложениях GitHub-релиза](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.5.2).
 
 ## Системная ключница
 
@@ -35,7 +35,7 @@ Linux-версия предназначена для **x86-64** и графич�
 Не запускайте приложение с `sudo` или отдельным D-Bus другого пользователя.
 
 Проверки установки и запуска версии 0.2.5 ниже не подтверждают работу нового
-диалога RDP. Выбор папки и обмен файлами в Linux 0.4.1 требуют отдельной проверки
+диалога RDP. Выбор папки и обмен файлами в Linux 0.5.2 требуют отдельной проверки
 готового клиента в графическом сеансе с работающим порталом.
 
 ## Установка `.deb`
@@ -44,7 +44,7 @@ Linux-версия предназначена для **x86-64** и графич�
 Откройте терминал в каталоге скачивания и подставьте точное имя полученного файла:
 
 ```sh
-sudo apt install ./ConsoleCrypt-0.4.1+18013-linux-x64.deb
+sudo apt install ./ConsoleCrypt-0.5.2+21013-linux-x64.deb
 consolecrypt
 ```
 
@@ -55,7 +55,7 @@ consolecrypt
 ## Установка `.rpm`
 
 ```sh
-sudo dnf install ./ConsoleCrypt-0.4.1+18013-linux-x64.rpm
+sudo dnf install ./ConsoleCrypt-0.5.2+21013-linux-x64.rpm
 consolecrypt
 ```
 
@@ -122,15 +122,23 @@ runner `cc-linux-k3s` и монтирует только подготовлен�
 
 ## Проверки и ограничения
 
-Текущий [Linux job выпуска 0.4.1+18013](https://github.com/evsikovas/consolecrypt-client/actions/runs/39306084913/job/118243905471)
-успешно завершился 19 октября 2026 года. В изолированном окружении прошли
+Текущий [Linux job выпуска 0.5.2+21013](https://github.com/evsikovas/consolecrypt-client/actions/runs/39330293040/job/118326526505)
+успешно завершился 19 октября 2026 года (UTC). В изолированном окружении прошли
 две интеграции настоящего Rust bridge (`rust_core_test.dart`, 2/2), сценарий
 создания хранилища и перезапуска/разблокировки через UI
 (`app_persistence_test.dart`, 1/1) и Secret Service roundtrip.
 Созданы DEB и RPM; размеры и SHA-256 опубликованных пакетов сверены с GitHub
-asset metadata и [SHA256SUMS-0.4.1.txt](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.4.1/SHA256SUMS-0.4.1.txt).
-Этот прогон не повторяет установку пакетов в Debian/Fedora или проверку
-настоящего RDP-сеанса, выбора папки и передачи файлов через портал.
+asset metadata и [SHA256SUMS-0.5.2.txt](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.2/SHA256SUMS-0.5.2.txt).
+
+| Файл | Размер, байт | SHA-256 |
+| --- | ---: | --- |
+| [DEB](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.2/ConsoleCrypt-0.5.2%2B21013-linux-x64.deb) | 26 675 076 | `4f46e93cb91aa741e4f84235b1366ae0d518ea2e27aad3ee678befe627b5abc3` |
+| [RPM](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.2/ConsoleCrypt-0.5.2%2B21013-linux-x64.rpm) | 36 007 926 | `89979ad255cbf6d224812ae985c3e672c892a57cbbd35d2bfda03bda4da270a1` |
+
+Нативные интеграции выполнялись в отдельной тестовой сборке. Готовые DEB/RPM
+не проходили визуальную приёмку установленного интерфейса. Этот прогон
+не повторяет установку пакетов в Debian/Fedora или проверку настоящего
+RDP-сеанса, выбора папки и передачи файлов через портал.
 
 Исторический прогон 0.2.5: GitLab [build-linux 1358](https://git.evsikov.net/publics/consolecrypt/-/jobs/1358)
 прошёл две интеграции Rust bridge и один полный сценарий UI: создание хранилища,
@@ -166,12 +174,12 @@ Linux ARM64, Flatpak/AppImage, RPM для RHEL, физический GPU и Wayl
 
 ## English
 
-ConsoleCrypt **0.4.1+18013** targets Linux x86-64. The build baseline is Ubuntu
+ConsoleCrypt **0.5.2+21013** targets Linux x86-64. The build baseline is Ubuntu
 22.04. The earlier 0.2.5 validation covered DEB/RPM installation and an actual
 welcome-screen launch in isolated Debian 12 and Fedora 43 using software X11
-rendering; it is not a new acceptance run of 0.4.1.
-Install the linked DEB with `sudo apt install ./ConsoleCrypt-0.4.1+18013-linux-x64.deb`
-or the RPM with `sudo dnf install ./ConsoleCrypt-0.4.1+18013-linux-x64.rpm`.
+rendering; it is not a new acceptance run of 0.5.2.
+Install the linked DEB with `sudo apt install ./ConsoleCrypt-0.5.2+21013-linux-x64.deb`
+or the RPM with `sudo dnf install ./ConsoleCrypt-0.5.2+21013-linux-x64.rpm`.
 Then run `consolecrypt` as your regular desktop user, without `sudo`.
 
 An existing unlocked default persistent Secret Service keyring and session
@@ -180,9 +188,11 @@ or unlock it and has no plaintext-key fallback. Download future DEB/RPM packages
 and update with the package manager: Linux has no signed in-app updater feed
 or automatic installation. Keep your profiles, encrypted backups and keyring.
 
-The 0.4.1 CI passed two native Rust bridge tests, one UI vault restart/unlock test
+The 0.5.2 CI passed two native Rust bridge tests, one UI vault restart/unlock test
 and an isolated Secret Service roundtrip before producing DEB/RPM packages.
-It did not repeat package installation on Debian/Fedora or RDP/portal acceptance.
+These integrations used a separate test build; the installed release GUI was not
+visually accepted. The run did not repeat package installation on Debian/Fedora
+or RDP/portal acceptance. Exact package sizes and SHA-256 are listed above.
 The earlier 0.2.5 package upgrade, removal and reinstall checks preserved owned
 synthetic HOME/keyring markers only; this was not a migration test of a real user's
 vault. Physical GPU, Wayland,
@@ -201,5 +211,5 @@ not override the desktop's provider selection.
 The wlroots portal alone does not supply the required FileChooser API; add a
 compatible provider, such as GTK. See the [RFD backend requirements](https://docs.rs/rfd/0.15.4/rfd/#xdg-desktop-portal-backend).
 The previous 0.2.5 installation/startup checks do not verify the new RDP picker.
-Linux 0.4.1 folder selection and file exchange need separate acceptance with the
+Linux 0.5.2 folder selection and file exchange need separate acceptance with the
 packaged client and an active desktop portal.

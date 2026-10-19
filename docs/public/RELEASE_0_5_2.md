@@ -33,16 +33,28 @@
 на macOS/Windows; Linux и мобильные платформы сохраняют существующие возможности.
 iOS-пакет предназначен для Simulator, а не для установки на физический iPhone.
 
-### Проверка и происхождение снимков
+### Пакеты 0.5.2
 
-Перед публикацией проверяются Rust PTY/lifecycle, Flutter-модели и контроллеры,
-смешанные вкладки, выбор WSL, контекст ИИ, повторная установка моделей и миграция
-каталогов. RU/EN снимки воспроизводят настоящий интерфейс с демонстрационными
-данными. Они не доказывают запуск WSL или генерацию всеми тремя моделями на
-пользовательском компьютере. Нативные сборки и проверки пакетов выполняются
-отдельно в workflow релизного тега.
+Все семь файлов опубликованы в [релизе v0.5.2](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.5.2).
+Размеры и SHA-256 сверены с опубликованными файлами; для проверки загрузки
+используйте [SHA256SUMS-0.5.2.txt](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.2/SHA256SUMS-0.5.2.txt).
 
-Ссылки на загрузки обновляются после появления проверенных файлов релиза.
+| Платформа | Сборка | Формат |
+| --- | --- | --- |
+| macOS ARM64 и Intel x86-64 | 0.5.2+21011 | Universal DMG |
+| Windows x64 | 0.5.2+21012 | EXE и portable ZIP |
+| Linux x64 | 0.5.2+21013 | DEB и RPM |
+| Android ARM64 | 0.5.2+21014 | APK |
+| iOS Simulator на Mac | 0.5.2+21015 | Universal ZIP |
+
+Windows-пакеты не имеют Authenticode-подписи. APK сохраняет сертификат предыдущего
+выпуска. iOS preview прошёл установку и запуск в Simulator; [инструкция запуска](https://github.com/evsikovas/consolecrypt-client/blob/main/docs/public/BUILD_IOS.md).
+Это не проверка RDP на физическом телефоне. На Windows подтверждены настоящие
+PowerShell/cmd и генерация всеми тремя локальными моделями на CPU. Несколько
+реальных WSL-дистрибутивов и обновление установленной 0.4.1 не входили в
+проверенную матрицу. RU/EN снимки показывают настоящий интерфейс с синтетическими
+данными; они не являются записью этих нативных проверок.
+
 Перед обновлением сохраните резервную копию и комплект восстановления;
 не удаляйте данные приложения, модели или системную связку ключей.
 
@@ -75,7 +87,27 @@ also fixed. Local shells and built-in AI are macOS/Windows features; iOS remains
 a Simulator preview.
 
 See [local terminals](https://github.com/evsikovas/consolecrypt-client/blob/v0.5.2/docs/public/LOCAL_TERMINALS.md), [local AI](https://github.com/evsikovas/consolecrypt-client/blob/v0.5.2/docs/public/LOCAL_AI.md) and
-[updating](https://github.com/evsikovas/consolecrypt-client/blob/v0.5.2/docs/public/UPDATES.md). Screenshots use real widgets and synthetic demo data,
-not native WSL or model-inference recordings. Native package checks run
-separately in the tag workflow. Download links change only after release assets
-are available. Preserve app data, models, vault and Keychain when updating.
+[updating](https://github.com/evsikovas/consolecrypt-client/blob/v0.5.2/docs/public/UPDATES.md).
+
+### Published packages
+
+[Release v0.5.2](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.5.2)
+contains all seven files. Their sizes and hashes match the published assets;
+verify downloads against [SHA256SUMS-0.5.2.txt](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.2/SHA256SUMS-0.5.2.txt).
+
+| Platform | Build | Format |
+| --- | --- | --- |
+| macOS ARM64 and Intel x86-64 | 0.5.2+21011 | Universal DMG |
+| Windows x64 | 0.5.2+21012 | EXE and portable ZIP |
+| Linux x64 | 0.5.2+21013 | DEB and RPM |
+| Android ARM64 | 0.5.2+21014 | APK |
+| iOS Simulator on Mac | 0.5.2+21015 | Universal ZIP |
+
+Windows packages are not Authenticode-signed. The APK retains the previous
+release's signing certificate. The iOS preview was installed and launched in
+Simulator; see the [launch instructions](https://github.com/evsikovas/consolecrypt-client/blob/main/docs/public/BUILD_IOS.md).
+This does not verify RDP on a physical phone. Native PowerShell/cmd and CPU
+generation with all three local models passed on Windows. Multiple real WSL
+distributions and upgrading an installed 0.4.1 were outside the verified matrix.
+Screenshots use real widgets and synthetic demo data, not recordings of native
+acceptance. Preserve app data, models, vault and Keychain when updating.

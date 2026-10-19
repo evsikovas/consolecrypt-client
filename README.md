@@ -22,7 +22,7 @@ your own sync server, or use the public ConsoleCrypt server.
 - **SSH:** multiple terminal tabs, password and key authentication, host key
   verification, jump hosts, tunnels, and terminal history. Connections go directly
   from your device to the target host.
-- **Local terminals (0.5 source):** zsh on macOS; PowerShell, cmd and individual
+- **Local terminals:** zsh on macOS; PowerShell, cmd and individual
   WSL distributions on Windows, alongside SSH tabs. [Guide](docs/public/LOCAL_TERMINALS.md).
 - **RDP:** Windows remote desktops through IronRDP, parallel session tabs,
   full-screen mode, text clipboard sharing, and redirection of a selected folder
@@ -140,14 +140,16 @@ Tests that need a native library, a system keyring, or a real SSH/RDP server hav
 additional prerequisites. Do not run Flutter tests alongside a native build
 in the same working directory.
 
-## Version 0.5 series
+## Release 0.5.2
 
 The 0.5 series adds local terminals and a three-model local AI catalog, while
 preserving verified model downloads and device preferences across updates.
 Local AI/snippet commands support insertion without Enter; ordinary local
 terminal input remains interactive. See the [0.5 notes](docs/public/RELEASE_0_5_2.md),
 [local terminals](docs/public/LOCAL_TERMINALS.md) and [local AI](docs/public/LOCAL_AI.md).
-The download link above continues to point to the latest published release.
+[Release 0.5.2](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.5.2)
+provides seven files for macOS, Windows, Linux, Android and iOS Simulator.
+Verify downloads against [the release SHA-256 manifest](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.2/SHA256SUMS-0.5.2.txt).
 
 ## Release 0.4.1
 
