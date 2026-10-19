@@ -21,6 +21,14 @@
 Модель небольшая и может ошибаться: команды выполняются только после подтверждения.
 iOS-пакет остаётся предварительной сборкой для Simulator.
 
+**Обновление старой установки:** прежний адрес `updates.consolecrypt.evsikov.net`
+сейчас недоступен. Если встроенная проверка использует его, скачайте установщик
+со [страницы загрузок](https://consolecrypt.dev/download?lang=ru), закройте
+ConsoleCrypt и обновите существующую установку; на macOS замените приложение
+в Applications. Сохраните резервную копию и комплект восстановления. Хранилище,
+данные приложения и системную связку ключей удалять не нужно. Новые сборки
+получают обновления с `updates.consolecrypt.dev`.
+
 ## English
 
 Android RDP now offers a relative touchpad, two-finger scroll/right-click, drag and
@@ -32,3 +40,11 @@ now build only from version tags on `main`.
 
 Local AI supports macOS ARM64/x64 and Windows x64 (CPU); the iOS artifact remains
 a Simulator preview. See [local AI](LOCAL_AI.md) and [RDP controls](RDP.md).
+
+**Updating an older installation:** the previous address
+`updates.consolecrypt.evsikov.net` is currently unavailable. If your in-app
+updater uses it, download the installer from the
+[download page](https://consolecrypt.dev/download?lang=en), quit ConsoleCrypt
+and update the existing installation; on macOS, replace the app in Applications.
+Save a backup and recovery kit. Keep the app's data, vault and system keychain;
+do not uninstall them. New builds use `updates.consolecrypt.dev`.

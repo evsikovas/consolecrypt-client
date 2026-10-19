@@ -11,6 +11,15 @@
 Проверка при запуске не устанавливает ничего сама и не прерывает SSH-сеансы.
 Перед установкой есть подтверждение. Профили, хранилища и настройки сохраняются.
 
+**Переход со старого адреса обновлений:** на 19 октября 2026 года
+`updates.consolecrypt.evsikov.net` недоступен. Сборки, использующие этот адрес,
+не смогут получить новый релиз через встроенную проверку. Скачайте установщик
+со [страницы загрузок](https://consolecrypt.dev/download?lang=ru), закройте
+ConsoleCrypt и обновите существующую установку. На macOS замените приложение
+в Applications. Не удаляйте приложение с его данными, хранилище или системную
+связку ключей: ручное обновление сохраняет их. Новые сборки используют
+`updates.consolecrypt.dev`. Сначала сохраните резервную копию и комплект восстановления.
+
 На Windows запускается установщик для текущего пользователя; приложение
 закрывает соединения и базу данных перед выходом. На Android необходимо
 разрешить установку обновлений из ConsoleCrypt и подтвердить системное окно.
@@ -41,7 +50,8 @@ macOS и sandbox остаются включены, хранилище и свя
 Публикация и ключ подписи управляются вне публичного репозитория. Обновление
 становится доступно после публикации пакета поддерживаемой платформы,
 контрольных сумм и подписанных метаданных.
-Сервис проверяет релизы каждые пять минут.
+Зеркало обновлений проверяет релизы каждые 15 минут. До появления обоих
+подписанных списков нового релиза оно сохраняет предыдущую проверенную версию.
 
 ## Linux и iOS
 
@@ -60,12 +70,24 @@ macOS и sandbox остаются включены, хранилище и свя
 On Windows, macOS and Android, open **Settings → Updates** to enable/disable startup checks, check manually,
 and download a newer version. Checking never installs anything or interrupts
 SSH sessions. Installation requires confirmation and preserves profiles and vaults.
+
+**Moving from the old update address:** as of 19 October 2026,
+`updates.consolecrypt.evsikov.net` is unavailable. Builds using that address
+cannot discover new releases through their in-app updater. Download the installer
+from the [download page](https://consolecrypt.dev/download?lang=en), quit
+ConsoleCrypt and update the existing installation. On macOS, replace the app in
+Applications. Keep the app's data, vault and system keychain; do not uninstall
+them. A manual update preserves them. New builds use `updates.consolecrypt.dev`.
+Save a backup and recovery kit first.
+
 Windows runs the per-user installer, Android uses the system installation
 confirmation. On macOS, choose a new DMG filename or folder in the system
 **Save and open** dialog, quit ConsoleCrypt, and replace the app in Applications.
 Cancelling the save dialog leaves the verified download ready for retry;
 existing files are never overwritten. Signed release metadata and SHA-256 verification protect
 the installer; account credentials and vault data are never sent.
+The update mirror checks every 15 minutes and retains the previous verified
+release until both signed feeds for the new release are available.
 
 If ConsoleCrypt 0.2.1 or an older in-app updater on macOS produced an app that cannot open,
 download the latest DMG once through your browser and replace the app in Applications.

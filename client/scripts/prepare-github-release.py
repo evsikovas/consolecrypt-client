@@ -6,6 +6,8 @@ from pathlib import Path
 import re
 import shutil
 
+MAX_INSTALLER_BYTES = 500 * 1024 * 1024  # The serving update mirror applies this cap to every package.
+
 
 def prepare(artifacts, output, version):
     if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', version):
@@ -35,6 +37,8 @@ def prepare(artifacts, output, version):
             source = folder / source_name
             if source.is_symlink() or not source.is_file() or source.stat().st_size <= 0:
                 raise ValueError(f'Missing regular installer: {source_name}')
+            if source.stat().st_size > MAX_INSTALLER_BYTES:
+                raise ValueError(f'Installer exceeds the update mirror limit of 500 MiB: {source_name}')
             files.append((source, destination_name))
     output.mkdir(parents=True, exist_ok=True)
     checksums = []

@@ -85,6 +85,23 @@ class ArtifactTests(unittest.TestCase):
             release.prepare(self.artifacts, self.output, '0.4.0')
         self.assertEqual((self.output / 'keep').read_text(), 'retained')
 
+    def test_every_package_obeys_mirror_size_limit_before_any_output(self):
+        # Sparse files exercise the actual filesystem boundary without allocating
+        # 500 MiB. Check optional archives/packages too, not just signed updaters.
+        for platform, names in self.names.items():
+            for name in names:
+                source = self.artifacts / platform / name
+                original = source.read_bytes()
+                with self.subTest(platform=platform, name=name):
+                    try:
+                        with source.open('wb') as stream:
+                            stream.truncate(500 * 1024 * 1024 + 1)
+                        with self.assertRaisesRegex(ValueError, 'mirror limit of 500 MiB'):
+                            release.prepare(self.artifacts, self.output, '0.4.0')
+                        self.assertFalse(self.output.exists(), 'No partial release output may be copied')
+                    finally:
+                        source.write_bytes(original)
+
 
 if __name__ == '__main__':
     unittest.main()
