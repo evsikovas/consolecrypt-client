@@ -1,8 +1,11 @@
 # ConsoleCrypt 0.5.1
 
+> Выпуск не опубликован: Windows ConPTY-проверки выявили проблему стартового
+> обмена с терминалом. Тег сохранён; исправления готовятся в 0.5.2.
+
 ## Русский
 
-Первый опубликованный выпуск серии 0.5. Проверки миграции macOS выполняются
+Планировался как первый выпуск серии 0.5; публикация не состоялась. Проверки миграции macOS выполняются
 на POSIX-системах, а тест медленного чтения PTY учитывает объём данных,
 независимо от того, на какие порции их разбивает операционная система.
 
@@ -47,7 +50,7 @@ iOS-пакет предназначен для Simulator, а не для уст�
 
 ## English
 
-First published release in the 0.5 series. macOS filesystem migration fixtures
+This candidate was not published after Windows ConPTY checks failed. The tag is preserved; fixes are being prepared in 0.5.2. macOS filesystem migration fixtures
 run on POSIX hosts; the slow PTY consumer test uses byte-based pacing instead
 of assuming an operating-system-specific chunk size.
 
