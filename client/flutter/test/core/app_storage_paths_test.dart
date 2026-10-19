@@ -30,14 +30,24 @@ void main() {
   Matcher failure(AppStorageFailure value) =>
       throwsA(isA<AppStorageException>().having((error) => error.failure, 'failure', value));
 
-  test('new install with no container resolves canonical roots without creating them', () async {
+  // These exercise the macOS migration policy against real POSIX filesystem
+  // fixtures. Windows temporary paths cannot stand in for an absolute macOS
+  // HOME, and symlink/chmod semantics differ. Keep explicit-root and non-Mac
+  // policy checks below cross-platform; report these fixtures as skipped.
+  void macStorageTest(String description, Future<void> Function() body) => test(
+    description,
+    body,
+    skip: Platform.isWindows ? 'macOS storage migration requires POSIX filesystem fixtures' : false,
+  );
+
+  macStorageTest('new install with no container resolves canonical roots without creating them', () async {
     final paths = await resolve();
     expect(paths.coreRoot!.path, currentCore.path);
     expect(paths.localAiRoot!.path, currentAi.path);
     expect(home.listSync(), isEmpty);
   });
 
-  test('sandbox upgrade preserves vault, model and explicit false preference in place', () async {
+  macStorageTest('sandbox upgrade preserves vault, model and explicit false preference in place', () async {
     final vault = fixture(legacyCore, 'profiles/fixture/vault.db', 'synthetic encrypted vault');
     final settings = fixture(
       legacyCore,
@@ -59,7 +69,7 @@ void main() {
     expect((await resolve()).coreRoot!.path, legacyCore.path); // Stable on restart.
   });
 
-  test('core and AI choose existing roots independently in either mixed layout', () async {
+  macStorageTest('core and AI choose existing roots independently in either mixed layout', () async {
     fixture(legacyCore, 'profiles.json', '{}');
     fixture(currentAi, 'models/model.gguf', 'synthetic model');
     var paths = await resolve();
@@ -74,7 +84,7 @@ void main() {
   });
 
   for (final component in ['core', 'AI']) {
-    test('two populated $component roots fail without merging or removing either', () async {
+    macStorageTest('two populated $component roots fail without merging or removing either', () async {
       final current = component == 'core' ? currentCore : currentAi;
       final legacy = component == 'core' ? legacyCore : legacyAi;
       final a = fixture(current, 'owned.txt', 'current');
@@ -90,7 +100,7 @@ void main() {
     });
   }
 
-  test('empty canonical directories do not hide populated legacy storage', () async {
+  macStorageTest('empty canonical directories do not hide populated legacy storage', () async {
     currentCore.createSync(recursive: true);
     currentAi.createSync(recursive: true);
     fixture(legacyCore, 'ui-state.json', '{}');
@@ -100,8 +110,7 @@ void main() {
     expect(paths.localAiRoot!.path, legacyAi.path);
   });
 
-  test('two paths pointing to the same existing root are not divergent copies', () async {
-    if (Platform.isWindows) return; // Windows symlinks require a separate privilege.
+  macStorageTest('two paths pointing to the same existing root are not divergent copies', () async {
     fixture(legacyCore, 'ui-state.json', '{}');
     currentCore.parent.createSync(recursive: true);
     Link(currentCore.path).createSync(legacyCore.path);
@@ -110,7 +119,7 @@ void main() {
     expect(File('${legacyCore.path}/ui-state.json').readAsStringSync(), '{}');
   });
 
-  test('explicit portable core root is respected while AI still reuses legacy storage', () async {
+  macStorageTest('explicit portable core root is respected while AI still reuses legacy storage', () async {
     fixture(currentCore, 'ui-state.json', '{}');
     fixture(legacyCore, 'ui-state.json', '{}');
     fixture(legacyAi, 'models/model.gguf', 'synthetic model');
@@ -128,14 +137,14 @@ void main() {
     expect(home.listSync(), isEmpty);
   });
 
-  test('launcher carrying former container HOME resolves only one container level', () async {
+  macStorageTest('launcher carrying former container HOME resolves only one container level', () async {
     fixture(legacyCore, 'ui-state.json', '{}');
     final paths = await resolve(extra: {'HOME': '${home.path}/Library/Containers/io.consolecrypt.consolecrypt/Data'});
     expect(paths.coreRoot!.path, legacyCore.path);
     expect(paths.localAiRoot!.path, currentAi.path);
   });
 
-  test('non-directory root is an error, not a new empty profile', () async {
+  macStorageTest('non-directory root is an error, not a new empty profile', () async {
     currentCore.parent.createSync(recursive: true);
     File(currentCore.path).writeAsStringSync('unexpected file');
     await expectLater(resolve(), failure(AppStorageFailure.unavailable));
@@ -148,13 +157,21 @@ void main() {
       AppStoragePaths.resolve(isMacOS: true, environment: {}),
       failure(AppStorageFailure.homeUnavailable),
     );
-    final paths = await AppStoragePaths.resolve(isMacOS: false, environment: {});
+    await expectLater(
+      AppStoragePaths.resolve(isMacOS: true, environment: {'HOME': r'C:\Users\fixture'}),
+      failure(AppStorageFailure.homeUnavailable),
+    );
+    // Windows keeps its native AppData defaults even if HOME or a macOS-style
+    // portable override is present; this branch must not inspect those paths.
+    final paths = await AppStoragePaths.resolve(
+      isMacOS: false,
+      environment: {'HOME': r'C:\Users\fixture', 'CONSOLECRYPT_DATA_DIR': r'C:\fixture-vault'},
+    );
     expect(paths.coreRoot, null);
     expect(paths.localAiRoot, null);
   });
 
-  test('denied previous container must not be treated as a missing root', () async {
-    if (Platform.isWindows) return; // POSIX permissions on owned fixtures only.
+  macStorageTest('denied previous container must not be treated as a missing root', () async {
     fixture(legacyCore, 'ui-state.json', '{}');
     final container = Directory('${home.path}/Library/Containers/io.consolecrypt.consolecrypt');
     expect(Process.runSync('chmod', ['000', container.path]).exitCode, 0);
@@ -167,8 +184,7 @@ void main() {
     }
   });
 
-  test('denied existing UI state cannot silently reset a disabled local AI preference', () async {
-    if (Platform.isWindows) return;
+  macStorageTest('denied existing UI state cannot silently reset a disabled local AI preference', () async {
     final state = fixture(
       legacyCore,
       'ui-state.json',
