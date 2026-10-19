@@ -36,6 +36,7 @@ jobs:
         run: |
           python3 -m unittest discover -s client/scripts -p 'test_github_release.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_ci_cleanup.py' -v
+          python3 -m unittest discover -s client/scripts -p 'test_cleanup_policy.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_linux_cleanup.py' -v
 
   macos:
@@ -47,7 +48,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          clean: false
           persist-credentials: false
+      - name: Register this release workspace
+        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE" --claim-workspace
       - name: Native toolchain and version
         run: |
           source client/scripts/ci-macos-tools.sh --xcode
@@ -80,9 +84,6 @@ jobs:
             dist/macos/ConsoleCrypt-*-macos-universal.dmg
             dist/macos/SHA256SUMS-macos.txt
             dist/macos/ConsoleCrypt.version
-      - name: Clean generated output after artifact upload
-        if: always()
-        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE"
 
   windows:
     needs: validate
@@ -94,7 +95,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          clean: false
           persist-credentials: false
+      - name: Register this release workspace
+        run: '& client/scripts/cleanup-ci-workspace.ps1 -ClaimWorkspace'
       - name: Check and package Windows
         run: |
           & client/scripts/ci-windows.ps1
@@ -110,9 +114,6 @@ jobs:
             dist/windows/ConsoleCrypt-windows.zip
             dist/windows/*.sha256
             dist/windows/ConsoleCrypt.version
-      - name: Clean generated output after artifact upload
-        if: always()
-        run: '& client/scripts/cleanup-ci-workspace.ps1'
 
   linux:
     needs: validate
@@ -139,12 +140,9 @@ jobs:
             dist/linux/*.json
             dist/linux/acceptance/linux-ffi-integration.json
             dist/linux/ConsoleCrypt.version
-      - name: Stop this job's Linux container and remove scratch
+      - name: Stop this job's Linux container and retain scratch
         if: always()
         run: python3 client/scripts/cleanup-linux-job.py --workspace "$GITHUB_WORKSPACE"
-      - name: Clean generated output after artifact upload
-        if: always()
-        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE"
 
   android:
     needs: validate
@@ -156,7 +154,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          clean: false
           persist-credentials: false
+      - name: Register this release workspace
+        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE" --claim-workspace
       - name: Native toolchain and version
         run: |
           source client/scripts/ci-macos-tools.sh
@@ -173,9 +174,6 @@ jobs:
             dist/android/ConsoleCrypt-android-arm64.apk
             dist/android/ConsoleCrypt-android-arm64.apk.sha256
             dist/android/ConsoleCrypt.version
-      - name: Clean generated output after artifact upload
-        if: always()
-        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE"
 
   ios:
     needs: macos
@@ -184,7 +182,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          clean: false
           persist-credentials: false
+      - name: Register this release workspace
+        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE" --claim-workspace
       - name: Native toolchain and version
         run: |
           source client/scripts/ci-macos-tools.sh --xcode
@@ -201,11 +202,10 @@ jobs:
             dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip
             dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip.sha256
             dist/ios/ConsoleCrypt-simulator-universal.version
-      - name: Clean generated output after artifact upload
-        if: always()
-        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE"
 
   publish:
+    outputs:
+      published: ${{ steps.release.outputs.published }}
     needs: [validate, macos, windows, linux, android, ios]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -225,6 +225,7 @@ jobs:
       - name: Assemble versioned installers and checksums
         run: python3 client/scripts/prepare-github-release.py --artifacts release-artifacts --output release-out --version "$RELEASE_VERSION"
       - name: Publish complete release without replacing an existing version
+        id: release
         run: |
           # Create a draft first; partial uploads never appear as latest.
           # A rerun must use a new tag if this release already exists.
@@ -233,5 +234,31 @@ jobs:
             --notes-file "docs/public/RELEASE_${RELEASE_VERSION//./_}.md" \
             release-out/*
           gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+          echo "published=true" >> "$GITHUB_OUTPUT"
       - name: Request signed update metadata from trusted main
         run: gh workflow run update-feeds.yml --ref main
+
+  # No checkout here: validate the immutable owner/HEAD of the released build.
+  # The workflow concurrency lock remains held until these jobs finish.
+  cleanup_windows:
+    needs: publish
+    if: always() && needs.publish.outputs.published == 'true'
+    runs-on: [self-hosted, Windows, X64, consolecrypt, client]
+    timeout-minutes: 30
+    env:
+      CC_RELEASE_PUBLISHED: ${{ needs.publish.outputs.published }}
+    steps:
+      - name: Clean the published release workspace
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: '& client/scripts/cleanup-ci-workspace.ps1 -AfterPublication'
+
+  cleanup_macos:
+    needs: publish
+    if: always() && needs.publish.outputs.published == 'true'
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 30
+    env:
+      CC_RELEASE_PUBLISHED: ${{ needs.publish.outputs.published }}
+    steps:
+      - name: Clean the published release workspace
+        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE" --after-publication

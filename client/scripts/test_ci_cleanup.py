@@ -29,7 +29,8 @@ class CleanupTests(unittest.TestCase):
                     'GITHUB_WORKSPACE': str(self.repo), 'GITHUB_RUN_ID': '1234',
                     'GITHUB_RUN_ATTEMPT': '1', 'GITHUB_JOB': 'windows',
                     'RUNNER_TEMP': str(self.base / 'temp'),
-                    'GITHUB_EVENT_NAME': 'push', 'GITHUB_REF': 'refs/tags/v0.5.1'}
+                    'GITHUB_EVENT_NAME': 'push', 'GITHUB_REF': 'refs/tags/v0.5.1',
+                    'GITHUB_SHA': cleanup.git(self.repo, 'rev-parse', 'HEAD')}
 
     def make_repo(self, root):
         root.mkdir(exist_ok=True)
@@ -38,6 +39,10 @@ class CleanupTests(unittest.TestCase):
                         'https://github.com/' + cleanup.REPOSITORY], check=True)
         self.file(root / 'client/flutter/pubspec.yaml', 'name: consolecrypt')
         self.file(root / 'client/rust/Cargo.toml', '[workspace]')
+        subprocess.run(['git', '-C', str(root), 'add', '.'], check=True)
+        subprocess.run(['git', '-C', str(root), '-c', 'user.name=CI Fixture',
+                        '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgsign=false',
+                        '-c', 'core.hooksPath=' + os.devnull, 'commit', '-qm', 'fixture'], check=True)
 
     def file(self, path, text='synthetic output'):
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -115,12 +120,15 @@ class CleanupTests(unittest.TestCase):
             st_file_attributes = 0x400
         self.assertTrue(cleanup.is_link(Junction()))
 
-    def test_current_job_cache_is_marked_and_other_jobs_are_preserved(self):
+    def test_cache_reuses_failed_attempts_but_other_workspaces_are_preserved(self):
         root = cleanup.prepare_ai_cache(self.env)
         self.file(root / 'models/model.gguf')
         self.assertEqual(cleanup.prepare_ai_cache(self.env), root)
         other_env = {**self.env, 'GITHUB_RUN_ID': '5678'}
-        other = cleanup.prepare_ai_cache(other_env)
+        self.assertEqual(cleanup.prepare_ai_cache(other_env), root)
+        other_repo = self.base / 'other-workspace'
+        self.make_repo(other_repo)
+        other = cleanup.prepare_ai_cache({**other_env, 'GITHUB_WORKSPACE': str(other_repo)})
         sentinel = self.file(other / 'models/model.gguf', 'keep')
         for path in cleanup.owned_ai_cache(self.env):
             cleanup.remove_owned(path)
@@ -285,13 +293,71 @@ class CleanupTests(unittest.TestCase):
         cache = cleanup.prepare_ai_cache(self.env)
         self.file(cache / 'models/model.gguf')
         receipt = self.file(self.repo / '.local/receipt.json', 'keep')
-        result = subprocess.run([sys.executable, str(script), '--workspace', str(self.repo)],
-                                env={**os.environ, **self.env}, capture_output=True, text=True)
+        cleanup.claim_workspace(self.repo, self.env)
+        published = {**self.env, 'GITHUB_JOB': 'cleanup_windows', 'CC_RELEASE_PUBLISHED': 'true'}
+        result = subprocess.run([sys.executable, str(script), '--workspace', str(self.repo), '--after-publication'],
+                                env={**os.environ, **published}, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('CI_CLEANUP_PASS', result.stdout)
         self.assertFalse(output.exists())
         self.assertFalse(cache.exists())
         self.assertEqual(receipt.read_text(), 'keep')
+
+    def test_failed_build_and_diagnostic_keep_outputs_without_publication_proof(self):
+        script = self.repo / 'client/scripts/cleanup-ci-workspace.py'
+        self.file(script, Path(cleanup.__file__).read_text())
+        output = self.file(self.repo / 'target/intermediate')
+        cleanup.claim_workspace(self.repo, self.env)
+        base = {**self.env, 'GITHUB_JOB': 'cleanup_windows', 'CC_RELEASE_PUBLISHED': 'true'}
+        for change in ({'CC_RELEASE_PUBLISHED': 'false'}, {'GITHUB_REF': 'refs/tags/check-windows-0.5.1-1'},
+                       {'GITHUB_JOB': 'windows'}, {'GITHUB_RUN_ID': '5678'}, {'GITHUB_SHA': '0' * 40}):
+            with self.subTest(change=change):
+                result = subprocess.run([sys.executable, str(script), '--workspace', str(self.repo), '--after-publication'],
+                                        env={**os.environ, **base, **change}, capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertTrue(output.exists())
+        result = subprocess.run([sys.executable, str(script), '--workspace', str(self.repo)],
+                                env={**os.environ, **base}, capture_output=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(output.exists())
+
+    def test_registration_rejects_wrong_source_and_unknown_marker(self):
+        with self.assertRaises(ValueError):
+            cleanup.claim_workspace(self.repo, {**self.env, 'GITHUB_SHA': '0' * 40})
+        marker = self.file(self.repo / cleanup.WORKSPACE_OWNER_FILE, 'unknown local data')
+        with self.assertRaises(ValueError):
+            cleanup.claim_workspace(self.repo, self.env)
+        self.assertEqual(marker.read_text(), 'unknown local data')
+
+    def test_maintenance_keeps_outputs_until_matching_release_is_verified(self):
+        tools = self.repo / '.ci-maintenance-tools'
+        self.make_repo(tools)
+        script = tools / 'client/scripts/cleanup-ci-workspace.py'
+        self.file(script, Path(cleanup.__file__).read_text())
+        output = self.file(self.repo / 'target/intermediate')
+        env = {**self.env, 'GITHUB_EVENT_NAME': 'workflow_dispatch', 'GITHUB_REF': 'refs/heads/main',
+               'CC_RELEASE_PUBLISHED': 'true', 'CC_PUBLISHED_TAG': 'v0.5.1',
+               'CC_PUBLISHED_COMMIT': self.env['GITHUB_SHA']}
+        for change in ({'CC_RELEASE_PUBLISHED': 'false'}, {'CC_PUBLISHED_TAG': 'draft'},
+                       {'CC_PUBLISHED_COMMIT': '0' * 40}):
+            with self.subTest(change=change):
+                result = subprocess.run([sys.executable, str(script), '--workspace', str(self.repo), '--maintenance'],
+                                        env={**os.environ, **env, **change}, capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertTrue(output.exists())
+        result = subprocess.run([sys.executable, str(script), '--workspace', str(self.repo), '--maintenance'],
+                                env={**os.environ, **env}, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(output.exists())
+
+    def test_published_retry_accepts_prior_successful_attempt_but_not_newer_owner(self):
+        cleanup.claim_workspace(self.repo, self.env)
+        published = {**self.env, 'GITHUB_JOB': 'cleanup_windows', 'CC_RELEASE_PUBLISHED': 'true',
+                     'GITHUB_RUN_ATTEMPT': '2'}
+        cleanup.verify_published_workspace(self.repo, published)
+        cleanup.claim_workspace(self.repo, {**self.env, 'GITHUB_RUN_ATTEMPT': '3'})
+        with self.assertRaises(ValueError):
+            cleanup.verify_published_workspace(self.repo, published)
 
     def inline_preflights(self):
         # Execute the actual inline guards, which run before trusted tools exist.
@@ -318,11 +384,6 @@ class CleanupTests(unittest.TestCase):
             self.assertEqual(unknown.read_text(), 'keep')
         unknown.unlink()
         self.make_repo(tools)
-        subprocess.run(['git', '-C', str(tools), 'add', '.'], check=True)
-        subprocess.run(['git', '-C', str(tools), '-c', 'core.hooksPath=' + os.devnull,
-                        '-c', 'commit.gpgsign=false', '-c', 'user.name=CI Fixture',
-                        '-c', 'user.email=fixture@example.invalid',
-                        'commit', '-qm', 'Owned synthetic tools'], check=True)
         for payload in self.inline_preflights():
             self.assertEqual(self.run_inline(payload).returncode, 0)
         unknown = self.file(tools / 'untracked-personal.txt', 'keep')

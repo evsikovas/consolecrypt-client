@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Remove only generated ConsoleCrypt CI output, after artifact upload.
+"""Remove generated ConsoleCrypt CI output only after release publication.
 
 Never use this as a general-purpose rm command. The workspace, repository,
 workflow identity and optional external cache ownership are checked first.
@@ -14,6 +14,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 
 REPOSITORY = 'evsikovas/consolecrypt-client'
@@ -26,6 +27,9 @@ GENERATED = (
     'client/flutter/android/app/.cxx',
 )
 OWNER_FILE = '.consolecrypt-ci-owner.json'
+WORKSPACE_OWNER_FILE = '.consolecrypt-ci-workspace.json'
+BUILD_PLATFORMS = {'windows': 'windows', 'macos': 'macos', 'android': 'macos', 'ios': 'macos'}
+PUBLISH_CLEANUP_PLATFORMS = {'cleanup_windows': 'windows', 'cleanup_macos': 'macos'}
 LEGACY_WINDOWS_CACHE = r'C:\GitLab-Runner\tools\consolecrypt-local-ai-smoke'
 MODEL_DIGESTS = {
     'qwen2.5-coder-1.5b-instruct-q4_k_m.gguf': 'cc324af070c2ecbfd324a30884d2f951a7ff756aba85cb811a6ec436933bb046',
@@ -106,13 +110,14 @@ def workspace_targets(workspace):
 
 
 def cache_location(environment):
-    owner = identity(environment)
-    temp = environment.get('RUNNER_TEMP')
-    if not temp or not Path(temp).is_absolute():
-        raise ValueError('RUNNER_TEMP must be an absolute runner-owned directory')
-    root = absolute(temp) / 'consolecrypt-client-ai-smoke' / '-'.join(owner[key] for key in ('run', 'attempt', 'job'))
+    identity(environment)
+    workspace = environment.get('GITHUB_WORKSPACE', '')
+    if not workspace or not Path(workspace).is_absolute():
+        raise ValueError('Expected an absolute CI workspace for the reusable cache')
+    workspace = absolute(workspace)
+    root = workspace / '.ci-cache/local-ai-smoke'
     no_link_ancestors(root)
-    return root, {'schema': 1, **owner}
+    return root, {'schema': 2, 'repository': REPOSITORY, 'workspace': str(workspace)}
 
 
 def read_json(path):
@@ -139,8 +144,73 @@ def owned_ai_cache(environment):
     if not root.exists():
         return []
     if read_json(root / OWNER_FILE) != owner:
-        raise ValueError('AI smoke cache belongs to another job')
+        raise ValueError('AI smoke cache belongs to another workspace')
+    if git(absolute(environment['GITHUB_WORKSPACE']), 'ls-files', '-z', '--', '.ci-cache/local-ai-smoke'):
+        raise ValueError('AI smoke cache contains tracked files')
     return [root]
+
+
+def workspace_owner(workspace, environment):
+    owner = identity(environment)
+    platform = BUILD_PLATFORMS.get(owner['job'])
+    commit = environment.get('GITHUB_SHA', '')
+    if platform is None or not re.fullmatch(r'[a-f0-9]{40}', commit):
+        raise ValueError('Expected a native build job and immutable source commit')
+    if git(workspace, 'rev-parse', 'HEAD') != commit:
+        raise ValueError('Build checkout differs from the requested source commit')
+    git(workspace, 'diff', '--quiet', 'HEAD', '--')
+    return {'schema': 1, 'repository': REPOSITORY, 'workspace': str(workspace),
+            'run': owner['run'], 'attempt': owner['attempt'], 'commit': commit, 'platform': platform}
+
+
+def read_workspace_owner(workspace):
+    marker = workspace / WORKSPACE_OWNER_FILE
+    no_link_ancestors(marker)
+    if not stat.S_ISREG(marker.lstat().st_mode) or marker.stat().st_nlink != 1:
+        raise ValueError('Expected a regular workspace ownership marker')
+    owner = read_json(marker)
+    if (not isinstance(owner, dict) or set(owner) != {'schema', 'repository', 'workspace', 'run', 'attempt', 'commit', 'platform'}
+            or type(owner.get('schema')) is not int or owner['schema'] != 1
+            or owner['repository'] != REPOSITORY or owner['workspace'] != str(workspace)
+            or owner['platform'] not in ('windows', 'macos')
+            or any(not isinstance(owner[key], str) or not re.fullmatch(r'[0-9]+', owner[key]) for key in ('run', 'attempt'))
+            or not isinstance(owner['commit'], str) or not re.fullmatch(r'[a-f0-9]{40}', owner['commit'])):
+        raise ValueError('Unexpected workspace ownership marker')
+    return owner
+
+
+def claim_workspace(workspace, environment):
+    owner = workspace_owner(workspace, environment)
+    marker = workspace / WORKSPACE_OWNER_FILE
+    no_link_ancestors(marker)
+    if marker.exists():
+        read_workspace_owner(workspace)  # Never overwrite unknown local data.
+    descriptor, temporary = tempfile.mkstemp(prefix=WORKSPACE_OWNER_FILE + '.', dir=workspace)
+    try:
+        with os.fdopen(descriptor, 'w') as writer:
+            json.dump(owner, writer, sort_keys=True)
+            writer.write('\n')
+            writer.flush()
+            os.fsync(writer.fileno())
+        os.replace(temporary, marker)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
+def verify_published_workspace(workspace, environment):
+    current = identity(environment)
+    platform = PUBLISH_CLEANUP_PLATFORMS.get(current['job'])
+    if (platform is None or environment.get('CC_RELEASE_PUBLISHED') != 'true'
+            or environment.get('GITHUB_EVENT_NAME') != 'push'
+            or not re.fullmatch(r'refs/tags/v[0-9]+\.[0-9]+\.[0-9]+', environment.get('GITHUB_REF', ''))):
+        raise ValueError('Full cleanup requires a successfully published stable release')
+    owner = read_workspace_owner(workspace)
+    # Rerun-failed-jobs may publish outputs from an earlier successful attempt
+    # of the same run. A newer run/attempt or another checkout is never claimed.
+    if (owner['run'] != current['run'] or int(owner['attempt']) > int(current['attempt'])
+            or owner['platform'] != platform or owner['commit'] != environment.get('GITHUB_SHA')
+            or git(workspace, 'rev-parse', 'HEAD') != owner['commit']):
+        raise ValueError('Workspace is not owned by this published release')
 
 
 def walk_regular(root):
@@ -263,17 +333,34 @@ def main():
     parser.add_argument('--maintenance', action='store_true')
     parser.add_argument('--legacy-windows-ai-cache', action='store_true')
     parser.add_argument('--prepare-ai-cache', action='store_true')
+    parser.add_argument('--claim-workspace', action='store_true')
+    parser.add_argument('--after-publication', action='store_true')
     args = parser.parse_args()
     workspace = absolute(args.workspace)
     validate_workspace(workspace, os.environ, absolute(__file__).parents[2], args.maintenance)
+    if sum((args.prepare_ai_cache, args.claim_workspace, args.after_publication, args.maintenance)) != 1:
+        raise ValueError('Choose one explicit ownership, publication or maintenance operation')
+    if args.claim_workspace:
+        if args.legacy_windows_ai_cache:
+            raise ValueError('Workspace registration cannot clean caches')
+        claim_workspace(workspace, os.environ)
+        print('CI_WORKSPACE_OWNER_REGISTERED')
+        return
     if args.prepare_ai_cache:
         if args.maintenance or args.legacy_windows_ai_cache:
             raise ValueError('Cache preparation cannot perform maintenance')
         print(prepare_ai_cache(os.environ))
         return
+    if args.after_publication:
+        verify_published_workspace(workspace, os.environ)
+    if args.maintenance:
+        if (os.environ.get('CC_RELEASE_PUBLISHED') != 'true'
+                or not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', os.environ.get('CC_PUBLISHED_TAG', ''))
+                or not re.fullmatch(r'[a-f0-9]{40}', os.environ.get('CC_PUBLISHED_COMMIT', ''))
+                or git(workspace, 'rev-parse', 'HEAD') != os.environ['CC_PUBLISHED_COMMIT']):
+            raise ValueError('Maintenance requires the published release that owns this checkout')
     targets = workspace_targets(workspace)
-    if not args.maintenance:
-        targets += owned_ai_cache(os.environ)
+    targets += owned_ai_cache(os.environ)
     if args.legacy_windows_ai_cache:
         if not args.maintenance or sys.platform != 'win32':
             raise ValueError('Legacy cache cleanup requires explicit Windows maintenance')

@@ -135,12 +135,9 @@ def finish(workspace, environment):
                 raise
     if find_container(expected['container']) is not None:
         raise ValueError('A replacement builder may still be using the owned scratch')
-    # An interrupted Docker CLI must not leave writers alive during traversal.
-    # Receipt validation failures still clean owned scratch, but fail the step.
-    try:
-        retention.retain(root / 'source', workspace)
-    finally:
-        cleanup.remove_owned(root)
+    # Stopping compute is separate from deleting build output. Keep scratch for
+    # diagnosis/retry; ARC's pod lifecycle will eventually dispose its emptyDir.
+    retention.retain(root / 'source', workspace)
 
 
 def main():
@@ -154,7 +151,7 @@ def main():
         print(prepare(workspace, os.environ))
     else:
         finish(workspace, os.environ)
-        print('LINUX_JOB_CLEANUP_PASS')
+        print('LINUX_JOB_STOP_PASS: owned scratch retained for runner lifecycle')
 
 
 if __name__ == '__main__':

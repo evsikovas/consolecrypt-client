@@ -107,8 +107,8 @@ try {
     Invoke-Checked flutter @('pub', 'get')
     Invoke-Checked flutter @('analyze')
     Invoke-Checked flutter @('test')
-    # GitHub caches belong to this job and are removed after artifact upload,
-    # including failed builds. Toolchains remain in the separate shared cache.
+    # Reuse owned model downloads across failed attempts. Only a published
+    # release cleans this checkout cache; SDK/toolchain caches stay separate.
     if ($env:GITHUB_ACTIONS -eq 'true') {
         $LocalAiSmokeCache = & python (Join-Path $PSScriptRoot 'cleanup-ci-workspace.py') --workspace $Repo --prepare-ai-cache
         if ($LASTEXITCODE -ne 0) { throw 'Could not prepare an owned AI smoke cache' }

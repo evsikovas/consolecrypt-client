@@ -23,7 +23,8 @@ finish() {
   local status=$?
   trap - EXIT
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
-    # The workflow repeats this independently if cancellation kills this shell.
+    # Stop only compute; retain scratch even on failure. The workflow repeats
+    # this independently if cancellation kills this shell.
     if ! python3 client/scripts/cleanup-linux-job.py --workspace "$repo_dir"; then
       if [[ "$status" -eq 0 ]]; then status=1; fi
     fi

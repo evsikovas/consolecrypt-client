@@ -5,6 +5,10 @@ name: Runner generated-output maintenance
 on:
   workflow_dispatch:
     inputs:
+      published_tag:
+        description: Successfully published stable release owning this checkout (for example v0.5.2)
+        type: string
+        required: true
       platform:
         description: Dedicated runner to clean after its release has finished
         type: choice
@@ -28,18 +32,51 @@ jobs:
     if: github.repository == 'evsikovas/consolecrypt-client' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    outputs:
+      published: ${{ steps.release.outputs.published }}
+      commit: ${{ steps.release.outputs.commit }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - name: Check cleanup deletion boundaries
         run: python3 -m unittest discover -s client/scripts -p 'test_ci_cleanup.py' -v
+      - name: Verify an already published stable release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CC_PUBLISHED_TAG: ${{ inputs.published_tag }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          tag = os.environ['CC_PUBLISHED_TAG']
+          if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', tag):
+              raise SystemExit('Expected a stable release tag')
+          repository = 'evsikovas/consolecrypt-client'
+          def api(path):
+              return json.loads(subprocess.check_output(['gh', 'api', 'repos/' + repository + '/' + path]))
+          release = api('releases/tags/' + tag)
+          if release.get('tag_name') != tag or release.get('draft') is not False or release.get('prerelease') is not False or not release.get('published_at'):
+              raise SystemExit('Release is not publicly published')
+          commit = api('commits/' + tag)['sha']
+          if not re.fullmatch(r'[a-f0-9]{40}', commit):
+              raise SystemExit('Invalid published source identity')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('published=true\ncommit=' + commit + '\n')
+          PY
 
   windows:
     needs: validate
     if: inputs.platform == 'windows'
     runs-on: [self-hosted, Windows, X64, consolecrypt, client]
     timeout-minutes: 30
+    env:
+      CC_RELEASE_PUBLISHED: ${{ needs.validate.outputs.published }}
+      CC_PUBLISHED_COMMIT: ${{ needs.validate.outputs.commit }}
+      CC_PUBLISHED_TAG: ${{ inputs.published_tag }}
     steps:
       - name: Guard existing workspace before maintenance checkout
         shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
@@ -125,6 +162,10 @@ jobs:
     if: inputs.platform == 'macos' && !inputs.legacy_windows_ai_cache
     runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
     timeout-minutes: 30
+    env:
+      CC_RELEASE_PUBLISHED: ${{ needs.validate.outputs.published }}
+      CC_PUBLISHED_COMMIT: ${{ needs.validate.outputs.commit }}
+      CC_PUBLISHED_TAG: ${{ inputs.published_tag }}
     steps:
       - name: Guard existing workspace before maintenance checkout
         run: |

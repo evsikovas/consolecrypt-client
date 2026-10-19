@@ -49,7 +49,7 @@ class LinuxCleanupTest(unittest.TestCase):
             return ''
         raise AssertionError('Unexpected Docker mutation')
 
-    def test_exact_owned_builder_and_scratch_removed_after_shell_has_gone(self):
+    def test_exact_owned_builder_stops_but_scratch_survives_after_shell_has_gone(self):
         other = self.runner_temp / 'other-job'
         other.mkdir()
         kept = other / 'model.gguf'
@@ -59,7 +59,7 @@ class LinuxCleanupTest(unittest.TestCase):
         with patch.object(linux, 'docker', self.docker):
             linux.finish(self.workspace, self.env)
             linux.finish(self.workspace, self.env)
-        self.assertFalse(self.root.exists())
+        self.assertTrue((self.root / 'source/generated').exists())
         self.assertEqual(kept.read_text(), 'keep')
         self.assertEqual(sum(call[:2] == ('container', 'rm') for call in self.calls), 1)
 
@@ -98,11 +98,11 @@ class LinuxCleanupTest(unittest.TestCase):
         self.assertTrue((self.root / 'source/generated').exists())
         self.assertFalse(any(call[:2] == ('container', 'rm') for call in self.calls))
 
-    def test_already_removed_container_still_cleans_owned_scratch(self):
+    def test_already_removed_container_keeps_owned_scratch(self):
         self.container_id = None
         with patch.object(linux, 'docker', self.docker):
             linux.finish(self.workspace, self.env)
-        self.assertFalse(self.root.exists())
+        self.assertTrue((self.root / 'source/generated').exists())
         self.assertFalse(any(call[:2] == ('container', 'rm') for call in self.calls))
 
     def test_successful_remove_never_deletes_scratch_reused_by_a_new_container(self):
@@ -124,7 +124,7 @@ class LinuxCleanupTest(unittest.TestCase):
                 linux.finish(self.workspace, self.env)
         self.assertTrue((self.root / linux.OWNER_FILE).exists())
 
-    def test_auto_remove_wins_inspect_or_remove_without_leaving_scratch(self):
+    def test_auto_remove_wins_inspect_or_remove_and_preserves_scratch(self):
         for stage in ('inspect', 'rm'):
             with self.subTest(stage=stage):
                 if not self.root.exists():
@@ -140,7 +140,7 @@ class LinuxCleanupTest(unittest.TestCase):
 
                 with patch.object(linux, 'docker', disappearing):
                     linux.finish(self.workspace, self.env)
-                self.assertFalse(self.root.exists())
+                self.assertTrue(self.root.exists())
                 self.assertTrue(any('id=' + 'a' * 64 in call for call in self.calls))
 
     def test_daemon_failure_existing_id_or_reused_name_cannot_hide_remove_errors(self):

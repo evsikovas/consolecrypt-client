@@ -39,6 +39,8 @@ secrets/
 dist/
 
 # Local build caches, signing credentials and private export workspaces.
+.ci-cache/
+.consolecrypt-ci-workspace.json*
 **/__pycache__/
 **/*.pyc
 **/.gradle/
@@ -82,6 +84,10 @@ client/docs/RDP_DEV_SPEC.md
 client/docs/RDP_DEV_*.md
 
 # Private development/operator material is never part of this repository.
+/BACKLOG.md
+/docs/specs/
+/docs/public/VALIDATION_*.md
+/docs/public/WINDOWS_VALIDATION.md
 .local/
 .agents/
 .codex/

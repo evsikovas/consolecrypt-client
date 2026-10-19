@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: consolecrypt-windows-native-checks
+  group: consolecrypt-client-packages
   cancel-in-progress: false
 
 jobs:
@@ -44,11 +44,11 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          clean: false
           persist-credentials: false
+      - name: Register diagnostic workspace without cleanup
+        run: '& client/scripts/cleanup-ci-workspace.ps1 -ClaimWorkspace'
       - name: Local terminal regressions
         run: |
           & client/scripts/ci-windows.ps1 -NativeOnly
           if ($LASTEXITCODE -ne 0) { throw 'Windows native checks failed' }
-      - name: Clean generated native test output
-        if: always()
-        run: '& client/scripts/cleanup-ci-workspace.ps1'

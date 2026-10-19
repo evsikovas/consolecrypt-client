@@ -1,4 +1,4 @@
-param([switch]$Maintenance, [switch]$LegacyWindowsAiCache)
+param([switch]$Maintenance, [switch]$LegacyWindowsAiCache, [switch]$ClaimWorkspace, [switch]$AfterPublication)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 # Discover an existing Python; do not provision tools or modify machine PATH.
@@ -24,5 +24,7 @@ if (-not $Python) { throw 'Existing Python 3 is required for guarded CI cleanup'
 $Arguments = @((Join-Path $PSScriptRoot 'cleanup-ci-workspace.py'), '--workspace', $env:GITHUB_WORKSPACE)
 if ($Maintenance) { $Arguments += '--maintenance' }
 if ($LegacyWindowsAiCache) { $Arguments += '--legacy-windows-ai-cache' }
+if ($ClaimWorkspace) { $Arguments += '--claim-workspace' }
+if ($AfterPublication) { $Arguments += '--after-publication' }
 & $Python @Arguments
 if ($LASTEXITCODE -ne 0) { throw 'Guarded CI cleanup failed' }

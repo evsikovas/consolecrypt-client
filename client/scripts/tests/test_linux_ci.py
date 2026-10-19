@@ -269,13 +269,13 @@ class LinuxCiRetentionTest(unittest.TestCase):
                 ['python3', str(self.repo / 'client/scripts/cleanup-linux-job.py'), '--workspace', str(self.repo.resolve())],
                 env=env, capture_output=True, timeout=10)
             self.assertEqual(cleanup_result.returncode, 0, cleanup_result.stderr.decode())
-            self.assertIn(b'LINUX_JOB_CLEANUP_PASS', cleanup_result.stdout)
+            self.assertIn(b'LINUX_JOB_STOP_PASS', cleanup_result.stdout)
             self.assertFalse(self.marker.encode() in cleanup_result.stdout + cleanup_result.stderr)
             state = json.loads(self.state_path.read_text())
             self.assertTrue(state['removed_owned_container'])
             self.assertEqual(state['labels'], {'io.consolecrypt.ci.repository': 'evsikovas/consolecrypt-client',
                 'io.consolecrypt.ci.run': '12345', 'io.consolecrypt.ci.attempt': '2', 'io.consolecrypt.ci.job': 'linux'})
-            self.assertFalse(Path(state['source']).parent.exists())
+            self.assertTrue(Path(state['source']).parent.exists())
             self.assertIn('container inspect', state['calls'])
             self.assertIn('container rm', state['calls'])
         finally:
