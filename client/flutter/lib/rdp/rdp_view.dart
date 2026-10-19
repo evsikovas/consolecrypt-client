@@ -540,6 +540,8 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
                         ? SingleChildScrollView(scrollDirection: Axis.horizontal, child: _specialKeys())
                         : Text(
                             _touchpadEnabled ? l.rdpMobileTouchpad : l.rdpMobileDirectTouch,
+                            key: const ValueKey('rdp-mobile-mode-label'),
+                            style: TextStyle(color: tokens.palette.label),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),

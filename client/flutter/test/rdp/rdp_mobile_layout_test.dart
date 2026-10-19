@@ -315,6 +315,17 @@ void _expectVisibleControlIcons(WidgetTester tester) {
   final background = tester.widget<flutter_material.Material>(controls).color!;
   final icons = find.descendant(of: controls, matching: find.byType(flutter_material.Icon));
   expect(icons, findsAtLeastNWidgets(3));
+  final label = find.byKey(const ValueKey('rdp-mobile-mode-label'));
+  if (label.evaluate().isNotEmpty) {
+    final widget = tester.widget<flutter_material.Text>(label);
+    final color = widget.style?.color ?? flutter_material.DefaultTextStyle.of(tester.element(label)).style.color!;
+    final foreground = Color.alphaBlend(color, background).computeLuminance();
+    final surface = background.computeLuminance();
+    final ratio = foreground > surface
+        ? (foreground + 0.05) / (surface + 0.05)
+        : (surface + 0.05) / (foreground + 0.05);
+    expect(ratio, greaterThanOrEqualTo(4.5), reason: 'RDP mode label contrast');
+  }
   for (final element in icons.evaluate()) {
     final icon = element.widget as flutter_material.Icon;
     final color = icon.color ?? flutter_material.IconTheme.of(element).color!;
