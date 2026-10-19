@@ -138,12 +138,12 @@ Tests that need a native library, a system keyring, or a real SSH/RDP server hav
 additional prerequisites. Do not run Flutter tests alongside a native build
 in the same working directory.
 
-## Release 0.4.0
+## Release 0.4.1
 
-Version 0.4.0 adds a phone RDP touchpad and an installable local AI model on
+Version 0.4.1 adds a phone RDP touchpad and an installable local AI model on
 Windows/macOS. The model stays on this device and can become the default provider.
 Native packages build only from version tags on `main`. See the
-[release notes](docs/public/RELEASE_0_4_0.md), [local AI guide](docs/public/LOCAL_AI.md)
+[release notes](docs/public/RELEASE_0_4_1.md), [local AI guide](docs/public/LOCAL_AI.md)
 and [release workflow](docs/public/GITHUB_ACTIONS.md).
 
 ## Release 0.3.2 and the GitHub migration
