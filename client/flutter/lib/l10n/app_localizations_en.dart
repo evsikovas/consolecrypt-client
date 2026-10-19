@@ -5442,4 +5442,107 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdpFullscreenFailed => 'Could not change full-screen mode. Try the window controls.';
+
+  @override
+  String get rdpMobileTouchpad => 'Touchpad';
+
+  @override
+  String get rdpMobileDirectTouch => 'Direct touch';
+
+  @override
+  String get rdpMobileShowKeyboard => 'Show keyboard';
+
+  @override
+  String get rdpMobileHideKeyboard => 'Hide keyboard';
+
+  @override
+  String get rdpMobileLeftClick => 'Left click at cursor';
+
+  @override
+  String get rdpMobileRightClick => 'Right click at cursor';
+
+  @override
+  String get rdpMobileHelpTitle => 'Phone controls';
+
+  @override
+  String get rdpMobileHelp =>
+      'Tap the mouse button to turn the desktop into a touchpad. Slide one finger anywhere to move the cursor; lift and reposition your finger to continue.\n\nTap for a left click. Tap twice for a double-click; hold the second tap and move to drag. You can also hold one finger briefly, then drag.\n\nTap with two fingers for a right click. Slide two fingers to scroll. The click buttons act at the cursor.\n\nThe keyboard button shows or hides your phone keyboard. Esc, Tab, arrow keys and Enter are above it. Touching the desktop does not open the keyboard.\n\nTurn touchpad mode off to click directly where you touch. An attached mouse keeps its normal controls.';
+
+  @override
+  String get localAiTitle => 'Built-in local AI';
+
+  @override
+  String get localAiDescription =>
+      'Install a compact model and run it on this computer. Chat and command suggestions work offline after installation.';
+
+  @override
+  String get localAiModel => 'Model';
+
+  @override
+  String localAiDownloadSize(String size) {
+    return 'Model download: $size';
+  }
+
+  @override
+  String get localAiNotInstalled => 'Not installed';
+
+  @override
+  String get localAiInstalling => 'Downloading and verifying files…';
+
+  @override
+  String get localAiStopped => 'Installed · starts when you send a request';
+
+  @override
+  String get localAiStarting => 'Starting the model…';
+
+  @override
+  String get localAiReady => 'Ready · running on this computer';
+
+  @override
+  String get localAiStopping => 'Stopping…';
+
+  @override
+  String get localAiError => 'Local AI needs attention';
+
+  @override
+  String get localAiUnsupported => 'Available on supported Windows and macOS computers.';
+
+  @override
+  String get localAiDefault => 'Use by default after installation';
+
+  @override
+  String get localAiDeviceOnly => 'Only on this computer. Other devices and saved provider settings stay independent.';
+
+  @override
+  String get localAiInstall => 'Install local AI';
+
+  @override
+  String get localAiStart => 'Start';
+
+  @override
+  String get localAiStop => 'Stop';
+
+  @override
+  String get localAiRemove => 'Remove model and runtime';
+
+  @override
+  String get localAiResourceHelp =>
+      'Uses memory and CPU while running; stops after 15 minutes without requests. Small models may make mistakes. Review commands before running them.';
+
+  @override
+  String get localAiOperationFailed => 'The local AI operation could not be completed. Check its status and try again.';
+
+  @override
+  String get localAiInstallFailed =>
+      'Installation failed. Check the internet connection and free disk space, then try again.';
+
+  @override
+  String get localAiFilesChanged => 'The installed files could not be verified. Remove the model and install it again.';
+
+  @override
+  String get localAiStartFailed => 'The model could not start or stopped unexpectedly. Free some memory and try again.';
+
+  @override
+  String get localAiStorageUnavailable =>
+      'Cannot access local AI files. Check app data folder permissions and free disk space.';
 }

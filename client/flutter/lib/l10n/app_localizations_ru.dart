@@ -5637,4 +5637,110 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get rdpFullscreenFailed => 'Не удалось изменить полноэкранный режим. Используйте кнопки управления окном.';
+
+  @override
+  String get rdpMobileTouchpad => 'Тачпад';
+
+  @override
+  String get rdpMobileDirectTouch => 'Касание';
+
+  @override
+  String get rdpMobileShowKeyboard => 'Открыть клавиатуру';
+
+  @override
+  String get rdpMobileHideKeyboard => 'Скрыть клавиатуру';
+
+  @override
+  String get rdpMobileLeftClick => 'Левый клик в позиции курсора';
+
+  @override
+  String get rdpMobileRightClick => 'Правый клик в позиции курсора';
+
+  @override
+  String get rdpMobileHelpTitle => 'Управление с телефона';
+
+  @override
+  String get rdpMobileHelp =>
+      'Нажмите кнопку мыши, чтобы экран работал как тачпад. Водите одним пальцем в любом месте для перемещения курсора. Можно поднять палец и продолжить движение с другого места.\n\nКасание — левый клик. Два быстрых касания — двойной клик; удерживайте второе касание и двигайте палец для перетаскивания. Также можно немного удержать один палец, затем потянуть.\n\nКасание двумя пальцами — правый клик. Движение двумя пальцами — прокрутка. Кнопки клика действуют в позиции курсора.\n\nКнопка клавиатуры открывает или скрывает клавиатуру телефона. Над ней доступны Esc, Tab, стрелки и Enter. Касание рабочего стола не открывает клавиатуру.\n\nВыключите тачпад для клика непосредственно под пальцем. Подключённая мышь работает обычным способом.';
+
+  @override
+  String get localAiTitle => 'Встроенный локальный ИИ';
+
+  @override
+  String get localAiDescription =>
+      'Установите небольшую модель на этот компьютер. После установки чат и подсказки команд работают без интернета.';
+
+  @override
+  String get localAiModel => 'Модель';
+
+  @override
+  String localAiDownloadSize(String size) {
+    return 'Загрузка модели: $size';
+  }
+
+  @override
+  String get localAiNotInstalled => 'Не установлено';
+
+  @override
+  String get localAiInstalling => 'Загрузка и проверка файлов…';
+
+  @override
+  String get localAiStopped => 'Установлено · запустится при запросе';
+
+  @override
+  String get localAiStarting => 'Запуск модели…';
+
+  @override
+  String get localAiReady => 'Готово · работает на этом компьютере';
+
+  @override
+  String get localAiStopping => 'Остановка…';
+
+  @override
+  String get localAiError => 'Ошибка локального ИИ';
+
+  @override
+  String get localAiUnsupported => 'Доступно на поддерживаемых компьютерах с Windows и macOS.';
+
+  @override
+  String get localAiDefault => 'Использовать по умолчанию после установки';
+
+  @override
+  String get localAiDeviceOnly =>
+      'Только на этом компьютере. Настройки других устройств и сохранённых провайдеров независимы.';
+
+  @override
+  String get localAiInstall => 'Установить локальный ИИ';
+
+  @override
+  String get localAiStart => 'Запустить';
+
+  @override
+  String get localAiStop => 'Остановить';
+
+  @override
+  String get localAiRemove => 'Удалить модель и среду выполнения';
+
+  @override
+  String get localAiResourceHelp =>
+      'Во время работы использует память и процессор; остановится через 15 минут без запросов. Небольшие модели могут ошибаться. Проверяйте команды перед запуском.';
+
+  @override
+  String get localAiOperationFailed =>
+      'Не удалось выполнить действие с локальным ИИ. Проверьте состояние и повторите попытку.';
+
+  @override
+  String get localAiInstallFailed =>
+      'Не удалось установить модель. Проверьте интернет и свободное место на диске, затем повторите попытку.';
+
+  @override
+  String get localAiFilesChanged => 'Не удалось проверить установленные файлы. Удалите модель и установите её заново.';
+
+  @override
+  String get localAiStartFailed =>
+      'Модель не запустилась или неожиданно остановилась. Освободите оперативную память и повторите попытку.';
+
+  @override
+  String get localAiStorageUnavailable =>
+      'Нет доступа к файлам локального ИИ. Проверьте права на папку данных приложения и свободное место на диске.';
 }

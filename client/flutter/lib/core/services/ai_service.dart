@@ -34,3 +34,20 @@ abstract interface class AiService {
   /// "Convert terminal command into parameterized snippet".
   Future<SnippetDraft> draftSnippet({required String command, ObjectId? providerId});
 }
+
+/// Optional production capability. Endpoint and auth live only in an unlocked
+/// native AI session; calling this never saves an AiProvider/Secret vault object.
+abstract interface class DeviceLocalAiBridge {
+  Future<void> registerDeviceLocalProvider({
+    required String profileId,
+    required String vaultId,
+    required String registrationId,
+    required int port,
+    required String apiKey,
+    required String model,
+  });
+
+  Future<void> clearDeviceLocalProvider(String registrationId);
+}
+
+const deviceLocalAiProviderId = ObjectId('00000000-0000-4000-8000-000000000a11');

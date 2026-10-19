@@ -9649,6 +9649,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not change full-screen mode. Try the window controls.'**
   String get rdpFullscreenFailed;
+
+  /// Mobile-only remote desktop input control.
+  ///
+  /// In en, this message translates to:
+  /// **'Touchpad'**
+  String get rdpMobileTouchpad;
+
+  /// Mobile-only remote desktop input control.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct touch'**
+  String get rdpMobileDirectTouch;
+
+  /// Mobile-only remote desktop input control.
+  ///
+  /// In en, this message translates to:
+  /// **'Show keyboard'**
+  String get rdpMobileShowKeyboard;
+
+  /// Mobile-only remote desktop input control.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide keyboard'**
+  String get rdpMobileHideKeyboard;
+
+  /// Mobile-only remote desktop input control.
+  ///
+  /// In en, this message translates to:
+  /// **'Left click at cursor'**
+  String get rdpMobileLeftClick;
+
+  /// Mobile-only remote desktop input control.
+  ///
+  /// In en, this message translates to:
+  /// **'Right click at cursor'**
+  String get rdpMobileRightClick;
+
+  /// Mobile-only remote desktop input control.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone controls'**
+  String get rdpMobileHelpTitle;
+
+  /// Mobile-only remote desktop input control.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the mouse button to turn the desktop into a touchpad. Slide one finger anywhere to move the cursor; lift and reposition your finger to continue.\n\nTap for a left click. Tap twice for a double-click; hold the second tap and move to drag. You can also hold one finger briefly, then drag.\n\nTap with two fingers for a right click. Slide two fingers to scroll. The click buttons act at the cursor.\n\nThe keyboard button shows or hides your phone keyboard. Esc, Tab, arrow keys and Enter are above it. Touching the desktop does not open the keyboard.\n\nTurn touchpad mode off to click directly where you touch. An attached mouse keeps its normal controls.'**
+  String get rdpMobileHelp;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in local AI'**
+  String get localAiTitle;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Install a compact model and run it on this computer. Chat and command suggestions work offline after installation.'**
+  String get localAiDescription;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get localAiModel;
+
+  /// Size of the device-local AI model download, excluding its runtime.
+  ///
+  /// In en, this message translates to:
+  /// **'Model download: {size}'**
+  String localAiDownloadSize(String size);
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Not installed'**
+  String get localAiNotInstalled;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading and verifying files…'**
+  String get localAiInstalling;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed · starts when you send a request'**
+  String get localAiStopped;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting the model…'**
+  String get localAiStarting;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready · running on this computer'**
+  String get localAiReady;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping…'**
+  String get localAiStopping;
+
+  /// Built-in device-local AI status.
+  ///
+  /// In en, this message translates to:
+  /// **'Local AI needs attention'**
+  String get localAiError;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Available on supported Windows and macOS computers.'**
+  String get localAiUnsupported;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Use by default after installation'**
+  String get localAiDefault;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Only on this computer. Other devices and saved provider settings stay independent.'**
+  String get localAiDeviceOnly;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Install local AI'**
+  String get localAiInstall;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get localAiStart;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get localAiStop;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove model and runtime'**
+  String get localAiRemove;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses memory and CPU while running; stops after 15 minutes without requests. Small models may make mistakes. Review commands before running them.'**
+  String get localAiResourceHelp;
+
+  /// Built-in device-local AI settings.
+  ///
+  /// In en, this message translates to:
+  /// **'The local AI operation could not be completed. Check its status and try again.'**
+  String get localAiOperationFailed;
+
+  /// Built-in device-local AI status.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation failed. Check the internet connection and free disk space, then try again.'**
+  String get localAiInstallFailed;
+
+  /// Built-in device-local AI status.
+  ///
+  /// In en, this message translates to:
+  /// **'The installed files could not be verified. Remove the model and install it again.'**
+  String get localAiFilesChanged;
+
+  /// Built-in device-local AI status.
+  ///
+  /// In en, this message translates to:
+  /// **'The model could not start or stopped unexpectedly. Free some memory and try again.'**
+  String get localAiStartFailed;
+
+  /// Local AI storage access failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot access local AI files. Check app data folder permissions and free disk space.'**
+  String get localAiStorageUnavailable;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

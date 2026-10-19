@@ -40,7 +40,7 @@ flutter doctor -v
 ```powershell
 New-Item -ItemType Directory -Force C:\dev | Out-Null
 Set-Location C:\dev
-git clone https://github.com/evsikovas/consolecrypt-client.git
+git clone https://github.com/evsikovas/consolecrypt-client.git consolecrypt
 Set-Location consolecrypt
 .\client\scripts\build-windows.ps1 -Installer -NoCli
 ```
@@ -96,9 +96,10 @@ flutter test
 Запускайте их после завершения сборки. Не запускайте две Flutter-сборки одновременно
 в одной копии проекта. [Загрузка установщика в существующий релиз](RELEASING.md).
 
-## GitLab Runner
+## GitHub Actions runner
 
-Задание `build-windows` использует runner с тегом `windows`. Сценарий
+Job `windows` workflow `Client packages` использует self-hosted runner с метками
+`Windows`, `X64`, `consolecrypt`, `client`. См. [настройку раннеров](GITHUB_ACTIONS.md). Сценарий
 `client/scripts/ci-windows.ps1` находит инструменты в стандартных каталогах,
 если PATH службы отличается от PATH пользователя. При отсутствии Flutter
 скачивается официальный tag 3.47.5 с проверкой commit; при отсутствии Perl —
@@ -111,5 +112,8 @@ Strawberry Perl 5.40.5.1 Portable с проверкой SHA-256 официаль
 в собственный каталог кэша, проверяя SHA-256.
 Visual Studio C++, Rust и Python установите заранее.
 Скрипт не меняет глобальный PATH и учётную запись службы.
-Номер каждой нативной сборки берётся из уникального GitLab job ID;
-готовые пакеты и контрольные суммы находятся в артефактах задания.
+Номер нативной сборки назначает `github-build-number.py` по номеру запуска,
+попытке и платформе; формула приведена в [GITHUB_ACTIONS.md](GITHUB_ACTIONS.md).
+Готовые пакеты, контрольные суммы и версия находятся в Actions artifact.
+Путь `C:\GitLab-Runner\tools` оставлен совместимым с прежним кэшем SDK;
+для GitHub runner его можно переопределить через `CC_CI_TOOLS_DIR`.

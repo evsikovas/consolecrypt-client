@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/ai_service.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
@@ -112,7 +113,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> with WidgetsBinding
               key: const ValueKey('ai-provider'),
               value: providerId,
               semanticLabel: l10n.aiChatProviderLabel,
-              items: [for (final p in providers) GlassSelectItem(value: p.id, label: '${p.name} · ${p.chatModel}')],
+              items: [
+                for (final p in providers)
+                  GlassSelectItem(
+                    value: p.id,
+                    label: '${p.id == deviceLocalAiProviderId ? l10n.localAiTitle : p.name} · ${p.chatModel}',
+                  ),
+              ],
               onChanged: controller.selectProvider,
             ),
           GlassIconButton(

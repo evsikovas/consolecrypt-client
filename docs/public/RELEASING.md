@@ -5,27 +5,30 @@
 Исходники и lock-файлы хранятся в Git; установщики — во вложениях релиза.
 Не добавляйте `dist/`, токены, Android keystore или приватные ключи подписи.
 
-1. Поднимите версию через `python3 client/scripts/bump-version.py --part patch`.
-   Перед первым GitHub выпуском исходный build установлен в 1394, выше всех файлов 0.3.1.
-2. Запустите **Actions → Client packages** для проверенного коммита `main`.
-   Workflow собирает macOS, Windows, Linux, Android и iOS Simulator; CI artifacts
-   сами по себе ничего не публикуют на сайт и в автообновления.
-3. Дождитесь всех задач, проверьте пакеты и сверяйте точную версию каждого файла
-   с его `ConsoleCrypt.version`. Сохраните SHA исходников и run ID.
-4. Соберите каталог файлов с уникальными именами, версиями и `SHA256SUMS-VERSION.txt`.
-   iOS Simulator не является установщиком для iPhone.
-5. Создайте тег на том же проверенном SHA, затем черновик GitHub Release:
+1. Поднимите версию через `python3 client/scripts/bump-version.py --part patch`
+   (для функционального выпуска используйте `--part minor`). Создайте
+   `docs/public/RELEASE_X_Y_Z.md` с описанием изменений и ограничений.
+2. Проверьте изменения и отправьте коммит в `main`. Push ветки не собирает пакеты.
+3. Создайте аннотированный тег на этом коммите и отправьте его:
 
    ```sh
-   gh release create v0.3.2 --draft --target VERIFIED_COMMIT \
-     --repo evsikovas/consolecrypt-client --title 'ConsoleCrypt 0.3.2' \
-     --notes-file docs/public/RELEASE_0_3_2.md
-   gh release upload v0.3.2 dist/release/* --repo evsikovas/consolecrypt-client
+   git tag -a vX.Y.Z -m 'ConsoleCrypt X.Y.Z'
+   git push origin vX.Y.Z
    ```
 
-6. Опубликуйте релиз после проверки файлов, затем обновите сайт и подписанную
-   ленту. Приватный ключ Ed25519 остаётся у оператора; обычным build jobs он
-   не нужен. Скачайте опубликованные файлы без авторизации и проверьте SHA-256.
+4. **Actions → Client tag release** проверит совпадение версии и происхождение
+   коммита из `main`, затем соберёт macOS, Windows, Linux, Android и iOS Simulator.
+   Номера сборок выдаются отдельно каждой платформе; все сохраняют одну `X.Y.Z`.
+5. После успеха всех платформ publisher проверит `ConsoleCrypt.version`, соберёт
+   семь установочных файлов и `SHA256SUMS-X.Y.Z.txt`, загрузит их в draft и
+   опубликует GitHub Release. iOS Simulator не устанавливается на iPhone.
+   Существующий релиз не перезаписывается. Если загрузка оборвалась после создания
+   draft, проверьте его вручную перед повторным запуском; опубликованные файлы
+   и теги остаются неизменяемыми, исправления выпускаются новой версией.
+6. Workflow отдельно запустит подписанную ленту на доверенном `main`. Проверьте
+   результаты этого workflow и доступность установщиков без авторизации.
+   Сайт и сервер выпускаются собственными тегами в отдельных репозиториях;
+   публикация клиента сама по себе не меняет production Compose.
 
 ## Переход с прежнего сервера обновлений
 
@@ -43,10 +46,10 @@
 
 ## English
 
-Build and test the exact release commit with **Client packages**, then collect
-its per-platform artifacts and version receipts. Create a draft GitHub Release
-at that SHA, verify packages and checksums, and publish only after acceptance.
-Website deployment and the signed update feed remain separate operations.
-Keep Android/macOS signing identities, app IDs and the Ed25519 update trust anchor.
-Old clients must receive installer bytes from a previously trusted domain;
-they reject redirects to new hosts.
+Keep the tested baseline on `main`. Update the source version and release notes,
+push the commit, then push its matching stable `vX.Y.Z` tag. Only the tag builds
+native packages. The workflow publishes a complete GitHub Release after all five
+platforms pass and dispatches signed update metadata on trusted `main`. Website
+and server deployment are independent tag releases. Preserve signing identities,
+app IDs and the Ed25519 update trust anchor. Old clients still require installer
+bytes on their previously trusted domains.

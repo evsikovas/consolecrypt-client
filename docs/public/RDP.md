@@ -45,6 +45,82 @@ RDP-трафик. Перед вводом учётных данных подтв
 прежний размер окна, а сворачивание сохраняет подключение. Клавиша **Escape**
 передаётся удалённой Windows.
 
+## Управление RDP с телефона — текущие исходники
+
+Этот раздел описывает доработку **текущих исходников для следующей
+Android-сборки**. В опубликованном релизе **0.3.2 этой панели ещё нет**.
+Панель предусмотрена для Android и iOS; ближайшая проверка сборки относится к
+Android. Работа на физическом iPhone требует отдельной проверки.
+
+По умолчанию действует **Касание**: клик происходит под пальцем. Кнопка мыши
+в нижней панели включает **Тачпад**. В этом режиме движение одного пальца
+перемещает видимый курсор относительно его прежнего положения. Можно поднять
+палец, приложить его в другом месте и продолжить движение без скачка курсора.
+Повторное нажатие кнопки мыши возвращает прямое касание.
+
+| Жест в режиме тачпада | Действие в текущей позиции курсора |
+| --- | --- |
+| Короткое касание | Левый клик |
+| Два быстрых касания | Двойной левый клик |
+| Двойное касание с удержанием второго | Перетаскивание до отпускания пальца |
+| Удержание одного пальца около 500 мс, затем движение | Перетаскивание до отпускания пальца |
+| Короткое касание двумя пальцами | Правый клик |
+| Движение двумя пальцами | Прокрутка без перемещения курсора |
+
+Отдельные кнопки левого и правого клика также действуют в позиции курсора.
+Кнопка клавиатуры открывает или скрывает экранную клавиатуру; касание рабочего
+стола само по себе её не открывает. При открытой клавиатуре доступны **Esc,
+Tab, стрелки, Enter и Backspace (⌫)**. Клавиши прокручиваются по горизонтали;
+при небольшой высоте, например в альбомной ориентации с клавиатурой, они
+помещаются в одну компактную панель с кнопками управления. Если клавиатура ещё
+составляет слово или предлагает варианты ввода, сначала завершите ввод на ней:
+до этого служебные кнопки не отправляют команды удалённому компьютеру.
+
+Смена режима управления или сеанса, уход приложения в фон, блокировка и
+отключение ввода отпускают удерживаемые клавиши и кнопки мыши. После возвращения
+начните жест заново. Подключённая мышь работает обычным прямым способом.
+Настольное управление не меняется, а перенаправление папок на Android и iOS
+по-прежнему недоступно. Существующие снимки руководства относятся к историческим
+сборкам из манифеста и не подтверждают наличие этой панели в 0.3.2.
+
+### Phone controls — current sources (English)
+
+This section describes a change in the **current sources for the next Android
+build**. The published **0.3.2 release does not include this panel**. The panel
+targets Android and iOS; the immediate build check targets Android. Use on a
+physical iPhone requires separate verification.
+
+**Direct touch** is the default and clicks under your finger. Tap the mouse
+button in the bottom bar to enable **Touchpad**. One-finger movement then moves
+the visible cursor relative to its previous position. Lift and reposition your
+finger to continue without making the cursor jump to it. Tap the mouse button
+again to return to direct touch.
+
+| Touchpad gesture | Action at the current cursor position |
+| --- | --- |
+| Short tap | Left-click |
+| Two quick taps | Double left-click |
+| Double-tap and hold the second tap | Drag until you lift your finger |
+| Hold one finger for about 500 ms, then move | Drag until you lift your finger |
+| Short two-finger tap | Right-click |
+| Two-finger swipe | Scroll without moving the cursor |
+
+The separate left- and right-click buttons also act at the cursor. The keyboard
+button shows or hides the phone keyboard; touching the desktop does not open
+it. With the keyboard open, **Esc, Tab, arrow keys, Enter and Backspace (⌫)**
+are available and scroll horizontally. When height is limited, such as
+landscape with the keyboard open, these keys share one compact bar with the
+controls. Finish any ongoing word composition or candidate selection on the
+phone keyboard first: the extra key buttons do not send remote commands until
+composition is complete.
+
+Changing input mode or session, going into the background, locking or disabling
+input releases held keys and mouse buttons. Start a new gesture after returning.
+An attached mouse uses ordinary direct control. Desktop controls are unchanged;
+folder redirection remains unavailable on Android and iOS. Existing guide
+screenshots belong to the historical builds recorded in the manifest and do
+not show that this panel is available in 0.3.2.
+
 ## Буфер обмена
 
 Обмен текстом по умолчанию выключен. Разрешите его для конкретного сеанса.

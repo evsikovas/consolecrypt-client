@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/l10n/app_localizations.dart';
 import 'package:consolecrypt/rdp/rdp_service.dart';
 import 'package:consolecrypt/rdp/rdp_view.dart';
 import 'package:flutter/gestures.dart';
@@ -17,6 +18,8 @@ Future<void> _open(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Center(
         child: SizedBox(
           width: 400,

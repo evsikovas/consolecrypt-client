@@ -250,6 +250,15 @@ class LinuxCiRetentionTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(self.retained_files()['ConsoleCrypt.version'].read_text(), VERSION + '\n')
 
+    def test_arc_staging_uses_shared_runner_volume(self):
+        shared = self.folder / 'shared work temp'
+        shared.mkdir()
+        self.env['RUNNER_TEMP'] = str(shared)
+        result, state = self.run_ci(0)
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(Path(state['source']).parent.parent, shared)
+        self.assertEqual(list(shared.iterdir()), [])
+
     def test_docker_failure_retains_only_safe_receipt_and_original_exit(self):
         result, _ = self.run_ci(23)
         self.assertEqual(result.returncode, 23)

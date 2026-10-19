@@ -6,7 +6,9 @@ cd -- "$repo_dir"
 command -v docker >/dev/null
 command -v python3 >/dev/null
 docker info >/dev/null
-task_dir="$(mktemp -d "${TMPDIR:-/tmp}/consolecrypt-linux-ci.XXXXXX")"
+# ARC's Docker sidecar shares _work, not the runner container's /tmp.
+# RUNNER_TEMP lives on that shared volume; a standalone runner keeps /tmp.
+task_dir="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/consolecrypt-linux-ci.XXXXXX")"
 finish() {
   local status=$?
   trap - EXIT

@@ -98,14 +98,31 @@ if [[ -d "$SRC/client/rust/rdp-core" ]]; then
   cp "$SRC/client/rust/rdp-core/THIRD_PARTY_NOTICES.txt" "$OUT/ConsoleCrypt.app/Contents/Resources/RDP-THIRD-PARTY-NOTICES.txt"
 fi
 
+LOCAL_AI_BUNDLED=0
+if [[ -f "$SRC/client/scripts/bundle-macos-local-ai.py" ]]; then
+  echo "==> verified local AI helpers (Apple Silicon + Intel)"
+  python3 "$SRC/client/scripts/bundle-macos-local-ai.py" --app "$OUT/ConsoleCrypt.app"
+  LOCAL_AI_BUNDLED=1
+fi
+
 if [[ -n "$SIGN_IDENTITY" ]]; then
   echo "==> signing with a stable identity"
   python3 "$SRC/client/scripts/sign-macos.py" --identity "$SIGN_IDENTITY" --app "$OUT/ConsoleCrypt.app"
 else
-  # The added license changes the resource seal of Flutter's ad-hoc bundle.
-  codesign --force --sign - --preserve-metadata=identifier,entitlements "$OUT/ConsoleCrypt.app"
+  if [[ "$LOCAL_AI_BUNDLED" == 1 ]]; then
+    python3 "$SRC/client/scripts/sign-macos.py" --adhoc --app "$OUT/ConsoleCrypt.app"
+  else
+    # Historical commits predate the nested helper/signing support.
+    codesign --force --sign - --preserve-metadata=identifier,entitlements "$OUT/ConsoleCrypt.app"
+  fi
 fi
 codesign --verify --deep --strict "$OUT/ConsoleCrypt.app"
+if [[ "$LOCAL_AI_BUNDLED" == 1 ]]; then
+  echo "==> local AI from App Sandbox (version and available devices)"
+  SMOKE_ARGS=(--app "$OUT/ConsoleCrypt.app")
+  [[ -n "$SIGN_IDENTITY" ]] && SMOKE_ARGS+=(--identity "$SIGN_IDENTITY")
+  python3 "$SRC/client/scripts/smoke-local-ai-sandbox.py" "${SMOKE_ARGS[@]}"
+fi
 
 echo "==> packaging"
 rm -f "$OUT/ConsoleCrypt-macos.zip" "$OUT/ConsoleCrypt.dmg"

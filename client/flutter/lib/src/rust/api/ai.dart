@@ -10,6 +10,26 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `context`, `parse_snippet_type`, `target`
 
+/// Register an in-memory, authenticated loopback provider for this unlock.
+Future<void> aiRegisterDeviceLocalProvider({
+  required String profileId,
+  required String vaultId,
+  required String registrationId,
+  required int port,
+  required String apiKey,
+  required String model,
+}) => RustLib.instance.api.crateApiAiAiRegisterDeviceLocalProvider(
+  profileId: profileId,
+  vaultId: vaultId,
+  registrationId: registrationId,
+  port: port,
+  apiKey: apiKey,
+  model: model,
+);
+
+Future<void> aiClearDeviceLocalProvider({required String registrationId}) =>
+    RustLib.instance.api.crateApiAiAiClearDeviceLocalProvider(registrationId: registrationId);
+
 /// Check a provider (models, capabilities, latency) → `AiProviderTestDto`.
 Future<String> aiTestProvider({required String providerId}) =>
     RustLib.instance.api.crateApiAiAiTestProvider(providerId: providerId);

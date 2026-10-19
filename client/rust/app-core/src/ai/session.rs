@@ -106,6 +106,14 @@ struct CachedProvider {
     provider: Arc<dyn LlmProvider>,
 }
 
+/// A device-managed process is never a vault object or a synced default.
+pub(crate) const DEVICE_LOCAL_PROVIDER_ID: &str = "00000000-0000-4000-8000-000000000a11";
+
+struct DeviceLocalProvider {
+    registration_id: String,
+    cached: CachedProvider,
+}
+
 /// An Ask AI conversation: ai-core's sanitizer session + history, and the
 /// plaintext record (persisted when the vault settings allow it).
 /// A conversation of this unlock (the provider id is immutable, readable
@@ -160,6 +168,7 @@ pub(crate) struct AiSession {
     writes: tokio::sync::Mutex<()>,
     indexed: Mutex<Indexed>,
     providers: Mutex<HashMap<ObjectId, CachedProvider>>,
+    device_local: Mutex<Option<DeviceLocalProvider>>,
     conversations: Mutex<HashMap<String, ConvHandle>>,
     proposals: Mutex<HashMap<String, StoredProposal>>,
     approvals: Mutex<HashMap<String, StoredApproval>>,
@@ -203,6 +212,7 @@ impl AiSession {
             writes: tokio::sync::Mutex::new(()),
             indexed: Mutex::new(Indexed::default()),
             providers: Mutex::new(HashMap::new()),
+            device_local: Mutex::new(None),
             conversations: Mutex::new(HashMap::new()),
             proposals: Mutex::new(HashMap::new()),
             approvals: Mutex::new(HashMap::new()),
@@ -248,6 +258,7 @@ impl AiSession {
         let _init = self.init.lock().await;
         let index = lock(&self.index).take();
         lock(&self.providers).clear();
+        lock(&self.device_local).take();
         lock(&self.conversations).clear();
         lock(&self.proposals).clear();
         lock(&self.approvals).clear();
@@ -500,6 +511,53 @@ impl AiSession {
 
     // ---- providers -----------------------------------------------------------------------
 
+    pub(crate) fn register_device_local(
+        &self,
+        registration_id: String,
+        port: u16,
+        api_key: SecretString,
+        model: String,
+    ) -> AppResult<()> {
+        self.check_open()?;
+        let now = chrono::Utc::now();
+        let config = AiProviderConfig {
+            id: parse_id("provider_id", DEVICE_LOCAL_PROVIDER_ID)?,
+            name: "ConsoleCrypt Local AI".into(),
+            provider: cc_models::ai::AiProviderKind::OpenaiCompatible,
+            base_url: format!("http://127.0.0.1:{port}/v1"),
+            api_key_secret_id: None,
+            chat_model: model,
+            embedding_model: None,
+            timeout_secs: 300,
+            streaming: true,
+            tool_support: false,
+            privacy_profile: cc_models::ai::PrivacyProfile::Local,
+            is_default: false,
+            created_at: now,
+            updated_at: now,
+        };
+        let provider = cc_ai_core::build_provider(&config, Some(api_key))?;
+        let mut local = lock(&self.device_local);
+        self.check_open()?;
+        // A running conversation uses the provider captured by its request.
+        // New calls use this endpoint; no auth data enters the working set.
+        *local = Some(DeviceLocalProvider {
+            registration_id,
+            cached: CachedProvider { config, provider },
+        });
+        Ok(())
+    }
+
+    pub(crate) fn clear_device_local(&self, registration_id: &str) {
+        let mut local = lock(&self.device_local);
+        if local
+            .as_ref()
+            .is_some_and(|p| p.registration_id == registration_id)
+        {
+            local.take();
+        }
+    }
+
     /// The default provider: the one flagged `is_default`, else the only one.
     pub(crate) fn default_config(&self) -> Option<AiProviderConfig> {
         let all = self.working().ai_providers();
@@ -516,6 +574,12 @@ impl AiSession {
     pub(crate) fn resolve_config(&self, id: Option<&str>) -> AppResult<AiProviderConfig> {
         match id.map(str::trim).filter(|s| !s.is_empty()) {
             Some(id) => {
+                if id == DEVICE_LOCAL_PROVIDER_ID {
+                    return lock(&self.device_local)
+                        .as_ref()
+                        .map(|p| p.cached.config.clone())
+                        .ok_or(AppError::AiNotConfigured);
+                }
                 let oid = parse_id("provider_id", id)?;
                 self.working()
                     .ai_provider(oid)
@@ -534,6 +598,13 @@ impl AiSession {
         cfg: &AiProviderConfig,
     ) -> AppResult<Arc<dyn LlmProvider>> {
         self.check_open()?;
+        if cfg.id.to_string() == DEVICE_LOCAL_PROVIDER_ID {
+            return lock(&self.device_local)
+                .as_ref()
+                .filter(|p| p.cached.config == *cfg)
+                .map(|p| p.cached.provider.clone())
+                .ok_or(AppError::AiNotConfigured);
+        }
         if let Some(c) = lock(&self.providers).get(&cfg.id) {
             if c.config == *cfg {
                 return Ok(c.provider.clone());

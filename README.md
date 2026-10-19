@@ -8,7 +8,7 @@ An open-source application for working with servers: SSH, RDP, SFTP, an encrypte
 vault for connections and credentials, and collaboration. Work locally, connect
 your own sync server, or use the public ConsoleCrypt server.
 
-[Download 0.3.2](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.3.2) ·
+[Download latest release](https://github.com/evsikovas/consolecrypt-client/releases/latest) ·
 [User guide](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/en.md) ·
 [Website](https://consolecrypt.dev/?lang=en) ·
 [Server and protocol](https://github.com/evsikovas/consolecrypt-server)
@@ -55,7 +55,7 @@ your own sync server, or use the public ConsoleCrypt server.
 | Android ARM64 | APK | Mobile preview, Android 11+ |
 | iOS | Universal Simulator ZIP | Preview for Xcode Simulator; not an iPhone installer |
 
-Compare the downloaded file's SHA-256 with `SHA256SUMS-0.3.2.txt` in the release.
+Compare the downloaded file's SHA-256 with `SHA256SUMS-VERSION.txt` in the release.
 Install Linux packages with `sudo apt install ./package.deb` or
 `sudo dnf install ./package.rpm`. See the guides below for detailed requirements.
 Mobile operating systems restrict background activity; external desktop editors
@@ -137,6 +137,14 @@ flutter test
 Tests that need a native library, a system keyring, or a real SSH/RDP server have
 additional prerequisites. Do not run Flutter tests alongside a native build
 in the same working directory.
+
+## Release 0.4.0
+
+Version 0.4.0 adds a phone RDP touchpad and an installable local AI model on
+Windows/macOS. The model stays on this device and can become the default provider.
+Native packages build only from version tags on `main`. See the
+[release notes](docs/public/RELEASE_0_4_0.md), [local AI guide](docs/public/LOCAL_AI.md)
+and [release workflow](docs/public/GITHUB_ACTIONS.md).
 
 ## Release 0.3.2 and the GitHub migration
 

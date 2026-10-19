@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -33,9 +34,20 @@ class RdpScreen extends ConsumerStatefulWidget {
   ConsumerState<RdpScreen> createState() => _RdpScreenState();
 }
 
-class _RdpScreenState extends ConsumerState<RdpScreen> {
+class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserver {
   bool _fullscreen = false;
   RdpWorkspaceController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeMetrics() {
+    if (mounted && AppPlatform.isMobile) setState(() {});
+  }
 
   Future<void> _newConnection() => showConnectionPicker(context, ref, protocol: HostProtocol.rdp);
 
@@ -83,6 +95,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     // Indexed-shell navigation retains this screen; actual route/profile
     // teardown must not retain a remote desktop in another workspace.
     _controller?.closeAll().ignore();
@@ -97,6 +110,10 @@ class _RdpScreenState extends ConsumerState<RdpScreen> {
     controller.setVisible(visible || _fullscreen);
     _controller = controller;
     final l = context.l10n;
+    final mobile = AppPlatform.isMobile;
+    // The shell already resizes for the keyboard and removes its inset from
+    // the body's MediaQuery. Observe the view without applying the inset again.
+    final keyboardOpen = mobile && View.of(context).viewInsets.bottom > 0;
     if (!scope.unlocked) return Center(child: Text(l.rdpLocked));
     if (_fullscreen) return const SizedBox.shrink();
     return AnimatedBuilder(
@@ -106,29 +123,35 @@ class _RdpScreenState extends ConsumerState<RdpScreen> {
         final body = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (controller.tabs.isNotEmpty) ...[
-              GlassTabStrip(
-                tabs: [
-                  for (final tab in controller.tabs)
-                    GlassTab(
-                      key: ValueKey('rdp-tab-${tab.info.id}'),
-                      title: tab.title,
-                      subtitle: tab.options.username,
-                      tooltip: tab.options.endpoint,
-                      state: switch (tab.status.phase) {
-                        RdpPhase.connected => GlassTabState.connected,
-                        RdpPhase.connecting => GlassTabState.reconnecting,
-                        _ => GlassTabState.disconnected,
-                      },
+            if (controller.tabs.isNotEmpty)
+              Offstage(
+                offstage: keyboardOpen,
+                child: Column(
+                  children: [
+                    GlassTabStrip(
+                      tabs: [
+                        for (final tab in controller.tabs)
+                          GlassTab(
+                            key: ValueKey('rdp-tab-${tab.info.id}'),
+                            title: tab.title,
+                            subtitle: tab.options.username,
+                            tooltip: tab.options.endpoint,
+                            state: switch (tab.status.phase) {
+                              RdpPhase.connected => GlassTabState.connected,
+                              RdpPhase.connecting => GlassTabState.reconnecting,
+                              _ => GlassTabState.disconnected,
+                            },
+                          ),
+                      ],
+                      activeIndex: active == null ? null : controller.tabs.indexOf(active),
+                      onSelect: (index) => controller.activate(controller.tabs[index]),
+                      onClose: (index) => controller.close(controller.tabs[index]),
+                      onAdd: controller.canConnect ? _newConnection : null,
                     ),
-                ],
-                activeIndex: active == null ? null : controller.tabs.indexOf(active),
-                onSelect: (index) => controller.activate(controller.tabs[index]),
-                onClose: (index) => controller.close(controller.tabs[index]),
-                onAdd: controller.canConnect ? _newConnection : null,
+                    const SizedBox(height: 8),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-            ],
             if (active == null)
               Expanded(
                 child: EmptyState(
@@ -149,65 +172,72 @@ class _RdpScreenState extends ConsumerState<RdpScreen> {
                   animation: active,
                   builder: (context, _) => Column(
                     children: [
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(switch (active.status.phase) {
-                            RdpPhase.connecting => l.rdpConnecting,
-                            RdpPhase.connected => l.rdpConnected,
-                            RdpPhase.disconnected => l.rdpDisconnected,
-                            RdpPhase.failed => _failureLabel(l, active.status.errorCode),
-                          }),
-                          if (active.noticeCode != null) Text(l.rdpResizeUnavailable),
-                          GlassIconButton(
-                            key: const ValueKey('rdp-secure-attention'),
-                            icon: Icons.keyboard,
-                            tooltip: l.rdpSecureAttention,
-                            onPressed: active.status.phase == RdpPhase.connected
-                                ? () => controller.send(active, const [
-                                    RdpScancodeInput(0x1d, down: true),
-                                    RdpScancodeInput(0x38, down: true),
-                                    RdpScancodeInput(0x53, extended: true, down: true),
-                                    RdpScancodeInput(0x53, extended: true, down: false),
-                                    RdpScancodeInput(0x38, down: false),
-                                    RdpScancodeInput(0x1d, down: false),
-                                  ])
-                                : null,
-                          ),
-                          GlassIconButton(
-                            key: const ValueKey('rdp-resize'),
-                            icon: Icons.aspect_ratio,
-                            tooltip: l.rdpResize,
-                            onPressed: active.status.phase == RdpPhase.connected
-                                ? () => controller.send(active, const [RdpResizeInput(1920, 1080)])
-                                : null,
-                          ),
-                          GlassIconButton(
-                            key: const ValueKey('rdp-permissions'),
-                            icon: Icons.admin_panel_settings_outlined,
-                            tooltip: l.rdpPermissions,
-                            onPressed: active.status.phase == RdpPhase.connected
-                                ? () => showRdpPermissions(context, ref, active)
-                                : null,
-                          ),
-                          RdpClipboardActions(key: ValueKey('rdp-clipboard-${active.info.id}'), tab: active),
-                          GlassIconButton(
-                            key: const ValueKey('rdp-expand'),
-                            icon: Icons.fullscreen,
-                            tooltip: l.rdpExpand,
-                            onPressed: _openFullscreen,
-                          ),
-                        ],
+                      Offstage(
+                        offstage: keyboardOpen,
+                        child: Column(
+                          children: [
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(switch (active.status.phase) {
+                                  RdpPhase.connecting => l.rdpConnecting,
+                                  RdpPhase.connected => l.rdpConnected,
+                                  RdpPhase.disconnected => l.rdpDisconnected,
+                                  RdpPhase.failed => _failureLabel(l, active.status.errorCode),
+                                }),
+                                if (active.noticeCode != null) Text(l.rdpResizeUnavailable),
+                                GlassIconButton(
+                                  key: const ValueKey('rdp-secure-attention'),
+                                  icon: mobile ? Icons.security : Icons.keyboard,
+                                  tooltip: l.rdpSecureAttention,
+                                  onPressed: active.status.phase == RdpPhase.connected
+                                      ? () => controller.send(active, const [
+                                          RdpScancodeInput(0x1d, down: true),
+                                          RdpScancodeInput(0x38, down: true),
+                                          RdpScancodeInput(0x53, extended: true, down: true),
+                                          RdpScancodeInput(0x53, extended: true, down: false),
+                                          RdpScancodeInput(0x38, down: false),
+                                          RdpScancodeInput(0x1d, down: false),
+                                        ])
+                                      : null,
+                                ),
+                                GlassIconButton(
+                                  key: const ValueKey('rdp-resize'),
+                                  icon: Icons.aspect_ratio,
+                                  tooltip: l.rdpResize,
+                                  onPressed: active.status.phase == RdpPhase.connected
+                                      ? () => controller.send(active, const [RdpResizeInput(1920, 1080)])
+                                      : null,
+                                ),
+                                GlassIconButton(
+                                  key: const ValueKey('rdp-permissions'),
+                                  icon: Icons.admin_panel_settings_outlined,
+                                  tooltip: l.rdpPermissions,
+                                  onPressed: active.status.phase == RdpPhase.connected
+                                      ? () => showRdpPermissions(context, ref, active)
+                                      : null,
+                                ),
+                                RdpClipboardActions(key: ValueKey('rdp-clipboard-${active.info.id}'), tab: active),
+                                GlassIconButton(
+                                  key: const ValueKey('rdp-expand'),
+                                  icon: Icons.fullscreen,
+                                  tooltip: l.rdpExpand,
+                                  onPressed: _openFullscreen,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            if (active.directory != null &&
+                                (active.status.phase == RdpPhase.connected ||
+                                    active.status.phase == RdpPhase.connecting)) ...[
+                              RdpFolderStatus(directory: active.directory!, state: active.folderState),
+                              const SizedBox(height: 8),
+                            ],
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      if (active.directory != null &&
-                          (active.status.phase == RdpPhase.connected ||
-                              active.status.phase == RdpPhase.connecting)) ...[
-                        RdpFolderStatus(directory: active.directory!, state: active.folderState),
-                        const SizedBox(height: 8),
-                      ],
                       Expanded(
                         child: RdpView(
                           key: ValueKey('rdp-view-${active.info.id}'),
@@ -229,7 +259,18 @@ class _RdpScreenState extends ConsumerState<RdpScreen> {
         );
         return GlassBlurSuppressor(
           budget: GlassScope.of(context).budget,
-          child: PageScaffold(title: l.rdpTitle, subtitle: l.rdpWorkspaceHelp, body: body),
+          child: mobile && active != null
+              ? Semantics(
+                  container: true,
+                  explicitChildNodes: true,
+                  label: l.rdpTitle,
+                  child: Padding(
+                    key: const ValueKey('rdp-mobile-workspace'),
+                    padding: EdgeInsets.all(keyboardOpen ? 4 : 8),
+                    child: body,
+                  ),
+                )
+              : PageScaffold(title: l.rdpTitle, subtitle: l.rdpWorkspaceHelp, body: body),
         );
       },
     );

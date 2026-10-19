@@ -7579,5 +7579,138 @@
   "rdpFullscreenFailed": "Could not change full-screen mode. Try the window controls.",
   "@rdpFullscreenFailed": {
     "description": "RDP full-screen window control."
+  },
+  "rdpMobileTouchpad": "Touchpad",
+  "rdpMobileDirectTouch": "Direct touch",
+  "rdpMobileShowKeyboard": "Show keyboard",
+  "rdpMobileHideKeyboard": "Hide keyboard",
+  "rdpMobileLeftClick": "Left click at cursor",
+  "rdpMobileRightClick": "Right click at cursor",
+  "rdpMobileHelpTitle": "Phone controls",
+  "rdpMobileHelp": "Tap the mouse button to turn the desktop into a touchpad. Slide one finger anywhere to move the cursor; lift and reposition your finger to continue.\n\nTap for a left click. Tap twice for a double-click; hold the second tap and move to drag. You can also hold one finger briefly, then drag.\n\nTap with two fingers for a right click. Slide two fingers to scroll. The click buttons act at the cursor.\n\nThe keyboard button shows or hides your phone keyboard. Esc, Tab, arrow keys and Enter are above it. Touching the desktop does not open the keyboard.\n\nTurn touchpad mode off to click directly where you touch. An attached mouse keeps its normal controls.",
+  "@rdpMobileTouchpad": {
+    "description": "Mobile-only remote desktop input control."
+  },
+  "@rdpMobileDirectTouch": {
+    "description": "Mobile-only remote desktop input control."
+  },
+  "@rdpMobileShowKeyboard": {
+    "description": "Mobile-only remote desktop input control."
+  },
+  "@rdpMobileHideKeyboard": {
+    "description": "Mobile-only remote desktop input control."
+  },
+  "@rdpMobileLeftClick": {
+    "description": "Mobile-only remote desktop input control."
+  },
+  "@rdpMobileRightClick": {
+    "description": "Mobile-only remote desktop input control."
+  },
+  "@rdpMobileHelpTitle": {
+    "description": "Mobile-only remote desktop input control."
+  },
+  "@rdpMobileHelp": {
+    "description": "Mobile-only remote desktop input control."
+  },
+  "localAiTitle": "Built-in local AI",
+  "localAiDescription": "Install a compact model and run it on this computer. Chat and command suggestions work offline after installation.",
+  "localAiModel": "Model",
+  "localAiDownloadSize": "Model download: {size}",
+  "localAiNotInstalled": "Not installed",
+  "localAiInstalling": "Downloading and verifying files…",
+  "localAiStopped": "Installed · starts when you send a request",
+  "localAiStarting": "Starting the model…",
+  "localAiReady": "Ready · running on this computer",
+  "localAiStopping": "Stopping…",
+  "localAiError": "Local AI needs attention",
+  "localAiUnsupported": "Available on supported Windows and macOS computers.",
+  "localAiDefault": "Use by default after installation",
+  "localAiDeviceOnly": "Only on this computer. Other devices and saved provider settings stay independent.",
+  "localAiInstall": "Install local AI",
+  "localAiStart": "Start",
+  "localAiStop": "Stop",
+  "localAiRemove": "Remove model and runtime",
+  "localAiResourceHelp": "Uses memory and CPU while running; stops after 15 minutes without requests. Small models may make mistakes. Review commands before running them.",
+  "localAiOperationFailed": "The local AI operation could not be completed. Check its status and try again.",
+  "@localAiDownloadSize": {
+    "description": "Size of the device-local AI model download, excluding its runtime.",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "@localAiTitle": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiDescription": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiModel": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiNotInstalled": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiInstalling": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiStopped": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiStarting": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiReady": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiStopping": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiError": {
+    "description": "Built-in device-local AI status."
+  },
+  "@localAiUnsupported": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiDefault": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiDeviceOnly": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiInstall": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiStart": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiStop": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiRemove": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiResourceHelp": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiOperationFailed": {
+    "description": "Built-in device-local AI settings."
+  },
+  "localAiInstallFailed": "Installation failed. Check the internet connection and free disk space, then try again.",
+  "@localAiInstallFailed": {
+    "description": "Built-in device-local AI status."
+  },
+  "localAiFilesChanged": "The installed files could not be verified. Remove the model and install it again.",
+  "@localAiFilesChanged": {
+    "description": "Built-in device-local AI status."
+  },
+  "localAiStartFailed": "The model could not start or stopped unexpectedly. Free some memory and try again.",
+  "@localAiStartFailed": {
+    "description": "Built-in device-local AI status."
+  },
+  "localAiStorageUnavailable": "Cannot access local AI files. Check app data folder permissions and free disk space.",
+  "@localAiStorageUnavailable": {
+    "description": "Local AI storage access failure."
   }
 }

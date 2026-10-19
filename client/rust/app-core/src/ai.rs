@@ -25,6 +25,7 @@ mod tests;
 
 pub(crate) use index::index_key_name;
 pub(crate) use session::AiSession;
+pub(crate) use session::DEVICE_LOCAL_PROVIDER_ID;
 
 use crate::app::AppCore;
 use crate::dto::*;
@@ -235,6 +236,65 @@ struct Prepared {
 }
 
 impl AppCore {
+    /// Attach a verified device-managed llama.cpp process to this unlock.
+    /// Endpoint/auth/default preferences never enter the vault working set.
+    pub async fn register_device_local_ai_provider(
+        &self,
+        profile_id: String,
+        vault_id: String,
+        registration_id: String,
+        port: u16,
+        api_key: String,
+        model: String,
+    ) -> AppResult<()> {
+        if !cfg!(any(target_os = "windows", target_os = "macos")) {
+            return Err(AppError::Unsupported(
+                "device-local AI requires Windows or macOS".into(),
+            ));
+        }
+        if port == 0
+            || api_key.len() < 32
+            || api_key.len() > 256
+            || !api_key
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"-_".contains(&b))
+        {
+            return Err(AppError::invalid(
+                "local_ai_endpoint",
+                "invalid loopback endpoint credentials",
+            ));
+        }
+        if model.is_empty()
+            || model.len() > 128
+            || !model
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"-._/".contains(&b))
+        {
+            return Err(AppError::invalid("model", "invalid local model identifier"));
+        }
+        uuid::Uuid::parse_str(&registration_id)
+            .map_err(|_| AppError::invalid("registration_id", "invalid id"))?;
+        let (session, unlocked) = self.unlocked().await?;
+        if session.profile_id.to_string() != profile_id || unlocked.vault_id.to_string() != vault_id
+        {
+            return Err(AppError::Cancelled);
+        }
+        unlocked.ai.register_device_local(
+            registration_id,
+            port,
+            secrecy::SecretString::from(api_key),
+            model,
+        )
+    }
+
+    /// Clear only the registration owned by the caller; a late cleanup must
+    /// never clear a replacement started after a profile/lock transition.
+    pub async fn clear_device_local_ai_provider(&self, registration_id: String) -> AppResult<()> {
+        let (_, ai) = self.ai_session().await?;
+        ai.clear_device_local(&registration_id);
+        Ok(())
+    }
+
     async fn ai_session(&self) -> AppResult<(Arc<Unlocked>, Arc<AiSession>)> {
         let (_, u) = self.unlocked().await?;
         let ai = u.ai.clone();

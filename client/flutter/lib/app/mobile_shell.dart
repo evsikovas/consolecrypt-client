@@ -31,6 +31,11 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
     final profile = ref.watch(activeProfileProvider);
     final selected = _more ? 3 : _primary.indexOf(_navigationBranch(branch));
     final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final rdpVisible = branch == ShellBranch.rdp && !_more && !toolsOpen;
+    // The remote desktop and its input controls need the short landscape
+    // viewport. Navigation returns as soon as the keyboard is dismissed.
+    final hideAppBar =
+        toolsOpen || (rdpVisible && (keyboardOpen || MediaQuery.orientationOf(context) == Orientation.landscape));
     return PopScope(
       canPop: !toolsOpen && !_more && branch == ShellBranch.hosts,
       onPopInvokedWithResult: (didPop, _) {
@@ -46,7 +51,7 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
       child: Scaffold(
         key: const ValueKey('mobile-shell'),
         resizeToAvoidBottomInset: true,
-        appBar: toolsOpen
+        appBar: hideAppBar
             ? null
             : AppBar(
                 backgroundColor: tokens.surfaces.contentSolid,
@@ -74,7 +79,7 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
                 ],
               ),
         body: SafeArea(
-          top: toolsOpen,
+          top: hideAppBar,
           bottom: keyboardOpen || toolsOpen,
           child: Stack(
             fit: StackFit.expand,
@@ -83,7 +88,7 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
                 offstage: _more || toolsOpen,
                 child: Column(
                   children: [
-                    const _ShellBanners(),
+                    Offstage(offstage: rdpVisible && keyboardOpen, child: const _ShellBanners()),
                     Expanded(child: SftpEditRecoveryListener(child: widget.navigationShell)),
                   ],
                 ),

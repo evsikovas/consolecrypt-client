@@ -100,6 +100,7 @@ final class LocalSettings {
     this.workspacePanelStyle = WorkspacePanelStyle.floating,
     this.sftpDefaultEditor,
     this.checkUpdatesAutomatically = true,
+    this.preferDeviceLocalAi = true,
   });
 
   final AppThemeMode themeMode;
@@ -148,6 +149,10 @@ final class LocalSettings {
   /// Only release metadata is fetched. Installers require user confirmation.
   final bool checkUpdatesAutomatically;
 
+  /// Effective only after installing the optional model on this computer.
+  /// This preference never changes synced provider defaults.
+  final bool preferDeviceLocalAi;
+
   LocalSettings copyWith({
     AppThemeMode? themeMode,
     double? uiFontScale,
@@ -168,6 +173,7 @@ final class LocalSettings {
     AppRef? sftpDefaultEditor,
     bool resetSftpDefaultEditor = false,
     bool? checkUpdatesAutomatically,
+    bool? preferDeviceLocalAi,
   }) => LocalSettings(
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
@@ -186,5 +192,6 @@ final class LocalSettings {
     workspacePanelStyle: workspacePanelStyle ?? this.workspacePanelStyle,
     sftpDefaultEditor: resetSftpDefaultEditor ? null : (sftpDefaultEditor ?? this.sftpDefaultEditor),
     checkUpdatesAutomatically: checkUpdatesAutomatically ?? this.checkUpdatesAutomatically,
+    preferDeviceLocalAi: preferDeviceLocalAi ?? this.preferDeviceLocalAi,
   );
 }

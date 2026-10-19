@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:consolecrypt/core/bridge/ai_chat_stream.dart';
 import 'package:consolecrypt/core/bridge/effective_config.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_account.dart';
@@ -598,7 +599,7 @@ final class RustSettingsService implements SettingsService {
 /// AI over app-core's AI runtime (providers, Ask, command generation,
 /// snippet drafts). Provider configs and API keys live in the vault; keys
 /// are write-only.
-final class RustAiService implements AiService {
+final class RustAiService implements AiService, DeviceLocalAiBridge {
   RustAiService(this._hub) {
     _hub.onSessionReset.add(_conversations.clear);
   }
@@ -608,6 +609,29 @@ final class RustAiService implements AiService {
   /// Conversation per provider for multi-turn chats (app-core keeps the
   /// history; the UI sends the whole transcript).
   final Map<String, String> _conversations = {};
+
+  @override
+  Future<void> registerDeviceLocalProvider({
+    required String profileId,
+    required String vaultId,
+    required String registrationId,
+    required int port,
+    required String apiKey,
+    required String model,
+  }) => guard(
+    () => rs_ai.aiRegisterDeviceLocalProvider(
+      profileId: profileId,
+      vaultId: vaultId,
+      registrationId: registrationId,
+      port: port,
+      apiKey: apiKey,
+      model: model,
+    ),
+  );
+
+  @override
+  Future<void> clearDeviceLocalProvider(String registrationId) =>
+      guard(() => rs_ai.aiClearDeviceLocalProvider(registrationId: registrationId));
 
   @override
   Stream<List<AiProviderConfig>> watchProviders() => _hub.aiProviders.stream;
@@ -663,9 +687,11 @@ final class RustAiService implements AiService {
         ? null
         : _hub.aiProviders.value.where((p) => p.id.value == providerId).firstOrNull;
     return SanitizationReport(
-      profile: provider?.privacyProfile ?? PrivacyProfile.strict,
+      profile: providerId == deviceLocalAiProviderId.value
+          ? PrivacyProfile.local
+          : provider?.privacyProfile ?? PrivacyProfile.strict,
       redactions: (redactions as num?)?.toInt() ?? 0,
-      remote: !(provider?.provider.isLocalByDefault ?? false),
+      remote: providerId != deviceLocalAiProviderId.value && (provider?.isRemote ?? true),
     );
   }
 
@@ -674,37 +700,23 @@ final class RustAiService implements AiService {
     required ObjectId providerId,
     required List<ChatMessage> history,
     AiContextSelection context = AiContextSelection.none,
-  }) async* {
+  }) {
     final question = history.where((m) => m.role == ChatRole.user).lastOrNull?.content ?? '';
     final userTurns = history.where((m) => m.role == ChatRole.user).length;
     final conversation = userTurns > 1 ? _conversations[providerId.value] : null;
-    final text = StringBuffer();
-    try {
-      await for (final json in rs_ai.aiAsk(
+    return bridgeAiChatStream(
+      chunks: () => rs_ai.aiAsk(
         providerId: providerId.value,
         conversationId: conversation,
         question: question,
         contextJson: _contextJson(context),
-      )) {
-        final chunk = decodeObject(json);
-        switch (chunk['type']) {
-          case 'started':
-            _conversations[providerId.value] = chunk['conversation_id']! as String;
-          case 'delta':
-            final t = chunk['text'] as String? ?? '';
-            text.write(t);
-            yield AiDelta(t);
-          case 'done':
-            yield AiCompleted(fullText: text.toString(), report: _report(chunk, providerId.value));
-            return;
-          case 'error':
-            yield AiFailed(chunk['message'] as String? ?? '');
-            return;
-        }
-      }
-    } catch (e) {
-      yield AiFailed(toAppException(e).message);
-    }
+      ),
+      cancel: (requestId) async {
+        await rs_ai.aiCancel(requestId: requestId);
+      },
+      onConversation: (id) => _conversations[providerId.value] = id,
+      report: (summary) => _report(summary, providerId.value),
+    );
   }
 
   @override
@@ -737,7 +749,7 @@ final class RustAiService implements AiService {
               PrivacyProfile.values.where((p) => p.wireName == j['privacy_profile']).firstOrNull ??
               PrivacyProfile.strict,
           redactions: ((j['redactions'] as Map?)?['total'] as num?)?.toInt() ?? 0,
-          remote: true,
+          remote: providerId != deviceLocalAiProviderId,
         ),
         command: GeneratedCommand(command: command, explanation: explanation, suggestedRisk: risk, dialect: dialect),
       );

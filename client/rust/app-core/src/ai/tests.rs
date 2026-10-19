@@ -16,6 +16,143 @@ use std::sync::Mutex;
 
 const PASSPHRASE: &str = "correct horse vault passphrase 42";
 
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn device_local_provider_is_ephemeral_scoped_and_keeps_command_policy() {
+    let f = fixture(PrivacyProfile::Standard).await;
+    let (session, unlocked) = f.app.unlocked().await.unwrap();
+    let profile = session.profile_id.to_string();
+    let vault = unlocked.vault_id.to_string();
+    let providers_before = f.app.list_ai_providers().await.unwrap();
+    let registration = uuid::Uuid::new_v4().to_string();
+    // Runtime keys use unpadded base64url, including both URL-safe symbols.
+    let key = format!("{}-_", "a".repeat(41));
+    let port = f
+        .mock
+        .base
+        .rsplit(':')
+        .next()
+        .unwrap()
+        .parse::<u16>()
+        .unwrap();
+    f.mock.require_key(&key);
+    assert!(f
+        .app
+        .register_device_local_ai_provider(
+            uuid::Uuid::new_v4().to_string(),
+            vault.clone(),
+            registration.clone(),
+            port,
+            key.clone(),
+            "mock-chat".into()
+        )
+        .await
+        .is_err());
+    assert!(f
+        .app
+        .register_device_local_ai_provider(
+            profile.clone(),
+            uuid::Uuid::new_v4().to_string(),
+            registration.clone(),
+            port,
+            key.clone(),
+            "mock-chat".into()
+        )
+        .await
+        .is_err());
+    f.app
+        .register_device_local_ai_provider(
+            profile.clone(),
+            vault.clone(),
+            registration.clone(),
+            port,
+            key.clone(),
+            "mock-chat".into(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        serde_json::to_value(f.app.list_ai_providers().await.unwrap()).unwrap(),
+        serde_json::to_value(&providers_before).unwrap()
+    );
+    assert_eq!(
+        unlocked.ai.resolve_config(None).unwrap().id.to_string(),
+        providers_before[0].id
+    );
+    f.mock.push_chat(r#"{"command":"rm -rf /important","explanation":"dangerous","risk_suggestion":"read_only"}"#);
+    let proposal = f
+        .app
+        .ai_generate_command(
+            Some(DEVICE_LOCAL_PROVIDER_ID.into()),
+            "remove files; PGPASSWORD=LocalAiSecret7781".into(),
+            None,
+            AiContextOptionsDto {
+                host_id: Some(f.host.id.clone()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert!(!f.mock.everything_sent().contains("LocalAiSecret7781"));
+    assert!(f
+        .mock
+        .requests()
+        .iter()
+        .any(|r| r.authorization.as_deref() == Some(&format!("Bearer {key}"))));
+    assert!(f.fake.execs.lock().unwrap().is_empty());
+    assert_eq!(
+        f.app
+            .approve_run(proposal.run, false)
+            .await
+            .unwrap_err()
+            .code(),
+        "confirmation_required"
+    );
+    // An old completion cannot clear the newly registered process.
+    f.app
+        .clear_device_local_ai_provider(uuid::Uuid::new_v4().to_string())
+        .await
+        .unwrap();
+    assert!(unlocked
+        .ai
+        .resolve_config(Some(DEVICE_LOCAL_PROVIDER_ID))
+        .is_ok());
+    f.app
+        .clear_device_local_ai_provider(registration.clone())
+        .await
+        .unwrap();
+    assert!(unlocked
+        .ai
+        .resolve_config(Some(DEVICE_LOCAL_PROVIDER_ID))
+        .is_err());
+    f.app
+        .register_device_local_ai_provider(
+            profile,
+            vault,
+            registration,
+            port,
+            key,
+            "mock-chat".into(),
+        )
+        .await
+        .unwrap();
+    f.app.lock().await.unwrap();
+    f.app
+        .unlock_with_passphrase(PASSPHRASE.into())
+        .await
+        .unwrap();
+    let (_, next) = f.app.unlocked().await.unwrap();
+    assert!(next
+        .ai
+        .resolve_config(Some(DEVICE_LOCAL_PROVIDER_ID))
+        .is_err());
+    assert_eq!(
+        serde_json::to_value(f.app.list_ai_providers().await.unwrap()).unwrap(),
+        serde_json::to_value(providers_before).unwrap()
+    );
+    f.app.shutdown().await.unwrap();
+}
+
 #[tokio::test]
 async fn cancelling_a_full_answer_queue_releases_the_pending_sender() {
     let (tx, mut rx) = mpsc::channel(1);

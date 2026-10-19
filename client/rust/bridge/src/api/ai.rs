@@ -33,6 +33,34 @@ fn context(context_json: Option<String>) -> Result<AiContextOptionsDto, BridgeEr
     }
 }
 
+/// Register an in-memory, authenticated loopback provider for this unlock.
+pub async fn ai_register_device_local_provider(
+    profile_id: String,
+    vault_id: String,
+    registration_id: String,
+    port: u16,
+    api_key: String,
+    model: String,
+) -> Result<(), BridgeError> {
+    with_core(move |c| async move {
+        Ok(c.register_device_local_ai_provider(
+            profile_id,
+            vault_id,
+            registration_id,
+            port,
+            api_key,
+            model,
+        )
+        .await?)
+    })
+    .await
+}
+
+pub async fn ai_clear_device_local_provider(registration_id: String) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.clear_device_local_ai_provider(registration_id).await?) })
+        .await
+}
+
 /// Check a provider (models, capabilities, latency) → `AiProviderTestDto`.
 pub async fn ai_test_provider(provider_id: String) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.test_ai_provider(provider_id).await?) }).await
@@ -50,12 +78,14 @@ pub async fn ai_ask(
 ) -> Result<(), BridgeError> {
     let context = context(context_json)?;
     let core = state::core()?;
+    let request_core = core.clone();
     let request = AiAskRequestDto {
         conversation_id: conversation_id.filter(|s| !s.trim().is_empty()),
         question,
     };
     let stream = state::run(async move {
-        core.ai_ask(provider_id, request, context)
+        request_core
+            .ai_ask(provider_id, request, context)
             .await
             .map_err(BridgeError::from)
     })
@@ -66,8 +96,10 @@ pub async fn ai_ask(
         "conversation_id": stream.conversation_id,
     });
     if sink.add(started.to_string()).is_err() {
+        let _ = core.ai_cancel(stream.request_id).await;
         return Ok(());
     }
+    let request_id = stream.request_id;
     let mut chunks = stream.chunks;
     state::runtime().spawn(async move {
         while let Some(chunk) = chunks.recv().await {
@@ -75,7 +107,11 @@ pub async fn ai_ask(
             let Ok(json) = serde_json::to_string(&chunk) else {
                 continue;
             };
-            if sink.add(json).is_err() || end {
+            if sink.add(json).is_err() {
+                let _ = core.ai_cancel(request_id).await;
+                break;
+            }
+            if end {
                 break;
             }
         }

@@ -43,7 +43,7 @@
 Откройте терминал в каталоге скачивания и подставьте точное имя полученного файла:
 
 ```sh
-sudo apt install ./ConsoleCrypt-0.3.0+1378-linux-x64.deb
+sudo apt install ./ConsoleCrypt-0.3.2+13013-linux-x64.deb
 consolecrypt
 ```
 
@@ -54,7 +54,7 @@ consolecrypt
 ## Установка `.rpm`
 
 ```sh
-sudo dnf install ./ConsoleCrypt-0.3.0+1378-linux-x64.rpm
+sudo dnf install ./ConsoleCrypt-0.3.2+13013-linux-x64.rpm
 consolecrypt
 ```
 
@@ -101,8 +101,9 @@ Flutter-сборок в одном каталоге. Сохраняйте `Cargo
 
 Для воспроизводимого окружения есть
 [`client/ci/linux/Dockerfile`](../../client/ci/linux/Dockerfile): Ubuntu 22.04,
-проверенная ревизия официального Flutter и закреплённый Rust. GitLab job
-`build-linux` использует Docker на уже зарегистрированном Mac runner и монтирует
+проверенная ревизия официального Flutter и закреплённый Rust. Job `linux`
+в [GitHub Actions](GITHUB_ACTIONS.md) использует Docker на отдельном Linux x64
+runner с метками `consolecrypt`, `client`, `linux-docker` и монтирует
 только подготовленные публичные исходники; домашний каталог, D-Bus, ключницы,
 SSH-ключи и Kubernetes-конфигурация в контейнер не передаются.
 
@@ -120,10 +121,10 @@ SSH-ключи и Kubernetes-конфигурация в контейнер не
 
 ## Проверки и ограничения
 
-GitLab [build-linux 1358](https://git.evsikov.net/publics/consolecrypt/-/jobs/1358)
+Исторический прогон 0.2.5: GitLab [build-linux 1358](https://git.evsikov.net/publics/consolecrypt/-/jobs/1358)
 прошёл две интеграции Rust bridge и один полный сценарий UI: создание хранилища,
 сохранение хоста, перезапуск и разблокировка с настоящей тестовой Secret Service.
-Готовые DEB/RPM отдельно установлены в Debian 12 и Fedora 43: проверены
+DEB/RPM того прогона отдельно установлены в Debian 12 и Fedora 43: проверены
 зависимости, обновление `0.2.5-79 → 0.2.5-1358`, удаление/повторная установка,
 нативные библиотеки и экран приветствия. Проверка сохранности использовала
 только синтетические маркеры в отдельном HOME/ключнице; она не подтверждает
@@ -154,11 +155,12 @@ Linux ARM64, Flatpak/AppImage, RPM для RHEL, физический GPU и Wayl
 
 ## English
 
-ConsoleCrypt **0.3.0+1378** targets Linux x86-64. The build baseline is Ubuntu
-22.04; DEB/RPM installation and an actual welcome-screen launch passed in
-isolated Debian 12 and Fedora 43 using software X11 rendering.
-Install the linked DEB with `sudo apt install ./ConsoleCrypt-0.3.0+1378-linux-x64.deb`
-or the RPM with `sudo dnf install ./ConsoleCrypt-0.3.0+1378-linux-x64.rpm`.
+ConsoleCrypt **0.3.2+13013** targets Linux x86-64. The build baseline is Ubuntu
+22.04. The earlier 0.2.5 validation covered DEB/RPM installation and an actual
+welcome-screen launch in isolated Debian 12 and Fedora 43 using software X11
+rendering; it is not a new acceptance run of 0.3.2.
+Install the linked DEB with `sudo apt install ./ConsoleCrypt-0.3.2+13013-linux-x64.deb`
+or the RPM with `sudo dnf install ./ConsoleCrypt-0.3.2+13013-linux-x64.rpm`.
 Then run `consolecrypt` as your regular desktop user, without `sudo`.
 
 An existing unlocked default persistent Secret Service keyring and session
@@ -167,7 +169,7 @@ or unlock it and has no plaintext-key fallback. Download future DEB/RPM packages
 and update with the package manager: Linux has no signed in-app updater feed
 or automatic installation. Keep your profiles, encrypted backups and keyring.
 
-CI passed real Rust-core storage and UI restart/unlock tests. Package upgrade,
+That earlier CI passed real Rust-core storage and UI restart/unlock tests. Package upgrade,
 removal and reinstall preserved owned synthetic HOME/keyring markers only;
 this was not a migration test of a real user's vault. Physical GPU, Wayland,
 Linux ARM64, RHEL and Flatpak/AppImage remain outside the verified matrix.

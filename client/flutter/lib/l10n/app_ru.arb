@@ -2431,5 +2431,114 @@
   "rdpFullscreenFailed": "Не удалось изменить полноэкранный режим. Используйте кнопки управления окном.",
   "@rdpFullscreenFailed": {
     "description": "RDP full-screen window control."
+  },
+  "rdpMobileTouchpad": "Тачпад",
+  "rdpMobileDirectTouch": "Касание",
+  "rdpMobileShowKeyboard": "Открыть клавиатуру",
+  "rdpMobileHideKeyboard": "Скрыть клавиатуру",
+  "rdpMobileLeftClick": "Левый клик в позиции курсора",
+  "rdpMobileRightClick": "Правый клик в позиции курсора",
+  "rdpMobileHelpTitle": "Управление с телефона",
+  "rdpMobileHelp": "Нажмите кнопку мыши, чтобы экран работал как тачпад. Водите одним пальцем в любом месте для перемещения курсора. Можно поднять палец и продолжить движение с другого места.\n\nКасание — левый клик. Два быстрых касания — двойной клик; удерживайте второе касание и двигайте палец для перетаскивания. Также можно немного удержать один палец, затем потянуть.\n\nКасание двумя пальцами — правый клик. Движение двумя пальцами — прокрутка. Кнопки клика действуют в позиции курсора.\n\nКнопка клавиатуры открывает или скрывает клавиатуру телефона. Над ней доступны Esc, Tab, стрелки и Enter. Касание рабочего стола не открывает клавиатуру.\n\nВыключите тачпад для клика непосредственно под пальцем. Подключённая мышь работает обычным способом.",
+  "localAiTitle": "Встроенный локальный ИИ",
+  "localAiDescription": "Установите небольшую модель на этот компьютер. После установки чат и подсказки команд работают без интернета.",
+  "localAiModel": "Модель",
+  "localAiDownloadSize": "Загрузка модели: {size}",
+  "localAiNotInstalled": "Не установлено",
+  "localAiInstalling": "Загрузка и проверка файлов…",
+  "localAiStopped": "Установлено · запустится при запросе",
+  "localAiStarting": "Запуск модели…",
+  "localAiReady": "Готово · работает на этом компьютере",
+  "localAiStopping": "Остановка…",
+  "localAiError": "Ошибка локального ИИ",
+  "localAiUnsupported": "Доступно на поддерживаемых компьютерах с Windows и macOS.",
+  "localAiDefault": "Использовать по умолчанию после установки",
+  "localAiDeviceOnly": "Только на этом компьютере. Настройки других устройств и сохранённых провайдеров независимы.",
+  "localAiInstall": "Установить локальный ИИ",
+  "localAiStart": "Запустить",
+  "localAiStop": "Остановить",
+  "localAiRemove": "Удалить модель и среду выполнения",
+  "localAiResourceHelp": "Во время работы использует память и процессор; остановится через 15 минут без запросов. Небольшие модели могут ошибаться. Проверяйте команды перед запуском.",
+  "localAiOperationFailed": "Не удалось выполнить действие с локальным ИИ. Проверьте состояние и повторите попытку.",
+  "@localAiDownloadSize": {
+    "description": "Size of the device-local AI model download, excluding its runtime.",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "@localAiTitle": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiDescription": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiModel": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiNotInstalled": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiInstalling": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiStopped": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiStarting": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiReady": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiStopping": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiError": {
+    "description": "Built-in device-local AI status."
+  },
+  "@localAiUnsupported": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiDefault": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiDeviceOnly": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiInstall": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiStart": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiStop": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiRemove": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiResourceHelp": {
+    "description": "Built-in device-local AI settings."
+  },
+  "@localAiOperationFailed": {
+    "description": "Built-in device-local AI settings."
+  },
+  "localAiInstallFailed": "Не удалось установить модель. Проверьте интернет и свободное место на диске, затем повторите попытку.",
+  "@localAiInstallFailed": {
+    "description": "Built-in device-local AI status."
+  },
+  "localAiFilesChanged": "Не удалось проверить установленные файлы. Удалите модель и установите её заново.",
+  "@localAiFilesChanged": {
+    "description": "Built-in device-local AI status."
+  },
+  "localAiStartFailed": "Модель не запустилась или неожиданно остановилась. Освободите оперативную память и повторите попытку.",
+  "@localAiStartFailed": {
+    "description": "Built-in device-local AI status."
+  },
+  "localAiStorageUnavailable": "Нет доступа к файлам локального ИИ. Проверьте права на папку данных приложения и свободное место на диске.",
+  "@localAiStorageUnavailable": {
+    "description": "Local AI storage access failure."
   }
 }

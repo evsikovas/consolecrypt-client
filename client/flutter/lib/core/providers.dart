@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/ai/local_ai_providers.dart';
 import 'package:consolecrypt/core/bridge/rust_app_services.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -38,7 +39,7 @@ final terminalServiceProvider = Provider<TerminalService>((ref) => ref.watch(app
 final sftpServiceProvider = Provider<SftpService>((ref) => ref.watch(appServicesProvider).sftp);
 final tunnelServiceProvider = Provider<TunnelService>((ref) => ref.watch(appServicesProvider).tunnels);
 final snippetServiceProvider = Provider<SnippetService>((ref) => ref.watch(appServicesProvider).snippets);
-final aiServiceProvider = Provider<AiService>((ref) => ref.watch(appServicesProvider).ai);
+final aiServiceProvider = Provider<AiService>((ref) => withDeviceLocalAi(ref, ref.watch(appServicesProvider).ai));
 final devicesServiceProvider = Provider<DevicesService>((ref) => ref.watch(appServicesProvider).devices);
 final syncServiceProvider = Provider<SyncService>((ref) => ref.watch(appServicesProvider).sync);
 final settingsServiceProvider = Provider<SettingsService>((ref) => ref.watch(appServicesProvider).settings);

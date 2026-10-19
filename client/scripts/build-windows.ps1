@@ -83,8 +83,15 @@ try {
     if (Test-Path $AppOut) { Remove-Item -Recurse -Force $AppOut }
     Copy-Item -Recurse $Built $AppOut
     if ($Runtime) { Copy-Item (Join-Path $Runtime '*.dll') $AppOut -Force }
-    foreach ($required in @('ConsoleCrypt.exe', 'flutter_windows.dll', 'cc_bridge.dll', 'data\icudtl.dat')) {
-        if (-not (Test-Path (Join-Path $AppOut $required))) { throw "Incomplete Flutter bundle: $required" }
+    $RequiredBundle = @('ConsoleCrypt.exe', 'flutter_windows.dll', 'cc_bridge.dll', 'data\icudtl.dat')
+    if (-not $Debug) {
+        # The optional llama.cpp child runs from appdata and resolves these
+        # app-local CRT libraries through the application's directory in PATH.
+        $RequiredBundle += @('msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll')
+    }
+    foreach ($required in $RequiredBundle) {
+        $bundleFile = Join-Path $AppOut $required
+        if (-not (Test-Path $bundleFile -PathType Leaf) -or (Get-Item $bundleFile).Length -eq 0) { throw "Incomplete Flutter bundle: $required" }
     }
     if (Test-Path (Join-Path $Src 'LICENSE')) {
         Copy-Item (Join-Path $Src 'LICENSE') $AppOut -Force
@@ -104,6 +111,18 @@ try {
     $Zip = Join-Path $Out 'ConsoleCrypt-windows.zip'
     if (Test-Path $Zip) { Remove-Item -Force $Zip }
     Compress-Archive -Path (Join-Path $AppOut '*') -DestinationPath $Zip
+    # Verify the delivered ZIP boundary, not merely the staging folder. A
+    # machine-wide Visual C++ redistributable must not mask a missing DLL.
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zipContents = [System.IO.Compression.ZipFile]::OpenRead($Zip)
+    try {
+        $entries = @{}
+        foreach ($entry in $zipContents.Entries) { $entries[$entry.FullName.Replace('\', '/').ToLowerInvariant()] = $entry }
+        foreach ($required in $RequiredBundle) {
+            $name = $required.Replace('\', '/').ToLowerInvariant()
+            if (-not $entries.ContainsKey($name) -or $entries[$name].Length -eq 0) { throw "Incomplete Windows ZIP: $required" }
+        }
+    } finally { $zipContents.Dispose() }
     $Artifacts = @($Zip)
     if ($Installer) {
         $SetupName = "ConsoleCrypt-$BuildVersion-windows-x64-setup"

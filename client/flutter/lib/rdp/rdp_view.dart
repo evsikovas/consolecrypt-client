@@ -1,7 +1,11 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:consolecrypt/app/auto_lock.dart';
+import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/rdp/rdp_service.dart';
+import 'package:consolecrypt/rdp/rdp_touchpad.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -61,6 +65,10 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
   bool get _acceptsInput => widget.enabled && _appActive;
   final Set<PhysicalKeyboardKey> _pasteKeys = {};
   final Set<PhysicalKeyboardKey> _localKeys = {};
+  late final RdpTouchpad _touchpad;
+  bool _touchpadEnabled = false;
+  bool _keyboardShown = false;
+  bool _imeWasVisible = false;
 
   @override
   void initState() {
@@ -70,7 +78,30 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
     _focus.addListener(_focusChanged);
+    _touchpad = RdpTouchpad(_send)..addListener(_cursorChanged);
     _offer(widget.frame);
+  }
+
+  void _cursorChanged() {
+    if (mounted && AppPlatform.isMobile && _touchpadEnabled) setState(() {});
+  }
+
+  @override
+  void didChangeMetrics() {
+    if (!AppPlatform.isMobile) return;
+    // Android Back can dismiss the IME without closing its text connection.
+    // Do not mistake the initial opening animation for a dismissal.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final visible = View.of(context).viewInsets.bottom > 0;
+      if (_imeWasVisible && !visible && _keyboardShown) {
+        _connection?.close();
+        _connection = null;
+        _editing = _empty;
+        setState(() => _keyboardShown = false);
+      }
+      _imeWasVisible = visible;
+    });
   }
 
   @override
@@ -87,8 +118,9 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
       _connection?.close();
       _connection = null;
       _editing = _empty;
+      if (AppPlatform.isMobile) setState(() => _keyboardShown = false);
     }
-    _appActive = active;
+    setState(() => _appActive = active);
     if (active && _focus.hasFocus) _openInput();
   }
 
@@ -100,6 +132,8 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
     }
     if (!widget.enabled) {
       if (oldWidget.enabled) {
+        _touchpad.cancel();
+        _keyboardShown = false;
         _held.clear();
         _buttons = 0;
         if (oldWidget.onInteractionCancelled != null) {
@@ -167,6 +201,7 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
       _connection?.close();
       _connection = null;
       _editing = _empty;
+      if (AppPlatform.isMobile && _keyboardShown && mounted) setState(() => _keyboardShown = false);
     }
   }
 
@@ -186,7 +221,7 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
       _editing = _empty;
       _connection!.setEditingState(_editing);
     }
-    _connection!.show();
+    if (!AppPlatform.isMobile || _keyboardShown) _connection!.show();
   }
 
   void _send(List<RdpInput> events) {
@@ -194,6 +229,7 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
   }
 
   void _releaseHeld({bool cancelInteraction = false}) {
+    _touchpad.cancel();
     if (cancelInteraction && widget.onInteractionCancelled != null) {
       _held.clear();
       _buttons = 0;
@@ -313,11 +349,13 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
       return;
     }
     if (moving) {
+      _touchpad.syncPosition(point.$1, point.$2);
       _send([RdpPointerInput(point.$1, point.$2)]);
       return;
     }
     final changed = down ? event.buttons & ~_buttons : _buttons & ~event.buttons;
     _buttons = event.buttons;
+    _touchpad.syncPosition(point.$1, point.$2);
     _send([
       for (final entry in [
         (kPrimaryButton, RdpPointerButton.left),
@@ -329,9 +367,26 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
   }
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
+  Widget build(BuildContext context) => AppPlatform.isMobile
+      ? LayoutBuilder(
+          builder: (context, constraints) => Column(
+            children: [
+              Expanded(child: _surface()),
+              _mobileControls(constraints.maxHeight < 180),
+            ],
+          ),
+        )
+      : _surface();
+
+  bool _usesTouchpad(PointerEvent event) =>
+      AppPlatform.isMobile && _touchpadEnabled && event.kind == PointerDeviceKind.touch;
+
+  Widget _surface() => LayoutBuilder(
     builder: (context, constraints) {
       _viewport = constraints.biggest;
+      final width = widget.frame?.width ?? widget.width;
+      final height = widget.frame?.height ?? widget.height;
+      _touchpad.configure(width, height, rdpFitRect(_viewport, width, height).width);
       return Focus(
         focusNode: _focus,
         canRequestFocus: widget.enabled,
@@ -340,10 +395,31 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
           cursor: SystemMouseCursors.basic,
           child: Listener(
             key: const ValueKey('rdp-input-surface'),
-            onPointerDown: (event) => _pointer(event, down: true),
-            onPointerUp: (event) => _pointer(event, down: false),
+            behavior: HitTestBehavior.opaque,
+            onPointerDown: (event) {
+              if (_usesTouchpad(event)) {
+                if (!_acceptsInput) return;
+                _activate();
+                _touchpad.down(event);
+              } else {
+                _pointer(event, down: true);
+              }
+            },
+            onPointerUp: (event) {
+              if (_usesTouchpad(event)) {
+                if (_acceptsInput) _touchpad.up(event);
+              } else {
+                _pointer(event, down: false);
+              }
+            },
             onPointerCancel: (_) => _releaseHeld(cancelInteraction: true),
-            onPointerMove: (event) => _pointer(event, down: false, moving: true),
+            onPointerMove: (event) {
+              if (_usesTouchpad(event)) {
+                if (_acceptsInput) _touchpad.move(event);
+              } else {
+                _pointer(event, down: false, moving: true);
+              }
+            },
             onPointerHover: (event) => _pointer(event, down: false, moving: true),
             onPointerSignal: (event) {
               if (!_acceptsInput || event is! PointerScrollEvent) return;
@@ -362,13 +438,151 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
               );
             },
             child: RepaintBoundary(
-              child: CustomPaint(painter: _DesktopPainter(_image), size: Size.infinite),
+              child: CustomPaint(
+                painter: _DesktopPainter(
+                  _image,
+                  pointer: AppPlatform.isMobile && _touchpadEnabled && widget.enabled ? _touchpad.position : null,
+                  remoteWidth: width,
+                  remoteHeight: height,
+                ),
+                size: Size.infinite,
+              ),
             ),
           ),
         ),
       );
     },
   );
+
+  void _toggleKeyboard() {
+    if (!_acceptsInput) return;
+    if (_keyboardShown) {
+      _connection?.close();
+      _connection = null;
+      _editing = _empty;
+      setState(() => _keyboardShown = false);
+    } else {
+      setState(() => _keyboardShown = true);
+      _activate();
+    }
+  }
+
+  void _mobileKey(int code, {bool extended = false}) {
+    if (!_acceptsInput) return;
+    AutoLockScope.recordActivity(context);
+    // Do not execute remote Enter while the user is composing a command.
+    if (_editing.composing.isValid && !_editing.composing.isCollapsed) return;
+    _activate();
+    _send([
+      RdpScancodeInput(code, extended: extended, down: true),
+      RdpScancodeInput(code, extended: extended, down: false),
+    ]);
+  }
+
+  Widget _specialKeys() => Row(
+    children: [
+      for (final entry in [
+        ('Esc', 0x01, false),
+        ('Tab', 0x0f, false),
+        ('←', 0x4b, true),
+        ('↑', 0x48, true),
+        ('↓', 0x50, true),
+        ('→', 0x4d, true),
+        ('Enter', 0x1c, false),
+        ('⌫', 0x0e, false),
+      ])
+        TextButton(
+          onPressed: _acceptsInput ? () => _mobileKey(entry.$2, extended: entry.$3) : null,
+          child: Text(entry.$1),
+        ),
+    ],
+  );
+
+  Widget _mobileControls(bool compact) {
+    final l = context.l10n;
+    return ExcludeFocus(
+      child: Material(
+        key: const ValueKey('rdp-mobile-controls'),
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    key: const ValueKey('rdp-touchpad-toggle'),
+                    tooltip: l.rdpMobileTouchpad,
+                    isSelected: _touchpadEnabled,
+                    icon: const Icon(Icons.mouse_outlined),
+                    selectedIcon: const Icon(Icons.mouse),
+                    onPressed: !_acceptsInput
+                        ? null
+                        : () {
+                            _releaseHeld(cancelInteraction: true);
+                            setState(() => _touchpadEnabled = !_touchpadEnabled);
+                          },
+                  ),
+                  Expanded(
+                    child: compact && _keyboardShown
+                        ? SingleChildScrollView(scrollDirection: Axis.horizontal, child: _specialKeys())
+                        : Text(
+                            _touchpadEnabled ? l.rdpMobileTouchpad : l.rdpMobileDirectTouch,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                  ),
+                  IconButton(
+                    key: const ValueKey('rdp-mobile-keyboard'),
+                    tooltip: _keyboardShown ? l.rdpMobileHideKeyboard : l.rdpMobileShowKeyboard,
+                    isSelected: _keyboardShown,
+                    icon: Icon(_keyboardShown ? Icons.keyboard_hide : Icons.keyboard_outlined),
+                    onPressed: _acceptsInput ? _toggleKeyboard : null,
+                  ),
+                  if (_touchpadEnabled) ...[
+                    IconButton(
+                      key: const ValueKey('rdp-mobile-left-click'),
+                      tooltip: l.rdpMobileLeftClick,
+                      icon: const Icon(Icons.ads_click),
+                      onPressed: _acceptsInput ? () => _touchpad.click(RdpPointerButton.left) : null,
+                    ),
+                    IconButton(
+                      key: const ValueKey('rdp-mobile-right-click'),
+                      tooltip: l.rdpMobileRightClick,
+                      icon: const Icon(Icons.more_horiz),
+                      onPressed: _acceptsInput ? () => _touchpad.click(RdpPointerButton.right) : null,
+                    ),
+                  ],
+                  IconButton(
+                    key: const ValueKey('rdp-mobile-help'),
+                    tooltip: l.rdpMobileHelpTitle,
+                    icon: const Icon(Icons.help_outline),
+                    onPressed: () {
+                      _releaseHeld(cancelInteraction: true);
+                      showDialog<void>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text(l.rdpMobileHelpTitle),
+                          content: SingleChildScrollView(child: Text(l.rdpMobileHelp)),
+                          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              if (_keyboardShown && !compact)
+                SizedBox(
+                  height: 44,
+                  child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: _specialKeys()),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   TextEditingValue get currentTextEditingValue => _editing;
@@ -377,6 +591,7 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
   @override
   void updateEditingValue(TextEditingValue value) {
     if (!_acceptsInput || !_focus.hasFocus) return;
+    AutoLockScope.recordActivity(context);
     _editing = value;
     if (value.composing.isValid && !value.composing.isCollapsed) return;
     final text = value.text.startsWith('\u200b') ? value.text.substring(1) : value.text;
@@ -391,6 +606,9 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
 
   @override
   void performAction(TextInputAction action) {
+    if (!_acceptsInput || !_focus.hasFocus) return;
+    AutoLockScope.recordActivity(context);
+    if (_editing.composing.isValid && !_editing.composing.isCollapsed) return;
     if (action == TextInputAction.newline || action == TextInputAction.done) {
       _send([const RdpScancodeInput(0x1c, down: true), const RdpScancodeInput(0x1c, down: false)]);
     }
@@ -402,6 +620,7 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
     _releaseHeld(cancelInteraction: true);
     _connection = null;
     _editing = _empty;
+    if (AppPlatform.isMobile && mounted) setState(() => _keyboardShown = false);
   }
 
   @override
@@ -417,6 +636,8 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
     _inputGeneration++;
     _releaseHeld(cancelInteraction: true);
     _focus.removeListener(_focusChanged);
+    _touchpad.removeListener(_cursorChanged);
+    _touchpad.dispose();
     _connection?.close();
     _focus.dispose();
     _editing = _empty;
@@ -426,23 +647,62 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
 }
 
 class _DesktopPainter extends CustomPainter {
-  const _DesktopPainter(this.image);
+  const _DesktopPainter(this.image, {this.pointer, required this.remoteWidth, required this.remoteHeight});
   final ui.Image? image;
+  final Offset? pointer;
+  final int remoteWidth, remoteHeight;
   @override
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(Offset.zero & size, Paint()..color = Colors.black);
     final frame = image;
-    if (frame == null) return;
-    canvas.drawImageRect(
-      frame,
-      Rect.fromLTWH(0, 0, frame.width.toDouble(), frame.height.toDouble()),
-      rdpFitRect(size, frame.width, frame.height),
-      Paint()..filterQuality = FilterQuality.low,
-    );
+    if (frame != null) {
+      canvas.drawImageRect(
+        frame,
+        Rect.fromLTWH(0, 0, frame.width.toDouble(), frame.height.toDouble()),
+        rdpFitRect(size, frame.width, frame.height),
+        Paint()..filterQuality = FilterQuality.low,
+      );
+    }
+    final point = pointer;
+    if (point != null) {
+      final rect = rdpFitRect(size, remoteWidth, remoteHeight);
+      final tip = Offset(
+        rect.left + point.dx * rect.width / remoteWidth,
+        rect.top + point.dy * rect.height / remoteHeight,
+      );
+      // A local, constant-size cursor stays visible on a phone; the native core
+      // deliberately disables unbounded server pointer-cache rendering.
+      final arrow = Path()
+        ..moveTo(0, 0)
+        ..lineTo(0, 21)
+        ..lineTo(5, 16)
+        ..lineTo(9, 25)
+        ..lineTo(13, 23)
+        ..lineTo(9, 14)
+        ..lineTo(16, 14)
+        ..close();
+      canvas.save();
+      canvas.clipRect(rect);
+      canvas.translate(tip.dx, tip.dy);
+      canvas.drawPath(
+        arrow,
+        Paint()
+          ..color = Colors.black
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..strokeJoin = StrokeJoin.round,
+      );
+      canvas.drawPath(arrow, Paint()..color = Colors.white);
+      canvas.restore();
+    }
   }
 
   @override
-  bool shouldRepaint(_DesktopPainter oldDelegate) => !identical(image, oldDelegate.image);
+  bool shouldRepaint(_DesktopPainter oldDelegate) =>
+      !identical(image, oldDelegate.image) ||
+      pointer != oldDelegate.pointer ||
+      remoteWidth != oldDelegate.remoteWidth ||
+      remoteHeight != oldDelegate.remoteHeight;
 }
 
 (int, bool)? _specialScancode(PhysicalKeyboardKey key) => switch (key) {

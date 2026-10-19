@@ -39,39 +39,34 @@ xcrun simctl launch booted io.consolecrypt.consolecrypt
 Для ZIP сначала проверьте SHA-256, затем распакуйте `Runner.app` и установите
 его той же командой. Этот ZIP не является IPA для установки на iPhone.
 
-### Готовый архив из релиза 0.3.1
+### Готовый архив из релиза 0.3.2
 
-В [релизе v0.3.1](https://git.evsikov.net/publics/consolecrypt/-/releases/v0.3.1)
-скачайте [часть 1](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.1/ConsoleCrypt-0.3.1%2B1389-ios-simulator-universal.zip.001),
-[часть 2](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.1/ConsoleCrypt-0.3.1%2B1389-ios-simulator-universal.zip.002)
-и [SHA256SUMS-0.3.1.txt](https://git.evsikov.net/api/v4/projects/14/packages/generic/consolecrypt/0.3.1/SHA256SUMS-0.3.1.txt).
-Сохраните все три файла в одной папке. Архив опубликован двумя
-частями; объединение восстанавливает проверенный ZIP без изменения приложения. Отдельные части распаковывать не нужно.
+В [релизе v0.3.2](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.3.2)
+скачайте [полный Simulator ZIP](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.3.2/ConsoleCrypt-0.3.2%2B13015-ios-simulator-universal.zip)
+и [SHA256SUMS-0.3.2.txt](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.3.2/SHA256SUMS-0.3.2.txt).
+Сохраните оба файла в одной папке. ZIP опубликован целиком; объединение частей
+больше не требуется. Сборка — **0.3.2+13015**, размер — **154 448 450 байт**.
 
-В Terminal перейдите в эту папку и проверьте обе части:
+В Terminal перейдите в эту папку и проверьте архив:
 
 ```sh
-awk '$2 == "ConsoleCrypt-0.3.1+1389-ios-simulator-universal.zip.001" || \
-     $2 == "ConsoleCrypt-0.3.1+1389-ios-simulator-universal.zip.002" { print; n++ } \
-     END { if (n != 2) exit 1 }' SHA256SUMS-0.3.1.txt > ios-parts.SHA256SUMS \
-    && shasum -a 256 -c ios-parts.SHA256SUMS
+awk '$2 == "ConsoleCrypt-0.3.2+13015-ios-simulator-universal.zip" { print; n++ } \
+     END { if (n != 1) exit 1 }' SHA256SUMS-0.3.2.txt > ios.SHA256SUMS \
+    && shasum -a 256 -c ios.SHA256SUMS
 ```
 
-В списке контрольных сумм указаны две опубликованные части. Продолжайте
-только после двух результатов `OK` — по одному для `.001` и `.002`:
+Продолжайте только после результата `OK`. Ожидаемая SHA-256:
+`26df230422e82cec68277c12a8ec18a62b6f1ca265bc913a5d74665a20c75b81`.
 
 ```sh
-cat ConsoleCrypt-0.3.1+1389-ios-simulator-universal.zip.001 \
-    ConsoleCrypt-0.3.1+1389-ios-simulator-universal.zip.002 \
-    > ConsoleCrypt-0.3.1+1389-ios-simulator-universal.zip
-unzip ConsoleCrypt-0.3.1+1389-ios-simulator-universal.zip
+unzip ConsoleCrypt-0.3.2+13015-ios-simulator-universal.zip
 xcrun simctl install booted Runner.app
 xcrun simctl launch booted io.consolecrypt.consolecrypt
 ```
 
 Перед установкой запустите нужный Simulator в Xcode. Если открыто несколько
-Simulator, замените `booted` на UDID выбранного устройства. Эти части и
-восстановленный ZIP предназначены для Simulator и не являются iPhone IPA.
+Simulator, замените `booted` на UDID выбранного устройства. Этот ZIP содержит
+ARM64 и Intel Simulator и не является IPA для установки на физический iPhone.
 
 Для нативного smoke test выберите UDID из `flutter devices`:
 
@@ -85,9 +80,22 @@ flutter test integration_test/ios_core_test.dart -d <SIMULATOR_UDID> \
 `python3 client/scripts/bump-version.py`. Проверка использует отдельное
 приватное тестовое хранилище и не требует учётных данных публичного сервера.
 
-## SSH/SFTP regression и GitLab CI
+## GitHub Actions и iOS Simulator
 
-### Что содержит артефакт iOS preview в GitLab
+В workflow `Client packages` job `ios` идёт после macOS и Android на одном
+Mac runner. Она запускает `ci-ios.sh --build-only`, устанавливает и открывает
+preview в отдельном Simulator. Actions artifact содержит **полный Simulator ZIP**,
+его SHA-256 и файл версии; срок хранения — 30 дней. Это отличается от прежнего
+GitLab artifact, описанного ниже. [Раннеры и номера сборок](GITHUB_ACTIONS.md).
+Публикация установщика в GitHub Release выполняется отдельно после проверки.
+
+In GitHub Actions, the `ios` job uploads the complete Simulator ZIP, its checksum
+and version receipt. It runs after the macOS and Android jobs on the same Mac
+runner. A CI artifact is not a public release or an installable iPhone package.
+
+## SSH/SFTP regression и прежний GitLab CI
+
+### Исторический GitLab artifact: только квитанции
 
 Начиная с 0.3, CI сохраняет полный Simulator ZIP на Mac runner **вне checkout**:
 `$HOME/.cache/consolecrypt/ios-preview/<полный source SHA>/<job ID>/`.
@@ -187,13 +195,14 @@ client/scripts/build-ios.sh --device
 пять секунд; финальная очистка прошла без таймаутов. Это отдельная тестовая
 сборка: product ZIP создаётся следующим запуском `--build-only`.
 
-Текущий готовый архив — **0.3.1+1389**. Проверены версия, целостность ZIP,
-SHA-256, подпись и ARM64/x86-64 Simulator slices в Runner, App, Flutter и
-Rust bridge. Обе части побайтно восстанавливают исходный ZIP. Приложение
-установлено и запущено в отдельном временном Simulator: подтверждён экран
-приветствия без подключения аккаунта, хранилища или SSH-хоста. Это проверка
-запуска текущего продукта, а не повтор полного SSH/SFTP-прогона выше и не
-проверка настоящего iPhone.
+Текущий готовый архив — **0.3.2+13015**. Проверены bundle ID, версия,
+целостность ZIP, SHA-256, подпись (`codesign --verify --deep --strict`) и
+ARM64/x86-64 Simulator slices в Runner,
+Runner.debug.dylib, App, Flutter и Rust bridge. Полный ZIP опубликован одним
+файлом. CI установил приложение в отдельный временный Simulator и запустил
+процесс, получив PID. Отдельная визуальная проверка экрана этой сборки не
+выполнялась. Это проверка установки/запуска процесса,
+а не повтор полного SSH/SFTP-прогона выше и не проверка настоящего iPhone.
 
 Фундамент Rust также проверен компиляцией для физического ARM64 iPhone.
 Полный прогон выше выполнен в Simulator и не подтверждает
@@ -233,11 +242,12 @@ Rust bridge. Обе части побайтно восстанавливают �
 
 ## English
 
-Download both **0.3.1+1389** Simulator ZIP parts and `SHA256SUMS-0.3.1.txt` using
-the links above. Verify both published parts against their checksum entries,
-join them, then install
+Download the complete **0.3.2+13015** Simulator ZIP and `SHA256SUMS-0.3.2.txt`
+using the links above. Verify its single checksum entry, extract the ZIP, then install
 `Runner.app` with `xcrun simctl install`. The current archive contains ARM64 and
-x86-64 Simulator slices and passed an isolated welcome-screen launch check.
+x86-64 Simulator slices; CI installed it and launched a process in an isolated
+Simulator. Its code signature passed independent deep/strict verification; a
+visual welcome-screen check was not repeated for this archive.
 The full SSH/SFTP regression described above is a separate earlier test.
 This is not an iPhone-installable IPA; a physical device requires Xcode signing
 and separate keyboard, biometrics, network and background acceptance checks.

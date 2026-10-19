@@ -17,6 +17,7 @@ MACHO_MAGIC = {
     for value in ("feedface", "cefaedfe", "feedfacf", "cffaedfe", "cafebabe", "bebafeca", "cafebabf", "bfbafeca")
 }
 BUNDLE_SUFFIXES = {".app", ".framework", ".xpc", ".appex"}
+LOCAL_AI_ENTITLEMENTS = Path(__file__).with_name("local-ai-helper.entitlements")
 
 
 def resolve_identity(requested):
@@ -57,23 +58,37 @@ def signing_targets(app):
 
 def sign(app, identity):
     for target in signing_targets(app):
-        subprocess.run([
-            "/usr/bin/codesign", "--force", "--sign", identity, "--options", "runtime",
+        command = ["/usr/bin/codesign", "--force", "--sign", identity]
+        if identity != "-":
+            # Hardened Runtime requires matching Team IDs on the helper/dylibs.
+            # Ad-hoc previews have no Team ID; retain their existing non-hardened
+            # policy while still enforcing App Sandbox + inheritance.
+            command += ["--options", "runtime"]
+        local_ai = app / "Contents/Helpers/LocalAI"
+        if local_ai in target.parents:
+            if target.name == "llama-server":
+                command += ["--entitlements", str(LOCAL_AI_ENTITLEMENTS)]
+            command += ["--preserve-metadata=identifier"]
+        else:
             # Do NOT preserve the old ad-hoc designated requirement (cdhash).
-            "--preserve-metadata=identifier,entitlements", str(target),
-        ], check=True)
+            command += ["--preserve-metadata=identifier,entitlements"]
+        subprocess.run(command + [str(target)], check=True)
     subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", "--verbose=2", str(app)], check=True)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--identity", required=True, help="Exact certificate name or SHA-1 fingerprint")
+    identity = parser.add_mutually_exclusive_group(required=True)
+    identity.add_argument("--identity", help="Exact certificate name or SHA-1 fingerprint")
+    identity.add_argument("--adhoc", action="store_true", help="Development preview, without Hardened Runtime")
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--check", action="store_true", help="Validate identity without signing anything")
     mode.add_argument("--app", type=Path)
     args = parser.parse_args()
     try:
-        identity = resolve_identity(args.identity)
+        if args.adhoc and args.check:
+            raise ValueError("--check requires an existing signing identity")
+        identity = "-" if args.adhoc else resolve_identity(args.identity)
         if args.app is not None:
             sign(args.app.absolute(), identity)
         else:

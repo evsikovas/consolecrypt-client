@@ -3,6 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import subprocess
+import plistlib
 import unittest
 from unittest.mock import patch
 
@@ -62,6 +63,31 @@ class SigningTests(unittest.TestCase):
                 with self.assertRaises(subprocess.CalledProcessError):
                     signing.sign(app, CERT_A)
                 self.assertEqual(run.call_count, 1)
+
+    def test_local_ai_helper_inherits_sandbox_and_all_nested_code_shares_identity(self):
+        with signing.LOCAL_AI_ENTITLEMENTS.open("rb") as source:
+            self.assertEqual(plistlib.load(source), {
+                "com.apple.security.app-sandbox": True, "com.apple.security.inherit": True,
+            })
+        for identity in [CERT_A, "-"]:
+            with self.subTest(identity=identity), TemporaryDirectory() as temp:
+                app = Path(temp) / "Test.app"
+                runtime = app / "Contents/Helpers/LocalAI/macArm64"
+                runtime.mkdir(parents=True)
+                for name in ["llama-server", "libllama-server-impl.dylib"]:
+                    (runtime / name).write_bytes(bytes.fromhex("feedfacf") + b"fixture")
+                with patch.object(signing.subprocess, "run") as run:
+                    signing.sign(app, identity)
+                commands = [call.args[0] for call in run.call_args_list[:-1]]
+                for command in commands:
+                    self.assertEqual(command[command.index("--sign") + 1], identity)
+                    self.assertEqual("--options" in command, identity != "-")
+                helper = next(c for c in commands if c[-1].endswith("/llama-server"))
+                library = next(c for c in commands if c[-1].endswith(".dylib"))
+                self.assertIn(str(signing.LOCAL_AI_ENTITLEMENTS), helper)
+                self.assertNotIn("--entitlements", library)
+                self.assertIn("--preserve-metadata=identifier", library)
+                self.assertLess(commands.index(library), commands.index(helper))
 
 
 if __name__ == "__main__":

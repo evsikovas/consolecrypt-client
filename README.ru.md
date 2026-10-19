@@ -8,7 +8,7 @@
 зашифрованное хранилище подключений и совместная работа. Можно работать локально,
 подключить собственный сервер синхронизации или публичный сервер ConsoleCrypt.
 
-[Скачать 0.3.2](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.3.2) ·
+[Скачать актуальный релиз](https://github.com/evsikovas/consolecrypt-client/releases/latest) ·
 [Руководство](https://github.com/evsikovas/consolecrypt-docs) ·
 [Сайт](https://consolecrypt.dev) ·
 [Сервер и протокол](https://github.com/evsikovas/consolecrypt-server)
@@ -54,7 +54,7 @@
 | Android ARM64 | APK | Предварительная мобильная версия, Android 11+ |
 | iOS | Universal Simulator ZIP | Предварительный порт для Xcode Simulator; не установщик для iPhone |
 
-Сравните SHA-256 скачанного файла с `SHA256SUMS-0.3.2.txt` в релизе.
+Сравните SHA-256 скачанного файла с `SHA256SUMS-VERSION.txt` в релизе.
 Linux-пакеты устанавливаются через `sudo apt install ./имя.deb` или
 `sudo dnf install ./имя.rpm`. Детальные требования — в руководствах ниже.
 На мобильных платформах действуют ограничения фоновой работы ОС; внешние
@@ -134,6 +134,14 @@ flutter test
 Тесты, которым нужны нативная библиотека, системная ключница или настоящий
 SSH/RDP-сервер, имеют дополнительные условия. Не запускайте Flutter-тесты
 параллельно с нативной сборкой в одной рабочей папке.
+
+## Релиз 0.4.0
+
+0.4.0 добавляет тачпад RDP на телефоне и установку локальной модели ИИ в Windows
+и macOS. Модель остаётся на устройстве и может стать провайдером по умолчанию.
+Пакеты собираются только по тегам версий из `main`. См.
+[заметки выпуска](docs/public/RELEASE_0_4_0.md), [локальный ИИ](docs/public/LOCAL_AI.md)
+и [workflow релиза](docs/public/GITHUB_ACTIONS.md).
 
 ## Релиз 0.3.2 и переход на GitHub
 

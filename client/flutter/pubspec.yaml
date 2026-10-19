@@ -3,7 +3,7 @@ description: "ConsoleCrypt desktop client UI: zero-knowledge E2EE SSH client (Fl
 # Never published to pub.dev; distributed as a desktop application.
 publish_to: 'none'
 
-version: 0.3.2+1394
+version: 0.4.0+13035
 
 environment:
   sdk: ^3.13.4
@@ -50,6 +50,8 @@ dependencies:
   # Authenticate update feeds (Apache-2.0) and installer digests (BSD-3-Clause).
   cryptography: ^2.9.0
   crypto: ^3.0.7
+  # Verified local AI runtime archives (MIT); explicit pin for extraction behavior.
+  archive: 4.5.2
 
 dev_dependencies:
   flutter_test:

@@ -1,23 +1,33 @@
 # GitHub Actions: native client builds
 
-The `Client packages` workflow runs on pushes to `main`, the exact transition
-branch `codex/github-release-0.3.2`, and manual dispatches of either branch.
-It does not run untrusted pull requests on persistent self-hosted machines.
-Checkout credentials are removed before repository build scripts execute.
-The build token has `contents: read`; no release, website or update feed is
-published by this workflow.
+The `Client tag release` workflow runs only when an exact stable `vX.Y.Z`
+tag is pushed. The version must match `pubspec.yaml`, and the tagged commit
+must already belong to `main`. Branch pushes and manual dispatch do not build
+packages. No pull request code executes on persistent native runners.
 
 | Runner labels | Jobs | Required tools |
 |---|---|---|
-| `self-hosted, macOS, ARM64, consolecrypt, client` | macOS, then Android, then iOS | Flutter 3.47.5, Rust 1.98, Xcode/iOS Simulator, CocoaPods, Python; Android SDK 36, build-tools 36.0.0, NDK 28.2.13676358, CMake 3.22.1 |
+| `self-hosted, macOS, ARM64, consolecrypt, client` | Android; macOS/iOS by default | Flutter 3.47.5, Rust 1.98, Python; Android SDK 36, build-tools 36.0.0, NDK 28.2.13676358, CMake 3.22.1; full Xcode and CocoaPods for Apple builds |
 | `self-hosted, Windows, X64, consolecrypt, client` | Windows x64 | MSVC C++/Windows SDK, Git, Python, Rust; Flutter, Strawberry Perl and Inno Setup are discovered or provisioned by `ci-windows.ps1` |
-| `self-hosted, Linux, X64, consolecrypt, client, linux-docker` | Linux DEB/RPM | Docker CLI/daemon, Python 3, x86-64 host; pinned Ubuntu 22.04 builder contains native tools and isolated Secret Service tests |
+| `cc-linux-k3s` | Linux DEB/RPM | Home ARC scale set with Docker-in-Docker, Python 3 and a shared work/temp volume; pinned Ubuntu 22.04 builder contains native tools and isolated Secret Service tests |
 
-The three Mac jobs are explicitly ordered because they share native SDKs and
-one runner. Linux and Windows build in parallel. A Linux runner inside Docker
-must bind its work/temp directory at the same absolute path inside and outside
-its container: `ci-linux.sh` starts a sibling builder with a source snapshot.
-Use a dedicated builder, not the production server.
+Repository variable `MACOS_BUILD_RUNNER` can override only the macOS/iOS runner
+with a JSON array, for example `["macos-26"]` for a hosted runner with full Xcode.
+Remove the override after installing Xcode on the dedicated Mac. Android always
+uses the dedicated Mac and its existing signing key. `ci-macos-tools.sh` provisions
+the pinned Flutter SDK when it is absent. iOS follows macOS; Android, Windows and
+Linux can build independently. A single self-hosted Mac serializes its jobs.
+
+The ARC runner and Docker daemon must mount `RUNNER_TEMP` at the same absolute
+path. `ci-linux.sh` stages the source snapshot there, not in an unshared `/tmp`.
+The home cluster is a build environment; these jobs do not deploy production there.
+
+Native jobs have `contents: read`. After all five platforms succeed, a hosted
+publisher validates the version receipts, assembles a closed list of seven
+installers plus SHA-256 checksums, creates a draft GitHub Release, uploads its
+files, and publishes it. Only that job gets `contents: write` and `actions: write`.
+It then dispatches `update-feeds.yml` on trusted `main` to refresh signed metadata.
+Website and sync-server deployment use their own tag workflows.
 
 On Windows, enable Developer Mode so Flutter can create plugin symlinks, and
 choose a short work directory when registering the runner:
@@ -71,8 +81,9 @@ below this limit. Do not reset the GitHub run sequence to work around it.
   macOS keychain signing identity by name or SHA-1. Without it, builds retain
   the previous ad-hoc behavior. Developer ID distribution needs notarization.
 - iOS output is a Simulator preview; no provisioning credentials are requested.
-- Update-feed signing and production SSH/Timeweb credentials do not belong in
-  this build workflow. See [RELEASING.md](RELEASING.md) for publication.
+- The update signing key remains confined to the separate update-feed workflow.
+  Native build jobs do not receive production credentials or update signing keys.
+  See [RELEASING.md](RELEASING.md).
 
 Artifacts are retained for 30 days and include only explicit package, checksum
 and version paths. The Linux test report uses a redacted, closed JSON schema;
@@ -80,8 +91,8 @@ test keyrings, raw runtime output and private fixtures are not uploaded.
 
 ## Русский
 
-Запуск: **Actions → Client packages → Run workflow**, ветка `main` или точная
-переходная ветка выше. Успешная сборка создаёт CI artifacts, без публикации на
-сайте и объявления автообновления. Пакеты, подписи и номера сборок проверяются
-перед отдельным выпуском. Приватные материалы остаются на соответствующих
-раннерах; обычной сборке не нужны доступы к продакшену.
+`main` хранит проверенную исходную базу. Для выпуска поднимите версию, добавьте
+release notes, отправьте коммит в `main`, затем тег `vX.Y.Z` на этот коммит.
+Только тег запускает сборки. После успешной сборки всех платформ workflow
+публикует полный GitHub Release и запускает обновление подписанной ленты.
+Пакеты Android подписываются прежним ключом раннера. iOS — только Simulator preview.

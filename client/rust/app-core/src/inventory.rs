@@ -611,6 +611,12 @@ impl AppCore {
     /// Save a provider config; `is_default = true` clears the flag on the
     /// others.
     pub async fn save_ai_provider(&self, p: AiProviderDto) -> AppResult<AiProviderDto> {
+        if p.id == crate::ai::DEVICE_LOCAL_PROVIDER_ID {
+            return Err(AppError::invalid(
+                "provider_id",
+                "device-local provider cannot be saved in the vault",
+            ));
+        }
         let make_default = p.is_default;
         let saved = self
             .save_dto(p, WorkingSet::ai_provider, VaultObject::AiProvider)

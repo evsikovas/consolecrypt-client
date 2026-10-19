@@ -7,12 +7,14 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/ai_service.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/language_picker.dart';
 import 'package:consolecrypt/settings/ai_provider_dialog.dart';
 import 'package:consolecrypt/settings/appearance_controls.dart';
 import 'package:consolecrypt/settings/device_unlock_settings.dart';
+import 'package:consolecrypt/settings/local_ai_settings.dart';
 import 'package:consolecrypt/settings/screen_capture_settings.dart';
 import 'package:consolecrypt/settings/settings_dialogs.dart';
 import 'package:consolecrypt/settings/sftp_settings.dart';
@@ -44,6 +46,7 @@ class SettingsScreen extends ConsumerWidget {
           SizedBox(height: GlassSpacing.s16),
           _SecuritySection(),
           SizedBox(height: GlassSpacing.s16),
+          LocalAiSettings(),
           _AiSection(),
           SizedBox(height: GlassSpacing.s16),
           _TerminalSection(),
@@ -228,8 +231,6 @@ class _VaultSection extends ConsumerWidget {
                   GlassSelectItem(value: 60, label: l10n.settingsAutoLockAfterHours(1)),
                   GlassSelectItem(value: 0, label: l10n.settingsAutoLockNever),
                 ],
-                // TODO(client/ui): inactivity timer lives in app-core (it also locks while the
-                // window is hidden); next: wire the setting through at M4.
                 onChanged: (v) => settings.updateLocal(local.copyWith(autoLockMinutes: v)),
               ),
             ),
@@ -292,23 +293,24 @@ class _AiSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final p in providers)
-            ListTile(
-              key: ValueKey('provider-${p.name}'),
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(p.isRemote ? Icons.public_rounded : Icons.computer_rounded),
-              title: Text(p.isDefault ? l10n.settingsAiProviderDefault(p.name) : p.name),
-              subtitle: Text(
-                [
-                  p.provider.localized(l10n),
-                  p.baseUrl,
-                  p.chatModel,
-                  p.privacyProfile.localized(l10n),
-                  if (p.hasApiKey) l10n.settingsAiProviderApiKeyStored,
-                ].join(' · '),
+            if (p.id != deviceLocalAiProviderId)
+              ListTile(
+                key: ValueKey('provider-${p.name}'),
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(p.isRemote ? Icons.public_rounded : Icons.computer_rounded),
+                title: Text(p.isDefault ? l10n.settingsAiProviderDefault(p.name) : p.name),
+                subtitle: Text(
+                  [
+                    p.provider.localized(l10n),
+                    p.baseUrl,
+                    p.chatModel,
+                    p.privacyProfile.localized(l10n),
+                    if (p.hasApiKey) l10n.settingsAiProviderApiKeyStored,
+                  ].join(' · '),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => showAiProviderDialog(context, provider: p),
               ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => showAiProviderDialog(context, provider: p),
-            ),
           if (vault != null) ...[
             const Divider(height: GlassSpacing.s24),
             LabeledValue(

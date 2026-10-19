@@ -1,3 +1,9 @@
+# Historical job definitions remain for reference. GitHub tag releases are
+# the single active build pipeline; mirrors must not build main in GitLab.
+workflow:
+  rules:
+    - when: never
+
 stages: [build]
 
 variables:

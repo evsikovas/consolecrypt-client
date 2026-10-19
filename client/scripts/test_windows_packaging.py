@@ -79,7 +79,8 @@ class WindowsPackagingTest(unittest.TestCase):
             self.assertEqual(len(installers), 1)
             self.assertTrue(installers[0].with_suffix('.exe.sha256').exists())
             with zipfile.ZipFile(output / 'ConsoleCrypt-windows.zip') as archive:
-                self.assertTrue({'ConsoleCrypt.exe', 'cc_bridge.dll', 'vcruntime140_1.dll',
+                self.assertTrue({'ConsoleCrypt.exe', 'cc_bridge.dll', 'msvcp140.dll',
+                                 'vcruntime140.dll', 'vcruntime140_1.dll',
                                  'data/icudtl.dat', 'LICENSE', 'RDP-THIRD-PARTY-NOTICES.txt'} <= set(archive.namelist()))
                 self.assertEqual(archive.read('LICENSE'), (ROOT / 'LICENSE').read_bytes())
                 self.assertEqual(archive.read('RDP-THIRD-PARTY-NOTICES.txt'), notice.read_bytes())
@@ -89,6 +90,13 @@ class WindowsPackagingTest(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('23', result.stdout + result.stderr)
             self.assertEqual((output / 'ConsoleCrypt.version').read_text(), version)
+            # A present but empty CRT must fail at the actual bundle boundary,
+            # even though Visual Studio discovery can find its directory.
+            env.pop('CC_FAKE_FLUTTER_FAIL')
+            (runtime / 'msvcp140.dll').write_bytes(b'')
+            result = subprocess.run(command, env=env, text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('Incomplete Flutter bundle: msvcp140.dll', result.stdout + result.stderr)
 
 
 if __name__ == '__main__':

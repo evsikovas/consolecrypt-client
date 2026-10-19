@@ -90,6 +90,9 @@ try {
     Invoke-Checked flutter @('pub', 'get')
     Invoke-Checked flutter @('analyze')
     Invoke-Checked flutter @('test')
+    # Explicit real CPU generation smoke; verified 1.1 GB model is reused from the runner cache.
+    $LocalAiSmokeCache = Join-Path $runnerTools 'consolecrypt-local-ai-smoke'
+    Invoke-Checked dart @('run', 'test/ai/local/local_ai_smoke.dart', '--run', "--directory=$LocalAiSmokeCache")
 } finally { Pop-Location }
 # Exercise the Windows filesystem and native RDP input/clipboard code on the
 # actual runner OS before packaging. Live server tests remain opt-in and use no
