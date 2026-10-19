@@ -70,7 +70,7 @@ void main() {
     final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
     final tabs = container.read(terminalTabsProvider).tabs;
     expect(tabs, hasLength(1));
-    expect(tabs.single.host.name, 'raspberry-pi');
+    expect(tabs.single.host?.name, 'raspberry-pi');
     final usage = backend.snippets.currentSnippets.firstWhere((s) => s.name == 'Clean old compressed logs');
     expect(usage.usageCount, 1);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));

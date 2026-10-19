@@ -72,7 +72,8 @@ class CommandActionsCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final tokens = GlassTokens.of(context);
-    final hasTab = ref.watch(terminalTabsProvider).active != null;
+    final active = ref.watch(terminalTabsProvider).active;
+    final hasTab = active != null;
     // Opaque `surface.inset` block (also inside the palette's glass: a fill,
     // never glass on glass); actions are plain buttons.
     return ContentSurface(
@@ -108,21 +109,24 @@ class CommandActionsCard extends ConsumerWidget {
               GlassButton.plain(
                 key: const ValueKey('ai-run'),
                 size: GlassControlSize.sm,
-                onPressed: () async {
-                  // Run on top of the overlay, then close it (its context
-                  // must stay alive while the confirmation is shown).
-                  final ran = await runCommandFlow(
-                    context,
-                    ref,
-                    command: command,
-                    declared: suggestedRisk,
-                    source: SnippetSource.ai,
-                  );
-                  if (ran) onDone?.call();
-                },
+                onPressed: active?.isLocal == true
+                    ? null
+                    : () async {
+                        // Run on top of the overlay, then close it (its context
+                        // must stay alive while the confirmation is shown).
+                        final ran = await runCommandFlow(
+                          context,
+                          ref,
+                          command: command,
+                          declared: suggestedRisk,
+                          source: SnippetSource.ai,
+                        );
+                        if (ran) onDone?.call();
+                      },
                 icon: Icons.play_arrow_rounded,
                 label: l10n.codeBlocksRun,
               ),
+              if (active?.isLocal == true) Text(l10n.terminalLocalInsertOnly),
               GlassButton.plain(
                 key: const ValueKey('ai-save-snippet'),
                 size: GlassControlSize.sm,

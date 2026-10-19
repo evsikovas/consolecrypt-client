@@ -473,8 +473,9 @@ final class RustSnippetService implements SnippetService {
     String command, {
     RiskLevel declared = RiskLevel.unknown,
     SnippetSource source = SnippetSource.user,
+    SnippetType? dialect,
   }) async {
-    final j = decodeObject(await guard(() => rs_ai.aiAssessRisk(command: command)));
+    final j = decodeObject(await guard(() => rs_ai.aiAssessRisk(command: command, snippetType: dialect?.wireName)));
     RiskLevel level(Object? wire) => RiskLevel.values.where((r) => r.wireName == wire).firstOrNull ?? RiskLevel.unknown;
     final local = level(j['level']);
     return RiskAssessment(
@@ -672,12 +673,14 @@ final class RustAiService implements AiService, DeviceLocalAiBridge {
   }
 
   static String? _contextJson(AiContextSelection c) {
-    if (c.hostId == null && c.selectedTerminalText == null) return null;
+    if (c.hostId == null && c.selectedTerminalText == null && c.shellTarget == null) return null;
     return encodeJson({
       'host_id': c.hostId?.value,
       'terminal_id': null,
       'selected_text': c.selectedTerminalText,
       'include_terminal': c.selectedTerminalText != null,
+      // CommandTarget uses serde's power_shell; SnippetType uses powershell.
+      'shell_target': c.shellTarget == SnippetType.powershell ? 'power_shell' : c.shellTarget?.wireName,
     });
   }
 
@@ -732,7 +735,7 @@ final class RustAiService implements AiService, DeviceLocalAiBridge {
           () => rs_ai.aiGenerateCommand(
             providerId: providerId.value,
             request: request,
-            snippetType: dialect?.wireName,
+            snippetType: (dialect ?? context.shellTarget)?.wireName,
             contextJson: _contextJson(context),
           ),
         ),

@@ -233,6 +233,10 @@ class _RunConfirmationDialogState extends State<RunConfirmationDialog> {
 }
 
 String _hostLabel(Host host) => '${host.name} (${host.address})';
+String _targetLabel(TerminalTab tab) => switch (tab.target) {
+  SshTerminalTarget(:final host) => _hostLabel(host),
+  LocalTerminalTarget() => tab.target.label,
+};
 
 /// Picks the target (active terminal tab or a host), asks for confirmation
 /// and runs. Nothing executes without the user pressing Run (§16).
@@ -244,7 +248,12 @@ Future<bool> runCommandFlow(
   SnippetSource source = SnippetSource.user,
 }) async {
   final tabs = ref.read(terminalTabsProvider.notifier);
+  final profile = ref.read(activeProfileProvider)?.id;
   var target = ref.read(terminalTabsProvider).active;
+  if (target?.isLocal == true) {
+    showSnack(context, context.l10n.terminalLocalInsertOnly);
+    return false;
+  }
   Host? host = target?.host;
   if (host == null) {
     host = await showHostPicker(context, title: context.l10n.runFlowPickHostTitle);
@@ -252,7 +261,9 @@ Future<bool> runCommandFlow(
   }
   final RiskAssessment risk;
   try {
-    risk = await ref.read(snippetServiceProvider).assessRisk(command, declared: declared, source: source);
+    risk = await ref
+        .read(snippetServiceProvider)
+        .assessRisk(command, declared: declared, source: source, dialect: target?.target.shellType);
   } on AppException catch (e) {
     if (context.mounted) showSnack(context, errorMessage(context.l10n, e), error: true);
     return false;
@@ -260,6 +271,11 @@ Future<bool> runCommandFlow(
   if (!context.mounted) return false;
   final ok = await showRunConfirmation(context, command: command, hostLabel: _hostLabel(host), risk: risk);
   if (!ok || !context.mounted) return false;
+  if (profile != ref.read(activeProfileProvider)?.id ||
+      (target != null && !ref.read(terminalTabsProvider).tabs.contains(target))) {
+    showSnack(context, context.l10n.snippetTargetsChanged);
+    return false;
+  }
   if (target == null) {
     target = await runWithFeedback(context, () => tabs.open(host!));
     if (target == null) return false;
@@ -324,7 +340,7 @@ Future<void> insertSnippetFlow(BuildContext context, WidgetRef ref, Snippet snip
 /// queue onto a disconnected session, or execute on a newly opened tab.
 Future<void> runSnippetInManyFlow(BuildContext context, WidgetRef ref, Snippet snippet) async {
   final profile = ref.read(activeProfileProvider)?.id;
-  final candidates = ref.read(terminalTabsProvider).tabs.where((t) => t.isConnected).toList();
+  final candidates = ref.read(terminalTabsProvider).tabs.where((t) => t.isConnected && !t.isLocal).toList();
   if (candidates.isEmpty) {
     showSnack(context, context.l10n.snippetNoConnected);
     return;
@@ -348,7 +364,7 @@ Future<void> runSnippetInManyFlow(BuildContext context, WidgetRef ref, Snippet s
   final confirmed = await showRunConfirmation(
     context,
     command: command,
-    hostLabel: targets.map((t) => _hostLabel(t.host)).join('\n'),
+    hostLabel: targets.map(_targetLabel).join('\n'),
     risk: risk,
   );
   if (!confirmed || !context.mounted) return;
@@ -394,8 +410,8 @@ class _SnippetTargetsState extends State<_SnippetTargets> {
                 CheckboxListTile(
                   key: ValueKey('snippet-target-${tab.sessionId}'),
                   value: _selected.contains(tab),
-                  title: Text(tab.host.name),
-                  subtitle: Text(tab.host.address),
+                  title: Text(tab.target.label),
+                  subtitle: Text(tab.target.detail),
                   onChanged: (selected) =>
                       setState(() => selected == true ? _selected.add(tab) : _selected.remove(tab)),
                 ),

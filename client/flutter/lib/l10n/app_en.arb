@@ -7613,7 +7613,7 @@
     "description": "Mobile-only remote desktop input control."
   },
   "localAiTitle": "Built-in local AI",
-  "localAiDescription": "Install a compact model and run it on this computer. Chat and command suggestions work offline after installation.",
+  "localAiDescription": "Choose a model for this computer. Chat and command suggestions work offline after installation.",
   "localAiModel": "Model",
   "localAiDownloadSize": "Model download: {size}",
   "localAiNotInstalled": "Not installed",
@@ -7629,7 +7629,7 @@
   "localAiInstall": "Install local AI",
   "localAiStart": "Start",
   "localAiStop": "Stop",
-  "localAiRemove": "Remove model and runtime",
+  "localAiRemove": "Remove selected model",
   "localAiResourceHelp": "Uses memory and CPU while running; stops after 15 minutes without requests. Small models may make mistakes. Review commands before running them.",
   "localAiOperationFailed": "The local AI operation could not be completed. Check its status and try again.",
   "@localAiDownloadSize": {
@@ -7712,5 +7712,143 @@
   "localAiStorageUnavailable": "Cannot access local AI files. Check app data folder permissions and free disk space.",
   "@localAiStorageUnavailable": {
     "description": "Local AI storage access failure."
+  },
+  "localAiRamRecommendation": "Recommended total RAM: {ram} GB. Speed depends on your hardware.",
+  "@localAiRamRecommendation": {
+    "description": "Device-local AI model management and installation guidance.",
+    "placeholders": {
+      "ram": {
+        "type": "int"
+      }
+    }
+  },
+  "localAiModelsPreserved": "Switching models keeps other downloads. Installed models and your choice survive app updates.",
+  "@localAiModelsPreserved": {
+    "description": "Device-local AI model management and installation guidance."
+  },
+  "localAiModelInstalled": "Installed",
+  "@localAiModelInstalled": {
+    "description": "Device-local AI model management and installation guidance."
+  },
+  "localAiRuntimeMissing": "The inference engine is missing. Repair it; downloaded models will be kept.",
+  "@localAiRuntimeMissing": {
+    "description": "Device-local AI model management and installation guidance."
+  },
+  "localAiBundledRuntimeMissing": "The app’s inference engine is unavailable. Reinstall the application; downloaded models will be kept.",
+  "@localAiBundledRuntimeMissing": {
+    "description": "Device-local AI model management and installation guidance."
+  },
+  "localAiRepairRuntime": "Repair engine",
+  "@localAiRepairRuntime": {
+    "description": "Device-local AI model management and installation guidance."
+  },
+  "localAiInstallSelectedHelp": "Install the selected model to use local AI. Your local default stays enabled; requests will not switch to a cloud provider.",
+  "@localAiInstallSelectedHelp": {
+    "description": "Device-local AI model management and installation guidance."
+  },
+  "localAiTierLight": "Light",
+  "@localAiTierLight": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "localAiTierMedium": "Medium",
+  "@localAiTierMedium": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "localAiTierStrong": "Strong",
+  "@localAiTierStrong": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "localAiModelRequirements": "{size} download · {ram} GB RAM recommended",
+  "@localAiModelRequirements": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information.",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "ram": {
+        "type": "int"
+      }
+    }
+  },
+  "localAiRecommended": "Recommended for this computer’s total RAM",
+  "@localAiRecommended": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "localAiDetectedMemory": "This computer: {size} total RAM. The star is a suggestion; your selection stays unchanged.",
+  "@localAiDetectedMemory": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information.",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "localAiMetalHelp": "Apple Silicon uses Metal acceleration. Larger models need more memory and can respond more slowly.",
+  "@localAiMetalHelp": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "localAiCpuHelp": "Windows and Intel Mac use the CPU. RAM guidance does not guarantee fast responses; larger models can be slow.",
+  "@localAiCpuHelp": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "localAiModelAttribution": "Model / GGUF: {publisher} · License: {license}",
+  "@localAiModelAttribution": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information.",
+    "placeholders": {
+      "publisher": {
+        "type": "String"
+      },
+      "license": {
+        "type": "String"
+      }
+    }
+  },
+  "localAiModelNotices": "Model sources and licenses",
+  "@localAiModelNotices": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "terminalLocalSearch": "Search shells or SSH hosts",
+  "terminalLocalSection": "Local shells",
+  "terminalLocalSshSection": "SSH hosts",
+  "terminalLocalComputer": "This computer",
+  "terminalLocalUnavailable": "No local shells are available.",
+  "terminalLocalSandboxUnavailable": "Local shells are unavailable in this sandboxed build.",
+  "terminalLocalRefresh": "Refresh local shells",
+  "terminalLocalEmptyMessage": "Open a local shell or connect to an SSH host in a new tab.",
+  "terminalLocalOpen": "Open terminal",
+  "terminalLocalRestart": "Restart shell",
+  "terminalLocalInsertOnly": "Insert the command, review it, then press Enter in the local terminal.",
+  "@terminalLocalSearch": {
+    "description": "Local terminal UI: Search."
+  },
+  "@terminalLocalSection": {
+    "description": "Local terminal UI: Section."
+  },
+  "@terminalLocalSshSection": {
+    "description": "Local terminal UI: SshSection."
+  },
+  "@terminalLocalComputer": {
+    "description": "Local terminal UI: Computer."
+  },
+  "@terminalLocalUnavailable": {
+    "description": "Local terminal UI: Unavailable."
+  },
+  "@terminalLocalSandboxUnavailable": {
+    "description": "Local terminal UI: SandboxUnavailable."
+  },
+  "@terminalLocalRefresh": {
+    "description": "Local terminal UI: Refresh."
+  },
+  "@terminalLocalEmptyMessage": {
+    "description": "Local terminal UI: EmptyMessage."
+  },
+  "@terminalLocalOpen": {
+    "description": "Local terminal UI: Open."
+  },
+  "@terminalLocalRestart": {
+    "description": "Local terminal UI: Restart."
+  },
+  "@terminalLocalInsertOnly": {
+    "description": "Local terminal UI: InsertOnly."
   }
 }

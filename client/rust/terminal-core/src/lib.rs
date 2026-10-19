@@ -7,6 +7,7 @@
 //! [`CommandTracker`] per session offers best-effort `last command` /
 //! `last error` hooks for the AI layer.
 
+pub mod local;
 pub mod scrollback;
 pub mod tracker;
 
@@ -21,6 +22,7 @@ use cc_ssh_core::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use tokio::sync::{broadcast, watch};
 
@@ -88,6 +90,12 @@ pub struct OpenedShell {
     pub channel: ShellChannel,
     /// SSH session owned by the terminal (disconnected when it closes).
     pub session: Option<Arc<SshSession>>,
+    /// Out-of-band close for owned native processes, including cancelled opens.
+    pub lifetime: Option<Arc<dyn ShellLifetime>>,
+}
+
+pub trait ShellLifetime: Send + Sync {
+    fn close(&self);
 }
 
 impl std::fmt::Debug for OpenedShell {
@@ -140,6 +148,7 @@ impl ShellOpener for SshShellOpener {
         Ok(OpenedShell {
             channel,
             session: Some(session),
+            lifetime: None,
         })
     }
 }
@@ -174,15 +183,40 @@ pub struct Attachment {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TerminalInfo {
     pub id: TerminalId,
-    pub host_id: ObjectId,
+    pub target: TerminalTarget,
     pub title: String,
     pub status: TerminalStatus,
     pub size: TerminalSize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TerminalTarget {
+    Ssh {
+        host_id: ObjectId,
+    },
+    Local {
+        profile_id: String,
+        shell: String,
+        display_name: String,
+        distribution: Option<String>,
+    },
+}
+
+impl TerminalTarget {
+    pub fn host_id(&self) -> Option<ObjectId> {
+        match self {
+            Self::Ssh { host_id } => Some(*host_id),
+            Self::Local { .. } => None,
+        }
+    }
+}
+
 struct Inner {
     writer: Option<ShellWriter>,
     session: Option<Arc<SshSession>>,
+    lifetime: Option<Arc<dyn ShellLifetime>>,
+    closing: bool,
     size: TerminalSize,
     scrollback: Scrollback,
     tracker: CommandTracker,
@@ -190,7 +224,7 @@ struct Inner {
 
 struct Session {
     id: TerminalId,
-    host_id: ObjectId,
+    target: TerminalTarget,
     title: String,
     status: watch::Sender<TerminalStatus>,
     output: broadcast::Sender<Bytes>,
@@ -209,6 +243,7 @@ pub struct TerminalManager {
     config: TerminalConfig,
     sessions: Mutex<HashMap<TerminalId, Arc<Session>>>,
     events: broadcast::Sender<TerminalEvent>,
+    stopped: AtomicBool,
 }
 
 impl std::fmt::Debug for TerminalManager {
@@ -217,6 +252,12 @@ impl std::fmt::Debug for TerminalManager {
             .field("config", &self.config)
             .field("sessions", &self.map().len())
             .finish_non_exhaustive()
+    }
+}
+
+impl Drop for TerminalManager {
+    fn drop(&mut self) {
+        self.begin_shutdown();
     }
 }
 
@@ -231,6 +272,7 @@ impl TerminalManager {
             config,
             sessions: Mutex::new(HashMap::new()),
             events: broadcast::channel(256).0,
+            stopped: AtomicBool::new(false),
         }
     }
 
@@ -243,6 +285,16 @@ impl TerminalManager {
             .get(&id)
             .cloned()
             .ok_or(TerminalError::NotFound(id))
+    }
+
+    fn register(&self, session: Arc<Session>) {
+        let mut sessions = self.map();
+        sessions.insert(session.id, session.clone());
+        // A shutdown may have run after this session was prepared but before
+        // registration. Holding the map lock pairs with begin_shutdown's walk.
+        if self.stopped.load(Ordering::Acquire) {
+            session.lock().closing = true;
+        }
     }
 
     /// Subscribe to status changes of all sessions.
@@ -261,19 +313,35 @@ impl TerminalManager {
         let id = uuid::Uuid::new_v4();
         let session = Arc::new(Session {
             id,
-            host_id: plan.host_id,
+            target: TerminalTarget::Ssh {
+                host_id: plan.host_id,
+            },
             title: plan.name.clone(),
             status: watch::channel(TerminalStatus::Connecting).0,
             output: broadcast::channel(1024).0,
             inner: Mutex::new(Inner {
                 writer: None,
                 session: None,
+                lifetime: None,
+                closing: false,
                 size,
                 scrollback: Scrollback::new(self.config.scrollback_bytes),
                 tracker: CommandTracker::new(),
             }),
         });
-        self.map().insert(id, session.clone());
+        self.register(session.clone());
+        if self.stopped.load(Ordering::Acquire) {
+            session.lock().closing = true;
+            Self::set_status(
+                &self.events,
+                &session,
+                TerminalStatus::Closed {
+                    exit_status: None,
+                    reason: None,
+                },
+            );
+            return id;
+        }
         let _ = self.events.send(TerminalEvent {
             id,
             status: TerminalStatus::Connecting,
@@ -290,7 +358,10 @@ impl TerminalManager {
             match opener.open_shell(&plan, pty).await {
                 Ok(opened) => Self::run(session, opened, events).await,
                 Err(e) => {
-                    Self::set_status(&events, &session, TerminalStatus::Failed(e.to_string()))
+                    let inner = session.lock();
+                    if !inner.closing {
+                        Self::set_status(&events, &session, TerminalStatus::Failed(e.to_string()));
+                    }
                 }
             }
         });
@@ -339,47 +410,135 @@ impl TerminalManager {
         let id = uuid::Uuid::new_v4();
         let session = Arc::new(Session {
             id,
-            host_id: ssh.host_id(),
+            target: TerminalTarget::Ssh {
+                host_id: ssh.host_id(),
+            },
             title: title.into(),
             status: watch::channel(TerminalStatus::Connecting).0,
             output: broadcast::channel(1024).0,
             inner: Mutex::new(Inner {
                 writer: None,
                 session: None,
+                lifetime: None,
+                closing: self.stopped.load(Ordering::Acquire),
                 size,
                 scrollback: Scrollback::new(self.config.scrollback_bytes),
                 tracker: CommandTracker::new(),
             }),
         });
-        self.map().insert(id, session.clone());
+        self.register(session.clone());
         let events = self.events.clone();
-        let (reader, owned) = Self::install(
+        let installed = Self::install(
             &session,
             OpenedShell {
                 channel,
                 session: None,
+                lifetime: None,
             },
             &events,
-        );
+        )
+        .await;
+        let Some((reader, owned)) = installed else {
+            self.map().remove(&id);
+            return Err(TerminalError::Open("terminal manager is closed".into()));
+        };
         tokio::spawn(Self::pump(session, reader, owned, events));
         Ok(id)
     }
 
+    /// A local shell belongs to the same unlocked session as SSH tabs. An
+    /// in-flight native spawn after lock is closed before it can be published.
+    pub async fn open_local(
+        &self,
+        profile_id: &str,
+        size: TerminalSize,
+    ) -> Result<TerminalId, TerminalError> {
+        if self.stopped.load(Ordering::Acquire) {
+            return Err(TerminalError::Open("terminal manager is closed".into()));
+        }
+        let (profile, opened) = local::open(profile_id, size).await?;
+        let id = uuid::Uuid::new_v4();
+        let session = Arc::new(Session {
+            id,
+            target: TerminalTarget::Local {
+                profile_id: profile.id,
+                shell: profile.shell,
+                display_name: profile.label.clone(),
+                distribution: profile.distribution,
+            },
+            title: profile.label,
+            status: watch::channel(TerminalStatus::Connecting).0,
+            output: broadcast::channel(1024).0,
+            inner: Mutex::new(Inner {
+                writer: None,
+                session: None,
+                lifetime: None,
+                closing: self.stopped.load(Ordering::Acquire),
+                size,
+                scrollback: Scrollback::new(self.config.scrollback_bytes),
+                tracker: CommandTracker::new(),
+            }),
+        });
+        self.register(session.clone());
+        let mut status = session.status.subscribe();
+        tokio::spawn(Self::run(session, opened, self.events.clone()));
+        let current = status
+            .wait_for(|s| *s != TerminalStatus::Connecting)
+            .await
+            .map_err(|_| TerminalError::Open("terminal closed during start".into()))?
+            .clone();
+        if current != TerminalStatus::Connected {
+            self.map().remove(&id);
+            return Err(TerminalError::Open("terminal closed during start".into()));
+        }
+        Ok(id)
+    }
+
     /// Make the session writable and mark it connected.
-    fn install(
+    async fn install(
         session: &Session,
         opened: OpenedShell,
         events: &broadcast::Sender<TerminalEvent>,
-    ) -> (cc_ssh_core::ShellReader, Option<Arc<SshSession>>) {
+    ) -> Option<(cc_ssh_core::ShellReader, Option<Arc<SshSession>>)> {
         let (writer, reader) = opened.channel.split();
         let owned = opened.session;
-        {
+        let lifetime = opened.lifetime;
+        loop {
+            let (size, closed) = {
+                let inner = session.lock();
+                (inner.size, inner.closing)
+            };
+            if closed {
+                if let Some(lifetime) = lifetime {
+                    lifetime.close();
+                }
+                let _ = writer.close().await;
+                if let Some(ssh) = owned {
+                    let _ = ssh.disconnect().await;
+                }
+                Self::set_status(
+                    events,
+                    session,
+                    TerminalStatus::Closed {
+                        exit_status: None,
+                        reason: None,
+                    },
+                );
+                return None;
+            }
+            // Resize before publishing Connected, retrying if the UI resized
+            // during the await. No stale initial size can overwrite a later one.
+            let _ = writer.resize(size.cols, size.rows).await;
             let mut inner = session.lock();
-            inner.writer = Some(writer);
+            if inner.closing || inner.size != size {
+                continue;
+            }
+            inner.writer = Some(writer.clone());
             inner.session = owned.clone();
+            inner.lifetime = lifetime;
+            Self::set_status(events, session, TerminalStatus::Connected);
+            return Some((reader, owned));
         }
-        Self::set_status(events, session, TerminalStatus::Connected);
-        (reader, owned)
     }
 
     async fn run(
@@ -387,8 +546,9 @@ impl TerminalManager {
         opened: OpenedShell,
         events: broadcast::Sender<TerminalEvent>,
     ) {
-        let (reader, owned) = Self::install(&session, opened, &events);
-        Self::pump(session, reader, owned, events).await
+        if let Some((reader, owned)) = Self::install(&session, opened, &events).await {
+            Self::pump(session, reader, owned, events).await;
+        }
     }
 
     async fn pump(
@@ -414,6 +574,9 @@ impl TerminalManager {
                 Some(ShellEvent::Data(d)) | Some(ShellEvent::Stderr(d)) => {
                     // Append + broadcast under one lock: attach() sees no gap.
                     let mut inner = session.lock();
+                    if inner.closing {
+                        continue;
+                    }
                     inner.scrollback.push(&d);
                     inner.tracker.on_output(&d);
                     let _ = session.output.send(d);
@@ -435,6 +598,7 @@ impl TerminalManager {
             let mut inner = session.lock();
             inner.writer = None;
             inner.session = None;
+            inner.lifetime = None;
         }
         if let Some(ssh) = owned {
             let _ = ssh.disconnect().await;
@@ -455,6 +619,9 @@ impl TerminalManager {
         let s = self.get(id)?;
         let writer = {
             let mut inner = s.lock();
+            if inner.closing {
+                return Err(TerminalError::NotConnected(id));
+            }
             let w = inner
                 .writer
                 .clone()
@@ -516,7 +683,7 @@ impl TerminalManager {
         let status = s.status.borrow().clone();
         Ok(TerminalInfo {
             id,
-            host_id: s.host_id,
+            target: s.target.clone(),
             title: s.title.clone(),
             status,
             size,
@@ -534,10 +701,26 @@ impl TerminalManager {
     /// session stays listed with status `Closed` until [`Self::remove`].
     pub async fn close(&self, id: TerminalId) -> Result<(), TerminalError> {
         let s = self.get(id)?;
-        let (writer, ssh) = {
-            let inner = s.lock();
-            (inner.writer.clone(), inner.session.clone())
+        let (writer, ssh, lifetime) = {
+            let mut inner = s.lock();
+            inner.closing = true;
+            Self::set_status(
+                &self.events,
+                &s,
+                TerminalStatus::Closed {
+                    exit_status: None,
+                    reason: None,
+                },
+            );
+            (
+                inner.writer.take(),
+                inner.session.take(),
+                inner.lifetime.take(),
+            )
         };
+        if let Some(lifetime) = lifetime {
+            lifetime.close();
+        }
         if let Some(w) = writer {
             let _ = w.close().await;
         }
@@ -545,6 +728,33 @@ impl TerminalManager {
             let _ = ssh.disconnect().await;
         }
         Ok(())
+    }
+
+    /// Permanently fence this unlocked runtime before closing its sessions.
+    pub async fn shutdown(&self) {
+        self.begin_shutdown();
+        for info in self.list() {
+            let _ = self.remove(info.id).await;
+        }
+    }
+
+    pub fn begin_shutdown(&self) {
+        self.stopped.store(true, Ordering::Release);
+        for session in self.map().values() {
+            let mut inner = session.lock();
+            inner.closing = true;
+            if let Some(lifetime) = &inner.lifetime {
+                lifetime.close();
+            }
+            Self::set_status(
+                &self.events,
+                session,
+                TerminalStatus::Closed {
+                    exit_status: None,
+                    reason: None,
+                },
+            );
+        }
     }
 
     /// Forget a session and wipe its scrollback / tracker.

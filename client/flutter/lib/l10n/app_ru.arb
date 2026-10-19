@@ -2441,7 +2441,7 @@
   "rdpMobileHelpTitle": "Управление с телефона",
   "rdpMobileHelp": "Нажмите кнопку мыши, чтобы экран работал как тачпад. Водите одним пальцем в любом месте для перемещения курсора. Можно поднять палец и продолжить движение с другого места.\n\nКасание — левый клик. Два быстрых касания — двойной клик; удерживайте второе касание и двигайте палец для перетаскивания. Также можно немного удержать один палец, затем потянуть.\n\nКасание двумя пальцами — правый клик. Движение двумя пальцами — прокрутка. Кнопки клика действуют в позиции курсора.\n\nКнопка клавиатуры открывает или скрывает клавиатуру телефона. Над ней доступны Esc, Tab, стрелки и Enter. Касание рабочего стола не открывает клавиатуру.\n\nВыключите тачпад для клика непосредственно под пальцем. Подключённая мышь работает обычным способом.",
   "localAiTitle": "Встроенный локальный ИИ",
-  "localAiDescription": "Установите небольшую модель на этот компьютер. После установки чат и подсказки команд работают без интернета.",
+  "localAiDescription": "Выберите модель для этого компьютера. После установки чат и подсказки команд работают без интернета.",
   "localAiModel": "Модель",
   "localAiDownloadSize": "Загрузка модели: {size}",
   "localAiNotInstalled": "Не установлено",
@@ -2457,7 +2457,7 @@
   "localAiInstall": "Установить локальный ИИ",
   "localAiStart": "Запустить",
   "localAiStop": "Остановить",
-  "localAiRemove": "Удалить модель и среду выполнения",
+  "localAiRemove": "Удалить выбранную модель",
   "localAiResourceHelp": "Во время работы использует память и процессор; остановится через 15 минут без запросов. Небольшие модели могут ошибаться. Проверяйте команды перед запуском.",
   "localAiOperationFailed": "Не удалось выполнить действие с локальным ИИ. Проверьте состояние и повторите попытку.",
   "@localAiDownloadSize": {
@@ -2540,5 +2540,143 @@
   "localAiStorageUnavailable": "Нет доступа к файлам локального ИИ. Проверьте права на папку данных приложения и свободное место на диске.",
   "@localAiStorageUnavailable": {
     "description": "Local AI storage access failure."
+  },
+  "localAiRamRecommendation": "Рекомендуется от {ram} ГБ оперативной памяти. Скорость зависит от компьютера.",
+  "@localAiRamRecommendation": {
+    "description": "Device-local AI model management and installation guidance.",
+    "placeholders": {
+      "ram": {
+        "type": "int"
+      }
+    }
+  },
+  "localAiModelsPreserved": "При смене модели остальные загрузки сохраняются. Обновление приложения сохраняет модели и ваш выбор.",
+  "@localAiModelsPreserved": {
+    "description": "Device-local AI model management and installation guidance."
+  },
+  "localAiModelInstalled": "Установлена",
+  "@localAiModelInstalled": {
+    "description": "Device-local AI model management and installation guidance."
+  },
+  "localAiRuntimeMissing": "Движок ИИ отсутствует. Восстановите его; скачанные модели сохранятся.",
+  "@localAiRuntimeMissing": {
+    "description": "Device-local AI model management and installation guidance."
+  },
+  "localAiBundledRuntimeMissing": "Движок ИИ в приложении недоступен. Переустановите приложение; скачанные модели сохранятся.",
+  "@localAiBundledRuntimeMissing": {
+    "description": "Device-local AI model management and installation guidance."
+  },
+  "localAiRepairRuntime": "Восстановить движок",
+  "@localAiRepairRuntime": {
+    "description": "Device-local AI model management and installation guidance."
+  },
+  "localAiInstallSelectedHelp": "Установите выбранную модель для локального ИИ. Выбор локального ИИ по умолчанию сохранён; запросы не будут переключаться на облако.",
+  "@localAiInstallSelectedHelp": {
+    "description": "Device-local AI model management and installation guidance."
+  },
+  "localAiTierLight": "Лёгкая",
+  "@localAiTierLight": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "localAiTierMedium": "Средняя",
+  "@localAiTierMedium": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "localAiTierStrong": "Мощная",
+  "@localAiTierStrong": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "localAiModelRequirements": "{size} для загрузки · рекомендуется {ram} ГБ ОЗУ",
+  "@localAiModelRequirements": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information.",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "ram": {
+        "type": "int"
+      }
+    }
+  },
+  "localAiRecommended": "Рекомендуется по объёму памяти этого компьютера",
+  "@localAiRecommended": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "localAiDetectedMemory": "На компьютере: {size} оперативной памяти. Звезда — рекомендация; ваш выбор не меняется.",
+  "@localAiDetectedMemory": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information.",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "localAiMetalHelp": "На Apple Silicon используется ускорение Metal. Большим моделям нужно больше памяти; ответы могут быть медленнее.",
+  "@localAiMetalHelp": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "localAiCpuHelp": "На Windows и Intel Mac используется процессор. Объём памяти не гарантирует быстрые ответы; большие модели могут работать медленно.",
+  "@localAiCpuHelp": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "localAiModelAttribution": "Модель / GGUF: {publisher} · Лицензия: {license}",
+  "@localAiModelAttribution": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information.",
+    "placeholders": {
+      "publisher": {
+        "type": "String"
+      },
+      "license": {
+        "type": "String"
+      }
+    }
+  },
+  "localAiModelNotices": "Источники и лицензии моделей",
+  "@localAiModelNotices": {
+    "description": "Device-local AI model catalog, hardware recommendation, or license information."
+  },
+  "terminalLocalSearch": "Поиск оболочек или SSH-хостов",
+  "terminalLocalSection": "Локальные оболочки",
+  "terminalLocalSshSection": "SSH-хосты",
+  "terminalLocalComputer": "Этот компьютер",
+  "terminalLocalUnavailable": "Локальные оболочки недоступны.",
+  "terminalLocalSandboxUnavailable": "В этой сборке с песочницей локальные оболочки недоступны.",
+  "terminalLocalRefresh": "Обновить список оболочек",
+  "terminalLocalEmptyMessage": "Откройте локальную оболочку или подключитесь к SSH-хосту в новой вкладке.",
+  "terminalLocalOpen": "Открыть терминал",
+  "terminalLocalRestart": "Перезапустить оболочку",
+  "terminalLocalInsertOnly": "Вставьте команду, проверьте её и нажмите Enter в локальном терминале.",
+  "@terminalLocalSearch": {
+    "description": "Local terminal UI: Search."
+  },
+  "@terminalLocalSection": {
+    "description": "Local terminal UI: Section."
+  },
+  "@terminalLocalSshSection": {
+    "description": "Local terminal UI: SshSection."
+  },
+  "@terminalLocalComputer": {
+    "description": "Local terminal UI: Computer."
+  },
+  "@terminalLocalUnavailable": {
+    "description": "Local terminal UI: Unavailable."
+  },
+  "@terminalLocalSandboxUnavailable": {
+    "description": "Local terminal UI: SandboxUnavailable."
+  },
+  "@terminalLocalRefresh": {
+    "description": "Local terminal UI: Refresh."
+  },
+  "@terminalLocalEmptyMessage": {
+    "description": "Local terminal UI: EmptyMessage."
+  },
+  "@terminalLocalOpen": {
+    "description": "Local terminal UI: Open."
+  },
+  "@terminalLocalRestart": {
+    "description": "Local terminal UI: Restart."
+  },
+  "@terminalLocalInsertOnly": {
+    "description": "Local terminal UI: InsertOnly."
   }
 }

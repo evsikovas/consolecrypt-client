@@ -9,6 +9,7 @@ import 'dart:ui' as ui;
 import 'package:consolecrypt/ai/ai_chat_controller.dart';
 import 'package:consolecrypt/ai/command_palette.dart';
 import 'package:consolecrypt/ai/device_local_ai_service.dart';
+import 'package:consolecrypt/ai/local/local_ai_hardware.dart';
 import 'package:consolecrypt/ai/local/local_ai_runtime.dart';
 import 'package:consolecrypt/ai/local_ai_providers.dart';
 import 'package:consolecrypt/app/about.dart';
@@ -29,6 +30,7 @@ import 'package:consolecrypt/sharing/sharing_providers.dart';
 import 'package:consolecrypt/sharing/sharing_secrets.dart';
 import 'package:consolecrypt/snippets/starter_catalog.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
+import 'package:consolecrypt/terminal/terminal_target_picker.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -61,6 +63,10 @@ void main() {
       'CupertinoSystemText',
       'CupertinoSystemDisplay',
       'Roboto',
+      'Segoe UI',
+      'Segoe UI Variable',
+      'Segoe UI Variable Text',
+      'Segoe UI Variable Display',
     ]) {
       final loader = FontLoader(family)
         ..addFont(File('/System/Library/Fonts/SFNS.ttf').readAsBytes().then(ByteData.sublistView));
@@ -69,7 +75,7 @@ void main() {
     final mono = FontLoader('Menlo')
       ..addFont(File('/System/Library/Fonts/Menlo.ttc').readAsBytes().then(ByteData.sublistView));
     await mono.load();
-    for (final family in ['monospace', 'SF Mono']) {
+    for (final family in ['monospace', 'SF Mono', 'Consolas', 'Cascadia Mono']) {
       final loader = FontLoader(family)
         ..addFont(File('/System/Library/Fonts/SFNSMono.ttf').readAsBytes().then(ByteData.sublistView));
       await loader.load();
@@ -87,6 +93,9 @@ void main() {
                 'sftp-settings',
                 'sftp-preview',
                 'terminal-menu',
+                'terminal-local-picker',
+                'terminal-local-tabs',
+                'terminal-wsl-picker',
                 'terminal-menu-compact',
                 'terminal-menu-ai',
                 'terminal-menu-snippet',
@@ -123,6 +132,7 @@ void main() {
       final l10n = lookupAppLocalizations(Locale(locale.wireName));
       final glass = screen.startsWith('glass-');
       final personalized = glass || ['appearance', 'terminal', 'palette', 'spectrum'].contains(screen);
+      final platform = screen == 'terminal-wsl-picker' ? TargetPlatform.windows : TargetPlatform.macOS;
       testWidgets('${theme.name} $screen', (tester) async {
         tester.view.physicalSize = screen.endsWith('-compact')
             ? const Size(1024, 720)
@@ -135,6 +145,12 @@ void main() {
         addTearDown(backend.dispose);
         if (!welcome) await backend.debugSignInDemoAndUnlock();
         if (_guide && !welcome) await prepareGuideInventory(backend, screen);
+        final localTerminal = screen.startsWith('terminal-local-') || screen == 'terminal-wsl-picker';
+        if (localTerminal) {
+          backend.terminal.localShellProfiles = LocalShellProfiles(
+            profiles: screen == 'terminal-wsl-picker' ? guideWindowsShellProfiles : guideMacShellProfiles,
+          );
+        }
         if (screen == 'connection-picker' || screen == 'rdp-host-picker') {
           final now = DateTime.utc(2026, 10, 19);
           await backend.inventory.saveHost(
@@ -162,6 +178,8 @@ void main() {
                 ? LocalAiPhase.installing
                 : LocalAiPhase.notInstalled,
             isInstalled: screen == 'local-ai-ready',
+            runtimeInstalled: true,
+            installedModelIds: screen == 'local-ai-ready' ? {LocalAiCatalog.model.id} : const {},
             downloadedBytes: screen == 'local-ai-progress' ? LocalAiCatalog.model.bytes ~/ 2 : 0,
             totalBytes: screen == 'local-ai-progress' ? LocalAiCatalog.model.bytes : 0,
           );
@@ -214,6 +232,12 @@ void main() {
                 if (localAi != null) ...[
                   deviceLocalAiAvailableProvider.overrideWithValue(true),
                   localAiRuntimeProvider.overrideWithValue(localAi),
+                  localAiHardwareProvider.overrideWith(
+                    (ref) async => const LocalAiHardware(
+                      platform: LocalAiPlatform.macArm64,
+                      totalMemoryBytes: 16 * 1024 * 1024 * 1024,
+                    ),
+                  ),
                   aiServiceProvider.overrideWith((ref) {
                     final service = DeviceLocalAiService(
                       delegate: backend.services.ai,
@@ -235,6 +259,26 @@ void main() {
         );
         for (var i = 0; i < 20; i++) {
           await tester.pump(const Duration(milliseconds: 100));
+        }
+        if (localTerminal) {
+          final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+          final tabs = container.read(terminalTabsProvider.notifier);
+          await tabs.open(backend.inventory.currentHosts.firstWhere((h) => h.name == 'raspberry-pi'));
+          final profile = backend.terminal.localShellProfiles.profiles.first;
+          final tab = await tabs.openTarget(LocalTerminalTarget(profile));
+          container.read(routerProvider).go(AppRoutes.terminal);
+          await settle(tester);
+          tab.terminal.write('\x1b[2J\x1b[H');
+          tab.terminal.write(
+            screen == 'terminal-wsl-picker'
+                ? 'PS C:\\Users\\demo> Get-Location\r\n\r\nPath\r\n----\r\nC:\\Users\\demo\r\n\r\nPS C:\\Users\\demo> '
+                : 'demo@workstation ~ % pwd\r\n/Users/demo\r\ndemo@workstation ~ % uname -s\r\nDarwin\r\ndemo@workstation ~ % ',
+          );
+          await settle(tester);
+          if (screen != 'terminal-local-tabs') {
+            showTerminalTargetPicker(tester.element(find.byType(Navigator).first)).ignore();
+            await settle(tester);
+          }
         }
         if (screen.startsWith('terminal-menu')) {
           final c = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
@@ -547,6 +591,15 @@ void main() {
                 .hitTestable(),
             findsOneWidget,
           );
+          if (screen == 'local-ai-catalog') {
+            await tapKey(tester, 'local-ai-model');
+            await settle(tester);
+            expect(find.textContaining(LocalAiCatalog.qwen4B.label).hitTestable(), findsOneWidget);
+            expect(
+              find.byKey(ValueKey('local-ai-recommended-${LocalAiCatalog.qwen9B.id}')).hitTestable(),
+              findsOneWidget,
+            );
+          }
           if (screen == 'local-ai-progress') {
             expect(
               tester.widget<LinearProgressIndicator>(find.byKey(const ValueKey('local-ai-progress'))).value,
@@ -616,7 +669,7 @@ void main() {
           await File(path).writeAsBytes(bytes);
           image.dispose();
         });
-      }, variant: const TargetPlatformVariant({TargetPlatform.macOS}));
+      }, variant: TargetPlatformVariant.only(platform));
     }
   }
 }
@@ -648,6 +701,15 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(find.byType(TerminalView), findsWidgets);
     case 'terminal-tabs-overflow':
       expect(find.text('(8)'), findsOneWidget);
+    case 'terminal-local-picker':
+      expect(find.byKey(const ValueKey('pick-local-macos:zsh')), findsOneWidget);
+    case 'terminal-wsl-picker':
+      expect(find.byKey(const ValueKey('pick-local-wsl:Ubuntu')), findsOneWidget);
+      expect(find.byKey(const ValueKey('pick-local-wsl:Debian')), findsOneWidget);
+    case 'terminal-local-tabs':
+      expect(texts, contains(l10n.terminalLocalComputer));
+      expect(find.byType(TerminalView), findsWidgets);
+      expect(find.byKey(const ValueKey('terminal-sftp')), findsNothing);
     case 'host-palette':
       expect(find.byKey(const ValueKey('command-palette')), findsOneWidget);
     case 'about-license':

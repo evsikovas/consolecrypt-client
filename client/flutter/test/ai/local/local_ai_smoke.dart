@@ -10,6 +10,14 @@ import 'package:consolecrypt/ai/local/local_ai_download.dart';
 import 'package:consolecrypt/ai/local/local_ai_runtime.dart';
 
 Future<void> main(List<String> args) async {
+  final Duration requestTimeout;
+  try {
+    requestTimeout = parseLocalAiSmokeTimeout(args);
+  } on FormatException catch (error) {
+    stderr.writeln(error.message);
+    exitCode = 64;
+    return;
+  }
   final directoryArg = args.where((a) => a.startsWith('--directory=')).firstOrNull;
   if (!args.contains('--run') || directoryArg == null) {
     stderr.writeln('Explicit opt-in required: --run --directory=<temporary-cache> [--runtime-only]');
@@ -54,6 +62,9 @@ Future<void> main(List<String> args) async {
   final http = HttpClient()..findProxy = (_) => 'DIRECT';
   try {
     await runtime.initialize();
+    final modelArg = args.where((a) => a.startsWith('--model=')).firstOrNull;
+    if (modelArg != null) await runtime.selectModel(modelArg.substring('--model='.length));
+    print('MODEL: ${runtime.selectedModel.id}');
     await runtime.install();
     final endpoints = await Future.wait([runtime.ensureReady(), runtime.ensureReady()]);
     if (!identical(endpoints[0], endpoints[1])) throw StateError('Start was not single-flight');
@@ -78,8 +89,8 @@ Future<void> main(List<String> args) async {
           'max_tokens': 16,
         }),
       );
-      response = await request.close().timeout(const Duration(minutes: 3));
-      final body = await utf8.decoder.bind(response).join().timeout(const Duration(minutes: 3));
+      response = await request.close().timeout(requestTimeout);
+      final body = await utf8.decoder.bind(response).join().timeout(requestTimeout);
       if (response.statusCode != 200) throw StateError('Generation failed with HTTP ${response.statusCode}');
       final payload = jsonDecode(body) as Map<String, dynamic>;
       final choices = payload['choices'] as List<dynamic>;
@@ -99,4 +110,20 @@ Future<void> main(List<String> args) async {
     await runtime.dispose();
     await subscription.cancel();
   }
+}
+
+Duration parseLocalAiSmokeTimeout(List<String> args) {
+  const prefix = '--request-timeout-seconds=';
+  if (args.any((arg) => arg.startsWith('--request-timeout-seconds') && !arg.startsWith(prefix))) {
+    throw const FormatException('Use --request-timeout-seconds=N');
+  }
+  final values = args.where((arg) => arg.startsWith(prefix)).toList();
+  if (values.isEmpty) return const Duration(seconds: 180);
+  if (values.length != 1) throw const FormatException('Specify request timeout only once');
+  final value = values.single.substring(prefix.length);
+  final seconds = RegExp(r'^\d+$').hasMatch(value) ? int.tryParse(value) : null;
+  if (seconds == null || seconds < 30 || seconds > 900) {
+    throw const FormatException('Request timeout must be an integer from 30 to 900 seconds');
+  }
+  return Duration(seconds: seconds);
 }

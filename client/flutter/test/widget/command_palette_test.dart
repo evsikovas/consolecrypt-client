@@ -97,7 +97,8 @@ final class _ObservedSnippets implements SnippetService {
     String command, {
     RiskLevel declared = RiskLevel.unknown,
     SnippetSource source = SnippetSource.user,
-  }) => delegate.assessRisk(command, declared: declared, source: source);
+    SnippetType? dialect,
+  }) => delegate.assessRisk(command, declared: declared, source: source, dialect: dialect);
 }
 
 Host _host(String id, String name, String address, {String? username = 'operator', int? port = 22, ObjectId? groupId}) {
@@ -367,7 +368,7 @@ void main() {
     expect(find.byKey(const ValueKey('command-palette')), findsNothing);
     expect(find.byKey(const ValueKey('host-key-prompt')), findsOneWidget);
     final tab = fixture.container.read(terminalTabsProvider).active!;
-    expect(tab.host.id, host.id);
+    expect(tab.host?.id, host.id);
     expect(tab.state, SessionConnectionState.awaitingHostKey);
     expect(fixture.container.read(knownHostsProvider).requireValue, isEmpty);
     await tapKey(tester, 'accept-host-key');
@@ -396,7 +397,7 @@ void main() {
     pending.complete();
     await settle(tester);
     expect(fixture.container.read(terminalTabsProvider).tabs, hasLength(1));
-    expect(fixture.container.read(terminalTabsProvider).active!.host.id, two.id);
+    expect(fixture.container.read(terminalTabsProvider).active!.host?.id, two.id);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets('a failed open keeps the palette and can retry; typing alone never calls AI', (tester) async {

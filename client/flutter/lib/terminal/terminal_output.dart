@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:consolecrypt/core/models/terminal.dart';
 
 /// Decodes terminal bytes incrementally, yielding to the event queue before
 /// each bounded ordinary-text parser call. Surrogate pairs stay together.
@@ -14,6 +17,22 @@ import 'dart:convert';
 /// reaches xterm, including at EOF. Upstream transport/FRB buffers are separate.
 /// Cancelling releases the strings/timer and cancels the source explicitly.
 Stream<String> yieldingTerminalOutput(Stream<List<int>> source, {int maxCodeUnitsPerTurn = 4096}) {
+  return yieldingTerminalFrames(
+    source.map((bytes) => TerminalOutputFrame(Uint8List.fromList(bytes))),
+    maxCodeUnitsPerTurn: maxCodeUnitsPerTurn,
+  ).where((frame) => !frame.reset).map((frame) => frame.text);
+}
+
+final class TerminalRenderFrame {
+  const TerminalRenderFrame(this.text, {this.reset = false});
+  final String text;
+  final bool reset;
+}
+
+Stream<TerminalRenderFrame> yieldingTerminalFrames(
+  Stream<TerminalOutputFrame> source, {
+  int maxCodeUnitsPerTurn = 4096,
+}) {
   if (maxCodeUnitsPerTurn < 2) throw RangeError.range(maxCodeUnitsPerTurn, 2, null, 'maxCodeUnitsPerTurn');
   return _TerminalOutputPump(source, maxCodeUnitsPerTurn).stream;
 }
@@ -22,7 +41,7 @@ const terminalEscapeTokenLimit = 2 * 1024 * 1024;
 
 final class _TerminalOutputPump {
   _TerminalOutputPump(this._source, this._limit) {
-    _controller = StreamController<String>(
+    _controller = StreamController<TerminalRenderFrame>(
       sync: true,
       onListen: _listen,
       onPause: _pause,
@@ -31,12 +50,13 @@ final class _TerminalOutputPump {
     );
   }
 
-  final Stream<List<int>> _source;
+  final Stream<TerminalOutputFrame> _source;
   final int _limit;
   // ignore: close_sinks
-  late final StreamController<String> _controller;
+  late final StreamController<TerminalRenderFrame> _controller;
   // ignore: cancel_subscriptions
-  StreamSubscription<String>? _input;
+  StreamSubscription<TerminalOutputFrame>? _input;
+  late ByteConversionSink _decoder;
   Timer? _timer;
   String? _pending;
   StringBuffer? _token;
@@ -49,24 +69,39 @@ final class _TerminalOutputPump {
   bool _inputPaused = false;
   bool _inputDone = false;
 
-  Stream<String> get stream => _controller.stream;
+  Stream<TerminalRenderFrame> get stream => _controller.stream;
+
+  void _newDecoder() =>
+      _decoder = const Utf8Decoder(allowMalformed: true)
+          .startChunkedConversion(StringConversionSink.from(_DecodedSink(_receive)));
 
   void _listen() {
-    _input = const Utf8Decoder(allowMalformed: true)
-        .bind(_source)
-        .listen(
-          _receive,
-          onError: _controller.addError,
-          onDone: () {
-            _inputDone = true;
-            _schedule();
-          },
-        );
+    _newDecoder();
+    _input = _source.listen(
+      (frame) {
+        if (frame.reset) {
+          // Discard incomplete UTF-8 and ANSI tokens across a lost frame.
+          _newDecoder();
+          _token = null;
+          _tokenUnits = 0;
+          _discardToken = false;
+          _mode = _EscapeMode.text;
+          _controller.add(const TerminalRenderFrame('', reset: true));
+        }
+        if (!_cancelled && frame.data.isNotEmpty) _decoder.add(frame.data);
+      },
+      onError: _controller.addError,
+      onDone: () {
+        _decoder.close();
+        _inputDone = true;
+        _schedule();
+      },
+    );
   }
 
   void _receive(String chunk) {
     if (_cancelled || chunk.isEmpty) return;
-    _pending = chunk;
+    _pending = (_pending == null ? '' : _pending!.substring(_offset)) + chunk;
     _offset = 0;
     _pauseInput();
     _schedule();
@@ -100,7 +135,7 @@ final class _TerminalOutputPump {
         // input would. Never rescan it while waiting for more source frames.
         final tail = _token?.toString();
         _token = null;
-        if (tail != null && tail.isNotEmpty) _controller.add(tail);
+        if (tail != null && tail.isNotEmpty) _controller.add(TerminalRenderFrame(tail));
         if (!_cancelled) unawaited(_controller.close());
       }
       return;
@@ -117,7 +152,7 @@ final class _TerminalOutputPump {
       _pending = null;
       _offset = 0;
     }
-    if (part.isNotEmpty) _controller.add(part);
+    if (part.isNotEmpty) _controller.add(TerminalRenderFrame(part));
     // A synchronous consumer can cancel/pause while parsing this slice.
     if (_cancelled || _paused) return;
     if (_pending != null || _inputDone) {
@@ -218,6 +253,15 @@ final class _TerminalOutputPump {
     _tokenUnits = 0;
     await _input?.cancel();
   }
+}
+
+final class _DecodedSink implements Sink<String> {
+  _DecodedSink(this.receive);
+  final void Function(String) receive;
+  @override
+  void add(String data) => receive(data);
+  @override
+  void close() {}
 }
 
 enum _EscapeMode { text, escape, csi, osc, oscEscape, charset }

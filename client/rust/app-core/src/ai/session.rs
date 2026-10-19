@@ -69,7 +69,7 @@ async fn stop_task(cancel: CancellationToken, mut handle: JoinHandle<()>) {
 #[async_trait]
 pub(crate) trait ExecBackend: Send + Sync {
     async fn exec(&self, host_id: ObjectId, command: &str) -> AppResult<ExecResultDto>;
-    fn terminal_host(&self, id: TerminalId) -> AppResult<ObjectId>;
+    fn terminal_host(&self, id: TerminalId) -> AppResult<Option<ObjectId>>;
     async fn terminal_write(&self, id: TerminalId, data: &[u8]) -> AppResult<()>;
     fn last_command(&self, id: TerminalId) -> Option<String>;
     fn last_error(&self, id: TerminalId) -> Option<String>;
@@ -85,8 +85,8 @@ impl ExecBackend for SshExecBackend {
     async fn exec(&self, host_id: ObjectId, command: &str) -> AppResult<ExecResultDto> {
         self.ssh.exec(host_id, command).await
     }
-    fn terminal_host(&self, id: TerminalId) -> AppResult<ObjectId> {
-        Ok(self.ssh.terminals.info(id)?.host_id)
+    fn terminal_host(&self, id: TerminalId) -> AppResult<Option<ObjectId>> {
+        Ok(self.ssh.terminals.info(id)?.target.host_id())
     }
     async fn terminal_write(&self, id: TerminalId, data: &[u8]) -> AppResult<()> {
         Ok(self.ssh.terminals.write(id, data).await?)

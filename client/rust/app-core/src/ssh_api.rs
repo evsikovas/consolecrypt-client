@@ -121,44 +121,42 @@ impl AppCore {
             })
             .await?;
         let i = prepared.unlocked.ssh.terminals.info(tid)?;
-        Ok(TerminalInfoDto {
-            id: i.id.to_string(),
-            host_id: i.host_id.to_string(),
-            title: i.title,
-            status: (&i.status).into(),
-            cols: i.size.cols,
-            rows: i.size.rows,
-        })
+        Ok(i.into())
+    }
+
+    pub async fn local_terminal_profiles(
+        &self,
+    ) -> AppResult<cc_terminal_core::local::LocalShellProfiles> {
+        self.unlocked().await?;
+        Ok(cc_terminal_core::local::profiles().await?)
+    }
+
+    pub async fn open_local_terminal(
+        &self,
+        profile_id: String,
+        cols: u32,
+        rows: u32,
+    ) -> AppResult<TerminalInfoDto> {
+        let (_, u) = self.unlocked().await?;
+        let tid = u
+            .ssh
+            .terminals
+            .open_local(&profile_id, TerminalSize { cols, rows })
+            .await?;
+        Ok(u.ssh.terminals.info(tid)?.into())
     }
 
     pub async fn terminal_info(&self, terminal_id: String) -> AppResult<TerminalInfoDto> {
         let (_, u) = self.unlocked().await?;
-        let i = u.ssh.terminals.info(parse_terminal_id(&terminal_id)?)?;
-        Ok(TerminalInfoDto {
-            id: i.id.to_string(),
-            host_id: i.host_id.to_string(),
-            title: i.title,
-            status: (&i.status).into(),
-            cols: i.size.cols,
-            rows: i.size.rows,
-        })
+        Ok(u.ssh
+            .terminals
+            .info(parse_terminal_id(&terminal_id)?)?
+            .into())
     }
 
     pub async fn list_terminals(&self) -> AppResult<Vec<TerminalInfoDto>> {
         let (_, u) = self.unlocked().await?;
-        Ok(u.ssh
-            .terminals
-            .list()
-            .into_iter()
-            .map(|i| TerminalInfoDto {
-                id: i.id.to_string(),
-                host_id: i.host_id.to_string(),
-                title: i.title,
-                status: (&i.status).into(),
-                cols: i.size.cols,
-                rows: i.size.rows,
-            })
-            .collect())
+        Ok(u.ssh.terminals.list().into_iter().map(Into::into).collect())
     }
 
     /// Send keyboard input.
@@ -566,6 +564,7 @@ mod attachment_tests {
             Ok(OpenedShell {
                 channel,
                 session: None,
+                lifetime: None,
             })
         }
     }

@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:consolecrypt/ai/local/local_ai_archive.dart';
 import 'package:consolecrypt/ai/local/local_ai_catalog.dart';
 import 'package:consolecrypt/ai/local/local_ai_download.dart';
+import 'package:consolecrypt/ai/local/local_ai_installation.dart';
 
 export 'local_ai_catalog.dart';
 export 'local_ai_download.dart' show LocalAiException, LocalAiDownloadCancelled;
@@ -16,6 +17,10 @@ class LocalAiRuntimeStatus {
   const LocalAiRuntimeStatus({
     required this.phase,
     this.isInstalled = false,
+    this.runtimeInstalled = false,
+    this.installedModelIds = const {},
+    this.selectionRevision = 0,
+    this.isInitialized = true,
     this.modelId = 'qwen2.5-coder-1.5b-instruct-q4_k_m',
     this.downloadedBytes = 0,
     this.totalBytes = 0,
@@ -23,6 +28,11 @@ class LocalAiRuntimeStatus {
   });
   final LocalAiPhase phase;
   final bool isInstalled;
+  final bool runtimeInstalled;
+  final Set<String> installedModelIds;
+  final int selectionRevision;
+  final bool isInitialized;
+  bool get hasInstalledModels => isInstalled || installedModelIds.isNotEmpty;
   final String modelId;
   final int downloadedBytes, totalBytes;
   final String? message;
@@ -49,11 +59,13 @@ class LocalAiRuntime {
     this.startTimeout = const Duration(minutes: 2),
     LocalAiPlatform? platform,
     LocalAiDownloader? downloader,
+    List<LocalAiModel> models = LocalAiCatalog.models,
   }) : supportDirectory = supportDirectory ?? _defaultDirectory(),
        platform = platform ?? LocalAiCatalog.platform,
        bundledRuntimeDirectory =
            bundledRuntimeDirectory ?? _defaultBundledRuntimeDirectory(platform ?? LocalAiCatalog.platform),
        _downloader = downloader ?? const LocalAiDownloader() {
+    _installation = LocalAiInstallation(this.supportDirectory, models: models);
     if (this.platform == LocalAiPlatform.unsupported) {
       _status = const LocalAiRuntimeStatus(phase: LocalAiPhase.unsupported);
     }
@@ -68,20 +80,21 @@ class LocalAiRuntime {
   final Duration idleTimeout, startTimeout;
   final LocalAiPlatform platform;
   final LocalAiDownloader _downloader;
+  late final LocalAiInstallation _installation;
   final _changes = StreamController<LocalAiRuntimeStatus>.broadcast();
-  LocalAiRuntimeStatus _status = const LocalAiRuntimeStatus(phase: LocalAiPhase.notInstalled);
+  LocalAiRuntimeStatus _status = const LocalAiRuntimeStatus(phase: LocalAiPhase.notInstalled, isInitialized: false);
   LocalAiRuntimeStatus get status => _status;
   Stream<LocalAiRuntimeStatus> get statuses => _changes.stream;
-  LocalAiModel get selectedModel => LocalAiCatalog.model;
-  Future<void>? _initializing, _installing, _stopping;
+  LocalAiModel get selectedModel => _installation.selected;
+  Future<void>? _initializing, _installing, _stopping, _selecting, _removing;
   Future<LocalAiEndpoint>? _starting;
   LocalAiCancellation? _downloadCancellation;
   LocalAiCancellation? _startCancellation;
   LocalAiEndpoint? _endpoint;
   Process? _process;
   Timer? _idle;
-  int _leases = 0, _generation = 0;
-  bool _disposed = false, _modelVerified = false, _initialized = false;
+  int _leases = 0, _generation = 0, _selectionRevision = 0;
+  bool _disposed = false, _modelVerified = false, _initialized = false, _runtimeInstalled = false;
 
   Directory get _downloads => Directory('${supportDirectory.path}/downloads');
   Directory get _downloadedRuntime =>
@@ -89,7 +102,7 @@ class LocalAiRuntime {
   Directory get _runtime => bundledRuntimeDirectory ?? _downloadedRuntime;
   bool get _isMac => platform == LocalAiPlatform.macArm64 || platform == LocalAiPlatform.macX64;
   bool get _downloadsRuntime => bundledRuntimeDirectory == null && (!_isMac || allowMacRuntimeDownload);
-  File get _modelFile => File('${supportDirectory.path}/models/${selectedModel.filename}');
+  File get _modelFile => _installation.modelFile(selectedModel);
 
   static Directory? _defaultBundledRuntimeDirectory(LocalAiPlatform platform) {
     if (platform != LocalAiPlatform.macArm64 && platform != LocalAiPlatform.macX64) return null;
@@ -156,6 +169,10 @@ class LocalAiRuntime {
     _status = LocalAiRuntimeStatus(
       phase: phase,
       isInstalled: installed ?? _status.isInstalled,
+      runtimeInstalled: _runtimeInstalled,
+      installedModelIds: _installation.installedModelIds,
+      selectionRevision: _selectionRevision,
+      isInitialized: _initialized,
       modelId: selectedModel.id,
       downloadedBytes: received,
       totalBytes: total,
@@ -178,23 +195,48 @@ class LocalAiRuntime {
 
   Future<void> _initialize() async {
     if (platform == LocalAiPlatform.unsupported || _disposed) return;
-    final installed =
-        await _runtimeExecutable() != null &&
-        _modelFile.existsSync() &&
-        await _modelFile.length() == selectedModel.bytes;
+    await _installation.initialize();
+    _runtimeInstalled = await _runtimeExecutable() != null;
+    final installed = _installation.installedModelIds.contains(selectedModel.id);
+    _initialized = true;
     if (!_disposed) _set(installed ? LocalAiPhase.stopped : LocalAiPhase.notInstalled, installed: installed);
   }
 
-  Future<void> selectModel(String id) async {
+  Future<void> selectModel(String id) {
     _checkUsable();
-    if (id != selectedModel.id) throw const LocalAiException('unknown_model');
+    if (_selecting != null || _removing != null || _installing != null) {
+      throw const LocalAiException('operation_in_progress');
+    }
+    final model = _installation.modelById(id);
+    return _selecting = _select(model).whenComplete(() => _selecting = null);
+  }
+
+  Future<void> _select(LocalAiModel model) async {
     await initialize();
-    await supportDirectory.create(recursive: true);
-    await File('${supportDirectory.path}/selection.json').writeAsString(jsonEncode({'modelId': id}), flush: true);
+    _checkUsable();
+    if (!_initialized) throw const LocalAiException('local_storage_unavailable');
+    if (selectedModel.id == model.id) return;
+    // Revoke pending endpoint registrations and streaming requests before stop
+    // awaits process exit. No response from the old model may cross selection.
+    _selectionRevision++;
+    _set(LocalAiPhase.stopping);
+    await stop();
+    _checkUsable();
+    try {
+      await _installation.select(model);
+      _modelVerified = false;
+      await _installation.refresh();
+      final installed = _installation.installedModelIds.contains(model.id);
+      _set(installed ? LocalAiPhase.stopped : LocalAiPhase.notInstalled, installed: installed);
+    } catch (_) {
+      _set(LocalAiPhase.error, message: 'local_storage_unavailable');
+      rethrow;
+    }
   }
 
   Future<void> install() {
     _checkUsable();
+    if (_selecting != null || _removing != null) throw const LocalAiException('operation_in_progress');
     if (_installing != null) return _installing!;
     final cancellation = LocalAiCancellation();
     _downloadCancellation = cancellation;
@@ -207,14 +249,18 @@ class LocalAiRuntime {
   Future<void> _install(LocalAiCancellation cancellation) async {
     await initialize();
     cancellation.check();
-    if (_status.isInstalled) return;
+    if (!_initialized) throw const LocalAiException('local_storage_unavailable');
+    final selected = selectedModel;
     final artifact = LocalAiCatalog.runtimes[platform]!;
-    final runtimeBytes = _downloadsRuntime ? artifact.bytes : 0;
-    final total = runtimeBytes + selectedModel.bytes;
-    _set(LocalAiPhase.installing, total: total);
+    _set(LocalAiPhase.installing);
     Directory? staging;
     try {
-      if (_downloadsRuntime) {
+      final modelPresent = await _installation.verify(selected, cancellation: cancellation);
+      _runtimeInstalled = await _runtimeExecutable(verifyFiles: true, cancellation: cancellation) != null;
+      final runtimeBytes = !_runtimeInstalled && _downloadsRuntime ? artifact.bytes : 0;
+      final total = runtimeBytes + (modelPresent ? 0 : selected.bytes);
+      _set(LocalAiPhase.installing, total: total);
+      if (!_runtimeInstalled && _downloadsRuntime) {
         final archive = await _downloader.download(
           artifact,
           _downloads,
@@ -222,34 +268,41 @@ class LocalAiRuntime {
           onProgress: (received, _) => _set(LocalAiPhase.installing, received: received, total: total),
         );
         cancellation.check();
-        if (await _runtimeExecutable(verifyFiles: true) == null) {
-          staging = Directory('${_runtime.path}.staging-${DateTime.now().microsecondsSinceEpoch}');
-          await extractLocalAiRuntime(archive, staging, artifact, platform == LocalAiPlatform.windowsX64);
-          cancellation.check();
-          if (_runtime.existsSync()) await _runtime.delete(recursive: true);
-          await staging.rename(_runtime.path);
-          staging = null;
-        }
-      } else if (await _runtimeExecutable() == null) {
+        staging = Directory('${_runtime.path}.staging-${DateTime.now().microsecondsSinceEpoch}');
+        await extractLocalAiRuntime(archive, staging, artifact, platform == LocalAiPlatform.windowsX64);
+        cancellation.check();
+        await replaceLocalAiRuntime(staging, _runtime, cancellation);
+        staging = null;
+        _runtimeInstalled = true;
+      } else if (!_runtimeInstalled) {
         throw const LocalAiException('bundled_runtime_unavailable');
       }
-      final model = await _downloader.download(
-        selectedModel,
-        _downloads,
-        cancellation: cancellation,
-        onProgress: (received, _) => _set(LocalAiPhase.installing, received: runtimeBytes + received, total: total),
-      );
-      cancellation.check();
-      await _modelFile.parent.create(recursive: true);
-      if (_modelFile.existsSync()) await _modelFile.delete();
-      await model.rename(_modelFile.path);
+      if (!modelPresent) {
+        final download = await _downloader.download(
+          selected,
+          _downloads,
+          cancellation: cancellation,
+          onProgress: (received, _) => _set(LocalAiPhase.installing, received: runtimeBytes + received, total: total),
+        );
+        cancellation.check();
+        await _installation.publish(selected, download);
+      }
       _modelVerified = true;
       _set(LocalAiPhase.stopped, installed: true);
     } on LocalAiDownloadCancelled {
-      _set(LocalAiPhase.notInstalled, installed: false);
+      await _installation.refresh();
+      final installed = _installation.installedModelIds.contains(selected.id);
+      _set(installed ? LocalAiPhase.stopped : LocalAiPhase.notInstalled, installed: installed);
       rethrow;
-    } catch (_) {
-      _set(LocalAiPhase.error, installed: false, message: 'install_failed');
+    } catch (error) {
+      await _installation.refresh();
+      _set(
+        LocalAiPhase.error,
+        installed: _installation.installedModelIds.contains(selected.id),
+        message: error is LocalAiException && error.code == 'bundled_runtime_unavailable'
+            ? error.code
+            : 'install_failed',
+      );
       rethrow;
     } finally {
       if (staging != null && staging.existsSync()) await staging.delete(recursive: true);
@@ -261,6 +314,7 @@ class LocalAiRuntime {
 
   Future<LocalAiEndpoint> ensureReady() {
     _checkUsable();
+    if (_selecting != null || _removing != null) throw const LocalAiException('operation_in_progress');
     final stopping = _stopping;
     if (stopping != null) return stopping.then((_) => ensureReady());
     if (_endpoint != null && _process != null && _stopping == null) {
@@ -306,14 +360,18 @@ class LocalAiRuntime {
 
     await initialize();
     check();
+    if (!_initialized) throw const LocalAiException('local_storage_unavailable');
     if (_installing != null) throw const LocalAiException('install_in_progress');
     if (!_status.isInstalled) throw const LocalAiException('model_not_installed');
     _set(LocalAiPhase.starting);
     Process? child;
     try {
       final executable = await _runtimeExecutable(verifyFiles: true, cancellation: cancellation);
-      if (executable == null ||
-          (!_modelVerified && !await LocalAiDownloader.verify(_modelFile, selectedModel, cancellation: cancellation))) {
+      if (executable == null) {
+        _runtimeInstalled = false;
+        throw const LocalAiException('runtime_not_installed');
+      }
+      if (!_modelVerified && !await _installation.verify(selectedModel, cancellation: cancellation)) {
         _set(LocalAiPhase.error, installed: false, message: 'installed_files_changed');
         throw const LocalAiException('installed_files_changed');
       }
@@ -349,6 +407,7 @@ class LocalAiRuntime {
           '4096',
           '--parallel',
           '1',
+          if (selectedModel.disableReasoning) ...['--reasoning', 'off'],
           '--n-gpu-layers',
           platform == LocalAiPlatform.macArm64 ? '99' : '0',
           '--offline',
@@ -428,7 +487,7 @@ class LocalAiRuntime {
 
       if ((await get('/health'))?['status'] != 'ok') return false;
       final models = (await get('/v1/models'))?['data'];
-      return models is List && models.any((item) => item is Map && item['id'] == selectedModel.id);
+      return models is List && models.any((item) => item is Map && item['id'] == endpoint.modelId);
     } catch (_) {
       return false;
     } finally {
@@ -472,8 +531,19 @@ class LocalAiRuntime {
     }
   }
 
-  Future<void> uninstall() async {
+  Future<void> uninstall() {
     _checkUsable();
+    if (_selecting != null) throw const LocalAiException('operation_in_progress');
+    return _removing ??= _uninstall().whenComplete(() => _removing = null);
+  }
+
+  Future<void> _uninstall() async {
+    await initialize();
+    _checkUsable();
+    if (!_initialized) throw const LocalAiException('local_storage_unavailable');
+    final selected = selectedModel;
+    _selectionRevision++;
+    _set(LocalAiPhase.stopping);
     cancelInstall();
     try {
       await _installing;
@@ -481,10 +551,7 @@ class LocalAiRuntime {
       /* remove cancelled partials as well */
     }
     await stop();
-    // Never modify the signed macOS application bundle during uninstall.
-    for (final directory in [_downloadedRuntime, _downloads, _modelFile.parent]) {
-      if (directory.existsSync()) await directory.delete(recursive: true);
-    }
+    await _installation.remove(selected);
     _modelVerified = false;
     _set(LocalAiPhase.notInstalled, installed: false);
   }
@@ -498,6 +565,13 @@ class LocalAiRuntime {
       await _installing;
     } catch (_) {
       /* cancellation */
+    }
+    for (final pending in [_selecting, _removing]) {
+      try {
+        await pending;
+      } catch (_) {
+        /* interrupted operation */
+      }
     }
     await _changes.close();
   }

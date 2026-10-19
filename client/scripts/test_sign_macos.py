@@ -64,11 +64,9 @@ class SigningTests(unittest.TestCase):
                     signing.sign(app, CERT_A)
                 self.assertEqual(run.call_count, 1)
 
-    def test_local_ai_helper_inherits_sandbox_and_all_nested_code_shares_identity(self):
+    def test_local_ai_helper_clears_old_sandbox_and_all_nested_code_shares_identity(self):
         with signing.LOCAL_AI_ENTITLEMENTS.open("rb") as source:
-            self.assertEqual(plistlib.load(source), {
-                "com.apple.security.app-sandbox": True, "com.apple.security.inherit": True,
-            })
+            self.assertEqual(plistlib.load(source), {})
         for identity in [CERT_A, "-"]:
             with self.subTest(identity=identity), TemporaryDirectory() as temp:
                 app = Path(temp) / "Test.app"

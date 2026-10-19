@@ -277,6 +277,7 @@ impl Unlocked {
     /// first (their final uploads need SFTP), then transfers.
     async fn shutdown(&self) {
         self.sharing_shutdown.send_replace(true);
+        self.ssh.terminals.begin_shutdown();
         // Fence in-flight RDP connects before waiting for SFTP/SSH cleanup.
         self.rdp.shutdown();
         self.edit.begin_shutdown();

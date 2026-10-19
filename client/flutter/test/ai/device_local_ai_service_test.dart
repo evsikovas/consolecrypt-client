@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/ai/command_palette.dart';
 import 'package:consolecrypt/ai/device_local_ai_service.dart';
+import 'package:consolecrypt/ai/local/local_ai_runtime.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
@@ -239,6 +240,122 @@ void main() {
       if (duringRegistration) expect(delegate.cleared, contains(delegate.registrations.single.registration));
       await service.dispose();
       await runtime.dispose();
+      await delegate.dispose();
+      await backend.dispose();
+    });
+  }
+
+  test('offline initialization cannot temporarily route a saved local default to the cloud', () async {
+    final backend = testBackend();
+    await backend.debugSignInDemoAndUnlock();
+    final runtime = FakeLocalAiRuntime(installed: false);
+    runtime.state.value = const LocalAiRuntimeStatus(phase: LocalAiPhase.notInstalled, isInitialized: false);
+    final delegate = _Delegate();
+    final service = DeviceLocalAiService(
+      delegate: delegate,
+      bridge: delegate,
+      runtime: runtime,
+      settings: backend.services.settings,
+      profiles: backend.services.profiles,
+      vault: backend.services.vault,
+    );
+    final values = <List<AiProviderConfig>>[];
+    final subscription = service.watchProviders().listen(values.add);
+    await _flush();
+    expect(defaultProvider(values.last)?.id, deviceLocalAiProviderId);
+    await expectLater(service.draftSnippet(command: 'private command'), throwsA(isA<LocalAiException>()));
+    expect(delegate.calls, isEmpty);
+    // A completed scan proving this is a fresh installation restores the
+    // existing provider selection without ever auto-installing a local model.
+    runtime.emit(LocalAiPhase.notInstalled);
+    await _flush();
+    expect(defaultProvider(values.last)?.id, delegate.providers.value.single.id);
+    await subscription.cancel();
+    await service.dispose();
+    await runtime.dispose();
+    await delegate.dispose();
+    await backend.dispose();
+  });
+
+  test('selecting an uninstalled model retains local default without cloud fallback', () async {
+    final backend = testBackend();
+    await backend.debugSignInDemoAndUnlock();
+    final runtime = FakeLocalAiRuntime();
+    final delegate = _Delegate();
+    final service = DeviceLocalAiService(
+      delegate: delegate,
+      bridge: delegate,
+      runtime: runtime,
+      settings: backend.services.settings,
+      profiles: backend.services.profiles,
+      vault: backend.services.vault,
+    );
+    final values = <List<AiProviderConfig>>[];
+    final subscription = service.watchProviders().listen(values.add);
+    await _flush();
+    await runtime.selectModel(LocalAiCatalog.qwen4B.id);
+    await _flush();
+    expect(defaultProvider(values.last)?.id, deviceLocalAiProviderId);
+    expect(values.last.last.chatModel, LocalAiCatalog.qwen4B.id);
+    expect(runtime.status.isInstalled, isFalse);
+    expect(runtime.status.hasInstalledModels, isTrue);
+    final events = await service.chat(providerId: defaultProvider(values.last)!.id, history: const []).toList();
+    expect(events.single, isA<AiFailed>());
+    await expectLater(service.draftSnippet(command: 'private command'), throwsA(isA<LocalAiException>()));
+    expect(delegate.calls, isEmpty, reason: 'no native/cloud request for an uninstalled local selection');
+    expect(delegate.snippetProviders, isEmpty);
+    expect(backend.services.settings.currentLocal.preferDeviceLocalAi, isTrue);
+    await subscription.cancel();
+    await service.dispose();
+    await runtime.dispose();
+    await delegate.dispose();
+    await backend.dispose();
+  });
+
+  for (final stage in ['startup', 'registration', 'stream']) {
+    test('model switch invalidates local $stage and rejects its late response', () async {
+      final backend = testBackend();
+      await backend.debugSignInDemoAndUnlock();
+      final runtime = FakeLocalAiRuntime();
+      final oldEndpoint = runtime.endpoint;
+      var cancelled = false;
+      final delegate = _Delegate()..response = StreamController<AiStreamEvent>(onCancel: () => cancelled = true);
+      if (stage == 'startup') runtime.startGate = Completer();
+      if (stage == 'registration') delegate.registerGate = Completer();
+      final service = DeviceLocalAiService(
+        delegate: delegate,
+        bridge: delegate,
+        runtime: runtime,
+        settings: backend.services.settings,
+        profiles: backend.services.profiles,
+        vault: backend.services.vault,
+      );
+      await _flush();
+      final output = service.chat(providerId: deviceLocalAiProviderId, history: const []).toList();
+      await _flush();
+      await runtime.selectModel(LocalAiCatalog.qwen9B.id);
+      // A generation guard must also reject the interval before the status
+      // stream listener has delivered the selection event.
+      runtime.startGate?.complete(oldEndpoint);
+      delegate.registerGate?.complete();
+      await _flush();
+      if (stage == 'stream') delegate.response!.add(const AiDelta('stale model output'));
+      expect(await output, isEmpty);
+      await _flush();
+      expect(runtime.leases, 0);
+      if (stage == 'stream') {
+        expect(cancelled, isTrue);
+      } else {
+        expect(delegate.calls.where((call) => call.startsWith('chat')), isEmpty);
+      }
+      if (stage != 'startup') expect(delegate.cleared, contains(delegate.registrations.single.registration));
+      await service.dispose();
+      await runtime.dispose();
+      if (stage != 'stream') {
+        // Never-listened single-subscription controllers can close only after
+        // listening, unlike the active stream cancelled above.
+        delegate.response!.stream.listen((_) {});
+      }
       await delegate.dispose();
       await backend.dispose();
     });

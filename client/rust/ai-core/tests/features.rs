@@ -323,6 +323,7 @@ async fn ask_ai_conversation_and_streaming() {
             &mut conv,
             "why is my disk full?",
             &AskOptions {
+                shell_target: None,
                 host_id: Some(hid),
                 include_terminal: true,
             },

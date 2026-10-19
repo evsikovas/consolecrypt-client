@@ -608,7 +608,7 @@ class _HostTile extends ConsumerWidget {
     final portPart = host.port == null || host.port == (host.isRdp ? defaultRdpPort : defaultSshPort)
         ? ''
         : ':${host.port}';
-    final connected = ref.watch(terminalTabsProvider).tabs.any((tab) => tab.host.id == host.id && tab.isConnected);
+    final connected = ref.watch(terminalTabsProvider).tabs.any((tab) => tab.host?.id == host.id && tab.isConnected);
     final heading = Row(
       children: [
         Flexible(

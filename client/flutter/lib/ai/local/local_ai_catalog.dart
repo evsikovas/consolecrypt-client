@@ -2,6 +2,8 @@ import 'dart:ffi';
 
 enum LocalAiPlatform { macArm64, macX64, windowsX64, unsupported }
 
+enum LocalAiTier { light, medium, strong }
+
 /// Only this reviewed catalog can supply executable/model download URLs.
 /// llama.cpp: https://github.com/ggml-org/llama.cpp/releases/tag/b11739
 /// Qwen: https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF
@@ -19,8 +21,18 @@ class LocalAiModel extends LocalAiArtifact {
     required super.sha256,
     required super.bytes,
     required super.filename,
+    this.recommendedRamGiB = 4,
+    this.disableReasoning = false,
+    this.tier = LocalAiTier.light,
+    this.publisher = 'Qwen',
   });
   final String id, label;
+  final int recommendedRamGiB;
+  final bool disableReasoning;
+  final LocalAiTier tier;
+  final String publisher;
+  String get license => 'Apache-2.0';
+  String get sourceUrl => url.split('/resolve/').first;
 }
 
 abstract final class LocalAiCatalog {
@@ -36,7 +48,36 @@ abstract final class LocalAiCatalog {
     bytes: 1117320768,
     filename: 'qwen2.5-coder-1.5b-instruct-q4_k_m.gguf',
   );
-  static const models = [model];
+  static const qwen4B = LocalAiModel(
+    id: 'qwen3.5-4b-q4_k_m',
+    label: 'Qwen3.5 4B · Q4_K_M', // l10n-ignore: canonical model name
+    url:
+        'https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/'
+        'e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-Q4_K_M.gguf',
+    sha256: '00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4',
+    bytes: 2740937888,
+    filename: 'Qwen3.5-4B-Q4_K_M.gguf',
+    recommendedRamGiB: 8,
+    disableReasoning: true,
+    tier: LocalAiTier.medium,
+    publisher: 'Qwen / Unsloth', // l10n-ignore: canonical model publishers
+  );
+  static const qwen9B = LocalAiModel(
+    id: 'qwen3.5-9b-q4_k_m',
+    label: 'Qwen3.5 9B · Q4_K_M', // l10n-ignore: canonical model name
+    url:
+        'https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/'
+        '3885219b6810b007914f3a7950a8d1b469d598a5/Qwen3.5-9B-Q4_K_M.gguf',
+    sha256: '03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8',
+    bytes: 5680522464,
+    filename: 'Qwen3.5-9B-Q4_K_M.gguf',
+    recommendedRamGiB: 16,
+    disableReasoning: true,
+    tier: LocalAiTier.strong,
+    publisher: 'Qwen / Unsloth', // l10n-ignore: canonical model publishers
+  );
+  // Keep the original model first: upgrades never choose a larger model for the user.
+  static const models = [model, qwen4B, qwen9B];
   static const runtimes = {
     LocalAiPlatform.macArm64: LocalAiArtifact(
       url: 'https://github.com/ggml-org/llama.cpp/releases/download/b11739/llama-b11739-bin-macos-arm64.tar.gz',

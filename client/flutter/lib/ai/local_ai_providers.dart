@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:ui' show AppExitResponse;
 
 import 'package:consolecrypt/ai/device_local_ai_service.dart';
+import 'package:consolecrypt/ai/local/local_ai_hardware.dart';
 import 'package:consolecrypt/ai/local/local_ai_runtime.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:consolecrypt/core/storage/storage_providers.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,7 +16,7 @@ final deviceLocalAiAvailableProvider = Provider<bool>(
 );
 
 final localAiRuntimeProvider = Provider<LocalAiRuntime>((ref) {
-  final runtime = LocalAiRuntime();
+  final runtime = LocalAiRuntime(supportDirectory: ref.watch(appStoragePathsProvider).localAiRoot);
   final lifecycle = AppLifecycleListener(
     onExitRequested: () async {
       await runtime.stop();
@@ -37,6 +39,8 @@ final localAiStatusProvider = StreamProvider<LocalAiRuntimeStatus>((ref) {
     output.onCancel = subscription.cancel;
   });
 });
+
+final localAiHardwareProvider = FutureProvider<LocalAiHardware>((ref) => LocalAiHardware.detect());
 
 AiService withDeviceLocalAi(Ref ref, AiService delegate) {
   if (!ref.watch(deviceLocalAiAvailableProvider)) return delegate;

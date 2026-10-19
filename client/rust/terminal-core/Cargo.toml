@@ -12,14 +12,21 @@ publish.workspace = true
 [dependencies]
 cc-models.workspace = true
 cc-ssh-core.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["process"] }
 async-trait.workspace = true
+anyhow.workspace = true
 bytes.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 uuid.workspace = true
 serde.workspace = true
 zeroize.workspace = true
+
+[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))'.dependencies]
+portable-pty = "=0.9.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 cc-ssh-core = { workspace = true, features = ["test-harness"] }

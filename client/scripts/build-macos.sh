@@ -73,6 +73,7 @@ cd "$SRC/client/flutter"
 BUILD_VERSION="$(python3 "$REPO/client/scripts/bump-version.py" --root "$REPO" --source-root "$SRC")"
 echo "==> version $BUILD_VERSION"
 python3 -m unittest discover -s "$SRC/client/scripts" -p 'test_macos_updates.py' -v
+python3 -m unittest discover -s "$SRC/client/scripts" -p 'test_macos_processes.py' -v
 flutter pub get
 # CocoaPods' post-install hook reads the engine before `flutter build` can
 # populate it. Fresh hosted runners have only the SDK/test engine at this point.
@@ -121,10 +122,15 @@ else
 fi
 codesign --verify --deep --strict "$OUT/ConsoleCrypt.app"
 if [[ "$LOCAL_AI_BUNDLED" == 1 ]]; then
-  echo "==> local AI from App Sandbox (version and available devices)"
   SMOKE_ARGS=(--app "$OUT/ConsoleCrypt.app")
   [[ -n "$SIGN_IDENTITY" ]] && SMOKE_ARGS+=(--identity "$SIGN_IDENTITY")
-  python3 "$SRC/client/scripts/smoke-local-ai-sandbox.py" "${SMOKE_ARGS[@]}"
+  if [[ -f "$SRC/client/scripts/smoke-macos-processes.py" ]]; then
+    echo "==> packaged local zsh and AI helper (isolated process smoke)"
+    python3 "$SRC/client/scripts/smoke-macos-processes.py" "${SMOKE_ARGS[@]}"
+  else
+    # --commit can reproduce a historical release with its original policy.
+    python3 "$SRC/client/scripts/smoke-local-ai-sandbox.py" "${SMOKE_ARGS[@]}"
+  fi
 fi
 
 echo "==> packaging"

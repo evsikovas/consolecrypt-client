@@ -14,13 +14,16 @@ import 'package:xterm/xterm.dart';
 /// One terminal tab: an xterm [Terminal] bound to a core session.
 /// Terminal buffers are local-only UI state (never synced, CLIENT_SPEC §12.3).
 final class TerminalTab {
-  TerminalTab({required this.sessionId, required this.host, required this.terminal, required this.controller})
-    : title = host.name;
+  TerminalTab({required this.sessionId, required this.target, required this.terminal, required this.controller})
+    : title = target.label;
 
   final TerminalSessionId sessionId;
-  final Host host;
-  final Terminal terminal;
+  final TerminalTarget target;
+  Host? get host => target.sshHost;
+  bool get isLocal => target is LocalTerminalTarget;
+  Terminal terminal;
   final TerminalController controller;
+  int renderGeneration = 0;
 
   SessionConnectionState state = SessionConnectionState.connecting;
 
@@ -42,7 +45,7 @@ final class TerminalTab {
   bool _sendingInput = false;
   // Cancelled by TerminalTabsController.close / closeAll / dispose.
   // ignore: cancel_subscriptions
-  StreamSubscription<String>? _output;
+  StreamSubscription<TerminalRenderFrame>? _output;
   // ignore: cancel_subscriptions
   StreamSubscription<TerminalEvent>? _events;
 
@@ -83,6 +86,8 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   /// or `ref` inside `onDispose`).
   final List<TerminalTab> _open = [];
   late TerminalService _service;
+  int _generation = 0;
+  bool _disposed = false;
 
   @override
   TerminalTabsState build() {
@@ -91,6 +96,9 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     // Sessions belong to the profile that opened them.
     ref.listen(activeProfileProvider.select((p) => p?.id), (prev, next) {
       if (prev != next) closeAll();
+    });
+    ref.listen(vaultStatusProvider.select((s) => s.value?.isUnlocked), (_, unlocked) {
+      if (unlocked == false) closeAll();
     });
     return const TerminalTabsState();
   }
@@ -102,29 +110,60 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     _ => TerminalTargetPlatform.unknown,
   };
 
-  void _touch() => state = state.copyWith();
+  void _touch() {
+    if (!_disposed) state = state.copyWith();
+  }
 
-  Future<TerminalTab> open(Host host) async {
+  Future<TerminalTab> open(Host host) => openTarget(SshTerminalTarget(host));
+
+  Future<TerminalTab> openTarget(TerminalTarget target) async {
+    final generation = _generation;
     final service = ref.read(terminalServiceProvider);
     final scrollback = ref.read(settingsServiceProvider).currentLocal.terminalScrollback;
-    final handle = await service.open(hostId: host.id, size: TerminalSize.initial);
+    final handle = await service.openTarget(target: target, size: TerminalSize.initial);
+    if (_disposed || generation != _generation) {
+      await service.close(handle.id);
+      throw const AppException(AppErrorCode.notFound, 'Session closed', reason: AppErrorReason.sessionClosed);
+    }
     final terminal = Terminal(maxLines: scrollback, platform: _platform);
-    final tab = TerminalTab(sessionId: handle.id, host: host, terminal: terminal, controller: TerminalController());
+    final tab = TerminalTab(sessionId: handle.id, target: target, terminal: terminal, controller: TerminalController());
+    _bindTerminal(tab, service);
+    // Reset markers share the byte queue: old buffered data drains first,
+    // then the parser and view reset before the new snapshot is replayed.
+    tab
+      .._output = yieldingTerminalFrames(handle.framedOutput ?? handle.output.map(TerminalOutputFrame.new))
+          .listen((frame) {
+            if (!_open.contains(tab)) return;
+            if (frame.reset) {
+              final previous = tab.terminal;
+              previous.onOutput = null;
+              previous.onResize = null;
+              previous.onTitleChange = null;
+              tab.controller.clearSelection();
+              tab.terminal = Terminal(maxLines: previous.maxLines, platform: _platform)
+                ..resize(previous.viewWidth, previous.viewHeight);
+              tab.renderGeneration++;
+              _bindTerminal(tab, service);
+              _touch();
+            } else {
+              tab.terminal.write(frame.text);
+            }
+          })
+      .._events = handle.events.listen((e) => _onEvent(tab, e));
+    _open.add(tab);
+    final tabs = [...state.tabs, tab];
+    state = state.copyWith(tabs: tabs, activeIndex: tabs.length - 1);
+    return tab;
+  }
+
+  void _bindTerminal(TerminalTab tab, TerminalService service) {
+    final terminal = tab.terminal;
     terminal.onOutput = (data) => _write(tab, data);
     terminal.onResize = (w, h, _, _) => unawaited(service.resize(tab.sessionId, TerminalSize(w, h)));
     terminal.onTitleChange = (title) {
       tab.title = title;
       _touch();
     };
-    // Incremental UTF-8 + bounded parser turns keep a large attach snapshot or
-    // dense live output from starving window input and frame scheduling.
-    tab
-      .._output = yieldingTerminalOutput(handle.output).listen(terminal.write)
-      .._events = handle.events.listen((e) => _onEvent(tab, e));
-    _open.add(tab);
-    final tabs = [...state.tabs, tab];
-    state = state.copyWith(tabs: tabs, activeIndex: tabs.length - 1);
-    return tab;
   }
 
   void _onEvent(TerminalTab tab, TerminalEvent event) {
@@ -242,9 +281,10 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     _invalidateInput(tab);
     await tab._output?.cancel();
     await tab._events?.cancel();
+    if (_disposed) return _service.close(tab.sessionId);
     final tabs = [...state.tabs]..remove(tab);
     state = state.copyWith(tabs: tabs, activeIndex: state.activeIndex.clamp(0, tabs.isEmpty ? 0 : tabs.length - 1));
-    await ref.read(terminalServiceProvider).close(tab.sessionId);
+    await _service.close(tab.sessionId);
   }
 
   Future<void> closeActive() async {
@@ -258,6 +298,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   }
 
   void _closeSessions() {
+    _generation++;
     for (final tab in List.of(_open)) {
       _invalidateInput(tab);
       unawaited(tab._output?.cancel());
@@ -285,9 +326,16 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   }
 
   /// "Run": callers must have shown the run confirmation first (§16).
-  void runInTab(TerminalTab tab, String command) => _sendOrQueue(tab, '$command\r');
+  void runInTab(TerminalTab tab, String command) {
+    // Local generated/snippet execution needs its own native approval target.
+    // Typing and explicit Insert remain ordinary terminal input.
+    if (!tab.isLocal && _open.contains(tab)) _sendOrQueue(tab, '$command\r');
+  }
 
-  void _disposeAll() => _closeSessions();
+  void _disposeAll() {
+    _disposed = true;
+    _closeSessions();
+  }
 }
 
 final terminalTabsProvider = NotifierProvider<TerminalTabsController, TerminalTabsState>(TerminalTabsController.new);

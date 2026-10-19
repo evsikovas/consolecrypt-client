@@ -16,6 +16,12 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 Future<String> terminalOpen({required String hostId, required int cols, required int rows}) =>
     RustLib.instance.api.crateApiSshTerminalOpen(hostId: hostId, cols: cols, rows: rows);
 
+/// Device-local shell profiles. Executables and argv remain owned by Rust.
+Future<String> terminalLocalProfiles() => RustLib.instance.api.crateApiSshTerminalLocalProfiles();
+
+Future<String> terminalOpenLocal({required String profileId, required int cols, required int rows}) =>
+    RustLib.instance.api.crateApiSshTerminalOpenLocal(profileId: profileId, cols: cols, rows: rows);
+
 /// Output of a terminal: the scrollback snapshot as the first `Data` frame,
 /// then live output, ending with `Closed` / `Failed`.
 Stream<TerminalFrame> terminalAttach({required String terminalId}) =>

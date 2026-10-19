@@ -18,6 +18,9 @@ const guideScreens = [
   'terminal-menu',
   'terminal-selection-scroll',
   'terminal-tabs-overflow',
+  'terminal-local-picker',
+  'terminal-local-tabs',
+  'terminal-wsl-picker',
   'host-palette',
   'about-license',
   'host-menu',
@@ -34,6 +37,7 @@ const guideScreens = [
   'local-ai-install',
   'local-ai-progress',
   'local-ai-ready',
+  'local-ai-catalog',
   'appearance',
   'vault-settings',
   'security-settings',
@@ -49,6 +53,16 @@ const guideScreens = [
   'sharing-roles',
   'sharing-secret',
   'enrollment-owner',
+];
+
+// Explicit synthetic profiles. Capture fixtures never discover or spawn a
+// native shell, read a user's home directory, or enumerate real WSL installs.
+const guideMacShellProfiles = [LocalShellProfile(id: 'macos:zsh', kind: 'zsh', label: 'zsh', shell: 'zsh')];
+const guideWindowsShellProfiles = [
+  LocalShellProfile(id: 'windows:powershell', kind: 'powershell', label: 'Windows PowerShell', shell: 'powershell'),
+  LocalShellProfile(id: 'windows:cmd', kind: 'cmd', label: 'Command Prompt', shell: 'cmd'),
+  LocalShellProfile(id: 'wsl:Ubuntu', kind: 'wsl', label: 'Ubuntu', shell: 'sh', distribution: 'Ubuntu'),
+  LocalShellProfile(id: 'wsl:Debian', kind: 'wsl', label: 'Debian', shell: 'sh', distribution: 'Debian'),
 ];
 
 /// Keep the seeded topology while replacing addresses with reserved domains.

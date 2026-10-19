@@ -1,9 +1,12 @@
 import 'package:consolecrypt/core/bridge/mapping.dart';
+import 'package:consolecrypt/core/storage/app_storage_paths.dart';
 import 'package:material_ui/material_ui.dart';
 
 const _title = 'ConsoleCrypt could not start its secure core'; // l10n-ignore: shown before localization loads
 const _body =
     'Your data was not touched. Reinstall the app or rebuild it with the Rust toolchain installed, then try again.'; // l10n-ignore: shown before localization loads
+const _storageBody =
+    'Existing storage could not be opened safely. Your data was not changed. Resolve the storage issue below and try again.'; // l10n-ignore: shown before localization loads
 
 /// Shown instead of the app when the native core cannot be loaded or
 /// initialized (never a silent fallback to the mock backend).
@@ -18,6 +21,7 @@ class StartupErrorApp extends StatelessWidget {
   final Object error;
 
   String get _details {
+    if (error case AppStorageException(:final message)) return message;
     final e = toAppException(error);
     return '${e.code.name}: ${e.message}';
   }
@@ -39,7 +43,7 @@ class StartupErrorApp extends StatelessWidget {
                 const SizedBox(height: 16),
                 const Text(_title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 12),
-                const Text(_body),
+                Text(error is AppStorageException ? _storageBody : _body),
                 const SizedBox(height: 16),
                 SelectableText(_details, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
               ],

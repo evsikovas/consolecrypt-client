@@ -14,6 +14,7 @@ import 'package:consolecrypt/core/bridge/rust_sessions.dart';
 import 'package:consolecrypt/core/bridge/rust_sftp_browser.dart';
 import 'package:consolecrypt/core/bridge/rust_sharing.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:consolecrypt/core/storage/app_storage_paths.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
 import 'package:consolecrypt/src/rust/frb_generated.dart';
 import 'package:flutter/services.dart';
@@ -59,11 +60,12 @@ const appClientVersion = kAppFullVersion;
 /// The flutter_rust_bridge implementation of every service interface
 /// (ADR-0101 §8): one global app-core instance behind `RustLib`.
 final class RustAppServices {
-  RustAppServices._(this.backend, this.services, this._exitListener);
+  RustAppServices._(this.backend, this.services, this._exitListener, this.storagePaths);
 
   final RustBackend backend;
   final AppServices services;
   final AppLifecycleListener? _exitListener;
+  final AppStoragePaths storagePaths;
 
   static RustAppServices? _current;
 
@@ -80,9 +82,12 @@ final class RustAppServices {
   static Future<RustAppServices> open([RustCoreOptions options = const RustCoreOptions()]) async {
     final existing = _current;
     if (existing != null) return existing;
+    final storagePaths = options.dataDir == null
+        ? await AppStoragePaths.resolve()
+        : AppStoragePaths.explicit(options.dataDir!);
     await loadLibrary();
     final dataDir =
-        options.dataDir ??
+        storagePaths.coreRoot?.path ??
         (Platform.isAndroid || Platform.isIOS
             ? await MethodChannel(Platform.isIOS ? 'consolecrypt/ios' : 'consolecrypt/android')
                   .invokeMethod<String>('dataDirectory')
@@ -154,7 +159,7 @@ final class RustAppServices {
             },
           )
         : null;
-    self = RustAppServices._(hub, services, exitListener);
+    self = RustAppServices._(hub, services, exitListener, storagePaths);
     await hub.start();
     return _current = self;
   }

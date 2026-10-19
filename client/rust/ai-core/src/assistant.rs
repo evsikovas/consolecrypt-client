@@ -61,6 +61,7 @@ impl Default for AssistantOptions {
 /// Ask AI options.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AskOptions {
+    pub shell_target: Option<CommandTarget>,
     pub host_id: Option<ObjectId>,
     /// Include selected terminal text / last error.
     pub include_terminal: bool,
@@ -387,7 +388,10 @@ impl AiAssistant {
         }
         let ctx = prompts::format_context(&mut conv.session, &raw);
         let user = prompts::user_message(&mut conv.session, "", question, ctx.as_ref());
-        let mut messages = vec![Message::system(prompts::system_prompt(prompts::ASK, None))];
+        let mut messages = vec![Message::system(prompts::system_prompt(
+            prompts::ASK,
+            opts.shell_target,
+        ))];
         messages.extend(conv.history.iter().cloned());
         messages.push(Message::user(user.clone()));
         conv.history.push(Message::user(user));

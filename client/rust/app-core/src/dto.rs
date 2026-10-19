@@ -1259,11 +1259,26 @@ impl From<&cc_terminal_core::TerminalStatus> for TerminalStatusDto {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TerminalInfoDto {
     pub id: String,
-    pub host_id: String,
+    pub host_id: Option<String>,
+    pub target: cc_terminal_core::TerminalTarget,
     pub title: String,
     pub status: TerminalStatusDto,
     pub cols: u32,
     pub rows: u32,
+}
+
+impl From<cc_terminal_core::TerminalInfo> for TerminalInfoDto {
+    fn from(info: cc_terminal_core::TerminalInfo) -> Self {
+        Self {
+            id: info.id.to_string(),
+            host_id: info.target.host_id().map(|id| id.to_string()),
+            target: info.target,
+            title: info.title,
+            status: (&info.status).into(),
+            cols: info.size.cols,
+            rows: info.size.rows,
+        }
+    }
 }
 
 /// One item of a terminal output stream.

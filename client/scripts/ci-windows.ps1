@@ -90,9 +90,18 @@ try {
     Invoke-Checked flutter @('pub', 'get')
     Invoke-Checked flutter @('analyze')
     Invoke-Checked flutter @('test')
-    # Explicit real CPU generation smoke; verified 1.1 GB model is reused from the runner cache.
+    # Real CPU generation, auth and idle-unload checks use a dedicated cache,
+    # separate from every user's ConsoleCrypt profile and model selection.
     $LocalAiSmokeCache = Join-Path $runnerTools 'consolecrypt-local-ai-smoke'
-    Invoke-Checked dart @('run', 'test/ai/local/local_ai_smoke.dart', '--run', "--directory=$LocalAiSmokeCache")
+    foreach ($model in @('qwen2.5-coder-1.5b-instruct-q4_k_m', 'qwen3.5-4b-q4_k_m')) {
+        Invoke-Checked dart @('run', 'test/ai/local/local_ai_smoke.dart', '--run', "--directory=$LocalAiSmokeCache", "--model=$model", '--request-timeout-seconds=900')
+    }
+    $LocalAiSmokeMemory = [UInt64](Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory
+    if ($LocalAiSmokeMemory -ge 16GB) {
+        Invoke-Checked dart @('run', 'test/ai/local/local_ai_smoke.dart', '--run', "--directory=$LocalAiSmokeCache", '--model=qwen3.5-9b-q4_k_m', '--request-timeout-seconds=900')
+    } else {
+        Write-Host '9B CPU generation not checked: this runner has less than 16 GiB RAM.'
+    }
 } finally { Pop-Location }
 # Exercise the Windows filesystem and native RDP input/clipboard code on the
 # actual runner OS before packaging. Live server tests remain opt-in and use no
@@ -100,7 +109,7 @@ try {
 $OriginalNativeTestTarget = $env:CARGO_TARGET_DIR
 try {
     $env:CARGO_TARGET_DIR = Join-Path $Repo 'target\windows-rdp-tests'
-    Invoke-Checked cargo @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-rdp-core', '--all-targets')
+    Invoke-Checked cargo @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-rdp-core', '-p', 'cc-terminal-core', '--all-targets')
 } finally { $env:CARGO_TARGET_DIR = $OriginalNativeTestTarget }
 Push-Location $Repo
 try {

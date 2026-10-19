@@ -21,6 +21,7 @@ abstract interface class SnippetService {
     String command, {
     RiskLevel declared = RiskLevel.unknown,
     SnippetSource source = SnippetSource.user,
+    SnippetType? dialect,
   });
 
   Future<void> recordUsage(ObjectId id);

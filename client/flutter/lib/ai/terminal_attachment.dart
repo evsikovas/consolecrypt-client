@@ -13,7 +13,7 @@ final class TerminalAttachment {
     required this.text,
   });
   final TerminalSessionId sessionId;
-  final ObjectId hostId;
+  final ObjectId? hostId;
   final String hostLabel;
   final String text;
 }
@@ -33,8 +33,12 @@ class TerminalAttachmentController extends Notifier<TerminalAttachment?> {
     return null;
   }
 
-  void attach(TerminalTab tab, String text) =>
-      state = TerminalAttachment(sessionId: tab.sessionId, hostId: tab.host.id, hostLabel: tab.host.name, text: text);
+  void attach(TerminalTab tab, String text) => state = TerminalAttachment(
+    sessionId: tab.sessionId,
+    hostId: tab.host?.id,
+    hostLabel: tab.target.label,
+    text: text,
+  );
   void clear() => state = null;
 }
 

@@ -5668,7 +5668,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get localAiDescription =>
-      'Установите небольшую модель на этот компьютер. После установки чат и подсказки команд работают без интернета.';
+      'Выберите модель для этого компьютера. После установки чат и подсказки команд работают без интернета.';
 
   @override
   String get localAiModel => 'Модель';
@@ -5719,7 +5719,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get localAiStop => 'Остановить';
 
   @override
-  String get localAiRemove => 'Удалить модель и среду выполнения';
+  String get localAiRemove => 'Удалить выбранную модель';
 
   @override
   String get localAiResourceHelp =>
@@ -5743,4 +5743,101 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get localAiStorageUnavailable =>
       'Нет доступа к файлам локального ИИ. Проверьте права на папку данных приложения и свободное место на диске.';
+
+  @override
+  String localAiRamRecommendation(int ram) {
+    return 'Рекомендуется от $ram ГБ оперативной памяти. Скорость зависит от компьютера.';
+  }
+
+  @override
+  String get localAiModelsPreserved =>
+      'При смене модели остальные загрузки сохраняются. Обновление приложения сохраняет модели и ваш выбор.';
+
+  @override
+  String get localAiModelInstalled => 'Установлена';
+
+  @override
+  String get localAiRuntimeMissing => 'Движок ИИ отсутствует. Восстановите его; скачанные модели сохранятся.';
+
+  @override
+  String get localAiBundledRuntimeMissing =>
+      'Движок ИИ в приложении недоступен. Переустановите приложение; скачанные модели сохранятся.';
+
+  @override
+  String get localAiRepairRuntime => 'Восстановить движок';
+
+  @override
+  String get localAiInstallSelectedHelp =>
+      'Установите выбранную модель для локального ИИ. Выбор локального ИИ по умолчанию сохранён; запросы не будут переключаться на облако.';
+
+  @override
+  String get localAiTierLight => 'Лёгкая';
+
+  @override
+  String get localAiTierMedium => 'Средняя';
+
+  @override
+  String get localAiTierStrong => 'Мощная';
+
+  @override
+  String localAiModelRequirements(String size, int ram) {
+    return '$size для загрузки · рекомендуется $ram ГБ ОЗУ';
+  }
+
+  @override
+  String get localAiRecommended => 'Рекомендуется по объёму памяти этого компьютера';
+
+  @override
+  String localAiDetectedMemory(String size) {
+    return 'На компьютере: $size оперативной памяти. Звезда — рекомендация; ваш выбор не меняется.';
+  }
+
+  @override
+  String get localAiMetalHelp =>
+      'На Apple Silicon используется ускорение Metal. Большим моделям нужно больше памяти; ответы могут быть медленнее.';
+
+  @override
+  String get localAiCpuHelp =>
+      'На Windows и Intel Mac используется процессор. Объём памяти не гарантирует быстрые ответы; большие модели могут работать медленно.';
+
+  @override
+  String localAiModelAttribution(String publisher, String license) {
+    return 'Модель / GGUF: $publisher · Лицензия: $license';
+  }
+
+  @override
+  String get localAiModelNotices => 'Источники и лицензии моделей';
+
+  @override
+  String get terminalLocalSearch => 'Поиск оболочек или SSH-хостов';
+
+  @override
+  String get terminalLocalSection => 'Локальные оболочки';
+
+  @override
+  String get terminalLocalSshSection => 'SSH-хосты';
+
+  @override
+  String get terminalLocalComputer => 'Этот компьютер';
+
+  @override
+  String get terminalLocalUnavailable => 'Локальные оболочки недоступны.';
+
+  @override
+  String get terminalLocalSandboxUnavailable => 'В этой сборке с песочницей локальные оболочки недоступны.';
+
+  @override
+  String get terminalLocalRefresh => 'Обновить список оболочек';
+
+  @override
+  String get terminalLocalEmptyMessage => 'Откройте локальную оболочку или подключитесь к SSH-хосту в новой вкладке.';
+
+  @override
+  String get terminalLocalOpen => 'Открыть терминал';
+
+  @override
+  String get terminalLocalRestart => 'Перезапустить оболочку';
+
+  @override
+  String get terminalLocalInsertOnly => 'Вставьте команду, проверьте её и нажмите Enter в локальном терминале.';
 }

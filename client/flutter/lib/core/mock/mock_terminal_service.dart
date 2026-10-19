@@ -12,12 +12,27 @@ import 'package:consolecrypt/core/services/app_services.dart';
 /// Simulated SSH shell. Honours host-key policies against the mock known
 /// hosts (unknown → prompt, changed → hard failure), supports a few
 /// commands, `simulate-drop` (network drop → reconnect banner) and `exit`.
-final class MockTerminalService implements TerminalService {
+final class MockTerminalService implements TerminalService, LocalTerminalService {
   MockTerminalService(this._config, this._inventory);
 
   final MockConfig _config;
   final MockInventoryService _inventory;
   final Map<TerminalSessionId, _MockShell> _sessions = {};
+  final Map<TerminalSessionId, _MockLocalShell> _localSessions = {};
+  LocalShellProfiles localShellProfiles = const LocalShellProfiles();
+
+  @override
+  Future<LocalShellProfiles> listLocalProfiles() async => localShellProfiles;
+
+  @override
+  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size}) async {
+    final profile = localShellProfiles.profiles.where((p) => p.id == profileId).firstOrNull;
+    if (profile == null) throw const AppException(AppErrorCode.notFound, 'Local shell is unavailable');
+    final shell = _MockLocalShell(profile, size);
+    _localSessions[shell.id] = shell;
+    unawaited(shell.connect());
+    return TerminalSessionHandle(id: shell.id, output: shell.output.stream, events: shell.events.stream);
+  }
 
   @override
   Future<TerminalSessionHandle> open({required ObjectId hostId, required TerminalSize size}) async {
@@ -48,10 +63,16 @@ final class MockTerminalService implements TerminalService {
   }
 
   @override
-  Future<void> write(TerminalSessionId id, Uint8List data) async => _sessions[id]?.input(data);
+  Future<void> write(TerminalSessionId id, Uint8List data) async {
+    _sessions[id]?.input(data);
+    _localSessions[id]?.input(data);
+  }
 
   @override
-  Future<void> resize(TerminalSessionId id, TerminalSize size) async => _sessions[id]?.size = size;
+  Future<void> resize(TerminalSessionId id, TerminalSize size) async {
+    _sessions[id]?.size = size;
+    _localSessions[id]?.size = size;
+  }
 
   @override
   Future<void> answerPassword(TerminalSessionId id, SecretText? password) async {
@@ -72,16 +93,76 @@ final class MockTerminalService implements TerminalService {
   }
 
   @override
-  Future<void> reconnect(TerminalSessionId id) => _shell(id).connect(reconnect: true);
+  Future<void> reconnect(TerminalSessionId id) => _localSessions[id]?.connect() ?? _shell(id).connect(reconnect: true);
 
   @override
-  Future<void> close(TerminalSessionId id) async => _sessions.remove(id)?.dispose();
+  Future<void> close(TerminalSessionId id) async {
+    await _sessions.remove(id)?.dispose();
+    await _localSessions.remove(id)?.dispose();
+  }
 
   Future<void> dispose() async {
     for (final s in _sessions.values) {
       await s.dispose();
     }
     _sessions.clear();
+    for (final s in _localSessions.values) {
+      await s.dispose();
+    }
+    _localSessions.clear();
+  }
+}
+
+/// Local echo fixture; deliberately independent of inventory/SSH credentials.
+final class _MockLocalShell {
+  _MockLocalShell(this.profile, this.size);
+  final id = TerminalSessionId.generate();
+  final LocalShellProfile profile;
+  TerminalSize size;
+  final output = StreamController<Uint8List>();
+  final events = StreamController<TerminalEvent>();
+  bool _disposed = false, _connected = false;
+  String _line = '';
+
+  void _out(String value) {
+    if (!_disposed) output.add(Uint8List.fromList(utf8.encode(value)));
+  }
+
+  Future<void> connect() async {
+    await Future<void>.delayed(Duration.zero);
+    if (_disposed) return;
+    _connected = true;
+    events.add(const TerminalStateChanged(SessionConnectionState.connected));
+    _out('${profile.label}\r\n> ');
+  }
+
+  void input(Uint8List data) {
+    if (!_connected || _disposed) return;
+    for (final char in utf8.decode(data, allowMalformed: true).split('')) {
+      if (char == '\r' || char == '\n') {
+        _out('\r\n');
+        if (_line.trim() == 'exit') {
+          _connected = false;
+          events.add(const TerminalExited(0));
+          events.add(const TerminalStateChanged(SessionConnectionState.disconnected));
+        } else {
+          _out('> ');
+        }
+        _line = '';
+      } else if (char == '\x03') {
+        _line = '';
+        _out('^C\r\n> ');
+      } else {
+        _line += char;
+        _out(char);
+      }
+    }
+  }
+
+  Future<void> dispose() async {
+    _disposed = true;
+    await output.close();
+    await events.close();
   }
 }
 

@@ -189,7 +189,7 @@ async fn cancelling_a_full_answer_queue_releases_the_pending_sender() {
 /// Records what would have been executed / typed.
 #[derive(Default)]
 struct FakeBackend {
-    terminals: Mutex<HashMap<TerminalId, ObjectId>>,
+    terminals: Mutex<HashMap<TerminalId, Option<ObjectId>>>,
     last_command: Mutex<Option<String>>,
     last_error: Mutex<Option<String>>,
     execs: Mutex<Vec<(ObjectId, String)>>,
@@ -210,7 +210,7 @@ impl ExecBackend for FakeBackend {
             exit_signal: None,
         })
     }
-    fn terminal_host(&self, id: TerminalId) -> AppResult<ObjectId> {
+    fn terminal_host(&self, id: TerminalId) -> AppResult<Option<ObjectId>> {
         self.terminals
             .lock()
             .unwrap()
@@ -321,12 +321,12 @@ async fn generate_approve_and_run_via_exec_and_terminal() {
     // Terminal path: only a terminal of the approved host.
     let tid = uuid::Uuid::new_v4();
     let other_tid = uuid::Uuid::new_v4();
-    f.fake.terminals.lock().unwrap().insert(tid, hid);
+    f.fake.terminals.lock().unwrap().insert(tid, Some(hid));
     f.fake
         .terminals
         .lock()
         .unwrap()
-        .insert(other_tid, ObjectId::new());
+        .insert(other_tid, Some(ObjectId::new()));
     let ok = f.app.approve_run(p.run.clone(), false).await.unwrap();
     assert_eq!(
         f.app
@@ -336,6 +336,33 @@ async fn generate_approve_and_run_via_exec_and_terminal() {
             .code(),
         "approval_required"
     );
+    // A local terminal has no SSH host. An approval for a remote host must
+    // never be reused to execute that command on this computer.
+    let local_tid = uuid::Uuid::new_v4();
+    f.fake.terminals.lock().unwrap().insert(local_tid, None);
+    let ok = f.app.approve_run(p.run.clone(), false).await.unwrap();
+    assert_eq!(
+        f.app
+            .terminal_run_approved(local_tid.to_string(), ok.token)
+            .await
+            .unwrap_err()
+            .code(),
+        "approval_required"
+    );
+    assert!(f.fake.writes.lock().unwrap().is_empty());
+    let (unlocked, ai) = f.app.ai_session().await.unwrap();
+    let (_, host) = AppCore::ai_context(
+        &unlocked,
+        &ai,
+        &AiContextOptionsDto {
+            terminal_id: Some(local_tid.to_string()),
+            ..Default::default()
+        },
+        None,
+    )
+    .unwrap();
+    assert_eq!(host, None, "local context cannot inherit an SSH host");
+
     let ok = f.app.approve_run(p.run.clone(), false).await.unwrap();
     f.app
         .terminal_run_approved(tid.to_string(), ok.token)
@@ -374,7 +401,7 @@ async fn fix_last_error_reads_terminal_hooks_through_the_sanitizer() {
     let f = fixture(PrivacyProfile::Standard).await;
     let hid = parse_id("id", &f.host.id).unwrap();
     let tid = uuid::Uuid::new_v4();
-    f.fake.terminals.lock().unwrap().insert(tid, hid);
+    f.fake.terminals.lock().unwrap().insert(tid, Some(hid));
     *f.fake.last_command.lock().unwrap() =
         Some("PGPASSWORD=HookPw-canary-7781 psql -h db -U app bilSing".into());
     *f.fake.last_error.lock().unwrap() =

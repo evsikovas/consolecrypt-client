@@ -18,6 +18,7 @@ class DeviceLocalAiService implements AiService {
     required this.vault,
   }) {
     _scope = _currentScope;
+    _runtimeSelection = _currentRuntimeSelection;
     _subscriptions.addAll([
       delegate.watchProviders().listen((value) {
         _remote = value;
@@ -29,6 +30,14 @@ class DeviceLocalAiService implements AiService {
       ),
       vault.watchStatus().listen((value) => _scopeChanged((_currentScope.$1, value.vaultId?.value, value.isUnlocked))),
       runtime.statuses.listen((status) {
+        if (_runtimeSelection != _currentRuntimeSelection) {
+          _runtimeSelection = _currentRuntimeSelection;
+          _generation++;
+          for (final cancel in _cancelRequests.toList()) {
+            cancel();
+          }
+          _clearRegistration();
+        }
         if (status.phase != LocalAiPhase.ready && status.phase != LocalAiPhase.starting) _clearRegistration();
         _publish();
       }),
@@ -45,6 +54,7 @@ class DeviceLocalAiService implements AiService {
   final _subscriptions = <StreamSubscription<Object?>>[];
   List<AiProviderConfig> _remote = const [];
   late (String?, String?, bool) _scope;
+  late (int, String) _runtimeSelection;
   int _generation = 0;
   bool _disposed = false;
   String? _registration;
@@ -52,6 +62,7 @@ class DeviceLocalAiService implements AiService {
 
   (String?, String?, bool) get _currentScope =>
       (profiles.currentProfiles.active?.id.value, vault.currentStatus.vaultId?.value, vault.currentStatus.isUnlocked);
+  (int, String) get _currentRuntimeSelection => (runtime.status.selectionRevision, runtime.selectedModel.id);
 
   void _scopeChanged((String?, String?, bool) next) {
     if (next != _scope) {
@@ -74,7 +85,9 @@ class DeviceLocalAiService implements AiService {
 
   void _publish() {
     if (_disposed) return;
-    final available = runtime.status.isInstalled && _currentScope.$3;
+    // A selected, not-yet-installed model must not turn a local default into
+    // cloud inference while another downloaded model remains on this device.
+    final available = _localProviderAvailable;
     final preferred = available && settings.currentLocal.preferDeviceLocalAi;
     final now = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
     _providers.value = [
@@ -98,7 +111,16 @@ class DeviceLocalAiService implements AiService {
   }
 
   bool _isCurrent(int generation, (String?, String?, bool) scope) =>
-      !_disposed && generation == _generation && scope == _currentScope && scope.$3;
+      !_disposed &&
+      generation == _generation &&
+      scope == _currentScope &&
+      scope.$3 &&
+      _runtimeSelection == _currentRuntimeSelection;
+
+  bool get _localProviderAvailable =>
+      _currentScope.$3 &&
+      (runtime.status.hasInstalledModels ||
+          (!runtime.status.isInitialized && settings.currentLocal.preferDeviceLocalAi));
 
   Future<void> _register(LocalAiEndpoint endpoint, int generation, (String?, String?, bool) scope) async {
     if (!_isCurrent(generation, scope) || scope.$1 == null || scope.$2 == null) {
@@ -107,7 +129,8 @@ class DeviceLocalAiService implements AiService {
     if (endpoint.baseUrl.scheme != 'http' ||
         endpoint.baseUrl.host != '127.0.0.1' ||
         endpoint.baseUrl.path != '/v1' ||
-        !endpoint.baseUrl.hasPort) {
+        !endpoint.baseUrl.hasPort ||
+        endpoint.modelId != runtime.selectedModel.id) {
       throw StateError('Invalid local AI endpoint');
     }
     final id = ObjectId.generate().value;
@@ -214,9 +237,7 @@ class DeviceLocalAiService implements AiService {
   Future<SnippetDraft> draftSnippet({required String command, ObjectId? providerId}) {
     final effective =
         providerId ??
-        (runtime.status.isInstalled && _currentScope.$3 && settings.currentLocal.preferDeviceLocalAi
-            ? deviceLocalAiProviderId
-            : null);
+        (_localProviderAvailable && settings.currentLocal.preferDeviceLocalAi ? deviceLocalAiProviderId : null);
     return effective == deviceLocalAiProviderId
         ? _call(() => delegate.draftSnippet(command: command, providerId: effective))
         : delegate.draftSnippet(command: command, providerId: effective);

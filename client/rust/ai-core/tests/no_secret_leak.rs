@@ -166,6 +166,7 @@ fn poisoned(host_id: ObjectId, s: &Secrets) -> StaticContext {
 async fn run_every_feature(a: &AiAssistant, hid: ObjectId, s: &Secrets) {
     let mut conv = a.new_conversation();
     let ask = AskOptions {
+        shell_target: None,
         host_id: Some(hid),
         include_terminal: true,
     };

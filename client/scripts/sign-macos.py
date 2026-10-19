@@ -62,7 +62,7 @@ def sign(app, identity):
         if identity != "-":
             # Hardened Runtime requires matching Team IDs on the helper/dylibs.
             # Ad-hoc previews have no Team ID; retain their existing non-hardened
-            # policy while still enforcing App Sandbox + inheritance.
+            # policy. Stable identities still enforce Hardened Runtime.
             command += ["--options", "runtime"]
         local_ai = app / "Contents/Helpers/LocalAI"
         if local_ai in target.parents:

@@ -9707,7 +9707,7 @@ abstract class AppLocalizations {
   /// Built-in device-local AI settings.
   ///
   /// In en, this message translates to:
-  /// **'Install a compact model and run it on this computer. Chat and command suggestions work offline after installation.'**
+  /// **'Choose a model for this computer. Chat and command suggestions work offline after installation.'**
   String get localAiDescription;
 
   /// Built-in device-local AI settings.
@@ -9803,7 +9803,7 @@ abstract class AppLocalizations {
   /// Built-in device-local AI settings.
   ///
   /// In en, this message translates to:
-  /// **'Remove model and runtime'**
+  /// **'Remove selected model'**
   String get localAiRemove;
 
   /// Built-in device-local AI settings.
@@ -9841,6 +9841,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cannot access local AI files. Check app data folder permissions and free disk space.'**
   String get localAiStorageUnavailable;
+
+  /// Device-local AI model management and installation guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended total RAM: {ram} GB. Speed depends on your hardware.'**
+  String localAiRamRecommendation(int ram);
+
+  /// Device-local AI model management and installation guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching models keeps other downloads. Installed models and your choice survive app updates.'**
+  String get localAiModelsPreserved;
+
+  /// Device-local AI model management and installation guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get localAiModelInstalled;
+
+  /// Device-local AI model management and installation guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'The inference engine is missing. Repair it; downloaded models will be kept.'**
+  String get localAiRuntimeMissing;
+
+  /// Device-local AI model management and installation guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'The app’s inference engine is unavailable. Reinstall the application; downloaded models will be kept.'**
+  String get localAiBundledRuntimeMissing;
+
+  /// Device-local AI model management and installation guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair engine'**
+  String get localAiRepairRuntime;
+
+  /// Device-local AI model management and installation guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Install the selected model to use local AI. Your local default stays enabled; requests will not switch to a cloud provider.'**
+  String get localAiInstallSelectedHelp;
+
+  /// Device-local AI model catalog, hardware recommendation, or license information.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get localAiTierLight;
+
+  /// Device-local AI model catalog, hardware recommendation, or license information.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get localAiTierMedium;
+
+  /// Device-local AI model catalog, hardware recommendation, or license information.
+  ///
+  /// In en, this message translates to:
+  /// **'Strong'**
+  String get localAiTierStrong;
+
+  /// Device-local AI model catalog, hardware recommendation, or license information.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} download · {ram} GB RAM recommended'**
+  String localAiModelRequirements(String size, int ram);
+
+  /// Device-local AI model catalog, hardware recommendation, or license information.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended for this computer’s total RAM'**
+  String get localAiRecommended;
+
+  /// Device-local AI model catalog, hardware recommendation, or license information.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer: {size} total RAM. The star is a suggestion; your selection stays unchanged.'**
+  String localAiDetectedMemory(String size);
+
+  /// Device-local AI model catalog, hardware recommendation, or license information.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Silicon uses Metal acceleration. Larger models need more memory and can respond more slowly.'**
+  String get localAiMetalHelp;
+
+  /// Device-local AI model catalog, hardware recommendation, or license information.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows and Intel Mac use the CPU. RAM guidance does not guarantee fast responses; larger models can be slow.'**
+  String get localAiCpuHelp;
+
+  /// Device-local AI model catalog, hardware recommendation, or license information.
+  ///
+  /// In en, this message translates to:
+  /// **'Model / GGUF: {publisher} · License: {license}'**
+  String localAiModelAttribution(String publisher, String license);
+
+  /// Device-local AI model catalog, hardware recommendation, or license information.
+  ///
+  /// In en, this message translates to:
+  /// **'Model sources and licenses'**
+  String get localAiModelNotices;
+
+  /// Local terminal UI: Search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search shells or SSH hosts'**
+  String get terminalLocalSearch;
+
+  /// Local terminal UI: Section.
+  ///
+  /// In en, this message translates to:
+  /// **'Local shells'**
+  String get terminalLocalSection;
+
+  /// Local terminal UI: SshSection.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH hosts'**
+  String get terminalLocalSshSection;
+
+  /// Local terminal UI: Computer.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer'**
+  String get terminalLocalComputer;
+
+  /// Local terminal UI: Unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No local shells are available.'**
+  String get terminalLocalUnavailable;
+
+  /// Local terminal UI: SandboxUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Local shells are unavailable in this sandboxed build.'**
+  String get terminalLocalSandboxUnavailable;
+
+  /// Local terminal UI: Refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh local shells'**
+  String get terminalLocalRefresh;
+
+  /// Local terminal UI: EmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a local shell or connect to an SSH host in a new tab.'**
+  String get terminalLocalEmptyMessage;
+
+  /// Local terminal UI: Open.
+  ///
+  /// In en, this message translates to:
+  /// **'Open terminal'**
+  String get terminalLocalOpen;
+
+  /// Local terminal UI: Restart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart shell'**
+  String get terminalLocalRestart;
+
+  /// Local terminal UI: InsertOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert the command, review it, then press Enter in the local terminal.'**
+  String get terminalLocalInsertOnly;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -7,6 +7,7 @@
 
 static NSMutableString *report;
 static NSString *reportPath;
+static NSString *workHome;
 static volatile sig_atomic_t activeChild;
 
 static void deadlineExpired(int signalNumber) {
@@ -32,9 +33,10 @@ static void stop(NSTask *task) {
 static NSTask *launch(NSString *executable, NSArray *arguments, NSString *token, NSString *log) {
     NSTask *task = [NSTask new];
     task.executableURL = [NSURL fileURLWithPath:executable];
-    task.currentDirectoryURL = [NSURL fileURLWithPath:executable.stringByDeletingLastPathComponent];
+    task.currentDirectoryURL = [NSURL fileURLWithPath:workHome];
     task.arguments = arguments;
-    task.environment = @{@"HOME": NSHomeDirectory(), @"PATH": @"/usr/bin:/bin", @"LLAMA_API_KEY": token};
+    task.environment = @{@"HOME": workHome, @"ZDOTDIR": workHome, @"TMPDIR": [workHome stringByAppendingPathComponent:@"tmp"],
+                         @"PATH": @"/usr/bin:/bin", @"TERM": @"xterm-256color", @"LLAMA_API_KEY": token};
     [NSFileManager.defaultManager createFileAtPath:log contents:nil attributes:nil];
     task.standardOutput = [NSFileHandle fileHandleForWritingAtPath:log];
     task.standardError = task.standardOutput;
@@ -48,7 +50,7 @@ static NSTask *launch(NSString *executable, NSArray *arguments, NSString *token,
 }
 
 static BOOL command(NSString *executable, NSString *argument) {
-    NSString *log = [NSHomeDirectory() stringByAppendingPathComponent:@"local-ai-command.log"];
+    NSString *log = [workHome stringByAppendingPathComponent:@"local-ai-command.log"];
     NSTask *task = launch(executable, @[argument], @"unused", log);
     if (!task) return NO;
     NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:30];
@@ -58,6 +60,25 @@ static BOOL command(NSString *executable, NSString *argument) {
     activeChild = 0;
     record([argument stringByAppendingFormat:@" %@", [NSString stringWithContentsOfFile:log encoding:NSUTF8StringEncoding error:NULL]]);
     return !timedOut && task.terminationStatus == 0;
+}
+
+static BOOL shell(void) {
+    NSString *log = [workHome stringByAppendingPathComponent:@"local-shell.log"];
+    // script(1) allocates a real PTY. HOME/ZDOTDIR refer only to generated
+    // fixtures, so login/interactive startup cannot read the user's config.
+    NSString *probe = @"[[ -t 0 && -t 1 && $CC_SMOKE_LOGIN = loaded && $CC_SMOKE_INTERACTIVE = loaded ]] || exit 81; "
+                      @"/usr/bin/true || exit 82; printf 'LOCAL_ZSH_PTY_PASS\\n'";
+    NSTask *task = launch(@"/usr/bin/script", @[@"-q", @"/dev/null", @"/bin/zsh", @"-l", @"-i", @"-c", probe], @"unused", log);
+    if (!task) return NO;
+    NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:15];
+    while (task.running && deadline.timeIntervalSinceNow > 0) usleep(10000);
+    BOOL timedOut = task.running;
+    if (timedOut) stop(task); else [task waitUntilExit];
+    activeChild = 0;
+    NSString *output = [NSString stringWithContentsOfFile:log encoding:NSUTF8StringEncoding error:NULL];
+    BOOL ok = !timedOut && task.terminationStatus == 0 && [output containsString:@"LOCAL_ZSH_PTY_PASS"];
+    record(ok ? @"Local zsh: PTY, login profile, interactive rc, external command PASS" : @"LOCAL_ZSH_FAIL");
+    return ok;
 }
 
 static NSString *http(int port, NSString *method, NSString *path, NSString *token, NSString *body) {
@@ -95,16 +116,15 @@ int main(void) { @autoreleasepool {
     signal(SIGPIPE, SIG_IGN);
     signal(SIGALRM, deadlineExpired);
     alarm(150); // Bound model-copy/child work before the Python launch timeout.
-    NSString *home = NSHomeDirectory();
+    NSBundle *bundle = NSBundle.mainBundle;
+    NSString *home = bundle.infoDictionary[@"LocalProcessSmokeHome"];
+    if (![home isKindOfClass:NSString.class] || !home.isAbsolutePath ||
+        ![home containsString:@"/.local/macos-process-smoke/run-"]) return 1;
+    workHome = home;
     report = [NSMutableString string];
     reportPath = [home stringByAppendingPathComponent:@"local-ai-smoke.txt"];
-    record([@"NSHOME " stringByAppendingString:home]);
-    record([NSString stringWithFormat:@"ENV_HOME %s", getenv("HOME") ?: "(null)"]);
-    if (![home containsString:@"/Library/Containers/io.consolecrypt.localai.smoke."] ||
-        !getenv("HOME") || ![home isEqualToString:@(getenv("HOME"))]) {
-        record(@"FAIL: expected an isolated App Sandbox container"); return 1;
-    }
-    NSBundle *bundle = NSBundle.mainBundle;
+    record(@"WORKSPACE_ISOLATED YES");
+    if (!shell()) return 1;
     NSString *architecture = bundle.infoDictionary[@"LocalAiSmokePlatform"];
     NSString *executable = [bundle.bundlePath stringByAppendingPathComponent:
         [NSString stringWithFormat:@"Contents/Helpers/LocalAI/%@/llama-server", architecture]];
@@ -127,7 +147,7 @@ int main(void) { @autoreleasepool {
     NSString *token = [[NSUUID UUID].UUIDString stringByAppendingString:[NSUUID UUID].UUIDString];
     NSString *log = [home stringByAppendingPathComponent:@"local-ai-server.log"];
     NSTask *task = launch(executable, @[
-        @"--model", model, @"--alias", @"sandbox-smoke", @"--host", @"127.0.0.1", @"--port", @(port).stringValue,
+        @"--model", model, @"--alias", @"process-smoke", @"--host", @"127.0.0.1", @"--port", @(port).stringValue,
         @"--ctx-size", @"4096", @"--parallel", @"1", @"--n-gpu-layers", [architecture isEqualToString:@"macArm64"] ? @"99" : @"0",
         @"--offline", @"--no-webui", @"--no-slots", @"--log-disable"], token, log);
     if (!task) return 5;
@@ -142,7 +162,7 @@ int main(void) { @autoreleasepool {
     if (ready) {
         NSString *unauthorized = http(port, @"GET", @"/v1/models", @"wrong-token", nil);
         NSString *response = http(port, @"POST", @"/v1/chat/completions", token,
-            @"{\"model\":\"sandbox-smoke\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply exactly OK.\"}],\"max_tokens\":12,\"temperature\":0}");
+            @"{\"model\":\"process-smoke\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply exactly OK.\"}],\"max_tokens\":12,\"temperature\":0}");
         record([@"CHAT " stringByAppendingString:response]);
         NSRange separator = [response rangeOfString:@"\r\n\r\n"];
         if (separator.location != NSNotFound) {

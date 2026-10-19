@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:consolecrypt/app/auto_lock.dart';
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/theme/tokens.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/rdp/rdp_service.dart';
 import 'package:consolecrypt/rdp/rdp_touchpad.dart';
@@ -500,10 +501,15 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
 
   Widget _mobileControls(bool compact) {
     final l = context.l10n;
-    return ExcludeFocus(
+    final tokens = GlassTokens.of(context);
+    final scheme = ColorScheme.fromSeed(
+      seedColor: tokens.palette.accent,
+      brightness: tokens.brightness,
+    ).copyWith(surface: tokens.surfaces.contentSolid, onSurface: tokens.palette.label);
+    final controls = ExcludeFocus(
       child: Material(
         key: const ValueKey('rdp-mobile-controls'),
-        color: Theme.of(context).colorScheme.surfaceContainer,
+        color: tokens.surfaces.contentSolid,
         child: SafeArea(
           top: false,
           child: Column(
@@ -580,6 +586,13 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
             ],
           ),
         ),
+      ),
+    );
+    return Theme(
+      data: Theme.of(context).copyWith(colorScheme: scheme),
+      child: DefaultTextStyle.merge(
+        style: TextStyle(color: tokens.palette.label),
+        child: controls,
       ),
     );
   }

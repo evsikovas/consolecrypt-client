@@ -67,7 +67,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> with WidgetsBinding
         .read(aiChatControllerProvider.notifier)
         .send(
           _input.text,
-          context: AiContextSelection(hostId: tab?.host.id, selectedTerminalText: selection),
+          context: AiContextSelection(
+            hostId: tab?.host?.id,
+            selectedTerminalText: selection,
+            shellTarget: tab?.isLocal == true ? tab!.target.shellType : null,
+          ),
         );
     _input.clear();
     ref.read(terminalAttachmentProvider.notifier).clear();

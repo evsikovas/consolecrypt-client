@@ -137,7 +137,7 @@ void main() {
     await tester.sendKeyRepeatEvent(LogicalKeyboardKey.insert);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.insert);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
-    final other = await c.read(terminalTabsProvider.notifier).open(tab.host);
+    final other = await c.read(terminalTabsProvider.notifier).open(tab.host!);
     other.terminal.onOutput = writes.add;
     read.complete({'text': 'late clipboard'});
     await settle(tester);
@@ -262,7 +262,7 @@ void main() {
     await tapKey(tester, 'ai-terminal-attachment-remove');
     expect(c.read(terminalAttachmentProvider), isNull);
     c.read(terminalAttachmentProvider.notifier).attach(tab, 'again');
-    await c.read(terminalTabsProvider.notifier).open(tab.host);
+    await c.read(terminalTabsProvider.notifier).open(tab.host!);
     await settle(tester);
     expect(c.read(terminalAttachmentProvider), isNull);
     final active = c.read(terminalTabsProvider).active!;
@@ -328,7 +328,7 @@ void main() {
     final (_, c, tab) = await _open(tester);
     _select(tab, 'old selection');
     await _menu(tester);
-    await c.read(terminalTabsProvider.notifier).open(tab.host);
+    await c.read(terminalTabsProvider.notifier).open(tab.host!);
     await settle(tester);
     await tapKey(tester, 'terminal-menu-ask-ai');
     expect(c.read(terminalAttachmentProvider), isNull);
@@ -368,7 +368,7 @@ void main() {
     _clipboard(tester, handler: (call) => call.method == 'Clipboard.getData' ? read.future : Future.value());
     await _menu(tester);
     await tapKey(tester, 'terminal-menu-paste');
-    final other = await c.read(terminalTabsProvider.notifier).open(tab.host);
+    final other = await c.read(terminalTabsProvider.notifier).open(tab.host!);
     other.terminal.onOutput = writes.add;
     read.complete({'text': 'late clipboard'});
     await settle(tester);

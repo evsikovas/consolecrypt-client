@@ -87,6 +87,22 @@ pub async fn terminal_open(host_id: String, cols: u32, rows: u32) -> Result<Stri
     with_core(move |c| async move { to_json(&c.open_terminal(host_id, cols, rows).await?) }).await
 }
 
+/// Device-local shell profiles. Executables and argv remain owned by Rust.
+pub async fn terminal_local_profiles() -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.local_terminal_profiles().await?) }).await
+}
+
+pub async fn terminal_open_local(
+    profile_id: String,
+    cols: u32,
+    rows: u32,
+) -> Result<String, BridgeError> {
+    with_core(
+        move |c| async move { to_json(&c.open_local_terminal(profile_id, cols, rows).await?) },
+    )
+    .await
+}
+
 /// Output of a terminal: the scrollback snapshot as the first `Data` frame,
 /// then live output, ending with `Closed` / `Failed`.
 pub async fn terminal_attach(

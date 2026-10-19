@@ -165,6 +165,7 @@ final class MockSnippetService extends VaultScopedMock implements SnippetService
     String command, {
     RiskLevel declared = RiskLevel.unknown,
     SnippetSource source = SnippetSource.user,
+    SnippetType? dialect,
   }) async {
     await mockDelay(Duration.zero);
     return MockRiskRules.assess(command, declared: declared, source: source);

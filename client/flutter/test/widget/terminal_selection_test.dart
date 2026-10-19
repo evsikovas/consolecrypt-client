@@ -269,7 +269,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
-    await container.read(terminalTabsProvider.notifier).open(first.host);
+    await container.read(terminalTabsProvider.notifier).open(first.host!);
     await tester.pump();
     final before = scroll.offset;
     await tester.pump(const Duration(milliseconds: 300));

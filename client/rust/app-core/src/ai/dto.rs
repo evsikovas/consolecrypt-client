@@ -31,6 +31,8 @@ pub use cc_search_core::DocKind;
 /// field.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AiContextOptionsDto {
+    /// Explicit dialect for a local terminal; it never grants execution access.
+    pub shell_target: Option<CommandTarget>,
     /// Host the request is about (defaults to the terminal's host).
     pub host_id: Option<String>,
     /// Terminal whose last command / last error may be used.

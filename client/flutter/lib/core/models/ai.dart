@@ -214,13 +214,16 @@ final class AiFailed extends AiStreamEvent {
 /// Allowed context the UI may attach (CLIENT_SPEC §14: host context,
 /// selected terminal text, last command). Never secrets.
 final class AiContextSelection {
-  const AiContextSelection({this.hostId, this.selectedTerminalText, this.lastCommand});
+  const AiContextSelection({this.hostId, this.selectedTerminalText, this.lastCommand, this.shellTarget});
 
   static const none = AiContextSelection();
 
   final ObjectId? hostId;
   final String? selectedTerminalText;
   final String? lastCommand;
+
+  /// Local shell dialect only; no path, environment, user or working folder.
+  final SnippetType? shellTarget;
 }
 
 /// `testProvider` result.

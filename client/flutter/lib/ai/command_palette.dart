@@ -25,7 +25,12 @@ final Expando<bool> _paletteOpen = Expando<bool>('command palette open'); // l10
 
 /// Cmd/Ctrl+K overlay: search hosts/snippets, quick actions, AI command
 /// generation. Results are only inserted/run after an explicit action.
-Future<void> showCommandPalette(BuildContext context, {String? selectedText, ObjectId? hostId}) async {
+Future<void> showCommandPalette(
+  BuildContext context, {
+  String? selectedText,
+  ObjectId? hostId,
+  SnippetType? shellTarget,
+}) async {
   final navigator = Navigator.of(context, rootNavigator: true);
   if (_paletteOpen[navigator] ?? false) return;
   _paletteOpen[navigator] = true;
@@ -33,7 +38,7 @@ Future<void> showCommandPalette(BuildContext context, {String? selectedText, Obj
     // `glass.thick`, live backdrop (refractive on macOS), one overlay level.
     await showGlassDialog<void>(
       context,
-      builder: (_) => CommandPalette(selectedText: selectedText, hostId: hostId),
+      builder: (_) => CommandPalette(selectedText: selectedText, hostId: hostId, shellTarget: shellTarget),
     );
   } finally {
     _paletteOpen[navigator] = false;
@@ -194,11 +199,12 @@ final class _Item {
 }
 
 class CommandPalette extends ConsumerStatefulWidget {
-  const CommandPalette({super.key, this.selectedText, this.hostId});
+  const CommandPalette({super.key, this.selectedText, this.hostId, this.shellTarget});
 
   /// Allowed AI context (§14): selected terminal text, host id.
   final String? selectedText;
   final ObjectId? hostId;
+  final SnippetType? shellTarget;
 
   @override
   ConsumerState<CommandPalette> createState() => _CommandPaletteState();
@@ -222,6 +228,17 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
   /// Raw provider diagnostic for [_AiError.failed] (never localized).
   String? _aiErrorDetail;
   bool _generating = false;
+  TerminalTarget? _originTarget;
+
+  @override
+  void initState() {
+    super.initState();
+    _originTarget = ref.read(terminalTabsProvider).active?.target;
+  }
+
+  SnippetType? get _shellTarget =>
+      widget.shellTarget ??
+      (widget.hostId == null && _originTarget is LocalTerminalTarget ? _originTarget?.shellType : null);
 
   @override
   void dispose() {
@@ -281,7 +298,12 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         .generateCommand(
           providerId: provider.id,
           request: request,
-          context: AiContextSelection(hostId: widget.hostId, selectedTerminalText: widget.selectedText),
+          dialect: _shellTarget,
+          context: AiContextSelection(
+            hostId: widget.hostId,
+            selectedTerminalText: widget.selectedText,
+            shellTarget: _shellTarget,
+          ),
         )
         .listen((event) async {
           switch (event) {
@@ -292,7 +314,12 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
               if (command != null) {
                 risk = await ref
                     .read(snippetServiceProvider)
-                    .assessRisk(command.command, declared: command.suggestedRisk, source: SnippetSource.ai);
+                    .assessRisk(
+                      command.command,
+                      declared: command.suggestedRisk,
+                      source: SnippetSource.ai,
+                      dialect: command.dialect ?? _shellTarget,
+                    );
               }
               if (mounted) {
                 setState(() {

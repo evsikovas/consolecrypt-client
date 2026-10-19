@@ -92,7 +92,7 @@ void main() {
     await tapKey(tester, 'new-connection');
     await pickHost(tester, 'Linux');
     expect(f.container.read(routerProvider).state.matchedLocation, AppRoutes.terminal);
-    expect(f.container.read(terminalTabsProvider).tabs.single.host.name, 'Linux');
+    expect(f.container.read(terminalTabsProvider).tabs.single.host?.name, 'Linux');
     expect(f.rdp.options, isEmpty);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 

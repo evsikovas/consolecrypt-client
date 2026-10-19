@@ -420,6 +420,7 @@ async fn open_openssh_shell(
     Ok(OpenedShell {
         channel,
         session: None,
+        lifetime: None,
     })
 }
 
@@ -691,10 +692,7 @@ impl SshRuntime {
     /// Stop tunnels, close terminals, SFTP and pooled connections.
     pub(crate) async fn shutdown(&self) {
         self.tunnels.stop_all().await;
-        for t in self.terminals.list() {
-            let _ = self.terminals.close(t.id).await;
-            let _ = self.terminals.remove(t.id).await;
-        }
+        self.terminals.shutdown().await;
         let sftp: Vec<SftpEntry> = self.sftp.lock().await.drain().map(|(_, e)| e).collect();
         for e in sftp {
             let _ = e.client.close().await;

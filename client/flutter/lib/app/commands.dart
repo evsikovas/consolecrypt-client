@@ -7,8 +7,9 @@ import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
-import 'package:consolecrypt/hosts/host_picker.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
+import 'package:consolecrypt/terminal/terminal_target_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -112,10 +113,11 @@ final class AppCommandDispatcher {
   }
 
   Future<void> _newTab(BuildContext context) async {
-    final host = await showHostPicker(context, title: context.l10n.commandNewTabPickerTitle);
-    if (host == null) return;
-    await _ref.read(terminalTabsProvider.notifier).open(host);
-    _ref.read(routerProvider).go(AppRoutes.terminal);
+    final profile = _ref.read(activeProfileProvider)?.id;
+    final target = await showTerminalTargetPicker(context);
+    if (target == null || !context.mounted || !enabled || profile != _ref.read(activeProfileProvider)?.id) return;
+    final tab = await runWithFeedback(context, () => _ref.read(terminalTabsProvider.notifier).openTarget(target));
+    if (tab != null && enabled) _ref.read(routerProvider).go(AppRoutes.terminal);
   }
 }
 

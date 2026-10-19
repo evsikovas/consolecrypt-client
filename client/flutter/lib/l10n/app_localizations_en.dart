@@ -5473,7 +5473,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localAiDescription =>
-      'Install a compact model and run it on this computer. Chat and command suggestions work offline after installation.';
+      'Choose a model for this computer. Chat and command suggestions work offline after installation.';
 
   @override
   String get localAiModel => 'Model';
@@ -5523,7 +5523,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get localAiStop => 'Stop';
 
   @override
-  String get localAiRemove => 'Remove model and runtime';
+  String get localAiRemove => 'Remove selected model';
 
   @override
   String get localAiResourceHelp =>
@@ -5545,4 +5545,101 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get localAiStorageUnavailable =>
       'Cannot access local AI files. Check app data folder permissions and free disk space.';
+
+  @override
+  String localAiRamRecommendation(int ram) {
+    return 'Recommended total RAM: $ram GB. Speed depends on your hardware.';
+  }
+
+  @override
+  String get localAiModelsPreserved =>
+      'Switching models keeps other downloads. Installed models and your choice survive app updates.';
+
+  @override
+  String get localAiModelInstalled => 'Installed';
+
+  @override
+  String get localAiRuntimeMissing => 'The inference engine is missing. Repair it; downloaded models will be kept.';
+
+  @override
+  String get localAiBundledRuntimeMissing =>
+      'The app’s inference engine is unavailable. Reinstall the application; downloaded models will be kept.';
+
+  @override
+  String get localAiRepairRuntime => 'Repair engine';
+
+  @override
+  String get localAiInstallSelectedHelp =>
+      'Install the selected model to use local AI. Your local default stays enabled; requests will not switch to a cloud provider.';
+
+  @override
+  String get localAiTierLight => 'Light';
+
+  @override
+  String get localAiTierMedium => 'Medium';
+
+  @override
+  String get localAiTierStrong => 'Strong';
+
+  @override
+  String localAiModelRequirements(String size, int ram) {
+    return '$size download · $ram GB RAM recommended';
+  }
+
+  @override
+  String get localAiRecommended => 'Recommended for this computer’s total RAM';
+
+  @override
+  String localAiDetectedMemory(String size) {
+    return 'This computer: $size total RAM. The star is a suggestion; your selection stays unchanged.';
+  }
+
+  @override
+  String get localAiMetalHelp =>
+      'Apple Silicon uses Metal acceleration. Larger models need more memory and can respond more slowly.';
+
+  @override
+  String get localAiCpuHelp =>
+      'Windows and Intel Mac use the CPU. RAM guidance does not guarantee fast responses; larger models can be slow.';
+
+  @override
+  String localAiModelAttribution(String publisher, String license) {
+    return 'Model / GGUF: $publisher · License: $license';
+  }
+
+  @override
+  String get localAiModelNotices => 'Model sources and licenses';
+
+  @override
+  String get terminalLocalSearch => 'Search shells or SSH hosts';
+
+  @override
+  String get terminalLocalSection => 'Local shells';
+
+  @override
+  String get terminalLocalSshSection => 'SSH hosts';
+
+  @override
+  String get terminalLocalComputer => 'This computer';
+
+  @override
+  String get terminalLocalUnavailable => 'No local shells are available.';
+
+  @override
+  String get terminalLocalSandboxUnavailable => 'Local shells are unavailable in this sandboxed build.';
+
+  @override
+  String get terminalLocalRefresh => 'Refresh local shells';
+
+  @override
+  String get terminalLocalEmptyMessage => 'Open a local shell or connect to an SSH host in a new tab.';
+
+  @override
+  String get terminalLocalOpen => 'Open terminal';
+
+  @override
+  String get terminalLocalRestart => 'Restart shell';
+
+  @override
+  String get terminalLocalInsertOnly => 'Insert the command, review it, then press Enter in the local terminal.';
 }

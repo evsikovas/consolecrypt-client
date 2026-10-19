@@ -61,6 +61,7 @@ impl ShellOpener for EchoOpener {
         Ok(OpenedShell {
             channel,
             session: None,
+            lifetime: None,
         })
     }
 }
@@ -182,7 +183,7 @@ async fn open_write_resize_attach_and_exit() {
             reason: None
         }
     );
-    assert_eq!(*resizes.lock().unwrap(), vec![(120, 40)]);
+    assert_eq!(*resizes.lock().unwrap(), vec![(100, 30), (120, 40)]);
     assert!(matches!(
         m.write(id, b"x").await,
         Err(TerminalError::NotConnected(_))
@@ -258,4 +259,161 @@ async fn final_status_is_stored_without_subscribers() {
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
     panic!("status never became terminal: {:?}", m.status(id));
+}
+
+struct DelayedOpener {
+    release: Arc<tokio::sync::Notify>,
+    closed: Arc<AtomicBool>,
+    resizes: Resizes,
+}
+
+struct TestLifetime(Arc<AtomicBool>);
+impl ShellLifetime for TestLifetime {
+    fn close(&self) {
+        self.0.store(true, Ordering::Release);
+    }
+}
+
+#[async_trait]
+impl ShellOpener for DelayedOpener {
+    async fn open_shell(
+        &self,
+        _plan: &ConnectionPlan,
+        _pty: PtyRequest,
+    ) -> Result<OpenedShell, TerminalError> {
+        self.release.notified().await;
+        let (channel, mut remote) = ShellChannel::pair(64);
+        let resizes = self.resizes.clone();
+        let closed = self.closed.clone();
+        tokio::spawn(async move {
+            while let Some(input) = remote.inputs.recv().await {
+                match input {
+                    ShellInput::Resize { cols, rows } => resizes.lock().unwrap().push((cols, rows)),
+                    ShellInput::Close => {
+                        closed.store(true, Ordering::Release);
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+        });
+        Ok(OpenedShell {
+            channel,
+            session: None,
+            lifetime: Some(Arc::new(TestLifetime(self.closed.clone()))),
+        })
+    }
+}
+
+fn delayed_manager() -> (
+    TerminalManager,
+    Arc<tokio::sync::Notify>,
+    Arc<AtomicBool>,
+    Resizes,
+) {
+    let release = Arc::new(tokio::sync::Notify::new());
+    let closed = Arc::new(AtomicBool::new(false));
+    let resizes = Arc::new(StdMutex::new(Vec::new()));
+    let manager = TerminalManager::new(Arc::new(DelayedOpener {
+        release: release.clone(),
+        closed: closed.clone(),
+        resizes: resizes.clone(),
+    }));
+    (manager, release, closed, resizes)
+}
+
+#[tokio::test]
+async fn close_during_open_closes_late_native_process_and_never_reconnects() {
+    let (manager, release, closed, _) = delayed_manager();
+    let id = manager.spawn_open(plan(), TerminalSize::default());
+    manager.close(id).await.unwrap();
+    release.notify_one();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        while !closed.load(Ordering::Acquire) {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    assert!(manager.status(id).unwrap().is_terminal());
+    assert!(manager.write(id, b"must not run\r").await.is_err());
+}
+
+#[tokio::test]
+async fn pending_resize_is_installed_and_shutdown_fences_late_opens() {
+    let (manager, release, _, resizes) = delayed_manager();
+    let id = manager.spawn_open(plan(), TerminalSize::default());
+    manager
+        .resize(
+            id,
+            TerminalSize {
+                cols: 137,
+                rows: 49,
+            },
+        )
+        .await
+        .unwrap();
+    release.notify_one();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        while resizes.lock().unwrap().is_empty() {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(*resizes.lock().unwrap(), vec![(137, 49)]);
+    manager.shutdown().await;
+    let late = manager.spawn_open(plan(), TerminalSize::default());
+    assert!(manager.status(late).unwrap().is_terminal());
+    assert!(manager
+        .open_local("macos:zsh", TerminalSize::default())
+        .await
+        .is_err());
+}
+
+#[tokio::test]
+async fn shutdown_between_preparation_and_registration_cannot_publish_connected() {
+    let (manager, _) = manager(false);
+    // Models the shared-session open path after SSH returned its channel but
+    // before registration. The old closing=false snapshot is intentionally stale.
+    let session = Arc::new(Session {
+        id: uuid::Uuid::new_v4(),
+        target: TerminalTarget::Ssh {
+            host_id: ObjectId::new(),
+        },
+        title: "fixture".into(),
+        status: watch::channel(TerminalStatus::Connecting).0,
+        output: broadcast::channel(1).0,
+        inner: Mutex::new(Inner {
+            writer: None,
+            session: None,
+            lifetime: None,
+            closing: false,
+            size: TerminalSize::default(),
+            scrollback: Scrollback::new(1024),
+            tracker: CommandTracker::new(),
+        }),
+    });
+    let (channel, mut remote) = ShellChannel::pair(1);
+    let closed = Arc::new(AtomicBool::new(false));
+    manager.begin_shutdown();
+    manager.register(session.clone());
+    let installed = TerminalManager::install(
+        &session,
+        OpenedShell {
+            channel,
+            session: None,
+            lifetime: Some(Arc::new(TestLifetime(closed.clone()))),
+        },
+        &manager.events,
+    )
+    .await;
+    assert!(installed.is_none());
+    assert!(closed.load(Ordering::Acquire));
+    assert!(matches!(
+        remote.inputs.recv().await,
+        Some(ShellInput::Close)
+    ));
+    assert!(manager.status(session.id).unwrap().is_terminal());
+    assert!(manager.write(session.id, b"must not run\r").await.is_err());
 }

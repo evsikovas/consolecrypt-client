@@ -10,13 +10,14 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
-import 'package:consolecrypt/hosts/host_picker.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
+import 'package:consolecrypt/terminal/terminal_target_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,8 +28,15 @@ class TerminalScreen extends ConsumerWidget {
   const TerminalScreen({super.key});
 
   Future<void> _newTab(BuildContext context, WidgetRef ref) async {
-    final host = await showHostPicker(context, title: context.l10n.commandNewTabPickerTitle);
-    if (host != null) await ref.read(terminalTabsProvider.notifier).open(host);
+    final profile = ref.read(activeProfileProvider)?.id;
+    final target = await showTerminalTargetPicker(context);
+    if (target == null ||
+        !context.mounted ||
+        profile != ref.read(activeProfileProvider)?.id ||
+        ref.read(appStageProvider) != AppStage.unlocked) {
+      return;
+    }
+    await runWithFeedback(context, () => ref.read(terminalTabsProvider.notifier).openTarget(target));
   }
 
   @override
@@ -43,13 +51,15 @@ class TerminalScreen extends ConsumerWidget {
         child: EmptyState(
           icon: Icons.terminal_rounded,
           title: l10n.terminalEmptyTitle,
-          message: l10n.terminalEmptyMessage(commandFor(AppCommandId.newTerminalTab).shortcutLabel),
+          message: AppPlatform.isMobile
+              ? l10n.terminalEmptyMessage(commandFor(AppCommandId.newTerminalTab).shortcutLabel)
+              : l10n.terminalLocalEmptyMessage,
           action: GlassButton.prominent(
             key: const ValueKey('terminal-connect'),
             size: GlassControlSize.lg,
             onPressed: () => _newTab(context, ref),
             icon: Icons.add_rounded,
-            label: l10n.terminalConnectToHost,
+            label: AppPlatform.isMobile ? l10n.terminalConnectToHost : l10n.terminalLocalOpen,
           ),
         ),
       );
@@ -107,9 +117,9 @@ class _TabStrip extends ConsumerWidget {
       tabs: [
         for (final (i, tab) in state.tabs.indexed)
           GlassTab(
-            key: ValueKey('tab-${tab.host.name}-$i'),
+            key: ValueKey('tab-${tab.target.label}-$i'),
             title: tab.title,
-            subtitle: tab.host.username,
+            subtitle: tab.isLocal ? context.l10n.terminalLocalComputer : tab.host?.username,
             state: _state(tab),
             tooltip: switch (_state(tab)) {
               GlassTabState.connected => strings.tabConnected,
@@ -154,20 +164,26 @@ class _SessionToolbar extends ConsumerWidget {
           style: GlassIconButtonStyle.plain,
           size: GlassSizes.tab,
           iconSize: GlassSizes.iconRow,
-          onPressed: () => showCommandPalette(context, selectedText: tab.selectedText, hostId: tab.host.id),
+          onPressed: () => showCommandPalette(
+            context,
+            selectedText: tab.selectedText,
+            hostId: tab.host?.id,
+            shellTarget: tab.isLocal ? tab.target.shellType : null,
+          ),
         ),
-        GlassIconButton(
-          key: const ValueKey('terminal-sftp'),
-          icon: Icons.folder_copy_rounded,
-          tooltip: l10n.navSftp,
-          style: GlassIconButtonStyle.plain,
-          size: GlassSizes.tab,
-          iconSize: GlassSizes.iconRow,
-          onPressed: () async {
-            await ref.read(sftpControllerProvider.notifier).connect(tab.host);
-            if (context.mounted) context.go(AppRoutes.sftp);
-          },
-        ),
+        if (tab.host case final host?)
+          GlassIconButton(
+            key: const ValueKey('terminal-sftp'),
+            icon: Icons.folder_copy_rounded,
+            tooltip: l10n.navSftp,
+            style: GlassIconButtonStyle.plain,
+            size: GlassSizes.tab,
+            iconSize: GlassSizes.iconRow,
+            onPressed: () async {
+              await ref.read(sftpControllerProvider.notifier).connect(host);
+              if (context.mounted) context.go(AppRoutes.sftp);
+            },
+          ),
         // TODO(client/ui): split panes (horizontal/vertical) — needs a layout model for
         // tabs; next: after M4 when sessions are real.
         GlassIconButton(
@@ -224,7 +240,7 @@ class _TerminalCard extends ConsumerWidget {
                 children: [
                   for (final tab in state.tabs)
                     TerminalPane(
-                      key: ValueKey(tab.sessionId),
+                      key: ValueKey('${tab.sessionId.value}:${tab.renderGeneration}'),
                       tab: tab,
                       active: identical(tab, active) && docked == null,
                     ),
@@ -382,7 +398,7 @@ class _SessionBanners extends ConsumerWidget {
                   key: const ValueKey('reconnect'),
                   icon: Icons.refresh_rounded,
                   onPressed: () => controller.reconnect(tab),
-                  label: l10n.terminalReconnect,
+                  label: tab.isLocal ? l10n.terminalLocalRestart : l10n.terminalReconnect,
                 ),
                 GlassButton.plain(onPressed: () => controller.close(tab), label: l10n.commonClose),
               ],

@@ -51,6 +51,7 @@ jobs:
           python3 client/scripts/github-build-number.py macos
       - name: Regression checks
         run: |
+          cargo test --manifest-path client/rust/Cargo.toml --locked -p cc-terminal-core --lib
           python3 -m unittest discover -s client/scripts -p 'test_*version.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_github_build_number.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_release_identity.py' -v

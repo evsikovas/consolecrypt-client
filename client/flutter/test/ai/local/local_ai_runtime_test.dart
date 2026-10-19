@@ -42,7 +42,7 @@ class ModelFixtureDownloader extends LocalAiDownloader {
     artifacts.add(artifact);
     await cache.create(recursive: true);
     final model = File('${cache.path}/fixture-model');
-    await model.writeAsString('fixture returned by verified downloader');
+    await model.writeAsString(artifact.filename);
     onProgress?.call(artifact.bytes, artifact.bytes);
     return model;
   }
@@ -306,6 +306,10 @@ void main() {
     final assertion = expectLater(first, throwsA(isA<LocalAiDownloadCancelled>()));
     await download.entered.future;
     expect(download.calls, 1);
+    expect(
+      () => runtime.selectModel(LocalAiCatalog.qwen4B.id),
+      throwsA(isA<LocalAiException>().having((e) => e.code, 'code', 'operation_in_progress')),
+    );
     runtime.cancelInstall();
     await assertion;
     expect(runtime.status.phase, LocalAiPhase.notInstalled);
@@ -378,6 +382,15 @@ void main() {
 
   test('macOS install downloads only the model; uninstall preserves its signed helper', () async {
     final download = ModelFixtureDownloader();
+    const actual = LocalAiCatalog.model;
+    final model = LocalAiModel(
+      id: actual.id,
+      label: actual.label,
+      url: actual.url,
+      filename: actual.filename,
+      bytes: utf8.encode(actual.filename).length,
+      sha256: sha256.convert(utf8.encode(actual.filename)).toString(),
+    );
     final contents = Directory('${root.path}/Fixture.app/Contents');
     final bundle = Directory('${contents.path}/Helpers/LocalAI/macArm64')..createSync(recursive: true);
     final resources = Directory('${contents.path}/Resources/LocalAI/macArm64')..createSync(recursive: true);
@@ -396,21 +409,22 @@ void main() {
       platform: LocalAiPlatform.macArm64,
       bundledRuntimeDirectory: bundle,
       downloader: download,
+      models: [model],
     );
     final progress = <LocalAiRuntimeStatus>[];
     final subscription = runtime.statuses.listen(progress.add);
     await runtime.install();
-    expect(download.artifacts, [LocalAiCatalog.model]);
+    expect(download.artifacts, [model]);
     expect(runtime.status.isInstalled, isTrue);
     expect(
       progress
-          .where((s) => s.phase == LocalAiPhase.installing)
-          .every((s) => s.totalBytes == LocalAiCatalog.model.bytes),
+          .where((s) => s.phase == LocalAiPhase.installing && s.totalBytes > 0)
+          .every((s) => s.totalBytes == model.bytes),
       isTrue,
     );
     await runtime.uninstall();
     expect(runtime.status.isInstalled, isFalse);
-    expect(Directory('${support.path}/models').existsSync(), isFalse);
+    expect(File('${support.path}/models/${LocalAiCatalog.model.filename}').existsSync(), isFalse);
     expect(executable.readAsStringSync(), 'fixture executable');
     expect(metadata.existsSync(), isTrue);
     await runtime.dispose();

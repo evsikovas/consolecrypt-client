@@ -2,8 +2,8 @@
 """Exercise the production Swift exporter using generated, nonsecret bytes.
 
 Does not launch ConsoleCrypt, show dialogs, alter quarantine or use Keychain.
-The App Sandbox/save-panel interaction is checked separately in an isolated
-test app; these tests cover integrity and exclusive writes on real files.
+The desktop process policy is checked separately in an isolated test app;
+these tests cover integrity and exclusive writes on real files.
 """
 from pathlib import Path
 import plistlib
@@ -74,13 +74,14 @@ print("Verified macOS export: streaming, checksum, existing file, source/destina
                 result = subprocess.run(command, cwd=root, capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_executable_consent_is_present_without_disabling_sandbox(self):
+    def test_full_shell_policy_keeps_hardened_runtime_and_verified_update_export(self):
         for name in ["Release.entitlements", "DebugProfile.entitlements"]:
             with (RUNNER / name).open("rb") as file:
                 settings = plistlib.load(file)
-            self.assertIs(settings["com.apple.security.app-sandbox"], True)
-            self.assertIs(settings["com.apple.security.files.user-selected.read-write"], True)
-            self.assertIs(settings["com.apple.security.files.user-selected.executable"], True)
+            self.assertNotIn("com.apple.security.app-sandbox", settings)
+            self.assertNotIn("com.apple.security.inherit", settings)
+            self.assertNotIn("com.apple.security.cs.disable-library-validation", settings)
+            self.assertEqual(settings.get("com.apple.security.cs.allow-jit", False), name == "DebugProfile.entitlements")
         bridge = (RUNNER / "UpdateBridge.swift").read_text()
         self.assertNotIn("removexattr", bridge)
         self.assertNotIn("com.apple.quarantine", bridge)

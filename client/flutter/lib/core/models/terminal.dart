@@ -1,6 +1,81 @@
 import 'dart:typed_data';
 
+import 'package:consolecrypt/core/models/host.dart';
 import 'package:consolecrypt/core/models/ids.dart';
+import 'package:consolecrypt/core/models/snippet.dart';
+
+/// Runtime destinations never become inventory objects or sync to the vault.
+sealed class TerminalTarget {
+  const TerminalTarget();
+  String get label;
+  String get detail;
+  Host? get sshHost;
+  SnippetType? get shellType;
+}
+
+final class SshTerminalTarget extends TerminalTarget {
+  const SshTerminalTarget(this.host);
+  final Host host;
+  @override
+  String get label => host.name;
+  @override
+  String get detail => host.address;
+  @override
+  Host get sshHost => host;
+  @override
+  SnippetType? get shellType => null; // Core resolves saved SSH shell metadata.
+}
+
+final class LocalTerminalTarget extends TerminalTarget {
+  const LocalTerminalTarget(this.profile);
+  final LocalShellProfile profile;
+  @override
+  String get label => profile.label;
+  @override
+  String get detail => profile.distribution ?? profile.shell;
+  @override
+  Host? get sshHost => null;
+  @override
+  SnippetType get shellType => terminalShellType(profile.shell) ?? SnippetType.shell;
+}
+
+SnippetType? terminalShellType(String? shell) {
+  final name = shell?.split(RegExp(r'[/\\]')).last.toLowerCase().replaceFirst(RegExp(r'\.exe$'), '');
+  return switch (name) {
+    'zsh' => SnippetType.zsh,
+    'bash' => SnippetType.bash,
+    'pwsh' || 'powershell' => SnippetType.powershell,
+    'cmd' => SnippetType.cmd,
+    'sh' || 'posix' => SnippetType.shell,
+    _ => null,
+  };
+}
+
+final class LocalShellProfile {
+  const LocalShellProfile({
+    required this.id,
+    required this.kind,
+    required this.label,
+    required this.shell,
+    this.distribution,
+  });
+  final String id, kind, label, shell;
+  final String? distribution;
+}
+
+final class LocalShellProfiles {
+  const LocalShellProfiles({this.profiles = const [], this.unavailableReason});
+  final List<LocalShellProfile> profiles;
+  final String? unavailableReason;
+}
+
+/// A reset and its snapshot share the output queue with ordinary data. This
+/// prevents bytes buffered before a reattach from painting after the reset.
+final class TerminalOutputFrame {
+  const TerminalOutputFrame(this.data, {this.reset = false});
+  final Uint8List data;
+  final bool reset;
+}
 
 /// PTY size in character cells.
 final class TerminalSize {
@@ -93,11 +168,12 @@ final class TerminalExited extends TerminalEvent {
 /// A live session: byte streams in both directions (`write` goes through
 /// `TerminalService.write`).
 final class TerminalSessionHandle {
-  const TerminalSessionHandle({required this.id, required this.output, required this.events});
+  const TerminalSessionHandle({required this.id, required this.output, required this.events, this.framedOutput});
 
   final TerminalSessionId id;
 
   /// Raw PTY output bytes (UTF-8, possibly split mid-sequence).
   final Stream<Uint8List> output;
+  final Stream<TerminalOutputFrame>? framedOutput;
   final Stream<TerminalEvent> events;
 }

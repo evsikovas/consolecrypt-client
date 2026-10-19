@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:consolecrypt/core/bridge/startup_error_app.dart';
+import 'package:consolecrypt/core/storage/app_storage_paths.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -12,4 +13,14 @@ void main() {
     expect(details.contains(marker), isFalse);
     expect(details, contains('Unexpected core failure'));
   });
+
+  for (final failure in AppStorageFailure.values) {
+    testWidgets('storage startup ${failure.name} is explicit without raw OS paths', (tester) async {
+      await tester.pumpWidget(StartupErrorApp(error: AppStorageException(failure)));
+      final details = tester.widget<SelectableText>(find.byType(SelectableText)).data!;
+      expect(details, AppStorageException(failure).message);
+      expect(find.textContaining('Your data was not changed.'), findsOneWidget);
+      expect(find.textContaining('Reinstall the app'), findsNothing);
+    });
+  }
 }

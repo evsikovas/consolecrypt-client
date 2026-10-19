@@ -1,5 +1,6 @@
 import 'package:consolecrypt/ai/local/local_ai_runtime.dart';
 import 'package:consolecrypt/ai/local_ai_providers.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -7,6 +8,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -19,8 +21,14 @@ class LocalAiSettings extends ConsumerWidget {
     final runtime = ref.watch(localAiRuntimeProvider);
     final status = ref.watch(localAiStatusProvider).value ?? runtime.status;
     final local = ref.watch(localSettingsProvider).value ?? const LocalSettings();
+    final hardware = ref.watch(localAiHardwareProvider).value;
     final l = context.l10n;
     final busy = const {LocalAiPhase.installing, LocalAiPhase.starting, LocalAiPhase.stopping}.contains(status.phase);
+    String tier(LocalAiModel model) => switch (model.tier) {
+      LocalAiTier.light => l.localAiTierLight,
+      LocalAiTier.medium => l.localAiTierMedium,
+      LocalAiTier.strong => l.localAiTierStrong,
+    };
     Future<void> perform(Future<void> Function() action) async {
       try {
         await action();
@@ -51,22 +59,101 @@ class LocalAiSettings extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DropdownButtonFormField<String>(
+            KeyedSubtree(
               key: const ValueKey('local-ai-model'),
-              initialValue: runtime.selectedModel.id,
-              isExpanded: true,
-              decoration: InputDecoration(labelText: l.localAiModel),
-              items: [
-                for (final model in LocalAiCatalog.models) DropdownMenuItem(value: model.id, child: Text(model.label)),
-              ],
-              onChanged: busy
-                  ? null
-                  : (id) {
-                      if (id != null) perform(() => runtime.selectModel(id));
-                    },
+              child: DropdownButtonFormField<String>(
+                key: ValueKey((runtime.selectedModel.id, status.selectionRevision)),
+                initialValue: runtime.selectedModel.id,
+                isExpanded: true,
+                itemHeight: 64,
+                selectedItemBuilder: (_) => [
+                  for (final model in LocalAiCatalog.models)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('${tier(model)} · ${model.label}', overflow: TextOverflow.ellipsis),
+                    ),
+                ],
+                decoration: InputDecoration(labelText: l.localAiModel),
+                items: [
+                  for (final model in LocalAiCatalog.models)
+                    DropdownMenuItem(
+                      value: model.id,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('${tier(model)} · ${model.label}', overflow: TextOverflow.ellipsis),
+                                Text(
+                                  l.localAiModelRequirements(formatBytes(l, model.bytes), model.recommendedRamGiB),
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (status.installedModelIds.contains(model.id))
+                            Tooltip(message: l.localAiModelInstalled, child: const Icon(Icons.check_rounded, size: 18)),
+                          if (hardware?.recommendedModel?.id == model.id)
+                            Tooltip(
+                              message: l.localAiRecommended,
+                              child: Icon(
+                                Icons.star_rounded,
+                                key: ValueKey('local-ai-recommended-${model.id}'),
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 20,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+                onChanged: busy
+                    ? null
+                    : (id) {
+                        if (id != null) perform(() => runtime.selectModel(id));
+                      },
+              ),
             ),
             const SizedBox(height: 12),
             Text(l.localAiDownloadSize(formatBytes(l, runtime.selectedModel.bytes))),
+            const SizedBox(height: 4),
+            Text(l.localAiRamRecommendation(runtime.selectedModel.recommendedRamGiB)),
+            if (hardware?.totalMemoryBytes != null) ...[
+              const SizedBox(height: 4),
+              Text(l.localAiDetectedMemory(formatBytes(l, hardware!.totalMemoryBytes!))),
+            ],
+            const SizedBox(height: 4),
+            Text(
+              hardware?.usesMetal == true ? l.localAiMetalHelp : l.localAiCpuHelp,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l.localAiModelAttribution(runtime.selectedModel.publisher, runtime.selectedModel.license),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            GlassButton.plain(
+              key: const ValueKey('local-ai-notices'),
+              label: l.localAiModelNotices,
+              onPressed: () => perform(() async {
+                final notices = await rootBundle.loadString('assets/licenses/LOCAL-AI-MODEL-NOTICES.txt');
+                if (!context.mounted) return;
+                await showAppDialog<void>(
+                  context,
+                  builder: (dialogContext) => GlassDialog(
+                    title: l.localAiModelNotices,
+                    width: 640,
+                    content: SizedBox(height: 360, child: SingleChildScrollView(child: SelectableText(notices))),
+                    primaryAction: GlassButton.prominent(
+                      label: l.commonClose,
+                      onPressed: () => closeDialog<void>(dialogContext),
+                    ),
+                  ),
+                );
+              }),
+            ),
             const SizedBox(height: 8),
             Text(label, key: const ValueKey('local-ai-status')),
             if (status.phase == LocalAiPhase.installing) ...[
@@ -81,8 +168,19 @@ class LocalAiSettings extends ConsumerWidget {
                 'install_failed' => l.localAiInstallFailed,
                 'installed_files_changed' => l.localAiFilesChanged,
                 'local_storage_unavailable' => l.localAiStorageUnavailable,
+                'bundled_runtime_unavailable' => l.localAiBundledRuntimeMissing,
+                'runtime_not_installed' =>
+                  AppPlatform.isMacOS ? l.localAiBundledRuntimeMissing : l.localAiRuntimeMissing,
                 _ => l.localAiStartFailed,
               }, style: Theme.of(context).textTheme.bodySmall),
+            ],
+            if (status.hasInstalledModels && !status.isInstalled && local.preferDeviceLocalAi) ...[
+              const SizedBox(height: 8),
+              Text(l.localAiInstallSelectedHelp, key: const ValueKey('local-ai-selected-missing')),
+            ],
+            if (status.isInstalled && !status.runtimeInstalled) ...[
+              const SizedBox(height: 8),
+              Text(AppPlatform.isMacOS ? l.localAiBundledRuntimeMissing : l.localAiRuntimeMissing),
             ],
             CheckboxListTile(
               key: const ValueKey('local-ai-default'),
@@ -112,7 +210,14 @@ class LocalAiSettings extends ConsumerWidget {
                     onPressed: busy || status.phase == LocalAiPhase.unsupported ? null : () => perform(runtime.install),
                   )
                 else ...[
-                  if (status.phase == LocalAiPhase.ready)
+                  if (!status.runtimeInstalled && !AppPlatform.isMacOS)
+                    GlassButton(
+                      key: const ValueKey('local-ai-repair-runtime'),
+                      label: l.localAiRepairRuntime,
+                      icon: Icons.download_rounded,
+                      onPressed: busy ? null : () => perform(runtime.install),
+                    )
+                  else if (status.phase == LocalAiPhase.ready)
                     GlassButton(
                       key: const ValueKey('local-ai-stop'),
                       label: l.localAiStop,
@@ -124,7 +229,7 @@ class LocalAiSettings extends ConsumerWidget {
                       key: const ValueKey('local-ai-start'),
                       label: l.localAiStart,
                       icon: Icons.play_arrow_rounded,
-                      onPressed: busy
+                      onPressed: busy || !status.runtimeInstalled
                           ? null
                           : () => perform(() async {
                               await runtime.ensureReady();
@@ -139,6 +244,8 @@ class LocalAiSettings extends ConsumerWidget {
                 ],
               ],
             ),
+            const SizedBox(height: 8),
+            Text(l.localAiModelsPreserved, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 8),
             Text(l.localAiResourceHelp, style: Theme.of(context).textTheme.bodySmall),
           ],

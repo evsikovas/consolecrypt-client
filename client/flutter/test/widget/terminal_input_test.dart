@@ -208,7 +208,7 @@ void main() {
     final (container, first) = await openTerminal(tester);
     final firstOutput = <String>[];
     first.terminal.onOutput = firstOutput.add;
-    final second = await container.read(terminalTabsProvider.notifier).open(first.host);
+    final second = await container.read(terminalTabsProvider.notifier).open(first.host!);
     final secondOutput = <String>[];
     second.terminal.onOutput = secondOutput.add;
     await settle(tester);

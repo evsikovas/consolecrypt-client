@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:consolecrypt/core/bridge/effective_config.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_backend.dart';
+import 'package:consolecrypt/core/bridge/terminal_attachment_relay.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
@@ -19,23 +20,24 @@ import 'package:flutter/services.dart';
 enum _PromptKind { hostKey, password, passphrase }
 
 final class _Session {
-  _Session(this.id, this.hostId, this.size);
+  _Session(this.id, this.target, this.size);
 
   final TerminalSessionId id;
-  final ObjectId hostId;
+  final TerminalTarget target;
+  ObjectId? get hostId => target.sshHost?.id;
   TerminalSize size;
 
   /// Single-subscription: buffers output until the tab subscribes and stays
   /// the same across reconnects. Closed in [RustTerminalService.close].
   // ignore: close_sinks
-  final output = StreamController<Uint8List>();
+  final output = StreamController<TerminalOutputFrame>();
   // ignore: close_sinks
   final events = StreamController<TerminalEvent>();
 
   String? rustId;
   // Cancelled on reconnect / close.
   // ignore: cancel_subscriptions
-  StreamSubscription<rs_ssh.TerminalFrame>? frames;
+  TerminalAttachmentRelay? frames;
   bool connecting = false;
   bool connected = false;
   bool closed = false;
@@ -51,7 +53,7 @@ final class _Session {
 /// PTY shells over app-core terminals. Host-key and password/passphrase
 /// prompts raised while a session connects are routed to that session's
 /// event stream and answered through `answerHostKey` / `answerPassword`.
-final class RustTerminalService implements TerminalService {
+final class RustTerminalService implements TerminalService, LocalTerminalService {
   RustTerminalService(this._hub) {
     _hub.onPrompt = _routePrompt;
   }
@@ -68,10 +70,48 @@ final class RustTerminalService implements TerminalService {
     if (!_hub.hosts.value.any((h) => h.id == hostId)) {
       throw const AppException(AppErrorCode.notFound, 'Host not found', reason: AppErrorReason.hostNotFound);
     }
-    final s = _Session(TerminalSessionId.generate(), hostId, size);
+    final host = _hub.hosts.value.firstWhere((h) => h.id == hostId);
+    return _open(SshTerminalTarget(host), size);
+  }
+
+  @override
+  Future<LocalShellProfiles> listLocalProfiles() async {
+    final j = decodeObject(await guard(rs_ssh.terminalLocalProfiles));
+    return LocalShellProfiles(
+      profiles: [
+        for (final p in (j['profiles'] as List? ?? const []).cast<Map<String, dynamic>>())
+          LocalShellProfile(
+            id: p['id'] as String,
+            kind: p['kind'] as String,
+            label: p['label'] as String,
+            shell: p['shell'] as String,
+            distribution: p['distribution'] as String?,
+          ),
+      ],
+      unavailableReason: j['unavailable_reason'] as String?,
+    );
+  }
+
+  @override
+  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size}) async {
+    final profiles = await listLocalProfiles();
+    final profile = profiles.profiles.where((p) => p.id == profileId).firstOrNull;
+    if (profile == null) {
+      throw const AppException(AppErrorCode.notFound, 'Local shell is unavailable');
+    }
+    return _open(LocalTerminalTarget(profile), size);
+  }
+
+  TerminalSessionHandle _open(TerminalTarget target, TerminalSize size) {
+    final s = _Session(TerminalSessionId.generate(), target, size);
     _sessions[s.id] = s;
     unawaited(_connect(s));
-    return TerminalSessionHandle(id: s.id, output: s.output.stream, events: s.events.stream);
+    return TerminalSessionHandle(
+      id: s.id,
+      output: s.output.stream.map((f) => f.data),
+      framedOutput: s.output.stream,
+      events: s.events.stream,
+    );
   }
 
   Future<void> _connect(_Session s, {bool reconnect = false}) async {
@@ -82,8 +122,10 @@ final class RustTerminalService implements TerminalService {
       ..passwordAttempts = 0;
     String? route;
     try {
-      route =
-          (decodeObject(await guard(() => rs_inv.hostsDescribeConnection(hostId: s.hostId.value))))['route'] as String?;
+      if (s.hostId case final hostId?) {
+        route =
+            (decodeObject(await guard(() => rs_inv.hostsDescribeConnection(hostId: hostId.value))))['route'] as String?;
+      }
     } on AppException {
       route = null;
     }
@@ -95,7 +137,20 @@ final class RustTerminalService implements TerminalService {
     );
     try {
       final info = decodeObject(
-        await guard(() => rs_ssh.terminalOpen(hostId: s.hostId.value, cols: s.size.columns, rows: s.size.rows)),
+        await guard(
+          () => switch (s.target) {
+            SshTerminalTarget(:final host) => rs_ssh.terminalOpen(
+              hostId: host.id.value,
+              cols: s.size.columns,
+              rows: s.size.rows,
+            ),
+            LocalTerminalTarget(:final profile) => rs_ssh.terminalOpenLocal(
+              profileId: profile.id,
+              cols: s.size.columns,
+              rows: s.size.rows,
+            ),
+          },
+        ),
       );
       final rustId = info['id']! as String;
       if (s.closed) {
@@ -108,23 +163,11 @@ final class RustTerminalService implements TerminalService {
       s.event(const TerminalStateChanged(SessionConnectionState.connected));
       final title = info['title'] as String?;
       if (title != null && title.isNotEmpty) s.event(TerminalTitleChanged(title));
-      await s.frames?.cancel();
-      s.frames = rs_ssh
-          .terminalAttach(terminalId: rustId)
-          .listen(
-            (f) {
-              if (!s.closed && s.rustId == rustId) _onFrame(s, f);
-            },
-            onError: (Object e) {
-              if (!s.closed && s.rustId == rustId) _disconnected(s, toAppException(e).message);
-            },
-            onDone: () {
-              if (!s.closed && s.rustId == rustId && s.connected) _disconnected(s, null);
-            },
-          );
+      // A resize may have arrived while native spawn/connect was pending.
+      await resize(s.id, s.size);
+      if (!s.closed && s.rustId == rustId) _attach(s, rustId);
     } on AppException catch (e) {
-      if (e.code == AppErrorCode.hostKeyChanged) {
-        // Possible MITM: a hard failure the UI never offers to accept.
+      if (e.code == AppErrorCode.hostKeyChanged && s.hostId != null) {
         s.event(
           TerminalHostKeyPrompt(
             HostKeyInfo(hostPattern: _hostPattern(s), keyType: '', fingerprintSha256: '', changed: true),
@@ -138,6 +181,26 @@ final class RustTerminalService implements TerminalService {
         ..promptRequest = null
         ..promptKind = null;
     }
+  }
+
+  void _attach(_Session s, String rustId) {
+    unawaited(s.frames?.cancel());
+    bool current() => !s.closed && s.rustId == rustId;
+    s.frames = TerminalAttachmentRelay(
+      attach: () => rs_ssh.terminalAttach(terminalId: rustId),
+      onOutput: (frame) {
+        if (current()) s.output.add(frame);
+      },
+      onStatus: (frame) {
+        if (current()) _onFrame(s, frame);
+      },
+      onError: (error) {
+        if (current()) _disconnected(s, toAppException(error).message);
+      },
+      onDone: () {
+        if (current() && s.connected) _disconnected(s, null);
+      },
+    )..start();
   }
 
   String _hostPattern(_Session s) {
@@ -154,10 +217,10 @@ final class RustTerminalService implements TerminalService {
     jumpProfiles: _hub.jumpProfiles.value,
   );
 
-  void _onFrame(_Session s, rs_ssh.TerminalFrame f) {
+  void _onFrame(_Session s, rs_ssh.TerminalFrame f, {bool reset = false}) {
     switch (f.kind) {
       case rs_ssh.TerminalFrameKind.data:
-        if (f.data.isNotEmpty && !s.closed) s.output.add(f.data);
+        if ((f.data.isNotEmpty || reset) && !s.closed) s.output.add(TerminalOutputFrame(f.data, reset: reset));
       case rs_ssh.TerminalFrameKind.lagged:
         break;
       case rs_ssh.TerminalFrameKind.closed:
@@ -183,10 +246,10 @@ final class RustTerminalService implements TerminalService {
       _ => (null, const <Object?, Object?>{}),
     };
     if (kind == null) return false;
-    final connecting = _sessions.values.where((s) => s.connecting && !s.closed).toList();
+    final connecting = _sessions.values.where((s) => s.hostId != null && s.connecting && !s.closed).toList();
     if (connecting.isEmpty) return false;
     final hostId = body['host_id'] as String?;
-    final s = connecting.where((s) => s.hostId.value == hostId).firstOrNull ?? connecting.first;
+    final s = connecting.where((s) => s.hostId?.value == hostId).firstOrNull ?? connecting.first;
     s
       ..promptRequest = body['request_id']! as String
       ..promptKind = kind;

@@ -320,7 +320,7 @@ impl AppCore {
                 Some(h)
             }
             None => match terminal {
-                Some(t) => Some(backend.terminal_host(t)?),
+                Some(t) => backend.terminal_host(t)?,
                 None => None,
             },
         };
@@ -591,6 +591,7 @@ impl AppCore {
         let opts = AskOptions {
             host_id,
             include_terminal: context.include_terminal,
+            shell_target: context.shell_target,
         };
         let (request_id, token) = ai.register_request();
         let (tx, rx) = mpsc::channel(64);
@@ -906,7 +907,7 @@ impl AppCore {
         let tid = parse_terminal(&terminal_id)?;
         let a = ai.take_approval(&token)?;
         let backend = ai.backend();
-        if backend.terminal_host(tid)? != a.host_id {
+        if backend.terminal_host(tid)? != Some(a.host_id) {
             return Err(AppError::ApprovalRequired(
                 "the command was approved for another host".into(),
             ));
