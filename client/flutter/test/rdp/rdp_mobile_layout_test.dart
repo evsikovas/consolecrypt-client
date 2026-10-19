@@ -15,6 +15,7 @@ import 'package:consolecrypt/rdp/rdp_service.dart';
 import 'package:consolecrypt/rdp/rdp_view.dart';
 import 'package:consolecrypt/rdp/rdp_window.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' as flutter_material;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,9 +33,7 @@ void main() {
       addTearDown(backend.dispose);
       setTestLocale(backend, _captureLanguage == 'en' ? AppLocale.en : AppLocale.ru);
       await backend.debugSignInDemoAndUnlock();
-      if (_capture) {
-        await backend.settings.updateLocal(backend.settings.currentLocal.copyWith(themeMode: AppThemeMode.dark));
-      }
+      await backend.settings.updateLocal(backend.settings.currentLocal.copyWith(themeMode: AppThemeMode.dark));
       final service = FakeRdpService();
       if (_capture) {
         service.nextPoll = RdpPollResult(status: const RdpStatus(RdpPhase.connected), frame: _demoFrame());
@@ -76,7 +75,9 @@ void main() {
       expect(find.byKey(const ValueKey('mobile-navigation')), findsOneWidget);
       expect(tester.widget<GlassIconButton>(find.byKey(const ValueKey('rdp-secure-attention'))).icon, Icons.security);
       final viewState = tester.state(find.byType(RdpView));
+      _expectVisibleControlIcons(tester);
       await tapKey(tester, 'rdp-touchpad-toggle');
+      _expectVisibleControlIcons(tester);
       if (_capture && size.width < size.height) await _captureWorkspace(tester, 'portrait-controls');
       await tapKey(tester, 'rdp-mobile-keyboard');
       expect(tester.testTextInput.hasAnyClients, isTrue);
@@ -85,6 +86,7 @@ void main() {
       tester.view.padding = const FakeViewPadding(top: 24);
       await settle(tester);
       _expectKeyboardWorkspace(tester, size);
+      _expectVisibleControlIcons(tester);
       if (_capture) {
         await _captureWorkspace(tester, size.width < size.height ? 'portrait-keyboard' : 'landscape-keyboard');
       }
@@ -306,6 +308,22 @@ RdpFrame _demoFrame() {
     }
   }
   return RdpFrame(sequence: 1, width: width, height: height, rgba: pixels);
+}
+
+void _expectVisibleControlIcons(WidgetTester tester) {
+  final controls = find.byKey(const ValueKey('rdp-mobile-controls'));
+  final background = tester.widget<flutter_material.Material>(controls).color!;
+  final icons = find.descendant(of: controls, matching: find.byType(flutter_material.Icon));
+  expect(icons, findsAtLeastNWidgets(3));
+  for (final element in icons.evaluate()) {
+    final icon = element.widget as flutter_material.Icon;
+    final color = icon.color ?? flutter_material.IconTheme.of(element).color!;
+    final foregroundLuminance = Color.alphaBlend(color, background).computeLuminance();
+    final backgroundLuminance = background.computeLuminance();
+    final lighter = foregroundLuminance > backgroundLuminance ? foregroundLuminance : backgroundLuminance;
+    final darker = foregroundLuminance < backgroundLuminance ? foregroundLuminance : backgroundLuminance;
+    expect((lighter + 0.05) / (darker + 0.05), greaterThanOrEqualTo(3), reason: 'RDP icon ${icon.icon} contrast');
+  }
 }
 
 void _expectKeyboardWorkspace(WidgetTester tester, Size size) {

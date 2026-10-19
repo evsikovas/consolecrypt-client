@@ -22,6 +22,10 @@
    новую сессию; это не продолжение старой программы. Блокировка хранилища,
    смена профиля и выход закрывают локальные терминалы.
 
+Закрытие завершает собственную оболочку и её текущую foreground-группу.
+Отсоединённые фоновые процессы (например, запущенные через `nohup`) отдельно
+не разыскиваются; весь WSL-дистрибутив не останавливается.
+
 Для локальной вкладки нет действия SFTP: SFTP работает через SSH-хост.
 Локальные оболочки не создают фиктивные записи хостов и не синхронизируются как
 SSH-подключения. В 0.5 они доступны на macOS и Windows; Linux, Android и iOS
@@ -71,7 +75,10 @@ Each local process runs as your current OS user through a PTY/Windows ConPTY.
 Tabs support interactive input, control keys, resizing and independent sessions.
 The label identifies this computer or the exact WSL distribution. Closing a tab,
 locking the vault, switching profiles or quitting closes the local process;
-Restart shell starts a new session. SFTP remains an SSH action. No synthetic SSH
+Restart shell starts a new session. Closing terminates the owned shell and its
+current foreground process group; detached/background processes such as `nohup`
+are not searched for, and the entire WSL distribution is not stopped.
+SFTP remains an SSH action. No synthetic SSH
 host is saved or synced. Linux, Android and iOS do not offer local shells in 0.5.
 
 AI receives the explicit shell dialect and only context you choose to attach.

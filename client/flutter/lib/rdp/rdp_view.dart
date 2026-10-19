@@ -506,6 +506,11 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
       seedColor: tokens.palette.accent,
       brightness: tokens.brightness,
     ).copyWith(surface: tokens.surfaces.contentSolid, onSurface: tokens.palette.label);
+    final iconColor = WidgetStateProperty.resolveWith<Color>((states) {
+      if (states.contains(WidgetState.disabled)) return tokens.palette.label.withValues(alpha: 0.38);
+      if (states.contains(WidgetState.selected)) return tokens.palette.accent;
+      return tokens.palette.label;
+    });
     final controls = ExcludeFocus(
       child: Material(
         key: const ValueKey('rdp-mobile-controls'),
@@ -589,7 +594,14 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
       ),
     );
     return Theme(
-      data: Theme.of(context).copyWith(colorScheme: scheme),
+      // The app uses material_ui; Flutter's ambient icon theme can still be
+      // light even when GlassTokens are dark. Set the button states explicitly.
+      data: Theme.of(context).copyWith(
+        colorScheme: scheme,
+        iconButtonTheme: IconButtonThemeData(
+          style: ButtonStyle(foregroundColor: iconColor, iconColor: iconColor),
+        ),
+      ),
       child: DefaultTextStyle.merge(
         style: TextStyle(color: tokens.palette.label),
         child: controls,
