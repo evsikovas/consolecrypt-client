@@ -1,4 +1,5 @@
 """Deletion boundary tests use only owned temporary repositories and tiny files."""
+import errno
 import importlib.util
 import json
 import os
@@ -186,6 +187,86 @@ class CleanupTests(unittest.TestCase):
         file.chmod(stat.S_IREAD)
         cleanup.remove_owned(file.parent)
         self.assertFalse(file.exists())
+
+    def test_cleanup_retries_a_late_build_write_without_touching_other_data(self):
+        target = self.file(self.repo / 'client/flutter/build/first').parent
+        kept = self.file(self.repo / '.local/receipt.json', 'keep')
+        rmdir = os.rmdir
+        writes = []
+
+        def late_write(name, *args, **kwargs):
+            if Path(name).name == target.name and not writes:
+                writes.append(self.file(target / 'late-compiler-output'))
+            return rmdir(name, *args, **kwargs)
+
+        with patch.object(cleanup.os, 'rmdir', late_write), patch.object(cleanup.time, 'sleep') as sleep:
+            cleanup.remove_owned(target)
+        self.assertEqual(sleep.call_count, 1)
+        self.assertFalse(target.exists())
+        self.assertEqual(kept.read_text(), 'keep')
+
+    def test_cleanup_tolerates_a_directory_removed_by_another_cleaner(self):
+        target = self.file(self.repo / 'client/flutter/build/first').parent
+        rmdir = os.rmdir
+        raced = []
+
+        def competing_remove(name, *args, **kwargs):
+            if Path(name).name == target.name and not raced:
+                raced.append(True)
+                rmdir(name, *args, **kwargs)
+            return rmdir(name, *args, **kwargs)
+
+        with patch.object(cleanup.os, 'rmdir', competing_remove), patch.object(cleanup.time, 'sleep'):
+            cleanup.remove_owned(target)
+        self.assertTrue(raced)
+        self.assertFalse(target.exists())
+
+    def test_cleanup_stops_after_bounded_retries_for_a_persistent_writer(self):
+        target = self.file(self.repo / 'client/flutter/build/first').parent
+        rmdir = os.rmdir
+        writes = []
+
+        def continuing_write(name, *args, **kwargs):
+            if Path(name).name == target.name:
+                writes.append(self.file(target / 'late-compiler-output'))
+            return rmdir(name, *args, **kwargs)
+
+        with patch.object(cleanup.os, 'rmdir', continuing_write), patch.object(cleanup.time, 'sleep') as sleep:
+            with self.assertRaises(OSError) as raised:
+                cleanup.remove_owned(target)
+        self.assertEqual(raised.exception.errno, errno.ENOTEMPTY)
+        self.assertEqual(len(writes), len(cleanup.REMOVE_RETRY_DELAYS) + 1)
+        self.assertEqual(sleep.call_count, len(cleanup.REMOVE_RETRY_DELAYS))
+        self.assertTrue(target.exists())
+
+    def test_cleanup_retry_rechecks_link_boundary_and_redacts_error_paths(self):
+        target = self.file(self.repo / 'client/flutter/build/first').parent
+        outside = self.base / 'private-models'
+        kept = self.file(outside / 'never-delete.gguf', 'keep')
+        error = OSError(errno.ENOTEMPTY, 'private detail', str(kept))
+
+        def swap_to_link(_):
+            target.rename(target.with_name('retained-test-build'))
+            try:
+                target.symlink_to(outside, target_is_directory=True)
+            except OSError:
+                self.skipTest('Creating a symlink requires Windows Developer Mode')
+
+        with patch.object(cleanup.shutil, 'rmtree', side_effect=error), patch.object(cleanup.time, 'sleep', swap_to_link):
+            with self.assertRaises(ValueError):
+                cleanup.remove_owned(target)
+        self.assertEqual(kept.read_text(), 'keep')
+        diagnostic = cleanup.error_code(error)
+        self.assertEqual(diagnostic, 'OSError, errno=ENOTEMPTY')
+        self.assertNotIn('private', diagnostic)
+
+    def test_cleanup_does_not_retry_unrelated_io_errors(self):
+        target = self.file(self.repo / 'client/flutter/build/first').parent
+        with patch.object(cleanup.shutil, 'rmtree', side_effect=OSError(errno.EIO, 'private detail')):
+            with patch.object(cleanup.time, 'sleep') as sleep, self.assertRaises(OSError):
+                cleanup.remove_owned(target)
+        sleep.assert_not_called()
+        self.assertTrue(target.exists())
 
     def test_cli_legacy_flag_cannot_escape_normal_job_or_delete_outputs(self):
         script = self.repo / 'client/scripts/cleanup-ci-workspace.py'

@@ -105,16 +105,27 @@ checkout `.gradle`/`.cxx`, and `dist`. A symlink/junction in a target's ancestor
 is rejected; links inside generated trees are removed without following them.
 Source, `.local` receipts, application models/vault, signing keys, SDKs, Cargo
 registry, pub cache and shared tool installations are outside this list.
+If a finishing build removes or creates a file during traversal, cleanup retries
+only `ENOENT`/`ENOTEMPTY` up to five times (3.85 seconds of total backoff).
+Persistent failures remain failures; diagnostics include the error type and errno,
+without exception text, absolute paths or environment values.
 
 New Windows GitHub jobs put AI smoke downloads in
 `RUNNER_TEMP/consolecrypt-client-ai-smoke/<run>-<attempt>-<job>`, with an exact
 ownership marker. Only that job's directory is removed by its final cleanup.
 The old `C:\GitLab-Runner\tools\consolecrypt-local-ai-smoke` cache is preserved
 unless the operator explicitly opts into maintenance for that known CI path.
-Linux stops/removes its own uniquely named container from the EXIT/INT/TERM
-cleanup path and removes its temporary source snapshot; the builder image and
-shared Docker layers are retained. There is no global Docker prune or volume
-deletion.
+Linux records its job ownership under `RUNNER_TEMP` before starting Docker and
+labels the container with repository/run/attempt/job. Both the normal exit trap
+and a separate `always()` step call `cleanup-linux-job.py`. The final step runs
+before workspace deletion, independently of a build shell killed during
+cancellation. It checks the ownership receipt, labels, image and exact `/work`
+source mount, then removes the inspected immutable container ID before attempting
+scratch deletion. Missing/mismatched ownership or linked paths fail closed. If
+forced cancellation left root-owned scratch that the runner cannot delete, the
+cleanup reports a failure after container removal; ARC removes that shared
+`emptyDir` with its pod. The builder image and shared Docker layers are retained.
+There is no global Docker prune or volume deletion.
 
 `Runner generated-output maintenance` is a separate, **main-only** manual
 workflow. It does not build packages, deploy, receive signing secrets or change
@@ -141,6 +152,10 @@ logs, receipts and unknown files. It does not inspect Windows application data.
 Deletion boundaries are tested with tiny owned temporary repositories by
 `python3 -m unittest discover -s client/scripts -p 'test_ci_cleanup.py' -v`.
 The Windows junction test runs on Windows and is explicitly skipped elsewhere.
+`test_linux_cleanup.py` covers Docker ownership boundaries; `tests/test_linux_ci.py`
+also kills a synthetic producer shell with `SIGKILL` and invokes final cleanup as
+a new process, without relying on its exit trap. These use a fake Docker, not
+live user containers.
 
 ## Русский
 
@@ -153,7 +168,7 @@ release notes, отправьте коммит в `main`, затем тег `vX.
 
 ### Диагностический тег Windows
 
-Для изолированной проверки RDP/ConPTY до нового стабильного выпуска создаётся
+Для изолированной проверки ConPTY до нового стабильного выпуска создаётся
 неизменяемый тег `check-windows-0.5.2-1` (следующие попытки — новый номер).
 `windows-native-check.yml` на hosted runner проверяет формат тега и принадлежность
 коммита `main`, затем запускает `ci-windows.ps1 -NativeOnly` на Windows.

@@ -8,6 +8,7 @@ import shutil
 import signal
 import subprocess
 import tempfile
+import time
 import unittest
 
 
@@ -47,9 +48,11 @@ import sys
 
 state_path = Path(os.environ['CC_CI_TEST_STATE'])
 state = json.loads(state_path.read_text()) if state_path.exists() else {'calls': []}
-state['calls'].append(sys.argv[1])
+state['calls'].append(' '.join(sys.argv[1:3]) if sys.argv[1] == 'container' else sys.argv[1])
 if sys.argv[1] == 'run':
+    state['run_pid'] = os.getpid()
     state['container_name'] = sys.argv[sys.argv.index('--name') + 1]
+    state['labels'] = dict(sys.argv[index + 1].split('=', 1) for index, arg in enumerate(sys.argv) if arg == '--label')
     mount = sys.argv[sys.argv.index('--mount') + 1]
     fields = dict(part.split('=', 1) for part in mount.split(','))
     assert fields['type'] == 'bind' and fields['target'] == '/work'
@@ -144,9 +147,26 @@ if sys.argv[1] == 'run':
 elif sys.argv[1] == 'rm':
     assert sys.argv[2:] == ['--force', state['container_name']]
     state['removed_owned_container'] = True
-state_path.write_text(json.dumps(state) + '\n')
+elif sys.argv[1:3] == ['container', 'ls']:
+    if state.get('container_name') and not state.get('removed_owned_container'):
+        print('a' * 64)
+elif sys.argv[1:3] == ['container', 'inspect']:
+    print(json.dumps(['a' * 64, '/' + state['container_name'],
+          'consolecrypt-linux-builder:3.47.5-rust1.98', state['labels'],
+          [{'Type': 'bind', 'Source': state['source'], 'Destination': '/work', 'RW': True}]]))
+elif sys.argv[1:3] == ['container', 'rm']:
+    assert sys.argv[3:] == ['--force', 'a' * 64]
+    state['removed_owned_container'] = True
+    if os.environ.get('CC_CI_TEST_RUN_SIGNAL') == 'wait':
+        os.kill(state['run_pid'], signal.SIGTERM)
+next_state = state_path.with_suffix('.next')
+next_state.write_text(json.dumps(state) + '\n')
+next_state.replace(state_path)
 if sys.argv[1] == 'run' and os.environ.get('CC_CI_TEST_RUN_SIGNAL') == 'term':
     os.kill(os.getpid(), signal.SIGTERM)
+if sys.argv[1] == 'run' and os.environ.get('CC_CI_TEST_RUN_SIGNAL') == 'wait':
+    while True:
+        signal.pause()
 raise SystemExit(int(os.environ['CC_CI_TEST_DOCKER_EXIT']) if sys.argv[1] == 'run' else 0)
 '''
 
@@ -155,7 +175,7 @@ class LinuxCiRetentionTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="consolecrypt-ci-test-")
         self.addCleanup(self.temporary.cleanup)
-        self.folder = Path(self.temporary.name)
+        self.folder = Path(self.temporary.name).resolve()
         self.repo = self.folder / "synthetic repo"
         scripts = self.repo / "client/scripts"
         scripts.mkdir(parents=True)
@@ -163,6 +183,8 @@ class LinuxCiRetentionTest(unittest.TestCase):
         shutil.copy2(SOURCE.with_name("retain-linux-receipt.py"), scripts / "retain-linux-receipt.py")
         shutil.copy2(SOURCE.with_name("test-linux-native.py"), scripts / "test-linux-native.py")
         shutil.copy2(SOURCE.with_name("export-linux-artifacts.py"), scripts / "export-linux-artifacts.py")
+        for name in ('cleanup-linux-job.py', 'cleanup-ci-workspace.py'):
+            shutil.copy2(SOURCE.with_name(name), scripts / name)
         flutter = self.repo / "client/flutter"
         flutter.mkdir()
         (flutter / "pubspec.yaml").write_text("name: synthetic_fixture\nversion: 0.2.5+81\n")
@@ -214,6 +236,57 @@ class LinuxCiRetentionTest(unittest.TestCase):
         result, state = self.run_ci(0)
         self.assertEqual(result.returncode, 143)
         self.assertTrue(state['removed_owned_container'])
+
+    def test_github_cleanup_survives_a_build_shell_killed_without_exit_trap(self):
+        rust = self.repo / 'client/rust'
+        rust.mkdir()
+        (rust / 'Cargo.toml').write_text('[workspace]\n')
+        subprocess.run(['git', '-C', str(self.repo), 'remote', 'add', 'origin',
+                        'https://github.com/evsikovas/consolecrypt-client'], check=True)
+        env = self.env | {'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': 'evsikovas/consolecrypt-client',
+                         'GITHUB_RUN_ID': '12345', 'GITHUB_RUN_ATTEMPT': '2', 'GITHUB_JOB': 'linux',
+                         'GITHUB_WORKSPACE': str(self.repo.resolve()), 'RUNNER_TEMP': str(self.temp_dir.resolve()),
+                         'CC_CI_TEST_RUN_SIGNAL': 'wait', 'CC_CI_TEST_DOCKER_EXIT': '0'}
+        process = subprocess.Popen(['bash', str(self.repo / 'client/scripts/ci-linux.sh')],
+                                   cwd=self.repo, env=env, start_new_session=True,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        builder_pid = None
+        try:
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                if self.state_path.exists():
+                    state = json.loads(self.state_path.read_text())
+                    if state.get('run_pid'):
+                        builder_pid = state['run_pid']
+                        break
+                time.sleep(0.02)
+            else:
+                self.fail('Synthetic builder did not start')
+            # SIGKILL proves that cleanup does not depend on a shell exit trap.
+            process.kill()
+            process.wait(timeout=5)
+            cleanup_result = subprocess.run(
+                ['python3', str(self.repo / 'client/scripts/cleanup-linux-job.py'), '--workspace', str(self.repo.resolve())],
+                env=env, capture_output=True, timeout=10)
+            self.assertEqual(cleanup_result.returncode, 0, cleanup_result.stderr.decode())
+            self.assertIn(b'LINUX_JOB_CLEANUP_PASS', cleanup_result.stdout)
+            self.assertFalse(self.marker.encode() in cleanup_result.stdout + cleanup_result.stderr)
+            state = json.loads(self.state_path.read_text())
+            self.assertTrue(state['removed_owned_container'])
+            self.assertEqual(state['labels'], {'io.consolecrypt.ci.repository': 'evsikovas/consolecrypt-client',
+                'io.consolecrypt.ci.run': '12345', 'io.consolecrypt.ci.attempt': '2', 'io.consolecrypt.ci.job': 'linux'})
+            self.assertFalse(Path(state['source']).parent.exists())
+            self.assertIn('container inspect', state['calls'])
+            self.assertIn('container rm', state['calls'])
+        finally:
+            if process.poll() is None:
+                process.kill()
+            if builder_pid is not None and not state.get('removed_owned_container'):
+                try:
+                    os.kill(builder_pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            process.communicate(timeout=5)
 
     def run_ci(self, docker_exit, *, receipt_mode="regular", artifact_mode="regular"):
         self.state_path.unlink(missing_ok=True)

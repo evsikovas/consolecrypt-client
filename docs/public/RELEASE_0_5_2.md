@@ -2,7 +2,7 @@
 
 ## Русский
 
-Первый выпуск серии 0.5, включающий локальные терминалы, расширенный каталог
+Первый выпуск серии 0.5: локальные терминалы, расширенный каталог
 моделей и сохранение загруженного локального ИИ при обновлении.
 
 - **Локальные терминалы на macOS и Windows:** zsh, PowerShell, cmd и отдельная
@@ -23,11 +23,13 @@
   контейнера используются на месте; текущий пакет подписан ad-hoc и не
   нотарифицирован; при конфликте двух хранилищ или ошибке
   доступа запуск останавливается с объяснением. Vault и Keychain удалять не надо.
+- **Windows:** устранено зависание при закрытии локального терминала до завершения
+  стартового обмена ConPTY; PowerShell и cmd проверены на настоящем Windows-раннере.
 - Исправлены порядок восстановления терминального буфера после пропуска событий
   и контраст мобильной RDP-панели в тёмной теме.
 
-Подробности: [локальные терминалы](LOCAL_TERMINALS.md), [локальный ИИ](LOCAL_AI.md)
-и [обновления](UPDATES.md). Локальные оболочки и встроенный локальный ИИ доступны
+Подробности: [локальные терминалы](https://github.com/evsikovas/consolecrypt-client/blob/v0.5.2/docs/public/LOCAL_TERMINALS.md), [локальный ИИ](https://github.com/evsikovas/consolecrypt-client/blob/v0.5.2/docs/public/LOCAL_AI.md)
+и [обновления](https://github.com/evsikovas/consolecrypt-client/blob/v0.5.2/docs/public/UPDATES.md). Локальные оболочки и встроенный локальный ИИ доступны
 на macOS/Windows; Linux и мобильные платформы сохраняют существующие возможности.
 iOS-пакет предназначен для Simulator, а не для установки на физический iPhone.
 
@@ -46,7 +48,7 @@ iOS-пакет предназначен для Simulator, а не для уст�
 
 ## English
 
-First release in the 0.5 series, with local terminals, an expanded model catalog
+The first release in the 0.5 series, with local terminals, an expanded model catalog
 and preservation of downloaded local AI models across application updates.
 
 0.5 adds device-local zsh on macOS and PowerShell, cmd and individual WSL
@@ -66,12 +68,14 @@ The macOS package removes App Sandbox for ordinary local shells. The current
 build is ad-hoc signed and not notarized; Hardened Runtime is enabled only by
 the Developer ID signing path. Existing container data is reused in place;
 conflicting or unreadable storage stops startup instead of creating an empty
-profile. Terminal resynchronization ordering and dark mobile RDP controls are
+profile. Windows local terminals no longer hang when closed before the initial
+ConPTY cursor handshake completes; native PowerShell and cmd checks pass.
+Terminal resynchronization ordering and dark mobile RDP controls are
 also fixed. Local shells and built-in AI are macOS/Windows features; iOS remains
 a Simulator preview.
 
-See [local terminals](LOCAL_TERMINALS.md), [local AI](LOCAL_AI.md) and
-[updating](UPDATES.md). Screenshots use real widgets and synthetic demo data,
+See [local terminals](https://github.com/evsikovas/consolecrypt-client/blob/v0.5.2/docs/public/LOCAL_TERMINALS.md), [local AI](https://github.com/evsikovas/consolecrypt-client/blob/v0.5.2/docs/public/LOCAL_AI.md) and
+[updating](https://github.com/evsikovas/consolecrypt-client/blob/v0.5.2/docs/public/UPDATES.md). Screenshots use real widgets and synthetic demo data,
 not native WSL or model-inference recordings. Native package checks run
 separately in the tag workflow. Download links change only after release assets
 are available. Preserve app data, models, vault and Keychain when updating.

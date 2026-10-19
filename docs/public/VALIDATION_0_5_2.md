@@ -1,0 +1,321 @@
+# Проверка ConsoleCrypt 0.5.2
+
+Дата базовых локальных проверок: **19 октября 2026 года**; подготовка исправлений
+0.5.1 и 0.5.2 продолжилась **20 октября** по местному времени. Текущая версия исходников —
+`0.5.2+20016` (`2b5adc4e9908bca1c227bddb708d38daec3a5dbc`). Полный локальный прогон ниже выполнен на исходной базе
+`0.5.0+18016`; после исправлений отдельно повторены затронутые проверки.
+Номера локального исходного дерева не заменяют номера нативных пакетов CI.
+
+Основная реализация зафиксирована в `153f5858191e630185cb18891644cc17d07fa9cf`.
+После полного прогона внесены исправления контраста мобильного RDP:
+`5fa0abd983f0e64dd939e54eb14704de22a4b890` и
+`b5033563da855681483a804fd423faa4a8935a32`. Тег `v0.5.0` указывает на последний
+из этих коммитов. Для изменённых RDP-файлов выполнен отдельный повторный прогон.
+
+[CI 39323594378](https://github.com/evsikovas/consolecrypt-client/actions/runs/39323594378)
+выявил сбои macOS и Windows; **0.5.0 не опубликован**. На macOS тест
+`normal_exit_drains_large_final_output_for_a_slow_consumer` превысил свой предел
+20 секунд на CI-машине; Windows остановился на POSIX/macOS storage-fixtures.
+Android job завершился успешно, однако оставшийся Linux job был отменён после
+этих ошибок; общий выпуск не состоялся. Ниже сохранены
+результаты завершённых локальных проверок; они не заменяют неуспешный CI.
+Тег `v0.5.0` остаётся неизменным. Следующая попытка `v0.5.1` также не опубликована;
+результаты этой попытки приведены ниже, исправления готовятся в `v0.5.2`.
+В `5b8bfab` исправлена платформенная граница storage-fixtures: 12 POSIX/macOS
+сценариев явно пропускаются на Windows, а проверка штатного Windows default и
+отсутствующего macOS HOME сохраняется. Targeted storage/startup-прогон на macOS:
+19 PASS, анализ без замечаний. Проверка на Windows в новом CI ещё ожидается.
+В `0a1aad5` ограничение скорости тестового PTY consumer привязано к объёму байтов,
+а не числу произвольных read chunks. Production-лимиты не изменены. Исправленный
+тест сохранил проверку 512 КиБ, финального маркера, exit 9 и предела 20 секунд:
+локально 524 308 байт / 514 chunks за 3,963 секунды; `cc-terminal-core --lib`
+24 PASS и Clippy `-D warnings` PASS. Receipt-материалы:
+`.local/pty-drain-review/cargo-test.log` и `chunk-probe.jsonl`.
+Исправленный PTY-тест прошёл на macOS CI 0.5.1; это не означает успешной
+сборки или публикации всех платформ.
+
+## Попытка CI 0.5.1: завершённые проверки и неполный выпуск
+
+[Run 39326387042, №10](https://github.com/evsikovas/consolecrypt-client/actions/runs/39326387042)
+проверял `13b530caaff2104c5b2bd6af3085e75acedbe42b`. Windows job завершился с
+ошибкой; после неё оставшиеся работы отменены. Итог workflow — `cancelled`,
+**GitHub Release 0.5.1 не опубликован**, исходный тег не переписывается.
+
+| Платформа / job | Что завершилось | Что не подтверждено |
+| --- | --- | --- |
+| [macOS](https://github.com/evsikovas/consolecrypt-client/actions/runs/39326387042/job/118313294112) | 24 native terminal tests PASS за 12,48 с; Flutter analyze PASS; полный Flutter suite 832 PASS | Упаковка отменена. Очистка столкнулась с ещё пишущим в build процессом; успешный cleanup после отмены не заявляется |
+| [Windows](https://github.com/evsikovas/consolecrypt-client/actions/runs/39326387042/job/118313294045) | 18 terminal tests PASS; RDP: 97 unit + 3 integration PASS, 5 ignored; финальная очистка PASS | Две native ConPTY-проверки завершились по timeout. Fixture не отвечал на стартовый DSR-запрос; успешная Windows-сборка и local-AI CPU inference этим запуском не подтверждены |
+| [Linux](https://github.com/evsikovas/consolecrypt-client/actions/runs/39326387042/job/118313294073) | Rust bridge 2/2, UI vault restart/unlock 1/1 и Secret Service roundtrip PASS; always workspace cleanup PASS | Упаковка отменена после Windows failure. На постоянном Docker daemon остались build-контейнер и его метаданные Docker; полная очистка контейнера этим запуском не подтверждена |
+| [Android](https://github.com/evsikovas/consolecrypt-client/actions/runs/39326387042/job/118313294124) | Job PASS, APK `0.5.1+20014`; APK Signature Scheme v2 и прежний сертификат; 16 KiB ELF alignment всех трёх библиотек и zipalign PASS; cleanup PASS | Это CI artifact неполного выпуска; он не заменяет опубликованный набор всех платформ |
+| [iOS](https://github.com/evsikovas/consolecrypt-client/actions/runs/39326387042/job/118319508969) / [publish](https://github.com/evsikovas/consolecrypt-client/actions/runs/39326387042/job/118319509504) | Не завершены: cancelled | Simulator-пакет и полный release 0.5.1 не опубликованы |
+
+## Windows ConPTY и очистка раннеров перед 0.5.2
+
+[Diagnostic 39328314055](https://github.com/evsikovas/consolecrypt-client/actions/runs/39328314055)
+подтвердил ввод, Unicode, resize и exit code PowerShell/cmd после исправления
+DSR fixture, но выявил настоящее зависание закрытия при незавершённом cursor
+handshake. В `6518dfa55f6809468d8642eb9b60a29aee5bc909` отключён только флаг
+`PSEUDOCONSOLE_INHERIT_CURSOR` в vendored portable-pty 0.9.0; происхождение и
+MIT-лицензия сохранены. Остальные ConPTY flags и Unix backend не менялись.
+
+[Diagnostic 39329551403](https://github.com/evsikovas/consolecrypt-client/actions/runs/39329551403)
+на настоящем Windows-раннере завершился **success**, включая native terminal
+regressions и финальную очистку. Проверены PowerShell/cmd, Unicode, resize,
+код завершения и закрытие без ответа терминала, в том числе с queued resize.
+Это отдельная проверка нативного терминала, а не публикация всех платформ.
+Локально после изменения: 25 terminal tests PASS, Clippy `-D warnings` PASS.
+
+Очистка запускается через `always()` после выгрузки артефактов. Для macOS
+добавлены ограниченные повторы при ENOENT/ENOTEMPTY с повторной проверкой
+границ пути; продолжающий писать процесс может привести к явной ошибке очистки.
+Для Linux отдельный шаг останавливает только контейнер текущего job по
+проверенным receipt, labels, image, mount и неизменяемому Docker ID. Он работает
+даже после SIGKILL основного shell. Подмена имени, daemon error или несовпадение
+владельца останавливают удаление scratch. Пользовательские модели, vault,
+ключи и SDK не входят в список очистки.
+
+Независимый review и повторные проверки: workspace cleanup — **20 PASS, 2
+Windows-only SKIP** на macOS; Linux ownership — **10 PASS**; Linux CI integration,
+включая SIGKILL producer — **16 PASS**; actionlint, bash syntax и diff check PASS.
+Окончательные пакетные сборки и очистку 0.5.2 должен подтвердить релизный CI.
+
+## Выполненные локальные проверки исходной базы
+
+| Проверка | Результат | Что именно проверено |
+| --- | --- | --- |
+| Rust workspace на macOS | PASS, exit 0; 784 passed, 12 ignored | Сумма 91 итоговой строки unit/integration/doc tests; пропуски не включены в passed |
+| Полный Flutter suite | PASS, 832 tests | Unit/widget-тесты, включая локальные оболочки, ИИ, настройки и выбор каталогов |
+| Flutter analyze | PASS | Полный анализ перед последними RDP-правками |
+| RDP после `b503356` | PASS, 36 tests | `rdp_mobile_layout_test`, `rdp_mobile_input_test`, `rdp_view_test`; отдельный анализ изменённых файлов без замечаний |
+| Qwen3.5 4B и 9B, macOS ARM64/Metal | PASS | Настоящие GGUF, llama.cpp, авторизация HTTP и генерация ответа |
+| Повторное использование 4B/9B | PASS | Повторное открытие менеджера, сохранённый выбор, переключение обратно на 4B, ноль попыток скачивания |
+| Переход каталогов macOS | PASS на fixtures | Синтетические временные vault/model/settings; сохранность файлов и явный отказ при конфликте/ошибке доступа |
+| macOS PTY и подписанный helper | PASS на отдельном fixture app | Настоящая zsh/PTY, внешняя команда и 1.5B/Metal; не установленный выпускной DMG |
+
+Rust-прогон содержит предупреждения о deprecated API в тестах и lint expectation
+в vendored IronRDP. Flutter-прогон содержит нефатальные предупреждения `tap()` о
+hit testing; итог — `All tests passed!`. Эти журналы не представлены как прогоны
+без предупреждений.
+
+Двенадцать `ignored` включают сценарии с отдельным сервером PostgreSQL,
+авторизованным Windows RDP-хостом, настоящим системным Keychain и медленную
+генерацию RSA-4096. Успех workspace не означает, что все внешние интеграции были
+проверены. Docker/живые SSH/RDP-сервисы в этот локальный приёмочный прогон не
+входили.
+
+## Воспроизведение unit/widget-проверок
+
+Из корня репозитория:
+
+```sh
+cd client/rust
+cargo test --workspace --locked
+```
+
+Из `client/flutter` после установки зависимостей согласно lockfile:
+
+```sh
+flutter pub get --enforce-lockfile
+flutter analyze
+flutter test --no-pub
+
+# Повторный прогон после исправления контраста RDP.
+flutter test --no-pub \
+  test/rdp/rdp_mobile_layout_test.dart \
+  test/rdp/rdp_mobile_input_test.dart \
+  test/rdp/rdp_view_test.dart
+dart analyze lib/rdp/rdp_view.dart test/rdp/rdp_mobile_layout_test.dart
+
+# Отдельно воспроизводимые сценарии сохранности данных и ИИ.
+flutter test --no-pub \
+  test/core/app_storage_paths_test.dart \
+  test/widget/startup_error_privacy_test.dart \
+  test/ai/local \
+  test/ai/device_local_ai_service_test.dart \
+  test/widget/local_ai_settings_test.dart
+```
+
+Количество тестов относится к указанным коммитам и может измениться в следующих
+версиях. Полный suite не скачивает большие модели.
+
+## Реальные модели и повторное использование загрузок
+
+Машина проверки: **Apple M4, 24 ГиБ ОЗУ**, macOS ARM64. Движок —
+**llama.cpp b11739**, Metal, `gpuLayers=99`, контекст 4096, одна параллельная
+генерация. Для Qwen3.5 используется `--reasoning off`. SHA-256 исходного ARM64
+архива движка:
+`a2073ed1aa00904d408a6694429aa9b6dcf4949c2683206c403930849ce222ac`.
+
+| Модель | Размер GGUF, байт | SHA-256 | Нативный результат |
+| --- | ---: | --- | --- |
+| Qwen3.5 4B Q4_K_M | 2 740 937 888 | `00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4` | HTTP 200, `CHAT_PASS: OK` |
+| Qwen3.5 9B Q4_K_M | 5 680 522 464 | `03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8` | HTTP 200, `CHAT_PASS: OK` |
+
+Полный размер и SHA-256 обоих GGUF проверены production downloader перед
+использованием. Для каждой модели также подтверждены:
+
+- HTTP 401 при запросе `/v1/models` без bearer-токена;
+- один запуск процесса при одновременных `ensureReady()`;
+- сохранение процесса при активном `withEndpoint` дольше тестового idle timeout;
+- остановка после освобождения lease и простоя.
+
+В smoke idle timeout сокращён до 2 секунд; активный lease удерживается 3 секунды.
+Это проверка механизма таймера, а не ожидание штатных 15 минут. Ответ `OK` —
+проверка совместимости и прохождения запроса, не оценка качества модели или
+скорости генерации.
+
+Все загрузки и запуски находились в изолированном
+`.local/local-ai-v05-smoke/`. Настоящие пользовательские модели, vault и Keychain
+не изменялись. После первого запуска 9B отдельный harness заново открыл менеджер,
+прочитал сохранённый выбор 9B и переключил его на 4B. Downloader был заменён на
+реализацию, которая считает обращения и бросает исключение при любом скачивании.
+Повторная установка и настоящий ответ 4B прошли при **0 обращений**; размеры и
+mtime обоих GGUF не изменились. Зафиксированы маркеры:
+
+```text
+CACHED_4B_CHAT_PASS
+ZERO_DOWNLOADS_BOTH_MODELS_UNCHANGED_SELECTION_PERSISTED_PASS
+```
+
+Для самостоятельного нативного прогона выберите отдельный абсолютный каталог
+кэша, принадлежащий только этой проверке. Команды скачивают недостающие артефакты:
+
+```sh
+cd client/flutter
+dart run test/ai/local/local_ai_smoke.dart --run \
+  --directory=/absolute/isolated-ai-check \
+  --model=qwen3.5-4b-q4_k_m
+dart run test/ai/local/local_ai_smoke.dart --run \
+  --directory=/absolute/isolated-ai-check \
+  --model=qwen3.5-9b-q4_k_m
+```
+
+Запускайте большие модели последовательно. `--request-timeout-seconds=N`
+принимает целое число от 30 до 900; по умолчанию 180. Это предел smoke-запроса,
+он не меняет таймаут приложения. `--runtime-only` проверяет только исполняемый
+движок, без GGUF и генерации.
+
+Этот CLI явно разрешает загрузку движка на macOS для отдельного smoke-каталога.
+Приложение использует helper внутри подписанного `.app`. Поэтому CLI подтверждает
+нативную совместимость моделей и lifecycle менеджера, но не подпись/установку
+финального `.app`. Поведение без скачивания дополнительно воспроизводится
+отслеживаемыми fixture-тестами в
+[`local_ai_installation_test.dart`](../../client/flutter/test/ai/local/local_ai_installation_test.dart).
+Локальный harness `verify_upgrade.dart` и его журнал сохранены рядом с receipt,
+но не входят в публичное дерево исходников.
+
+## Сохранность данных: что доказано fixtures
+
+[`app_storage_paths_test.dart`](../../client/flutter/test/core/app_storage_paths_test.dart)
+создаёт отдельный временный HOME с маленькими синтетическими файлами. Он проверяет
+выбор прежних заполненных каталогов контейнера на месте, независимый выбор core
+и AI root, повторное открытие, сохранение явного `prefer_device_local_ai=false`,
+отказ при двух заполненных roots и при недоступном каталоге/UI state. Данные не
+копируются и не сливаются. Диагностика запуска проверяется отдельно на отсутствие
+сырых путей и текста внутренних ошибок. Совместный targeted-прогон этих двух
+файлов: **19 PASS**.
+
+Installation-тесты используют маленькие GGUF-fixtures с проверяемыми digest:
+старый формат selection, уже загруженная 1.5B, ремонт отсутствующего движка,
+три сохранённых выбора, удаление только выбранной модели, ошибка скачивания и
+откат замены движка при rename failure/отмене. Отмена запуска проверяется также
+на собственном POSIX-процессе; этот конкретный сценарий пропускается на Windows.
+
+Тесты `device_local_ai_service_test.dart` проверяют локальное предпочтение без
+записи provider/token в vault, существующий native delegate, отмену при lock,
+смене модели и отмене stream. Неустановленная выбранная модель при уже имеющейся
+локальной установке и сохранённом local default не вызывает скрытого перехода
+на облако; ожидание offline initialize также не создаёт такого окна.
+
+Это **не** проверка обновления реальной установки 0.4.1 поверх пользовательских
+данных, расшифровки прежнего vault или переноса Keychain. Такой сценарий должен
+проверяться отдельно на копии тестового профиля с финальным установщиком.
+
+## Нативный терминал и границы мобильных тестов
+
+В полном Rust-прогоне `cc-terminal-core` имеет **24 PASS**. На macOS действительно
+исполнялись PTY-проверки ввода, Unicode, resize, Ctrl+C, завершения foreground
+job (включая игнорирование HUP), отмены заблокированной большой вставки и
+дочитывания 512 КиБ финального вывода. Парсинг имён WSL проверен fixtures;
+это не запуск Windows ConPTY или дистрибутива WSL.
+
+Отдельный `client/scripts/smoke-macos-processes.py` прошёл на собственном ad-hoc
+подписанном fixture app: login/interactive zsh на PTY, внешняя команда,
+llama.cpp b11739, Metal Apple M4, отклонение неверного токена и ответ существующей
+1.5B. GGUF использовался через read-only source/отдельный clone. Harness не
+загружает настоящее ядро приложения, Keychain или пользовательские shell startup
+files. Отдельный долговечный журнал этого запуска не сохранён; результат отмечен
+по завершённому локальному запуску, а не как receipt выпускного пакета.
+
+Воспроизводимая команда для подготовленного подписанного `.app`:
+
+```sh
+python3 client/scripts/smoke-macos-processes.py \
+  --app /absolute/test/ConsoleCrypt.app \
+  --model-path /absolute/test/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf
+```
+
+Для Developer ID нужно передать тот же `--identity`, что использован для
+исходного пакета. Этот локальный результат получен с ad-hoc подписью и не
+подтверждает Developer ID/Hardened Runtime или нотарификацию.
+
+RDP widget-тесты охватывают Android **и** iOS, portrait/landscape, IME inset,
+rotation, touchpad, клавиатуру, fullscreen и контраст элементов. Они используют
+настоящие Flutter-виджеты, fake RDP service и синтетический framebuffer. Они не
+подтверждают соединение физического телефона с Windows-сервером. Снимки
+руководства также показывают демонстрационные состояния, а не нативные замеры.
+
+## Снимки руководства серии 0.5
+
+В наборе 102 PNG RU/EN. Шесть изображений About, SFTP settings и Updates,
+где виден номер приложения, пересняты из
+`2b5adc4e9908bca1c227bddb708d38daec3a5dbc` с версией `0.5.2+20016`:
+три capture-теста для RU и три для EN PASS; все шесть PNG визуально проверены.
+Остальные 96 изображений сохранены побайтно с исходными SHA-256 и коммитами
+`153f5858191e630185cb18891644cc17d07fa9cf` / `b5033563da855681483a804fd423faa4a8935a32`.
+Демонстрируемый интерфейс не изменён; старые снимки не переименованы в снимки
+нового исходного дерева. Версия исходников и видимый в кадре номер разделены
+в [манифесте](https://github.com/evsikovas/consolecrypt-docs/blob/main/assets/guide/manifest.json).
+Это реальные Flutter-виджеты с синтетическими данными, не установленные пакеты CI.
+Локальная квитанция: `.local/verification/guide-0.5.2-2b5adc4/capture-receipt.json`.
+
+## Локальные receipts
+
+Пути ниже относительны корню рабочей копии. `.local` не публикуется в Git;
+хеши позволяют отличить проверенные журналы от последующих прогонов.
+
+| Файл | SHA-256 |
+| --- | --- |
+| `.local/rust-0.5.0-tests.log` | `2185c13a689d99f4de1bec2cebdca9c8ef990e99816c2f69c89371a52e73f49c` |
+| `.local/flutter-0.5.0-final-tests.log` | `650e363e91901abbd3fa95817d81c8db03076d3740967a1318f8291a895d54a6` |
+| `.local/rdp-final-contrast-tests.log` | `3421490c32f5f1bbcccaa3e85deaab3c8a2c03089c6849bc44ab9781eb839f9a` |
+| `.local/local-ai-v05-smoke/native-smoke-receipt.json` | `3f2ae4d0db8eb56ee28a31158ee1ca8aec961463fc49bd5974e25a2577b46e66` |
+
+Model receipt датирован `2026-10-19T20:55:16Z`, содержит базовый commit,
+`sourceState=working-tree` и SHA-256 шести исходных файлов каталога, менеджера,
+установки, downloader, распаковки и smoke. При подготовке отчёта все шесть хешей
+совпали с кодом тега `v0.5.0`; AI-исходники не менялись при подготовке 0.5.1 и 0.5.2.
+Сами model-логи находятся в том же каталоге:
+`consolecrypt-ai-qwen4b-smoke.log`, `consolecrypt-ai-qwen9b-smoke.log`,
+`consolecrypt-ai-upgrade-smoke.log`, `consolecrypt-ai-metal-devices.log`.
+
+## Ожидаемые результаты CI и пакетов 0.5.2
+
+Полный релизный CI 0.5.2 ещё ожидается. Текущий опубликованный набор загрузок
+остаётся 0.4.1; локальные проверки, Android artifact 0.5.1 и diagnostic jobs
+не объявляются готовым выпуском.
+
+- Windows x64: настоящий CPU inference 1.5B и 4B обязателен в CI; 9B запускается
+  при ОЗУ runner не менее 16 ГиБ, иначе должен быть явный skip. Пока результата нет.
+- Windows ConPTY/PowerShell/cmd: нативные проверки ожидаются. WSL проверяется
+  только при наличии доступного дистрибутива; отсутствие WSL не считается PASS.
+- Финальные macOS, Windows, Linux, Android и iOS-пакеты, их SHA-256, metadata,
+  подписи и публикация 0.5.2: ожидаются. Успешные пакеты 0.4.1 и отдельные
+  завершённые jobs не заменяют неуспешные выпуски 0.5.0 и 0.5.1.
+- Обновление установленного приложения с 0.4.1, сохранность настоящих данных
+  профиля/модели/default и доступ к Keychain: требуется отдельная приёмка на
+  изолированной тестовой установке. Unit fixtures и model reuse smoke покрывают
+  части этого пути, но не весь installer flow.
+
+После окончания CI этот раздел нужно дополнить ссылками на jobs, точными
+именами/хешами артефактов и результатами нативных проверок, включая явные пропуски.

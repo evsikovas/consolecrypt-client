@@ -5,6 +5,7 @@ Never use this as a general-purpose rm command. The workspace, repository,
 workflow identity and optional external cache ownership are checked first.
 """
 import argparse
+import errno
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -13,6 +14,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import time
 
 REPOSITORY = 'evsikovas/consolecrypt-client'
 REMOTES = {f'https://github.com/{REPOSITORY}', f'https://github.com/{REPOSITORY}.git',
@@ -31,6 +33,7 @@ MODEL_DIGESTS = {
     'Qwen3.5-9B-Q4_K_M.gguf': '03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8',
 }
 WINDOWS_RUNTIME_DIGEST = 'b1e0a14abdb4665c1b821b377ba063b221cec62882c373065cf8fb672988d3ff'
+REMOVE_RETRY_DELAYS = (0.1, 0.25, 0.5, 1.0, 2.0)
 
 
 def absolute(path):
@@ -193,7 +196,7 @@ def legacy_cache_targets(root):
     return targets
 
 
-def remove_owned(path):
+def _remove_owned_once(path):
     """Never follow nested links/junctions, even inside a generated tree."""
     try:
         info = path.lstat()
@@ -228,6 +231,32 @@ def remove_owned(path):
         raise ValueError('Refusing special filesystem object')
 
 
+def remove_owned(path):
+    """Tolerate bounded traversal races while cancelled build writers exit."""
+    for attempt in range(len(REMOVE_RETRY_DELAYS) + 1):
+        # A retry must not traverse a generated root replaced by a link while
+        # the previous deletion was in progress. Nested links remain unlinked.
+        no_link_ancestors(path)
+        try:
+            _remove_owned_once(path)
+            return
+        except OSError as error:
+            if error.errno not in (errno.ENOENT, errno.ENOTEMPTY) or attempt == len(REMOVE_RETRY_DELAYS):
+                raise
+            time.sleep(REMOVE_RETRY_DELAYS[attempt])
+
+
+def error_code(error):
+    """Stable diagnostics without exception messages, filenames or environment."""
+    parts = [type(error).__name__]
+    if isinstance(error, OSError):
+        if isinstance(error.errno, int):
+            parts.append('errno=' + errno.errorcode.get(error.errno, str(error.errno)))
+        if isinstance(getattr(error, 'winerror', None), int):
+            parts.append('winerror=' + str(error.winerror))
+    return ', '.join(parts)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--workspace', type=Path, required=True)
@@ -257,9 +286,9 @@ def main():
             remove_owned(target)
             if existed:
                 print(f'Removed generated output: {target.name}')
-        except (OSError, ValueError):
+        except (OSError, ValueError) as error:
             failures += 1
-            print(f'Cleanup could not remove generated output: {target.name}', file=sys.stderr)
+            print(f'Cleanup could not remove generated output: {target.name} ({error_code(error)})', file=sys.stderr)
     if failures:
         raise RuntimeError(f'{failures} generated output paths could not be removed')
     print('CI_CLEANUP_PASS')
@@ -270,5 +299,5 @@ if __name__ == '__main__':
         main()
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         # No environment or resolved source/config values are printed.
-        print(f'CI cleanup refused or failed ({type(error).__name__}).', file=sys.stderr)
+        print(f'CI cleanup refused or failed ({error_code(error)}).', file=sys.stderr)
         sys.exit(1)

@@ -36,6 +36,7 @@ jobs:
         run: |
           python3 -m unittest discover -s client/scripts -p 'test_github_release.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_ci_cleanup.py' -v
+          python3 -m unittest discover -s client/scripts -p 'test_linux_cleanup.py' -v
 
   macos:
     needs: validate
@@ -138,6 +139,9 @@ jobs:
             dist/linux/*.json
             dist/linux/acceptance/linux-ffi-integration.json
             dist/linux/ConsoleCrypt.version
+      - name: Stop this job's Linux container and remove scratch
+        if: always()
+        run: python3 client/scripts/cleanup-linux-job.py --workspace "$GITHUB_WORKSPACE"
       - name: Clean generated output after artifact upload
         if: always()
         run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE"

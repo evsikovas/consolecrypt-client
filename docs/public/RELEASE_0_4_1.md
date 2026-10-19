@@ -42,7 +42,7 @@ now build only from version tags on `main`. Fresh macOS runners preload the
 Flutter platform SDK before CocoaPods; every installer is size-checked before publication.
 
 Local AI supports macOS ARM64/x64 and Windows x64 (CPU); the iOS artifact remains
-a Simulator preview. See [local AI](LOCAL_AI.md) and [RDP controls](RDP.md).
+a Simulator preview. See [local AI](https://github.com/evsikovas/consolecrypt-client/blob/v0.4.1/docs/public/LOCAL_AI.md) and [RDP controls](https://github.com/evsikovas/consolecrypt-client/blob/v0.4.1/docs/public/RDP.md).
 
 **Updating an older installation:** the previous address
 `updates.consolecrypt.evsikov.net` is currently unavailable. If your in-app
