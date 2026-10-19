@@ -8,6 +8,9 @@ import 'dart:ui' as ui;
 
 import 'package:consolecrypt/ai/ai_chat_controller.dart';
 import 'package:consolecrypt/ai/command_palette.dart';
+import 'package:consolecrypt/ai/device_local_ai_service.dart';
+import 'package:consolecrypt/ai/local/local_ai_runtime.dart';
+import 'package:consolecrypt/ai/local_ai_providers.dart';
 import 'package:consolecrypt/app/about.dart';
 import 'package:consolecrypt/app/app.dart';
 import 'package:consolecrypt/app/gate.dart';
@@ -17,6 +20,7 @@ import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/app_services.dart' show DeviceLocalAiBridge;
 import 'package:consolecrypt/l10n/app_localizations.dart';
 import 'package:consolecrypt/sharing/enrollment_owner.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
@@ -33,12 +37,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:xterm/xterm.dart';
 
+import '../test/helpers/fake_local_ai_runtime.dart';
 import '../test/helpers/test_app.dart' show tapKey, settle, pickHost;
 import 'guide_capture_support.dart';
 
 const _guide = bool.fromEnvironment('CC_GUIDE_CAPTURE');
 const _guideLanguage = String.fromEnvironment('CC_GUIDE_LOCALE', defaultValue: 'ru');
 const _guideOutput = String.fromEnvironment('CC_GUIDE_OUTPUT', defaultValue: '../../.local/verification');
+
+/// The guide shows provider selection only; any inference attempt is a bug.
+class _GuideLocalBridge implements DeviceLocalAiBridge {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw StateError('Guide capture cannot start native inference.');
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -124,6 +135,37 @@ void main() {
         addTearDown(backend.dispose);
         if (!welcome) await backend.debugSignInDemoAndUnlock();
         if (_guide && !welcome) await prepareGuideInventory(backend, screen);
+        if (screen == 'connection-picker' || screen == 'rdp-host-picker') {
+          final now = DateTime.utc(2026, 10, 19);
+          await backend.inventory.saveHost(
+            Host(
+              id: const ObjectId('guide-windows'),
+              name: 'Windows demo',
+              address: 'windows.example.test',
+              protocol: HostProtocol.rdp,
+              username: 'demo',
+              port: 3389,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+        }
+        final localAi = screen.startsWith('local-ai-')
+            ? FakeLocalAiRuntime(installed: screen == 'local-ai-ready')
+            : null;
+        if (localAi != null) {
+          addTearDown(localAi.dispose);
+          localAi.state.value = LocalAiRuntimeStatus(
+            phase: screen == 'local-ai-ready'
+                ? LocalAiPhase.ready
+                : screen == 'local-ai-progress'
+                ? LocalAiPhase.installing
+                : LocalAiPhase.notInstalled,
+            isInstalled: screen == 'local-ai-ready',
+            downloadedBytes: screen == 'local-ai-progress' ? LocalAiCatalog.model.bytes ~/ 2 : 0,
+            totalBytes: screen == 'local-ai-progress' ? LocalAiCatalog.model.bytes : 0,
+          );
+        }
         if (screen.startsWith('snippet-')) {
           for (final package in starterSnippetPackages(l10n)) {
             for (final snippet in package.snippets) {
@@ -169,6 +211,22 @@ void main() {
                 if (_guide) developerControlsProvider.overrideWithValue(null),
                 if (_guide) sharingServiceProvider.overrideWithValue(sharing),
                 if (_guide) enrollmentServiceProvider.overrideWithValue(GuideEnrollmentService()),
+                if (localAi != null) ...[
+                  deviceLocalAiAvailableProvider.overrideWithValue(true),
+                  localAiRuntimeProvider.overrideWithValue(localAi),
+                  aiServiceProvider.overrideWith((ref) {
+                    final service = DeviceLocalAiService(
+                      delegate: backend.services.ai,
+                      bridge: _GuideLocalBridge(),
+                      runtime: localAi,
+                      settings: backend.services.settings,
+                      profiles: backend.services.profiles,
+                      vault: backend.services.vault,
+                    );
+                    ref.onDispose(() => service.dispose().ignore());
+                    return service;
+                  }),
+                ],
               ],
               retry: (_, _) => null,
               child: const ConsoleCryptApp(),
@@ -467,6 +525,44 @@ void main() {
             alignment: .4,
           );
           await settle(tester);
+        }
+        if (_guide && localAi != null) {
+          await tapKey(tester, 'nav-settings');
+          await Scrollable.ensureVisible(
+            tester.element(find.byKey(const ValueKey('local-ai-settings'))),
+            alignment: .2,
+          );
+          await settle(tester);
+          expect(find.byKey(const ValueKey('local-ai-model')).hitTestable(), findsOneWidget);
+          expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('local-ai-default'))).value, isTrue);
+          expect(
+            find
+                .byKey(
+                  ValueKey(switch (screen) {
+                    'local-ai-ready' => 'local-ai-stop',
+                    'local-ai-progress' => 'local-ai-cancel',
+                    _ => 'local-ai-install',
+                  }),
+                )
+                .hitTestable(),
+            findsOneWidget,
+          );
+          if (screen == 'local-ai-progress') {
+            expect(
+              tester.widget<LinearProgressIndicator>(find.byKey(const ValueKey('local-ai-progress'))).value,
+              closeTo(.5, .001),
+            );
+          }
+        }
+        if (_guide && (screen == 'connection-picker' || screen == 'rdp-host-picker')) {
+          if (screen == 'rdp-host-picker') {
+            await tapKey(tester, 'nav-rdp');
+            await tapKey(tester, 'rdp-empty-connect');
+          } else {
+            await tapKey(tester, 'new-connection');
+          }
+          expect(find.byKey(const ValueKey('pick-Windows demo')), findsOneWidget);
+          expect(find.byKey(const ValueKey('host-picker')), findsOneWidget);
         }
         if (_guide && screen.startsWith('sharing-') && screen != 'sharing-main') {
           final context = tester.element(find.byType(Navigator).first);

@@ -14,6 +14,7 @@ import 'package:consolecrypt/rdp/rdp_screen.dart';
 import 'package:consolecrypt/rdp/rdp_service.dart';
 import 'package:consolecrypt/rdp/rdp_view.dart';
 import 'package:consolecrypt/rdp/rdp_window.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,12 +26,15 @@ import 'fake_rdp_service.dart';
 
 void main() {
   for (final size in [const Size(390, 844), const Size(844, 390)]) {
-    testWidgets('Android RDP shell fits $size with keyboard and preserves input across rotation', (tester) async {
+    testWidgets('mobile RDP shell fits $size with keyboard and preserves input across rotation', (tester) async {
       if (_capture) await _loadFonts(tester);
       final backend = testBackend();
       addTearDown(backend.dispose);
-      setTestLocale(backend, AppLocale.ru);
+      setTestLocale(backend, _captureLanguage == 'en' ? AppLocale.en : AppLocale.ru);
       await backend.debugSignInDemoAndUnlock();
+      if (_capture) {
+        await backend.settings.updateLocal(backend.settings.currentLocal.copyWith(themeMode: AppThemeMode.dark));
+      }
       final service = FakeRdpService();
       if (_capture) {
         service.nextPoll = RdpPollResult(status: const RdpStatus(RdpPhase.connected), frame: _demoFrame());
@@ -45,6 +49,7 @@ void main() {
           retry: (_, _) => null,
           overrides: [
             appServicesProvider.overrideWithValue(backend.services),
+            if (_capture) developerControlsProvider.overrideWithValue(null),
             rdpServiceProvider.overrideWithValue(service),
           ],
           child: const RepaintBoundary(key: ValueKey('rdp-mobile-demo'), child: ConsoleCryptApp()),
@@ -115,9 +120,9 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await settle(tester);
       expect(service.disconnected, ['rdp-1']);
-    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+    }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
 
-    testWidgets('Android fullscreen RDP at $size keeps keyboard and touchpad working', (tester) async {
+    testWidgets('mobile fullscreen RDP at $size keeps keyboard and touchpad working', (tester) async {
       final backend = testBackend();
       addTearDown(backend.dispose);
       setTestLocale(backend, AppLocale.ru);
@@ -228,7 +233,7 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await settle(tester);
       expect(service.disconnected, ['rdp-1']);
-    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+    }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
   }
 }
 
@@ -246,6 +251,7 @@ class _MobileWindow extends RdpWindow {
 }
 
 const _capture = bool.fromEnvironment('CC_RDP_MOBILE_CAPTURE');
+const _captureLanguage = String.fromEnvironment('CC_RDP_MOBILE_LOCALE', defaultValue: 'ru');
 const _output = String.fromEnvironment('CC_RDP_MOBILE_OUTPUT', defaultValue: '/tmp/consolecrypt-rdp-mobile-review');
 
 Future<void> _loadFonts(WidgetTester tester) => tester.runAsync(() async {
@@ -257,6 +263,7 @@ Future<void> _loadFonts(WidgetTester tester) => tester.runAsync(() async {
 });
 
 Future<void> _captureWorkspace(WidgetTester tester, String name) async {
+  if (defaultTargetPlatform != TargetPlatform.android) return;
   // Native image decoding runs outside the fake test clock. No server or
   // operating-system keyboard is involved; the bottom inset remains reserved.
   await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
@@ -268,7 +275,7 @@ Future<void> _captureWorkspace(WidgetTester tester, String name) async {
       final png = await image.toByteData(format: ui.ImageByteFormat.png);
       if (png == null) throw StateError('rdp_mobile_capture_unavailable');
       await Directory(_output).create(recursive: true);
-      await File('$_output/$name.png').writeAsBytes(png.buffer.asUint8List());
+      await File('$_output/mobile-rdp-$name-$_captureLanguage.png').writeAsBytes(png.buffer.asUint8List());
     } finally {
       image.dispose();
     }
