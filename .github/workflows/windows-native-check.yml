@@ -1,0 +1,54 @@
+name: Windows native checks by diagnostic tag
+
+# Diagnostic tags exercise native tests without producing or publishing clients.
+# Stable installers continue to be built only by client.yml release tags.
+on:
+  push:
+    tags: ['check-windows-*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: consolecrypt-windows-native-checks
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.repository == 'evsikovas/consolecrypt-client'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check diagnostic tag and main ancestry
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import subprocess
+          if not re.fullmatch(r'refs/tags/check-windows-[0-9]+\.[0-9]+\.[0-9]+-[1-9][0-9]*', os.environ['GITHUB_REF']):
+              raise SystemExit('Invalid Windows diagnostic tag')
+          subprocess.run(['git', 'merge-base', '--is-ancestor', 'HEAD', 'origin/main'], check=True)
+          PY
+
+  windows:
+    needs: validate
+    runs-on: [self-hosted, Windows, X64, consolecrypt, client]
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Native RDP and local terminal regressions
+        run: |
+          & client/scripts/ci-windows.ps1 -NativeOnly
+          if ($LASTEXITCODE -ne 0) { throw 'Windows native checks failed' }
+      - name: Clean generated native test output
+        if: always()
+        run: '& client/scripts/cleanup-ci-workspace.ps1'

@@ -1,3 +1,4 @@
+param([switch]$NativeOnly)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $Repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -28,7 +29,7 @@ foreach ($buildProfileRoot in ($Profiles | Select-Object -Unique)) {
 # Bootstrap missing SDKs from official releases with pinned verification.
 # This dedicated runner cache is outside the checkout and never enters Git.
 $runnerTools = if ($env:CC_CI_TOOLS_DIR) { $env:CC_CI_TOOLS_DIR } else { Join-Path $env:SystemDrive 'GitLab-Runner\tools' }
-if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
+if (-not $NativeOnly -and -not (Get-Command flutter -ErrorAction SilentlyContinue)) {
     $flutterSdk = Join-Path $runnerTools 'flutter-3.47.5'
     if (-not (Test-Path (Join-Path $flutterSdk 'bin\flutter.bat'))) {
         New-Item -ItemType Directory -Force $runnerTools | Out-Null
@@ -55,7 +56,7 @@ if (-not (Get-Command perl -ErrorAction SilentlyContinue)) {
 foreach ($innoBase in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
     if ($innoBase) { Add-BuildPath (Join-Path $innoBase 'Inno Setup 6') }
 }
-if (-not (Get-Command ISCC.exe -ErrorAction SilentlyContinue)) {
+if (-not $NativeOnly -and -not (Get-Command ISCC.exe -ErrorAction SilentlyContinue)) {
     $innoSdk = Join-Path $runnerTools 'inno-6.7.3'
     if (-not (Test-Path (Join-Path $innoSdk 'ISCC.exe'))) {
         New-Item -ItemType Directory -Force $runnerTools | Out-Null
@@ -69,7 +70,9 @@ if (-not (Get-Command ISCC.exe -ErrorAction SilentlyContinue)) {
     Add-BuildPath $innoSdk
 }
 $missing = @()
-foreach ($tool in @('flutter', 'cargo', 'rustup', 'perl', 'python')) {
+$RequiredTools = @('cargo', 'rustup', 'perl', 'python')
+if (-not $NativeOnly) { $RequiredTools += 'flutter' }
+foreach ($tool in $RequiredTools) {
     if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { $missing += $tool }
 }
 if ($missing.Count) { throw "Missing runner build tools: $($missing -join ', '). See docs/public/BUILD_WINDOWS.md." }
@@ -80,7 +83,7 @@ function Invoke-Checked {
 }
 Invoke-Checked python @('-m', 'unittest', 'discover', '-s', (Join-Path $Repo 'client\scripts'), '-p', 'test_ci_cleanup.py', '-v')
 # Resolve Python/toolchain paths before reserving a GitHub build number.
-if ($env:GITHUB_RUN_NUMBER) {
+if ($env:GITHUB_RUN_NUMBER -and -not $NativeOnly) {
     $githubBuild = & python (Join-Path $PSScriptRoot 'github-build-number.py') windows --print-only
     if ($LASTEXITCODE -ne 0 -or "$githubBuild" -notmatch '^\d+$') { throw 'GitHub build identity reservation failed' }
     $env:CC_BUILD_NUMBER = "$githubBuild".Trim()
@@ -93,6 +96,10 @@ try {
     $env:CARGO_TARGET_DIR = Join-Path $Repo 'target\windows-rdp-tests'
     Invoke-Checked cargo @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-rdp-core', '-p', 'cc-terminal-core', '--all-targets')
 } finally { $env:CARGO_TARGET_DIR = $OriginalNativeTestTarget }
+if ($NativeOnly) {
+    Write-Host 'WINDOWS_NATIVE_CHECKS_PASS: no application packaging or publication'
+    return
+}
 Push-Location (Join-Path $Repo 'client\flutter')
 try {
     Invoke-Checked flutter @('pub', 'get')

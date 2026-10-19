@@ -943,8 +943,54 @@ mod tests {
         .expect("full input and EOF queues must not delay native close");
     }
 
+    #[derive(Default)]
+    struct CursorPositionRequests {
+        matched: usize,
+    }
+
+    impl CursorPositionRequests {
+        fn feed(&mut self, bytes: &[u8]) -> usize {
+            const QUERY: &[u8] = b"\x1b[6n";
+            let mut requests = 0;
+            for &byte in bytes {
+                if byte == QUERY[self.matched] {
+                    self.matched += 1;
+                    if self.matched == QUERY.len() {
+                        requests += 1;
+                        self.matched = 0;
+                    }
+                } else {
+                    self.matched = usize::from(byte == QUERY[0]);
+                }
+            }
+            requests
+        }
+    }
+
+    #[test]
+    fn cursor_position_fixture_handles_fragmented_and_repeated_queries() {
+        let output = b"\x1b\x1b[6ntext\x1b[?6n\x1b[6n\x1b[6";
+        for split in 0..=output.len() {
+            let mut parser = CursorPositionRequests::default();
+            assert_eq!(
+                parser.feed(&output[..split]) + parser.feed(&output[split..]),
+                2
+            );
+            assert_eq!(parser.feed(b"n"), 1);
+            assert_eq!(parser.feed(b"n"), 0);
+        }
+        let mut parser = CursorPositionRequests::default();
+        assert_eq!(
+            output
+                .iter()
+                .map(|byte| parser.feed(&[*byte]))
+                .sum::<usize>(),
+            2
+        );
+    }
+
     #[cfg(windows)]
-    async fn windows_roundtrip(id: &str, command: &'static str) {
+    async fn windows_shell(id: &str) -> OpenedShell {
         let mut profile = discover()
             .await
             .unwrap()
@@ -953,8 +999,10 @@ mod tests {
             .unwrap();
         if profile.info.kind == LocalShellKind::Powershell {
             profile.args.push("-NoProfile".into());
+        } else if profile.info.kind == LocalShellKind::Cmd {
+            profile.args.push("/D".into()); // Ignore the runner user's AutoRun commands.
         }
-        let mut opened = tokio::task::spawn_blocking(move || {
+        tokio::task::spawn_blocking(move || {
             transport::spawn(
                 profile,
                 TerminalSize {
@@ -965,24 +1013,54 @@ mod tests {
         })
         .await
         .unwrap()
-        .unwrap();
-        opened.channel.writer.resize(132, 43).await.unwrap();
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        opened.channel.writer.write(command).await.unwrap();
+        .unwrap()
+    }
+
+    #[cfg(windows)]
+    async fn windows_roundtrip(id: &str, command: &'static str) {
+        let mut opened = windows_shell(id).await;
         let mut output = Vec::new();
         let mut exit = None;
-        tokio::time::timeout(std::time::Duration::from_secs(30), async {
+        let mut queries = CursorPositionRequests::default();
+        let mut cursor_replies = 0;
+        let mut command_sent = false;
+        let completion = tokio::time::timeout(std::time::Duration::from_secs(30), async {
             while let Some(event) = opened.channel.reader.recv().await {
                 match event {
-                    cc_ssh_core::ShellEvent::Data(bytes) => output.extend_from_slice(&bytes),
+                    cc_ssh_core::ShellEvent::Data(bytes) => {
+                        output.extend_from_slice(&bytes);
+                        // portable-pty enables PSEUDOCONSOLE_INHERIT_CURSOR.
+                        // Act as the terminal (like xterm in the real UI): a
+                        // plain byte collector leaves ConPTY waiting forever
+                        // for this reply, including during resize and close.
+                        for _ in 0..queries.feed(&bytes) {
+                            opened.channel.writer.write("\x1b[1;1R").await.unwrap();
+                            cursor_replies += 1;
+                        }
+                        if cursor_replies > 0 && !command_sent {
+                            opened.channel.writer.resize(132, 43).await.unwrap();
+                            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                            opened.channel.writer.write(command).await.unwrap();
+                            command_sent = true;
+                        }
+                    }
                     cc_ssh_core::ShellEvent::ExitStatus(code) => exit = Some(code),
                     cc_ssh_core::ShellEvent::Closed => break,
                     _ => {}
                 }
             }
         })
-        .await
-        .expect("ConPTY must drain output and close without deadlock");
+        .await;
+        assert!(
+            completion.is_ok(),
+            "ConPTY timeout: bytes={}, cursor_replies={cursor_replies}, command_sent={command_sent}, exit={exit:?}, prefix={:02x?}",
+            output.len(),
+            &output[..output.len().min(4)]
+        );
+        assert!(
+            cursor_replies > 0,
+            "ConPTY startup cursor query must be answered"
+        );
         assert_eq!(exit, Some(7));
         let output = String::from_utf8(output).expect("ConPTY output must remain valid UTF-8");
         assert!(output.contains("CC_WINDOWS"));
@@ -990,6 +1068,40 @@ mod tests {
         if id == "windows:powershell" {
             assert!(output.contains("SIZE_132x43"));
         }
+    }
+
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn native_conpty_close_during_cursor_handshake() {
+        let mut opened = windows_shell("windows:cmd").await;
+        let mut queries = CursorPositionRequests::default();
+        tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            while let Some(event) = opened.channel.reader.recv().await {
+                if let cc_ssh_core::ShellEvent::Data(bytes) = event {
+                    if queries.feed(&bytes) > 0 {
+                        return;
+                    }
+                }
+            }
+            panic!("ConPTY closed before the startup cursor query");
+        })
+        .await
+        .expect("ConPTY must issue its startup cursor query");
+        // A tab can close before its terminal widget answers the first DSR.
+        // Exercise cancellation while the supervisor is handling a resize,
+        // without supplying a fake response that could hide the deadlock.
+        opened.channel.writer.resize(132, 43).await.unwrap();
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        opened.lifetime.as_ref().unwrap().close();
+        tokio::time::timeout(std::time::Duration::from_secs(3), async {
+            while let Some(event) = opened.channel.reader.recv().await {
+                if matches!(event, cc_ssh_core::ShellEvent::Closed) {
+                    return;
+                }
+            }
+        })
+        .await
+        .expect("Closing ConPTY with a pending cursor query and resize must not hang");
     }
 
     #[cfg(windows)]
