@@ -39,34 +39,34 @@ xcrun simctl launch booted io.consolecrypt.consolecrypt
 Для ZIP сначала проверьте SHA-256, затем распакуйте `Runner.app` и установите
 его той же командой. Этот ZIP не является IPA для установки на iPhone.
 
-### Готовый архив из релиза 0.3.2
+### Готовый архив из релиза 0.4.1
 
-В [релизе v0.3.2](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.3.2)
-скачайте [полный Simulator ZIP](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.3.2/ConsoleCrypt-0.3.2%2B13015-ios-simulator-universal.zip)
-и [SHA256SUMS-0.3.2.txt](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.3.2/SHA256SUMS-0.3.2.txt).
+В [релизе v0.4.1](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.4.1)
+скачайте [полный Simulator ZIP](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.4.1/ConsoleCrypt-0.4.1%2B18015-ios-simulator-universal.zip)
+и [SHA256SUMS-0.4.1.txt](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.4.1/SHA256SUMS-0.4.1.txt).
 Сохраните оба файла в одной папке. ZIP опубликован целиком; объединение частей
-больше не требуется. Сборка — **0.3.2+13015**, размер — **154 448 450 байт**.
+больше не требуется. Сборка — **0.4.1+18015**, размер — **154 475 705 байт**.
 
 В Terminal перейдите в эту папку и проверьте архив:
 
 ```sh
-awk '$2 == "ConsoleCrypt-0.3.2+13015-ios-simulator-universal.zip" { print; n++ } \
-     END { if (n != 1) exit 1 }' SHA256SUMS-0.3.2.txt > ios.SHA256SUMS \
+awk '$2 == "ConsoleCrypt-0.4.1+18015-ios-simulator-universal.zip" { print; n++ } \
+     END { if (n != 1) exit 1 }' SHA256SUMS-0.4.1.txt > ios.SHA256SUMS \
     && shasum -a 256 -c ios.SHA256SUMS
 ```
 
 Продолжайте только после результата `OK`. Ожидаемая SHA-256:
-`26df230422e82cec68277c12a8ec18a62b6f1ca265bc913a5d74665a20c75b81`.
+`c129182f2caf9d748d9aeacac2b846dc131343b2c1e357281b7dce716989ee6a`.
 
 ```sh
-unzip ConsoleCrypt-0.3.2+13015-ios-simulator-universal.zip
+unzip ConsoleCrypt-0.4.1+18015-ios-simulator-universal.zip
 xcrun simctl install booted Runner.app
 xcrun simctl launch booted io.consolecrypt.consolecrypt
 ```
 
 Перед установкой запустите нужный Simulator в Xcode. Если открыто несколько
-Simulator, замените `booted` на UDID выбранного устройства. Этот ZIP содержит
-ARM64 и Intel Simulator и не является IPA для установки на физический iPhone.
+Simulator, замените `booted` на UDID выбранного устройства. Этот ZIP предназначен
+для Simulator и не является IPA для установки на физический iPhone.
 
 Для нативного smoke test выберите UDID из `flutter devices`:
 
@@ -82,40 +82,49 @@ flutter test integration_test/ios_core_test.dart -d <SIMULATOR_UDID> \
 
 ## GitHub Actions и iOS Simulator
 
-В workflow `Client packages` job `ios` идёт после macOS и Android на одном
-Mac runner. Она запускает `ci-ios.sh --build-only`, устанавливает и открывает
-preview в отдельном Simulator. Actions artifact содержит **полный Simulator ZIP**,
-его SHA-256 и файл версии; срок хранения — 30 дней. Это отличается от прежнего
-GitLab artifact, описанного ниже. [Раннеры и номера сборок](GITHUB_ACTIONS.md).
-Публикация установщика в GitHub Release выполняется отдельно после проверки.
+В workflow `Client tag release` job `ios` зависит от macOS и использует
+Mac runner, выбранный настройкой `MACOS_BUILD_RUNNER`. Она запускает
+`ci-ios.sh --build-only`, устанавливает и открывает preview в отдельном Simulator.
+Actions artifact содержит **полный Simulator ZIP**, его SHA-256 и файл версии;
+срок хранения — 30 дней. После успешной проверки всех платформ job `publish`
+сверяет квитанции версий и автоматически публикует семь установщиков и общие
+контрольные суммы в GitHub Release. Push ветки сам по себе выпуск не запускает.
+[Раннеры и номера сборок](GITHUB_ACTIONS.md).
 
-In GitHub Actions, the `ios` job uploads the complete Simulator ZIP, its checksum
-and version receipt. It runs after the macOS and Android jobs on the same Mac
-runner. A CI artifact is not a public release or an installable iPhone package.
+Проверенный выпуск **0.4.1+18015** собран 19 октября 2026 года:
+[iOS job](https://github.com/evsikovas/consolecrypt-client/actions/runs/39306084913/job/118262704636)
+завершился успешно; журнал подтверждает установку и запуск
+`io.consolecrypt.consolecrypt` с получением PID.
+
+In GitHub Actions, `Client tag release` runs the `ios` job after macOS and uploads
+the complete Simulator ZIP, checksum and version receipt. After all platforms
+pass, the publisher checks the receipts and publishes the release automatically.
+The artifact and released ZIP are for Simulator, not installable iPhone IPAs.
 
 ## SSH/SFTP regression и прежний GitLab CI
 
 ### Исторический GitLab artifact: только квитанции
 
-Начиная с 0.3, CI сохраняет полный Simulator ZIP на Mac runner **вне checkout**:
+В прежнем GitLab CI, начиная с 0.3, полный Simulator ZIP сохранялся на Mac
+runner **вне checkout**:
 `$HOME/.cache/consolecrypt/ios-preview/<полный source SHA>/<job ID>/`.
 Каталог имеет права `0700`, ZIP — `0600`. Следующая очистка исходников не удаляет
 этот архив. Сохранение проверяет native bundle ID/версию/job ID, CRC и SHA-256;
 оно не является отдельной проверкой работы приложения на iPhone.
 
-Скачанный **CI artifact** содержит только три небольших файла:
+Исторический **GitLab CI artifact** содержит только три небольших файла:
 `ConsoleCrypt-ios-preview.json`, `SHA256SUMS-ios-preview.txt` и
 `README-ios-preview.txt`. В нём нет приложения. Получите полный ZIP у владельца
 Mac runner и сверьте SHA-256 из квитанции перед распаковкой. Если job завершился
 ошибкой после сохранения, квитанция ещё не означает успешную проверку запуска.
 
-GitLab отправляет все artifact paths одним архивом. Разделение ZIP на части
-внутри этого же artifact не уменьшает общий размер запроса и не решает ошибку
-`413 Request Entity Too Large`. Полный ZIP не отправляется в CI artifact;
-публичный релиз с отдельно проверенными частями публикуется отдельным процессом.
-Локальная `build-ios.sh --simulator` по-прежнему выдаёт полный архив в `dist/ios/`.
+GitLab отправлял все artifact paths одним архивом. Разделение ZIP на части
+внутри этого же artifact не уменьшало общий размер запроса и не решало ошибку
+`413 Request Entity Too Large`, поэтому тот CI сохранял только квитанции.
+Текущие GitHub artifact и release содержат полный ZIP. Локальная
+`build-ios.sh --simulator` также выдаёт полный архив в `dist/ios/`.
 
-The iOS preview **CI artifact contains metadata/checksums only**, not the app.
+The historical GitLab iOS preview **artifact contains metadata/checksums only**, not the app.
 The full ZIP is retained privately on the macOS runner, outside its checkout,
 under `$HOME/.cache/consolecrypt/ios-preview/<source SHA>/<job ID>/`. Obtain it
 from the runner owner and verify the recorded SHA-256 before extracting it.
@@ -152,16 +161,11 @@ client/scripts/ci-ios.sh --build-only
 Этот запуск компилирует продукт, устанавливает и запускает его в собственном
 временном Simulator. Архив, SHA-256 и версия остаются в `dist/ios`.
 
-В GitLab файл `client/ci/ios.yml` предоставляет задания `ios-regression` и
-`build-ios-preview`. Regression запускается вручную; preview автоматически
-запускается только на точной ветке `codex/rdp-0.3-source`, на остальных ветках —
-вручную. Runner должен иметь теги `macos` и `arm64`, Xcode/runtime, Flutter,
-Rust, CocoaPods, Python; для regression также нужен Docker. Оба задания делят
-`resource_group: consolecrypt-macos` с macOS-сборкой. Каждое компилирует только
-один нативный bundle и использует свой `CI_JOB_ID` как нижнюю границу номера.
-Небольшие CI-квитанции preview хранятся 90 дней; срок хранения полного ZIP
-в отдельном локальном кэше контролирует владелец runner. Apple signing secrets
-не требуются.
+Файл `client/ci/ios.yml` сохранён для прежних ручных GitLab-проверок.
+Его правила веток и небольшие preview-квитанции не являются текущим процессом
+релиза. Выпуски собираются по тегам в GitHub Actions, как описано выше.
+Локальные `--test-only` и `--build-only` остаются отдельными режимами;
+Apple signing secrets для Simulator не требуются.
 
 ## Настоящий iPhone
 
@@ -195,17 +199,16 @@ client/scripts/build-ios.sh --device
 пять секунд; финальная очистка прошла без таймаутов. Это отдельная тестовая
 сборка: product ZIP создаётся следующим запуском `--build-only`.
 
-Текущий готовый архив — **0.3.2+13015**. Проверены bundle ID, версия,
-целостность ZIP, SHA-256, подпись (`codesign --verify --deep --strict`) и
-ARM64/x86-64 Simulator slices в Runner,
-Runner.debug.dylib, App, Flutter и Rust bridge. Полный ZIP опубликован одним
-файлом. CI установил приложение в отдельный временный Simulator и запустил
-процесс, получив PID. Отдельная визуальная проверка экрана этой сборки не
-выполнялась. Это проверка установки/запуска процесса,
-а не повтор полного SSH/SFTP-прогона выше и не проверка настоящего iPhone.
+Текущий готовый архив — **0.4.1+18015**. CI проверил bundle ID и версию,
+установил приложение в отдельный временный Simulator и запустил процесс,
+получив PID. Полный ZIP опубликован одним файлом; его размер и SHA-256
+сверены с GitHub asset digest и общим файлом контрольных сумм.
+Это проверка сборки, установки и запуска процесса, а не повтор полного
+SSH/SFTP-прогона выше. Визуальная приёмка, работа RDP и настоящее устройство
+этим запуском не проверялись.
 
-Фундамент Rust также проверен компиляцией для физического ARM64 iPhone.
-Полный прогон выше выполнен в Simulator и не подтверждает
+В прежней приёмке фундамент Rust также проверяли компиляцией для физического
+ARM64 iPhone. Полный прогон выше выполнен в Simulator и не подтверждает
 установку или работу на настоящем телефоне.
 
 На физическом устройстве ещё нужно проверить Face ID/Touch ID, блокировку
@@ -242,12 +245,11 @@ Runner.debug.dylib, App, Flutter и Rust bridge. Полный ZIP опублик
 
 ## English
 
-Download the complete **0.3.2+13015** Simulator ZIP and `SHA256SUMS-0.3.2.txt`
+Download the complete **0.4.1+18015** Simulator ZIP and `SHA256SUMS-0.4.1.txt`
 using the links above. Verify its single checksum entry, extract the ZIP, then install
-`Runner.app` with `xcrun simctl install`. The current archive contains ARM64 and
-x86-64 Simulator slices; CI installed it and launched a process in an isolated
-Simulator. Its code signature passed independent deep/strict verification; a
-visual welcome-screen check was not repeated for this archive.
-The full SSH/SFTP regression described above is a separate earlier test.
+`Runner.app` with `xcrun simctl install`. CI installed this build and launched a
+process in an isolated Simulator. The published size and SHA-256 match GitHub
+asset metadata and the release checksum manifest. This CI run did not repeat visual, RDP or physical-device
+acceptance. The full SSH/SFTP regression above is a separate earlier test.
 This is not an iPhone-installable IPA; a physical device requires Xcode signing
 and separate keyboard, biometrics, network and background acceptance checks.

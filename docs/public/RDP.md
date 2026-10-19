@@ -80,8 +80,11 @@ Tab, стрелки, Enter и Backspace (⌫)**. Клавиши прокручи
 отключение ввода отпускают удерживаемые клавиши и кнопки мыши. После возвращения
 начните жест заново. Подключённая мышь работает обычным прямым способом.
 Настольное управление не меняется, а перенаправление папок на Android и iOS
-по-прежнему недоступно. Существующие снимки руководства относятся к историческим
-сборкам из манифеста и не подтверждают наличие этой панели в 0.3.2.
+по-прежнему недоступно. [Снимки мобильного управления 0.4.1](https://consolecrypt.dev/guide?lang=ru#rdp-mobile)
+показывают настоящие виджеты Android с демонстрационным кадром рабочего стола.
+На снимках клавиатурного режима оставлено место под системную клавиатуру:
+саму клавиатуру widget-тест не рисует. Общие проверки управления проходят
+для Android и iOS; готовый iOS-пакет предназначен для Simulator.
 
 ### Phone controls — current sources (English)
 
@@ -117,9 +120,12 @@ composition is complete.
 Changing input mode or session, going into the background, locking or disabling
 input releases held keys and mouse buttons. Start a new gesture after returning.
 An attached mouse uses ordinary direct control. Desktop controls are unchanged;
-folder redirection remains unavailable on Android and iOS. Existing guide
-screenshots belong to the historical builds recorded in the manifest and do
-not show that this panel is available in 0.3.2.
+folder redirection remains unavailable on Android and iOS.
+[Mobile controls screenshots for 0.4.1](https://consolecrypt.dev/guide?lang=en#rdp-mobile)
+show real Android widgets with a synthetic desktop frame. Keyboard-mode images
+reserve space for the system keyboard, which the widget test does not render.
+Shared interaction checks run for Android and iOS; the distributed iOS package
+is a Simulator preview.
 
 ## Буфер обмена
 
