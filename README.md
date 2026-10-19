@@ -1,6 +1,6 @@
 **English** | [Русский](README.ru.md)
 
-<p align="center"><img src="docs/brand/consolecrypt.svg" width="80" alt="ConsoleCrypt"></p>
+<p align="center"><img src="docs/brand/consolecrypt.svg" width="280" alt="ConsoleCrypt"></p>
 
 # ConsoleCrypt — clients
 
