@@ -94,7 +94,9 @@ if ($env:GITHUB_RUN_NUMBER -and -not $NativeOnly) {
 $OriginalNativeTestTarget = $env:CARGO_TARGET_DIR
 try {
     $env:CARGO_TARGET_DIR = Join-Path $Repo 'target\windows-rdp-tests'
-    Invoke-Checked cargo @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-rdp-core', '-p', 'cc-terminal-core', '--all-targets')
+    $NativeArguments = @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-terminal-core', '--all-targets')
+    if (-not $NativeOnly) { $NativeArguments += @('-p', 'cc-rdp-core') }
+    Invoke-Checked cargo $NativeArguments
 } finally { $env:CARGO_TARGET_DIR = $OriginalNativeTestTarget }
 if ($NativeOnly) {
     Write-Host 'WINDOWS_NATIVE_CHECKS_PASS: no application packaging or publication'

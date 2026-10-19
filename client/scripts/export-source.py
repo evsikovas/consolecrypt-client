@@ -19,6 +19,7 @@ ROOT_FILES = {
 PUBLIC_DOCUMENTS = {
     'server/deploy/native/README.md',
     'client/rust/rdp-core/vendor/PROVENANCE.md',
+    'client/rust/terminal-core/vendor/PROVENANCE.md',
 }
 PRIVATE_DIRS = {
     '.git', '.github', '.codex', '.claude', '.agents', '.idea', '.vscode',

@@ -1024,24 +1024,34 @@ mod tests {
         let mut queries = CursorPositionRequests::default();
         let mut cursor_replies = 0;
         let mut command_sent = false;
+        let command_writer = opened.channel.writer.clone();
+        let send_command = async {
+            command_writer.resize(132, 43).await.unwrap();
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            command_writer.write(command).await.unwrap();
+        };
+        tokio::pin!(send_command);
         let completion = tokio::time::timeout(std::time::Duration::from_secs(30), async {
-            while let Some(event) = opened.channel.reader.recv().await {
+            loop {
+                let event = tokio::select! {
+                    () = &mut send_command, if !command_sent => {
+                        command_sent = true;
+                        continue;
+                    }
+                    event = opened.channel.reader.recv() => event,
+                };
+                let Some(event) = event else {
+                    break;
+                };
                 match event {
                     cc_ssh_core::ShellEvent::Data(bytes) => {
                         output.extend_from_slice(&bytes);
-                        // portable-pty enables PSEUDOCONSOLE_INHERIT_CURSOR.
-                        // Act as the terminal (like xterm in the real UI): a
-                        // plain byte collector leaves ConPTY waiting forever
-                        // for this reply, including during resize and close.
+                        // Act as the terminal (like xterm in the real UI) if
+                        // a shell requests cursor state. The patched ConPTY
+                        // itself no longer requires a startup DSR response.
                         for _ in 0..queries.feed(&bytes) {
                             opened.channel.writer.write("\x1b[1;1R").await.unwrap();
                             cursor_replies += 1;
-                        }
-                        if cursor_replies > 0 && !command_sent {
-                            opened.channel.writer.resize(132, 43).await.unwrap();
-                            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-                            opened.channel.writer.write(command).await.unwrap();
-                            command_sent = true;
                         }
                     }
                     cc_ssh_core::ShellEvent::ExitStatus(code) => exit = Some(code),
@@ -1057,10 +1067,6 @@ mod tests {
             output.len(),
             &output[..output.len().min(4)]
         );
-        assert!(
-            cursor_replies > 0,
-            "ConPTY startup cursor query must be answered"
-        );
         assert_eq!(exit, Some(7));
         let output = String::from_utf8(output).expect("ConPTY output must remain valid UTF-8");
         assert!(output.contains("CC_WINDOWS"));
@@ -1072,36 +1078,29 @@ mod tests {
 
     #[cfg(windows)]
     #[tokio::test]
-    async fn native_conpty_close_during_cursor_handshake() {
-        let mut opened = windows_shell("windows:cmd").await;
-        let mut queries = CursorPositionRequests::default();
-        tokio::time::timeout(std::time::Duration::from_secs(10), async {
-            while let Some(event) = opened.channel.reader.recv().await {
-                if let cc_ssh_core::ShellEvent::Data(bytes) = event {
-                    if queries.feed(&bytes) > 0 {
+    async fn native_conpty_close_without_terminal_response() {
+        for resize in [false, true] {
+            let mut opened = windows_shell("windows:cmd").await;
+            if resize {
+                opened.channel.writer.resize(132, 43).await.unwrap();
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+            // No terminal widget has read output or replied to any query.
+            // Upstream's cursor-inheritance flag deadlocks this close path.
+            opened.lifetime.as_ref().unwrap().close();
+            let completion = tokio::time::timeout(std::time::Duration::from_secs(3), async {
+                while let Some(event) = opened.channel.reader.recv().await {
+                    if matches!(event, cc_ssh_core::ShellEvent::Closed) {
                         return;
                     }
                 }
-            }
-            panic!("ConPTY closed before the startup cursor query");
-        })
-        .await
-        .expect("ConPTY must issue its startup cursor query");
-        // A tab can close before its terminal widget answers the first DSR.
-        // Exercise cancellation while the supervisor is handling a resize,
-        // without supplying a fake response that could hide the deadlock.
-        opened.channel.writer.resize(132, 43).await.unwrap();
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        opened.lifetime.as_ref().unwrap().close();
-        tokio::time::timeout(std::time::Duration::from_secs(3), async {
-            while let Some(event) = opened.channel.reader.recv().await {
-                if matches!(event, cc_ssh_core::ShellEvent::Closed) {
-                    return;
-                }
-            }
-        })
-        .await
-        .expect("Closing ConPTY with a pending cursor query and resize must not hang");
+            })
+            .await;
+            assert!(
+                completion.is_ok(),
+                "ConPTY close without terminal response hung (resize={resize})"
+            );
+        }
     }
 
     #[cfg(windows)]

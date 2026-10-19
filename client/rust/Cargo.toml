@@ -26,6 +26,7 @@ members = [
 
 [patch.crates-io]
 ironrdp-connector = { path = "rdp-core/vendor/ironrdp-connector" }
+portable-pty = { path = "terminal-core/vendor/portable-pty" }
 
 [workspace.package]
 version = "0.1.0"

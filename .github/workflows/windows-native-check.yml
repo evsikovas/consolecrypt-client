@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - name: Native RDP and local terminal regressions
+      - name: Local terminal regressions
         run: |
           & client/scripts/ci-windows.ps1 -NativeOnly
           if ($LASTEXITCODE -ne 0) { throw 'Windows native checks failed' }
