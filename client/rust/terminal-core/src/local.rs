@@ -771,12 +771,23 @@ mod tests {
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         let mut output = Vec::new();
         let mut exit = None;
-        tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        let mut chunks = 0;
+        let started = tokio::time::Instant::now();
+        let drained = tokio::time::timeout(std::time::Duration::from_secs(20), async {
             while let Some(event) = opened.channel.reader.recv().await {
                 match event {
                     cc_ssh_core::ShellEvent::Data(bytes) => {
                         output.extend_from_slice(&bytes);
-                        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                        chunks += 1;
+                        // PTY reads can fragment identical output differently
+                        // across machines. Pace bytes (400 KiB/s), not events:
+                        // a 10 ms delay per tiny chunk can itself exceed 20 s.
+                        let elapsed_budget =
+                            std::time::Duration::from_micros(output.len() as u64 * 10_000 / 4096);
+                        let next = started + elapsed_budget;
+                        if next > tokio::time::Instant::now() {
+                            tokio::time::sleep_until(next).await;
+                        }
                     }
                     cc_ssh_core::ShellEvent::ExitStatus(code) => exit = Some(code),
                     cc_ssh_core::ShellEvent::Closed => break,
@@ -784,8 +795,17 @@ mod tests {
                 }
             }
         })
-        .await
-        .expect("normal exit must finish draining a progressing consumer");
+        .await;
+        assert!(
+            drained.is_ok(),
+            "normal exit drain timed out: {} bytes in {chunks} chunks, exit={exit:?}",
+            output.len()
+        );
+        eprintln!(
+            "PTY drain: {} bytes in {chunks} chunks, elapsed={:?}",
+            output.len(),
+            started.elapsed()
+        );
         assert_eq!(output.iter().filter(|byte| **byte == b'@').count(), 524288);
         assert!(String::from_utf8_lossy(&output).contains("FINAL_TAIL"));
         assert_eq!(exit, Some(9));
