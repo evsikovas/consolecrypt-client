@@ -1,0 +1,181 @@
+name: Runner generated-output maintenance
+
+# Maintenance only: never compiles, publishes or deploys. Release tags keep
+# their immutable workflow; this dispatch can clean an older completed run.
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Dedicated runner to clean after its release has finished
+        type: choice
+        required: true
+        options: [windows, macos]
+      legacy_windows_ai_cache:
+        description: Also remove known artifacts from the old Windows CI-only AI cache
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Same group as release builds: never clean while a release owns these runners.
+concurrency:
+  group: consolecrypt-client-packages
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.repository == 'evsikovas/consolecrypt-client' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check cleanup deletion boundaries
+        run: python3 -m unittest discover -s client/scripts -p 'test_ci_cleanup.py' -v
+
+  windows:
+    needs: validate
+    if: inputs.platform == 'windows'
+    runs-on: [self-hosted, Windows, X64, consolecrypt, client]
+    timeout-minutes: 30
+    steps:
+      - name: Guard existing workspace before maintenance checkout
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Python = Get-Command python.exe -ErrorAction SilentlyContinue |
+              Where-Object { $_.Source -notmatch '\\Microsoft\\WindowsApps\\' } |
+              Select-Object -First 1 -ExpandProperty Source
+          if (-not $Python) {
+              foreach ($UserDirectory in (Get-ChildItem (Join-Path $env:SystemDrive 'Users') -Directory)) {
+                  $Base = Join-Path $UserDirectory.FullName 'AppData\Local\Programs\Python'
+                  if (Test-Path $Base) {
+                      foreach ($Install in (Get-ChildItem $Base -Directory -Filter 'Python3*' | Sort-Object Name -Descending)) {
+                          $Candidate = Join-Path $Install.FullName 'python.exe'
+                          if (Test-Path $Candidate) { $Python = $Candidate; break }
+                      }
+                  }
+                  if ($Python) { break }
+              }
+          }
+          if (-not $Python) { throw 'Existing Python 3 is required for maintenance preflight' }
+          $Guard = @'
+          # BEGIN_MAINTENANCE_PREFLIGHT
+          import os
+          from pathlib import Path
+          import stat
+          import subprocess
+
+          def no_links(path):
+              for node in [*path.parents, path]:
+                  try:
+                      info = node.lstat()
+                  except FileNotFoundError:
+                      continue
+                  if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+                      raise SystemExit('Unsafe symlink/reparse point before maintenance checkout')
+
+          def repository(root, require_clean=False):
+              no_links(root / '.git')
+              if not (root / '.git').is_dir():
+                  raise SystemExit('Expected existing normal repository before maintenance')
+              def git(*args):
+                  return subprocess.check_output(['git', '-C', str(root), *args], stderr=subprocess.DEVNULL, timeout=20).decode().strip()
+              origins = {'https://github.com/evsikovas/consolecrypt-client', 'https://github.com/evsikovas/consolecrypt-client.git', 'git@github.com:evsikovas/consolecrypt-client.git'}
+              if git('remote', 'get-url', 'origin') not in origins or Path(git('rev-parse', '--show-toplevel')) != root:
+                  raise SystemExit('Unexpected repository before maintenance checkout')
+              if require_clean and git('status', '--porcelain', '--untracked-files=all', '--ignored=matching'):
+                  raise SystemExit('Maintenance tools contain local files or changes; preserve them')
+
+          raw = Path(os.environ['GITHUB_WORKSPACE'])
+          if not raw.is_absolute():
+              raise SystemExit('Expected absolute GitHub workspace')
+          workspace = Path(os.path.abspath(raw))
+          tools = workspace / '.ci-maintenance-tools'
+          no_links(workspace)
+          no_links(tools)
+          repository(workspace)
+          if tools.exists():
+              if not tools.is_dir():
+                  raise SystemExit('Maintenance tools path must be a directory')
+              if any(tools.iterdir()):
+                  repository(tools, require_clean=True)
+          print('MAINTENANCE_PREFLIGHT_PASS')
+          # END_MAINTENANCE_PREFLIGHT
+          '@
+          & $Python -c $Guard
+          if ($LASTEXITCODE -ne 0) { throw 'Maintenance preflight refused checkout' }
+      # Do not let checkout's git clean erase the previous job before guards run.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: .ci-maintenance-tools
+          clean: false
+          persist-credentials: false
+      - name: Remove only owned generated output
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
+        env:
+          CC_CLEAN_LEGACY: ${{ inputs.legacy_windows_ai_cache }}
+        run: |
+          & .ci-maintenance-tools/client/scripts/cleanup-ci-workspace.ps1 -Maintenance -LegacyWindowsAiCache:($env:CC_CLEAN_LEGACY -eq 'true')
+
+  macos:
+    needs: validate
+    if: inputs.platform == 'macos' && !inputs.legacy_windows_ai_cache
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 30
+    steps:
+      - name: Guard existing workspace before maintenance checkout
+        run: |
+          /usr/bin/python3 - <<'PY'
+          # BEGIN_MAINTENANCE_PREFLIGHT
+          import os
+          from pathlib import Path
+          import stat
+          import subprocess
+
+          def no_links(path):
+              for node in [*path.parents, path]:
+                  try:
+                      info = node.lstat()
+                  except FileNotFoundError:
+                      continue
+                  if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+                      raise SystemExit('Unsafe symlink/reparse point before maintenance checkout')
+
+          def repository(root, require_clean=False):
+              no_links(root / '.git')
+              if not (root / '.git').is_dir():
+                  raise SystemExit('Expected existing normal repository before maintenance')
+              def git(*args):
+                  return subprocess.check_output(['git', '-C', str(root), *args], stderr=subprocess.DEVNULL, timeout=20).decode().strip()
+              origins = {'https://github.com/evsikovas/consolecrypt-client', 'https://github.com/evsikovas/consolecrypt-client.git', 'git@github.com:evsikovas/consolecrypt-client.git'}
+              if git('remote', 'get-url', 'origin') not in origins or Path(git('rev-parse', '--show-toplevel')) != root:
+                  raise SystemExit('Unexpected repository before maintenance checkout')
+              if require_clean and git('status', '--porcelain', '--untracked-files=all', '--ignored=matching'):
+                  raise SystemExit('Maintenance tools contain local files or changes; preserve them')
+
+          raw = Path(os.environ['GITHUB_WORKSPACE'])
+          if not raw.is_absolute():
+              raise SystemExit('Expected absolute GitHub workspace')
+          workspace = Path(os.path.abspath(raw))
+          tools = workspace / '.ci-maintenance-tools'
+          no_links(workspace)
+          no_links(tools)
+          repository(workspace)
+          if tools.exists():
+              if not tools.is_dir():
+                  raise SystemExit('Maintenance tools path must be a directory')
+              if any(tools.iterdir()):
+                  repository(tools, require_clean=True)
+          print('MAINTENANCE_PREFLIGHT_PASS')
+          # END_MAINTENANCE_PREFLIGHT
+          PY
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: .ci-maintenance-tools
+          clean: false
+          persist-credentials: false
+      - name: Remove only owned generated output
+        run: python3 .ci-maintenance-tools/client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE" --maintenance

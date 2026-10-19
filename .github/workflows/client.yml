@@ -33,7 +33,9 @@ jobs:
         id: tag
         run: python3 client/scripts/verify-github-tag.py
       - name: Test release boundaries
-        run: python3 -m unittest discover -s client/scripts -p 'test_github_release.py' -v
+        run: |
+          python3 -m unittest discover -s client/scripts -p 'test_github_release.py' -v
+          python3 -m unittest discover -s client/scripts -p 'test_ci_cleanup.py' -v
 
   macos:
     needs: validate
@@ -77,6 +79,9 @@ jobs:
             dist/macos/ConsoleCrypt-*-macos-universal.dmg
             dist/macos/SHA256SUMS-macos.txt
             dist/macos/ConsoleCrypt.version
+      - name: Clean generated output after artifact upload
+        if: always()
+        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE"
 
   windows:
     needs: validate
@@ -104,6 +109,9 @@ jobs:
             dist/windows/ConsoleCrypt-windows.zip
             dist/windows/*.sha256
             dist/windows/ConsoleCrypt.version
+      - name: Clean generated output after artifact upload
+        if: always()
+        run: '& client/scripts/cleanup-ci-workspace.ps1'
 
   linux:
     needs: validate
@@ -130,6 +138,9 @@ jobs:
             dist/linux/*.json
             dist/linux/acceptance/linux-ffi-integration.json
             dist/linux/ConsoleCrypt.version
+      - name: Clean generated output after artifact upload
+        if: always()
+        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE"
 
   android:
     needs: validate
@@ -158,6 +169,9 @@ jobs:
             dist/android/ConsoleCrypt-android-arm64.apk
             dist/android/ConsoleCrypt-android-arm64.apk.sha256
             dist/android/ConsoleCrypt.version
+      - name: Clean generated output after artifact upload
+        if: always()
+        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE"
 
   ios:
     needs: macos
@@ -183,6 +197,9 @@ jobs:
             dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip
             dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip.sha256
             dist/ios/ConsoleCrypt-simulator-universal.version
+      - name: Clean generated output after artifact upload
+        if: always()
+        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE"
 
   publish:
     needs: [validate, macos, windows, linux, android, ios]

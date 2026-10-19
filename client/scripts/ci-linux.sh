@@ -9,9 +9,13 @@ docker info >/dev/null
 # ARC's Docker sidecar shares _work, not the runner container's /tmp.
 # RUNNER_TEMP lives on that shared volume; a standalone runner keeps /tmp.
 task_dir="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/consolecrypt-linux-ci.XXXXXX")"
+container_name="${task_dir##*/}"
 finish() {
   local status=$?
   trap - EXIT
+  # Stop only this task's uniquely named container if docker run was interrupted.
+  # A successful --rm run is already gone; never prune shared images or volumes.
+  docker rm --force "$container_name" >/dev/null 2>&1 || true
   # This helper emits a closed-schema, redacted receipt. Retain only that
   # JSON on failed tests; never export the test HOME, keyring or raw output.
   if ! python3 client/scripts/retain-linux-receipt.py "$task_dir/source" "$repo_dir"; then
@@ -23,9 +27,11 @@ finish() {
   exit "$status"
 }
 trap finish EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 python3 client/scripts/stage-linux-source.py --output "$task_dir/source"
 docker build --platform linux/amd64 -t consolecrypt-linux-builder:3.47.5-rust1.98 client/ci/linux
-docker run --rm --platform linux/amd64 \
+docker run --rm --name "$container_name" --platform linux/amd64 \
   --env "CC_BUILD_NUMBER=${CC_BUILD_NUMBER:-${CI_JOB_ID:?Set CC_BUILD_NUMBER for a native CI build}}" \
   --env "CC_OUTPUT_UID=$(id -u)" --env "CC_OUTPUT_GID=$(id -g)" \
   --mount "type=bind,source=$task_dir/source,target=/work" \

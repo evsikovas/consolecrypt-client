@@ -3,7 +3,7 @@
 ## Русский
 
 На Windows и macOS откройте «Настройки» → «Встроенный локальный ИИ».
-В исходниках 0.5 доступен выбор трёх моделей Q4_K_M:
+В серии 0.5 доступен выбор трёх моделей Q4_K_M:
 
 | Вариант | Модель | Загрузка GGUF | Ориентир по общей ОЗУ |
 | --- | --- | --- | --- |
@@ -93,7 +93,7 @@ ConsoleCrypt. Путь к модели и токен процесса не си�
 
 ## English
 
-In Windows/macOS Settings, open **Built-in local AI**. Source version 0.5 offers
+In Windows/macOS Settings, open **Built-in local AI**. The 0.5 series offers
 Light Qwen2.5-Coder 1.5B (about 1.1 GB, 4 GiB RAM), Medium Qwen3.5 4B (about
 2.7 GB, 8 GiB RAM) and Strong Qwen3.5 9B (about 5.7 GB, 16 GiB RAM), all Q4_K_M.
 The star recommends the largest tier fitting total system RAM; unknown RAM or

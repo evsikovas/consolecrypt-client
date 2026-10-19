@@ -2,7 +2,7 @@
 
 ## Русский
 
-В исходниках 0.5 локальная оболочка открывается рядом с SSH-сессиями в разделе
+В серии 0.5 локальная оболочка открывается рядом с SSH-сессиями в разделе
 «Терминал». Это процесс на вашем компьютере с правами вашего пользователя.
 Сервер синхронизации и SSH-подключение для него не нужны.
 
@@ -61,11 +61,11 @@ POSIX shell для WSL. Локальный терминал не получае�
 Снимки 0.5 — настоящие Flutter-виджеты с синтетическими оболочками и текстом.
 WSL-экран демонстрирует Windows-вариант интерфейса в widget-тесте, а не запуск
 Windows или WSL. Проверки установленного пакета отмечаются отдельно в
-[заметках выпуска](RELEASE_0_5_0.md).
+[заметках выпуска](RELEASE_0_5_1.md).
 
 ## English
 
-Source version 0.5 adds local shells alongside SSH tabs. Open **Terminal** and
+The 0.5 series adds local shells alongside SSH tabs. Open **Terminal** and
 use its new-tab button, `Cmd+T` on macOS or `Ctrl+T` on Windows. Choose **zsh** on
 macOS, or **Windows PowerShell**, **Command Prompt**, installed **PowerShell 7**
 and individual **WSL** distributions on Windows. The app's global “+” still opens

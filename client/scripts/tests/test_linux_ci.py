@@ -42,12 +42,14 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import signal
 import sys
 
 state_path = Path(os.environ['CC_CI_TEST_STATE'])
 state = json.loads(state_path.read_text()) if state_path.exists() else {'calls': []}
 state['calls'].append(sys.argv[1])
 if sys.argv[1] == 'run':
+    state['container_name'] = sys.argv[sys.argv.index('--name') + 1]
     mount = sys.argv[sys.argv.index('--mount') + 1]
     fields = dict(part.split('=', 1) for part in mount.split(','))
     assert fields['type'] == 'bind' and fields['target'] == '/work'
@@ -139,7 +141,12 @@ if sys.argv[1] == 'run':
     (output / (prefix + '.json')).write_text(json.dumps(manifest) + '\n')
     (output / 'other-private.json').write_bytes(marker)
     (output / 'ConsoleCrypt.version').write_text(version + '\n')
+elif sys.argv[1] == 'rm':
+    assert sys.argv[2:] == ['--force', state['container_name']]
+    state['removed_owned_container'] = True
 state_path.write_text(json.dumps(state) + '\n')
+if sys.argv[1] == 'run' and os.environ.get('CC_CI_TEST_RUN_SIGNAL') == 'term':
+    os.kill(os.getpid(), signal.SIGTERM)
 raise SystemExit(int(os.environ['CC_CI_TEST_DOCKER_EXIT']) if sys.argv[1] == 'run' else 0)
 '''
 
@@ -202,6 +209,12 @@ class LinuxCiRetentionTest(unittest.TestCase):
             ["git", "-C", str(self.repo), "rev-parse", "HEAD"], env=self.env, text=True,
         ).strip()
 
+    def test_interrupted_docker_cli_removes_only_its_owned_container(self):
+        self.env['CC_CI_TEST_RUN_SIGNAL'] = 'term'
+        result, state = self.run_ci(0)
+        self.assertEqual(result.returncode, 143)
+        self.assertTrue(state['removed_owned_container'])
+
     def run_ci(self, docker_exit, *, receipt_mode="regular", artifact_mode="regular"):
         self.state_path.unlink(missing_ok=True)
         command = ["bash", str(self.repo / "client/scripts/ci-linux.sh")]
@@ -226,7 +239,9 @@ class LinuxCiRetentionTest(unittest.TestCase):
         self.assertFalse(self.marker.encode() in result.stdout + result.stderr,
                          "private fixture payload must never reach process output")
         state = json.loads(self.state_path.read_text())
-        self.assertEqual(state["calls"], ["info", "build", "run"])
+        self.assertEqual(state["calls"], ["info", "build", "run", "rm"])
+        self.assertEqual(state['container_name'], Path(state['source']).parent.name)
+        self.assertTrue(state['removed_owned_container'])
         self.assertFalse(Path(state["source"]).parent.exists(), "CI staging must be removed")
         self.assertEqual(list(self.temp_dir.iterdir()), [])
         self.assertTrue(self.outside_marker.read_bytes() == self.outside_contents,

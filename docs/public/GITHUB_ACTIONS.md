@@ -89,6 +89,59 @@ Artifacts are retained for 30 days and include only explicit package, checksum
 and version paths. The Linux test report uses a redacted, closed JSON schema;
 test keyrings, raw runtime output and private fixtures are not uploaded.
 
+## Generated-output cleanup
+
+For releases containing the cleanup workflow changes, each native job runs
+`cleanup-ci-workspace.py` as its final `always()` step after the artifact upload
+step. It also runs when compilation or upload fails. The local `dist` copy is
+removed after that attempt; completed uploads and GitHub job logs are retained.
+An abruptly terminated runner/host cannot guarantee that its final step runs;
+use the maintenance workflow below after the runner is idle.
+
+Cleanup is restricted to the exact `GITHUB_WORKSPACE` of this repository and
+checks Git root/origin and tracked files before deleting anything. Its closed
+list covers Cargo `target` directories, Flutter `build`/`.dart_tool`, Android
+checkout `.gradle`/`.cxx`, and `dist`. A symlink/junction in a target's ancestors
+is rejected; links inside generated trees are removed without following them.
+Source, `.local` receipts, application models/vault, signing keys, SDKs, Cargo
+registry, pub cache and shared tool installations are outside this list.
+
+New Windows GitHub jobs put AI smoke downloads in
+`RUNNER_TEMP/consolecrypt-client-ai-smoke/<run>-<attempt>-<job>`, with an exact
+ownership marker. Only that job's directory is removed by its final cleanup.
+The old `C:\GitLab-Runner\tools\consolecrypt-local-ai-smoke` cache is preserved
+unless the operator explicitly opts into maintenance for that known CI path.
+Linux stops/removes its own uniquely named container from the EXIT/INT/TERM
+cleanup path and removes its temporary source snapshot; the builder image and
+shared Docker layers are retained. There is no global Docker prune or volume
+deletion.
+
+`Runner generated-output maintenance` is a separate, **main-only** manual
+workflow. It does not build packages, deploy, receive signing secrets or change
+release tags. It uses the same concurrency group as release builds, so it waits
+until the release has finished. Its tools checkout is nested separately with
+`clean: false`. Inline guards run **before** checkout: they reject symlink/junction
+ancestors, a foreign workspace and an existing tools directory unless it is
+empty or already the expected clean Git checkout (including untracked/ignored
+files). Checkout must not erase
+unknown files before the guarded cleanup runs.
+
+```sh
+gh workflow run runner-cleanup.yml --ref main -f platform=macos
+gh workflow run runner-cleanup.yml --ref main -f platform=windows
+
+# Explicit one-time cleanup of known old Windows CI GGUF/download/runtime files.
+gh workflow run runner-cleanup.yml --ref main \
+  -f platform=windows -f legacy_windows_ai_cache=true
+```
+
+The legacy-cache option defaults to false, accepts no arbitrary path, rejects
+links/reparse points and unexpected runtime contents, and preserves selection,
+logs, receipts and unknown files. It does not inspect Windows application data.
+Deletion boundaries are tested with tiny owned temporary repositories by
+`python3 -m unittest discover -s client/scripts -p 'test_ci_cleanup.py' -v`.
+The Windows junction test runs on Windows and is explicitly skipped elsewhere.
+
 ## Русский
 
 `main` хранит проверенную исходную базу. Для выпуска поднимите версию, добавьте

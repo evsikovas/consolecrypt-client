@@ -140,12 +140,12 @@ Tests that need a native library, a system keyring, or a real SSH/RDP server hav
 additional prerequisites. Do not run Flutter tests alongside a native build
 in the same working directory.
 
-## Version 0.5 source
+## Version 0.5 series
 
-The next version adds local terminals and a three-model local AI catalog, while
+The 0.5 series adds local terminals and a three-model local AI catalog, while
 preserving verified model downloads and device preferences across updates.
 Local AI/snippet commands support insertion without Enter; ordinary local
-terminal input remains interactive. See the [0.5 notes](docs/public/RELEASE_0_5_0.md),
+terminal input remains interactive. See the [0.5 notes](docs/public/RELEASE_0_5_1.md),
 [local terminals](docs/public/LOCAL_TERMINALS.md) and [local AI](docs/public/LOCAL_AI.md).
 The download link above continues to point to the latest published release.
 

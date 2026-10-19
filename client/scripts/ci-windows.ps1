@@ -78,6 +78,7 @@ function Invoke-Checked {
     & $Command @Arguments
     if ($LASTEXITCODE -ne 0) { throw "$Command failed (exit $LASTEXITCODE)" }
 }
+Invoke-Checked python @('-m', 'unittest', 'discover', '-s', (Join-Path $Repo 'client\scripts'), '-p', 'test_ci_cleanup.py', '-v')
 # Resolve Python/toolchain paths before reserving a GitHub build number.
 if ($env:GITHUB_RUN_NUMBER) {
     $githubBuild = & python (Join-Path $PSScriptRoot 'github-build-number.py') windows --print-only
@@ -85,14 +86,27 @@ if ($env:GITHUB_RUN_NUMBER) {
     $env:CC_BUILD_NUMBER = "$githubBuild".Trim()
     Write-Host "Reserved Windows build $env:CC_BUILD_NUMBER"
 }
+# Exercise native RDP and PTY before the optional multi-gigabyte model downloads.
+# Live server tests remain opt-in and use no runner credentials in this pass.
+$OriginalNativeTestTarget = $env:CARGO_TARGET_DIR
+try {
+    $env:CARGO_TARGET_DIR = Join-Path $Repo 'target\windows-rdp-tests'
+    Invoke-Checked cargo @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-rdp-core', '-p', 'cc-terminal-core', '--all-targets')
+} finally { $env:CARGO_TARGET_DIR = $OriginalNativeTestTarget }
 Push-Location (Join-Path $Repo 'client\flutter')
 try {
     Invoke-Checked flutter @('pub', 'get')
     Invoke-Checked flutter @('analyze')
     Invoke-Checked flutter @('test')
-    # Real CPU generation, auth and idle-unload checks use a dedicated cache,
-    # separate from every user's ConsoleCrypt profile and model selection.
-    $LocalAiSmokeCache = Join-Path $runnerTools 'consolecrypt-local-ai-smoke'
+    # GitHub caches belong to this job and are removed after artifact upload,
+    # including failed builds. Toolchains remain in the separate shared cache.
+    if ($env:GITHUB_ACTIONS -eq 'true') {
+        $LocalAiSmokeCache = & python (Join-Path $PSScriptRoot 'cleanup-ci-workspace.py') --workspace $Repo --prepare-ai-cache
+        if ($LASTEXITCODE -ne 0) { throw 'Could not prepare an owned AI smoke cache' }
+        $LocalAiSmokeCache = "$LocalAiSmokeCache".Trim()
+    } else {
+        $LocalAiSmokeCache = Join-Path $runnerTools 'consolecrypt-local-ai-smoke'
+    }
     foreach ($model in @('qwen2.5-coder-1.5b-instruct-q4_k_m', 'qwen3.5-4b-q4_k_m')) {
         Invoke-Checked dart @('run', 'test/ai/local/local_ai_smoke.dart', '--run', "--directory=$LocalAiSmokeCache", "--model=$model", '--request-timeout-seconds=900')
     }
@@ -103,14 +117,6 @@ try {
         Write-Host '9B CPU generation not checked: this runner has less than 16 GiB RAM.'
     }
 } finally { Pop-Location }
-# Exercise the Windows filesystem and native RDP input/clipboard code on the
-# actual runner OS before packaging. Live server tests remain opt-in and use no
-# runner credentials during this unit/integration pass.
-$OriginalNativeTestTarget = $env:CARGO_TARGET_DIR
-try {
-    $env:CARGO_TARGET_DIR = Join-Path $Repo 'target\windows-rdp-tests'
-    Invoke-Checked cargo @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-rdp-core', '-p', 'cc-terminal-core', '--all-targets')
-} finally { $env:CARGO_TARGET_DIR = $OriginalNativeTestTarget }
 Push-Location $Repo
 try {
     Invoke-Checked python @('-m', 'unittest', 'discover', '-s', 'client/scripts', '-p', 'test_bump_version.py', '-v')
