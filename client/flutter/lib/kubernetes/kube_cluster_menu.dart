@@ -4,10 +4,12 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_connection_editor.dart';
+import 'package:consolecrypt/kubernetes/kube_export_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_inventory_service.dart';
 import 'package:consolecrypt/kubernetes/kube_organization_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
+import 'package:consolecrypt/sharing/sharing_kubernetes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -51,6 +53,20 @@ Future<void> showKubeClusterMenu(
         icon: Icons.tune_rounded,
         enabled: editable,
       ),
+      const GlassMenuDivider(),
+      GlassMenuItem(
+        key: const ValueKey('kube-cluster-share'),
+        value: 'share',
+        label: l.sharingTitle,
+        icon: Icons.share_outlined,
+      ),
+      if (editable)
+        GlassMenuItem(
+          key: const ValueKey('kube-cluster-export'),
+          value: 'export',
+          label: l.kubeExport,
+          icon: Icons.ios_share_rounded,
+        ),
       const GlassMenuDivider(),
       GlassMenuItem(
         key: const ValueKey('kube-cluster-production'),
@@ -101,6 +117,14 @@ Future<void> showKubeClusterMenu(
       final name = (await showTextInputDialog(context, title: l.commonRename, initial: connection.name))?.trim();
       if (name == null || name.isEmpty || name.length > 253 || name == connection.name || !context.mounted) return;
       await update(name: name);
+    case 'share':
+      await showSharingKubeContext(context, contextId: connection.id);
+    case 'export':
+      await showAppDialog<void>(
+        context,
+        secure: true,
+        builder: (_) => KubeExportDialog(connection: connection, service: service as KubeInventoryManagementService),
+      );
     case 'properties':
       await showAppDialog<bool>(
         context,
