@@ -242,7 +242,10 @@ fn explicit_config(options: ConnectOptions, auth: Authentication) -> Result<Conf
             ));
         }
         ConnectionRoute::Proxy(proxy) => {
-            if !matches!(proxy.scheme(), "http" | "https" | "socks5")
+            // kube's HTTPS-proxy connector shares the cluster TLS settings.
+            // A proxy needs its own trust/name configuration; until that is
+            // available, accept only the saved HTTP CONNECT/SOCKS5 routes.
+            if !matches!(proxy.scheme(), "http" | "socks5")
                 || proxy.host_str().is_none()
                 || !proxy.username().is_empty()
                 || proxy.password().is_some()
@@ -396,6 +399,29 @@ mod tests {
         settings.server = Url::parse("https://[2001:db8::1]:6443").unwrap();
         let config = explicit_config(settings, token()).unwrap();
         assert_eq!(config.tls_server_name.as_deref(), Some("2001:db8::1"));
+    }
+
+    #[test]
+    fn proxy_preserves_cluster_identity_and_rejects_ambiguous_tls_proxy() {
+        for scheme in ["http", "socks5"] {
+            let mut settings = options();
+            settings.route =
+                ConnectionRoute::Proxy(Url::parse(&format!("{scheme}://proxy.test:8080")).unwrap());
+            let expected_server = settings.server.to_string();
+            let config = explicit_config(settings, token()).unwrap();
+            assert_eq!(config.cluster_url.to_string(), expected_server);
+            assert_eq!(config.tls_server_name.as_deref(), Some("api.example.test"));
+            assert_eq!(
+                config.proxy_url.unwrap().to_string(),
+                format!("{scheme}://proxy.test:8080/")
+            );
+        }
+        let mut settings = options();
+        settings.route = ConnectionRoute::Proxy(Url::parse("https://proxy.test:8443").unwrap());
+        assert_eq!(
+            explicit_config(settings, token()).unwrap_err(),
+            ConnectError::InvalidProxy
+        );
     }
 
     #[test]
