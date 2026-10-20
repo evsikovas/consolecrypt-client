@@ -16,6 +16,7 @@ use zeroize::Zeroizing;
 
 pub const MAX_CONFIG_BYTES: usize = 4 * 1024 * 1024;
 const MAX_CONTEXTS: usize = 1024;
+const MAX_EXPANDED_BYTES: usize = 16 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum ImportError {
@@ -218,6 +219,7 @@ pub fn parse(text: &str, source_file: Option<&Path>) -> Result<ImportBatch, Impo
         return Err(ImportError::MissingReference);
     }
     let mut entries = Vec::with_capacity(contexts.len());
+    let mut expanded_bytes = 0;
     for (name, context) in contexts {
         let imported = (|| {
             let context = context.ok_or(ImportError::MissingReference)?;
@@ -277,6 +279,14 @@ pub fn parse(text: &str, source_file: Option<&Path>) -> Result<ImportBatch, Impo
                 auth: import_auth(user, source_file)?,
             })
         })();
+        if let Ok(context) = &imported {
+            expanded_bytes += imported_size(context);
+            // Several contexts may reference the same large credential. Bound
+            // the expanded native preview as well as the original YAML input.
+            if expanded_bytes > MAX_EXPANDED_BYTES {
+                return Err(ImportError::Size);
+            }
+        }
         entries.push(ImportEntry {
             name,
             context: imported,
@@ -292,6 +302,62 @@ pub fn parse(text: &str, source_file: Option<&Path>) -> Result<ImportBatch, Impo
         entries,
         current_context,
     })
+}
+
+fn imported_size(context: &ImportContext) -> usize {
+    fn cert(source: &CertificateSource) -> usize {
+        match source {
+            CertificateSource::Pem(value) => value.len(),
+            CertificateSource::File(path) => path.as_os_str().len(),
+        }
+    }
+    fn secret(source: &SecretSource) -> usize {
+        match source {
+            SecretSource::Inline(value) => value.expose_secret().len(),
+            SecretSource::File(path) => path.as_os_str().len(),
+        }
+    }
+    context.name.len()
+        + context.cluster_name.len()
+        + context.user_name.len()
+        + context.server.as_str().len()
+        + context.namespace.len()
+        + context.certificate_authority.as_ref().map_or(0, cert)
+        + context.tls_server_name.as_ref().map_or(0, String::len)
+        + context.proxy.as_ref().map_or(0, |p| p.as_str().len())
+        + match &context.auth {
+            ImportedAuth::Token(value) => secret(value),
+            ImportedAuth::ClientCertificate { certificate, key } => cert(certificate) + secret(key),
+            ImportedAuth::Oidc {
+                issuer,
+                client_id,
+                client_secret,
+                refresh_token,
+                scopes,
+                certificate_authority,
+            } => {
+                issuer.as_str().len()
+                    + client_id.len()
+                    + client_secret
+                        .as_ref()
+                        .map_or(0, |s| s.expose_secret().len())
+                    + refresh_token
+                        .as_ref()
+                        .map_or(0, |s| s.expose_secret().len())
+                    + scopes.iter().map(String::len).sum::<usize>()
+                    + certificate_authority.as_ref().map_or(0, cert)
+            }
+            ImportedAuth::Exec(exec) => {
+                exec.command.len()
+                    + exec.args.iter().map(String::len).sum::<usize>()
+                    + exec
+                        .env
+                        .iter()
+                        .map(|(k, v)| k.len() + v.expose_secret().len())
+                        .sum::<usize>()
+                    + exec.api_version.len()
+            }
+        }
 }
 
 fn valid_name(value: &str) -> Result<(), ImportError> {
@@ -591,6 +657,21 @@ fn import_auth(user: &AuthInfo, source: Option<&Path>) -> Result<ImportedAuth, I
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn repeated_credentials_cannot_expand_a_small_file_without_bound() {
+        let mut yaml = format!(
+            "apiVersion: v1\nkind: Config\nclusters:\n- name: cluster\n  cluster:\n    server: https://cluster.test\nusers:\n- name: user\n  user:\n    token: {}\ncontexts:\n",
+            "x".repeat(100_000),
+        );
+        for index in 0..200 {
+            yaml.push_str(&format!(
+                "- name: context-{index}\n  context: {{cluster: cluster, user: user}}\n"
+            ));
+        }
+        assert!(yaml.len() < MAX_CONFIG_BYTES);
+        assert_eq!(parse(&yaml, None).unwrap_err(), ImportError::Size);
+    }
 
     fn config(auth: &str) -> String {
         format!(

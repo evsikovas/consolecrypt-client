@@ -203,6 +203,7 @@ pub(crate) struct Unlocked {
     /// lock, before potentially slower SSH/edit shutdown finishes.
     pub sharing_shutdown: tokio::sync::watch::Sender<bool>,
     pub enrollment: crate::sharing_api::enrollment::EnrollmentRuntime,
+    pub kube_imports: Arc<crate::kubernetes_import::ImportRuntime>,
     event_stream: tokio::sync::Mutex<Option<EventStream>>,
     tasks: Mutex<Vec<JoinHandle<()>>>,
     engine_tasks: Mutex<Vec<JoinHandle<()>>>,
@@ -282,6 +283,7 @@ impl Unlocked {
         self.rdp.shutdown();
         self.edit.begin_shutdown();
         self.enrollment.clear();
+        self.kube_imports.close();
         self.edit.stop_all().await;
         self.transfers.cancel_all();
         self.ai.shutdown().await;
@@ -434,6 +436,19 @@ impl Session {
         }
     }
 
+    /// Prevent a stale approval from being committed after lock/re-unlock.
+    /// Keep this guard only for the final bounded transaction, never file I/O.
+    pub(crate) async fn hold_unlocked(
+        &self,
+        expected: &Arc<Unlocked>,
+    ) -> AppResult<tokio::sync::RwLockReadGuard<'_, Option<Arc<Unlocked>>>> {
+        let current = self.unlocked.read().await;
+        if !current.as_ref().is_some_and(|u| Arc::ptr_eq(u, expected)) {
+            return Err(AppError::VaultLocked);
+        }
+        Ok(current)
+    }
+
     /// Cache envelopes (as the server/local `KeyEnvelope` shape).
     pub(crate) async fn cache_envelopes(
         &self,
@@ -506,6 +521,7 @@ impl Session {
             transfers: crate::transfers::TransferManager::new(self.ctx.clone()),
             sharing_shutdown: tokio::sync::watch::channel(false).0,
             enrollment: crate::sharing_api::enrollment::EnrollmentRuntime::default(),
+            kube_imports: Arc::new(crate::kubernetes_import::ImportRuntime::default()),
             event_stream: tokio::sync::Mutex::new(None),
             tasks: Mutex::new(Vec::new()),
             engine_tasks: Mutex::new(Vec::new()),

@@ -123,6 +123,12 @@ pub fn resolve(
     Ok(context)
 }
 
+/// Read one explicitly selected kubeconfig using the same bounds and regular
+/// file checks as referenced credentials. The caller supplies the vault scope.
+pub fn read_config_file(path: &Path) -> Result<Zeroizing<String>, FileError> {
+    read_regular(path)
+}
+
 fn read_regular(path: &Path) -> Result<Zeroizing<String>, FileError> {
     if !path.is_absolute() {
         return Err(FileError::Unavailable);

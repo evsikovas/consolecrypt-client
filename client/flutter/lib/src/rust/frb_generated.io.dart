@@ -11,6 +11,7 @@ import 'api/credentials.dart';
 import 'api/enrollment.dart';
 import 'api/error.dart';
 import 'api/inventory.dart';
+import 'api/kubernetes.dart';
 import 'api/profiles.dart';
 import 'api/rdp.dart';
 import 'api/rdp_hosts.dart';

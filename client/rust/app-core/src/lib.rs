@@ -43,6 +43,7 @@ pub mod error;
 mod host_auth;
 mod inventory;
 mod kubernetes;
+pub mod kubernetes_import;
 pub mod logging;
 mod plan;
 mod profile_hints;
@@ -87,6 +88,7 @@ pub use edit::{
 pub use enrollment_dto::*;
 pub use error::{AppError, AppResult};
 pub use host_auth::{AgentKind, HostAuth, HostAuthMode, META_AUTH_PROMPT, META_INLINE_CREDENTIAL};
+pub use kubernetes::KubeInventory;
 pub use plan::{
     PlanDiagnosticDto, PlanPreviewDto, PlanSeverityDto, ResolvedValueDto, RouteHopDto,
     ValueSourceDto,

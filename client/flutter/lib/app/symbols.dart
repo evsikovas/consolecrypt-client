@@ -16,6 +16,7 @@ enum AppSymbol {
   sync,
   backups,
   settings,
+  kubernetes,
 }
 
 class AppSymbolIcon extends StatelessWidget {
@@ -156,6 +157,14 @@ class _SymbolPainter extends CustomPainter {
         line(19, 3, 19, 6);
         line(19, 12, 19, 21);
         canvas.drawCircle(const Offset(19, 9), 3, ink);
+      case AppSymbol.kubernetes:
+        canvas.drawCircle(const Offset(12, 12), 3, ink);
+        canvas.drawCircle(const Offset(12, 3), 2, ink);
+        canvas.drawCircle(const Offset(4, 20), 2, ink);
+        canvas.drawCircle(const Offset(20, 20), 2, ink);
+        line(12, 5, 12, 9);
+        line(10, 14, 5.5, 18.5);
+        line(14, 14, 18.5, 18.5);
     }
     canvas.restore();
   }

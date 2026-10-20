@@ -10237,6 +10237,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Import'**
   String get commonImport;
+
+  /// Kubernetes connection and import interface: Kubernetes
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes'**
+  String get kubeTitle;
+
+  /// Kubernetes connection and import interface: Cluster connections in your encrypted vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster connections in your encrypted vault.'**
+  String get kubeSubtitle;
+
+  /// Kubernetes connection and import interface: Import kubeconfig
+  ///
+  /// In en, this message translates to:
+  /// **'Import kubeconfig'**
+  String get kubeImport;
+
+  /// Kubernetes connection and import interface: Select a kubeconfig or paste YAML. Choose the contexts to save. Import does not connect to a cluster or run authentication commands.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a kubeconfig or paste YAML. Choose the contexts to save. Import does not connect to a cluster or run authentication commands.'**
+  String get kubeImportHelp;
+
+  /// Kubernetes connection and import interface: Choose file
+  ///
+  /// In en, this message translates to:
+  /// **'Choose file'**
+  String get kubeChooseFile;
+
+  /// Kubernetes connection and import interface: Kubeconfig YAML
+  ///
+  /// In en, this message translates to:
+  /// **'Kubeconfig YAML'**
+  String get kubeYaml;
+
+  /// Kubernetes connection and import interface: Review contexts
+  ///
+  /// In en, this message translates to:
+  /// **'Review contexts'**
+  String get kubePreview;
+
+  /// Kubernetes connection and import interface: Save selected contexts
+  ///
+  /// In en, this message translates to:
+  /// **'Save selected contexts'**
+  String get kubeSaveContexts;
+
+  /// Kubernetes connection and import interface: Choose another configuration
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another configuration'**
+  String get kubeChooseAgain;
+
+  /// Kubernetes connection and import interface: No Kubernetes connections yet. Import a kubeconfig to add contexts.
+  ///
+  /// In en, this message translates to:
+  /// **'No Kubernetes connections yet. Import a kubeconfig to add contexts.'**
+  String get kubeEmpty;
+
+  /// Kubernetes connection and import interface: Namespace
+  ///
+  /// In en, this message translates to:
+  /// **'Namespace'**
+  String get kubeNamespace;
+
+  /// Kubernetes connection and import interface: Authentication
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication'**
+  String get kubeAuthentication;
+
+  /// Kubernetes connection and import interface: Production: protect against changes
+  ///
+  /// In en, this message translates to:
+  /// **'Production: protect against changes'**
+  String get kubeProduction;
+
+  /// Kubernetes connection and import interface: Read these referenced files for the selected contexts
+  ///
+  /// In en, this message translates to:
+  /// **'Read these referenced files for the selected contexts'**
+  String get kubeApproveFiles;
+
+  /// Kubernetes connection and import interface: This context uses an external authentication command. Importing it does not grant permission to run that command.
+  ///
+  /// In en, this message translates to:
+  /// **'This context uses an external authentication command. Importing it does not grant permission to run that command.'**
+  String get kubeExecHelp;
+
+  /// Kubernetes connection and import interface: This context cannot be imported. Check its cluster, user and authentication settings in the source configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'This context cannot be imported. Check its cluster, user and authentication settings in the source configuration.'**
+  String get kubeImportInvalid;
+
+  /// Kubernetes connection and import interface: Could not import the configuration. Check the selected contexts and files, then review it again.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not import the configuration. Check the selected contexts and files, then review it again.'**
+  String get kubeImportFailed;
+
+  /// Kubernetes connection and import interface: Select a regular UTF-8 file no larger than 4 MiB.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a regular UTF-8 file no larger than 4 MiB.'**
+  String get kubeFileFailed;
+
+  /// Kubernetes connection and import interface: This preview has expired. Review the configuration again.
+  ///
+  /// In en, this message translates to:
+  /// **'This preview has expired. Review the configuration again.'**
+  String get kubeExpired;
+
+  /// Kubernetes connection and import interface: Production requires TLS certificate verification. Correct the kubeconfig or mark this as a non-production context.
+  ///
+  /// In en, this message translates to:
+  /// **'Production requires TLS certificate verification. Correct the kubeconfig or mark this as a non-production context.'**
+  String get kubeTlsRequired;
+
+  /// Kubernetes connection and import interface: Connection route
+  ///
+  /// In en, this message translates to:
+  /// **'Connection route'**
+  String get kubeRoute;
+
+  /// Kubernetes connection and import interface: Direct connection
+  ///
+  /// In en, this message translates to:
+  /// **'Direct connection'**
+  String get kubeRouteDirect;
+
+  /// Kubernetes connection and import interface: This kubeconfig specifies a proxy. Select a saved SSH route that can reach the API server.
+  ///
+  /// In en, this message translates to:
+  /// **'This kubeconfig specifies a proxy. Select a saved SSH route that can reach the API server.'**
+  String get kubeRouteRequired;
+
+  /// Kubernetes connection and import interface: Selected contexts saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected contexts saved.'**
+  String get kubeSaved;
+
+  /// Kubernetes connection and import interface: Remove this saved context from your vault? This does not change anything in the Kubernetes cluster.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this saved context from your vault? This does not change anything in the Kubernetes cluster.'**
+  String get kubeDeleteHelp;
+
+  /// Kubernetes connection and import interface: Could not load Kubernetes connections.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load Kubernetes connections.'**
+  String get kubeLoadFailed;
+
+  /// Kubernetes connection and import interface: Refresh connections
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh connections'**
+  String get kubeRefresh;
+
+  /// Kubernetes connection and import interface: Select up to 64 contexts per import.
+  ///
+  /// In en, this message translates to:
+  /// **'Select up to 64 contexts per import.'**
+  String get kubeContextLimit;
+
+  /// Kubernetes authentication method: Token
+  ///
+  /// In en, this message translates to:
+  /// **'Token'**
+  String get kubeAuthToken;
+
+  /// Kubernetes authentication method: Client certificate
+  ///
+  /// In en, this message translates to:
+  /// **'Client certificate'**
+  String get kubeAuthCertificate;
+
+  /// Kubernetes authentication method: External command
+  ///
+  /// In en, this message translates to:
+  /// **'External command'**
+  String get kubeAuthExec;
+
+  /// Kubernetes authentication method: Not configured
+  ///
+  /// In en, this message translates to:
+  /// **'Not configured'**
+  String get kubeAuthNone;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

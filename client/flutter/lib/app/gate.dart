@@ -78,6 +78,7 @@ abstract final class AppRoutes {
   static const settings = '/settings';
   static const sharing = '/sharing';
   static const rdp = '/rdp';
+  static const kubernetes = '/kubernetes';
 
   /// Profile-creation routes, reachable from every stage ("Add profile").
   static const profileCreation = {welcome, login, restore};
@@ -98,6 +99,7 @@ abstract final class AppRoutes {
     settings,
     sharing,
     rdp,
+    kubernetes,
   ];
 }
 

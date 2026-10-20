@@ -7,7 +7,7 @@
 
 use cc_bridge::api::app::{self, CoreConfig, KdfChoice, SecureStoreChoice};
 use cc_bridge::api::inventory::{self, HostAuthInput, HostAuthKind};
-use cc_bridge::api::{backup, credentials, profiles};
+use cc_bridge::api::{backup, credentials, kubernetes, profiles};
 use serde_json::{json, Value};
 
 fn parse(s: &str) -> Value {
@@ -66,6 +66,38 @@ async fn bridge_flow_local_profile_hosts_lock_backup() {
     assert!(profiles::vault_has_pending_recovery_kit().await.unwrap());
     profiles::vault_acknowledge_recovery_kit().await.unwrap();
     assert!(!profiles::vault_has_pending_recovery_kit().await.unwrap());
+
+    // Kubeconfig crosses inward as bytes. Outward DTOs contain only metadata;
+    // the native ticket, not resubmitted YAML, selects the committed contexts.
+    let kube_preview = parse(&kubernetes::kube_import_preview(
+        b"apiVersion: v1\nkind: Config\nclusters:\n- name: test\n  cluster: {server: https://cluster.example.test}\nusers:\n- name: user\n  user: {token: synthetic-bridge-token}\ncontexts:\n- name: test\n  context: {cluster: test, user: user}\n".to_vec(),
+        None,
+    ).await.unwrap());
+    assert!(!kube_preview.to_string().contains("synthetic-bridge-token"));
+    let kube_ticket = kube_preview["ticket"].as_str().unwrap().to_owned();
+    let saved_kube = parse(
+        &kubernetes::kube_import_commit(kube_ticket.clone(), json!([{"index": 0}]).to_string())
+            .await
+            .unwrap(),
+    );
+    assert_eq!(saved_kube[0]["production"], true);
+    let kube_id = saved_kube[0]["id"].as_str().unwrap().to_owned();
+    let kube_inventory = parse(&kubernetes::kube_inventory().await.unwrap());
+    assert_eq!(kube_inventory["contexts"][0]["id"], kube_id);
+    assert_eq!(kube_inventory["clusters"].as_array().unwrap().len(), 1);
+    assert!(!kube_inventory
+        .to_string()
+        .contains("synthetic-bridge-token"));
+    assert!(
+        kubernetes::kube_import_commit(kube_ticket, json!([{"index":0}]).to_string())
+            .await
+            .is_err()
+    );
+    kubernetes::kube_context_delete(kube_id).await.unwrap();
+    assert!(parse(&kubernetes::kube_contexts_list().await.unwrap())
+        .as_array()
+        .unwrap()
+        .is_empty());
 
     // Upsert: a draft id minted by Dart is replaced by the core's id.
     let draft_id = "0190e3c5-0000-7000-8000-000000000001";

@@ -16,6 +16,7 @@ import 'package:consolecrypt/core/services/sync_service.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/core/services/tunnel_service.dart';
 import 'package:consolecrypt/core/services/vault_service.dart';
+import 'package:consolecrypt/kubernetes/kube_service.dart';
 
 export 'package:consolecrypt/core/services/ai_service.dart';
 export 'package:consolecrypt/core/services/auth_service.dart';
@@ -73,6 +74,7 @@ final class AppServices {
     this.prompts,
     this.sharing,
     this.enrollment,
+    this.kubernetes,
     this.developer,
     this.onDispose,
   });
@@ -102,6 +104,7 @@ final class AppServices {
   final PromptService? prompts;
   final SharingService? sharing;
   final EnrollmentService? enrollment;
+  final KubeService? kubernetes;
   final DeveloperControls? developer;
   final Future<void> Function()? onDispose;
 

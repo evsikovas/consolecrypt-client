@@ -8012,5 +8012,134 @@
   "commonImport": "Import",
   "@commonImport": {
     "description": "Import selected items"
+  },
+  "kubeTitle": "Kubernetes",
+  "kubeSubtitle": "Cluster connections in your encrypted vault.",
+  "kubeImport": "Import kubeconfig",
+  "kubeImportHelp": "Select a kubeconfig or paste YAML. Choose the contexts to save. Import does not connect to a cluster or run authentication commands.",
+  "kubeChooseFile": "Choose file",
+  "kubeYaml": "Kubeconfig YAML",
+  "kubePreview": "Review contexts",
+  "kubeSaveContexts": "Save selected contexts",
+  "kubeChooseAgain": "Choose another configuration",
+  "kubeEmpty": "No Kubernetes connections yet. Import a kubeconfig to add contexts.",
+  "kubeNamespace": "Namespace",
+  "kubeAuthentication": "Authentication",
+  "kubeProduction": "Production: protect against changes",
+  "kubeApproveFiles": "Read these referenced files for the selected contexts",
+  "kubeExecHelp": "This context uses an external authentication command. Importing it does not grant permission to run that command.",
+  "kubeImportInvalid": "This context cannot be imported. Check its cluster, user and authentication settings in the source configuration.",
+  "kubeImportFailed": "Could not import the configuration. Check the selected contexts and files, then review it again.",
+  "kubeFileFailed": "Select a regular UTF-8 file no larger than 4 MiB.",
+  "kubeExpired": "This preview has expired. Review the configuration again.",
+  "kubeTlsRequired": "Production requires TLS certificate verification. Correct the kubeconfig or mark this as a non-production context.",
+  "kubeRoute": "Connection route",
+  "kubeRouteDirect": "Direct connection",
+  "kubeRouteRequired": "This kubeconfig specifies a proxy. Select a saved SSH route that can reach the API server.",
+  "kubeSaved": "Selected contexts saved.",
+  "kubeDeleteHelp": "Remove this saved context from your vault? This does not change anything in the Kubernetes cluster.",
+  "kubeLoadFailed": "Could not load Kubernetes connections.",
+  "kubeRefresh": "Refresh connections",
+  "kubeContextLimit": "Select up to 64 contexts per import.",
+  "@kubeTitle": {
+    "description": "Kubernetes connection and import interface: Kubernetes"
+  },
+  "@kubeSubtitle": {
+    "description": "Kubernetes connection and import interface: Cluster connections in your encrypted vault."
+  },
+  "@kubeImport": {
+    "description": "Kubernetes connection and import interface: Import kubeconfig"
+  },
+  "@kubeImportHelp": {
+    "description": "Kubernetes connection and import interface: Select a kubeconfig or paste YAML. Choose the contexts to save. Import does not connect to a cluster or run authentication commands."
+  },
+  "@kubeChooseFile": {
+    "description": "Kubernetes connection and import interface: Choose file"
+  },
+  "@kubeYaml": {
+    "description": "Kubernetes connection and import interface: Kubeconfig YAML"
+  },
+  "@kubePreview": {
+    "description": "Kubernetes connection and import interface: Review contexts"
+  },
+  "@kubeSaveContexts": {
+    "description": "Kubernetes connection and import interface: Save selected contexts"
+  },
+  "@kubeChooseAgain": {
+    "description": "Kubernetes connection and import interface: Choose another configuration"
+  },
+  "@kubeEmpty": {
+    "description": "Kubernetes connection and import interface: No Kubernetes connections yet. Import a kubeconfig to add contexts."
+  },
+  "@kubeNamespace": {
+    "description": "Kubernetes connection and import interface: Namespace"
+  },
+  "@kubeAuthentication": {
+    "description": "Kubernetes connection and import interface: Authentication"
+  },
+  "@kubeProduction": {
+    "description": "Kubernetes connection and import interface: Production: protect against changes"
+  },
+  "@kubeApproveFiles": {
+    "description": "Kubernetes connection and import interface: Read these referenced files for the selected contexts"
+  },
+  "@kubeExecHelp": {
+    "description": "Kubernetes connection and import interface: This context uses an external authentication command. Importing it does not grant permission to run that command."
+  },
+  "@kubeImportInvalid": {
+    "description": "Kubernetes connection and import interface: This context cannot be imported. Check its cluster, user and authentication settings in the source configuration."
+  },
+  "@kubeImportFailed": {
+    "description": "Kubernetes connection and import interface: Could not import the configuration. Check the selected contexts and files, then review it again."
+  },
+  "@kubeFileFailed": {
+    "description": "Kubernetes connection and import interface: Select a regular UTF-8 file no larger than 4 MiB."
+  },
+  "@kubeExpired": {
+    "description": "Kubernetes connection and import interface: This preview has expired. Review the configuration again."
+  },
+  "@kubeTlsRequired": {
+    "description": "Kubernetes connection and import interface: Production requires TLS certificate verification. Correct the kubeconfig or mark this as a non-production context."
+  },
+  "@kubeRoute": {
+    "description": "Kubernetes connection and import interface: Connection route"
+  },
+  "@kubeRouteDirect": {
+    "description": "Kubernetes connection and import interface: Direct connection"
+  },
+  "@kubeRouteRequired": {
+    "description": "Kubernetes connection and import interface: This kubeconfig specifies a proxy. Select a saved SSH route that can reach the API server."
+  },
+  "@kubeSaved": {
+    "description": "Kubernetes connection and import interface: Selected contexts saved."
+  },
+  "@kubeDeleteHelp": {
+    "description": "Kubernetes connection and import interface: Remove this saved context from your vault? This does not change anything in the Kubernetes cluster."
+  },
+  "@kubeLoadFailed": {
+    "description": "Kubernetes connection and import interface: Could not load Kubernetes connections."
+  },
+  "@kubeRefresh": {
+    "description": "Kubernetes connection and import interface: Refresh connections"
+  },
+  "@kubeContextLimit": {
+    "description": "Kubernetes connection and import interface: Select up to 64 contexts per import."
+  },
+  "kubeAuthToken": "Token",
+  "kubeAuthCertificate": "Client certificate",
+  "kubeAuthExec": "External command",
+  "kubeAuthNone": "Not configured",
+  "@kubeAuthToken": {
+    "description": "Kubernetes authentication method: Token"
+  },
+  "@kubeAuthCertificate": {
+    "description": "Kubernetes authentication method: Client certificate"
+  },
+  "@kubeAuthExec": {
+    "description": "Kubernetes authentication method: External command"
+  },
+  "@kubeAuthNone": {
+    "description": "Kubernetes authentication method: Not configured"
   }
+
 }

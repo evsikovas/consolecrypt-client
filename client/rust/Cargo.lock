@@ -926,6 +926,7 @@ dependencies = [
  "bytes",
  "cc-ai-core",
  "cc-crypto-core",
+ "cc-k8s-core",
  "cc-models",
  "cc-platform-core",
  "cc-protocol",

@@ -5965,4 +5965,107 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get commonImport => 'Импорт';
+
+  @override
+  String get kubeTitle => 'Kubernetes';
+
+  @override
+  String get kubeSubtitle => 'Подключения к кластерам в зашифрованном хранилище.';
+
+  @override
+  String get kubeImport => 'Импорт kubeconfig';
+
+  @override
+  String get kubeImportHelp =>
+      'Выберите kubeconfig или вставьте YAML, затем отметьте контексты. Импорт не подключается к кластеру и не запускает команды аутентификации.';
+
+  @override
+  String get kubeChooseFile => 'Выбрать файл';
+
+  @override
+  String get kubeYaml => 'YAML kubeconfig';
+
+  @override
+  String get kubePreview => 'Проверить контексты';
+
+  @override
+  String get kubeSaveContexts => 'Сохранить выбранные контексты';
+
+  @override
+  String get kubeChooseAgain => 'Выбрать другую конфигурацию';
+
+  @override
+  String get kubeEmpty => 'Подключений Kubernetes пока нет. Импортируйте kubeconfig, чтобы добавить контексты.';
+
+  @override
+  String get kubeNamespace => 'Namespace';
+
+  @override
+  String get kubeAuthentication => 'Аутентификация';
+
+  @override
+  String get kubeProduction => 'Production: защита от изменений';
+
+  @override
+  String get kubeApproveFiles => 'Прочитать указанные файлы для выбранных контекстов';
+
+  @override
+  String get kubeExecHelp =>
+      'Этот контекст использует внешнюю команду аутентификации. Импорт не даёт разрешения на её запуск.';
+
+  @override
+  String get kubeImportInvalid =>
+      'Этот контекст нельзя импортировать. Проверьте настройки кластера, пользователя и аутентификации в исходном файле.';
+
+  @override
+  String get kubeImportFailed =>
+      'Не удалось импортировать конфигурацию. Проверьте выбранные контексты и файлы, затем повторите проверку.';
+
+  @override
+  String get kubeFileFailed => 'Выберите обычный файл UTF-8 размером не более 4 МиБ.';
+
+  @override
+  String get kubeExpired => 'Время предварительного просмотра истекло. Проверьте конфигурацию снова.';
+
+  @override
+  String get kubeTlsRequired =>
+      'Для Production нужна проверка TLS-сертификата. Исправьте kubeconfig или отметьте контекст как непродуктивный.';
+
+  @override
+  String get kubeRoute => 'Маршрут подключения';
+
+  @override
+  String get kubeRouteDirect => 'Прямое подключение';
+
+  @override
+  String get kubeRouteRequired =>
+      'В kubeconfig указан прокси. Выберите сохранённый SSH-маршрут с доступом к API-серверу.';
+
+  @override
+  String get kubeSaved => 'Выбранные контексты сохранены.';
+
+  @override
+  String get kubeDeleteHelp =>
+      'Удалить сохранённый контекст из хранилища? Это не изменит ничего в кластере Kubernetes.';
+
+  @override
+  String get kubeLoadFailed => 'Не удалось загрузить подключения Kubernetes.';
+
+  @override
+  String get kubeRefresh => 'Обновить подключения';
+
+  @override
+  String get kubeContextLimit => 'Выберите не более 64 контекстов за один импорт.';
+
+  @override
+  String get kubeAuthToken => 'Токен';
+
+  @override
+  String get kubeAuthCertificate => 'Клиентский сертификат';
+
+  @override
+  String get kubeAuthExec => 'Внешняя команда';
+
+  @override
+  String get kubeAuthNone => 'Не настроена';
 }

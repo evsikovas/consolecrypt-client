@@ -256,6 +256,19 @@ impl AppCore {
         Ok((s, u))
     }
 
+    /// Fence an approved, bounded commit to the profile that produced its
+    /// preview. Profile activation waits until the guard is dropped.
+    pub(crate) async fn hold_session(
+        &self,
+        expected: &Arc<Session>,
+    ) -> AppResult<tokio::sync::MutexGuard<'_, Option<Arc<Session>>>> {
+        let active = self.inner.active.lock().await;
+        if !active.as_ref().is_some_and(|s| Arc::ptr_eq(s, expected)) {
+            return Err(AppError::VaultLocked);
+        }
+        Ok(active)
+    }
+
     /// Make `session` the active profile (closing the previous one).
     pub(crate) async fn activate(&self, session: Arc<Session>) -> AppResult<()> {
         let pid = session.profile_id;

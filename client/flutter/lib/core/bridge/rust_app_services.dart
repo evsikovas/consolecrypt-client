@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/bridge/rust_backend.dart';
 import 'package:consolecrypt/core/bridge/rust_backup.dart';
 import 'package:consolecrypt/core/bridge/rust_enrollment.dart';
 import 'package:consolecrypt/core/bridge/rust_inventory.dart';
+import 'package:consolecrypt/core/bridge/rust_kubernetes.dart';
 import 'package:consolecrypt/core/bridge/rust_prompts.dart';
 import 'package:consolecrypt/core/bridge/rust_sessions.dart';
 import 'package:consolecrypt/core/bridge/rust_sftp_browser.dart';
@@ -148,6 +149,7 @@ final class RustAppServices {
       prompts: prompts,
       sharing: RustSharingService(hub),
       enrollment: const RustEnrollmentService(),
+      kubernetes: RustKubeService(hub),
       onDispose: dispose,
     );
     final exitListener = options.hookAppExit

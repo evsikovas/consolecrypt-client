@@ -38,6 +38,7 @@ cc-tunnel-core.workspace = true
 cc-sftp-core.workspace = true
 cc-search-core.workspace = true
 cc-ai-core.workspace = true
+cc-k8s-core.workspace = true
 tokio = { workspace = true, features = ["process"] }
 futures.workspace = true
 async-trait.workspace = true

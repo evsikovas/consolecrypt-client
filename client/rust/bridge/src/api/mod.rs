@@ -12,6 +12,7 @@ pub mod backup;
 pub mod credentials;
 pub mod error;
 pub mod inventory;
+pub mod kubernetes;
 pub mod profiles;
 pub mod rdp;
 pub mod rdp_hosts;

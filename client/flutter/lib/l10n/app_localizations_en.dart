@@ -5767,4 +5767,107 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonImport => 'Import';
+
+  @override
+  String get kubeTitle => 'Kubernetes';
+
+  @override
+  String get kubeSubtitle => 'Cluster connections in your encrypted vault.';
+
+  @override
+  String get kubeImport => 'Import kubeconfig';
+
+  @override
+  String get kubeImportHelp =>
+      'Select a kubeconfig or paste YAML. Choose the contexts to save. Import does not connect to a cluster or run authentication commands.';
+
+  @override
+  String get kubeChooseFile => 'Choose file';
+
+  @override
+  String get kubeYaml => 'Kubeconfig YAML';
+
+  @override
+  String get kubePreview => 'Review contexts';
+
+  @override
+  String get kubeSaveContexts => 'Save selected contexts';
+
+  @override
+  String get kubeChooseAgain => 'Choose another configuration';
+
+  @override
+  String get kubeEmpty => 'No Kubernetes connections yet. Import a kubeconfig to add contexts.';
+
+  @override
+  String get kubeNamespace => 'Namespace';
+
+  @override
+  String get kubeAuthentication => 'Authentication';
+
+  @override
+  String get kubeProduction => 'Production: protect against changes';
+
+  @override
+  String get kubeApproveFiles => 'Read these referenced files for the selected contexts';
+
+  @override
+  String get kubeExecHelp =>
+      'This context uses an external authentication command. Importing it does not grant permission to run that command.';
+
+  @override
+  String get kubeImportInvalid =>
+      'This context cannot be imported. Check its cluster, user and authentication settings in the source configuration.';
+
+  @override
+  String get kubeImportFailed =>
+      'Could not import the configuration. Check the selected contexts and files, then review it again.';
+
+  @override
+  String get kubeFileFailed => 'Select a regular UTF-8 file no larger than 4 MiB.';
+
+  @override
+  String get kubeExpired => 'This preview has expired. Review the configuration again.';
+
+  @override
+  String get kubeTlsRequired =>
+      'Production requires TLS certificate verification. Correct the kubeconfig or mark this as a non-production context.';
+
+  @override
+  String get kubeRoute => 'Connection route';
+
+  @override
+  String get kubeRouteDirect => 'Direct connection';
+
+  @override
+  String get kubeRouteRequired =>
+      'This kubeconfig specifies a proxy. Select a saved SSH route that can reach the API server.';
+
+  @override
+  String get kubeSaved => 'Selected contexts saved.';
+
+  @override
+  String get kubeDeleteHelp =>
+      'Remove this saved context from your vault? This does not change anything in the Kubernetes cluster.';
+
+  @override
+  String get kubeLoadFailed => 'Could not load Kubernetes connections.';
+
+  @override
+  String get kubeRefresh => 'Refresh connections';
+
+  @override
+  String get kubeContextLimit => 'Select up to 64 contexts per import.';
+
+  @override
+  String get kubeAuthToken => 'Token';
+
+  @override
+  String get kubeAuthCertificate => 'Client certificate';
+
+  @override
+  String get kubeAuthExec => 'External command';
+
+  @override
+  String get kubeAuthNone => 'Not configured';
 }

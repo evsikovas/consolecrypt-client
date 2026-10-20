@@ -6,7 +6,34 @@ use cc_models::kubernetes::{KubeAuth, KubeCluster, KubeContext};
 use cc_models::secret::{Secret, SecretKind, SecretValue};
 use cc_models::{ObjectId, ObjectKind, VaultObject};
 
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct KubeInventory {
+    pub clusters: Vec<KubeCluster>,
+    pub contexts: Vec<KubeContext>,
+}
+
 impl AppCore {
+    pub async fn kube_inventory(&self) -> AppResult<KubeInventory> {
+        let (_, u) = self.unlocked().await?;
+        let mut result = KubeInventory {
+            clusters: Vec::new(),
+            contexts: Vec::new(),
+        };
+        for object in u.working().objects() {
+            match object {
+                VaultObject::KubeCluster(cluster) => result.clusters.push(cluster),
+                VaultObject::KubeContext(context) => result.contexts.push(context),
+                _ => {}
+            }
+        }
+        result
+            .clusters
+            .sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
+        result
+            .contexts
+            .sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
+        Ok(result)
+    }
     pub async fn list_kube_clusters(&self) -> AppResult<Vec<KubeCluster>> {
         let (_, u) = self.unlocked().await?;
         Ok(u.working().kube_clusters())
@@ -117,24 +144,54 @@ pub(crate) async fn persist_import(
     context: KubeContext,
     secrets: Vec<Secret>,
 ) -> AppResult<KubeContext> {
-    context.validate_cluster(&cluster)?;
-    validate_refs(u.working(), &VaultObject::KubeCluster(cluster.clone()))?;
-    let expected: std::collections::BTreeSet<_> = context.auth.secret_ids().into_iter().collect();
-    let actual: std::collections::BTreeSet<_> = secrets.iter().map(|s| s.id).collect();
-    if actual != expected
-        || actual.len() != secrets.len()
-        || secrets
-            .iter()
-            .any(|s| s.value.is_empty() || s.id == ObjectId::NIL)
-    {
+    let contexts = persist_imports(u, vec![(cluster, context, secrets)]).await?;
+    Ok(contexts
+        .into_iter()
+        .next()
+        .expect("one validated connection"))
+}
+
+pub(crate) async fn persist_imports(
+    u: &crate::session::Unlocked,
+    connections: Vec<(KubeCluster, KubeContext, Vec<Secret>)>,
+) -> AppResult<Vec<KubeContext>> {
+    if connections.is_empty() || connections.len() > 64 {
         return Err(AppError::invalid(
-            "auth",
-            "credential bundle does not match the context",
+            "contexts",
+            "select between 1 and 64 contexts",
         ));
     }
-    let mut objects: Vec<_> = secrets.into_iter().map(VaultObject::Secret).collect();
-    objects.push(VaultObject::KubeCluster(cluster));
-    objects.push(VaultObject::KubeContext(context.clone()));
+    let mut objects = Vec::new();
+    let mut contexts = Vec::new();
+    for (cluster, context, secrets) in connections {
+        context.validate_cluster(&cluster)?;
+        validate_refs(u.working(), &VaultObject::KubeCluster(cluster.clone()))?;
+        let expected: std::collections::BTreeSet<_> =
+            context.auth.secret_ids().into_iter().collect();
+        let actual: std::collections::BTreeSet<_> = secrets.iter().map(|s| s.id).collect();
+        if actual != expected
+            || actual.len() != secrets.len()
+            || secrets
+                .iter()
+                .any(|s| s.value.is_empty() || s.id == ObjectId::NIL)
+        {
+            return Err(AppError::invalid(
+                "auth",
+                "credential bundle does not match the context",
+            ));
+        }
+        objects.extend(secrets.into_iter().map(VaultObject::Secret));
+        objects.push(VaultObject::KubeCluster(cluster));
+        objects.push(VaultObject::KubeContext(context.clone()));
+        contexts.push(context);
+    }
+    let ids: std::collections::BTreeSet<_> = objects.iter().map(VaultObject::id).collect();
+    if objects.len() > 256 || ids.len() != objects.len() {
+        return Err(AppError::invalid(
+            "contexts",
+            "too many or duplicate imported objects",
+        ));
+    }
     if objects
         .iter()
         .any(|o| u.working().kind_of(o.id()).is_some())
@@ -145,7 +202,7 @@ pub(crate) async fn persist_import(
         ));
     }
     u.writer.put_batch(objects).await?;
-    Ok(context)
+    Ok(contexts)
 }
 
 #[cfg(test)]

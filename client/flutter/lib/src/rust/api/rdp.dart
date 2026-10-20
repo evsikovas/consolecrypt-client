@@ -166,6 +166,8 @@ class RdpInputMessage {
   /// unicode / scancode / pointer / wheel / resize / release_all.
   final String kind;
   final String text;
+
+  /// Scancode for keys; desktop scale (100/125/150, legacy 0 = 100) for resize.
   final int code;
   final bool down;
   final bool extended;
