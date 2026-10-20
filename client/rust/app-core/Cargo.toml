@@ -31,6 +31,7 @@ cc-vault-core.workspace = true
 cc-storage-core.workspace = true
 cc-sync-core.workspace = true
 cc-ssh-core.workspace = true
+cc-db-core.workspace = true
 cc-ssh-agent-core.workspace = true
 cc-terminal-core.workspace = true
 cc-rdp-core.workspace = true

@@ -11527,5 +11527,14 @@
   "dbUnverifiedReadOnly": "Server-side read-only protection is unverified. Use a dedicated read-only database role.",
   "@dbUnverifiedReadOnly": {
     "description": "Database workspace interface."
+  },
+  "dbElapsed": "{ms} ms",
+  "@dbElapsed": {
+    "description": "Query duration in milliseconds.",
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
   }
 }

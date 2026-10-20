@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Root installs the native adapter. Null is an explicit unavailable capability,
 /// not a mock connection or an empty successful backend response.
-final dbServiceProvider = Provider<DbService?>((ref) => null);
+final dbServiceProvider = Provider<DbService?>((ref) => ref.watch(appServicesProvider).databases);
 
 final class DbScope {
   const DbScope(this.profileId, this.unlocked);

@@ -198,7 +198,7 @@ fn time(micros: i64) -> Result<String, DbError> {
 }
 
 fn numeric(bytes: &[u8]) -> Result<String, DbError> {
-    if bytes.len() < 8 || bytes.len() % 2 != 0 {
+    if bytes.len() < 8 || !bytes.len().is_multiple_of(2) {
         return Err(DbError::QueryFailed);
     }
     let count = usize::from(u16::from_be_bytes(fixed(&bytes[..2])?));
@@ -216,8 +216,10 @@ fn numeric(bytes: &[u8]) -> Result<String, DbError> {
         _ => return Err(DbError::QueryFailed),
     }
     let digits = bytes[8..]
-        .chunks_exact(2)
-        .map(|chunk| u16::from_be_bytes([chunk[0], chunk[1]]))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|chunk| u16::from_be_bytes(*chunk))
         .collect::<Vec<_>>();
     if digits.iter().any(|digit| *digit > 9999) {
         return Err(DbError::QueryFailed);

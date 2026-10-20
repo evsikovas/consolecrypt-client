@@ -978,6 +978,7 @@ dependencies = [
  "bytes",
  "cc-ai-core",
  "cc-crypto-core",
+ "cc-db-core",
  "cc-k8s-core",
  "cc-models",
  "cc-platform-core",
@@ -1027,6 +1028,7 @@ name = "cc-bridge"
 version = "0.1.0"
 dependencies = [
  "cc-app-core",
+ "cc-db-core",
  "cc-models",
  "cc-protocol",
  "cc-sftp-core",

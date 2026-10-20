@@ -10,6 +10,7 @@ pub mod ai;
 pub mod app;
 pub mod backup;
 pub mod credentials;
+pub mod database;
 pub mod error;
 pub mod inventory;
 pub mod kubernetes;

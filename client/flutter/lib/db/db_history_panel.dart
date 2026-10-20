@@ -238,6 +238,8 @@ class _DbHistoryPanelState extends ConsumerState<DbHistoryPanel> {
                 return TextButton(onPressed: _busy ? null : () => _load(more: true), child: Text(l.dbLoadMore));
               }
               final entry = _entries[i];
+              final when = DateFormat.yMd().add_Hm().format(entry.createdAt.toLocal());
+              final failed = entry.errorCode == null ? '' : ' ⚠'; // l10n-ignore: warning glyph
               return ListTile(
                 title: Text(
                   entry.text,
@@ -246,8 +248,8 @@ class _DbHistoryPanelState extends ConsumerState<DbHistoryPanel> {
                   style: const TextStyle(fontFamily: 'monospace'),
                 ),
                 subtitle: Text(
-                  '${DateFormat.yMd().add_Hm().format(entry.createdAt.toLocal())} · ${entry.elapsedMs} ms · ${entry.rows} · ${entry.engine.label}${entry.errorCode == null ? '' : ' ⚠'}',
-                ), // l10n-ignore: Localized date, duration, count, engine metadata.
+                  '$when · ${l.dbElapsed(entry.elapsedMs)} · ${entry.rows} · ${entry.engine.label}$failed', // l10n-ignore: metadata
+                ),
                 onTap: () {
                   if (_current) widget.onDraft(entry.text);
                 },

@@ -1,7 +1,7 @@
 use crate::{
     postgres_value,
     streaming::RowConsumer,
-    transport::{DbConnector, DbCredentials, DbDestination, TlsProfile},
+    transport::{DbConnector, DbCredentials, DbDestination, DbIo, TlsProfile},
     DbColumn, DbError, DbParameter,
 };
 use cc_models::database::{DbConnection, DbOptions, DbTlsMode};
@@ -71,10 +71,14 @@ impl Postgres {
             if connection.production { "on" } else { "off" }, timeout.as_millis(), timeout.as_millis()));
         let stream = connector.connect(&destination, scope.clone()).await?;
         let (client, worker) = if connection.tls.mode == DbTlsMode::Disable {
-            let (client, future) = configuration
-                .connect_raw(stream, NoTls)
-                .await
-                .map_err(classify)?;
+            // Handshake on its own task: owned 'static inputs keep the caller's
+            // future Send for every lifetime (rust-lang/rust#102211).
+            let configuration = configuration.clone();
+            let (client, future) =
+                tokio::spawn(async move { configuration.connect_raw(Socket(stream), NoTls).await })
+                    .await
+                    .map_err(|_| DbError::ConnectionFailed)?
+                    .map_err(classify)?;
             let worker = tokio::spawn(async move {
                 tokio::select! {
                     biased; _ = scope.cancelled() => {}, _ = future => {},
@@ -83,12 +87,15 @@ impl Postgres {
             (client, worker)
         } else {
             let mut factory = tokio_postgres_rustls::MakeRustlsConnect::new((*tls.config).clone());
-            let connector =
-                MakeTlsConnect::<crate::transport::DbIo>::make_tls_connect(&mut factory, &tls.name)
-                    .map_err(|_| DbError::TlsFailed)?;
-            let (client, future) = configuration
-                .connect_raw(stream, connector)
+            let connector = MakeTlsConnect::<Socket>::make_tls_connect(&mut factory, &tls.name)
+                .map_err(|_| DbError::TlsFailed)?;
+            let configuration = configuration.clone();
+            let (client, future) =
+                tokio::spawn(
+                    async move { configuration.connect_raw(Socket(stream), connector).await },
+                )
                 .await
+                .map_err(|_| DbError::ConnectionFailed)?
                 .map_err(classify)?;
             let worker = tokio::spawn(async move {
                 tokio::select! {
@@ -246,18 +253,54 @@ impl Postgres {
                 .await?;
             if mode == DbTlsMode::Disable {
                 let cancel: futures::future::BoxFuture<'_, _> =
-                    Box::pin(token.cancel_query_raw(stream, NoTls));
+                    Box::pin(token.cancel_query_raw(Socket(stream), NoTls));
                 cancel.await.map_err(classify)
             } else {
                 let mut factory = tokio_postgres_rustls::MakeRustlsConnect::new((*config).clone());
-                let tls =
-                    MakeTlsConnect::<crate::transport::DbIo>::make_tls_connect(&mut factory, &name)
-                        .map_err(|_| DbError::TlsFailed)?;
+                let tls = MakeTlsConnect::<Socket>::make_tls_connect(&mut factory, &name)
+                    .map_err(|_| DbError::TlsFailed)?;
                 let cancel: futures::future::BoxFuture<'_, _> =
-                    Box::pin(token.cancel_query_raw(stream, tls));
+                    Box::pin(token.cancel_query_raw(Socket(stream), tls));
                 cancel.await.map_err(classify)
             }
         })
+    }
+}
+
+/// The driver socket as a concrete type: `Box<dyn DbStream>` carries an
+/// inferred object lifetime that breaks the Send proof of tokio-postgres'
+/// TLS handshake (rust-lang/rust#102211).
+struct Socket(DbIo);
+
+impl tokio::io::AsyncRead for Socket {
+    fn poll_read(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut *self.0).poll_read(cx, buf)
+    }
+}
+
+impl tokio::io::AsyncWrite for Socket {
+    fn poll_write(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        std::pin::Pin::new(&mut *self.0).poll_write(cx, buf)
+    }
+    fn poll_flush(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut *self.0).poll_flush(cx)
+    }
+    fn poll_shutdown(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut *self.0).poll_shutdown(cx)
     }
 }
 

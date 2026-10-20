@@ -19,6 +19,7 @@ enum AppSymbol {
   backups,
   settings,
   kubernetes,
+  databases,
 }
 
 class AppSymbolIcon extends StatelessWidget {
@@ -169,6 +170,13 @@ class _SymbolPainter extends CustomPainter {
           canvas.drawLine(const Offset(12, 12) + d * 2.2, const Offset(12, 12) + d * 9.2, ink);
           canvas.drawCircle(const Offset(12, 12) + d * 10.2, 0.9, ink);
         }
+      case AppSymbol.databases:
+        // Cylinder: top ellipse, two bands and the sides.
+        canvas.drawOval(const Rect.fromLTWH(4, 2.5, 16, 5), ink);
+        canvas.drawArc(const Rect.fromLTWH(4, 9.5, 16, 5), 0, math.pi, false, ink);
+        canvas.drawArc(const Rect.fromLTWH(4, 16.5, 16, 5), 0, math.pi, false, ink);
+        line(4, 5, 4, 19);
+        line(20, 5, 20, 19);
     }
     canvas.restore();
   }

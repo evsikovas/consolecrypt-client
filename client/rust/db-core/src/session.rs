@@ -43,6 +43,9 @@ impl Driver {
     }
 }
 
+/// Turns one catalogue row into a structure node.
+type NodeBuilder = fn(&[String], Option<&DbObjectRef>) -> DbTreeNode;
+
 pub struct DbSession {
     info: DbSessionInfo,
     guard: DbGuard,
@@ -184,7 +187,7 @@ impl DbSession {
             value: DbCell::Text(value.into()),
             type_hint: None,
         };
-        let (sql, bindings, build): (&str, Vec<DbParameter>, fn(&[String], Option<&DbObjectRef>) -> DbTreeNode) =
+        let (sql, bindings, build): (&str, Vec<DbParameter>, NodeBuilder) =
             match (engine, parent.map(|p| p.kind)) {
                 (DbEngine::Postgresql, None) => (
                     "SELECT n.nspname FROM pg_catalog.pg_namespace n WHERE n.nspname NOT LIKE 'pg\\_%' \

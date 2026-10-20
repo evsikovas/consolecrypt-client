@@ -8,6 +8,7 @@ import 'api/ai.dart';
 import 'api/app.dart';
 import 'api/backup.dart';
 import 'api/credentials.dart';
+import 'api/database.dart';
 import 'api/enrollment.dart';
 import 'api/error.dart';
 import 'api/inventory.dart';
@@ -68,6 +69,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   bool dco_decode_bool(dynamic raw);
+
+  @protected
+  bool dco_decode_box_autoadd_bool(dynamic raw);
 
   @protected
   BridgeError dco_decode_box_autoadd_bridge_error(dynamic raw);
@@ -164,6 +168,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  bool? dco_decode_opt_box_autoadd_bool(dynamic raw);
 
   @protected
   BridgeError? dco_decode_opt_box_autoadd_bridge_error(dynamic raw);
@@ -289,6 +296,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  bool sse_decode_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
   BridgeError sse_decode_box_autoadd_bridge_error(SseDeserializer deserializer);
 
   @protected
@@ -383,6 +393,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer);
 
   @protected
   BridgeError? sse_decode_opt_box_autoadd_bridge_error(SseDeserializer deserializer);
@@ -508,6 +521,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_bool(bool self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_bridge_error(BridgeError self, SseSerializer serializer);
 
   @protected
@@ -602,6 +618,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_bridge_error(BridgeError? self, SseSerializer serializer);

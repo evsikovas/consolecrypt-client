@@ -18,7 +18,7 @@ pub enum QueryScope {
     Script,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct PreparedQuery {
     pub text: String,
     pub parameter_names: Vec<String>,

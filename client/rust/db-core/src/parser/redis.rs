@@ -146,10 +146,10 @@ fn classify(argv: &[Vec<u8>]) -> Result<(QueryRisk, &'static str), DbError> {
             }
         }
         "BITFIELD_RO" => {
-            if count < 4 || (count - 1) % 3 != 0 {
+            if count < 4 || !(count - 1).is_multiple_of(3) {
                 return Err(DbError::InvalidRequest);
             }
-            for operation in argv[2..].chunks_exact(3) {
+            for operation in argv[2..].as_chunks::<3>().0 {
                 if !operation[0].eq_ignore_ascii_case(b"GET") {
                     return Err(DbError::PolicyDenied);
                 }
@@ -266,7 +266,7 @@ fn word(value: &[u8]) -> Result<String, DbError> {
     {
         return Err(DbError::InvalidRequest);
     }
-    Ok(String::from_utf8(value.to_ascii_uppercase()).map_err(|_| DbError::InvalidRequest)?)
+    String::from_utf8(value.to_ascii_uppercase()).map_err(|_| DbError::InvalidRequest)
 }
 
 pub(super) fn tokenize(text: &str) -> Result<Vec<Vec<Vec<u8>>>, DbError> {

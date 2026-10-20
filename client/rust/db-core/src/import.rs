@@ -34,6 +34,16 @@ impl ImportedConnection {
     }
 }
 
+impl std::fmt::Debug for ImportedConnection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ImportedConnection")
+            .field("connection", &self.connection)
+            .field("password", &self.password.as_ref().map(|_| "[REDACTED]"))
+            .finish()
+    }
+}
+
+#[derive(Debug)]
 pub struct PgpassImport {
     pub entries: Vec<ImportedConnection>,
     pub skipped_wildcards: usize,

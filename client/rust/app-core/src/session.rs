@@ -205,6 +205,7 @@ pub(crate) struct Unlocked {
     pub enrollment: crate::sharing_api::enrollment::EnrollmentRuntime,
     pub kube_imports: Arc<crate::kubernetes_import::ImportRuntime>,
     pub kube: crate::kubernetes_runtime::KubeRuntime,
+    pub db: crate::database_runtime::DbRuntime,
     pub db_history_lock: tokio::sync::Mutex<()>,
     event_stream: tokio::sync::Mutex<Option<EventStream>>,
     tasks: Mutex<Vec<JoinHandle<()>>>,
@@ -287,6 +288,7 @@ impl Unlocked {
         self.enrollment.clear();
         self.kube_imports.close();
         self.kube.close();
+        self.db.close();
         self.edit.stop_all().await;
         self.transfers.cancel_all();
         self.ai.shutdown().await;
@@ -526,6 +528,7 @@ impl Session {
             enrollment: crate::sharing_api::enrollment::EnrollmentRuntime::default(),
             kube_imports: Arc::new(crate::kubernetes_import::ImportRuntime::default()),
             kube: crate::kubernetes_runtime::KubeRuntime::default(),
+            db: crate::database_runtime::DbRuntime::default(),
             db_history_lock: tokio::sync::Mutex::new(()),
             event_stream: tokio::sync::Mutex::new(None),
             tasks: Mutex::new(Vec::new()),

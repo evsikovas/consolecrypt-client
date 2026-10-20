@@ -60,14 +60,14 @@ void main() {
 
   test('connection metadata includes secret references but never secret buffers', () {
     final secret = SecretText('canary-password');
-    final metadata = DbConnection(
+    const metadata = DbConnection(
       id: 'connection',
       name: 'fixture',
       engine: DbEngine.postgresql,
       host: 'db.example.test',
       port: 5432,
-      options: const DbDriverOptions(engine: DbEngine.postgresql),
-      auth: const DbAuth(passwordSecretId: 'password-object-id'),
+      options: DbDriverOptions(engine: DbEngine.postgresql),
+      auth: DbAuth(passwordSecretId: 'password-object-id'),
     );
     final draft = DbConnectionDraft(metadata: metadata, password: secret);
     expect(metadata.production, isTrue);

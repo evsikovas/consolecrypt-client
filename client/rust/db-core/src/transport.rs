@@ -344,6 +344,8 @@ pub(crate) struct SocksCredentials {
     pub username: SecretString,
     pub password: SecretString,
 }
+// Used by the MongoDB driver (next 0.7 milestone).
+#[allow(dead_code)]
 pub(crate) struct MongoRelay {
     pub relay: LocalRelay,
     pub authentication: Arc<SocksCredentials>,
@@ -353,6 +355,7 @@ impl fmt::Debug for MongoRelay {
         f.write_str("MongoRelay([SCOPED])")
     }
 }
+#[allow(dead_code)]
 impl MongoRelay {
     pub async fn new(
         connector: Arc<dyn DbConnector>,

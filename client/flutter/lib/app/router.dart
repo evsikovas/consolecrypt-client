@@ -7,6 +7,7 @@ import 'package:consolecrypt/backups/backups_screen.dart';
 import 'package:consolecrypt/backups/restore_screen.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/credentials/credentials_screen.dart';
+import 'package:consolecrypt/db/databases_screen.dart';
 import 'package:consolecrypt/devices/devices_screen.dart';
 import 'package:consolecrypt/groups/groups_screen.dart';
 import 'package:consolecrypt/hosts/host_editor_screen.dart';
@@ -48,6 +49,7 @@ enum ShellBranch {
   sharing,
   rdp,
   kubernetes,
+  databases,
 }
 
 Page<void> _page(Widget child) => NoTransitionPage<void>(child: child);
@@ -69,7 +71,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: stage,
     redirect: (context, state) =>
         redirectFor(stage.value, state.matchedLocation) ??
-        (!kubernetesEnabled && state.matchedLocation.startsWith(AppRoutes.kubernetes) ? AppRoutes.hosts : null),
+        (!kubernetesEnabled && state.matchedLocation.startsWith(AppRoutes.kubernetes) ? AppRoutes.hosts : null) ??
+        (!databasesEnabled && state.matchedLocation.startsWith(AppRoutes.databases) ? AppRoutes.hosts : null),
     routes: [
       _gate(AppRoutes.loading, (_) => const _SplashScreen()),
       _gate(AppRoutes.welcome, (_) => const WelcomeScreen()),
@@ -129,6 +132,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           _branch(AppRoutes.sharing, const SharingScreen()),
           _branch(AppRoutes.rdp, const RdpScreen()),
           _branch(AppRoutes.kubernetes, const KubernetesScreen()),
+          _branch(AppRoutes.databases, const DatabasesScreen()),
         ],
       ),
     ],

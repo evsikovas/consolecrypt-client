@@ -33,11 +33,12 @@ class _DbValueDialogState extends ConsumerState<DbValueDialog> {
   Future<void> _decode() async {
     try {
       final document = await compute(decodeDbDocument, widget.cell.text);
-      if (_current)
+      if (_current) {
         setState(() {
           _document = document;
           _decoded = true;
         });
+      }
     } catch (_) {}
   }
 

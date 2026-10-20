@@ -4,6 +4,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/db/db_ai_panel.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
 import 'package:consolecrypt/db/db_document_view.dart';
@@ -64,6 +65,14 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   DbObjectRef? _selectedObject;
   DbJson? _lastPlan;
   Timer? _background;
+  final _password = TextEditingController();
+
+  /// Connections saved without a password ask for it on every open; the
+  /// typed value is used once and never stored.
+  bool get _asksPassword =>
+      widget.connection.auth.passwordSecretId == null &&
+      widget.connection.auth.keySecretId == null &&
+      widget.connection.username.isNotEmpty;
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(dbScopeProvider));
   bool get _mobile => defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
   bool _tabCurrent(_QueryTab tab) => _current && _tabs.contains(tab) && _session?.id == tab.result.sessionId;
@@ -72,7 +81,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_connect());
+    if (!_asksPassword) unawaited(_connect());
   }
 
   Future<void> _connect() async {
@@ -84,7 +93,9 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
       _failed = false;
     });
     try {
-      final session = await service.connect(widget.connection.id);
+      final password = _asksPassword ? SecretText(_password.text) : null;
+      _password.clear();
+      final session = await service.connect(widget.connection.id, temporaryPassword: password);
       if (!_current || generation != _generation) {
         await service.disconnect(session.id);
         return;
@@ -187,6 +198,9 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _closeSession();
+    _password
+      ..clear()
+      ..dispose();
     super.dispose();
   }
 
@@ -460,7 +474,9 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
                 Padding(
                   padding: const EdgeInsets.only(right: 4),
                   child: ChoiceChip(
-                    label: Text('${l.dbResults} ${item.index + 1} · ${item.rows.length} · ${item.elapsedMs} ms'),
+                    label: Text(
+                      '${l.dbResults} ${item.index + 1} · ${item.rows.length} · ${l.dbElapsed(item.elapsedMs)}',
+                    ),
                     selected: result == item,
                     onSelected: (_) => setState(() {
                       tab.resultIndex = item.index;
@@ -631,7 +647,19 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
             Text(widget.connection.name),
             if (_connecting) const CircularProgressIndicator(),
             if (_failed) Text(l.dbOperationFailed),
-            if (!_connecting) GlassButton(label: l.commonRetry, onPressed: _connect),
+            if (_asksPassword && !_connecting)
+              SizedBox(
+                width: 320,
+                child: SecretField(
+                  key: const ValueKey('db-connect-password'),
+                  controller: _password,
+                  label: l.dbPassword,
+                  autofocus: true,
+                  onSubmitted: (_) => _connect(),
+                ),
+              ),
+            if (!_connecting)
+              GlassButton(label: _asksPassword || !_failed ? l.commonConnect : l.commonRetry, onPressed: _connect),
             GlassButton(label: l.commonClose, onPressed: widget.onClose),
           ],
         ),

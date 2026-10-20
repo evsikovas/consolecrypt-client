@@ -16,6 +16,7 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
 cc-app-core.workspace = true
+cc-db-core.workspace = true
 # Public helper APIs the facade does not expose (ADR-0101 §8, bridge notes):
 # private-key inspection before import, `GET /v1/meta` probe, backup header.
 cc-ssh-core.workspace = true
