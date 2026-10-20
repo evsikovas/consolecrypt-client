@@ -83,8 +83,14 @@ class AppCommandsScope extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dispatcher = ref.watch(appCommandDispatcherProvider);
     final unlocked = ref.watch(appStageProvider) == AppStage.unlocked;
+    final commands = ref.watch(appCommandsProvider);
+    final capturing = ref.watch(shortcutCaptureProvider);
     Widget result = Shortcuts(
-      shortcuts: {for (final c in appCommands) c.activator: AppCommandIntent(c.id)},
+      shortcuts: {
+        if (!capturing)
+          for (final c in commands)
+            ?c.activator: AppCommandIntent(c.id),
+      },
       child: Actions(
         actions: {
           AppCommandIntent: CallbackAction<AppCommandIntent>(
@@ -100,10 +106,11 @@ class AppCommandsScope extends ConsumerWidget {
     if (AppPlatform.isMacOS) {
       final l10n = context.l10n;
       PlatformMenuItem item(AppCommandId id) {
-        final c = commandFor(id);
+        final c = commandFor(id, commands);
         return PlatformMenuItem(
           label: c.label(l10n),
-          shortcut: c.activator,
+          // Key equivalents are released while a new shortcut is captured.
+          shortcut: capturing ? null : c.activator,
           onSelected: unlocked ? () => dispatcher.invoke(id) : null,
         );
       }

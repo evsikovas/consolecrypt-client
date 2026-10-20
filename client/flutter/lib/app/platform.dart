@@ -29,15 +29,16 @@ abstract final class AppPlatform {
   static SingleActivator primary(LogicalKeyboardKey key, {bool shift = false}) =>
       SingleActivator(key, meta: usesMeta, control: !usesMeta, shift: shift);
 
-  /// "⌘K" on macOS, "Ctrl+K" on Windows.
-  static String shortcutLabel(LogicalKeyboardKey key, {bool shift = false}) {
+  /// "⌘K" on macOS, "Ctrl+K" on Windows ([primary] is ⌘ / Ctrl).
+  static String shortcutLabel(LogicalKeyboardKey key, {bool shift = false, bool alt = false, bool primary = true}) {
     final name = switch (key) {
       LogicalKeyboardKey.comma => ',',
+      LogicalKeyboardKey.period => '.',
       LogicalKeyboardKey.enter => usesMeta ? '↩' : 'Enter',
-      _ => key.keyLabel.toUpperCase(),
+      _ => key.keyLabel.length == 1 ? key.keyLabel.toUpperCase() : key.keyLabel,
     };
-    if (usesMeta) return '${shift ? '⇧' : ''}⌘$name';
-    return 'Ctrl+${shift ? 'Shift+' : ''}$name';
+    if (usesMeta) return '${alt ? '⌥' : ''}${shift ? '⇧' : ''}${primary ? '⌘' : ''}$name';
+    return '${primary ? 'Ctrl+' : ''}${alt ? 'Alt+' : ''}${shift ? 'Shift+' : ''}$name';
   }
 
   /// Monospace family for terminals, keys and commands.
@@ -48,10 +49,40 @@ abstract final class AppPlatform {
   /// Common monospace families offered for terminals; only installed ones
   /// render, others fall back to [monospaceFallback].
   static List<String> get terminalFontChoices => [
-    if (isMacOS) ...['Menlo', 'Monaco', 'SF Mono', 'Courier New', 'Andale Mono'], // l10n-ignore: font family names
-    if (isWindows) ...['Consolas', 'Cascadia Mono', 'Cascadia Code', 'Lucida Console', 'Courier New'], // l10n-ignore: font family names
-    if (!isMacOS && !isWindows) ...['DejaVu Sans Mono', 'Ubuntu Mono', 'Liberation Mono', 'Noto Sans Mono'], // l10n-ignore: font family names
-    ...['JetBrains Mono', 'Fira Code', 'Source Code Pro', 'Hack', 'IBM Plex Mono', 'Iosevka', 'MesloLGS NF'], // l10n-ignore: font family names
+    if (isMacOS) ..._macFonts,
+    if (isWindows) ..._windowsFonts,
+    if (!isMacOS && !isWindows) ..._linuxFonts,
+    ..._commonFonts,
+  ];
+
+  static const _macFonts = [
+    'Menlo', // l10n-ignore: font family name
+    'Monaco', // l10n-ignore: font family name
+    'SF Mono', // l10n-ignore: font family name
+    'Courier New', // l10n-ignore: font family name
+    'Andale Mono', // l10n-ignore: font family name
+  ];
+  static const _windowsFonts = [
+    'Consolas', // l10n-ignore: font family name
+    'Cascadia Mono', // l10n-ignore: font family name
+    'Cascadia Code', // l10n-ignore: font family name
+    'Lucida Console', // l10n-ignore: font family name
+    'Courier New', // l10n-ignore: font family name
+  ];
+  static const _linuxFonts = [
+    'DejaVu Sans Mono', // l10n-ignore: font family name
+    'Ubuntu Mono', // l10n-ignore: font family name
+    'Liberation Mono', // l10n-ignore: font family name
+    'Noto Sans Mono', // l10n-ignore: font family name
+  ];
+  static const _commonFonts = [
+    'JetBrains Mono', // l10n-ignore: font family name
+    'Fira Code', // l10n-ignore: font family name
+    'Source Code Pro', // l10n-ignore: font family name
+    'Hack', // l10n-ignore: font family name
+    'IBM Plex Mono', // l10n-ignore: font family name
+    'Iosevka', // l10n-ignore: font family name
+    'MesloLGS NF', // l10n-ignore: font family name
   ];
 
   /// Name of the OS authentication used for "unlock with this device"

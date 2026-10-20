@@ -20,6 +20,7 @@ import 'package:consolecrypt/settings/rdp_mobile_settings.dart';
 import 'package:consolecrypt/settings/screen_capture_settings.dart';
 import 'package:consolecrypt/settings/settings_dialogs.dart';
 import 'package:consolecrypt/settings/sftp_settings.dart';
+import 'package:consolecrypt/settings/shortcut_settings.dart';
 import 'package:consolecrypt/sync/enable_sync_dialog.dart';
 import 'package:consolecrypt/terminal/terminal_fonts.dart';
 import 'package:consolecrypt/updates/update_settings.dart';
@@ -53,6 +54,7 @@ class SettingsScreen extends ConsumerWidget {
           SizedBox(height: GlassSpacing.s16),
           _TerminalSection(),
           SizedBox(height: GlassSpacing.s16),
+          ShortcutSettingsSection(),
           SftpSettingsSection(),
           RdpMobileSettingsSection(),
           SizedBox(height: GlassSpacing.s16),

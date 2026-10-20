@@ -61,7 +61,9 @@ class TerminalScreen extends ConsumerWidget {
           icon: Icons.terminal_rounded,
           title: l10n.terminalEmptyTitle,
           message: AppPlatform.isMobile
-              ? l10n.terminalEmptyMessage(commandFor(AppCommandId.newTerminalTab).shortcutLabel)
+              ? l10n.terminalEmptyMessage(
+                  commandFor(AppCommandId.newTerminalTab, ref.watch(appCommandsProvider)).shortcutLabel,
+                )
               : l10n.terminalLocalEmptyMessage,
           action: GlassButton.prominent(
             key: const ValueKey('terminal-connect'),

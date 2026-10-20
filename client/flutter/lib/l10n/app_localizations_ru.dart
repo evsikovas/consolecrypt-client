@@ -7922,4 +7922,51 @@ class AppLocalizationsRu extends AppLocalizations {
   String sshConfigKeyFailed(String path) {
     return 'Ключ $path не импортирован';
   }
+
+  @override
+  String get settingsShortcutsTitle => 'Горячие клавиши';
+
+  @override
+  String get settingsShortcutsSubtitle =>
+      'Основной модификатор — ⌘ на macOS и Ctrl на Windows/Linux. Сочетания приложения обрабатываются раньше терминала.';
+
+  @override
+  String get settingsShortcutsReset => 'Восстановить по умолчанию';
+
+  @override
+  String get settingsShortcutChange => 'Изменить';
+
+  @override
+  String settingsShortcutResetOne(String shortcut) {
+    return 'Вернуть $shortcut';
+  }
+
+  @override
+  String get settingsShortcutOff => 'Выключено';
+
+  @override
+  String settingsShortcutCaptureTitle(String command) {
+    return 'Сочетание для «$command»';
+  }
+
+  @override
+  String get settingsShortcutCaptureHint => 'Нажмите сочетание с ⌘/Ctrl или Alt. Esc — отмена.';
+
+  @override
+  String settingsShortcutConflict(String command) {
+    return 'Уже назначено команде «$command» — у неё сочетание будет снято.';
+  }
+
+  @override
+  String get settingsShortcutReserved =>
+      'Это сочетание использует система или терминал — в терминал оно больше не попадёт.';
+
+  @override
+  String get settingsShortcutAssign => 'Назначить';
+
+  @override
+  String get settingsShortcutDisable => 'Выключить';
+
+  @override
+  String get settingsShortcutReservedBadge => 'Пересекается с системой или терминалом';
 }

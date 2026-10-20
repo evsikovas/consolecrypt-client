@@ -693,6 +693,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'terminal_font_size': s.terminalFontSize,
   'terminal_font_family': s.terminalFontFamily,
   'terminal_tab_subtitle': s.terminalTabSubtitle.name,
+  'shortcut_overrides': s.shortcutOverrides,
   'terminal_scrollback': s.terminalScrollback,
   'clipboard_clear_seconds': s.clipboardClearSeconds,
   'auto_lock_minutes': s.autoLockMinutes,
@@ -742,6 +743,11 @@ LocalSettings localSettingsFromJson(Json j) {
       j['terminal_tab_subtitle'],
       d.terminalTabSubtitle,
     ),
+    shortcutOverrides: {
+      if (j['shortcut_overrides'] case final Map<String, dynamic> overrides)
+        for (final entry in overrides.entries.take(64))
+          if (entry.value case final String value when value.length <= 64) entry.key: value,
+    },
     terminalScrollback: _int(j['terminal_scrollback']) ?? d.terminalScrollback,
     clipboardClearSeconds: _int(j['clipboard_clear_seconds']) ?? d.clipboardClearSeconds,
     autoLockMinutes: _int(j['auto_lock_minutes']) ?? d.autoLockMinutes,

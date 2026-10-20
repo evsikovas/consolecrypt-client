@@ -423,7 +423,7 @@ class _SidebarFooter extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lock = commandFor(AppCommandId.lockVault);
+    final lock = commandFor(AppCommandId.lockVault, ref.watch(appCommandsProvider));
     final lockButton = GlassIconButton(
       key: const ValueKey('lock-vault'),
       icon: Icons.lock_rounded,
@@ -713,7 +713,7 @@ class _ShellToolbar extends ConsumerWidget {
     final l10n = context.l10n;
     final dispatcher = ref.read(appCommandDispatcherProvider);
     final hosts = ref.watch(hostByIdProvider);
-    final palette = commandFor(AppCommandId.commandPalette);
+    final palette = commandFor(AppCommandId.commandPalette, ref.watch(appCommandsProvider));
     final title = shellTitle(l10n, branch, location, hosts);
     final live = _liveToolbarBranches.contains(branch) ? BackdropMode.live : BackdropMode.static;
     // The connection action stays circular at every desktop width. Search
@@ -833,12 +833,13 @@ class _OverflowMenu extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final dispatcher = ref.read(appCommandDispatcherProvider);
+    final commands = ref.watch(appCommandsProvider);
     GlassMenuItem<_MenuAction> item(_MenuAction action, AppCommandId? id, String label, IconData icon) => GlassMenuItem(
       key: ValueKey('shell-menu-${action.name}'),
       value: action,
       label: label,
       icon: icon,
-      shortcut: id == null ? null : commandFor(id).shortcutLabel,
+      shortcut: id == null ? null : commandFor(id, commands).shortcutLabel,
     );
     return GlassMenuButton<_MenuAction>(
       entries: [

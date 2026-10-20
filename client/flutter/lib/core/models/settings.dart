@@ -98,6 +98,7 @@ final class LocalSettings {
     this.terminalFontSize = 13,
     this.terminalFontFamily,
     this.terminalTabSubtitle = TerminalTabSubtitle.name,
+    this.shortcutOverrides = const {},
     this.terminalScrollback = 5000,
     this.clipboardClearSeconds = 30,
     this.autoLockMinutes = 15,
@@ -136,6 +137,10 @@ final class LocalSettings {
 
   /// Second line of terminal tabs: list name, network address, or nothing.
   final TerminalTabSubtitle terminalTabSubtitle;
+
+  /// App shortcuts changed by the user: command id → encoded binding, an
+  /// empty value turns the shortcut off. Missing ids use the defaults.
+  final Map<String, String> shortcutOverrides;
   final int terminalScrollback;
 
   /// Copied secrets are wiped from the clipboard after this many seconds.
@@ -181,6 +186,7 @@ final class LocalSettings {
     String? terminalFontFamily,
     bool resetTerminalFontFamily = false,
     TerminalTabSubtitle? terminalTabSubtitle,
+    Map<String, String>? shortcutOverrides,
     int? terminalScrollback,
     int? clipboardClearSeconds,
     int? autoLockMinutes,
@@ -204,6 +210,7 @@ final class LocalSettings {
     terminalFontSize: terminalFontSize ?? this.terminalFontSize,
     terminalFontFamily: resetTerminalFontFamily ? null : (terminalFontFamily ?? this.terminalFontFamily),
     terminalTabSubtitle: terminalTabSubtitle ?? this.terminalTabSubtitle,
+    shortcutOverrides: shortcutOverrides ?? this.shortcutOverrides,
     terminalScrollback: terminalScrollback ?? this.terminalScrollback,
     clipboardClearSeconds: clipboardClearSeconds ?? this.clipboardClearSeconds,
     autoLockMinutes: autoLockMinutes ?? this.autoLockMinutes,

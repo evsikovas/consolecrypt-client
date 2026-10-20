@@ -7721,4 +7721,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String sshConfigKeyFailed(String path) {
     return 'Key $path was not imported';
   }
+
+  @override
+  String get settingsShortcutsTitle => 'Keyboard shortcuts';
+
+  @override
+  String get settingsShortcutsSubtitle =>
+      'The primary modifier is ⌘ on macOS and Ctrl on Windows/Linux. App shortcuts are handled before the terminal.';
+
+  @override
+  String get settingsShortcutsReset => 'Restore defaults';
+
+  @override
+  String get settingsShortcutChange => 'Change';
+
+  @override
+  String settingsShortcutResetOne(String shortcut) {
+    return 'Restore $shortcut';
+  }
+
+  @override
+  String get settingsShortcutOff => 'Off';
+
+  @override
+  String settingsShortcutCaptureTitle(String command) {
+    return 'Shortcut for “$command”';
+  }
+
+  @override
+  String get settingsShortcutCaptureHint => 'Press a combination with ⌘/Ctrl or Alt. Esc cancels.';
+
+  @override
+  String settingsShortcutConflict(String command) {
+    return 'Already used by “$command”; that command will lose its shortcut.';
+  }
+
+  @override
+  String get settingsShortcutReserved =>
+      'The system or the terminal uses this combination; it will stop reaching the terminal.';
+
+  @override
+  String get settingsShortcutAssign => 'Assign';
+
+  @override
+  String get settingsShortcutDisable => 'Turn off';
+
+  @override
+  String get settingsShortcutReservedBadge => 'Overlaps the system or terminal';
 }

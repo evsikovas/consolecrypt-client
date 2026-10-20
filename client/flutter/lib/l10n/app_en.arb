@@ -10590,5 +10590,72 @@
         "type": "String"
       }
     }
+  },
+  "settingsShortcutsTitle": "Keyboard shortcuts",
+  "@settingsShortcutsTitle": {
+    "description": "Settings section with remappable app shortcuts."
+  },
+  "settingsShortcutsSubtitle": "The primary modifier is ⌘ on macOS and Ctrl on Windows/Linux. App shortcuts are handled before the terminal.",
+  "@settingsShortcutsSubtitle": {
+    "description": "Explanation of the shortcuts section."
+  },
+  "settingsShortcutsReset": "Restore defaults",
+  "@settingsShortcutsReset": {
+    "description": "Button: reset all shortcuts to the factory ones."
+  },
+  "settingsShortcutChange": "Change",
+  "@settingsShortcutChange": {
+    "description": "Button: record a new shortcut for a command."
+  },
+  "settingsShortcutResetOne": "Restore {shortcut}",
+  "@settingsShortcutResetOne": {
+    "description": "Tooltip: reset one command to its default shortcut.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsShortcutOff": "Off",
+  "@settingsShortcutOff": {
+    "description": "A command whose shortcut is turned off."
+  },
+  "settingsShortcutCaptureTitle": "Shortcut for “{command}”",
+  "@settingsShortcutCaptureTitle": {
+    "description": "Title of the shortcut capture dialog.",
+    "placeholders": {
+      "command": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsShortcutCaptureHint": "Press a combination with ⌘/Ctrl or Alt. Esc cancels.",
+  "@settingsShortcutCaptureHint": {
+    "description": "Instruction in the shortcut capture dialog."
+  },
+  "settingsShortcutConflict": "Already used by “{command}”; that command will lose its shortcut.",
+  "@settingsShortcutConflict": {
+    "description": "Conflict with another app command.",
+    "placeholders": {
+      "command": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsShortcutReserved": "The system or the terminal uses this combination; it will stop reaching the terminal.",
+  "@settingsShortcutReserved": {
+    "description": "Warning: the combination is reserved by the OS or the shell."
+  },
+  "settingsShortcutAssign": "Assign",
+  "@settingsShortcutAssign": {
+    "description": "Button: save the captured shortcut."
+  },
+  "settingsShortcutDisable": "Turn off",
+  "@settingsShortcutDisable": {
+    "description": "Button: remove the shortcut of a command."
+  },
+  "settingsShortcutReservedBadge": "Overlaps the system or terminal",
+  "@settingsShortcutReservedBadge": {
+    "description": "Row hint for a reserved combination."
   }
 }

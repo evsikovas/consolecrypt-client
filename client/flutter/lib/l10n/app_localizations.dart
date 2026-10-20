@@ -13903,6 +13903,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Key {path} was not imported'**
   String sshConfigKeyFailed(String path);
+
+  /// Settings section with remappable app shortcuts.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard shortcuts'**
+  String get settingsShortcutsTitle;
+
+  /// Explanation of the shortcuts section.
+  ///
+  /// In en, this message translates to:
+  /// **'The primary modifier is ⌘ on macOS and Ctrl on Windows/Linux. App shortcuts are handled before the terminal.'**
+  String get settingsShortcutsSubtitle;
+
+  /// Button: reset all shortcuts to the factory ones.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore defaults'**
+  String get settingsShortcutsReset;
+
+  /// Button: record a new shortcut for a command.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get settingsShortcutChange;
+
+  /// Tooltip: reset one command to its default shortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore {shortcut}'**
+  String settingsShortcutResetOne(String shortcut);
+
+  /// A command whose shortcut is turned off.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get settingsShortcutOff;
+
+  /// Title of the shortcut capture dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortcut for “{command}”'**
+  String settingsShortcutCaptureTitle(String command);
+
+  /// Instruction in the shortcut capture dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Press a combination with ⌘/Ctrl or Alt. Esc cancels.'**
+  String get settingsShortcutCaptureHint;
+
+  /// Conflict with another app command.
+  ///
+  /// In en, this message translates to:
+  /// **'Already used by “{command}”; that command will lose its shortcut.'**
+  String settingsShortcutConflict(String command);
+
+  /// Warning: the combination is reserved by the OS or the shell.
+  ///
+  /// In en, this message translates to:
+  /// **'The system or the terminal uses this combination; it will stop reaching the terminal.'**
+  String get settingsShortcutReserved;
+
+  /// Button: save the captured shortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign'**
+  String get settingsShortcutAssign;
+
+  /// Button: remove the shortcut of a command.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off'**
+  String get settingsShortcutDisable;
+
+  /// Row hint for a reserved combination.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlaps the system or terminal'**
+  String get settingsShortcutReservedBadge;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

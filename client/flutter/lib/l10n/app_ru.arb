@@ -4182,5 +4182,18 @@
   "sshConfigImportKeysHelp": "Ключ сохраняется в хранилище как есть; зашифрованный ключ остаётся со своей парольной фразой.",
   "sshConfigVia": "через {hosts}",
   "sshConfigProxyCommand": "ProxyCommand не поддерживается; хост импортируется без него",
-  "sshConfigKeyFailed": "Ключ {path} не импортирован"
+  "sshConfigKeyFailed": "Ключ {path} не импортирован",
+  "settingsShortcutsTitle": "Горячие клавиши",
+  "settingsShortcutsSubtitle": "Основной модификатор — ⌘ на macOS и Ctrl на Windows/Linux. Сочетания приложения обрабатываются раньше терминала.",
+  "settingsShortcutsReset": "Восстановить по умолчанию",
+  "settingsShortcutChange": "Изменить",
+  "settingsShortcutResetOne": "Вернуть {shortcut}",
+  "settingsShortcutOff": "Выключено",
+  "settingsShortcutCaptureTitle": "Сочетание для «{command}»",
+  "settingsShortcutCaptureHint": "Нажмите сочетание с ⌘/Ctrl или Alt. Esc — отмена.",
+  "settingsShortcutConflict": "Уже назначено команде «{command}» — у неё сочетание будет снято.",
+  "settingsShortcutReserved": "Это сочетание использует система или терминал — в терминал оно больше не попадёт.",
+  "settingsShortcutAssign": "Назначить",
+  "settingsShortcutDisable": "Выключить",
+  "settingsShortcutReservedBadge": "Пересекается с системой или терминалом"
 }
