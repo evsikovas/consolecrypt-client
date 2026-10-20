@@ -39,27 +39,27 @@ xcrun simctl launch booted io.consolecrypt.consolecrypt
 Для ZIP сначала проверьте SHA-256, затем распакуйте `Runner.app` и установите
 его той же командой. Этот ZIP не является IPA для установки на iPhone.
 
-### Готовый архив из релиза 0.5.2
+### Готовый архив из релиза 0.5.6
 
-В [релизе v0.5.2](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.5.2)
-скачайте [полный Simulator ZIP](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.2/ConsoleCrypt-0.5.2%2B21015-ios-simulator-universal.zip)
-и [SHA256SUMS-0.5.2.txt](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.2/SHA256SUMS-0.5.2.txt).
+В [релизе v0.5.6](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.5.6)
+скачайте [полный Simulator ZIP](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.6/ConsoleCrypt-0.5.6%2B23015-ios-simulator-universal.zip)
+и [SHA256SUMS-0.5.6.txt](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.6/SHA256SUMS-0.5.6.txt).
 Сохраните оба файла в одной папке. ZIP опубликован целиком; объединение частей
-больше не требуется. Сборка — **0.5.2+21015**, размер — **154 847 303 байт**.
+больше не требуется. Сборка — **0.5.6+23015**, размер — **154 939 478 байт**.
 
 В Terminal перейдите в эту папку и проверьте архив:
 
 ```sh
-awk '$2 == "ConsoleCrypt-0.5.2+21015-ios-simulator-universal.zip" { print; n++ } \
-     END { if (n != 1) exit 1 }' SHA256SUMS-0.5.2.txt > ios.SHA256SUMS \
+awk '$2 == "ConsoleCrypt-0.5.6+23015-ios-simulator-universal.zip" { print; n++ } \
+     END { if (n != 1) exit 1 }' SHA256SUMS-0.5.6.txt > ios.SHA256SUMS \
     && shasum -a 256 -c ios.SHA256SUMS
 ```
 
 Продолжайте только после результата `OK`. Ожидаемая SHA-256:
-`ab0a2a420c25f412c0ebdc04eec4c698e402f7142bf9d693ca80b1dda561c60f`.
+`6394d2c15d6fd28ab58e1b28638dd75bb751dc3e487212ee90e44b001f5b1264`.
 
 ```sh
-unzip ConsoleCrypt-0.5.2+21015-ios-simulator-universal.zip
+unzip ConsoleCrypt-0.5.6+23015-ios-simulator-universal.zip
 xcrun simctl install booted Runner.app
 xcrun simctl launch booted io.consolecrypt.consolecrypt
 ```
@@ -91,8 +91,8 @@ Actions artifact содержит **полный Simulator ZIP**, его SHA-256
 контрольные суммы в GitHub Release. Push ветки сам по себе выпуск не запускает.
 [Раннеры и номера сборок](GITHUB_ACTIONS.md).
 
-Проверенный выпуск **0.5.2+21015** собран 19 октября 2026 года (UTC):
-[iOS job](https://github.com/evsikovas/consolecrypt-client/actions/runs/39330293040/job/118343767671)
+Проверенный выпуск **0.5.6+23015** собран 20 октября 2026 года (UTC):
+[iOS job](https://github.com/evsikovas/consolecrypt-client/actions/runs/39377995191/job/118489659918)
 завершился успешно; журнал подтверждает установку и запуск
 `io.consolecrypt.consolecrypt` с получением PID.
 
@@ -199,7 +199,7 @@ client/scripts/build-ios.sh --device
 пять секунд; финальная очистка прошла без таймаутов. Это отдельная тестовая
 сборка: product ZIP создаётся следующим запуском `--build-only`.
 
-Текущий готовый архив — **0.5.2+21015**. CI проверил bundle ID и версию,
+Текущий готовый архив — **0.5.6+23015**. CI проверил bundle ID и версию,
 установил приложение в отдельный временный Simulator и запустил процесс,
 получив PID. Полный ZIP опубликован одним файлом; его размер и SHA-256
 сверены с GitHub asset digest и общим файлом контрольных сумм.
@@ -245,7 +245,7 @@ ARM64 iPhone. Полный прогон выше выполнен в Simulator �
 
 ## English
 
-Download the complete **0.5.2+21015** Simulator ZIP and `SHA256SUMS-0.5.2.txt`
+Download the complete **0.5.6+23015** Simulator ZIP and `SHA256SUMS-0.5.6.txt`
 using the links above. Verify its single checksum entry, extract the ZIP, then install
 `Runner.app` with `xcrun simctl install`. CI installed this build and launched a
 process in an isolated Simulator. The published size and SHA-256 match GitHub

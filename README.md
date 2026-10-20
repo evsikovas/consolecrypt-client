@@ -140,7 +140,13 @@ Tests that need a native library, a system keyring, or a real SSH/RDP server hav
 additional prerequisites. Do not run Flutter tests alongside a native build
 in the same working directory.
 
-## Release 0.5.5
+## Release 0.5.6
+
+Recovery Kit words stay readable on phones and with larger text; the QR code moves below the words when needed. See the [0.5.6 notes](docs/public/RELEASE_0_5_6.md).
+
+[Release 0.5.6](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.5.6) provides seven packages for macOS, Windows, Linux, Android and iOS Simulator. Verify downloads against [the SHA-256 manifest](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.6/SHA256SUMS-0.5.6.txt).
+
+## Mobile RDP and desktop improvements
 
 Phone RDP opens fullscreen with touchpad gestures, a floating menu and an overlay keyboard. Desktop adds known_hosts import, a New local terminal palette action and corrected macOS window-button spacing. See the [0.5.5 notes](docs/public/RELEASE_0_5_5.md).
 
@@ -151,9 +157,6 @@ preserving verified model downloads and device preferences across updates.
 Local AI/snippet commands support insertion without Enter; ordinary local
 terminal input remains interactive. See the [0.5 notes](docs/public/RELEASE_0_5_2.md),
 [local terminals](docs/public/LOCAL_TERMINALS.md) and [local AI](docs/public/LOCAL_AI.md).
-[Release 0.5.2](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.5.2)
-provides seven files for macOS, Windows, Linux, Android and iOS Simulator.
-Verify downloads against [the release SHA-256 manifest](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.2/SHA256SUMS-0.5.2.txt).
 
 ## Release 0.4.1
 
