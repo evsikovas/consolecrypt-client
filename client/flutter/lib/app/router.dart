@@ -1,5 +1,6 @@
 import 'package:consolecrypt/account/login_screen.dart';
 import 'package:consolecrypt/account/welcome_screen.dart';
+import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/shell.dart';
 import 'package:consolecrypt/backups/backups_screen.dart';
@@ -66,7 +67,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.hosts,
     refreshListenable: stage,
-    redirect: (context, state) => redirectFor(stage.value, state.matchedLocation),
+    redirect: (context, state) =>
+        redirectFor(stage.value, state.matchedLocation) ??
+        (!kubernetesEnabled && state.matchedLocation.startsWith(AppRoutes.kubernetes) ? AppRoutes.hosts : null),
     routes: [
       _gate(AppRoutes.loading, (_) => const _SplashScreen()),
       _gate(AppRoutes.welcome, (_) => const WelcomeScreen()),

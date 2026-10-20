@@ -5,6 +5,7 @@ import 'package:consolecrypt/app/about.dart';
 import 'package:consolecrypt/app/app_info.dart';
 import 'package:consolecrypt/app/brand.dart';
 import 'package:consolecrypt/app/commands.dart';
+import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
@@ -63,7 +64,7 @@ const _navItems = [
   _NavItem(ShellBranch.sharing, Icons.people_outline_rounded, syncedOnly: true),
   _NavItem(ShellBranch.terminal, Icons.terminal_rounded),
   _NavItem(ShellBranch.rdp, Icons.desktop_windows_outlined),
-  _NavItem(ShellBranch.kubernetes, Icons.hub_outlined),
+  if (kubernetesEnabled) _NavItem(ShellBranch.kubernetes, Icons.hub_outlined),
   _NavItem(ShellBranch.sftp, Icons.folder_copy_rounded),
   _NavItem(ShellBranch.tunnels, Icons.swap_horiz_rounded),
   _NavItem(ShellBranch.devices, Icons.devices_rounded, syncedOnly: true),
