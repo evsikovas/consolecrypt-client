@@ -140,6 +140,12 @@ flutter test
 SSH/RDP-сервер, имеют дополнительные условия. Не запускайте Flutter-тесты
 параллельно с нативной сборкой в одной рабочей папке.
 
+## Релиз 0.6.3
+
+Kubernetes становится отдельным рабочим разделом: зашифрованный импорт и синхронизация kubeconfig, живые ресурсы, YAML с проверкой изменений, логи, shell в Pod, port-forward, Helm, GitOps и ИИ по данным кластера. Подробнее: [заметки 0.6.3](docs/public/RELEASE_0_6_3.md) и [руководство Kubernetes](docs/public/KUBERNETES.md).
+
+[Релиз 0.6.3](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.6.3) содержит шесть пакетов для macOS, Windows, Linux и Android; выпуск для iOS отложен. Сверяйте загрузки с [манифестом SHA-256](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.6.3/SHA256SUMS-0.6.3.txt).
+
 ## Релиз 0.5.5
 
 RDP на телефоне открывается на весь экран с тачпадом, жестами, плавающей панелью и клавиатурой поверх картинки. На компьютере добавлены импорт known_hosts и пункт палитры «Новый локальный терминал»; исправлено перекрытие кнопок окна macOS. См. [заметки 0.5.5](docs/public/RELEASE_0_5_5.md).
