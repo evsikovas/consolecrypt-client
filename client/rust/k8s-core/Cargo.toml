@@ -13,6 +13,7 @@ publish.workspace = true
 cc-models.workspace = true
 serde_json.workspace = true
 http = "1"
+http-body = "1"
 tower = { version = "0.5", features = ["util"] }
 thiserror.workspace = true
 uuid.workspace = true
@@ -33,6 +34,9 @@ libc = "0.2"
 
 [dev-dependencies]
 tempfile.workspace = true
+http-body-util = "0.1"
+bytes.workspace = true
+futures.workspace = true
 rcgen = "0.14"
 tokio-rustls = { version = "=0.26.5", default-features = false, features = ["ring", "tls12"] }
 

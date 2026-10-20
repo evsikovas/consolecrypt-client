@@ -127,6 +127,7 @@ impl KubernetesSession {
         let _ = rustls::crypto::ring::default_provider().install_default();
         let client = ClientBuilder::try_from(config)
             .map_err(|_| ConnectError::Configuration)?
+            .with_layer(&crate::stream_scope::BodyScopeLayer(guard.cancellation()))
             .with_layer(&GuardLayer(guard.clone()))
             .build();
         Ok(Self { client, guard })
@@ -142,6 +143,21 @@ impl KubernetesSession {
 
     pub fn close(&self) {
         self.guard.close();
+    }
+
+    /// Own the complete lifetime of a consumer, including websocket upgrades.
+    /// Lock/revocation drops the future and its open streams. Runtime workers
+    /// must use this for exec/attach/forward, not just for their HTTP handshake.
+    pub async fn scoped<F: std::future::Future>(
+        &self,
+        future: F,
+    ) -> Result<F::Output, PolicyError> {
+        let cancel = self.guard.cancellation();
+        tokio::select! {
+            biased;
+            _ = cancel.cancelled() => Err(PolicyError::Closed),
+            value = future => Ok(value),
+        }
     }
 }
 

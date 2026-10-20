@@ -131,6 +131,10 @@ impl fmt::Debug for ForwardConfirmation {
 }
 
 impl ProdGuard {
+    pub(crate) fn cancellation(&self) -> CancellationToken {
+        self.0.cancel.clone()
+    }
+
     pub fn new(
         policy: Policy,
         insecure_skip_tls_verify: bool,

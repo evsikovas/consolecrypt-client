@@ -36,6 +36,7 @@ struct Fixture {
     certificate: Vec<u8>,
     requests: Arc<AtomicUsize>,
     headers: Arc<Mutex<Vec<String>>>,
+    stream_closed: Arc<tokio::sync::Notify>,
     task: JoinHandle<()>,
 }
 
@@ -68,6 +69,8 @@ impl Fixture {
         let headers = Arc::new(Mutex::new(Vec::new()));
         let seen = requests.clone();
         let captured = headers.clone();
+        let stream_closed = Arc::new(tokio::sync::Notify::new());
+        let closed = stream_closed.clone();
         let task = tokio::spawn(async move {
             while let Ok((socket, _)) = listener.accept().await {
                 let Ok(mut stream) = acceptor.accept(socket).await else {
@@ -85,10 +88,18 @@ impl Fixture {
                     continue;
                 }
                 seen.fetch_add(1, Ordering::SeqCst);
+                let follow = request
+                    .starts_with(b"GET /api/v1/namespaces/default/pods/app/log?follow=true ");
                 captured
                     .lock()
                     .unwrap()
                     .push(String::from_utf8(request).unwrap());
+                if follow {
+                    stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n8\r\nfixture\n\r\n").await.unwrap();
+                    let _ = stream.read(&mut byte).await;
+                    closed.notify_one();
+                    continue;
+                }
                 let body = r#"{"gitVersion":"v1.32.0"}"#;
                 let reply = format!(
                     "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
@@ -103,6 +114,7 @@ impl Fixture {
             certificate: der,
             requests,
             headers,
+            stream_closed,
             task,
         }
     }
@@ -117,6 +129,81 @@ impl Fixture {
             route: ConnectionRoute::SshLoopback(self.address),
         }
     }
+}
+
+#[tokio::test]
+async fn closing_session_revokes_an_already_open_https_log_stream() {
+    let fixture = Fixture::start().await;
+    let session = KubernetesSession::new(
+        fixture.options(),
+        auth(),
+        policy(),
+        Arc::new(TestAudit::default()),
+    )
+    .unwrap();
+    let mut stream = session
+        .client()
+        .request_stream(request(
+            "GET",
+            "/api/v1/namespaces/default/pods/app/log?follow=true",
+        ))
+        .await
+        .unwrap();
+    let mut first = [0; 8];
+    futures::AsyncReadExt::read_exact(&mut stream, &mut first)
+        .await
+        .unwrap();
+    assert_eq!(&first, b"fixture\n");
+    session.close();
+    let mut next = [0; 1];
+    let result = tokio::time::timeout(
+        Duration::from_secs(1),
+        futures::AsyncReadExt::read(&mut stream, &mut next),
+    )
+    .await
+    .unwrap();
+    assert!(result.is_err());
+    tokio::time::timeout(Duration::from_secs(2), fixture.stream_closed.notified())
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn scope_revocation_drops_resources_owned_after_a_stream_upgrade() {
+    struct OpenResource(Arc<std::sync::atomic::AtomicBool>);
+    impl Drop for OpenResource {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::SeqCst);
+        }
+    }
+    let fixture = Fixture::start().await;
+    let session = KubernetesSession::new(
+        fixture.options(),
+        auth(),
+        policy(),
+        Arc::new(TestAudit::default()),
+    )
+    .unwrap();
+    let dropped = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let resource = OpenResource(dropped.clone());
+    let (started, ready) = tokio::sync::oneshot::channel();
+    let (result, ()) = tokio::join!(
+        session.scoped(async move {
+            let _resource = resource;
+            started.send(()).unwrap();
+            std::future::pending::<()>().await;
+        }),
+        async {
+            ready.await.unwrap();
+            assert!(!dropped.load(Ordering::SeqCst));
+            session.close();
+        }
+    );
+    assert_eq!(
+        result.unwrap_err(),
+        cc_k8s_core::policy::PolicyError::Closed
+    );
+    assert!(dropped.load(Ordering::SeqCst));
 }
 
 fn policy() -> Policy {

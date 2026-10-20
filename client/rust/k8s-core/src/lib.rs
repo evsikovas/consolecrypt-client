@@ -5,4 +5,5 @@ pub mod import;
 pub mod import_files;
 pub mod policy;
 pub mod session;
+mod stream_scope;
 pub mod vault_import;

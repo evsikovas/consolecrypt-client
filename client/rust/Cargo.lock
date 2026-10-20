@@ -1034,8 +1034,12 @@ name = "cc-k8s-core"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "bytes",
  "cc-models",
+ "futures",
  "http",
+ "http-body",
+ "http-body-util",
  "k8s-openapi",
  "kube",
  "libc",
