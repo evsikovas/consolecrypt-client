@@ -140,11 +140,17 @@ flutter test
 SSH/RDP-сервер, имеют дополнительные условия. Не запускайте Flutter-тесты
 параллельно с нативной сборкой в одной рабочей папке.
 
+## Релиз 0.6.4
+
+Kubernetes на компьютере переработан: навигатор со сворачиваемыми группами ресурсов, живой обзор кластера с установкой базового metrics-server, карточка объекта поверх таблицы, ИИ кластера и пробросы портов в правой панели, понятные причины отказа YAML. У вкладок терминала появились меню, подсветка активности и выбор шрифта; хосты импортируются из ~/.ssh/config, горячие клавиши переназначаются, ответы ИИ отображают Markdown. Подробнее: [заметки 0.6.4](docs/public/RELEASE_0_6_4.md).
+
+[Релиз 0.6.4](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.6.4) содержит шесть пакетов для macOS, Windows, Linux и Android; выпуск для iOS отложен. Сверяйте загрузки с [манифестом SHA-256](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.6.4/SHA256SUMS-0.6.4.txt).
+
 ## Релиз 0.6.3
 
 Kubernetes становится отдельным рабочим разделом: зашифрованный импорт и синхронизация kubeconfig, живые ресурсы, YAML с проверкой изменений, логи, shell в Pod, port-forward, Helm, GitOps и ИИ по данным кластера. Подробнее: [заметки 0.6.3](docs/public/RELEASE_0_6_3.md) и [руководство Kubernetes](docs/public/KUBERNETES.md).
 
-[Релиз 0.6.3](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.6.3) содержит шесть пакетов для macOS, Windows, Linux и Android; выпуск для iOS отложен. Сверяйте загрузки с [манифестом SHA-256](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.6.3/SHA256SUMS-0.6.3.txt).
+[Релиз 0.6.3](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.6.3) содержал шесть пакетов для macOS, Windows, Linux и Android; выпуск для iOS отложен. Сверяйте загрузки с [манифестом SHA-256](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.6.3/SHA256SUMS-0.6.3.txt).
 
 ## Релиз 0.5.5
 
