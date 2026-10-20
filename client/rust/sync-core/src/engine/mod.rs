@@ -308,6 +308,16 @@ impl SyncEngine {
         Ok(r)
     }
 
+    /// Commit related local mutations together and wake the sync worker.
+    pub async fn put_batch(
+        &self,
+        payloads: Vec<cc_models::ObjectPayload>,
+    ) -> Result<Vec<cc_storage_core::LocalMutationOutcome>, SyncError> {
+        let result = self.inner.store.put_batch(payloads).await?;
+        self.refresh_status().await?;
+        Ok(result)
+    }
+
     /// Local delete (see [`ObjectStore::delete`]); wakes the worker.
     pub async fn delete(
         &self,

@@ -228,6 +228,18 @@ impl WorkingSet {
     }
 
     typed!(host, hosts, Host, Host);
+    typed!(
+        kube_cluster,
+        kube_clusters,
+        KubeCluster,
+        cc_models::kubernetes::KubeCluster
+    );
+    typed!(
+        kube_context,
+        kube_contexts,
+        KubeContext,
+        cc_models::kubernetes::KubeContext
+    );
     typed!(rdp_host, rdp_hosts, RdpHost, cc_models::rdp::RdpHost);
     typed!(group, groups, Group, Group);
     typed!(jump_profile, jump_profiles, JumpProfile, JumpProfile);

@@ -52,6 +52,24 @@ impl VaultWriter {
         Ok(())
     }
 
+    /// Commit related objects atomically, then refresh their inventory entries.
+    pub(crate) async fn put_batch(&self, objects: Vec<VaultObject>) -> AppResult<()> {
+        let ids: Vec<_> = objects.iter().map(VaultObject::id).collect();
+        let payloads = objects.into_iter().map(ObjectPayload::new).collect();
+        match self.engine() {
+            Some(engine) => {
+                engine.put_batch(payloads).await?;
+            }
+            None => {
+                self.store.put_batch(payloads).await?;
+            }
+        }
+        for id in ids {
+            self.refresh(id).await?;
+        }
+        Ok(())
+    }
+
     /// Delete an object (tombstone, or removal if it never left the device).
     pub(crate) async fn delete(&self, id: ObjectId) -> AppResult<()> {
         match self.engine() {

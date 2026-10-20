@@ -61,6 +61,7 @@ impl SharingApi {
         validate_capabilities(&current, self.capabilities.server_instance_id)?;
         if current.supports_groups != self.capabilities.supports_groups
             || current.supports_secrets != self.capabilities.supports_secrets
+            || current.supports_kube_contexts != self.capabilities.supports_kube_contexts
             || current.supports_owner_online_enrollment_v1
                 != self.capabilities.supports_owner_online_enrollment_v1
         {
@@ -88,9 +89,22 @@ impl SharingApi {
         include_groups: bool,
         include_secrets: bool,
     ) -> Result<ShareListPage, ApiError> {
+        self.list_shares_with_extensions(after, limit, include_groups, include_secrets, false)
+            .await
+    }
+
+    pub async fn list_shares_with_extensions(
+        &self,
+        after: Option<ShareId>,
+        limit: u32,
+        include_groups: bool,
+        include_secrets: bool,
+        include_kube_contexts: bool,
+    ) -> Result<ShareListPage, ApiError> {
         self.ready()?;
         if (include_groups && !self.capabilities.supports_groups)
             || (include_secrets && !self.capabilities.supports_secrets)
+            || (include_kube_contexts && !self.capabilities.supports_kube_contexts)
         {
             return Err(config_error("requested sharing kind is unavailable"));
         }
@@ -108,6 +122,9 @@ impl SharingApi {
             if include_groups {
                 query.append_pair("include_groups", "true");
             }
+            if include_kube_contexts {
+                query.append_pair("include_kube_contexts", "true");
+            }
             if include_secrets {
                 query.append_pair("include_secrets", "true");
             }
@@ -121,6 +138,8 @@ impl SharingApi {
             self.state(item, None)?;
             if (item.access.manifest.kind == SharedItemKind::Group && !include_groups)
                 || (item.access.manifest.kind == SharedItemKind::Secret && !include_secrets)
+                || (item.access.manifest.kind == SharedItemKind::KubeContext
+                    && !include_kube_contexts)
             {
                 return Err(response_error("unrequested sharing kind"));
             }
@@ -346,6 +365,9 @@ impl SharingApi {
         match kind {
             SharedItemKind::Group if !self.capabilities.supports_groups => {
                 Err(config_error("group sharing is not enabled"))
+            }
+            SharedItemKind::KubeContext if !self.capabilities.supports_kube_contexts => {
+                Err(config_error("Kubernetes sharing is not enabled"))
             }
             SharedItemKind::Secret if !self.capabilities.supports_secrets => {
                 Err(config_error("secret sharing is not enabled"))

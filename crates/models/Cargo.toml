@@ -9,7 +9,9 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
-cc-protocol = { git = "https://github.com/evsikovas/consolecrypt-server.git", rev = "06294c0796e6a04e9a1d346883223a4fb91bdee8" }
+cc-protocol = { git = "https://github.com/evsikovas/consolecrypt-server.git", rev = "5e4720521f74db9f4df8d4038fff987db884fccb" }
+url = "2"
+pem = "3"
 serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true

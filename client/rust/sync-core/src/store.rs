@@ -120,6 +120,49 @@ impl ObjectStore {
         Ok(outcome)
     }
 
+    /// Atomically save a small dependency graph, such as a Kubernetes context,
+    /// its cluster and separate credentials. No event/outbox item is observable
+    /// if encrypting any object fails. Sync still transports opaque objects.
+    pub async fn put_batch(
+        &self,
+        payloads: Vec<ObjectPayload>,
+    ) -> Result<Vec<LocalMutationOutcome>, SyncError> {
+        let ids: Vec<_> = payloads.iter().map(|p| p.object.id()).collect();
+        let unique: std::collections::HashSet<_> = ids.iter().collect();
+        if payloads.is_empty() || payloads.len() > 256 || unique.len() != ids.len() {
+            return Err(SyncError::Invalid("invalid object batch".into()));
+        }
+        let codec = self.inner.codec.clone();
+        let vault_id = self.inner.vault_id;
+        let outcomes = self
+            .inner
+            .storage
+            .write(move |tx| {
+                payloads
+                    .into_iter()
+                    .map(|payload| {
+                        let object_id = payload.object.id();
+                        let kek = payload.object.kind().kek_class();
+                        tx.record_local_put::<SyncError, _>(
+                            vault_id,
+                            object_id,
+                            Some(kek),
+                            |revision| {
+                                let body = codec.encrypt(object_id, revision, &payload)?;
+                                check_size(&body)?;
+                                Ok(body)
+                            },
+                        )
+                    })
+                    .collect::<Result<Vec<_>, SyncError>>()
+            })
+            .await?;
+        for (id, outcome) in ids.into_iter().zip(&outcomes) {
+            self.after_local(id, outcome, false);
+        }
+        Ok(outcomes)
+    }
+
     /// Delete an object (tombstone; removal if it never reached a server).
     pub async fn delete(&self, object_id: ObjectId) -> Result<LocalMutationOutcome, SyncError> {
         let vault_id = self.inner.vault_id;

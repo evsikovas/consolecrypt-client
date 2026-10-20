@@ -381,6 +381,7 @@ impl Http {
                 max_ciphertext_bytes: MAX_CIPHERTEXT_BYTES as u32,
                 supports_groups: false,
                 supports_secrets: false,
+                supports_kube_contexts: false,
                 supports_owner_online_enrollment_v1: true,
             }),
             reply: Mutex::new(Value::Null),

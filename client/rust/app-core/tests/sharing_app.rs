@@ -57,6 +57,7 @@ struct HttpState {
     enabled: AtomicBool,
     supports_groups: AtomicBool,
     supports_secrets: AtomicBool,
+    supports_kube_contexts: AtomicBool,
     users: Mutex<HashMap<DeviceId, (UserId, String, DeviceRegistration)>>,
     tokens: Mutex<HashMap<String, (UserId, DeviceId)>>,
     nonces: Mutex<HashSet<(DeviceId, [u8; 32])>>,
@@ -96,6 +97,7 @@ impl Harness {
             enabled: AtomicBool::new(true),
             supports_groups: AtomicBool::new(false),
             supports_secrets: AtomicBool::new(false),
+            supports_kube_contexts: AtomicBool::new(false),
             users: Mutex::new(HashMap::new()),
             tokens: Mutex::new(HashMap::new()),
             nonces: Mutex::new(HashSet::new()),
@@ -229,6 +231,7 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
                 max_ciphertext_bytes: cc_protocol::sharing::MAX_CIPHERTEXT_BYTES as u32,
                 supports_groups: state.supports_groups.load(Ordering::SeqCst),
                 supports_secrets: state.supports_secrets.load(Ordering::SeqCst),
+                supports_kube_contexts: state.supports_kube_contexts.load(Ordering::SeqCst),
                 supports_owner_online_enrollment_v1: false,
             },
         );
@@ -275,6 +278,9 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
                         SharedItemKind::Group => query
                             .get("include_groups")
                             .is_some_and(|value| value == "true"),
+                        SharedItemKind::KubeContext => query
+                            .get("include_kube_contexts")
+                            .is_some_and(|v| v == "true"),
                         SharedItemKind::Secret => query
                             .get("include_secrets")
                             .is_some_and(|value| value == "true"),
@@ -1280,6 +1286,239 @@ async fn secret_publication_is_capability_gated_and_metadata_is_always_masked() 
     recipient.app.shutdown().await.unwrap();
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn kubernetes_sharing_requires_capability_trust_and_explicit_credentials() {
+    use cc_models::kubernetes::{KubeAuth, KubeCluster, KubeContext, KubeRoute};
+    use cc_models::secret::{Secret, SecretKind, SecretValue};
+
+    let server = Harness::new().await;
+    let directory = tempfile::tempdir().unwrap();
+    let owner = account(
+        &server.url,
+        &directory.path().join("owner"),
+        Arc::new(InMemorySecureStore::new()),
+    )
+    .await;
+    let recipient = account(
+        &server.url,
+        &directory.path().join("recipient"),
+        Arc::new(InMemorySecureStore::new()),
+    )
+    .await;
+    let token = Zeroizing::new(format!("kube-fixture-{}", Uuid::new_v4()));
+    let secret = Secret::new(SecretKind::Token, SecretValue::new(token.to_string()));
+    let original_secret = secret.id;
+    let cluster = KubeCluster::new("Private cluster", "https://kube.example.test:6443");
+    let mut context = KubeContext::new("Production", cluster.id);
+    context.auth = KubeAuth::Token {
+        secret_id: secret.id,
+    };
+    context.allow_exec_in_prod = true;
+    context.allow_port_forward_in_prod = true;
+    let context = owner
+        .app
+        .import_kube_connection(cluster, context, vec![secret])
+        .await
+        .unwrap();
+    let preview = owner
+        .app
+        .sharing_preview_kube_context(context.id.to_string(), false)
+        .await
+        .unwrap();
+    assert!(!preview.preview_json.contains(token.as_str()));
+    assert_eq!(
+        owner
+            .app
+            .sharing_publish_kube_context(
+                context.id.to_string(),
+                false,
+                preview.snapshot_stamp.clone(),
+                vec![],
+            )
+            .await
+            .unwrap_err()
+            .code(),
+        "unsupported",
+    );
+    assert!(owner.app.sharing_outbox().await.unwrap().entries.is_empty());
+    server
+        .state
+        .supports_kube_contexts
+        .store(true, Ordering::SeqCst);
+    assert!(
+        owner
+            .app
+            .sharing_status()
+            .await
+            .unwrap()
+            .supports_kube_contexts
+    );
+    let owner_identity = owner.app.sharing_identity().await.unwrap();
+    let recipient_identity = recipient.app.sharing_identity().await.unwrap();
+    let grant = grant(recipient_identity, SharingRoleDto::Reader);
+    let metadata_share = owner
+        .app
+        .sharing_publish_kube_context(
+            context.id.to_string(),
+            false,
+            preview.snapshot_stamp,
+            vec![grant.clone()],
+        )
+        .await
+        .unwrap();
+    owner.app.sharing_flush().await.unwrap();
+    let invitations = recipient.app.sharing_list(true).await.unwrap();
+    assert_eq!(invitations.len(), 1);
+    assert_eq!(invitations[0].kind, SharingKindDto::KubeContext);
+    assert!(invitations[0].preview_json.is_none());
+    assert!(
+        recipient
+            .app
+            .sharing_copy_kube_context(metadata_share.share_id.clone(), KubeRoute::Direct, true,)
+            .await
+            .is_err(),
+        "unverified owner keys cannot import a connection"
+    );
+    recipient
+        .app
+        .sharing_accept(
+            metadata_share.share_id.clone(),
+            owner_identity.verification_code.clone(),
+        )
+        .await
+        .unwrap();
+    let copied = recipient
+        .app
+        .sharing_copy_kube_context(metadata_share.share_id.clone(), KubeRoute::Direct, true)
+        .await
+        .unwrap();
+    assert_eq!(
+        copied.auth,
+        KubeAuth::None,
+        "metadata share never contains authentication"
+    );
+    assert_ne!(copied.id, context.id);
+    assert_ne!(copied.cluster_id, context.cluster_id);
+    assert!(copied.production);
+    assert!(!copied.allow_exec_in_prod && !copied.allow_port_forward_in_prod);
+
+    let credentials = owner
+        .app
+        .sharing_preview_kube_context(context.id.to_string(), true)
+        .await
+        .unwrap();
+    assert_eq!(
+        owner
+            .app
+            .sharing_publish_kube_context(
+                context.id.to_string(),
+                true,
+                credentials.snapshot_stamp.clone(),
+                vec![grant.clone()],
+            )
+            .await
+            .unwrap_err()
+            .code(),
+        "unsupported",
+        "credential transfer also requires the server's secret capability",
+    );
+    server.state.supports_secrets.store(true, Ordering::SeqCst);
+    owner.app.sharing_status().await.unwrap();
+    let mut edited = context.clone();
+    edited.namespace = "changed-after-preview".into();
+    owner.app.save_kube_context(edited).await.unwrap();
+    assert!(
+        owner
+            .app
+            .sharing_publish_kube_context(
+                context.id.to_string(),
+                true,
+                credentials.snapshot_stamp,
+                vec![grant.clone()],
+            )
+            .await
+            .is_err(),
+        "a stale confirmation cannot publish a changed connection"
+    );
+    let current = owner
+        .app
+        .sharing_preview_kube_context(context.id.to_string(), true)
+        .await
+        .unwrap();
+    let shared = owner
+        .app
+        .sharing_publish_kube_context(
+            context.id.to_string(),
+            true,
+            current.snapshot_stamp,
+            vec![grant],
+        )
+        .await
+        .unwrap();
+    assert!(!shared
+        .preview_json
+        .as_ref()
+        .unwrap()
+        .contains(token.as_str()));
+    owner.app.sharing_flush().await.unwrap();
+    for history in server.state.shares.lock().unwrap().values() {
+        let wire = serde_json::to_string(&history.state).unwrap();
+        assert!(!wire.contains(token.as_str()));
+        assert!(!wire.contains("kube.example.test"));
+        assert!(!wire.contains("changed-after-preview"));
+    }
+    recipient
+        .app
+        .sharing_accept(shared.share_id.clone(), owner_identity.verification_code)
+        .await
+        .unwrap();
+    let without_auth = recipient
+        .app
+        .sharing_copy_kube_context(shared.share_id.clone(), KubeRoute::Direct, false)
+        .await
+        .unwrap();
+    assert_eq!(without_auth.auth, KubeAuth::None);
+    let with_auth = recipient
+        .app
+        .sharing_copy_kube_context(shared.share_id.clone(), KubeRoute::Direct, true)
+        .await
+        .unwrap();
+    let KubeAuth::Token { secret_id } = with_auth.auth else {
+        panic!("expected copied token reference")
+    };
+    assert_ne!(secret_id, original_secret);
+    assert_eq!(with_auth.namespace, "changed-after-preview");
+    assert!(!with_auth.allow_exec_in_prod && !with_auth.allow_port_forward_in_prod);
+    server.state.supports_secrets.store(false, Ordering::SeqCst);
+    assert_eq!(
+        recipient
+            .app
+            .sharing_copy_kube_context(shared.share_id.clone(), KubeRoute::Direct, true,)
+            .await
+            .unwrap_err()
+            .code(),
+        "unsupported",
+        "current server capabilities are checked again before importing credentials",
+    );
+    server.state.supports_secrets.store(true, Ordering::SeqCst);
+    owner
+        .app
+        .sharing_delete(shared.share_id.clone())
+        .await
+        .unwrap();
+    owner.app.sharing_flush().await.unwrap();
+    assert!(
+        recipient
+            .app
+            .sharing_copy_kube_context(shared.share_id.clone(), KubeRoute::Direct, true,)
+            .await
+            .is_err(),
+        "revoked sharing cannot create another local copy"
+    );
+    owner.app.shutdown().await.unwrap();
+    recipient.app.shutdown().await.unwrap();
+}
+
 /// Decode only the disposable FileMailer's bounded, single-part messages.
 /// Errors are static: neither MIME bytes nor account tokens enter test output.
 fn verification_mail_token(
@@ -1540,6 +1779,7 @@ async fn live_snapshot(
                 SharingKindDto::Snippet => SharedItemKind::Snippet,
                 SharingKindDto::Group => SharedItemKind::Group,
                 SharingKindDto::Secret => SharedItemKind::Secret,
+                SharingKindDto::KubeContext => SharedItemKind::KubeContext,
             },
         })
         .await

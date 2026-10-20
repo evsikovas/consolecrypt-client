@@ -1,8 +1,5 @@
 # ConsoleCrypt client Rust core. Separate workspace from server/ and crates/
 # (see docs/adr/ADR-0001). Crate ownership: CLIENT_ARCHITECTURE.md §Crates.
-#
-# Agents: add crate-specific dependencies in YOUR crate's Cargo.toml.
-# Only the integrator edits this file (members / workspace.dependencies).
 [workspace]
 resolver = "2"
 members = [
@@ -19,6 +16,7 @@ members = [
     "sftp-core",
     "search-core",
     "ai-core",
+    "k8s-core",
     "app-core",
     "cc-cli",
     "bridge",
@@ -39,7 +37,7 @@ publish = false
 
 [workspace.dependencies]
 # shared contract
-cc-protocol = { git = "https://github.com/evsikovas/consolecrypt-server.git", rev = "06294c0796e6a04e9a1d346883223a4fb91bdee8" }
+cc-protocol = { git = "https://github.com/evsikovas/consolecrypt-server.git", rev = "5e4720521f74db9f4df8d4038fff987db884fccb" }
 cc-models = { path = "../../crates/models" }
 
 # internal crates
@@ -56,6 +54,7 @@ cc-tunnel-core = { path = "tunnel-core" }
 cc-sftp-core = { path = "sftp-core" }
 cc-search-core = { path = "search-core" }
 cc-ai-core = { path = "ai-core" }
+cc-k8s-core = { path = "k8s-core" }
 cc-app-core = { path = "app-core" }
 
 # common third-party

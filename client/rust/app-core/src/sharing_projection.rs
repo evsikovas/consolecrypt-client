@@ -95,6 +95,7 @@ pub enum SharedProjection {
     Snippet(SharedSnippetProjection),
     Group(SharedGroupProjection),
     Secret(SharedSecretProjection),
+    KubeContext(crate::sharing_kubernetes::SharedKubeProjection),
 }
 
 macro_rules! opaque_debug {
@@ -132,6 +133,7 @@ impl SharedProjection {
             Self::Snippet(_) => SharedItemKind::Snippet,
             Self::Group(_) => SharedItemKind::Group,
             Self::Secret(_) => SharedItemKind::Secret,
+            Self::KubeContext(_) => SharedItemKind::KubeContext,
         }
     }
 
@@ -169,6 +171,7 @@ impl SharedProjection {
                 return Err(AppError::invalid("shared_projection", "empty snippet"));
             }
             Self::Group(g) => validate_group(g)?,
+            Self::KubeContext(k) => k.validate()?,
             Self::Secret(s) if s.name.trim().is_empty() || s.value.is_empty() => {
                 return Err(AppError::invalid("shared_projection", "empty secret"));
             }

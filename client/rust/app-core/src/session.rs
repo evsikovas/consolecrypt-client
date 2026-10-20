@@ -707,6 +707,8 @@ async fn emit_reload(writer: &VaultWriter, ctx: &AppCtx) {
     for kind in [
         ObjectKind::Host,
         ObjectKind::RdpHost,
+        ObjectKind::KubeCluster,
+        ObjectKind::KubeContext,
         ObjectKind::Group,
         ObjectKind::JumpProfile,
         ObjectKind::Proxy,

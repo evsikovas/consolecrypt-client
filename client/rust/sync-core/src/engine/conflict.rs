@@ -53,6 +53,14 @@ pub fn make_conflict_copy(payload: &ObjectPayload, new_id: ObjectId) -> ObjectPa
             o.host.id = new_id;
             suffix(&mut o.host.name);
         }
+        VaultObject::KubeCluster(o) => {
+            o.id = new_id;
+            suffix(&mut o.name);
+        }
+        VaultObject::KubeContext(o) => {
+            o.id = new_id;
+            suffix(&mut o.name);
+        }
         VaultObject::Host(o) => {
             o.id = new_id;
             suffix(&mut o.name);
@@ -106,6 +114,8 @@ pub fn payload_updated_at(payload: &ObjectPayload) -> Timestamp {
     match &payload.object {
         VaultObject::RdpHost(o) => o.updated_at,
         VaultObject::Host(o) => o.updated_at,
+        VaultObject::KubeCluster(o) => o.updated_at,
+        VaultObject::KubeContext(o) => o.updated_at,
         VaultObject::Group(o) => o.updated_at,
         VaultObject::JumpProfile(o) => o.updated_at,
         VaultObject::Proxy(o) => o.updated_at,

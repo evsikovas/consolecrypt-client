@@ -180,6 +180,7 @@ async fn handler(State(state): State<Arc<Mock>>, request: Request) -> Response {
                 max_ciphertext_bytes: MAX_CIPHERTEXT_BYTES as u32,
                 supports_groups: false,
                 supports_secrets: false,
+                supports_kube_contexts: false,
                 supports_owner_online_enrollment_v1: false,
             })
             .unwrap(),

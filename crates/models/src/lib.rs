@@ -19,6 +19,7 @@ pub mod group;
 pub mod history;
 pub mod host;
 pub mod known_host;
+pub mod kubernetes;
 pub mod note;
 pub mod rdp;
 pub mod secret;
@@ -71,6 +72,8 @@ impl KekClass {
 pub enum ObjectKind {
     Host,
     RdpHost,
+    KubeCluster,
+    KubeContext,
     Group,
     JumpProfile,
     Proxy,
@@ -91,6 +94,8 @@ impl ObjectKind {
         match self {
             ObjectKind::Host
             | ObjectKind::RdpHost
+            | ObjectKind::KubeCluster
+            | ObjectKind::KubeContext
             | ObjectKind::Group
             | ObjectKind::JumpProfile
             | ObjectKind::Proxy
@@ -111,6 +116,8 @@ impl ObjectKind {
 pub enum VaultObject {
     Host(host::Host),
     RdpHost(rdp::RdpHost),
+    KubeCluster(kubernetes::KubeCluster),
+    KubeContext(kubernetes::KubeContext),
     Group(group::Group),
     JumpProfile(host::JumpProfile),
     Proxy(host::Proxy),
@@ -131,6 +138,8 @@ impl VaultObject {
         match self {
             VaultObject::Host(_) => ObjectKind::Host,
             VaultObject::RdpHost(_) => ObjectKind::RdpHost,
+            VaultObject::KubeCluster(_) => ObjectKind::KubeCluster,
+            VaultObject::KubeContext(_) => ObjectKind::KubeContext,
             VaultObject::Group(_) => ObjectKind::Group,
             VaultObject::JumpProfile(_) => ObjectKind::JumpProfile,
             VaultObject::Proxy(_) => ObjectKind::Proxy,
@@ -151,6 +160,8 @@ impl VaultObject {
         match self {
             VaultObject::Host(o) => o.id,
             VaultObject::RdpHost(o) => o.host.id,
+            VaultObject::KubeCluster(o) => o.id,
+            VaultObject::KubeContext(o) => o.id,
             VaultObject::Group(o) => o.id,
             VaultObject::JumpProfile(o) => o.id,
             VaultObject::Proxy(o) => o.id,
