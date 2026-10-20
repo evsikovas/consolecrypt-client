@@ -119,12 +119,39 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   Future<TerminalTab> openTarget(TerminalTarget target) async {
     final generation = _generation;
     final service = ref.read(terminalServiceProvider);
-    final scrollback = ref.read(settingsServiceProvider).currentLocal.terminalScrollback;
     final handle = await service.openTarget(target: target, size: TerminalSize.initial);
     if (_disposed || generation != _generation) {
       await service.close(handle.id);
       throw const AppException(AppErrorCode.notFound, 'Session closed', reason: AppErrorReason.sessionClosed);
     }
+    return openHandle(target: target, handle: handle);
+  }
+
+  Future<TerminalTab> openRuntime(String runtimeId) async {
+    final generation = _generation;
+    final service = ref.read(terminalServiceProvider);
+    final attachment = await service.attachRuntime(runtimeId);
+    if (_disposed || generation != _generation) {
+      await service.close(attachment.handle.id);
+      throw const AppException(AppErrorCode.notFound, 'Session closed', reason: AppErrorReason.sessionClosed);
+    }
+    return openHandle(target: attachment.target, handle: attachment.handle);
+  }
+
+  /// Adopt an already opened, profile-owned native handle without reconnecting
+  /// or spawning another process. Used by approved CLI and runtime operations.
+  TerminalTab openHandle({required TerminalTarget target, required TerminalSessionHandle handle}) {
+    if (_disposed) {
+      unawaited(_service.close(handle.id));
+      throw const AppException(AppErrorCode.notFound, 'Session closed', reason: AppErrorReason.sessionClosed);
+    }
+    final existing = _open.where((tab) => tab.sessionId == handle.id).firstOrNull;
+    if (existing != null) {
+      activate(state.tabs.indexOf(existing));
+      return existing;
+    }
+    final service = ref.read(terminalServiceProvider);
+    final scrollback = ref.read(settingsServiceProvider).currentLocal.terminalScrollback;
     final terminal = Terminal(maxLines: scrollback, platform: _platform);
     final tab = TerminalTab(sessionId: handle.id, target: target, terminal: terminal, controller: TerminalController());
     _bindTerminal(tab, service);

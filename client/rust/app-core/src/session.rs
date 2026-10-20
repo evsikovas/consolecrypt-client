@@ -204,6 +204,7 @@ pub(crate) struct Unlocked {
     pub sharing_shutdown: tokio::sync::watch::Sender<bool>,
     pub enrollment: crate::sharing_api::enrollment::EnrollmentRuntime,
     pub kube_imports: Arc<crate::kubernetes_import::ImportRuntime>,
+    pub kube: crate::kubernetes_runtime::KubeRuntime,
     event_stream: tokio::sync::Mutex<Option<EventStream>>,
     tasks: Mutex<Vec<JoinHandle<()>>>,
     engine_tasks: Mutex<Vec<JoinHandle<()>>>,
@@ -284,6 +285,7 @@ impl Unlocked {
         self.edit.begin_shutdown();
         self.enrollment.clear();
         self.kube_imports.close();
+        self.kube.close();
         self.edit.stop_all().await;
         self.transfers.cancel_all();
         self.ai.shutdown().await;
@@ -522,6 +524,7 @@ impl Session {
             sharing_shutdown: tokio::sync::watch::channel(false).0,
             enrollment: crate::sharing_api::enrollment::EnrollmentRuntime::default(),
             kube_imports: Arc::new(crate::kubernetes_import::ImportRuntime::default()),
+            kube: crate::kubernetes_runtime::KubeRuntime::default(),
             event_stream: tokio::sync::Mutex::new(None),
             tasks: Mutex::new(Vec::new()),
             engine_tasks: Mutex::new(Vec::new()),
@@ -538,6 +541,9 @@ impl Session {
             self.ctx.clone(),
         )));
         unlocked.push_task(tokio::spawn(tunnel_event_task(ssh, self.ctx.clone())));
+        unlocked.push_task(tokio::spawn(crate::kubernetes_history::retention_task(
+            self.storage.clone(),
+        )));
         if let Some(t) = edit.spawn_forwarder(self.ctx.clone()) {
             unlocked.push_task(t);
         }

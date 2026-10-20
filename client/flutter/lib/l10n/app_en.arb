@@ -8140,6 +8140,1817 @@
   },
   "@kubeAuthNone": {
     "description": "Kubernetes authentication method: Not configured"
+  },
+  "kubeConnect": "Connect",
+  "@kubeConnect": {
+    "description": "Kubernetes resource browser: Connect"
+  },
+  "kubeDisconnect": "Disconnect",
+  "@kubeDisconnect": {
+    "description": "Kubernetes resource browser: Disconnect"
+  },
+  "kubeConnecting": "Connecting to cluster…",
+  "@kubeConnecting": {
+    "description": "Kubernetes resource browser: Connecting to cluster…"
+  },
+  "kubeConnectionFailed": "Could not connect. Check the network, authentication and connection route.",
+  "@kubeConnectionFailed": {
+    "description": "Kubernetes resource browser: Could not connect. Check the network, authentication and connection route."
+  },
+  "kubeRetry": "Try again",
+  "@kubeRetry": {
+    "description": "Kubernetes resource browser: Try again"
+  },
+  "kubeBackToContexts": "Saved connections",
+  "@kubeBackToContexts": {
+    "description": "Kubernetes resource browser: Saved connections"
+  },
+  "kubeReadOnly": "Production · read only",
+  "@kubeReadOnly": {
+    "description": "Kubernetes resource browser: Production · read only"
+  },
+  "kubeReadOnlyHelp": "This context is protected against changes by the native Kubernetes client.",
+  "@kubeReadOnlyHelp": {
+    "description": "Kubernetes resource browser: This context is protected against changes by the native Kubernetes client."
+  },
+  "kubeResources": "Resources",
+  "@kubeResources": {
+    "description": "Kubernetes resource browser: Resources"
+  },
+  "kubeAllNamespaces": "All namespaces",
+  "@kubeAllNamespaces": {
+    "description": "Kubernetes resource browser: All namespaces"
+  },
+  "kubeResourceKind": "Resource type",
+  "@kubeResourceKind": {
+    "description": "Kubernetes resource browser: Resource type"
+  },
+  "kubeLabelSelector": "Label selector",
+  "@kubeLabelSelector": {
+    "description": "Kubernetes resource browser: Label selector"
+  },
+  "kubeApplyFilter": "Apply filter",
+  "@kubeApplyFilter": {
+    "description": "Kubernetes resource browser: Apply filter"
+  },
+  "kubeNoResources": "No resources match these filters.",
+  "@kubeNoResources": {
+    "description": "Kubernetes resource browser: No resources match these filters."
+  },
+  "kubeNoResourceKinds": "No readable resource types were discovered. Check this account’s Kubernetes permissions.",
+  "@kubeNoResourceKinds": {
+    "description": "Kubernetes resource browser: No readable resource types were discovered. Check this account’s Kubernetes permissions."
+  },
+  "kubeRequestFailed": "Could not load cluster data. Check the connection and Kubernetes permissions.",
+  "@kubeRequestFailed": {
+    "description": "Kubernetes resource browser: Could not load cluster data. Check the connection and Kubernetes permissions."
+  },
+  "kubeNamespacesFailed": "The namespace list is unavailable. You can still view resources in the selected namespace.",
+  "@kubeNamespacesFailed": {
+    "description": "Kubernetes resource browser: The namespace list is unavailable. You can still view resources in the selected namespace."
+  },
+  "kubeLoadMore": "Load more",
+  "@kubeLoadMore": {
+    "description": "Kubernetes resource browser: Load more"
+  },
+  "kubeRefreshResources": "Refresh resources",
+  "@kubeRefreshResources": {
+    "description": "Kubernetes resource browser: Refresh resources"
+  },
+  "kubeLive": "Live updates",
+  "@kubeLive": {
+    "description": "Kubernetes resource browser: Live updates"
+  },
+  "kubeSnapshot": "Snapshot",
+  "@kubeSnapshot": {
+    "description": "Kubernetes resource browser: Snapshot"
+  },
+  "kubeWatchFailed": "Live updates stopped. Refresh to reconnect.",
+  "@kubeWatchFailed": {
+    "description": "Kubernetes resource browser: Live updates stopped. Refresh to reconnect."
+  },
+  "kubeResourceLimit": "The in-memory limit is 10,000 resources. Narrow the namespace or label filter.",
+  "@kubeResourceLimit": {
+    "description": "Kubernetes resource browser: The in-memory limit is 10,000 resources. Narrow the namespace or label filter."
+  },
+  "kubeOverview": "Overview",
+  "@kubeOverview": {
+    "description": "Kubernetes resource browser: Overview"
+  },
+  "kubeObjectYaml": "YAML",
+  "@kubeObjectYaml": {
+    "description": "Kubernetes resource browser: YAML"
+  },
+  "kubeLogs": "Logs",
+  "@kubeLogs": {
+    "description": "Kubernetes resource browser: Logs"
+  },
+  "kubeContainer": "Container",
+  "@kubeContainer": {
+    "description": "Kubernetes resource browser: Container"
+  },
+  "kubePreviousLogs": "Previous container",
+  "@kubePreviousLogs": {
+    "description": "Kubernetes resource browser: Previous container"
+  },
+  "kubeLogFilter": "Filter log lines",
+  "@kubeLogFilter": {
+    "description": "Kubernetes resource browser: Filter log lines"
+  },
+  "kubeNoLogs": "No log lines to display.",
+  "@kubeNoLogs": {
+    "description": "Kubernetes resource browser: No log lines to display."
+  },
+  "kubeLogTailHelp": "The last 500 lines are loaded into memory. Refresh to retrieve a new tail.",
+  "@kubeLogTailHelp": {
+    "description": "Kubernetes resource browser: The last 500 lines are loaded into memory. Refresh to retrieve a new tail."
+  },
+  "kubeSecretRedacted": "Secret values are hidden. This view contains metadata and key names only.",
+  "@kubeSecretRedacted": {
+    "description": "Kubernetes resource browser: Secret values are hidden. This view contains metadata and key names only."
+  },
+  "kubeStatus": "Status",
+  "@kubeStatus": {
+    "description": "Kubernetes resource browser: Status"
+  },
+  "kubeCreatedAt": "Created",
+  "@kubeCreatedAt": {
+    "description": "Kubernetes resource browser: Created"
+  },
+  "kubeLabels": "Labels",
+  "@kubeLabels": {
+    "description": "Kubernetes resource browser: Labels"
+  },
+  "kubeConditions": "Conditions",
+  "@kubeConditions": {
+    "description": "Kubernetes resource browser: Conditions"
+  },
+  "kubeOwners": "Owners",
+  "@kubeOwners": {
+    "description": "Kubernetes resource browser: Owners"
+  },
+  "kubeName": "Name",
+  "@kubeName": {
+    "description": "Kubernetes resource browser: Name"
+  },
+  "kubeNotReported": "Not reported",
+  "@kubeNotReported": {
+    "description": "Kubernetes resource browser: Not reported"
+  },
+  "kubeSessionEnded": "The connection has ended. Reconnect to load cluster data.",
+  "@kubeSessionEnded": {
+    "description": "Kubernetes resource browser: The connection has ended. Reconnect to load cluster data."
+  },
+  "kubeLoadedCount": "{count} resources loaded",
+  "@kubeLoadedCount": {
+    "description": "Kubernetes resource browser: {count} resources loaded",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "kubeShowDetails": "Open resource details",
+  "@kubeShowDetails": {
+    "description": "Kubernetes resource browser: Open resource details"
+  },
+  "kubeClusterVersion": "Kubernetes {version}",
+  "@kubeClusterVersion": {
+    "description": "Kubernetes resource browser: Kubernetes {version}",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "kubeSortName": "Sort by name",
+  "@kubeSortName": {
+    "description": "Kubernetes resource browser: Sort by name"
+  },
+  "kubeSortNamespace": "Sort by namespace",
+  "@kubeSortNamespace": {
+    "description": "Kubernetes resource browser: Sort by namespace"
+  },
+  "kubeSortStatus": "Sort by status",
+  "@kubeSortStatus": {
+    "description": "Kubernetes resource browser: Sort by status"
+  },
+  "kubeSortAge": "Newest first",
+  "@kubeSortAge": {
+    "description": "Kubernetes resource browser: Newest first"
+  },
+  "kubeRefreshDetails": "Refresh details",
+  "@kubeRefreshDetails": {
+    "description": "Kubernetes resource browser: Refresh details"
+  },
+  "kubeAllowChanges": "Allow changes for 10 minutes",
+  "@kubeAllowChanges": {
+    "description": "Kubernetes guarded mutations: Allow changes for 10 minutes"
+  },
+  "kubeAllowChangesHelp": "This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue.",
+  "@kubeAllowChangesHelp": {
+    "description": "Kubernetes guarded mutations: This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue."
+  },
+  "kubeCloseWriteWindow": "Return to read only",
+  "@kubeCloseWriteWindow": {
+    "description": "Kubernetes guarded mutations: Return to read only"
+  },
+  "kubeWriteWindowRemaining": "PROD · changes allowed · {time} remaining",
+  "@kubeWriteWindowRemaining": {
+    "description": "Kubernetes guarded mutations: PROD · changes allowed · {time} remaining",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "kubeWriteWindowFailed": "Could not change the write window. Reconnect and try again.",
+  "@kubeWriteWindowFailed": {
+    "description": "Kubernetes guarded mutations: Could not change the write window. Reconnect and try again."
+  },
+  "kubeTypeName": "Type the exact name above",
+  "@kubeTypeName": {
+    "description": "Kubernetes guarded mutations: Type the exact name above"
+  },
+  "kubeEditYaml": "Edit YAML",
+  "@kubeEditYaml": {
+    "description": "Kubernetes guarded mutations: Edit YAML"
+  },
+  "kubeApplyYaml": "Apply changes",
+  "@kubeApplyYaml": {
+    "description": "Kubernetes guarded mutations: Apply changes"
+  },
+  "kubeApplyYamlHelp": "Apply the reviewed changes to this resource? Type its exact name to confirm. The server will reject the update if its resource version has changed.",
+  "@kubeApplyYamlHelp": {
+    "description": "Kubernetes guarded mutations: Apply the reviewed changes to this resource? Type its exact name to confirm. The server will reject the update if its resource version has changed."
+  },
+  "kubeApplyFailed": "The change was not accepted. Refresh the object and check permissions, validation errors or ownership conflicts before trying again.",
+  "@kubeApplyFailed": {
+    "description": "Kubernetes guarded mutations: The change was not accepted. Refresh the object and check permissions, validation errors or ownership conflicts before trying again."
+  },
+  "kubeReviewChanges": "Review changes",
+  "@kubeReviewChanges": {
+    "description": "Kubernetes guarded mutations: Review changes"
+  },
+  "kubeDryRun": "Validate on server",
+  "@kubeDryRun": {
+    "description": "Kubernetes guarded mutations: Validate on server"
+  },
+  "kubeDryRunRequired": "Validate the YAML on the server first. Review the resulting changes before applying them.",
+  "@kubeDryRunRequired": {
+    "description": "Kubernetes guarded mutations: Validate the YAML on the server first. Review the resulting changes before applying them."
+  },
+  "kubeDryRunHelp": "Server dry run: removed lines are marked − and added lines +. Nothing has been saved to the cluster yet.",
+  "@kubeDryRunHelp": {
+    "description": "Kubernetes guarded mutations: Server dry run: removed lines are marked − and added lines +. Nothing has been saved to the cluster yet."
+  },
+  "kubeForceApply": "Take ownership of conflicting fields",
+  "@kubeForceApply": {
+    "description": "Kubernetes guarded mutations: Take ownership of conflicting fields"
+  },
+  "kubeForceApplyHelp": "Only enable this when you intend to replace fields managed by another controller. Validate the changes again after enabling.",
+  "@kubeForceApplyHelp": {
+    "description": "Kubernetes guarded mutations: Only enable this when you intend to replace fields managed by another controller. Validate the changes again after enabling."
+  },
+  "kubeNoYamlChanges": "The server returned no YAML changes.",
+  "@kubeNoYamlChanges": {
+    "description": "Kubernetes guarded mutations: The server returned no YAML changes."
+  },
+  "kubeDeleteResource": "Delete Kubernetes resource",
+  "@kubeDeleteResource": {
+    "description": "Kubernetes guarded mutations: Delete Kubernetes resource"
+  },
+  "kubeDeleteResourceHelp": "This deletes the resource from the cluster and may stop running workloads. Type its exact name to confirm.",
+  "@kubeDeleteResourceHelp": {
+    "description": "Kubernetes guarded mutations: This deletes the resource from the cluster and may stop running workloads. Type its exact name to confirm."
+  },
+  "kubeFollowLogs": "Follow new log lines",
+  "@kubeFollowLogs": {
+    "description": "Kubernetes log stream: Follow new log lines"
+  },
+  "kubePauseLogs": "Pause",
+  "@kubePauseLogs": {
+    "description": "Kubernetes log stream: Pause"
+  },
+  "kubeResumeLogs": "Resume",
+  "@kubeResumeLogs": {
+    "description": "Kubernetes log stream: Resume"
+  },
+  "kubeLogBufferHelp": "Live log buffer: up to 20,000 lines and 2 MiB, kept only in memory.",
+  "@kubeLogBufferHelp": {
+    "description": "Kubernetes log stream: Live log buffer: up to 20,000 lines and 2 MiB, kept only in memory."
+  },
+  "kubeLogOptions": "Log options",
+  "@kubeLogOptions": {
+    "description": "Kubernetes log stream: Log options"
+  },
+  "kubeGitOps": "GitOps",
+  "@kubeGitOps": {
+    "description": "Kubernetes cluster interface: GitOps"
+  },
+  "kubeProblems": "Problems",
+  "@kubeProblems": {
+    "description": "Kubernetes cluster interface: Problems"
+  },
+  "kubeHelm": "Helm",
+  "@kubeHelm": {
+    "description": "Kubernetes cluster interface: Helm"
+  },
+  "kubeInsightsPartial": "Some resources could not be inspected because of permissions, discovery failures or size limits. Results are incomplete.",
+  "@kubeInsightsPartial": {
+    "description": "Kubernetes cluster interface: Some resources could not be inspected because of permissions, discovery failures or size limits. Results are incomplete."
+  },
+  "kubeGitOpsAll": "All",
+  "@kubeGitOpsAll": {
+    "description": "Kubernetes cluster interface: All"
+  },
+  "kubeGitOpsReady": "Ready",
+  "@kubeGitOpsReady": {
+    "description": "Kubernetes cluster interface: Ready"
+  },
+  "kubeGitOpsAttention": "Needs attention",
+  "@kubeGitOpsAttention": {
+    "description": "Kubernetes cluster interface: Needs attention"
+  },
+  "kubeGitOpsSuspended": "Suspended",
+  "@kubeGitOpsSuspended": {
+    "description": "Kubernetes cluster interface: Suspended"
+  },
+  "kubeDependencies": "Dependencies",
+  "@kubeDependencies": {
+    "description": "Kubernetes cluster interface: Dependencies"
+  },
+  "kubeNoVisibleProblems": "No problems were found among the resources that could be inspected.",
+  "@kubeNoVisibleProblems": {
+    "description": "Kubernetes cluster interface: No problems were found among the resources that could be inspected."
+  },
+  "kubeNoProblems": "No known problems were found in the inspected resources.",
+  "@kubeNoProblems": {
+    "description": "Kubernetes cluster interface: No known problems were found in the inspected resources."
+  },
+  "kubeNoGitOpsResources": "No Flux or Argo CD resources match this filter.",
+  "@kubeNoGitOpsResources": {
+    "description": "Kubernetes cluster interface: No Flux or Argo CD resources match this filter."
+  },
+  "kubeGitOpsActions": "Controller actions",
+  "@kubeGitOpsActions": {
+    "description": "Kubernetes cluster interface: Controller actions"
+  },
+  "kubeDependencyCycle": "Dependency cycle detected",
+  "@kubeDependencyCycle": {
+    "description": "Kubernetes cluster interface: Dependency cycle detected"
+  },
+  "kubeDependencyMissing": "Dependency was not found",
+  "@kubeDependencyMissing": {
+    "description": "Kubernetes cluster interface: Dependency was not found"
+  },
+  "kubeDependencyReady": "Depends on a ready resource",
+  "@kubeDependencyReady": {
+    "description": "Kubernetes cluster interface: Depends on a ready resource"
+  },
+  "kubeDependencyWaiting": "Waiting for dependency",
+  "@kubeDependencyWaiting": {
+    "description": "Kubernetes cluster interface: Waiting for dependency"
+  },
+  "kubeGitOpsSuspend": "Suspend reconciliation",
+  "@kubeGitOpsSuspend": {
+    "description": "Kubernetes cluster interface: Suspend reconciliation"
+  },
+  "kubeGitOpsResume": "Resume reconciliation",
+  "@kubeGitOpsResume": {
+    "description": "Kubernetes cluster interface: Resume reconciliation"
+  },
+  "kubeGitOpsReset": "Reset failure counter",
+  "@kubeGitOpsReset": {
+    "description": "Kubernetes cluster interface: Reset failure counter"
+  },
+  "kubeGitOpsForce": "Force Helm upgrade",
+  "@kubeGitOpsForce": {
+    "description": "Kubernetes cluster interface: Force Helm upgrade"
+  },
+  "kubeGitOpsReconcile": "Reconcile now",
+  "@kubeGitOpsReconcile": {
+    "description": "Kubernetes cluster interface: Reconcile now"
+  },
+  "kubeArgoSync": "Sync application",
+  "@kubeArgoSync": {
+    "description": "Kubernetes cluster interface: Sync application"
+  },
+  "kubeArgoRefresh": "Refresh application",
+  "@kubeArgoRefresh": {
+    "description": "Kubernetes cluster interface: Refresh application"
+  },
+  "kubeArgoHardRefresh": "Refresh application and manifests",
+  "@kubeArgoHardRefresh": {
+    "description": "Kubernetes cluster interface: Refresh application and manifests"
+  },
+  "kubeGitOpsChangeHelp": "This sends a change to the controller and can affect running applications. Review the action and type the exact resource name to continue.",
+  "@kubeGitOpsChangeHelp": {
+    "description": "Kubernetes cluster interface: This sends a change to the controller and can affect running applications. Review the action and type the exact resource name to continue."
+  },
+  "kubeGitOpsReason": "Reason (stored in the resource annotation)",
+  "@kubeGitOpsReason": {
+    "description": "Kubernetes cluster interface: Reason (stored in the resource annotation)"
+  },
+  "kubeIssueCrashLoop": "Container keeps crashing",
+  "@kubeIssueCrashLoop": {
+    "description": "Kubernetes cluster interface: Container keeps crashing"
+  },
+  "kubeIssueImagePull": "Container image cannot be downloaded",
+  "@kubeIssueImagePull": {
+    "description": "Kubernetes cluster interface: Container image cannot be downloaded"
+  },
+  "kubeIssueContainerConfig": "Container configuration is invalid",
+  "@kubeIssueContainerConfig": {
+    "description": "Kubernetes cluster interface: Container configuration is invalid"
+  },
+  "kubeIssueOom": "Container exceeded its memory limit",
+  "@kubeIssueOom": {
+    "description": "Kubernetes cluster interface: Container exceeded its memory limit"
+  },
+  "kubeIssueRestarts": "Container has restarted repeatedly",
+  "@kubeIssueRestarts": {
+    "description": "Kubernetes cluster interface: Container has restarted repeatedly"
+  },
+  "kubeIssueScheduling": "Pod cannot be scheduled",
+  "@kubeIssueScheduling": {
+    "description": "Kubernetes cluster interface: Pod cannot be scheduled"
+  },
+  "kubeIssuePodNotReady": "Pod is not ready",
+  "@kubeIssuePodNotReady": {
+    "description": "Kubernetes cluster interface: Pod is not ready"
+  },
+  "kubeIssueNodeNotReady": "Node is not ready",
+  "@kubeIssueNodeNotReady": {
+    "description": "Kubernetes cluster interface: Node is not ready"
+  },
+  "kubeIssueNodePressure": "Node is under resource pressure",
+  "@kubeIssueNodePressure": {
+    "description": "Kubernetes cluster interface: Node is under resource pressure"
+  },
+  "kubeIssueCondition": "Resource requires attention",
+  "@kubeIssueCondition": {
+    "description": "Kubernetes cluster interface: Resource requires attention"
+  },
+  "kubeIssueRolloutDeadline": "Workload rollout exceeded its deadline",
+  "@kubeIssueRolloutDeadline": {
+    "description": "Kubernetes cluster interface: Workload rollout exceeded its deadline"
+  },
+  "kubeIssueReplicaFailure": "Controller could not create replicas",
+  "@kubeIssueReplicaFailure": {
+    "description": "Kubernetes cluster interface: Controller could not create replicas"
+  },
+  "kubeIssueReplicasUnavailable": "Some workload replicas are unavailable",
+  "@kubeIssueReplicasUnavailable": {
+    "description": "Kubernetes cluster interface: Some workload replicas are unavailable"
+  },
+  "kubeIssueVolumePending": "Volume claim is waiting for storage",
+  "@kubeIssueVolumePending": {
+    "description": "Kubernetes cluster interface: Volume claim is waiting for storage"
+  },
+  "kubeIssueVolumeLost": "Volume claim lost its volume",
+  "@kubeIssueVolumeLost": {
+    "description": "Kubernetes cluster interface: Volume claim lost its volume"
+  },
+  "kubeIssueJobFailed": "Job failed",
+  "@kubeIssueJobFailed": {
+    "description": "Kubernetes cluster interface: Job failed"
+  },
+  "kubeIssueArgoDegraded": "Argo CD application is degraded",
+  "@kubeIssueArgoDegraded": {
+    "description": "Kubernetes cluster interface: Argo CD application is degraded"
+  },
+  "kubeIssueArgoOutOfSync": "Argo CD application is out of sync",
+  "@kubeIssueArgoOutOfSync": {
+    "description": "Kubernetes cluster interface: Argo CD application is out of sync"
+  },
+  "kubeIssueFluxPending": "Flux has not observed the latest configuration",
+  "@kubeIssueFluxPending": {
+    "description": "Kubernetes cluster interface: Flux has not observed the latest configuration"
+  },
+  "kubeIssueFluxNotReady": "Flux resource is not ready",
+  "@kubeIssueFluxNotReady": {
+    "description": "Kubernetes cluster interface: Flux resource is not ready"
+  },
+  "kubeIssueFluxStalled": "Flux reconciliation has stalled",
+  "@kubeIssueFluxStalled": {
+    "description": "Kubernetes cluster interface: Flux reconciliation has stalled"
+  },
+  "kubeIssueFluxSuspended": "Flux reconciliation is suspended",
+  "@kubeIssueFluxSuspended": {
+    "description": "Kubernetes cluster interface: Flux reconciliation is suspended"
+  },
+  "kubeHelmAllRevisions": "Show all revisions",
+  "@kubeHelmAllRevisions": {
+    "description": "Kubernetes cluster interface: Show all revisions"
+  },
+  "kubeHelmEmpty": "No Helm releases match this filter.",
+  "@kubeHelmEmpty": {
+    "description": "Kubernetes cluster interface: No Helm releases match this filter."
+  },
+  "kubeHelmRevision": "Revision {revision}",
+  "@kubeHelmRevision": {
+    "description": "Kubernetes cluster interface: Revision {revision}",
+    "placeholders": {
+      "revision": {
+        "type": "int"
+      }
+    }
+  },
+  "kubeHelmHistory": "Release history",
+  "@kubeHelmHistory": {
+    "description": "Kubernetes cluster interface: Release history"
+  },
+  "kubeHelmSecretsMasked": "Sensitive values are masked. Values and manifests remain in memory only.",
+  "@kubeHelmSecretsMasked": {
+    "description": "Kubernetes cluster interface: Sensitive values are masked. Values and manifests remain in memory only."
+  },
+  "kubeHelmValues": "User values",
+  "@kubeHelmValues": {
+    "description": "Kubernetes cluster interface: User values"
+  },
+  "kubeHelmChartValues": "Chart defaults",
+  "@kubeHelmChartValues": {
+    "description": "Kubernetes cluster interface: Chart defaults"
+  },
+  "kubeHelmManifest": "Manifest",
+  "@kubeHelmManifest": {
+    "description": "Kubernetes cluster interface: Manifest"
+  },
+  "kubeHelmCompare": "Compare with revision",
+  "@kubeHelmCompare": {
+    "description": "Kubernetes cluster interface: Compare with revision"
+  },
+  "kubeHelmChooseRevision": "Choose revision",
+  "@kubeHelmChooseRevision": {
+    "description": "Kubernetes cluster interface: Choose revision"
+  },
+  "kubeHelmDiffHelp": "Removed lines are marked − and added lines +. This comparison does not change the release.",
+  "@kubeHelmDiffHelp": {
+    "description": "Kubernetes cluster interface: Removed lines are marked − and added lines +. This comparison does not change the release."
+  },
+  "kubeExecReviewTitle": "Allow authentication command?",
+  "@kubeExecReviewTitle": {
+    "description": "Kubernetes cluster interface: Allow authentication command?"
+  },
+  "kubeExecReviewHelp": "This command runs on this computer. Review its executable, arguments and environment. Approval applies only to this unlocked profile; a changed command requires approval again.",
+  "@kubeExecReviewHelp": {
+    "description": "Kubernetes cluster interface: This command runs on this computer. Review its executable, arguments and environment. Approval applies only to this unlocked profile; a changed command requires approval again."
+  },
+  "kubeExecArguments": "Arguments",
+  "@kubeExecArguments": {
+    "description": "Kubernetes cluster interface: Arguments"
+  },
+  "kubeExecEnvironment": "Environment",
+  "@kubeExecEnvironment": {
+    "description": "Kubernetes cluster interface: Environment"
+  },
+  "kubeExecAllow": "Allow this command",
+  "@kubeExecAllow": {
+    "description": "Kubernetes cluster interface: Allow this command"
+  },
+  "kubeAuthFailed": "Authentication could not be completed. Check the connection settings and try again.",
+  "@kubeAuthFailed": {
+    "description": "Kubernetes cluster interface: Authentication could not be completed. Check the connection settings and try again."
+  },
+  "kubeAuthExpired": "This request has expired. Start authentication again.",
+  "@kubeAuthExpired": {
+    "description": "Kubernetes cluster interface: This request has expired. Start authentication again."
+  },
+  "kubeOidcTitle": "Sign in to the cluster",
+  "@kubeOidcTitle": {
+    "description": "Kubernetes cluster interface: Sign in to the cluster"
+  },
+  "kubeOidcHelp": "Sign in with your identity provider in the system browser. Your credentials stay between this device and the provider.",
+  "@kubeOidcHelp": {
+    "description": "Kubernetes cluster interface: Sign in with your identity provider in the system browser. Your credentials stay between this device and the provider."
+  },
+  "kubeOidcOpen": "Open browser",
+  "@kubeOidcOpen": {
+    "description": "Kubernetes cluster interface: Open browser"
+  },
+  "kubeOidcWaiting": "Waiting for browser sign-in…",
+  "@kubeOidcWaiting": {
+    "description": "Kubernetes cluster interface: Waiting for browser sign-in…"
+  },
+  "kubeAuthAction": "Authenticate",
+  "@kubeAuthAction": {
+    "description": "Kubernetes cluster interface: Authenticate"
+  },
+  "kubeExecMobile": "External authentication commands are unavailable on mobile. Use a token, client certificate or browser sign-in (OIDC).",
+  "@kubeExecMobile": {
+    "description": "Kubernetes cluster interface: External authentication commands are unavailable on mobile. Use a token, client certificate or browser sign-in (OIDC)."
+  },
+  "kubePodTerminal": "Pod terminal",
+  "@kubePodTerminal": {
+    "description": "Kubernetes terminal interface."
+  },
+  "kubeExecProductionBlocked": "Terminal access is disabled for this production context.",
+  "@kubeExecProductionBlocked": {
+    "description": "Kubernetes terminal interface."
+  },
+  "kubeAttach": "Attach to process",
+  "@kubeAttach": {
+    "description": "Kubernetes terminal interface."
+  },
+  "kubeAttachHelp": "Connect to the container’s existing process. Keyboard input goes directly to that process.",
+  "@kubeAttachHelp": {
+    "description": "Kubernetes terminal interface."
+  },
+  "kubeShell": "Shell in container",
+  "@kubeShell": {
+    "description": "Kubernetes terminal interface."
+  },
+  "kubeOpenShell": "Open shell",
+  "@kubeOpenShell": {
+    "description": "Kubernetes terminal interface."
+  },
+  "kubeTerminalFailed": "Could not open the terminal. Check container status, permissions and the selected shell.",
+  "@kubeTerminalFailed": {
+    "description": "Kubernetes terminal interface."
+  },
+  "kubeHidePanel": "Hide terminal panel",
+  "@kubeHidePanel": {
+    "description": "Kubernetes terminal interface."
+  },
+  "kubeShowPanel": "Open terminal panel",
+  "@kubeShowPanel": {
+    "description": "Kubernetes terminal interface."
+  },
+  "kubeTerminalEmpty": "Open a terminal from a Pod’s details.",
+  "@kubeTerminalEmpty": {
+    "description": "Kubernetes terminal interface."
+  },
+  "kubeTerminalConnected": "Connected",
+  "@kubeTerminalConnected": {
+    "description": "Kubernetes terminal interface."
+  },
+  "kubeTerminalDisconnected": "Disconnected",
+  "@kubeTerminalDisconnected": {
+    "description": "Kubernetes terminal interface."
+  },
+  "kubePortForward": "Forward a Pod port",
+  "@kubePortForward": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeForwardHelp": "The port is available only on this device at 127.0.0.1. The forward stops when you disconnect the cluster or lock the profile.",
+  "@kubeForwardHelp": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeForwardProductionBlocked": "Port forwarding is disabled for this production context.",
+  "@kubeForwardProductionBlocked": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeRemotePort": "Container TCP port",
+  "@kubeRemotePort": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeLocalPort": "Local port",
+  "@kubeLocalPort": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeLocalPortHelp": "Use 0 to choose a free port automatically.",
+  "@kubeLocalPortHelp": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeStartForward": "Start forwarding",
+  "@kubeStartForward": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeForwardCreated": "Forwarding is running. Manage it in Tunnels or the cluster panel.",
+  "@kubeForwardCreated": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeForwardFailed": "Could not forward this port. Check Pod status, permissions and local port availability.",
+  "@kubeForwardFailed": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubePortForwards": "Kubernetes port forwards",
+  "@kubePortForwards": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeNoForwards": "No active Kubernetes port forwards.",
+  "@kubeNoForwards": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeForwardRunning": "Running",
+  "@kubeForwardRunning": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeForwardStopped": "Stopped",
+  "@kubeForwardStopped": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeStopForward": "Stop forwarding",
+  "@kubeStopForward": {
+    "description": "Kubernetes port forwarding interface."
+  },
+  "kubeForwardTraffic": "{count} connections · sent {sent} · received {received}",
+  "@kubeForwardTraffic": {
+    "description": "Kubernetes port forwarding interface.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "sent": {
+        "type": "String"
+      },
+      "received": {
+        "type": "String"
+      }
+    }
+  },
+  "kubePermissions": "Access permissions",
+  "@kubePermissions": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubePermissionsHelp": "Rules returned by Kubernetes for the current identity in this namespace. Production safeguards remain in effect.",
+  "@kubePermissionsHelp": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubePermissionsIncomplete": "The server returned an incomplete permission report. Missing rules do not prove that an action is forbidden.",
+  "@kubePermissionsIncomplete": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeScale": "Scale workload",
+  "@kubeScale": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeRestart": "Restart rollout",
+  "@kubeRestart": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeCordon": "Cordon node",
+  "@kubeCordon": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeUncordon": "Uncordon node",
+  "@kubeUncordon": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeDrain": "Drain node",
+  "@kubeDrain": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeDebugContainer": "Add debug container",
+  "@kubeDebugContainer": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeMutationConfirmHelp": "Review the operation and type the exact resource name to confirm. Kubernetes permissions and production safeguards are checked again before execution.",
+  "@kubeMutationConfirmHelp": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeOperationFailed": "The operation could not complete. Check permissions and resource state, then refresh before trying again.",
+  "@kubeOperationFailed": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeReplicas": "Replica count (0–1,000,000)",
+  "@kubeReplicas": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeContainerImage": "Container image",
+  "@kubeContainerImage": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeDebugHelp": "The image is started inside this Pod with /bin/sh. An ephemeral container cannot be removed from the Pod afterward. Use an image you trust.",
+  "@kubeDebugHelp": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeDrainHelp": "The node is already cordoned. Review every Pod before eviction. DaemonSets and mirror Pods are skipped. Disruption budgets remain enforced; unmanaged Pods and local emptyDir data block this operation.",
+  "@kubeDrainHelp": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeDrainProgress": "Evicted: {done} of {total}",
+  "@kubeDrainProgress": {
+    "description": "Kubernetes operations interface.",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "kubeDrainEmpty": "There are no Pods eligible for eviction.",
+  "@kubeDrainEmpty": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeDrainUnmanaged": "Blocked: Pod has no controller.",
+  "@kubeDrainUnmanaged": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeDrainLocalData": "Blocked: Pod uses local emptyDir data.",
+  "@kubeDrainLocalData": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeDrainBlocked": "Blocked: review this Pod before draining.",
+  "@kubeDrainBlocked": {
+    "description": "Kubernetes operations interface."
+  },
+  "kubeMetrics": "Resource usage",
+  "@kubeMetrics": {
+    "description": "Kubernetes resource details."
+  },
+  "kubeMeasuredAt": "Measured at",
+  "@kubeMeasuredAt": {
+    "description": "Kubernetes resource details."
+  },
+  "kubeMetricsUnavailable": "Metrics are unavailable. Check metrics-server and access permissions.",
+  "@kubeMetricsUnavailable": {
+    "description": "Kubernetes resource details."
+  },
+  "kubeWorkloadPods": "Workload Pods",
+  "@kubeWorkloadPods": {
+    "description": "Kubernetes resource details."
+  },
+  "kubeEvents": "Kubernetes events",
+  "@kubeEvents": {
+    "description": "Kubernetes resource details."
+  },
+  "kubeFluxCliTitle": "Flux CLI",
+  "@kubeFluxCliTitle": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliHelp": "Optional desktop tools. Cluster access uses a temporary local proxy.",
+  "@kubeFluxCliHelp": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliPath": "Path to Flux",
+  "@kubeFluxCliPath": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliFind": "Find",
+  "@kubeFluxCliFind": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliProbe": "Check version",
+  "@kubeFluxCliProbe": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliVersion": "Release version",
+  "@kubeFluxCliVersion": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliMethod": "Installation method",
+  "@kubeFluxCliMethod": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliInstall": "Install",
+  "@kubeFluxCliInstall": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliUpdate": "Update",
+  "@kubeFluxCliUpdate": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliRemove": "Uninstall",
+  "@kubeFluxCliRemove": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliOfficial": "Official signed release",
+  "@kubeFluxCliOfficial": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliConfirm": "Confirm CLI operation",
+  "@kubeFluxCliConfirm": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliVerify": "Official downloads require SHA-256 and Cosign verification. Package commands open in a visible terminal.",
+  "@kubeFluxCliVerify": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliFailed": "The CLI operation failed or verification was unavailable.",
+  "@kubeFluxCliFailed": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliOutput": "CLI output",
+  "@kubeFluxCliOutput": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliRun": "Run",
+  "@kubeFluxCliRun": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliTerminal": "Open Flux terminal",
+  "@kubeFluxCliTerminal": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliLocalPath": "Local repository directory for diff",
+  "@kubeFluxCliLocalPath": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliResource": "Resource name",
+  "@kubeFluxCliResource": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeFluxCliKind": "Resource kind",
+  "@kubeFluxCliKind": {
+    "description": "Flux CLI desktop tools."
+  },
+  "kubeNewConnection": "New connection",
+  "@kubeNewConnection": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeConnectionSettings": "Connection settings",
+  "@kubeConnectionSettings": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeServerUrl": "Kubernetes API URL (HTTPS)",
+  "@kubeServerUrl": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeCertificateAuthority": "CA certificate (PEM, optional)",
+  "@kubeCertificateAuthority": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeClientCertificate": "Client certificate (PEM)",
+  "@kubeClientCertificate": {
+    "description": "Kubernetes connection management."
+  },
+  "kubePrivateKey": "Client private key (PEM)",
+  "@kubePrivateKey": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeManualReviewHelp": "Continue to review and import this context. Production protection is enabled by default.",
+  "@kubeManualReviewHelp": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeProductionContext": "Production context",
+  "@kubeProductionContext": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeAllowExecInProd": "Allow Pod terminals in production",
+  "@kubeAllowExecInProd": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeAllowForwardInProd": "Allow port forwarding in production",
+  "@kubeAllowForwardInProd": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeRecordEvents": "Keep event history",
+  "@kubeRecordEvents": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeRecordEventsHelp": "Encrypted on this device for 7 days. Event history is not synchronized.",
+  "@kubeRecordEventsHelp": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeScanFolder": "Scan a kubeconfig folder",
+  "@kubeScanFolder": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeScanEmpty": "No kubeconfig files were found in this folder.",
+  "@kubeScanEmpty": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeQueuedFiles": "{count} files queued for review",
+  "@kubeQueuedFiles": {
+    "description": "Kubernetes connection management.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "kubeNextFile": "Review next file",
+  "@kubeNextFile": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeExport": "Export kubeconfig",
+  "@kubeExport": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeExportHelp": "A kubeconfig file can contain credentials. Save it only to a trusted location.",
+  "@kubeExportHelp": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeIncludeCredentials": "Include credentials",
+  "@kubeIncludeCredentials": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeExportSaved": "Kubeconfig saved.",
+  "@kubeExportSaved": {
+    "description": "Kubernetes connection management."
+  },
+  "kubeAiAssistant": "AI assistant",
+  "@kubeAiAssistant": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiHelp": "Read-only cluster tools. Secret values are excluded; Kubernetes permissions and your chosen context limit access. Answers never run commands.",
+  "@kubeAiHelp": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiProvider": "AI provider",
+  "@kubeAiProvider": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiDefaultProvider": "Default provider on this device",
+  "@kubeAiDefaultProvider": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiConfigMaps": "Allow reading ConfigMap values for this question",
+  "@kubeAiConfigMaps": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiUnresolved": "Some checks could not be completed; review the tool errors before drawing conclusions.",
+  "@kubeAiUnresolved": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiReadTool": "Read-only tool",
+  "@kubeAiReadTool": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiTruncated": "Result was truncated.",
+  "@kubeAiTruncated": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiToolFailed": "This check could not complete. Data may be missing or access may be restricted.",
+  "@kubeAiToolFailed": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiFailed": "The assistant could not complete the request. Check the selected AI provider and cluster connection.",
+  "@kubeAiFailed": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiQuestion": "Ask about this cluster",
+  "@kubeAiQuestion": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiAsk": "Ask assistant",
+  "@kubeAiAsk": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiExternalTitle": "Send cluster context to this provider?",
+  "@kubeAiExternalTitle": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiExternalHelp": "This question may send sanitized resource metadata, status and logs to the external provider shown above. Secret values remain excluded. Approval applies only to this question.",
+  "@kubeAiExternalHelp": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiNoTools": "This provider cannot call tools; the assistant will use only the available read-only context.",
+  "@kubeAiNoTools": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiExplain": "Explain with AI",
+  "@kubeAiExplain": {
+    "description": "Kubernetes read-only AI assistant."
+  },
+  "kubeAiExplainQuestion": "Explain the problem {problem} for {resource}. Check related status and events without changing resources.",
+  "@kubeAiExplainQuestion": {
+    "description": "Kubernetes read-only AI assistant.",
+    "placeholders": {
+      "problem": {
+        "type": "String"
+      },
+      "resource": {
+        "type": "String"
+      }
+    }
+  },
+  "sharingKubeContext": "Kubernetes context",
+  "@sharingKubeContext": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeCluster": "Cluster",
+  "@sharingKubeCluster": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeExclude": "Only the connection settings are shared by default. Authentication, local routes and approvals remain on this device.",
+  "@sharingKubeExclude": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeIncludeCredentials": "Include authentication credentials",
+  "@sharingKubeIncludeCredentials": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeCredentialWarning": "Recipients can use these credentials to access the cluster. Share them only with verified devices you trust. Revoking the share does not revoke credentials already copied by a recipient.",
+  "@sharingKubeCredentialWarning": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeCredentialsIncluded": "Authentication is included; values stay hidden.",
+  "@sharingKubeCredentialsIncluded": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeCredentialsExcluded": "Authentication is not included.",
+  "@sharingKubeCredentialsExcluded": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeCopyHelp": "Save a personal copy of this connection. Choose your own route. Authentication is imported only with your explicit selection; executable plugins still require approval on this device.",
+  "@sharingKubeCopyHelp": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeImportCredentials": "Import the included authentication credentials",
+  "@sharingKubeImportCredentials": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeRouteRequired": "This connection requires a route. Select a saved SSH host or jump profile on this device.",
+  "@sharingKubeRouteRequired": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeUnsupported": "This server does not support sharing Kubernetes contexts.",
+  "@sharingKubeUnsupported": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeSnapshotChanged": "Review this connection again if its settings or credentials have changed.",
+  "@sharingKubeSnapshotChanged": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "kubeHistory": "Event history",
+  "@kubeHistory": {
+    "description": "Encrypted local Kubernetes event history."
+  },
+  "kubeHistoryHelp": "Local encrypted history for the last 7 days. Enable recording in connection settings.",
+  "@kubeHistoryHelp": {
+    "description": "Encrypted local Kubernetes event history."
+  },
+  "kubeHistoryRecording": "Recording cluster events",
+  "@kubeHistoryRecording": {
+    "description": "Encrypted local Kubernetes event history."
+  },
+  "kubeHistoryDisabled": "History recording is disabled",
+  "@kubeHistoryDisabled": {
+    "description": "Encrypted local Kubernetes event history."
+  },
+  "kubeHistoryConnecting": "Reconnecting the event recorder…",
+  "@kubeHistoryConnecting": {
+    "description": "Encrypted local Kubernetes event history."
+  },
+  "kubeHistoryUnavailable": "Event recording is unavailable; saved history remains readable.",
+  "@kubeHistoryUnavailable": {
+    "description": "Encrypted local Kubernetes event history."
+  },
+  "kubeHistoryWarnings": "Warnings only",
+  "@kubeHistoryWarnings": {
+    "description": "Encrypted local Kubernetes event history."
+  },
+  "kubeHistoryClear": "Clear local event history",
+  "@kubeHistoryClear": {
+    "description": "Encrypted local Kubernetes event history."
+  },
+  "kubeHistoryClearHelp": "Delete saved event history for this context on this device. Cluster resources are unaffected.",
+  "@kubeHistoryClearHelp": {
+    "description": "Encrypted local Kubernetes event history."
+  },
+  "kubeHelmComputedValues": "Computed values",
+  "@kubeHelmComputedValues": {
+    "description": "Protected Kubernetes details."
+  },
+  "kubeRevealSecret": "Reveal Secret values",
+  "@kubeRevealSecret": {
+    "description": "Protected Kubernetes details."
+  },
+  "kubeRevealSecretHelp": "Values are visible only in this protected dialog for 30 seconds. Copies are cleared from the clipboard within 30 seconds. Values are never sent to AI or stored in resource history.",
+  "@kubeRevealSecretHelp": {
+    "description": "Protected Kubernetes details."
+  },
+  "kubeSecretExpired": "Values hidden. Reveal again if needed.",
+  "@kubeSecretExpired": {
+    "description": "Protected Kubernetes details."
+  },
+  "kubeCreateResource": "Create resource",
+  "@kubeCreateResource": {
+    "description": "Kubernetes creation workflow."
+  },
+  "kubeManifestTemplate": "Insert metadata template",
+  "@kubeManifestTemplate": {
+    "description": "Kubernetes creation workflow."
+  },
+  "kubeSchema": "Kubernetes resource schema",
+  "@kubeSchema": {
+    "description": "Kubernetes creation workflow."
+  },
+  "kubeHelmRollback": "Roll back Helm release",
+  "@kubeHelmRollback": {
+    "description": "Explicit desktop Helm rollback."
+  },
+  "kubeHelmRollbackHelp": "Review the exact Helm binary, checksum and command. The operation changes cluster resources; Helm hooks are disabled. Type the release name to confirm.",
+  "@kubeHelmRollbackHelp": {
+    "description": "Explicit desktop Helm rollback."
+  },
+  "kubeHelmRollbackFailed": "Rollback could not complete. Check the Helm path, permissions and current release revision. Review the command again before retrying.",
+  "@kubeHelmRollbackFailed": {
+    "description": "Explicit desktop Helm rollback."
+  },
+  "kubeHelmBinary": "Absolute path to Helm (optional)",
+  "@kubeHelmBinary": {
+    "description": "Explicit desktop Helm rollback."
+  },
+  "kubeAiHistory": "AI conversation history",
+  "@kubeAiHistory": {
+    "description": "Kubernetes AI conversation history"
+  },
+  "kubeAiHistoryLocal": "Saved on this device",
+  "@kubeAiHistoryLocal": {
+    "description": "Kubernetes AI conversation history"
+  },
+  "kubeAiHistorySynced": "Encrypted synchronization enabled",
+  "@kubeAiHistorySynced": {
+    "description": "Kubernetes AI conversation history"
+  },
+  "kubeAiHistoryDeleteHelp": "Delete this saved conversation. If synchronized, its deletion will also synchronize.",
+  "@kubeAiHistoryDeleteHelp": {
+    "description": "Kubernetes AI conversation history"
+  },
+  "kubeRolloutHistory": "Rollout history",
+  "@kubeRolloutHistory": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeDiffBefore": "Before",
+  "@kubeDiffBefore": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeDiffAfter": "After",
+  "@kubeDiffAfter": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeCompare": "Compare",
+  "@kubeCompare": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeDiffTruncated": "The diff is truncated. Review the full resource before applying changes.",
+  "@kubeDiffTruncated": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeNoChanges": "No changes",
+  "@kubeNoChanges": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeDiffReview": "Review changed fields. Secret values remain hidden.",
+  "@kubeDiffReview": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliAdviceMissing": "Flux CLI was not found. Install it?",
+  "@kubeFluxCliAdviceMissing": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliAdviceUpdate": "The CLI is older than Flux in this cluster. Update it?",
+  "@kubeFluxCliAdviceUpdate": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliNeverSuggest": "Do not suggest again",
+  "@kubeFluxCliNeverSuggest": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliLater": "Not now",
+  "@kubeFluxCliLater": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliPathHelp": "Add Flux to PATH",
+  "@kubeFluxCliPathHelp": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliPathHint": "Open a new terminal window after updating PATH. On macOS/Linux, add the shown line to the indicated profile file.",
+  "@kubeFluxCliPathHint": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliPathAdded": "The directory was added to the user PATH.",
+  "@kubeFluxCliPathAdded": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliController": "Flux version in the cluster",
+  "@kubeFluxCliController": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeGitOpsFlow": "Resource flow",
+  "@kubeGitOpsFlow": {
+    "description": "Kubernetes resource graph and certificate diagnostics"
+  },
+  "kubeGraphList": "List",
+  "@kubeGraphList": {
+    "description": "Kubernetes resource graph and certificate diagnostics"
+  },
+  "kubeGraphReset": "Reset zoom and position",
+  "@kubeGraphReset": {
+    "description": "Kubernetes resource graph and certificate diagnostics"
+  },
+  "kubeIssueCertificateExpiring": "Certificate expires soon",
+  "@kubeIssueCertificateExpiring": {
+    "description": "Kubernetes resource graph and certificate diagnostics"
+  },
+  "kubeIssueCertificateExpired": "Certificate has expired",
+  "@kubeIssueCertificateExpired": {
+    "description": "Kubernetes resource graph and certificate diagnostics"
+  },
+  "kubeIssueEvicted": "Pod was evicted",
+  "@kubeIssueEvicted": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssuePendingResources": "Insufficient cluster resources",
+  "@kubeIssuePendingResources": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssuePendingTaints": "Node taints prevent scheduling",
+  "@kubeIssuePendingTaints": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssuePendingVolume": "Pod is waiting for a volume",
+  "@kubeIssuePendingVolume": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssueSuspendedLong": "Reconciliation suspended for over 24 hours",
+  "@kubeIssueSuspendedLong": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssueSourceStale": "Source artifact is out of date",
+  "@kubeIssueSourceStale": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssueHelmDrift": "Helm release has drifted",
+  "@kubeIssueHelmDrift": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssueDependencyNotReady": "Dependency is not ready",
+  "@kubeIssueDependencyNotReady": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssueDependencyMissing": "Dependency is missing or unavailable",
+  "@kubeIssueDependencyMissing": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeExitCode": "Exit code",
+  "@kubeExitCode": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeCommandOpen": "Open Kubernetes context",
+  "@kubeCommandOpen": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeCommandAsk": "Ask AI about Kubernetes",
+  "@kubeCommandAsk": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeCommandContext": "Cluster context",
+  "@kubeCommandContext": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeRelatedObjects": "Related resources",
+  "@kubeRelatedObjects": {
+    "description": "Kubernetes object relationships and metrics"
+  },
+  "kubeRelationOwner": "Owner",
+  "@kubeRelationOwner": {
+    "description": "Kubernetes object relationships and metrics"
+  },
+  "kubeRelationDependent": "Dependent resource",
+  "@kubeRelationDependent": {
+    "description": "Kubernetes object relationships and metrics"
+  },
+  "kubeRelationVolume": "Volume connection",
+  "@kubeRelationVolume": {
+    "description": "Kubernetes object relationships and metrics"
+  },
+  "kubeRelationConfiguration": "Configuration reference",
+  "@kubeRelationConfiguration": {
+    "description": "Kubernetes object relationships and metrics"
+  },
+  "kubeMetricsTrend": "CPU trend during this session",
+  "@kubeMetricsTrend": {
+    "description": "Kubernetes object relationships and metrics"
+  },
+  "kubeLogSince": "Time range",
+  "@kubeLogSince": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogAllTime": "All time",
+  "@kubeLogAllTime": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogLastMinute": "Last minute",
+  "@kubeLogLastMinute": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogLastHour": "Last hour",
+  "@kubeLogLastHour": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogLastDay": "Last day",
+  "@kubeLogLastDay": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogRegex": "Regular expression",
+  "@kubeLogRegex": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogRegexInvalid": "Invalid or excessively complex pattern.",
+  "@kubeLogRegexInvalid": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogLevel": "Level",
+  "@kubeLogLevel": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogAllPods": "All pods",
+  "@kubeLogAllPods": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogAllLevels": "All levels",
+  "@kubeLogAllLevels": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogWrap": "Wrap lines",
+  "@kubeLogWrap": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogExport": "Export / share logs",
+  "@kubeLogExport": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogExportHelp": "Logs may contain secrets. Only lines visible under the current filter will be saved.",
+  "@kubeLogExportHelp": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogMask": "Mask recognized secrets before exporting",
+  "@kubeLogMask": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogTargetsTruncated": "Showing the first 8 pods. Open a specific pod to view others.",
+  "@kubeLogTargetsTruncated": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogSaved": "Logs saved.",
+  "@kubeLogSaved": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeTags": "Tags, separated by commas",
+  "@kubeTags": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeTagsHelp": "Cluster tags and color are shared by its saved contexts.",
+  "@kubeTagsHelp": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeColor": "Cluster color",
+  "@kubeColor": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeNoColor": "No color",
+  "@kubeNoColor": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeFavorite": "Toggle favorite",
+  "@kubeFavorite": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeFavorites": "Favorites",
+  "@kubeFavorites": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeAllKinds": "All kinds",
+  "@kubeAllKinds": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeGroupWorkloads": "Workloads",
+  "@kubeGroupWorkloads": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeGroupNetwork": "Network",
+  "@kubeGroupNetwork": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeGroupConfig": "Configuration",
+  "@kubeGroupConfig": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeGroupStorage": "Storage",
+  "@kubeGroupStorage": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeGroupAccess": "Access",
+  "@kubeGroupAccess": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeGroupCluster": "Cluster / CRDs",
+  "@kubeGroupCluster": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeLogDefaultContainer": "Default container",
+  "@kubeLogDefaultContainer": {
+    "description": "Use the default container of each selected pod"
+  },
+  "kubeForwardChoosePod": "Choose a Pod for forwarding",
+  "@kubeForwardChoosePod": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeForwardChoosePodHelp": "Select the target Pod. The connection starts only after confirming its ports.",
+  "@kubeForwardChoosePodHelp": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeMemoryTrend": "Memory trend during this session",
+  "@kubeMemoryTrend": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeRequests": "Requests",
+  "@kubeRequests": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeLimits": "Limits",
+  "@kubeLimits": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeCapacity": "Capacity",
+  "@kubeCapacity": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeAllocatable": "Allocatable",
+  "@kubeAllocatable": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeResourceBudgetsUnavailable": "Resource requests and limits are unavailable.",
+  "@kubeResourceBudgetsUnavailable": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeBulkActions": "Selected resources",
+  "@kubeBulkActions": {
+    "description": "Guarded bulk Kubernetes operations"
+  },
+  "kubeBulkHelp": "Review the exact list and type the context name. Operations run in order; cancellation stops after the current operation. Up to 100 resources.",
+  "@kubeBulkHelp": {
+    "description": "Guarded bulk Kubernetes operations"
+  },
+  "kubeBulkProductionBlocked": "Bulk changes are disabled in production contexts.",
+  "@kubeBulkProductionBlocked": {
+    "description": "Guarded bulk Kubernetes operations"
+  },
+  "kubeBulkFailed": "The operation stopped. Completed resources are marked; review the remaining resources before retrying.",
+  "@kubeBulkFailed": {
+    "description": "Guarded bulk Kubernetes operations"
+  },
+  "kubeContextTerminal": "Local terminal for this cluster",
+  "@kubeContextTerminal": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubeContextTerminalHelp": "The terminal uses a temporary local API proxy. Cluster credentials stay in ConsoleCrypt; production restrictions remain active.",
+  "@kubeContextTerminalHelp": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubeOutput": "Output",
+  "@kubeOutput": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubePinLogs": "Open logs in the bottom panel",
+  "@kubePinLogs": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubeResizePanel": "Resize bottom panel",
+  "@kubeResizePanel": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubeConfirmName": "Type the exact name",
+  "@kubeConfirmName": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubeAiProposalReview": "Review proposal",
+  "@kubeAiProposalReview": {
+    "description": "Kubernetes AI proposals and history resume"
+  },
+  "kubeAiProposalContext": "The command will be inserted without execution into a new local terminal for this context.",
+  "@kubeAiProposalContext": {
+    "description": "Kubernetes AI proposals and history resume"
+  },
+  "kubeAiHistoryContext": "History messages in this request",
+  "@kubeAiHistoryContext": {
+    "description": "Kubernetes AI proposals and history resume"
+  },
+  "kubeAiNewConversation": "New conversation",
+  "@kubeAiNewConversation": {
+    "description": "Kubernetes AI proposals and history resume"
+  },
+  "kubeTableColumns": "Columns",
+  "@kubeTableColumns": {
+    "description": "Kubernetes resource table"
+  },
+  "kubeAge": "Age",
+  "@kubeAge": {
+    "description": "Kubernetes resource table"
+  },
+  "kubeGitOpsSource": "Source",
+  "kubeGitOpsArtifact": "Artifact",
+  "kubeGitOpsInterval": "Reconciliation interval",
+  "kubeGitOpsRevision": "Revision",
+  "kubeGitOpsSignature": "Signature verification",
+  "kubeGitOpsInventory": "Managed resources",
+  "kubeGitOpsValuesFrom": "Referenced values",
+  "kubeGitOpsControllerLogs": "Controller logs",
+  "kubeGitOpsPath": "Repository path",
+  "kubeGitOpsBranch": "Branch",
+  "kubeGitOpsTag": "Tag / version constraint",
+  "kubeGitOpsChart": "Chart",
+  "kubeGitOpsDrift": "Drift detection",
+  "kubeGitOpsHistoryEmpty": "No reconciliation history is available.",
+  "kubeGitOpsControllerUnavailable": "Controller logs are unavailable. Check resource discovery and permissions.",
+  "kubeGitOpsSignatureUnknown": "Not reported by the controller",
+  "kubeGitOpsSourceReconcileHelp": "Request a new reconciliation for this source. Enter its exact name to continue.",
+  "kubeGitOpsMetadataOnly": "Only object references are shown here. Secret values are hidden.",
+  "@kubeGitOpsSource": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsArtifact": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsInterval": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsRevision": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsSignature": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsInventory": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsValuesFrom": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsControllerLogs": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsPath": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsBranch": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsTag": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsChart": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsDrift": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsHistoryEmpty": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsControllerUnavailable": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsSignatureUnknown": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsSourceReconcileHelp": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsMetadataOnly": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "kubeResourceConfiguration": "Workload and node configuration",
+  "@kubeResourceConfiguration": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubePort": "Port",
+  "@kubePort": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubePorts": "Ports",
+  "@kubePorts": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeNode": "Node",
+  "@kubeNode": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeServiceAccount": "Service account",
+  "@kubeServiceAccount": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeNodeSelector": "Node selector",
+  "@kubeNodeSelector": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeReady": "Ready",
+  "@kubeReady": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeRestarts": "Restarts",
+  "@kubeRestarts": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeIssueExitCode": "Exit code",
+  "@kubeIssueExitCode": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeVolumeMounts": "Volume mounts",
+  "@kubeVolumeMounts": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeVolumes": "Volumes",
+  "@kubeVolumes": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeUnschedulable": "Scheduling disabled",
+  "@kubeUnschedulable": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeTaints": "Taints",
+  "@kubeTaints": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeNodeInfo": "Node software",
+  "@kubeNodeInfo": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeGraphProblems": "Paths to problems",
+  "@kubeGraphProblems": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeGraphSearch": "Find a resource in the graph",
+  "@kubeGraphSearch": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeGraphFold": "Hide inventory leaves",
+  "@kubeGraphFold": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeReplicaStatus": "Ready / desired replicas",
+  "@kubeReplicaStatus": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeTableSort": "Sort resources",
+  "@kubeTableSort": {
+    "description": "Kubernetes runtime label."
+  },
+  "kubeForwardRestore": "Restore after reconnecting",
+  "@kubeForwardRestore": {
+    "description": "Kubernetes runtime label."
+  },
+  "kubeForwardRestoreHelp": "Only while this context stays open and this profile is unlocked. Leaving the context clears this choice.",
+  "@kubeForwardRestoreHelp": {
+    "description": "Kubernetes runtime label."
+  },
+  "kubeForwardRestoreFailed": "Some port forwards could not be restored. Check the pod and local port, then start them again.",
+  "@kubeForwardRestoreFailed": {
+    "description": "Kubernetes runtime label."
+  },
+  "kubeGitOpsReconcileWithSource": "Reconcile with source",
+  "@kubeGitOpsReconcileWithSource": {
+    "description": "Kubernetes guarded GitOps operation."
+  },
+  "kubeGitOpsReconcileWithSourceHelp": "Queue reconciliation of the source chain, then this resource. Controller readiness is shown by the live status. Confirm the exact resource name.",
+  "@kubeGitOpsReconcileWithSourceHelp": {
+    "description": "Kubernetes guarded GitOps operation."
+  },
+  "kubeForwardNetwork": "Allow access from the local network",
+  "@kubeForwardNetwork": {
+    "description": "Kubernetes explicit operation help."
+  },
+  "kubeForwardBindAddress": "Local IP address to listen on",
+  "@kubeForwardBindAddress": {
+    "description": "Kubernetes explicit operation help."
+  },
+  "kubeForwardNetworkWarning": "I understand that other devices may access this port without Kubernetes authentication. Allow this network exposure.",
+  "@kubeForwardNetworkWarning": {
+    "description": "Kubernetes explicit operation help."
+  },
+  "kubeHelmComputedPartial": "Values were merged from the saved release; subchart defaults and global imports may be missing.",
+  "@kubeHelmComputedPartial": {
+    "description": "Kubernetes explicit operation help."
+  },
+  "kubeManifestSnippets": "Insert saved manifest",
+  "@kubeManifestSnippets": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeManifestSnippetsHelp": "Choose a kubectl snippet containing YAML or JSON. Review identifiers and variables in the editor before server validation.",
+  "@kubeManifestSnippetsHelp": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeNoManifestSnippets": "No manifest snippets yet. Save YAML or JSON as a kubectl snippet in Snippets.",
+  "@kubeNoManifestSnippets": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeGitOpsSources": "Sources",
+  "@kubeGitOpsSources": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeGitOpsNotifications": "Notifications",
+  "@kubeGitOpsNotifications": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeGitOpsImages": "Image automation",
+  "@kubeGitOpsImages": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeGitOpsRecent": "Recent controller status changes",
+  "@kubeGitOpsRecent": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeDockRight": "Dock panel to the right",
+  "@kubeDockRight": {
+    "description": "Kubernetes workspace panel position."
+  },
+  "kubeDockBottom": "Dock panel at the bottom",
+  "@kubeDockBottom": {
+    "description": "Kubernetes workspace panel position."
+  },
+  "kubeMaskedEditHelp": "This manifest contains masked values. YAML changes are disabled to prevent replacing credentials with placeholders. Use the individual resource actions or edit the original trusted manifest.",
+  "@kubeMaskedEditHelp": {
+    "description": "Masked resource manifests must not be applied."
+  },
+  "kubeAutoShell": "Detect shell automatically",
+  "@kubeAutoShell": {
+    "description": "Explicit native shell detection in selected container."
   }
-
 }

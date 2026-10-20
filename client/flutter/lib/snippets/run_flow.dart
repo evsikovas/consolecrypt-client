@@ -113,11 +113,13 @@ Future<bool> showRunConfirmation(
   required String command,
   required String hostLabel,
   required RiskAssessment risk,
+  String? confirmLabel,
 }) async =>
     await showAppDialog<bool>(
       context,
       secure: true,
-      builder: (_) => RunConfirmationDialog(command: command, hostLabel: hostLabel, risk: risk),
+      builder: (_) =>
+          RunConfirmationDialog(command: command, hostLabel: hostLabel, risk: risk, confirmLabel: confirmLabel),
     ) ??
     false;
 
@@ -126,11 +128,18 @@ Future<bool> showRunConfirmation(
 /// acknowledgement, destructive also a danger button and the host in the
 /// title.
 class RunConfirmationDialog extends StatefulWidget {
-  const RunConfirmationDialog({required this.command, required this.hostLabel, required this.risk, super.key});
+  const RunConfirmationDialog({
+    required this.command,
+    required this.hostLabel,
+    required this.risk,
+    this.confirmLabel,
+    super.key,
+  });
 
   final String command;
   final String hostLabel;
   final RiskAssessment risk;
+  final String? confirmLabel;
 
   @override
   State<RunConfirmationDialog> createState() => _RunConfirmationDialogState();
@@ -220,13 +229,13 @@ class _RunConfirmationDialogState extends State<RunConfirmationDialog> {
               key: const ValueKey('run-confirm'),
               icon: Icons.play_arrow_rounded,
               onPressed: canRun ? run : null,
-              label: l10n.runFlowRun,
+              label: widget.confirmLabel ?? l10n.runFlowRun,
             )
           : GlassButton.prominent(
               key: const ValueKey('run-confirm'),
               icon: Icons.play_arrow_rounded,
               onPressed: canRun ? run : null,
-              label: l10n.runFlowRun,
+              label: widget.confirmLabel ?? l10n.runFlowRun,
             ),
     );
   }
@@ -235,7 +244,7 @@ class _RunConfirmationDialogState extends State<RunConfirmationDialog> {
 String _hostLabel(Host host) => '${host.name} (${host.address})';
 String _targetLabel(TerminalTab tab) => switch (tab.target) {
   SshTerminalTarget(:final host) => _hostLabel(host),
-  LocalTerminalTarget() => tab.target.label,
+  LocalTerminalTarget() || KubernetesTerminalTarget() => tab.target.label,
 };
 
 /// Picks the target (active terminal tab or a host), asks for confirmation

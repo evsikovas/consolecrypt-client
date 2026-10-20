@@ -120,7 +120,28 @@ impl KubernetesSession {
         policy: Policy,
         audit: Arc<dyn Audit>,
     ) -> Result<Self, ConnectError> {
-        let guard = ProdGuard::new(policy, options.insecure_skip_tls_verify, audit)?;
+        Self::new_scoped(
+            options,
+            auth,
+            policy,
+            audit,
+            tokio_util::sync::CancellationToken::new(),
+        )
+    }
+
+    pub fn new_scoped(
+        options: ConnectOptions,
+        auth: Authentication,
+        policy: Policy,
+        audit: Arc<dyn Audit>,
+        cancellation: tokio_util::sync::CancellationToken,
+    ) -> Result<Self, ConnectError> {
+        let guard = ProdGuard::new_scoped(
+            policy,
+            options.insecure_skip_tls_verify,
+            audit,
+            cancellation,
+        )?;
         let config = explicit_config(options, auth)?;
         // Avoid ambiguous automatic provider selection when another native
         // module also enables aws-lc. Preserve an already selected provider.

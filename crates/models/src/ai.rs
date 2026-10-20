@@ -90,6 +90,10 @@ pub struct AiConversation {
     pub title: String,
     #[serde(default)]
     pub provider_id: Option<ObjectId>,
+    /// Optional context association inside the encrypted vault payload.
+    /// Older general AI conversations have no Kubernetes association.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kubernetes_context_id: Option<ObjectId>,
     pub messages: Vec<ChatMessage>,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,

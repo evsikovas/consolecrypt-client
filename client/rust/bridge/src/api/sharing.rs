@@ -34,6 +34,52 @@ pub async fn sharing_preview_host(id: String, include_notes: bool) -> Result<Str
 pub async fn sharing_preview_snippet(id: String) -> Result<String, BridgeError> {
     with_core(|c| async move { to_json(&c.sharing_preview_snippet(id).await?) }).await
 }
+pub async fn sharing_preview_kube_context(
+    id: String,
+    include_credentials: bool,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move {
+        to_json(
+            &c.sharing_preview_kube_context(id, include_credentials)
+                .await?,
+        )
+    })
+    .await
+}
+pub async fn sharing_publish_kube_context(
+    context_id: String,
+    include_credentials: bool,
+    expected_stamp: String,
+    grants_json: String,
+) -> Result<String, BridgeError> {
+    let grants = from_json("sharing_grants", &grants_json)?;
+    with_core(move |c| async move {
+        to_json(
+            &c.sharing_publish_kube_context(
+                context_id,
+                include_credentials,
+                expected_stamp,
+                grants,
+            )
+            .await?,
+        )
+    })
+    .await
+}
+pub async fn sharing_copy_kube_context(
+    share_id: String,
+    route_json: String,
+    include_credentials: bool,
+) -> Result<String, BridgeError> {
+    let route: cc_models::kubernetes::KubeRoute = from_json("kube_route", &route_json)?;
+    with_core(move |c| async move {
+        to_json(
+            &c.sharing_copy_kube_context(share_id, route, include_credentials)
+                .await?,
+        )
+    })
+    .await
+}
 pub async fn sharing_publish(
     projection_json: String,
     grants_json: String,

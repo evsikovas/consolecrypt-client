@@ -46,6 +46,8 @@ kotlin {
 }
 
 dependencies {
+    // System-browser OIDC, never an embedded web view (Apache-2.0).
+    implementation("androidx.browser:browser:1.10.0")
     // Must match rustls-platform-verifier-android in client/rust/Cargo.lock.
     implementation("org.rustls:rustls-platform-verifier:0.2.0")
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:consolecrypt/core/bridge/effective_config.dart';
@@ -11,6 +12,7 @@ import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
 import 'package:consolecrypt/src/rust/api/inventory.dart' as rs_inv;
+import 'package:consolecrypt/src/rust/api/kubernetes.dart' as rs_kube;
 import 'package:consolecrypt/src/rust/api/sftp.dart' as rs_sftp;
 import 'package:consolecrypt/src/rust/api/ssh.dart' as rs_ssh;
 import 'package:flutter/services.dart';
@@ -41,6 +43,7 @@ final class _Session {
   bool connecting = false;
   bool connected = false;
   bool closed = false;
+  bool adopted = false;
   String? promptRequest;
   _PromptKind? promptKind;
   int passwordAttempts = 0;
@@ -53,7 +56,8 @@ final class _Session {
 /// PTY shells over app-core terminals. Host-key and password/passphrase
 /// prompts raised while a session connects are routed to that session's
 /// event stream and answered through `answerHostKey` / `answerPassword`.
-final class RustTerminalService implements TerminalService, LocalTerminalService {
+final class RustTerminalService
+    implements TerminalService, LocalTerminalService, KubernetesTerminalService, RuntimeTerminalService {
   RustTerminalService(this._hub) {
     _hub.onPrompt = _routePrompt;
   }
@@ -100,6 +104,59 @@ final class RustTerminalService implements TerminalService, LocalTerminalService
       throw const AppException(AppErrorCode.notFound, 'Local shell is unavailable');
     }
     return _open(LocalTerminalTarget(profile), size);
+  }
+
+  @override
+  Future<TerminalSessionHandle> openKubernetes({
+    required KubernetesTerminalTarget target,
+    required TerminalSize size,
+  }) async => _open(target, size);
+
+  @override
+  Future<RuntimeTerminalAttachment> attachRuntime(String runtimeId, {TerminalSize size = TerminalSize.initial}) async {
+    if (_sessions.values.any((session) => session.rustId == runtimeId)) {
+      throw const AppException(AppErrorCode.validation, 'Terminal is already attached');
+    }
+    final info = decodeObject(await guard(() => rs_ssh.terminalInfo(terminalId: runtimeId)));
+    if (_sessions.values.any((session) => session.rustId == runtimeId)) {
+      throw const AppException(AppErrorCode.validation, 'Terminal is already attached');
+    }
+    final metadata = info['target'] as Json;
+    if (metadata['kind'] != 'local' ||
+        !const {'flux-install', 'flux-context', 'helm-rollback', 'kubernetes-context'}.contains(metadata['profile_id'])) {
+      throw const AppException(AppErrorCode.validation, 'Terminal cannot be adopted');
+    }
+    final target = LocalTerminalTarget(
+      LocalShellProfile(
+        id: metadata['profile_id'] as String,
+        kind: 'cli',
+        label: info['title'] as String,
+        shell: metadata['shell'] as String,
+      ),
+    );
+    final session = _Session(TerminalSessionId.generate(), target, size)
+      ..rustId = runtimeId
+      ..connected = true
+      ..adopted = true;
+    _sessions[session.id] = session;
+    try {
+      session.event(const TerminalStateChanged(SessionConnectionState.connected));
+      session.event(TerminalTitleChanged(target.label));
+      await resize(session.id, size);
+      if (!session.closed) _attach(session, runtimeId);
+      return RuntimeTerminalAttachment(
+        target: target,
+        handle: TerminalSessionHandle(
+          id: session.id,
+          output: session.output.stream.map((frame) => frame.data),
+          framedOutput: session.output.stream,
+          events: session.events.stream,
+        ),
+      );
+    } catch (_) {
+      await close(session.id);
+      rethrow;
+    }
   }
 
   TerminalSessionHandle _open(TerminalTarget target, TerminalSize size) {
@@ -149,6 +206,26 @@ final class RustTerminalService implements TerminalService, LocalTerminalService
               cols: s.size.columns,
               rows: s.size.rows,
             ),
+            KubernetesTerminalTarget(
+              :final sessionId,
+              :final namespace,
+              :final pod,
+              :final container,
+              :final command,
+              :final tty,
+            ) =>
+              rs_kube.kubeTerminalOpen(
+                sessionId: sessionId,
+                requestJson: jsonEncode({
+                  'namespace': namespace,
+                  'pod': pod,
+                  'container': container,
+                  'command': command,
+                  'tty': tty,
+                }),
+                cols: s.size.columns,
+                rows: s.size.rows,
+              ),
           },
         ),
       );
@@ -362,6 +439,10 @@ final class RustTerminalService implements TerminalService, LocalTerminalService
   @override
   Future<void> reconnect(TerminalSessionId id) async {
     final s = _session(id);
+    if (s.adopted) {
+      s.event(const TerminalStateChanged(SessionConnectionState.disconnected));
+      return; // A new CLI action requires a fresh capability and user approval.
+    }
     if (s.connecting) return;
     final old = s.rustId;
     final oldFrames = s.frames;

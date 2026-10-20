@@ -16,8 +16,9 @@ use cc_models::secret::SecretKind;
 use cc_models::tunnel::Tunnel;
 use cc_models::{ObjectId, ObjectKind, VaultObject};
 use cc_sync_core::DecryptedObject;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 
 /// What is kept for one object.
 #[derive(Debug, Clone)]
@@ -64,6 +65,62 @@ struct Inner {
     /// Bumped by every mutation (derived views such as the AI search index
     /// compare it to know they are stale).
     version: u64,
+    guards: Vec<RevisionGuard>,
+}
+
+#[derive(Debug)]
+struct RevisionGuard {
+    expected: BTreeMap<ObjectId, i64>,
+    kube_connections: BTreeMap<ObjectId, VaultObject>,
+    cancel: CancellationToken,
+}
+
+// Only decorative fields are excluded. Authentication, TLS, routes, namespace,
+// policy and context names continue to revoke the connection immediately.
+fn kube_connection_identity(object: &VaultObject) -> Option<VaultObject> {
+    match object {
+        VaultObject::KubeContext(context) => {
+            let mut context = context.clone();
+            context.favourite_namespaces.clear();
+            context.favourite_kinds.clear();
+            context.updated_at = context.created_at;
+            Some(VaultObject::KubeContext(context))
+        }
+        VaultObject::KubeCluster(cluster) => {
+            let mut cluster = cluster.clone();
+            cluster.tags.clear();
+            cluster.color = None;
+            cluster.updated_at = cluster.created_at;
+            Some(VaultObject::KubeCluster(cluster))
+        }
+        _ => None,
+    }
+}
+
+impl Inner {
+    fn revoke_stale(&mut self) {
+        let entries = &self.entries;
+        self.guards.retain(|guard| {
+            if guard.expected.iter().any(|(id, revision)| {
+                let Some(entry) = entries.get(id) else {
+                    return true;
+                };
+                if entry.revision == *revision {
+                    return false;
+                }
+                let Some(expected) = guard.kube_connections.get(id) else {
+                    return true;
+                };
+                let Item::Object(object) = &entry.item else {
+                    return true;
+                };
+                kube_connection_identity(object).as_ref() != Some(expected)
+            }) {
+                guard.cancel.cancel();
+            }
+            !guard.cancel.is_cancelled()
+        });
+    }
 }
 
 /// The working set. Cheap reads; writers hold the lock briefly.
@@ -134,6 +191,71 @@ impl WorkingSet {
         self.read().version
     }
 
+    /// One coherent view used to resolve a connection and its dependencies.
+    /// Secret entries contain only kind/revision; values stay encrypted.
+    pub(crate) fn snapshot(&self) -> BTreeMap<ObjectId, Entry> {
+        self.read()
+            .entries
+            .iter()
+            .map(|(id, entry)| (*id, entry.clone()))
+            .collect()
+    }
+
+    /// Install the fence atomically with checking the captured revisions.
+    /// Changes revoke the native scope before their working-set lock is released.
+    pub(crate) fn watch_revisions(
+        &self,
+        expected: BTreeMap<ObjectId, i64>,
+        cancel: CancellationToken,
+    ) -> bool {
+        self.watch_dependencies(expected, cancel, false)
+    }
+
+    pub(crate) fn watch_kube_revisions(
+        &self,
+        expected: BTreeMap<ObjectId, i64>,
+        cancel: CancellationToken,
+    ) -> bool {
+        self.watch_dependencies(expected, cancel, true)
+    }
+
+    fn watch_dependencies(
+        &self,
+        expected: BTreeMap<ObjectId, i64>,
+        cancel: CancellationToken,
+        decorative_kube_fields: bool,
+    ) -> bool {
+        let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
+        if cancel.is_cancelled()
+            || expected
+                .iter()
+                .any(|(id, revision)| g.entries.get(id).map(|e| e.revision) != Some(*revision))
+        {
+            cancel.cancel();
+            return false;
+        }
+        let kube_connections = if decorative_kube_fields {
+            expected
+                .keys()
+                .filter_map(|id| {
+                    let Item::Object(object) = &g.entries.get(id)?.item else {
+                        return None;
+                    };
+                    Some((*id, kube_connection_identity(object)?))
+                })
+                .collect()
+        } else {
+            BTreeMap::new()
+        };
+        g.guards.retain(|guard| !guard.cancel.is_cancelled());
+        g.guards.push(RevisionGuard {
+            expected,
+            kube_connections,
+            cancel,
+        });
+        true
+    }
+
     /// Replace everything (initial load, snapshot, lagged events).
     pub(crate) fn replace_all(&self, objects: Vec<DecryptedObject>) {
         let mut g = self.write();
@@ -142,6 +264,7 @@ impl WorkingSet {
             .map(|d| (d.object_id, Entry::from_decrypted(d)))
             .collect();
         g.tombstones.clear();
+        g.revoke_stale();
     }
 
     /// Apply a read-back of `id`. Returns the kind of the affected object
@@ -153,7 +276,7 @@ impl WorkingSet {
             .get(&id)
             .map(|e| e.revision)
             .or_else(|| g.tombstones.get(&id).copied());
-        match r {
+        let affected = match r {
             Readback::Missing => {
                 g.tombstones.remove(&id);
                 g.entries.remove(&id).map(|e| e.kind())
@@ -175,13 +298,16 @@ impl WorkingSet {
                 g.entries.insert(id, e);
                 Some(kind)
             }
-        }
+        };
+        g.revoke_stale();
+        affected
     }
 
     pub(crate) fn clear(&self) {
         let mut g = self.write();
         g.entries.clear();
         g.tombstones.clear();
+        g.revoke_stale();
     }
 
     pub(crate) fn kind_of(&self, id: ObjectId) -> Option<ObjectKind> {
@@ -299,5 +425,124 @@ mod tests {
             .is_none());
         assert!(ws.host(h.id).is_none());
         assert_eq!(ws.hosts().len(), 0);
+    }
+
+    #[test]
+    fn revision_fences_revoke_on_updates_deletion_and_reload() {
+        for action in 0..5 {
+            let ws = WorkingSet::new();
+            let host = Host::new("route", "192.0.2.1");
+            ws.apply(host.id, Readback::Live(Box::new(dec(&host, 3))));
+            let cancel = CancellationToken::new();
+            let version = ws.version();
+            assert!(ws.watch_revisions(BTreeMap::from([(host.id, 3)]), cancel.clone()));
+            assert_eq!(
+                ws.version(),
+                version,
+                "registering a reader is not a mutation"
+            );
+            ws.apply(host.id, Readback::Live(Box::new(dec(&host, 2))));
+            ws.apply(host.id, Readback::Deleted { revision: 2 });
+            ws.replace_all(vec![dec(&host, 3)]);
+            assert!(
+                !cancel.is_cancelled(),
+                "stale/no-op readback must preserve scope"
+            );
+            match action {
+                0 => {
+                    ws.apply(host.id, Readback::Live(Box::new(dec(&host, 4))));
+                }
+                1 => {
+                    ws.apply(host.id, Readback::Deleted { revision: 4 });
+                }
+                2 => {
+                    ws.apply(host.id, Readback::Missing);
+                }
+                3 => ws.replace_all(vec![]),
+                _ => ws.clear(),
+            }
+            assert!(cancel.is_cancelled(), "action {action}");
+            assert!(ws.read().guards.is_empty());
+        }
+    }
+
+    #[test]
+    fn changed_snapshot_cannot_register_a_live_scope() {
+        let ws = WorkingSet::new();
+        let host = Host::new("route", "192.0.2.1");
+        ws.apply(host.id, Readback::Live(Box::new(dec(&host, 1))));
+        let snapshot = ws.snapshot();
+        ws.apply(host.id, Readback::Live(Box::new(dec(&host, 2))));
+        let cancelled = CancellationToken::new();
+        assert!(!ws.watch_revisions(
+            snapshot
+                .into_iter()
+                .map(|(id, entry)| (id, entry.revision))
+                .collect(),
+            cancelled.clone(),
+        ));
+        assert!(cancelled.is_cancelled());
+        assert!(ws.read().guards.is_empty());
+    }
+
+    #[test]
+    fn kube_decorations_preserve_live_connections_but_auth_and_policy_revoke() {
+        use cc_models::kubernetes::{KubeAuth, KubeCluster, KubeContext};
+        fn entry(object: VaultObject, revision: i64) -> Readback {
+            Readback::Live(Box::new(DecryptedObject {
+                object_id: object.id(),
+                revision,
+                local_state: LocalState::LocalOnly,
+                conflict_origin: None,
+                payload: ObjectPayload::new(object),
+            }))
+        }
+        for change in 0..5 {
+            let ws = WorkingSet::new();
+            let mut cluster = KubeCluster::new("cluster", "https://kube.example.test");
+            let mut context = KubeContext::new("production", cluster.id);
+            ws.apply(
+                cluster.id,
+                entry(VaultObject::KubeCluster(cluster.clone()), 1),
+            );
+            ws.apply(
+                context.id,
+                entry(VaultObject::KubeContext(context.clone()), 1),
+            );
+            let token = CancellationToken::new();
+            assert!(ws.watch_kube_revisions(
+                BTreeMap::from([(cluster.id, 1), (context.id, 1)]),
+                token.clone()
+            ));
+            cluster.tags = vec!["team".into()];
+            cluster.color = Some("#123456".into());
+            cluster.updated_at += chrono::Duration::seconds(1);
+            context.favourite_namespaces = vec!["default".into()];
+            context.favourite_kinds = vec!["/v1/pods".into()];
+            context.updated_at += chrono::Duration::seconds(1);
+            ws.apply(
+                cluster.id,
+                entry(VaultObject::KubeCluster(cluster.clone()), 2),
+            );
+            ws.apply(
+                context.id,
+                entry(VaultObject::KubeContext(context.clone()), 2),
+            );
+            assert!(!token.is_cancelled());
+            match change {
+                0 => context.production = false,
+                1 => {
+                    context.auth = KubeAuth::Token {
+                        secret_id: ObjectId::new(),
+                    }
+                }
+                2 => context.allow_exec_in_prod = true,
+                3 => cluster.server = "https://different.example.test".into(),
+                _ => cluster.insecure_skip_tls_verify = true,
+            }
+            ws.apply(cluster.id, entry(VaultObject::KubeCluster(cluster), 3));
+            ws.apply(context.id, entry(VaultObject::KubeContext(context), 3));
+            assert!(token.is_cancelled(), "connection change {change}");
+        }
     }
 }

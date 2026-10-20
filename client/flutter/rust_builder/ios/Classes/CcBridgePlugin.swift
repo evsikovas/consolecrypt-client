@@ -15,6 +15,9 @@ public final class CcBridgePlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
     let instance = CcBridgePlugin()
     instance.registrar = registrar
+    let kubeBrowser = KubeAuthBrowser(registrar: registrar)
+    let kubeChannel = FlutterMethodChannel(name: "consolecrypt/kube_auth", binaryMessenger: registrar.messenger())
+    kubeChannel.setMethodCallHandler { call, result in kubeBrowser.handle(call, result: result) }
     for name in ["consolecrypt/local_auth", "consolecrypt/ios", "consolecrypt/accessibility", "consolecrypt/clipboard"] {
       let channel = FlutterMethodChannel(name: name, binaryMessenger: registrar.messenger())
       if name == "consolecrypt/accessibility" {

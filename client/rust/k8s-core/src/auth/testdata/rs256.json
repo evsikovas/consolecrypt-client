@@ -1,0 +1,15 @@
+{
+  "jwks": {
+    "keys": [
+      {
+        "kid": "fixture-rsa",
+        "kty": "RSA",
+        "alg": "RS256",
+        "use": "sig",
+        "n": "qklq-Yge__hVhAkwP85gI1myEkvKPuLRoQWYfbCHO9fBYajQbN6h9L554qptw8Ii-IfuSsWd49lrdYwZ6fz2B5zzpMpl2WxIjB9G87dif8Ur8LOoLIrz589COxS5uzuPnzH8O1dvW9Y3Z-lVPOZOvsqaCd6sP_kJ84g3ES78ej3ssGv66uFlsuvH7Yr12fKULQCpc2t5t5dqQiCEH_HvcIxDEI0dqLS12sdSRA1EJ76BLDe_2Os38204F2A1R2VB4SdGS2p_TqNHAmciHuPfvElI4ddTTVcyA1qsh5AoMud-ZtgUR2Smp5jVmNDiEwZ0-I0F5FsL_bzR9-_OOsFmUw",
+        "e": "AQAB"
+      }
+    ]
+  },
+  "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUtcnNhIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL2lzc3Vlci5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXN1YmplY3QiLCJhdWQiOiJmaXh0dXJlLWNsaWVudCIsImlhdCI6MSwiZXhwIjo0MDAwMDAwMDAwfQ.TzVgAVlZhIjNlinL79JmuUoYMSwzJkYATqsn1AVdhBGxwOgg5LhGFIkvZjz2gEKCoUJo48BNGBp95nUX3giBpbN9FdDEsS_URGdahZH0XQAynN5NLuGC8ClENSr0cSY5Xvw06ajU_ERp-bSN82KeayDtCeTeMEbDlKiT7ynFE8n6XtV0mBest0Pj2L11iswMKzfe8vHdGOo3oq88pwVlKmLZnJ6lseltDNtQJGGswBiIY1qRiOogYwiV6p9eCa0HXEkt3OUizpOQz3thZSY6BBztPLKYSWV1yFssAjIPvGbj1idLf0NqKaoVe97dXNMUsahpoe_lzpcHWWmBBNTYZg"
+}

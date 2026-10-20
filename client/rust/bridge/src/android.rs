@@ -7,6 +7,22 @@ use jni::refs::Reference;
 use std::sync::OnceLock;
 
 #[unsafe(no_mangle)]
+pub extern "system" fn Java_io_consolecrypt_consolecrypt_KubeForwardService_nativeStopForwards(
+    _env: jni::EnvUnowned<'_>,
+    _this: JObject<'_>,
+) {
+    cc_app_core::kubernetes_forward::mobile_forward_stop_all();
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_io_consolecrypt_consolecrypt_KubeForwardService_nativeForwardCount(
+    _env: jni::EnvUnowned<'_>,
+    _this: JObject<'_>,
+) -> jni::sys::jint {
+    cc_app_core::kubernetes_forward::mobile_forward_count().min(i32::MAX as usize) as i32
+}
+
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_io_consolecrypt_consolecrypt_MainActivity_nativeInitialize<'local>(
     mut unowned: jni::EnvUnowned<'local>,
     _this: JObject<'local>,

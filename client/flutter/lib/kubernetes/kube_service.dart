@@ -11,9 +11,18 @@ final class KubeConnection {
     required this.namespace,
     required this.authentication,
     required this.production,
+    this.allowExecInProd = false,
+    this.allowPortForwardInProd = false,
+    this.recordEvents = false,
+    this.tags = const [],
+    this.color,
+    this.favouriteNamespaces = const [],
+    this.favouriteKinds = const [],
   });
   final String id, name, clusterName, server, namespace, authentication;
-  final bool production;
+  final bool production, allowExecInProd, allowPortForwardInProd, recordEvents;
+  final List<String> tags, favouriteNamespaces, favouriteKinds;
+  final String? color;
 
   factory KubeConnection.fromJson(KubeJson context, KubeJson? cluster) => KubeConnection(
     id: context['id'] as String,
@@ -23,6 +32,13 @@ final class KubeConnection {
     namespace: context['namespace'] as String? ?? 'default',
     authentication: (context['auth'] as KubeJson?)?['kind'] as String? ?? 'none',
     production: context['production'] as bool? ?? true,
+    allowExecInProd: context['allow_exec_in_prod'] as bool? ?? false,
+    allowPortForwardInProd: context['allow_port_forward_in_prod'] as bool? ?? false,
+    recordEvents: context['event_history_enabled'] as bool? ?? false,
+    tags: List.unmodifiable((cluster?['tags'] as List? ?? const []).cast<String>()),
+    color: cluster?['color'] as String?,
+    favouriteNamespaces: List.unmodifiable((context['favourite_namespaces'] as List? ?? const []).cast<String>()),
+    favouriteKinds: List.unmodifiable((context['favourite_kinds'] as List? ?? const []).cast<String>()),
   );
 }
 

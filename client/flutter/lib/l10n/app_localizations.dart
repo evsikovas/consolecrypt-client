@@ -10429,6 +10429,2646 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not configured'**
   String get kubeAuthNone;
+
+  /// Kubernetes resource browser: Connect
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get kubeConnect;
+
+  /// Kubernetes resource browser: Disconnect
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get kubeDisconnect;
+
+  /// Kubernetes resource browser: Connecting to cluster…
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to cluster…'**
+  String get kubeConnecting;
+
+  /// Kubernetes resource browser: Could not connect. Check the network, authentication and connection route.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect. Check the network, authentication and connection route.'**
+  String get kubeConnectionFailed;
+
+  /// Kubernetes resource browser: Try again
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get kubeRetry;
+
+  /// Kubernetes resource browser: Saved connections
+  ///
+  /// In en, this message translates to:
+  /// **'Saved connections'**
+  String get kubeBackToContexts;
+
+  /// Kubernetes resource browser: Production · read only
+  ///
+  /// In en, this message translates to:
+  /// **'Production · read only'**
+  String get kubeReadOnly;
+
+  /// Kubernetes resource browser: This context is protected against changes by the native Kubernetes client.
+  ///
+  /// In en, this message translates to:
+  /// **'This context is protected against changes by the native Kubernetes client.'**
+  String get kubeReadOnlyHelp;
+
+  /// Kubernetes resource browser: Resources
+  ///
+  /// In en, this message translates to:
+  /// **'Resources'**
+  String get kubeResources;
+
+  /// Kubernetes resource browser: All namespaces
+  ///
+  /// In en, this message translates to:
+  /// **'All namespaces'**
+  String get kubeAllNamespaces;
+
+  /// Kubernetes resource browser: Resource type
+  ///
+  /// In en, this message translates to:
+  /// **'Resource type'**
+  String get kubeResourceKind;
+
+  /// Kubernetes resource browser: Label selector
+  ///
+  /// In en, this message translates to:
+  /// **'Label selector'**
+  String get kubeLabelSelector;
+
+  /// Kubernetes resource browser: Apply filter
+  ///
+  /// In en, this message translates to:
+  /// **'Apply filter'**
+  String get kubeApplyFilter;
+
+  /// Kubernetes resource browser: No resources match these filters.
+  ///
+  /// In en, this message translates to:
+  /// **'No resources match these filters.'**
+  String get kubeNoResources;
+
+  /// Kubernetes resource browser: No readable resource types were discovered. Check this account’s Kubernetes permissions.
+  ///
+  /// In en, this message translates to:
+  /// **'No readable resource types were discovered. Check this account’s Kubernetes permissions.'**
+  String get kubeNoResourceKinds;
+
+  /// Kubernetes resource browser: Could not load cluster data. Check the connection and Kubernetes permissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load cluster data. Check the connection and Kubernetes permissions.'**
+  String get kubeRequestFailed;
+
+  /// Kubernetes resource browser: The namespace list is unavailable. You can still view resources in the selected namespace.
+  ///
+  /// In en, this message translates to:
+  /// **'The namespace list is unavailable. You can still view resources in the selected namespace.'**
+  String get kubeNamespacesFailed;
+
+  /// Kubernetes resource browser: Load more
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get kubeLoadMore;
+
+  /// Kubernetes resource browser: Refresh resources
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh resources'**
+  String get kubeRefreshResources;
+
+  /// Kubernetes resource browser: Live updates
+  ///
+  /// In en, this message translates to:
+  /// **'Live updates'**
+  String get kubeLive;
+
+  /// Kubernetes resource browser: Snapshot
+  ///
+  /// In en, this message translates to:
+  /// **'Snapshot'**
+  String get kubeSnapshot;
+
+  /// Kubernetes resource browser: Live updates stopped. Refresh to reconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Live updates stopped. Refresh to reconnect.'**
+  String get kubeWatchFailed;
+
+  /// Kubernetes resource browser: The in-memory limit is 10,000 resources. Narrow the namespace or label filter.
+  ///
+  /// In en, this message translates to:
+  /// **'The in-memory limit is 10,000 resources. Narrow the namespace or label filter.'**
+  String get kubeResourceLimit;
+
+  /// Kubernetes resource browser: Overview
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get kubeOverview;
+
+  /// Kubernetes resource browser: YAML
+  ///
+  /// In en, this message translates to:
+  /// **'YAML'**
+  String get kubeObjectYaml;
+
+  /// Kubernetes resource browser: Logs
+  ///
+  /// In en, this message translates to:
+  /// **'Logs'**
+  String get kubeLogs;
+
+  /// Kubernetes resource browser: Container
+  ///
+  /// In en, this message translates to:
+  /// **'Container'**
+  String get kubeContainer;
+
+  /// Kubernetes resource browser: Previous container
+  ///
+  /// In en, this message translates to:
+  /// **'Previous container'**
+  String get kubePreviousLogs;
+
+  /// Kubernetes resource browser: Filter log lines
+  ///
+  /// In en, this message translates to:
+  /// **'Filter log lines'**
+  String get kubeLogFilter;
+
+  /// Kubernetes resource browser: No log lines to display.
+  ///
+  /// In en, this message translates to:
+  /// **'No log lines to display.'**
+  String get kubeNoLogs;
+
+  /// Kubernetes resource browser: The last 500 lines are loaded into memory. Refresh to retrieve a new tail.
+  ///
+  /// In en, this message translates to:
+  /// **'The last 500 lines are loaded into memory. Refresh to retrieve a new tail.'**
+  String get kubeLogTailHelp;
+
+  /// Kubernetes resource browser: Secret values are hidden. This view contains metadata and key names only.
+  ///
+  /// In en, this message translates to:
+  /// **'Secret values are hidden. This view contains metadata and key names only.'**
+  String get kubeSecretRedacted;
+
+  /// Kubernetes resource browser: Status
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get kubeStatus;
+
+  /// Kubernetes resource browser: Created
+  ///
+  /// In en, this message translates to:
+  /// **'Created'**
+  String get kubeCreatedAt;
+
+  /// Kubernetes resource browser: Labels
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get kubeLabels;
+
+  /// Kubernetes resource browser: Conditions
+  ///
+  /// In en, this message translates to:
+  /// **'Conditions'**
+  String get kubeConditions;
+
+  /// Kubernetes resource browser: Owners
+  ///
+  /// In en, this message translates to:
+  /// **'Owners'**
+  String get kubeOwners;
+
+  /// Kubernetes resource browser: Name
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get kubeName;
+
+  /// Kubernetes resource browser: Not reported
+  ///
+  /// In en, this message translates to:
+  /// **'Not reported'**
+  String get kubeNotReported;
+
+  /// Kubernetes resource browser: The connection has ended. Reconnect to load cluster data.
+  ///
+  /// In en, this message translates to:
+  /// **'The connection has ended. Reconnect to load cluster data.'**
+  String get kubeSessionEnded;
+
+  /// Kubernetes resource browser: {count} resources loaded
+  ///
+  /// In en, this message translates to:
+  /// **'{count} resources loaded'**
+  String kubeLoadedCount(int count);
+
+  /// Kubernetes resource browser: Open resource details
+  ///
+  /// In en, this message translates to:
+  /// **'Open resource details'**
+  String get kubeShowDetails;
+
+  /// Kubernetes resource browser: Kubernetes {version}
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes {version}'**
+  String kubeClusterVersion(String version);
+
+  /// Kubernetes resource browser: Sort by name
+  ///
+  /// In en, this message translates to:
+  /// **'Sort by name'**
+  String get kubeSortName;
+
+  /// Kubernetes resource browser: Sort by namespace
+  ///
+  /// In en, this message translates to:
+  /// **'Sort by namespace'**
+  String get kubeSortNamespace;
+
+  /// Kubernetes resource browser: Sort by status
+  ///
+  /// In en, this message translates to:
+  /// **'Sort by status'**
+  String get kubeSortStatus;
+
+  /// Kubernetes resource browser: Newest first
+  ///
+  /// In en, this message translates to:
+  /// **'Newest first'**
+  String get kubeSortAge;
+
+  /// Kubernetes resource browser: Refresh details
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh details'**
+  String get kubeRefreshDetails;
+
+  /// Kubernetes guarded mutations: Allow changes for 10 minutes
+  ///
+  /// In en, this message translates to:
+  /// **'Allow changes for 10 minutes'**
+  String get kubeAllowChanges;
+
+  /// Kubernetes guarded mutations: This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue.
+  ///
+  /// In en, this message translates to:
+  /// **'This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue.'**
+  String get kubeAllowChangesHelp;
+
+  /// Kubernetes guarded mutations: Return to read only
+  ///
+  /// In en, this message translates to:
+  /// **'Return to read only'**
+  String get kubeCloseWriteWindow;
+
+  /// Kubernetes guarded mutations: PROD · changes allowed · {time} remaining
+  ///
+  /// In en, this message translates to:
+  /// **'PROD · changes allowed · {time} remaining'**
+  String kubeWriteWindowRemaining(String time);
+
+  /// Kubernetes guarded mutations: Could not change the write window. Reconnect and try again.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not change the write window. Reconnect and try again.'**
+  String get kubeWriteWindowFailed;
+
+  /// Kubernetes guarded mutations: Type the exact name above
+  ///
+  /// In en, this message translates to:
+  /// **'Type the exact name above'**
+  String get kubeTypeName;
+
+  /// Kubernetes guarded mutations: Edit YAML
+  ///
+  /// In en, this message translates to:
+  /// **'Edit YAML'**
+  String get kubeEditYaml;
+
+  /// Kubernetes guarded mutations: Apply changes
+  ///
+  /// In en, this message translates to:
+  /// **'Apply changes'**
+  String get kubeApplyYaml;
+
+  /// Kubernetes guarded mutations: Apply the reviewed changes to this resource? Type its exact name to confirm. The server will reject the update if its resource version has changed.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply the reviewed changes to this resource? Type its exact name to confirm. The server will reject the update if its resource version has changed.'**
+  String get kubeApplyYamlHelp;
+
+  /// Kubernetes guarded mutations: The change was not accepted. Refresh the object and check permissions, validation errors or ownership conflicts before trying again.
+  ///
+  /// In en, this message translates to:
+  /// **'The change was not accepted. Refresh the object and check permissions, validation errors or ownership conflicts before trying again.'**
+  String get kubeApplyFailed;
+
+  /// Kubernetes guarded mutations: Review changes
+  ///
+  /// In en, this message translates to:
+  /// **'Review changes'**
+  String get kubeReviewChanges;
+
+  /// Kubernetes guarded mutations: Validate on server
+  ///
+  /// In en, this message translates to:
+  /// **'Validate on server'**
+  String get kubeDryRun;
+
+  /// Kubernetes guarded mutations: Validate the YAML on the server first. Review the resulting changes before applying them.
+  ///
+  /// In en, this message translates to:
+  /// **'Validate the YAML on the server first. Review the resulting changes before applying them.'**
+  String get kubeDryRunRequired;
+
+  /// Kubernetes guarded mutations: Server dry run: removed lines are marked − and added lines +. Nothing has been saved to the cluster yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Server dry run: removed lines are marked − and added lines +. Nothing has been saved to the cluster yet.'**
+  String get kubeDryRunHelp;
+
+  /// Kubernetes guarded mutations: Take ownership of conflicting fields
+  ///
+  /// In en, this message translates to:
+  /// **'Take ownership of conflicting fields'**
+  String get kubeForceApply;
+
+  /// Kubernetes guarded mutations: Only enable this when you intend to replace fields managed by another controller. Validate the changes again after enabling.
+  ///
+  /// In en, this message translates to:
+  /// **'Only enable this when you intend to replace fields managed by another controller. Validate the changes again after enabling.'**
+  String get kubeForceApplyHelp;
+
+  /// Kubernetes guarded mutations: The server returned no YAML changes.
+  ///
+  /// In en, this message translates to:
+  /// **'The server returned no YAML changes.'**
+  String get kubeNoYamlChanges;
+
+  /// Kubernetes guarded mutations: Delete Kubernetes resource
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Kubernetes resource'**
+  String get kubeDeleteResource;
+
+  /// Kubernetes guarded mutations: This deletes the resource from the cluster and may stop running workloads. Type its exact name to confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'This deletes the resource from the cluster and may stop running workloads. Type its exact name to confirm.'**
+  String get kubeDeleteResourceHelp;
+
+  /// Kubernetes log stream: Follow new log lines
+  ///
+  /// In en, this message translates to:
+  /// **'Follow new log lines'**
+  String get kubeFollowLogs;
+
+  /// Kubernetes log stream: Pause
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get kubePauseLogs;
+
+  /// Kubernetes log stream: Resume
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get kubeResumeLogs;
+
+  /// Kubernetes log stream: Live log buffer: up to 20,000 lines and 2 MiB, kept only in memory.
+  ///
+  /// In en, this message translates to:
+  /// **'Live log buffer: up to 20,000 lines and 2 MiB, kept only in memory.'**
+  String get kubeLogBufferHelp;
+
+  /// Kubernetes log stream: Log options
+  ///
+  /// In en, this message translates to:
+  /// **'Log options'**
+  String get kubeLogOptions;
+
+  /// Kubernetes cluster interface: GitOps
+  ///
+  /// In en, this message translates to:
+  /// **'GitOps'**
+  String get kubeGitOps;
+
+  /// Kubernetes cluster interface: Problems
+  ///
+  /// In en, this message translates to:
+  /// **'Problems'**
+  String get kubeProblems;
+
+  /// Kubernetes cluster interface: Helm
+  ///
+  /// In en, this message translates to:
+  /// **'Helm'**
+  String get kubeHelm;
+
+  /// Kubernetes cluster interface: Some resources could not be inspected because of permissions, discovery failures or size limits. Results are incomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Some resources could not be inspected because of permissions, discovery failures or size limits. Results are incomplete.'**
+  String get kubeInsightsPartial;
+
+  /// Kubernetes cluster interface: All
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get kubeGitOpsAll;
+
+  /// Kubernetes cluster interface: Ready
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get kubeGitOpsReady;
+
+  /// Kubernetes cluster interface: Needs attention
+  ///
+  /// In en, this message translates to:
+  /// **'Needs attention'**
+  String get kubeGitOpsAttention;
+
+  /// Kubernetes cluster interface: Suspended
+  ///
+  /// In en, this message translates to:
+  /// **'Suspended'**
+  String get kubeGitOpsSuspended;
+
+  /// Kubernetes cluster interface: Dependencies
+  ///
+  /// In en, this message translates to:
+  /// **'Dependencies'**
+  String get kubeDependencies;
+
+  /// Kubernetes cluster interface: No problems were found among the resources that could be inspected.
+  ///
+  /// In en, this message translates to:
+  /// **'No problems were found among the resources that could be inspected.'**
+  String get kubeNoVisibleProblems;
+
+  /// Kubernetes cluster interface: No known problems were found in the inspected resources.
+  ///
+  /// In en, this message translates to:
+  /// **'No known problems were found in the inspected resources.'**
+  String get kubeNoProblems;
+
+  /// Kubernetes cluster interface: No Flux or Argo CD resources match this filter.
+  ///
+  /// In en, this message translates to:
+  /// **'No Flux or Argo CD resources match this filter.'**
+  String get kubeNoGitOpsResources;
+
+  /// Kubernetes cluster interface: Controller actions
+  ///
+  /// In en, this message translates to:
+  /// **'Controller actions'**
+  String get kubeGitOpsActions;
+
+  /// Kubernetes cluster interface: Dependency cycle detected
+  ///
+  /// In en, this message translates to:
+  /// **'Dependency cycle detected'**
+  String get kubeDependencyCycle;
+
+  /// Kubernetes cluster interface: Dependency was not found
+  ///
+  /// In en, this message translates to:
+  /// **'Dependency was not found'**
+  String get kubeDependencyMissing;
+
+  /// Kubernetes cluster interface: Depends on a ready resource
+  ///
+  /// In en, this message translates to:
+  /// **'Depends on a ready resource'**
+  String get kubeDependencyReady;
+
+  /// Kubernetes cluster interface: Waiting for dependency
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for dependency'**
+  String get kubeDependencyWaiting;
+
+  /// Kubernetes cluster interface: Suspend reconciliation
+  ///
+  /// In en, this message translates to:
+  /// **'Suspend reconciliation'**
+  String get kubeGitOpsSuspend;
+
+  /// Kubernetes cluster interface: Resume reconciliation
+  ///
+  /// In en, this message translates to:
+  /// **'Resume reconciliation'**
+  String get kubeGitOpsResume;
+
+  /// Kubernetes cluster interface: Reset failure counter
+  ///
+  /// In en, this message translates to:
+  /// **'Reset failure counter'**
+  String get kubeGitOpsReset;
+
+  /// Kubernetes cluster interface: Force Helm upgrade
+  ///
+  /// In en, this message translates to:
+  /// **'Force Helm upgrade'**
+  String get kubeGitOpsForce;
+
+  /// Kubernetes cluster interface: Reconcile now
+  ///
+  /// In en, this message translates to:
+  /// **'Reconcile now'**
+  String get kubeGitOpsReconcile;
+
+  /// Kubernetes cluster interface: Sync application
+  ///
+  /// In en, this message translates to:
+  /// **'Sync application'**
+  String get kubeArgoSync;
+
+  /// Kubernetes cluster interface: Refresh application
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh application'**
+  String get kubeArgoRefresh;
+
+  /// Kubernetes cluster interface: Refresh application and manifests
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh application and manifests'**
+  String get kubeArgoHardRefresh;
+
+  /// Kubernetes cluster interface: This sends a change to the controller and can affect running applications. Review the action and type the exact resource name to continue.
+  ///
+  /// In en, this message translates to:
+  /// **'This sends a change to the controller and can affect running applications. Review the action and type the exact resource name to continue.'**
+  String get kubeGitOpsChangeHelp;
+
+  /// Kubernetes cluster interface: Reason (stored in the resource annotation)
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (stored in the resource annotation)'**
+  String get kubeGitOpsReason;
+
+  /// Kubernetes cluster interface: Container keeps crashing
+  ///
+  /// In en, this message translates to:
+  /// **'Container keeps crashing'**
+  String get kubeIssueCrashLoop;
+
+  /// Kubernetes cluster interface: Container image cannot be downloaded
+  ///
+  /// In en, this message translates to:
+  /// **'Container image cannot be downloaded'**
+  String get kubeIssueImagePull;
+
+  /// Kubernetes cluster interface: Container configuration is invalid
+  ///
+  /// In en, this message translates to:
+  /// **'Container configuration is invalid'**
+  String get kubeIssueContainerConfig;
+
+  /// Kubernetes cluster interface: Container exceeded its memory limit
+  ///
+  /// In en, this message translates to:
+  /// **'Container exceeded its memory limit'**
+  String get kubeIssueOom;
+
+  /// Kubernetes cluster interface: Container has restarted repeatedly
+  ///
+  /// In en, this message translates to:
+  /// **'Container has restarted repeatedly'**
+  String get kubeIssueRestarts;
+
+  /// Kubernetes cluster interface: Pod cannot be scheduled
+  ///
+  /// In en, this message translates to:
+  /// **'Pod cannot be scheduled'**
+  String get kubeIssueScheduling;
+
+  /// Kubernetes cluster interface: Pod is not ready
+  ///
+  /// In en, this message translates to:
+  /// **'Pod is not ready'**
+  String get kubeIssuePodNotReady;
+
+  /// Kubernetes cluster interface: Node is not ready
+  ///
+  /// In en, this message translates to:
+  /// **'Node is not ready'**
+  String get kubeIssueNodeNotReady;
+
+  /// Kubernetes cluster interface: Node is under resource pressure
+  ///
+  /// In en, this message translates to:
+  /// **'Node is under resource pressure'**
+  String get kubeIssueNodePressure;
+
+  /// Kubernetes cluster interface: Resource requires attention
+  ///
+  /// In en, this message translates to:
+  /// **'Resource requires attention'**
+  String get kubeIssueCondition;
+
+  /// Kubernetes cluster interface: Workload rollout exceeded its deadline
+  ///
+  /// In en, this message translates to:
+  /// **'Workload rollout exceeded its deadline'**
+  String get kubeIssueRolloutDeadline;
+
+  /// Kubernetes cluster interface: Controller could not create replicas
+  ///
+  /// In en, this message translates to:
+  /// **'Controller could not create replicas'**
+  String get kubeIssueReplicaFailure;
+
+  /// Kubernetes cluster interface: Some workload replicas are unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Some workload replicas are unavailable'**
+  String get kubeIssueReplicasUnavailable;
+
+  /// Kubernetes cluster interface: Volume claim is waiting for storage
+  ///
+  /// In en, this message translates to:
+  /// **'Volume claim is waiting for storage'**
+  String get kubeIssueVolumePending;
+
+  /// Kubernetes cluster interface: Volume claim lost its volume
+  ///
+  /// In en, this message translates to:
+  /// **'Volume claim lost its volume'**
+  String get kubeIssueVolumeLost;
+
+  /// Kubernetes cluster interface: Job failed
+  ///
+  /// In en, this message translates to:
+  /// **'Job failed'**
+  String get kubeIssueJobFailed;
+
+  /// Kubernetes cluster interface: Argo CD application is degraded
+  ///
+  /// In en, this message translates to:
+  /// **'Argo CD application is degraded'**
+  String get kubeIssueArgoDegraded;
+
+  /// Kubernetes cluster interface: Argo CD application is out of sync
+  ///
+  /// In en, this message translates to:
+  /// **'Argo CD application is out of sync'**
+  String get kubeIssueArgoOutOfSync;
+
+  /// Kubernetes cluster interface: Flux has not observed the latest configuration
+  ///
+  /// In en, this message translates to:
+  /// **'Flux has not observed the latest configuration'**
+  String get kubeIssueFluxPending;
+
+  /// Kubernetes cluster interface: Flux resource is not ready
+  ///
+  /// In en, this message translates to:
+  /// **'Flux resource is not ready'**
+  String get kubeIssueFluxNotReady;
+
+  /// Kubernetes cluster interface: Flux reconciliation has stalled
+  ///
+  /// In en, this message translates to:
+  /// **'Flux reconciliation has stalled'**
+  String get kubeIssueFluxStalled;
+
+  /// Kubernetes cluster interface: Flux reconciliation is suspended
+  ///
+  /// In en, this message translates to:
+  /// **'Flux reconciliation is suspended'**
+  String get kubeIssueFluxSuspended;
+
+  /// Kubernetes cluster interface: Show all revisions
+  ///
+  /// In en, this message translates to:
+  /// **'Show all revisions'**
+  String get kubeHelmAllRevisions;
+
+  /// Kubernetes cluster interface: No Helm releases match this filter.
+  ///
+  /// In en, this message translates to:
+  /// **'No Helm releases match this filter.'**
+  String get kubeHelmEmpty;
+
+  /// Kubernetes cluster interface: Revision {revision}
+  ///
+  /// In en, this message translates to:
+  /// **'Revision {revision}'**
+  String kubeHelmRevision(int revision);
+
+  /// Kubernetes cluster interface: Release history
+  ///
+  /// In en, this message translates to:
+  /// **'Release history'**
+  String get kubeHelmHistory;
+
+  /// Kubernetes cluster interface: Sensitive values are masked. Values and manifests remain in memory only.
+  ///
+  /// In en, this message translates to:
+  /// **'Sensitive values are masked. Values and manifests remain in memory only.'**
+  String get kubeHelmSecretsMasked;
+
+  /// Kubernetes cluster interface: User values
+  ///
+  /// In en, this message translates to:
+  /// **'User values'**
+  String get kubeHelmValues;
+
+  /// Kubernetes cluster interface: Chart defaults
+  ///
+  /// In en, this message translates to:
+  /// **'Chart defaults'**
+  String get kubeHelmChartValues;
+
+  /// Kubernetes cluster interface: Manifest
+  ///
+  /// In en, this message translates to:
+  /// **'Manifest'**
+  String get kubeHelmManifest;
+
+  /// Kubernetes cluster interface: Compare with revision
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with revision'**
+  String get kubeHelmCompare;
+
+  /// Kubernetes cluster interface: Choose revision
+  ///
+  /// In en, this message translates to:
+  /// **'Choose revision'**
+  String get kubeHelmChooseRevision;
+
+  /// Kubernetes cluster interface: Removed lines are marked − and added lines +. This comparison does not change the release.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed lines are marked − and added lines +. This comparison does not change the release.'**
+  String get kubeHelmDiffHelp;
+
+  /// Kubernetes cluster interface: Allow authentication command?
+  ///
+  /// In en, this message translates to:
+  /// **'Allow authentication command?'**
+  String get kubeExecReviewTitle;
+
+  /// Kubernetes cluster interface: This command runs on this computer. Review its executable, arguments and environment. Approval applies only to this unlocked profile; a changed command requires approval again.
+  ///
+  /// In en, this message translates to:
+  /// **'This command runs on this computer. Review its executable, arguments and environment. Approval applies only to this unlocked profile; a changed command requires approval again.'**
+  String get kubeExecReviewHelp;
+
+  /// Kubernetes cluster interface: Arguments
+  ///
+  /// In en, this message translates to:
+  /// **'Arguments'**
+  String get kubeExecArguments;
+
+  /// Kubernetes cluster interface: Environment
+  ///
+  /// In en, this message translates to:
+  /// **'Environment'**
+  String get kubeExecEnvironment;
+
+  /// Kubernetes cluster interface: Allow this command
+  ///
+  /// In en, this message translates to:
+  /// **'Allow this command'**
+  String get kubeExecAllow;
+
+  /// Kubernetes cluster interface: Authentication could not be completed. Check the connection settings and try again.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication could not be completed. Check the connection settings and try again.'**
+  String get kubeAuthFailed;
+
+  /// Kubernetes cluster interface: This request has expired. Start authentication again.
+  ///
+  /// In en, this message translates to:
+  /// **'This request has expired. Start authentication again.'**
+  String get kubeAuthExpired;
+
+  /// Kubernetes cluster interface: Sign in to the cluster
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to the cluster'**
+  String get kubeOidcTitle;
+
+  /// Kubernetes cluster interface: Sign in with your identity provider in the system browser. Your credentials stay between this device and the provider.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with your identity provider in the system browser. Your credentials stay between this device and the provider.'**
+  String get kubeOidcHelp;
+
+  /// Kubernetes cluster interface: Open browser
+  ///
+  /// In en, this message translates to:
+  /// **'Open browser'**
+  String get kubeOidcOpen;
+
+  /// Kubernetes cluster interface: Waiting for browser sign-in…
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for browser sign-in…'**
+  String get kubeOidcWaiting;
+
+  /// Kubernetes cluster interface: Authenticate
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticate'**
+  String get kubeAuthAction;
+
+  /// Kubernetes cluster interface: External authentication commands are unavailable on mobile. Use a token, client certificate or browser sign-in (OIDC).
+  ///
+  /// In en, this message translates to:
+  /// **'External authentication commands are unavailable on mobile. Use a token, client certificate or browser sign-in (OIDC).'**
+  String get kubeExecMobile;
+
+  /// Kubernetes terminal interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Pod terminal'**
+  String get kubePodTerminal;
+
+  /// Kubernetes terminal interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal access is disabled for this production context.'**
+  String get kubeExecProductionBlocked;
+
+  /// Kubernetes terminal interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach to process'**
+  String get kubeAttach;
+
+  /// Kubernetes terminal interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to the container’s existing process. Keyboard input goes directly to that process.'**
+  String get kubeAttachHelp;
+
+  /// Kubernetes terminal interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell in container'**
+  String get kubeShell;
+
+  /// Kubernetes terminal interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Open shell'**
+  String get kubeOpenShell;
+
+  /// Kubernetes terminal interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the terminal. Check container status, permissions and the selected shell.'**
+  String get kubeTerminalFailed;
+
+  /// Kubernetes terminal interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide terminal panel'**
+  String get kubeHidePanel;
+
+  /// Kubernetes terminal interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Open terminal panel'**
+  String get kubeShowPanel;
+
+  /// Kubernetes terminal interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a terminal from a Pod’s details.'**
+  String get kubeTerminalEmpty;
+
+  /// Kubernetes terminal interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get kubeTerminalConnected;
+
+  /// Kubernetes terminal interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnected'**
+  String get kubeTerminalDisconnected;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Forward a Pod port'**
+  String get kubePortForward;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'The port is available only on this device at 127.0.0.1. The forward stops when you disconnect the cluster or lock the profile.'**
+  String get kubeForwardHelp;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Port forwarding is disabled for this production context.'**
+  String get kubeForwardProductionBlocked;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Container TCP port'**
+  String get kubeRemotePort;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Local port'**
+  String get kubeLocalPort;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Use 0 to choose a free port automatically.'**
+  String get kubeLocalPortHelp;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Start forwarding'**
+  String get kubeStartForward;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Forwarding is running. Manage it in Tunnels or the cluster panel.'**
+  String get kubeForwardCreated;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not forward this port. Check Pod status, permissions and local port availability.'**
+  String get kubeForwardFailed;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes port forwards'**
+  String get kubePortForwards;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'No active Kubernetes port forwards.'**
+  String get kubeNoForwards;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get kubeForwardRunning;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get kubeForwardStopped;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop forwarding'**
+  String get kubeStopForward;
+
+  /// Kubernetes port forwarding interface.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} connections · sent {sent} · received {received}'**
+  String kubeForwardTraffic(int count, String sent, String received);
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Access permissions'**
+  String get kubePermissions;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Rules returned by Kubernetes for the current identity in this namespace. Production safeguards remain in effect.'**
+  String get kubePermissionsHelp;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'The server returned an incomplete permission report. Missing rules do not prove that an action is forbidden.'**
+  String get kubePermissionsIncomplete;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Scale workload'**
+  String get kubeScale;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart rollout'**
+  String get kubeRestart;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Cordon node'**
+  String get kubeCordon;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Uncordon node'**
+  String get kubeUncordon;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Drain node'**
+  String get kubeDrain;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Add debug container'**
+  String get kubeDebugContainer;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the operation and type the exact resource name to confirm. Kubernetes permissions and production safeguards are checked again before execution.'**
+  String get kubeMutationConfirmHelp;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'The operation could not complete. Check permissions and resource state, then refresh before trying again.'**
+  String get kubeOperationFailed;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Replica count (0–1,000,000)'**
+  String get kubeReplicas;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Container image'**
+  String get kubeContainerImage;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'The image is started inside this Pod with /bin/sh. An ephemeral container cannot be removed from the Pod afterward. Use an image you trust.'**
+  String get kubeDebugHelp;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'The node is already cordoned. Review every Pod before eviction. DaemonSets and mirror Pods are skipped. Disruption budgets remain enforced; unmanaged Pods and local emptyDir data block this operation.'**
+  String get kubeDrainHelp;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Evicted: {done} of {total}'**
+  String kubeDrainProgress(int done, int total);
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Pods eligible for eviction.'**
+  String get kubeDrainEmpty;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked: Pod has no controller.'**
+  String get kubeDrainUnmanaged;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked: Pod uses local emptyDir data.'**
+  String get kubeDrainLocalData;
+
+  /// Kubernetes operations interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked: review this Pod before draining.'**
+  String get kubeDrainBlocked;
+
+  /// Kubernetes resource details.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource usage'**
+  String get kubeMetrics;
+
+  /// Kubernetes resource details.
+  ///
+  /// In en, this message translates to:
+  /// **'Measured at'**
+  String get kubeMeasuredAt;
+
+  /// Kubernetes resource details.
+  ///
+  /// In en, this message translates to:
+  /// **'Metrics are unavailable. Check metrics-server and access permissions.'**
+  String get kubeMetricsUnavailable;
+
+  /// Kubernetes resource details.
+  ///
+  /// In en, this message translates to:
+  /// **'Workload Pods'**
+  String get kubeWorkloadPods;
+
+  /// Kubernetes resource details.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes events'**
+  String get kubeEvents;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Flux CLI'**
+  String get kubeFluxCliTitle;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional desktop tools. Cluster access uses a temporary local proxy.'**
+  String get kubeFluxCliHelp;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Path to Flux'**
+  String get kubeFluxCliPath;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Find'**
+  String get kubeFluxCliFind;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Check version'**
+  String get kubeFluxCliProbe;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Release version'**
+  String get kubeFluxCliVersion;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation method'**
+  String get kubeFluxCliMethod;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Install'**
+  String get kubeFluxCliInstall;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get kubeFluxCliUpdate;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Uninstall'**
+  String get kubeFluxCliRemove;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Official signed release'**
+  String get kubeFluxCliOfficial;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm CLI operation'**
+  String get kubeFluxCliConfirm;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Official downloads require SHA-256 and Cosign verification. Package commands open in a visible terminal.'**
+  String get kubeFluxCliVerify;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'The CLI operation failed or verification was unavailable.'**
+  String get kubeFluxCliFailed;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI output'**
+  String get kubeFluxCliOutput;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get kubeFluxCliRun;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Flux terminal'**
+  String get kubeFluxCliTerminal;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Local repository directory for diff'**
+  String get kubeFluxCliLocalPath;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource name'**
+  String get kubeFluxCliResource;
+
+  /// Flux CLI desktop tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource kind'**
+  String get kubeFluxCliKind;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'New connection'**
+  String get kubeNewConnection;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection settings'**
+  String get kubeConnectionSettings;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes API URL (HTTPS)'**
+  String get kubeServerUrl;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'CA certificate (PEM, optional)'**
+  String get kubeCertificateAuthority;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Client certificate (PEM)'**
+  String get kubeClientCertificate;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Client private key (PEM)'**
+  String get kubePrivateKey;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue to review and import this context. Production protection is enabled by default.'**
+  String get kubeManualReviewHelp;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Production context'**
+  String get kubeProductionContext;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Pod terminals in production'**
+  String get kubeAllowExecInProd;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow port forwarding in production'**
+  String get kubeAllowForwardInProd;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep event history'**
+  String get kubeRecordEvents;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted on this device for 7 days. Event history is not synchronized.'**
+  String get kubeRecordEventsHelp;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan a kubeconfig folder'**
+  String get kubeScanFolder;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'No kubeconfig files were found in this folder.'**
+  String get kubeScanEmpty;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} files queued for review'**
+  String kubeQueuedFiles(int count);
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Review next file'**
+  String get kubeNextFile;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Export kubeconfig'**
+  String get kubeExport;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'A kubeconfig file can contain credentials. Save it only to a trusted location.'**
+  String get kubeExportHelp;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Include credentials'**
+  String get kubeIncludeCredentials;
+
+  /// Kubernetes connection management.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubeconfig saved.'**
+  String get kubeExportSaved;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'AI assistant'**
+  String get kubeAiAssistant;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Read-only cluster tools. Secret values are excluded; Kubernetes permissions and your chosen context limit access. Answers never run commands.'**
+  String get kubeAiHelp;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'AI provider'**
+  String get kubeAiProvider;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Default provider on this device'**
+  String get kubeAiDefaultProvider;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow reading ConfigMap values for this question'**
+  String get kubeAiConfigMaps;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Some checks could not be completed; review the tool errors before drawing conclusions.'**
+  String get kubeAiUnresolved;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Read-only tool'**
+  String get kubeAiReadTool;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Result was truncated.'**
+  String get kubeAiTruncated;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'This check could not complete. Data may be missing or access may be restricted.'**
+  String get kubeAiToolFailed;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant could not complete the request. Check the selected AI provider and cluster connection.'**
+  String get kubeAiFailed;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about this cluster'**
+  String get kubeAiQuestion;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask assistant'**
+  String get kubeAiAsk;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Send cluster context to this provider?'**
+  String get kubeAiExternalTitle;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'This question may send sanitized resource metadata, status and logs to the external provider shown above. Secret values remain excluded. Approval applies only to this question.'**
+  String get kubeAiExternalHelp;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'This provider cannot call tools; the assistant will use only the available read-only context.'**
+  String get kubeAiNoTools;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Explain with AI'**
+  String get kubeAiExplain;
+
+  /// Kubernetes read-only AI assistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Explain the problem {problem} for {resource}. Check related status and events without changing resources.'**
+  String kubeAiExplainQuestion(String problem, String resource);
+
+  /// Kubernetes selective sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes context'**
+  String get sharingKubeContext;
+
+  /// Kubernetes selective sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster'**
+  String get sharingKubeCluster;
+
+  /// Kubernetes selective sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the connection settings are shared by default. Authentication, local routes and approvals remain on this device.'**
+  String get sharingKubeExclude;
+
+  /// Kubernetes selective sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Include authentication credentials'**
+  String get sharingKubeIncludeCredentials;
+
+  /// Kubernetes selective sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipients can use these credentials to access the cluster. Share them only with verified devices you trust. Revoking the share does not revoke credentials already copied by a recipient.'**
+  String get sharingKubeCredentialWarning;
+
+  /// Kubernetes selective sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication is included; values stay hidden.'**
+  String get sharingKubeCredentialsIncluded;
+
+  /// Kubernetes selective sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication is not included.'**
+  String get sharingKubeCredentialsExcluded;
+
+  /// Kubernetes selective sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a personal copy of this connection. Choose your own route. Authentication is imported only with your explicit selection; executable plugins still require approval on this device.'**
+  String get sharingKubeCopyHelp;
+
+  /// Kubernetes selective sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Import the included authentication credentials'**
+  String get sharingKubeImportCredentials;
+
+  /// Kubernetes selective sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'This connection requires a route. Select a saved SSH host or jump profile on this device.'**
+  String get sharingKubeRouteRequired;
+
+  /// Kubernetes selective sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'This server does not support sharing Kubernetes contexts.'**
+  String get sharingKubeUnsupported;
+
+  /// Kubernetes selective sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Review this connection again if its settings or credentials have changed.'**
+  String get sharingKubeSnapshotChanged;
+
+  /// Encrypted local Kubernetes event history.
+  ///
+  /// In en, this message translates to:
+  /// **'Event history'**
+  String get kubeHistory;
+
+  /// Encrypted local Kubernetes event history.
+  ///
+  /// In en, this message translates to:
+  /// **'Local encrypted history for the last 7 days. Enable recording in connection settings.'**
+  String get kubeHistoryHelp;
+
+  /// Encrypted local Kubernetes event history.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording cluster events'**
+  String get kubeHistoryRecording;
+
+  /// Encrypted local Kubernetes event history.
+  ///
+  /// In en, this message translates to:
+  /// **'History recording is disabled'**
+  String get kubeHistoryDisabled;
+
+  /// Encrypted local Kubernetes event history.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting the event recorder…'**
+  String get kubeHistoryConnecting;
+
+  /// Encrypted local Kubernetes event history.
+  ///
+  /// In en, this message translates to:
+  /// **'Event recording is unavailable; saved history remains readable.'**
+  String get kubeHistoryUnavailable;
+
+  /// Encrypted local Kubernetes event history.
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings only'**
+  String get kubeHistoryWarnings;
+
+  /// Encrypted local Kubernetes event history.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear local event history'**
+  String get kubeHistoryClear;
+
+  /// Encrypted local Kubernetes event history.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete saved event history for this context on this device. Cluster resources are unaffected.'**
+  String get kubeHistoryClearHelp;
+
+  /// Protected Kubernetes details.
+  ///
+  /// In en, this message translates to:
+  /// **'Computed values'**
+  String get kubeHelmComputedValues;
+
+  /// Protected Kubernetes details.
+  ///
+  /// In en, this message translates to:
+  /// **'Reveal Secret values'**
+  String get kubeRevealSecret;
+
+  /// Protected Kubernetes details.
+  ///
+  /// In en, this message translates to:
+  /// **'Values are visible only in this protected dialog for 30 seconds. Copies are cleared from the clipboard within 30 seconds. Values are never sent to AI or stored in resource history.'**
+  String get kubeRevealSecretHelp;
+
+  /// Protected Kubernetes details.
+  ///
+  /// In en, this message translates to:
+  /// **'Values hidden. Reveal again if needed.'**
+  String get kubeSecretExpired;
+
+  /// Kubernetes creation workflow.
+  ///
+  /// In en, this message translates to:
+  /// **'Create resource'**
+  String get kubeCreateResource;
+
+  /// Kubernetes creation workflow.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert metadata template'**
+  String get kubeManifestTemplate;
+
+  /// Kubernetes creation workflow.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes resource schema'**
+  String get kubeSchema;
+
+  /// Explicit desktop Helm rollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Roll back Helm release'**
+  String get kubeHelmRollback;
+
+  /// Explicit desktop Helm rollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the exact Helm binary, checksum and command. The operation changes cluster resources; Helm hooks are disabled. Type the release name to confirm.'**
+  String get kubeHelmRollbackHelp;
+
+  /// Explicit desktop Helm rollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Rollback could not complete. Check the Helm path, permissions and current release revision. Review the command again before retrying.'**
+  String get kubeHelmRollbackFailed;
+
+  /// Explicit desktop Helm rollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path to Helm (optional)'**
+  String get kubeHelmBinary;
+
+  /// Kubernetes AI conversation history
+  ///
+  /// In en, this message translates to:
+  /// **'AI conversation history'**
+  String get kubeAiHistory;
+
+  /// Kubernetes AI conversation history
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on this device'**
+  String get kubeAiHistoryLocal;
+
+  /// Kubernetes AI conversation history
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted synchronization enabled'**
+  String get kubeAiHistorySynced;
+
+  /// Kubernetes AI conversation history
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this saved conversation. If synchronized, its deletion will also synchronize.'**
+  String get kubeAiHistoryDeleteHelp;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'Rollout history'**
+  String get kubeRolloutHistory;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'Before'**
+  String get kubeDiffBefore;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'After'**
+  String get kubeDiffAfter;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'Compare'**
+  String get kubeCompare;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'The diff is truncated. Review the full resource before applying changes.'**
+  String get kubeDiffTruncated;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'No changes'**
+  String get kubeNoChanges;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'Review changed fields. Secret values remain hidden.'**
+  String get kubeDiffReview;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'Flux CLI was not found. Install it?'**
+  String get kubeFluxCliAdviceMissing;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'The CLI is older than Flux in this cluster. Update it?'**
+  String get kubeFluxCliAdviceUpdate;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'Do not suggest again'**
+  String get kubeFluxCliNeverSuggest;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get kubeFluxCliLater;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'Add Flux to PATH'**
+  String get kubeFluxCliPathHelp;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'Open a new terminal window after updating PATH. On macOS/Linux, add the shown line to the indicated profile file.'**
+  String get kubeFluxCliPathHint;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'The directory was added to the user PATH.'**
+  String get kubeFluxCliPathAdded;
+
+  /// Kubernetes rollout or Flux operation UI
+  ///
+  /// In en, this message translates to:
+  /// **'Flux version in the cluster'**
+  String get kubeFluxCliController;
+
+  /// Kubernetes resource graph and certificate diagnostics
+  ///
+  /// In en, this message translates to:
+  /// **'Resource flow'**
+  String get kubeGitOpsFlow;
+
+  /// Kubernetes resource graph and certificate diagnostics
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get kubeGraphList;
+
+  /// Kubernetes resource graph and certificate diagnostics
+  ///
+  /// In en, this message translates to:
+  /// **'Reset zoom and position'**
+  String get kubeGraphReset;
+
+  /// Kubernetes resource graph and certificate diagnostics
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate expires soon'**
+  String get kubeIssueCertificateExpiring;
+
+  /// Kubernetes resource graph and certificate diagnostics
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate has expired'**
+  String get kubeIssueCertificateExpired;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Pod was evicted'**
+  String get kubeIssueEvicted;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Insufficient cluster resources'**
+  String get kubeIssuePendingResources;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Node taints prevent scheduling'**
+  String get kubeIssuePendingTaints;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Pod is waiting for a volume'**
+  String get kubeIssuePendingVolume;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Reconciliation suspended for over 24 hours'**
+  String get kubeIssueSuspendedLong;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Source artifact is out of date'**
+  String get kubeIssueSourceStale;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Helm release has drifted'**
+  String get kubeIssueHelmDrift;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Dependency is not ready'**
+  String get kubeIssueDependencyNotReady;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Dependency is missing or unavailable'**
+  String get kubeIssueDependencyMissing;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Exit code'**
+  String get kubeExitCode;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Open Kubernetes context'**
+  String get kubeCommandOpen;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI about Kubernetes'**
+  String get kubeCommandAsk;
+
+  /// Kubernetes diagnostics and command navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster context'**
+  String get kubeCommandContext;
+
+  /// Kubernetes object relationships and metrics
+  ///
+  /// In en, this message translates to:
+  /// **'Related resources'**
+  String get kubeRelatedObjects;
+
+  /// Kubernetes object relationships and metrics
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get kubeRelationOwner;
+
+  /// Kubernetes object relationships and metrics
+  ///
+  /// In en, this message translates to:
+  /// **'Dependent resource'**
+  String get kubeRelationDependent;
+
+  /// Kubernetes object relationships and metrics
+  ///
+  /// In en, this message translates to:
+  /// **'Volume connection'**
+  String get kubeRelationVolume;
+
+  /// Kubernetes object relationships and metrics
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration reference'**
+  String get kubeRelationConfiguration;
+
+  /// Kubernetes object relationships and metrics
+  ///
+  /// In en, this message translates to:
+  /// **'CPU trend during this session'**
+  String get kubeMetricsTrend;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Time range'**
+  String get kubeLogSince;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'All time'**
+  String get kubeLogAllTime;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Last minute'**
+  String get kubeLogLastMinute;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Last hour'**
+  String get kubeLogLastHour;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Last day'**
+  String get kubeLogLastDay;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Regular expression'**
+  String get kubeLogRegex;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid or excessively complex pattern.'**
+  String get kubeLogRegexInvalid;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Level'**
+  String get kubeLogLevel;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'All pods'**
+  String get kubeLogAllPods;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'All levels'**
+  String get kubeLogAllLevels;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Wrap lines'**
+  String get kubeLogWrap;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Export / share logs'**
+  String get kubeLogExport;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Logs may contain secrets. Only lines visible under the current filter will be saved.'**
+  String get kubeLogExportHelp;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Mask recognized secrets before exporting'**
+  String get kubeLogMask;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Showing the first 8 pods. Open a specific pod to view others.'**
+  String get kubeLogTargetsTruncated;
+
+  /// Kubernetes log controls and export
+  ///
+  /// In en, this message translates to:
+  /// **'Logs saved.'**
+  String get kubeLogSaved;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'Tags, separated by commas'**
+  String get kubeTags;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster tags and color are shared by its saved contexts.'**
+  String get kubeTagsHelp;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster color'**
+  String get kubeColor;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'No color'**
+  String get kubeNoColor;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle favorite'**
+  String get kubeFavorite;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get kubeFavorites;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'All kinds'**
+  String get kubeAllKinds;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'Workloads'**
+  String get kubeGroupWorkloads;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'Network'**
+  String get kubeGroupNetwork;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration'**
+  String get kubeGroupConfig;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get kubeGroupStorage;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'Access'**
+  String get kubeGroupAccess;
+
+  /// Kubernetes inventory organization
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster / CRDs'**
+  String get kubeGroupCluster;
+
+  /// Use the default container of each selected pod
+  ///
+  /// In en, this message translates to:
+  /// **'Default container'**
+  String get kubeLogDefaultContainer;
+
+  /// Kubernetes metrics budgets and forwarding targets
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a Pod for forwarding'**
+  String get kubeForwardChoosePod;
+
+  /// Kubernetes metrics budgets and forwarding targets
+  ///
+  /// In en, this message translates to:
+  /// **'Select the target Pod. The connection starts only after confirming its ports.'**
+  String get kubeForwardChoosePodHelp;
+
+  /// Kubernetes metrics budgets and forwarding targets
+  ///
+  /// In en, this message translates to:
+  /// **'Memory trend during this session'**
+  String get kubeMemoryTrend;
+
+  /// Kubernetes metrics budgets and forwarding targets
+  ///
+  /// In en, this message translates to:
+  /// **'Requests'**
+  String get kubeRequests;
+
+  /// Kubernetes metrics budgets and forwarding targets
+  ///
+  /// In en, this message translates to:
+  /// **'Limits'**
+  String get kubeLimits;
+
+  /// Kubernetes metrics budgets and forwarding targets
+  ///
+  /// In en, this message translates to:
+  /// **'Capacity'**
+  String get kubeCapacity;
+
+  /// Kubernetes metrics budgets and forwarding targets
+  ///
+  /// In en, this message translates to:
+  /// **'Allocatable'**
+  String get kubeAllocatable;
+
+  /// Kubernetes metrics budgets and forwarding targets
+  ///
+  /// In en, this message translates to:
+  /// **'Resource requests and limits are unavailable.'**
+  String get kubeResourceBudgetsUnavailable;
+
+  /// Guarded bulk Kubernetes operations
+  ///
+  /// In en, this message translates to:
+  /// **'Selected resources'**
+  String get kubeBulkActions;
+
+  /// Guarded bulk Kubernetes operations
+  ///
+  /// In en, this message translates to:
+  /// **'Review the exact list and type the context name. Operations run in order; cancellation stops after the current operation. Up to 100 resources.'**
+  String get kubeBulkHelp;
+
+  /// Guarded bulk Kubernetes operations
+  ///
+  /// In en, this message translates to:
+  /// **'Bulk changes are disabled in production contexts.'**
+  String get kubeBulkProductionBlocked;
+
+  /// Guarded bulk Kubernetes operations
+  ///
+  /// In en, this message translates to:
+  /// **'The operation stopped. Completed resources are marked; review the remaining resources before retrying.'**
+  String get kubeBulkFailed;
+
+  /// Kubernetes workspace tools
+  ///
+  /// In en, this message translates to:
+  /// **'Local terminal for this cluster'**
+  String get kubeContextTerminal;
+
+  /// Kubernetes workspace tools
+  ///
+  /// In en, this message translates to:
+  /// **'The terminal uses a temporary local API proxy. Cluster credentials stay in ConsoleCrypt; production restrictions remain active.'**
+  String get kubeContextTerminalHelp;
+
+  /// Kubernetes workspace tools
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get kubeOutput;
+
+  /// Kubernetes workspace tools
+  ///
+  /// In en, this message translates to:
+  /// **'Open logs in the bottom panel'**
+  String get kubePinLogs;
+
+  /// Kubernetes workspace tools
+  ///
+  /// In en, this message translates to:
+  /// **'Resize bottom panel'**
+  String get kubeResizePanel;
+
+  /// Kubernetes workspace tools
+  ///
+  /// In en, this message translates to:
+  /// **'Type the exact name'**
+  String get kubeConfirmName;
+
+  /// Kubernetes AI proposals and history resume
+  ///
+  /// In en, this message translates to:
+  /// **'Review proposal'**
+  String get kubeAiProposalReview;
+
+  /// Kubernetes AI proposals and history resume
+  ///
+  /// In en, this message translates to:
+  /// **'The command will be inserted without execution into a new local terminal for this context.'**
+  String get kubeAiProposalContext;
+
+  /// Kubernetes AI proposals and history resume
+  ///
+  /// In en, this message translates to:
+  /// **'History messages in this request'**
+  String get kubeAiHistoryContext;
+
+  /// Kubernetes AI proposals and history resume
+  ///
+  /// In en, this message translates to:
+  /// **'New conversation'**
+  String get kubeAiNewConversation;
+
+  /// Kubernetes resource table
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get kubeTableColumns;
+
+  /// Kubernetes resource table
+  ///
+  /// In en, this message translates to:
+  /// **'Age'**
+  String get kubeAge;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get kubeGitOpsSource;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Artifact'**
+  String get kubeGitOpsArtifact;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconciliation interval'**
+  String get kubeGitOpsInterval;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Revision'**
+  String get kubeGitOpsRevision;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature verification'**
+  String get kubeGitOpsSignature;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed resources'**
+  String get kubeGitOpsInventory;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Referenced values'**
+  String get kubeGitOpsValuesFrom;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Controller logs'**
+  String get kubeGitOpsControllerLogs;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository path'**
+  String get kubeGitOpsPath;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch'**
+  String get kubeGitOpsBranch;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag / version constraint'**
+  String get kubeGitOpsTag;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Chart'**
+  String get kubeGitOpsChart;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Drift detection'**
+  String get kubeGitOpsDrift;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'No reconciliation history is available.'**
+  String get kubeGitOpsHistoryEmpty;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Controller logs are unavailable. Check resource discovery and permissions.'**
+  String get kubeGitOpsControllerUnavailable;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Not reported by the controller'**
+  String get kubeGitOpsSignatureUnknown;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Request a new reconciliation for this source. Enter its exact name to continue.'**
+  String get kubeGitOpsSourceReconcileHelp;
+
+  /// Kubernetes GitOps resource details label.
+  ///
+  /// In en, this message translates to:
+  /// **'Only object references are shown here. Secret values are hidden.'**
+  String get kubeGitOpsMetadataOnly;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Workload and node configuration'**
+  String get kubeResourceConfiguration;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get kubePort;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Ports'**
+  String get kubePorts;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Node'**
+  String get kubeNode;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Service account'**
+  String get kubeServiceAccount;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Node selector'**
+  String get kubeNodeSelector;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get kubeReady;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Restarts'**
+  String get kubeRestarts;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit code'**
+  String get kubeIssueExitCode;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume mounts'**
+  String get kubeVolumeMounts;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Volumes'**
+  String get kubeVolumes;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduling disabled'**
+  String get kubeUnschedulable;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Taints'**
+  String get kubeTaints;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Node software'**
+  String get kubeNodeInfo;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Paths to problems'**
+  String get kubeGraphProblems;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a resource in the graph'**
+  String get kubeGraphSearch;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide inventory leaves'**
+  String get kubeGraphFold;
+
+  /// Kubernetes resource browser label.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready / desired replicas'**
+  String get kubeReplicaStatus;
+
+  /// Kubernetes runtime label.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort resources'**
+  String get kubeTableSort;
+
+  /// Kubernetes runtime label.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore after reconnecting'**
+  String get kubeForwardRestore;
+
+  /// Kubernetes runtime label.
+  ///
+  /// In en, this message translates to:
+  /// **'Only while this context stays open and this profile is unlocked. Leaving the context clears this choice.'**
+  String get kubeForwardRestoreHelp;
+
+  /// Kubernetes runtime label.
+  ///
+  /// In en, this message translates to:
+  /// **'Some port forwards could not be restored. Check the pod and local port, then start them again.'**
+  String get kubeForwardRestoreFailed;
+
+  /// Kubernetes guarded GitOps operation.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconcile with source'**
+  String get kubeGitOpsReconcileWithSource;
+
+  /// Kubernetes guarded GitOps operation.
+  ///
+  /// In en, this message translates to:
+  /// **'Queue reconciliation of the source chain, then this resource. Controller readiness is shown by the live status. Confirm the exact resource name.'**
+  String get kubeGitOpsReconcileWithSourceHelp;
+
+  /// Kubernetes explicit operation help.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow access from the local network'**
+  String get kubeForwardNetwork;
+
+  /// Kubernetes explicit operation help.
+  ///
+  /// In en, this message translates to:
+  /// **'Local IP address to listen on'**
+  String get kubeForwardBindAddress;
+
+  /// Kubernetes explicit operation help.
+  ///
+  /// In en, this message translates to:
+  /// **'I understand that other devices may access this port without Kubernetes authentication. Allow this network exposure.'**
+  String get kubeForwardNetworkWarning;
+
+  /// Kubernetes explicit operation help.
+  ///
+  /// In en, this message translates to:
+  /// **'Values were merged from the saved release; subchart defaults and global imports may be missing.'**
+  String get kubeHelmComputedPartial;
+
+  /// Kubernetes manifest and GitOps navigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert saved manifest'**
+  String get kubeManifestSnippets;
+
+  /// Kubernetes manifest and GitOps navigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a kubectl snippet containing YAML or JSON. Review identifiers and variables in the editor before server validation.'**
+  String get kubeManifestSnippetsHelp;
+
+  /// Kubernetes manifest and GitOps navigation.
+  ///
+  /// In en, this message translates to:
+  /// **'No manifest snippets yet. Save YAML or JSON as a kubectl snippet in Snippets.'**
+  String get kubeNoManifestSnippets;
+
+  /// Kubernetes manifest and GitOps navigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources'**
+  String get kubeGitOpsSources;
+
+  /// Kubernetes manifest and GitOps navigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get kubeGitOpsNotifications;
+
+  /// Kubernetes manifest and GitOps navigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Image automation'**
+  String get kubeGitOpsImages;
+
+  /// Kubernetes manifest and GitOps navigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent controller status changes'**
+  String get kubeGitOpsRecent;
+
+  /// Kubernetes workspace panel position.
+  ///
+  /// In en, this message translates to:
+  /// **'Dock panel to the right'**
+  String get kubeDockRight;
+
+  /// Kubernetes workspace panel position.
+  ///
+  /// In en, this message translates to:
+  /// **'Dock panel at the bottom'**
+  String get kubeDockBottom;
+
+  /// Masked resource manifests must not be applied.
+  ///
+  /// In en, this message translates to:
+  /// **'This manifest contains masked values. YAML changes are disabled to prevent replacing credentials with placeholders. Use the individual resource actions or edit the original trusted manifest.'**
+  String get kubeMaskedEditHelp;
+
+  /// Explicit native shell detection in selected container.
+  ///
+  /// In en, this message translates to:
+  /// **'Detect shell automatically'**
+  String get kubeAutoShell;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

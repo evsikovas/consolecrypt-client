@@ -77,12 +77,90 @@ void main() {
     expect(terminalShellType('/bin/zsh'), SnippetType.zsh);
     expect(const LocalTerminalTarget(ubuntu).shellType, SnippetType.shell);
   });
+
+  test('approved runtime terminal adopts its handle without opening another process', () async {
+    final backend = MockBackend(config: const MockConfig.test());
+    final service = _DelayedTerminal();
+    final c = ProviderContainer(
+      overrides: [
+        appServicesProvider.overrideWithValue(backend.services),
+        terminalServiceProvider.overrideWithValue(service),
+      ],
+    );
+    addTearDown(c.dispose);
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final events = StreamController<TerminalEvent>();
+    final output = StreamController<Uint8List>();
+    addTearDown(events.close);
+    addTearDown(output.close);
+    const target = LocalTerminalTarget(
+      LocalShellProfile(id: 'flux-context', kind: 'cli', label: 'PROD · Flux · cluster', shell: '/bin/zsh'),
+    );
+    final handle = TerminalSessionHandle(id: service.id, output: output.stream, events: events.stream);
+    final ctl = c.read(terminalTabsProvider.notifier);
+    final opening = ctl.openRuntime('approved-native-terminal');
+    expect(service.runtimeIds, ['approved-native-terminal']);
+    service.attached.complete(RuntimeTerminalAttachment(target: target, handle: handle));
+    final tab = await opening;
+    events.add(const TerminalStateChanged(SessionConnectionState.connected));
+    events.add(const TerminalTitleChanged('Flux'));
+    await pumpEventQueue();
+    expect(tab.isConnected, isTrue);
+    expect(tab.title, 'Flux');
+    expect(tab.sessionId, service.id);
+    expect(service.opened.isCompleted, isFalse);
+    expect(ctl.openHandle(target: target, handle: handle), same(tab));
+    expect(c.read(terminalTabsProvider).tabs, [tab]);
+    tab.terminal.onOutput?.call('flux check\r');
+    await pumpEventQueue();
+    expect(service.writes, ['flux check\r']);
+    ctl.closeAll();
+    await pumpEventQueue();
+    expect(service.closed, [service.id]);
+  });
+
+  test('late runtime attachment after lock is closed and never opens a tab', () async {
+    final backend = MockBackend(config: const MockConfig.test());
+    final service = _DelayedTerminal();
+    final c = ProviderContainer(
+      overrides: [
+        appServicesProvider.overrideWithValue(backend.services),
+        terminalServiceProvider.overrideWithValue(service),
+      ],
+    );
+    addTearDown(c.dispose);
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final ctl = c.read(terminalTabsProvider.notifier);
+    final opening = ctl.openRuntime('late-native-terminal');
+    final failed = expectLater(opening, throwsA(isA<AppException>()));
+    ctl.closeAll();
+    service.attached.complete(
+      RuntimeTerminalAttachment(
+        target: const LocalTerminalTarget(ubuntu),
+        handle: TerminalSessionHandle(id: service.id, output: const Stream.empty(), events: const Stream.empty()),
+      ),
+    );
+    await failed;
+    expect(service.closed, [service.id]);
+    expect(c.read(terminalTabsProvider).tabs, isEmpty);
+  });
 }
 
-final class _DelayedTerminal implements TerminalService, LocalTerminalService {
+final class _DelayedTerminal implements TerminalService, LocalTerminalService, RuntimeTerminalService {
   final opened = Completer<TerminalSessionHandle>();
+  final attached = Completer<RuntimeTerminalAttachment>();
   final id = TerminalSessionId.generate();
   final closed = <TerminalSessionId>[];
+  final runtimeIds = <String>[];
+  final writes = <String>[];
+  @override
+  Future<RuntimeTerminalAttachment> attachRuntime(String runtimeId, {TerminalSize size = TerminalSize.initial}) {
+    runtimeIds.add(runtimeId);
+    return attached.future;
+  }
+
   @override
   Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size}) => opened.future;
   @override
@@ -92,7 +170,7 @@ final class _DelayedTerminal implements TerminalService, LocalTerminalService {
   @override
   Future<TerminalSessionHandle> open({required ObjectId hostId, required TerminalSize size}) => opened.future;
   @override
-  Future<void> write(TerminalSessionId id, Uint8List data) async {}
+  Future<void> write(TerminalSessionId id, Uint8List data) async => writes.add(String.fromCharCodes(data));
   @override
   Future<void> resize(TerminalSessionId id, TerminalSize size) async {}
   @override

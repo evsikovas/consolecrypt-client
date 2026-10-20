@@ -1,3 +1,4 @@
+import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -9,6 +10,7 @@ import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
+import 'package:consolecrypt/kubernetes/kube_forward_panel.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -36,27 +38,35 @@ class TunnelsScreen extends ConsumerWidget {
           label: l10n.tunnelsNew,
         ),
       ],
-      body: AsyncValueView(
-        value: tunnelsAsync,
-        data: (tunnels) => tunnels.isEmpty
-            ? EmptyState(
-                icon: Icons.swap_horiz_rounded,
-                title: l10n.tunnelsEmptyTitle,
-                message: l10n.tunnelsEmptyMessage,
-              )
-            : ContentList(
-                itemCount: tunnels.length,
-                itemBuilder: (context, i) {
-                  final t = tunnels[i];
-                  final rt = runtime[t.id] ?? TunnelRuntime.stopped;
-                  return _TunnelTile(
-                    tunnel: t,
-                    runtime: rt,
-                    hostName: hosts[t.hostId]?.name ?? l10n.tunnelsDeletedHost,
-                    onEdit: () => _edit(context, tunnel: t),
-                  );
-                },
-              ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (kubernetesEnabled) const KubeForwardsPanel(),
+          Expanded(
+            child: AsyncValueView(
+              value: tunnelsAsync,
+              data: (tunnels) => tunnels.isEmpty
+                  ? EmptyState(
+                      icon: Icons.swap_horiz_rounded,
+                      title: l10n.tunnelsEmptyTitle,
+                      message: l10n.tunnelsEmptyMessage,
+                    )
+                  : ContentList(
+                      itemCount: tunnels.length,
+                      itemBuilder: (context, i) {
+                        final t = tunnels[i];
+                        final rt = runtime[t.id] ?? TunnelRuntime.stopped;
+                        return _TunnelTile(
+                          tunnel: t,
+                          runtime: rt,
+                          hostName: hosts[t.hostId]?.name ?? l10n.tunnelsDeletedHost,
+                          onEdit: () => _edit(context, tunnel: t),
+                        );
+                      },
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }

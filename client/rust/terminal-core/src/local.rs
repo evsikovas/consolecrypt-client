@@ -33,6 +33,8 @@ struct LaunchProfile {
     info: LocalShellProfile,
     program: std::path::PathBuf,
     args: Vec<String>,
+    environment: Option<std::collections::BTreeMap<std::ffi::OsString, std::ffi::OsString>>,
+    directory: Option<std::path::PathBuf>,
 }
 
 impl LaunchProfile {
@@ -54,6 +56,8 @@ impl LaunchProfile {
             },
             program: program.into(),
             args: args.iter().map(|s| (*s).into()).collect(),
+            environment: None,
+            directory: None,
         }
     }
 }
@@ -237,6 +241,70 @@ pub async fn open(
     }
 }
 
+/// A device-local command supplied by a native, explicit approval flow. It is
+/// deliberately not serializable and must never be populated from synced data.
+pub struct LocalCommand {
+    pub executable: std::path::PathBuf,
+    pub arguments: Vec<String>,
+    pub environment: std::collections::BTreeMap<std::ffi::OsString, std::ffi::OsString>,
+    pub directory: std::path::PathBuf,
+}
+impl std::fmt::Debug for LocalCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LocalCommand")
+            .field("executable", &self.executable)
+            .finish_non_exhaustive()
+    }
+}
+/// Starts a direct program in a visible PTY/ConPTY, with an explicit environment
+/// and no shell command-string interpolation or inherited cloud credentials.
+pub async fn open_command(
+    command: LocalCommand,
+    size: TerminalSize,
+) -> Result<OpenedShell, TerminalError> {
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    {
+        if !command.executable.is_absolute()
+            || !command.executable.is_file()
+            || !command.directory.is_absolute()
+            || !command.directory.is_dir()
+            || command.arguments.len() > 256
+        {
+            return Err(TerminalError::Open("invalid local command".into()));
+        }
+        #[cfg(windows)]
+        if !command
+            .executable
+            .extension()
+            .and_then(|v| v.to_str())
+            .is_some_and(|v| v.eq_ignore_ascii_case("exe"))
+        {
+            return Err(TerminalError::Open("native executable required".into()));
+        }
+        let profile = LaunchProfile {
+            info: LocalShellProfile {
+                id: "native-command".into(),
+                kind: LocalShellKind::Zsh,
+                label: "CLI".into(),
+                shell: "CLI".into(),
+                distribution: None,
+            },
+            program: command.executable,
+            args: command.arguments,
+            environment: Some(command.environment),
+            directory: Some(command.directory),
+        };
+        tokio::task::spawn_blocking(move || transport::spawn(profile, size))
+            .await
+            .map_err(|_| TerminalError::Open("local command unavailable".into()))?
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    {
+        let _ = (command, size);
+        Err(TerminalError::Open("desktop only".into()))
+    }
+}
+
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 mod transport {
     use super::*;
@@ -407,6 +475,12 @@ mod transport {
         unix::nonblocking(pair.master.as_ref()).map_err(|e| TerminalError::Open(e.to_string()))?;
         let mut command = CommandBuilder::new(&profile.program);
         command.args(&profile.args);
+        if let Some(environment) = &profile.environment {
+            command.env_clear();
+            for (name, value) in environment {
+                command.env(name, value);
+            }
+        }
         command.env("TERM", "xterm-256color");
         command.env("COLORTERM", "truecolor");
         #[cfg(unix)]
@@ -421,6 +495,9 @@ mod transport {
         #[cfg(windows)]
         if let Some(home) = std::env::var_os("USERPROFILE") {
             command.cwd(home);
+        }
+        if let Some(directory) = profile.directory {
+            command.cwd(directory);
         }
         let mut reader = pair.master.try_clone_reader().map_err(error)?;
         let mut writer = pair.master.take_writer().map_err(error)?;

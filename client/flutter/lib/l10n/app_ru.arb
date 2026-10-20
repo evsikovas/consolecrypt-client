@@ -2896,6 +2896,982 @@
   "kubeAuthToken": "Токен",
   "kubeAuthCertificate": "Клиентский сертификат",
   "kubeAuthExec": "Внешняя команда",
-  "kubeAuthNone": "Не настроена"
-
+  "kubeAuthNone": "Не настроена",
+  "kubeConnect": "Подключиться",
+  "kubeDisconnect": "Отключиться",
+  "kubeConnecting": "Подключение к кластеру…",
+  "kubeConnectionFailed": "Не удалось подключиться. Проверьте сеть, авторизацию и маршрут подключения.",
+  "kubeRetry": "Повторить",
+  "kubeBackToContexts": "Сохранённые подключения",
+  "kubeReadOnly": "Прод · только чтение",
+  "kubeReadOnlyHelp": "Этот контекст защищён от изменений на уровне нативного клиента Kubernetes.",
+  "kubeResources": "Ресурсы",
+  "kubeAllNamespaces": "Все пространства имён",
+  "kubeResourceKind": "Тип ресурса",
+  "kubeLabelSelector": "Фильтр по меткам",
+  "kubeApplyFilter": "Применить фильтр",
+  "kubeNoResources": "Ресурсов с такими фильтрами нет.",
+  "kubeNoResourceKinds": "Доступные типы ресурсов не обнаружены. Проверьте права этой учётной записи в Kubernetes.",
+  "kubeRequestFailed": "Не удалось загрузить данные кластера. Проверьте соединение и права в Kubernetes.",
+  "kubeNamespacesFailed": "Список пространств имён недоступен. Ресурсы выбранного пространства по-прежнему можно просматривать.",
+  "kubeLoadMore": "Загрузить ещё",
+  "kubeRefreshResources": "Обновить ресурсы",
+  "kubeLive": "Обновления в реальном времени",
+  "kubeSnapshot": "Снимок состояния",
+  "kubeWatchFailed": "Обновления остановлены. Нажмите «Обновить», чтобы подключиться снова.",
+  "kubeResourceLimit": "В памяти можно держать до 10 000 ресурсов. Уточните пространство имён или фильтр по меткам.",
+  "kubeOverview": "Обзор",
+  "kubeObjectYaml": "YAML",
+  "kubeLogs": "Логи",
+  "kubeContainer": "Контейнер",
+  "kubePreviousLogs": "Предыдущий контейнер",
+  "kubeLogFilter": "Фильтр строк журнала",
+  "kubeNoLogs": "Нет строк журнала для отображения.",
+  "kubeLogTailHelp": "Последние 500 строк загружаются в память. Обновите, чтобы получить свежие записи.",
+  "kubeSecretRedacted": "Значения секрета скрыты. Здесь показаны только метаданные и имена ключей.",
+  "kubeStatus": "Состояние",
+  "kubeCreatedAt": "Создан",
+  "kubeLabels": "Метки",
+  "kubeConditions": "Условия",
+  "kubeOwners": "Владельцы",
+  "kubeName": "Имя",
+  "kubeNotReported": "Нет данных",
+  "kubeSessionEnded": "Соединение завершено. Подключитесь снова, чтобы загрузить данные кластера.",
+  "kubeLoadedCount": "Загружено ресурсов: {count}",
+  "kubeShowDetails": "Открыть сведения о ресурсе",
+  "kubeClusterVersion": "Kubernetes {version}",
+  "kubeSortName": "По имени",
+  "kubeSortNamespace": "По пространству имён",
+  "kubeSortStatus": "По состоянию",
+  "kubeSortAge": "Сначала новые",
+  "kubeRefreshDetails": "Обновить сведения",
+  "kubeAllowChanges": "Разрешить изменения на 10 минут",
+  "kubeAllowChangesHelp": "В этом прод-контексте откроется временное окно записи. Изменения будут записаны в локальный журнал аудита. Для продолжения введите точное имя контекста.",
+  "kubeCloseWriteWindow": "Вернуть режим только для чтения",
+  "kubeWriteWindowRemaining": "ПРОД · изменения разрешены · осталось {time}",
+  "kubeWriteWindowFailed": "Не удалось изменить окно записи. Подключитесь заново и повторите попытку.",
+  "kubeTypeName": "Введите точное имя выше",
+  "kubeEditYaml": "Изменить YAML",
+  "kubeApplyYaml": "Применить изменения",
+  "kubeApplyYamlHelp": "Применить проверенные изменения к ресурсу? Для подтверждения введите его точное имя. Сервер отклонит обновление, если версия ресурса изменилась.",
+  "kubeApplyFailed": "Изменение не принято. Обновите объект и проверьте права, корректность YAML и конфликты владения полями перед повторной попыткой.",
+  "kubeReviewChanges": "Проверка изменений",
+  "kubeDryRun": "Проверить на сервере",
+  "kubeDryRunRequired": "Сначала проверьте YAML на сервере. Затем просмотрите изменения перед применением.",
+  "kubeDryRunHelp": "Проверка на сервере: удалённые строки помечены −, добавленные +. Изменения ещё не сохранены в кластере.",
+  "kubeForceApply": "Передать владение конфликтующими полями",
+  "kubeForceApplyHelp": "Включайте только если намерены заменить поля, которыми управляет другой контроллер. После включения проверьте изменения заново.",
+  "kubeNoYamlChanges": "Сервер не обнаружил изменений в YAML.",
+  "kubeDeleteResource": "Удалить ресурс Kubernetes",
+  "kubeDeleteResourceHelp": "Ресурс будет удалён из кластера. Это может остановить работающие приложения. Для подтверждения введите точное имя ресурса.",
+  "kubeFollowLogs": "Следить за новыми записями",
+  "kubePauseLogs": "Пауза",
+  "kubeResumeLogs": "Продолжить",
+  "kubeLogBufferHelp": "Живой журнал: до 20 000 строк и 2 МиБ, только в памяти.",
+  "kubeLogOptions": "Параметры журнала",
+  "kubeGitOps": "GitOps",
+  "kubeProblems": "Проблемы",
+  "kubeHelm": "Helm",
+  "kubeInsightsPartial": "Часть ресурсов не удалось проверить из-за ограничений прав, ошибок обнаружения API или объёма данных. Результаты неполные.",
+  "kubeGitOpsAll": "Все",
+  "kubeGitOpsReady": "Готовы",
+  "kubeGitOpsAttention": "Требуют внимания",
+  "kubeGitOpsSuspended": "Приостановлены",
+  "kubeDependencies": "Зависимости",
+  "kubeNoVisibleProblems": "Среди проверенных ресурсов проблемы не обнаружены.",
+  "kubeNoProblems": "В проверенных ресурсах известные проблемы не обнаружены.",
+  "kubeNoGitOpsResources": "Ресурсов Flux или Argo CD с таким фильтром нет.",
+  "kubeGitOpsActions": "Действия контроллера",
+  "kubeDependencyCycle": "Обнаружен цикл зависимостей",
+  "kubeDependencyMissing": "Зависимость не найдена",
+  "kubeDependencyReady": "Зависит от готового ресурса",
+  "kubeDependencyWaiting": "Ожидает зависимость",
+  "kubeGitOpsSuspend": "Приостановить согласование",
+  "kubeGitOpsResume": "Возобновить согласование",
+  "kubeGitOpsReset": "Сбросить счётчик ошибок",
+  "kubeGitOpsForce": "Принудительно обновить Helm",
+  "kubeGitOpsReconcile": "Согласовать сейчас",
+  "kubeArgoSync": "Синхронизировать приложение",
+  "kubeArgoRefresh": "Обновить состояние приложения",
+  "kubeArgoHardRefresh": "Обновить состояние и манифесты",
+  "kubeGitOpsChangeHelp": "Контроллер получит изменение, которое может повлиять на работающие приложения. Проверьте действие и введите точное имя ресурса.",
+  "kubeGitOpsReason": "Причина (сохраняется в аннотации ресурса)",
+  "kubeIssueCrashLoop": "Контейнер постоянно перезапускается после сбоя",
+  "kubeIssueImagePull": "Не удаётся скачать образ контейнера",
+  "kubeIssueContainerConfig": "Ошибка конфигурации контейнера",
+  "kubeIssueOom": "Контейнер превысил ограничение памяти",
+  "kubeIssueRestarts": "Контейнер многократно перезапускался",
+  "kubeIssueScheduling": "Не удаётся разместить под на узле",
+  "kubeIssuePodNotReady": "Под не готов к работе",
+  "kubeIssueNodeNotReady": "Узел не готов к работе",
+  "kubeIssueNodePressure": "Узлу не хватает ресурсов",
+  "kubeIssueCondition": "Ресурс требует внимания",
+  "kubeIssueRolloutDeadline": "Развёртывание превысило допустимое время",
+  "kubeIssueReplicaFailure": "Контроллер не смог создать реплики",
+  "kubeIssueReplicasUnavailable": "Часть реплик недоступна",
+  "kubeIssueVolumePending": "Запрос тома ожидает хранилище",
+  "kubeIssueVolumeLost": "Запрос тома потерял связанный том",
+  "kubeIssueJobFailed": "Задание завершилось ошибкой",
+  "kubeIssueArgoDegraded": "Приложение Argo CD в состоянии Degraded",
+  "kubeIssueArgoOutOfSync": "Приложение Argo CD не синхронизировано",
+  "kubeIssueFluxPending": "Flux ещё не обработал последнюю конфигурацию",
+  "kubeIssueFluxNotReady": "Ресурс Flux не готов",
+  "kubeIssueFluxStalled": "Согласование Flux остановилось с ошибкой",
+  "kubeIssueFluxSuspended": "Согласование Flux приостановлено",
+  "kubeHelmAllRevisions": "Показать все ревизии",
+  "kubeHelmEmpty": "Релизов Helm с таким фильтром нет.",
+  "kubeHelmRevision": "Ревизия {revision}",
+  "kubeHelmHistory": "История релиза",
+  "kubeHelmSecretsMasked": "Чувствительные значения скрыты. Значения и манифесты хранятся только в памяти.",
+  "kubeHelmValues": "Пользовательские значения",
+  "kubeHelmChartValues": "Значения чарта",
+  "kubeHelmManifest": "Манифест",
+  "kubeHelmCompare": "Сравнить с ревизией",
+  "kubeHelmChooseRevision": "Выберите ревизию",
+  "kubeHelmDiffHelp": "Удалённые строки помечены −, добавленные +. Сравнение не изменяет релиз.",
+  "kubeExecReviewTitle": "Разрешить команду авторизации?",
+  "kubeExecReviewHelp": "Команда запускается на этом компьютере. Проверьте программу, аргументы и окружение. Разрешение действует только в текущем разблокированном профиле; изменённая команда потребует нового подтверждения.",
+  "kubeExecArguments": "Аргументы",
+  "kubeExecEnvironment": "Окружение",
+  "kubeExecAllow": "Разрешить эту команду",
+  "kubeAuthFailed": "Не удалось завершить авторизацию. Проверьте настройки подключения и попробуйте снова.",
+  "kubeAuthExpired": "Срок запроса истёк. Начните авторизацию заново.",
+  "kubeOidcTitle": "Войти в кластер",
+  "kubeOidcHelp": "Войдите через своего провайдера авторизации в системном браузере. Данные авторизации передаются только между этим устройством и провайдером.",
+  "kubeOidcOpen": "Открыть браузер",
+  "kubeOidcWaiting": "Ожидание входа в браузере…",
+  "kubeAuthAction": "Авторизоваться",
+  "kubeExecMobile": "Внешние команды авторизации недоступны на телефоне. Используйте токен, клиентский сертификат или вход через браузер (OIDC).",
+  "kubePodTerminal": "Терминал Pod",
+  "kubeExecProductionBlocked": "Терминал запрещён настройками этого production-контекста.",
+  "kubeAttach": "Подключиться к процессу",
+  "kubeAttachHelp": "Подключение к уже запущенному процессу контейнера. Ввод с клавиатуры поступает непосредственно в этот процесс.",
+  "kubeShell": "Оболочка в контейнере",
+  "kubeOpenShell": "Открыть оболочку",
+  "kubeTerminalFailed": "Не удалось открыть терминал. Проверьте состояние контейнера, права доступа и выбранную оболочку.",
+  "kubeHidePanel": "Скрыть панель терминала",
+  "kubeShowPanel": "Открыть панель терминала",
+  "kubeTerminalEmpty": "Откройте терминал в карточке Pod.",
+  "kubeTerminalConnected": "Подключён",
+  "kubeTerminalDisconnected": "Отключён",
+  "kubePortForward": "Проброс порта Pod",
+  "kubeForwardHelp": "Порт доступен только на этом устройстве по адресу 127.0.0.1. Проброс остановится при отключении кластера или блокировке профиля.",
+  "kubeForwardProductionBlocked": "Проброс портов запрещён настройками этого production-контекста.",
+  "kubeRemotePort": "TCP-порт контейнера",
+  "kubeLocalPort": "Локальный порт",
+  "kubeLocalPortHelp": "Укажите 0 для автоматического выбора свободного порта.",
+  "kubeStartForward": "Начать проброс",
+  "kubeForwardCreated": "Проброс запущен. Управляйте им в разделе «Туннели» или в панели кластера.",
+  "kubeForwardFailed": "Не удалось пробросить порт. Проверьте состояние Pod, права и доступность локального порта.",
+  "kubePortForwards": "Пробросы портов Kubernetes",
+  "kubeNoForwards": "Нет активных пробросов Kubernetes.",
+  "kubeForwardRunning": "Работает",
+  "kubeForwardStopped": "Остановлен",
+  "kubeStopForward": "Остановить проброс",
+  "kubeForwardTraffic": "Соединений: {count} · отправлено {sent} · получено {received}",
+  "kubePermissions": "Права доступа",
+  "kubePermissionsHelp": "Права, сообщённые Kubernetes для текущей учётной записи в этом пространстве имён. Защита production продолжает действовать.",
+  "kubePermissionsIncomplete": "Сервер вернул неполный список прав. Отсутствие правила не означает, что действие запрещено.",
+  "kubeScale": "Изменить число реплик",
+  "kubeRestart": "Перезапустить workload",
+  "kubeCordon": "Запретить размещение на узле",
+  "kubeUncordon": "Разрешить размещение на узле",
+  "kubeDrain": "Освободить узел",
+  "kubeDebugContainer": "Добавить debug-контейнер",
+  "kubeMutationConfirmHelp": "Проверьте действие и введите точное имя ресурса для подтверждения. Права Kubernetes и защита production будут проверены перед выполнением.",
+  "kubeOperationFailed": "Не удалось завершить действие. Проверьте права и состояние ресурса, затем обновите данные перед повтором.",
+  "kubeReplicas": "Число реплик (0–1 000 000)",
+  "kubeContainerImage": "Образ контейнера",
+  "kubeDebugHelp": "Образ будет запущен внутри этого Pod с /bin/sh. Впоследствии удалить ephemeral-контейнер из Pod нельзя. Используйте доверенный образ.",
+  "kubeDrainHelp": "Размещение на узле уже запрещено. Проверьте каждый Pod перед эвикцией. DaemonSet и зеркальные Pod пропускаются. Бюджеты недоступности соблюдаются; Pod без контроллера и данные emptyDir блокируют действие.",
+  "kubeDrainProgress": "Эвикция: {done} из {total}",
+  "kubeDrainEmpty": "Нет Pod для эвикции.",
+  "kubeDrainUnmanaged": "Заблокировано: у Pod нет контроллера.",
+  "kubeDrainLocalData": "Заблокировано: Pod использует локальные данные emptyDir.",
+  "kubeDrainBlocked": "Заблокировано: проверьте этот Pod перед освобождением узла.",
+  "kubeMetrics": "Потребление ресурсов",
+  "kubeMeasuredAt": "Время измерения",
+  "kubeMetricsUnavailable": "Метрики недоступны. Проверьте metrics-server и права доступа.",
+  "kubeWorkloadPods": "Pod рабочей нагрузки",
+  "kubeEvents": "События Kubernetes",
+  "kubeFluxCliTitle": "Flux CLI",
+  "kubeFluxCliHelp": "Дополнительные инструменты компьютера. Доступ к кластеру идёт через временный локальный прокси.",
+  "kubeFluxCliPath": "Путь к Flux",
+  "kubeFluxCliFind": "Найти",
+  "kubeFluxCliProbe": "Проверить версию",
+  "kubeFluxCliVersion": "Версия релиза",
+  "kubeFluxCliMethod": "Способ установки",
+  "kubeFluxCliInstall": "Установить",
+  "kubeFluxCliUpdate": "Обновить",
+  "kubeFluxCliRemove": "Удалить",
+  "kubeFluxCliOfficial": "Официальный подписанный релиз",
+  "kubeFluxCliConfirm": "Подтвердите операцию с CLI",
+  "kubeFluxCliVerify": "Официальная загрузка требует проверки SHA-256 и подписи Cosign. Команды пакетного менеджера откроются в терминале.",
+  "kubeFluxCliFailed": "Операция с CLI не выполнена или проверка недоступна.",
+  "kubeFluxCliOutput": "Вывод CLI",
+  "kubeFluxCliRun": "Запустить",
+  "kubeFluxCliTerminal": "Открыть терминал Flux",
+  "kubeFluxCliLocalPath": "Папка локального репозитория для diff",
+  "kubeFluxCliResource": "Имя ресурса",
+  "kubeFluxCliKind": "Тип ресурса",
+  "kubeNewConnection": "Новое подключение",
+  "kubeConnectionSettings": "Настройки подключения",
+  "kubeServerUrl": "Адрес API Kubernetes (HTTPS)",
+  "kubeCertificateAuthority": "Сертификат CA (PEM, необязательно)",
+  "kubeClientCertificate": "Клиентский сертификат (PEM)",
+  "kubePrivateKey": "Закрытый ключ клиента (PEM)",
+  "kubeManualReviewHelp": "Далее проверьте и импортируйте контекст. Защита production включена по умолчанию.",
+  "kubeProductionContext": "Production-контекст",
+  "kubeAllowExecInProd": "Разрешить терминалы Pod в production",
+  "kubeAllowForwardInProd": "Разрешить проброс портов в production",
+  "kubeRecordEvents": "Сохранять историю событий",
+  "kubeRecordEventsHelp": "В зашифрованном виде на этом устройстве в течение 7 дней. История событий не синхронизируется.",
+  "kubeScanFolder": "Сканировать папку kubeconfig",
+  "kubeScanEmpty": "В этой папке не найдено файлов kubeconfig.",
+  "kubeQueuedFiles": "Файлов ожидают проверки: {count}",
+  "kubeNextFile": "Проверить следующий файл",
+  "kubeExport": "Экспорт kubeconfig",
+  "kubeExportHelp": "Файл kubeconfig может содержать данные авторизации. Сохраняйте его только в доверенное место.",
+  "kubeIncludeCredentials": "Включить данные авторизации",
+  "kubeExportSaved": "Kubeconfig сохранён.",
+  "kubeAiAssistant": "ИИ-помощник",
+  "kubeAiHelp": "Инструменты только для чтения. Значения Secret исключены; доступ ограничен правами Kubernetes и выбранным контекстом. Ответы не запускают команды.",
+  "kubeAiProvider": "Провайдер ИИ",
+  "kubeAiDefaultProvider": "Провайдер по умолчанию на этом устройстве",
+  "kubeAiConfigMaps": "Разрешить чтение значений ConfigMap для этого вопроса",
+  "kubeAiUnresolved": "Часть проверок не выполнена; проверьте ошибки инструментов перед выводами.",
+  "kubeAiReadTool": "Инструмент чтения",
+  "kubeAiTruncated": "Результат сокращён.",
+  "kubeAiToolFailed": "Проверка не завершена. Данные могут отсутствовать или доступ ограничен.",
+  "kubeAiFailed": "Помощник не смог завершить запрос. Проверьте провайдера ИИ и подключение к кластеру.",
+  "kubeAiQuestion": "Вопрос об этом кластере",
+  "kubeAiAsk": "Спросить помощника",
+  "kubeAiExternalTitle": "Передать контекст кластера этому провайдеру?",
+  "kubeAiExternalHelp": "Для ответа очищенные метаданные ресурсов, состояния и логи могут быть переданы внешнему провайдеру, указанному выше. Значения Secret исключены. Разрешение действует только для этого вопроса.",
+  "kubeAiNoTools": "Провайдер не вызывает инструменты; помощник использует только доступный контекст для чтения.",
+  "kubeAiExplain": "Объяснить с ИИ",
+  "kubeAiExplainQuestion": "Объясни проблему «{problem}» у {resource}. Проверь связанные состояния и события без изменения ресурсов.",
+  "sharingKubeContext": "Контекст Kubernetes",
+  "@sharingKubeContext": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeCluster": "Кластер",
+  "@sharingKubeCluster": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeExclude": "По умолчанию передаются только настройки подключения. Данные входа, локальные маршруты и разрешения остаются на этом устройстве.",
+  "@sharingKubeExclude": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeIncludeCredentials": "Передать данные для входа",
+  "@sharingKubeIncludeCredentials": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeCredentialWarning": "Получатели смогут подключаться к кластеру с этими данными. Передавайте их только проверенным устройствам, которым доверяете. Отзыв доступа к публикации не отменяет уже скопированные получателем данные входа.",
+  "@sharingKubeCredentialWarning": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeCredentialsIncluded": "Данные для входа включены; значения скрыты.",
+  "@sharingKubeCredentialsIncluded": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeCredentialsExcluded": "Данные для входа не включены.",
+  "@sharingKubeCredentialsExcluded": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeCopyHelp": "Сохраните личную копию подключения и выберите свой маршрут. Данные для входа импортируются только по вашему выбору; запускаемые плагины всё равно потребуют разрешения на этом устройстве.",
+  "@sharingKubeCopyHelp": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeImportCredentials": "Импортировать включённые данные для входа",
+  "@sharingKubeImportCredentials": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeRouteRequired": "Для подключения нужен маршрут. Выберите сохранённый SSH-хост или профиль переходов на этом устройстве.",
+  "@sharingKubeRouteRequired": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeUnsupported": "Этот сервер не поддерживает совместный доступ к контекстам Kubernetes.",
+  "@sharingKubeUnsupported": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "sharingKubeSnapshotChanged": "Если настройки или данные для входа изменились, проверьте подключение заново.",
+  "@sharingKubeSnapshotChanged": {
+    "description": "Kubernetes selective sharing; credentials remain hidden in previews."
+  },
+  "kubeHistory": "История событий",
+  "kubeHistoryHelp": "Локальная зашифрованная история за последние 7 дней. Запись включается в настройках подключения.",
+  "kubeHistoryRecording": "Запись событий кластера",
+  "kubeHistoryDisabled": "Запись истории отключена",
+  "kubeHistoryConnecting": "Переподключение записи событий…",
+  "kubeHistoryUnavailable": "Запись событий недоступна; сохранённая история доступна для чтения.",
+  "kubeHistoryWarnings": "Только предупреждения",
+  "kubeHistoryClear": "Очистить локальную историю событий",
+  "kubeHistoryClearHelp": "Удалить сохранённую историю этого контекста на этом устройстве. Ресурсы кластера не изменятся.",
+  "kubeHelmComputedValues": "Итоговые значения",
+  "kubeRevealSecret": "Показать значения Secret",
+  "kubeRevealSecretHelp": "Значения доступны только в этом защищённом диалоге в течение 30 секунд. Скопированные значения очищаются из буфера в течение 30 секунд. Они не передаются ИИ и не сохраняются в истории ресурсов.",
+  "kubeSecretExpired": "Значения скрыты. При необходимости откройте их снова.",
+  "kubeCreateResource": "Создать ресурс",
+  "kubeManifestTemplate": "Вставить шаблон метаданных",
+  "kubeSchema": "Схема ресурса Kubernetes",
+  "kubeHelmRollback": "Откатить релиз Helm",
+  "kubeHelmRollbackHelp": "Проверьте точный путь Helm, контрольную сумму и команду. Операция изменяет ресурсы кластера; хуки Helm отключены. Введите имя релиза для подтверждения.",
+  "kubeHelmRollbackFailed": "Откат не завершён. Проверьте путь Helm, права и текущую ревизию релиза. Перед повтором заново проверьте команду.",
+  "kubeHelmBinary": "Абсолютный путь к Helm (необязательно)",
+  "kubeAiHistory": "История диалогов ИИ",
+  "@kubeAiHistory": {
+    "description": "Kubernetes AI conversation history"
+  },
+  "kubeAiHistoryLocal": "Сохранено на этом устройстве",
+  "@kubeAiHistoryLocal": {
+    "description": "Kubernetes AI conversation history"
+  },
+  "kubeAiHistorySynced": "Включена зашифрованная синхронизация",
+  "@kubeAiHistorySynced": {
+    "description": "Kubernetes AI conversation history"
+  },
+  "kubeAiHistoryDeleteHelp": "Удалить сохранённый диалог. Если он синхронизируется, удаление также синхронизируется.",
+  "@kubeAiHistoryDeleteHelp": {
+    "description": "Kubernetes AI conversation history"
+  },
+  "kubeRolloutHistory": "История развёртываний",
+  "@kubeRolloutHistory": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeDiffBefore": "До",
+  "@kubeDiffBefore": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeDiffAfter": "После",
+  "@kubeDiffAfter": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeCompare": "Сравнить",
+  "@kubeCompare": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeDiffTruncated": "Различия показаны не полностью. Проверьте весь ресурс перед применением изменений.",
+  "@kubeDiffTruncated": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeNoChanges": "Изменений нет",
+  "@kubeNoChanges": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeDiffReview": "Проверьте изменённые поля. Значения секретов скрыты.",
+  "@kubeDiffReview": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliAdviceMissing": "Flux CLI не найден. Установить?",
+  "@kubeFluxCliAdviceMissing": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliAdviceUpdate": "Версия CLI старше версии Flux в кластере. Обновить?",
+  "@kubeFluxCliAdviceUpdate": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliNeverSuggest": "Больше не предлагать",
+  "@kubeFluxCliNeverSuggest": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliLater": "Не сейчас",
+  "@kubeFluxCliLater": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliPathHelp": "Добавить Flux в PATH",
+  "@kubeFluxCliPathHelp": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliPathHint": "После изменения PATH откройте новое окно терминала. В macOS/Linux добавьте показанную строку в указанный файл профиля.",
+  "@kubeFluxCliPathHint": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliPathAdded": "Папка добавлена в PATH пользователя.",
+  "@kubeFluxCliPathAdded": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeFluxCliController": "Версия Flux в кластере",
+  "@kubeFluxCliController": {
+    "description": "Kubernetes rollout or Flux operation UI"
+  },
+  "kubeGitOpsFlow": "Поток ресурсов",
+  "@kubeGitOpsFlow": {
+    "description": "Kubernetes resource graph and certificate diagnostics"
+  },
+  "kubeGraphList": "Список",
+  "@kubeGraphList": {
+    "description": "Kubernetes resource graph and certificate diagnostics"
+  },
+  "kubeGraphReset": "Сбросить масштаб и положение",
+  "@kubeGraphReset": {
+    "description": "Kubernetes resource graph and certificate diagnostics"
+  },
+  "kubeIssueCertificateExpiring": "Срок сертификата скоро истекает",
+  "@kubeIssueCertificateExpiring": {
+    "description": "Kubernetes resource graph and certificate diagnostics"
+  },
+  "kubeIssueCertificateExpired": "Срок сертификата истёк",
+  "@kubeIssueCertificateExpired": {
+    "description": "Kubernetes resource graph and certificate diagnostics"
+  },
+  "kubeIssueEvicted": "Pod вытеснен",
+  "@kubeIssueEvicted": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssuePendingResources": "Недостаточно ресурсов кластера",
+  "@kubeIssuePendingResources": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssuePendingTaints": "Метки taints узлов мешают размещению",
+  "@kubeIssuePendingTaints": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssuePendingVolume": "Pod ожидает том",
+  "@kubeIssuePendingVolume": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssueSuspendedLong": "Сверка приостановлена более 24 часов",
+  "@kubeIssueSuspendedLong": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssueSourceStale": "Артефакт источника устарел",
+  "@kubeIssueSourceStale": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssueHelmDrift": "Состояние Helm отличается от желаемого",
+  "@kubeIssueHelmDrift": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssueDependencyNotReady": "Зависимость не готова",
+  "@kubeIssueDependencyNotReady": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeIssueDependencyMissing": "Зависимость отсутствует или недоступна",
+  "@kubeIssueDependencyMissing": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeExitCode": "Код завершения",
+  "@kubeExitCode": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeCommandOpen": "Открыть контекст Kubernetes",
+  "@kubeCommandOpen": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeCommandAsk": "Спросить ИИ о Kubernetes",
+  "@kubeCommandAsk": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeCommandContext": "Контекст кластера",
+  "@kubeCommandContext": {
+    "description": "Kubernetes diagnostics and command navigation"
+  },
+  "kubeRelatedObjects": "Связанные ресурсы",
+  "@kubeRelatedObjects": {
+    "description": "Kubernetes object relationships and metrics"
+  },
+  "kubeRelationOwner": "Владелец",
+  "@kubeRelationOwner": {
+    "description": "Kubernetes object relationships and metrics"
+  },
+  "kubeRelationDependent": "Дочерний ресурс",
+  "@kubeRelationDependent": {
+    "description": "Kubernetes object relationships and metrics"
+  },
+  "kubeRelationVolume": "Связь с томом",
+  "@kubeRelationVolume": {
+    "description": "Kubernetes object relationships and metrics"
+  },
+  "kubeRelationConfiguration": "Ссылка на конфигурацию",
+  "@kubeRelationConfiguration": {
+    "description": "Kubernetes object relationships and metrics"
+  },
+  "kubeMetricsTrend": "Динамика CPU за текущий сеанс",
+  "@kubeMetricsTrend": {
+    "description": "Kubernetes object relationships and metrics"
+  },
+  "kubeLogSince": "За период",
+  "@kubeLogSince": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogAllTime": "Всё время",
+  "@kubeLogAllTime": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogLastMinute": "Последняя минута",
+  "@kubeLogLastMinute": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogLastHour": "Последний час",
+  "@kubeLogLastHour": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogLastDay": "Последние сутки",
+  "@kubeLogLastDay": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogRegex": "Регулярное выражение",
+  "@kubeLogRegex": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogRegexInvalid": "Некорректное или слишком сложное выражение.",
+  "@kubeLogRegexInvalid": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogLevel": "Уровень",
+  "@kubeLogLevel": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogAllPods": "Все поды",
+  "@kubeLogAllPods": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogAllLevels": "Все уровни",
+  "@kubeLogAllLevels": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogWrap": "Переносить строки",
+  "@kubeLogWrap": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogExport": "Экспорт / отправка логов",
+  "@kubeLogExport": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogExportHelp": "Логи могут содержать секреты. Будут сохранены только строки, видимые с текущим фильтром.",
+  "@kubeLogExportHelp": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogMask": "Скрыть распознанные секреты перед экспортом",
+  "@kubeLogMask": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogTargetsTruncated": "Показаны первые 8 подов. Выберите конкретный под для остальных.",
+  "@kubeLogTargetsTruncated": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeLogSaved": "Логи сохранены.",
+  "@kubeLogSaved": {
+    "description": "Kubernetes log controls and export"
+  },
+  "kubeTags": "Метки через запятую",
+  "@kubeTags": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeTagsHelp": "Метки и цвет кластера общие для его сохранённых контекстов.",
+  "@kubeTagsHelp": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeColor": "Цвет кластера",
+  "@kubeColor": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeNoColor": "Без цвета",
+  "@kubeNoColor": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeFavorite": "Добавить или убрать избранное",
+  "@kubeFavorite": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeFavorites": "Избранное",
+  "@kubeFavorites": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeAllKinds": "Все типы",
+  "@kubeAllKinds": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeGroupWorkloads": "Нагрузки",
+  "@kubeGroupWorkloads": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeGroupNetwork": "Сеть",
+  "@kubeGroupNetwork": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeGroupConfig": "Конфигурация",
+  "@kubeGroupConfig": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeGroupStorage": "Хранилище",
+  "@kubeGroupStorage": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeGroupAccess": "Доступ",
+  "@kubeGroupAccess": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeGroupCluster": "Кластер / CRD",
+  "@kubeGroupCluster": {
+    "description": "Kubernetes inventory organization"
+  },
+  "kubeLogDefaultContainer": "Основной контейнер",
+  "@kubeLogDefaultContainer": {
+    "description": "Use the default container of each selected pod"
+  },
+  "kubeForwardChoosePod": "Выберите Pod для проброса",
+  "@kubeForwardChoosePod": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeForwardChoosePodHelp": "Выберите целевой Pod. Соединение откроется только после подтверждения портов.",
+  "@kubeForwardChoosePodHelp": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeMemoryTrend": "Динамика памяти за текущий сеанс",
+  "@kubeMemoryTrend": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeRequests": "Запрошено",
+  "@kubeRequests": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeLimits": "Лимиты",
+  "@kubeLimits": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeCapacity": "Ёмкость",
+  "@kubeCapacity": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeAllocatable": "Доступно для размещения",
+  "@kubeAllocatable": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeResourceBudgetsUnavailable": "Запросы ресурсов и лимиты недоступны.",
+  "@kubeResourceBudgetsUnavailable": {
+    "description": "Kubernetes metrics budgets and forwarding targets"
+  },
+  "kubeBulkActions": "Выбранные ресурсы",
+  "@kubeBulkActions": {
+    "description": "Guarded bulk Kubernetes operations"
+  },
+  "kubeBulkHelp": "Проверьте список и введите имя контекста. Операции выполняются по очереди; отмена остановит их после текущей операции. Не более 100 ресурсов.",
+  "@kubeBulkHelp": {
+    "description": "Guarded bulk Kubernetes operations"
+  },
+  "kubeBulkProductionBlocked": "Массовые изменения недоступны в прод-контекстах.",
+  "@kubeBulkProductionBlocked": {
+    "description": "Guarded bulk Kubernetes operations"
+  },
+  "kubeBulkFailed": "Операция остановлена. Выполненные ресурсы отмечены; проверьте остальные перед повтором.",
+  "@kubeBulkFailed": {
+    "description": "Guarded bulk Kubernetes operations"
+  },
+  "kubeContextTerminal": "Локальный терминал кластера",
+  "@kubeContextTerminal": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubeContextTerminalHelp": "Терминал использует временный локальный API-прокси. Данные доступа остаются в ConsoleCrypt; ограничения прод-контекста продолжают действовать.",
+  "@kubeContextTerminalHelp": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubeOutput": "Вывод",
+  "@kubeOutput": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubePinLogs": "Открыть логи в нижней панели",
+  "@kubePinLogs": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubeResizePanel": "Изменить высоту нижней панели",
+  "@kubeResizePanel": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubeConfirmName": "Введите точное имя",
+  "@kubeConfirmName": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubeAiProposalReview": "Проверить предложение",
+  "@kubeAiProposalReview": {
+    "description": "Kubernetes AI proposals and history resume"
+  },
+  "kubeAiProposalContext": "Команда будет вставлена без выполнения в новый локальный терминал выбранного контекста.",
+  "@kubeAiProposalContext": {
+    "description": "Kubernetes AI proposals and history resume"
+  },
+  "kubeAiHistoryContext": "Сообщений истории в запросе",
+  "@kubeAiHistoryContext": {
+    "description": "Kubernetes AI proposals and history resume"
+  },
+  "kubeAiNewConversation": "Новый разговор",
+  "@kubeAiNewConversation": {
+    "description": "Kubernetes AI proposals and history resume"
+  },
+  "kubeTableColumns": "Столбцы",
+  "@kubeTableColumns": {
+    "description": "Kubernetes resource table"
+  },
+  "kubeAge": "Возраст",
+  "@kubeAge": {
+    "description": "Kubernetes resource table"
+  },
+  "kubeGitOpsSource": "Источник",
+  "kubeGitOpsArtifact": "Артефакт",
+  "kubeGitOpsInterval": "Интервал сверки",
+  "kubeGitOpsRevision": "Ревизия",
+  "kubeGitOpsSignature": "Проверка подписи",
+  "kubeGitOpsInventory": "Управляемые ресурсы",
+  "kubeGitOpsValuesFrom": "Ссылки на значения",
+  "kubeGitOpsControllerLogs": "Журнал контроллера",
+  "kubeGitOpsPath": "Путь в репозитории",
+  "kubeGitOpsBranch": "Ветка",
+  "kubeGitOpsTag": "Тег / ограничение версии",
+  "kubeGitOpsChart": "Чарт",
+  "kubeGitOpsDrift": "Проверка расхождений",
+  "kubeGitOpsHistoryEmpty": "История сверки пока недоступна.",
+  "kubeGitOpsControllerUnavailable": "Журнал контроллера недоступен. Проверьте доступ к ресурсам кластера.",
+  "kubeGitOpsSignatureUnknown": "Контроллер не сообщил результат",
+  "kubeGitOpsSourceReconcileHelp": "Запросить новую сверку источника. Для продолжения введите его точное имя.",
+  "kubeGitOpsMetadataOnly": "Здесь показаны только ссылки на объекты. Значения секретов скрыты.",
+  "@kubeGitOps": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsAll": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsReady": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsAttention": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsSuspended": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsActions": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsSuspend": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsResume": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsReset": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsForce": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsReconcile": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsChangeHelp": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsReason": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsSource": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsArtifact": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsInterval": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsRevision": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsSignature": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsInventory": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsValuesFrom": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsControllerLogs": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsPath": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsBranch": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsTag": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsChart": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsDrift": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsHistoryEmpty": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsControllerUnavailable": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsSignatureUnknown": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsSourceReconcileHelp": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "@kubeGitOpsMetadataOnly": {
+    "description": "Kubernetes GitOps resource details label."
+  },
+  "kubeResourceConfiguration": "Конфигурация нагрузки и узла",
+  "@kubeResourceConfiguration": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubePort": "Порт",
+  "@kubePort": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubePorts": "Порты",
+  "@kubePorts": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeNode": "Узел",
+  "@kubeNode": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeServiceAccount": "Сервисная учётная запись",
+  "@kubeServiceAccount": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeNodeSelector": "Выбор узла",
+  "@kubeNodeSelector": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeReady": "Готовность",
+  "@kubeReady": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeRestarts": "Перезапуски",
+  "@kubeRestarts": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeIssueExitCode": "Код завершения",
+  "@kubeIssueExitCode": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeVolumeMounts": "Подключения томов",
+  "@kubeVolumeMounts": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeVolumes": "Тома",
+  "@kubeVolumes": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeUnschedulable": "Планирование отключено",
+  "@kubeUnschedulable": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeTaints": "Ограничения taints",
+  "@kubeTaints": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeNodeInfo": "Программное обеспечение узла",
+  "@kubeNodeInfo": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeGraphProblems": "Пути к проблемам",
+  "@kubeGraphProblems": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeGraphSearch": "Найти ресурс на графе",
+  "@kubeGraphSearch": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeGraphFold": "Свернуть конечные ресурсы",
+  "@kubeGraphFold": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeReplicaStatus": "Готово / требуемое число реплик",
+  "@kubeReplicaStatus": {
+    "description": "Kubernetes resource browser label."
+  },
+  "kubeTableSort": "Сортировка ресурсов",
+  "@kubeTableSort": {
+    "description": "Kubernetes runtime label."
+  },
+  "kubeForwardRestore": "Восстанавливать после переподключения",
+  "@kubeForwardRestore": {
+    "description": "Kubernetes runtime label."
+  },
+  "kubeForwardRestoreHelp": "Только пока этот контекст открыт и профиль разблокирован. При выходе из контекста выбор сбрасывается.",
+  "@kubeForwardRestoreHelp": {
+    "description": "Kubernetes runtime label."
+  },
+  "kubeForwardRestoreFailed": "Не все перенаправления портов восстановлены. Проверьте под и локальный порт, затем запустите их снова.",
+  "@kubeForwardRestoreFailed": {
+    "description": "Kubernetes runtime label."
+  },
+  "kubeGitOpsReconcileWithSource": "Обновить вместе с источником",
+  "@kubeGitOpsReconcileWithSource": {
+    "description": "Kubernetes guarded GitOps operation."
+  },
+  "kubeGitOpsReconcileWithSourceHelp": "Запросить обновление цепочки источников, затем этого ресурса. Готовность контроллеров отображается в живом статусе. Подтвердите точное имя ресурса.",
+  "@kubeGitOpsReconcileWithSourceHelp": {
+    "description": "Kubernetes guarded GitOps operation."
+  },
+  "kubeForwardNetwork": "Разрешить доступ из локальной сети",
+  "@kubeForwardNetwork": {
+    "description": "Kubernetes explicit operation help."
+  },
+  "kubeForwardBindAddress": "Локальный IP-адрес для приёма подключений",
+  "@kubeForwardBindAddress": {
+    "description": "Kubernetes explicit operation help."
+  },
+  "kubeForwardNetworkWarning": "Я понимаю, что другие устройства смогут обращаться к этому порту без авторизации Kubernetes. Разрешаю доступ из сети.",
+  "@kubeForwardNetworkWarning": {
+    "description": "Kubernetes explicit operation help."
+  },
+  "kubeHelmComputedPartial": "Значения объединены из сохранённого релиза; значения по умолчанию дочерних чартов и глобальные импорты могут отсутствовать.",
+  "@kubeHelmComputedPartial": {
+    "description": "Kubernetes explicit operation help."
+  },
+  "kubeManifestSnippets": "Вставить сохранённый манифест",
+  "@kubeManifestSnippets": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeManifestSnippetsHelp": "Выберите сниппет kubectl с YAML или JSON. Проверьте имена и переменные в редакторе перед серверной проверкой.",
+  "@kubeManifestSnippetsHelp": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeNoManifestSnippets": "Сниппетов манифестов пока нет. Сохраните YAML или JSON как сниппет kubectl в разделе «Сниппеты».",
+  "@kubeNoManifestSnippets": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeGitOpsSources": "Источники",
+  "@kubeGitOpsSources": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeGitOpsNotifications": "Уведомления",
+  "@kubeGitOpsNotifications": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeGitOpsImages": "Автоматизация образов",
+  "@kubeGitOpsImages": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeGitOpsRecent": "Последние изменения статуса контроллеров",
+  "@kubeGitOpsRecent": {
+    "description": "Kubernetes manifest and GitOps navigation."
+  },
+  "kubeDockRight": "Переместить панель вправо",
+  "@kubeDockRight": {
+    "description": "Kubernetes workspace panel position."
+  },
+  "kubeDockBottom": "Переместить панель вниз",
+  "@kubeDockBottom": {
+    "description": "Kubernetes workspace panel position."
+  },
+  "kubeMaskedEditHelp": "Манифест содержит скрытые значения. Изменение YAML отключено, чтобы не заменить учётные данные масками. Используйте отдельные действия ресурса или измените исходный доверенный манифест.",
+  "@kubeMaskedEditHelp": {
+    "description": "Masked resource manifests must not be applied."
+  },
+  "kubeAutoShell": "Определить оболочку автоматически",
+  "@kubeAutoShell": {
+    "description": "Explicit native shell detection in selected container."
+  }
 }

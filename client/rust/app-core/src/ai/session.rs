@@ -877,6 +877,7 @@ impl AiSession {
             id: ObjectId::new(),
             title: String::new(),
             provider_id: Some(provider_id),
+            kubernetes_context_id: None,
             messages: Vec::new(),
             created_at: now,
             updated_at: now,

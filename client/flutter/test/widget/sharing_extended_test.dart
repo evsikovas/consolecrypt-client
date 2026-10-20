@@ -10,9 +10,11 @@ import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/services/kubernetes_sharing_service.dart';
 import 'package:consolecrypt/core/services/sharing_service.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_collections.dart';
+import 'package:consolecrypt/sharing/sharing_kubernetes.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
 import 'package:consolecrypt/sharing/sharing_screen.dart';
@@ -78,6 +80,7 @@ SharingItem _item(
   SharingTrust trust = SharingTrust.verified,
   SharingRole role = SharingRole.reader,
   String? secretKind = 'password',
+  bool requiresRoute = false,
   List<Map<String, Object?>> children = const [],
 }) => SharingItem(
   id: id,
@@ -91,9 +94,18 @@ SharingItem _item(
   trust: trust,
   role: role,
   previewJson: jsonEncode({
-    'kind': kind.name,
+    'kind': kind.wireName,
     'data': {
       'name': 'Name $id',
+      if (kind == SharingKind.kubeContext) ...{
+        'cluster_name': 'Fixture cluster',
+        'server': 'https://api.example.test',
+        'namespace': 'apps',
+        'production': true,
+        'requires_route': requiresRoute,
+        'includes_credentials': true,
+        'authentication': {'token': 'FORBIDDEN KUBE TOKEN'},
+      },
       if (kind == SharingKind.group) ...{
         'children': children,
         'tags': ['visible-tag'],
@@ -116,10 +128,61 @@ Credential _credential() {
   );
 }
 
-class _Sharing implements SharingService {
+class _Sharing implements SharingService, KubernetesSharingService {
   _Sharing({SecretText? source}) : source = source ?? SecretText('runtime-${ObjectId.generate().value}');
   final SecretText source;
   bool supportsGroups = true, supportsSecrets = true, denyReveals = false;
+  bool supportsKubeContexts = true;
+  final kubePreviews = <bool>[];
+  bool? kubePublishedCredentials, kubeCopiedCredentials;
+  String? kubeStamp;
+  Map<String, dynamic>? kubeCopiedRoute;
+  Completer<KubeSharingPreview>? kubePreviewPending;
+  @override
+  Future<KubeSharingPreview> previewKubeContext(String contextId, {bool includeCredentials = false}) async {
+    kubePreviews.add(includeCredentials);
+    if (kubePreviewPending case final pending?) return pending.future;
+    return KubeSharingPreview(
+      snapshotStamp: 'stamp-$includeCredentials',
+      previewJson: jsonEncode({
+        'kind': 'kube_context',
+        'data': {
+          'name': 'Shared cluster',
+          'cluster_name': 'Fixture cluster',
+          'server': 'https://api.example.test',
+          'namespace': 'apps',
+          'production': true,
+          'requires_route': false,
+          'includes_credentials': includeCredentials,
+          'authentication': {'token': 'FORBIDDEN KUBE TOKEN'},
+        },
+      }),
+    );
+  }
+
+  @override
+  Future<SharingItem> publishKubeContext(
+    String contextId,
+    List<SharingGrant> grants, {
+    required String expectedStamp,
+    bool includeCredentials = false,
+  }) async {
+    kubePublishedCredentials = includeCredentials;
+    kubeStamp = expectedStamp;
+    this.grants = grants;
+    return _item('published-kube', SharingKind.kubeContext);
+  }
+
+  @override
+  Future<void> copyKubeContext(
+    String shareId, {
+    required Map<String, dynamic> route,
+    bool includeCredentials = false,
+  }) async {
+    kubeCopiedCredentials = includeCredentials;
+    kubeCopiedRoute = route;
+  }
+
   List<SharingItem> items = [];
   List<Map<String, dynamic>>? selectedChildren;
   String? publication, credentialId, groupEdit;
@@ -134,6 +197,7 @@ class _Sharing implements SharingService {
     instance: 'instance',
     supportsGroups: supportsGroups,
     supportsSecrets: supportsSecrets,
+    supportsKubeContexts: supportsKubeContexts,
   );
   @override
   Future<List<SharingItem>> list({bool refresh = false}) async => items;
@@ -265,6 +329,98 @@ Future<void> _recipientSelection(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('Kubernetes sharing reviews metadata and credentials opt-in with a fresh stamp on a phone', (
+    tester,
+  ) async {
+    final sharing = _Sharing();
+    await _pump(tester, sharing, size: const Size(412, 915));
+    showSharingKubeContext(_context(tester), contextId: 'fixture-context').ignore();
+    await settle(tester);
+    expect(sharing.kubePreviews, [false]);
+    expect(find.text('FORBIDDEN KUBE TOKEN'), findsNothing);
+    expect(isEnabled(tester, 'sharing-kube-publish-confirm'), false);
+    await tapKey(tester, 'sharing-kube-include-credentials');
+    expect(sharing.kubePreviews, [false, true]);
+    await _recipientSelection(tester);
+    expect(isEnabled(tester, 'sharing-kube-publish-confirm'), true);
+    await tapKey(tester, 'sharing-kube-publish-confirm');
+    expect(sharing.kubePublishedCredentials, true);
+    expect(sharing.kubeStamp, 'stamp-true');
+    expect(sharing.genericPublications, 0);
+    expect(sharing.grants!.single.confirmedCode, _recipient.code);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('Kubernetes copy defaults to no credentials and uses the recipient local route', (tester) async {
+    final sharing = _Sharing();
+    await _pump(tester, sharing);
+    showSharingCopyKubeContext(_context(tester), _item('kube', SharingKind.kubeContext)).ignore();
+    await settle(tester);
+    expect(find.text('FORBIDDEN KUBE TOKEN'), findsNothing);
+    await tapKey(tester, 'sharing-kube-copy-confirm');
+    expect(sharing.kubeCopiedCredentials, false);
+    expect(sharing.kubeCopiedRoute, {'kind': 'direct'});
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('unsupported Kubernetes sharing cannot preview or publish', (tester) async {
+    final sharing = _Sharing()..supportsKubeContexts = false;
+    await _pump(tester, sharing);
+    showSharingKubeContext(_context(tester), contextId: 'fixture-context').ignore();
+    await settle(tester);
+    expect(sharing.kubePreviews, isEmpty);
+    expect(isEnabled(tester, 'sharing-kube-publish-confirm'), false);
+    expect(find.byKey(const ValueKey('sharing-kube-recipients')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('late Kubernetes preview cannot reopen a dialog after quick lock and unlock', (tester) async {
+    final sharing = _Sharing()..kubePreviewPending = Completer<KubeSharingPreview>();
+    final backend = await _pump(tester, sharing);
+    showSharingKubeContext(_context(tester), contextId: 'fixture-context').ignore();
+    await settle(tester);
+    await backend.services.vault.lock();
+    await backend.services.vault.unlockWithPassphrase(SecretText(MockCloud.demoPassphrase));
+    await settle(tester);
+    sharing.kubePreviewPending!.complete(
+      KubeSharingPreview(
+        snapshotStamp: 'obsolete',
+        previewJson: jsonEncode({
+          'kind': 'kube_context',
+          'data': {'name': 'Stale private context'},
+        }),
+      ),
+    );
+    await settle(tester);
+    expect(find.byType(SharingKubePublishDialog), findsNothing);
+    expect(find.text('Stale private context'), findsNothing);
+    expect(sharing.kubePublishedCredentials, isNull);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('Kubernetes import requires a local route when the sender used a private route', (tester) async {
+    final sharing = _Sharing();
+    await _pump(tester, sharing);
+    showSharingCopyKubeContext(_context(tester), _item('kube', SharingKind.kubeContext, requiresRoute: true)).ignore();
+    await settle(tester);
+    expect(isEnabled(tester, 'sharing-kube-copy-confirm'), false);
+    expect(sharing.kubeCopiedRoute, isNull);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('collection editing preserves Kubernetes references without duplicating or changing their kind', (
+    tester,
+  ) async {
+    final sharing = _Sharing()..items = [_item('kube', SharingKind.kubeContext)];
+    await _pump(tester, sharing);
+    const child = <String, Object?>{'share_id': 'kube', 'item_id': 'item-kube', 'kind': 'kube_context'};
+    showSharingGroupEdit(
+      _context(tester),
+      _item('group', SharingKind.group, role: SharingRole.editor, children: [child]),
+    ).ignore();
+    await settle(tester);
+    expect(find.byKey(const ValueKey('sharing-child-kube')), findsOneWidget);
+    expect(find.byKey(const ValueKey('sharing-unresolved-kube')), findsNothing);
+    await tapKey(tester, 'sharing-group-publish');
+    final edited = jsonDecode(sharing.groupEdit!) as Map<String, dynamic>;
+    expect((edited['data'] as Map)['children'], [child]);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('Windows synced sidebar renders and opens the sharing navigation item', (tester) async {
     await _pump(tester, _Sharing());
     await tapKey(tester, 'nav-sharing');

@@ -1,12 +1,16 @@
 import 'dart:async';
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/kubernetes/kube_inventory_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
+import 'package:desktop_drop/desktop_drop.dart';
+import 'package:file_selector/file_selector.dart' as files;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -19,7 +23,9 @@ String _authenticationLabel(AppLocalizations l, String? kind) => switch (kind) {
 };
 
 class KubeImportDialog extends ConsumerStatefulWidget {
-  const KubeImportDialog({super.key});
+  const KubeImportDialog({this.initialYaml, this.initialPaths = const [], super.key});
+  final SecretText? initialYaml;
+  final List<String> initialPaths;
   @override
   ConsumerState<KubeImportDialog> createState() => _KubeImportDialogState();
 }
@@ -34,7 +40,9 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
   KubeImportPreview? _preview;
   Timer? _expiry;
   bool _busy = false, _filesApproved = false, _expired = false;
-  String? _failure;
+  String? _failure, _currentFile;
+  final _queuedFiles = <String>[];
+  bool _savedAny = false;
 
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(kubeScopeProvider));
   List<KubeImportEntry> get _chosen => _preview?.entries.where((e) => _selected.contains(e.index)).toList() ?? [];
@@ -58,6 +66,13 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
     super.initState();
     _scope = ref.read(kubeScopeProvider);
     _service = ref.read(kubeServiceProvider);
+    final yaml = widget.initialYaml;
+    if (yaml != null) {
+      _yaml.text = yaml.expose();
+      yaml.wipe();
+    }
+    _queuedFiles.addAll(widget.initialPaths.take(64));
+    if (_queuedFiles.isNotEmpty) WidgetsBinding.instance.addPostFrameCallback((_) => _nextFile());
   }
 
   void _discard(KubeImportPreview? preview) {
@@ -68,6 +83,7 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
   void dispose() {
     _expiry?.cancel();
     _yaml.clear();
+    _queuedFiles.clear();
     _yaml.dispose();
     _discard(_preview);
     super.dispose();
@@ -130,13 +146,52 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
 
   Future<void> _file() async {
     if (!_current || _busy) return;
-    // The native core reads the selected file, keeping its plaintext out of
-    // the Dart heap and retaining the original base for relative references.
-    await _load(() async {
-      final path = await ref.read(fileDialogServiceProvider).chooseOpenFile();
-      if (path == null || !_current) throw const _FileSelectionCancelled();
-      return _service.previewFile(path);
-    });
+    setState(() => _busy = true);
+    try {
+      // Mobile paths may refer to sandbox copies supplied by the document picker.
+      if (AppPlatform.isMobile) {
+        final path = await ref.read(fileDialogServiceProvider).chooseOpenFile();
+        if (!_current || path == null) return;
+        if (_queuedFiles.length < 64) _queuedFiles.add(path);
+      } else {
+        final selected = await files.openFiles();
+        if (!_current) return;
+        _queuedFiles.addAll(
+          selected.map((file) => file.path).where((path) => path.isNotEmpty).take(64 - _queuedFiles.length),
+        );
+      }
+    } catch (_) {
+      if (mounted && _current) _failure = context.l10n.kubeImportFailed;
+    } finally {
+      if (_current) setState(() => _busy = false);
+    }
+    if (_current) await _nextFile();
+  }
+
+  Future<void> _nextFile() async {
+    if (!_current || _busy || _queuedFiles.isEmpty) return;
+    final path = _queuedFiles.removeAt(0);
+    _currentFile = path;
+    await _load(() => _service.previewFile(path));
+  }
+
+  Future<void> _scan() async {
+    final service = _service;
+    if (!_current || _busy || service is! KubeInventoryManagementService) return;
+    final directory = await ref.read(fileDialogServiceProvider).chooseDirectory();
+    if (!_current || directory == null) return;
+    setState(() => _busy = true);
+    try {
+      final paths = await (service as KubeInventoryManagementService).scanConfigFiles(directory);
+      if (!mounted || !_current) return;
+      _queuedFiles.addAll(paths.take(64 - _queuedFiles.length));
+      if (paths.isEmpty) _failure = context.l10n.kubeScanEmpty;
+    } catch (_) {
+      if (mounted && _current) _failure = context.l10n.kubeImportFailed;
+    } finally {
+      if (_current) setState(() => _busy = false);
+    }
+    if (_current) await _nextFile();
   }
 
   Future<void> _save() async {
@@ -160,8 +215,14 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
       await _service.commit(preview.ticket, choices);
       if (!mounted || !_current) return;
       _preview = null;
+      _savedAny = true;
       ref.invalidate(kubeConnectionsProvider);
-      closeDialog(context, true);
+      if (_queuedFiles.isEmpty) {
+        closeDialog(context, true);
+      } else {
+        setState(() => _busy = false);
+        await _nextFile();
+      }
     } catch (_) {
       if (_current) {
         setState(() {
@@ -190,6 +251,7 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
     ref.listen(kubeScopeProvider, (_, next) {
       if (identical(next, _scope)) return;
       _yaml.clear();
+      _queuedFiles.clear();
       _discard(_preview);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -202,142 +264,170 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
     final preview = _preview;
     return PopScope(
       canPop: !_busy,
-      child: GlassDialog(
-        key: const ValueKey('kube-import-dialog'),
-        title: l.kubeImport,
-        width: 760,
-        content: SizedBox(
-          height: 520,
-          child: SingleChildScrollView(
-            key: const ValueKey('kube-import-scroll'),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(l.kubeImportHelp),
-                const SizedBox(height: 12),
-                if (_busy) const LinearProgressIndicator(),
-                if (_failure != null) Text(_failure!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                if (preview == null) ...[
-                  GlassButton(
-                    key: const ValueKey('kube-import-file'),
-                    label: l.kubeChooseFile,
-                    icon: Icons.file_open_outlined,
-                    onPressed: _busy ? null : _file,
-                  ),
+      child: DropTarget(
+        enable: !AppPlatform.isMobile && !_busy,
+        onDragDone: (details) {
+          if (!_current || _busy) return;
+          _queuedFiles.addAll(
+            details.files.map((file) => file.path).where((path) => path.isNotEmpty).take(64 - _queuedFiles.length),
+          );
+          if (_preview == null) {
+            unawaited(_nextFile());
+          } else {
+            setState(() {});
+          }
+        },
+        child: GlassDialog(
+          key: const ValueKey('kube-import-dialog'),
+          title: l.kubeImport,
+          width: 760,
+          content: SizedBox(
+            height: 520,
+            child: SingleChildScrollView(
+              key: const ValueKey('kube-import-scroll'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(l.kubeImportHelp),
+                  if (_currentFile != null) Text(_currentFile!, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  if (_queuedFiles.isNotEmpty) Text(l.kubeQueuedFiles(_queuedFiles.length)),
                   const SizedBox(height: 12),
-                  TextField(
-                    key: const ValueKey('kube-import-yaml'),
-                    controller: _yaml,
-                    enabled: !_busy,
-                    minLines: 6,
-                    maxLines: 12,
-                    maxLength: 4 * 1024 * 1024,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    enableIMEPersonalizedLearning: false,
-                    decoration: InputDecoration(labelText: l.kubeYaml, counterText: ''),
-                  ),
-                ] else ...[
-                  if (_expired) Text(l.kubeExpired),
-                  Text(l.kubeContextLimit),
-                  for (final entry in preview.entries)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: ContentSurface(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              CheckboxListTile(
-                                key: ValueKey('kube-context-${entry.index}'),
-                                contentPadding: EdgeInsets.zero,
-                                title: Text(entry.name),
-                                subtitle: entry.server == null ? null : Text(entry.server!),
-                                value: _selected.contains(entry.index),
-                                onChanged: _busy || _expired || entry.error != null
-                                    ? null
-                                    : (value) => setState(() {
-                                        value == true ? _selected.add(entry.index) : _selected.remove(entry.index);
-                                        _filesApproved = false;
-                                      }),
-                              ),
-                              if (entry.error != null) Text(l.kubeImportInvalid),
-                              if (entry.error == null) ...[
-                                Text('${l.kubeNamespace}: ${entry.namespace}'),
-                                Text(
-                                  '${l.kubeAuthentication}: ${_authenticationLabel(l, entry.authentication)}'
-                                  '${entry.userName == null ? '' : ' · ${entry.userName}'}',
-                                ),
-                                if (entry.authentication == 'exec') Text(l.kubeExecHelp),
-                                SwitchListTile.adaptive(
-                                  key: ValueKey('kube-production-${entry.index}'),
+                  if (_busy) const LinearProgressIndicator(),
+                  if (_failure != null) Text(_failure!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  if (preview == null) ...[
+                    GlassButton(
+                      key: const ValueKey('kube-import-file'),
+                      label: l.kubeChooseFile,
+                      icon: Icons.file_open_outlined,
+                      onPressed: _busy ? null : _file,
+                    ),
+                    if (!AppPlatform.isMobile && _service is KubeInventoryManagementService)
+                      GlassButton(
+                        key: const ValueKey('kube-import-scan'),
+                        label: l.kubeScanFolder,
+                        icon: Icons.folder_open,
+                        onPressed: _busy ? null : _scan,
+                      ),
+                    if (_queuedFiles.isNotEmpty)
+                      GlassButton(label: l.kubeNextFile, onPressed: _busy ? null : _nextFile),
+                    const SizedBox(height: 12),
+                    TextField(
+                      key: const ValueKey('kube-import-yaml'),
+                      controller: _yaml,
+                      enabled: !_busy,
+                      minLines: 6,
+                      maxLines: 12,
+                      maxLength: 4 * 1024 * 1024,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      enableIMEPersonalizedLearning: false,
+                      decoration: InputDecoration(labelText: l.kubeYaml, counterText: ''),
+                    ),
+                  ] else ...[
+                    if (_expired) Text(l.kubeExpired),
+                    Text(l.kubeContextLimit),
+                    for (final entry in preview.entries)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: ContentSurface(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                CheckboxListTile(
+                                  key: ValueKey('kube-context-${entry.index}'),
                                   contentPadding: EdgeInsets.zero,
-                                  title: Text(l.kubeProduction),
-                                  value: !_nonProduction.contains(entry.index),
-                                  onChanged: _busy || _expired
+                                  title: Text(entry.name),
+                                  subtitle: entry.server == null ? null : Text(entry.server!),
+                                  value: _selected.contains(entry.index),
+                                  onChanged: _busy || _expired || entry.error != null
                                       ? null
                                       : (value) => setState(() {
-                                          value ? _nonProduction.remove(entry.index) : _nonProduction.add(entry.index);
+                                          value == true ? _selected.add(entry.index) : _selected.remove(entry.index);
+                                          _filesApproved = false;
                                         }),
                                 ),
-                                if (entry.insecureTls && !_nonProduction.contains(entry.index)) Text(l.kubeTlsRequired),
-                                if (entry.requiresRoute) ...[
-                                  Text(l.kubeRouteRequired),
-                                  DropdownButtonFormField<String>(
-                                    key: ValueKey('kube-route-${entry.index}'),
-                                    isExpanded: true,
-                                    decoration: InputDecoration(labelText: l.kubeRoute),
-                                    items: hosts
-                                        .map(
-                                          (host) => DropdownMenuItem(
-                                            value: host.id.value,
-                                            child: Text(host.name, overflow: TextOverflow.ellipsis),
-                                          ),
-                                        )
-                                        .toList(),
+                                if (entry.error != null) Text(l.kubeImportInvalid),
+                                if (entry.error == null) ...[
+                                  Text('${l.kubeNamespace}: ${entry.namespace}'),
+                                  Text(
+                                    '${l.kubeAuthentication}: ${_authenticationLabel(l, entry.authentication)}'
+                                    '${entry.userName == null ? '' : ' · ${entry.userName}'}',
+                                  ),
+                                  if (entry.authentication == 'exec') Text(l.kubeExecHelp),
+                                  SwitchListTile.adaptive(
+                                    key: ValueKey('kube-production-${entry.index}'),
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(l.kubeProduction),
+                                    value: !_nonProduction.contains(entry.index),
                                     onChanged: _busy || _expired
                                         ? null
                                         : (value) => setState(() {
-                                            if (value == null) {
-                                              _sshRoutes.remove(entry.index);
-                                            } else {
-                                              _sshRoutes[entry.index] = value;
-                                            }
+                                            value
+                                                ? _nonProduction.remove(entry.index)
+                                                : _nonProduction.add(entry.index);
                                           }),
                                   ),
+                                  if (entry.insecureTls && !_nonProduction.contains(entry.index))
+                                    Text(l.kubeTlsRequired),
+                                  if (entry.requiresRoute) ...[
+                                    Text(l.kubeRouteRequired),
+                                    DropdownButtonFormField<String>(
+                                      key: ValueKey('kube-route-${entry.index}'),
+                                      isExpanded: true,
+                                      decoration: InputDecoration(labelText: l.kubeRoute),
+                                      items: hosts
+                                          .map(
+                                            (host) => DropdownMenuItem(
+                                              value: host.id.value,
+                                              child: Text(host.name, overflow: TextOverflow.ellipsis),
+                                            ),
+                                          )
+                                          .toList(),
+                                      onChanged: _busy || _expired
+                                          ? null
+                                          : (value) => setState(() {
+                                              if (value == null) {
+                                                _sshRoutes.remove(entry.index);
+                                              } else {
+                                                _sshRoutes[entry.index] = value;
+                                              }
+                                            }),
+                                    ),
+                                  ],
                                 ],
                               ],
-                            ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  if (_files.isNotEmpty) ...[
-                    for (final path in _files) Text(path),
-                    CheckboxListTile(
-                      key: const ValueKey('kube-import-approve-files'),
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(l.kubeApproveFiles),
-                      value: _filesApproved,
-                      onChanged: _busy || _expired ? null : (value) => setState(() => _filesApproved = value == true),
-                    ),
+                    if (_files.isNotEmpty) ...[
+                      for (final path in _files) Text(path),
+                      CheckboxListTile(
+                        key: const ValueKey('kube-import-approve-files'),
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(l.kubeApproveFiles),
+                        value: _filesApproved,
+                        onChanged: _busy || _expired ? null : (value) => setState(() => _filesApproved = value == true),
+                      ),
+                    ],
+                    TextButton(onPressed: _busy ? null : _reset, child: Text(l.kubeChooseAgain)),
                   ],
-                  TextButton(onPressed: _busy ? null : _reset, child: Text(l.kubeChooseAgain)),
                 ],
-              ],
+              ),
             ),
           ),
+          primaryAction: GlassButton.prominent(
+            key: const ValueKey('kube-import-submit'),
+            label: preview == null ? l.kubePreview : l.kubeSaveContexts,
+            busy: _busy,
+            onPressed: preview == null ? (_busy ? null : _paste) : (_canSave ? _save : null),
+          ),
+          secondaryActions: [
+            GlassButton(label: l.commonCancel, onPressed: _busy ? null : () => closeDialog(context, _savedAny)),
+          ],
         ),
-        primaryAction: GlassButton.prominent(
-          key: const ValueKey('kube-import-submit'),
-          label: preview == null ? l.kubePreview : l.kubeSaveContexts,
-          busy: _busy,
-          onPressed: preview == null ? (_busy ? null : _paste) : (_canSave ? _save : null),
-        ),
-        secondaryActions: [
-          GlassButton(label: l.commonCancel, onPressed: _busy ? null : () => closeDialog(context, false)),
-        ],
       ),
     );
   }

@@ -140,6 +140,23 @@ impl ProdGuard {
         insecure_skip_tls_verify: bool,
         audit: Arc<dyn Audit>,
     ) -> Result<Self, PolicyError> {
+        Self::new_scoped(
+            policy,
+            insecure_skip_tls_verify,
+            audit,
+            CancellationToken::new(),
+        )
+    }
+
+    /// The native vault owner revokes this token when a referenced connection
+    /// or credential changes. The same cancellation reaches open HTTP bodies
+    /// and websocket consumers, including already cloned clients.
+    pub fn new_scoped(
+        policy: Policy,
+        insecure_skip_tls_verify: bool,
+        audit: Arc<dyn Audit>,
+        cancel: CancellationToken,
+    ) -> Result<Self, PolicyError> {
         if policy.production && insecure_skip_tls_verify {
             return Err(PolicyError::InsecureProductionTls);
         }
@@ -152,13 +169,16 @@ impl ProdGuard {
                 write_cancel: CancellationToken::new(),
                 confirmations: HashSet::new(),
             }),
-            cancel: CancellationToken::new(),
+            cancel,
         })))
     }
 
     /// Call only after the user submits the context name in the confirmation.
     /// Mobile contexts never gain a write window, regardless of UI state.
     pub fn open_write_window(&self, typed_context_name: &str) -> Result<Instant, PolicyError> {
+        if self.0.cancel.is_cancelled() {
+            return Err(PolicyError::Closed);
+        }
         let mut state = self.0.state.lock().map_err(|_| PolicyError::Closed)?;
         ensure_active(&state)?;
         if self.0.policy.device == DeviceClass::Mobile {
@@ -201,12 +221,32 @@ impl ProdGuard {
         }
     }
 
+    /// Network-facing listeners cannot be enabled by a production write window.
+    /// Mobile forwarding stays loopback even for non-production contexts.
+    pub fn allow_network_forward(&self, explicitly_approved: bool) -> Result<(), PolicyError> {
+        let state = self.0.state.lock().map_err(|_| PolicyError::Closed)?;
+        ensure_active(&state)?;
+        if self.0.cancel.is_cancelled() {
+            return Err(PolicyError::Closed);
+        }
+        if !explicitly_approved
+            || self.0.policy.production
+            || self.0.policy.device == DeviceClass::Mobile
+        {
+            return Err(PolicyError::PortForwardDisabled);
+        }
+        Ok(())
+    }
+
     /// Call after the user approves a specific port-forward action.
     pub fn confirm_port_forward(
         &self,
         method: Method,
         uri: Uri,
     ) -> Result<ForwardConfirmation, PolicyError> {
+        if self.0.cancel.is_cancelled() {
+            return Err(PolicyError::Closed);
+        }
         let mut state = self.0.state.lock().map_err(|_| PolicyError::Closed)?;
         ensure_active(&state)?;
         if classify(&method, &uri)? != Operation::PortForward {

@@ -30,19 +30,25 @@ final class CodeSegment extends AnswerSegment {
 
 /// Splits markdown-ish text on ``` fences (unit-tested). An unterminated
 /// fence (still streaming) is treated as code.
-List<AnswerSegment> parseAnswer(String text) {
+List<AnswerSegment> parseAnswer(String text, {int? maxSegments}) {
   final segments = <AnswerSegment>[];
   final fence = RegExp(r'```([\w+-]*)[ \t]*\n?');
   var index = 0;
   while (index < text.length) {
-    final open = fence.firstMatch(text.substring(index));
+    if (maxSegments != null && segments.length >= maxSegments) {
+      segments.add(TextSegment(text.substring(index)));
+      break;
+    }
+    // Search the original string from an offset; repeated suffix copies can
+    // otherwise make an untrusted answer containing many fences quadratic.
+    final open = fence.allMatches(text, index).firstOrNull;
     if (open == null) {
       segments.add(TextSegment(text.substring(index)));
       break;
     }
-    final before = text.substring(index, index + open.start);
+    final before = text.substring(index, open.start);
     if (before.trim().isNotEmpty) segments.add(TextSegment(before));
-    final codeStart = index + open.end;
+    final codeStart = open.end;
     final close = text.indexOf('```', codeStart);
     final lang = open.group(1)!.isEmpty ? null : open.group(1);
     if (close < 0) {

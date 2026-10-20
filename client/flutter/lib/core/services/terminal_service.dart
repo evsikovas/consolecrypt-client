@@ -39,7 +39,25 @@ abstract interface class LocalTerminalService {
   Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size});
 }
 
+abstract interface class KubernetesTerminalService {
+  Future<TerminalSessionHandle> openKubernetes({required KubernetesTerminalTarget target, required TerminalSize size});
+}
+
+final class RuntimeTerminalAttachment {
+  const RuntimeTerminalAttachment({required this.target, required this.handle});
+  final TerminalTarget target;
+  final TerminalSessionHandle handle;
+}
+
+abstract interface class RuntimeTerminalService {
+  Future<RuntimeTerminalAttachment> attachRuntime(String runtimeId, {TerminalSize size = TerminalSize.initial});
+}
+
 extension LocalTerminalCapability on TerminalService {
+  Future<RuntimeTerminalAttachment> attachRuntime(String runtimeId, {TerminalSize size = TerminalSize.initial}) =>
+      this is RuntimeTerminalService
+      ? (this as RuntimeTerminalService).attachRuntime(runtimeId, size: size)
+      : Future.error(UnsupportedError('Runtime terminals are unavailable'));
   Future<LocalShellProfiles> localProfiles() => this is LocalTerminalService
       ? (this as LocalTerminalService).listLocalProfiles()
       : Future.value(const LocalShellProfiles(unavailableReason: 'unsupported_platform'));
@@ -49,6 +67,8 @@ extension LocalTerminalCapability on TerminalService {
         SshTerminalTarget(:final host) => open(hostId: host.id, size: size),
         LocalTerminalTarget(:final profile) when this is LocalTerminalService =>
           (this as LocalTerminalService).openLocal(profileId: profile.id, size: size),
+        KubernetesTerminalTarget() when this is KubernetesTerminalService =>
+          (this as KubernetesTerminalService).openKubernetes(target: target, size: size),
         _ => Future.error(UnsupportedError('Local terminals are unavailable')),
       };
 }

@@ -1,10 +1,10 @@
-name: Windows native checks by diagnostic tag
+name: Native checks by diagnostic tag
 
 # Diagnostic tags exercise native tests without producing or publishing clients.
 # Stable installers continue to be built only by client.yml release tags.
 on:
   push:
-    tags: ['check-windows-*']
+    tags: ['check-windows-*', 'check-kubernetes-*']
 
 permissions:
   contents: read
@@ -29,8 +29,8 @@ jobs:
           import os
           import re
           import subprocess
-          if not re.fullmatch(r'refs/tags/check-windows-[0-9]+\.[0-9]+\.[0-9]+-[1-9][0-9]*', os.environ['GITHUB_REF']):
-              raise SystemExit('Invalid Windows diagnostic tag')
+          if not re.fullmatch(r'refs/tags/check-(?:windows|kubernetes)-[0-9]+\.[0-9]+\.[0-9]+-[1-9][0-9]*', os.environ['GITHUB_REF']):
+              raise SystemExit('Invalid native diagnostic tag')
           subprocess.run(['git', 'merge-base', '--is-ancestor', 'HEAD', 'origin/main'], check=True)
           PY
 
@@ -48,7 +48,29 @@ jobs:
           persist-credentials: false
       - name: Register diagnostic workspace without cleanup
         run: '& client/scripts/cleanup-ci-workspace.ps1 -ClaimWorkspace'
-      - name: Local terminal regressions
+      - name: Native terminal and Kubernetes regressions
         run: |
           & client/scripts/ci-windows.ps1 -NativeOnly
           if ($LASTEXITCODE -ne 0) { throw 'Windows native checks failed' }
+
+  macos-ios:
+    needs: validate
+    if: startsWith(github.ref_name, 'check-kubernetes-')
+    runs-on: macos-26
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Prepare Xcode and Flutter
+        run: source client/scripts/ci-macos-tools.sh --xcode
+      - name: Native Kubernetes and Flutter regressions
+        run: |
+          cargo test --manifest-path client/rust/Cargo.toml --locked -p cc-k8s-core --all-targets
+          cargo test --manifest-path client/rust/Cargo.toml --locked -p cc-app-core kubernetes --lib
+          cd client/flutter
+          flutter pub get
+          flutter analyze
+          flutter test --dart-define=CC_KUBERNETES=true
+      - name: iOS native Kubernetes lifecycle
+        run: bash client/scripts/ci-ios-kubernetes.sh

@@ -29,6 +29,31 @@ Future<String> sharingPreviewHost({required String id, required bool includeNote
 Future<String> sharingPreviewSnippet({required String id}) =>
     RustLib.instance.api.crateApiSharingSharingPreviewSnippet(id: id);
 
+Future<String> sharingPreviewKubeContext({required String id, required bool includeCredentials}) =>
+    RustLib.instance.api.crateApiSharingSharingPreviewKubeContext(id: id, includeCredentials: includeCredentials);
+
+Future<String> sharingPublishKubeContext({
+  required String contextId,
+  required bool includeCredentials,
+  required String expectedStamp,
+  required String grantsJson,
+}) => RustLib.instance.api.crateApiSharingSharingPublishKubeContext(
+  contextId: contextId,
+  includeCredentials: includeCredentials,
+  expectedStamp: expectedStamp,
+  grantsJson: grantsJson,
+);
+
+Future<String> sharingCopyKubeContext({
+  required String shareId,
+  required String routeJson,
+  required bool includeCredentials,
+}) => RustLib.instance.api.crateApiSharingSharingCopyKubeContext(
+  shareId: shareId,
+  routeJson: routeJson,
+  includeCredentials: includeCredentials,
+);
+
 Future<String> sharingPublish({required String projectionJson, required String grantsJson}) =>
     RustLib.instance.api.crateApiSharingSharingPublish(projectionJson: projectionJson, grantsJson: grantsJson);
 

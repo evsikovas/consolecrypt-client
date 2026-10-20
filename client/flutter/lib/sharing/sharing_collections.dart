@@ -65,6 +65,7 @@ class _SharingGroupPublishDialogState extends ConsumerState<SharingGroupPublishD
                 item.trust == SharingTrust.verified &&
                 item.previewJson != null &&
                 item.kind != SharingKind.group &&
+                (item.kind != SharingKind.kubeContext || status.supportsKubeContexts) &&
                 (item.kind != SharingKind.secret || status.supportsSecrets),
           )
           .toList(growable: false);
@@ -83,14 +84,17 @@ class _SharingGroupPublishDialogState extends ConsumerState<SharingGroupPublishD
           final kind = r['kind'] as String;
           // Nested groups need a separate bounded navigation/edit contract.
           // Fail closed instead of silently dropping unsupported references.
-          if (!const ['host', 'snippet', 'secret'].contains(kind) || !seen.add(id)) throw StateError('unavailable');
+          if (!const ['host', 'snippet', 'secret', 'kube_context'].contains(kind) || !seen.add(id)) {
+            throw StateError('unavailable');
+          }
           refs.add({'share_id': id, 'item_id': object, 'kind': kind});
         }
         _selected.addAll(seen);
         _retained = refs
             .where(
-              (r) =>
-                  !_available.any((i) => i.id == r['share_id'] && i.itemId == r['item_id'] && i.kind.name == r['kind']),
+              (r) => !_available.any(
+                (i) => i.id == r['share_id'] && i.itemId == r['item_id'] && i.kind.wireName == r['kind'],
+              ),
             )
             .toList(growable: false);
         _available = _available.where((i) => !_retained.any((r) => r['share_id'] == i.id)).toList(growable: false);
@@ -114,7 +118,7 @@ class _SharingGroupPublishDialogState extends ConsumerState<SharingGroupPublishD
 
   String _childrenJson() => jsonEncode([
     for (final item in _available)
-      if (_selected.contains(item.id)) {'share_id': item.id, 'item_id': item.itemId, 'kind': item.kind.name},
+      if (_selected.contains(item.id)) {'share_id': item.id, 'item_id': item.itemId, 'kind': item.kind.wireName},
     for (final reference in _retained)
       if (_selected.contains(reference['share_id'])) reference,
   ]);
@@ -301,7 +305,7 @@ class SharingCollectionView extends StatelessWidget {
     for (final item in items) {
       if (item.id == reference['share_id'] &&
           item.itemId == reference['item_id'] &&
-          item.kind.name == reference['kind'] &&
+          item.kind.wireName == reference['kind'] &&
           item.trust == SharingTrust.verified &&
           item.previewJson != null) {
         resolved = item;
@@ -325,4 +329,5 @@ String _kindLabel(BuildContext context, SharingKind kind) => switch (kind) {
   SharingKind.snippet => context.l10n.sharingSnippet,
   SharingKind.group => context.l10n.sharingGroup,
   SharingKind.secret => context.l10n.sharingSecret,
+  SharingKind.kubeContext => context.l10n.sharingKubeContext,
 };

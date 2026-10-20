@@ -24,11 +24,13 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterActivity() {
+    private val kubeAuthBrowser by lazy { KubeAuthBrowser(this) }
     private external fun nativeInitialize(context: android.content.Context)
     private var authCancellation: CancellationSignal? = null
     private var exportResult: MethodChannel.Result? = null
     private var exportSource: File? = null
     private var authResult: MethodChannel.Result? = null
+    private var forwardPermissionResult: MethodChannel.Result? = null
     private var rdpFullscreen = false
     private var rdpStatusVisible = true
     private var rdpNavigationVisible = true
@@ -82,8 +84,46 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
     }
 
+    private fun startKubeForwardService(result: MethodChannel.Result) {
+        try {
+            startForegroundService(Intent(this, KubeForwardService::class.java))
+            result.success(null)
+        } catch (_: Exception) {
+            result.error("foreground_unavailable", "Unable to show the tunnel notification", null)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != 6202) return
+        val result = forwardPermissionResult ?: return
+        forwardPermissionResult = null
+        if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) result.success(null)
+        else result.error("notification_denied", "Tunnel notification permission is required", null)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/kube_forwards")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "start" && call.method != "prepare") {
+                    result.notImplemented()
+                } else if (forwardPermissionResult != null) {
+                    result.error("busy", "Notification permission is already pending", null)
+                } else if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                    checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    if (call.method == "prepare") {
+                        forwardPermissionResult = result
+                        requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 6202)
+                    } else result.error("notification_denied", "Tunnel notification permission is required", null)
+                } else if (call.method == "prepare") {
+                    result.success(null)
+                } else {
+                    startKubeForwardService(result)
+                }
+            }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/kube_auth")
+            .setMethodCallHandler { call, result -> kubeAuthBrowser.handle(call, result) }
         applyScreenCaptureAllowed(savedScreenCaptureAllowed())
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/window").setMethodCallHandler { call, result ->
             when (call.method) {
@@ -293,11 +333,32 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        kubeAuthBrowser.cancel()
+        forwardPermissionResult?.error("cancelled", "Notification request was cancelled", null)
+        forwardPermissionResult = null
         exportResult?.success(false)
         exportResult = null; exportSource = null
         authCancellation?.cancel()
         finishAuth(false)
         super.onDestroy()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.data?.scheme == "consolecrypt" && intent.data?.host == "kubernetes") {
+            kubeAuthBrowser.onCallback(intent.data)
+            intent.data = null
+        }
+    }
+
+    override fun onPause() {
+        kubeAuthBrowser.onPause()
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        kubeAuthBrowser.onResume()
     }
 
     private val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or

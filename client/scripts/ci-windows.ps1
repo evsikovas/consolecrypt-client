@@ -89,14 +89,16 @@ if ($env:GITHUB_RUN_NUMBER -and -not $NativeOnly) {
     $env:CC_BUILD_NUMBER = "$githubBuild".Trim()
     Write-Host "Reserved Windows build $env:CC_BUILD_NUMBER"
 }
-# Exercise native RDP and PTY before the optional multi-gigabyte model downloads.
+# Exercise native RDP, PTY and Kubernetes before the optional model downloads.
 # Live server tests remain opt-in and use no runner credentials in this pass.
 $OriginalNativeTestTarget = $env:CARGO_TARGET_DIR
 try {
     $env:CARGO_TARGET_DIR = Join-Path $Repo 'target\windows-rdp-tests'
-    $NativeArguments = @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-terminal-core', '--all-targets')
+    $NativeArguments = @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-terminal-core', '-p', 'cc-k8s-core', '-p', 'cc-app-core', '--all-targets')
     if (-not $NativeOnly) { $NativeArguments += @('-p', 'cc-rdp-core') }
     Invoke-Checked cargo $NativeArguments
+    # Compile the production Flutter boundary, including Windows-only cfg paths.
+    Invoke-Checked cargo @('check', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-bridge', '--all-targets')
 } finally { $env:CARGO_TARGET_DIR = $OriginalNativeTestTarget }
 if ($NativeOnly) {
     Write-Host 'WINDOWS_NATIVE_CHECKS_PASS: no application packaging or publication'

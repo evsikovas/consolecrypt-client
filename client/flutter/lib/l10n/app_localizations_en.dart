@@ -5870,4 +5870,1397 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeAuthNone => 'Not configured';
+
+  @override
+  String get kubeConnect => 'Connect';
+
+  @override
+  String get kubeDisconnect => 'Disconnect';
+
+  @override
+  String get kubeConnecting => 'Connecting to cluster…';
+
+  @override
+  String get kubeConnectionFailed => 'Could not connect. Check the network, authentication and connection route.';
+
+  @override
+  String get kubeRetry => 'Try again';
+
+  @override
+  String get kubeBackToContexts => 'Saved connections';
+
+  @override
+  String get kubeReadOnly => 'Production · read only';
+
+  @override
+  String get kubeReadOnlyHelp => 'This context is protected against changes by the native Kubernetes client.';
+
+  @override
+  String get kubeResources => 'Resources';
+
+  @override
+  String get kubeAllNamespaces => 'All namespaces';
+
+  @override
+  String get kubeResourceKind => 'Resource type';
+
+  @override
+  String get kubeLabelSelector => 'Label selector';
+
+  @override
+  String get kubeApplyFilter => 'Apply filter';
+
+  @override
+  String get kubeNoResources => 'No resources match these filters.';
+
+  @override
+  String get kubeNoResourceKinds =>
+      'No readable resource types were discovered. Check this account’s Kubernetes permissions.';
+
+  @override
+  String get kubeRequestFailed => 'Could not load cluster data. Check the connection and Kubernetes permissions.';
+
+  @override
+  String get kubeNamespacesFailed =>
+      'The namespace list is unavailable. You can still view resources in the selected namespace.';
+
+  @override
+  String get kubeLoadMore => 'Load more';
+
+  @override
+  String get kubeRefreshResources => 'Refresh resources';
+
+  @override
+  String get kubeLive => 'Live updates';
+
+  @override
+  String get kubeSnapshot => 'Snapshot';
+
+  @override
+  String get kubeWatchFailed => 'Live updates stopped. Refresh to reconnect.';
+
+  @override
+  String get kubeResourceLimit => 'The in-memory limit is 10,000 resources. Narrow the namespace or label filter.';
+
+  @override
+  String get kubeOverview => 'Overview';
+
+  @override
+  String get kubeObjectYaml => 'YAML';
+
+  @override
+  String get kubeLogs => 'Logs';
+
+  @override
+  String get kubeContainer => 'Container';
+
+  @override
+  String get kubePreviousLogs => 'Previous container';
+
+  @override
+  String get kubeLogFilter => 'Filter log lines';
+
+  @override
+  String get kubeNoLogs => 'No log lines to display.';
+
+  @override
+  String get kubeLogTailHelp => 'The last 500 lines are loaded into memory. Refresh to retrieve a new tail.';
+
+  @override
+  String get kubeSecretRedacted => 'Secret values are hidden. This view contains metadata and key names only.';
+
+  @override
+  String get kubeStatus => 'Status';
+
+  @override
+  String get kubeCreatedAt => 'Created';
+
+  @override
+  String get kubeLabels => 'Labels';
+
+  @override
+  String get kubeConditions => 'Conditions';
+
+  @override
+  String get kubeOwners => 'Owners';
+
+  @override
+  String get kubeName => 'Name';
+
+  @override
+  String get kubeNotReported => 'Not reported';
+
+  @override
+  String get kubeSessionEnded => 'The connection has ended. Reconnect to load cluster data.';
+
+  @override
+  String kubeLoadedCount(int count) {
+    return '$count resources loaded';
+  }
+
+  @override
+  String get kubeShowDetails => 'Open resource details';
+
+  @override
+  String kubeClusterVersion(String version) {
+    return 'Kubernetes $version';
+  }
+
+  @override
+  String get kubeSortName => 'Sort by name';
+
+  @override
+  String get kubeSortNamespace => 'Sort by namespace';
+
+  @override
+  String get kubeSortStatus => 'Sort by status';
+
+  @override
+  String get kubeSortAge => 'Newest first';
+
+  @override
+  String get kubeRefreshDetails => 'Refresh details';
+
+  @override
+  String get kubeAllowChanges => 'Allow changes for 10 minutes';
+
+  @override
+  String get kubeAllowChangesHelp =>
+      'This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue.';
+
+  @override
+  String get kubeCloseWriteWindow => 'Return to read only';
+
+  @override
+  String kubeWriteWindowRemaining(String time) {
+    return 'PROD · changes allowed · $time remaining';
+  }
+
+  @override
+  String get kubeWriteWindowFailed => 'Could not change the write window. Reconnect and try again.';
+
+  @override
+  String get kubeTypeName => 'Type the exact name above';
+
+  @override
+  String get kubeEditYaml => 'Edit YAML';
+
+  @override
+  String get kubeApplyYaml => 'Apply changes';
+
+  @override
+  String get kubeApplyYamlHelp =>
+      'Apply the reviewed changes to this resource? Type its exact name to confirm. The server will reject the update if its resource version has changed.';
+
+  @override
+  String get kubeApplyFailed =>
+      'The change was not accepted. Refresh the object and check permissions, validation errors or ownership conflicts before trying again.';
+
+  @override
+  String get kubeReviewChanges => 'Review changes';
+
+  @override
+  String get kubeDryRun => 'Validate on server';
+
+  @override
+  String get kubeDryRunRequired =>
+      'Validate the YAML on the server first. Review the resulting changes before applying them.';
+
+  @override
+  String get kubeDryRunHelp =>
+      'Server dry run: removed lines are marked − and added lines +. Nothing has been saved to the cluster yet.';
+
+  @override
+  String get kubeForceApply => 'Take ownership of conflicting fields';
+
+  @override
+  String get kubeForceApplyHelp =>
+      'Only enable this when you intend to replace fields managed by another controller. Validate the changes again after enabling.';
+
+  @override
+  String get kubeNoYamlChanges => 'The server returned no YAML changes.';
+
+  @override
+  String get kubeDeleteResource => 'Delete Kubernetes resource';
+
+  @override
+  String get kubeDeleteResourceHelp =>
+      'This deletes the resource from the cluster and may stop running workloads. Type its exact name to confirm.';
+
+  @override
+  String get kubeFollowLogs => 'Follow new log lines';
+
+  @override
+  String get kubePauseLogs => 'Pause';
+
+  @override
+  String get kubeResumeLogs => 'Resume';
+
+  @override
+  String get kubeLogBufferHelp => 'Live log buffer: up to 20,000 lines and 2 MiB, kept only in memory.';
+
+  @override
+  String get kubeLogOptions => 'Log options';
+
+  @override
+  String get kubeGitOps => 'GitOps';
+
+  @override
+  String get kubeProblems => 'Problems';
+
+  @override
+  String get kubeHelm => 'Helm';
+
+  @override
+  String get kubeInsightsPartial =>
+      'Some resources could not be inspected because of permissions, discovery failures or size limits. Results are incomplete.';
+
+  @override
+  String get kubeGitOpsAll => 'All';
+
+  @override
+  String get kubeGitOpsReady => 'Ready';
+
+  @override
+  String get kubeGitOpsAttention => 'Needs attention';
+
+  @override
+  String get kubeGitOpsSuspended => 'Suspended';
+
+  @override
+  String get kubeDependencies => 'Dependencies';
+
+  @override
+  String get kubeNoVisibleProblems => 'No problems were found among the resources that could be inspected.';
+
+  @override
+  String get kubeNoProblems => 'No known problems were found in the inspected resources.';
+
+  @override
+  String get kubeNoGitOpsResources => 'No Flux or Argo CD resources match this filter.';
+
+  @override
+  String get kubeGitOpsActions => 'Controller actions';
+
+  @override
+  String get kubeDependencyCycle => 'Dependency cycle detected';
+
+  @override
+  String get kubeDependencyMissing => 'Dependency was not found';
+
+  @override
+  String get kubeDependencyReady => 'Depends on a ready resource';
+
+  @override
+  String get kubeDependencyWaiting => 'Waiting for dependency';
+
+  @override
+  String get kubeGitOpsSuspend => 'Suspend reconciliation';
+
+  @override
+  String get kubeGitOpsResume => 'Resume reconciliation';
+
+  @override
+  String get kubeGitOpsReset => 'Reset failure counter';
+
+  @override
+  String get kubeGitOpsForce => 'Force Helm upgrade';
+
+  @override
+  String get kubeGitOpsReconcile => 'Reconcile now';
+
+  @override
+  String get kubeArgoSync => 'Sync application';
+
+  @override
+  String get kubeArgoRefresh => 'Refresh application';
+
+  @override
+  String get kubeArgoHardRefresh => 'Refresh application and manifests';
+
+  @override
+  String get kubeGitOpsChangeHelp =>
+      'This sends a change to the controller and can affect running applications. Review the action and type the exact resource name to continue.';
+
+  @override
+  String get kubeGitOpsReason => 'Reason (stored in the resource annotation)';
+
+  @override
+  String get kubeIssueCrashLoop => 'Container keeps crashing';
+
+  @override
+  String get kubeIssueImagePull => 'Container image cannot be downloaded';
+
+  @override
+  String get kubeIssueContainerConfig => 'Container configuration is invalid';
+
+  @override
+  String get kubeIssueOom => 'Container exceeded its memory limit';
+
+  @override
+  String get kubeIssueRestarts => 'Container has restarted repeatedly';
+
+  @override
+  String get kubeIssueScheduling => 'Pod cannot be scheduled';
+
+  @override
+  String get kubeIssuePodNotReady => 'Pod is not ready';
+
+  @override
+  String get kubeIssueNodeNotReady => 'Node is not ready';
+
+  @override
+  String get kubeIssueNodePressure => 'Node is under resource pressure';
+
+  @override
+  String get kubeIssueCondition => 'Resource requires attention';
+
+  @override
+  String get kubeIssueRolloutDeadline => 'Workload rollout exceeded its deadline';
+
+  @override
+  String get kubeIssueReplicaFailure => 'Controller could not create replicas';
+
+  @override
+  String get kubeIssueReplicasUnavailable => 'Some workload replicas are unavailable';
+
+  @override
+  String get kubeIssueVolumePending => 'Volume claim is waiting for storage';
+
+  @override
+  String get kubeIssueVolumeLost => 'Volume claim lost its volume';
+
+  @override
+  String get kubeIssueJobFailed => 'Job failed';
+
+  @override
+  String get kubeIssueArgoDegraded => 'Argo CD application is degraded';
+
+  @override
+  String get kubeIssueArgoOutOfSync => 'Argo CD application is out of sync';
+
+  @override
+  String get kubeIssueFluxPending => 'Flux has not observed the latest configuration';
+
+  @override
+  String get kubeIssueFluxNotReady => 'Flux resource is not ready';
+
+  @override
+  String get kubeIssueFluxStalled => 'Flux reconciliation has stalled';
+
+  @override
+  String get kubeIssueFluxSuspended => 'Flux reconciliation is suspended';
+
+  @override
+  String get kubeHelmAllRevisions => 'Show all revisions';
+
+  @override
+  String get kubeHelmEmpty => 'No Helm releases match this filter.';
+
+  @override
+  String kubeHelmRevision(int revision) {
+    return 'Revision $revision';
+  }
+
+  @override
+  String get kubeHelmHistory => 'Release history';
+
+  @override
+  String get kubeHelmSecretsMasked => 'Sensitive values are masked. Values and manifests remain in memory only.';
+
+  @override
+  String get kubeHelmValues => 'User values';
+
+  @override
+  String get kubeHelmChartValues => 'Chart defaults';
+
+  @override
+  String get kubeHelmManifest => 'Manifest';
+
+  @override
+  String get kubeHelmCompare => 'Compare with revision';
+
+  @override
+  String get kubeHelmChooseRevision => 'Choose revision';
+
+  @override
+  String get kubeHelmDiffHelp =>
+      'Removed lines are marked − and added lines +. This comparison does not change the release.';
+
+  @override
+  String get kubeExecReviewTitle => 'Allow authentication command?';
+
+  @override
+  String get kubeExecReviewHelp =>
+      'This command runs on this computer. Review its executable, arguments and environment. Approval applies only to this unlocked profile; a changed command requires approval again.';
+
+  @override
+  String get kubeExecArguments => 'Arguments';
+
+  @override
+  String get kubeExecEnvironment => 'Environment';
+
+  @override
+  String get kubeExecAllow => 'Allow this command';
+
+  @override
+  String get kubeAuthFailed => 'Authentication could not be completed. Check the connection settings and try again.';
+
+  @override
+  String get kubeAuthExpired => 'This request has expired. Start authentication again.';
+
+  @override
+  String get kubeOidcTitle => 'Sign in to the cluster';
+
+  @override
+  String get kubeOidcHelp =>
+      'Sign in with your identity provider in the system browser. Your credentials stay between this device and the provider.';
+
+  @override
+  String get kubeOidcOpen => 'Open browser';
+
+  @override
+  String get kubeOidcWaiting => 'Waiting for browser sign-in…';
+
+  @override
+  String get kubeAuthAction => 'Authenticate';
+
+  @override
+  String get kubeExecMobile =>
+      'External authentication commands are unavailable on mobile. Use a token, client certificate or browser sign-in (OIDC).';
+
+  @override
+  String get kubePodTerminal => 'Pod terminal';
+
+  @override
+  String get kubeExecProductionBlocked => 'Terminal access is disabled for this production context.';
+
+  @override
+  String get kubeAttach => 'Attach to process';
+
+  @override
+  String get kubeAttachHelp =>
+      'Connect to the container’s existing process. Keyboard input goes directly to that process.';
+
+  @override
+  String get kubeShell => 'Shell in container';
+
+  @override
+  String get kubeOpenShell => 'Open shell';
+
+  @override
+  String get kubeTerminalFailed =>
+      'Could not open the terminal. Check container status, permissions and the selected shell.';
+
+  @override
+  String get kubeHidePanel => 'Hide terminal panel';
+
+  @override
+  String get kubeShowPanel => 'Open terminal panel';
+
+  @override
+  String get kubeTerminalEmpty => 'Open a terminal from a Pod’s details.';
+
+  @override
+  String get kubeTerminalConnected => 'Connected';
+
+  @override
+  String get kubeTerminalDisconnected => 'Disconnected';
+
+  @override
+  String get kubePortForward => 'Forward a Pod port';
+
+  @override
+  String get kubeForwardHelp =>
+      'The port is available only on this device at 127.0.0.1. The forward stops when you disconnect the cluster or lock the profile.';
+
+  @override
+  String get kubeForwardProductionBlocked => 'Port forwarding is disabled for this production context.';
+
+  @override
+  String get kubeRemotePort => 'Container TCP port';
+
+  @override
+  String get kubeLocalPort => 'Local port';
+
+  @override
+  String get kubeLocalPortHelp => 'Use 0 to choose a free port automatically.';
+
+  @override
+  String get kubeStartForward => 'Start forwarding';
+
+  @override
+  String get kubeForwardCreated => 'Forwarding is running. Manage it in Tunnels or the cluster panel.';
+
+  @override
+  String get kubeForwardFailed =>
+      'Could not forward this port. Check Pod status, permissions and local port availability.';
+
+  @override
+  String get kubePortForwards => 'Kubernetes port forwards';
+
+  @override
+  String get kubeNoForwards => 'No active Kubernetes port forwards.';
+
+  @override
+  String get kubeForwardRunning => 'Running';
+
+  @override
+  String get kubeForwardStopped => 'Stopped';
+
+  @override
+  String get kubeStopForward => 'Stop forwarding';
+
+  @override
+  String kubeForwardTraffic(int count, String sent, String received) {
+    return '$count connections · sent $sent · received $received';
+  }
+
+  @override
+  String get kubePermissions => 'Access permissions';
+
+  @override
+  String get kubePermissionsHelp =>
+      'Rules returned by Kubernetes for the current identity in this namespace. Production safeguards remain in effect.';
+
+  @override
+  String get kubePermissionsIncomplete =>
+      'The server returned an incomplete permission report. Missing rules do not prove that an action is forbidden.';
+
+  @override
+  String get kubeScale => 'Scale workload';
+
+  @override
+  String get kubeRestart => 'Restart rollout';
+
+  @override
+  String get kubeCordon => 'Cordon node';
+
+  @override
+  String get kubeUncordon => 'Uncordon node';
+
+  @override
+  String get kubeDrain => 'Drain node';
+
+  @override
+  String get kubeDebugContainer => 'Add debug container';
+
+  @override
+  String get kubeMutationConfirmHelp =>
+      'Review the operation and type the exact resource name to confirm. Kubernetes permissions and production safeguards are checked again before execution.';
+
+  @override
+  String get kubeOperationFailed =>
+      'The operation could not complete. Check permissions and resource state, then refresh before trying again.';
+
+  @override
+  String get kubeReplicas => 'Replica count (0–1,000,000)';
+
+  @override
+  String get kubeContainerImage => 'Container image';
+
+  @override
+  String get kubeDebugHelp =>
+      'The image is started inside this Pod with /bin/sh. An ephemeral container cannot be removed from the Pod afterward. Use an image you trust.';
+
+  @override
+  String get kubeDrainHelp =>
+      'The node is already cordoned. Review every Pod before eviction. DaemonSets and mirror Pods are skipped. Disruption budgets remain enforced; unmanaged Pods and local emptyDir data block this operation.';
+
+  @override
+  String kubeDrainProgress(int done, int total) {
+    return 'Evicted: $done of $total';
+  }
+
+  @override
+  String get kubeDrainEmpty => 'There are no Pods eligible for eviction.';
+
+  @override
+  String get kubeDrainUnmanaged => 'Blocked: Pod has no controller.';
+
+  @override
+  String get kubeDrainLocalData => 'Blocked: Pod uses local emptyDir data.';
+
+  @override
+  String get kubeDrainBlocked => 'Blocked: review this Pod before draining.';
+
+  @override
+  String get kubeMetrics => 'Resource usage';
+
+  @override
+  String get kubeMeasuredAt => 'Measured at';
+
+  @override
+  String get kubeMetricsUnavailable => 'Metrics are unavailable. Check metrics-server and access permissions.';
+
+  @override
+  String get kubeWorkloadPods => 'Workload Pods';
+
+  @override
+  String get kubeEvents => 'Kubernetes events';
+
+  @override
+  String get kubeFluxCliTitle => 'Flux CLI';
+
+  @override
+  String get kubeFluxCliHelp => 'Optional desktop tools. Cluster access uses a temporary local proxy.';
+
+  @override
+  String get kubeFluxCliPath => 'Path to Flux';
+
+  @override
+  String get kubeFluxCliFind => 'Find';
+
+  @override
+  String get kubeFluxCliProbe => 'Check version';
+
+  @override
+  String get kubeFluxCliVersion => 'Release version';
+
+  @override
+  String get kubeFluxCliMethod => 'Installation method';
+
+  @override
+  String get kubeFluxCliInstall => 'Install';
+
+  @override
+  String get kubeFluxCliUpdate => 'Update';
+
+  @override
+  String get kubeFluxCliRemove => 'Uninstall';
+
+  @override
+  String get kubeFluxCliOfficial => 'Official signed release';
+
+  @override
+  String get kubeFluxCliConfirm => 'Confirm CLI operation';
+
+  @override
+  String get kubeFluxCliVerify =>
+      'Official downloads require SHA-256 and Cosign verification. Package commands open in a visible terminal.';
+
+  @override
+  String get kubeFluxCliFailed => 'The CLI operation failed or verification was unavailable.';
+
+  @override
+  String get kubeFluxCliOutput => 'CLI output';
+
+  @override
+  String get kubeFluxCliRun => 'Run';
+
+  @override
+  String get kubeFluxCliTerminal => 'Open Flux terminal';
+
+  @override
+  String get kubeFluxCliLocalPath => 'Local repository directory for diff';
+
+  @override
+  String get kubeFluxCliResource => 'Resource name';
+
+  @override
+  String get kubeFluxCliKind => 'Resource kind';
+
+  @override
+  String get kubeNewConnection => 'New connection';
+
+  @override
+  String get kubeConnectionSettings => 'Connection settings';
+
+  @override
+  String get kubeServerUrl => 'Kubernetes API URL (HTTPS)';
+
+  @override
+  String get kubeCertificateAuthority => 'CA certificate (PEM, optional)';
+
+  @override
+  String get kubeClientCertificate => 'Client certificate (PEM)';
+
+  @override
+  String get kubePrivateKey => 'Client private key (PEM)';
+
+  @override
+  String get kubeManualReviewHelp =>
+      'Continue to review and import this context. Production protection is enabled by default.';
+
+  @override
+  String get kubeProductionContext => 'Production context';
+
+  @override
+  String get kubeAllowExecInProd => 'Allow Pod terminals in production';
+
+  @override
+  String get kubeAllowForwardInProd => 'Allow port forwarding in production';
+
+  @override
+  String get kubeRecordEvents => 'Keep event history';
+
+  @override
+  String get kubeRecordEventsHelp => 'Encrypted on this device for 7 days. Event history is not synchronized.';
+
+  @override
+  String get kubeScanFolder => 'Scan a kubeconfig folder';
+
+  @override
+  String get kubeScanEmpty => 'No kubeconfig files were found in this folder.';
+
+  @override
+  String kubeQueuedFiles(int count) {
+    return '$count files queued for review';
+  }
+
+  @override
+  String get kubeNextFile => 'Review next file';
+
+  @override
+  String get kubeExport => 'Export kubeconfig';
+
+  @override
+  String get kubeExportHelp => 'A kubeconfig file can contain credentials. Save it only to a trusted location.';
+
+  @override
+  String get kubeIncludeCredentials => 'Include credentials';
+
+  @override
+  String get kubeExportSaved => 'Kubeconfig saved.';
+
+  @override
+  String get kubeAiAssistant => 'AI assistant';
+
+  @override
+  String get kubeAiHelp =>
+      'Read-only cluster tools. Secret values are excluded; Kubernetes permissions and your chosen context limit access. Answers never run commands.';
+
+  @override
+  String get kubeAiProvider => 'AI provider';
+
+  @override
+  String get kubeAiDefaultProvider => 'Default provider on this device';
+
+  @override
+  String get kubeAiConfigMaps => 'Allow reading ConfigMap values for this question';
+
+  @override
+  String get kubeAiUnresolved =>
+      'Some checks could not be completed; review the tool errors before drawing conclusions.';
+
+  @override
+  String get kubeAiReadTool => 'Read-only tool';
+
+  @override
+  String get kubeAiTruncated => 'Result was truncated.';
+
+  @override
+  String get kubeAiToolFailed => 'This check could not complete. Data may be missing or access may be restricted.';
+
+  @override
+  String get kubeAiFailed =>
+      'The assistant could not complete the request. Check the selected AI provider and cluster connection.';
+
+  @override
+  String get kubeAiQuestion => 'Ask about this cluster';
+
+  @override
+  String get kubeAiAsk => 'Ask assistant';
+
+  @override
+  String get kubeAiExternalTitle => 'Send cluster context to this provider?';
+
+  @override
+  String get kubeAiExternalHelp =>
+      'This question may send sanitized resource metadata, status and logs to the external provider shown above. Secret values remain excluded. Approval applies only to this question.';
+
+  @override
+  String get kubeAiNoTools =>
+      'This provider cannot call tools; the assistant will use only the available read-only context.';
+
+  @override
+  String get kubeAiExplain => 'Explain with AI';
+
+  @override
+  String kubeAiExplainQuestion(String problem, String resource) {
+    return 'Explain the problem $problem for $resource. Check related status and events without changing resources.';
+  }
+
+  @override
+  String get sharingKubeContext => 'Kubernetes context';
+
+  @override
+  String get sharingKubeCluster => 'Cluster';
+
+  @override
+  String get sharingKubeExclude =>
+      'Only the connection settings are shared by default. Authentication, local routes and approvals remain on this device.';
+
+  @override
+  String get sharingKubeIncludeCredentials => 'Include authentication credentials';
+
+  @override
+  String get sharingKubeCredentialWarning =>
+      'Recipients can use these credentials to access the cluster. Share them only with verified devices you trust. Revoking the share does not revoke credentials already copied by a recipient.';
+
+  @override
+  String get sharingKubeCredentialsIncluded => 'Authentication is included; values stay hidden.';
+
+  @override
+  String get sharingKubeCredentialsExcluded => 'Authentication is not included.';
+
+  @override
+  String get sharingKubeCopyHelp =>
+      'Save a personal copy of this connection. Choose your own route. Authentication is imported only with your explicit selection; executable plugins still require approval on this device.';
+
+  @override
+  String get sharingKubeImportCredentials => 'Import the included authentication credentials';
+
+  @override
+  String get sharingKubeRouteRequired =>
+      'This connection requires a route. Select a saved SSH host or jump profile on this device.';
+
+  @override
+  String get sharingKubeUnsupported => 'This server does not support sharing Kubernetes contexts.';
+
+  @override
+  String get sharingKubeSnapshotChanged => 'Review this connection again if its settings or credentials have changed.';
+
+  @override
+  String get kubeHistory => 'Event history';
+
+  @override
+  String get kubeHistoryHelp => 'Local encrypted history for the last 7 days. Enable recording in connection settings.';
+
+  @override
+  String get kubeHistoryRecording => 'Recording cluster events';
+
+  @override
+  String get kubeHistoryDisabled => 'History recording is disabled';
+
+  @override
+  String get kubeHistoryConnecting => 'Reconnecting the event recorder…';
+
+  @override
+  String get kubeHistoryUnavailable => 'Event recording is unavailable; saved history remains readable.';
+
+  @override
+  String get kubeHistoryWarnings => 'Warnings only';
+
+  @override
+  String get kubeHistoryClear => 'Clear local event history';
+
+  @override
+  String get kubeHistoryClearHelp =>
+      'Delete saved event history for this context on this device. Cluster resources are unaffected.';
+
+  @override
+  String get kubeHelmComputedValues => 'Computed values';
+
+  @override
+  String get kubeRevealSecret => 'Reveal Secret values';
+
+  @override
+  String get kubeRevealSecretHelp =>
+      'Values are visible only in this protected dialog for 30 seconds. Copies are cleared from the clipboard within 30 seconds. Values are never sent to AI or stored in resource history.';
+
+  @override
+  String get kubeSecretExpired => 'Values hidden. Reveal again if needed.';
+
+  @override
+  String get kubeCreateResource => 'Create resource';
+
+  @override
+  String get kubeManifestTemplate => 'Insert metadata template';
+
+  @override
+  String get kubeSchema => 'Kubernetes resource schema';
+
+  @override
+  String get kubeHelmRollback => 'Roll back Helm release';
+
+  @override
+  String get kubeHelmRollbackHelp =>
+      'Review the exact Helm binary, checksum and command. The operation changes cluster resources; Helm hooks are disabled. Type the release name to confirm.';
+
+  @override
+  String get kubeHelmRollbackFailed =>
+      'Rollback could not complete. Check the Helm path, permissions and current release revision. Review the command again before retrying.';
+
+  @override
+  String get kubeHelmBinary => 'Absolute path to Helm (optional)';
+
+  @override
+  String get kubeAiHistory => 'AI conversation history';
+
+  @override
+  String get kubeAiHistoryLocal => 'Saved on this device';
+
+  @override
+  String get kubeAiHistorySynced => 'Encrypted synchronization enabled';
+
+  @override
+  String get kubeAiHistoryDeleteHelp =>
+      'Delete this saved conversation. If synchronized, its deletion will also synchronize.';
+
+  @override
+  String get kubeRolloutHistory => 'Rollout history';
+
+  @override
+  String get kubeDiffBefore => 'Before';
+
+  @override
+  String get kubeDiffAfter => 'After';
+
+  @override
+  String get kubeCompare => 'Compare';
+
+  @override
+  String get kubeDiffTruncated => 'The diff is truncated. Review the full resource before applying changes.';
+
+  @override
+  String get kubeNoChanges => 'No changes';
+
+  @override
+  String get kubeDiffReview => 'Review changed fields. Secret values remain hidden.';
+
+  @override
+  String get kubeFluxCliAdviceMissing => 'Flux CLI was not found. Install it?';
+
+  @override
+  String get kubeFluxCliAdviceUpdate => 'The CLI is older than Flux in this cluster. Update it?';
+
+  @override
+  String get kubeFluxCliNeverSuggest => 'Do not suggest again';
+
+  @override
+  String get kubeFluxCliLater => 'Not now';
+
+  @override
+  String get kubeFluxCliPathHelp => 'Add Flux to PATH';
+
+  @override
+  String get kubeFluxCliPathHint =>
+      'Open a new terminal window after updating PATH. On macOS/Linux, add the shown line to the indicated profile file.';
+
+  @override
+  String get kubeFluxCliPathAdded => 'The directory was added to the user PATH.';
+
+  @override
+  String get kubeFluxCliController => 'Flux version in the cluster';
+
+  @override
+  String get kubeGitOpsFlow => 'Resource flow';
+
+  @override
+  String get kubeGraphList => 'List';
+
+  @override
+  String get kubeGraphReset => 'Reset zoom and position';
+
+  @override
+  String get kubeIssueCertificateExpiring => 'Certificate expires soon';
+
+  @override
+  String get kubeIssueCertificateExpired => 'Certificate has expired';
+
+  @override
+  String get kubeIssueEvicted => 'Pod was evicted';
+
+  @override
+  String get kubeIssuePendingResources => 'Insufficient cluster resources';
+
+  @override
+  String get kubeIssuePendingTaints => 'Node taints prevent scheduling';
+
+  @override
+  String get kubeIssuePendingVolume => 'Pod is waiting for a volume';
+
+  @override
+  String get kubeIssueSuspendedLong => 'Reconciliation suspended for over 24 hours';
+
+  @override
+  String get kubeIssueSourceStale => 'Source artifact is out of date';
+
+  @override
+  String get kubeIssueHelmDrift => 'Helm release has drifted';
+
+  @override
+  String get kubeIssueDependencyNotReady => 'Dependency is not ready';
+
+  @override
+  String get kubeIssueDependencyMissing => 'Dependency is missing or unavailable';
+
+  @override
+  String get kubeExitCode => 'Exit code';
+
+  @override
+  String get kubeCommandOpen => 'Open Kubernetes context';
+
+  @override
+  String get kubeCommandAsk => 'Ask AI about Kubernetes';
+
+  @override
+  String get kubeCommandContext => 'Cluster context';
+
+  @override
+  String get kubeRelatedObjects => 'Related resources';
+
+  @override
+  String get kubeRelationOwner => 'Owner';
+
+  @override
+  String get kubeRelationDependent => 'Dependent resource';
+
+  @override
+  String get kubeRelationVolume => 'Volume connection';
+
+  @override
+  String get kubeRelationConfiguration => 'Configuration reference';
+
+  @override
+  String get kubeMetricsTrend => 'CPU trend during this session';
+
+  @override
+  String get kubeLogSince => 'Time range';
+
+  @override
+  String get kubeLogAllTime => 'All time';
+
+  @override
+  String get kubeLogLastMinute => 'Last minute';
+
+  @override
+  String get kubeLogLastHour => 'Last hour';
+
+  @override
+  String get kubeLogLastDay => 'Last day';
+
+  @override
+  String get kubeLogRegex => 'Regular expression';
+
+  @override
+  String get kubeLogRegexInvalid => 'Invalid or excessively complex pattern.';
+
+  @override
+  String get kubeLogLevel => 'Level';
+
+  @override
+  String get kubeLogAllPods => 'All pods';
+
+  @override
+  String get kubeLogAllLevels => 'All levels';
+
+  @override
+  String get kubeLogWrap => 'Wrap lines';
+
+  @override
+  String get kubeLogExport => 'Export / share logs';
+
+  @override
+  String get kubeLogExportHelp =>
+      'Logs may contain secrets. Only lines visible under the current filter will be saved.';
+
+  @override
+  String get kubeLogMask => 'Mask recognized secrets before exporting';
+
+  @override
+  String get kubeLogTargetsTruncated => 'Showing the first 8 pods. Open a specific pod to view others.';
+
+  @override
+  String get kubeLogSaved => 'Logs saved.';
+
+  @override
+  String get kubeTags => 'Tags, separated by commas';
+
+  @override
+  String get kubeTagsHelp => 'Cluster tags and color are shared by its saved contexts.';
+
+  @override
+  String get kubeColor => 'Cluster color';
+
+  @override
+  String get kubeNoColor => 'No color';
+
+  @override
+  String get kubeFavorite => 'Toggle favorite';
+
+  @override
+  String get kubeFavorites => 'Favorites';
+
+  @override
+  String get kubeAllKinds => 'All kinds';
+
+  @override
+  String get kubeGroupWorkloads => 'Workloads';
+
+  @override
+  String get kubeGroupNetwork => 'Network';
+
+  @override
+  String get kubeGroupConfig => 'Configuration';
+
+  @override
+  String get kubeGroupStorage => 'Storage';
+
+  @override
+  String get kubeGroupAccess => 'Access';
+
+  @override
+  String get kubeGroupCluster => 'Cluster / CRDs';
+
+  @override
+  String get kubeLogDefaultContainer => 'Default container';
+
+  @override
+  String get kubeForwardChoosePod => 'Choose a Pod for forwarding';
+
+  @override
+  String get kubeForwardChoosePodHelp =>
+      'Select the target Pod. The connection starts only after confirming its ports.';
+
+  @override
+  String get kubeMemoryTrend => 'Memory trend during this session';
+
+  @override
+  String get kubeRequests => 'Requests';
+
+  @override
+  String get kubeLimits => 'Limits';
+
+  @override
+  String get kubeCapacity => 'Capacity';
+
+  @override
+  String get kubeAllocatable => 'Allocatable';
+
+  @override
+  String get kubeResourceBudgetsUnavailable => 'Resource requests and limits are unavailable.';
+
+  @override
+  String get kubeBulkActions => 'Selected resources';
+
+  @override
+  String get kubeBulkHelp =>
+      'Review the exact list and type the context name. Operations run in order; cancellation stops after the current operation. Up to 100 resources.';
+
+  @override
+  String get kubeBulkProductionBlocked => 'Bulk changes are disabled in production contexts.';
+
+  @override
+  String get kubeBulkFailed =>
+      'The operation stopped. Completed resources are marked; review the remaining resources before retrying.';
+
+  @override
+  String get kubeContextTerminal => 'Local terminal for this cluster';
+
+  @override
+  String get kubeContextTerminalHelp =>
+      'The terminal uses a temporary local API proxy. Cluster credentials stay in ConsoleCrypt; production restrictions remain active.';
+
+  @override
+  String get kubeOutput => 'Output';
+
+  @override
+  String get kubePinLogs => 'Open logs in the bottom panel';
+
+  @override
+  String get kubeResizePanel => 'Resize bottom panel';
+
+  @override
+  String get kubeConfirmName => 'Type the exact name';
+
+  @override
+  String get kubeAiProposalReview => 'Review proposal';
+
+  @override
+  String get kubeAiProposalContext =>
+      'The command will be inserted without execution into a new local terminal for this context.';
+
+  @override
+  String get kubeAiHistoryContext => 'History messages in this request';
+
+  @override
+  String get kubeAiNewConversation => 'New conversation';
+
+  @override
+  String get kubeTableColumns => 'Columns';
+
+  @override
+  String get kubeAge => 'Age';
+
+  @override
+  String get kubeGitOpsSource => 'Source';
+
+  @override
+  String get kubeGitOpsArtifact => 'Artifact';
+
+  @override
+  String get kubeGitOpsInterval => 'Reconciliation interval';
+
+  @override
+  String get kubeGitOpsRevision => 'Revision';
+
+  @override
+  String get kubeGitOpsSignature => 'Signature verification';
+
+  @override
+  String get kubeGitOpsInventory => 'Managed resources';
+
+  @override
+  String get kubeGitOpsValuesFrom => 'Referenced values';
+
+  @override
+  String get kubeGitOpsControllerLogs => 'Controller logs';
+
+  @override
+  String get kubeGitOpsPath => 'Repository path';
+
+  @override
+  String get kubeGitOpsBranch => 'Branch';
+
+  @override
+  String get kubeGitOpsTag => 'Tag / version constraint';
+
+  @override
+  String get kubeGitOpsChart => 'Chart';
+
+  @override
+  String get kubeGitOpsDrift => 'Drift detection';
+
+  @override
+  String get kubeGitOpsHistoryEmpty => 'No reconciliation history is available.';
+
+  @override
+  String get kubeGitOpsControllerUnavailable =>
+      'Controller logs are unavailable. Check resource discovery and permissions.';
+
+  @override
+  String get kubeGitOpsSignatureUnknown => 'Not reported by the controller';
+
+  @override
+  String get kubeGitOpsSourceReconcileHelp =>
+      'Request a new reconciliation for this source. Enter its exact name to continue.';
+
+  @override
+  String get kubeGitOpsMetadataOnly => 'Only object references are shown here. Secret values are hidden.';
+
+  @override
+  String get kubeResourceConfiguration => 'Workload and node configuration';
+
+  @override
+  String get kubePort => 'Port';
+
+  @override
+  String get kubePorts => 'Ports';
+
+  @override
+  String get kubeNode => 'Node';
+
+  @override
+  String get kubeServiceAccount => 'Service account';
+
+  @override
+  String get kubeNodeSelector => 'Node selector';
+
+  @override
+  String get kubeReady => 'Ready';
+
+  @override
+  String get kubeRestarts => 'Restarts';
+
+  @override
+  String get kubeIssueExitCode => 'Exit code';
+
+  @override
+  String get kubeVolumeMounts => 'Volume mounts';
+
+  @override
+  String get kubeVolumes => 'Volumes';
+
+  @override
+  String get kubeUnschedulable => 'Scheduling disabled';
+
+  @override
+  String get kubeTaints => 'Taints';
+
+  @override
+  String get kubeNodeInfo => 'Node software';
+
+  @override
+  String get kubeGraphProblems => 'Paths to problems';
+
+  @override
+  String get kubeGraphSearch => 'Find a resource in the graph';
+
+  @override
+  String get kubeGraphFold => 'Hide inventory leaves';
+
+  @override
+  String get kubeReplicaStatus => 'Ready / desired replicas';
+
+  @override
+  String get kubeTableSort => 'Sort resources';
+
+  @override
+  String get kubeForwardRestore => 'Restore after reconnecting';
+
+  @override
+  String get kubeForwardRestoreHelp =>
+      'Only while this context stays open and this profile is unlocked. Leaving the context clears this choice.';
+
+  @override
+  String get kubeForwardRestoreFailed =>
+      'Some port forwards could not be restored. Check the pod and local port, then start them again.';
+
+  @override
+  String get kubeGitOpsReconcileWithSource => 'Reconcile with source';
+
+  @override
+  String get kubeGitOpsReconcileWithSourceHelp =>
+      'Queue reconciliation of the source chain, then this resource. Controller readiness is shown by the live status. Confirm the exact resource name.';
+
+  @override
+  String get kubeForwardNetwork => 'Allow access from the local network';
+
+  @override
+  String get kubeForwardBindAddress => 'Local IP address to listen on';
+
+  @override
+  String get kubeForwardNetworkWarning =>
+      'I understand that other devices may access this port without Kubernetes authentication. Allow this network exposure.';
+
+  @override
+  String get kubeHelmComputedPartial =>
+      'Values were merged from the saved release; subchart defaults and global imports may be missing.';
+
+  @override
+  String get kubeManifestSnippets => 'Insert saved manifest';
+
+  @override
+  String get kubeManifestSnippetsHelp =>
+      'Choose a kubectl snippet containing YAML or JSON. Review identifiers and variables in the editor before server validation.';
+
+  @override
+  String get kubeNoManifestSnippets => 'No manifest snippets yet. Save YAML or JSON as a kubectl snippet in Snippets.';
+
+  @override
+  String get kubeGitOpsSources => 'Sources';
+
+  @override
+  String get kubeGitOpsNotifications => 'Notifications';
+
+  @override
+  String get kubeGitOpsImages => 'Image automation';
+
+  @override
+  String get kubeGitOpsRecent => 'Recent controller status changes';
+
+  @override
+  String get kubeDockRight => 'Dock panel to the right';
+
+  @override
+  String get kubeDockBottom => 'Dock panel at the bottom';
+
+  @override
+  String get kubeMaskedEditHelp =>
+      'This manifest contains masked values. YAML changes are disabled to prevent replacing credentials with placeholders. Use the individual resource actions or edit the original trusted manifest.';
+
+  @override
+  String get kubeAutoShell => 'Detect shell automatically';
 }

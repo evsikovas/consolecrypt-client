@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/sharing/sharing_kubernetes.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,6 +57,11 @@ class SharingProjectionView extends StatelessWidget {
       l.sharingDescription: d['description'],
       l.sharingCommand: d['template'],
       l.sharingNotes: d['notes'],
+      if (j['kind'] == 'kube_context') ...{
+        l.sharingKubeCluster: d['cluster_name'],
+        l.sharingAddress: d['server'],
+        l.kubeNamespace: d['namespace'],
+      },
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,6 +80,10 @@ class SharingProjectionView extends StatelessWidget {
             ),
         if (secret) const Text('••••••••'), // l10n-ignore: masked secret
         if (j['kind'] == 'snippet') Text(l.sharingNoAutoRun),
+        if (j['kind'] == 'kube_context') ...[
+          if (d['production'] == true) Text(l.kubeProduction),
+          Text(d['includes_credentials'] == true ? l.sharingKubeCredentialsIncluded : l.sharingKubeCredentialsExcluded),
+        ],
       ],
     );
   }
@@ -221,11 +231,13 @@ class _SharingRecipientsState extends ConsumerState<SharingRecipients> {
 }
 
 Future<void> showSharingPublish(BuildContext context, {required SharingKind kind, required String objectId}) =>
-    showAppDialog<void>(
-      context,
-      secure: true,
-      builder: (_) => SharingPublishDialog(kind: kind, objectId: objectId),
-    );
+    kind == SharingKind.kubeContext
+    ? showSharingKubeContext(context, contextId: objectId)
+    : showAppDialog<void>(
+        context,
+        secure: true,
+        builder: (_) => SharingPublishDialog(kind: kind, objectId: objectId),
+      );
 
 class SharingPublishDialog extends ConsumerStatefulWidget {
   const SharingPublishDialog({required this.kind, required this.objectId, super.key});

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:consolecrypt/ai/code_blocks.dart';
+import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
@@ -12,6 +13,9 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/risk_badge.dart';
+import 'package:consolecrypt/kubernetes/kube_navigation.dart';
+import 'package:consolecrypt/kubernetes/kube_providers.dart';
+import 'package:consolecrypt/kubernetes/kube_service.dart';
 import 'package:consolecrypt/rdp/rdp_launcher.dart';
 import 'package:consolecrypt/snippets/run_flow.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
@@ -55,7 +59,7 @@ AiProviderConfig? defaultProvider(List<AiProviderConfig> providers) =>
 enum _AiError { noProvider, failed }
 
 /// Result groups of the palette (caption headers, §4.8).
-enum _Group { hosts, snippets, ai, actions }
+enum _Group { hosts, snippets, kubernetes, ai, actions }
 
 /// Metadata-only labels from the planner; no credential secret is loaded.
 typedef PaletteHostEndpoint = ({String? username, int? port});
@@ -400,6 +404,22 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         : endpointState.value ?? const <ObjectId, PaletteHostEndpoint>{};
     final hosts = searchPaletteHosts(ref.watch(hostsProvider).value ?? const [], query: q, endpoints: endpoints);
     final snippets = searchPaletteSnippets(ref.watch(snippetsProvider).value ?? const [], query: q);
+    final kubeScope = kubernetesEnabled ? ref.watch(kubeScopeProvider) : null;
+    final kubeInventory = kubeScope?.unlocked == true
+        ? ref.watch(kubeConnectionsProvider(kubeScope!))
+        : const AsyncData<List<KubeConnection>>([]);
+    final kubeConnections = kubeInventory.isLoading ? const <KubeConnection>[] : kubeInventory.value ?? const [];
+    final activeKube = kubernetesEnabled ? ref.watch(kubeActiveNavigationProvider) : null;
+    void openKube(KubeNavigationRequest request) {
+      // A palette entry may outlive the profile from which it was rendered.
+      if (!identical(ref.read(kubeScopeProvider), request.scope) || !request.scope.unlocked) return;
+      ref.read(kubeNavigationProvider.notifier).open(request);
+      _close();
+      router.go(AppRoutes.kubernetes);
+    }
+
+    bool matchesKube(Iterable<String> values) =>
+        q.isEmpty || values.any((value) => value.toLowerCase().contains(q.toLowerCase()));
     final items = <_Item>[
       for (final host in hosts)
         _Item(
@@ -431,6 +451,51 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
             if (ran && mounted) _close();
           },
         ),
+      for (final connection
+          in kubeConnections
+              .where(
+                (connection) =>
+                    matchesKube([connection.name, connection.clusterName, connection.namespace, connection.server]),
+              )
+              .take(50))
+        _Item(
+          group: _Group.kubernetes,
+          key: ValueKey('palette-kube-${connection.id}'),
+          icon: Icons.hub_outlined,
+          title: connection.name,
+          subtitle: '${l10n.kubeCommandContext} · ${connection.clusterName} · ${connection.namespace}',
+          onSelect: () => openKube(KubeNavigationRequest(scope: kubeScope!, contextId: connection.id)),
+        ),
+      if (activeKube != null && identical(activeKube.scope, kubeScope) && q.isNotEmpty) ...[
+        for (final namespace in activeKube.namespaces.where((name) => matchesKube([name])).take(20))
+          _Item(
+            group: _Group.kubernetes,
+            key: ValueKey('palette-kube-namespace-$namespace'),
+            icon: Icons.folder_outlined,
+            title: namespace,
+            subtitle: l10n.kubeNamespace,
+            onSelect: () => openKube(
+              KubeNavigationRequest(scope: activeKube.scope, contextId: activeKube.contextId, namespace: namespace),
+            ),
+          ),
+        for (final resource
+            in activeKube.resources.where((resource) => matchesKube([resource.name, resource.api.kind])).take(30))
+          _Item(
+            group: _Group.kubernetes,
+            key: ValueKey('palette-kube-resource-${resource.id}'),
+            icon: Icons.account_tree_outlined,
+            title: resource.name,
+            subtitle: '${resource.api.kind} · ${resource.namespace ?? activeKube.namespace}',
+            onSelect: () => openKube(
+              KubeNavigationRequest(
+                scope: activeKube.scope,
+                contextId: activeKube.contextId,
+                namespace: resource.namespace,
+                resource: resource,
+              ),
+            ),
+          ),
+      ],
       if (q.isNotEmpty)
         _Item(
           group: _Group.ai,
@@ -443,6 +508,32 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         ),
     ];
     final actions = <_Item>[
+      if (kubernetesEnabled)
+        _Item(
+          key: const ValueKey('palette-open-kubernetes'),
+          group: _Group.actions,
+          icon: Icons.hub_outlined,
+          title: l10n.kubeCommandOpen,
+          onSelect: () {
+            _close();
+            router.go(AppRoutes.kubernetes);
+          },
+        ),
+      if (activeKube != null && identical(activeKube.scope, kubeScope))
+        _Item(
+          key: const ValueKey('palette-ask-kubernetes'),
+          group: _Group.actions,
+          icon: Icons.auto_awesome_rounded,
+          title: l10n.kubeCommandAsk,
+          onSelect: () => openKube(
+            KubeNavigationRequest(
+              scope: activeKube.scope,
+              contextId: activeKube.contextId,
+              namespace: activeKube.namespace,
+              openAi: true,
+            ),
+          ),
+        ),
       if (!AppPlatform.isMobile)
         _Item(
           key: const ValueKey('palette-new-local-terminal'),
@@ -530,6 +621,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     _Group.hosts => l10n.navHosts,
     _Group.ai => l10n.paletteGroupAi,
     _Group.snippets => l10n.navSnippets,
+    _Group.kubernetes => l10n.kubeCommandContext,
     _Group.actions => l10n.paletteGroupActions,
   };
 

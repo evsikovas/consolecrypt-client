@@ -27,6 +27,30 @@ fn guard_with(policy: Policy) -> ProdGuard {
     ProdGuard::new(policy, false, Arc::new(MemoryAudit::default())).unwrap()
 }
 
+#[test]
+fn network_forward_requires_non_production_desktop_and_explicit_approval() {
+    for production in [false, true] {
+        for device in [DeviceClass::Desktop, DeviceClass::Mobile] {
+            let mut settings = policy();
+            settings.production = production;
+            settings.device = device;
+            settings.allow_port_forward_in_production = true;
+            let guard = guard_with(settings);
+            assert!(guard.allow_network_forward(false).is_err());
+            assert_eq!(
+                guard.allow_network_forward(true).is_ok(),
+                !production && device == DeviceClass::Desktop
+            );
+            if production && device == DeviceClass::Desktop {
+                guard.open_write_window("Production").unwrap();
+                assert!(guard.allow_network_forward(true).is_err());
+            }
+            guard.close();
+            assert!(guard.allow_network_forward(true).is_err());
+        }
+    }
+}
+
 fn check(guard: &ProdGuard, method: &str, path: &str) -> Result<(), PolicyError> {
     guard.dispatch(
         Request::builder()

@@ -8,6 +8,84 @@ import 'error.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+Future<String> kubeRolloutHistory({required String sessionId, required String referenceJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeRolloutHistory(sessionId: sessionId, referenceJson: referenceJson);
+
+Future<String> kubeRolloutDiff({
+  required String sessionId,
+  required String referenceJson,
+  required int before,
+  required int after,
+}) => RustLib.instance.api.crateApiKubernetesKubeRolloutDiff(
+  sessionId: sessionId,
+  referenceJson: referenceJson,
+  before: before,
+  after: after,
+);
+
+Future<Uint8List> kubeAiHistory({required String contextId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeAiHistory(contextId: contextId);
+
+Future<void> kubeAiDeleteConversation({required String conversationId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeAiDeleteConversation(conversationId: conversationId);
+
+Future<Uint8List> kubeSecretReveal({required String sessionId, required String referenceJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeSecretReveal(sessionId: sessionId, referenceJson: referenceJson);
+
+Future<String> kubeHistoryStatus({required String sessionId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeHistoryStatus(sessionId: sessionId);
+
+Future<String> kubeEventHistory({
+  required String contextId,
+  String? namespace,
+  required bool warningOnly,
+  int? beforeMs,
+  String? beforeUid,
+  required int limit,
+}) => RustLib.instance.api.crateApiKubernetesKubeEventHistory(
+  contextId: contextId,
+  namespace: namespace,
+  warningOnly: warningOnly,
+  beforeMs: beforeMs,
+  beforeUid: beforeUid,
+  limit: limit,
+);
+
+Future<void> kubeEventHistoryClear({required String contextId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeEventHistoryClear(contextId: contextId);
+
+Future<String> kubeAiPrepare({required String sessionId, required List<int> questionJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeAiPrepare(sessionId: sessionId, questionJson: questionJson);
+
+Future<String> kubeAiStart({required String sessionId, required String ticket, required bool approveExternal}) =>
+    RustLib.instance.api.crateApiKubernetesKubeAiStart(
+      sessionId: sessionId,
+      ticket: ticket,
+      approveExternal: approveExternal,
+    );
+
+Future<Uint8List> kubeAiPoll({required String sessionId, required String requestId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeAiPoll(sessionId: sessionId, requestId: requestId);
+
+Future<void> kubeAiCancel({required String sessionId, required String id}) =>
+    RustLib.instance.api.crateApiKubernetesKubeAiCancel(sessionId: sessionId, id: id);
+
+Future<void> kubeAiRevoke({required String sessionId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeAiRevoke(sessionId: sessionId);
+
+Future<List<String>> kubeScanConfigFiles({required String directory}) =>
+    RustLib.instance.api.crateApiKubernetesKubeScanConfigFiles(directory: directory);
+
+Future<void> kubeExportContext({required String contextId, required String path, required bool includeCredentials}) =>
+    RustLib.instance.api.crateApiKubernetesKubeExportContext(
+      contextId: contextId,
+      path: path,
+      includeCredentials: includeCredentials,
+    );
+
+Future<void> kubeContextUpdate({required String contextId, required String updateJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeContextUpdate(contextId: contextId, updateJson: updateJson);
+
 Future<String> kubeInventory() => RustLib.instance.api.crateApiKubernetesKubeInventory();
 
 Future<String> kubeClustersList() => RustLib.instance.api.crateApiKubernetesKubeClustersList();
@@ -28,3 +106,392 @@ Future<void> kubeImportDiscard({required String ticket}) =>
 
 Future<void> kubeContextDelete({required String id}) =>
     RustLib.instance.api.crateApiKubernetesKubeContextDelete(id: id);
+
+Future<String> kubeConnect({required String contextId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeConnect(contextId: contextId);
+
+Future<void> kubeDisconnect({required String sessionId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeDisconnect(sessionId: sessionId);
+
+Future<String> kubeDiscover({required String sessionId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeDiscover(sessionId: sessionId);
+
+Future<String> kubeNamespaces({required String sessionId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeNamespaces(sessionId: sessionId);
+
+Future<String> kubeResourcesList({required String sessionId, required String kindJson, required String queryJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeResourcesList(
+      sessionId: sessionId,
+      kindJson: kindJson,
+      queryJson: queryJson,
+    );
+
+Future<String> kubeResourceGet({required String sessionId, required String referenceJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeResourceGet(sessionId: sessionId, referenceJson: referenceJson);
+
+Future<String> kubeLogs({
+  required String sessionId,
+  required String namespace,
+  required String pod,
+  required String queryJson,
+}) => RustLib.instance.api.crateApiKubernetesKubeLogs(
+  sessionId: sessionId,
+  namespace: namespace,
+  pod: pod,
+  queryJson: queryJson,
+);
+
+Future<String> kubeWatchStart({
+  required String sessionId,
+  required String kindJson,
+  required String queryJson,
+  String? resourceVersion,
+}) => RustLib.instance.api.crateApiKubernetesKubeWatchStart(
+  sessionId: sessionId,
+  kindJson: kindJson,
+  queryJson: queryJson,
+  resourceVersion: resourceVersion,
+);
+
+Future<String> kubeWatchPoll({required String sessionId, required String watchId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeWatchPoll(sessionId: sessionId, watchId: watchId);
+
+Future<void> kubeWatchStop({required String sessionId, required String watchId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeWatchStop(sessionId: sessionId, watchId: watchId);
+
+Future<String> kubeWriteAccess({required String sessionId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeWriteAccess(sessionId: sessionId);
+
+Future<String> kubeRequestWriteWindow({required String sessionId, required String typedContextName}) => RustLib
+    .instance
+    .api
+    .crateApiKubernetesKubeRequestWriteWindow(sessionId: sessionId, typedContextName: typedContextName);
+
+Future<void> kubeCloseWriteWindow({required String sessionId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeCloseWriteWindow(sessionId: sessionId);
+
+Future<String> kubeApplyYaml({
+  required String sessionId,
+  required String referenceJson,
+  required List<int> manifest,
+  required bool dryRun,
+  required bool force,
+}) => RustLib.instance.api.crateApiKubernetesKubeApplyYaml(
+  sessionId: sessionId,
+  referenceJson: referenceJson,
+  manifest: manifest,
+  dryRun: dryRun,
+  force: force,
+);
+
+Future<void> kubeResourceDelete({
+  required String sessionId,
+  required String referenceJson,
+  required String uid,
+  required String resourceVersion,
+}) => RustLib.instance.api.crateApiKubernetesKubeResourceDelete(
+  sessionId: sessionId,
+  referenceJson: referenceJson,
+  uid: uid,
+  resourceVersion: resourceVersion,
+);
+
+Future<String> kubeLogsStart({
+  required String sessionId,
+  required String namespace,
+  required String pod,
+  required String queryJson,
+}) => RustLib.instance.api.crateApiKubernetesKubeLogsStart(
+  sessionId: sessionId,
+  namespace: namespace,
+  pod: pod,
+  queryJson: queryJson,
+);
+
+Future<String> kubeLogsPoll({required String sessionId, required String streamId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeLogsPoll(sessionId: sessionId, streamId: streamId);
+
+Future<void> kubeLogsStop({required String sessionId, required String streamId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeLogsStop(sessionId: sessionId, streamId: streamId);
+
+Future<String> kubeInsights({required String sessionId, String? namespace}) =>
+    RustLib.instance.api.crateApiKubernetesKubeInsights(sessionId: sessionId, namespace: namespace);
+
+Future<String> kubeHelmHistory({required String sessionId, String? namespace, String? releaseName}) => RustLib
+    .instance
+    .api
+    .crateApiKubernetesKubeHelmHistory(sessionId: sessionId, namespace: namespace, releaseName: releaseName);
+
+Future<String> kubeHelmRelease({required String sessionId, required String namespace, required String secretName}) =>
+    RustLib.instance.api.crateApiKubernetesKubeHelmRelease(
+      sessionId: sessionId,
+      namespace: namespace,
+      secretName: secretName,
+    );
+
+Future<void> kubeFluxAction({
+  required String sessionId,
+  required String referenceJson,
+  required String action,
+  String? reason,
+}) => RustLib.instance.api.crateApiKubernetesKubeFluxAction(
+  sessionId: sessionId,
+  referenceJson: referenceJson,
+  action: action,
+  reason: reason,
+);
+
+Future<void> kubeArgoAction({required String sessionId, required String referenceJson, required String action}) =>
+    RustLib.instance.api.crateApiKubernetesKubeArgoAction(
+      sessionId: sessionId,
+      referenceJson: referenceJson,
+      action: action,
+    );
+
+Future<String> kubeResourcesTable({required String sessionId, required String kindJson, required String queryJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeResourcesTable(
+      sessionId: sessionId,
+      kindJson: kindJson,
+      queryJson: queryJson,
+    );
+
+Future<String> kubePermissions({required String sessionId, required String namespace}) =>
+    RustLib.instance.api.crateApiKubernetesKubePermissions(sessionId: sessionId, namespace: namespace);
+
+Future<String> kubeMetrics({required String sessionId, required bool pods, String? namespace}) =>
+    RustLib.instance.api.crateApiKubernetesKubeMetrics(sessionId: sessionId, pods: pods, namespace: namespace);
+
+Future<void> kubeExecApprove({required String ticket}) =>
+    RustLib.instance.api.crateApiKubernetesKubeExecApprove(ticket: ticket);
+
+Future<void> kubeAuthCancel({required String ticket}) =>
+    RustLib.instance.api.crateApiKubernetesKubeAuthCancel(ticket: ticket);
+
+Future<void> kubeOidcComplete({required String ticket, String? callbackUrl}) =>
+    RustLib.instance.api.crateApiKubernetesKubeOidcComplete(ticket: ticket, callbackUrl: callbackUrl);
+
+Future<Uint8List> kubeExecReview({required String contextId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeExecReview(contextId: contextId);
+
+Future<Uint8List> kubeOidcBegin({required String contextId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeOidcBegin(contextId: contextId);
+
+Future<String> kubeTerminalOpen({
+  required String sessionId,
+  required String requestJson,
+  required int cols,
+  required int rows,
+}) => RustLib.instance.api.crateApiKubernetesKubeTerminalOpen(
+  sessionId: sessionId,
+  requestJson: requestJson,
+  cols: cols,
+  rows: rows,
+);
+
+Future<String> kubeForwardStart({
+  required String sessionId,
+  required String namespace,
+  required String pod,
+  required int remotePort,
+  required int localPort,
+}) => RustLib.instance.api.crateApiKubernetesKubeForwardStart(
+  sessionId: sessionId,
+  namespace: namespace,
+  pod: pod,
+  remotePort: remotePort,
+  localPort: localPort,
+);
+
+Future<String> kubeForwardStartConfigured({required String sessionId, required String requestJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeForwardStartConfigured(sessionId: sessionId, requestJson: requestJson);
+
+Future<String> kubeForwardList() => RustLib.instance.api.crateApiKubernetesKubeForwardList();
+
+Future<void> kubeForwardStop({required String sessionId, required String forwardId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeForwardStop(sessionId: sessionId, forwardId: forwardId);
+
+Future<void> kubeScale({
+  required String sessionId,
+  required String referenceJson,
+  required String resourceVersion,
+  required int replicas,
+}) => RustLib.instance.api.crateApiKubernetesKubeScale(
+  sessionId: sessionId,
+  referenceJson: referenceJson,
+  resourceVersion: resourceVersion,
+  replicas: replicas,
+);
+
+Future<void> kubeRestart({required String sessionId, required String referenceJson, required String resourceVersion}) =>
+    RustLib.instance.api.crateApiKubernetesKubeRestart(
+      sessionId: sessionId,
+      referenceJson: referenceJson,
+      resourceVersion: resourceVersion,
+    );
+
+Future<void> kubeCordon({
+  required String sessionId,
+  required String node,
+  required String resourceVersion,
+  required bool unschedulable,
+}) => RustLib.instance.api.crateApiKubernetesKubeCordon(
+  sessionId: sessionId,
+  node: node,
+  resourceVersion: resourceVersion,
+  unschedulable: unschedulable,
+);
+
+Future<String> kubeDrainPlan({required String sessionId, required String node}) =>
+    RustLib.instance.api.crateApiKubernetesKubeDrainPlan(sessionId: sessionId, node: node);
+
+Future<void> kubeEvictPod({
+  required String sessionId,
+  required String referenceJson,
+  required String uid,
+  required String resourceVersion,
+}) => RustLib.instance.api.crateApiKubernetesKubeEvictPod(
+  sessionId: sessionId,
+  referenceJson: referenceJson,
+  uid: uid,
+  resourceVersion: resourceVersion,
+);
+
+Future<void> kubeDebugContainer({
+  required String sessionId,
+  required String referenceJson,
+  required String resourceVersion,
+  required String containerJson,
+}) => RustLib.instance.api.crateApiKubernetesKubeDebugContainer(
+  sessionId: sessionId,
+  referenceJson: referenceJson,
+  resourceVersion: resourceVersion,
+  containerJson: containerJson,
+);
+
+Future<String> kubeWorkloadPods({required String sessionId, required String referenceJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeWorkloadPods(sessionId: sessionId, referenceJson: referenceJson);
+
+Future<String> kubeObjectEvents({required String sessionId, required String referenceJson, required String uid}) =>
+    RustLib.instance.api.crateApiKubernetesKubeObjectEvents(
+      sessionId: sessionId,
+      referenceJson: referenceJson,
+      uid: uid,
+    );
+
+Future<String> kubeSchema({required String sessionId, required String kindJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeSchema(sessionId: sessionId, kindJson: kindJson);
+
+Future<String> kubeManifestDiff({
+  required String sessionId,
+  required String referenceJson,
+  required List<int> manifest,
+}) => RustLib.instance.api.crateApiKubernetesKubeManifestDiff(
+  sessionId: sessionId,
+  referenceJson: referenceJson,
+  manifest: manifest,
+);
+
+Future<String> kubeCreateResource({
+  required String sessionId,
+  required String referenceJson,
+  required List<int> manifest,
+  required bool dryRun,
+}) => RustLib.instance.api.crateApiKubernetesKubeCreateResource(
+  sessionId: sessionId,
+  referenceJson: referenceJson,
+  manifest: manifest,
+  dryRun: dryRun,
+);
+
+Future<String> kubeFluxDiscover({String? manualPath}) =>
+    RustLib.instance.api.crateApiKubernetesKubeFluxDiscover(manualPath: manualPath);
+
+Future<String> kubeFluxProbe({required String path}) =>
+    RustLib.instance.api.crateApiKubernetesKubeFluxProbe(path: path);
+
+Future<String> kubeFluxReview({required String version, required String method, required String operation}) =>
+    RustLib.instance.api.crateApiKubernetesKubeFluxReview(version: version, method: method, operation: operation);
+
+Future<String?> kubeFluxApprove({required String ticket}) =>
+    RustLib.instance.api.crateApiKubernetesKubeFluxApprove(ticket: ticket);
+
+Future<void> kubeFluxCancel({required String ticket}) =>
+    RustLib.instance.api.crateApiKubernetesKubeFluxCancel(ticket: ticket);
+
+Future<Uint8List> kubeFluxRun({required String sessionId, required String path, required String actionJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeFluxRun(sessionId: sessionId, path: path, actionJson: actionJson);
+
+Future<String> kubeFluxTerminal({required String sessionId, required String path}) =>
+    RustLib.instance.api.crateApiKubernetesKubeFluxTerminal(sessionId: sessionId, path: path);
+
+Future<String> kubeHelmRollbackReview({
+  required String sessionId,
+  required String namespace,
+  required String release,
+  required int revision,
+  String? manualPath,
+}) => RustLib.instance.api.crateApiKubernetesKubeHelmRollbackReview(
+  sessionId: sessionId,
+  namespace: namespace,
+  release: release,
+  revision: revision,
+  manualPath: manualPath,
+);
+
+Future<Uint8List> kubeHelmRollbackApprove({required String ticket}) =>
+    RustLib.instance.api.crateApiKubernetesKubeHelmRollbackApprove(ticket: ticket);
+
+Future<String> kubeFluxPreferences({String? sessionId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeFluxPreferences(sessionId: sessionId);
+
+Future<void> kubeFluxPreferencesSave({required String preferencesJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeFluxPreferencesSave(preferencesJson: preferencesJson);
+
+Future<String> kubeFluxPathAdd() => RustLib.instance.api.crateApiKubernetesKubeFluxPathAdd();
+
+Future<String> kubeLogTargets({required String sessionId, required String referenceJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeLogTargets(sessionId: sessionId, referenceJson: referenceJson);
+
+Future<void> kubeExportLogs({
+  required String sessionId,
+  required String path,
+  required List<int> contents,
+  required bool mask,
+}) => RustLib.instance.api.crateApiKubernetesKubeExportLogs(
+  sessionId: sessionId,
+  path: path,
+  contents: contents,
+  mask: mask,
+);
+
+/// Metadata-only links validated against API discovery and object identity.
+Future<String> kubeRelatedObjects({required String sessionId, required String referenceJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeRelatedObjects(sessionId: sessionId, referenceJson: referenceJson);
+
+Future<void> kubeContextFavourites({
+  required String id,
+  required List<String> namespaces,
+  required List<String> kinds,
+}) => RustLib.instance.api.crateApiKubernetesKubeContextFavourites(id: id, namespaces: namespaces, kinds: kinds);
+
+Future<void> kubeClusterLabels({required String contextId, required List<String> tags, String? color}) =>
+    RustLib.instance.api.crateApiKubernetesKubeClusterLabels(contextId: contextId, tags: tags, color: color);
+
+/// Bounded Pod/port candidates; this does not open a port forward.
+Future<String> kubeForwardTargets({required String sessionId, required String referenceJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeForwardTargets(sessionId: sessionId, referenceJson: referenceJson);
+
+Future<String> kubeContextTerminalProfiles() => RustLib.instance.api.crateApiKubernetesKubeContextTerminalProfiles();
+
+Future<String> kubeContextTerminal({required String sessionId, required String namespace, required String profileId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeContextTerminal(
+      sessionId: sessionId,
+      namespace: namespace,
+      profileId: profileId,
+    );
+
+Future<String> kubeViewPreferences({required String contextId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeViewPreferences(contextId: contextId);
+
+Future<void> kubeViewPreferencesUpdate({required String contextId, required String patchJson}) =>
+    RustLib.instance.api.crateApiKubernetesKubeViewPreferencesUpdate(contextId: contextId, patchJson: patchJson);

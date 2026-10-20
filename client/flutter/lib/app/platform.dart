@@ -10,6 +10,7 @@ abstract final class AppPlatform {
   static bool get isMacOS => defaultTargetPlatform == TargetPlatform.macOS;
 
   static bool get isIOS => defaultTargetPlatform == TargetPlatform.iOS;
+  static bool get isAndroid => defaultTargetPlatform == TargetPlatform.android;
 
   /// iOS updates are installed through Apple's distribution mechanisms.
   static bool get supportsDirectUpdates => isMacOS || isWindows || defaultTargetPlatform == TargetPlatform.android;

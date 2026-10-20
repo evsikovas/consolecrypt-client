@@ -12,6 +12,7 @@ import 'package:consolecrypt/sharing/enrollment_owner.dart';
 import 'package:consolecrypt/sharing/enrollment_pairing.dart';
 import 'package:consolecrypt/sharing/sharing_collections.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
+import 'package:consolecrypt/sharing/sharing_kubernetes.dart';
 import 'package:consolecrypt/sharing/sharing_management.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
@@ -372,6 +373,10 @@ class _SharingTile extends ConsumerWidget {
   final Set<String> visited;
   bool get manages => item.owned && item.ownerDeviceId == status.identity?.deviceId;
   Future<void> _copy(BuildContext context, WidgetRef ref) async {
+    if (item.kind == SharingKind.kubeContext) {
+      await showSharingCopyKubeContext(context, item);
+      return;
+    }
     if (item.kind == SharingKind.host) {
       await showSharingCopyHost(context, item);
       return;
@@ -448,6 +453,7 @@ class _SharingTile extends ConsumerWidget {
       SharingKind.snippet => l.sharingSnippet,
       SharingKind.group => l.sharingGroup,
       SharingKind.secret => l.sharingSecret,
+      SharingKind.kubeContext => l.sharingKubeContext,
     };
     return ContentSurface(
       child: Column(
@@ -460,6 +466,7 @@ class _SharingTile extends ConsumerWidget {
               SharingKind.snippet => Icons.code_rounded,
               SharingKind.group => Icons.folder_shared_outlined,
               SharingKind.secret => Icons.key_outlined,
+              SharingKind.kubeContext => Icons.hub_outlined,
             }),
             title: Text(item.name ?? l.sharingInvitation),
             subtitle: Text(
@@ -519,7 +526,9 @@ class _SharingTile extends ConsumerWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (item.kind == SharingKind.host || item.kind == SharingKind.snippet)
+                if (item.kind == SharingKind.host ||
+                    item.kind == SharingKind.snippet ||
+                    item.kind == SharingKind.kubeContext)
                   GlassButton(
                     label: l.sharingCopyPersonal,
                     icon: Icons.copy_outlined,

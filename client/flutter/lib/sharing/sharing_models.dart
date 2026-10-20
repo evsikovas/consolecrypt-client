@@ -1,13 +1,17 @@
 import 'dart:convert';
 
-enum SharingKind { host, snippet, group, secret }
+enum SharingKind { host, snippet, group, secret, kubeContext }
+
+extension SharingKindWire on SharingKind {
+  String get wireName => this == SharingKind.kubeContext ? 'kube_context' : name;
+}
 
 enum SharingRole { reader, editor }
 
 enum SharingTrust { unverified, verified, blocked, deleted }
 
 T _enum<T extends Enum>(List<T> values, Object? value) =>
-    values.firstWhere((v) => v.name.toLowerCase() == value.toString().toLowerCase());
+    values.firstWhere((v) => v.name.toLowerCase() == value.toString().replaceAll('_', '').toLowerCase());
 
 final class SharingIdentity {
   const SharingIdentity({
@@ -60,8 +64,9 @@ final class SharingStatus {
     this.supportsGroups = false,
     this.supportsSecrets = false,
     this.supportsOwnerOnlineEnrollment = false,
+    this.supportsKubeContexts = false,
   });
-  final bool enabled, locked, supportsGroups, supportsSecrets, supportsOwnerOnlineEnrollment;
+  final bool enabled, locked, supportsGroups, supportsSecrets, supportsOwnerOnlineEnrollment, supportsKubeContexts;
   final String? instance;
   final SharingIdentity? identity;
   final int pending, blocked;
@@ -69,6 +74,7 @@ final class SharingStatus {
     enabled: j['enabled'] == true,
     supportsGroups: j['supports_groups'] == true,
     supportsSecrets: j['supports_secrets'] == true,
+    supportsKubeContexts: j['supports_kube_contexts'] == true,
     supportsOwnerOnlineEnrollment: j['supports_owner_online_enrollment_v1'] == true,
     locked: j['locked'] == true,
     instance: j['server_instance_id'] as String?,

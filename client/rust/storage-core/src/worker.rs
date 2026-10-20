@@ -138,6 +138,29 @@ impl Storage {
     }
 
     /// Run `f` in a write transaction (commit on `Ok`).
+    ///
+    /// This synchronous variant is reserved for transport authorization that
+    /// must durably acknowledge its audit record before dispatch. The database
+    /// still runs on its own thread. Never call this from a storage closure.
+    /// A timeout fails closed; the queued audit may still be committed.
+    pub fn write_blocking<T, F>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&Tx<'_>) -> Result<T> + Send + 'static,
+        T: Send + 'static,
+    {
+        let (tx, rx) = mpsc::sync_channel(1);
+        let job: Job = Box::new(move |db| {
+            let result = db.write(f);
+            let _ = tx.send(result);
+        });
+        self.jobs
+            .send(Msg::Job(job))
+            .map_err(|_| StorageError::Closed)?;
+        rx.recv_timeout(std::time::Duration::from_secs(5))
+            .map_err(|_| StorageError::Closed)?
+    }
+
+    /// Run `f` in a write transaction (commit on `Ok`).
     pub async fn write<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce(&Tx<'_>) -> Result<T, E> + Send + 'static,

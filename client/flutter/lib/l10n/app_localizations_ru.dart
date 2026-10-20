@@ -6068,4 +6068,1399 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeAuthNone => 'Не настроена';
+
+  @override
+  String get kubeConnect => 'Подключиться';
+
+  @override
+  String get kubeDisconnect => 'Отключиться';
+
+  @override
+  String get kubeConnecting => 'Подключение к кластеру…';
+
+  @override
+  String get kubeConnectionFailed => 'Не удалось подключиться. Проверьте сеть, авторизацию и маршрут подключения.';
+
+  @override
+  String get kubeRetry => 'Повторить';
+
+  @override
+  String get kubeBackToContexts => 'Сохранённые подключения';
+
+  @override
+  String get kubeReadOnly => 'Прод · только чтение';
+
+  @override
+  String get kubeReadOnlyHelp => 'Этот контекст защищён от изменений на уровне нативного клиента Kubernetes.';
+
+  @override
+  String get kubeResources => 'Ресурсы';
+
+  @override
+  String get kubeAllNamespaces => 'Все пространства имён';
+
+  @override
+  String get kubeResourceKind => 'Тип ресурса';
+
+  @override
+  String get kubeLabelSelector => 'Фильтр по меткам';
+
+  @override
+  String get kubeApplyFilter => 'Применить фильтр';
+
+  @override
+  String get kubeNoResources => 'Ресурсов с такими фильтрами нет.';
+
+  @override
+  String get kubeNoResourceKinds =>
+      'Доступные типы ресурсов не обнаружены. Проверьте права этой учётной записи в Kubernetes.';
+
+  @override
+  String get kubeRequestFailed => 'Не удалось загрузить данные кластера. Проверьте соединение и права в Kubernetes.';
+
+  @override
+  String get kubeNamespacesFailed =>
+      'Список пространств имён недоступен. Ресурсы выбранного пространства по-прежнему можно просматривать.';
+
+  @override
+  String get kubeLoadMore => 'Загрузить ещё';
+
+  @override
+  String get kubeRefreshResources => 'Обновить ресурсы';
+
+  @override
+  String get kubeLive => 'Обновления в реальном времени';
+
+  @override
+  String get kubeSnapshot => 'Снимок состояния';
+
+  @override
+  String get kubeWatchFailed => 'Обновления остановлены. Нажмите «Обновить», чтобы подключиться снова.';
+
+  @override
+  String get kubeResourceLimit =>
+      'В памяти можно держать до 10 000 ресурсов. Уточните пространство имён или фильтр по меткам.';
+
+  @override
+  String get kubeOverview => 'Обзор';
+
+  @override
+  String get kubeObjectYaml => 'YAML';
+
+  @override
+  String get kubeLogs => 'Логи';
+
+  @override
+  String get kubeContainer => 'Контейнер';
+
+  @override
+  String get kubePreviousLogs => 'Предыдущий контейнер';
+
+  @override
+  String get kubeLogFilter => 'Фильтр строк журнала';
+
+  @override
+  String get kubeNoLogs => 'Нет строк журнала для отображения.';
+
+  @override
+  String get kubeLogTailHelp => 'Последние 500 строк загружаются в память. Обновите, чтобы получить свежие записи.';
+
+  @override
+  String get kubeSecretRedacted => 'Значения секрета скрыты. Здесь показаны только метаданные и имена ключей.';
+
+  @override
+  String get kubeStatus => 'Состояние';
+
+  @override
+  String get kubeCreatedAt => 'Создан';
+
+  @override
+  String get kubeLabels => 'Метки';
+
+  @override
+  String get kubeConditions => 'Условия';
+
+  @override
+  String get kubeOwners => 'Владельцы';
+
+  @override
+  String get kubeName => 'Имя';
+
+  @override
+  String get kubeNotReported => 'Нет данных';
+
+  @override
+  String get kubeSessionEnded => 'Соединение завершено. Подключитесь снова, чтобы загрузить данные кластера.';
+
+  @override
+  String kubeLoadedCount(int count) {
+    return 'Загружено ресурсов: $count';
+  }
+
+  @override
+  String get kubeShowDetails => 'Открыть сведения о ресурсе';
+
+  @override
+  String kubeClusterVersion(String version) {
+    return 'Kubernetes $version';
+  }
+
+  @override
+  String get kubeSortName => 'По имени';
+
+  @override
+  String get kubeSortNamespace => 'По пространству имён';
+
+  @override
+  String get kubeSortStatus => 'По состоянию';
+
+  @override
+  String get kubeSortAge => 'Сначала новые';
+
+  @override
+  String get kubeRefreshDetails => 'Обновить сведения';
+
+  @override
+  String get kubeAllowChanges => 'Разрешить изменения на 10 минут';
+
+  @override
+  String get kubeAllowChangesHelp =>
+      'В этом прод-контексте откроется временное окно записи. Изменения будут записаны в локальный журнал аудита. Для продолжения введите точное имя контекста.';
+
+  @override
+  String get kubeCloseWriteWindow => 'Вернуть режим только для чтения';
+
+  @override
+  String kubeWriteWindowRemaining(String time) {
+    return 'ПРОД · изменения разрешены · осталось $time';
+  }
+
+  @override
+  String get kubeWriteWindowFailed => 'Не удалось изменить окно записи. Подключитесь заново и повторите попытку.';
+
+  @override
+  String get kubeTypeName => 'Введите точное имя выше';
+
+  @override
+  String get kubeEditYaml => 'Изменить YAML';
+
+  @override
+  String get kubeApplyYaml => 'Применить изменения';
+
+  @override
+  String get kubeApplyYamlHelp =>
+      'Применить проверенные изменения к ресурсу? Для подтверждения введите его точное имя. Сервер отклонит обновление, если версия ресурса изменилась.';
+
+  @override
+  String get kubeApplyFailed =>
+      'Изменение не принято. Обновите объект и проверьте права, корректность YAML и конфликты владения полями перед повторной попыткой.';
+
+  @override
+  String get kubeReviewChanges => 'Проверка изменений';
+
+  @override
+  String get kubeDryRun => 'Проверить на сервере';
+
+  @override
+  String get kubeDryRunRequired => 'Сначала проверьте YAML на сервере. Затем просмотрите изменения перед применением.';
+
+  @override
+  String get kubeDryRunHelp =>
+      'Проверка на сервере: удалённые строки помечены −, добавленные +. Изменения ещё не сохранены в кластере.';
+
+  @override
+  String get kubeForceApply => 'Передать владение конфликтующими полями';
+
+  @override
+  String get kubeForceApplyHelp =>
+      'Включайте только если намерены заменить поля, которыми управляет другой контроллер. После включения проверьте изменения заново.';
+
+  @override
+  String get kubeNoYamlChanges => 'Сервер не обнаружил изменений в YAML.';
+
+  @override
+  String get kubeDeleteResource => 'Удалить ресурс Kubernetes';
+
+  @override
+  String get kubeDeleteResourceHelp =>
+      'Ресурс будет удалён из кластера. Это может остановить работающие приложения. Для подтверждения введите точное имя ресурса.';
+
+  @override
+  String get kubeFollowLogs => 'Следить за новыми записями';
+
+  @override
+  String get kubePauseLogs => 'Пауза';
+
+  @override
+  String get kubeResumeLogs => 'Продолжить';
+
+  @override
+  String get kubeLogBufferHelp => 'Живой журнал: до 20 000 строк и 2 МиБ, только в памяти.';
+
+  @override
+  String get kubeLogOptions => 'Параметры журнала';
+
+  @override
+  String get kubeGitOps => 'GitOps';
+
+  @override
+  String get kubeProblems => 'Проблемы';
+
+  @override
+  String get kubeHelm => 'Helm';
+
+  @override
+  String get kubeInsightsPartial =>
+      'Часть ресурсов не удалось проверить из-за ограничений прав, ошибок обнаружения API или объёма данных. Результаты неполные.';
+
+  @override
+  String get kubeGitOpsAll => 'Все';
+
+  @override
+  String get kubeGitOpsReady => 'Готовы';
+
+  @override
+  String get kubeGitOpsAttention => 'Требуют внимания';
+
+  @override
+  String get kubeGitOpsSuspended => 'Приостановлены';
+
+  @override
+  String get kubeDependencies => 'Зависимости';
+
+  @override
+  String get kubeNoVisibleProblems => 'Среди проверенных ресурсов проблемы не обнаружены.';
+
+  @override
+  String get kubeNoProblems => 'В проверенных ресурсах известные проблемы не обнаружены.';
+
+  @override
+  String get kubeNoGitOpsResources => 'Ресурсов Flux или Argo CD с таким фильтром нет.';
+
+  @override
+  String get kubeGitOpsActions => 'Действия контроллера';
+
+  @override
+  String get kubeDependencyCycle => 'Обнаружен цикл зависимостей';
+
+  @override
+  String get kubeDependencyMissing => 'Зависимость не найдена';
+
+  @override
+  String get kubeDependencyReady => 'Зависит от готового ресурса';
+
+  @override
+  String get kubeDependencyWaiting => 'Ожидает зависимость';
+
+  @override
+  String get kubeGitOpsSuspend => 'Приостановить согласование';
+
+  @override
+  String get kubeGitOpsResume => 'Возобновить согласование';
+
+  @override
+  String get kubeGitOpsReset => 'Сбросить счётчик ошибок';
+
+  @override
+  String get kubeGitOpsForce => 'Принудительно обновить Helm';
+
+  @override
+  String get kubeGitOpsReconcile => 'Согласовать сейчас';
+
+  @override
+  String get kubeArgoSync => 'Синхронизировать приложение';
+
+  @override
+  String get kubeArgoRefresh => 'Обновить состояние приложения';
+
+  @override
+  String get kubeArgoHardRefresh => 'Обновить состояние и манифесты';
+
+  @override
+  String get kubeGitOpsChangeHelp =>
+      'Контроллер получит изменение, которое может повлиять на работающие приложения. Проверьте действие и введите точное имя ресурса.';
+
+  @override
+  String get kubeGitOpsReason => 'Причина (сохраняется в аннотации ресурса)';
+
+  @override
+  String get kubeIssueCrashLoop => 'Контейнер постоянно перезапускается после сбоя';
+
+  @override
+  String get kubeIssueImagePull => 'Не удаётся скачать образ контейнера';
+
+  @override
+  String get kubeIssueContainerConfig => 'Ошибка конфигурации контейнера';
+
+  @override
+  String get kubeIssueOom => 'Контейнер превысил ограничение памяти';
+
+  @override
+  String get kubeIssueRestarts => 'Контейнер многократно перезапускался';
+
+  @override
+  String get kubeIssueScheduling => 'Не удаётся разместить под на узле';
+
+  @override
+  String get kubeIssuePodNotReady => 'Под не готов к работе';
+
+  @override
+  String get kubeIssueNodeNotReady => 'Узел не готов к работе';
+
+  @override
+  String get kubeIssueNodePressure => 'Узлу не хватает ресурсов';
+
+  @override
+  String get kubeIssueCondition => 'Ресурс требует внимания';
+
+  @override
+  String get kubeIssueRolloutDeadline => 'Развёртывание превысило допустимое время';
+
+  @override
+  String get kubeIssueReplicaFailure => 'Контроллер не смог создать реплики';
+
+  @override
+  String get kubeIssueReplicasUnavailable => 'Часть реплик недоступна';
+
+  @override
+  String get kubeIssueVolumePending => 'Запрос тома ожидает хранилище';
+
+  @override
+  String get kubeIssueVolumeLost => 'Запрос тома потерял связанный том';
+
+  @override
+  String get kubeIssueJobFailed => 'Задание завершилось ошибкой';
+
+  @override
+  String get kubeIssueArgoDegraded => 'Приложение Argo CD в состоянии Degraded';
+
+  @override
+  String get kubeIssueArgoOutOfSync => 'Приложение Argo CD не синхронизировано';
+
+  @override
+  String get kubeIssueFluxPending => 'Flux ещё не обработал последнюю конфигурацию';
+
+  @override
+  String get kubeIssueFluxNotReady => 'Ресурс Flux не готов';
+
+  @override
+  String get kubeIssueFluxStalled => 'Согласование Flux остановилось с ошибкой';
+
+  @override
+  String get kubeIssueFluxSuspended => 'Согласование Flux приостановлено';
+
+  @override
+  String get kubeHelmAllRevisions => 'Показать все ревизии';
+
+  @override
+  String get kubeHelmEmpty => 'Релизов Helm с таким фильтром нет.';
+
+  @override
+  String kubeHelmRevision(int revision) {
+    return 'Ревизия $revision';
+  }
+
+  @override
+  String get kubeHelmHistory => 'История релиза';
+
+  @override
+  String get kubeHelmSecretsMasked => 'Чувствительные значения скрыты. Значения и манифесты хранятся только в памяти.';
+
+  @override
+  String get kubeHelmValues => 'Пользовательские значения';
+
+  @override
+  String get kubeHelmChartValues => 'Значения чарта';
+
+  @override
+  String get kubeHelmManifest => 'Манифест';
+
+  @override
+  String get kubeHelmCompare => 'Сравнить с ревизией';
+
+  @override
+  String get kubeHelmChooseRevision => 'Выберите ревизию';
+
+  @override
+  String get kubeHelmDiffHelp => 'Удалённые строки помечены −, добавленные +. Сравнение не изменяет релиз.';
+
+  @override
+  String get kubeExecReviewTitle => 'Разрешить команду авторизации?';
+
+  @override
+  String get kubeExecReviewHelp =>
+      'Команда запускается на этом компьютере. Проверьте программу, аргументы и окружение. Разрешение действует только в текущем разблокированном профиле; изменённая команда потребует нового подтверждения.';
+
+  @override
+  String get kubeExecArguments => 'Аргументы';
+
+  @override
+  String get kubeExecEnvironment => 'Окружение';
+
+  @override
+  String get kubeExecAllow => 'Разрешить эту команду';
+
+  @override
+  String get kubeAuthFailed => 'Не удалось завершить авторизацию. Проверьте настройки подключения и попробуйте снова.';
+
+  @override
+  String get kubeAuthExpired => 'Срок запроса истёк. Начните авторизацию заново.';
+
+  @override
+  String get kubeOidcTitle => 'Войти в кластер';
+
+  @override
+  String get kubeOidcHelp =>
+      'Войдите через своего провайдера авторизации в системном браузере. Данные авторизации передаются только между этим устройством и провайдером.';
+
+  @override
+  String get kubeOidcOpen => 'Открыть браузер';
+
+  @override
+  String get kubeOidcWaiting => 'Ожидание входа в браузере…';
+
+  @override
+  String get kubeAuthAction => 'Авторизоваться';
+
+  @override
+  String get kubeExecMobile =>
+      'Внешние команды авторизации недоступны на телефоне. Используйте токен, клиентский сертификат или вход через браузер (OIDC).';
+
+  @override
+  String get kubePodTerminal => 'Терминал Pod';
+
+  @override
+  String get kubeExecProductionBlocked => 'Терминал запрещён настройками этого production-контекста.';
+
+  @override
+  String get kubeAttach => 'Подключиться к процессу';
+
+  @override
+  String get kubeAttachHelp =>
+      'Подключение к уже запущенному процессу контейнера. Ввод с клавиатуры поступает непосредственно в этот процесс.';
+
+  @override
+  String get kubeShell => 'Оболочка в контейнере';
+
+  @override
+  String get kubeOpenShell => 'Открыть оболочку';
+
+  @override
+  String get kubeTerminalFailed =>
+      'Не удалось открыть терминал. Проверьте состояние контейнера, права доступа и выбранную оболочку.';
+
+  @override
+  String get kubeHidePanel => 'Скрыть панель терминала';
+
+  @override
+  String get kubeShowPanel => 'Открыть панель терминала';
+
+  @override
+  String get kubeTerminalEmpty => 'Откройте терминал в карточке Pod.';
+
+  @override
+  String get kubeTerminalConnected => 'Подключён';
+
+  @override
+  String get kubeTerminalDisconnected => 'Отключён';
+
+  @override
+  String get kubePortForward => 'Проброс порта Pod';
+
+  @override
+  String get kubeForwardHelp =>
+      'Порт доступен только на этом устройстве по адресу 127.0.0.1. Проброс остановится при отключении кластера или блокировке профиля.';
+
+  @override
+  String get kubeForwardProductionBlocked => 'Проброс портов запрещён настройками этого production-контекста.';
+
+  @override
+  String get kubeRemotePort => 'TCP-порт контейнера';
+
+  @override
+  String get kubeLocalPort => 'Локальный порт';
+
+  @override
+  String get kubeLocalPortHelp => 'Укажите 0 для автоматического выбора свободного порта.';
+
+  @override
+  String get kubeStartForward => 'Начать проброс';
+
+  @override
+  String get kubeForwardCreated => 'Проброс запущен. Управляйте им в разделе «Туннели» или в панели кластера.';
+
+  @override
+  String get kubeForwardFailed =>
+      'Не удалось пробросить порт. Проверьте состояние Pod, права и доступность локального порта.';
+
+  @override
+  String get kubePortForwards => 'Пробросы портов Kubernetes';
+
+  @override
+  String get kubeNoForwards => 'Нет активных пробросов Kubernetes.';
+
+  @override
+  String get kubeForwardRunning => 'Работает';
+
+  @override
+  String get kubeForwardStopped => 'Остановлен';
+
+  @override
+  String get kubeStopForward => 'Остановить проброс';
+
+  @override
+  String kubeForwardTraffic(int count, String sent, String received) {
+    return 'Соединений: $count · отправлено $sent · получено $received';
+  }
+
+  @override
+  String get kubePermissions => 'Права доступа';
+
+  @override
+  String get kubePermissionsHelp =>
+      'Права, сообщённые Kubernetes для текущей учётной записи в этом пространстве имён. Защита production продолжает действовать.';
+
+  @override
+  String get kubePermissionsIncomplete =>
+      'Сервер вернул неполный список прав. Отсутствие правила не означает, что действие запрещено.';
+
+  @override
+  String get kubeScale => 'Изменить число реплик';
+
+  @override
+  String get kubeRestart => 'Перезапустить workload';
+
+  @override
+  String get kubeCordon => 'Запретить размещение на узле';
+
+  @override
+  String get kubeUncordon => 'Разрешить размещение на узле';
+
+  @override
+  String get kubeDrain => 'Освободить узел';
+
+  @override
+  String get kubeDebugContainer => 'Добавить debug-контейнер';
+
+  @override
+  String get kubeMutationConfirmHelp =>
+      'Проверьте действие и введите точное имя ресурса для подтверждения. Права Kubernetes и защита production будут проверены перед выполнением.';
+
+  @override
+  String get kubeOperationFailed =>
+      'Не удалось завершить действие. Проверьте права и состояние ресурса, затем обновите данные перед повтором.';
+
+  @override
+  String get kubeReplicas => 'Число реплик (0–1 000 000)';
+
+  @override
+  String get kubeContainerImage => 'Образ контейнера';
+
+  @override
+  String get kubeDebugHelp =>
+      'Образ будет запущен внутри этого Pod с /bin/sh. Впоследствии удалить ephemeral-контейнер из Pod нельзя. Используйте доверенный образ.';
+
+  @override
+  String get kubeDrainHelp =>
+      'Размещение на узле уже запрещено. Проверьте каждый Pod перед эвикцией. DaemonSet и зеркальные Pod пропускаются. Бюджеты недоступности соблюдаются; Pod без контроллера и данные emptyDir блокируют действие.';
+
+  @override
+  String kubeDrainProgress(int done, int total) {
+    return 'Эвикция: $done из $total';
+  }
+
+  @override
+  String get kubeDrainEmpty => 'Нет Pod для эвикции.';
+
+  @override
+  String get kubeDrainUnmanaged => 'Заблокировано: у Pod нет контроллера.';
+
+  @override
+  String get kubeDrainLocalData => 'Заблокировано: Pod использует локальные данные emptyDir.';
+
+  @override
+  String get kubeDrainBlocked => 'Заблокировано: проверьте этот Pod перед освобождением узла.';
+
+  @override
+  String get kubeMetrics => 'Потребление ресурсов';
+
+  @override
+  String get kubeMeasuredAt => 'Время измерения';
+
+  @override
+  String get kubeMetricsUnavailable => 'Метрики недоступны. Проверьте metrics-server и права доступа.';
+
+  @override
+  String get kubeWorkloadPods => 'Pod рабочей нагрузки';
+
+  @override
+  String get kubeEvents => 'События Kubernetes';
+
+  @override
+  String get kubeFluxCliTitle => 'Flux CLI';
+
+  @override
+  String get kubeFluxCliHelp =>
+      'Дополнительные инструменты компьютера. Доступ к кластеру идёт через временный локальный прокси.';
+
+  @override
+  String get kubeFluxCliPath => 'Путь к Flux';
+
+  @override
+  String get kubeFluxCliFind => 'Найти';
+
+  @override
+  String get kubeFluxCliProbe => 'Проверить версию';
+
+  @override
+  String get kubeFluxCliVersion => 'Версия релиза';
+
+  @override
+  String get kubeFluxCliMethod => 'Способ установки';
+
+  @override
+  String get kubeFluxCliInstall => 'Установить';
+
+  @override
+  String get kubeFluxCliUpdate => 'Обновить';
+
+  @override
+  String get kubeFluxCliRemove => 'Удалить';
+
+  @override
+  String get kubeFluxCliOfficial => 'Официальный подписанный релиз';
+
+  @override
+  String get kubeFluxCliConfirm => 'Подтвердите операцию с CLI';
+
+  @override
+  String get kubeFluxCliVerify =>
+      'Официальная загрузка требует проверки SHA-256 и подписи Cosign. Команды пакетного менеджера откроются в терминале.';
+
+  @override
+  String get kubeFluxCliFailed => 'Операция с CLI не выполнена или проверка недоступна.';
+
+  @override
+  String get kubeFluxCliOutput => 'Вывод CLI';
+
+  @override
+  String get kubeFluxCliRun => 'Запустить';
+
+  @override
+  String get kubeFluxCliTerminal => 'Открыть терминал Flux';
+
+  @override
+  String get kubeFluxCliLocalPath => 'Папка локального репозитория для diff';
+
+  @override
+  String get kubeFluxCliResource => 'Имя ресурса';
+
+  @override
+  String get kubeFluxCliKind => 'Тип ресурса';
+
+  @override
+  String get kubeNewConnection => 'Новое подключение';
+
+  @override
+  String get kubeConnectionSettings => 'Настройки подключения';
+
+  @override
+  String get kubeServerUrl => 'Адрес API Kubernetes (HTTPS)';
+
+  @override
+  String get kubeCertificateAuthority => 'Сертификат CA (PEM, необязательно)';
+
+  @override
+  String get kubeClientCertificate => 'Клиентский сертификат (PEM)';
+
+  @override
+  String get kubePrivateKey => 'Закрытый ключ клиента (PEM)';
+
+  @override
+  String get kubeManualReviewHelp =>
+      'Далее проверьте и импортируйте контекст. Защита production включена по умолчанию.';
+
+  @override
+  String get kubeProductionContext => 'Production-контекст';
+
+  @override
+  String get kubeAllowExecInProd => 'Разрешить терминалы Pod в production';
+
+  @override
+  String get kubeAllowForwardInProd => 'Разрешить проброс портов в production';
+
+  @override
+  String get kubeRecordEvents => 'Сохранять историю событий';
+
+  @override
+  String get kubeRecordEventsHelp =>
+      'В зашифрованном виде на этом устройстве в течение 7 дней. История событий не синхронизируется.';
+
+  @override
+  String get kubeScanFolder => 'Сканировать папку kubeconfig';
+
+  @override
+  String get kubeScanEmpty => 'В этой папке не найдено файлов kubeconfig.';
+
+  @override
+  String kubeQueuedFiles(int count) {
+    return 'Файлов ожидают проверки: $count';
+  }
+
+  @override
+  String get kubeNextFile => 'Проверить следующий файл';
+
+  @override
+  String get kubeExport => 'Экспорт kubeconfig';
+
+  @override
+  String get kubeExportHelp =>
+      'Файл kubeconfig может содержать данные авторизации. Сохраняйте его только в доверенное место.';
+
+  @override
+  String get kubeIncludeCredentials => 'Включить данные авторизации';
+
+  @override
+  String get kubeExportSaved => 'Kubeconfig сохранён.';
+
+  @override
+  String get kubeAiAssistant => 'ИИ-помощник';
+
+  @override
+  String get kubeAiHelp =>
+      'Инструменты только для чтения. Значения Secret исключены; доступ ограничен правами Kubernetes и выбранным контекстом. Ответы не запускают команды.';
+
+  @override
+  String get kubeAiProvider => 'Провайдер ИИ';
+
+  @override
+  String get kubeAiDefaultProvider => 'Провайдер по умолчанию на этом устройстве';
+
+  @override
+  String get kubeAiConfigMaps => 'Разрешить чтение значений ConfigMap для этого вопроса';
+
+  @override
+  String get kubeAiUnresolved => 'Часть проверок не выполнена; проверьте ошибки инструментов перед выводами.';
+
+  @override
+  String get kubeAiReadTool => 'Инструмент чтения';
+
+  @override
+  String get kubeAiTruncated => 'Результат сокращён.';
+
+  @override
+  String get kubeAiToolFailed => 'Проверка не завершена. Данные могут отсутствовать или доступ ограничен.';
+
+  @override
+  String get kubeAiFailed => 'Помощник не смог завершить запрос. Проверьте провайдера ИИ и подключение к кластеру.';
+
+  @override
+  String get kubeAiQuestion => 'Вопрос об этом кластере';
+
+  @override
+  String get kubeAiAsk => 'Спросить помощника';
+
+  @override
+  String get kubeAiExternalTitle => 'Передать контекст кластера этому провайдеру?';
+
+  @override
+  String get kubeAiExternalHelp =>
+      'Для ответа очищенные метаданные ресурсов, состояния и логи могут быть переданы внешнему провайдеру, указанному выше. Значения Secret исключены. Разрешение действует только для этого вопроса.';
+
+  @override
+  String get kubeAiNoTools =>
+      'Провайдер не вызывает инструменты; помощник использует только доступный контекст для чтения.';
+
+  @override
+  String get kubeAiExplain => 'Объяснить с ИИ';
+
+  @override
+  String kubeAiExplainQuestion(String problem, String resource) {
+    return 'Объясни проблему «$problem» у $resource. Проверь связанные состояния и события без изменения ресурсов.';
+  }
+
+  @override
+  String get sharingKubeContext => 'Контекст Kubernetes';
+
+  @override
+  String get sharingKubeCluster => 'Кластер';
+
+  @override
+  String get sharingKubeExclude =>
+      'По умолчанию передаются только настройки подключения. Данные входа, локальные маршруты и разрешения остаются на этом устройстве.';
+
+  @override
+  String get sharingKubeIncludeCredentials => 'Передать данные для входа';
+
+  @override
+  String get sharingKubeCredentialWarning =>
+      'Получатели смогут подключаться к кластеру с этими данными. Передавайте их только проверенным устройствам, которым доверяете. Отзыв доступа к публикации не отменяет уже скопированные получателем данные входа.';
+
+  @override
+  String get sharingKubeCredentialsIncluded => 'Данные для входа включены; значения скрыты.';
+
+  @override
+  String get sharingKubeCredentialsExcluded => 'Данные для входа не включены.';
+
+  @override
+  String get sharingKubeCopyHelp =>
+      'Сохраните личную копию подключения и выберите свой маршрут. Данные для входа импортируются только по вашему выбору; запускаемые плагины всё равно потребуют разрешения на этом устройстве.';
+
+  @override
+  String get sharingKubeImportCredentials => 'Импортировать включённые данные для входа';
+
+  @override
+  String get sharingKubeRouteRequired =>
+      'Для подключения нужен маршрут. Выберите сохранённый SSH-хост или профиль переходов на этом устройстве.';
+
+  @override
+  String get sharingKubeUnsupported => 'Этот сервер не поддерживает совместный доступ к контекстам Kubernetes.';
+
+  @override
+  String get sharingKubeSnapshotChanged =>
+      'Если настройки или данные для входа изменились, проверьте подключение заново.';
+
+  @override
+  String get kubeHistory => 'История событий';
+
+  @override
+  String get kubeHistoryHelp =>
+      'Локальная зашифрованная история за последние 7 дней. Запись включается в настройках подключения.';
+
+  @override
+  String get kubeHistoryRecording => 'Запись событий кластера';
+
+  @override
+  String get kubeHistoryDisabled => 'Запись истории отключена';
+
+  @override
+  String get kubeHistoryConnecting => 'Переподключение записи событий…';
+
+  @override
+  String get kubeHistoryUnavailable => 'Запись событий недоступна; сохранённая история доступна для чтения.';
+
+  @override
+  String get kubeHistoryWarnings => 'Только предупреждения';
+
+  @override
+  String get kubeHistoryClear => 'Очистить локальную историю событий';
+
+  @override
+  String get kubeHistoryClearHelp =>
+      'Удалить сохранённую историю этого контекста на этом устройстве. Ресурсы кластера не изменятся.';
+
+  @override
+  String get kubeHelmComputedValues => 'Итоговые значения';
+
+  @override
+  String get kubeRevealSecret => 'Показать значения Secret';
+
+  @override
+  String get kubeRevealSecretHelp =>
+      'Значения доступны только в этом защищённом диалоге в течение 30 секунд. Скопированные значения очищаются из буфера в течение 30 секунд. Они не передаются ИИ и не сохраняются в истории ресурсов.';
+
+  @override
+  String get kubeSecretExpired => 'Значения скрыты. При необходимости откройте их снова.';
+
+  @override
+  String get kubeCreateResource => 'Создать ресурс';
+
+  @override
+  String get kubeManifestTemplate => 'Вставить шаблон метаданных';
+
+  @override
+  String get kubeSchema => 'Схема ресурса Kubernetes';
+
+  @override
+  String get kubeHelmRollback => 'Откатить релиз Helm';
+
+  @override
+  String get kubeHelmRollbackHelp =>
+      'Проверьте точный путь Helm, контрольную сумму и команду. Операция изменяет ресурсы кластера; хуки Helm отключены. Введите имя релиза для подтверждения.';
+
+  @override
+  String get kubeHelmRollbackFailed =>
+      'Откат не завершён. Проверьте путь Helm, права и текущую ревизию релиза. Перед повтором заново проверьте команду.';
+
+  @override
+  String get kubeHelmBinary => 'Абсолютный путь к Helm (необязательно)';
+
+  @override
+  String get kubeAiHistory => 'История диалогов ИИ';
+
+  @override
+  String get kubeAiHistoryLocal => 'Сохранено на этом устройстве';
+
+  @override
+  String get kubeAiHistorySynced => 'Включена зашифрованная синхронизация';
+
+  @override
+  String get kubeAiHistoryDeleteHelp =>
+      'Удалить сохранённый диалог. Если он синхронизируется, удаление также синхронизируется.';
+
+  @override
+  String get kubeRolloutHistory => 'История развёртываний';
+
+  @override
+  String get kubeDiffBefore => 'До';
+
+  @override
+  String get kubeDiffAfter => 'После';
+
+  @override
+  String get kubeCompare => 'Сравнить';
+
+  @override
+  String get kubeDiffTruncated => 'Различия показаны не полностью. Проверьте весь ресурс перед применением изменений.';
+
+  @override
+  String get kubeNoChanges => 'Изменений нет';
+
+  @override
+  String get kubeDiffReview => 'Проверьте изменённые поля. Значения секретов скрыты.';
+
+  @override
+  String get kubeFluxCliAdviceMissing => 'Flux CLI не найден. Установить?';
+
+  @override
+  String get kubeFluxCliAdviceUpdate => 'Версия CLI старше версии Flux в кластере. Обновить?';
+
+  @override
+  String get kubeFluxCliNeverSuggest => 'Больше не предлагать';
+
+  @override
+  String get kubeFluxCliLater => 'Не сейчас';
+
+  @override
+  String get kubeFluxCliPathHelp => 'Добавить Flux в PATH';
+
+  @override
+  String get kubeFluxCliPathHint =>
+      'После изменения PATH откройте новое окно терминала. В macOS/Linux добавьте показанную строку в указанный файл профиля.';
+
+  @override
+  String get kubeFluxCliPathAdded => 'Папка добавлена в PATH пользователя.';
+
+  @override
+  String get kubeFluxCliController => 'Версия Flux в кластере';
+
+  @override
+  String get kubeGitOpsFlow => 'Поток ресурсов';
+
+  @override
+  String get kubeGraphList => 'Список';
+
+  @override
+  String get kubeGraphReset => 'Сбросить масштаб и положение';
+
+  @override
+  String get kubeIssueCertificateExpiring => 'Срок сертификата скоро истекает';
+
+  @override
+  String get kubeIssueCertificateExpired => 'Срок сертификата истёк';
+
+  @override
+  String get kubeIssueEvicted => 'Pod вытеснен';
+
+  @override
+  String get kubeIssuePendingResources => 'Недостаточно ресурсов кластера';
+
+  @override
+  String get kubeIssuePendingTaints => 'Метки taints узлов мешают размещению';
+
+  @override
+  String get kubeIssuePendingVolume => 'Pod ожидает том';
+
+  @override
+  String get kubeIssueSuspendedLong => 'Сверка приостановлена более 24 часов';
+
+  @override
+  String get kubeIssueSourceStale => 'Артефакт источника устарел';
+
+  @override
+  String get kubeIssueHelmDrift => 'Состояние Helm отличается от желаемого';
+
+  @override
+  String get kubeIssueDependencyNotReady => 'Зависимость не готова';
+
+  @override
+  String get kubeIssueDependencyMissing => 'Зависимость отсутствует или недоступна';
+
+  @override
+  String get kubeExitCode => 'Код завершения';
+
+  @override
+  String get kubeCommandOpen => 'Открыть контекст Kubernetes';
+
+  @override
+  String get kubeCommandAsk => 'Спросить ИИ о Kubernetes';
+
+  @override
+  String get kubeCommandContext => 'Контекст кластера';
+
+  @override
+  String get kubeRelatedObjects => 'Связанные ресурсы';
+
+  @override
+  String get kubeRelationOwner => 'Владелец';
+
+  @override
+  String get kubeRelationDependent => 'Дочерний ресурс';
+
+  @override
+  String get kubeRelationVolume => 'Связь с томом';
+
+  @override
+  String get kubeRelationConfiguration => 'Ссылка на конфигурацию';
+
+  @override
+  String get kubeMetricsTrend => 'Динамика CPU за текущий сеанс';
+
+  @override
+  String get kubeLogSince => 'За период';
+
+  @override
+  String get kubeLogAllTime => 'Всё время';
+
+  @override
+  String get kubeLogLastMinute => 'Последняя минута';
+
+  @override
+  String get kubeLogLastHour => 'Последний час';
+
+  @override
+  String get kubeLogLastDay => 'Последние сутки';
+
+  @override
+  String get kubeLogRegex => 'Регулярное выражение';
+
+  @override
+  String get kubeLogRegexInvalid => 'Некорректное или слишком сложное выражение.';
+
+  @override
+  String get kubeLogLevel => 'Уровень';
+
+  @override
+  String get kubeLogAllPods => 'Все поды';
+
+  @override
+  String get kubeLogAllLevels => 'Все уровни';
+
+  @override
+  String get kubeLogWrap => 'Переносить строки';
+
+  @override
+  String get kubeLogExport => 'Экспорт / отправка логов';
+
+  @override
+  String get kubeLogExportHelp =>
+      'Логи могут содержать секреты. Будут сохранены только строки, видимые с текущим фильтром.';
+
+  @override
+  String get kubeLogMask => 'Скрыть распознанные секреты перед экспортом';
+
+  @override
+  String get kubeLogTargetsTruncated => 'Показаны первые 8 подов. Выберите конкретный под для остальных.';
+
+  @override
+  String get kubeLogSaved => 'Логи сохранены.';
+
+  @override
+  String get kubeTags => 'Метки через запятую';
+
+  @override
+  String get kubeTagsHelp => 'Метки и цвет кластера общие для его сохранённых контекстов.';
+
+  @override
+  String get kubeColor => 'Цвет кластера';
+
+  @override
+  String get kubeNoColor => 'Без цвета';
+
+  @override
+  String get kubeFavorite => 'Добавить или убрать избранное';
+
+  @override
+  String get kubeFavorites => 'Избранное';
+
+  @override
+  String get kubeAllKinds => 'Все типы';
+
+  @override
+  String get kubeGroupWorkloads => 'Нагрузки';
+
+  @override
+  String get kubeGroupNetwork => 'Сеть';
+
+  @override
+  String get kubeGroupConfig => 'Конфигурация';
+
+  @override
+  String get kubeGroupStorage => 'Хранилище';
+
+  @override
+  String get kubeGroupAccess => 'Доступ';
+
+  @override
+  String get kubeGroupCluster => 'Кластер / CRD';
+
+  @override
+  String get kubeLogDefaultContainer => 'Основной контейнер';
+
+  @override
+  String get kubeForwardChoosePod => 'Выберите Pod для проброса';
+
+  @override
+  String get kubeForwardChoosePodHelp =>
+      'Выберите целевой Pod. Соединение откроется только после подтверждения портов.';
+
+  @override
+  String get kubeMemoryTrend => 'Динамика памяти за текущий сеанс';
+
+  @override
+  String get kubeRequests => 'Запрошено';
+
+  @override
+  String get kubeLimits => 'Лимиты';
+
+  @override
+  String get kubeCapacity => 'Ёмкость';
+
+  @override
+  String get kubeAllocatable => 'Доступно для размещения';
+
+  @override
+  String get kubeResourceBudgetsUnavailable => 'Запросы ресурсов и лимиты недоступны.';
+
+  @override
+  String get kubeBulkActions => 'Выбранные ресурсы';
+
+  @override
+  String get kubeBulkHelp =>
+      'Проверьте список и введите имя контекста. Операции выполняются по очереди; отмена остановит их после текущей операции. Не более 100 ресурсов.';
+
+  @override
+  String get kubeBulkProductionBlocked => 'Массовые изменения недоступны в прод-контекстах.';
+
+  @override
+  String get kubeBulkFailed =>
+      'Операция остановлена. Выполненные ресурсы отмечены; проверьте остальные перед повтором.';
+
+  @override
+  String get kubeContextTerminal => 'Локальный терминал кластера';
+
+  @override
+  String get kubeContextTerminalHelp =>
+      'Терминал использует временный локальный API-прокси. Данные доступа остаются в ConsoleCrypt; ограничения прод-контекста продолжают действовать.';
+
+  @override
+  String get kubeOutput => 'Вывод';
+
+  @override
+  String get kubePinLogs => 'Открыть логи в нижней панели';
+
+  @override
+  String get kubeResizePanel => 'Изменить высоту нижней панели';
+
+  @override
+  String get kubeConfirmName => 'Введите точное имя';
+
+  @override
+  String get kubeAiProposalReview => 'Проверить предложение';
+
+  @override
+  String get kubeAiProposalContext =>
+      'Команда будет вставлена без выполнения в новый локальный терминал выбранного контекста.';
+
+  @override
+  String get kubeAiHistoryContext => 'Сообщений истории в запросе';
+
+  @override
+  String get kubeAiNewConversation => 'Новый разговор';
+
+  @override
+  String get kubeTableColumns => 'Столбцы';
+
+  @override
+  String get kubeAge => 'Возраст';
+
+  @override
+  String get kubeGitOpsSource => 'Источник';
+
+  @override
+  String get kubeGitOpsArtifact => 'Артефакт';
+
+  @override
+  String get kubeGitOpsInterval => 'Интервал сверки';
+
+  @override
+  String get kubeGitOpsRevision => 'Ревизия';
+
+  @override
+  String get kubeGitOpsSignature => 'Проверка подписи';
+
+  @override
+  String get kubeGitOpsInventory => 'Управляемые ресурсы';
+
+  @override
+  String get kubeGitOpsValuesFrom => 'Ссылки на значения';
+
+  @override
+  String get kubeGitOpsControllerLogs => 'Журнал контроллера';
+
+  @override
+  String get kubeGitOpsPath => 'Путь в репозитории';
+
+  @override
+  String get kubeGitOpsBranch => 'Ветка';
+
+  @override
+  String get kubeGitOpsTag => 'Тег / ограничение версии';
+
+  @override
+  String get kubeGitOpsChart => 'Чарт';
+
+  @override
+  String get kubeGitOpsDrift => 'Проверка расхождений';
+
+  @override
+  String get kubeGitOpsHistoryEmpty => 'История сверки пока недоступна.';
+
+  @override
+  String get kubeGitOpsControllerUnavailable => 'Журнал контроллера недоступен. Проверьте доступ к ресурсам кластера.';
+
+  @override
+  String get kubeGitOpsSignatureUnknown => 'Контроллер не сообщил результат';
+
+  @override
+  String get kubeGitOpsSourceReconcileHelp =>
+      'Запросить новую сверку источника. Для продолжения введите его точное имя.';
+
+  @override
+  String get kubeGitOpsMetadataOnly => 'Здесь показаны только ссылки на объекты. Значения секретов скрыты.';
+
+  @override
+  String get kubeResourceConfiguration => 'Конфигурация нагрузки и узла';
+
+  @override
+  String get kubePort => 'Порт';
+
+  @override
+  String get kubePorts => 'Порты';
+
+  @override
+  String get kubeNode => 'Узел';
+
+  @override
+  String get kubeServiceAccount => 'Сервисная учётная запись';
+
+  @override
+  String get kubeNodeSelector => 'Выбор узла';
+
+  @override
+  String get kubeReady => 'Готовность';
+
+  @override
+  String get kubeRestarts => 'Перезапуски';
+
+  @override
+  String get kubeIssueExitCode => 'Код завершения';
+
+  @override
+  String get kubeVolumeMounts => 'Подключения томов';
+
+  @override
+  String get kubeVolumes => 'Тома';
+
+  @override
+  String get kubeUnschedulable => 'Планирование отключено';
+
+  @override
+  String get kubeTaints => 'Ограничения taints';
+
+  @override
+  String get kubeNodeInfo => 'Программное обеспечение узла';
+
+  @override
+  String get kubeGraphProblems => 'Пути к проблемам';
+
+  @override
+  String get kubeGraphSearch => 'Найти ресурс на графе';
+
+  @override
+  String get kubeGraphFold => 'Свернуть конечные ресурсы';
+
+  @override
+  String get kubeReplicaStatus => 'Готово / требуемое число реплик';
+
+  @override
+  String get kubeTableSort => 'Сортировка ресурсов';
+
+  @override
+  String get kubeForwardRestore => 'Восстанавливать после переподключения';
+
+  @override
+  String get kubeForwardRestoreHelp =>
+      'Только пока этот контекст открыт и профиль разблокирован. При выходе из контекста выбор сбрасывается.';
+
+  @override
+  String get kubeForwardRestoreFailed =>
+      'Не все перенаправления портов восстановлены. Проверьте под и локальный порт, затем запустите их снова.';
+
+  @override
+  String get kubeGitOpsReconcileWithSource => 'Обновить вместе с источником';
+
+  @override
+  String get kubeGitOpsReconcileWithSourceHelp =>
+      'Запросить обновление цепочки источников, затем этого ресурса. Готовность контроллеров отображается в живом статусе. Подтвердите точное имя ресурса.';
+
+  @override
+  String get kubeForwardNetwork => 'Разрешить доступ из локальной сети';
+
+  @override
+  String get kubeForwardBindAddress => 'Локальный IP-адрес для приёма подключений';
+
+  @override
+  String get kubeForwardNetworkWarning =>
+      'Я понимаю, что другие устройства смогут обращаться к этому порту без авторизации Kubernetes. Разрешаю доступ из сети.';
+
+  @override
+  String get kubeHelmComputedPartial =>
+      'Значения объединены из сохранённого релиза; значения по умолчанию дочерних чартов и глобальные импорты могут отсутствовать.';
+
+  @override
+  String get kubeManifestSnippets => 'Вставить сохранённый манифест';
+
+  @override
+  String get kubeManifestSnippetsHelp =>
+      'Выберите сниппет kubectl с YAML или JSON. Проверьте имена и переменные в редакторе перед серверной проверкой.';
+
+  @override
+  String get kubeNoManifestSnippets =>
+      'Сниппетов манифестов пока нет. Сохраните YAML или JSON как сниппет kubectl в разделе «Сниппеты».';
+
+  @override
+  String get kubeGitOpsSources => 'Источники';
+
+  @override
+  String get kubeGitOpsNotifications => 'Уведомления';
+
+  @override
+  String get kubeGitOpsImages => 'Автоматизация образов';
+
+  @override
+  String get kubeGitOpsRecent => 'Последние изменения статуса контроллеров';
+
+  @override
+  String get kubeDockRight => 'Переместить панель вправо';
+
+  @override
+  String get kubeDockBottom => 'Переместить панель вниз';
+
+  @override
+  String get kubeMaskedEditHelp =>
+      'Манифест содержит скрытые значения. Изменение YAML отключено, чтобы не заменить учётные данные масками. Используйте отдельные действия ресурса или измените исходный доверенный манифест.';
+
+  @override
+  String get kubeAutoShell => 'Определить оболочку автоматически';
 }

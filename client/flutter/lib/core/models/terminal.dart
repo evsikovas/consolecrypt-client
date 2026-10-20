@@ -39,6 +39,32 @@ final class LocalTerminalTarget extends TerminalTarget {
   SnippetType get shellType => terminalShellType(profile.shell) ?? SnippetType.shell;
 }
 
+final class KubernetesTerminalTarget extends TerminalTarget {
+  const KubernetesTerminalTarget({
+    required this.sessionId,
+    required this.contextName,
+    required this.namespace,
+    required this.pod,
+    this.container,
+    this.command = const ['/bin/sh'],
+    this.tty = true,
+  });
+  final String sessionId, contextName, namespace, pod;
+  final String? container;
+
+  /// Null attaches to the container's existing process.
+  final List<String>? command;
+  final bool tty;
+  @override
+  String get label => '$namespace/$pod';
+  @override
+  String get detail => '$contextName · ${container ?? pod}';
+  @override
+  Host? get sshHost => null;
+  @override
+  SnippetType get shellType => terminalShellType(command?.firstOrNull) ?? SnippetType.shell;
+}
+
 SnippetType? terminalShellType(String? shell) {
   final name = shell?.split(RegExp(r'[/\\]')).last.toLowerCase().replaceFirst(RegExp(r'\.exe$'), '');
   return switch (name) {

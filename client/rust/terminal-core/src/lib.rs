@@ -201,13 +201,19 @@ pub enum TerminalTarget {
         display_name: String,
         distribution: Option<String>,
     },
+    Kubernetes {
+        context_id: ObjectId,
+        namespace: String,
+        pod: String,
+        container: Option<String>,
+    },
 }
 
 impl TerminalTarget {
     pub fn host_id(&self) -> Option<ObjectId> {
         match self {
             Self::Ssh { host_id } => Some(*host_id),
-            Self::Local { .. } => None,
+            Self::Local { .. } | Self::Kubernetes { .. } => None,
         }
     }
 }
@@ -491,6 +497,42 @@ impl TerminalManager {
             self.map().remove(&id);
             return Err(TerminalError::Open("terminal closed during start".into()));
         }
+        Ok(id)
+    }
+
+    /// Register a native transport adapter in the same bounded scrollback,
+    /// attach, resize and lock lifecycle used by SSH and local shells.
+    pub async fn open_channel(
+        &self,
+        target: TerminalTarget,
+        title: String,
+        size: TerminalSize,
+        opened: OpenedShell,
+    ) -> Result<TerminalId, TerminalError> {
+        let id = uuid::Uuid::new_v4();
+        let session = Arc::new(Session {
+            id,
+            target,
+            title,
+            status: watch::channel(TerminalStatus::Connecting).0,
+            output: broadcast::channel(1024).0,
+            inner: Mutex::new(Inner {
+                writer: None,
+                session: None,
+                lifetime: None,
+                closing: self.stopped.load(Ordering::Acquire),
+                size,
+                scrollback: Scrollback::new(self.config.scrollback_bytes),
+                tracker: CommandTracker::new(),
+            }),
+        });
+        self.register(session.clone());
+        let events = self.events.clone();
+        let Some((reader, owned)) = Self::install(&session, opened, &events).await else {
+            self.map().remove(&id);
+            return Err(TerminalError::Open("terminal manager is closed".into()));
+        };
+        tokio::spawn(Self::pump(session, reader, owned, events));
         Ok(id)
     }
 

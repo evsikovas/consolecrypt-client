@@ -17,7 +17,7 @@ os-keychain = ["cc-platform-core/os-keychain"]
 # Plaintext, file-backed secure store (`<data>/secure-store.json`, 0600) for
 # headless/CI use of the `cc` CLI where no OS keychain is usable. INSECURE:
 # never enable it in the desktop app. Selected only explicitly at runtime.
-insecure-file-store = ["dep:base64"]
+insecure-file-store = []
 # Test hooks for consumers' tests (never in production builds):
 # `AppCore::sftp_attach_client_for_tests` + sftp-core's in-process server.
 test-harness = ["cc-sftp-core/test-harness"]
@@ -39,6 +39,16 @@ cc-sftp-core.workspace = true
 cc-search-core.workspace = true
 cc-ai-core.workspace = true
 cc-k8s-core.workspace = true
+url.workspace = true
+reqwest = { workspace = true, features = ["stream"] }
+sha2 = "0.11"
+flate2 = "1"
+tar = "0.4"
+zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
+tempfile.workspace = true
+semver = "1"
+pem = "3"
+tokio-util = "0.7"
 tokio = { workspace = true, features = ["process"] }
 futures.workspace = true
 async-trait.workspace = true
@@ -53,7 +63,10 @@ uuid.workspace = true
 chrono.workspace = true
 secrecy.workspace = true
 zeroize.workspace = true
-base64 = { workspace = true, optional = true }
+base64.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_System_Registry", "Win32_UI_WindowsAndMessaging"] }
 
 [dev-dependencies]
 base64.workspace = true
@@ -67,6 +80,10 @@ log = "0.4"
 # MIT — in-process mock LLM HTTP servers for the AI integration tests
 # (same version as ai-core's dev-dependency).
 axum = "0.8"
+rcgen = "0.14"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio-rustls = { version = "=0.26.5", default-features = false, features = ["ring", "tls12"] }
+tokio-tungstenite = "0.29"
 
 [lints]
 workspace = true
