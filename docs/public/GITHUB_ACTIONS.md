@@ -98,8 +98,10 @@ AI smoke cache after compilation, test or upload failures. Diagnostic jobs also
 retain them. The workflow records the repository, source commit, run and platform
 in a workspace ownership marker before building.
 
-After publication, separate Windows and Mac cleanup jobs verify that marker and
-the checkout's current `HEAD`. They perform no checkout and refuse a foreign or
+After publication, a separate Mac cleanup job verifies that marker and
+the checkout's current `HEAD`. The persistent Windows runner keeps its
+generated build cache after publication so that the next release builds
+incrementally; use the guarded maintenance workflow below to clean it. They perform no checkout and refuse a foreign or
 newer workspace. The release, diagnostic and maintenance workflows share one
 concurrency group, so another build cannot begin while post-publication cleanup
 is running. Publication is recorded only after GitHub has accepted the public

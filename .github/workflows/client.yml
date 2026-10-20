@@ -230,19 +230,9 @@ jobs:
         run: gh workflow run update-feeds.yml --ref main
 
   # No checkout here: validate the immutable owner/HEAD of the released build.
-  # The workflow concurrency lock remains held until these jobs finish.
-  cleanup_windows:
-    needs: publish
-    if: always() && needs.publish.outputs.published == 'true'
-    runs-on: [self-hosted, Windows, X64, consolecrypt, client]
-    timeout-minutes: 30
-    env:
-      CC_RELEASE_PUBLISHED: ${{ needs.publish.outputs.published }}
-    steps:
-      - name: Clean the published release workspace
-        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
-        run: '& client/scripts/cleanup-ci-workspace.ps1 -AfterPublication'
-
+  # The workflow concurrency lock remains held until this job finishes.
+  # The persistent Windows runner keeps its build cache after publication:
+  # incremental native builds take minutes instead of a full rebuild.
   cleanup_macos:
     needs: publish
     if: always() && needs.publish.outputs.published == 'true'

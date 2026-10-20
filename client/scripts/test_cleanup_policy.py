@@ -26,7 +26,8 @@ class CleanupPolicyTest(unittest.TestCase):
                 self.assertIn('clean: false', release[name])
                 self.assertRegex(release[name], r'--claim-workspace|-ClaimWorkspace')
                 self.assertNotRegex(release[name], r'--after-publication|-AfterPublication|--maintenance')
-        for name in ('cleanup_windows', 'cleanup_macos'):
+        self.assertNotIn('cleanup_windows', release)  # Windows keeps its build cache.
+        for name in ('cleanup_macos',):
             self.assertIn('needs: publish', release[name])
             self.assertIn("if: always() && needs.publish.outputs.published == 'true'", release[name])
             self.assertNotIn('actions/checkout', release[name])
