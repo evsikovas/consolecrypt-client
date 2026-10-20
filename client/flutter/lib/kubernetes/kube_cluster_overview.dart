@@ -3,8 +3,11 @@ import 'dart:math' as math;
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_insights_service.dart';
+import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
+import 'package:consolecrypt/kubernetes/kube_metrics_installer.dart';
 import 'package:consolecrypt/kubernetes/kube_operations_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_table_view.dart';
@@ -44,6 +47,8 @@ class _KubeClusterOverviewState extends ConsumerState<KubeClusterOverview> {
   Timer? _timer;
   int _tick = 0;
   bool _loading = true, _metricsUnavailable = false;
+  bool _insecureTls = false, _installing = false, _installFailed = false;
+  String? _installMessage;
   List<KubeMetrics> _nodes = const [];
   List<KubeResourceRow> _nodeRows = const [];
   final _pods = <String, int>{};
@@ -70,6 +75,38 @@ class _KubeClusterOverviewState extends ConsumerState<KubeClusterOverview> {
     _timer?.cancel();
     _samples.clear();
     super.dispose();
+  }
+
+  Future<void> _installMetrics() async {
+    final service = widget.service;
+    if (!_current || _installing || service is! KubeManifestService) return;
+    final l = context.l10n;
+    final manifest = await MetricsServerManifest.load();
+    if (!mounted || !_current) return;
+    final approved = await showConfirmDialog(
+      context,
+      title: l.kubeMetricsInstall,
+      message: l.kubeMetricsInstallHelp(manifest.version),
+      confirmLabel: l.kubeMetricsInstall,
+    );
+    if (!approved || !mounted || !_current) return;
+    setState(() {
+      _installing = true;
+      _installMessage = null;
+    });
+    final result = await installMetricsServer(
+      l10n: l,
+      service: service as KubeManifestService,
+      session: widget.session,
+      kinds: widget.kinds,
+      objects: manifest.build(insecureTls: _insecureTls),
+    );
+    if (!mounted || !_current) return;
+    setState(() {
+      _installing = false;
+      _installFailed = result.error != null;
+      _installMessage = result.error ?? l.kubeMetricsInstalled(result.created, result.existing);
+    });
   }
 
   Future<void> _load({required bool full}) async {
@@ -234,7 +271,58 @@ class _KubeClusterOverviewState extends ConsumerState<KubeClusterOverview> {
         const SizedBox(height: GlassSpacing.s12),
         if (_metricsUnavailable)
           ContentSurface(
-            child: Text(l.kubeMetricsUnavailable, style: tokens.typography.body.copyWith(color: tokens.secondaryLabel)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.kubeMetricsUnavailable, style: tokens.typography.body.copyWith(color: tokens.secondaryLabel)),
+                if (widget.service is KubeManifestService) ...[
+                  const SizedBox(height: GlassSpacing.s12),
+                  Row(
+                    children: [
+                      Switch.adaptive(
+                        key: const ValueKey('kube-metrics-insecure-tls'),
+                        value: _insecureTls,
+                        onChanged: _installing ? null : (value) => setState(() => _insecureTls = value),
+                      ),
+                      const SizedBox(width: GlassSpacing.s8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l.kubeMetricsInsecureTls,
+                              style: tokens.typography.body.copyWith(color: tokens.palette.label),
+                            ),
+                            Text(
+                              l.kubeMetricsInsecureTlsHelp,
+                              style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: GlassSpacing.s12),
+                  GlassButton.prominent(
+                    key: const ValueKey('kube-metrics-install'),
+                    icon: Icons.download_rounded,
+                    label: l.kubeMetricsInstall,
+                    busy: _installing,
+                    onPressed: _installing ? null : () => unawaited(_installMetrics()),
+                  ),
+                  if (_installMessage case final message?) ...[
+                    const SizedBox(height: GlassSpacing.s8),
+                    Text(
+                      message,
+                      key: const ValueKey('kube-metrics-install-result'),
+                      style: tokens.typography.callout.copyWith(
+                        color: _installFailed ? tokens.palette.danger : tokens.palette.success,
+                      ),
+                    ),
+                  ],
+                ],
+              ],
+            ),
           )
         else
           LayoutBuilder(

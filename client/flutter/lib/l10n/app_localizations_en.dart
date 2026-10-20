@@ -7768,4 +7768,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsShortcutReservedBadge => 'Overlaps the system or terminal';
+
+  @override
+  String get kubeMetricsInstall => 'Install metrics-server';
+
+  @override
+  String kubeMetricsInstallHelp(String version) {
+    return 'Basic metrics-server $version in kube-system: ServiceAccount, RBAC, Service, Deployment and the v1beta1.metrics.k8s.io APIService. The cluster pulls the image from registry.k8s.io.';
+  }
+
+  @override
+  String get kubeMetricsInsecureTls => 'Kubelets use self-signed certificates (--kubelet-insecure-tls)';
+
+  @override
+  String get kubeMetricsInsecureTlsHelp =>
+      'Needed for local clusters (OrbStack, kind, Docker Desktop, minikube). Turns off kubelet certificate checks.';
+
+  @override
+  String kubeMetricsInstalled(int created, int existing) {
+    return 'metrics-server installed ($created created, $existing already present). Metrics appear in about a minute.';
+  }
+
+  @override
+  String kubeMetricsInstallDenied(String kind, String name) {
+    return '$kind $name: the cluster refused. Check your permissions; production clusters need an open write window.';
+  }
+
+  @override
+  String kubeMetricsInstallFailed(String kind, String name) {
+    return '$kind $name was not created.';
+  }
+
+  @override
+  String kubeMetricsUnknownKind(String kind, String apiVersion) {
+    return 'The cluster does not offer $kind ($apiVersion).';
+  }
 }

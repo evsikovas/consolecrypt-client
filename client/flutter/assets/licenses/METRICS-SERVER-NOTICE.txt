@@ -1,0 +1,6 @@
+The Kubernetes Metrics Server manifest bundled in assets/kubernetes/metrics-server.json
+is derived from the components.yaml of kubernetes-sigs/metrics-server v0.7.2
+(https://github.com/kubernetes-sigs/metrics-server), licensed under the Apache License,
+Version 2.0. Changes: lower resource requests, a memory limit, and an optional
+--kubelet-insecure-tls argument added at install time. The container image is pulled by the
+cluster from registry.k8s.io and is not distributed with ConsoleCrypt.

@@ -1,4 +1,5 @@
 import 'package:consolecrypt/ai/code_blocks.dart';
+import 'package:consolecrypt/ai/markdown_text.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -45,7 +46,7 @@ class KubeAiProposals extends StatelessWidget {
     children: [
       for (final segment in parseAnswer(answer, maxSegments: 32))
         if (segment is TextSegment)
-          SelectableText(segment.text.trim())
+          SelectionArea(child: MarkdownText(segment.text.trim()))
         else if (segment is CodeSegment)
           _ProposalCard(
             code: segment.code,

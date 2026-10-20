@@ -7969,4 +7969,39 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get settingsShortcutReservedBadge => 'Пересекается с системой или терминалом';
+
+  @override
+  String get kubeMetricsInstall => 'Установить metrics-server';
+
+  @override
+  String kubeMetricsInstallHelp(String version) {
+    return 'Базовый metrics-server $version в kube-system: ServiceAccount, RBAC, Service, Deployment и APIService v1beta1.metrics.k8s.io. Образ кластер скачает сам с registry.k8s.io.';
+  }
+
+  @override
+  String get kubeMetricsInsecureTls => 'Kubelet с самоподписанными сертификатами (--kubelet-insecure-tls)';
+
+  @override
+  String get kubeMetricsInsecureTlsHelp =>
+      'Нужно для локальных кластеров (OrbStack, kind, Docker Desktop, minikube). Отключает проверку сертификата kubelet.';
+
+  @override
+  String kubeMetricsInstalled(int created, int existing) {
+    return 'metrics-server установлен (создано $created, уже было $existing). Метрики появятся примерно через минуту.';
+  }
+
+  @override
+  String kubeMetricsInstallDenied(String kind, String name) {
+    return '$kind $name: кластер отказал. Проверьте права; для прод-кластера откройте окно изменений.';
+  }
+
+  @override
+  String kubeMetricsInstallFailed(String kind, String name) {
+    return '$kind $name не создан.';
+  }
+
+  @override
+  String kubeMetricsUnknownKind(String kind, String apiVersion) {
+    return 'Кластер не предоставляет $kind ($apiVersion).';
+  }
 }

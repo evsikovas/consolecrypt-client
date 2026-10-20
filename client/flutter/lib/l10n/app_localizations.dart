@@ -13981,6 +13981,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Overlaps the system or terminal'**
   String get settingsShortcutReservedBadge;
+
+  /// Button in the cluster overview when metrics are unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Install metrics-server'**
+  String get kubeMetricsInstall;
+
+  /// What the metrics-server install creates.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic metrics-server {version} in kube-system: ServiceAccount, RBAC, Service, Deployment and the v1beta1.metrics.k8s.io APIService. The cluster pulls the image from registry.k8s.io.'**
+  String kubeMetricsInstallHelp(String version);
+
+  /// Switch for local clusters.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubelets use self-signed certificates (--kubelet-insecure-tls)'**
+  String get kubeMetricsInsecureTls;
+
+  /// Explanation of the insecure TLS switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Needed for local clusters (OrbStack, kind, Docker Desktop, minikube). Turns off kubelet certificate checks.'**
+  String get kubeMetricsInsecureTlsHelp;
+
+  /// Result of the metrics-server install.
+  ///
+  /// In en, this message translates to:
+  /// **'metrics-server installed ({created} created, {existing} already present). Metrics appear in about a minute.'**
+  String kubeMetricsInstalled(int created, int existing);
+
+  /// metrics-server install failed for permissions.
+  ///
+  /// In en, this message translates to:
+  /// **'{kind} {name}: the cluster refused. Check your permissions; production clusters need an open write window.'**
+  String kubeMetricsInstallDenied(String kind, String name);
+
+  /// metrics-server install failed for another reason.
+  ///
+  /// In en, this message translates to:
+  /// **'{kind} {name} was not created.'**
+  String kubeMetricsInstallFailed(String kind, String name);
+
+  /// metrics-server install: a needed API is missing.
+  ///
+  /// In en, this message translates to:
+  /// **'The cluster does not offer {kind} ({apiVersion}).'**
+  String kubeMetricsUnknownKind(String kind, String apiVersion);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

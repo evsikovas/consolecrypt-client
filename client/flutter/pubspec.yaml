@@ -78,3 +78,4 @@ flutter:
   assets:
     - assets/brand/
     - assets/licenses/
+    - assets/kubernetes/

@@ -1,3 +1,4 @@
+import 'package:consolecrypt/ai/markdown_text.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
@@ -166,18 +167,20 @@ class AnswerView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final s in parseAnswer(text))
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s4),
-            child: switch (s) {
-              TextSegment(:final text) => SelectableText(text.trim()),
-              CodeSegment(:final code) => CommandActionsCard(command: code),
-            },
-          ),
-      ],
+    return SelectionArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final s in parseAnswer(text))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s4),
+              child: switch (s) {
+                TextSegment(:final text) => MarkdownText(text.trim()),
+                CodeSegment(:final code) => CommandActionsCard(command: code),
+              },
+            ),
+        ],
+      ),
     );
   }
 }

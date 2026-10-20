@@ -10657,5 +10657,74 @@
   "settingsShortcutReservedBadge": "Overlaps the system or terminal",
   "@settingsShortcutReservedBadge": {
     "description": "Row hint for a reserved combination."
+  },
+  "kubeMetricsInstall": "Install metrics-server",
+  "@kubeMetricsInstall": {
+    "description": "Button in the cluster overview when metrics are unavailable."
+  },
+  "kubeMetricsInstallHelp": "Basic metrics-server {version} in kube-system: ServiceAccount, RBAC, Service, Deployment and the v1beta1.metrics.k8s.io APIService. The cluster pulls the image from registry.k8s.io.",
+  "@kubeMetricsInstallHelp": {
+    "description": "What the metrics-server install creates.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "kubeMetricsInsecureTls": "Kubelets use self-signed certificates (--kubelet-insecure-tls)",
+  "@kubeMetricsInsecureTls": {
+    "description": "Switch for local clusters."
+  },
+  "kubeMetricsInsecureTlsHelp": "Needed for local clusters (OrbStack, kind, Docker Desktop, minikube). Turns off kubelet certificate checks.",
+  "@kubeMetricsInsecureTlsHelp": {
+    "description": "Explanation of the insecure TLS switch."
+  },
+  "kubeMetricsInstalled": "metrics-server installed ({created} created, {existing} already present). Metrics appear in about a minute.",
+  "@kubeMetricsInstalled": {
+    "description": "Result of the metrics-server install.",
+    "placeholders": {
+      "created": {
+        "type": "int"
+      },
+      "existing": {
+        "type": "int"
+      }
+    }
+  },
+  "kubeMetricsInstallDenied": "{kind} {name}: the cluster refused. Check your permissions; production clusters need an open write window.",
+  "@kubeMetricsInstallDenied": {
+    "description": "metrics-server install failed for permissions.",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "kubeMetricsInstallFailed": "{kind} {name} was not created.",
+  "@kubeMetricsInstallFailed": {
+    "description": "metrics-server install failed for another reason.",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "kubeMetricsUnknownKind": "The cluster does not offer {kind} ({apiVersion}).",
+  "@kubeMetricsUnknownKind": {
+    "description": "metrics-server install: a needed API is missing.",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "apiVersion": {
+        "type": "String"
+      }
+    }
   }
 }
