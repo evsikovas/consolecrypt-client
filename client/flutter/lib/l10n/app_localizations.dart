@@ -13849,6 +13849,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'AI: via API {name} · {model} (requests leave this computer)'**
   String shellAiApi(String name, String model);
+
+  /// Host editor: import hosts from the OpenSSH client config.
+  ///
+  /// In en, this message translates to:
+  /// **'From ~/.ssh/config'**
+  String get sshConfigImportButton;
+
+  /// Title of the ssh_config import dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from ~/.ssh/config'**
+  String get sshConfigImportTitle;
+
+  /// Explanation in the ssh_config import dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Host entries become hosts with their address, port, user, jump hosts and key. Wildcard blocks (Host *) are applied as defaults.'**
+  String get sshConfigImportHelp;
+
+  /// ssh_config import: the file does not exist.
+  ///
+  /// In en, this message translates to:
+  /// **'{path} was not found.'**
+  String sshConfigNotFound(String path);
+
+  /// Checkbox: also import referenced private keys into the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Import keys from IdentityFile'**
+  String get sshConfigImportKeys;
+
+  /// Help under the key import checkbox.
+  ///
+  /// In en, this message translates to:
+  /// **'A key is stored in the vault as it is; an encrypted key keeps its passphrase.'**
+  String get sshConfigImportKeysHelp;
+
+  /// ssh_config import: the host is reached through jump hosts.
+  ///
+  /// In en, this message translates to:
+  /// **'via {hosts}'**
+  String sshConfigVia(String hosts);
+
+  /// ssh_config import: warning for ProxyCommand hosts.
+  ///
+  /// In en, this message translates to:
+  /// **'ProxyCommand is not supported; the host is imported without it'**
+  String get sshConfigProxyCommand;
+
+  /// ssh_config import: a referenced key could not be read or imported.
+  ///
+  /// In en, this message translates to:
+  /// **'Key {path} was not imported'**
+  String sshConfigKeyFailed(String path);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

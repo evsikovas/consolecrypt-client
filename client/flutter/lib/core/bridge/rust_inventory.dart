@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:consolecrypt/core/bridge/ai_chat_stream.dart';
@@ -9,6 +10,7 @@ import 'package:consolecrypt/core/bridge/rust_backend.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:consolecrypt/core/services/ssh_config_import_service.dart';
 import 'package:consolecrypt/src/rust/api/account.dart' as rs_account;
 import 'package:consolecrypt/src/rust/api/ai.dart' as rs_ai;
 import 'package:consolecrypt/src/rust/api/credentials.dart' as rs_cred;
@@ -17,7 +19,7 @@ import 'package:consolecrypt/src/rust/api/ssh.dart' as rs_ssh;
 
 // ---- inventory -------------------------------------------------------------------------
 
-final class RustInventoryService implements InventoryService {
+final class RustInventoryService implements InventoryService, SshConfigImportService {
   RustInventoryService(this._hub);
 
   final RustBackend _hub;
@@ -232,6 +234,11 @@ final class RustInventoryService implements InventoryService {
     final json = passphrase == null || passphrase.isEmpty ? await call(null) : await withSecret(passphrase, call);
     return _storedCredential(json);
   }
+
+  @override
+  Future<SshConfigPreview> previewSshConfig({String? path}) async => SshConfigPreview.fromJson(
+    jsonDecode(await guard(() => rs_inv.hostsSshConfigPreview(path: path))) as Map<String, dynamic>,
+  );
 
   @override
   Future<KeyInspection> inspectPrivateKey(SecretText privateKey) async {

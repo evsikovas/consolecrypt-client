@@ -10539,5 +10539,56 @@
         "type": "String"
       }
     }
+  },
+  "sshConfigImportButton": "From ~/.ssh/config",
+  "@sshConfigImportButton": {
+    "description": "Host editor: import hosts from the OpenSSH client config."
+  },
+  "sshConfigImportTitle": "Import from ~/.ssh/config",
+  "@sshConfigImportTitle": {
+    "description": "Title of the ssh_config import dialog."
+  },
+  "sshConfigImportHelp": "Host entries become hosts with their address, port, user, jump hosts and key. Wildcard blocks (Host *) are applied as defaults.",
+  "@sshConfigImportHelp": {
+    "description": "Explanation in the ssh_config import dialog."
+  },
+  "sshConfigNotFound": "{path} was not found.",
+  "@sshConfigNotFound": {
+    "description": "ssh_config import: the file does not exist.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "sshConfigImportKeys": "Import keys from IdentityFile",
+  "@sshConfigImportKeys": {
+    "description": "Checkbox: also import referenced private keys into the vault."
+  },
+  "sshConfigImportKeysHelp": "A key is stored in the vault as it is; an encrypted key keeps its passphrase.",
+  "@sshConfigImportKeysHelp": {
+    "description": "Help under the key import checkbox."
+  },
+  "sshConfigVia": "via {hosts}",
+  "@sshConfigVia": {
+    "description": "ssh_config import: the host is reached through jump hosts.",
+    "placeholders": {
+      "hosts": {
+        "type": "String"
+      }
+    }
+  },
+  "sshConfigProxyCommand": "ProxyCommand is not supported; the host is imported without it",
+  "@sshConfigProxyCommand": {
+    "description": "ssh_config import: warning for ProxyCommand hosts."
+  },
+  "sshConfigKeyFailed": "Key {path} was not imported",
+  "@sshConfigKeyFailed": {
+    "description": "ssh_config import: a referenced key could not be read or imported.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
   }
 }

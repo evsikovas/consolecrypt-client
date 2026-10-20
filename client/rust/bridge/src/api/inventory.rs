@@ -106,6 +106,12 @@ async fn host_exists(c: &AppCore, id: &str) -> Result<bool, BridgeError> {
 // ---- hosts -------------------------------------------------------------------------
 
 /// `Vec<HostDto>` sorted by name.
+/// Hosts of `~/.ssh/config` (or `path`) for the import dialog: JSON
+/// `SshConfigPreview`. Parsing only; nothing is stored, no key is read.
+pub async fn hosts_ssh_config_preview(path: Option<String>) -> Result<String, BridgeError> {
+    to_json(&cc_app_core::ssh_config_preview(path)?)
+}
+
 pub async fn hosts_list() -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.list_hosts().await?) }).await
 }

@@ -4173,5 +4173,14 @@
   "shellAiNone": "ИИ не настроен — открыть настройки",
   "shellAiDevice": "ИИ: встроенная модель на устройстве · {model}",
   "shellAiLocal": "ИИ: локальный сервер {name} · {model}",
-  "shellAiApi": "ИИ: через API {name} · {model} (запросы уходят с компьютера)"
+  "shellAiApi": "ИИ: через API {name} · {model} (запросы уходят с компьютера)",
+  "sshConfigImportButton": "Из ~/.ssh/config",
+  "sshConfigImportTitle": "Импорт из ~/.ssh/config",
+  "sshConfigImportHelp": "Записи Host станут хостами: адрес, порт, пользователь, jump-хосты и ключ. Блоки с масками (Host *) применяются как значения по умолчанию.",
+  "sshConfigNotFound": "Файл {path} не найден.",
+  "sshConfigImportKeys": "Импортировать ключи из IdentityFile",
+  "sshConfigImportKeysHelp": "Ключ сохраняется в хранилище как есть; зашифрованный ключ остаётся со своей парольной фразой.",
+  "sshConfigVia": "через {hosts}",
+  "sshConfigProxyCommand": "ProxyCommand не поддерживается; хост импортируется без него",
+  "sshConfigKeyFailed": "Ключ {path} не импортирован"
 }

@@ -17,6 +17,7 @@ import 'package:consolecrypt/hosts/host_auth_section.dart';
 import 'package:consolecrypt/hosts/hosts_screen.dart';
 import 'package:consolecrypt/hosts/jump_chain_editor.dart';
 import 'package:consolecrypt/hosts/known_hosts_import_dialog.dart';
+import 'package:consolecrypt/hosts/ssh_config_import_dialog.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -279,6 +280,25 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
                       context,
                       barrierDismissible: false,
                       builder: (_) => KnownHostsImportDialog(groupId: _groupId),
+                    );
+                    if (context.mounted && count != null && count > 0) {
+                      showSnack(context, context.l10n.hostImportSaved(count));
+                      context.go(AppRoutes.hosts);
+                    }
+                  },
+          ),
+        if (_isNew && !AppPlatform.isMobile && _protocol == HostProtocol.ssh)
+          GlassButton(
+            key: const ValueKey('host-editor-import-ssh-config'),
+            icon: Icons.description_outlined,
+            label: l10n.sshConfigImportButton,
+            onPressed: _saving
+                ? null
+                : () async {
+                    final count = await showAppDialog<int>(
+                      context,
+                      barrierDismissible: false,
+                      builder: (_) => SshConfigImportDialog(groupId: _groupId),
                     );
                     if (context.mounted && count != null && count > 0) {
                       showSnack(context, context.l10n.hostImportSaved(count));

@@ -12,6 +12,11 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `clone`, `eq`, `fmt`, `fmt`
 
 /// `Vec<HostDto>` sorted by name.
+/// Hosts of `~/.ssh/config` (or `path`) for the import dialog: JSON
+/// `SshConfigPreview`. Parsing only; nothing is stored, no key is read.
+Future<String> hostsSshConfigPreview({String? path}) =>
+    RustLib.instance.api.crateApiInventoryHostsSshConfigPreview(path: path);
+
 Future<String> hostsList() => RustLib.instance.api.crateApiInventoryHostsList();
 
 /// Insert or update a host (`HostDto` JSON) keeping `credential_id` as given.

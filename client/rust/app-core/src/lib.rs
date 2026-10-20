@@ -82,6 +82,7 @@ pub mod sharing_state;
 mod snippets;
 mod ssh;
 mod ssh_api;
+mod ssh_config_import;
 mod sync;
 mod transfers;
 pub mod validate;
@@ -118,6 +119,7 @@ pub use sftp_browser::{
 pub use sharing_dto::*;
 pub use snippets::SnippetSearchHitDto;
 pub use ssh_api::OpenSshCommandDto;
+pub use ssh_config_import::{ssh_config_preview, SshConfigHostPreview, SshConfigPreview};
 pub use transfers::{
     ErrorInfoDto, TransferDirectionDto, TransferJobDto, TransferRequestDto, TransferStateDto,
 };

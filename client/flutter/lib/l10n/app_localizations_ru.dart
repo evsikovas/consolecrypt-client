@@ -7887,4 +7887,39 @@ class AppLocalizationsRu extends AppLocalizations {
   String shellAiApi(String name, String model) {
     return 'ИИ: через API $name · $model (запросы уходят с компьютера)';
   }
+
+  @override
+  String get sshConfigImportButton => 'Из ~/.ssh/config';
+
+  @override
+  String get sshConfigImportTitle => 'Импорт из ~/.ssh/config';
+
+  @override
+  String get sshConfigImportHelp =>
+      'Записи Host станут хостами: адрес, порт, пользователь, jump-хосты и ключ. Блоки с масками (Host *) применяются как значения по умолчанию.';
+
+  @override
+  String sshConfigNotFound(String path) {
+    return 'Файл $path не найден.';
+  }
+
+  @override
+  String get sshConfigImportKeys => 'Импортировать ключи из IdentityFile';
+
+  @override
+  String get sshConfigImportKeysHelp =>
+      'Ключ сохраняется в хранилище как есть; зашифрованный ключ остаётся со своей парольной фразой.';
+
+  @override
+  String sshConfigVia(String hosts) {
+    return 'через $hosts';
+  }
+
+  @override
+  String get sshConfigProxyCommand => 'ProxyCommand не поддерживается; хост импортируется без него';
+
+  @override
+  String sshConfigKeyFailed(String path) {
+    return 'Ключ $path не импортирован';
+  }
 }

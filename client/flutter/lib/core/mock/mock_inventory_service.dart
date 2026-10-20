@@ -7,9 +7,21 @@ import 'package:consolecrypt/core/mock/mock_scope.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:consolecrypt/core/services/ssh_config_import_service.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 
-final class MockInventoryService extends VaultScopedMock implements InventoryService {
+final class MockInventoryService extends VaultScopedMock implements InventoryService, SshConfigImportService {
+  /// Demo `~/.ssh/config` contents for the import dialog.
+  @override
+  Future<SshConfigPreview> previewSshConfig({String? path}) async => const SshConfigPreview(
+    path: '~/.ssh/config', // l10n-ignore: file path
+    found: true,
+    hosts: [
+      SshConfigHostPreview(alias: 'bastion', address: '203.0.113.10', username: 'ops'),
+      SshConfigHostPreview(alias: 'nethtrap', address: '198.51.100.7', port: 2222, username: 'root', jump: ['bastion']),
+    ],
+  );
+
   MockInventoryService(super.cloud) {
     initScope();
   }

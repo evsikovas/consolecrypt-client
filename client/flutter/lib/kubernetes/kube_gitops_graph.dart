@@ -333,10 +333,11 @@ class _KubeGitOpsGraphState extends State<KubeGitOpsGraph> {
                                       child: Tooltip(
                                         message: [node.object.label, ?widget.statusLabel?.call(node.object)].join('\n'),
                                         child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
                                             Icon(_appearance(node).icon, color: _appearance(node).color, size: 20),
-                                            const SizedBox(width: 6),
-                                            Expanded(
+                                            const SizedBox(width: 8),
+                                            Flexible(
                                               child: Column(
                                                 mainAxisAlignment: MainAxisAlignment.center,
                                                 crossAxisAlignment: CrossAxisAlignment.start,

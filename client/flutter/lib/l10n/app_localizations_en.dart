@@ -7687,4 +7687,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String shellAiApi(String name, String model) {
     return 'AI: via API $name · $model (requests leave this computer)';
   }
+
+  @override
+  String get sshConfigImportButton => 'From ~/.ssh/config';
+
+  @override
+  String get sshConfigImportTitle => 'Import from ~/.ssh/config';
+
+  @override
+  String get sshConfigImportHelp =>
+      'Host entries become hosts with their address, port, user, jump hosts and key. Wildcard blocks (Host *) are applied as defaults.';
+
+  @override
+  String sshConfigNotFound(String path) {
+    return '$path was not found.';
+  }
+
+  @override
+  String get sshConfigImportKeys => 'Import keys from IdentityFile';
+
+  @override
+  String get sshConfigImportKeysHelp => 'A key is stored in the vault as it is; an encrypted key keeps its passphrase.';
+
+  @override
+  String sshConfigVia(String hosts) {
+    return 'via $hosts';
+  }
+
+  @override
+  String get sshConfigProxyCommand => 'ProxyCommand is not supported; the host is imported without it';
+
+  @override
+  String sshConfigKeyFailed(String path) {
+    return 'Key $path was not imported';
+  }
 }
