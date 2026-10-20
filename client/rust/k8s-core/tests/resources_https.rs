@@ -3,7 +3,7 @@ use cc_k8s_core::{
     gitops::{ArgoAction, FluxAction},
     policy::{Audit, AuditEntry, DeviceClass, Policy},
     resources::{
-        DebugContainer, ListQuery, LogQuery, PodTerminalInput, PodTerminalOutput,
+        ApplyError, DebugContainer, ListQuery, LogQuery, PodTerminalInput, PodTerminalOutput,
         PodTerminalRequest, ReadOptions, ResourceApi, ResourceChange, ResourceError, ResourceRef,
         ResourceRelation, WatchOptions,
     },
@@ -693,7 +693,7 @@ async fn forged_descriptor_traversal_and_production_mutations_never_reach_api() 
     let manifest=Zeroizing::new("apiVersion: v1\nkind: Pod\nmetadata:\n  name: web\n  namespace: default\n  resourceVersion: '30'\n".to_owned());
     assert_eq!(
         api.apply(&valid, manifest, true, false).await.err(),
-        Some(ResourceError::Transport)
+        Some(ApplyError::Resource(ResourceError::Transport))
     );
     assert!(api.delete(&valid, "pod-id", "30").await.is_err());
     let flux = ResourceRef {

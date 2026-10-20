@@ -5,8 +5,9 @@ use cc_k8s_core::{
     gitops::{overview, ArgoAction, FluxAction},
     policy::{Audit, AuditEntry, DeviceClass, Policy},
     resources::{
-        ListQuery, LogQuery, PodTerminalInput, PodTerminalOutput, PodTerminalRequest, ReadOptions,
-        ResourceApi, ResourceChange, ResourceError, ResourceRef, ResourceRelation, WatchOptions,
+        ApplyError, ListQuery, LogQuery, PodTerminalInput, PodTerminalOutput, PodTerminalRequest,
+        ReadOptions, ResourceApi, ResourceChange, ResourceError, ResourceRef, ResourceRelation,
+        WatchOptions,
     },
     session::{Authentication, ConnectOptions, ConnectionRoute, KubernetesSession},
 };
@@ -151,7 +152,11 @@ async fn isolated_k3s_flux_helm_and_streams() {
         .await
         .is_err());
     if let Err(error) = api.apply(&config, yaml.clone(), true, false).await {
-        assert_eq!(error, ResourceError::Conflict);
+        // Server-side apply names the owning field manager when it can.
+        assert!(matches!(
+            error,
+            ApplyError::FieldConflict(_) | ApplyError::Resource(ResourceError::Conflict)
+        ));
     }
     // The fixture was initially owned by kubectl. Force is explicit here,
     // matching the separate reviewed conflict override in the application.
