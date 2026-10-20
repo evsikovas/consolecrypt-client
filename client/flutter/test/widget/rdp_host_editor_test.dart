@@ -7,6 +7,42 @@ import 'package:material_ui/material_ui.dart';
 import '../helpers/test_app.dart';
 
 void main() {
+  testWidgets('phone host fields retain focus and text while the keyboard changes the viewport', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, size: const Size(412, 915));
+    await tapKey(tester, 'add-host');
+    await tester.tap(find.descendant(of: find.byKey(const ValueKey('host-protocol')), matching: find.text('RDP')));
+    await settle(tester);
+    final field = find.byKey(const ValueKey('host-name'));
+    await tester.ensureVisible(field);
+    await tester.tap(field);
+    await tester.pump();
+    final editable = find.descendant(of: field, matching: find.byType(EditableText));
+    final node = tester.widget<EditableText>(editable).focusNode;
+    expect(node.hasFocus, isTrue);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await settle(tester);
+    expect(tester.widget<EditableText>(editable).focusNode, same(node));
+    expect(node.hasFocus, isTrue);
+    for (final text in ['R', 'RDP', 'RDP test']) {
+      tester.testTextInput.updateEditingValue(
+        TextEditingValue(
+          text: text,
+          selection: TextSelection.collapsed(offset: text.length),
+        ),
+      );
+      await settle(tester);
+      expect(tester.widget<EditableText>(editable).controller.text, text);
+      expect(node.hasFocus, isTrue);
+    }
+    tester.view.viewInsets = FakeViewPadding.zero;
+    await settle(tester);
+    expect(tester.widget<EditableText>(editable).controller.text, 'RDP test');
+    expect(node.hasFocus, isTrue);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
   testWidgets('RDP is selected first and offers Windows fields without SSH controls', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);

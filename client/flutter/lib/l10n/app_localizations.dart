@@ -7643,13 +7643,13 @@ abstract class AppLocalizations {
   /// Vault settings: deviceUnlockNotEnrolled
   ///
   /// In en, this message translates to:
-  /// **'No fingerprint is enrolled. Add one in macOS System Settings → Touch ID & Password, then check availability again.'**
+  /// **'No biometrics are enrolled. Set up fingerprint or face recognition in your device’s system settings, then check availability again.'**
   String get deviceUnlockNotEnrolled;
 
   /// Vault settings: deviceUnlockUnsupported
   ///
   /// In en, this message translates to:
-  /// **'Biometric unlock is currently unavailable on this device. If your Mac supports Touch ID, configure it in System Settings → Touch ID & Password.'**
+  /// **'Biometric unlock is currently unavailable on this device. Check biometric support and setup in the system settings.'**
   String get deviceUnlockUnsupported;
 
   /// Vault settings: deviceUnlockMacPassword

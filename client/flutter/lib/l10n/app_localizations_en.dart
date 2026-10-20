@@ -4352,11 +4352,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deviceUnlockNotEnrolled =>
-      'No fingerprint is enrolled. Add one in macOS System Settings → Touch ID & Password, then check availability again.';
+      'No biometrics are enrolled. Set up fingerprint or face recognition in your device’s system settings, then check availability again.';
 
   @override
   String get deviceUnlockUnsupported =>
-      'Biometric unlock is currently unavailable on this device. If your Mac supports Touch ID, configure it in System Settings → Touch ID & Password.';
+      'Biometric unlock is currently unavailable on this device. Check biometric support and setup in the system settings.';
 
   @override
   String get deviceUnlockMacPassword =>
