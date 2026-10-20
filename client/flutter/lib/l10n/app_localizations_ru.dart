@@ -7748,4 +7748,31 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeReplicasReady => 'Реплики';
+
+  @override
+  String get kubeGitOpsAlertSettings => 'Уведомления и напоминания';
+
+  @override
+  String get kubeFluxCliOpen => 'Flux CLI';
+
+  @override
+  String get kubeOverviewNodes => 'Узлы';
+
+  @override
+  String get kubeOverviewPods => 'Поды запущены';
+
+  @override
+  String get kubeOverviewNamespaces => 'Пространства имён';
+
+  @override
+  String get kubeOverviewCpu => 'Процессор';
+
+  @override
+  String get kubeOverviewMemory => 'Память';
+
+  @override
+  String get kubeOverviewPodPhases => 'Поды по состояниям';
+
+  @override
+  String get kubeNavClusterOverview => 'Обзор кластера';
 }

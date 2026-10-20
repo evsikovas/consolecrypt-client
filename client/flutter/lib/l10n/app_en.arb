@@ -10340,5 +10340,41 @@
   "kubeReplicasReady": "Replicas",
   "@kubeReplicasReady": {
     "description": "Inspector field: ready and desired replicas"
+  },
+  "kubeGitOpsAlertSettings": "Notifications and reminders",
+  "@kubeGitOpsAlertSettings": {
+    "description": "Button: GitOps notification and reminder settings on this device"
+  },
+  "kubeFluxCliOpen": "Flux CLI",
+  "@kubeFluxCliOpen": {
+    "description": "Button: open the Flux command-line panel"
+  },
+  "kubeOverviewNodes": "Nodes",
+  "@kubeOverviewNodes": {
+    "description": "Cluster overview tile and section: nodes"
+  },
+  "kubeOverviewPods": "Pods running",
+  "@kubeOverviewPods": {
+    "description": "Cluster overview tile: running and total Pods"
+  },
+  "kubeOverviewNamespaces": "Namespaces",
+  "@kubeOverviewNamespaces": {
+    "description": "Cluster overview tile: namespace count"
+  },
+  "kubeOverviewCpu": "CPU",
+  "@kubeOverviewCpu": {
+    "description": "Cluster overview card: cluster CPU use"
+  },
+  "kubeOverviewMemory": "Memory",
+  "@kubeOverviewMemory": {
+    "description": "Cluster overview card: cluster memory use"
+  },
+  "kubeOverviewPodPhases": "Pods by phase",
+  "@kubeOverviewPodPhases": {
+    "description": "Cluster overview section: Pod phase breakdown"
+  },
+  "kubeNavClusterOverview": "Cluster overview",
+  "@kubeNavClusterOverview": {
+    "description": "Navigator item: live cluster dashboard"
   }
 }

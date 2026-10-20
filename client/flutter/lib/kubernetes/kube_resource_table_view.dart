@@ -32,6 +32,7 @@ class KubeResourceTableView extends ConsumerStatefulWidget {
     this.activeName,
     this.loading = false,
     this.emptyText,
+    this.rowTrailing,
     super.key,
   });
   final List<KubeResourceRow> rows;
@@ -52,6 +53,10 @@ class KubeResourceTableView extends ConsumerStatefulWidget {
 
   /// Shown instead of rows when the list is empty.
   final String? emptyText;
+
+  /// Optional per-row action (e.g. a GitOps action menu) shown before the name,
+  /// so it stays visible however wide the table scrolls.
+  final Widget? Function(KubeResourceRow row)? rowTrailing;
   @override
   ConsumerState<KubeResourceTableView> createState() => _KubeResourceTableViewState();
 }
@@ -412,7 +417,8 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
         final tokens = GlassTokens.of(context);
         final p = tokens.palette;
         final lead = widget.canSelect ? 40.0 : 12.0;
-        final width = math.max(constraints.maxWidth, columns.fold(lead + 40, (sum, c) => sum + _width(c)));
+        final trailing = widget.rowTrailing == null ? 0.0 : 44.0;
+        final width = math.max(constraints.maxWidth, columns.fold(lead + 40 + trailing, (sum, c) => sum + _width(c)));
         final extent = math.max(34.0, MediaQuery.textScalerOf(context).scale(15) + 18);
         _rowExtent = extent;
         _scheduleVisibleRows();
@@ -438,7 +444,7 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
                         height: 32,
                         child: Row(
                           children: [
-                            SizedBox(width: lead),
+                            SizedBox(width: lead + trailing),
                             for (final column in columns)
                               SizedBox(
                                 width: _width(column),
@@ -549,6 +555,8 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
                                             child: Row(
                                               children: [
                                                 SizedBox(width: lead, child: widget.canSelect ? _select(row) : null),
+                                                if (widget.rowTrailing != null)
+                                                  SizedBox(width: trailing, child: widget.rowTrailing!(row)),
                                                 for (final column in columns)
                                                   SizedBox(
                                                     width: _width(column),

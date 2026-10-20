@@ -242,11 +242,13 @@ class KubePanelTab extends StatelessWidget {
     super.key,
     this.icon,
     this.onClose,
+    this.leading,
   });
   final String label;
   final bool selected;
   final VoidCallback onSelected;
   final IconData? icon;
+  final Widget? leading;
   final VoidCallback? onClose;
 
   @override
@@ -275,6 +277,7 @@ class KubePanelTab extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (leading != null) ...[leading!, const SizedBox(width: 6)],
                   if (icon != null) ...[
                     Icon(icon, size: 15, color: selected ? p.accent : tokens.secondaryLabel),
                     const SizedBox(width: 6),

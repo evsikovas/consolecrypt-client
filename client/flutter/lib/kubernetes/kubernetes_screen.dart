@@ -48,7 +48,9 @@ class _KubernetesScreenState extends ConsumerState<KubernetesScreen> {
     if (!ref.read(kubeScopeProvider).unlocked) return;
     await showAppDialog<bool>(
       context,
-      secure: true,
+      // A new connection takes a token or private key; editing an existing one
+      // changes names, colours and policy only.
+      secure: connection == null,
       barrierDismissible: false,
       builder: (_) => KubeConnectionEditor(connection: connection),
     );
@@ -224,7 +226,7 @@ class _KubernetesScreenState extends ConsumerState<KubernetesScreen> {
                       } else if (action == 'history' && service is KubeHistoryService) {
                         showAppDialog<void>(
                           context,
-                          secure: true,
+                          // Browsing view: regular glass in the app palette.
                           builder: (_) =>
                               KubeHistoryDialog(connection: connection, service: service as KubeHistoryService),
                         );

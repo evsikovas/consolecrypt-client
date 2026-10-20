@@ -4131,5 +4131,14 @@
   "kubeEditorConnection": "Подключение",
   "kubeEditorOrganization": "Организация",
   "kubeEditorSafety": "Безопасность",
-  "kubeReplicasReady": "Реплики"
+  "kubeReplicasReady": "Реплики",
+  "kubeGitOpsAlertSettings": "Уведомления и напоминания",
+  "kubeFluxCliOpen": "Flux CLI",
+  "kubeOverviewNodes": "Узлы",
+  "kubeOverviewPods": "Поды запущены",
+  "kubeOverviewNamespaces": "Пространства имён",
+  "kubeOverviewCpu": "Процессор",
+  "kubeOverviewMemory": "Память",
+  "kubeOverviewPodPhases": "Поды по состояниям",
+  "kubeNavClusterOverview": "Обзор кластера"
 }

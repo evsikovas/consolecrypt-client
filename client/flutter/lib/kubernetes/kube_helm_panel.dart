@@ -81,7 +81,7 @@ class _KubeHelmPanelState extends ConsumerState<KubeHelmPanel> {
     if (!_current) return;
     await showAppDialog<void>(
       context,
-      secure: true,
+      // Browsing view: regular glass in the app palette.
       builder: (_) => _HelmDetails(
         session: widget.session,
         contextName: widget.contextName,

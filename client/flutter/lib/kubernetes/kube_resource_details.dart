@@ -311,7 +311,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
           ?.reference;
       await showAppDialog<void>(
         context,
-        secure: true,
+        // Browsing view: regular glass in the app palette.
         builder: (dialogContext) => GlassDialog(
           title: context.l10n.kubeGitOpsFlow,
           width: 1000,
@@ -342,7 +342,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
     if (!_current) return;
     await showAppDialog<void>(
       context,
-      secure: true,
+      // Browsing view: regular glass in the app palette.
       builder: (dialogContext) => GlassDialog(
         title: '${context.l10n.kubeGitOpsControllerLogs} · ${controller.namespace}/${controller.name}',
         width: 980,
@@ -367,7 +367,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
     if (!_current || widget.service is! KubeInsightsService) return;
     await showAppDialog<void>(
       context,
-      secure: true,
+      // Browsing view: regular glass in the app palette.
       builder: (dialogContext) => GlassDialog(
         title: '${context.l10n.kubeHelm} · $namespace/$releaseName',
         width: 980,
@@ -841,7 +841,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
               Icons.history,
               () => showAppDialog<void>(
                 context,
-                secure: true,
+                // Browsing view: regular glass in the app palette.
                 builder: (_) => KubeRolloutDialog(
                   sessionId: widget.session.id,
                   resource: widget.resource,
@@ -891,31 +891,26 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
 
   Widget _gitOpsActionBar(bool canWrite) {
     final l = context.l10n, resource = _gitOpsResource!;
-    return SingleChildScrollView(
+    return Wrap(
       key: ValueKey(AppPlatform.isMobile ? 'kube-gitops-bottom-actions' : 'kube-gitops-top-actions'),
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final action in kubeGitOpsActions(resource))
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GlassButton(
-                key: ValueKey('kube-gitops-detail-$action'),
-                label: kubeGitOpsActionLabel(l, action),
-                onPressed: canWrite && !_mutating ? () => _gitOpsAction(action) : null,
-              ),
-            ),
+      spacing: GlassSpacing.s6,
+      runSpacing: GlassSpacing.s6,
+      children: [
+        for (final action in kubeGitOpsActions(resource))
           GlassButton(
-            label: l.kubeLogs,
-            icon: Icons.article_outlined,
-            onPressed: () {
-              if (_current) unawaited(_gitOpsDetailsKey.currentState?.openControllerLogs());
-            },
+            key: ValueKey('kube-gitops-detail-$action'),
+            label: kubeGitOpsActionLabel(l, action),
+            onPressed: canWrite && !_mutating ? () => _gitOpsAction(action) : null,
           ),
-          const SizedBox(width: 8),
-          GlassButton(label: l.kubeGitOpsFlow, icon: Icons.account_tree_outlined, onPressed: _gitOpsGraph),
-        ],
-      ),
+        GlassButton(
+          label: l.kubeLogs,
+          icon: Icons.article_outlined,
+          onPressed: () {
+            if (_current) unawaited(_gitOpsDetailsKey.currentState?.openControllerLogs());
+          },
+        ),
+        GlassButton(label: l.kubeGitOpsFlow, icon: Icons.account_tree_outlined, onPressed: _gitOpsGraph),
+      ],
     );
   }
 

@@ -130,6 +130,7 @@ class KubeNavigator extends StatefulWidget {
     this.gitOpsAlerts = 0,
     this.hasHistory = false,
     this.hasInsights = false,
+    this.hasClusterOverview = false,
   });
 
   final List<KubeConnection> connections;
@@ -140,7 +141,7 @@ class KubeNavigator extends StatefulWidget {
   final String? selectedKindId;
   final Set<String> favouriteKinds;
   final int gitOpsAlerts;
-  final bool hasHistory, hasInsights;
+  final bool hasHistory, hasInsights, hasClusterOverview;
   final ValueChanged<KubeResourceKind> onSelectKind;
   final ValueChanged<String> onSelectView;
   final ValueChanged<KubeConnection>? onSelectContext;
@@ -190,15 +191,32 @@ class _KubeNavigatorState extends State<KubeNavigator> {
     }
     final favourites = kinds.where((kind) => widget.favouriteKinds.contains(kind.id)).toList()
       ..sort((a, b) => kubeKindLabel(a).compareTo(kubeKindLabel(b)));
+    IconData sectionIcon(KubeNavSection section) => switch (section) {
+      KubeNavSection.workloads => Icons.view_in_ar_outlined,
+      KubeNavSection.network => Icons.lan_outlined,
+      KubeNavSection.config => Icons.tune_rounded,
+      KubeNavSection.storage => Icons.storage_rounded,
+      KubeNavSection.access => Icons.admin_panel_settings_outlined,
+      KubeNavSection.cluster => Icons.hub_outlined,
+      KubeNavSection.gitops => Icons.account_tree_outlined,
+      KubeNavSection.custom => Icons.extension_outlined,
+    };
     final children = <Widget>[
-      if (widget.connections.isNotEmpty) ...[
-        _header(context, 'clusters', l.kubeClusters),
-        if (!_collapsed.contains('clusters'))
+      if (widget.connections.isNotEmpty)
+        _section(context, 'clusters', l.kubeClusters, Icons.dns_outlined, [
           for (final connection in widget.connections) _cluster(context, connection),
-      ],
-      if (widget.hasInsights) ...[
-        _header(context, 'overview', l.kubeNavOverview),
-        if (!_collapsed.contains('overview')) ...[
+        ], count: '${widget.connections.length}'),
+      if (widget.hasInsights)
+        _section(context, 'overview', l.kubeNavOverview, Icons.dashboard_outlined, [
+          if (widget.hasClusterOverview)
+            _item(
+              context,
+              key: 'kube-view-cluster',
+              label: l.kubeNavClusterOverview,
+              icon: Icons.monitor_heart_outlined,
+              selected: widget.view == 'cluster',
+              onTap: () => widget.onSelectView('cluster'),
+            ),
           _item(
             context,
             key: 'kube-view-problems',
@@ -224,36 +242,36 @@ class _KubeNavigatorState extends State<KubeNavigator> {
             selected: widget.view == 'helm',
             onTap: () => widget.onSelectView('helm'),
           ),
-        ],
-      ],
-      if (favourites.isNotEmpty) ...[
-        _header(context, 'favourites', l.kubeFavorites),
-        if (!_collapsed.contains('favourites'))
+        ]),
+      if (favourites.isNotEmpty)
+        _section(context, 'favourites', l.kubeFavorites, Icons.star_rounded, [
           for (final kind in favourites) _kind(context, kind),
-      ],
+        ], count: '${favourites.length}'),
       for (final section in KubeNavSection.values.where((s) => s != KubeNavSection.custom))
         if (bySection[section]?.isNotEmpty == true ||
-            (section == KubeNavSection.gitops && widget.hasInsights && _hasGitOps)) ...[
-          _header(
+            (section == KubeNavSection.gitops && widget.hasInsights && _hasGitOps))
+          _section(
             context,
             'section:${section.name}',
             _title(l, section),
-            badge: section == KubeNavSection.gitops && widget.gitOpsAlerts > 0 ? '${widget.gitOpsAlerts}' : null,
+            sectionIcon(section),
+            [
+              if (section == KubeNavSection.gitops && widget.hasInsights)
+                _item(
+                  context,
+                  key: 'kube-view-gitops',
+                  label: l.kubeNavOverview,
+                  icon: Icons.insights_outlined,
+                  selected: widget.view == 'gitops',
+                  onTap: () => widget.onSelectView('gitops'),
+                ),
+              for (final kind in bySection[section] ?? const <KubeResourceKind>[]) _kind(context, kind),
+            ],
+            count: '${bySection[section]?.length ?? 0}',
+            alert: section == KubeNavSection.gitops && widget.gitOpsAlerts > 0 ? '${widget.gitOpsAlerts}' : null,
           ),
-          if (!_collapsed.contains('section:${section.name}')) ...[
-            if (section == KubeNavSection.gitops && widget.hasInsights)
-              _item(
-                context,
-                key: 'kube-view-gitops',
-                label: l.kubeNavOverview,
-                icon: Icons.account_tree_outlined,
-                selected: widget.view == 'gitops',
-                onTap: () => widget.onSelectView('gitops'),
-              ),
-            for (final kind in bySection[section] ?? const <KubeResourceKind>[]) _kind(context, kind),
-          ],
-        ],
-      if (bySection[KubeNavSection.custom]?.isNotEmpty == true) ..._custom(context, bySection[KubeNavSection.custom]!),
+      if (bySection[KubeNavSection.custom]?.isNotEmpty == true)
+        _custom(context, bySection[KubeNavSection.custom]!, sectionIcon(KubeNavSection.custom)),
     ];
     return ContentSurface(
       key: const ValueKey('kube-navigator'),
@@ -271,7 +289,7 @@ class _KubeNavigatorState extends State<KubeNavigator> {
 
   bool get _hasGitOps => widget.kinds.any((kind) => kubeIsGitOpsGroup(kind.group));
 
-  List<Widget> _custom(BuildContext context, List<KubeResourceKind> kinds) {
+  Widget _custom(BuildContext context, List<KubeResourceKind> kinds, IconData icon) {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
     final query = _query.trim().toLowerCase();
@@ -282,83 +300,116 @@ class _KubeNavigatorState extends State<KubeNavigator> {
     }
     final names = groups.keys.toList()..sort();
     const id = 'section:custom'; // l10n-ignore: internal section id
-    return [
-      _header(context, id, l.kubeNavCustom, badge: '${kinds.length}'),
-      if (!_collapsed.contains(id)) ...[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(GlassSpacing.s4, GlassSpacing.s2, GlassSpacing.s4, GlassSpacing.s6),
-          child: GlassField(
-            key: const ValueKey('kube-nav-crd-filter'),
-            controller: _filter,
-            search: true,
-            placeholder: l.kubeNavCrdFilter,
-            onChanged: (value) => setState(() => _query = value),
+    return _section(context, id, l.kubeNavCustom, icon, [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(0, GlassSpacing.s2, GlassSpacing.s4, GlassSpacing.s6),
+        child: GlassField(
+          key: const ValueKey('kube-nav-crd-filter'),
+          controller: _filter,
+          search: true,
+          placeholder: l.kubeNavCrdFilter,
+          onChanged: (value) => setState(() => _query = value),
+        ),
+      ),
+      for (final group in names) ...[
+        _row(
+          context,
+          key: 'kube-nav-group-$group',
+          leading: Icon(
+            _expandedGroups.contains(group) || query.isNotEmpty ? Icons.expand_more : Icons.chevron_right,
+            size: 16,
+            color: tokens.secondaryLabel,
+          ),
+          label: group,
+          trailing: '${groups[group]!.length}',
+          selected: false,
+          tooltip: group,
+          onTap: () => setState(
+            () => _expandedGroups.contains(group) ? _expandedGroups.remove(group) : _expandedGroups.add(group),
           ),
         ),
-        for (final group in names) ...[
-          _row(
-            context,
-            key: 'kube-nav-group-$group',
-            leading: Icon(
-              _expandedGroups.contains(group) || query.isNotEmpty ? Icons.expand_more : Icons.chevron_right,
-              size: 16,
-              color: tokens.secondaryLabel,
-            ),
-            label: group,
-            trailing: '${groups[group]!.length}',
-            selected: false,
-            tooltip: group,
-            onTap: () => setState(
-              () => _expandedGroups.contains(group) ? _expandedGroups.remove(group) : _expandedGroups.add(group),
-            ),
-          ),
-          if (_expandedGroups.contains(group) || query.isNotEmpty)
-            for (final kind in groups[group]!..sort((a, b) => a.kind.compareTo(b.kind)))
-              _kind(context, kind, indent: 22),
-        ],
+        if (_expandedGroups.contains(group) || query.isNotEmpty)
+          for (final kind in groups[group]!..sort((a, b) => a.kind.compareTo(b.kind))) _kind(context, kind, indent: 22),
       ],
-    ];
+    ], count: '${kinds.length}');
   }
 
-  Widget _header(BuildContext context, String id, String title, {String? badge}) {
+  /// A collapsible group: a filled header row (chevron, icon, title, count)
+  /// and its items indented behind a thin guide line.
+  Widget _section(
+    BuildContext context,
+    String id,
+    String title,
+    IconData icon,
+    List<Widget> items, {
+    String? count,
+    String? alert,
+  }) {
     final tokens = GlassTokens.of(context);
+    final p = tokens.palette;
     final collapsed = _collapsed.contains(id);
     return Padding(
       padding: const EdgeInsets.only(top: GlassSpacing.s6),
-      child: GlassInteractive(
-        key: ValueKey('kube-nav-header-$id'),
-        onPressed: () => _toggle(id),
-        semanticLabel: title,
-        builder: (context, state) => DecoratedBox(
-          decoration: ShapeDecoration(
-            color: state.hovered ? tokens.surfaces.fillHover : Colors.transparent,
-            shape: GlassRadii.shape(tokens.radii.row),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(GlassSpacing.s8, GlassSpacing.s6, GlassSpacing.s6, GlassSpacing.s4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: tokens.typography.caption.copyWith(
-                      color: tokens.secondaryLabel,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.6,
-                    ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GlassInteractive(
+            key: ValueKey('kube-nav-header-$id'),
+            onPressed: () => _toggle(id),
+            semanticLabel: title,
+            builder: (context, state) => DecoratedBox(
+              decoration: ShapeDecoration(
+                color: p.accent.withValues(alpha: state.hovered ? 0.16 : 0.08),
+                shape: GlassRadii.shape(tokens.radii.row),
+              ),
+              child: SizedBox(
+                height: 30,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s6),
+                  child: Row(
+                    children: [
+                      AnimatedRotation(
+                        turns: collapsed ? 0 : 0.25,
+                        duration: const Duration(milliseconds: 150),
+                        child: Icon(Icons.chevron_right_rounded, size: 18, color: tokens.secondaryLabel),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(icon, size: 16, color: p.accent),
+                      const SizedBox(width: GlassSpacing.s8),
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: tokens.typography.bodyEmph.copyWith(color: p.label),
+                        ),
+                      ),
+                      if (alert != null) ...[
+                        GlassBadge(label: alert, tone: GlassTone.warning, dense: true),
+                        const SizedBox(width: GlassSpacing.s4),
+                      ],
+                      if (count != null)
+                        Text(count, style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel)),
+                    ],
                   ),
                 ),
-                if (badge != null) ...[
-                  Text(badge, style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel)),
-                  const SizedBox(width: GlassSpacing.s4),
-                ],
-                Icon(collapsed ? Icons.chevron_right : Icons.expand_more, size: 14, color: tokens.palette.tertiary),
-              ],
+              ),
             ),
           ),
-        ),
+          if (!collapsed)
+            Padding(
+              padding: const EdgeInsets.only(left: 14, top: 2),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(left: BorderSide(color: tokens.surfaces.separator, width: 1.5)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: GlassSpacing.s4),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: items),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -3,11 +3,12 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Resource cards use all available mobile space. The same secure material,
-/// scope boundary and explicit actions are retained on the full-screen route.
+/// Resource cards use all available mobile space; on desktop they are regular
+/// glass dialogs in the app palette (secrets and mutations keep their own
+/// secure dialogs). The scope boundary and explicit actions are unchanged.
 Future<T?> showKubeResourceDetails<T>(BuildContext context, {required WidgetBuilder builder}) {
   if (!AppPlatform.isMobile || MediaQuery.sizeOf(context).width >= 720) {
-    return showAppDialog<T>(context, secure: true, builder: builder);
+    return showAppDialog<T>(context, builder: builder);
   }
   final themes = InheritedTheme.capture(from: context, to: Navigator.of(context, rootNavigator: true).context);
   final glass = GlassScope.of(context);

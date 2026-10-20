@@ -13597,6 +13597,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Replicas'**
   String get kubeReplicasReady;
+
+  /// Button: GitOps notification and reminder settings on this device
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications and reminders'**
+  String get kubeGitOpsAlertSettings;
+
+  /// Button: open the Flux command-line panel
+  ///
+  /// In en, this message translates to:
+  /// **'Flux CLI'**
+  String get kubeFluxCliOpen;
+
+  /// Cluster overview tile and section: nodes
+  ///
+  /// In en, this message translates to:
+  /// **'Nodes'**
+  String get kubeOverviewNodes;
+
+  /// Cluster overview tile: running and total Pods
+  ///
+  /// In en, this message translates to:
+  /// **'Pods running'**
+  String get kubeOverviewPods;
+
+  /// Cluster overview tile: namespace count
+  ///
+  /// In en, this message translates to:
+  /// **'Namespaces'**
+  String get kubeOverviewNamespaces;
+
+  /// Cluster overview card: cluster CPU use
+  ///
+  /// In en, this message translates to:
+  /// **'CPU'**
+  String get kubeOverviewCpu;
+
+  /// Cluster overview card: cluster memory use
+  ///
+  /// In en, this message translates to:
+  /// **'Memory'**
+  String get kubeOverviewMemory;
+
+  /// Cluster overview section: Pod phase breakdown
+  ///
+  /// In en, this message translates to:
+  /// **'Pods by phase'**
+  String get kubeOverviewPodPhases;
+
+  /// Navigator item: live cluster dashboard
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster overview'**
+  String get kubeNavClusterOverview;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

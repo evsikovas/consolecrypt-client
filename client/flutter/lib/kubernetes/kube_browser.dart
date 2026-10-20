@@ -15,6 +15,7 @@ import 'package:consolecrypt/kubernetes/kube_ai_service.dart';
 import 'package:consolecrypt/kubernetes/kube_auth_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_bulk_dialog.dart';
+import 'package:consolecrypt/kubernetes/kube_cluster_overview.dart';
 import 'package:consolecrypt/kubernetes/kube_connection_status.dart';
 import 'package:consolecrypt/kubernetes/kube_create_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_flux_cli_panel.dart';
@@ -294,9 +295,11 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
         _kinds = sorted;
         _kind = sorted.where((kind) => kind.isPod).firstOrNull ?? sorted.firstOrNull;
         _connecting = false;
+        // Desktop opens on the live cluster overview, like Lens.
+        if (_desktopLayout && widget.service is KubeMetricsService && _view == 'resources') _view = 'cluster';
       });
       _publishAiHost();
-      await _refresh();
+      if (_view == 'resources') await _refresh();
       if (_current && requestGeneration == _connectionGeneration) await _restoreForwards(connected);
       _scheduleNavigation();
     } catch (error) {
@@ -1241,7 +1244,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
               tooltip: l.kubePermissions,
               onPressed: () => showAppDialog<void>(
                 context,
-                secure: true,
+                // Browsing view: regular glass in the app palette.
                 builder: (_) => KubePermissionsDialog(
                   sessionId: session.id,
                   namespace: _namespace ?? 'default',
@@ -1787,6 +1790,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                                 gitOpsAlerts: _gitOps?.alertCount ?? 0,
                                 hasInsights: widget.service is KubeInsightsService && session != null,
                                 hasHistory: widget.service is KubeHistoryService,
+                                hasClusterOverview: widget.service is KubeMetricsService,
                                 onSelectKind: _selectKind,
                                 onSelectView: _selectView,
                                 onSelectContext: widget.onSelectContext == null
@@ -1959,7 +1963,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
               tooltip: l.kubePermissions,
               onPressed: () => showAppDialog<void>(
                 context,
-                secure: true,
+                // Browsing view: regular glass in the app palette.
                 builder: (_) => KubePermissionsDialog(
                   sessionId: session.id,
                   namespace: _namespace ?? 'default',
@@ -2031,6 +2035,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     final tokens = GlassTokens.of(context);
     final p = tokens.palette;
     final title = switch (_view) {
+      'cluster' => l.kubeNavClusterOverview,
       'problems' => l.kubeProblems,
       'gitops' => l.kubeGitOps,
       'helm' => l.kubeNavHelmReleases,
@@ -2060,7 +2065,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
             ],
           ],
         ),
-        _namespaceSelect(context),
+        if (_view != 'cluster') _namespaceSelect(context),
         if (resources) ...[
           SizedBox(
             width: 220,
@@ -2129,6 +2134,17 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   Widget _desktopContent(BuildContext context, KubeSession? session, List<KubeResourceRow> rows, bool canWrite) {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
+    if (_view == 'cluster' && session != null) {
+      return KubeClusterOverview(
+        key: ValueKey(('cluster', session.id)),
+        session: session,
+        service: widget.service,
+        kinds: _kinds,
+        namespaceCount: _namespaces.length,
+        onOpenKind: _selectKind,
+        onOpenProblems: () => _selectView('problems'),
+      );
+    }
     if (_view != 'resources' && widget.service is KubeInsightsService && session != null) {
       return _view == 'history' && widget.service is KubeHistoryService
           ? KubeHistoryPanel(
@@ -2161,6 +2177,9 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
               },
               service: widget.service as KubeInsightsService,
               browser: widget.service,
+              onOpenResource: (target) {
+                if (_current) unawaited(_openObject(target));
+              },
               problems: _view == 'problems',
               cliPanel: _view == 'gitops'
                   ? KubeFluxCliPanel(

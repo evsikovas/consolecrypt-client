@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/widgets/common.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_gitops_actions.dart';
 import 'package:consolecrypt/kubernetes/kube_gitops_graph.dart';
@@ -14,6 +16,7 @@ import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_details.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_route.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_table_view.dart';
+import 'package:consolecrypt/kubernetes/kube_workspace_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -33,8 +36,12 @@ class KubeInsightsPanel extends ConsumerStatefulWidget {
     this.initialAction,
     this.initialResource,
     this.onInitialActionHandled,
+    this.onOpenResource,
     super.key,
   });
+
+  /// Desktop: open objects in the workspace inspector instead of a dialog.
+  final ValueChanged<KubeResourceRef>? onOpenResource;
   final KubeSession session;
   final String contextName;
   final String? namespace;
@@ -156,6 +163,10 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
 
   Future<void> _open(KubeInsightResource resource, {bool controllerLogs = false}) async {
     if (!_current) return;
+    if (!controllerLogs && widget.onOpenResource != null) {
+      widget.onOpenResource!(resource.reference);
+      return;
+    }
     final changed = await showKubeResourceDetails<bool>(
       context,
       builder: (_) => KubeResourceDetails(
@@ -257,6 +268,13 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     final suspended = scoped.where((r) => r.suspended).length;
     final stalled = scoped.where(kubeGitOpsStalled).length;
     final stale = scoped.where((r) => _issuesFor(data!, r).any((i) => i.code == 'flux_source_stale')).length;
+    if (!AppPlatform.isMobile) {
+      return _desktop(
+        data,
+        canWrite,
+        counts: (ready: ready, attention: attention, suspended: suspended, stalled: stalled, stale: stale),
+      );
+    }
     return LayoutBuilder(
       builder: (context, bounds) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -449,6 +467,250 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     );
   }
 
+  /// Desktop: a two-line toolbar (search · status · actions; sections ·
+  /// filters) and the list or table below it, never overlapping.
+  Widget _desktop(
+    KubeInsights? data,
+    bool canWrite, {
+    required ({int ready, int attention, int suspended, int stalled, int stale}) counts,
+  }) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final p = tokens.palette;
+    final monitor = widget.monitor;
+    Widget tab(String key, String label, bool selected, VoidCallback onTap, {IconData? icon}) =>
+        KubePanelTab(key: ValueKey(key), label: label, icon: icon, selected: selected, onSelected: onTap);
+    final toolbar = Wrap(
+      spacing: GlassSpacing.s8,
+      runSpacing: GlassSpacing.s8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        SizedBox(
+          width: 260,
+          child: GlassField(
+            key: const ValueKey('kube-insights-search'),
+            fieldKey: const ValueKey('kube-insights-search-input'),
+            search: true,
+            placeholder: l.commonSearch,
+            onChanged: (value) => setState(() => _filter = value.toLowerCase()),
+          ),
+        ),
+        if (monitor != null)
+          Tooltip(
+            message: monitor.live ? l.kubeLive : l.kubeSnapshot,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                StatusDot(color: monitor.live ? p.success : p.tertiary),
+                const SizedBox(width: 6),
+                Text(
+                  monitor.live ? l.kubeLiveShort : l.kubeSnapshotShort,
+                  style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                ),
+              ],
+            ),
+          ),
+        if (monitor != null && monitor.alertCount > 0)
+          GlassButton.plain(
+            key: const ValueKey('kube-gitops-alerts'),
+            label: l.kubeGitOpsUnread(monitor.alertCount),
+            icon: Icons.notifications_active_outlined,
+            onPressed: monitor.acknowledge,
+          ),
+        if (data?.partial == true || monitor?.watchPartial == true)
+          Tooltip(
+            message: l.kubeInsightsPartial,
+            child: Icon(Icons.info_outline, size: 18, color: p.warning),
+          ),
+        if (!widget.problems && monitor?.preferences != null)
+          GlassIconButton(
+            key: const ValueKey('kube-gitops-alert-settings'),
+            icon: Icons.notifications_none_rounded,
+            tooltip: l.kubeGitOpsAlertSettings,
+            onPressed: () => showAppDialog<void>(
+              context,
+              builder: (BuildContext dialogContext) => GlassDialog(
+                title: l.kubeGitOpsLocalAlerts,
+                width: 560,
+                content: _monitorSettings(monitor!),
+                primaryAction: GlassButton(label: l.commonClose, onPressed: () => closeDialog<void>(dialogContext)),
+              ),
+            ),
+          ),
+        if (widget.cliPanel != null)
+          GlassButton(
+            key: const ValueKey('kube-flux-cli-open'),
+            label: l.kubeFluxCliOpen,
+            icon: Icons.terminal,
+            onPressed: () => showAppDialog<void>(
+              context,
+              builder: (BuildContext dialogContext) => GlassDialog(
+                title: l.kubeFluxCliOpen,
+                width: 760,
+                content: SizedBox(height: 520, child: SingleChildScrollView(child: widget.cliPanel)),
+                primaryAction: GlassButton(label: l.commonClose, onPressed: () => closeDialog<void>(dialogContext)),
+              ),
+            ),
+          ),
+        GlassIconButton(
+          key: const ValueKey('kube-insights-refresh'),
+          tooltip: l.kubeRefreshResources,
+          icon: Icons.refresh,
+          onPressed: _loading ? null : _load,
+        ),
+      ],
+    );
+    final both = data != null && data.resources.any((r) => r.isFlux) && data.resources.any((r) => r.isArgo);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        toolbar,
+        if (_loading) const Padding(padding: EdgeInsets.only(top: 6), child: LinearProgressIndicator(minHeight: 2)),
+        if (_failed)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(l.kubeRequestFailed, style: tokens.typography.callout.copyWith(color: p.danger)),
+          ),
+        if (data != null && !widget.problems) ...[
+          const SizedBox(height: GlassSpacing.s8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if (both) ...[
+                  for (final controller in [
+                    ('all', l.kubeGitOpsAll),
+                    ('flux', 'Flux'), // l10n-ignore: Official tool/controller product name.
+                    ('argo', 'Argo CD'), // l10n-ignore: Official tool/controller product name.
+                  ])
+                    tab(
+                      'kube-gitops-controller-${controller.$1}',
+                      controller.$2,
+                      _controller == controller.$1,
+                      () => setState(() => _controller = controller.$1),
+                    ),
+                  const SizedBox(width: GlassSpacing.s12),
+                ],
+                for (final section in [
+                  ('all', l.kubeOverview),
+                  ('sources', l.kubeGitOpsSources),
+                  ('kustomization', 'Kustomizations'), // l10n-ignore: Flux kind.
+                  ('helmrelease', 'HelmReleases'), // l10n-ignore: Flux kind.
+                  ('notifications', l.kubeGitOpsNotifications),
+                  ('images', l.kubeGitOpsImages),
+                ])
+                  tab('kube-gitops-section-${section.$1}', section.$2, _section == section.$1, () {
+                    setState(() {
+                      _section = section.$1;
+                      _flow = false;
+                      _dependencies = false;
+                    });
+                  }),
+              ],
+            ),
+          ),
+          const SizedBox(height: GlassSpacing.s6),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final category in [
+                  ('all', l.kubeGitOpsAll, null as Color?),
+                  ('ready', '${l.kubeGitOpsReady} ${counts.ready}', p.success),
+                  ('attention', '${l.kubeGitOpsAttention} ${counts.attention}', p.danger),
+                  ('suspended', '${l.kubeGitOpsSuspended} ${counts.suspended}', p.tertiary),
+                  ('stalled', '${l.kubeGitOpsStalled} ${counts.stalled}', p.warning),
+                  ('stale', '${l.kubeGitOpsStale} ${counts.stale}', p.warning),
+                ])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: KubePanelTab(
+                      key: ValueKey('kube-gitops-category-${category.$1}'),
+                      label: category.$2,
+                      selected: _category == category.$1,
+                      onSelected: () => setState(() {
+                        _category = category.$1;
+                        _dependencies = false;
+                        _flow = false;
+                      }),
+                      leading: category.$3 == null ? null : StatusDot(color: category.$3!, size: 7),
+                    ),
+                  ),
+                const SizedBox(width: GlassSpacing.s12),
+                tab('kube-gitops-flow-chip', l.kubeGitOpsFlow, _flow, () {
+                  setState(() {
+                    _flow = !_flow;
+                    _dependencies = false;
+                  });
+                }, icon: Icons.account_tree_outlined),
+                tab('kube-gitops-dependencies', l.kubeDependencies, _dependencies, () {
+                  setState(() {
+                    _dependencies = !_dependencies;
+                    _flow = false;
+                  });
+                }, icon: Icons.hub_outlined),
+              ],
+            ),
+          ),
+          if (_selected.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: GlassSpacing.s6),
+              child: Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text('${l.kubeBulkActions}: ${_selected.length}'),
+                  if (_bulkBusy)
+                    GlassButton(label: l.commonCancel, onPressed: () => setState(() => _bulkCancel = true))
+                  else
+                    for (final action in ['reconcile', 'suspend', 'resume'])
+                      GlassButton(
+                        key: ValueKey('kube-gitops-bulk-$action'),
+                        label: kubeGitOpsActionLabel(l, action),
+                        onPressed:
+                            canWrite &&
+                                !widget.session.production &&
+                                data.resources
+                                    .where((r) => _selected.contains(_selectionKey(r)))
+                                    .every((r) => kubeGitOpsActions(r).contains(action))
+                            ? () => _bulk(action)
+                            : null,
+                      ),
+                ],
+              ),
+            ),
+          if (_section == 'all' && !_flow && !_dependencies)
+            KubeGitOpsTimeline(
+              session: widget.session,
+              resources: data.resources,
+              service: widget.browser,
+              namespace: widget.namespace,
+              onOpen: (resource) => unawaited(_open(resource)),
+            ),
+        ],
+        const SizedBox(height: GlassSpacing.s8),
+        if (data != null)
+          Expanded(
+            child: widget.problems
+                ? _problems(data)
+                : _flow
+                ? KubeGitOpsGraph(
+                    flow: data.flow,
+                    resources: data.resources,
+                    canOpen: (id) => _find(id) != null,
+                    open: (id) {
+                      final resource = _find(id);
+                      if (resource != null) unawaited(_open(resource));
+                    },
+                  )
+                : _dependencies
+                ? _dependencyView(data)
+                : _resources(data, canWrite),
+          ),
+      ],
+    );
+  }
+
   Widget _monitorSettings(KubeGitOpsMonitor monitor) {
     final l = context.l10n;
     return Column(
@@ -525,6 +787,25 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
         child: Text(data.partial ? l.kubeNoVisibleProblems : l.kubeNoProblems),
       );
     }
+    if (!AppPlatform.isMobile) {
+      return ContentList(
+        key: const ValueKey('kube-problems-list'),
+        itemCount: issues.length,
+        itemBuilder: (context, index) {
+          final issue = issues[index];
+          final matches = data.resources
+              .where(
+                (r) =>
+                    r.api.kind == issue.kind &&
+                    r.resource.name == issue.name &&
+                    r.resource.namespace == issue.namespace,
+              )
+              .take(2)
+              .toList();
+          return _problemRow(issue, matches.length == 1 ? matches.single : null);
+        },
+      );
+    }
     return ListView.builder(
       key: const ValueKey('kube-problems-list'),
       itemCount: issues.length,
@@ -540,6 +821,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
         // Older issue DTOs lack an API group. Ambiguous kinds must not open an
         // arbitrary group's object.
         final resource = matches.length == 1 ? matches.single : null;
+        if (!AppPlatform.isMobile) return _problemRow(issue, resource);
         return ContentSurface(
           child: ListTile(
             leading: Icon(issue.severity == 'error' ? Icons.error_outline : Icons.warning_amber_outlined),
@@ -570,6 +852,79 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
           ),
         );
       },
+    );
+  }
+
+  /// One dense problem row: severity, issue, owner and details on one line,
+  /// an explain action on the right.
+  Widget _problemRow(KubeIssue issue, KubeInsightResource? resource) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final p = tokens.palette;
+    final error = issue.severity == 'error';
+    final details = [
+      if (issue.exitCode != null) '${l.kubeExitCode}: ${issue.exitCode}',
+      if (issue.subject != null) issue.subject!,
+    ].join(' · ');
+    return GlassInteractive(
+      semanticLabel: _issueLabel(l, issue.code),
+      onPressed: resource == null ? null : () => _open(resource),
+      builder: (context, state) => DecoratedBox(
+        decoration: ShapeDecoration(
+          color: state.hovered ? tokens.surfaces.fillHover : Colors.transparent,
+          shape: GlassRadii.shape(tokens.radii.row),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              Icon(
+                error ? Icons.error_rounded : Icons.warning_amber_rounded,
+                size: 18,
+                color: error ? p.danger : p.warning,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      /* l10n-ignore: Localized issue label and numeric count. */ '${_issueLabel(l, issue.code)}${issue.count > 1 ? ' ×${issue.count}' : ''}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tokens.typography.bodyEmph.copyWith(color: p.label),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        issue.owner?.label ?? '${issue.kind} · ${issue.namespace ?? ''}/${issue.name}',
+                        if (details.isNotEmpty) details,
+                      ].join('   ·   '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                    ),
+                  ],
+                ),
+              ),
+              if (widget.onExplain != null)
+                GlassIconButton(
+                  tooltip: l.kubeAiExplain,
+                  icon: Icons.auto_awesome,
+                  style: GlassIconButtonStyle.plain,
+                  onPressed: () => widget.onExplain?.call(
+                    resource?.reference,
+                    l.kubeAiExplainQuestion(
+                      _issueLabel(l, issue.code),
+                      '${issue.kind} ${issue.namespace ?? ''}/${issue.name}',
+                    ),
+                  ),
+                ),
+              if (resource != null) Icon(Icons.chevron_right_rounded, size: 18, color: p.tertiary),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -618,7 +973,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
           return a.resource.name.compareTo(b.resource.name);
         });
     if (resources.isEmpty) return Padding(padding: const EdgeInsets.all(12), child: Text(l.kubeNoGitOpsResources));
-    if (_section != 'all' && MediaQuery.sizeOf(context).width >= 900) {
+    if (!AppPlatform.isMobile && MediaQuery.sizeOf(context).width >= 700) {
       return _table(resources, canWrite);
     }
     return ListView.builder(
@@ -750,6 +1105,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
             ? l.kubeGitOpsReady
             : l.kubeGitOpsAttention,
         cells: [
+          if (_section == 'all') resource.api.kind,
           source['name']?.toString() ?? chart?['chart']?.toString() ?? '—',
           revision?.toString() ?? '—',
           times.lastOrNull?.toLocal().toString() ?? '—',
@@ -766,6 +1122,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
       rows: rows,
       kind: resources.first.api,
       columns: [
+        if (_section == 'all') 'Kind', // l10n-ignore: Kubernetes API field name.
         l.kubeGitOpsSource,
         l.kubeGitOpsRevision,
         l.kubeGitOpsRecent,
@@ -788,6 +1145,27 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
         }
       }),
       onOpen: (row) => unawaited(_open(byId[row.id]!)),
+      rowTrailing: (row) {
+        final resource = byId[row.id]!;
+        final actions = kubeGitOpsActions(resource);
+        if (actions.isEmpty) return null;
+        final enabled = canWrite && !_bulkBusy && !_busyActions.contains(resource.reference.id);
+        return GlassMenuButton<String>(
+          key: ValueKey('kube-gitops-action-${resource.resource.id}'),
+          entries: [
+            for (final action in actions)
+              GlassMenuItem<String>(value: action, label: kubeGitOpsActionLabel(l, action), enabled: enabled),
+          ],
+          onSelected: (action) => unawaited(_act(resource, action)),
+          builder: (context, open) => GlassIconButton(
+            icon: Icons.more_horiz_rounded,
+            tooltip: l.kubeGitOpsActions,
+            style: GlassIconButtonStyle.plain,
+            size: 28,
+            onPressed: open,
+          ),
+        );
+      },
       hasMore: false,
       loadingMore: false,
       onMore: () {},

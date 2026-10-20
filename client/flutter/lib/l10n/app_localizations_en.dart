@@ -7548,4 +7548,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeReplicasReady => 'Replicas';
+
+  @override
+  String get kubeGitOpsAlertSettings => 'Notifications and reminders';
+
+  @override
+  String get kubeFluxCliOpen => 'Flux CLI';
+
+  @override
+  String get kubeOverviewNodes => 'Nodes';
+
+  @override
+  String get kubeOverviewPods => 'Pods running';
+
+  @override
+  String get kubeOverviewNamespaces => 'Namespaces';
+
+  @override
+  String get kubeOverviewCpu => 'CPU';
+
+  @override
+  String get kubeOverviewMemory => 'Memory';
+
+  @override
+  String get kubeOverviewPodPhases => 'Pods by phase';
+
+  @override
+  String get kubeNavClusterOverview => 'Cluster overview';
 }
