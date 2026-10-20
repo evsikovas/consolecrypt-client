@@ -44,6 +44,7 @@ dist/
 **/__pycache__/
 **/*.pyc
 **/.gradle/
+**/.kotlin/
 **/.cxx/
 **/.dev-mail/
 **/local.properties

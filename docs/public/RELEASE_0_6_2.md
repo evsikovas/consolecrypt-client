@@ -2,6 +2,8 @@
 
 ## Русский
 
+Выпуск доступен для macOS, Windows, Linux и Android. Сборка и проверка iOS отложены.
+
 Kubernetes становится отдельным рабочим разделом: импорт и зашифрованная
 синхронизация kubeconfig, живые ресурсы, YAML с проверкой изменений, логи,
 shell в Pod, port-forward, Helm, GitOps и ИИ по данным кластера.
@@ -23,6 +25,8 @@ Flux на компьютере используют локальный прок�
 Подробности и ограничения: [руководство Kubernetes](KUBERNETES.md).
 
 ## English
+
+This release targets macOS, Windows, Linux and Android. The iOS build and testing are deferred.
 
 Kubernetes becomes a dedicated workspace with kubeconfig import and encrypted
 sync, live resources, reviewed YAML editing, logs, Pod shell, port forwarding,

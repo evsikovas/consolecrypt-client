@@ -15,7 +15,7 @@ def prepare(artifacts, output, version):
     if output.exists() and any(output.iterdir()):
         raise ValueError('Release destination must be empty')
     files = []
-    for platform in ('macos', 'windows', 'linux', 'android', 'ios'):
+    for platform in ('macos', 'windows', 'linux', 'android'):
         folder = artifacts / platform
         receipts = list(folder.glob('*.version'))
         if len(receipts) != 1 or receipts[0].is_symlink():
@@ -31,7 +31,6 @@ def prepare(artifacts, output, version):
             'android': [('ConsoleCrypt-android-arm64.apk', f'{prefix}-android-arm64.apk')],
             'linux': [(f'{prefix}-linux-x64.deb', f'{prefix}-linux-x64.deb'),
                       (f'{prefix}-linux-x64.rpm', f'{prefix}-linux-x64.rpm')],
-            'ios': [(f'{prefix}-ios-simulator-universal.zip', f'{prefix}-ios-simulator-universal.zip')],
         }[platform]
         for source_name, destination_name in names:
             source = folder / source_name

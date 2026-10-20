@@ -21,7 +21,7 @@ def jobs(name):
 class CleanupPolicyTest(unittest.TestCase):
     def test_native_jobs_keep_intermediates_and_only_publication_schedules_cleanup(self):
         release = jobs('client.yml')
-        for name in ('windows', 'macos', 'android', 'ios'):
+        for name in ('windows', 'macos', 'android'):
             with self.subTest(job=name):
                 self.assertIn('clean: false', release[name])
                 self.assertRegex(release[name], r'--claim-workspace|-ClaimWorkspace')

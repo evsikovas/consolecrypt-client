@@ -38,6 +38,7 @@ jobs:
           python3 -m unittest discover -s client/scripts -p 'test_ci_cleanup.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_cleanup_policy.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_linux_cleanup.py' -v
+          python3 -m unittest discover -s client/scripts/tests -p 'test_kubernetes_ci.py' -v
 
   macos:
     needs: validate
@@ -58,7 +59,7 @@ jobs:
           python3 client/scripts/github-build-number.py macos
       - name: Regression checks
         run: |
-          cargo test --manifest-path client/rust/Cargo.toml --locked -p cc-terminal-core --lib
+          cargo test --manifest-path client/rust/Cargo.toml --locked -p cc-terminal-core -p cc-k8s-core -p cc-app-core --all-targets
           python3 -m unittest discover -s client/scripts -p 'test_*version.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_github_build_number.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_release_identity.py' -v
@@ -100,6 +101,8 @@ jobs:
       - name: Register this release workspace
         run: '& client/scripts/cleanup-ci-workspace.ps1 -ClaimWorkspace'
       - name: Check and package Windows
+        env:
+          CC_KUBE_WSL_LIVE: '1'
         run: |
           & client/scripts/ci-windows.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Windows build failed' }
@@ -125,6 +128,8 @@ jobs:
           persist-credentials: false
       - name: Reserve build number
         run: python3 client/scripts/github-build-number.py linux
+      - name: Kubernetes, Flux and Helm acceptance in an isolated cluster
+        run: python3 client/scripts/ci-kubernetes-linux.py --workspace "$GITHUB_WORKSPACE"
       - name: Build and check native Linux DEB and RPM
         run: bash client/scripts/ci-linux.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -139,7 +144,21 @@ jobs:
             dist/linux/*.SHA256SUMS
             dist/linux/*.json
             dist/linux/acceptance/linux-ffi-integration.json
+            dist/linux/acceptance/kubernetes-acceptance.json
+            dist/linux/acceptance/kubernetes-acceptance.log
             dist/linux/ConsoleCrypt.version
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: linux-kubernetes-diagnostics
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            dist/linux/acceptance/kubernetes-acceptance.json
+            dist/linux/acceptance/kubernetes-acceptance.log
+      - name: Stop owned Kubernetes test containers and retain diagnostics
+        if: always()
+        run: python3 client/scripts/ci-kubernetes-linux.py --workspace "$GITHUB_WORKSPACE" --stop
       - name: Stop this job's Linux container and retain scratch
         if: always()
         run: python3 client/scripts/cleanup-linux-job.py --workspace "$GITHUB_WORKSPACE"
@@ -175,38 +194,10 @@ jobs:
             dist/android/ConsoleCrypt-android-arm64.apk.sha256
             dist/android/ConsoleCrypt.version
 
-  ios:
-    needs: macos
-    runs-on: ${{ fromJSON(vars.MACOS_BUILD_RUNNER || '["self-hosted","macOS","ARM64","consolecrypt","client"]') }}
-    timeout-minutes: 180
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          clean: false
-          persist-credentials: false
-      - name: Register this release workspace
-        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE" --claim-workspace
-      - name: Native toolchain and version
-        run: |
-          source client/scripts/ci-macos-tools.sh --xcode
-          python3 client/scripts/github-build-number.py ios
-      - name: Build and launch an isolated iOS Simulator preview
-        run: bash client/scripts/ci-ios.sh --build-only
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: ios
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 0
-          path: |
-            dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip
-            dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip.sha256
-            dist/ios/ConsoleCrypt-simulator-universal.version
-
   publish:
     outputs:
       published: ${{ steps.release.outputs.published }}
-    needs: [validate, macos, windows, linux, android, ios]
+    needs: [validate, macos, windows, linux, android]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     permissions:

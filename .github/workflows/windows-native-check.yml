@@ -33,6 +33,8 @@ jobs:
               raise SystemExit('Invalid native diagnostic tag')
           subprocess.run(['git', 'merge-base', '--is-ancestor', 'HEAD', 'origin/main'], check=True)
           PY
+      - name: Test isolated cluster ownership and fixtures
+        run: python3 -m unittest discover -s client/scripts/tests -p test_kubernetes_ci.py -v
 
   windows:
     needs: validate
@@ -55,7 +57,7 @@ jobs:
           & client/scripts/ci-windows.ps1 -NativeOnly
           if ($LASTEXITCODE -ne 0) { throw 'Windows native checks failed' }
 
-  macos-ios:
+  macos:
     needs: validate
     if: startsWith(github.ref_name, 'check-kubernetes-')
     runs-on: macos-26
@@ -74,5 +76,27 @@ jobs:
           flutter pub get
           flutter analyze
           flutter test --dart-define=CC_KUBERNETES=true
-      - name: iOS native Kubernetes lifecycle
-        run: bash client/scripts/ci-ios-kubernetes.sh
+
+  linux-kubernetes:
+    needs: validate
+    if: startsWith(github.ref_name, 'check-kubernetes-')
+    runs-on: cc-linux-k3s
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Kubernetes, Flux and Helm acceptance in an isolated cluster
+        run: python3 client/scripts/ci-kubernetes-linux.py --workspace "$GITHUB_WORKSPACE"
+      - name: Stop owned test containers and retain diagnostics
+        if: always()
+        run: python3 client/scripts/ci-kubernetes-linux.py --workspace "$GITHUB_WORKSPACE" --stop
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: linux-kubernetes-acceptance
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            dist/linux/acceptance/kubernetes-acceptance.json
+            dist/linux/acceptance/kubernetes-acceptance.log

@@ -39,7 +39,6 @@ class ArtifactTests(unittest.TestCase):
             'windows': ['ConsoleCrypt-0.4.0+14012-windows-x64-setup.exe', 'ConsoleCrypt-windows.zip'],
             'linux': ['ConsoleCrypt-0.4.0+14013-linux-x64.deb', 'ConsoleCrypt-0.4.0+14013-linux-x64.rpm'],
             'android': ['ConsoleCrypt-android-arm64.apk'],
-            'ios': ['ConsoleCrypt-0.4.0+14015-ios-simulator-universal.zip'],
         }
         for i, (platform, names) in enumerate(self.names.items(), 1):
             folder = self.artifacts / platform
@@ -51,12 +50,21 @@ class ArtifactTests(unittest.TestCase):
 
     def test_closed_asset_set_and_actual_checksums(self):
         release.prepare(self.artifacts, self.output, '0.4.0')
-        self.assertEqual(len(list(self.output.iterdir())), 8)
+        self.assertEqual(len(list(self.output.iterdir())), 7)
         self.assertTrue((self.output / 'ConsoleCrypt-0.4.0+14014-android-arm64.apk').is_file())
         self.assertTrue((self.output / 'ConsoleCrypt-0.4.0+14012-windows-x64.zip').is_file())
         for line in (self.output / 'SHA256SUMS-0.4.0.txt').read_text().splitlines():
             digest, name = line.split('  ')
             self.assertEqual(digest, hashlib.sha256((self.output / name).read_bytes()).hexdigest())
+
+    def test_unrequested_ios_preview_is_not_published(self):
+        folder = self.artifacts / 'ios'
+        folder.mkdir()
+        (folder / 'ConsoleCrypt.version').write_text('0.3.0+13015')
+        (folder / 'ConsoleCrypt-0.3.0+13015-ios-simulator-universal.zip').write_bytes(b'old preview')
+        names = release.prepare(self.artifacts, self.output, '0.4.0')
+        self.assertEqual(len(names), 6)
+        self.assertFalse(any('ios' in name for name in names))
 
     def test_mixed_release_is_rejected_before_output(self):
         (self.artifacts / 'android/ConsoleCrypt.version').write_text('0.3.2+13034')
@@ -65,7 +73,7 @@ class ArtifactTests(unittest.TestCase):
         self.assertFalse(self.output.exists())
 
     def test_missing_platform_is_rejected(self):
-        (self.artifacts / 'ios/ConsoleCrypt.version').unlink()
+        (self.artifacts / 'linux/ConsoleCrypt.version').unlink()
         with self.assertRaises(ValueError):
             release.prepare(self.artifacts, self.output, '0.4.0')
 
