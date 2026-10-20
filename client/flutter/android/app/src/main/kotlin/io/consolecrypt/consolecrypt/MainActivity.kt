@@ -15,6 +15,9 @@ import android.os.CancellationSignal
 import android.os.Bundle
 import android.os.PersistableBundle
 import android.view.WindowManager
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import android.view.ViewTreeObserver
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -26,6 +29,35 @@ class MainActivity : FlutterActivity() {
     private var exportResult: MethodChannel.Result? = null
     private var exportSource: File? = null
     private var authResult: MethodChannel.Result? = null
+    private var rdpFullscreen = false
+    private var rdpStatusVisible = true
+    private var rdpNavigationVisible = true
+    private var rdpBarsBehavior = WindowInsetsController.BEHAVIOR_DEFAULT
+    private var rdpImeVisible = false
+    private val rdpLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
+        val visible = window.decorView.rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == true
+        if (rdpFullscreen && rdpImeVisible && !visible) {
+            window.decorView.postDelayed({ applyRdpFullscreen() }, 1100)
+        }
+        rdpImeVisible = visible
+    }
+
+    private fun applyRdpFullscreen() {
+        if (!rdpFullscreen) return
+        window.insetsController?.apply {
+            systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsets.Type.systemBars())
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && rdpFullscreen) {
+            // Android can reveal bars while dismissing the IME. Reapply only
+            // while this session still owns fullscreen, after its guard delay.
+            window.decorView.postDelayed({ applyRdpFullscreen() }, 1100)
+        }
+    }
 
     // Device-wide, non-secret preference, read before Flutter's first frame.
     // It must also apply on the lock screen and after Activity recreation.
@@ -53,6 +85,37 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         applyScreenCaptureAllowed(savedScreenCaptureAllowed())
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/window").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "beginRdpFullscreen" -> {
+                    if (!rdpFullscreen) {
+                        val insets = window.decorView.rootWindowInsets
+                        rdpStatusVisible = insets?.isVisible(WindowInsets.Type.statusBars()) ?: true
+                        rdpNavigationVisible = insets?.isVisible(WindowInsets.Type.navigationBars()) ?: true
+                        rdpBarsBehavior = window.insetsController?.systemBarsBehavior ?: WindowInsetsController.BEHAVIOR_DEFAULT
+                        rdpFullscreen = true
+                        rdpImeVisible = insets?.isVisible(WindowInsets.Type.ime()) == true
+                        window.decorView.viewTreeObserver.addOnGlobalLayoutListener(rdpLayoutListener)
+                    }
+                    applyRdpFullscreen()
+                    result.success(true)
+                }
+                "endRdpFullscreen" -> {
+                    if (rdpFullscreen) {
+                        rdpFullscreen = false
+                        window.decorView.viewTreeObserver.removeOnGlobalLayoutListener(rdpLayoutListener)
+                        window.insetsController?.apply {
+                            systemBarsBehavior = rdpBarsBehavior
+                            if (rdpStatusVisible) show(WindowInsets.Type.statusBars()) else hide(WindowInsets.Type.statusBars())
+                            if (rdpNavigationVisible) show(WindowInsets.Type.navigationBars()) else hide(WindowInsets.Type.navigationBars())
+                        }
+                    }
+                    result.success(null)
+                }
+                "isFullscreen" -> result.success(rdpFullscreen)
+                else -> result.notImplemented()
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/clipboard").setMethodCallHandler { call, result ->
             if (call.method != "copySecret") {
                 result.notImplemented()

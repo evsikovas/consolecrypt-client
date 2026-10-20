@@ -1,9 +1,10 @@
+import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
 import 'package:consolecrypt/rdp/rdp_service.dart';
 import 'package:consolecrypt/rdp/rdp_view.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 const surfaceKey = ValueKey('rdp-input-surface');
 const mouseKey = ValueKey('rdp-touchpad-toggle');
@@ -22,6 +23,7 @@ Future<void> open(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
+        resizeToAvoidBottomInset: false,
         body: Center(
           child: SizedBox(
             width: size.width,
@@ -33,6 +35,7 @@ Future<void> open(
               height: 600,
               enabled: enabled,
               onInput: inputs.addAll,
+              mobileSettings: const RdpMobileSettings(acceleration: false),
             ),
           ),
         ),
@@ -42,9 +45,30 @@ Future<void> open(
   await tester.pump();
 }
 
+Future<void> menu(WidgetTester tester) async {
+  if (find.byKey(const ValueKey('rdp-mobile-panel')).evaluate().isEmpty) {
+    await tester.tap(find.byKey(const ValueKey('rdp-mobile-menu')));
+    await tester.pump();
+  }
+}
+
+Future<void> keyboard(WidgetTester tester) async {
+  await menu(tester);
+  await tester.ensureVisible(find.byKey(keyboardKey));
+  await tester.tap(find.byKey(keyboardKey));
+  await tester.pump();
+  tester.view.viewInsets = tester.testTextInput.isVisible ? const FakeViewPadding(bottom: 100) : FakeViewPadding.zero;
+  addTearDown(tester.view.resetViewInsets);
+  await tester.pump();
+}
+
 Future<Rect> touchpad(WidgetTester tester, List<RdpInput> inputs) async {
   await open(tester, inputs);
+  await menu(tester);
+  await tester.ensureVisible(find.byKey(mouseKey));
   await tester.tap(find.byKey(mouseKey));
+  await tester.pump();
+  await tester.tap(find.byKey(const ValueKey('rdp-mobile-menu')));
   await tester.pump();
   inputs.clear();
   return tester.getRect(find.byKey(surfaceKey));
@@ -108,6 +132,7 @@ void main() {
     var two = await tester.startGesture(rect.center + const Offset(20, 0), pointer: 2);
     await one.up();
     await two.up();
+    await tester.pump(const Duration(milliseconds: 310));
     expect(pointers(inputs), [(400, 300, RdpPointerButton.right, true), (400, 300, RdpPointerButton.right, false)]);
     inputs.clear();
     one = await tester.startGesture(rect.center - const Offset(20, 0), pointer: 3);
@@ -150,7 +175,7 @@ void main() {
     final rect = await touchpad(tester, inputs);
     await tester.tapAt(rect.center);
     expect(tester.testTextInput.isVisible, isFalse);
-    await tester.tap(find.byKey(keyboardKey));
+    await keyboard(tester);
     await tester.pump();
     expect(tester.testTextInput.isVisible, isTrue);
     inputs.clear();
@@ -171,7 +196,7 @@ void main() {
     expect(inputs.whereType<RdpUnicodeInput>().map((e) => e.text), ['Привет', '日本']);
     await tester.tap(find.text('Tab'));
     expect(inputs.whereType<RdpScancodeInput>().map((e) => (e.code, e.down)), [(0x0f, true), (0x0f, false)]);
-    await tester.tap(find.byKey(keyboardKey));
+    await keyboard(tester);
     await tester.pump();
     expect(tester.testTextInput.isVisible, isFalse);
     await tester.tapAt(tester.getRect(find.byKey(surfaceKey)).center);
@@ -191,7 +216,8 @@ void main() {
     expect(inputs, isEmpty);
     expect(tester.testTextInput.isVisible, isFalse);
     await open(tester, inputs, session: 'two');
-    expect(tester.widget<IconButton>(find.byKey(mouseKey)).isSelected, isFalse);
+    await menu(tester);
+    expect(find.text('Direct touch'), findsOneWidget);
   }, variant: mobile);
 
   testWidgets('background cancels held drag and pending gestures', (tester) async {
@@ -209,8 +235,9 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
     expect(tester.testTextInput.isVisible, isFalse);
-    expect(tester.widget<IconButton>(find.byKey(keyboardKey)).onPressed, isNotNull);
-    await tester.tap(find.byKey(keyboardKey));
+    await menu(tester);
+    expect(tester.widget<TextButton>(find.byKey(keyboardKey)).onPressed, isNotNull);
+    await keyboard(tester);
     await tester.pump();
     expect(tester.testTextInput.isVisible, isTrue);
   }, variant: mobile);
@@ -218,7 +245,7 @@ void main() {
   testWidgets('IME composition blocks accessory keys until text is committed', (tester) async {
     final inputs = <RdpInput>[];
     await open(tester, inputs);
-    await tester.tap(find.byKey(keyboardKey));
+    await keyboard(tester);
     await tester.pump();
     inputs.clear();
     tester.testTextInput.updateEditingValue(
@@ -243,7 +270,7 @@ void main() {
     final inputs = <RdpInput>[];
     await open(tester, inputs);
     addTearDown(tester.view.resetViewInsets);
-    await tester.tap(find.byKey(keyboardKey));
+    await keyboard(tester);
     await tester.pump();
     tester.view.viewInsets = const FakeViewPadding(bottom: 200);
     await tester.pump();
@@ -251,8 +278,11 @@ void main() {
     tester.view.viewInsets = FakeViewPadding.zero;
     await tester.pump();
     await tester.pump();
-    expect(tester.widget<IconButton>(find.byKey(keyboardKey)).isSelected, isFalse);
-    await tester.tap(find.byKey(surfaceKey));
+    await menu(tester);
+    expect(find.text('Show keyboard'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('rdp-mobile-menu')));
+    await tester.pump();
+    await tester.tapAt(tester.getRect(find.byKey(surfaceKey)).topLeft + const Offset(50, 50));
     await tester.pump();
     expect(tester.testTextInput.isVisible, isFalse);
   }, variant: mobile);
@@ -282,8 +312,7 @@ void main() {
   testWidgets('mobile controls fit narrow landscape with keyboard open', (tester) async {
     final inputs = <RdpInput>[];
     await open(tester, inputs, size: const Size(320, 170));
-    await tester.tap(find.byKey(mouseKey));
-    await tester.tap(find.byKey(keyboardKey));
+    await keyboard(tester);
     await tester.pump();
     expect(tester.takeException(), isNull);
     expect(tester.getSize(find.byKey(surfaceKey)).height, greaterThan(0));
@@ -292,7 +321,7 @@ void main() {
   testWidgets('desktop has no phone controls and keeps existing pointer/IME', (tester) async {
     final inputs = <RdpInput>[];
     await open(tester, inputs);
-    expect(find.byKey(const ValueKey('rdp-mobile-controls')), findsNothing);
+    expect(find.byKey(const ValueKey('rdp-mobile-menu')), findsNothing);
     await tester.tap(find.byKey(surfaceKey));
     await tester.pump();
     expect(tester.testTextInput.isVisible, isTrue);

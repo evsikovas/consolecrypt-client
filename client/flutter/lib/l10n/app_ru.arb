@@ -2439,7 +2439,7 @@
   "rdpMobileLeftClick": "Левый клик в позиции курсора",
   "rdpMobileRightClick": "Правый клик в позиции курсора",
   "rdpMobileHelpTitle": "Управление с телефона",
-  "rdpMobileHelp": "Нажмите кнопку мыши, чтобы экран работал как тачпад. Водите одним пальцем в любом месте для перемещения курсора. Можно поднять палец и продолжить движение с другого места.\n\nКасание — левый клик. Два быстрых касания — двойной клик; удерживайте второе касание и двигайте палец для перетаскивания. Также можно немного удержать один палец, затем потянуть.\n\nКасание двумя пальцами — правый клик. Движение двумя пальцами — прокрутка. Кнопки клика действуют в позиции курсора.\n\nКнопка клавиатуры открывает или скрывает клавиатуру телефона. Над ней доступны Esc, Tab, стрелки и Enter. Касание рабочего стола не открывает клавиатуру.\n\nВыключите тачпад для клика непосредственно под пальцем. Подключённая мышь работает обычным способом.",
+  "rdpMobileHelp": "Рабочий стол — это тачпад. Водите одним пальцем для движения курсора; палец можно поднимать и переставлять.\n\nКасание — левый клик, два быстрых касания — двойной. Удерживайте второе касание и двигайте палец для перетаскивания. Можно также удержать один палец около половины секунды, затем двигать.\n\nДва пальца: касание — правый клик, параллельное движение — прокрутка, щипок — масштаб от 1× до 4×. Двойное касание двумя пальцами вписывает картинку в экран. При приближении картинка следует за курсором.\n\nКасание тремя пальцами показывает или скрывает клавиатуру. Она перекрывает картинку, а не сжимает её. В панели «Клавиши» одно касание Ctrl, Alt, Win или Shift действует на следующую клавишу, двойное фиксирует, ещё одно отпускает.\n\nКруглая кнопка открывает меню. Перетащите её к краю экрана. Здесь можно переключить тачпад на прямое касание, настроить размер, сменить сеанс или свернуть его. Подключённая мышь работает напрямую.",
   "localAiTitle": "Встроенный локальный ИИ",
   "localAiDescription": "Выберите модель для этого компьютера. После установки чат и подсказки команд работают без интернета.",
   "localAiModel": "Модель",
@@ -2582,7 +2582,7 @@
   "@localAiTierMedium": {
     "description": "Device-local AI model catalog, hardware recommendation, or license information."
   },
-  "localAiTierStrong": "Мощная",
+  "localAiTierStrong": "Тяжёлая",
   "@localAiTierStrong": {
     "description": "Device-local AI model catalog, hardware recommendation, or license information."
   },
@@ -2678,5 +2678,191 @@
   },
   "@terminalLocalInsertOnly": {
     "description": "Local terminal UI: InsertOnly."
+  },
+  "rdpMobileMenu": "Управление сеансом",
+  "rdpMobileKeys": "Клавиши",
+  "rdpMobileFit": "Вписать",
+  "rdpMobileFitResolution": "Подогнать под экран",
+  "rdpMobileOrientation": "Поворот",
+  "rdpMobileAutomatic": "Авто",
+  "rdpMobileLandscape": "Альбомная",
+  "rdpMobilePortrait": "Портретная",
+  "rdpMobileMinimize": "Свернуть сеанс",
+  "rdpMobileBackAgain": "Нажмите «Назад» ещё раз, чтобы свернуть сеанс",
+  "rdpMobileDisconnectConfirm": "Отключиться от удалённого рабочего стола?",
+  "rdpMobileClipboard": "Буфер обмена",
+  "rdpMobileIntroMove": "Водите пальцем по экрану — это тачпад. Курсор остаётся на месте, когда вы переставляете палец.",
+  "rdpMobileIntroZoom": "Два пальца: касание — правый клик, движение — прокрутка, щипок — масштаб.",
+  "rdpMobileIntroMenu": "Три пальца — клавиатура. Круглая плавающая кнопка открывает меню; её можно перетащить к краю.",
+  "rdpMobileDontShow": "Не показывать",
+  "rdpMobileSettingsTitle": "RDP · Управление на телефоне",
+  "rdpMobileSettingsLocal": "Настройки сохраняются только на этом устройстве. Последний режим управления запоминается отдельно для каждого хоста.",
+  "rdpMobileDefaultMode": "Режим по умолчанию",
+  "rdpMobileAutoDefault": "Тачпад на телефоне, касание на планшете",
+  "rdpMobileSpeed": "Скорость указателя",
+  "rdpMobileAcceleration": "Ускорение указателя",
+  "rdpMobileCursorSize": "Размер курсора",
+  "rdpMobileAutoResize": "Подгонять разрешение под экран",
+  "rdpMobileClarity": "Чёткость",
+  "rdpMobileWindowsScale": "Масштаб Windows",
+  "rdpMobileAutoHide": "Автоскрытие кнопки",
+  "@rdpMobileTouchpad": {
+    "description": "Mobile RDP control: Touchpad"
+  },
+  "@rdpMobileDirectTouch": {
+    "description": "Mobile RDP control: DirectTouch"
+  },
+  "@rdpMobileShowKeyboard": {
+    "description": "Mobile RDP control: ShowKeyboard"
+  },
+  "@rdpMobileHideKeyboard": {
+    "description": "Mobile RDP control: HideKeyboard"
+  },
+  "@rdpMobileLeftClick": {
+    "description": "Mobile RDP control: LeftClick"
+  },
+  "@rdpMobileRightClick": {
+    "description": "Mobile RDP control: RightClick"
+  },
+  "@rdpMobileHelpTitle": {
+    "description": "Mobile RDP control: HelpTitle"
+  },
+  "@rdpMobileHelp": {
+    "description": "Mobile RDP control: Help"
+  },
+  "@rdpMobileMenu": {
+    "description": "Mobile RDP control: Menu"
+  },
+  "@rdpMobileKeys": {
+    "description": "Mobile RDP control: Keys"
+  },
+  "@rdpMobileFit": {
+    "description": "Mobile RDP control: Fit"
+  },
+  "@rdpMobileFitResolution": {
+    "description": "Mobile RDP control: FitResolution"
+  },
+  "@rdpMobileOrientation": {
+    "description": "Mobile RDP control: Orientation"
+  },
+  "@rdpMobileAutomatic": {
+    "description": "Mobile RDP control: Automatic"
+  },
+  "@rdpMobileLandscape": {
+    "description": "Mobile RDP control: Landscape"
+  },
+  "@rdpMobilePortrait": {
+    "description": "Mobile RDP control: Portrait"
+  },
+  "@rdpMobileMinimize": {
+    "description": "Mobile RDP control: Minimize"
+  },
+  "@rdpMobileBackAgain": {
+    "description": "Mobile RDP control: BackAgain"
+  },
+  "@rdpMobileDisconnectConfirm": {
+    "description": "Mobile RDP control: DisconnectConfirm"
+  },
+  "@rdpMobileClipboard": {
+    "description": "Mobile RDP control: Clipboard"
+  },
+  "@rdpMobileIntroMove": {
+    "description": "Mobile RDP control: IntroMove"
+  },
+  "@rdpMobileIntroZoom": {
+    "description": "Mobile RDP control: IntroZoom"
+  },
+  "@rdpMobileIntroMenu": {
+    "description": "Mobile RDP control: IntroMenu"
+  },
+  "@rdpMobileDontShow": {
+    "description": "Mobile RDP control: DontShow"
+  },
+  "@rdpMobileSettingsTitle": {
+    "description": "Mobile RDP control: SettingsTitle"
+  },
+  "@rdpMobileSettingsLocal": {
+    "description": "Mobile RDP control: SettingsLocal"
+  },
+  "@rdpMobileDefaultMode": {
+    "description": "Mobile RDP control: DefaultMode"
+  },
+  "@rdpMobileAutoDefault": {
+    "description": "Mobile RDP control: AutoDefault"
+  },
+  "@rdpMobileSpeed": {
+    "description": "Mobile RDP control: Speed"
+  },
+  "@rdpMobileAcceleration": {
+    "description": "Mobile RDP control: Acceleration"
+  },
+  "@rdpMobileCursorSize": {
+    "description": "Mobile RDP control: CursorSize"
+  },
+  "@rdpMobileAutoResize": {
+    "description": "Mobile RDP control: AutoResize"
+  },
+  "@rdpMobileClarity": {
+    "description": "Mobile RDP control: Clarity"
+  },
+  "@rdpMobileWindowsScale": {
+    "description": "Mobile RDP control: WindowsScale"
+  },
+  "@rdpMobileAutoHide": {
+    "description": "Mobile RDP control: AutoHide"
+  },
+  "paletteNewLocalTerminal": "Новый локальный терминал",
+  "@paletteNewLocalTerminal": {
+    "description": "paletteNewLocalTerminal"
+  },
+  "hostImportTitle": "Импорт хостов из системы",
+  "@hostImportTitle": {
+    "description": "hostImportTitle"
+  },
+  "hostImportHelp": "Выберите адреса из known_hosts. Логины и пароли в этом файле не хранятся — их можно задать после импорта. Ключи доверия не изменяются; при первом подключении подтвердите ключ сервера.",
+  "@hostImportHelp": {
+    "description": "hostImportHelp"
+  },
+  "hostImportReadFailed": "Не удалось прочитать файл known_hosts. Проверьте доступ и размер файла (до 4 МиБ).",
+  "@hostImportReadFailed": {
+    "description": "hostImportReadFailed"
+  },
+  "hostImportSaveFailed": "Не удалось сохранить все хосты. Уже добавленные хосты отмечены в списке; можно повторить для оставшихся.",
+  "@hostImportSaveFailed": {
+    "description": "hostImportSaveFailed"
+  },
+  "hostImportSkipped": "Пропущено записей: {count}. Хешированные адреса, шаблоны, записи CA, отозванные и повреждённые ключи не создают хостов.",
+  "@hostImportSkipped": {
+    "description": "hostImportSkipped",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hostImportSaved": "Добавлено хостов: {count}.",
+  "@hostImportSaved": {
+    "description": "hostImportSaved",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hostImportSelectAll": "Выбрать все новые хосты",
+  "@hostImportSelectAll": {
+    "description": "hostImportSelectAll"
+  },
+  "hostImportEmpty": "Адресов для импорта не найдено. В файле могут быть только хешированные имена; их невозможно восстановить.",
+  "@hostImportEmpty": {
+    "description": "hostImportEmpty"
+  },
+  "hostImportExists": "Уже есть в этом профиле",
+  "@hostImportExists": {
+    "description": "hostImportExists"
+  },
+  "commonImport": "Импорт",
+  "@commonImport": {
+    "description": "Import selected items"
   }
 }

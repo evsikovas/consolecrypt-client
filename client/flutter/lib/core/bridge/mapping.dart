@@ -10,6 +10,7 @@ library;
 import 'dart:convert';
 
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/core/models/sftp_browser.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/models/terminal_colors.dart';
@@ -687,6 +688,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'reopen_last_profile': s.reopenLastProfile,
   'check_updates_automatically': s.checkUpdatesAutomatically,
   'prefer_device_local_ai': s.preferDeviceLocalAi,
+  'rdp_mobile': s.rdpMobile.toJson(),
   'terminal_font_size': s.terminalFontSize,
   'terminal_scrollback': s.terminalScrollback,
   'clipboard_clear_seconds': s.clipboardClearSeconds,
@@ -723,6 +725,7 @@ LocalSettings localSettingsFromJson(Json j) {
     reopenLastProfile: j['reopen_last_profile'] == true,
     checkUpdatesAutomatically: j['check_updates_automatically'] != false,
     preferDeviceLocalAi: j['prefer_device_local_ai'] != false,
+    rdpMobile: RdpMobileSettings.fromJson(j['rdp_mobile']),
     sftpDefaultEditor: _appRefFromJson(j['sftp_default_editor']),
     terminalFontSize: (j['terminal_font_size'] as num?)?.toDouble() ?? d.terminalFontSize,
     terminalScrollback: _int(j['terminal_scrollback']) ?? d.terminalScrollback,

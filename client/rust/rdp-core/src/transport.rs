@@ -836,11 +836,15 @@ async fn run_active<S: AsyncRead + AsyncWrite + Unpin>(
                     SessionCommand::Inputs(inputs) => {
                         for input in &inputs {
                             match input {
-                                Input::Resize { width, height } => {
+                                Input::Resize {
+                                    width,
+                                    height,
+                                    desktop_scale,
+                                } => {
                                     if let Some(frame) = active.encode_resize(
                                         u32::from(*width),
                                         u32::from(*height),
-                                        Some(100),
+                                        Some(u32::from(*desktop_scale)),
                                         None,
                                     ) {
                                         bytes.extend_from_slice(
@@ -1522,7 +1526,16 @@ pub(crate) fn validate_inputs(inputs: &[Input]) -> Result<(), RdpError> {
                     return Err(RdpError::InvalidConfig);
                 }
             }
-            Input::Resize { width, height } => validate_dimensions(*width, *height)?,
+            Input::Resize {
+                width,
+                height,
+                desktop_scale,
+            } => {
+                validate_dimensions(*width, *height)?;
+                if !matches!(desktop_scale, 100 | 125 | 150) {
+                    return Err(RdpError::InvalidConfig);
+                }
+            }
             Input::Pointer { x, y } if *x >= crate::MAX_WIDTH || *y >= crate::MAX_HEIGHT => {
                 return Err(RdpError::InvalidConfig)
             }
@@ -2350,6 +2363,22 @@ mod tests {
             horizontal: false
         }])
         .is_err());
+        for desktop_scale in [100, 125, 150] {
+            assert!(validate_inputs(&[Input::Resize {
+                width: 1280,
+                height: 720,
+                desktop_scale,
+            }])
+            .is_ok());
+        }
+        for desktop_scale in [0, 99, 151, u16::MAX] {
+            assert!(validate_inputs(&[Input::Resize {
+                width: 1280,
+                height: 720,
+                desktop_scale,
+            }])
+            .is_err());
+        }
     }
     #[test]
     fn connector_never_contains_password_in_its_cloned_config() {

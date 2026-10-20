@@ -32,7 +32,7 @@ class GlassToolbar extends StatelessWidget {
   final Widget? center;
   final List<Widget> trailing;
 
-  /// Extra leading space (78 when the traffic lights move into the band).
+  /// Extra leading space when the traffic lights move into the band.
   final double leadingInset;
 
   /// Bounds the title group so the centre can use all remaining width.

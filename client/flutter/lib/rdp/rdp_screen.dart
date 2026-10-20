@@ -4,6 +4,8 @@ import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/models/rdp_mobile.dart';
+import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -13,6 +15,7 @@ import 'package:consolecrypt/rdp/rdp_clipboard.dart';
 import 'package:consolecrypt/rdp/rdp_controller.dart';
 import 'package:consolecrypt/rdp/rdp_fullscreen.dart';
 import 'package:consolecrypt/rdp/rdp_guard.dart';
+import 'package:consolecrypt/rdp/rdp_mobile_fullscreen.dart';
 import 'package:consolecrypt/rdp/rdp_permissions.dart';
 import 'package:consolecrypt/rdp/rdp_providers.dart';
 import 'package:consolecrypt/rdp/rdp_service.dart';
@@ -37,6 +40,26 @@ class RdpScreen extends ConsumerStatefulWidget {
 class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserver {
   bool _fullscreen = false;
   RdpWorkspaceController? _controller;
+  String? _minimizedPhoneSession;
+  bool _mobileEntryScheduled = false;
+  bool _wasVisible = false;
+
+  void _autoOpenPhone(RdpTab? tab, bool visible) {
+    if (_fullscreen ||
+        _mobileEntryScheduled ||
+        !visible ||
+        tab == null ||
+        !AppPlatform.isMobile ||
+        MediaQuery.sizeOf(context).shortestSide >= 600 ||
+        tab.info.id == _minimizedPhoneSession) {
+      return;
+    }
+    _mobileEntryScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mobileEntryScheduled = false;
+      if (mounted && !_fullscreen && ModalRoute.of(context)?.isCurrent == true) _openFullscreen();
+    });
+  }
 
   @override
   void initState() {
@@ -57,6 +80,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
     final controller = ref.read(rdpWorkspaceProvider);
     final tab = controller.active;
     if (!scope.unlocked || tab == null || tab.closed) return;
+    _minimizedPhoneSession = null;
     final window = ref.read(rdpWindowProvider);
     final lease = window.acquire();
     if (lease == null) {
@@ -89,7 +113,12 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
       } catch (_) {
         if (mounted && rdpScopeCurrent(ref, scope)) showSnack(context, context.l10n.rdpFullscreenFailed, error: true);
       }
-      if (mounted) setState(() => _fullscreen = false);
+      if (mounted) {
+        setState(() {
+          _fullscreen = false;
+          _minimizedPhoneSession = controller.active?.info.id;
+        });
+      }
     }
   }
 
@@ -107,10 +136,19 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
     final scope = ref.watch(rdpScopeProvider);
     final controller = ref.watch(rdpWorkspaceProvider);
     final visible = TickerMode.valuesOf(context).enabled;
+    // The fullscreen route also disables this branch's ticker. Returning
+    // from it is not a user switching back to the RDP branch.
+    if (!_fullscreen) {
+      if (visible && !_wasVisible) _minimizedPhoneSession = null;
+      _wasVisible = visible;
+    }
     controller.setVisible(visible || _fullscreen);
     _controller = controller;
     final l = context.l10n;
     final mobile = AppPlatform.isMobile;
+    final mobileSettings = mobile
+        ? ref.watch(localSettingsProvider).value?.rdpMobile ?? ref.read(settingsServiceProvider).currentLocal.rdpMobile
+        : const RdpMobileSettings();
     // The shell already resizes for the keyboard and removes its inset from
     // the body's MediaQuery. Observe the view without applying the inset again.
     final keyboardOpen = mobile && View.of(context).viewInsets.bottom > 0;
@@ -120,6 +158,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
       animation: controller,
       builder: (context, _) {
         final active = controller.active;
+        _autoOpenPhone(active, visible);
         final body = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -241,6 +280,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
                       Expanded(
                         child: RdpView(
                           key: ValueKey('rdp-view-${active.info.id}'),
+                          scope: scope,
                           frame: active.frame,
                           width: active.info.width,
                           height: active.info.height,
@@ -249,6 +289,12 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
                           onInteractionCancelled: () => controller.cancelInteraction(active),
                           localClipboardEnabled: active.permissions.clipboardEnabled,
                           onPaste: (isInputCurrent) => pasteLocalRdpClipboard(context, ref, active, isInputCurrent),
+                          mobileSettings: mobileSettings,
+                          hostKey: rdpMobileHostKey(scope, active),
+                          onMobileSettingsChanged: (settings) {
+                            final service = ref.read(settingsServiceProvider);
+                            service.updateLocal(service.currentLocal.copyWith(rdpMobile: settings)).ignore();
+                          },
                         ),
                       ),
                     ],

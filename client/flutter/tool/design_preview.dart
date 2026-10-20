@@ -22,6 +22,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/app_services.dart' show DeviceLocalAiBridge;
+import 'package:consolecrypt/hosts/known_hosts_import.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
 import 'package:consolecrypt/sharing/enrollment_owner.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
@@ -51,6 +52,20 @@ const _guideOutput = String.fromEnvironment('CC_GUIDE_OUTPUT', defaultValue: '..
 class _GuideLocalBridge implements DeviceLocalAiBridge {
   @override
   dynamic noSuchMethod(Invocation invocation) => throw StateError('Guide capture cannot start native inference.');
+}
+
+/// Published screenshots must never enumerate this computer's SSH files.
+class _GuideKnownHosts extends KnownHostsImportService {
+  @override
+  Future<KnownHostsScan> scan() async => const KnownHostsScan(
+    hosts: [
+      KnownHostCandidate('bastion.example.test', 22),
+      KnownHostCandidate('build.example.test', 2222),
+      KnownHostCandidate('staging.example.test', 22),
+    ],
+    sources: ['~/.ssh/known_hosts', '/etc/ssh/ssh_known_hosts'],
+    skipped: 2,
+  );
 }
 
 void main() {
@@ -226,6 +241,7 @@ void main() {
             child: ProviderScope(
               overrides: [
                 appServicesProvider.overrideWithValue(backend.services),
+                if (screen == 'host-import') knownHostsImportServiceProvider.overrideWithValue(_GuideKnownHosts()),
                 if (_guide) developerControlsProvider.overrideWithValue(null),
                 if (_guide) sharingServiceProvider.overrideWithValue(sharing),
                 if (_guide) enrollmentServiceProvider.overrideWithValue(GuideEnrollmentService()),
@@ -360,6 +376,19 @@ void main() {
           await settle(tester);
           expect(find.text('prod-web-1'), findsWidgets);
           expect(find.text('prod-db-1'), findsWidgets);
+        }
+        if (screen == 'local-terminal-palette') {
+          showCommandPalette(tester.element(find.byType(Navigator).first)).ignore();
+          await settle(tester);
+          await tester.enterText(find.byKey(const ValueKey('palette-input')), l10n.paletteNewLocalTerminal);
+          await settle(tester);
+        }
+        if (screen == 'host-import') {
+          final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+          container.read(routerProvider).go(AppRoutes.newHost);
+          await settle(tester);
+          await tapKey(tester, 'host-editor-import');
+          await settle(tester);
         }
         if (screen == 'about-license') {
           showAboutConsoleCrypt(tester.element(find.byType(Navigator).first)).ignore();
@@ -712,6 +741,11 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(find.byKey(const ValueKey('terminal-sftp')), findsNothing);
     case 'host-palette':
       expect(find.byKey(const ValueKey('command-palette')), findsOneWidget);
+    case 'local-terminal-palette':
+      expect(find.byKey(const ValueKey('palette-new-local-terminal')), findsOneWidget);
+    case 'host-import':
+      expect(find.byKey(const ValueKey('known-hosts-import')), findsOneWidget);
+      expect(texts, contains('build.example.test:2222'));
     case 'about-license':
       expect(find.text('AGPL-3.0'), findsNWidgets(2));
     case 'sftp-preview':

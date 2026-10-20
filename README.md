@@ -140,6 +140,10 @@ Tests that need a native library, a system keyring, or a real SSH/RDP server hav
 additional prerequisites. Do not run Flutter tests alongside a native build
 in the same working directory.
 
+## Release 0.5.5
+
+Phone RDP opens fullscreen with touchpad gestures, a floating menu and an overlay keyboard. Desktop adds known_hosts import, a New local terminal palette action and corrected macOS window-button spacing. See the [0.5.5 notes](docs/public/RELEASE_0_5_5.md).
+
 ## Release 0.5.2
 
 The 0.5 series adds local terminals and a three-model local AI catalog, while

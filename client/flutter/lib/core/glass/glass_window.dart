@@ -1,3 +1,4 @@
+import 'package:consolecrypt/app/theme/glass_metrics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:macos_window_utils/macos_window_utils.dart';
@@ -28,6 +29,24 @@ abstract final class GlassWindowChrome {
   /// widgets in the top 52 pt need `MacosToolbarPassthrough`, which
   /// `GlassToolbar` adds automatically).
   static bool get unifiedTitlebar => _unifiedTitlebar;
+
+  /// AppKit positions vary with the OS and toolbar style. The native value
+  /// includes a gap after the rightmost button, in content-view points.
+  static Future<double> trafficLightsLeading() async {
+    if (_isMacOS) {
+      try {
+        final value = await windowChannel.invokeMethod<num>('getTrafficLightsLeading');
+        if (value != null && value.isFinite && value >= 60 && value <= 300) {
+          return value.toDouble();
+        }
+      } on MissingPluginException {
+        // Older runners and widget tests use the conservative fallback.
+      } on PlatformException {
+        // A window may be between fullscreen layouts.
+      }
+    }
+    return GlassSizes.trafficLightsLeading;
+  }
 
   /// Initialises `macos_window_utils` once (lazily: nothing native is
   /// touched until chrome is requested).

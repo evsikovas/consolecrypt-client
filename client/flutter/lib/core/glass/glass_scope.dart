@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:consolecrypt/app/theme/glass_materials.dart';
+import 'package:consolecrypt/app/theme/glass_metrics.dart';
 import 'package:consolecrypt/app/theme/glass_tokens.dart';
 import 'package:consolecrypt/core/glass/accessibility_bridge.dart';
 import 'package:consolecrypt/core/glass/ambient_backdrop.dart';
@@ -25,6 +26,7 @@ final class GlassScopeData {
     this.refractionProgram,
     this.os = OsAccessibilitySignals.none,
     this.unifiedTitlebar = false,
+    this.trafficLightsLeading = GlassSizes.trafficLightsLeading,
     this.retryEffects,
   });
 
@@ -40,6 +42,7 @@ final class GlassScopeData {
 
   /// macOS unified title bar applied: toolbar controls need passthrough.
   final bool unifiedTitlebar;
+  final double trafficLightsLeading;
 
   /// Available after automatic quality reduction, without changing the
   /// selected mode or overriding OS accessibility restrictions.
@@ -54,6 +57,7 @@ final class GlassScopeData {
     bool clearRefractionProgram = false,
     OsAccessibilitySignals? os,
     bool? unifiedTitlebar,
+    double? trafficLightsLeading,
     VoidCallback? retryEffects,
   }) => GlassScopeData(
     appearance: appearance ?? this.appearance,
@@ -62,6 +66,7 @@ final class GlassScopeData {
     refractionProgram: clearRefractionProgram ? null : (refractionProgram ?? this.refractionProgram),
     os: os ?? this.os,
     unifiedTitlebar: unifiedTitlebar ?? this.unifiedTitlebar,
+    trafficLightsLeading: trafficLightsLeading ?? this.trafficLightsLeading,
     retryEffects: retryEffects ?? this.retryEffects,
   );
 
@@ -74,11 +79,20 @@ final class GlassScopeData {
       identical(other.refractionProgram, refractionProgram) &&
       other.os == os &&
       other.unifiedTitlebar == unifiedTitlebar &&
+      other.trafficLightsLeading == trafficLightsLeading &&
       other.retryEffects == retryEffects;
 
   @override
-  int get hashCode =>
-      Object.hash(appearance, solidReason, budget, refractionProgram, os, unifiedTitlebar, retryEffects);
+  int get hashCode => Object.hash(
+    appearance,
+    solidReason,
+    budget,
+    refractionProgram,
+    os,
+    unifiedTitlebar,
+    trafficLightsLeading,
+    retryEffects,
+  );
 }
 
 /// Debug frame timings are not representative. Tests can inject a guard
@@ -148,6 +162,8 @@ class _GlassAppScopeState extends ConsumerState<GlassAppScope> with WidgetsBindi
   GlassTier _performanceCap = GlassTier.refractive;
   GlassFrameGuard? _guard;
   bool _unifiedTitlebar = false;
+  double _trafficLightsLeading = GlassSizes.trafficLightsLeading;
+  bool _measuringTitlebar = false;
   Brightness? _captionBrightness;
   GlassMode? _lastMode;
   GlassTier _effectiveTier = GlassTier.solid;
@@ -176,7 +192,30 @@ class _GlassAppScopeState extends ConsumerState<GlassAppScope> with WidgetsBindi
 
   Future<void> _applyTitlebar(bool enabled) async {
     final ok = await GlassWindowChrome.setUnifiedTitlebar(enabled: enabled);
-    if (mounted && ok) setState(() => _unifiedTitlebar = enabled);
+    if (mounted && ok) {
+      setState(() => _unifiedTitlebar = enabled);
+      if (enabled) await _measureTitlebar();
+    }
+  }
+
+  Future<void> _measureTitlebar() async {
+    if (!_unifiedTitlebar || _measuringTitlebar) return;
+    _measuringTitlebar = true;
+    try {
+      final leading = await GlassWindowChrome.trafficLightsLeading();
+      if (mounted && leading != _trafficLightsLeading) {
+        setState(() => _trafficLightsLeading = leading);
+      }
+    } finally {
+      _measuringTitlebar = false;
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_measureTitlebar());
+    });
   }
 
   void _stepDown() {
@@ -211,6 +250,7 @@ class _GlassAppScopeState extends ConsumerState<GlassAppScope> with WidgetsBindi
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _syncGuard();
+    if (state == AppLifecycleState.resumed) unawaited(_measureTitlebar());
   }
 
   void _syncCaption(GlassTokens tokens) {
@@ -264,6 +304,7 @@ class _GlassAppScopeState extends ConsumerState<GlassAppScope> with WidgetsBindi
         refractionProgram: _program,
         os: os,
         unifiedTitlebar: _unifiedTitlebar,
+        trafficLightsLeading: _trafficLightsLeading,
         retryEffects: _performanceCap == GlassTier.refractive ? null : _retryEffects,
       ),
       child: child,

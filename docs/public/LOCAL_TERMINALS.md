@@ -98,3 +98,12 @@ profile. Save a backup before upgrading.
 Guide screenshots use actual Flutter widgets with synthetic profiles and output.
 The Windows/WSL picker is a widget-test rendering, not proof of a native Windows
 or WSL run. Installed-package checks are reported separately in the release notes.
+
+## Палитра команд / Command palette (0.5.5)
+
+В палитре ⌘K на macOS или Ctrl+K на Windows выберите **Новый локальный
+терминал**. На macOS сразу открывается zsh; на Windows — выбор PowerShell,
+cmd или отдельного установленного дистрибутива WSL.
+
+In the ⌘K / Ctrl+K palette, choose **New local terminal**. macOS opens zsh;
+Windows offers PowerShell, cmd and each installed WSL distribution.

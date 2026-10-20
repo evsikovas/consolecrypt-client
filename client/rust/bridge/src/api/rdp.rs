@@ -91,6 +91,7 @@ pub struct RdpInputMessage {
     /// unicode / scancode / pointer / wheel / resize / release_all.
     pub kind: String,
     pub text: String,
+    /// Scancode for keys; desktop scale (100/125/150, legacy 0 = 100) for resize.
     pub code: u16,
     pub down: bool,
     pub extended: bool,
@@ -326,7 +327,8 @@ fn input(mut messages: Vec<RdpInputMessage>) -> Result<Vec<RdpInput>, BridgeErro
         "unicode" => false,
         "scancode" => e.code > u8::MAX as u16,
         "pointer" => !matches!(e.button.as_str(), "" | "left" | "middle" | "right"),
-        "wheel" | "resize" | "release_all" => false,
+        "resize" => !matches!(e.code, 0 | 100 | 125 | 150),
+        "wheel" | "release_all" => false,
         _ => true,
     });
     if invalid {
@@ -378,6 +380,7 @@ fn input(mut messages: Vec<RdpInputMessage>) -> Result<Vec<RdpInput>, BridgeErro
             "resize" => events.push(RdpInput::Resize {
                 width: e.width,
                 height: e.height,
+                desktop_scale: if e.code == 0 { 100 } else { e.code },
             }),
             "release_all" => events.push(RdpInput::ReleaseAll),
             _ => unreachable!("validated input kind"),
@@ -453,6 +456,22 @@ mod tests {
         let mut text = message("unicode");
         text.text = "x".repeat(16385);
         assert!(input(vec![text]).is_err());
+    }
+    #[test]
+    fn resize_preserves_supported_scale_and_legacy_default() {
+        for (code, expected) in [(0, 100), (100, 100), (125, 125), (150, 150)] {
+            let mut resize = message("resize");
+            resize.width = 1280;
+            resize.height = 720;
+            resize.code = code;
+            let events = input(vec![resize]).unwrap();
+            assert!(matches!(events[0], RdpInput::Resize {
+                width: 1280, height: 720, desktop_scale
+            } if desktop_scale == expected));
+        }
+        let mut resize = message("resize");
+        resize.code = 65535;
+        assert!(input(vec![message("unicode"), resize]).is_err());
     }
     #[test]
     fn certificate_pin_is_exact_and_bounded() {

@@ -178,7 +178,7 @@ class GateScaffold extends StatelessWidget {
                   height: GlassSizes.toolbarBand,
                   child: Padding(
                     padding: EdgeInsetsDirectional.only(
-                      start: trafficLights ? GlassSizes.trafficLightsLeading : GlassSpacing.s12,
+                      start: trafficLights ? scope.trafficLightsLeading : GlassSpacing.s12,
                       end: GlassSpacing.s12,
                     ),
                     child: Row(

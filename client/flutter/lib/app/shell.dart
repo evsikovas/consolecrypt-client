@@ -296,7 +296,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                   location: location,
                   compact: compact,
                   canCollapse: !narrowWindow,
-                  leadingInset: toolbarOnTop ? GlassSizes.trafficLightsLeading - GlassSpacing.s12 : 0,
+                  leadingInset: toolbarOnTop ? scope.trafficLightsLeading - GlassSpacing.s12 : 0,
                 ),
               ),
             ],

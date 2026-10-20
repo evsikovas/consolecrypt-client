@@ -236,8 +236,15 @@ Future<void> _captureGuide(WidgetTester tester, String name, {String surfaceKey 
   });
 }
 
+// This fixture owns a desktop window; mobile layouts have dedicated tests.
+void _desktopTest(
+  String name,
+  WidgetTesterCallback callback, {
+  TestVariant<Object?> variant = const TargetPlatformVariant({TargetPlatform.windows}),
+}) => testWidgets(name, callback, variant: variant);
+
 void main() {
-  testWidgets('fullscreen replaces shell with one monitor-sized view and restores live session', (tester) async {
+  _desktopTest('fullscreen replaces shell with one monitor-sized view and restores live session', (tester) async {
     final fixture = _Fixture();
     await _connectedWithClipboard(tester, fixture);
     await tapKey(tester, 'rdp-expand');
@@ -258,7 +265,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('fullscreen bar hides, reveals at top edge, pins and supports local shortcut', (tester) async {
+  _desktopTest('fullscreen bar hides, reveals at top edge, pins and supports local shortcut', (tester) async {
     final fixture = _Fixture();
     await _connectedWithClipboard(tester, fixture);
     await tapKey(tester, 'rdp-expand');
@@ -298,7 +305,7 @@ void main() {
     await fixture.dispose(tester);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
-  testWidgets('minimize restores window before minimizing and keeps RDP connected', (tester) async {
+  _desktopTest('minimize restores window before minimizing and keeps RDP connected', (tester) async {
     final fixture = _Fixture();
     await _connectedWithClipboard(tester, fixture);
     await tapKey(tester, 'rdp-expand');
@@ -308,7 +315,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('fullscreen disconnect closes only active session and exits when last tab closes', (tester) async {
+  _desktopTest('fullscreen disconnect closes only active session and exits when last tab closes', (tester) async {
     final fixture = _Fixture();
     await _connectedWithClipboard(tester, fixture);
     await tapKey(tester, 'rdp-expand');
@@ -319,7 +326,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('native exit and vault lock remove fullscreen route and restore window', (tester) async {
+  _desktopTest('native exit and vault lock remove fullscreen route and restore window', (tester) async {
     final fixture = _Fixture();
     await _connectedWithClipboard(tester, fixture);
     await tapKey(tester, 'rdp-expand');
@@ -336,7 +343,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('late native entry after locking is unwound without exposing remote desktop', (tester) async {
+  _desktopTest('late native entry after locking is unwound without exposing remote desktop', (tester) async {
     final fixture = _Fixture();
     await _connectedWithClipboard(tester, fixture);
     fixture.window.entryGate = Completer<void>();
@@ -350,7 +357,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('disposed screen retains exclusive window lease until late native entry restores', (tester) async {
+  _desktopTest('disposed screen retains exclusive window lease until late native entry restores', (tester) async {
     final window = _Window()..entryGate = Completer<void>();
     final old = _Fixture(nativeWindow: window);
     await _connectedWithClipboard(tester, old);
@@ -371,7 +378,7 @@ void main() {
     await next.dispose(tester);
   });
 
-  testWidgets('lifecycle guard cancels fullscreen paste even when platform retains input focus', (tester) async {
+  _desktopTest('lifecycle guard cancels fullscreen paste even when platform retains input focus', (tester) async {
     final fixture = _Fixture();
     _mockLocalClipboard(() async => {'text': 'Synthetic text'});
     await _connectedWithClipboard(tester, fixture);
@@ -405,7 +412,7 @@ void main() {
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   for (final operation in ['send', 'receive', 'os-write']) {
-    testWidgets('manual clipboard $operation cannot resume after opt out and back in', (tester) async {
+    _desktopTest('manual clipboard $operation cannot resume after opt out and back in', (tester) async {
       final fixture = _Fixture();
       final local = Completer<Object?>();
       _mockLocalClipboard(() => local.future);
@@ -431,7 +438,7 @@ void main() {
     });
   }
 
-  testWidgets('failed native fullscreen entry restores workspace instead of pretending success', (tester) async {
+  _desktopTest('failed native fullscreen entry restores workspace instead of pretending success', (tester) async {
     final fixture = _Fixture();
     await _connectedWithClipboard(tester, fixture);
     fixture.window.failEntry = true;
@@ -443,7 +450,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('allowed RDP paste shortcut reads fresh local text without first clicking Send', (tester) async {
+  _desktopTest('allowed RDP paste shortcut reads fresh local text without first clicking Send', (tester) async {
     final fixture = _Fixture();
     var reads = 0;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -477,7 +484,7 @@ void main() {
     await fixture.dispose(tester);
   }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS}));
 
-  testWidgets('disabled clipboard exchange keeps remote Ctrl V and never reads local clipboard', (tester) async {
+  _desktopTest('disabled clipboard exchange keeps remote Ctrl V and never reads local clipboard', (tester) async {
     final fixture = _Fixture();
     var reads = 0;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -512,7 +519,7 @@ void main() {
     await fixture.dispose(tester);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
-  testWidgets('RDP paste waits for exact ACK and commits once before later typing', (tester) async {
+  _desktopTest('RDP paste waits for exact ACK and commits once before later typing', (tester) async {
     final fixture = _Fixture();
     var reads = 0;
     _mockLocalClipboard(() async {
@@ -557,7 +564,7 @@ void main() {
     await fixture.dispose(tester);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
-  testWidgets('RDP clipboard read waits behind already queued modifier writes', (tester) async {
+  _desktopTest('RDP clipboard read waits behind already queued modifier writes', (tester) async {
     final fixture = _Fixture();
     var reads = 0;
     _mockLocalClipboard(() async {
@@ -583,7 +590,7 @@ void main() {
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   for (final cancellation in ['focus', 'tab']) {
-    testWidgets('priority release cancels a confirmed paste before held commit dispatch on $cancellation', (
+    _desktopTest('priority release cancels a confirmed paste before held commit dispatch on $cancellation', (
       tester,
     ) async {
       final fixture = _Fixture();
@@ -635,7 +642,7 @@ void main() {
     }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   }
 
-  testWidgets('a local read cannot resume after switching away and back without an intervening frame', (tester) async {
+  _desktopTest('a local read cannot resume after switching away and back without an intervening frame', (tester) async {
     final fixture = _Fixture();
     final read = Completer<Object?>();
     _mockLocalClipboard(() => read.future);
@@ -662,7 +669,7 @@ void main() {
     }
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
-  testWidgets('a second distinct shortcut while ACK is pending does not cancel the first paste', (tester) async {
+  _desktopTest('a second distinct shortcut while ACK is pending does not cancel the first paste', (tester) async {
     final fixture = _Fixture();
     var reads = 0;
     _mockLocalClipboard(() async {
@@ -690,7 +697,7 @@ void main() {
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   for (final cancellation in ['tab', 'lock', 'profile', 'focus', 'permission']) {
-    testWidgets('late clipboard ACK cannot paste after $cancellation change', (tester) async {
+    _desktopTest('late clipboard ACK cannot paste after $cancellation change', (tester) async {
       final fixture = _Fixture();
       _mockLocalClipboard(() async => {'text': 'Demo'});
       await _connectedWithClipboard(tester, fixture);
@@ -744,7 +751,7 @@ void main() {
     }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   }
 
-  testWidgets('a late local read after lock never offers its text', (tester) async {
+  _desktopTest('a late local read after lock never offers its text', (tester) async {
     final fixture = _Fixture();
     final read = Completer<Object?>();
     _mockLocalClipboard(() => read.future);
@@ -761,7 +768,7 @@ void main() {
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   for (final invalid in ['empty', 'limit', 'utf8', 'nul', 'refused']) {
-    testWidgets('RDP local clipboard $invalid consumes shortcut without pasting old remote text', (tester) async {
+    _desktopTest('RDP local clipboard $invalid consumes shortcut without pasting old remote text', (tester) async {
       final fixture = _Fixture();
       _mockLocalClipboard(
         () async => {
@@ -799,7 +806,7 @@ void main() {
 
   if (_guideCapture) {
     for (final language in ['ru', 'en']) {
-      testWidgets('demo RDP guide tabs and permissions $language', (tester) async {
+      _desktopTest('demo RDP guide tabs and permissions $language', (tester) async {
         final fixture = _Fixture();
         await _loadGuideFonts(tester);
         await fixture.pump(tester, language: language, size: const Size(1280, 860));
@@ -825,7 +832,7 @@ void main() {
         await _captureGuide(tester, 'rdp-permissions-$language');
         await fixture.dispose(tester);
       }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
-      testWidgets('demo saved RDP host editor guide $language', (tester) async {
+      _desktopTest('demo saved RDP host editor guide $language', (tester) async {
         final backend = testBackend(seed: false);
         addTearDown(backend.dispose);
         await _loadGuideFonts(tester);
@@ -869,7 +876,7 @@ void main() {
     expect(redirectFor(AppStage.needsVault, AppRoutes.rdp), AppRoutes.onboarding);
   });
 
-  testWidgets('certificate is full length and no authentication occurs before explicit comparison', (tester) async {
+  _desktopTest('certificate is full length and no authentication occurs before explicit comparison', (tester) async {
     final fixture = _Fixture();
     await fixture.pump(tester);
     await _fill(tester);
@@ -885,7 +892,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('successful login adopts a tab, exact pin, and wipes native credential borrow', (tester) async {
+  _desktopTest('successful login adopts a tab, exact pin, and wipes native credential borrow', (tester) async {
     final fixture = _Fixture();
     await fixture.pump(tester);
     await _fill(tester);
@@ -902,7 +909,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('lock/unlock removes both nested trust routes and cannot reuse old decision', (tester) async {
+  _desktopTest('lock/unlock removes both nested trust routes and cannot reuse old decision', (tester) async {
     final fixture = _Fixture();
     await fixture.pump(tester);
     await _fill(tester);
@@ -916,7 +923,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('delayed authentication after profile switch is disconnected and password wiped', (tester) async {
+  _desktopTest('delayed authentication after profile switch is disconnected and password wiped', (tester) async {
     final fixture = _Fixture();
     fixture.service.connectGate = Completer();
     await fixture.pump(tester);
@@ -939,7 +946,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('a probe for a different endpoint cannot authorize credential dispatch', (tester) async {
+  _desktopTest('a probe for a different endpoint cannot authorize credential dispatch', (tester) async {
     final fixture = _Fixture();
     fixture.service.probeGate = Completer();
     await fixture.pump(tester);
@@ -953,7 +960,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('cancel during probe cannot reopen trust dialog during exit animation', (tester) async {
+  _desktopTest('cancel during probe cannot reopen trust dialog during exit animation', (tester) async {
     final fixture = _Fixture();
     fixture.service.probeGate = Completer();
     await fixture.pump(tester);
@@ -968,7 +975,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('compact common tabs retain independent close controls and four-session cap', (tester) async {
+  _desktopTest('compact common tabs retain independent close controls and four-session cap', (tester) async {
     final fixture = _Fixture();
     await fixture.pump(tester, size: const Size(600, 880));
     for (var i = 0; i < 4; i++) {
@@ -987,7 +994,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('clicking parallel tabs routes Unicode only to the selected desktop', (tester) async {
+  _desktopTest('clicking parallel tabs routes Unicode only to the selected desktop', (tester) async {
     final fixture = _Fixture();
     await fixture.pump(tester);
     await _fill(tester);
@@ -1015,7 +1022,7 @@ void main() {
     await fixture.dispose(tester);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
-  testWidgets('clipboard is opt-in and toolbar Send never performs a paste', (tester) async {
+  _desktopTest('clipboard is opt-in and toolbar Send never performs a paste', (tester) async {
     final fixture = _Fixture();
     var clipboardReads = 0;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -1059,7 +1066,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('permissions require native acknowledgement and failure cannot claim clipboard enabled', (tester) async {
+  _desktopTest('permissions require native acknowledgement and failure cannot claim clipboard enabled', (tester) async {
     final fixture = _Fixture();
     await fixture.pump(tester);
     await _fill(tester);
@@ -1079,7 +1086,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('clipboard revocation discards an in-flight remote response', (tester) async {
+  _desktopTest('clipboard revocation discards an in-flight remote response', (tester) async {
     final fixture = _Fixture();
     await fixture.pump(tester);
     await _fill(tester);
@@ -1099,7 +1106,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('remote text above native clipboard limit is never copied', (tester) async {
+  _desktopTest('remote text above native clipboard limit is never copied', (tester) async {
     final fixture = _Fixture();
     await fixture.pump(tester);
     await _fill(tester);
@@ -1113,7 +1120,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('late received clipboard after lock is discarded', (tester) async {
+  _desktopTest('late received clipboard after lock is discarded', (tester) async {
     final fixture = _Fixture();
     await fixture.pump(tester);
     await _fill(tester);
@@ -1132,7 +1139,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('selected folder defaults read-only, requires explicit write and releases on close', (tester) async {
+  _desktopTest('selected folder defaults read-only, requires explicit write and releases on close', (tester) async {
     final fixture = _Fixture();
     fixture.service.pickedDirectory = const RdpDirectoryGrant(id: 'opaque-demo-grant', name: 'Demo documents');
     await fixture.pump(tester);
@@ -1157,7 +1164,7 @@ void main() {
   });
 
   for (final language in ['ru', 'en']) {
-    testWidgets('folder destination and limits are visible before connection in compact $language layout', (
+    _desktopTest('folder destination and limits are visible before connection in compact $language layout', (
       tester,
     ) async {
       final fixture = _Fixture();
@@ -1174,7 +1181,7 @@ void main() {
     });
   }
 
-  testWidgets('folder replacement is readonly and removal revokes the active native capability', (tester) async {
+  _desktopTest('folder replacement is readonly and removal revokes the active native capability', (tester) async {
     final fixture = _Fixture();
     await fixture.pump(tester);
     await _fill(tester);
@@ -1203,7 +1210,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('remote folder acceptance and rejection are distinct from platform support', (tester) async {
+  _desktopTest('remote folder acceptance and rejection are distinct from platform support', (tester) async {
     final fixture = _Fixture();
     fixture.service.nextPoll = const RdpPollResult(
       status: RdpStatus(RdpPhase.connected),
@@ -1239,7 +1246,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('native folder failure offers an action and successful retry removes the error', (tester) async {
+  _desktopTest('native folder failure offers an action and successful retry removes the error', (tester) async {
     final fixture = _Fixture();
     fixture.service.pickerFailure = const RdpFailure('directory_grant_unavailable');
     await fixture.pump(tester);
@@ -1255,7 +1262,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('unsupported folder platform does not promise server redirection', (tester) async {
+  _desktopTest('unsupported folder platform does not promise server redirection', (tester) async {
     final fixture = _Fixture();
     fixture.service.supported = const RdpCapabilities(clipboardSupported: true, folderSupported: false);
     await fixture.pump(tester);
@@ -1266,7 +1273,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('clipboard server refusal gives useful feedback without disconnecting', (tester) async {
+  _desktopTest('clipboard server refusal gives useful feedback without disconnecting', (tester) async {
     final fixture = _Fixture();
     await fixture.pump(tester);
     await _fill(tester);
@@ -1284,7 +1291,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('cancelled or replaced folder choices release unused native capabilities', (tester) async {
+  _desktopTest('cancelled or replaced folder choices release unused native capabilities', (tester) async {
     final fixture = _Fixture();
     fixture.service.pickedDirectory = const RdpDirectoryGrant(id: 'choice-1', name: 'Demo one');
     await fixture.pump(tester);
@@ -1298,7 +1305,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('late folder choice after profile lock releases rather than attaching', (tester) async {
+  _desktopTest('late folder choice after profile lock releases rather than attaching', (tester) async {
     final fixture = _Fixture();
     fixture.service.pickerGate = Completer();
     await fixture.pump(tester);
@@ -1313,7 +1320,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('saved host uses fresh readonly ticket and native password without Dart exposure', (tester) async {
+  _desktopTest('saved host uses fresh readonly ticket and native password without Dart exposure', (tester) async {
     final fixture = _Fixture();
     fixture.savedHost = Host.create(name: 'Old label', address: 'old.example.test');
     fixture.service.savedTicket = RdpSavedHostTicket(
@@ -1343,7 +1350,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('saved host without password accepts only a transient wiped native borrow', (tester) async {
+  _desktopTest('saved host without password accepts only a transient wiped native borrow', (tester) async {
     final fixture = _Fixture();
     fixture.savedHost = Host.create(name: 'Demo', address: 'old.example.test');
     fixture.service.savedTicket = RdpSavedHostTicket(
@@ -1368,7 +1375,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('lock during native permission apply releases picked capability after borrower settles', (tester) async {
+  _desktopTest('lock during native permission apply releases picked capability after borrower settles', (tester) async {
     final fixture = _Fixture();
     await fixture.pump(tester);
     await _fill(tester);
@@ -1388,7 +1395,7 @@ void main() {
     await fixture.dispose(tester);
   });
 
-  testWidgets('late saved-host probe after lock never opens trust or credential form', (tester) async {
+  _desktopTest('late saved-host probe after lock never opens trust or credential form', (tester) async {
     final fixture = _Fixture();
     fixture.savedHost = Host.create(name: 'Demo', address: 'example.test');
     fixture.service.savedProbeGate = Completer();
@@ -1417,7 +1424,7 @@ void main() {
   });
 
   for (final language in ['ru', 'en']) {
-    testWidgets('direct connection form fits compact $language layout without saved defaults', (tester) async {
+    _desktopTest('direct connection form fits compact $language layout without saved defaults', (tester) async {
       final fixture = _Fixture();
       await fixture.pump(tester, language: language, size: const Size(420, 880));
       await _openConnectionForm(tester);

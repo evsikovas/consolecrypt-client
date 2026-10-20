@@ -359,7 +359,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                           final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
                           final columns = (box.maxWidth / (290 * scale.clamp(1, 1.4))).floor().clamp(1, 4);
                           final cardWidth = (box.maxWidth - 12 * (columns - 1)) / columns;
-                          final listController = MediaQuery.sizeOf(context).width < 600
+                          final listController = MediaQuery.sizeOf(context).shortestSide < 600
                               ? PrimaryScrollController.maybeOf(context)
                               : _scroll;
                           return Scrollbar(
@@ -468,7 +468,7 @@ class _InventoryViewport extends StatelessWidget {
   final List<Widget> children;
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.sizeOf(context).width >= 600) {
+    if (MediaQuery.sizeOf(context).shortestSide >= 600) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
     }
     return NestedScrollView(

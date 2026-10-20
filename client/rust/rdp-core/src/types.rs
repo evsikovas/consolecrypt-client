@@ -132,6 +132,7 @@ pub enum Input {
     Resize {
         width: u16,
         height: u16,
+        desktop_scale: u16,
     },
 }
 
@@ -165,10 +166,15 @@ impl fmt::Debug for Input {
                 .field("horizontal", horizontal)
                 .finish(),
             Self::ReleaseAll => f.write_str("ReleaseAll"),
-            Self::Resize { width, height } => f
+            Self::Resize {
+                width,
+                height,
+                desktop_scale,
+            } => f
                 .debug_struct("Resize")
                 .field("width", width)
                 .field("height", height)
+                .field("desktop_scale", desktop_scale)
                 .finish(),
         }
     }

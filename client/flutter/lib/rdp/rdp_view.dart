@@ -3,14 +3,18 @@ import 'dart:ui' as ui;
 
 import 'package:consolecrypt/app/auto_lock.dart';
 import 'package:consolecrypt/app/platform.dart';
-import 'package:consolecrypt/app/theme/tokens.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/models/rdp_mobile.dart';
+import 'package:consolecrypt/rdp/rdp_guard.dart';
+import 'package:consolecrypt/rdp/rdp_mobile_overlay.dart';
+import 'package:consolecrypt/rdp/rdp_providers.dart';
 import 'package:consolecrypt/rdp/rdp_service.dart';
 import 'package:consolecrypt/rdp/rdp_touchpad.dart';
+import 'package:consolecrypt/rdp/rdp_viewport.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Fits the remote desktop without cropping. Pointer coordinates use the same
 /// rectangle as the painter, including letterboxing and display scale.
@@ -31,6 +35,12 @@ class RdpView extends StatefulWidget {
     this.onPaste,
     this.onInteractionCancelled,
     this.onShowConnectionBar,
+    this.mobileSettings = const RdpMobileSettings(),
+    this.onMobileSettingsChanged,
+    this.mobileActions = const [],
+    this.hostKey,
+    this.scope,
+    this.mobileStatus,
   });
   final RdpFrame? frame;
   final int width, height;
@@ -44,11 +54,17 @@ class RdpView extends StatefulWidget {
   final VoidCallback? onShowConnectionBar;
   final bool localClipboardEnabled;
   final Future<void> Function(bool Function() isInputCurrent)? onPaste;
+  final RdpMobileSettings mobileSettings;
+  final ValueChanged<RdpMobileSettings>? onMobileSettingsChanged;
+  final List<RdpMobileAction> mobileActions;
+  final String? hostKey;
+  final RdpScope? scope;
+  final String? mobileStatus;
   @override
-  State<RdpView> createState() => _RdpViewState();
+  RdpViewState createState() => RdpViewState();
 }
 
-class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInputClient {
+class RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInputClient {
   final _focus = FocusNode(debugLabel: 'rdp-input');
   TextInputConnection? _connection;
   static const _empty = TextEditingValue(text: '\u200b', selection: TextSelection.collapsed(offset: 1));
@@ -63,13 +79,28 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
   int _inputGeneration = 0;
   bool _pastePending = false;
   bool _appActive = true;
-  bool get _acceptsInput => widget.enabled && _appActive;
+  bool get _acceptsInput => mounted && widget.enabled && _appActive;
   final Set<PhysicalKeyboardKey> _pasteKeys = {};
   final Set<PhysicalKeyboardKey> _localKeys = {};
   late final RdpTouchpad _touchpad;
   bool _touchpadEnabled = false;
   bool _keyboardShown = false;
   bool _imeWasVisible = false;
+  bool _mobileInitialized = false;
+  bool _panelOpen = false;
+  bool _touching = false;
+  final Set<int> _ignoredPointers = {};
+  final Set<int> _touchPointers = {};
+  final _mobileViewport = RdpViewport();
+  late final RdpMobileKeys _mobileKeys;
+  Timer? _panTimer;
+  bool get menuOpen => _panelOpen;
+  bool get keyboardShown => _keyboardShown;
+
+  void showControls([bool show = true]) {
+    if (show) _releaseHeld(cancelInteraction: true);
+    setState(() => _panelOpen = show);
+  }
 
   @override
   void initState() {
@@ -79,12 +110,48 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
     _focus.addListener(_focusChanged);
-    _touchpad = RdpTouchpad(_send)..addListener(_cursorChanged);
+    _touchpad = RdpTouchpad(
+      _send,
+      onScale: (factor, center) => setState(() => _mobileViewport.magnify(factor, center)),
+      onFit: () => setState(_mobileViewport.reset),
+      onKeyboard: _toggleKeyboard,
+    )..addListener(_cursorChanged);
+    _mobileKeys = RdpMobileKeys(_send)..addListener(_keysChanged);
     _offer(widget.frame);
   }
 
   void _cursorChanged() {
-    if (mounted && AppPlatform.isMobile && _touchpadEnabled) setState(() {});
+    if (!mounted || !AppPlatform.isMobile || !_touchpadEnabled) return;
+    _panTimer?.cancel();
+    void step() {
+      if (!mounted) return;
+      final more = _mobileViewport.follow(
+        _touchpad.position,
+        fraction: MediaQuery.disableAnimationsOf(context) ? 1 : .35,
+      );
+      setState(() {});
+      if (more) _panTimer = Timer(const Duration(milliseconds: 16), step);
+    }
+
+    step();
+  }
+
+  void _keysChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!AppPlatform.isMobile) return;
+    if (!_mobileInitialized || MediaQuery.accessibleNavigationOf(context)) {
+      _touchpadEnabled = widget.mobileSettings.touchpad(
+        phone: MediaQuery.sizeOf(context).shortestSide < 600,
+        accessible: MediaQuery.accessibleNavigationOf(context),
+        host: widget.hostKey,
+      );
+      _mobileInitialized = true;
+    }
   }
 
   @override
@@ -134,6 +201,10 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
     if (!widget.enabled) {
       if (oldWidget.enabled) {
         _touchpad.cancel();
+        _mobileKeys.cancel();
+        _touchPointers.clear();
+        _ignoredPointers.clear();
+        _touching = false;
         _keyboardShown = false;
         _held.clear();
         _buttons = 0;
@@ -231,6 +302,10 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
 
   void _releaseHeld({bool cancelInteraction = false}) {
     _touchpad.cancel();
+    _mobileKeys.cancel();
+    _touchPointers.clear();
+    _ignoredPointers.clear();
+    _touching = false;
     if (cancelInteraction && widget.onInteractionCancelled != null) {
       _held.clear();
       _buttons = 0;
@@ -333,6 +408,10 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
   (int, int)? _point(Offset local) {
     final frame = widget.frame;
     final width = frame?.width ?? widget.width, height = frame?.height ?? widget.height;
+    if (AppPlatform.isMobile) {
+      final point = _mobileViewport.toRemote(local);
+      return point == null ? null : (point.dx.floor(), point.dy.floor());
+    }
     final rect = rdpFitRect(_viewport, width, height);
     if (rect.isEmpty || !rect.contains(local)) return null;
     return (
@@ -368,16 +447,62 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
   }
 
   @override
-  Widget build(BuildContext context) => AppPlatform.isMobile
-      ? LayoutBuilder(
-          builder: (context, constraints) => Column(
-            children: [
-              Expanded(child: _surface()),
-              _mobileControls(constraints.maxHeight < 180),
-            ],
+  Widget build(BuildContext context) {
+    if (!AppPlatform.isMobile) return _surface();
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final landscape = MediaQuery.orientationOf(context) == Orientation.landscape;
+    return Stack(
+      children: [
+        Positioned.fill(child: _surface()),
+        if (widget.mobileStatus != null)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    widget.mobileStatus!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+              ),
+            ),
           ),
-        )
-      : _surface();
+        Positioned.fill(
+          child: RdpMobileOverlay(
+            actions: _mobileActions(),
+            open: _panelOpen,
+            onOpenChanged: showControls,
+            touching: _touching,
+            autoHide: widget.mobileSettings.autoHide,
+            bottomInset: keyboard > 0 ? keyboard + 40 : 0,
+            position: landscape ? widget.mobileSettings.landscapeButton : widget.mobileSettings.portraitButton,
+            onPositionChanged: (value) => widget.onMobileSettingsChanged?.call(
+              widget.mobileSettings.copyWith(
+                landscapeButton: landscape ? value : null,
+                portraitButton: landscape ? null : value,
+              ),
+            ),
+          ),
+        ),
+        if (_keyboardShown && keyboard > 0)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: keyboard,
+            child: Material(
+              key: const ValueKey('rdp-keyboard-strip'),
+              color: const Color(0xff17243b),
+              child: SizedBox(
+                height: 40,
+                child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: _specialKeys()),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 
   bool _usesTouchpad(PointerEvent event) =>
       AppPlatform.isMobile && _touchpadEnabled && event.kind == PointerDeviceKind.touch;
@@ -387,7 +512,17 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
       _viewport = constraints.biggest;
       final width = widget.frame?.width ?? widget.width;
       final height = widget.frame?.height ?? widget.height;
-      _touchpad.configure(width, height, rdpFitRect(_viewport, width, height).width);
+      _mobileViewport.configure(_viewport, width, height);
+      final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+      _mobileViewport.keyboard(keyboard > 0 ? keyboard + 40 : 0, _touchpad.position);
+      _touchpad
+        ..speed = widget.mobileSettings.speed
+        ..acceleration = widget.mobileSettings.acceleration
+        ..configure(
+          width,
+          height,
+          AppPlatform.isMobile ? _mobileViewport.rect.width : rdpFitRect(_viewport, width, height).width,
+        );
       return Focus(
         focusNode: _focus,
         canRequestFocus: widget.enabled,
@@ -398,6 +533,19 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
             key: const ValueKey('rdp-input-surface'),
             behavior: HitTestBehavior.opaque,
             onPointerDown: (event) {
+              if (AppPlatform.isMobile && event.kind == PointerDeviceKind.touch) {
+                final edge = MediaQuery.systemGestureInsetsOf(context);
+                final point = event.localPosition;
+                if (point.dx < edge.left ||
+                    point.dx > _viewport.width - edge.right ||
+                    point.dy < edge.top ||
+                    point.dy > _viewport.height - edge.bottom) {
+                  _ignoredPointers.add(event.pointer);
+                  return;
+                }
+                _touchPointers.add(event.pointer);
+                setState(() => _touching = true);
+              }
               if (_usesTouchpad(event)) {
                 if (!_acceptsInput) return;
                 _activate();
@@ -407,6 +555,8 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
               }
             },
             onPointerUp: (event) {
+              if (_ignoredPointers.remove(event.pointer)) return;
+              if (_touchPointers.remove(event.pointer) && _touchPointers.isEmpty) setState(() => _touching = false);
               if (_usesTouchpad(event)) {
                 if (_acceptsInput) _touchpad.up(event);
               } else {
@@ -415,6 +565,7 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
             },
             onPointerCancel: (_) => _releaseHeld(cancelInteraction: true),
             onPointerMove: (event) {
+              if (_ignoredPointers.contains(event.pointer)) return;
               if (_usesTouchpad(event)) {
                 if (_acceptsInput) _touchpad.move(event);
               } else {
@@ -445,6 +596,8 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
                   pointer: AppPlatform.isMobile && _touchpadEnabled && widget.enabled ? _touchpad.position : null,
                   remoteWidth: width,
                   remoteHeight: height,
+                  desktopRect: AppPlatform.isMobile ? _mobileViewport.rect : null,
+                  cursorSize: widget.mobileSettings.cursorSize,
                 ),
                 size: Size.infinite,
               ),
@@ -455,15 +608,25 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
     },
   );
 
+  void hideKeyboard() {
+    if (_keyboardShown) _toggleKeyboard();
+  }
+
   void _toggleKeyboard() {
     if (!_acceptsInput) return;
     if (_keyboardShown) {
       _connection?.close();
       _connection = null;
       _editing = _empty;
-      setState(() => _keyboardShown = false);
+      setState(() {
+        _keyboardShown = false;
+        _panelOpen = false;
+      });
     } else {
-      setState(() => _keyboardShown = true);
+      setState(() {
+        _keyboardShown = true;
+        _panelOpen = false;
+      });
       _activate();
     }
   }
@@ -474,141 +637,172 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
     // Do not execute remote Enter while the user is composing a command.
     if (_editing.composing.isValid && !_editing.composing.isCollapsed) return;
     _activate();
-    _send([
-      RdpScancodeInput(code, extended: extended, down: true),
-      RdpScancodeInput(code, extended: extended, down: false),
-    ]);
+    _mobileKeys.key(code, extended: extended);
   }
 
-  Widget _specialKeys() => Row(
-    children: [
-      for (final entry in [
-        ('Esc', 0x01, false),
-        ('Tab', 0x0f, false),
-        ('←', 0x4b, true),
-        ('↑', 0x48, true),
-        ('↓', 0x50, true),
-        ('→', 0x4d, true),
-        ('Enter', 0x1c, false),
-        ('⌫', 0x0e, false),
-      ])
-        TextButton(
-          onPressed: _acceptsInput ? () => _mobileKey(entry.$2, extended: entry.$3) : null,
-          child: Text(entry.$1),
-        ),
-    ],
-  );
+  bool get _composing => _editing.composing.isValid && !_editing.composing.isCollapsed;
 
-  Widget _mobileControls(bool compact) {
-    final l = context.l10n;
-    final tokens = GlassTokens.of(context);
-    final scheme = ColorScheme.fromSeed(
-      seedColor: tokens.palette.accent,
-      brightness: tokens.brightness,
-    ).copyWith(surface: tokens.surfaces.contentSolid, onSurface: tokens.palette.label);
-    final iconColor = WidgetStateProperty.resolveWith<Color>((states) {
-      if (states.contains(WidgetState.disabled)) return tokens.palette.label.withValues(alpha: 0.38);
-      if (states.contains(WidgetState.selected)) return tokens.palette.accent;
-      return tokens.palette.label;
-    });
-    final controls = ExcludeFocus(
-      child: Material(
-        key: const ValueKey('rdp-mobile-controls'),
-        color: tokens.surfaces.contentSolid,
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    key: const ValueKey('rdp-touchpad-toggle'),
-                    tooltip: l.rdpMobileTouchpad,
-                    isSelected: _touchpadEnabled,
-                    icon: const Icon(Icons.mouse_outlined),
-                    selectedIcon: const Icon(Icons.mouse),
-                    onPressed: !_acceptsInput
-                        ? null
-                        : () {
-                            _releaseHeld(cancelInteraction: true);
-                            setState(() => _touchpadEnabled = !_touchpadEnabled);
-                          },
-                  ),
-                  Expanded(
-                    child: compact && _keyboardShown
-                        ? SingleChildScrollView(scrollDirection: Axis.horizontal, child: _specialKeys())
-                        : Text(
-                            _touchpadEnabled ? l.rdpMobileTouchpad : l.rdpMobileDirectTouch,
-                            key: const ValueKey('rdp-mobile-mode-label'),
-                            style: TextStyle(color: tokens.palette.label),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                  ),
-                  IconButton(
-                    key: const ValueKey('rdp-mobile-keyboard'),
-                    tooltip: _keyboardShown ? l.rdpMobileHideKeyboard : l.rdpMobileShowKeyboard,
-                    isSelected: _keyboardShown,
-                    icon: Icon(_keyboardShown ? Icons.keyboard_hide : Icons.keyboard_outlined),
-                    onPressed: _acceptsInput ? _toggleKeyboard : null,
-                  ),
-                  if (_touchpadEnabled) ...[
-                    IconButton(
-                      key: const ValueKey('rdp-mobile-left-click'),
-                      tooltip: l.rdpMobileLeftClick,
-                      icon: const Icon(Icons.ads_click),
-                      onPressed: _acceptsInput ? () => _touchpad.click(RdpPointerButton.left) : null,
-                    ),
-                    IconButton(
-                      key: const ValueKey('rdp-mobile-right-click'),
-                      tooltip: l.rdpMobileRightClick,
-                      icon: const Icon(Icons.more_horiz),
-                      onPressed: _acceptsInput ? () => _touchpad.click(RdpPointerButton.right) : null,
-                    ),
-                  ],
-                  IconButton(
-                    key: const ValueKey('rdp-mobile-help'),
-                    tooltip: l.rdpMobileHelpTitle,
-                    icon: const Icon(Icons.help_outline),
-                    onPressed: () {
-                      _releaseHeld(cancelInteraction: true);
-                      showDialog<void>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text(l.rdpMobileHelpTitle),
-                          content: SingleChildScrollView(child: Text(l.rdpMobileHelp)),
-                          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              if (_keyboardShown && !compact)
-                SizedBox(
-                  height: 44,
-                  child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: _specialKeys()),
-                ),
-            ],
+  Widget _specialKeys({bool expanded = false}) {
+    Widget key(String title, int code, {bool extended = false, bool modifier = false}) => TextButton(
+      key: ValueKey('rdp-key-$title'),
+      style: TextButton.styleFrom(
+        minimumSize: Size(44, expanded ? 44 : 40),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        foregroundColor: _mobileKeys.active(code) ? const Color(0xff82b4ff) : Colors.white,
+        backgroundColor: _mobileKeys.locked(code) ? const Color(0xff334d73) : null,
+      ),
+      onPressed: !_acceptsInput
+          ? null
+          : () {
+              if (_composing) return;
+              if (modifier) {
+                _mobileKeys.modifier(code);
+              } else {
+                _mobileKey(code, extended: extended);
+              }
+            },
+      child: Text(title),
+    );
+    final keys = <Widget>[
+      key('Esc', 0x01),
+      key('Tab', 0x0f),
+      key('Ctrl', 0x1d, modifier: true),
+      key('Alt', 0x38, modifier: true),
+      key('Win', 0x5b, modifier: true),
+      key('Shift', 0x2a, modifier: true),
+      key('←', 0x4b, extended: true),
+      key('↑', 0x48, extended: true),
+      key('↓', 0x50, extended: true),
+      key('→', 0x4d, extended: true),
+      key('Enter', 0x1c),
+      key('⌫', 0x0e),
+      key('Del', 0x53, extended: true),
+      if (expanded) ...[
+        key('Home', 0x47, extended: true),
+        key('End', 0x4f, extended: true),
+        key('PgUp', 0x49, extended: true),
+        key('PgDn', 0x51, extended: true),
+        for (var i = 1; i <= 12; i++) key('F$i', i <= 10 ? 0x3a + i : 0x57 + i - 11),
+        key('PrtSc', 0x37, extended: true),
+        for (final combo in [
+          ('Alt+Tab', 0x38, 0x0f),
+          ('Ctrl+C', 0x1d, 0x2e),
+          ('Ctrl+V', 0x1d, 0x2f),
+          ('Ctrl+Z', 0x1d, 0x2c),
+          ('Win+R', 0x5b, 0x13),
+          ('Win+E', 0x5b, 0x12),
+        ])
+          TextButton(
+            onPressed: !_acceptsInput
+                ? null
+                : () {
+                    if (_composing) return;
+                    _releaseHeld(cancelInteraction: true);
+                    _send([
+                      RdpScancodeInput(combo.$2, extended: combo.$2 == 0x5b, down: true),
+                      RdpScancodeInput(combo.$3, down: true),
+                      RdpScancodeInput(combo.$3, down: false),
+                      RdpScancodeInput(combo.$2, extended: combo.$2 == 0x5b, down: false),
+                    ]);
+                  },
+            child: Text(combo.$1),
+          ),
+      ] else
+        TextButton(onPressed: _showKeys, child: Text(context.l10n.rdpMobileKeys)),
+    ];
+    return ExcludeFocus(
+      child: expanded ? Wrap(children: keys) : Row(children: keys),
+    );
+  }
+
+  void _showKeys() {
+    showControls(false);
+    _releaseHeld(cancelInteraction: true);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xff17243b),
+      builder: (context) => _guardOverlay(
+        SafeArea(
+          child: ListenableBuilder(
+            listenable: _mobileKeys,
+            builder: (context, _) => Padding(
+              padding: const EdgeInsets.all(8),
+              child: SingleChildScrollView(child: _specialKeys(expanded: true)),
+            ),
           ),
         ),
       ),
-    );
-    return Theme(
-      // The app uses material_ui; Flutter's ambient icon theme can still be
-      // light even when GlassTokens are dark. Set the button states explicitly.
-      data: Theme.of(context).copyWith(
-        colorScheme: scheme,
-        iconButtonTheme: IconButtonThemeData(
-          style: ButtonStyle(foregroundColor: iconColor, iconColor: iconColor),
-        ),
+    ).whenComplete(() {
+      if (mounted) _releaseHeld(cancelInteraction: true);
+    });
+  }
+
+  Widget _guardOverlay(Widget child) =>
+      widget.scope == null ? child : RdpScopeGuard(scope: widget.scope!, child: child);
+
+  List<RdpMobileAction> _mobileActions() {
+    final l = context.l10n;
+    return [
+      RdpMobileAction(
+        _keyboardShown ? l.rdpMobileHideKeyboard : l.rdpMobileShowKeyboard,
+        Icons.keyboard_outlined,
+        _acceptsInput ? _toggleKeyboard : null,
+        key: const ValueKey('rdp-mobile-keyboard'),
       ),
-      child: DefaultTextStyle.merge(
-        style: TextStyle(color: tokens.palette.label),
-        child: controls,
+      RdpMobileAction(
+        _touchpadEnabled ? l.rdpMobileTouchpad : l.rdpMobileDirectTouch,
+        Icons.mouse_outlined,
+        !_acceptsInput
+            ? null
+            : () {
+                _releaseHeld(cancelInteraction: true);
+                setState(() => _touchpadEnabled = !_touchpadEnabled);
+                final host = widget.hostKey;
+                if (host != null) {
+                  widget.onMobileSettingsChanged?.call(
+                    widget.mobileSettings.copyWith(
+                      hostModes: {
+                        host: _touchpadEnabled,
+                        for (final entry in widget.mobileSettings.hostModes.entries)
+                          if (entry.key != host) entry.key: entry.value,
+                      },
+                    ),
+                  );
+                }
+              },
+        selected: _touchpadEnabled,
+        key: const ValueKey('rdp-touchpad-toggle'),
       ),
-    );
+      RdpMobileAction(l.rdpMobileKeys, Icons.keyboard_command_key, _showKeys, key: const ValueKey('rdp-mobile-keys')),
+      RdpMobileAction(l.rdpMobileFit, Icons.fit_screen, () => setState(_mobileViewport.reset)),
+      RdpMobileAction(
+        l.rdpMobileLeftClick,
+        Icons.ads_click,
+        _acceptsInput ? () => _touchpad.click(RdpPointerButton.left) : null,
+        key: const ValueKey('rdp-mobile-left-click'),
+      ),
+      RdpMobileAction(
+        l.rdpMobileRightClick,
+        Icons.more_horiz,
+        _acceptsInput ? () => _touchpad.click(RdpPointerButton.right) : null,
+        key: const ValueKey('rdp-mobile-right-click'),
+      ),
+      ...widget.mobileActions,
+      RdpMobileAction(l.rdpMobileHelpTitle, Icons.help_outline, () {
+        showControls(false);
+        _releaseHeld(cancelInteraction: true);
+        showDialog<void>(
+          context: context,
+          builder: (context) => _guardOverlay(
+            AlertDialog(
+              title: Text(l.rdpMobileHelpTitle),
+              content: SingleChildScrollView(child: Text(l.rdpMobileHelp)),
+              actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+            ),
+          ),
+        );
+      }, key: const ValueKey('rdp-mobile-help')),
+    ];
   }
 
   @override
@@ -623,9 +817,15 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
     if (value.composing.isValid && !value.composing.isCollapsed) return;
     final text = value.text.startsWith('\u200b') ? value.text.substring(1) : value.text;
     if (text.isNotEmpty) {
-      _send([RdpUnicodeInput(text)]);
+      final shortcut = _mobileKeys.hasShortcutModifier && text.length == 1 ? _textScancode(text) : null;
+      if (shortcut != null) {
+        _mobileKeys.key(shortcut);
+      } else {
+        _send([RdpUnicodeInput(text)]);
+        _mobileKeys.consume();
+      }
     } else if (value.text.isEmpty) {
-      _send([const RdpScancodeInput(0x0e, down: true), const RdpScancodeInput(0x0e, down: false)]);
+      _mobileKeys.key(0x0e);
     }
     _editing = _empty;
     _connection?.setEditingState(_empty);
@@ -637,7 +837,7 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
     AutoLockScope.recordActivity(context);
     if (_editing.composing.isValid && !_editing.composing.isCollapsed) return;
     if (action == TextInputAction.newline || action == TextInputAction.done) {
-      _send([const RdpScancodeInput(0x1c, down: true), const RdpScancodeInput(0x1c, down: false)]);
+      _mobileKeys.key(0x1c);
     }
   }
 
@@ -665,6 +865,9 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
     _focus.removeListener(_focusChanged);
     _touchpad.removeListener(_cursorChanged);
     _touchpad.dispose();
+    _panTimer?.cancel();
+    _mobileKeys.removeListener(_keysChanged);
+    _mobileKeys.dispose();
     _connection?.close();
     _focus.dispose();
     _editing = _empty;
@@ -674,25 +877,36 @@ class _RdpViewState extends State<RdpView> with WidgetsBindingObserver, TextInpu
 }
 
 class _DesktopPainter extends CustomPainter {
-  const _DesktopPainter(this.image, {this.pointer, required this.remoteWidth, required this.remoteHeight});
+  const _DesktopPainter(
+    this.image, {
+    this.pointer,
+    required this.remoteWidth,
+    required this.remoteHeight,
+    this.desktopRect,
+    this.cursorSize = 24,
+  });
   final ui.Image? image;
   final Offset? pointer;
   final int remoteWidth, remoteHeight;
+  final Rect? desktopRect;
+  final double cursorSize;
   @override
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(Offset.zero & size, Paint()..color = Colors.black);
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
     final frame = image;
     if (frame != null) {
       canvas.drawImageRect(
         frame,
         Rect.fromLTWH(0, 0, frame.width.toDouble(), frame.height.toDouble()),
-        rdpFitRect(size, frame.width, frame.height),
+        desktopRect ?? rdpFitRect(size, frame.width, frame.height),
         Paint()..filterQuality = FilterQuality.low,
       );
     }
     final point = pointer;
     if (point != null) {
-      final rect = rdpFitRect(size, remoteWidth, remoteHeight);
+      final rect = desktopRect ?? rdpFitRect(size, remoteWidth, remoteHeight);
       final tip = Offset(
         rect.left + point.dx * rect.width / remoteWidth,
         rect.top + point.dy * rect.height / remoteHeight,
@@ -711,6 +925,7 @@ class _DesktopPainter extends CustomPainter {
       canvas.save();
       canvas.clipRect(rect);
       canvas.translate(tip.dx, tip.dy);
+      canvas.scale(cursorSize / 25);
       canvas.drawPath(
         arrow,
         Paint()
@@ -722,14 +937,25 @@ class _DesktopPainter extends CustomPainter {
       canvas.drawPath(arrow, Paint()..color = Colors.white);
       canvas.restore();
     }
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(_DesktopPainter oldDelegate) =>
       !identical(image, oldDelegate.image) ||
       pointer != oldDelegate.pointer ||
+      desktopRect != oldDelegate.desktopRect ||
+      cursorSize != oldDelegate.cursorSize ||
       remoteWidth != oldDelegate.remoteWidth ||
       remoteHeight != oldDelegate.remoteHeight;
+}
+
+int? _textScancode(String text) {
+  for (final row in [('1234567890', 0x02), ('qwertyuiop', 0x10), ('asdfghjkl', 0x1e), ('zxcvbnm', 0x2c)]) {
+    final index = row.$1.indexOf(text.toLowerCase());
+    if (index >= 0) return row.$2 + index;
+  }
+  return text == ' ' ? 0x39 : null;
 }
 
 (int, bool)? _specialScancode(PhysicalKeyboardKey key) => switch (key) {

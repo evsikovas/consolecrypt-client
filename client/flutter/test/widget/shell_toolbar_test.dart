@@ -1,11 +1,46 @@
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../helpers/test_app.dart';
 
 void main() {
+  testWidgets('macOS collapsed toolbar clears measured window buttons after resize', (tester) async {
+    final messenger = tester.binding.defaultBinaryMessenger;
+    const native = MethodChannel('consolecrypt/window');
+    const plugin = MethodChannel('macos_window_utils/window_manipulator');
+    var leading = 118.0;
+    messenger.setMockMethodCallHandler(plugin, (_) async => null);
+    messenger.setMockMethodCallHandler(
+      native,
+      (call) async => call.method == 'getTrafficLightsLeading' ? leading : null,
+    );
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(plugin, null);
+      messenger.setMockMethodCallHandler(native, null);
+    });
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, size: const Size(1100, 800));
+    await tapKey(tester, 'toggle-sidebar');
+    Finder titleGroup() =>
+        find.ancestor(of: find.byKey(const ValueKey('toggle-sidebar')), matching: find.byType(GlassToolbarGroup));
+    expect(tester.getRect(titleGroup()).left, leading);
+    expect(tester.getRect(find.byKey(const ValueKey('toggle-sidebar'))).left, greaterThanOrEqualTo(leading));
+    leading = 132;
+    tester.view.physicalSize = const Size(1000, 800);
+    await settle(tester);
+    expect(tester.getRect(titleGroup()).left, leading);
+    expect(tester.takeException(), isNull);
+    await tapKey(tester, 'toggle-sidebar');
+    expect(tester.getRect(titleGroup()).left, greaterThan(240));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await settle(tester);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   for (final locale in [AppLocale.en, AppLocale.ru]) {
     for (final width in [1000.0, 1600.0]) {
       testWidgets('compact connection action and search at $width in ${locale.name}', (tester) async {

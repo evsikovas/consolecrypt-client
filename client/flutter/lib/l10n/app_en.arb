@@ -7587,7 +7587,7 @@
   "rdpMobileLeftClick": "Left click at cursor",
   "rdpMobileRightClick": "Right click at cursor",
   "rdpMobileHelpTitle": "Phone controls",
-  "rdpMobileHelp": "Tap the mouse button to turn the desktop into a touchpad. Slide one finger anywhere to move the cursor; lift and reposition your finger to continue.\n\nTap for a left click. Tap twice for a double-click; hold the second tap and move to drag. You can also hold one finger briefly, then drag.\n\nTap with two fingers for a right click. Slide two fingers to scroll. The click buttons act at the cursor.\n\nThe keyboard button shows or hides your phone keyboard. Esc, Tab, arrow keys and Enter are above it. Touching the desktop does not open the keyboard.\n\nTurn touchpad mode off to click directly where you touch. An attached mouse keeps its normal controls.",
+  "rdpMobileHelp": "The desktop is a touchpad. Slide one finger to move the cursor; lift and reposition your finger to continue.\n\nTap to left-click, tap twice to double-click. Hold the second tap and move to drag. You can also hold one finger for half a second, then drag.\n\nTwo fingers: tap to right-click, slide together to scroll, pinch to zoom from 1× to 4×. Double-tap with two fingers to fit the desktop. When zoomed in, the picture follows the cursor.\n\nTap with three fingers to show or hide the keyboard. It overlays the desktop without shrinking it. In Keys, tap Ctrl, Alt, Win or Shift once for the next key, twice to lock, and again to release.\n\nThe round button opens the menu. Drag it to either edge. Switch to direct touch, change resolution, switch sessions or minimize here. An attached mouse keeps its normal controls.",
   "@rdpMobileTouchpad": {
     "description": "Mobile-only remote desktop input control."
   },
@@ -7754,7 +7754,7 @@
   "@localAiTierMedium": {
     "description": "Device-local AI model catalog, hardware recommendation, or license information."
   },
-  "localAiTierStrong": "Strong",
+  "localAiTierStrong": "Heavy",
   "@localAiTierStrong": {
     "description": "Device-local AI model catalog, hardware recommendation, or license information."
   },
@@ -7850,5 +7850,167 @@
   },
   "@terminalLocalInsertOnly": {
     "description": "Local terminal UI: InsertOnly."
+  },
+  "rdpMobileMenu": "Session controls",
+  "rdpMobileKeys": "Keys",
+  "rdpMobileFit": "Fit desktop",
+  "rdpMobileFitResolution": "Match screen resolution",
+  "rdpMobileOrientation": "Orientation",
+  "rdpMobileAutomatic": "Automatic",
+  "rdpMobileLandscape": "Landscape",
+  "rdpMobilePortrait": "Portrait",
+  "rdpMobileMinimize": "Minimize session",
+  "rdpMobileBackAgain": "Press Back again to minimize the session",
+  "rdpMobileDisconnectConfirm": "Disconnect from the remote desktop?",
+  "rdpMobileClipboard": "Clipboard",
+  "rdpMobileIntroMove": "Slide your finger on the desktop to move the cursor. Lift and reposition your finger to continue.",
+  "rdpMobileIntroZoom": "Two fingers: tap to right-click, slide to scroll, pinch to zoom.",
+  "rdpMobileIntroMenu": "Tap with three fingers for the keyboard. The floating round button opens the menu; drag it to either edge.",
+  "rdpMobileDontShow": "Do not show again",
+  "rdpMobileSettingsTitle": "RDP · Phone controls",
+  "rdpMobileSettingsLocal": "These preferences stay on this device. The last input mode is remembered separately for each host.",
+  "rdpMobileDefaultMode": "Default input mode",
+  "rdpMobileAutoDefault": "Touchpad on phones, direct touch on tablets",
+  "rdpMobileSpeed": "Pointer speed",
+  "rdpMobileAcceleration": "Pointer acceleration",
+  "rdpMobileCursorSize": "Cursor size",
+  "rdpMobileAutoResize": "Match resolution to the screen",
+  "rdpMobileClarity": "Clarity",
+  "rdpMobileWindowsScale": "Windows scale",
+  "rdpMobileAutoHide": "Auto-hide controls",
+  "@rdpMobileMenu": {
+    "description": "Mobile RDP control: Menu"
+  },
+  "@rdpMobileKeys": {
+    "description": "Mobile RDP control: Keys"
+  },
+  "@rdpMobileFit": {
+    "description": "Mobile RDP control: Fit"
+  },
+  "@rdpMobileFitResolution": {
+    "description": "Mobile RDP control: FitResolution"
+  },
+  "@rdpMobileOrientation": {
+    "description": "Mobile RDP control: Orientation"
+  },
+  "@rdpMobileAutomatic": {
+    "description": "Mobile RDP control: Automatic"
+  },
+  "@rdpMobileLandscape": {
+    "description": "Mobile RDP control: Landscape"
+  },
+  "@rdpMobilePortrait": {
+    "description": "Mobile RDP control: Portrait"
+  },
+  "@rdpMobileMinimize": {
+    "description": "Mobile RDP control: Minimize"
+  },
+  "@rdpMobileBackAgain": {
+    "description": "Mobile RDP control: BackAgain"
+  },
+  "@rdpMobileDisconnectConfirm": {
+    "description": "Mobile RDP control: DisconnectConfirm"
+  },
+  "@rdpMobileClipboard": {
+    "description": "Mobile RDP control: Clipboard"
+  },
+  "@rdpMobileIntroMove": {
+    "description": "Mobile RDP control: IntroMove"
+  },
+  "@rdpMobileIntroZoom": {
+    "description": "Mobile RDP control: IntroZoom"
+  },
+  "@rdpMobileIntroMenu": {
+    "description": "Mobile RDP control: IntroMenu"
+  },
+  "@rdpMobileDontShow": {
+    "description": "Mobile RDP control: DontShow"
+  },
+  "@rdpMobileSettingsTitle": {
+    "description": "Mobile RDP control: SettingsTitle"
+  },
+  "@rdpMobileSettingsLocal": {
+    "description": "Mobile RDP control: SettingsLocal"
+  },
+  "@rdpMobileDefaultMode": {
+    "description": "Mobile RDP control: DefaultMode"
+  },
+  "@rdpMobileAutoDefault": {
+    "description": "Mobile RDP control: AutoDefault"
+  },
+  "@rdpMobileSpeed": {
+    "description": "Mobile RDP control: Speed"
+  },
+  "@rdpMobileAcceleration": {
+    "description": "Mobile RDP control: Acceleration"
+  },
+  "@rdpMobileCursorSize": {
+    "description": "Mobile RDP control: CursorSize"
+  },
+  "@rdpMobileAutoResize": {
+    "description": "Mobile RDP control: AutoResize"
+  },
+  "@rdpMobileClarity": {
+    "description": "Mobile RDP control: Clarity"
+  },
+  "@rdpMobileWindowsScale": {
+    "description": "Mobile RDP control: WindowsScale"
+  },
+  "@rdpMobileAutoHide": {
+    "description": "Mobile RDP control: AutoHide"
+  },
+  "paletteNewLocalTerminal": "New local terminal",
+  "@paletteNewLocalTerminal": {
+    "description": "paletteNewLocalTerminal"
+  },
+  "hostImportTitle": "Import system hosts",
+  "@hostImportTitle": {
+    "description": "hostImportTitle"
+  },
+  "hostImportHelp": "Select addresses from known_hosts. This file contains no usernames or passwords; set them after import. Trusted keys are not changed; verify the server key on first connection.",
+  "@hostImportHelp": {
+    "description": "hostImportHelp"
+  },
+  "hostImportReadFailed": "Could not read a known_hosts file. Check access permissions and the file size (up to 4 MiB).",
+  "@hostImportReadFailed": {
+    "description": "hostImportReadFailed"
+  },
+  "hostImportSaveFailed": "Could not save all hosts. Saved hosts are marked in the list; retry to add the remaining hosts.",
+  "@hostImportSaveFailed": {
+    "description": "hostImportSaveFailed"
+  },
+  "hostImportSkipped": "Skipped entries: {count}. Hashed addresses, patterns, CA records, revoked and malformed keys do not create hosts.",
+  "@hostImportSkipped": {
+    "description": "hostImportSkipped",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hostImportSaved": "Hosts added: {count}.",
+  "@hostImportSaved": {
+    "description": "hostImportSaved",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hostImportSelectAll": "Select all new hosts",
+  "@hostImportSelectAll": {
+    "description": "hostImportSelectAll"
+  },
+  "hostImportEmpty": "No addresses found to import. The file may contain only hashed names, which cannot be recovered.",
+  "@hostImportEmpty": {
+    "description": "hostImportEmpty"
+  },
+  "hostImportExists": "Already in this profile",
+  "@hostImportExists": {
+    "description": "hostImportExists"
+  },
+  "commonImport": "Import",
+  "@commonImport": {
+    "description": "Import selected items"
   }
 }

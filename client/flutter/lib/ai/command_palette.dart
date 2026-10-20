@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/ai/code_blocks.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -14,6 +15,7 @@ import 'package:consolecrypt/core/widgets/risk_badge.dart';
 import 'package:consolecrypt/rdp/rdp_launcher.dart';
 import 'package:consolecrypt/snippets/run_flow.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
+import 'package:consolecrypt/terminal/terminal_target_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -216,6 +218,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
   int _selected = 0;
   Key? _keyboardSelection;
   ObjectId? _openingHost;
+  bool _openingLocal = false;
 
   // AI generation state.
   StreamSubscription<AiStreamEvent>? _generation;
@@ -260,8 +263,55 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
 
   void _close() => Navigator.of(context).pop();
 
+  Future<void> _newLocalTerminal() async {
+    if (_openingLocal ||
+        _openingHost != null ||
+        AppPlatform.isMobile ||
+        ref.read(appStageProvider) != AppStage.unlocked) {
+      return;
+    }
+    final profile = ref.read(activeProfileProvider)?.id;
+    final router = GoRouter.of(context);
+    setState(() => _openingLocal = true);
+    try {
+      TerminalTarget? target;
+      if (AppPlatform.isMacOS) {
+        final profiles = await ref.read(localShellProfilesProvider.future);
+        if (!mounted ||
+            profile != ref.read(activeProfileProvider)?.id ||
+            ref.read(appStageProvider) != AppStage.unlocked) {
+          return;
+        }
+        final zsh = profiles.profiles.where((p) => terminalShellType(p.shell) == SnippetType.zsh).firstOrNull;
+        if (zsh != null) target = LocalTerminalTarget(zsh);
+      }
+      if (target == null) {
+        if (!mounted) return;
+        target = await showTerminalTargetPicker(context, localOnly: true);
+      }
+      if (target == null ||
+          !mounted ||
+          profile != ref.read(activeProfileProvider)?.id ||
+          ref.read(appStageProvider) != AppStage.unlocked) {
+        return;
+      }
+      final tab = await runWithFeedback(context, () => ref.read(terminalTabsProvider.notifier).openTarget(target!));
+      if (tab != null &&
+          mounted &&
+          profile == ref.read(activeProfileProvider)?.id &&
+          ref.read(appStageProvider) == AppStage.unlocked) {
+        _close();
+        router.go(AppRoutes.terminal);
+      }
+    } catch (error) {
+      if (mounted) showSnack(context, context.l10n.terminalLocalUnavailable, error: true);
+    } finally {
+      if (mounted) setState(() => _openingLocal = false);
+    }
+  }
+
   Future<void> _connect(ObjectId hostId) async {
-    if (_openingHost != null || ref.read(appStageProvider) != AppStage.unlocked) return;
+    if (_openingHost != null || _openingLocal || ref.read(appStageProvider) != AppStage.unlocked) return;
     final host = ref.read(hostByIdProvider)[hostId];
     if (host == null) return;
     final router = GoRouter.of(context);
@@ -393,6 +443,15 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         ),
     ];
     final actions = <_Item>[
+      if (!AppPlatform.isMobile)
+        _Item(
+          key: const ValueKey('palette-new-local-terminal'),
+          group: _Group.actions,
+          icon: Icons.terminal_rounded,
+          title: l10n.paletteNewLocalTerminal,
+          enabled: !_openingLocal && _openingHost == null,
+          onSelect: () => unawaited(_newLocalTerminal()),
+        ),
       _Item(
         group: _Group.actions,
         icon: Icons.add_rounded,
@@ -440,7 +499,11 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         },
       ),
     ];
-    return [...items, ...actions.where((a) => q.isEmpty || a.title.toLowerCase().contains(q.toLowerCase()))];
+    return [
+      ...items.where((item) => item.group != _Group.ai),
+      ...actions.where((a) => q.isEmpty || a.title.toLowerCase().contains(q.toLowerCase())),
+      ...items.where((item) => item.group == _Group.ai),
+    ];
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event, List<_Item> items) {

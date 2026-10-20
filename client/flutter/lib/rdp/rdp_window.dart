@@ -28,7 +28,15 @@ class RdpWindow {
 
   Future<void> enter() async {
     if (!desktop) {
-      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        // Flutter's legacy immersive flags are ignored with target SDK 36.
+        // The runner uses WindowInsetsController on our API 30+ baseline.
+        if (await channel.invokeMethod<bool>('beginRdpFullscreen') != true) {
+          throw PlatformException(code: 'fullscreen_unavailable');
+        }
+      } else {
+        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      }
       return;
     }
     if (await channel.invokeMethod<bool>('beginRdpFullscreen') != true) {
@@ -53,7 +61,11 @@ class RdpWindow {
       }
       throw PlatformException(code: 'fullscreen_restore_timeout');
     } else {
-      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        await channel.invokeMethod<void>('endRdpFullscreen');
+      } else {
+        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      }
     }
   }
 

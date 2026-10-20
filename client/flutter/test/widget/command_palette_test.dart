@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:consolecrypt/app/app.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -14,12 +15,26 @@ import 'package:material_ui/material_ui.dart';
 
 import '../helpers/test_app.dart';
 
-final class _ObservedTerminal implements TerminalService {
+final class _ObservedTerminal implements TerminalService, LocalTerminalService {
   _ObservedTerminal(this.delegate);
   final TerminalService delegate;
   final List<ObjectId> opened = [];
+  final List<String> openedLocal = [];
   Completer<void>? holdOpen;
   bool failNext = false;
+  Completer<void>? holdDiscovery;
+
+  @override
+  Future<LocalShellProfiles> listLocalProfiles() async {
+    await holdDiscovery?.future;
+    return (delegate as LocalTerminalService).listLocalProfiles();
+  }
+
+  @override
+  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size}) {
+    openedLocal.add(profileId);
+    return (delegate as LocalTerminalService).openLocal(profileId: profileId, size: size);
+  }
 
   @override
   Future<TerminalSessionHandle> open({required ObjectId hostId, required TerminalSize size}) async {
@@ -129,6 +144,8 @@ _pump(
   List<Host> hosts, {
   Group? group,
   bool demo = false,
+  AppLocale locale = AppLocale.en,
+  LocalShellProfiles profiles = const LocalShellProfiles(),
   Size size = const Size(1600, 1000),
 }) async {
   final backend = testBackend();
@@ -142,7 +159,8 @@ _pump(
   for (final host in hosts) {
     await backend.inventory.saveHost(host);
   }
-  setTestLocale(backend, AppLocale.en);
+  setTestLocale(backend, locale);
+  backend.terminal.localShellProfiles = profiles;
   final terminal = _ObservedTerminal(backend.terminal);
   final ai = _ObservedAi(backend.ai);
   final snippets = _ObservedSnippets(backend.snippets);
@@ -165,9 +183,10 @@ _pump(
   final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
   final knownHosts = container.listen(knownHostsProvider, (_, _) {});
   addTearDown(knownHosts.close);
-  await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+  final modifier = AppPlatform.isMacOS ? LogicalKeyboardKey.metaLeft : LogicalKeyboardKey.controlLeft;
+  await tester.sendKeyDownEvent(modifier);
   await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
-  await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+  await tester.sendKeyUpEvent(modifier);
   await settle(tester);
   expect(find.byKey(const ValueKey('command-palette')), findsOneWidget);
   return (backend: backend, terminal: terminal, ai: ai, snippets: snippets, container: container);
@@ -183,6 +202,60 @@ Future<void> _submit(WidgetTester tester) => tester.testTextInput.receiveAction(
 Finder _hostRow(Host host) => find.byKey(ValueKey('palette-host-${host.id.value}'));
 
 void main() {
+  const shells = LocalShellProfiles(
+    profiles: [
+      LocalShellProfile(id: 'zsh', kind: 'native', label: 'zsh', shell: 'zsh'),
+      LocalShellProfile(id: 'powershell', kind: 'native', label: 'PowerShell', shell: 'powershell'),
+      LocalShellProfile(id: 'cmd', kind: 'native', label: 'cmd', shell: 'cmd'),
+      LocalShellProfile(id: 'wsl-ubuntu', kind: 'wsl', label: 'Ubuntu', shell: 'bash', distribution: 'Ubuntu'),
+      LocalShellProfile(id: 'wsl-debian', kind: 'wsl', label: 'Debian', shell: 'bash', distribution: 'Debian'),
+    ],
+  );
+  for (final locale in [AppLocale.en, AppLocale.ru]) {
+    testWidgets('local terminal palette action opens zsh on macOS in ${locale.name}', (tester) async {
+      final fixture = await _pump(tester, [], locale: locale, profiles: shells);
+      await _query(tester, locale == AppLocale.ru ? 'новый локальный' : 'new local');
+      expect(find.text(locale == AppLocale.ru ? 'Новый локальный терминал' : 'New local terminal'), findsOneWidget);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await settle(tester);
+      expect(fixture.terminal.openedLocal, ['zsh']);
+      expect(fixture.terminal.opened, isEmpty);
+      expect(fixture.ai.requests, isEmpty);
+      expect(find.byKey(const ValueKey('terminal-picker')), findsNothing);
+      expect(find.byKey(const ValueKey('command-palette')), findsNothing);
+      expect(fixture.container.read(terminalTabsProvider).active?.target, isA<LocalTerminalTarget>());
+      expect(tester.takeException(), isNull);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+  }
+  for (final id in ['powershell', 'cmd', 'wsl-ubuntu', 'wsl-debian']) {
+    testWidgets('Windows local terminal action selects $id without SSH', (tester) async {
+      final host = _host('remote', 'Remote server', '192.0.2.55');
+      final fixture = await _pump(tester, [host], profiles: shells);
+      await tapKey(tester, 'palette-new-local-terminal');
+      expect(find.byKey(const ValueKey('terminal-picker')), findsOneWidget);
+      expect(find.byKey(const ValueKey('pick-Remote server')), findsNothing);
+      expect(fixture.terminal.openedLocal, isEmpty);
+      await tapKey(tester, 'pick-local-$id');
+      expect(fixture.terminal.openedLocal, [id]);
+      expect(fixture.terminal.opened, isEmpty);
+      expect(fixture.ai.requests, isEmpty);
+      expect(find.byKey(const ValueKey('command-palette')), findsNothing);
+      expect(tester.takeException(), isNull);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  }
+  testWidgets('locking during shell discovery never opens a local terminal', (tester) async {
+    final fixture = await _pump(tester, [], profiles: shells);
+    final pending = fixture.terminal.holdDiscovery = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('palette-new-local-terminal')));
+    await tester.pump();
+    await fixture.backend.vault.lock();
+    await settle(tester);
+    pending.complete();
+    await settle(tester);
+    expect(fixture.terminal.openedLocal, isEmpty);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('searches names, IPs, DNS addresses and usernames locally, ignoring case', (tester) async {
     final host = _host('search-host', 'Payments Production', '192.0.2.10', username: 'deploy', port: 2222);
     final dns = _host('dns-host', 'Build agent', 'build.example.org', username: 'builder');

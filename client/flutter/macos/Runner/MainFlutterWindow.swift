@@ -134,6 +134,17 @@ final class FullscreenBridge: NSObject {
         result(FlutterError(code: "window_unavailable", message: nil, details: nil)); return
       }
       switch call.method {
+      case "getTrafficLightsLeading":
+        guard let content = window.contentView else {
+          result(nil); return
+        }
+        window.layoutIfNeeded()
+        let rightEdges = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton]
+          .compactMap { type -> CGFloat? in
+            guard let button = window.standardWindowButton(type) else { return nil }
+            return button.convert(button.bounds, to: content).maxX
+          }
+        result(rightEdges.max().map { Double($0 + 12) })
       case "beginRdpFullscreen":
         if !self.leased {
           self.originalFullscreen = window.styleMask.contains(.fullScreen)

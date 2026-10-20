@@ -5466,7 +5466,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdpMobileHelp =>
-      'Tap the mouse button to turn the desktop into a touchpad. Slide one finger anywhere to move the cursor; lift and reposition your finger to continue.\n\nTap for a left click. Tap twice for a double-click; hold the second tap and move to drag. You can also hold one finger briefly, then drag.\n\nTap with two fingers for a right click. Slide two fingers to scroll. The click buttons act at the cursor.\n\nThe keyboard button shows or hides your phone keyboard. Esc, Tab, arrow keys and Enter are above it. Touching the desktop does not open the keyboard.\n\nTurn touchpad mode off to click directly where you touch. An attached mouse keeps its normal controls.';
+      'The desktop is a touchpad. Slide one finger to move the cursor; lift and reposition your finger to continue.\n\nTap to left-click, tap twice to double-click. Hold the second tap and move to drag. You can also hold one finger for half a second, then drag.\n\nTwo fingers: tap to right-click, slide together to scroll, pinch to zoom from 1× to 4×. Double-tap with two fingers to fit the desktop. When zoomed in, the picture follows the cursor.\n\nTap with three fingers to show or hide the keyboard. It overlays the desktop without shrinking it. In Keys, tap Ctrl, Alt, Win or Shift once for the next key, twice to lock, and again to release.\n\nThe round button opens the menu. Drag it to either edge. Switch to direct touch, change resolution, switch sessions or minimize here. An attached mouse keeps its normal controls.';
 
   @override
   String get localAiTitle => 'Built-in local AI';
@@ -5579,7 +5579,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get localAiTierMedium => 'Medium';
 
   @override
-  String get localAiTierStrong => 'Strong';
+  String get localAiTierStrong => 'Heavy';
 
   @override
   String localAiModelRequirements(String size, int ram) {
@@ -5642,4 +5642,129 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get terminalLocalInsertOnly => 'Insert the command, review it, then press Enter in the local terminal.';
+
+  @override
+  String get rdpMobileMenu => 'Session controls';
+
+  @override
+  String get rdpMobileKeys => 'Keys';
+
+  @override
+  String get rdpMobileFit => 'Fit desktop';
+
+  @override
+  String get rdpMobileFitResolution => 'Match screen resolution';
+
+  @override
+  String get rdpMobileOrientation => 'Orientation';
+
+  @override
+  String get rdpMobileAutomatic => 'Automatic';
+
+  @override
+  String get rdpMobileLandscape => 'Landscape';
+
+  @override
+  String get rdpMobilePortrait => 'Portrait';
+
+  @override
+  String get rdpMobileMinimize => 'Minimize session';
+
+  @override
+  String get rdpMobileBackAgain => 'Press Back again to minimize the session';
+
+  @override
+  String get rdpMobileDisconnectConfirm => 'Disconnect from the remote desktop?';
+
+  @override
+  String get rdpMobileClipboard => 'Clipboard';
+
+  @override
+  String get rdpMobileIntroMove =>
+      'Slide your finger on the desktop to move the cursor. Lift and reposition your finger to continue.';
+
+  @override
+  String get rdpMobileIntroZoom => 'Two fingers: tap to right-click, slide to scroll, pinch to zoom.';
+
+  @override
+  String get rdpMobileIntroMenu =>
+      'Tap with three fingers for the keyboard. The floating round button opens the menu; drag it to either edge.';
+
+  @override
+  String get rdpMobileDontShow => 'Do not show again';
+
+  @override
+  String get rdpMobileSettingsTitle => 'RDP · Phone controls';
+
+  @override
+  String get rdpMobileSettingsLocal =>
+      'These preferences stay on this device. The last input mode is remembered separately for each host.';
+
+  @override
+  String get rdpMobileDefaultMode => 'Default input mode';
+
+  @override
+  String get rdpMobileAutoDefault => 'Touchpad on phones, direct touch on tablets';
+
+  @override
+  String get rdpMobileSpeed => 'Pointer speed';
+
+  @override
+  String get rdpMobileAcceleration => 'Pointer acceleration';
+
+  @override
+  String get rdpMobileCursorSize => 'Cursor size';
+
+  @override
+  String get rdpMobileAutoResize => 'Match resolution to the screen';
+
+  @override
+  String get rdpMobileClarity => 'Clarity';
+
+  @override
+  String get rdpMobileWindowsScale => 'Windows scale';
+
+  @override
+  String get rdpMobileAutoHide => 'Auto-hide controls';
+
+  @override
+  String get paletteNewLocalTerminal => 'New local terminal';
+
+  @override
+  String get hostImportTitle => 'Import system hosts';
+
+  @override
+  String get hostImportHelp =>
+      'Select addresses from known_hosts. This file contains no usernames or passwords; set them after import. Trusted keys are not changed; verify the server key on first connection.';
+
+  @override
+  String get hostImportReadFailed =>
+      'Could not read a known_hosts file. Check access permissions and the file size (up to 4 MiB).';
+
+  @override
+  String get hostImportSaveFailed =>
+      'Could not save all hosts. Saved hosts are marked in the list; retry to add the remaining hosts.';
+
+  @override
+  String hostImportSkipped(int count) {
+    return 'Skipped entries: $count. Hashed addresses, patterns, CA records, revoked and malformed keys do not create hosts.';
+  }
+
+  @override
+  String hostImportSaved(int count) {
+    return 'Hosts added: $count.';
+  }
+
+  @override
+  String get hostImportSelectAll => 'Select all new hosts';
+
+  @override
+  String get hostImportEmpty =>
+      'No addresses found to import. The file may contain only hashed names, which cannot be recovered.';
+
+  @override
+  String get hostImportExists => 'Already in this profile';
+
+  @override
+  String get commonImport => 'Import';
 }

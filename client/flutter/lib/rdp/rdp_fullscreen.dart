@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/rdp/rdp_clipboard.dart';
 import 'package:consolecrypt/rdp/rdp_controller.dart';
 import 'package:consolecrypt/rdp/rdp_guard.dart';
+import 'package:consolecrypt/rdp/rdp_mobile_fullscreen.dart';
 import 'package:consolecrypt/rdp/rdp_permissions.dart';
 import 'package:consolecrypt/rdp/rdp_providers.dart';
 import 'package:consolecrypt/rdp/rdp_service.dart';
@@ -218,6 +220,9 @@ class _RdpFullscreenState extends ConsumerState<RdpFullscreen> {
       if (!identical(widget.scope, next)) _leave();
     });
     if (!rdpScopeCurrent(ref, widget.scope)) return const SizedBox.shrink();
+    if (AppPlatform.isMobile) {
+      return RdpMobileFullscreen(controller: widget.controller, scope: widget.scope, onLeave: _leave);
+    }
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {

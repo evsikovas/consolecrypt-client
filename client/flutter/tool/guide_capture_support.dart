@@ -22,6 +22,8 @@ const guideScreens = [
   'terminal-local-tabs',
   'terminal-wsl-picker',
   'host-palette',
+  'local-terminal-palette',
+  'host-import',
   'about-license',
   'host-menu',
   'host-groups',

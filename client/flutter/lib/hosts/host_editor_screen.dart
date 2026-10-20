@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -10,10 +11,12 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
 import 'package:consolecrypt/hosts/host_auth_section.dart';
 import 'package:consolecrypt/hosts/hosts_screen.dart';
 import 'package:consolecrypt/hosts/jump_chain_editor.dart';
+import 'package:consolecrypt/hosts/known_hosts_import_dialog.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -264,6 +267,25 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
           ? l10n.hostEditorNewTitle
           : (originalName == null ? l10n.hostEditorEditTitleFallback : l10n.hostEditorEditTitle(originalName)),
       actions: [
+        if (_isNew && !AppPlatform.isMobile && _protocol == HostProtocol.ssh)
+          GlassButton(
+            key: const ValueKey('host-editor-import'),
+            icon: Icons.file_download_outlined,
+            label: l10n.commonImport,
+            onPressed: _saving
+                ? null
+                : () async {
+                    final count = await showAppDialog<int>(
+                      context,
+                      barrierDismissible: false,
+                      builder: (_) => KnownHostsImportDialog(groupId: _groupId),
+                    );
+                    if (context.mounted && count != null && count > 0) {
+                      showSnack(context, context.l10n.hostImportSaved(count));
+                      context.go(AppRoutes.hosts);
+                    }
+                  },
+          ),
         GlassButton(onPressed: () => context.go(AppRoutes.hosts), label: l10n.commonCancel),
         GlassButton.prominent(
           key: const ValueKey('save-host'),

@@ -146,7 +146,8 @@ abstract final class GlassSizes {
   /// macOS traffic-light reservation at the top of the floating sidebar and
   /// the toolbar's leading inset in compact mode.
   static const double trafficLightsTop = 52;
-  static const double trafficLightsLeading = 78;
+  // Safe fallback until AppKit reports the actual window-button bounds.
+  static const double trafficLightsLeading = 104;
 
   static const double iconRow = 18;
   static const double iconToolbar = 20;

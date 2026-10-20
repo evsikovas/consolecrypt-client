@@ -5661,7 +5661,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get rdpMobileHelp =>
-      'Нажмите кнопку мыши, чтобы экран работал как тачпад. Водите одним пальцем в любом месте для перемещения курсора. Можно поднять палец и продолжить движение с другого места.\n\nКасание — левый клик. Два быстрых касания — двойной клик; удерживайте второе касание и двигайте палец для перетаскивания. Также можно немного удержать один палец, затем потянуть.\n\nКасание двумя пальцами — правый клик. Движение двумя пальцами — прокрутка. Кнопки клика действуют в позиции курсора.\n\nКнопка клавиатуры открывает или скрывает клавиатуру телефона. Над ней доступны Esc, Tab, стрелки и Enter. Касание рабочего стола не открывает клавиатуру.\n\nВыключите тачпад для клика непосредственно под пальцем. Подключённая мышь работает обычным способом.';
+      'Рабочий стол — это тачпад. Водите одним пальцем для движения курсора; палец можно поднимать и переставлять.\n\nКасание — левый клик, два быстрых касания — двойной. Удерживайте второе касание и двигайте палец для перетаскивания. Можно также удержать один палец около половины секунды, затем двигать.\n\nДва пальца: касание — правый клик, параллельное движение — прокрутка, щипок — масштаб от 1× до 4×. Двойное касание двумя пальцами вписывает картинку в экран. При приближении картинка следует за курсором.\n\nКасание тремя пальцами показывает или скрывает клавиатуру. Она перекрывает картинку, а не сжимает её. В панели «Клавиши» одно касание Ctrl, Alt, Win или Shift действует на следующую клавишу, двойное фиксирует, ещё одно отпускает.\n\nКруглая кнопка открывает меню. Перетащите её к краю экрана. Здесь можно переключить тачпад на прямое касание, настроить размер, сменить сеанс или свернуть его. Подключённая мышь работает напрямую.';
 
   @override
   String get localAiTitle => 'Встроенный локальный ИИ';
@@ -5777,7 +5777,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get localAiTierMedium => 'Средняя';
 
   @override
-  String get localAiTierStrong => 'Мощная';
+  String get localAiTierStrong => 'Тяжёлая';
 
   @override
   String localAiModelRequirements(String size, int ram) {
@@ -5840,4 +5840,129 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get terminalLocalInsertOnly => 'Вставьте команду, проверьте её и нажмите Enter в локальном терминале.';
+
+  @override
+  String get rdpMobileMenu => 'Управление сеансом';
+
+  @override
+  String get rdpMobileKeys => 'Клавиши';
+
+  @override
+  String get rdpMobileFit => 'Вписать';
+
+  @override
+  String get rdpMobileFitResolution => 'Подогнать под экран';
+
+  @override
+  String get rdpMobileOrientation => 'Поворот';
+
+  @override
+  String get rdpMobileAutomatic => 'Авто';
+
+  @override
+  String get rdpMobileLandscape => 'Альбомная';
+
+  @override
+  String get rdpMobilePortrait => 'Портретная';
+
+  @override
+  String get rdpMobileMinimize => 'Свернуть сеанс';
+
+  @override
+  String get rdpMobileBackAgain => 'Нажмите «Назад» ещё раз, чтобы свернуть сеанс';
+
+  @override
+  String get rdpMobileDisconnectConfirm => 'Отключиться от удалённого рабочего стола?';
+
+  @override
+  String get rdpMobileClipboard => 'Буфер обмена';
+
+  @override
+  String get rdpMobileIntroMove =>
+      'Водите пальцем по экрану — это тачпад. Курсор остаётся на месте, когда вы переставляете палец.';
+
+  @override
+  String get rdpMobileIntroZoom => 'Два пальца: касание — правый клик, движение — прокрутка, щипок — масштаб.';
+
+  @override
+  String get rdpMobileIntroMenu =>
+      'Три пальца — клавиатура. Круглая плавающая кнопка открывает меню; её можно перетащить к краю.';
+
+  @override
+  String get rdpMobileDontShow => 'Не показывать';
+
+  @override
+  String get rdpMobileSettingsTitle => 'RDP · Управление на телефоне';
+
+  @override
+  String get rdpMobileSettingsLocal =>
+      'Настройки сохраняются только на этом устройстве. Последний режим управления запоминается отдельно для каждого хоста.';
+
+  @override
+  String get rdpMobileDefaultMode => 'Режим по умолчанию';
+
+  @override
+  String get rdpMobileAutoDefault => 'Тачпад на телефоне, касание на планшете';
+
+  @override
+  String get rdpMobileSpeed => 'Скорость указателя';
+
+  @override
+  String get rdpMobileAcceleration => 'Ускорение указателя';
+
+  @override
+  String get rdpMobileCursorSize => 'Размер курсора';
+
+  @override
+  String get rdpMobileAutoResize => 'Подгонять разрешение под экран';
+
+  @override
+  String get rdpMobileClarity => 'Чёткость';
+
+  @override
+  String get rdpMobileWindowsScale => 'Масштаб Windows';
+
+  @override
+  String get rdpMobileAutoHide => 'Автоскрытие кнопки';
+
+  @override
+  String get paletteNewLocalTerminal => 'Новый локальный терминал';
+
+  @override
+  String get hostImportTitle => 'Импорт хостов из системы';
+
+  @override
+  String get hostImportHelp =>
+      'Выберите адреса из known_hosts. Логины и пароли в этом файле не хранятся — их можно задать после импорта. Ключи доверия не изменяются; при первом подключении подтвердите ключ сервера.';
+
+  @override
+  String get hostImportReadFailed =>
+      'Не удалось прочитать файл known_hosts. Проверьте доступ и размер файла (до 4 МиБ).';
+
+  @override
+  String get hostImportSaveFailed =>
+      'Не удалось сохранить все хосты. Уже добавленные хосты отмечены в списке; можно повторить для оставшихся.';
+
+  @override
+  String hostImportSkipped(int count) {
+    return 'Пропущено записей: $count. Хешированные адреса, шаблоны, записи CA, отозванные и повреждённые ключи не создают хостов.';
+  }
+
+  @override
+  String hostImportSaved(int count) {
+    return 'Добавлено хостов: $count.';
+  }
+
+  @override
+  String get hostImportSelectAll => 'Выбрать все новые хосты';
+
+  @override
+  String get hostImportEmpty =>
+      'Адресов для импорта не найдено. В файле могут быть только хешированные имена; их невозможно восстановить.';
+
+  @override
+  String get hostImportExists => 'Уже есть в этом профиле';
+
+  @override
+  String get commonImport => 'Импорт';
 }

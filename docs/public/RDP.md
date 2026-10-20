@@ -1,4 +1,4 @@
-# RDP в ConsoleCrypt 0.3
+# RDP в ConsoleCrypt 0.5.5
 
 Добавлена возможность подключиться к RDP.
 
@@ -45,87 +45,83 @@ RDP-трафик. Перед вводом учётных данных подтв
 прежний размер окна, а сворачивание сохраняет подключение. Клавиша **Escape**
 передаётся удалённой Windows.
 
-## Управление RDP с телефона — текущие исходники
+## Управление RDP с телефона — 0.5.5
 
-Этот раздел описывает доработку **текущих исходников для следующей
-Android-сборки**. В опубликованном релизе **0.3.2 этой панели ещё нет**.
-Панель предусмотрена для Android и iOS; ближайшая проверка сборки относится к
-Android. Работа на физическом iPhone требует отдельной проверки.
+На телефоне активный сеанс автоматически занимает полный экран. Единственный
+постоянный элемент управления — плавающая кнопка: перетащите её к удобному краю
+или нажмите, чтобы раскрыть панель. Она позволяет открыть клавиатуру, выбрать
+сеанс, изменить размер, ориентацию, разрешения и обмен текстом. Положение кнопки
+запоминается отдельно для портрета и альбомной ориентации.
 
-По умолчанию действует **Касание**: клик происходит под пальцем. Кнопка мыши
-в нижней панели включает **Тачпад**. В этом режиме движение одного пальца
-перемещает видимый курсор относительно его прежнего положения. Можно поднять
-палец, приложить его в другом месте и продолжить движение без скачка курсора.
-Повторное нажатие кнопки мыши возвращает прямое касание.
+**Тачпад включён по умолчанию.** Водите пальцем по картинке: курсор движется
+относительно своего положения. Палец можно поднимать и переставлять. На планшете
+по умолчанию используется **Касание** — клик под пальцем; полный экран включается
+вручную. Переключение режима доступно в панели и запоминается для хоста только
+на этом устройстве. Подключённая мышь работает напрямую.
 
-| Жест в режиме тачпада | Действие в текущей позиции курсора |
+| Жест тачпада | Действие |
 | --- | --- |
 | Короткое касание | Левый клик |
-| Два быстрых касания | Двойной левый клик |
-| Двойное касание с удержанием второго | Перетаскивание до отпускания пальца |
-| Удержание одного пальца около 500 мс, затем движение | Перетаскивание до отпускания пальца |
-| Короткое касание двумя пальцами | Правый клик |
-| Движение двумя пальцами | Прокрутка без перемещения курсора |
+| Два быстрых касания | Двойной клик |
+| Двойное касание с удержанием или удержание около 500 мс | Перетаскивание до отпускания пальца |
+| Касание двумя пальцами | Правый клик |
+| Параллельное движение двух пальцев | Прокрутка |
+| Щипок | Масштаб 1–4× |
+| Двойное касание двумя пальцами | Вписать картинку |
+| Касание тремя пальцами | Показать / скрыть клавиатуру |
 
-Отдельные кнопки левого и правого клика также действуют в позиции курсора.
-Кнопка клавиатуры открывает или скрывает экранную клавиатуру; касание рабочего
-стола само по себе её не открывает. При открытой клавиатуре доступны **Esc,
-Tab, стрелки, Enter и Backspace (⌫)**. Клавиши прокручиваются по горизонтали;
-при небольшой высоте, например в альбомной ориентации с клавиатурой, они
-помещаются в одну компактную панель с кнопками управления. Если клавиатура ещё
-составляет слово или предлагает варианты ввода, сначала завершите ввод на ней:
-до этого служебные кнопки не отправляют команды удалённому компьютеру.
+Клавиатура перекрывает картинку, сохраняя размер поверхности; видимая область
+следует за курсором. Над клавиатурой находится прокручиваемая полоса клавиш.
+Пункт **Клавиши** открывает расширенный набор, включая F1–F12 и сочетания.
+Одно нажатие Ctrl/Alt/Win/Shift действует на следующую клавишу, двойное фиксирует
+модификатор, ещё одно отпускает. Завершите композицию слова в системной
+клавиатуре перед отправкой специальных клавиш.
 
-Смена режима управления или сеанса, уход приложения в фон, блокировка и
-отключение ввода отпускают удерживаемые клавиши и кнопки мыши. После возвращения
-начните жест заново. Подключённая мышь работает обычным прямым способом.
-Настольное управление не меняется, а перенаправление папок на Android и iOS
-по-прежнему недоступно. [Снимки мобильного управления 0.4.1](https://consolecrypt.dev/guide?lang=ru#rdp-mobile)
-показывают настоящие виджеты Android с демонстрационным кадром рабочего стола.
-На снимках клавиатурного режима оставлено место под системную клавиатуру:
-саму клавиатуру widget-тест не рисует. Общие проверки управления проходят
-для Android и iOS; готовый iOS-пакет предназначен для Simulator.
+Разрешение запрашивается под экран и поворот. Если сервер отказывает в смене
+размера, остаётся исходное разрешение с возможностью масштабирования. В
+**Настройки → Управление RDP на телефоне** доступны скорость, ускорение, размер
+курсора, чёткость, масштаб Windows, ориентация и автоскрытие кнопки.
 
-### Phone controls — current sources (English)
+На Android первый **Назад** раскрывает управление, повторный в течение двух
+секунд сворачивает сеанс. На iOS выберите **Свернуть сеанс** в панели.
+Подключение сохраняется. **Отключить** требует подтверждения. Смена режима,
+сеанса, уход в фон, открытие панели и блокировка отпускают нажатые клавиши.
+Блокировка хранилища закрывает сеансы и их диалоги.
 
-This section describes a change in the **current sources for the next Android
-build**. The published **0.3.2 release does not include this panel**. The panel
-targets Android and iOS; the immediate build check targets Android. Use on a
-physical iPhone requires separate verification.
+[Снимки мобильного управления](https://consolecrypt.dev/guide?lang=ru#rdp-mobile)
+показывают настоящие виджеты с синтетическим рабочим столом. Системная клавиатура
+в этих снимках не рисуется, под неё оставлена область. iOS распространяется
+как архив для Simulator на Mac. Перенаправление папок на телефоне недоступно.
 
-**Direct touch** is the default and clicks under your finger. Tap the mouse
-button in the bottom bar to enable **Touchpad**. One-finger movement then moves
-the visible cursor relative to its previous position. Lift and reposition your
-finger to continue without making the cursor jump to it. Tap the mouse button
-again to return to direct touch.
+### Phone controls — 0.5.5 (English)
 
-| Touchpad gesture | Action at the current cursor position |
-| --- | --- |
-| Short tap | Left-click |
-| Two quick taps | Double left-click |
-| Double-tap and hold the second tap | Drag until you lift your finger |
-| Hold one finger for about 500 ms, then move | Drag until you lift your finger |
-| Short two-finger tap | Right-click |
-| Two-finger swipe | Scroll without moving the cursor |
+Phone sessions open fullscreen with one draggable floating control button.
+Touchpad is the phone default: move a finger to move the pointer relatively,
+and lift it to reposition without moving the pointer. Tablets keep direct
+input by default and manual fullscreen. Mode choices are stored per host on
+this device; an attached mouse uses direct input.
 
-The separate left- and right-click buttons also act at the cursor. The keyboard
-button shows or hides the phone keyboard; touching the desktop does not open
-it. With the keyboard open, **Esc, Tab, arrow keys, Enter and Backspace (⌫)**
-are available and scroll horizontally. When height is limited, such as
-landscape with the keyboard open, these keys share one compact bar with the
-controls. Finish any ongoing word composition or candidate selection on the
-phone keyboard first: the extra key buttons do not send remote commands until
-composition is complete.
+Tap to left-click, double tap to double-click, and double-tap-and-hold or hold
+for about 500 ms to drag. Two-finger tap right-clicks, parallel motion scrolls,
+a pinch zooms 1–4×, two-finger double tap fits the desktop, and three-finger tap
+toggles the keyboard.
 
-Changing input mode or session, going into the background, locking or disabling
-input releases held keys and mouse buttons. Start a new gesture after returning.
-An attached mouse uses ordinary direct control. Desktop controls are unchanged;
-folder redirection remains unavailable on Android and iOS.
-[Mobile controls screenshots for 0.4.1](https://consolecrypt.dev/guide?lang=en#rdp-mobile)
-show real Android widgets with a synthetic desktop frame. Keyboard-mode images
-reserve space for the system keyboard, which the widget test does not render.
-Shared interaction checks run for Android and iOS; the distributed iOS package
-is a Simulator preview.
+The keyboard overlays a stable desktop instead of shrinking it. A scrolling
+key strip and expanded **Keys** sheet provide modifiers, arrows, F1–F12 and
+shortcuts. Tap a modifier once for the next key, twice to lock it, then again
+to release it. Finish any keyboard composition before sending special keys.
+
+Display size follows the safe area and orientation when the server allows
+resizing. If unsupported, the original resolution stays usable with local
+zoom. Settings control pointer speed, acceleration, cursor size, clarity,
+Windows scale, orientation and button hiding.
+
+On Android, Back opens controls, then another Back within two seconds
+minimizes without disconnecting. On iOS, choose **Minimize session**.
+Disconnect asks for confirmation. Locking closes sessions and overlays.
+[Guide screenshots](https://consolecrypt.dev/guide?lang=en#rdp-mobile) use
+synthetic desktop pixels and reserve a blank area for the native keyboard.
+iOS remains a Simulator preview; mobile folder redirection is unavailable.
 
 ## Буфер обмена
 

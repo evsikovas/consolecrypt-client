@@ -181,6 +181,7 @@ async fn run() -> Result<(), &'static str> {
                 vec![Input::Resize {
                     width: 1920,
                     height: 1080,
+                    desktop_scale: 100,
                 }],
             )
             .map_err(|e| e.code())?;

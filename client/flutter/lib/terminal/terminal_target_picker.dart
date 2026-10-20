@@ -1,3 +1,4 @@
+import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -15,22 +16,47 @@ final localShellProfilesProvider = FutureProvider.autoDispose<LocalShellProfiles
   return ref.watch(terminalServiceProvider).localProfiles();
 });
 
-Future<TerminalTarget?> showTerminalTargetPicker(BuildContext context) =>
-    showAppDialog<TerminalTarget>(context, builder: (_) => const TerminalTargetPicker());
+Future<TerminalTarget?> showTerminalTargetPicker(BuildContext context, {bool localOnly = false}) =>
+    showAppDialog<TerminalTarget>(context, builder: (_) => TerminalTargetPicker(localOnly: localOnly));
 
 /// One chooser for tab-strip +, the empty state and Cmd/Ctrl+T. Native
 /// discovery owns executable paths and WSL enumeration; this view uses IDs.
 class TerminalTargetPicker extends ConsumerStatefulWidget {
-  const TerminalTargetPicker({super.key});
+  const TerminalTargetPicker({super.key, this.localOnly = false});
+  final bool localOnly;
   @override
   ConsumerState<TerminalTargetPicker> createState() => _TerminalTargetPickerState();
 }
 
 class _TerminalTargetPickerState extends ConsumerState<TerminalTargetPicker> {
   String _query = '';
+  ProfileId? _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _profile = ref.read(activeProfileProvider)?.id;
+  }
 
   @override
   Widget build(BuildContext context) {
+    bool current() =>
+        ref.read(appStageProvider) == AppStage.unlocked && ref.read(activeProfileProvider)?.id == _profile;
+    void closeIfStale() {
+      if (current()) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final route = ModalRoute.of(context);
+        if (route?.isActive == true) Navigator.of(context).removeRoute(route!);
+      });
+    }
+
+    ref.listen(appStageProvider, (_, _) => closeIfStale());
+    ref.listen(activeProfileProvider, (_, _) => closeIfStale());
+    if (!current()) {
+      closeIfStale();
+      return const SizedBox.shrink();
+    }
     final l = context.l10n;
     final profiles = ref.watch(localShellProfilesProvider);
     final q = _query.trim().toLowerCase();
@@ -40,14 +66,14 @@ class _TerminalTargetPickerState extends ConsumerState<TerminalTargetPicker> {
         .toList();
     final hosts =
         (ref.watch(hostsProvider).value ?? const <Host>[])
-            .where((h) => !h.isRdp && matches('${h.name} ${h.address} ${h.tags.join(' ')}'))
+            .where((h) => !widget.localOnly && !h.isRdp && matches('${h.name} ${h.address} ${h.tags.join(' ')}'))
             .toList()
           ..sort((a, b) => a.name.compareTo(b.name));
     final targets = <TerminalTarget>[...local.map(LocalTerminalTarget.new), ...hosts.map(SshTerminalTarget.new)];
     final reason = profiles.hasError ? 'discovery_failed' : profiles.value?.unavailableReason;
     return GlassDialog(
       key: const ValueKey('terminal-picker'),
-      title: l.commandNewTabPickerTitle,
+      title: widget.localOnly ? l.paletteNewLocalTerminal : l.commandNewTabPickerTitle,
       width: 560,
       content: SizedBox(
         height: 420,
@@ -102,7 +128,7 @@ class _TerminalTargetPickerState extends ConsumerState<TerminalTargetPicker> {
                         ),
                       ),
                   ],
-                  ListTile(dense: true, title: Text(l.terminalLocalSshSection)),
+                  if (!widget.localOnly) ListTile(dense: true, title: Text(l.terminalLocalSshSection)),
                   for (final host in hosts)
                     ListTile(
                       key: ValueKey('pick-${host.name}'),

@@ -209,9 +209,10 @@ final class RdpWheelInput extends RdpInput {
 }
 
 final class RdpResizeInput extends RdpInput {
-  const RdpResizeInput(this.width, this.height);
+  const RdpResizeInput(this.width, this.height, {this.desktopScale = 100});
   final int width;
   final int height;
+  final int desktopScale;
 }
 
 abstract interface class RdpService {

@@ -217,6 +217,7 @@ final class RustRdpService implements RdpService {
         kind = 'resize';
         width = event.width;
         height = event.height;
+        code = event.desktopScale;
       case RdpReleaseAllInput():
         kind = 'release_all';
     }

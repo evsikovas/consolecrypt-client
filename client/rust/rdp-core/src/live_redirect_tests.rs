@@ -1250,6 +1250,7 @@ async fn run(files_only: bool, core_only: bool, stable_writable: bool) -> Result
             vec![Input::Resize {
                 width: 1920,
                 height: 1080,
+                desktop_scale: 100,
             }],
         )
         .map_err(|e| e.code())?;

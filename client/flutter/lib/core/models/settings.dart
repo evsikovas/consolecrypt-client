@@ -1,6 +1,7 @@
 import 'package:consolecrypt/core/models/ai.dart';
 import 'package:consolecrypt/core/models/glass_settings.dart';
 import 'package:consolecrypt/core/models/ids.dart';
+import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/models/terminal_colors.dart';
 
@@ -101,6 +102,7 @@ final class LocalSettings {
     this.sftpDefaultEditor,
     this.checkUpdatesAutomatically = true,
     this.preferDeviceLocalAi = true,
+    this.rdpMobile = const RdpMobileSettings(),
   });
 
   final AppThemeMode themeMode;
@@ -152,6 +154,7 @@ final class LocalSettings {
   /// Effective only after installing the optional model on this computer.
   /// This preference never changes synced provider defaults.
   final bool preferDeviceLocalAi;
+  final RdpMobileSettings rdpMobile;
 
   LocalSettings copyWith({
     AppThemeMode? themeMode,
@@ -174,6 +177,7 @@ final class LocalSettings {
     bool resetSftpDefaultEditor = false,
     bool? checkUpdatesAutomatically,
     bool? preferDeviceLocalAi,
+    RdpMobileSettings? rdpMobile,
   }) => LocalSettings(
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
@@ -193,5 +197,6 @@ final class LocalSettings {
     sftpDefaultEditor: resetSftpDefaultEditor ? null : (sftpDefaultEditor ?? this.sftpDefaultEditor),
     checkUpdatesAutomatically: checkUpdatesAutomatically ?? this.checkUpdatesAutomatically,
     preferDeviceLocalAi: preferDeviceLocalAi ?? this.preferDeviceLocalAi,
+    rdpMobile: rdpMobile ?? this.rdpMobile,
   );
 }

@@ -8,8 +8,13 @@ import 'package:flutter/gestures.dart';
 /// survives lifting/repositioning a finger; touching never warps it to a finger.
 /// All gesture state belongs to one view/session, not to the shared workspace.
 class RdpTouchpad extends ChangeNotifier {
-  RdpTouchpad(this.onInput);
+  RdpTouchpad(this.onInput, {this.onScale, this.onFit, this.onKeyboard});
   final ValueChanged<List<RdpInput>> onInput;
+  final void Function(double factor, Offset center)? onScale;
+  final VoidCallback? onFit;
+  final VoidCallback? onKeyboard;
+  double speed = 1;
+  bool acceleration = true;
   final Map<int, Offset> _pointers = {};
   final Map<int, Offset> _origins = {};
   Offset _position = Offset.zero;
@@ -22,6 +27,14 @@ class RdpTouchpad extends ChangeNotifier {
   Duration? _lastTap;
   Offset? _lastTapLocation;
   Timer? _hold;
+  Timer? _rightTap;
+  Duration? _lastTwoTap;
+  Offset? _lastTwoLocation;
+  Duration? _lastMove;
+  Offset _twoCenter = Offset.zero;
+  double _twoSpan = 0;
+  double _previousSpan = 0;
+  _TwoFingerGesture? _twoGesture;
   Offset _wheel = Offset.zero;
 
   /// Use the rendered desktop's scale, preserving sub-pixel motion. Coordinates
@@ -60,6 +73,8 @@ class RdpTouchpad extends ChangeNotifier {
       _peak = 1;
       _moved = false;
       _wheel = Offset.zero;
+      _lastMove = event.timeStamp;
+      _twoGesture = null;
       final lastTap = _lastTap;
       final doubleTap =
           lastTap != null &&
@@ -82,9 +97,23 @@ class RdpTouchpad extends ChangeNotifier {
     _pointers[event.pointer] = event.localPosition;
     _origins[event.pointer] = event.localPosition;
     if (_pointers.length > _peak) _peak = _pointers.length;
+    if (_pointers.length == 2) {
+      _twoCenter = _centroid;
+      _twoSpan = _span;
+      _previousSpan = _twoSpan;
+    }
+    if (_peak >= 3) {
+      _rightTap?.cancel();
+      _lastTwoTap = null;
+    }
   }
 
   Offset get _centroid => _pointers.values.reduce((a, b) => a + b) / _pointers.length.toDouble();
+  double get _span => (_pointers.values.first - _pointers.values.last).distance;
+
+  /// Continuous bounded gain, in logical pixels per millisecond. Slow motion
+  /// remains precise; fast swipes cover a large desktop without finger travel.
+  static double gain(double velocity) => 1 + ((velocity - .15) / 1.35).clamp(0, 1) * 1.5;
 
   void move(PointerMoveEvent event) {
     final previous = _pointers[event.pointer];
@@ -96,13 +125,34 @@ class RdpTouchpad extends ChangeNotifier {
       _hold?.cancel();
     }
     if (_peak == 1) {
-      _position = _clamp(_position + (event.localPosition - previous) * _scale);
+      final delta = event.localPosition - previous;
+      final elapsed = (event.timeStamp - (_lastMove ?? event.timeStamp)).inMicroseconds / 1000;
+      _lastMove = event.timeStamp;
+      final multiplier = acceleration && elapsed > 0 ? gain(delta.distance / elapsed) : 1.0;
+      _position = _clamp(_position + delta * _scale * speed.clamp(.5, 3) * multiplier);
       onInput([_pointer()]);
       notifyListeners();
-    } else if (_peak == 2 && _pointers.length == 2 && _moved) {
+    } else if (_peak == 2 && _pointers.length == 2) {
+      final span = _span;
+      final translation = (_centroid - _twoCenter).distance;
+      final separation = (span - _twoSpan).abs();
+      var firstDecision = false;
+      if (_twoGesture == null && (translation >= 12 || separation >= 12)) {
+        _twoGesture = separation > translation ? _TwoFingerGesture.zoom : _TwoFingerGesture.scroll;
+        _moved = true;
+        firstDecision = true;
+        _rightTap?.cancel();
+        _lastTwoTap = null;
+      }
+      if (_twoGesture == _TwoFingerGesture.zoom) {
+        final previousSpan = firstDecision ? _twoSpan : _previousSpan;
+        if (previousSpan > 0) onScale?.call(span / previousSpan, _centroid);
+      }
+      _previousSpan = span;
+      if (_twoGesture != _TwoFingerGesture.scroll) return;
       // Two fingers scroll at the cursor, never click or relocate it. Using the
       // centroid avoids doubling the wheel when both fingers deliver events.
-      _wheel += (_centroid - before) * -3;
+      _wheel += (_centroid - (firstDecision ? _twoCenter : before)) * -3;
       final vertical = _wheel.dy.truncate(), horizontal = _wheel.dx.truncate();
       _wheel -= Offset(horizontal.toDouble(), vertical.toDouble());
       if (vertical != 0 || horizontal != 0) {
@@ -126,7 +176,24 @@ class RdpTouchpad extends ChangeNotifier {
         _lastTap = event.timeStamp;
         _lastTapLocation = origin;
       } else if (_peak == 2) {
-        click(RdpPointerButton.right);
+        final last = _lastTwoTap;
+        if (last != null &&
+            event.timeStamp - last <= const Duration(milliseconds: 300) &&
+            (_twoCenter - _lastTwoLocation!).distance <= 32) {
+          _rightTap?.cancel();
+          _lastTwoTap = null;
+          onFit?.call();
+        } else {
+          _rightTap?.cancel();
+          _lastTwoTap = event.timeStamp;
+          _lastTwoLocation = _twoCenter;
+          // Delay the right click so the fit gesture never opens a context menu.
+          final down = _pointer(button: RdpPointerButton.right, down: true);
+          final up = _pointer(button: RdpPointerButton.right);
+          _rightTap = Timer(const Duration(milliseconds: 300), () => onInput([down, up]));
+        }
+      } else if (_peak == 3) {
+        onKeyboard?.call();
       }
     }
     _peak = 0;
@@ -148,12 +215,18 @@ class RdpTouchpad extends ChangeNotifier {
   void cancel() {
     _hold?.cancel();
     _hold = null;
+    _rightTap?.cancel();
+    _rightTap = null;
     _pointers.clear();
     _origins.clear();
     _dragging = false;
     _peak = 0;
     _lastTap = null;
     _lastTapLocation = null;
+    _lastTwoTap = null;
+    _lastTwoLocation = null;
+    _lastMove = null;
+    _twoGesture = null;
     _wheel = Offset.zero;
   }
 
@@ -163,3 +236,5 @@ class RdpTouchpad extends ChangeNotifier {
     super.dispose();
   }
 }
+
+enum _TwoFingerGesture { scroll, zoom }

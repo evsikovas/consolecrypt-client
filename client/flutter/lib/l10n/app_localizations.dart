@@ -9695,7 +9695,7 @@ abstract class AppLocalizations {
   /// Mobile-only remote desktop input control.
   ///
   /// In en, this message translates to:
-  /// **'Tap the mouse button to turn the desktop into a touchpad. Slide one finger anywhere to move the cursor; lift and reposition your finger to continue.\n\nTap for a left click. Tap twice for a double-click; hold the second tap and move to drag. You can also hold one finger briefly, then drag.\n\nTap with two fingers for a right click. Slide two fingers to scroll. The click buttons act at the cursor.\n\nThe keyboard button shows or hides your phone keyboard. Esc, Tab, arrow keys and Enter are above it. Touching the desktop does not open the keyboard.\n\nTurn touchpad mode off to click directly where you touch. An attached mouse keeps its normal controls.'**
+  /// **'The desktop is a touchpad. Slide one finger to move the cursor; lift and reposition your finger to continue.\n\nTap to left-click, tap twice to double-click. Hold the second tap and move to drag. You can also hold one finger for half a second, then drag.\n\nTwo fingers: tap to right-click, slide together to scroll, pinch to zoom from 1× to 4×. Double-tap with two fingers to fit the desktop. When zoomed in, the picture follows the cursor.\n\nTap with three fingers to show or hide the keyboard. It overlays the desktop without shrinking it. In Keys, tap Ctrl, Alt, Win or Shift once for the next key, twice to lock, and again to release.\n\nThe round button opens the menu. Drag it to either edge. Switch to direct touch, change resolution, switch sessions or minimize here. An attached mouse keeps its normal controls.'**
   String get rdpMobileHelp;
 
   /// Built-in device-local AI settings.
@@ -9899,7 +9899,7 @@ abstract class AppLocalizations {
   /// Device-local AI model catalog, hardware recommendation, or license information.
   ///
   /// In en, this message translates to:
-  /// **'Strong'**
+  /// **'Heavy'**
   String get localAiTierStrong;
 
   /// Device-local AI model catalog, hardware recommendation, or license information.
@@ -10009,6 +10009,234 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Insert the command, review it, then press Enter in the local terminal.'**
   String get terminalLocalInsertOnly;
+
+  /// Mobile RDP control: Menu
+  ///
+  /// In en, this message translates to:
+  /// **'Session controls'**
+  String get rdpMobileMenu;
+
+  /// Mobile RDP control: Keys
+  ///
+  /// In en, this message translates to:
+  /// **'Keys'**
+  String get rdpMobileKeys;
+
+  /// Mobile RDP control: Fit
+  ///
+  /// In en, this message translates to:
+  /// **'Fit desktop'**
+  String get rdpMobileFit;
+
+  /// Mobile RDP control: FitResolution
+  ///
+  /// In en, this message translates to:
+  /// **'Match screen resolution'**
+  String get rdpMobileFitResolution;
+
+  /// Mobile RDP control: Orientation
+  ///
+  /// In en, this message translates to:
+  /// **'Orientation'**
+  String get rdpMobileOrientation;
+
+  /// Mobile RDP control: Automatic
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get rdpMobileAutomatic;
+
+  /// Mobile RDP control: Landscape
+  ///
+  /// In en, this message translates to:
+  /// **'Landscape'**
+  String get rdpMobileLandscape;
+
+  /// Mobile RDP control: Portrait
+  ///
+  /// In en, this message translates to:
+  /// **'Portrait'**
+  String get rdpMobilePortrait;
+
+  /// Mobile RDP control: Minimize
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize session'**
+  String get rdpMobileMinimize;
+
+  /// Mobile RDP control: BackAgain
+  ///
+  /// In en, this message translates to:
+  /// **'Press Back again to minimize the session'**
+  String get rdpMobileBackAgain;
+
+  /// Mobile RDP control: DisconnectConfirm
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect from the remote desktop?'**
+  String get rdpMobileDisconnectConfirm;
+
+  /// Mobile RDP control: Clipboard
+  ///
+  /// In en, this message translates to:
+  /// **'Clipboard'**
+  String get rdpMobileClipboard;
+
+  /// Mobile RDP control: IntroMove
+  ///
+  /// In en, this message translates to:
+  /// **'Slide your finger on the desktop to move the cursor. Lift and reposition your finger to continue.'**
+  String get rdpMobileIntroMove;
+
+  /// Mobile RDP control: IntroZoom
+  ///
+  /// In en, this message translates to:
+  /// **'Two fingers: tap to right-click, slide to scroll, pinch to zoom.'**
+  String get rdpMobileIntroZoom;
+
+  /// Mobile RDP control: IntroMenu
+  ///
+  /// In en, this message translates to:
+  /// **'Tap with three fingers for the keyboard. The floating round button opens the menu; drag it to either edge.'**
+  String get rdpMobileIntroMenu;
+
+  /// Mobile RDP control: DontShow
+  ///
+  /// In en, this message translates to:
+  /// **'Do not show again'**
+  String get rdpMobileDontShow;
+
+  /// Mobile RDP control: SettingsTitle
+  ///
+  /// In en, this message translates to:
+  /// **'RDP · Phone controls'**
+  String get rdpMobileSettingsTitle;
+
+  /// Mobile RDP control: SettingsLocal
+  ///
+  /// In en, this message translates to:
+  /// **'These preferences stay on this device. The last input mode is remembered separately for each host.'**
+  String get rdpMobileSettingsLocal;
+
+  /// Mobile RDP control: DefaultMode
+  ///
+  /// In en, this message translates to:
+  /// **'Default input mode'**
+  String get rdpMobileDefaultMode;
+
+  /// Mobile RDP control: AutoDefault
+  ///
+  /// In en, this message translates to:
+  /// **'Touchpad on phones, direct touch on tablets'**
+  String get rdpMobileAutoDefault;
+
+  /// Mobile RDP control: Speed
+  ///
+  /// In en, this message translates to:
+  /// **'Pointer speed'**
+  String get rdpMobileSpeed;
+
+  /// Mobile RDP control: Acceleration
+  ///
+  /// In en, this message translates to:
+  /// **'Pointer acceleration'**
+  String get rdpMobileAcceleration;
+
+  /// Mobile RDP control: CursorSize
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor size'**
+  String get rdpMobileCursorSize;
+
+  /// Mobile RDP control: AutoResize
+  ///
+  /// In en, this message translates to:
+  /// **'Match resolution to the screen'**
+  String get rdpMobileAutoResize;
+
+  /// Mobile RDP control: Clarity
+  ///
+  /// In en, this message translates to:
+  /// **'Clarity'**
+  String get rdpMobileClarity;
+
+  /// Mobile RDP control: WindowsScale
+  ///
+  /// In en, this message translates to:
+  /// **'Windows scale'**
+  String get rdpMobileWindowsScale;
+
+  /// Mobile RDP control: AutoHide
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-hide controls'**
+  String get rdpMobileAutoHide;
+
+  /// paletteNewLocalTerminal
+  ///
+  /// In en, this message translates to:
+  /// **'New local terminal'**
+  String get paletteNewLocalTerminal;
+
+  /// hostImportTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Import system hosts'**
+  String get hostImportTitle;
+
+  /// hostImportHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Select addresses from known_hosts. This file contains no usernames or passwords; set them after import. Trusted keys are not changed; verify the server key on first connection.'**
+  String get hostImportHelp;
+
+  /// hostImportReadFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read a known_hosts file. Check access permissions and the file size (up to 4 MiB).'**
+  String get hostImportReadFailed;
+
+  /// hostImportSaveFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save all hosts. Saved hosts are marked in the list; retry to add the remaining hosts.'**
+  String get hostImportSaveFailed;
+
+  /// hostImportSkipped
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped entries: {count}. Hashed addresses, patterns, CA records, revoked and malformed keys do not create hosts.'**
+  String hostImportSkipped(int count);
+
+  /// hostImportSaved
+  ///
+  /// In en, this message translates to:
+  /// **'Hosts added: {count}.'**
+  String hostImportSaved(int count);
+
+  /// hostImportSelectAll
+  ///
+  /// In en, this message translates to:
+  /// **'Select all new hosts'**
+  String get hostImportSelectAll;
+
+  /// hostImportEmpty
+  ///
+  /// In en, this message translates to:
+  /// **'No addresses found to import. The file may contain only hashed names, which cannot be recovered.'**
+  String get hostImportEmpty;
+
+  /// hostImportExists
+  ///
+  /// In en, this message translates to:
+  /// **'Already in this profile'**
+  String get hostImportExists;
+
+  /// Import selected items
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get commonImport;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
