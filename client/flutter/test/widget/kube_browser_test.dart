@@ -992,14 +992,15 @@ void main() {
     await settle(tester);
     await tester.tap(find.byKey(const ValueKey('kube-forward-start')));
     await settle(tester);
-    expect(find.text('127.0.0.1:34567'), findsOneWidget);
+    // Shown in the start dialog and in the forwards list behind it.
+    expect(find.text('127.0.0.1:34567'), findsWidgets);
     await tester.tap(find.text('Close').last);
     await settle(tester);
     await tester.tap(find.text('Close').last);
     await settle(tester);
     final row = find.byKey(const ValueKey('kube-forward-forward-one'));
     expect(row, findsOneWidget);
-    await tester.tap(find.descendant(of: row, matching: find.byType(GlassIconButton)));
+    await tester.tap(find.byKey(const ValueKey('kube-forward-stop-forward-one')));
     await settle(tester);
     expect(service.stopped, ['forward-one']);
     expect(row, findsNothing);

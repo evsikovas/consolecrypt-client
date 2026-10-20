@@ -10726,5 +10726,26 @@
         "type": "String"
       }
     }
+  },
+  "navPortForwards": "Port forwards",
+  "@navPortForwards": {
+    "description": "Right panel tool: active Kubernetes port forwards."
+  },
+  "kubeForwardsOpen": "Port forwards: {count}",
+  "@kubeForwardsOpen": {
+    "description": "Header button opening the port forwards panel.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "kubeForwardCopyAddress": "Copy local address",
+  "@kubeForwardCopyAddress": {
+    "description": "Tooltip: copy host:port of a port forward."
+  },
+  "kubeForwardsEmptyHelp": "Start one from a Pod or Service: Port forward.",
+  "@kubeForwardsEmptyHelp": {
+    "description": "Empty state of the port forwards panel."
   }
 }

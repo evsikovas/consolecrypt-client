@@ -8004,4 +8004,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String kubeMetricsUnknownKind(String kind, String apiVersion) {
     return 'Кластер не предоставляет $kind ($apiVersion).';
   }
+
+  @override
+  String get navPortForwards => 'Пробросы портов';
+
+  @override
+  String kubeForwardsOpen(int count) {
+    return 'Пробросы: $count';
+  }
+
+  @override
+  String get kubeForwardCopyAddress => 'Скопировать локальный адрес';
+
+  @override
+  String get kubeForwardsEmptyHelp => 'Запустите проброс из пода или сервиса: «Проброс порта».';
 }

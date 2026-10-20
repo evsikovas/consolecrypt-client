@@ -14029,6 +14029,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The cluster does not offer {kind} ({apiVersion}).'**
   String kubeMetricsUnknownKind(String kind, String apiVersion);
+
+  /// Right panel tool: active Kubernetes port forwards.
+  ///
+  /// In en, this message translates to:
+  /// **'Port forwards'**
+  String get navPortForwards;
+
+  /// Header button opening the port forwards panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Port forwards: {count}'**
+  String kubeForwardsOpen(int count);
+
+  /// Tooltip: copy host:port of a port forward.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy local address'**
+  String get kubeForwardCopyAddress;
+
+  /// Empty state of the port forwards panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start one from a Pod or Service: Port forward.'**
+  String get kubeForwardsEmptyHelp;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

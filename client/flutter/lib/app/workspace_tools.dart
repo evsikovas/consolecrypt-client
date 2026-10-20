@@ -1,4 +1,5 @@
 import 'package:consolecrypt/ai/ai_chat_screen.dart';
+import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/symbols.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
@@ -6,10 +7,30 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/kubernetes/kube_ai_host.dart';
 import 'package:consolecrypt/kubernetes/kube_ai_panel.dart';
+import 'package:consolecrypt/kubernetes/kube_forward_panel.dart';
+import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/snippets/snippets_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+
+/// Tools offered in this build (port forwards only with Kubernetes).
+List<WorkspaceTool> get workspaceTools => [
+  for (final tool in WorkspaceTool.values)
+    if (tool != WorkspaceTool.forwards || kubernetesEnabled) tool,
+];
+
+String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (tool) {
+  WorkspaceTool.snippets => l.navSnippets,
+  WorkspaceTool.ai => l.navAiChat,
+  WorkspaceTool.forwards => l.navPortForwards,
+};
+
+AppSymbol _symbol(WorkspaceTool tool) => switch (tool) {
+  WorkspaceTool.snippets => AppSymbol.snippets,
+  WorkspaceTool.ai => AppSymbol.ai,
+  WorkspaceTool.forwards => AppSymbol.tunnels,
+};
 
 /// Small permanent rail on the right: helpers never replace the workspace.
 class WorkspaceToolRail extends ConsumerWidget {
@@ -20,6 +41,10 @@ class WorkspaceToolRail extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(workspaceToolsProvider).selected;
     final l = context.l10n;
+    final scope = ref.watch(kubeScopeProvider);
+    final forwards = kubernetesEnabled && scope.unlocked
+        ? (ref.watch(kubeForwardsProvider(scope)).value ?? const []).where((f) => f.state == 'running').length
+        : 0;
     return Padding(
       padding: integrated ? EdgeInsets.zero : const EdgeInsets.fromLTRB(8, 8, 0, 8),
       child: GlassSurface(
@@ -30,12 +55,14 @@ class WorkspaceToolRail extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
         child: Column(
           children: [
-            for (final tool in WorkspaceTool.values) ...[
+            for (final tool in workspaceTools) ...[
               GlassSidebarItem(
                 key: ValueKey('nav-${tool.name}'),
                 icon: tool == WorkspaceTool.ai ? Icons.auto_awesome_rounded : Icons.code_rounded,
-                leading: AppSymbolIcon(tool == WorkspaceTool.ai ? AppSymbol.ai : AppSymbol.snippets),
-                label: tool == WorkspaceTool.ai ? l.navAiChat : l.navSnippets,
+                leading: AppSymbolIcon(_symbol(tool)),
+                label: workspaceToolLabel(l, tool),
+                badge: tool == WorkspaceTool.forwards && forwards > 0 ? '$forwards' : null,
+                badgeTone: GlassTone.success,
                 compact: true,
                 selected: tool == selected,
                 onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(tool),
@@ -115,27 +142,23 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                 expand: true,
                                 semanticLabel: l.settingsWorkspacePanel,
                                 segments: [
-                                  GlassSegment(
-                                    key: const ValueKey('nav-snippets'),
-                                    value: WorkspaceTool.snippets,
-                                    label: l.navSnippets,
-                                  ),
-                                  GlassSegment(
-                                    key: const ValueKey('nav-ai'),
-                                    value: WorkspaceTool.ai,
-                                    label: l.navAiChat,
-                                  ),
+                                  for (final tool in workspaceTools)
+                                    GlassSegment(
+                                      key: ValueKey('nav-${tool.name}'),
+                                      value: tool,
+                                      label: workspaceToolLabel(l, tool),
+                                    ),
                                 ],
                                 selected: selected ?? WorkspaceTool.snippets,
                                 onChanged: (tool) => ref.read(workspaceToolsProvider.notifier).open(tool),
                               ),
                             )
                           else ...[
-                            AppSymbolIcon(selected == WorkspaceTool.ai ? AppSymbol.ai : AppSymbol.snippets),
+                            AppSymbolIcon(_symbol(selected ?? WorkspaceTool.snippets)),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                selected == WorkspaceTool.ai ? l.navAiChat : l.navSnippets,
+                                workspaceToolLabel(l, selected ?? WorkspaceTool.snippets),
                                 style: tokens.typography.title3.copyWith(color: tokens.palette.label),
                               ),
                             ),
@@ -158,7 +181,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            for (final tool in WorkspaceTool.values)
+                            for (final tool in workspaceTools)
                               Offstage(
                                 offstage: selected != tool,
                                 child: TickerMode(
@@ -167,9 +190,11 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                     excluding: selected != tool,
                                     child: !_visited.contains(tool)
                                         ? const SizedBox.shrink()
-                                        : tool == WorkspaceTool.ai
-                                        ? const _AiTool()
-                                        : const SnippetsScreen(embedded: true),
+                                        : switch (tool) {
+                                            WorkspaceTool.ai => const _AiTool(),
+                                            WorkspaceTool.snippets => const SnippetsScreen(embedded: true),
+                                            WorkspaceTool.forwards => const KubeForwardsPanel(embedded: true),
+                                          },
                                   ),
                                 ),
                               ),

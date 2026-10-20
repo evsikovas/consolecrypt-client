@@ -1654,6 +1654,11 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     if (_view == 'resources') unawaited(_refresh());
   }
 
+  /// Running forwards of this session (they are listed in the right panel).
+  int _forwardCount(KubeSession session) => (ref.watch(kubeForwardsProvider(_scope)).value ?? const [])
+      .where((f) => f.sessionId == session.id && f.state == 'running')
+      .length;
+
   Widget _desktop(BuildContext context, KubeSession? session, List<KubeResourceRow> rows, bool canWrite) {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
@@ -1707,7 +1712,6 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
               const SizedBox(height: GlassSpacing.s8),
               Expanded(child: _desktopContent(context, session, rows, canWrite)),
             ],
-            if (session != null) KubeForwardsPanel(sessionId: session.id),
             if (_panelOpen && session != null && !rightPanel) ...[
               Semantics(
                 label: l.kubeResizePanel,
@@ -1965,6 +1969,13 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
               ],
             ),
           ),
+          if (session != null && _forwardCount(session) > 0)
+            GlassButton.plain(
+              key: const ValueKey('kube-open-forwards'),
+              icon: Icons.swap_horiz_rounded,
+              label: l.kubeForwardsOpen(_forwardCount(session)),
+              onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.forwards),
+            ),
           if (session != null && widget.service is KubeAiService)
             GlassIconButton(
               key: const ValueKey('kube-open-ai'),

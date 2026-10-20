@@ -4203,5 +4203,9 @@
   "kubeMetricsInstalled": "metrics-server установлен (создано {created}, уже было {existing}). Метрики появятся примерно через минуту.",
   "kubeMetricsInstallDenied": "{kind} {name}: кластер отказал. Проверьте права; для прод-кластера откройте окно изменений.",
   "kubeMetricsInstallFailed": "{kind} {name} не создан.",
-  "kubeMetricsUnknownKind": "Кластер не предоставляет {kind} ({apiVersion})."
+  "kubeMetricsUnknownKind": "Кластер не предоставляет {kind} ({apiVersion}).",
+  "navPortForwards": "Пробросы портов",
+  "kubeForwardsOpen": "Пробросы: {count}",
+  "kubeForwardCopyAddress": "Скопировать локальный адрес",
+  "kubeForwardsEmptyHelp": "Запустите проброс из пода или сервиса: «Проброс порта»."
 }

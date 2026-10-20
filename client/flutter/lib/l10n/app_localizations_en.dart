@@ -7803,4 +7803,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String kubeMetricsUnknownKind(String kind, String apiVersion) {
     return 'The cluster does not offer $kind ($apiVersion).';
   }
+
+  @override
+  String get navPortForwards => 'Port forwards';
+
+  @override
+  String kubeForwardsOpen(int count) {
+    return 'Port forwards: $count';
+  }
+
+  @override
+  String get kubeForwardCopyAddress => 'Copy local address';
+
+  @override
+  String get kubeForwardsEmptyHelp => 'Start one from a Pod or Service: Port forward.';
 }

@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
+import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_restore.dart';
@@ -147,6 +149,8 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
       }
       setState(() => _created = forward);
       ref.invalidate(kubeForwardsProvider(_scope));
+      // Desktop: running forwards live in the right panel.
+      if (!AppPlatform.isMobile) ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.forwards);
     } catch (_) {
       if (_current) setState(() => _failed = true);
     } finally {
@@ -286,9 +290,12 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
 
 /// Runtime-only forwards never become inventory items or survive profile lock.
 class KubeForwardsPanel extends ConsumerStatefulWidget {
-  const KubeForwardsPanel({this.sessionId, this.showEmpty = false, super.key});
+  const KubeForwardsPanel({this.sessionId, this.showEmpty = false, this.embedded = false, super.key});
   final String? sessionId;
   final bool showEmpty;
+
+  /// Right workspace panel: fills the height, no section title.
+  final bool embedded;
   @override
   ConsumerState<KubeForwardsPanel> createState() => _KubeForwardsPanelState();
 }
@@ -347,42 +354,130 @@ class _KubeForwardsPanelState extends ConsumerState<KubeForwardsPanel> with Widg
         .where((f) => widget.sessionId == null || f.sessionId == widget.sessionId)
         .toList();
     final l = context.l10n;
-    if (forwards.isEmpty && !widget.showEmpty && !result.hasError) return const SizedBox.shrink();
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(l.kubePortForwards, style: Theme.of(context).textTheme.titleMedium),
-        if (result.hasError) Text(l.kubeRequestFailed),
-        if (forwards.isEmpty) Text(l.kubeNoForwards),
-        if (forwards.isNotEmpty)
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 220),
-            child: ListView.builder(
+    final tokens = GlassTokens.of(context);
+    if (forwards.isEmpty && !widget.showEmpty && !widget.embedded && !result.hasError) return const SizedBox.shrink();
+    final cards = [for (final f in forwards) _card(context, f, scope)];
+    final list = widget.embedded
+        ? ListView.separated(
+            padding: const EdgeInsets.all(GlassSpacing.s12),
+            itemCount: cards.length,
+            separatorBuilder: (_, _) => const SizedBox(height: GlassSpacing.s8),
+            itemBuilder: (_, index) => cards[index],
+          )
+        : ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 260),
+            child: ListView.separated(
               shrinkWrap: true,
-              itemCount: forwards.length,
-              itemBuilder: (context, index) {
-                final f = forwards[index];
-                return ListTile(
-                  key: ValueKey('kube-forward-${f.id}'),
-                  title: Text('${f.address} → ${f.namespace}/${f.pod}:${f.remotePort}'),
-                  subtitle: Text(
-                    '${f.contextName} · ${switch (f.state) {
-                      'running' => l.kubeForwardRunning,
-                      'failed' => l.kubeForwardStopped,
-                      _ => l.kubeForwardStopped,
-                    }}\n${l.kubeForwardTraffic(f.activeConnections, formatBytes(l, f.bytesSent), formatBytes(l, f.bytesReceived))}',
-                  ),
-                  trailing: GlassIconButton(
-                    icon: Icons.stop_circle_outlined,
-                    tooltip: l.kubeStopForward,
-                    onPressed: _stopping.contains(f.id) ? null : () => _stop(f, scope),
-                  ),
-                );
-              },
+              itemCount: cards.length,
+              separatorBuilder: (_, _) => const SizedBox(height: GlassSpacing.s6),
+              itemBuilder: (_, index) => cards[index],
+            ),
+          );
+    final empty = Padding(
+      padding: const EdgeInsets.all(GlassSpacing.s12),
+      child: EmptyState(
+        icon: Icons.swap_horiz_rounded,
+        title: l.kubeNoForwards,
+        message: l.kubeForwardsEmptyHelp,
+        compact: true,
+      ),
+    );
+    if (widget.embedded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (result.hasError)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+              child: Text(l.kubeRequestFailed, style: TextStyle(color: tokens.palette.danger)),
+            ),
+          Expanded(child: forwards.isEmpty ? empty : list),
+        ],
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: GlassSpacing.s8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l.kubePortForwards, style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label)),
+          const SizedBox(height: GlassSpacing.s6),
+          if (result.hasError) Text(l.kubeRequestFailed, style: TextStyle(color: tokens.palette.danger)),
+          if (forwards.isEmpty) Text(l.kubeNoForwards, style: TextStyle(color: tokens.secondaryLabel)),
+          if (forwards.isNotEmpty) list,
+        ],
+      ),
+    );
+  }
+
+  /// `localhost:PORT` for a wildcard bind, so the copied address works.
+  static String _local(String address) =>
+      address.startsWith('0.0.0.0:') ? 'localhost:${address.substring(8)}' : address; // l10n-ignore: host name
+
+  Widget _card(BuildContext context, KubeForward f, KubeScope scope) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final running = f.state == 'running';
+    return ContentSurface(
+      key: ValueKey('kube-forward-${f.id}'),
+      padding: const EdgeInsets.fromLTRB(GlassSpacing.s12, GlassSpacing.s8, GlassSpacing.s4, GlassSpacing.s8),
+      child: Row(
+        children: [
+          StatusDot(color: running ? tokens.palette.success : tokens.palette.danger),
+          const SizedBox(width: GlassSpacing.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _local(f.address),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tokens.typography.mono.copyWith(color: tokens.palette.label, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '→ ${f.namespace}/${f.pod}:${f.remotePort}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tokens.typography.callout.copyWith(color: tokens.palette.label),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    f.contextName,
+                    if (running) l.kubeForwardRunning else l.kubeForwardStopped,
+                    l.kubeForwardTraffic(
+                      f.activeConnections,
+                      formatBytes(l, f.bytesSent),
+                      formatBytes(l, f.bytesReceived),
+                    ),
+                  ].join(' · '),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel),
+                ),
+              ],
             ),
           ),
-      ],
+          GlassIconButton(
+            key: ValueKey('kube-forward-copy-${f.id}'),
+            icon: Icons.content_copy_rounded,
+            tooltip: l.kubeForwardCopyAddress,
+            style: GlassIconButtonStyle.plain,
+            onPressed: () => unawaited(Clipboard.setData(ClipboardData(text: _local(f.address)))),
+          ),
+          GlassIconButton(
+            key: ValueKey('kube-forward-stop-${f.id}'),
+            icon: Icons.stop_circle_outlined,
+            tooltip: l.kubeStopForward,
+            color: tokens.palette.danger,
+            style: GlassIconButtonStyle.plain,
+            onPressed: _stopping.contains(f.id) ? null : () => _stop(f, scope),
+          ),
+        ],
+      ),
     );
   }
 }
