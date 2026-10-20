@@ -13357,6 +13357,246 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Last check: failed'**
   String get kubeStatusFailed;
+
+  /// Navigator section with nodes, namespaces and events
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster'**
+  String get kubeNavCluster;
+
+  /// Navigator section with CRD kinds grouped by API group
+  ///
+  /// In en, this message translates to:
+  /// **'Custom resources'**
+  String get kubeNavCustom;
+
+  /// Placeholder of the custom resource filter
+  ///
+  /// In en, this message translates to:
+  /// **'Filter CRDs…'**
+  String get kubeNavCrdFilter;
+
+  /// Navigator section with problems, history and Helm
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get kubeNavOverview;
+
+  /// Navigator item opening the Helm release list
+  ///
+  /// In en, this message translates to:
+  /// **'Helm releases'**
+  String get kubeNavHelmReleases;
+
+  /// Placeholder of the Kubernetes label selector field
+  ///
+  /// In en, this message translates to:
+  /// **'Labels: app=api'**
+  String get kubeLabelSelectorHint;
+
+  /// Compact indicator: the table follows a live watch
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get kubeLiveShort;
+
+  /// Compact indicator: the table shows a one-time snapshot
+  ///
+  /// In en, this message translates to:
+  /// **'Snapshot'**
+  String get kubeSnapshotShort;
+
+  /// Empty table message with the selected namespace or All namespaces
+  ///
+  /// In en, this message translates to:
+  /// **'No resources in {namespace}'**
+  String kubeNoResourcesIn(String namespace);
+
+  /// Inspector field: Pod IP address
+  ///
+  /// In en, this message translates to:
+  /// **'Pod IP'**
+  String get kubePodIp;
+
+  /// Inspector field: IP of the node running the Pod
+  ///
+  /// In en, this message translates to:
+  /// **'Host IP'**
+  String get kubeHostIp;
+
+  /// Inspector field: Pod quality-of-service class
+  ///
+  /// In en, this message translates to:
+  /// **'QoS class'**
+  String get kubeQos;
+
+  /// Inspector section with object annotations
+  ///
+  /// In en, this message translates to:
+  /// **'Annotations'**
+  String get kubeAnnotations;
+
+  /// Inspector section with the Pod containers
+  ///
+  /// In en, this message translates to:
+  /// **'Containers'**
+  String get kubeContainers;
+
+  /// Inspector field: owning controller
+  ///
+  /// In en, this message translates to:
+  /// **'Controlled by'**
+  String get kubeControlledBy;
+
+  /// Inspector section with object metadata
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get kubeDetailsSection;
+
+  /// Inspector section with live CPU and memory use
+  ///
+  /// In en, this message translates to:
+  /// **'Usage'**
+  String get kubeUsage;
+
+  /// Inspector section with advanced operations
+  ///
+  /// In en, this message translates to:
+  /// **'Operations'**
+  String get kubeOperations;
+
+  /// Inspector section with the structural spec summary
+  ///
+  /// In en, this message translates to:
+  /// **'Specification'**
+  String get kubeSpecSection;
+
+  /// Tooltip: close the object inspector
+  ///
+  /// In en, this message translates to:
+  /// **'Close details'**
+  String get kubeCloseInspector;
+
+  /// Inspector field: container images of a workload
+  ///
+  /// In en, this message translates to:
+  /// **'Images'**
+  String get kubeImages;
+
+  /// Compact inspector action: open a Pod shell
+  ///
+  /// In en, this message translates to:
+  /// **'Shell'**
+  String get kubeShellShort;
+
+  /// Compact inspector action: start port forwarding
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get kubeForwardShort;
+
+  /// Compact inspector action: explain this object with AI
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI'**
+  String get kubeAiShort;
+
+  /// Compact inspector action: edit object YAML
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get kubeEditShort;
+
+  /// Compact inspector action: open rollout history
+  ///
+  /// In en, this message translates to:
+  /// **'Rollouts'**
+  String get kubeHistoryShort;
+
+  /// Compact inspector action: reveal Secret values
+  ///
+  /// In en, this message translates to:
+  /// **'Values'**
+  String get kubeRevealShort;
+
+  /// Right AI panel mode: assistant for the connected Kubernetes cluster
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster {name}'**
+  String kubeAiClusterChat(String name);
+
+  /// Right AI panel mode: the regular AI chat
+  ///
+  /// In en, this message translates to:
+  /// **'General chat'**
+  String get kubeAiGeneralChat;
+
+  /// Tooltip: toggle the Kubernetes resource navigator
+  ///
+  /// In en, this message translates to:
+  /// **'Show or hide resources'**
+  String get kubeToggleNavigator;
+
+  /// Helm table column: release revision
+  ///
+  /// In en, this message translates to:
+  /// **'Revision'**
+  String get kubeRevision;
+
+  /// Helm table column: chart appVersion
+  ///
+  /// In en, this message translates to:
+  /// **'App version'**
+  String get kubeAppVersion;
+
+  /// Helm table column: time since the last release update
+  ///
+  /// In en, this message translates to:
+  /// **'Updated'**
+  String get kubeUpdated;
+
+  /// Button: scan the standard kubeconfig folder in the home directory
+  ///
+  /// In en, this message translates to:
+  /// **'Find in ~/.kube'**
+  String get kubeScanHome;
+
+  /// Button: choose another folder to scan for kubeconfig files
+  ///
+  /// In en, this message translates to:
+  /// **'Other folder…'**
+  String get kubeScanOtherFolder;
+
+  /// Placeholder of the kubeconfig YAML field
+  ///
+  /// In en, this message translates to:
+  /// **'Or paste kubeconfig YAML here'**
+  String get kubeImportPasteHint;
+
+  /// Connection editor section: name and namespace
+  ///
+  /// In en, this message translates to:
+  /// **'Connection'**
+  String get kubeEditorConnection;
+
+  /// Connection editor section: tags and colour
+  ///
+  /// In en, this message translates to:
+  /// **'Organization'**
+  String get kubeEditorOrganization;
+
+  /// Connection editor section: production policy and event history
+  ///
+  /// In en, this message translates to:
+  /// **'Safety'**
+  String get kubeEditorSafety;
+
+  /// Inspector field: ready and desired replicas
+  ///
+  /// In en, this message translates to:
+  /// **'Replicas'**
+  String get kubeReplicasReady;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

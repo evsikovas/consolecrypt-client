@@ -99,10 +99,30 @@ const _liveToolbarBranches = {
 final sidebarCollapsedProvider = NotifierProvider<SidebarCollapsed, bool>(SidebarCollapsed.new);
 
 class SidebarCollapsed extends Notifier<bool> {
+  bool? _beforeAuto;
+
   @override
   bool build() => false;
 
-  void toggle() => state = !state;
+  /// A manual toggle wins over a workspace's automatic collapse.
+  void toggle() {
+    _beforeAuto = null;
+    state = !state;
+  }
+
+  /// Wide workspaces (an open Kubernetes cluster) collapse the sidebar to
+  /// icons; [restore] returns the user's previous choice.
+  void autoCollapse() {
+    if (!ref.mounted) return;
+    _beforeAuto ??= state;
+    state = true;
+  }
+
+  void restore() {
+    if (!ref.mounted || _beforeAuto == null) return;
+    state = _beforeAuto!;
+    _beforeAuto = null;
+  }
 }
 
 /// Floating inset or edge-to-edge sidebar (Settings → Appearance).
@@ -408,6 +428,18 @@ class _SidebarFooter extends ConsumerWidget {
       iconSize: GlassSizes.iconRow,
       onPressed: () => ref.read(vaultServiceProvider).lock(),
     );
+    // The same collapse/expand action as the toolbar button, at the opposite
+    // corner of the sidebar from the lock (windows below the compact
+    // breakpoint are always compact and have no toggle).
+    final canCollapse = MediaQuery.sizeOf(context).width >= GlassSizes.compactBreakpoint;
+    final toggle = GlassIconButton(
+      key: const ValueKey('sidebar-footer-toggle'),
+      icon: compact ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
+      tooltip: context.l10n.shellToggleSidebar,
+      style: GlassIconButtonStyle.plain,
+      iconSize: GlassSizes.iconRow,
+      onPressed: () => ref.read(sidebarCollapsedProvider.notifier).toggle(),
+    );
     if (compact) {
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -415,10 +447,11 @@ class _SidebarFooter extends ConsumerWidget {
           const SyncStatusPill(compact: true),
           const SizedBox(height: GlassSpacing.s4),
           lockButton,
+          if (canCollapse) ...[const SizedBox(height: GlassSpacing.s4), toggle],
         ],
       );
     }
-    return Row(children: [lockButton, const Spacer()]);
+    return Row(children: [lockButton, const Spacer(), if (canCollapse) toggle]);
   }
 }
 

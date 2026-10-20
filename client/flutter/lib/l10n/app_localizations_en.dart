@@ -7424,4 +7424,128 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeStatusFailed => 'Last check: failed';
+
+  @override
+  String get kubeNavCluster => 'Cluster';
+
+  @override
+  String get kubeNavCustom => 'Custom resources';
+
+  @override
+  String get kubeNavCrdFilter => 'Filter CRDs…';
+
+  @override
+  String get kubeNavOverview => 'Overview';
+
+  @override
+  String get kubeNavHelmReleases => 'Helm releases';
+
+  @override
+  String get kubeLabelSelectorHint => 'Labels: app=api';
+
+  @override
+  String get kubeLiveShort => 'Live';
+
+  @override
+  String get kubeSnapshotShort => 'Snapshot';
+
+  @override
+  String kubeNoResourcesIn(String namespace) {
+    return 'No resources in $namespace';
+  }
+
+  @override
+  String get kubePodIp => 'Pod IP';
+
+  @override
+  String get kubeHostIp => 'Host IP';
+
+  @override
+  String get kubeQos => 'QoS class';
+
+  @override
+  String get kubeAnnotations => 'Annotations';
+
+  @override
+  String get kubeContainers => 'Containers';
+
+  @override
+  String get kubeControlledBy => 'Controlled by';
+
+  @override
+  String get kubeDetailsSection => 'Details';
+
+  @override
+  String get kubeUsage => 'Usage';
+
+  @override
+  String get kubeOperations => 'Operations';
+
+  @override
+  String get kubeSpecSection => 'Specification';
+
+  @override
+  String get kubeCloseInspector => 'Close details';
+
+  @override
+  String get kubeImages => 'Images';
+
+  @override
+  String get kubeShellShort => 'Shell';
+
+  @override
+  String get kubeForwardShort => 'Port';
+
+  @override
+  String get kubeAiShort => 'Ask AI';
+
+  @override
+  String get kubeEditShort => 'Edit';
+
+  @override
+  String get kubeHistoryShort => 'Rollouts';
+
+  @override
+  String get kubeRevealShort => 'Values';
+
+  @override
+  String kubeAiClusterChat(String name) {
+    return 'Cluster $name';
+  }
+
+  @override
+  String get kubeAiGeneralChat => 'General chat';
+
+  @override
+  String get kubeToggleNavigator => 'Show or hide resources';
+
+  @override
+  String get kubeRevision => 'Revision';
+
+  @override
+  String get kubeAppVersion => 'App version';
+
+  @override
+  String get kubeUpdated => 'Updated';
+
+  @override
+  String get kubeScanHome => 'Find in ~/.kube';
+
+  @override
+  String get kubeScanOtherFolder => 'Other folder…';
+
+  @override
+  String get kubeImportPasteHint => 'Or paste kubeconfig YAML here';
+
+  @override
+  String get kubeEditorConnection => 'Connection';
+
+  @override
+  String get kubeEditorOrganization => 'Organization';
+
+  @override
+  String get kubeEditorSafety => 'Safety';
+
+  @override
+  String get kubeReplicasReady => 'Replicas';
 }

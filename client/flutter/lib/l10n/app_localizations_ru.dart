@@ -7624,4 +7624,128 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeStatusFailed => 'Последняя проверка: ошибка';
+
+  @override
+  String get kubeNavCluster => 'Кластер';
+
+  @override
+  String get kubeNavCustom => 'Пользовательские ресурсы';
+
+  @override
+  String get kubeNavCrdFilter => 'Фильтр CRD…';
+
+  @override
+  String get kubeNavOverview => 'Обзор';
+
+  @override
+  String get kubeNavHelmReleases => 'Релизы Helm';
+
+  @override
+  String get kubeLabelSelectorHint => 'Метки: app=api';
+
+  @override
+  String get kubeLiveShort => 'Онлайн';
+
+  @override
+  String get kubeSnapshotShort => 'Снимок';
+
+  @override
+  String kubeNoResourcesIn(String namespace) {
+    return 'Нет ресурсов в $namespace';
+  }
+
+  @override
+  String get kubePodIp => 'IP пода';
+
+  @override
+  String get kubeHostIp => 'IP узла';
+
+  @override
+  String get kubeQos => 'Класс QoS';
+
+  @override
+  String get kubeAnnotations => 'Аннотации';
+
+  @override
+  String get kubeContainers => 'Контейнеры';
+
+  @override
+  String get kubeControlledBy => 'Управляется';
+
+  @override
+  String get kubeDetailsSection => 'Сведения';
+
+  @override
+  String get kubeUsage => 'Потребление';
+
+  @override
+  String get kubeOperations => 'Операции';
+
+  @override
+  String get kubeSpecSection => 'Спецификация';
+
+  @override
+  String get kubeCloseInspector => 'Закрыть сведения';
+
+  @override
+  String get kubeImages => 'Образы';
+
+  @override
+  String get kubeShellShort => 'Терминал';
+
+  @override
+  String get kubeForwardShort => 'Порт';
+
+  @override
+  String get kubeAiShort => 'Спросить ИИ';
+
+  @override
+  String get kubeEditShort => 'Изменить';
+
+  @override
+  String get kubeHistoryShort => 'Ревизии';
+
+  @override
+  String get kubeRevealShort => 'Значения';
+
+  @override
+  String kubeAiClusterChat(String name) {
+    return 'Кластер $name';
+  }
+
+  @override
+  String get kubeAiGeneralChat => 'Общий чат';
+
+  @override
+  String get kubeToggleNavigator => 'Показать или скрыть ресурсы';
+
+  @override
+  String get kubeRevision => 'Ревизия';
+
+  @override
+  String get kubeAppVersion => 'Версия приложения';
+
+  @override
+  String get kubeUpdated => 'Обновлён';
+
+  @override
+  String get kubeScanHome => 'Найти в ~/.kube';
+
+  @override
+  String get kubeScanOtherFolder => 'Другая папка…';
+
+  @override
+  String get kubeImportPasteHint => 'Или вставьте YAML kubeconfig сюда';
+
+  @override
+  String get kubeEditorConnection => 'Подключение';
+
+  @override
+  String get kubeEditorOrganization => 'Организация';
+
+  @override
+  String get kubeEditorSafety => 'Безопасность';
+
+  @override
+  String get kubeReplicasReady => 'Реплики';
 }

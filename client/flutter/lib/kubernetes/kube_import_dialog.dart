@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
@@ -177,10 +178,20 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
     await _load(() => _service.previewFile(path));
   }
 
-  Future<void> _scan() async {
+  /// The standard kubeconfig folder: kubectl, k3s, OrbStack and cloud CLIs
+  /// all write there, so it is scanned without a folder picker.
+  static String? get _homeKube {
+    final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    return home == null || home.isEmpty ? null : '$home${Platform.pathSeparator}.kube';
+  }
+
+  Future<void> _scan({bool home = false}) async {
     final service = _service;
     if (!_current || _busy || service is! KubeInventoryManagementService) return;
-    final directory = await ref.read(fileDialogServiceProvider).chooseDirectory();
+    final homeKube = _homeKube;
+    final directory = home && homeKube != null && Directory(homeKube).existsSync()
+        ? homeKube
+        : await ref.read(fileDialogServiceProvider).chooseDirectory();
     if (!_current || directory == null) return;
     setState(() => _busy = true);
     try {
@@ -318,33 +329,47 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
                   if (_busy) const LinearProgressIndicator(),
                   if (_failure != null) Text(_failure!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   if (preview == null) ...[
-                    GlassButton(
-                      key: const ValueKey('kube-import-file'),
-                      label: l.kubeChooseFile,
-                      icon: Icons.file_open_outlined,
-                      onPressed: _busy ? null : _file,
+                    Wrap(
+                      spacing: GlassSpacing.s8,
+                      runSpacing: GlassSpacing.s8,
+                      children: [
+                        if (!AppPlatform.isMobile && _service is KubeInventoryManagementService)
+                          GlassButton.prominent(
+                            key: const ValueKey('kube-import-scan-home'),
+                            label: l.kubeScanHome,
+                            icon: Icons.travel_explore_rounded,
+                            onPressed: _busy ? null : () => _scan(home: true),
+                          ),
+                        GlassButton(
+                          key: const ValueKey('kube-import-file'),
+                          label: l.kubeChooseFile,
+                          icon: Icons.file_open_outlined,
+                          onPressed: _busy ? null : _file,
+                        ),
+                        if (!AppPlatform.isMobile && _service is KubeInventoryManagementService)
+                          GlassButton(
+                            key: const ValueKey('kube-import-scan'),
+                            label: l.kubeScanOtherFolder,
+                            icon: Icons.folder_open,
+                            onPressed: _busy ? null : _scan,
+                          ),
+                        if (_queuedFiles.isNotEmpty)
+                          GlassButton(label: l.kubeNextFile, onPressed: _busy ? null : _nextFile),
+                      ],
                     ),
-                    if (!AppPlatform.isMobile && _service is KubeInventoryManagementService)
-                      GlassButton(
-                        key: const ValueKey('kube-import-scan'),
-                        label: l.kubeScanFolder,
-                        icon: Icons.folder_open,
-                        onPressed: _busy ? null : _scan,
-                      ),
-                    if (_queuedFiles.isNotEmpty)
-                      GlassButton(label: l.kubeNextFile, onPressed: _busy ? null : _nextFile),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: GlassSpacing.s16),
                     TextField(
                       key: const ValueKey('kube-import-yaml'),
                       controller: _yaml,
                       enabled: !_busy,
-                      minLines: 6,
-                      maxLines: 12,
+                      minLines: 8,
+                      maxLines: 14,
                       maxLength: 4 * 1024 * 1024,
                       autocorrect: false,
                       enableSuggestions: false,
                       enableIMEPersonalizedLearning: false,
-                      decoration: InputDecoration(labelText: l.kubeYaml, counterText: ''),
+                      style: GlassTokens.of(context).typography.mono.copyWith(fontSize: 12),
+                      decoration: InputDecoration(hintText: l.kubeImportPasteHint, counterText: ''),
                     ),
                   ] else ...[
                     if (_expired) Text(l.kubeExpired),

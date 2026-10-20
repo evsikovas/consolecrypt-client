@@ -4,6 +4,8 @@ import 'package:consolecrypt/app/symbols.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/kubernetes/kube_ai_host.dart';
+import 'package:consolecrypt/kubernetes/kube_ai_panel.dart';
 import 'package:consolecrypt/snippets/snippets_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -166,7 +168,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                     child: !_visited.contains(tool)
                                         ? const SizedBox.shrink()
                                         : tool == WorkspaceTool.ai
-                                        ? const AiChatScreen(embedded: true)
+                                        ? const _AiTool()
                                         : const SnippetsScreen(embedded: true),
                                   ),
                                 ),
@@ -216,4 +218,67 @@ class WorkspaceToolResizeHandle extends ConsumerWidget {
       ),
     ),
   );
+}
+
+/// General AI chat, or the connected cluster's assistant while a Kubernetes
+/// workspace is open (switchable). Both stay mounted so drafts survive.
+class _AiTool extends ConsumerWidget {
+  const _AiTool();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final host = ref.watch(kubeAiHostProvider);
+    final cluster = host != null && ref.watch(kubeAiClusterModeProvider);
+    final l = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (host != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: GlassSegmented<bool>(
+              key: const ValueKey('workspace-ai-mode'),
+              inChrome: false,
+              expand: true,
+              semanticLabel: l.navAiChat,
+              segments: [
+                GlassSegment(
+                  key: const ValueKey('workspace-ai-cluster'),
+                  value: true,
+                  label: l.kubeAiClusterChat(host.contextName),
+                ),
+                GlassSegment(key: const ValueKey('workspace-ai-general'), value: false, label: l.kubeAiGeneralChat),
+              ],
+              selected: cluster,
+              onChanged: (value) => ref.read(kubeAiClusterModeProvider.notifier).set(value),
+            ),
+          ),
+        Expanded(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Offstage(offstage: cluster, child: const AiChatScreen(embedded: true)),
+              if (host != null)
+                Offstage(
+                  offstage: !cluster,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                    child: KubeAiPanel(
+                      key: ValueKey(('kube-ai', host.session.id, host.request)),
+                      session: host.session,
+                      contextName: host.contextName,
+                      service: host.service,
+                      selected: host.selected,
+                      initialQuestion: host.question,
+                      namespace: host.namespace,
+                      onReviewedCommand: host.onReviewedCommand,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }

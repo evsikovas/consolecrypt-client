@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 
 /// Original, consistent 24-point outline symbols for the navigation.
@@ -158,13 +160,15 @@ class _SymbolPainter extends CustomPainter {
         line(19, 12, 19, 21);
         canvas.drawCircle(const Offset(19, 9), 3, ink);
       case AppSymbol.kubernetes:
-        canvas.drawCircle(const Offset(12, 12), 3, ink);
-        canvas.drawCircle(const Offset(12, 3), 2, ink);
-        canvas.drawCircle(const Offset(4, 20), 2, ink);
-        canvas.drawCircle(const Offset(20, 20), 2, ink);
-        line(12, 5, 12, 9);
-        line(10, 14, 5.5, 18.5);
-        line(14, 14, 18.5, 18.5);
+        // Ship's wheel: rim, hub and eight spokes ending in handles.
+        canvas.drawCircle(const Offset(12, 12), 6.5, ink);
+        canvas.drawCircle(const Offset(12, 12), 1.8, ink);
+        for (var i = 0; i < 8; i++) {
+          final a = i * math.pi / 4;
+          final d = Offset(math.cos(a), math.sin(a));
+          canvas.drawLine(const Offset(12, 12) + d * 2.2, const Offset(12, 12) + d * 9.2, ink);
+          canvas.drawCircle(const Offset(12, 12) + d * 10.2, 0.9, ink);
+        }
     }
     canvas.restore();
   }

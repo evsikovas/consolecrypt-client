@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
@@ -28,6 +29,9 @@ class KubeResourceTableView extends ConsumerStatefulWidget {
     this.onVisibleRows,
     this.onMobileAction,
     this.mobileTrailingAction,
+    this.activeName,
+    this.loading = false,
+    this.emptyText,
     super.key,
   });
   final List<KubeResourceRow> rows;
@@ -41,6 +45,13 @@ class KubeResourceTableView extends ConsumerStatefulWidget {
   final ValueChanged<Set<String>>? onVisibleRows;
   final Future<void> Function(KubeResourceRow, KubeResourceOpenAction)? onMobileAction;
   final KubeResourceOpenAction? mobileTrailingAction;
+
+  /// Object shown in the desktop inspector; its row stays highlighted.
+  final KubeResourceRef? activeName;
+  final bool loading;
+
+  /// Shown instead of rows when the list is empty.
+  final String? emptyText;
   @override
   ConsumerState<KubeResourceTableView> createState() => _KubeResourceTableViewState();
 }
@@ -351,9 +362,10 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
   );
   @override
   Widget build(BuildContext context) => ContentSurface(
+    padding: const EdgeInsets.symmetric(vertical: 4),
     child: LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 720) {
+        if (AppPlatform.isMobile && constraints.maxWidth < 720 || constraints.maxWidth < 420) {
           _rowExtent = null;
           _scheduleVisibleRows();
           return Column(
@@ -397,163 +409,210 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
           );
         }
         final columns = _columns.where((c) => !_hidden.contains(c.id)).toList();
-        final width = math.max(constraints.maxWidth, columns.fold(48.0, (sum, c) => sum + _width(c)));
-        final extent = math.max(48.0, MediaQuery.textScalerOf(context).scale(20) + 20);
+        final tokens = GlassTokens.of(context);
+        final p = tokens.palette;
+        final lead = widget.canSelect ? 40.0 : 12.0;
+        final width = math.max(constraints.maxWidth, columns.fold(lead + 40, (sum, c) => sum + _width(c)));
+        final extent = math.max(34.0, MediaQuery.textScalerOf(context).scale(15) + 18);
         _rowExtent = extent;
         _scheduleVisibleRows();
-        return Column(
+        final header = tokens.typography.caption.copyWith(
+          color: tokens.secondaryLabel,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.3,
+        );
+        return Stack(
           children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: PopupMenuButton<String>(
-                tooltip: context.l10n.kubeTableColumns,
-                icon: const Icon(Icons.view_column_outlined),
-                onSelected: (id) => setState(() {
-                  if (!_hidden.remove(id)) _hidden.add(id);
-                  _savePreferences();
-                }),
-                itemBuilder: (_) => [
-                  for (final column in _columns.where((column) => column.id != 'name'))
-                    CheckedPopupMenuItem(
-                      value: column.id,
-                      checked: !_hidden.contains(column.id),
-                      child: Text(_label(column)),
-                    ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Scrollbar(
+            Scrollbar(
+              controller: _horizontal,
+              thumbVisibility: width > constraints.maxWidth,
+              notificationPredicate: (n) => n.depth == 0,
+              child: SingleChildScrollView(
                 controller: _horizontal,
-                thumbVisibility: true,
-                notificationPredicate: (n) => n.depth == 0,
-                child: SingleChildScrollView(
-                  controller: _horizontal,
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: width,
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          height: extent,
-                          child: Row(
-                            children: [
-                              const SizedBox(width: 48),
-                              for (final column in columns)
-                                SizedBox(
-                                  width: _width(column),
-                                  child: Stack(
-                                    children: [
-                                      Positioned.fill(
-                                        child: TextButton(
-                                          onPressed: () => _changeSort(column.id),
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: width,
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: 32,
+                        child: Row(
+                          children: [
+                            SizedBox(width: lead),
+                            for (final column in columns)
+                              SizedBox(
+                                width: _width(column),
+                                child: Stack(
+                                  children: [
+                                    Positioned.fill(
+                                      child: GlassInteractive(
+                                        key: ValueKey('kube-sort-${column.id}'),
+                                        semanticLabel: _label(column),
+                                        onPressed: () => _changeSort(column.id),
+                                        builder: (context, state) => Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10),
                                           child: Row(
                                             children: [
-                                              Expanded(
+                                              Flexible(
                                                 child: Text(
-                                                  _label(column),
+                                                  _label(column).toUpperCase(),
                                                   maxLines: 1,
                                                   overflow: TextOverflow.ellipsis,
+                                                  style: header.copyWith(
+                                                    color: _sort == column.id || state.hovered ? p.label : null,
+                                                  ),
                                                 ),
                                               ),
                                               if (_sort == column.id)
-                                                Icon(_ascending ? Icons.arrow_upward : Icons.arrow_downward, size: 14),
+                                                Icon(
+                                                  _ascending ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                                                  size: 16,
+                                                  color: p.label,
+                                                ),
                                             ],
                                           ),
                                         ),
                                       ),
-                                      Positioned(
-                                        right: 0,
-                                        top: 0,
-                                        bottom: 0,
-                                        width: 10,
-                                        child: MouseRegion(
-                                          cursor: SystemMouseCursors.resizeColumn,
-                                          child: GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onHorizontalDragUpdate: (event) => setState(() {
-                                              _widths[column.id] = (_width(column) + event.delta.dx).clamp(80, 600);
-                                              _savePreferences();
-                                            }),
+                                    ),
+                                    Positioned(
+                                      right: 0,
+                                      top: 6,
+                                      bottom: 6,
+                                      width: 8,
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.resizeColumn,
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onHorizontalDragUpdate: (event) => setState(() {
+                                            _widths[column.id] = (_width(column) + event.delta.dx).clamp(80, 600);
+                                            _savePreferences();
+                                          }),
+                                          child: Center(child: Container(width: 1, color: tokens.surfaces.separator)),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Divider(height: 1, color: tokens.surfaces.separator),
+                      if (widget.loading && _rows.isEmpty) const LinearProgressIndicator(minHeight: 2),
+                      Expanded(
+                        child: _rows.isEmpty && widget.emptyText != null
+                            ? Align(
+                                alignment: const Alignment(-1, -0.9),
+                                child: SizedBox(
+                                  width: constraints.maxWidth,
+                                  child: EmptyStateText(text: widget.emptyText!),
+                                ),
+                              )
+                            : Focus(
+                                key: const ValueKey('kube-table-keyboard'),
+                                focusNode: _keyboardFocus,
+                                onKeyEvent: _navigate,
+                                onFocusChange: (_) => setState(() {}),
+                                child: ListView.builder(
+                                  key: const ValueKey('kube-resource-list'),
+                                  controller: _vertical,
+                                  itemExtent: extent,
+                                  itemCount: _rows.length + (widget.hasMore ? 1 : 0),
+                                  itemBuilder: (context, index) {
+                                    if (index == _rows.length) return _more();
+                                    final row = _rows[index];
+                                    final active =
+                                        widget.activeName?.name == row.name &&
+                                        widget.activeName?.namespace == row.namespace;
+                                    final keyboard = _keyboardFocus.hasFocus && row.id == _keyboardId;
+                                    return Semantics(
+                                      focused: keyboard,
+                                      selected: widget.selected.contains(row.id) || active,
+                                      child: GlassInteractive(
+                                        key: ValueKey('kube-resource-${row.id}'),
+                                        canRequestFocus: false,
+                                        semanticLabel: row.name,
+                                        onPressed: widget.kind.canRead ? () => widget.onOpen(row) : null,
+                                        builder: (context, state) => DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            color: active || widget.selected.contains(row.id)
+                                                ? tokens.rowSelection
+                                                : keyboard
+                                                ? tokens.surfaces.fillPressed
+                                                : state.hovered
+                                                ? tokens.surfaces.fillHover
+                                                : Colors.transparent,
+                                            border: active ? Border(left: BorderSide(color: p.accent, width: 2)) : null,
+                                          ),
+                                          child: SizedBox(
+                                            height: extent,
+                                            child: Row(
+                                              children: [
+                                                SizedBox(width: lead, child: widget.canSelect ? _select(row) : null),
+                                                for (final column in columns)
+                                                  SizedBox(
+                                                    width: _width(column),
+                                                    child: Padding(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                                                      child: column.id == 'status'
+                                                          ? KubeStatusLabel(status: _value(row, column))
+                                                          : Text(
+                                                              _value(row, column),
+                                                              maxLines: 1,
+                                                              overflow: TextOverflow.ellipsis,
+                                                              style:
+                                                                  (column.id == 'name'
+                                                                          ? tokens.typography.body
+                                                                          : tokens.typography.callout)
+                                                                      .copyWith(
+                                                                        color: column.id == 'name'
+                                                                            ? p.label
+                                                                            : tokens.secondaryLabel,
+                                                                        fontWeight: column.id == 'name'
+                                                                            ? FontWeight.w500
+                                                                            : null,
+                                                                      ),
+                                                            ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    );
+                                  },
                                 ),
-                            ],
-                          ),
-                        ),
-                        const Divider(height: 1),
-                        Expanded(
-                          child: Focus(
-                            key: const ValueKey('kube-table-keyboard'),
-                            focusNode: _keyboardFocus,
-                            onKeyEvent: _navigate,
-                            onFocusChange: (_) => setState(() {}),
-                            child: ListView.builder(
-                              key: const ValueKey('kube-resource-list'),
-                              controller: _vertical,
-                              itemExtent: extent,
-                              itemCount: _rows.length + (widget.hasMore ? 1 : 0),
-                              itemBuilder: (context, index) {
-                                if (index == _rows.length) return _more();
-                                final row = _rows[index];
-                                return Semantics(
-                                  focused: _keyboardFocus.hasFocus && row.id == _keyboardId,
-                                  selected: widget.selected.contains(row.id),
-                                  child: InkWell(
-                                    canRequestFocus: false,
-                                    key: ValueKey('kube-resource-${row.id}'),
-                                    onTap: widget.kind.canRead ? () => widget.onOpen(row) : null,
-                                    child: ColoredBox(
-                                      color: widget.selected.contains(row.id)
-                                          ? Theme.of(context).colorScheme.primary.withValues(alpha: .10)
-                                          : _keyboardFocus.hasFocus && row.id == _keyboardId
-                                          ? Theme.of(context).focusColor
-                                          : Colors.transparent,
-                                      child: Row(
-                                        children: [
-                                          SizedBox(width: 48, child: widget.canSelect ? _select(row) : null),
-                                          for (final column in columns)
-                                            SizedBox(
-                                              width: _width(column),
-                                              child: Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                                child: Text(
-                                                  _value(row, column),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: column.id == 'status'
-                                                      ? TextStyle(
-                                                          color: switch (row.status.toLowerCase()) {
-                                                            'running' ||
-                                                            'ready' ||
-                                                            'complete' ||
-                                                            'succeeded' => Theme.of(context).colorScheme.primary,
-                                                            'failed' ||
-                                                            'crashloopbackoff' ||
-                                                            'error' ||
-                                                            'notready' => Theme.of(context).colorScheme.error,
-                                                            _ => null,
-                                                          },
-                                                        )
-                                                      : null,
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                              ),
+                      ),
+                    ],
                   ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 4,
+              top: 0,
+              height: 32,
+              child: GlassMenuButton<String>(
+                key: const ValueKey('kube-table-columns'),
+                entries: [
+                  for (final column in _columns.where((column) => column.id != 'name'))
+                    GlassMenuItem<String>(
+                      key: ValueKey('kube-column-${column.id}'),
+                      value: column.id,
+                      label: _label(column),
+                      checked: !_hidden.contains(column.id),
+                    ),
+                ],
+                onSelected: (id) => setState(() {
+                  if (!_hidden.remove(id)) _hidden.add(id);
+                  _savePreferences();
+                }),
+                builder: (context, open) => GlassIconButton(
+                  icon: Icons.view_column_outlined,
+                  tooltip: context.l10n.kubeTableColumns,
+                  onPressed: open,
                 ),
               ),
             ),
@@ -562,6 +621,103 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
       },
     ),
   );
+}
+
+/// Status text with a role-coloured dot (Running → success, Pending →
+/// warning, CrashLoopBackOff → danger).
+class KubeStatusLabel extends StatelessWidget {
+  const KubeStatusLabel({required this.status, super.key});
+  final String status;
+
+  static GlassTone tone(String status) {
+    final value = status.toLowerCase();
+    // Workload readiness "ready/desired".
+    final ratio = RegExp(r'^(\d+)/(\d+)$').firstMatch(value);
+    if (ratio != null) {
+      final ready = int.parse(ratio[1]!), desired = int.parse(ratio[2]!);
+      if (desired == 0) return GlassTone.neutral;
+      return ready >= desired ? GlassTone.success : (ready == 0 ? GlassTone.danger : GlassTone.warning);
+    }
+    if (const {
+      'running',
+      'ready',
+      'active',
+      'bound',
+      'available',
+      'healthy',
+      'synced',
+      'deployed',
+      'true',
+    }.contains(value)) {
+      return GlassTone.success;
+    }
+    if (const {'succeeded', 'completed', 'complete'}.contains(value)) return GlassTone.neutral;
+    if (value.contains('crashloop') ||
+        value.contains('error') ||
+        value.contains('backoff') ||
+        value.contains('fail') ||
+        value.contains('evicted') ||
+        value.contains('oomkilled') ||
+        const {'notready', 'lost', 'degraded', 'false', 'unhealthy'}.contains(value)) {
+      return GlassTone.danger;
+    }
+    if (value.contains('pending') ||
+        value.contains('creating') ||
+        value.contains('terminating') ||
+        value.contains('progress') ||
+        value.contains('init') ||
+        value == 'unknown') {
+      return GlassTone.warning;
+    }
+    return GlassTone.neutral;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = GlassTokens.of(context);
+    final glassTone = tone(status);
+    final color = glassTone == GlassTone.neutral ? tokens.palette.tertiary : tokens.palette.tone(glassTone);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 7),
+        Flexible(
+          child: Text(
+            status,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: tokens.typography.callout.copyWith(
+              color: glassTone == GlassTone.neutral ? tokens.secondaryLabel : color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Quiet one-line message inside an empty table.
+class EmptyStateText extends StatelessWidget {
+  const EmptyStateText({required this.text, super.key});
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    final tokens = GlassTokens.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: tokens.typography.body.copyWith(color: tokens.secondaryLabel),
+      ),
+    );
+  }
 }
 
 final class _Column {

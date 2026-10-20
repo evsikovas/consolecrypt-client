@@ -9,6 +9,7 @@ import 'package:consolecrypt/kubernetes/kube_connection_status.dart';
 import 'package:consolecrypt/kubernetes/kube_export_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_history_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_history_service.dart';
+import 'package:consolecrypt/kubernetes/kube_icons.dart';
 import 'package:consolecrypt/kubernetes/kube_import_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_inventory_service.dart';
 import 'package:consolecrypt/kubernetes/kube_navigation.dart';
@@ -157,153 +158,252 @@ class _KubernetesScreenState extends ConsumerState<KubernetesScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
-            key: const ValueKey('kube-search'),
-            decoration: InputDecoration(labelText: l.commonSearch, prefixIcon: const Icon(Icons.search)),
-            onChanged: (value) => setState(() => _query = value),
+          Row(
+            children: [
+              SizedBox(
+                width: 320,
+                child: GlassField(
+                  key: const ValueKey('kube-search'),
+                  fieldKey: const ValueKey('kube-search-input'),
+                  search: true,
+                  placeholder: l.commonSearch,
+                  onChanged: (value) => setState(() => _query = value),
+                ),
+              ),
+              const SizedBox(width: GlassSpacing.s8),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final tag in tags)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: GlassButton.plain(
+                            key: ValueKey('kube-tag-$tag'),
+                            label: tag,
+                            icon: _tag == tag ? Icons.check_rounded : Icons.sell_outlined,
+                            onPressed: () => setState(() => _tag = _tag == tag ? null : tag),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          if (tags.isNotEmpty)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final tag in tags)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: FilterChip(
-                        label: Text(tag),
-                        selected: _tag == tag,
-                        onSelected: (selected) => setState(() => _tag = selected ? tag : null),
+          const SizedBox(height: GlassSpacing.s12),
+          if (state.isLoading) const LinearProgressIndicator(minHeight: 2),
+          if (state.hasError) Text(l.kubeLoadFailed),
+          if (!state.isLoading && !state.hasError && (state.value?.isEmpty ?? true))
+            Expanded(
+              child: EmptyState(
+                icon: Icons.cloud_queue_rounded,
+                title: l.kubeEmpty,
+                action: GlassButton.prominent(label: l.kubeImport, icon: Icons.file_open_outlined, onPressed: _import),
+              ),
+            )
+          else
+            Expanded(
+              child: ContentList(
+                key: const ValueKey('kube-contexts'),
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final connection = items[index];
+                  return _ContextRow(
+                    connection: connection,
+                    status: statuses[connection.id],
+                    canConnect: service is KubeBrowserService,
+                    onConnect: () => setState(() {
+                      _selected = connection;
+                      _selectedScope = scope;
+                    }),
+                    onAction: (action) {
+                      if (action == 'share') {
+                        showSharingKubeContext(context, contextId: connection.id);
+                      } else if (action == 'history' && service is KubeHistoryService) {
+                        showAppDialog<void>(
+                          context,
+                          secure: true,
+                          builder: (_) =>
+                              KubeHistoryDialog(connection: connection, service: service as KubeHistoryService),
+                        );
+                      } else if (action == 'delete') {
+                        _delete(connection);
+                      } else if (action == 'settings') {
+                        _edit(connection);
+                      } else if (action == 'export' && service is KubeInventoryManagementService) {
+                        showAppDialog<void>(
+                          context,
+                          secure: true,
+                          builder: (_) => KubeExportDialog(
+                            connection: connection,
+                            service: service as KubeInventoryManagementService,
+                          ),
+                        );
+                      }
+                    },
+                    actions: [
+                      GlassMenuItem(value: 'share', label: l.sharingTitle, icon: Icons.share_outlined),
+                      if (service is KubeHistoryService)
+                        GlassMenuItem(value: 'history', label: l.kubeHistory, icon: Icons.history),
+                      if (service is KubeInventoryManagementService) ...[
+                        GlassMenuItem(value: 'settings', label: l.kubeConnectionSettings, icon: Icons.tune_rounded),
+                        GlassMenuItem(value: 'export', label: l.kubeExport, icon: Icons.ios_share_rounded),
+                      ],
+                      const GlassMenuDivider(),
+                      GlassMenuItem(
+                        value: 'delete',
+                        label: l.commonDelete,
+                        icon: Icons.delete_outline,
+                        destructive: true,
                       ),
-                    ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
-          const SizedBox(height: 12),
-          if (state.isLoading) const LinearProgressIndicator(),
-          if (state.hasError) Text(l.kubeLoadFailed),
-          if (!state.isLoading && !state.hasError && (state.value?.isEmpty ?? true)) Text(l.kubeEmpty),
-          Expanded(
-            child: ListView.builder(
-              key: const ValueKey('kube-contexts'),
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-                final connection = items[index];
-                final status = statuses[connection.id];
-                final statusText = switch (status?.state) {
-                  null => l.kubeStatusUnknown,
-                  KubeConnectionState.checking => l.kubeStatusChecking,
-                  KubeConnectionState.available => l.kubeStatusAvailable,
-                  KubeConnectionState.forbidden => l.kubeStatusForbidden,
-                  KubeConnectionState.failed => l.kubeStatusFailed,
-                };
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: ContentSurface(
-                    child: ListTile(
-                      key: ValueKey('kube-saved-${connection.id}'),
-                      leading: connection.color == null
-                          ? null
-                          : Icon(
-                              Icons.circle,
-                              size: 12,
-                              color: Color(
-                                int.tryParse('FF${connection.color!.replaceFirst('#', '')}', radix: 16) ?? 0xFF4285F4,
-                              ),
-                            ),
-                      title: Row(
-                        children: [
-                          Expanded(child: Text(connection.name)),
-                          if (connection.production)
-                            const Chip(label: Text('PROD')), // l10n-ignore: standard environment marker
-                        ],
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            // l10n-ignore: Saved cluster metadata and already localized namespace label.
-                            /* l10n-ignore: Saved cluster metadata and already localized namespace label. */ '${connection.clusterName} · ${connection.server}\n${l.kubeNamespace}: ${connection.namespace}${connection.tags.isEmpty ? '' : ' · ${connection.tags.join(', ')}'}',
-                          ),
-                          Wrap(
-                            spacing: 6,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              Icon(switch (status?.state) {
-                                null => Icons.help_outline,
-                                KubeConnectionState.checking => Icons.hourglass_empty,
-                                KubeConnectionState.available => Icons.check_circle_outline,
-                                KubeConnectionState.forbidden => Icons.lock_outline,
-                                KubeConnectionState.failed => Icons.error_outline,
-                              }, size: 14),
-                              Text(statusText, key: ValueKey('kube-status-${connection.id}')),
-                              if (status?.serverVersion case final String version) Text(version),
-                            ],
-                          ),
-                        ],
-                      ),
-                      isThreeLine: true,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (service is KubeBrowserService)
-                            GlassIconButton(
-                              key: ValueKey('kube-connect-${connection.id}'),
-                              tooltip: l.kubeConnect,
-                              icon: Icons.play_arrow_outlined,
-                              onPressed: () => setState(() {
-                                _selected = connection;
-                                _selectedScope = scope;
-                              }),
-                            ),
-                          PopupMenuButton<String>(
-                            key: ValueKey('kube-menu-${connection.id}'),
-                            onSelected: (action) {
-                              if (action == 'share') {
-                                showSharingKubeContext(context, contextId: connection.id);
-                              } else if (action == 'history' && service is KubeHistoryService) {
-                                showAppDialog<void>(
-                                  context,
-                                  secure: true,
-                                  builder: (_) =>
-                                      KubeHistoryDialog(connection: connection, service: service as KubeHistoryService),
-                                );
-                              } else if (action == 'delete') {
-                                _delete(connection);
-                              } else if (action == 'settings') {
-                                _edit(connection);
-                              } else if (action == 'export' && service is KubeInventoryManagementService) {
-                                showAppDialog<void>(
-                                  context,
-                                  secure: true,
-                                  builder: (_) => KubeExportDialog(
-                                    connection: connection,
-                                    service: service as KubeInventoryManagementService,
-                                  ),
-                                );
-                              }
-                            },
-                            itemBuilder: (_) => [
-                              PopupMenuItem(value: 'share', child: Text(l.sharingTitle)),
-                              if (service is KubeHistoryService)
-                                PopupMenuItem(value: 'history', child: Text(l.kubeHistory)),
-                              if (service is KubeInventoryManagementService) ...[
-                                PopupMenuItem(value: 'settings', child: Text(l.kubeConnectionSettings)),
-                                PopupMenuItem(value: 'export', child: Text(l.kubeExport)),
-                              ],
-                              PopupMenuItem(value: 'delete', child: Text(l.commonDelete)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+/// One saved cluster context: colour/wheel glyph, name, PROD marker, server
+/// and namespace, last explicit check, Connect and a context menu.
+class _ContextRow extends StatelessWidget {
+  const _ContextRow({
+    required this.connection,
+    required this.status,
+    required this.canConnect,
+    required this.onConnect,
+    required this.onAction,
+    required this.actions,
+  });
+  final KubeConnection connection;
+  final KubeConnectionStatus? status;
+  final bool canConnect;
+  final VoidCallback onConnect;
+  final ValueChanged<String> onAction;
+  final List<GlassMenuEntry<String>> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final p = tokens.palette;
+    final color = connection.color == null
+        ? p.accent
+        : Color(int.tryParse('FF${connection.color!.replaceFirst('#', '')}', radix: 16) ?? 0xFF4285F4);
+    final (statusText, statusColor) = switch (status?.state) {
+      null => (l.kubeStatusUnknown, p.tertiary),
+      KubeConnectionState.checking => (l.kubeStatusChecking, p.warning),
+      KubeConnectionState.available => (l.kubeStatusAvailable, p.success),
+      KubeConnectionState.forbidden => (l.kubeStatusForbidden, p.danger),
+      KubeConnectionState.failed => (l.kubeStatusFailed, p.danger),
+    };
+    final details = [
+      Uri.tryParse(connection.server)?.authority ?? connection.server,
+      if (connection.namespace.isNotEmpty) connection.namespace,
+      ...connection.tags,
+    ].where((part) => part.isNotEmpty).join(' · ');
+    return GlassInteractive(
+      key: ValueKey('kube-saved-${connection.id}'),
+      semanticLabel: connection.name,
+      onPressed: canConnect ? onConnect : null,
+      builder: (context, state) => DecoratedBox(
+        decoration: ShapeDecoration(
+          color: state.hovered ? tokens.surfaces.fillHover : Colors.transparent,
+          shape: GlassRadii.shape(tokens.radii.row),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              KubeWheelIcon(size: 26, color: color),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            connection.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: tokens.typography.bodyEmph.copyWith(color: p.label),
+                          ),
+                        ),
+                        if (connection.production) ...[
+                          const SizedBox(width: 8),
+                          const GlassBadge(
+                            label: /* l10n-ignore: environment marker */ 'PROD',
+                            tone: GlassTone.danger,
+                            dense: true,
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      details,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tokens.typography.mono.copyWith(color: tokens.secondaryLabel, fontSize: 12),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        StatusDot(color: statusColor, size: 7),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            statusText,
+                            key: ValueKey('kube-status-${connection.id}'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel),
+                          ),
+                        ),
+                        if (status?.serverVersion case final String version) ...[
+                          const SizedBox(width: 6),
+                          Text(version, style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel)),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (canConnect)
+                MediaQuery.sizeOf(context).width < 600
+                    ? GlassIconButton(
+                        key: ValueKey('kube-connect-${connection.id}'),
+                        icon: Icons.play_arrow_rounded,
+                        tooltip: l.kubeConnect,
+                        onPressed: onConnect,
+                      )
+                    : GlassButton.prominent(
+                        key: ValueKey('kube-connect-${connection.id}'),
+                        label: l.kubeConnect,
+                        icon: Icons.play_arrow_rounded,
+                        onPressed: onConnect,
+                      ),
+              const SizedBox(width: 6),
+              GlassMenuButton<String>(
+                key: ValueKey('kube-menu-${connection.id}'),
+                entries: actions,
+                onSelected: onAction,
+                builder: (context, open) => GlassIconButton(
+                  icon: Icons.more_horiz_rounded,
+                  tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+                  style: GlassIconButtonStyle.plain,
+                  onPressed: open,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

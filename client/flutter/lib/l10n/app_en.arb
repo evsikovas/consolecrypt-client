@@ -10170,5 +10170,175 @@
   "kubeStatusFailed": "Last check: failed",
   "@kubeStatusFailed": {
     "description": "Kubernetes explicit connection check status."
+  },
+  "kubeNavCluster": "Cluster",
+  "@kubeNavCluster": {
+    "description": "Navigator section with nodes, namespaces and events"
+  },
+  "kubeNavCustom": "Custom resources",
+  "@kubeNavCustom": {
+    "description": "Navigator section with CRD kinds grouped by API group"
+  },
+  "kubeNavCrdFilter": "Filter CRDs…",
+  "@kubeNavCrdFilter": {
+    "description": "Placeholder of the custom resource filter"
+  },
+  "kubeNavOverview": "Overview",
+  "@kubeNavOverview": {
+    "description": "Navigator section with problems, history and Helm"
+  },
+  "kubeNavHelmReleases": "Helm releases",
+  "@kubeNavHelmReleases": {
+    "description": "Navigator item opening the Helm release list"
+  },
+  "kubeLabelSelectorHint": "Labels: app=api",
+  "@kubeLabelSelectorHint": {
+    "description": "Placeholder of the Kubernetes label selector field"
+  },
+  "kubeLiveShort": "Live",
+  "@kubeLiveShort": {
+    "description": "Compact indicator: the table follows a live watch"
+  },
+  "kubeSnapshotShort": "Snapshot",
+  "@kubeSnapshotShort": {
+    "description": "Compact indicator: the table shows a one-time snapshot"
+  },
+  "kubeNoResourcesIn": "No resources in {namespace}",
+  "@kubeNoResourcesIn": {
+    "description": "Empty table message with the selected namespace or All namespaces",
+    "placeholders": {
+      "namespace": {
+        "type": "String"
+      }
+    }
+  },
+  "kubePodIp": "Pod IP",
+  "@kubePodIp": {
+    "description": "Inspector field: Pod IP address"
+  },
+  "kubeHostIp": "Host IP",
+  "@kubeHostIp": {
+    "description": "Inspector field: IP of the node running the Pod"
+  },
+  "kubeQos": "QoS class",
+  "@kubeQos": {
+    "description": "Inspector field: Pod quality-of-service class"
+  },
+  "kubeAnnotations": "Annotations",
+  "@kubeAnnotations": {
+    "description": "Inspector section with object annotations"
+  },
+  "kubeContainers": "Containers",
+  "@kubeContainers": {
+    "description": "Inspector section with the Pod containers"
+  },
+  "kubeControlledBy": "Controlled by",
+  "@kubeControlledBy": {
+    "description": "Inspector field: owning controller"
+  },
+  "kubeDetailsSection": "Details",
+  "@kubeDetailsSection": {
+    "description": "Inspector section with object metadata"
+  },
+  "kubeUsage": "Usage",
+  "@kubeUsage": {
+    "description": "Inspector section with live CPU and memory use"
+  },
+  "kubeOperations": "Operations",
+  "@kubeOperations": {
+    "description": "Inspector section with advanced operations"
+  },
+  "kubeSpecSection": "Specification",
+  "@kubeSpecSection": {
+    "description": "Inspector section with the structural spec summary"
+  },
+  "kubeCloseInspector": "Close details",
+  "@kubeCloseInspector": {
+    "description": "Tooltip: close the object inspector"
+  },
+  "kubeImages": "Images",
+  "@kubeImages": {
+    "description": "Inspector field: container images of a workload"
+  },
+  "kubeShellShort": "Shell",
+  "@kubeShellShort": {
+    "description": "Compact inspector action: open a Pod shell"
+  },
+  "kubeForwardShort": "Port",
+  "@kubeForwardShort": {
+    "description": "Compact inspector action: start port forwarding"
+  },
+  "kubeAiShort": "Ask AI",
+  "@kubeAiShort": {
+    "description": "Compact inspector action: explain this object with AI"
+  },
+  "kubeEditShort": "Edit",
+  "@kubeEditShort": {
+    "description": "Compact inspector action: edit object YAML"
+  },
+  "kubeHistoryShort": "Rollouts",
+  "@kubeHistoryShort": {
+    "description": "Compact inspector action: open rollout history"
+  },
+  "kubeRevealShort": "Values",
+  "@kubeRevealShort": {
+    "description": "Compact inspector action: reveal Secret values"
+  },
+  "kubeAiClusterChat": "Cluster {name}",
+  "@kubeAiClusterChat": {
+    "description": "Right AI panel mode: assistant for the connected Kubernetes cluster",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "kubeAiGeneralChat": "General chat",
+  "@kubeAiGeneralChat": {
+    "description": "Right AI panel mode: the regular AI chat"
+  },
+  "kubeToggleNavigator": "Show or hide resources",
+  "@kubeToggleNavigator": {
+    "description": "Tooltip: toggle the Kubernetes resource navigator"
+  },
+  "kubeRevision": "Revision",
+  "@kubeRevision": {
+    "description": "Helm table column: release revision"
+  },
+  "kubeAppVersion": "App version",
+  "@kubeAppVersion": {
+    "description": "Helm table column: chart appVersion"
+  },
+  "kubeUpdated": "Updated",
+  "@kubeUpdated": {
+    "description": "Helm table column: time since the last release update"
+  },
+  "kubeScanHome": "Find in ~/.kube",
+  "@kubeScanHome": {
+    "description": "Button: scan the standard kubeconfig folder in the home directory"
+  },
+  "kubeScanOtherFolder": "Other folder…",
+  "@kubeScanOtherFolder": {
+    "description": "Button: choose another folder to scan for kubeconfig files"
+  },
+  "kubeImportPasteHint": "Or paste kubeconfig YAML here",
+  "@kubeImportPasteHint": {
+    "description": "Placeholder of the kubeconfig YAML field"
+  },
+  "kubeEditorConnection": "Connection",
+  "@kubeEditorConnection": {
+    "description": "Connection editor section: name and namespace"
+  },
+  "kubeEditorOrganization": "Organization",
+  "@kubeEditorOrganization": {
+    "description": "Connection editor section: tags and colour"
+  },
+  "kubeEditorSafety": "Safety",
+  "@kubeEditorSafety": {
+    "description": "Connection editor section: production policy and event history"
+  },
+  "kubeReplicasReady": "Replicas",
+  "@kubeReplicasReady": {
+    "description": "Inspector field: ready and desired replicas"
   }
 }

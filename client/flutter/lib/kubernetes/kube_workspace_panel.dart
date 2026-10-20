@@ -22,6 +22,7 @@ class KubeWorkspacePanel extends ConsumerStatefulWidget {
     required this.service,
     required this.onHide,
     this.ai = false,
+    this.showAi = true,
     this.selected,
     this.question,
     this.closeRouteOnLock = false,
@@ -52,6 +53,9 @@ class KubeWorkspacePanel extends ConsumerStatefulWidget {
   final VoidCallback? onToggleDock;
   final bool dockedRight;
   final bool ai, closeRouteOnLock;
+
+  /// Desktop shows the cluster assistant in the app's right AI panel.
+  final bool showAi;
   final KubeResourceRef? selected;
   final String? question;
   @override
@@ -60,7 +64,7 @@ class KubeWorkspacePanel extends ConsumerStatefulWidget {
 
 class _KubeWorkspacePanelState extends ConsumerState<KubeWorkspacePanel> {
   late final KubeScope _scope = ref.read(kubeScopeProvider);
-  late bool _ai = widget.ai;
+  late bool _ai = widget.ai && widget.showAi;
   late String? _log = widget.selectedLog, _output = widget.selectedOutput;
   @override
   void didUpdateWidget(KubeWorkspacePanel old) {
@@ -69,7 +73,7 @@ class _KubeWorkspacePanelState extends ConsumerState<KubeWorkspacePanel> {
         old.question != widget.question ||
         old.selectedLog != widget.selectedLog ||
         old.selectedOutput != widget.selectedOutput) {
-      _ai = widget.ai;
+      _ai = widget.ai && widget.showAi;
       _log = widget.selectedLog;
       _output = widget.selectedOutput;
     }
@@ -124,22 +128,24 @@ class _KubeWorkspacePanelState extends ConsumerState<KubeWorkspacePanel> {
                               }
                             },
                           ),
-                        ChoiceChip(
-                          label: Text(l.kubePodTerminal),
+                        KubePanelTab(
+                          label: l.kubePodTerminal,
+                          icon: Icons.terminal,
                           selected: !_ai && _log == null && _output == null,
-                          onSelected: (_) => setState(() {
+                          onSelected: () => setState(() {
                             _ai = false;
                             _log = null;
                             _output = null;
                             widget.onTabChanged?.call('terminal');
                           }),
                         ),
-                        if (widget.service is KubeAiService)
-                          ChoiceChip(
+                        if (widget.service is KubeAiService && widget.showAi)
+                          KubePanelTab(
                             key: const ValueKey('kube-panel-ai'),
-                            label: Text(l.kubeAiAssistant),
+                            label: l.kubeAiAssistant,
+                            icon: Icons.auto_awesome,
                             selected: _ai,
-                            onSelected: (_) => setState(() {
+                            onSelected: () => setState(() {
                               _ai = true;
                               _log = null;
                               _output = null;
@@ -147,16 +153,17 @@ class _KubeWorkspacePanelState extends ConsumerState<KubeWorkspacePanel> {
                             }),
                           ),
                         for (final pin in widget.logPins)
-                          InputChip(
-                            label: Text('${l.kubeLogs} · ${pin.resource.name}'),
+                          KubePanelTab(
+                            label: '${l.kubeLogs} · ${pin.resource.name}',
+                            icon: Icons.article_outlined,
                             selected: _log == pin.id,
-                            onSelected: (_) => setState(() {
+                            onSelected: () => setState(() {
                               _log = pin.id;
                               widget.onTabChanged?.call('logs');
                               _ai = false;
                               _output = null;
                             }),
-                            onDeleted: () {
+                            onClose: () {
                               widget.onCloseLog?.call(pin.id);
                               if (mounted) {
                                 setState(() {
@@ -166,10 +173,11 @@ class _KubeWorkspacePanelState extends ConsumerState<KubeWorkspacePanel> {
                             },
                           ),
                         for (final output in widget.outputs)
-                          ChoiceChip(
-                            label: Text('${l.kubeOutput} · ${output.title}'),
+                          KubePanelTab(
+                            label: '${l.kubeOutput} · ${output.title}',
+                            icon: Icons.output_outlined,
                             selected: _output == output.id,
-                            onSelected: (_) => setState(() {
+                            onSelected: () => setState(() {
                               _output = output.id;
                               widget.onTabChanged?.call('output');
                               _ai = false;
@@ -219,6 +227,82 @@ class _KubeWorkspacePanelState extends ConsumerState<KubeWorkspacePanel> {
                     ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact tab of the bottom cluster panel (terminal, pinned logs, output).
+class KubePanelTab extends StatelessWidget {
+  const KubePanelTab({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+    super.key,
+    this.icon,
+    this.onClose,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onSelected;
+  final IconData? icon;
+  final VoidCallback? onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = GlassTokens.of(context);
+    final p = tokens.palette;
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: GlassInteractive(
+        selected: selected,
+        semanticLabel: label,
+        onPressed: onSelected,
+        builder: (context, state) => DecoratedBox(
+          decoration: ShapeDecoration(
+            color: selected
+                ? tokens.sidebarSelection
+                : state.hovered
+                ? tokens.surfaces.fillHover
+                : Colors.transparent,
+            shape: GlassRadii.shape(tokens.radii.row),
+          ),
+          child: SizedBox(
+            height: 28,
+            child: Padding(
+              padding: EdgeInsets.only(left: 10, right: onClose == null ? 10 : 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 15, color: selected ? p.accent : tokens.secondaryLabel),
+                    const SizedBox(width: 6),
+                  ],
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 260),
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: (selected ? tokens.typography.bodyEmph : tokens.typography.body).copyWith(
+                        color: selected ? p.accent : p.label,
+                      ),
+                    ),
+                  ),
+                  if (onClose != null)
+                    GlassIconButton(
+                      icon: Icons.close_rounded,
+                      tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                      style: GlassIconButtonStyle.plain,
+                      size: 22,
+                      iconSize: 14,
+                      onPressed: onClose,
+                    ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

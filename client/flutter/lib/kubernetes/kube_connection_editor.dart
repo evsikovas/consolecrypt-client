@@ -182,19 +182,50 @@ class _KubeConnectionEditorState extends ConsumerState<KubeConnectionEditor> {
       });
     });
     final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    Widget section(String title) => Padding(
+      padding: const EdgeInsets.only(top: GlassSpacing.s16, bottom: GlassSpacing.s8),
+      child: Text(
+        title.toUpperCase(),
+        style: tokens.typography.caption.copyWith(
+          color: tokens.secondaryLabel,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.6,
+        ),
+      ),
+    );
+    Widget gap(Widget child) => Padding(
+      padding: const EdgeInsets.only(bottom: GlassSpacing.s8),
+      child: child,
+    );
+    Widget toggle(String title, bool value, ValueChanged<bool> onChanged, {String? subtitle, String? key}) =>
+        SwitchListTile.adaptive(
+          key: key == null ? null : ValueKey(key),
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          activeTrackColor: tokens.palette.accent,
+          title: Text(title, style: tokens.typography.body.copyWith(color: tokens.palette.label)),
+          subtitle: subtitle == null
+              ? null
+              : Text(subtitle, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
+          value: value,
+          onChanged: _busy ? null : onChanged,
+        );
     Widget field(String key, TextEditingController controller, String label, {bool secret = false, int lines = 1}) =>
-        TextField(
-          key: ValueKey(key),
-          controller: controller,
-          enabled: !_busy,
-          obscureText: secret && lines == 1,
-          minLines: lines,
-          maxLines: lines == 1 ? 1 : 5,
-          autocorrect: false,
-          enableSuggestions: false,
-          enableIMEPersonalizedLearning: false,
-          decoration: InputDecoration(labelText: label),
-          onChanged: (_) => setState(() {}),
+        gap(
+          TextField(
+            key: ValueKey(key),
+            controller: controller,
+            enabled: !_busy,
+            obscureText: secret && lines == 1,
+            minLines: lines,
+            maxLines: lines == 1 ? 1 : 5,
+            autocorrect: false,
+            enableSuggestions: false,
+            enableIMEPersonalizedLearning: false,
+            decoration: InputDecoration(labelText: label),
+            onChanged: (_) => setState(() {}),
+          ),
         );
     return GlassDialog(
       title: widget.connection == null ? l.kubeNewConnection : l.kubeConnectionSettings,
@@ -208,6 +239,7 @@ class _KubeConnectionEditorState extends ConsumerState<KubeConnectionEditor> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    section(l.kubeEditorConnection),
                     field('kube-editor-name', _name, l.kubeName),
                     field('kube-editor-namespace', _namespace, l.kubeNamespace),
                     if (widget.connection == null) ...[
@@ -231,64 +263,68 @@ class _KubeConnectionEditorState extends ConsumerState<KubeConnectionEditor> {
                       Text(l.kubeManualReviewHelp),
                     ] else ...[
                       if (ref.read(kubeServiceProvider) is KubeOrganizationService) ...[
+                        section(l.kubeEditorOrganization),
                         field('kube-editor-tags', _tags, l.kubeTags),
-                        Text(l.kubeTagsHelp),
-                        DropdownButtonFormField<String>(
+                        Text(l.kubeTagsHelp, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
+                        const SizedBox(height: GlassSpacing.s12),
+                        Row(
                           key: const ValueKey('kube-editor-color'),
-                          initialValue: _color ?? '',
-                          decoration: InputDecoration(labelText: l.kubeColor),
-                          items: [
-                            DropdownMenuItem(value: '', child: Text(l.kubeNoColor)),
-                            ...{
-                              ...const ['#4285F4', '#22A06B', '#E56910', '#AE2E24', '#8270DB'],
-                              ?_color,
-                            }.map(
-                              (value) => DropdownMenuItem(
-                                value: value,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.circle,
-                                      color: Color(
-                                        int.tryParse('FF${value.replaceFirst('#', '')}', radix: 16) ?? 0xFF4285F4,
+                          children: [
+                            Text(l.kubeColor, style: tokens.typography.body.copyWith(color: tokens.palette.label)),
+                            const SizedBox(width: GlassSpacing.s12),
+                            for (final value in <String?>[
+                              null,
+                              ...{
+                                ...const ['#4285F4', '#22A06B', '#E56910', '#AE2E24', '#8270DB', '#1D9BB2'],
+                                ?_color,
+                              },
+                            ])
+                              Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: Tooltip(
+                                  message: value ?? l.kubeNoColor,
+                                  child: GlassInteractive(
+                                    key: ValueKey('kube-editor-color-${value ?? 'none'}'),
+                                    semanticLabel: value ?? l.kubeNoColor,
+                                    selected: _color == value,
+                                    onPressed: _busy ? null : () => setState(() => _color = value),
+                                    builder: (context, state) => Container(
+                                      width: 26,
+                                      height: 26,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: value == null
+                                            ? Colors.transparent
+                                            : Color(
+                                                int.tryParse('FF${value.replaceFirst('#', '')}', radix: 16) ??
+                                                    0xFF4285F4,
+                                              ),
+                                        border: Border.all(
+                                          color: _color == value ? tokens.palette.label : tokens.surfaces.separator,
+                                          width: _color == value ? 2.5 : 1,
+                                        ),
                                       ),
+                                      child: value == null
+                                          ? Icon(Icons.block_rounded, size: 14, color: tokens.secondaryLabel)
+                                          : null,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(value),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
-                          onChanged: _busy ? null : (value) => setState(() => _color = value == '' ? null : value),
                         ),
                       ],
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(l.kubeProductionContext),
-                        value: _production,
-                        onChanged: _busy ? null : (v) => setState(() => _production = v),
-                      ),
+                      section(l.kubeEditorSafety),
+                      toggle(l.kubeProductionContext, _production, (v) => setState(() => _production = v)),
                       if (_production) ...[
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(l.kubeAllowExecInProd),
-                          value: _allowExec,
-                          onChanged: _busy ? null : (v) => setState(() => _allowExec = v),
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(l.kubeAllowForwardInProd),
-                          value: _allowForward,
-                          onChanged: _busy ? null : (v) => setState(() => _allowForward = v),
-                        ),
+                        toggle(l.kubeAllowExecInProd, _allowExec, (v) => setState(() => _allowExec = v)),
+                        toggle(l.kubeAllowForwardInProd, _allowForward, (v) => setState(() => _allowForward = v)),
                       ],
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(l.kubeRecordEvents),
-                        subtitle: Text(l.kubeRecordEventsHelp),
-                        value: _recordEvents,
-                        onChanged: _busy ? null : (v) => setState(() => _recordEvents = v),
+                      toggle(
+                        l.kubeRecordEvents,
+                        _recordEvents,
+                        (v) => setState(() => _recordEvents = v),
+                        subtitle: l.kubeRecordEventsHelp,
                       ),
                     ],
                     if (_busy) const LinearProgressIndicator(),

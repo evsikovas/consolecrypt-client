@@ -1257,7 +1257,9 @@ void main() {
         await _pump(tester, service, language: language, size: Size(width, 915), textScale: width == 412 ? 1.3 : 1);
         expect(tester.takeException(), isNull, reason: 'initial browser');
         expect(find.text('demo-pod'), findsOneWidget);
-        expect(service.requests.single.namespace, 'default');
+        // All namespaces by default: a context's default namespace often
+        // holds nothing for most kinds.
+        expect(service.requests.single.namespace, isNull);
         expect(service.connected, ['context']);
         expect(find.text(language == 'ru' ? 'Прод · только чтение' : 'Production · read only'), findsOneWidget);
         await tester.tap(find.byKey(const ValueKey('kube-resource-demo-pod')));

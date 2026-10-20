@@ -86,7 +86,7 @@ void main() {
     );
     expect(built.evaluate().length, lessThan(80));
     expect(find.byKey(const ValueKey('kube-resource-uid-9999')), findsNothing);
-    await tester.tap(find.widgetWithText(TextButton, 'Name'));
+    await tester.tap(find.byKey(const ValueKey('kube-sort-name')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('kube-resource-uid-9999')));
     expect(opened?.uid, 'uid-9999');

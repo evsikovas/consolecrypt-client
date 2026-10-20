@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:consolecrypt/ai/device_local_ai_service.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/ai_service.dart' show deviceLocalAiProviderId;
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_ai_history.dart';
 import 'package:consolecrypt/kubernetes/kube_ai_proposals.dart';
@@ -45,6 +47,7 @@ class _KubeAiPanelState extends ConsumerState<KubeAiPanel> with WidgetsBindingOb
   // Cancelled on stop, lock, background and disposal.
   // ignore: cancel_subscriptions
   StreamSubscription<KubeAiEvent>? _subscription;
+  Completer<void>? _answer;
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(kubeScopeProvider));
   @override
   void initState() {
@@ -92,6 +95,9 @@ class _KubeAiPanelState extends ConsumerState<KubeAiPanel> with WidgetsBindingOb
     _generation++;
     final subscription = _subscription;
     _subscription = null;
+    final answer = _answer;
+    _answer = null;
+    if (answer != null && !answer.isCompleted) answer.complete();
     final ticket = _ticket;
     _ticket = null;
     final service = widget.service, sessionId = widget.session.id;
@@ -124,19 +130,44 @@ class _KubeAiPanelState extends ConsumerState<KubeAiPanel> with WidgetsBindingOb
     try {
       await stopping;
       if (!_current || generation != _generation) return;
+      // "Default provider" must mean the provider the rest of the app uses as
+      // default, including the built-in model chosen on this device; the
+      // native core alone only knows the vault's saved default.
+      final providers = ref.read(aiProvidersProvider).value ?? const [];
+      final providerId = _providerId ?? providers.where((p) => p.isDefault).firstOrNull?.id.value;
+      final ai = providerId == deviceLocalAiProviderId.value ? ref.read(aiServiceProvider) : null;
+      if (ai is DeviceLocalAiService) {
+        await ai.withDeviceLocalProvider(() => _run(question, generation, providerId));
+      } else {
+        await _run(question, generation, providerId);
+      }
+    } catch (_) {
+      if (_current && generation == _generation) {
+        unawaited(_stop());
+        setState(() {
+          _failed = true;
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  /// Prepares, reviews and streams one answer; completes when it ends.
+  Future<void> _run(String question, int generation, String? providerId) async {
+    {
       final service = widget.service;
       final review = _conversationId != null && service is KubeAiChatService
           ? await (service as KubeAiChatService).prepareKubeFollowUp(
               widget.session.id,
               _conversationId!,
-              providerId: _providerId,
+              providerId: providerId,
               question: question,
               selected: widget.selected,
               configMapValues: _configMapValues,
             )
           : await service.prepareKubeAi(
               widget.session.id,
-              providerId: _providerId,
+              providerId: providerId,
               question: question,
               selected: widget.selected,
               configMapValues: _configMapValues,
@@ -161,6 +192,7 @@ class _KubeAiPanelState extends ConsumerState<KubeAiPanel> with WidgetsBindingOb
         if (_current) setState(() => _busy = false);
         return;
       }
+      final answer = _answer = Completer<void>();
       _subscription = widget.service
           .askKubeAi(widget.session.id, review, approveExternal: approved)
           .listen(
@@ -192,6 +224,7 @@ class _KubeAiPanelState extends ConsumerState<KubeAiPanel> with WidgetsBindingOb
               });
             },
             onError: (Object _) {
+              if (!answer.isCompleted) answer.complete();
               if (_current && generation == _generation) {
                 setState(() {
                   _failed = true;
@@ -200,17 +233,11 @@ class _KubeAiPanelState extends ConsumerState<KubeAiPanel> with WidgetsBindingOb
               }
             },
             onDone: () {
+              if (!answer.isCompleted) answer.complete();
               if (_current && generation == _generation) setState(() => _busy = false);
             },
           );
-    } catch (_) {
-      if (_current && generation == _generation) {
-        unawaited(_stop());
-        setState(() {
-          _failed = true;
-          _busy = false;
-        });
-      }
+      await answer.future;
     }
   }
 

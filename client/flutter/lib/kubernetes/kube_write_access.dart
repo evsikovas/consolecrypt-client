@@ -17,9 +17,12 @@ final kubeWriteAccessProvider = FutureProvider.autoDispose.family<KubeWriteAcces
 });
 
 class KubeWriteBanner extends ConsumerStatefulWidget {
-  const KubeWriteBanner({required this.session, required this.contextName, super.key});
+  const KubeWriteBanner({required this.session, required this.contextName, super.key, this.compact = false});
   final KubeSession session;
   final String contextName;
+
+  /// One-line pill for toolbars instead of the full-width banner.
+  final bool compact;
   @override
   ConsumerState<KubeWriteBanner> createState() => _KubeWriteBannerState();
 }
@@ -93,6 +96,57 @@ class _KubeWriteBannerState extends ConsumerState<KubeWriteBanner> {
     final remaining = access?.expiresAt?.difference(DateTime.now().toUtc()).inSeconds ?? 0;
     final duration =
         '${(remaining.clamp(0, 600) ~/ 60).toString().padLeft(2, '0')}:${(remaining.clamp(0, 600) % 60).toString().padLeft(2, '0')}';
+    if (widget.compact) {
+      final tokens = GlassTokens.of(context);
+      final p = tokens.palette;
+      final tone = active ? GlassTone.warning : GlassTone.danger;
+      final color = p.tone(tone);
+      return DecoratedBox(
+        key: const ValueKey('kube-write-banner'),
+        decoration: ShapeDecoration(
+          color: p.toneFill(tone).withValues(alpha: 0.14),
+          shape: StadiumBorder(side: BorderSide(color: color.withValues(alpha: 0.35))),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 2, 4, 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(active ? Icons.lock_open_rounded : Icons.lock_rounded, size: 14, color: color),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  active ? l.kubeWriteWindowRemaining(duration) : l.kubeReadOnly,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tokens.typography.callout.copyWith(color: p.label, fontWeight: FontWeight.w600),
+                ),
+              ),
+              if (_failed) ...[
+                const SizedBox(width: 6),
+                Tooltip(
+                  message: l.kubeWriteWindowFailed,
+                  child: Icon(Icons.error_outline, size: 14, color: p.danger),
+                ),
+              ],
+              if ((access?.canRequestWindow == true && !AppPlatform.isMobile) || active) ...[
+                const SizedBox(width: 2),
+                GlassIconButton(
+                  key: const ValueKey('kube-write-window'),
+                  icon: active ? Icons.lock_rounded : Icons.lock_open_rounded,
+                  tooltip: active ? l.kubeCloseWriteWindow : l.kubeAllowChanges,
+                  style: GlassIconButtonStyle.plain,
+                  size: 24,
+                  iconSize: 15,
+                  onPressed: _busy ? null : () => _change(!active),
+                ),
+              ] else
+                const SizedBox(width: 6),
+            ],
+          ),
+        ),
+      );
+    }
     return Container(
       key: const ValueKey('kube-write-banner'),
       padding: const EdgeInsets.all(10),

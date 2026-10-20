@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_helm_cli_service.dart';
@@ -12,6 +13,7 @@ import 'package:consolecrypt/kubernetes/kube_helm_comparison_service.dart';
 import 'package:consolecrypt/kubernetes/kube_helm_rollback.dart';
 import 'package:consolecrypt/kubernetes/kube_insights_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
+import 'package:consolecrypt/kubernetes/kube_resource_table_view.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
 import 'package:consolecrypt/kubernetes/kube_yaml_editor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -112,15 +114,174 @@ class _KubeHelmPanelState extends ConsumerState<KubeHelmPanel> {
             final order = '${a.namespace}/${a.name}'.compareTo('${b.namespace}/${b.name}');
             return order == 0 ? b.revision.compareTo(a.revision) : order;
           });
+    final tokens = GlassTokens.of(context);
+    final p = tokens.palette;
+    final header = tokens.typography.caption.copyWith(
+      color: tokens.secondaryLabel,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.3,
+    );
+    const widths = [240.0, 150.0, 80.0, 130.0, 260.0, 130.0, 100.0];
+    String updated(KubeHelmSummary release) {
+      final time = DateTime.tryParse(release.updatedAt ?? '');
+      if (time == null) return '—';
+      final age = DateTime.now().toUtc().difference(time.toUtc());
+      if (age.inDays > 0) return '${age.inDays}d'; // l10n-ignore: Kubernetes duration.
+      if (age.inHours > 0) return '${age.inHours}h'; // l10n-ignore: Kubernetes duration.
+      return '${age.inMinutes.clamp(0, 59)}m'; // l10n-ignore: Kubernetes duration.
+    }
+
+    Widget cell(double width, Widget child) => SizedBox(
+      width: width,
+      child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: child),
+    );
+    Text text(String value, {bool strong = false}) => Text(
+      value,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: (strong ? tokens.typography.body : tokens.typography.callout).copyWith(
+        color: strong ? p.label : tokens.secondaryLabel,
+        fontWeight: strong ? FontWeight.w500 : null,
+      ),
+    );
+    if (AppPlatform.isMobile || MediaQuery.sizeOf(context).width < 600) return _compactList(context, releases);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            SizedBox(
+              width: 260,
+              child: GlassField(
+                key: const ValueKey('kube-helm-search'),
+                fieldKey: const ValueKey('kube-helm-search-input'),
+                search: true,
+                placeholder: l.commonSearch,
+                onChanged: (value) => setState(() => _filter = value.toLowerCase()),
+              ),
+            ),
+            const SizedBox(width: GlassSpacing.s8),
+            GlassButton.plain(
+              key: const ValueKey('kube-helm-history'),
+              label: l.kubeHelmAllRevisions,
+              icon: _allRevisions ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+              onPressed: () => setState(() => _allRevisions = !_allRevisions),
+            ),
+            const Spacer(),
+            GlassBadge(label: '${releases.length}', dense: true),
+            GlassIconButton(
+              key: const ValueKey('kube-helm-refresh'),
+              tooltip: l.kubeRefreshResources,
+              icon: Icons.refresh,
+              onPressed: _loading ? null : _load,
+            ),
+          ],
+        ),
+        const SizedBox(height: GlassSpacing.s8),
+        if (_failed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: GlassSpacing.s6),
+            child: Text(l.kubeRequestFailed, style: tokens.typography.callout.copyWith(color: p.danger)),
+          ),
+        Expanded(
+          child: ContentSurface(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: constraints.maxWidth > widths.fold(24.0, (a, b) => a + b)
+                      ? constraints.maxWidth
+                      : widths.fold<double>(24, (a, b) => a + b),
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: 32,
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 12),
+                            for (final (index, label) in [
+                              l.kubeName,
+                              l.kubeNamespace,
+                              l.kubeRevision,
+                              l.kubeStatus,
+                              'Chart', // l10n-ignore: Helm term.
+                              l.kubeAppVersion,
+                              l.kubeUpdated,
+                            ].indexed)
+                              cell(widths[index], Text(label.toUpperCase(), style: header)),
+                          ],
+                        ),
+                      ),
+                      Divider(height: 1, color: tokens.surfaces.separator),
+                      if (_loading) const LinearProgressIndicator(minHeight: 2),
+                      if (!_loading && !_failed && releases.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            l.kubeHelmEmpty,
+                            style: tokens.typography.body.copyWith(color: tokens.secondaryLabel),
+                          ),
+                        ),
+                      Expanded(
+                        child: ListView.builder(
+                          key: const ValueKey('kube-helm-list'),
+                          itemExtent: 34,
+                          itemCount: releases.length,
+                          itemBuilder: (context, index) {
+                            final release = releases[index];
+                            return GlassInteractive(
+                              key: ValueKey('kube-helm-${release.id}'),
+                              semanticLabel: release.name,
+                              onPressed: () => _open(release),
+                              builder: (context, state) => ColoredBox(
+                                color: state.hovered ? tokens.surfaces.fillHover : Colors.transparent,
+                                child: SizedBox(
+                                  height: 34,
+                                  child: Row(
+                                    children: [
+                                      const SizedBox(width: 12),
+                                      cell(widths[0], text(release.name, strong: true)),
+                                      cell(widths[1], text(release.namespace)),
+                                      cell(widths[2], text('${release.revision}')),
+                                      cell(widths[3], KubeStatusLabel(status: release.status)),
+                                      cell(widths[4], text('${release.chart}-${release.chartVersion}')),
+                                      cell(widths[5], text(release.appVersion)),
+                                      cell(widths[6], text(updated(release))),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Phones: one card per release with the essential facts.
+  Widget _compactList(BuildContext context, List<KubeHelmSummary> releases) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
             Expanded(
-              child: TextField(
+              child: GlassField(
                 key: const ValueKey('kube-helm-search'),
-                decoration: InputDecoration(labelText: l.commonSearch, prefixIcon: const Icon(Icons.search)),
+                fieldKey: const ValueKey('kube-helm-search-input'),
+                search: true,
+                placeholder: l.commonSearch,
                 onChanged: (value) => setState(() => _filter = value.toLowerCase()),
               ),
             ),
@@ -134,32 +295,30 @@ class _KubeHelmPanelState extends ConsumerState<KubeHelmPanel> {
         ),
         Align(
           alignment: Alignment.centerLeft,
-          child: FilterChip(
+          child: GlassButton.plain(
             key: const ValueKey('kube-helm-history'),
-            label: Text(l.kubeHelmAllRevisions),
-            selected: _allRevisions,
-            onSelected: (value) => setState(() => _allRevisions = value),
+            label: l.kubeHelmAllRevisions,
+            icon: _allRevisions ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+            onPressed: () => setState(() => _allRevisions = !_allRevisions),
           ),
         ),
-        if (_loading) const LinearProgressIndicator(),
-        if (_failed) Text(l.kubeRequestFailed, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        if (_loading) const LinearProgressIndicator(minHeight: 2),
+        if (_failed) Text(l.kubeRequestFailed, style: tokens.typography.callout.copyWith(color: tokens.palette.danger)),
         if (!_loading && !_failed && releases.isEmpty) Text(l.kubeHelmEmpty),
         Expanded(
-          child: ListView.builder(
+          child: ContentList(
             key: const ValueKey('kube-helm-list'),
             itemCount: releases.length,
             itemBuilder: (context, index) {
               final release = releases[index];
-              return ContentSurface(
-                child: ListTile(
-                  key: ValueKey('kube-helm-${release.id}'),
-                  title: Text(release.name),
-                  subtitle: Text(
-                    '${release.namespace} · ${release.status}\n${release.chart} ${release.chartVersion} · ${l.kubeHelmRevision(release.revision)}',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _open(release),
+              return ListTile(
+                key: ValueKey('kube-helm-${release.id}'),
+                title: Text(release.name),
+                subtitle: Text(
+                  '${release.namespace} · ${release.status}\n${release.chart} ${release.chartVersion} · ${l.kubeHelmRevision(release.revision)}',
                 ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _open(release),
               );
             },
           ),

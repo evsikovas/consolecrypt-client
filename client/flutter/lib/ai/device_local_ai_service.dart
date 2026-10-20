@@ -198,6 +198,11 @@ class DeviceLocalAiService implements AiService {
     }());
   });
 
+  /// Runs [request] while the built-in model is started and registered with
+  /// the native core, so features that call the core directly (Kubernetes AI)
+  /// can use [deviceLocalAiProviderId]. The lease ends when [request] completes.
+  Future<T> withDeviceLocalProvider<T>(Future<T> Function() request) => _call(request);
+
   Future<T> _call<T>(Future<T> Function() request) {
     final generation = _generation;
     final scope = _currentScope;

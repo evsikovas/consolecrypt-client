@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/shell.dart' show SidebarCollapsed, sidebarCollapsedProvider;
+import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/kubernetes/kube_ai_host.dart';
 import 'package:consolecrypt/kubernetes/kube_ai_service.dart';
 import 'package:consolecrypt/kubernetes/kube_auth_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
@@ -22,11 +26,13 @@ import 'package:consolecrypt/kubernetes/kube_gitops_monitor.dart';
 import 'package:consolecrypt/kubernetes/kube_helm_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_history_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_history_service.dart';
+import 'package:consolecrypt/kubernetes/kube_icons.dart';
 import 'package:consolecrypt/kubernetes/kube_insights_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_insights_service.dart';
 import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
 import 'package:consolecrypt/kubernetes/kube_mutation_service.dart';
 import 'package:consolecrypt/kubernetes/kube_navigation.dart';
+import 'package:consolecrypt/kubernetes/kube_navigator.dart';
 import 'package:consolecrypt/kubernetes/kube_operations_service.dart';
 import 'package:consolecrypt/kubernetes/kube_organization_service.dart';
 import 'package:consolecrypt/kubernetes/kube_permissions_dialog.dart';
@@ -94,6 +100,8 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   bool _connecting = true, _loading = false, _loadingMore = false;
   bool _navigationPending = false, _snapshotPending = false;
   late final KubeActiveNavigation _navigationSnapshot;
+  late final KubeAiHostController _aiHost;
+  late final SidebarCollapsed _sidebar;
   late final KubeForwardRestore _restoreController;
   bool _forwardRestoreFailed = false;
   bool _connectionFailed = false, _requestFailed = false, _namespacesFailed = false;
@@ -125,6 +133,14 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   int _enrichmentGeneration = 0;
   final _searchFocus = FocusNode();
   Set<String> _visibleRows = {};
+  // Desktop: the object open in the side inspector instead of a modal dialog.
+  KubeResourceRef? _inspected;
+  KubeResourceOpenAction? _pendingAction;
+  double _inspectorWidth = 560;
+  // Every desktop window uses the workspace layout (also next to the open
+  // AI panel); phones keep the compact mobile flow.
+  bool get _desktopLayout => !AppPlatform.isMobile;
+  bool _navigatorOpen = true;
 
   bool get _current => mounted && _scope.unlocked && identical(_scope, _providerContainer.read(kubeScopeProvider));
 
@@ -134,11 +150,17 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     _scope = ref.read(kubeScopeProvider);
     _providerContainer = ProviderScope.containerOf(context, listen: false);
     _navigationSnapshot = ref.read(kubeActiveNavigationProvider.notifier);
+    _aiHost = ref.read(kubeAiHostProvider.notifier);
+    _sidebar = ref.read(sidebarCollapsedProvider.notifier);
+    // The cluster workspace needs the width: the app menu folds to icons.
+    if (!AppPlatform.isMobile) scheduleMicrotask(_sidebar.autoCollapse);
     _restoreController = ref.read(kubeForwardRestoreProvider.notifier);
     _gitOpsAlerts = ref.read(kubeGitOpsAlertsProvider.notifier);
     _favoriteNamespaces = widget.connection.favouriteNamespaces.toSet();
     _favoriteKinds = widget.connection.favouriteKinds.toSet();
-    _namespace = widget.connection.namespace.isEmpty ? null : widget.connection.namespace;
+    // Start across all namespaces: the context's default namespace is often
+    // empty for most kinds, which made a healthy cluster look empty.
+    _namespace = null;
     WidgetsBinding.instance.addObserver(this);
     unawaited(_loadWorkspacePreferences());
     unawaited(_connect());
@@ -147,6 +169,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
 
   void _disconnect(KubeSession? session) {
     if (session != null) scheduleMicrotask(() => _navigationSnapshot.clear(session.id));
+    if (session != null) scheduleMicrotask(() => _aiHost.clear(session.id));
     if (session != null) unawaited(widget.service.disconnect(session.id).catchError((Object _) {}));
   }
 
@@ -188,6 +211,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     _outputs.clear();
     _objectTabs.clear();
     scheduleMicrotask(() => _restoreController.clearContext(widget.connection.id));
+    if (!AppPlatform.isMobile) scheduleMicrotask(_sidebar.restore);
     super.dispose();
   }
 
@@ -271,6 +295,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
         _kind = sorted.where((kind) => kind.isPod).firstOrNull ?? sorted.firstOrNull;
         _connecting = false;
       });
+      _publishAiHost();
       await _refresh();
       if (_current && requestGeneration == _connectionGeneration) await _restoreForwards(connected);
       _scheduleNavigation();
@@ -778,6 +803,13 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
       _objectTabs.add(resource);
       if (_objectTabs.length > 12) _objectTabs.removeAt(0);
     }
+    if (_desktopLayout) {
+      setState(() {
+        _inspected = resource;
+        _pendingAction = action;
+      });
+      return;
+    }
     final changed = await showKubeResourceDetails<bool>(
       context,
       builder: (_) => KubeResourceDetails(
@@ -917,7 +949,34 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     _showPanel();
   }
 
+  int _aiRequest = 0;
+
+  void _publishAiHost({KubeResourceRef? selected, String? question, bool explicit = false}) {
+    final session = _session, service = widget.service;
+    if (!_current || session == null || service is! KubeAiService || AppPlatform.isMobile) return;
+    if (explicit) _aiRequest++;
+    final host = KubeAiHost(
+      session: session,
+      contextName: widget.connection.name,
+      service: service as KubeAiService,
+      namespace: _namespace ?? 'default',
+      selected: selected,
+      question: question,
+      request: _aiRequest,
+      onReviewedCommand: _reviewedCommand,
+    );
+    scheduleMicrotask(() => _aiHost.publish(host));
+  }
+
   void _showAi([KubeResourceRef? selected, String? question]) {
+    if (_desktopLayout && widget.service is KubeAiService && _session != null) {
+      // The cluster assistant lives in the app's right AI panel next to the
+      // workspace, never in the bottom panel that would hide the table.
+      _publishAiHost(selected: selected, question: question, explicit: true);
+      ref.read(kubeAiClusterModeProvider.notifier).set(true);
+      ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.ai);
+      return;
+    }
     _selectedLog = null;
     _selectedOutput = null;
     _aiPanel = true;
@@ -1112,6 +1171,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
         )
         .map(_withMetrics)
         .toList();
+    if (_desktopLayout) return _desktop(context, session, rows, canWrite);
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.slash): () {
@@ -1546,8 +1606,648 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     );
   }
 
+  // ---- Desktop workspace ---------------------------------------------------
+
+  void _selectKind(KubeResourceKind kind) {
+    if (!_current) return;
+    _generation++;
+    _stopWatch();
+    setState(() {
+      _view = 'resources';
+      _kind = kind;
+      _query = '';
+      _selectedRows.clear();
+    });
+    unawaited(_refresh());
+  }
+
+  void _selectView(String view) {
+    if (!_current || _view == view) return;
+    _generation++;
+    _stopWatch();
+    setState(() => _view = view);
+    if (view == 'resources') unawaited(_refresh());
+  }
+
+  void _changeNamespace(String? namespace) {
+    if (!_current || _namespace == namespace) return;
+    setState(() => _namespace = namespace);
+    if (_view == 'resources') unawaited(_refresh());
+  }
+
+  Widget _desktop(BuildContext context, KubeSession? session, List<KubeResourceRow> rows, bool canWrite) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final rightPanel = _panelRight && width >= 1100;
+    final inspected = _inspected;
+    final main = LayoutBuilder(
+      builder: (context, box) {
+        // The table keeps at least ~55 % of the column: an open terminal or AI
+        // panel must never push the resource list off screen.
+        final panelHeight = _panelHeight.clamp(160.0, math.max(160.0, box.maxHeight * .45)).toDouble();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_connecting)
+              Expanded(
+                child: EmptyState(icon: Icons.hourglass_empty, title: l.kubeConnecting, compact: true),
+              )
+            else if (_connectionFailed)
+              Expanded(
+                child: EmptyState(
+                  icon: Icons.cloud_off_outlined,
+                  title: l.kubeConnectionFailed,
+                  compact: true,
+                  action: Wrap(
+                    spacing: GlassSpacing.s8,
+                    children: [
+                      if (_authenticationRequired)
+                        GlassButton.prominent(
+                          key: const ValueKey('kube-authenticate'),
+                          label: l.kubeAuthAction,
+                          icon: Icons.login,
+                          onPressed: _authenticate,
+                        ),
+                      GlassButton(
+                        key: const ValueKey('kube-reconnect'),
+                        label: l.kubeRetry,
+                        icon: Icons.refresh,
+                        onPressed: _connect,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (_kinds.isEmpty)
+              Expanded(
+                child: EmptyState(icon: Icons.inventory_2_outlined, title: l.kubeNoResourceKinds, compact: true),
+              )
+            else ...[
+              _desktopToolbar(context, session, rows),
+              const SizedBox(height: GlassSpacing.s8),
+              Expanded(child: _desktopContent(context, session, rows, canWrite)),
+            ],
+            if (session != null) KubeForwardsPanel(sessionId: session.id),
+            if (_panelOpen && session != null && !rightPanel) ...[
+              Semantics(
+                label: l.kubeResizePanel,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.resizeRow,
+                  child: GestureDetector(
+                    key: const ValueKey('kube-panel-resize'),
+                    behavior: HitTestBehavior.opaque,
+                    onVerticalDragEnd: (_) => _saveWorkspacePreferences(),
+                    onVerticalDragUpdate: (details) => setState(
+                      () => _panelHeight = (panelHeight - details.delta.dy).clamp(
+                        160.0,
+                        math.max(160.0, box.maxHeight * .45),
+                      ),
+                    ),
+                    child: SizedBox(
+                      height: 10,
+                      child: Center(
+                        child: Container(
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: tokens.palette.tertiary,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: panelHeight, child: _workspace(session)),
+            ],
+            if (!_panelOpen &&
+                session != null &&
+                (_outputs.isNotEmpty || _logPins.isNotEmpty || _extraTerminals.isNotEmpty))
+              Padding(
+                padding: const EdgeInsets.only(top: GlassSpacing.s8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: GlassButton(label: l.kubeShowPanel, icon: Icons.keyboard_arrow_up, onPressed: _showPanel),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.slash): () {
+          final focused = FocusManager.instance.primaryFocus?.context;
+          if (focused?.widget is! EditableText && focused?.findAncestorStateOfType<EditableTextState>() == null) {
+            _searchFocus.requestFocus();
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.keyJ, control: true): _toggleTerminals,
+        const SingleActivator(LogicalKeyboardKey.keyJ, meta: true): _toggleTerminals,
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_inspected != null) setState(() => _inspected = null);
+        },
+      },
+      child: Material(
+        type: MaterialType.transparency,
+        child: Semantics(
+          container: true,
+          label: widget.connection.name,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(pagePadding(context) - 8, GlassSpacing.s12, pagePadding(context) - 8, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _desktopHeader(context, session),
+                const SizedBox(height: GlassSpacing.s12),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, area) {
+                      final navWidth = area.maxWidth < 900 ? 196.0 : 232.0;
+                      final showNav = _navigatorOpen && area.maxWidth >= 560;
+                      final inspectorWidth = _inspectorWidth
+                          .clamp(380.0, math.max(380.0, area.maxWidth * .62))
+                          .toDouble();
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (showNav) ...[
+                            SizedBox(
+                              width: navWidth,
+                              child: KubeNavigator(
+                                connections: widget.connections,
+                                currentConnectionId: widget.connection.id,
+                                statuses: ref.watch(kubeConnectionStatusProvider),
+                                kinds: _kinds,
+                                view: _view,
+                                selectedKindId: _kind?.id,
+                                favouriteKinds: _favoriteKinds,
+                                gitOpsAlerts: _gitOps?.alertCount ?? 0,
+                                hasInsights: widget.service is KubeInsightsService && session != null,
+                                hasHistory: widget.service is KubeHistoryService,
+                                onSelectKind: _selectKind,
+                                onSelectView: _selectView,
+                                onSelectContext: widget.onSelectContext == null
+                                    ? null
+                                    : (connection) {
+                                        if (_current) widget.onSelectContext!(connection);
+                                      },
+                              ),
+                            ),
+                            const SizedBox(width: GlassSpacing.s12),
+                          ],
+                          Expanded(
+                            child: Stack(
+                              children: [
+                                Positioned.fill(child: main),
+                                if (inspected != null && session != null)
+                                  Positioned(
+                                    top: 0,
+                                    bottom: 0,
+                                    right: 0,
+                                    width: inspectorWidth,
+                                    // Lens-style drawer over the table: the list keeps
+                                    // its columns instead of being squeezed.
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(tokens.radii.card),
+                                        boxShadow: const [
+                                          BoxShadow(color: Color(0x66000000), blurRadius: 24, offset: Offset(-6, 0)),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          MouseRegion(
+                                            cursor: SystemMouseCursors.resizeColumn,
+                                            child: GestureDetector(
+                                              key: const ValueKey('kube-inspector-resize'),
+                                              behavior: HitTestBehavior.opaque,
+                                              onHorizontalDragUpdate: (details) => setState(
+                                                () => _inspectorWidth = (inspectorWidth - details.delta.dx)
+                                                    .clamp(380.0, math.max(380.0, area.maxWidth * .62))
+                                                    .toDouble(),
+                                              ),
+                                              child: const SizedBox(width: 6),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: KubeResourceDetails(
+                                              key: ValueKey('kube-inspector-${inspected.id}'),
+                                              embedded: true,
+                                              session: session,
+                                              resource: inspected,
+                                              service: widget.service,
+                                              gitOpsMonitor: _gitOps,
+                                              initialLogs: _pendingAction == KubeResourceOpenAction.logs,
+                                              initialAction: _pendingAction,
+                                              contextName: widget.connection.name,
+                                              onSelectResource: (target) {
+                                                if (_current) unawaited(_openObject(target));
+                                              },
+                                              onEmbeddedClose: (changed) {
+                                                if (!_current) return;
+                                                setState(() => _inspected = null);
+                                                if (changed) unawaited(_refresh());
+                                              },
+                                              onChanged: () {
+                                                if (_current && _view == 'resources') unawaited(_refresh());
+                                              },
+                                              onTerminalOpened: _showTerminals,
+                                              onExplain: widget.service is KubeAiService ? _showAi : null,
+                                              onPinLogs: _pinLogs,
+                                              onOutput: _recordOutput,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          if (_panelOpen && session != null && rightPanel) ...[
+                            const SizedBox(width: GlassSpacing.s12),
+                            SizedBox(width: area.maxWidth * .34, child: _workspace(session)),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _desktopHeader(BuildContext context, KubeSession? session) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final p = tokens.palette;
+    final color = widget.connection.color == null
+        ? null
+        : Color(int.tryParse('FF${widget.connection.color!.replaceFirst('#', '')}', radix: 16) ?? 0xFF4285F4);
+    final narrow = MediaQuery.sizeOf(context).width < 800;
+    return SizedBox(
+      height: 36,
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                GlassIconButton(
+                  key: const ValueKey('kube-toggle-navigator'),
+                  icon: _navigatorOpen ? Icons.menu_open_rounded : Icons.menu_rounded,
+                  tooltip: l.kubeToggleNavigator,
+                  style: GlassIconButtonStyle.plain,
+                  onPressed: () => setState(() => _navigatorOpen = !_navigatorOpen),
+                ),
+                const SizedBox(width: GlassSpacing.s4),
+                KubeWheelIcon(size: 22, color: color ?? p.accent),
+                const SizedBox(width: GlassSpacing.s8),
+                Flexible(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      widget.connection.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tokens.typography.title2.copyWith(color: p.label),
+                    ),
+                  ),
+                ),
+                if (!narrow) ...[
+                  const SizedBox(width: GlassSpacing.s8),
+                  Text(
+                    session == null || session.serverVersion.isEmpty ? widget.connection.server : session.serverVersion,
+                    style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                  ),
+                ],
+                const SizedBox(width: GlassSpacing.s12),
+                if (session != null)
+                  Flexible(
+                    child: KubeWriteBanner(session: session, contextName: widget.connection.name, compact: true),
+                  )
+                else if (widget.connection.production)
+                  GlassBadge(label: l.kubeReadOnly, tone: GlassTone.danger, icon: Icons.lock_rounded),
+                if (_forwardRestoreFailed) ...[
+                  const SizedBox(width: GlassSpacing.s8),
+                  Tooltip(
+                    message: l.kubeForwardRestoreFailed,
+                    child: Icon(Icons.warning_amber_rounded, size: 18, color: p.warning),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (session != null && widget.service is KubeAiService)
+            GlassIconButton(
+              key: const ValueKey('kube-open-ai'),
+              icon: Icons.auto_awesome,
+              tooltip: l.kubeAiAssistant,
+              onPressed: () => _showAi(),
+            ),
+          if (session != null && widget.service is KubeOperationsService)
+            GlassIconButton(
+              key: const ValueKey('kube-permissions'),
+              icon: Icons.policy_outlined,
+              tooltip: l.kubePermissions,
+              onPressed: () => showAppDialog<void>(
+                context,
+                secure: true,
+                builder: (_) => KubePermissionsDialog(
+                  sessionId: session.id,
+                  namespace: _namespace ?? 'default',
+                  service: widget.service as KubeOperationsService,
+                ),
+              ),
+            ),
+          if (session != null)
+            GlassIconButton(
+              key: const ValueKey('kube-toggle-terminal'),
+              icon: Icons.terminal,
+              tooltip: l.kubeShowPanel,
+              onPressed: _toggleTerminals,
+            ),
+          const SizedBox(width: GlassSpacing.s4),
+          if (narrow)
+            GlassIconButton(
+              key: const ValueKey('kube-disconnect'),
+              icon: Icons.logout_rounded,
+              tooltip: session == null ? l.kubeBackToContexts : l.kubeDisconnect,
+              onPressed: widget.onClose,
+            )
+          else
+            GlassButton(
+              key: const ValueKey('kube-disconnect'),
+              label: session == null ? l.kubeBackToContexts : l.kubeDisconnect,
+              icon: Icons.logout_rounded,
+              onPressed: widget.onClose,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _namespaceSelect(BuildContext context) {
+    final l = context.l10n;
+    final sorted = [..._namespaces]
+      ..sort((a, b) {
+        final favorite = (_favoriteNamespaces.contains(b) ? 1 : 0) - (_favoriteNamespaces.contains(a) ? 1 : 0);
+        return favorite == 0 ? a.compareTo(b) : favorite;
+      });
+    final enabled = _view != 'resources' || _kind?.namespaced == true;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 240),
+      child: Tooltip(
+        message: _namespacesFailed ? l.kubeNamespacesFailed : l.kubeNamespace,
+        child: GlassSelect<String>(
+          key: const ValueKey('kube-namespace'),
+          value: enabled ? (_namespace ?? '') : '',
+          semanticLabel: l.kubeNamespace,
+          items: [
+            GlassSelectItem(value: '', label: l.kubeAllNamespaces, icon: Icons.layers_outlined),
+            for (final name in sorted)
+              GlassSelectItem(
+                key: ValueKey('kube-namespace-$name'),
+                value: name,
+                label: name,
+                icon: _favoriteNamespaces.contains(name) ? Icons.star_rounded : null,
+              ),
+          ],
+          onChanged: enabled ? (value) => _changeNamespace(value.isEmpty ? null : value) : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _desktopToolbar(BuildContext context, KubeSession? session, List<KubeResourceRow> rows) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final p = tokens.palette;
+    final title = switch (_view) {
+      'problems' => l.kubeProblems,
+      'gitops' => l.kubeGitOps,
+      'helm' => l.kubeNavHelmReleases,
+      'history' => l.kubeHistory,
+      _ => _kind == null ? l.kubeResources : kubeKindLabel(_kind!),
+    };
+    final resources = _view == 'resources';
+    return Wrap(
+      spacing: GlassSpacing.s8,
+      runSpacing: GlassSpacing.s8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title, style: tokens.typography.title3.copyWith(color: p.label)),
+            if (resources) ...[
+              const SizedBox(width: GlassSpacing.s6),
+              GlassBadge(label: '${rows.length}', dense: true),
+              if (widget.service is KubeOrganizationService && _kind != null)
+                GlassIconButton(
+                  key: const ValueKey('kube-favorite-kind'),
+                  icon: _favoriteKinds.contains(_kind!.id) ? Icons.star_rounded : Icons.star_border_rounded,
+                  tooltip: l.kubeFavorite,
+                  onPressed: _savingFavorites ? null : () => _favorite(namespace: false),
+                ),
+            ],
+          ],
+        ),
+        _namespaceSelect(context),
+        if (resources) ...[
+          SizedBox(
+            width: 220,
+            child: GlassField(
+              key: const ValueKey('kube-resource-search'),
+              fieldKey: const ValueKey('kube-resource-search-input'),
+              focusNode: _searchFocus,
+              search: true,
+              placeholder: l.commonSearch,
+              onChanged: (value) => setState(() => _query = value),
+            ),
+          ),
+          SizedBox(
+            width: 220,
+            child: GlassField(
+              key: const ValueKey('kube-label-selector'),
+              fieldKey: const ValueKey('kube-label-selector-input'),
+              controller: _selector,
+              mono: true,
+              placeholder: l.kubeLabelSelectorHint,
+              leadingIcon: Icons.filter_alt_outlined,
+              onSubmitted: (value) {
+                _labelSelector = value.trim();
+                unawaited(_refresh());
+              },
+            ),
+          ),
+          if (_selectedRows.isNotEmpty)
+            GlassButton(
+              key: const ValueKey('kube-bulk-actions'),
+              label: '${l.kubeBulkActions} (${_selectedRows.length})',
+              onPressed: _bulk,
+            ),
+          Tooltip(
+            message: _live ? l.kubeLive : l.kubeSnapshot,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                StatusDot(color: _watchFailed ? p.warning : (_live ? p.success : p.tertiary)),
+                const SizedBox(width: GlassSpacing.s6),
+                Text(
+                  _live ? l.kubeLiveShort : l.kubeSnapshotShort,
+                  style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                ),
+              ],
+            ),
+          ),
+          if (session != null && _kind?.verbs.contains('create') == true && widget.service is KubeManifestService)
+            GlassIconButton(
+              key: const ValueKey('kube-create-resource'),
+              icon: Icons.add_rounded,
+              tooltip: l.kubeCreateResource,
+              onPressed: _createResource,
+            ),
+          GlassIconButton(
+            key: const ValueKey('kube-refresh-resources'),
+            icon: Icons.refresh,
+            tooltip: l.kubeRefreshResources,
+            onPressed: _connecting ? null : _refresh,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _desktopContent(BuildContext context, KubeSession? session, List<KubeResourceRow> rows, bool canWrite) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    if (_view != 'resources' && widget.service is KubeInsightsService && session != null) {
+      return _view == 'history' && widget.service is KubeHistoryService
+          ? KubeHistoryPanel(
+              key: ValueKey((session.id, _namespace)),
+              contextId: session.contextId,
+              contextName: widget.connection.name,
+              sessionId: session.id,
+              namespace: _namespace,
+              service: widget.service as KubeHistoryService,
+            )
+          : _view == 'helm'
+          ? KubeHelmPanel(
+              key: ValueKey((session.id, _namespace, _view)),
+              session: session,
+              contextName: widget.connection.name,
+              namespace: _namespace,
+              service: widget.service as KubeInsightsService,
+            )
+          : KubeInsightsPanel(
+              key: ValueKey((session.id, _namespace, _view, _gitOpsIntent)),
+              session: session,
+              contextName: widget.connection.name,
+              namespace: _namespace,
+              monitor: _gitOps,
+              initialAction: _gitOpsAction,
+              initialResource: _gitOpsTarget,
+              onInitialActionHandled: () {
+                _gitOpsAction = null;
+                _gitOpsTarget = null;
+              },
+              service: widget.service as KubeInsightsService,
+              browser: widget.service,
+              problems: _view == 'problems',
+              cliPanel: _view == 'gitops'
+                  ? KubeFluxCliPanel(
+                      session: session,
+                      namespace: _namespace,
+                      onTerminalOpened: (id) => unawaited(_runtimeTerminal(id)),
+                      onOutput: _output,
+                    )
+                  : null,
+              onTerminalOpened: _showTerminals,
+              onExplain: widget.service is KubeAiService ? _showAi : null,
+            );
+    }
+    final kind = _kind;
+    if (kind == null) return const SizedBox.shrink();
+    final notices = <String>[
+      if (_requestFailed) l.kubeRequestFailed,
+      if (_watchFailed) l.kubeWatchFailed,
+      if (_hasMetrics && _metricsUnavailable) l.kubeMetricsUnavailable,
+      if (_limited) l.kubeResourceLimit,
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final notice in notices)
+          Padding(
+            padding: const EdgeInsets.only(bottom: GlassSpacing.s6),
+            child: Text(
+              notice,
+              style: tokens.typography.callout.copyWith(
+                color: notice == l.kubeRequestFailed ? tokens.palette.danger : tokens.secondaryLabel,
+              ),
+            ),
+          ),
+        Expanded(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: KubeResourceTableView(
+                  onVisibleRows: (ids) {
+                    _visibleRows = ids;
+                    if (ids.any((id) => _rows[id]?.cells.isEmpty == true) && _columns.isNotEmpty) {
+                      _scheduleEnrichment();
+                    }
+                  },
+                  contextId: widget.connection.id,
+                  rows: rows,
+                  kind: kind,
+                  activeName: _inspected?.api.id == kind.id ? _inspected : null,
+                  columns: [
+                    ..._columns,
+                    if (_hasMetrics) ...const [
+                      KubeTableColumn(name: 'CPU (m)', type: 'number', format: '', description: '', priority: 0),
+                      KubeTableColumn(name: 'RAM (MiB)', type: 'number', format: '', description: '', priority: 0),
+                    ],
+                  ],
+                  selected: _selectedRows,
+                  canSelect: canWrite && widget.service is KubeMutationService && kind.verbs.contains('delete'),
+                  onSelection: (row) => setState(() {
+                    if (_selectedRows.contains(row.id)) {
+                      _selectedRows.remove(row.id);
+                    } else if (_selectedRows.length < 100) {
+                      _selectedRows.add(row.id);
+                    }
+                  }),
+                  onOpen: (row) => unawaited(_details(row)),
+                  hasMore: _continueToken != null && !_limited,
+                  loadingMore: _loadingMore,
+                  onMore: () => unawaited(_more()),
+                  loading: _loading,
+                  emptyText: !_loading && !_requestFailed && rows.isEmpty
+                      ? (_query.trim().isEmpty && _labelSelector.isEmpty
+                            ? l.kubeNoResourcesIn(_namespace ?? l.kubeAllNamespaces)
+                            : l.kubeNoResources)
+                      : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _workspace(KubeSession session) => KubeWorkspacePanel(
     key: _workspaceKey,
+    showAi: !_desktopLayout,
     session: session,
     contextName: widget.connection.name,
     service: widget.service,
