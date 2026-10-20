@@ -192,9 +192,9 @@ class _HiddenKitPlaceholder extends StatelessWidget {
   }
 }
 
-/// Revealed Recovery Kit (§4.14): a 4-column numbered word grid on paper and
-/// the QR on pure white with a 16 px quiet zone (white even in dark mode).
-/// Only build it after an explicit reveal.
+/// Revealed words use as many columns as fit at the current text scale.
+/// QR moves below the words on narrow screens and keeps its white quiet zone.
+/// Only build this widget after an explicit reveal.
 class RecoveryKitPaper extends StatelessWidget {
   const RecoveryKitPaper({required this.kit, super.key, this.qrSize = 176});
 
@@ -212,69 +212,136 @@ class RecoveryKitPaper extends StatelessWidget {
       fontWeight: FontWeight.w500,
       color: tokens.palette.label,
     );
-    final rows = (words.length / 4).ceil();
-    final grid = Column(
-      children: [
-        for (var r = 0; r < rows; r++)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s4),
-            child: Row(
-              children: [
-                for (var c = 0; c < 4; c++)
-                  Expanded(
-                    child: Builder(
-                      builder: (context) {
-                        final i = r * 4 + c;
-                        if (i >= words.length) return const SizedBox.shrink();
-                        return Row(
-                          children: [
-                            SizedBox(
-                              width: 22,
-                              child: Text(
-                                '${i + 1}',
-                                textAlign: TextAlign.end,
-                                style: t.caption.copyWith(color: tokens.palette.tertiary),
-                              ),
-                            ),
-                            const SizedBox(width: GlassSpacing.s8),
-                            Expanded(
-                              child: Text(words[i], key: ValueKey('kit-word-$i'), style: wordStyle),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-      ],
-    );
-    return ContentSurface(
-      kind: ContentSurfaceKind.paper,
-      padding: const EdgeInsets.all(GlassSpacing.s24),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: grid),
-          const SizedBox(width: GlassSpacing.s24),
-          DecoratedBox(
-            decoration: ShapeDecoration(
-              color: const Color(0xFFFFFFFF),
-              shape: GlassRadii.shape(tokens.radii.md).copyWith(side: BorderSide(color: tokens.surfaces.hairlineCard)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(GlassSpacing.s16),
-              child: QrImageView(
-                data: kit.exposeQrPayload(),
-                size: qrSize,
-                padding: EdgeInsets.zero,
-                backgroundColor: const Color(0xFFFFFFFF),
+    final numberStyle = t.caption.copyWith(color: tokens.palette.tertiary);
+    final textScaler = MediaQuery.textScalerOf(context);
+    double textWidth(String value, TextStyle style) {
+      final painter = TextPainter(
+        text: TextSpan(text: value, style: style),
+        textDirection: TextDirection.ltr,
+        textScaler: textScaler,
+      )..layout();
+      final width = painter.width.ceilToDouble();
+      painter.dispose();
+      return width;
+    }
+
+    final numberWidth = textWidth('${words.length}', numberStyle);
+    final wordWidth = words.fold<double>(0, (width, word) {
+      final measured = textWidth(word, wordStyle);
+      return measured > width ? measured : width;
+    });
+    const gap = GlassSpacing.s16;
+    final cellWidth = numberWidth + GlassSpacing.s8 + wordWidth + 2;
+
+    Widget wordGrid(double width) {
+      final columns = ((width + gap) / (cellWidth + gap)).floor().clamp(1, 4);
+      final rows = (words.length / columns).ceil();
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: Column(
+          key: const ValueKey('kit-word-grid'),
+          children: [
+            for (var row = 0; row < rows; row++)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s4),
+                child: Row(
+                  children: [
+                    for (var column = 0; column < columns; column++) ...[
+                      if (column > 0) const SizedBox(width: gap),
+                      Expanded(
+                        child: Builder(
+                          builder: (context) {
+                            final index = row * columns + column;
+                            if (index >= words.length) return const SizedBox.shrink();
+                            return Row(
+                              children: [
+                                SizedBox(
+                                  width: numberWidth,
+                                  child: Text('${index + 1}', textAlign: TextAlign.end, style: numberStyle),
+                                ),
+                                const SizedBox(width: GlassSpacing.s8),
+                                Expanded(
+                                  child: Text(
+                                    words[index],
+                                    key: ValueKey('kit-word-$index'),
+                                    style: wordStyle,
+                                    softWrap: false,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
-          ),
-        ],
+          ],
+        ),
+      );
+    }
+
+    Widget qr(double availableWidth) => DecoratedBox(
+      key: const ValueKey('kit-qr'),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFFFFFFF),
+        shape: GlassRadii.shape(tokens.radii.md).copyWith(side: BorderSide(color: tokens.surfaces.hairlineCard)),
       ),
+      child: Padding(
+        padding: const EdgeInsets.all(GlassSpacing.s16),
+        child: QrImageView(
+          data: kit.exposeQrPayload(),
+          size: qrSize.clamp(1, availableWidth - GlassSpacing.s32).toDouble(),
+          padding: EdgeInsets.zero,
+          backgroundColor: const Color(0xFFFFFFFF),
+        ),
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, outer) {
+        final padding = outer.maxWidth < 480 ? GlassSpacing.s16 : GlassSpacing.s24;
+        return ContentSurface(
+          kind: ContentSurfaceKind.paper,
+          padding: EdgeInsets.all(padding),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final qrWidth = qrSize + GlassSpacing.s32;
+              final wide = width >= cellWidth * 4 + gap * 3 + GlassSpacing.s24 + qrWidth;
+              if (wide) {
+                final gridWidth = width - qrWidth - GlassSpacing.s24;
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: wordGrid(gridWidth)),
+                    const SizedBox(width: GlassSpacing.s24),
+                    qr(qrWidth),
+                  ],
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Extreme accessibility scaling can exceed even one column.
+                  // Preserve the full words with horizontal scrolling in that case.
+                  if (width < cellWidth)
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(width: cellWidth, child: wordGrid(cellWidth)),
+                    )
+                  else
+                    wordGrid(width),
+                  const SizedBox(height: GlassSpacing.s24),
+                  Center(child: qr(width)),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
