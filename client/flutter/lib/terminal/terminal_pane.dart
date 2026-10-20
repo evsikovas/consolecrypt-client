@@ -257,91 +257,94 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
             if (event.pointer == _selectionPointer) _stopSelectionDrag();
             _restorePointerInput();
           },
-          child: TerminalView(
-            tab.terminal,
-            key: _view,
-            controller: tab.controller,
-            focusNode: _focus,
-            scrollController: _scroll,
-            autofocus: widget.active,
-            keyboardType: TextInputType.text,
-            theme: AppTheme.terminalTheme(Theme.of(context).brightness, scheme: scheme, custom: custom),
-            textStyle: TerminalStyle(
-              fontSize: fontSize,
-              fontFamily: fontFamily ?? AppPlatform.monospaceFamily,
-              fontFamilyFallback: [AppPlatform.monospaceFamily, ...AppPlatform.monospaceFallback],
+          child: ClipRect(
+            // Scrolled-off rows are painted outside the view; keep them inside.
+            child: TerminalView(
+              tab.terminal,
+              key: _view,
+              controller: tab.controller,
+              focusNode: _focus,
+              scrollController: _scroll,
+              autofocus: widget.active,
+              keyboardType: TextInputType.text,
+              theme: AppTheme.terminalTheme(Theme.of(context).brightness, scheme: scheme, custom: custom),
+              textStyle: TerminalStyle(
+                fontSize: fontSize,
+                fontFamily: fontFamily ?? AppPlatform.monospaceFamily,
+                fontFamilyFallback: [AppPlatform.monospaceFamily, ...AppPlatform.monospaceFallback],
+              ),
+              onSecondaryTapUp: (details, _) {
+                _focus.requestFocus();
+                unawaited(showTerminalContextMenu(context, ref, tab, details.globalPosition & const Size(1, 1)));
+              },
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent || event is KeyRepeatEvent) {
+                  final keys = HardwareKeyboard.instance;
+                  if (event.logicalKey == LogicalKeyboardKey.contextMenu ||
+                      (event.logicalKey == LogicalKeyboardKey.f10 && keys.isShiftPressed)) {
+                    unawaited(
+                      showTerminalContextMenu(
+                        context,
+                        ref,
+                        tab,
+                        Rect.fromCenter(center: glassAnchorRect(context).center, width: 1, height: 1),
+                      ),
+                    );
+                    return KeyEventResult.handled;
+                  }
+                  final primary = AppPlatform.usesMeta
+                      ? keys.isMetaPressed && !keys.isControlPressed
+                      : keys.isControlPressed && !keys.isMetaPressed;
+                  if (primary &&
+                      !keys.isAltPressed &&
+                      !keys.isShiftPressed &&
+                      event.logicalKey == LogicalKeyboardKey.keyV) {
+                    unawaited(pasteIntoTerminal(context, ref, tab));
+                    return KeyEventResult.handled;
+                  }
+                  if (AppPlatform.isWindows &&
+                      event.logicalKey == LogicalKeyboardKey.insert &&
+                      keys.isShiftPressed &&
+                      !keys.isControlPressed &&
+                      !keys.isAltPressed &&
+                      !keys.isMetaPressed) {
+                    // Consume held-key repeats too, without duplicating the paste
+                    // or forwarding an Insert escape sequence to the remote app.
+                    if (event is KeyDownEvent) unawaited(pasteIntoTerminal(context, ref, tab));
+                    return KeyEventResult.handled;
+                  }
+                  if (primary &&
+                      !keys.isAltPressed &&
+                      !keys.isShiftPressed &&
+                      event.logicalKey == LogicalKeyboardKey.keyA) {
+                    selectTerminalBuffer(tab);
+                    return KeyEventResult.handled;
+                  }
+                }
+                if (dispatcher.handleKeyEvent(event)) return KeyEventResult.handled;
+                // Windows can deliver the Unicode WM_CHAR value on KeyEvent
+                // without forwarding it to xterm's custom TextInputClient.
+                // Consume printable hardware input here: returning handled also
+                // prevents a second WM_CHAR insertion by Flutter's text plugin.
+                // xterm skips this callback during native IME composition, so
+                // composed/dead-key input still commits through TextInput.
+                if (widget.active && AppPlatform.isWindows && (event is KeyDownEvent || event is KeyRepeatEvent)) {
+                  final keys = HardwareKeyboard.instance;
+                  final altGr = keys.isControlPressed && keys.isLogicalKeyPressed(LogicalKeyboardKey.altRight);
+                  final text = event.character;
+                  if (!keys.isMetaPressed &&
+                      ((!keys.isControlPressed && !keys.isAltPressed) || altGr) &&
+                      text != null &&
+                      text.isNotEmpty &&
+                      text.runes.every((rune) => rune >= 0x20 && rune != 0x7f)) {
+                    tab.terminal.textInput(text);
+                    if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
+                    return KeyEventResult.handled;
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
             ),
-            onSecondaryTapUp: (details, _) {
-              _focus.requestFocus();
-              unawaited(showTerminalContextMenu(context, ref, tab, details.globalPosition & const Size(1, 1)));
-            },
-            onKeyEvent: (node, event) {
-              if (event is KeyDownEvent || event is KeyRepeatEvent) {
-                final keys = HardwareKeyboard.instance;
-                if (event.logicalKey == LogicalKeyboardKey.contextMenu ||
-                    (event.logicalKey == LogicalKeyboardKey.f10 && keys.isShiftPressed)) {
-                  unawaited(
-                    showTerminalContextMenu(
-                      context,
-                      ref,
-                      tab,
-                      Rect.fromCenter(center: glassAnchorRect(context).center, width: 1, height: 1),
-                    ),
-                  );
-                  return KeyEventResult.handled;
-                }
-                final primary = AppPlatform.usesMeta
-                    ? keys.isMetaPressed && !keys.isControlPressed
-                    : keys.isControlPressed && !keys.isMetaPressed;
-                if (primary &&
-                    !keys.isAltPressed &&
-                    !keys.isShiftPressed &&
-                    event.logicalKey == LogicalKeyboardKey.keyV) {
-                  unawaited(pasteIntoTerminal(context, ref, tab));
-                  return KeyEventResult.handled;
-                }
-                if (AppPlatform.isWindows &&
-                    event.logicalKey == LogicalKeyboardKey.insert &&
-                    keys.isShiftPressed &&
-                    !keys.isControlPressed &&
-                    !keys.isAltPressed &&
-                    !keys.isMetaPressed) {
-                  // Consume held-key repeats too, without duplicating the paste
-                  // or forwarding an Insert escape sequence to the remote app.
-                  if (event is KeyDownEvent) unawaited(pasteIntoTerminal(context, ref, tab));
-                  return KeyEventResult.handled;
-                }
-                if (primary &&
-                    !keys.isAltPressed &&
-                    !keys.isShiftPressed &&
-                    event.logicalKey == LogicalKeyboardKey.keyA) {
-                  selectTerminalBuffer(tab);
-                  return KeyEventResult.handled;
-                }
-              }
-              if (dispatcher.handleKeyEvent(event)) return KeyEventResult.handled;
-              // Windows can deliver the Unicode WM_CHAR value on KeyEvent
-              // without forwarding it to xterm's custom TextInputClient.
-              // Consume printable hardware input here: returning handled also
-              // prevents a second WM_CHAR insertion by Flutter's text plugin.
-              // xterm skips this callback during native IME composition, so
-              // composed/dead-key input still commits through TextInput.
-              if (widget.active && AppPlatform.isWindows && (event is KeyDownEvent || event is KeyRepeatEvent)) {
-                final keys = HardwareKeyboard.instance;
-                final altGr = keys.isControlPressed && keys.isLogicalKeyPressed(LogicalKeyboardKey.altRight);
-                final text = event.character;
-                if (!keys.isMetaPressed &&
-                    ((!keys.isControlPressed && !keys.isAltPressed) || altGr) &&
-                    text != null &&
-                    text.isNotEmpty &&
-                    text.runes.every((rune) => rune >= 0x20 && rune != 0x7f)) {
-                  tab.terminal.textInput(text);
-                  if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
-                  return KeyEventResult.handled;
-                }
-              }
-              return KeyEventResult.ignored;
-            },
           ),
         ),
       ),

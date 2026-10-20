@@ -257,7 +257,9 @@ class _KubeTerminalPanelState extends ConsumerState<KubeTerminalPanel> {
               }}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              style: GlassTokens.of(context).typography.caption.copyWith(color: GlassTokens.of(context).secondaryLabel),
             ),
+            const SizedBox(height: GlassSpacing.s4),
             Expanded(
               child: TerminalPane(key: ValueKey((selected.sessionId, selected.renderGeneration)), tab: selected),
             ),

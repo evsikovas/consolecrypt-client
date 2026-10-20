@@ -47,7 +47,7 @@ class _KubeYamlEditorState extends ConsumerState<KubeYamlEditor> with SingleTick
   KubeJson? _fieldDiff;
   String? _validatedSource;
   bool _busy = false, _failed = false, _force = false;
-  String? _failure;
+  AppException? _failure;
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(kubeScopeProvider));
   bool get _masked => widget.original.yaml.contains('[redacted]');
   bool get _canWrite => !_masked && (ref.read(kubeWriteAccessProvider(widget.session)).value?.canWrite ?? false);
@@ -134,7 +134,52 @@ class _KubeYamlEditorState extends ConsumerState<KubeYamlEditor> with SingleTick
     }
   }
 
-  static String? _rule(Object error) => error is AppException ? error.args['rule'] : null;
+  static AppException? _rule(Object error) => error is AppException ? error : null;
+
+  /// The owner a controller-made object should be edited through.
+  String? get _owner {
+    final owners = (widget.original.object['metadata'] as Map?)?['ownerReferences'];
+    if (owners is! List || owners.isEmpty || owners.first is! Map) return null;
+    final owner = owners.first as Map;
+    return '${owner['kind']}/${owner['name']}';
+  }
+
+  Widget _failureText(BuildContext context) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final args = _failure?.args ?? const <String, String>{};
+    final lines = <String>[];
+    final String message;
+    if (args['what'] == 'kubernetes_fields') {
+      message = l.kubeApplyOwnedBy(args['used_by'] ?? '');
+      lines.addAll((args['id'] ?? '').split('\n').where((line) => line.isNotEmpty));
+    } else if (args['field'] == 'kubernetes_fields') {
+      message = l.kubeApplyRejectedFields;
+      lines.addAll((args['rule'] ?? '').split('\n').where((line) => line.isNotEmpty));
+    } else {
+      message = switch (args['rule']) {
+        'conflict' => l.kubeApplyConflict,
+        'forbidden' || 'unauthorized' => l.kubeApplyForbidden,
+        'invalid_request' || 'rejected' => l.kubeApplyInvalid,
+        _ => l.kubeApplyFailed,
+      };
+    }
+    final rejected = args['field'] == 'kubernetes_fields' || args['rule'] == 'rejected';
+    final owner = _owner;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(message, style: TextStyle(color: tokens.palette.danger)),
+        for (final line in lines.take(8))
+          Text(line, style: tokens.typography.mono.copyWith(color: tokens.palette.danger, fontSize: 12)),
+        if (rejected && widget.resource.api.isPod && owner != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(l.kubeApplyPodImmutable(owner), style: TextStyle(color: tokens.secondaryLabel)),
+          ),
+      ],
+    );
+  }
 
   Future<void> _apply() async {
     // Apply always goes through a server-side dry run first; an unchecked
@@ -215,13 +260,7 @@ class _KubeYamlEditorState extends ConsumerState<KubeYamlEditor> with SingleTick
               KubeWriteBanner(session: widget.session, contextName: widget.contextName),
               if (_masked) Text(l.kubeMaskedEditHelp),
               if (_busy) const LinearProgressIndicator(),
-              if (_failed)
-                Text(switch (_failure) {
-                  'conflict' => l.kubeApplyConflict,
-                  'forbidden' || 'unauthorized' => l.kubeApplyForbidden,
-                  'invalid_request' => l.kubeApplyInvalid,
-                  _ => l.kubeApplyFailed,
-                }, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              if (_failed) _failureText(context),
               TabBar(
                 controller: _tabs,
                 tabs: [

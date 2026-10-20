@@ -73,6 +73,78 @@ class _KubeGitOpsGraphState extends State<KubeGitOpsGraph> {
     );
   }
 
+  /// Columns by longest path from the roots. Cycles are common in Flux (the
+  /// bootstrap Kustomization manages the GitRepository it is built from, and
+  /// itself), so back edges found by a depth-first walk that starts at
+  /// sources, then Kustomizations, then releases are ignored for the layout
+  /// (they are still drawn). Unused columns are dropped.
+  static Map<String, int> _levels(List<KubeFlowNode> nodes, List<KubeFlowEdge> edges) {
+    int rank(KubeObjectIdentity o) => switch (o.kind) {
+      'GitRepository' || 'OCIRepository' || 'HelmRepository' || 'Bucket' || 'ExternalArtifact' => 0,
+      'Kustomization' || 'Application' || 'ApplicationSet' => 1,
+      'HelmRelease' || 'HelmChart' => 2,
+      _ => 3,
+    };
+    final outgoing = <String, List<String>>{};
+    final indegree = <String, int>{};
+    for (final edge in edges) {
+      final from = _key(edge.from), to = _key(edge.to);
+      if (from == to) continue;
+      outgoing.putIfAbsent(from, () => []).add(to);
+      indegree[to] = (indegree[to] ?? 0) + 1;
+    }
+    final order = [...nodes]
+      ..sort((a, b) {
+        final roots = ((indegree[_key(a.object)] ?? 0) == 0 ? 0 : 1) - ((indegree[_key(b.object)] ?? 0) == 0 ? 0 : 1);
+        return roots != 0 ? roots : rank(a.object) - rank(b.object);
+      });
+    final dag = <String, List<String>>{};
+    final state = <String, int>{}; // 1 on stack, 2 done
+    void visit(String key) {
+      state[key] = 1;
+      for (final to in outgoing[key] ?? const <String>[]) {
+        if (state[to] == 1) continue; // back edge closes a cycle
+        dag.putIfAbsent(key, () => []).add(to);
+        if (state[to] == null) visit(to);
+      }
+      state[key] = 2;
+    }
+
+    for (final node in order) {
+      if (state[_key(node.object)] == null) visit(_key(node.object));
+    }
+    final incoming = {for (final node in nodes) _key(node.object): 0};
+    for (final targets in dag.values) {
+      for (final to in targets) {
+        incoming[to] = (incoming[to] ?? 0) + 1;
+      }
+    }
+    final levels = {for (final key in incoming.keys) key: 0};
+    final queue = [
+      for (final entry in incoming.entries)
+        if (entry.value == 0) entry.key,
+    ];
+    for (var i = 0; i < queue.length; i++) {
+      final from = queue[i];
+      for (final to in dag[from] ?? const <String>[]) {
+        levels[to] = math.max(levels[to] ?? 0, math.min(levels[from]! + 1, 8));
+        incoming[to] = incoming[to]! - 1;
+        if (incoming[to] == 0) queue.add(to);
+      }
+    }
+    final used = levels.values.toSet().toList()..sort();
+    final column = {for (final (i, level) in used.indexed) level: i};
+    return {for (final entry in levels.entries) entry.key: column[entry.value]!};
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Large inventories are mostly leaves; start folded so sources and
+    // controllers are visible first.
+    _fold = widget.flow.nodes.length > 40;
+  }
+
   @override
   void dispose() {
     _transform.dispose();
@@ -131,19 +203,7 @@ class _KubeGitOpsGraphState extends State<KubeGitOpsGraph> {
     final keys = nodes.map((node) => _key(node.object)).toSet();
     final edges = flow.edges.where((edge) => keys.contains(_key(edge.from)) && keys.contains(_key(edge.to))).toList();
     final positions = <String, Offset>{};
-    final levels = {for (final node in nodes) _key(node.object): 0};
-    // Cycles remain bounded in the final column and are still represented by
-    // their edges; cycle membership comes from the native dependency report.
-    for (var iteration = 0; iteration < 8; iteration++) {
-      var changed = false;
-      for (final edge in edges) {
-        final from = levels[_key(edge.from)], to = levels[_key(edge.to)];
-        if (from == null || to == null || to > from || to >= 8) continue;
-        levels[_key(edge.to)] = from + 1;
-        changed = true;
-      }
-      if (!changed) break;
-    }
+    final levels = _levels(nodes, edges);
     final counts = <int, int>{};
     for (final node in nodes) {
       final column = (levels[_key(node.object)] ?? 0).clamp(0, 8);

@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_ai_history.dart';
@@ -1216,6 +1217,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('YAML apply names the field managers that own conflicting fields', (tester) async {
+    final service = _MutationService()
+      ..access = const KubeWriteAccess(production: false)
+      ..applyError = const AppException(
+        AppErrorCode.conflict,
+        'fields in use',
+        args: {'what': 'kubernetes_fields', 'id': '.metadata.labels.app', 'used_by': 'kube-controller-manager'},
+      );
+    await _pump(tester, service);
+    await tester.tap(find.byKey(const ValueKey('kube-resource-demo-pod')));
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('kube-edit-yaml')));
+    await settle(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('kube-yaml-input')),
+      'kind: Pod\nmetadata:\n  name: demo-pod\n  resourceVersion: "10"\n',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('kube-yaml-apply')));
+    await settle(tester);
+    expect(find.textContaining('kube-controller-manager'), findsOneWidget);
+    expect(find.text('.metadata.labels.app'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('revoked write access prevents an already reviewed YAML from being applied', (tester) async {
     final service = _MutationService()..access = const KubeWriteAccess(production: false);
     final container = await _pump(tester, service);
@@ -1666,6 +1692,7 @@ class _MutationService extends _Service implements KubeMutationService {
   final applies = <({bool dryRun, bool force, SecretText manifest})>[];
   final deleted = <({String name, String uid, String version})>[];
   int closedWindows = 0;
+  Exception? applyError;
   @override
   Future<KubeWriteAccess> writeAccess(String sessionId) async => access;
   @override
@@ -1693,6 +1720,7 @@ class _MutationService extends _Service implements KubeMutationService {
     bool force = false,
   }) async {
     applies.add((dryRun: dryRun, force: force, manifest: manifest));
+    if (applyError case final error?) throw error;
     return KubeResourceDetail(object: const {}, yaml: manifest.expose());
   }
 

@@ -131,6 +131,7 @@ AppException mapBridgeError(BridgeError e) {
       reason = _notFoundReason(d['what']);
     case 'in_use':
       code = AppErrorCode.conflict;
+      args = {'what': d['what'] ?? '', 'id': d['id'] ?? '', 'used_by': d['used_by'] ?? ''};
     case 'no_active_profile':
       code = AppErrorCode.notFound;
       reason = AppErrorReason.noActiveProfile;

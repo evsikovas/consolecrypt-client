@@ -4166,5 +4166,8 @@
   "kubeApplyForbidden": "Кластер не разрешает вам изменять этот объект.",
   "kubeApplyInvalid": "Сервер отклонил YAML: проверьте синтаксис и поля, которые нельзя менять (большая часть spec у Pod неизменяема).",
   "kubeVaultPasswordConfirm": "Пароль хранилища",
-  "kubeVaultPasswordWrong": "Неверный пароль."
+  "kubeVaultPasswordWrong": "Неверный пароль.",
+  "kubeApplyOwnedBy": "Эти поля ведёт {managers}. Включите «Передать владение конфликтующими полями», чтобы перезаписать их; контроллер может вернуть значения обратно.",
+  "kubeApplyRejectedFields": "Сервер отклонил поля:",
+  "kubeApplyPodImmutable": "У запущенного пода можно менять только image, activeDeadlineSeconds, добавлять tolerations, а также labels и annotations. Меняйте владельца: {owner}."
 }

@@ -202,6 +202,22 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   }
 
   @override
+  void didUpdateWidget(KubeBrowser old) {
+    super.didUpdateWidget(old);
+    // The core fixes the production guard and context name when a session
+    // opens; after a change (cluster menu, editor) reconnect so the banner,
+    // write window and confirmations follow the saved settings.
+    final before = old.connection, after = widget.connection;
+    if (before.id == after.id &&
+        (before.production != after.production ||
+            before.name != after.name ||
+            before.allowExecInProd != after.allowExecInProd ||
+            before.allowPortForwardInProd != after.allowPortForwardInProd)) {
+      unawaited(_connect());
+    }
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _metricsTimer?.cancel();

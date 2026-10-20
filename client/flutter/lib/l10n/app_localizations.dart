@@ -13807,6 +13807,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wrong passphrase.'**
   String get kubeVaultPasswordWrong;
+
+  /// YAML apply conflict naming the field managers.
+  ///
+  /// In en, this message translates to:
+  /// **'These fields are managed by {managers}. Turn on \"Take ownership of conflicting fields\" to override them; the controller may change them back.'**
+  String kubeApplyOwnedBy(String managers);
+
+  /// Heading above the list of fields Kubernetes rejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The server rejected these fields:'**
+  String get kubeApplyRejectedFields;
+
+  /// Hint for rejected Pod edits.
+  ///
+  /// In en, this message translates to:
+  /// **'A running Pod only allows changing the image, activeDeadlineSeconds, added tolerations, labels and annotations. Edit its owner ({owner}) instead.'**
+  String kubeApplyPodImmutable(String owner);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

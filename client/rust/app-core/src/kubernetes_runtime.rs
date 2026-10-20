@@ -6,8 +6,9 @@ use crate::working_set::{Entry, Item};
 use crate::{AppCore, AppError, AppResult};
 use cc_k8s_core::policy::{Audit, AuditEntry, DeviceClass, Policy};
 use cc_k8s_core::resources::{
-    Discovery, ListQuery, LogQuery, LogSnapshot, ReadOptions, ResourceApi, ResourceChange,
-    ResourceDetail, ResourceError, ResourceKind, ResourcePage, ResourceRef, WatchOptions,
+    ApplyError, Discovery, ListQuery, LogQuery, LogSnapshot, ReadOptions, ResourceApi,
+    ResourceChange, ResourceDetail, ResourceError, ResourceKind, ResourcePage, ResourceRef,
+    WatchOptions,
 };
 use cc_k8s_core::session::{ConnectOptions, ConnectionRoute, KubernetesSession};
 use cc_models::host::Proxy;
@@ -773,7 +774,19 @@ impl AppCore {
                     force,
                 )
                 .await
-                .map_err(resource_error)
+                .map_err(|error| match error {
+                    ApplyError::Resource(error) => resource_error(error),
+                    // Only manager names and field paths cross the bridge.
+                    ApplyError::Rejected(fields) => AppError::InvalidInput {
+                        field: "kubernetes_fields".into(),
+                        reason: fields.join("\n"),
+                    },
+                    ApplyError::FieldConflict(conflict) => AppError::InUse {
+                        what: "kubernetes_fields".into(),
+                        id: conflict.fields.join("\n"),
+                        used_by: conflict.managers.join(", "),
+                    },
+                })
         })
         .await
     }

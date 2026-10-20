@@ -104,7 +104,9 @@ class _KubernetesScreenState extends ConsumerState<KubernetesScreen> {
     if (_selected != null && identical(_selectedScope, scope) && scope.unlocked && service is KubeBrowserService) {
       return KubeBrowser(
         key: ValueKey((_selectedScope, _selected!.id)),
-        connection: _selected!,
+        // The saved settings may have changed (cluster menu, editor) since
+        // the cluster was opened; pass the fresh copy.
+        connection: state.value?.where((c) => c.id == _selected!.id).firstOrNull ?? _selected!,
         connections: state.value ?? const [],
         onSelectContext: (connection) {
           if (!identical(scope, ref.read(kubeScopeProvider)) || !scope.unlocked) return;

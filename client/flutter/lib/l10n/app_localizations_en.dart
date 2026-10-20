@@ -7656,4 +7656,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeVaultPasswordWrong => 'Wrong passphrase.';
+
+  @override
+  String kubeApplyOwnedBy(String managers) {
+    return 'These fields are managed by $managers. Turn on \"Take ownership of conflicting fields\" to override them; the controller may change them back.';
+  }
+
+  @override
+  String get kubeApplyRejectedFields => 'The server rejected these fields:';
+
+  @override
+  String kubeApplyPodImmutable(String owner) {
+    return 'A running Pod only allows changing the image, activeDeadlineSeconds, added tolerations, labels and annotations. Edit its owner ($owner) instead.';
+  }
 }

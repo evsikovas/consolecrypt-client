@@ -7856,4 +7856,17 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeVaultPasswordWrong => 'Неверный пароль.';
+
+  @override
+  String kubeApplyOwnedBy(String managers) {
+    return 'Эти поля ведёт $managers. Включите «Передать владение конфликтующими полями», чтобы перезаписать их; контроллер может вернуть значения обратно.';
+  }
+
+  @override
+  String get kubeApplyRejectedFields => 'Сервер отклонил поля:';
+
+  @override
+  String kubeApplyPodImmutable(String owner) {
+    return 'У запущенного пода можно менять только image, activeDeadlineSeconds, добавлять tolerations, а также labels и annotations. Меняйте владельца: $owner.';
+  }
 }

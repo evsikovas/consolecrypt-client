@@ -10480,5 +10480,27 @@
   "kubeVaultPasswordWrong": "Wrong passphrase.",
   "@kubeVaultPasswordWrong": {
     "description": "Error under the vault passphrase field."
+  },
+  "kubeApplyOwnedBy": "These fields are managed by {managers}. Turn on \"Take ownership of conflicting fields\" to override them; the controller may change them back.",
+  "@kubeApplyOwnedBy": {
+    "description": "YAML apply conflict naming the field managers.",
+    "placeholders": {
+      "managers": {
+        "type": "String"
+      }
+    }
+  },
+  "kubeApplyRejectedFields": "The server rejected these fields:",
+  "@kubeApplyRejectedFields": {
+    "description": "Heading above the list of fields Kubernetes rejected."
+  },
+  "kubeApplyPodImmutable": "A running Pod only allows changing the image, activeDeadlineSeconds, added tolerations, labels and annotations. Edit its owner ({owner}) instead.",
+  "@kubeApplyPodImmutable": {
+    "description": "Hint for rejected Pod edits.",
+    "placeholders": {
+      "owner": {
+        "type": "String"
+      }
+    }
   }
 }

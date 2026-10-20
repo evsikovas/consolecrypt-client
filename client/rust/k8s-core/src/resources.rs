@@ -91,6 +91,29 @@ pub enum ResourceError {
     Transport,
     #[error("The Kubernetes API is temporarily unavailable")]
     Unavailable,
+    #[error("The Kubernetes API rejected the object as invalid")]
+    Rejected,
+}
+
+/// Server-side apply was refused because other field managers own fields
+/// the manifest changes. Only manager names and field paths are kept,
+/// never values.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FieldConflict {
+    pub managers: Vec<String>,
+    pub fields: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum ApplyError {
+    #[error(transparent)]
+    Resource(#[from] ResourceError),
+    #[error("Fields are owned by other field managers")]
+    FieldConflict(FieldConflict),
+    /// The object is invalid (400/422): `path: CauseType` pairs only, e.g.
+    /// `spec: FieldValueForbidden` for an immutable Pod field.
+    #[error("The Kubernetes API rejected fields of the object")]
+    Rejected(Vec<String>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -690,9 +713,9 @@ impl ResourceApi {
         manifest: Zeroizing<String>,
         dry_run: bool,
         force: bool,
-    ) -> Result<ResourceDetail, ResourceError> {
+    ) -> Result<ResourceDetail, ApplyError> {
         if manifest.len() > MAX_MANIFEST {
-            return Err(ResourceError::TooLarge);
+            return Err(ResourceError::TooLarge.into());
         }
         let mut object = ProtectedJson(
             serde_saphyr::from_str(&manifest).map_err(|_| ResourceError::InvalidRequest)?,
@@ -713,13 +736,8 @@ impl ResourceApi {
         };
         let bytes = serde_json::to_vec(&*object).map_err(|_| ResourceError::InvalidRequest)?;
         let mut object = ProtectedJson(
-            self.json_request(
-                Method::PATCH,
-                &format!("{path}?{parameters}"),
-                bytes,
-                Some("application/apply-patch+yaml"),
-            )
-            .await?,
+            self.apply_request(&format!("{path}?{parameters}"), bytes)
+                .await?,
         );
         redact_object(&mut object, &reference.api, ReadOptions::default());
         let summary = row_from_value((*object).clone(), &reference.api)?;
@@ -1056,6 +1074,60 @@ impl ResourceApi {
         }
     }
 
+    /// Server-side apply. Like every request, error bodies are never shown;
+    /// a 409 is the one exception that is read (bounded), and only the field
+    /// manager names and field paths of its conflict causes are kept.
+    async fn apply_request(&self, path: &str, body: Vec<u8>) -> Result<Value, ApplyError> {
+        let cancel = self.guard.cancellation();
+        let bytes = tokio::select! {
+            biased;
+            _ = cancel.cancelled() => return Err(ResourceError::Closed.into()),
+            result = tokio::time::timeout(Duration::from_secs(30), async {
+                let response = self
+                    .send(Method::PATCH, path, body, Some("application/apply-patch+yaml"))
+                    .await?;
+                let status = response.status();
+                let explained = matches!(
+                    status,
+                    StatusCode::CONFLICT | StatusCode::UNPROCESSABLE_ENTITY | StatusCode::BAD_REQUEST
+                );
+                if !status.is_success() && !explained {
+                    return Err(ApplyError::from(status_error(status)));
+                }
+                let limit = if status.is_success() { RESPONSE_LIMIT } else { 64 * 1024 };
+                let mut body = response.into_body();
+                let mut bytes = Zeroizing::new(Vec::new());
+                while let Some(frame) = body.frame().await {
+                    let frame = frame.map_err(|_| ResourceError::Transport)?;
+                    if let Ok(data) = frame.into_data() {
+                        if bytes.len().saturating_add(data.len()) > limit {
+                            return Err(if status.is_success() {
+                                ResourceError::TooLarge.into()
+                            } else {
+                                status_error(status).into()
+                            });
+                        }
+                        bytes.extend_from_slice(&data);
+                    }
+                }
+                if status == StatusCode::CONFLICT {
+                    return Err(match field_conflict(&bytes) {
+                        Some(conflict) => ApplyError::FieldConflict(conflict),
+                        None => ResourceError::Conflict.into(),
+                    });
+                }
+                if !status.is_success() {
+                    return Err(match rejected_fields(&bytes) {
+                        Some(fields) => ApplyError::Rejected(fields),
+                        None => ResourceError::Rejected.into(),
+                    });
+                }
+                Ok(bytes)
+            }) => result.map_err(|_| ResourceError::Timeout)??,
+        };
+        serde_json::from_slice(&bytes).map_err(|_| ResourceError::InvalidResponse.into())
+    }
+
     async fn open_body(
         &self,
         method: Method,
@@ -1063,6 +1135,21 @@ impl ResourceApi {
         bytes: Vec<u8>,
         content_type: Option<&str>,
     ) -> Result<Body, ResourceError> {
+        let response = self.send(method, path, bytes, content_type).await?;
+        if !response.status().is_success() {
+            // Never collect, parse or display a server-controlled error body.
+            return Err(status_error(response.status()));
+        }
+        Ok(response.into_body())
+    }
+
+    async fn send(
+        &self,
+        method: Method,
+        path: &str,
+        bytes: Vec<u8>,
+        content_type: Option<&str>,
+    ) -> Result<http::Response<Body>, ResourceError> {
         let mut request = Request::builder()
             .method(method)
             .uri(path)
@@ -1073,18 +1160,13 @@ impl ResourceApi {
         let request = request
             .body(Body::from(bytes))
             .map_err(|_| ResourceError::InvalidRequest)?;
-        let response = self.client.send(request).await.map_err(|_| {
+        self.client.send(request).await.map_err(|_| {
             if self.guard.cancellation().is_cancelled() {
                 ResourceError::Closed
             } else {
                 ResourceError::Transport
             }
-        })?;
-        if !response.status().is_success() {
-            // Never collect, parse or display a server-controlled error body.
-            return Err(status_error(response.status()));
-        }
-        Ok(response.into_body())
+        })
     }
 }
 
@@ -1122,12 +1204,76 @@ fn basic_table(page: ResourcePage) -> ResourceTable {
     }
 }
 
+/// Field managers and paths from a server-side apply conflict (`Status`
+/// with `FieldManagerConflict` causes). Messages look like
+/// `conflict with "kube-controller-manager" using v1`; anything that does
+/// not fit the expected shape is dropped.
+fn field_conflict(body: &[u8]) -> Option<FieldConflict> {
+    let status: Value = serde_json::from_slice(body).ok()?;
+    let mut managers = BTreeSet::new();
+    let mut fields = BTreeSet::new();
+    for cause in status["details"]["causes"].as_array()?.iter().take(50) {
+        if cause["reason"] != "FieldManagerConflict" {
+            continue;
+        }
+        let manager = cause["message"]
+            .as_str()
+            .and_then(|message| message.split('"').nth(1))
+            .filter(|name| {
+                !name.is_empty()
+                    && name.len() <= 128
+                    && name
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || "._:/@+-".contains(c))
+            });
+        if let Some(manager) = manager {
+            managers.insert(manager.to_owned());
+        }
+        if let Some(field) = cause["field"]
+            .as_str()
+            .filter(|field| safe_query_value(field, 256))
+        {
+            fields.insert(field.to_owned());
+        }
+    }
+    if managers.is_empty() {
+        return None;
+    }
+    Some(FieldConflict {
+        managers: managers.into_iter().take(10).collect(),
+        fields: fields.into_iter().take(20).collect(),
+    })
+}
+
+/// `path: CauseType` from an invalid-object `Status` (cause messages may
+/// quote submitted values, so they are dropped).
+fn rejected_fields(body: &[u8]) -> Option<Vec<String>> {
+    let status: Value = serde_json::from_slice(body).ok()?;
+    let fields: BTreeSet<String> = status["details"]["causes"]
+        .as_array()?
+        .iter()
+        .take(50)
+        .filter_map(|cause| {
+            let reason = cause["reason"].as_str().filter(|r| {
+                !r.is_empty() && r.len() <= 64 && r.chars().all(|c| c.is_ascii_alphanumeric())
+            })?;
+            let field = cause["field"]
+                .as_str()
+                .filter(|f| safe_query_value(f, 256))?;
+            Some(format!("{field}: {reason}"))
+        })
+        .take(20)
+        .collect();
+    (!fields.is_empty()).then(|| fields.into_iter().collect())
+}
+
 fn status_error(status: StatusCode) -> ResourceError {
     match status {
         StatusCode::UNAUTHORIZED => ResourceError::Unauthorized,
         StatusCode::FORBIDDEN => ResourceError::Forbidden,
         StatusCode::NOT_FOUND => ResourceError::NotFound,
         StatusCode::CONFLICT => ResourceError::Conflict,
+        StatusCode::BAD_REQUEST | StatusCode::UNPROCESSABLE_ENTITY => ResourceError::Rejected,
         StatusCode::GONE => ResourceError::Gone,
         StatusCode::TOO_MANY_REQUESTS
         | StatusCode::SERVICE_UNAVAILABLE
@@ -1551,6 +1697,30 @@ mod redaction_tests {
                 Err(ResourceError::InvalidRequest)
             );
         }
+    }
+    #[test]
+    fn apply_conflicts_keep_only_managers_and_paths() {
+        let body = serde_json::to_vec(&json!({"kind":"Status","reason":"Conflict",
+            "message":"Apply failed with 2 conflicts: secret-value",
+            "details":{"causes":[
+                {"reason":"FieldManagerConflict","message":"conflict with \"kube-controller-manager\" using v1","field":".metadata.labels.app"},
+                {"reason":"FieldManagerConflict","message":"conflict with \"bad name; rm\" using v1","field":".spec.x"},
+                {"reason":"FieldValueInvalid","message":"conflict with \"other\"","field":".spec.y"}]}}))
+        .unwrap();
+        let conflict = field_conflict(&body).unwrap();
+        assert_eq!(conflict.managers, ["kube-controller-manager"]);
+        assert_eq!(conflict.fields, [".metadata.labels.app", ".spec.x"]);
+        let invalid = serde_json::to_vec(&json!({"kind":"Status","reason":"Invalid",
+            "details":{"causes":[{"reason":"FieldValueForbidden","message":"value \"secret\"","field":"spec"}]}}))
+        .unwrap();
+        assert_eq!(
+            rejected_fields(&invalid).unwrap(),
+            ["spec: FieldValueForbidden"]
+        );
+        let stale = serde_json::to_vec(&json!({"kind":"Status","reason":"Conflict",
+            "message":"the object has been modified"}))
+        .unwrap();
+        assert!(field_conflict(&stale).is_none());
     }
     #[test]
     fn controller_made_pods_can_be_edited() {
