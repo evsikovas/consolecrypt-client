@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_history_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
+import 'package:consolecrypt/kubernetes/kube_workspace_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -123,26 +125,53 @@ class _KubeHistoryPanelState extends ConsumerState<KubeHistoryPanel> {
               .contains(_query),
         )
         .toList();
+    final tokens = GlassTokens.of(context);
+    final status = widget.sessionId == null
+        ? null
+        : (switch (_recording) {
+            'recording' => (l.kubeHistoryRecording, tokens.palette.success),
+            'disabled' => (l.kubeHistoryDisabled, tokens.palette.tertiary),
+            'connecting' || 'reconnecting' => (l.kubeHistoryConnecting, tokens.palette.warning),
+            _ => (l.kubeHistoryUnavailable, tokens.palette.tertiary),
+          });
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l.kubeHistoryHelp),
-        if (widget.sessionId != null)
-          Text(switch (_recording) {
-            'recording' => l.kubeHistoryRecording,
-            'disabled' => l.kubeHistoryDisabled,
-            'connecting' || 'reconnecting' => l.kubeHistoryConnecting,
-            _ => l.kubeHistoryUnavailable,
-          }),
+        Text(l.kubeHistoryHelp, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
+        if (status case (final label, final color)) ...[
+          const SizedBox(height: GlassSpacing.s4),
+          Row(
+            children: [
+              StatusDot(color: color),
+              const SizedBox(width: GlassSpacing.s6),
+              Text(label, style: tokens.typography.callout.copyWith(color: tokens.palette.label)),
+            ],
+          ),
+        ],
+        const SizedBox(height: GlassSpacing.s8),
         Row(
           children: [
             Expanded(
-              child: TextField(
+              child: GlassField(
                 key: const ValueKey('kube-history-search'),
-                decoration: InputDecoration(labelText: l.commonSearch),
+                search: true,
+                placeholder: l.commonSearch,
                 onChanged: (v) => setState(() => _query = v.toLowerCase()),
               ),
             ),
+            const SizedBox(width: GlassSpacing.s8),
+            KubePanelTab(
+              key: const ValueKey('kube-history-warnings'),
+              label: l.kubeHistoryWarnings,
+              selected: _warningOnly,
+              leading: StatusDot(color: tokens.palette.warning, size: 7),
+              onSelected: () {
+                if (_loading) return;
+                setState(() => _warningOnly = !_warningOnly);
+                unawaited(_load());
+              },
+            ),
+            const SizedBox(width: GlassSpacing.s4),
             GlassIconButton(icon: Icons.refresh, tooltip: l.kubeRefresh, onPressed: _loading ? null : _load),
             GlassIconButton(
               icon: Icons.delete_sweep_outlined,
@@ -151,48 +180,120 @@ class _KubeHistoryPanelState extends ConsumerState<KubeHistoryPanel> {
             ),
           ],
         ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FilterChip(
-            key: const ValueKey('kube-history-warnings'),
-            label: Text(l.kubeHistoryWarnings),
-            selected: _warningOnly,
-            onSelected: _loading
-                ? null
-                : (v) {
-                    setState(() => _warningOnly = v);
-                    unawaited(_load());
-                  },
-          ),
-        ),
-        if (_loading) const LinearProgressIndicator(),
-        if (_failed) Text(l.kubeRequestFailed),
+        const SizedBox(height: GlassSpacing.s8),
+        if (_loading) const LinearProgressIndicator(minHeight: 2),
+        if (_failed) Text(l.kubeRequestFailed, style: TextStyle(color: tokens.palette.danger)),
         Expanded(
-          child: ListView.builder(
+          child: ListView.separated(
             key: const ValueKey('kube-history-list'),
             itemCount: rows.length + (_more ? 1 : 0),
+            separatorBuilder: (_, _) => const SizedBox(height: GlassSpacing.s6),
             itemBuilder: (context, index) {
               if (index == rows.length) {
-                return GlassButton(label: l.kubeLoadMore, onPressed: _loading ? null : () => _load(more: true));
+                return Center(
+                  child: GlassButton(label: l.kubeLoadMore, onPressed: _loading ? null : () => _load(more: true)),
+                );
               }
-              final event = rows[index];
-              final timestamp = event['last_seen_ms'] as int?;
-              return ExpansionTile(
-                key: ValueKey('kube-event-${event['uid']}'),
-                leading: Icon(event['event_type'] == 'Warning' ? Icons.warning_amber_outlined : Icons.info_outline),
-                title: Text(
-                  /* l10n-ignore: Kubernetes event identifiers, timestamp and numeric count. */ '${event['reason']} · ${event['object_kind']} ${event['object_name']}',
-                ), // l10n-ignore: Kubernetes event identifiers, timestamp and numeric count.
-                subtitle: Text(
-                  // l10n-ignore: Kubernetes event identifiers, timestamp and numeric count.
-                  /* l10n-ignore: Kubernetes event identifiers, timestamp and numeric count. */ '${event['namespace']} · ${timestamp == null ? '' : DateTime.fromMillisecondsSinceEpoch(timestamp).toLocal()} · ×${event['count']}',
-                ),
-                children: [SelectableText(event['message'] as String? ?? '')],
-              );
+              return _EventCard(key: ValueKey('kube-event-${rows[index]['uid']}'), event: rows[index]);
             },
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One recorded event as a block: type icon, reason and object, namespace,
+/// time and repeat count; the message unfolds below.
+class _EventCard extends StatefulWidget {
+  const _EventCard({required this.event, super.key});
+  final Map<String, dynamic> event;
+  @override
+  State<_EventCard> createState() => _EventCardState();
+}
+
+class _EventCardState extends State<_EventCard> {
+  bool _open = false;
+
+  static String _time(int? ms) {
+    if (ms == null) return '';
+    final t = DateTime.fromMillisecondsSinceEpoch(ms).toLocal();
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${t.year}-${two(t.month)}-${two(t.day)} ${two(t.hour)}:${two(t.minute)}:${two(t.second)}'; // l10n-ignore: ISO-like timestamp
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = GlassTokens.of(context);
+    final event = widget.event;
+    final warning = event['event_type'] == 'Warning';
+    final color = warning ? tokens.palette.warning : tokens.palette.accent;
+    final message = event['message'] as String? ?? '';
+    final count = event['count'];
+    final title = [event['reason'], '${event['object_kind']} ${event['object_name']}'].join(' · '); // l10n-ignore: ids
+    final subtitle = [event['namespace'], _time(event['last_seen_ms'] as int?)].join(' · '); // l10n-ignore: ids
+    return ContentSurface(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GlassInteractive(
+            onPressed: message.isEmpty ? null : () => setState(() => _open = !_open),
+            builder: (context, state) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s12, vertical: GlassSpacing.s8),
+              child: Row(
+                children: [
+                  Icon(warning ? Icons.warning_amber_rounded : Icons.info_outline_rounded, size: 20, color: color),
+                  const SizedBox(width: GlassSpacing.s12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(subtitle, style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel)),
+                      ],
+                    ),
+                  ),
+                  if (count is int && count > 1) ...[
+                    GlassBadge(
+                      label: '×$count',
+                      dense: true,
+                      tone: warning ? GlassTone.warning : GlassTone.neutral,
+                    ), // l10n-ignore: count
+                    const SizedBox(width: GlassSpacing.s8),
+                  ],
+                  if (message.isNotEmpty)
+                    AnimatedRotation(
+                      turns: _open ? .5 : 0,
+                      duration: const Duration(milliseconds: 150),
+                      child: Icon(Icons.expand_more_rounded, color: tokens.secondaryLabel),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (_open)
+            Container(
+              margin: const EdgeInsets.fromLTRB(GlassSpacing.s12, 0, GlassSpacing.s12, GlassSpacing.s12),
+              padding: const EdgeInsets.all(GlassSpacing.s8),
+              decoration: BoxDecoration(
+                color: tokens.surfaces.inset,
+                borderRadius: BorderRadius.circular(8),
+                border: Border(left: BorderSide(color: color, width: 3)),
+              ),
+              child: SelectableText(
+                message,
+                style: tokens.typography.mono.copyWith(color: tokens.palette.label, fontSize: 12),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
