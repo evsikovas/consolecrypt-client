@@ -165,7 +165,7 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
   List<_Column> get _columns => [
     const _Column('name', -1),
     if (widget.kind.namespaced) const _Column('namespace', -1),
-    const _Column('status', -1),
+    if (_hasStatus) const _Column('status', -1),
     const _Column('age', -1),
     for (final (index, column) in widget.columns.indexed)
       if (!{'name', 'namespace', 'status', 'age'}.contains(column.name.toLowerCase()))
@@ -186,12 +186,18 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
     _ => column.index < row.cells.length ? row.cells[column.index] : '—',
   };
 
+  /// Kinds without a status (Service, ConfigMap, Role…) get no status column
+  /// rather than a column of "Unknown" the cluster never reported.
+  bool get _hasStatus =>
+      widget.columns.any((column) => column.name.toLowerCase() == 'status') ||
+      widget.rows.any((row) => row.status.isNotEmpty && row.status != 'Unknown');
+
   /// The server's printed "Status" column (Running, Completed,
   /// CrashLoopBackOff) when present; otherwise the core's readiness summary.
   String _status(KubeResourceRow row) {
     final index = widget.columns.indexWhere((column) => column.name.toLowerCase() == 'status');
     if (index >= 0 && index < row.cells.length && row.cells[index].trim().isNotEmpty) return row.cells[index];
-    return row.status.isEmpty ? '—' : row.status;
+    return row.status.isEmpty || row.status == 'Unknown' ? '—' : row.status; // l10n-ignore: core placeholder
   }
 
   String _age(Duration age) {

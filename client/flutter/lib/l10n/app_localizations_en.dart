@@ -7669,4 +7669,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String kubeApplyPodImmutable(String owner) {
     return 'A running Pod only allows changing the image, activeDeadlineSeconds, added tolerations, labels and annotations. Edit its owner ($owner) instead.';
   }
+
+  @override
+  String get shellAiNone => 'AI is not set up — open settings';
+
+  @override
+  String shellAiDevice(String model) {
+    return 'AI: built-in model on this device · $model';
+  }
+
+  @override
+  String shellAiLocal(String name, String model) {
+    return 'AI: local server $name · $model';
+  }
+
+  @override
+  String shellAiApi(String name, String model) {
+    return 'AI: via API $name · $model (requests leave this computer)';
+  }
 }

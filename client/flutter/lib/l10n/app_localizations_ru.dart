@@ -7869,4 +7869,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String kubeApplyPodImmutable(String owner) {
     return 'У запущенного пода можно менять только image, activeDeadlineSeconds, добавлять tolerations, а также labels и annotations. Меняйте владельца: $owner.';
   }
+
+  @override
+  String get shellAiNone => 'ИИ не настроен — открыть настройки';
+
+  @override
+  String shellAiDevice(String model) {
+    return 'ИИ: встроенная модель на устройстве · $model';
+  }
+
+  @override
+  String shellAiLocal(String name, String model) {
+    return 'ИИ: локальный сервер $name · $model';
+  }
+
+  @override
+  String shellAiApi(String name, String model) {
+    return 'ИИ: через API $name · $model (запросы уходят с компьютера)';
+  }
 }

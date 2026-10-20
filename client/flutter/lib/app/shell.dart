@@ -17,6 +17,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/ai_service.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -447,6 +448,8 @@ class _SidebarFooter extends ConsumerWidget {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          const _AiIndicator(),
+          const SizedBox(height: GlassSpacing.s4),
           const SyncStatusPill(compact: true),
           const SizedBox(height: GlassSpacing.s4),
           lockButton,
@@ -454,7 +457,42 @@ class _SidebarFooter extends ConsumerWidget {
         ],
       );
     }
-    return Row(children: [lockButton, const Spacer(), if (canCollapse) toggle]);
+    return Row(children: [lockButton, const _AiIndicator(), const Spacer(), if (canCollapse) toggle]);
+  }
+}
+
+/// Which AI answers by default: the built-in model on this device (chip),
+/// a local server such as Ollama (server), a remote API (globe), or none.
+/// Opens the settings, where the provider is chosen.
+class _AiIndicator extends ConsumerWidget {
+  const _AiIndicator();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final providers = ref.watch(aiProvidersProvider).value ?? const <AiProviderConfig>[];
+    final provider = providers.where((p) => p.isDefault).firstOrNull ?? providers.firstOrNull;
+    final model = provider == null ? '' : (provider.chatModel.isEmpty ? provider.name : provider.chatModel);
+    final (IconData icon, Color color, String tooltip) = switch (provider) {
+      null => (Icons.auto_awesome_outlined, tokens.palette.tertiary, l10n.shellAiNone),
+      final p when p.id == deviceLocalAiProviderId => (
+        Icons.memory_rounded,
+        tokens.palette.success,
+        l10n.shellAiDevice(model),
+      ),
+      final p when !p.isRemote => (Icons.dns_rounded, tokens.palette.success, l10n.shellAiLocal(p.name, model)),
+      final p => (Icons.public_rounded, tokens.palette.accent, l10n.shellAiApi(p.name, model)),
+    };
+    return GlassIconButton(
+      key: const ValueKey('sidebar-ai-indicator'),
+      icon: icon,
+      color: color,
+      tooltip: tooltip,
+      style: GlassIconButtonStyle.plain,
+      iconSize: GlassSizes.iconRow,
+      onPressed: () => context.go(AppRoutes.settings),
+    );
   }
 }
 

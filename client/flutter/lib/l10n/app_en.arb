@@ -10502,5 +10502,42 @@
         "type": "String"
       }
     }
+  },
+  "shellAiNone": "AI is not set up — open settings",
+  "@shellAiNone": {
+    "description": "Sidebar AI indicator tooltip when no provider is configured."
+  },
+  "shellAiDevice": "AI: built-in model on this device · {model}",
+  "@shellAiDevice": {
+    "description": "Sidebar AI indicator: the default provider runs on this device.",
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "shellAiLocal": "AI: local server {name} · {model}",
+  "@shellAiLocal": {
+    "description": "Sidebar AI indicator: the default provider is a server on this computer.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "shellAiApi": "AI: via API {name} · {model} (requests leave this computer)",
+  "@shellAiApi": {
+    "description": "Sidebar AI indicator: the default provider is a remote API.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
   }
 }

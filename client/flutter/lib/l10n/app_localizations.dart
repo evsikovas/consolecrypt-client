@@ -13825,6 +13825,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A running Pod only allows changing the image, activeDeadlineSeconds, added tolerations, labels and annotations. Edit its owner ({owner}) instead.'**
   String kubeApplyPodImmutable(String owner);
+
+  /// Sidebar AI indicator tooltip when no provider is configured.
+  ///
+  /// In en, this message translates to:
+  /// **'AI is not set up — open settings'**
+  String get shellAiNone;
+
+  /// Sidebar AI indicator: the default provider runs on this device.
+  ///
+  /// In en, this message translates to:
+  /// **'AI: built-in model on this device · {model}'**
+  String shellAiDevice(String model);
+
+  /// Sidebar AI indicator: the default provider is a server on this computer.
+  ///
+  /// In en, this message translates to:
+  /// **'AI: local server {name} · {model}'**
+  String shellAiLocal(String name, String model);
+
+  /// Sidebar AI indicator: the default provider is a remote API.
+  ///
+  /// In en, this message translates to:
+  /// **'AI: via API {name} · {model} (requests leave this computer)'**
+  String shellAiApi(String name, String model);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
