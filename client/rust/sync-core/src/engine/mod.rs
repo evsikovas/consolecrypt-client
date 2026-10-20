@@ -529,10 +529,14 @@ impl SyncEngine {
         let result = self.cycle().await;
         match &result {
             Ok(_) => {
+                // A revocation can halt the engine while this cycle was
+                // already in flight; its late success must not resurrect it.
                 self.inner.status.send_modify(|s| {
-                    s.phase = SyncPhase::Idle;
-                    s.last_error = None;
-                    s.next_retry_in = None;
+                    if s.phase != SyncPhase::Stopped {
+                        s.phase = SyncPhase::Idle;
+                        s.last_error = None;
+                        s.next_retry_in = None;
+                    }
                 });
             }
             Err(e) => {
@@ -552,6 +556,9 @@ impl SyncEngine {
                         tracing::debug!(error = %e, offline, "sync cycle failed");
                         let msg = e.to_string();
                         self.inner.status.send_modify(|s| {
+                            if s.phase == SyncPhase::Stopped {
+                                return;
+                            }
                             s.phase = if offline {
                                 SyncPhase::Offline
                             } else {
@@ -572,9 +579,11 @@ impl SyncEngine {
         if let Some(r) = self.stop_reason() {
             return Err(SyncError::Stopped(r));
         }
-        self.inner
-            .status
-            .send_modify(|s| s.phase = SyncPhase::Syncing);
+        self.inner.status.send_modify(|s| {
+            if s.phase != SyncPhase::Stopped {
+                s.phase = SyncPhase::Syncing;
+            }
+        });
         let mut report = SyncReport::default();
         let mut recoveries = 0;
         'cycle: loop {
