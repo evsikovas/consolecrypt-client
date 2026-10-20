@@ -1,0 +1,46 @@
+name: macOS preview build
+
+# Manual, unpublished test build of one branch: produces a DMG artifact only.
+# Stable installers, update feeds and releases remain tag-only (client.yml).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: consolecrypt-macos-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    if: github.repository == 'evsikovas/consolecrypt-client'
+    runs-on: ${{ fromJSON(vars.MACOS_BUILD_RUNNER || '["macos-26"]') }}
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Native toolchain
+        run: source client/scripts/ci-macos-tools.sh --xcode
+      - name: Analyze
+        run: |
+          cd client/flutter
+          flutter pub get
+          flutter analyze
+      - name: Build universal macOS preview
+        run: |
+          bash client/scripts/build-macos.sh --no-cli
+          version="$(cat dist/macos/ConsoleCrypt.version)"
+          cp dist/macos/ConsoleCrypt.dmg "dist/macos/ConsoleCrypt-$version-macos-universal-preview.dmg"
+          cd dist/macos
+          shasum -a 256 "ConsoleCrypt-$version-macos-universal-preview.dmg" > SHA256SUMS-macos-preview.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: macos-preview
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          path: |
+            dist/macos/ConsoleCrypt-*-macos-universal-preview.dmg
+            dist/macos/SHA256SUMS-macos-preview.txt
