@@ -8,6 +8,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import unittest
@@ -146,6 +147,86 @@ class OwnershipTest(unittest.TestCase):
         self.task.publish_receipt()
         self.assertNotIn("synthetic assertion detail",
                          (self.task.output / "kubernetes-acceptance.log").read_text())
+
+    def test_diagnostic_archive_keeps_private_inputs_but_excludes_build_trees(self):
+        runtime = self.task.scratch / "runtime"
+        runtime.mkdir(mode=0o700)
+        CI.write_private(runtime / "config.yaml", b"synthetic private credential")
+        CI.write_private(self.task.scratch / "failure.log", b"compiler diagnostics")
+        source = self.task.scratch / "source"
+        source.mkdir()
+        (source / "large-build-output").write_text("not a diagnostic")
+        path = CI.diagnostics_archive(self.task.scratch)
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        with tarfile.open(path) as archive:
+            self.assertEqual(archive.extractfile("runtime/config.yaml").read(), b"synthetic private credential")
+            self.assertEqual(archive.extractfile("failure.log").read(), b"compiler diagnostics")
+            self.assertFalse(any(name.startswith("source/") for name in archive.getnames()))
+            self.assertTrue(all(item.mode == 0o600 for item in archive.getmembers()))
+        (self.task.scratch / "escape").symlink_to(runtime / "config.yaml")
+        with self.assertRaises(ValueError):
+            CI.diagnostics_archive(self.task.scratch)
+
+    def test_diagnostic_volume_must_be_private_local_and_owned(self):
+        owner = self.task.state["owner"]
+        expected = "cc-kube-ci-owned-diagnostics"
+        actual = {"Name": expected, "Driver": "local", "Scope": "local", "Options": None,
+                  "Labels": {CI.OWNER_LABEL: owner, CI.ROLE_LABEL: "diagnostics"}}
+        CI.validate_diagnostics_volume(actual, expected, owner)
+        for mutation in [
+            {"Name": "production-data"}, {"Driver": "external"}, {"Options": {"device": "/etc"}},
+            {"Labels": {CI.OWNER_LABEL: "someone-else", CI.ROLE_LABEL: "diagnostics"}},
+        ]:
+            with self.assertRaises(ValueError):
+                CI.validate_diagnostics_volume({**actual, **mutation}, expected, owner)
+
+    def test_owned_diagnostic_volume_persists_before_compute_stops(self):
+        owner = self.task.state["owner"]
+        volume = "cc-kube-ci-owned-diagnostics"
+        self.task.state["diagnostics_volume"] = volume
+        expected = {**self.expected, "role": "diagnostics", "image": CI.K3S,
+                    "network": "none", "volumes": [[volume, "/diagnostics", True]]}
+        actual = json.loads(json.dumps(self.actual))
+        actual["Config"]["Labels"][CI.ROLE_LABEL] = "diagnostics"
+        actual["HostConfig"].update({"NetworkMode": "none", "Privileged": False})
+        actual["Mounts"] = [{"Type": "volume", "Name": volume, "Destination": "/diagnostics", "RW": True}]
+        self.task.state["containers"] = [expected]
+        CI.write_private(self.task.scratch / "failure.log", b"private runtime details")
+        calls = []
+        def docker(step, *args, **kwargs):
+            calls.append((step, args))
+            if step == "inspect":
+                return json.dumps(actual).encode()
+            if step == "inspect-diagnostics-volume":
+                return json.dumps([{"Name": volume, "Driver": "local", "Scope": "local", "Options": None,
+                                    "Labels": {CI.OWNER_LABEL: owner, CI.ROLE_LABEL: "diagnostics"}}]).encode()
+            if step == "persist-diagnostics":
+                with tarfile.open(fileobj=io.BytesIO(kwargs["data"])) as archive:
+                    self.assertEqual(archive.extractfile("failure.log").read(), b"private runtime details")
+            return b""
+        self.task.docker = docker
+        self.task.stop()
+        steps = [step for step, _ in calls]
+        self.assertLess(steps.index("persist-diagnostics"), steps.index("stop-diagnostics"))
+        self.assertTrue(self.task.state["diagnostics_saved"])
+        self.assertTrue((self.task.scratch / "failure.log").exists())
+        self.task.publish_receipt()
+        self.assertNotIn("private runtime details", (self.task.output / "kubernetes-acceptance.json").read_text())
+        calls.clear()
+        self.task.stop()
+        self.assertNotIn("persist-diagnostics", [step for step, _ in calls])
+        actual["Mounts"][0]["Name"] = "other-data"
+        with self.assertRaises(ValueError):
+            CI.validate_container(actual, expected, owner)
+
+    def test_public_failure_locator_only_contains_fixed_schema(self):
+        text = ("thread 'fixture' panicked at k8s-core/tests/resources_live.rs:375:52:\n"
+                "called `Result::unwrap()` on an `Err` value: Conflict\npassword=must-not-escape")
+        result = CI.native_failure_location(CI.TESTS[0], text)
+        self.assertEqual(result, {"test": CI.TESTS[0], "source": "k8s-core/tests/resources_live.rs",
+                                  "line": 375, "column": 52, "error_code": "Conflict"})
+        self.assertIsNone(CI.native_failure_location("arbitrary private object", text))
+        self.assertEqual(CI.native_failure_location(CI.TESTS[0], "private cluster response"), {"test": CI.TESTS[0]})
 
     def test_pinned_download_rejects_modified_manifests(self):
         for url, digest in CI.DOWNLOADS.values():

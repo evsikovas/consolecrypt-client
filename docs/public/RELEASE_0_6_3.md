@@ -1,4 +1,4 @@
-# ConsoleCrypt 0.6.2
+# ConsoleCrypt 0.6.3
 
 ## Русский
 
@@ -18,6 +18,8 @@ Flux на компьютере используют локальный прок�
 Одновременно исправлена кнопка загрузки обновления в уведомлении: действие
 открывает существующий процесс загрузки без пустой панели. Исправлено
 закрытие терминальной сессии, когда у потока событий нет слушателя.
+Повтор reconcile в Flux учитывает изменение версии ресурса контроллером,
+проверяя, что объект и его источник остались прежними.
 
 Мобильный RDP-тачпад, читаемый Recovery Kit, импорт `known_hosts`, локальные
 терминалы и скачанные локальные модели ИИ сохраняются.
@@ -41,6 +43,8 @@ stop action.
 This release also fixes the update-notification download button so it opens
 the existing download flow without an empty panel, and fixes terminal-session
 closure when the event stream has no listener.
+Flux reconciliation handles controller updates to resource versions while
+checking that the object and its source have not changed.
 
 Mobile RDP touchpad, readable Recovery Kit, known_hosts import, local terminals
 and downloaded local AI models are preserved.

@@ -111,6 +111,11 @@ async fn helm_live_comparison_is_read_only_in_production_masked_and_partial_on_r
 
 impl Fixture {
     async fn start() -> Self {
+        Self::with_flux_race(0).await
+    }
+
+    // 1: status churn, 2: replacement UID, 3: changed source, 4: persistent churn.
+    async fn with_flux_race(race_mode: usize) -> Self {
         let _ = rustls::crypto::ring::default_provider().install_default();
         let cert = rcgen::generate_simple_self_signed(vec!["api.example.test".into()]).unwrap();
         let cert_der = cert.cert.der().to_vec();
@@ -129,11 +134,15 @@ impl Fixture {
         let seen = requests.clone();
         let watches = Arc::new(AtomicUsize::new(0));
         let watch_count = watches.clone();
+        let flux_reads = Arc::new(AtomicUsize::new(0));
+        let flux_patches = Arc::new(AtomicUsize::new(0));
         let task = tokio::spawn(async move {
             while let Ok((socket, _)) = listener.accept().await {
                 let acceptor = acceptor.clone();
                 let seen = seen.clone();
                 let watch_count = watch_count.clone();
+                let flux_reads = flux_reads.clone();
+                let flux_patches = flux_patches.clone();
                 tokio::spawn(async move {
                     let Ok(mut stream) = acceptor.accept(socket).await else {
                         return;
@@ -321,6 +330,33 @@ impl Fixture {
                             "columnDefinitions":[{"name":"Name","type":"string","format":"name"},{"name":"Phase","type":"string"}],
                             "rows":[{"cells":["widget","Active"],"object":{"apiVersion":"example.test/v1","kind":"Widget","metadata":{"name":"widget","namespace":"default","uid":"widget-id","resourceVersion":"30"},"status":{"phase":"Active"}}}]
                         }).to_string()
+                    } else if path == "/apis/kustomize.toolkit.fluxcd.io/v1/namespaces/default/kustomizations/race" {
+                        if method == "PATCH" {
+                            let length = header.lines().filter_map(|line| line.split_once(':'))
+                                .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
+                                .and_then(|(_, value)| value.trim().parse::<usize>().ok()).unwrap_or(0);
+                            if length == 0 || length > 16 * 1024 { return; }
+                            let mut body = vec![0; length];
+                            if stream.read_exact(&mut body).await.is_err() { return; }
+                            let body: Value = serde_json::from_slice(&body).unwrap();
+                            let attempt = flux_patches.fetch_add(1, Ordering::SeqCst);
+                            if attempt == 0 || race_mode == 4 {
+                                status = "409 Conflict";
+                            } else if body["metadata"]["uid"] != "kustom-id"
+                                || body["metadata"]["resourceVersion"] != "32" {
+                                status = "400 Bad Request";
+                            }
+                            json!({"kind":"Status","apiVersion":"v1"}).to_string()
+                        } else {
+                            let read = flux_reads.fetch_add(1, Ordering::SeqCst);
+                            json!({"apiVersion":"kustomize.toolkit.fluxcd.io/v1","kind":"Kustomization",
+                                "metadata":{"name":"race","namespace":"default",
+                                    "uid":if read >= 2 && race_mode == 2 {"replacement"} else {"kustom-id"},
+                                    "resourceVersion":if read == 0 {"30"} else if read == 1 {"31"} else {"32"}},
+                                "spec":{"sourceRef":{"kind":"GitRepository",
+                                    "name":if read >= 2 && race_mode == 3 {"substituted"} else {"git"}}}
+                            }).to_string()
+                        }
                     } else if method == "PATCH" || method == "DELETE" || path.ends_with("/eviction")
                     {
                         pod("31").to_string()
@@ -1362,4 +1398,47 @@ async fn reconcile_with_source_validates_full_chain_and_native_write_policy() {
     assert!(writes[0].contains("/gitrepositories/git "));
     assert!(writes[1].contains("/helmcharts/chart "));
     assert!(writes[2].contains("/helmreleases/demo "));
+}
+
+#[tokio::test]
+async fn reconcile_with_source_retries_status_churn_but_rejects_replaced_or_rewired_objects() {
+    for mode in 1..=4 {
+        let fixture = Fixture::with_flux_race(mode).await;
+        let session = fixture.session(false);
+        let api = ResourceApi::new(&session);
+        api.discover().await.unwrap();
+        let reference = ResourceRef {
+            api: api
+                .resolve("kustomize.toolkit.fluxcd.io", "v1", "kustomizations")
+                .unwrap(),
+            namespace: Some("default".into()),
+            name: "race".into(),
+        };
+        let result = api.flux_reconcile_with_source(&reference).await;
+        if mode == 1 {
+            assert_eq!(
+                result,
+                Ok(()),
+                "ordinary controller status changes must be retried"
+            );
+        } else {
+            assert_eq!(result, Err(ResourceError::Conflict));
+        }
+        let requests = fixture.requests.lock().unwrap();
+        let patches = requests
+            .iter()
+            .filter(|line| line.starts_with("PATCH ") && line.contains("/kustomizations/race "))
+            .count();
+        assert_eq!(
+            patches,
+            match mode {
+                1 => 2,
+                4 => 3,
+                _ => 1,
+            }
+        );
+        assert!(!requests
+            .iter()
+            .any(|line| line.contains("/gitrepositories/substituted")));
+    }
 }

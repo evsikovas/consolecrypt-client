@@ -17,6 +17,7 @@ import signal
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import urllib.request
@@ -148,7 +149,66 @@ def validate_container(actual, expected, owner):
               for item in actual.get("Mounts", []) if item.get("Type") == "bind"]
     if sorted(mounts) != sorted(tuple(item) for item in expected["mounts"]):
         raise ValueError("Unexpected source mounts")
+    if expected["role"] == "diagnostics":
+        volumes = [(item.get("Name"), item.get("Destination"), item.get("RW"))
+                   for item in actual.get("Mounts", []) if item.get("Type") == "volume"]
+        if sorted(volumes) != sorted(tuple(item) for item in expected.get("volumes", [])):
+            raise ValueError("Unexpected diagnostic volume")
     return actual["Id"]
+
+
+def validate_diagnostics_volume(actual, expected, owner):
+    labels = actual.get("Labels") or {}
+    if (actual.get("Name") != expected or actual.get("Driver") != "local"
+            or actual.get("Scope") != "local" or actual.get("Options")
+            or labels.get(OWNER_LABEL) != owner or labels.get(ROLE_LABEL) != "diagnostics"):
+        raise ValueError("Diagnostic volume ownership differs")
+
+
+def diagnostics_archive(scratch):
+    """Private runtime inputs and logs only; never copy build trees or symlinks."""
+    scratch = regular_path(scratch, directory=True)
+    destination = scratch / "diagnostics.tar.gz"
+    write_private(destination, b"")
+    total = 0
+    with tarfile.open(destination, "w:gz") as archive:
+        candidates = [*scratch.iterdir()]
+        runtime = scratch / "runtime"
+        if runtime.exists():
+            regular_path(runtime, directory=True)
+            candidates.extend(runtime.iterdir())
+        for path in sorted(candidates):
+            if path == destination or path.is_dir():
+                continue
+            path = regular_path(path)
+            size = path.stat().st_size
+            total += size
+            if size > 64 * 1024 * 1024 or total > 256 * 1024 * 1024:
+                raise ValueError("Private diagnostic archive exceeds its bound")
+            info = archive.gettarinfo(str(path), arcname=str(path.relative_to(scratch)))
+            info.uid = info.gid = 0
+            info.uname = info.gname = ""
+            info.mode = 0o600
+            with path.open("rb") as reader:
+                archive.addfile(info, reader)
+    return destination
+
+
+def native_failure_location(name, output):
+    """Only fixed test identities, source locations and known error codes escape."""
+    if name not in TESTS:
+        return None
+    match = re.search(r"panicked at (?:[A-Za-z0-9_./-]*/)?k8s-core/tests/resources_live\.rs:"
+                      r"([0-9]{1,6}):([0-9]{1,4}):", output)
+    if not match:
+        return {"test": name}
+    result = {"test": name, "source": "k8s-core/tests/resources_live.rs",
+              "line": int(match[1]), "column": int(match[2])}
+    error = re.search(r"an `Err` value: (Conflict|Closed|Timeout|Transport|Unavailable|Forbidden|"
+                      r"Unauthorized|NotFound|Gone|TooLarge|InvalidRequest|InvalidResponse|UnknownResource)\b", output)
+    if error:
+        result["error_code"] = error[1]
+    return result
 
 
 def scale_receipts(output):
@@ -207,15 +267,24 @@ class Acceptance:
     def run(self, step, args, data=None, capture=False, timeout=180):
         self.sequence += 1
         log = self.scratch / f"{self.sequence:03}-{step}.log"
-        with log.open("wb") as writer:
-            result = subprocess.run(args, input=data, stdout=subprocess.PIPE if capture else writer,
-                                    stderr=writer, env=self.environment, timeout=timeout)
-        log.chmod(0o600)
+        write_private(log, b"")
+        try:
+            with log.open("wb") as writer:
+                result = subprocess.run(args, input=data, stdout=subprocess.PIPE if capture else writer,
+                                        stderr=writer, env=self.environment, timeout=timeout)
+        except subprocess.TimeoutExpired as error:
+            if capture and step.startswith("test-"):
+                write_private(self.scratch / f"{self.sequence:03}-{step}.stdout.log", error.stdout or b"")
+            raise
         if capture and step.startswith("test-"):
             # Keep failed test stdout too; the published receipt never includes
             # this raw diagnostic. Kubeconfig output is only saved separately.
             write_private(self.scratch / f"{self.sequence:03}-{step}.stdout.log", result.stdout)
         if result.returncode:
+            if step.removeprefix("test-") in TESTS:
+                self.receipt["native_failure"] = native_failure_location(
+                    step.removeprefix("test-"),
+                    (result.stdout or b"").decode(errors="replace") + "\n" + log.read_text(errors="replace"))
             raise StepFailed(step, result.returncode)
         return result.stdout if capture else b""
 
@@ -228,10 +297,12 @@ class Acceptance:
         self.phase = phase
         print("KUBERNETES_CI " + phase, flush=True)
 
-    def create(self, role, image, network, command, mounts=(), options=()):
+    def create(self, role, image, network, command, mounts=(), options=(), volumes=()):
         name = "cc-kube-ci-" + self.state["owner"][:16] + "-" + role
         expected = {"role": role, "name": name, "image": image, "network": network,
                     "mounts": [list(item) for item in mounts], "id": None}
+        if volumes:
+            expected["volumes"] = [list(item) for item in volumes]
         self.state["containers"].append(expected)
         self.save()
         args = ["container", "create", "--name", name, "--network", network,
@@ -241,6 +312,9 @@ class Acceptance:
             regular_path(source, directory=True)
             mount = f"type=bind,source={source},target={destination}"
             args.extend(["--mount", mount + ("" if writable else ",readonly")])
+        for source, destination, writable in volumes:
+            args.extend(["--mount", f"type=volume,source={source},target={destination}"
+                         + ("" if writable else ",readonly")])
         container = self.docker("create-" + role, *args, image, *command, capture=True).decode().strip()
         if not re.fullmatch(r"[a-f0-9]{64}", container):
             raise ValueError("Unexpected Docker create output")
@@ -271,6 +345,21 @@ class Acceptance:
 
     def setup(self):
         self.run("docker-info", ["docker", "info"], timeout=30)
+        volume = "cc-kube-ci-" + self.state["owner"][:16] + "-diagnostics"
+        self.state["diagnostics_volume"] = volume
+        self.save()
+        self.docker("diagnostics-volume", "volume", "create",
+                    "--label", OWNER_LABEL + "=" + self.state["owner"],
+                    "--label", ROLE_LABEL + "=diagnostics", volume)
+        self.check_diagnostics_volume()
+        # This volume lives in Docker's persistent data root, independent of an
+        # ephemeral CI runner's checkout and RUNNER_TEMP. It is never published.
+        self.create("diagnostics", K3S, "none",
+                    ["-c", "umask 077; chmod 700 /diagnostics; sleep 2147483647"],
+                    options=("--entrypoint=/bin/sh", "--cpus=0.1", "--memory=64m",
+                             "--tmpfs=/var/lib/cni:size=1m", "--tmpfs=/var/lib/kubelet:size=1m",
+                             "--tmpfs=/var/lib/rancher/k3s:size=1m", "--tmpfs=/var/log:size=1m"),
+                    volumes=((volume, "/diagnostics", True),))
         stager = load_module("kube_ci_stager", self.workspace / "client/scripts/stage-linux-source.py")
         stager.stage(self.workspace, self.scratch / "source")
         self.fixtures = load_module("kube_ci_fixtures", self.workspace / "client/ci/kubernetes/fixtures.py")
@@ -387,6 +476,11 @@ class Acceptance:
                                    '{"Id":{{json .Id}},"Name":{{json .Name}},"Config":{"Image":{{json .Config.Image}},"Labels":{{json .Config.Labels}}},"HostConfig":{"PortBindings":{{json .HostConfig.PortBindings}},"NetworkMode":{{json .HostConfig.NetworkMode}},"Privileged":{{json .HostConfig.Privileged}}},"Mounts":{{json .Mounts}}}',
                                    container, capture=True)
                 immutable = validate_container(json.loads(info), expected, self.state["owner"])
+                if expected["role"] == "diagnostics" and not self.state.get("diagnostics_saved"):
+                    try:
+                        self.persist_diagnostics(immutable)
+                    except (OSError, ValueError, StepFailed, subprocess.SubprocessError):
+                        failures.append("diagnostics")
                 try:
                     self.docker("logs-" + expected["role"], "logs", "--tail=300", immutable, timeout=30)
                 except (OSError, StepFailed, subprocess.SubprocessError):
@@ -399,6 +493,27 @@ class Acceptance:
         if failures:
             raise StepFailed("owned-container-stop")
 
+    def check_diagnostics_volume(self):
+        name = self.state["diagnostics_volume"]
+        actual = json.loads(self.docker("inspect-diagnostics-volume", "volume", "inspect",
+                                        name, capture=True))
+        if not isinstance(actual, list) or len(actual) != 1:
+            raise ValueError("Missing owned diagnostic volume")
+        validate_diagnostics_volume(actual[0], name, self.state["owner"])
+
+    def persist_diagnostics(self, container):
+        self.check_diagnostics_volume()
+        archive = diagnostics_archive(self.scratch)
+        # Fixed shell text only, no interpolation of paths or diagnostic data.
+        self.docker("persist-diagnostics", "exec", "-i", container, "/bin/sh", "-c",
+                    "umask 077; cat > /diagnostics/.scratch.tar.gz.pending && "
+                    "chmod 600 /diagnostics/.scratch.tar.gz.pending && "
+                    "mv /diagnostics/.scratch.tar.gz.pending /diagnostics/scratch.tar.gz",
+                    data=archive.read_bytes(), timeout=120)
+        self.state["diagnostics_saved"] = True
+        self.save()
+        self.receipt["private_diagnostics_volume"] = self.state["diagnostics_volume"]
+
     def publish_receipt(self):
         self.receipt["phase"] = self.phase
         data = json.dumps(self.receipt, indent=2, sort_keys=True) + "\n"
@@ -408,6 +523,8 @@ class Acceptance:
                  "No production credentials or raw cluster output are included."]
         for test in self.receipt["tests"]:
             lines.append(f"PASS {test['name']} ({test['elapsed_seconds']}s)")
+        if self.receipt.get("native_failure"):
+            lines.append("FAILURE " + json.dumps(self.receipt["native_failure"], sort_keys=True))
         for sample in self.receipt["scale_samples"]:
             lines.append("SCALE " + json.dumps(sample, sort_keys=True))
         write_private(self.output / "kubernetes-acceptance.log", ("\n".join(lines) + "\n").encode())

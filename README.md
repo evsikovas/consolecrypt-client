@@ -4,7 +4,7 @@
 
 # ConsoleCrypt — clients
 
-An open-source application for working with servers: SSH, RDP, SFTP, an encrypted
+An open-source application for working with servers: SSH, RDP, SFTP, Kubernetes, an encrypted
 vault for connections and credentials, and collaboration. Work locally, connect
 your own sync server, or use the public ConsoleCrypt server.
 
@@ -32,6 +32,9 @@ your own sync server, or use the public ConsoleCrypt server.
   or address, and a host picker accessible from the global “+” button.
 - **SFTP:** file transfer and preview, editing in an external desktop application,
   and a configurable default editor.
+- **Kubernetes:** encrypted connections, live resources, YAML, logs, Pod shells,
+  port forwarding, Helm and GitOps, with a native production policy and explicit
+  consent for AI context. [Guide](docs/public/KUBERNETES.md).
 - **Snippets:** save commands, organize collections, search, edit, and sync them.
 - **AI:** explain selected output and errors, and prepare commands. Choose a
   compatible provider, including local models. Actions require confirmation;
@@ -40,7 +43,7 @@ your own sync server, or use the public ConsoleCrypt server.
   recovery, and encrypted backups.
 - **Synchronization:** encrypted data shared between trusted devices;
   the server cannot decrypt vault contents.
-- **Selective sharing:** selected SSH connections, groups, secrets, and snippets,
+- **Selective sharing:** selected SSH and Kubernetes connections, groups, secrets, and snippets,
   with recipient device verification and access management. The chosen server
   must support the corresponding features. Revoking access does not erase copies
   the recipient has already saved.
@@ -55,7 +58,7 @@ your own sync server, or use the public ConsoleCrypt server.
 | Windows x64 | EXE / portable ZIP | Run the installer or extract the ZIP |
 | Linux x64 | DEB / RPM | Requires a graphical session and an unlocked persistent Secret Service keyring |
 | Android ARM64 | APK | Mobile preview, Android 11+ |
-| iOS | Universal Simulator ZIP | Preview for Xcode Simulator; not an iPhone installer |
+| iOS | Previous 0.5.6 Simulator ZIP | New builds and testing deferred; not an iPhone installer |
 
 Compare the downloaded file's SHA-256 with `SHA256SUMS-VERSION.txt` in the release.
 Install Linux packages with `sudo apt install ./package.deb` or

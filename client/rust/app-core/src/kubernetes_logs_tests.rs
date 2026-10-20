@@ -185,23 +185,41 @@ async fn https_workload_selection_is_bounded_and_export_is_private_masked_and_re
             .unwrap()
             .title
             .contains("synthetic-namespace"));
-        let marker = temp.path().join("context-terminal.json");
-        let code = format!(
-            "import os,json,pathlib; p=os.environ[\"KUBECONFIG\"]; c=json.loads(pathlib.Path(p).read_text()); assert c[\"contexts\"][0][\"context\"][\"namespace\"]==\"synthetic-namespace\"; assert \"synthetic-logs-token\" not in str(c); assert c[\"clusters\"][0][\"cluster\"][\"server\"].startswith(\"https://127.0.0.1:\"); pathlib.Path({:?}).write_text(p)",
-            marker.to_string_lossy()
+        let marker = temp.path().join("context-terminal-path");
+        // Exercise the real shell's environment without depending on a Python
+        // shim, Xcode first-launch setup, or an interpreter's cold startup.
+        // Inspect the capability in Rust; never echo its contents to the PTY.
+        let command = format!(
+            "printf '%s' \"$KUBECONFIG\" > '{}'\r",
+            marker.to_string_lossy().replace('\'', "'\\''")
         );
-        let command = format!("/usr/bin/python3 -c '{}'\n", code.replace('\'', "'\\''"));
         app.terminal_write(terminal, command.into_bytes())
             .await
             .unwrap();
-        tokio::time::timeout(std::time::Duration::from_secs(5), async {
-            while !marker.exists() {
+        let path = tokio::time::timeout(std::time::Duration::from_secs(15), async {
+            loop {
+                if let Ok(path) = std::fs::read_to_string(&marker) {
+                    if !path.is_empty() {
+                        break PathBuf::from(path);
+                    }
+                }
                 tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             }
         })
         .await
-        .unwrap();
-        PathBuf::from(std::fs::read_to_string(marker).unwrap())
+        .expect("context shell must report its capability path");
+        let config_text = zeroize::Zeroizing::new(std::fs::read_to_string(&path).unwrap());
+        assert!(!config_text.contains("synthetic-logs-token"));
+        let config: serde_json::Value = serde_json::from_str(&config_text).unwrap();
+        assert_eq!(
+            config["contexts"][0]["context"]["namespace"],
+            "synthetic-namespace"
+        );
+        assert!(config["clusters"][0]["cluster"]["server"]
+            .as_str()
+            .unwrap()
+            .starts_with("https://127.0.0.1:"));
+        path
     };
     #[cfg(windows)]
     if std::env::var("CC_KUBE_WSL_LIVE").as_deref() == Ok("1") {

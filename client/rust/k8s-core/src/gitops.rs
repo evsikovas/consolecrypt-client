@@ -270,20 +270,48 @@ impl ResourceApi {
                 return Err(ResourceError::InvalidResponse);
             }
             let next = self.flux_upstream(&current, &detail.object)?;
-            chain.push((current, detail.summary.resource_version));
+            chain.push((current, detail.summary.uid, next.clone()));
             let Some(next) = next else {
                 break;
             };
             current = next;
         }
         let now = uuid::Uuid::new_v4().to_string();
-        for (target, version) in chain.into_iter().rev() {
-            self.merge_patch(
-                &target,
-                json!({"metadata":{"resourceVersion":version,
-                "annotations":{"reconcile.fluxcd.io/requestedAt":now}}}),
-            )
-            .await?;
+        for (target, uid, upstream) in chain.into_iter().rev() {
+            // Reconciling a source can immediately update a dependent
+            // controller's status. Refresh its RV just before writing and retry
+            // only conflicts. Never transfer this approval to a replacement
+            // object or to a newly selected source chain.
+            for attempt in 0..3 {
+                let current = self.get(&target, crate::resources::ReadOptions::AI).await?;
+                let same_source = match (self.flux_upstream(&target, &current.object)?, &upstream) {
+                    (None, None) => true,
+                    (Some(actual), Some(expected)) => {
+                        actual.api == expected.api
+                            && actual.namespace == expected.namespace
+                            && actual.name == expected.name
+                    }
+                    _ => false,
+                };
+                if current.summary.uid != uid || !same_source {
+                    return Err(ResourceError::Conflict);
+                }
+                if current.summary.resource_version.is_empty() {
+                    return Err(ResourceError::InvalidResponse);
+                }
+                match self
+                    .merge_patch(
+                        &target,
+                        json!({"metadata":{"uid":uid,"resourceVersion":current.summary.resource_version,
+                            "annotations":{"reconcile.fluxcd.io/requestedAt":now}}}),
+                    )
+                    .await
+                {
+                    Ok(_) => break,
+                    Err(ResourceError::Conflict) if attempt < 2 => continue,
+                    Err(error) => return Err(error),
+                }
+            }
         }
         Ok(())
     }

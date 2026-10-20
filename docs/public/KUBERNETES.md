@@ -74,8 +74,8 @@ ConsoleCrypt.
 IP-интерфейс после предупреждения; на телефоне и в production это недоступно.
 Остановка туннеля закрывает локальный сокет. На Android активные
 туннели поддерживаются foreground service с уведомлением и кнопкой остановки.
-На iOS работа ограничена активным приложением; при возвращении интерфейс
-восстанавливает доступные подключения. Блокировка хранилища закрывает сессии.
+Сборка и проверка Kubernetes на iOS отложены. Текущий выпуск включает
+macOS, Windows, Linux и Android. Блокировка хранилища закрывает сессии.
 
 ### Helm и GitOps
 
@@ -185,8 +185,9 @@ Port forwarding defaults to `127.0.0.1` and appears among tunnels. Desktop
 non-production contexts can explicitly expose another IP interface after a
 warning; mobile and production cannot. Stopping a
 tunnel closes its listener. Android keeps active forwards in a foreground
-service with a notification and stop action. iOS requires an active app;
-returning restores available connections. Locking the vault closes sessions.
+service with a notification and stop action. The iOS build and Kubernetes
+testing are deferred; this release targets macOS, Windows, Linux and Android.
+Locking the vault closes sessions.
 
 ### Helm and GitOps
 
