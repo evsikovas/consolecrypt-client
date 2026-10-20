@@ -110,6 +110,7 @@ class GlassSidebarItem extends StatelessWidget {
     this.selected = false,
     this.badge,
     this.badgeTone = GlassTone.neutral,
+    this.alertBadge,
     this.compact = false,
   });
 
@@ -125,6 +126,10 @@ class GlassSidebarItem extends StatelessWidget {
   /// Dense count badge (terminal tabs, pending approvals → warning).
   final String? badge;
   final GlassTone badgeTone;
+
+  /// Second, attention-coloured count (e.g. terminals that finished work
+  /// unseen) shown next to [badge]; compact rows show it instead of [badge].
+  final String? alertBadge;
   final bool compact;
 
   @override
@@ -135,7 +140,7 @@ class GlassSidebarItem extends StatelessWidget {
     Widget item = GlassInteractive(
       onPressed: onPressed,
       selected: selected,
-      semanticLabel: badge == null ? label : '$label, $badge',
+      semanticLabel: [label, ?alertBadge, ?badge].join(', '),
       builder: (context, state) {
         final bg = selected
             ? tokens.sidebarSelection
@@ -149,7 +154,21 @@ class GlassSidebarItem extends StatelessWidget {
           data: IconThemeData(size: GlassSizes.iconRow, color: iconColor),
           child: leading ?? Icon(selected ? (selectedIcon ?? icon) : icon),
         );
-        final badgeWidget = badge == null ? null : GlassBadge(label: badge!, tone: badgeTone, dense: true);
+        final badgeWidget = badge == null && alertBadge == null
+            ? null
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (alertBadge != null)
+                    Padding(
+                      padding: EdgeInsetsDirectional.only(end: badge == null ? 0 : GlassSpacing.s4),
+                      child: GlassBadge(label: alertBadge!, tone: GlassTone.warning, dense: true),
+                    ),
+                  if (badge != null) GlassBadge(label: badge!, tone: badgeTone, dense: true),
+                ],
+              );
+        final compactBadge = alertBadge ?? badge;
+        final compactTone = alertBadge != null ? GlassTone.warning : badgeTone;
         return GlassFocusRing(
           visible: state.focusVisible,
           shape: shape,
@@ -162,13 +181,13 @@ class GlassSidebarItem extends StatelessWidget {
                       child: badgeWidget == null
                           ? glyph
                           : Badge(
-                              label: Text(badge!),
-                              backgroundColor: switch (badgeTone) {
+                              label: Text(compactBadge!),
+                              backgroundColor: switch (compactTone) {
                                 GlassTone.warning => p.warningFill,
                                 GlassTone.danger => p.dangerFill,
                                 _ => p.accentFill,
                               },
-                              textColor: badgeTone == GlassTone.danger ? p.onDangerFill : p.onAccent,
+                              textColor: compactTone == GlassTone.danger ? p.onDangerFill : p.onAccent,
                               child: glyph,
                             ),
                     )

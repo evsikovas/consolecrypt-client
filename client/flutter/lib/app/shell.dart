@@ -351,6 +351,7 @@ class _Sidebar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(activeProfileProvider);
     final tabs = ref.watch(terminalTabsProvider).tabs.length;
+    final finished = ref.watch(terminalTabsProvider.select((state) => state.attentionCount));
     final pending = ref.watch(devicesProvider).value?.pendingRequests.length ?? 0;
     final kubeAlerts = kubernetesEnabled
         ? ref.watch(kubeGitOpsAlertsProvider.select((alerts) => alerts.values.fold(0, (sum, count) => sum + count)))
@@ -390,8 +391,10 @@ class _Sidebar extends ConsumerWidget {
               ShellBranch.kubernetes when kubeAlerts > 0 => '$kubeAlerts',
               _ => null,
             },
+            alertBadge: item.branch == ShellBranch.terminal && finished > 0 ? '$finished' : null,
             badgeTone: switch (item.branch) {
               ShellBranch.devices || ShellBranch.kubernetes => GlassTone.warning,
+              ShellBranch.terminal => GlassTone.accent,
               _ => GlassTone.neutral,
             },
             onPressed: () {

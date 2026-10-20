@@ -2,6 +2,7 @@ import 'package:consolecrypt/account/profile_switcher.dart';
 import 'package:consolecrypt/app/about.dart';
 import 'package:consolecrypt/app/app_info.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
@@ -392,6 +393,50 @@ class _TerminalSection extends ConsumerWidget {
               divisions: 12,
               label: local.terminalFontSize.toStringAsFixed(0),
               onChanged: (v) => settings.updateLocal(local.copyWith(terminalFontSize: v)),
+            ),
+          ),
+          LabeledValue(
+            label: l10n.settingsTerminalFontLabel,
+            value: Align(
+              alignment: Alignment.centerLeft,
+              child: GlassSelect<String>(
+                key: const ValueKey('terminal-font-family'),
+                value: local.terminalFontFamily ?? '',
+                semanticLabel: l10n.settingsTerminalFontLabel,
+                items: [
+                  GlassSelectItem(value: '', label: l10n.settingsTerminalFontSystem),
+                  for (final family in {
+                    ...AppPlatform.terminalFontChoices,
+                    ?local.terminalFontFamily,
+                  })
+                    GlassSelectItem(key: ValueKey('terminal-font-$family'), value: family, label: family),
+                  GlassSelectItem(
+                    key: const ValueKey('terminal-font-custom'),
+                    value: '\u0000custom',
+                    label: l10n.settingsTerminalFontCustom,
+                    icon: Icons.edit_outlined,
+                  ),
+                ],
+                onChanged: (value) async {
+                  if (value == '\u0000custom') {
+                    final family = await showTextInputDialog(
+                      context,
+                      title: l10n.settingsTerminalFontCustomTitle,
+                      initial: local.terminalFontFamily ?? '',
+                      label: l10n.settingsTerminalFontCustomHint,
+                    );
+                    final name = family?.trim() ?? '';
+                    if (name.isEmpty || name.length > 80) return;
+                    await settings.updateLocal(settings.currentLocal.copyWith(terminalFontFamily: name));
+                    return;
+                  }
+                  await settings.updateLocal(
+                    value.isEmpty
+                        ? settings.currentLocal.copyWith(resetTerminalFontFamily: true)
+                        : settings.currentLocal.copyWith(terminalFontFamily: value),
+                  );
+                },
+              ),
             ),
           ),
           const TerminalAppearanceControls(),

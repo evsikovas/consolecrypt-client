@@ -7775,4 +7775,40 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeNavClusterOverview => 'Обзор кластера';
+
+  @override
+  String get settingsTerminalFontLabel => 'Шрифт';
+
+  @override
+  String get settingsTerminalFontSystem => 'Системный по умолчанию';
+
+  @override
+  String get settingsTerminalFontCustom => 'Другой шрифт…';
+
+  @override
+  String get settingsTerminalFontCustomTitle => 'Шрифт терминала';
+
+  @override
+  String get settingsTerminalFontCustomHint => 'Имя установленного шрифта, например JetBrains Mono';
+
+  @override
+  String get terminalTabRename => 'Переименовать…';
+
+  @override
+  String get terminalTabRenameTitle => 'Название вкладки';
+
+  @override
+  String get terminalTabResetName => 'Вернуть исходное название';
+
+  @override
+  String get terminalTabDuplicate => 'Дублировать';
+
+  @override
+  String get terminalTabClose => 'Закрыть';
+
+  @override
+  String get terminalTabCloseOthers => 'Закрыть другие вкладки';
+
+  @override
+  String get terminalTabCloseRight => 'Закрыть вкладки справа';
 }

@@ -208,6 +208,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
   Widget build(BuildContext context) {
     final tab = widget.tab;
     final fontSize = ref.watch(localSettingsProvider.select((s) => s.value?.terminalFontSize ?? 13));
+    final fontFamily = ref.watch(localSettingsProvider.select((s) => s.value?.terminalFontFamily));
     final dispatcher = ref.read(appCommandDispatcherProvider);
     final scheme = ref.watch(
       localSettingsProvider.select((s) => s.value?.terminalColorScheme ?? TerminalColorScheme.system),
@@ -267,8 +268,8 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
             theme: AppTheme.terminalTheme(Theme.of(context).brightness, scheme: scheme, custom: custom),
             textStyle: TerminalStyle(
               fontSize: fontSize,
-              fontFamily: AppPlatform.monospaceFamily,
-              fontFamilyFallback: AppPlatform.monospaceFallback,
+              fontFamily: fontFamily ?? AppPlatform.monospaceFamily,
+              fontFamilyFallback: [AppPlatform.monospaceFamily, ...AppPlatform.monospaceFallback],
             ),
             onSecondaryTapUp: (details, _) {
               _focus.requestFocus();

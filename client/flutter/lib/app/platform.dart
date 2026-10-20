@@ -45,6 +45,15 @@ abstract final class AppPlatform {
 
   static const monospaceFallback = ['SF Mono', 'Cascadia Mono', 'Consolas', 'Menlo', 'DejaVu Sans Mono', 'monospace'];
 
+  /// Common monospace families offered for terminals; only installed ones
+  /// render, others fall back to [monospaceFallback].
+  static List<String> get terminalFontChoices => [
+    if (isMacOS) ...['Menlo', 'Monaco', 'SF Mono', 'Courier New', 'Andale Mono'], // l10n-ignore: font family names
+    if (isWindows) ...['Consolas', 'Cascadia Mono', 'Cascadia Code', 'Lucida Console', 'Courier New'], // l10n-ignore: font family names
+    if (!isMacOS && !isWindows) ...['DejaVu Sans Mono', 'Ubuntu Mono', 'Liberation Mono', 'Noto Sans Mono'], // l10n-ignore: font family names
+    ...['JetBrains Mono', 'Fira Code', 'Source Code Pro', 'Hack', 'IBM Plex Mono', 'Iosevka', 'MesloLGS NF'], // l10n-ignore: font family names
+  ];
+
   /// Name of the OS authentication used for "unlock with this device"
   /// (product names are not translated).
   static String osAuthName(AppLocalizations l) =>

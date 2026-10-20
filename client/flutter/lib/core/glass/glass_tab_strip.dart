@@ -37,7 +37,11 @@ final class GlassTab {
     this.state = GlassTabState.none,
     this.tooltip,
     this.key,
+    this.attention = false,
   });
+
+  /// Unseen activity (a finished command): the chip pulses in warning colour.
+  final bool attention;
 
   /// Hostname (bodyEmph).
   final String title;
@@ -69,12 +73,16 @@ class GlassTabStrip extends StatelessWidget {
     this.onClose,
     this.onAdd,
     this.trailing,
+    this.onContextMenu,
   });
 
   final List<GlassTab> tabs;
   final int? activeIndex;
   final ValueChanged<int> onSelect;
   final ValueChanged<int>? onClose;
+
+  /// Secondary click / long press on a tab, with the global pointer position.
+  final void Function(int index, Offset position)? onContextMenu;
   final VoidCallback? onAdd;
 
   /// Session toolbar group in the same row (SFTP, snippets, split, more).
@@ -105,12 +113,21 @@ class GlassTabStrip extends StatelessWidget {
                           activeIndex: activeIndex,
                           children: [
                             for (final (i, tab) in tabs.indexed)
-                              _TabChip(
+                              GestureDetector(
                                 key: tab.key,
-                                tab: tab,
-                                active: i == activeIndex,
-                                onSelect: () => onSelect(i),
-                                onClose: onClose == null ? null : () => onClose!(i),
+                                behavior: HitTestBehavior.translucent,
+                                onSecondaryTapUp: onContextMenu == null
+                                    ? null
+                                    : (details) => onContextMenu!(i, details.globalPosition),
+                                onLongPressStart: onContextMenu == null
+                                    ? null
+                                    : (details) => onContextMenu!(i, details.globalPosition),
+                                child: _TabChip(
+                                  tab: tab,
+                                  active: i == activeIndex,
+                                  onSelect: () => onSelect(i),
+                                  onClose: onClose == null ? null : () => onClose!(i),
+                                ),
                               ),
                           ],
                         ),
@@ -147,7 +164,7 @@ class GlassTabStrip extends StatelessWidget {
 }
 
 class _TabChip extends StatelessWidget {
-  const _TabChip({required this.tab, required this.active, required this.onSelect, super.key, this.onClose});
+  const _TabChip({required this.tab, required this.active, required this.onSelect, this.onClose});
 
   final GlassTab tab;
   final bool active;
@@ -234,7 +251,56 @@ class _TabChip extends StatelessWidget {
       },
     );
     if (tab.tooltip != null) chip = Tooltip(message: tab.tooltip, child: chip);
+    if (tab.attention && !active) chip = _AttentionPulse(child: chip);
     return Padding(padding: const EdgeInsets.only(right: 2), child: chip);
+  }
+}
+
+/// Pulsing warning outline of a tab with unseen finished activity. Reduced
+/// motion keeps a steady outline.
+class _AttentionPulse extends StatefulWidget {
+  const _AttentionPulse({required this.child});
+  final Widget child;
+  @override
+  State<_AttentionPulse> createState() => _AttentionPulseState();
+}
+
+class _AttentionPulseState extends State<_AttentionPulse> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pulse
+        ..stop()
+        ..value = 1;
+    } else if (!_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = GlassTokens.of(context).palette.warning;
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, child) => DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: ShapeDecoration(
+          color: color.withValues(alpha: 0.10 + 0.18 * _pulse.value),
+          shape: StadiumBorder(side: BorderSide(color: color.withValues(alpha: 0.45 + 0.55 * _pulse.value), width: 1.5)),
+        ),
+        child: child,
+      ),
+      child: widget.child,
+    );
   }
 }
 

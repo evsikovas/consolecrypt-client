@@ -690,6 +690,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'prefer_device_local_ai': s.preferDeviceLocalAi,
   'rdp_mobile': s.rdpMobile.toJson(),
   'terminal_font_size': s.terminalFontSize,
+  'terminal_font_family': s.terminalFontFamily,
   'terminal_scrollback': s.terminalScrollback,
   'clipboard_clear_seconds': s.clipboardClearSeconds,
   'auto_lock_minutes': s.autoLockMinutes,
@@ -728,6 +729,10 @@ LocalSettings localSettingsFromJson(Json j) {
     rdpMobile: RdpMobileSettings.fromJson(j['rdp_mobile']),
     sftpDefaultEditor: _appRefFromJson(j['sftp_default_editor']),
     terminalFontSize: (j['terminal_font_size'] as num?)?.toDouble() ?? d.terminalFontSize,
+    terminalFontFamily: switch ((j['terminal_font_family'] is String ? j['terminal_font_family'] as String : null)?.trim()) {
+      final String family when family.isNotEmpty && family.length <= 80 => family,
+      _ => null,
+    },
     terminalScrollback: _int(j['terminal_scrollback']) ?? d.terminalScrollback,
     clipboardClearSeconds: _int(j['clipboard_clear_seconds']) ?? d.clipboardClearSeconds,
     autoLockMinutes: _int(j['auto_lock_minutes']) ?? d.autoLockMinutes,

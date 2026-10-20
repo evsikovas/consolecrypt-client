@@ -7575,4 +7575,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeNavClusterOverview => 'Cluster overview';
+
+  @override
+  String get settingsTerminalFontLabel => 'Font';
+
+  @override
+  String get settingsTerminalFontSystem => 'System default';
+
+  @override
+  String get settingsTerminalFontCustom => 'Other font…';
+
+  @override
+  String get settingsTerminalFontCustomTitle => 'Terminal font';
+
+  @override
+  String get settingsTerminalFontCustomHint => 'Installed font name, e.g. JetBrains Mono';
+
+  @override
+  String get terminalTabRename => 'Rename…';
+
+  @override
+  String get terminalTabRenameTitle => 'Tab name';
+
+  @override
+  String get terminalTabResetName => 'Restore original name';
+
+  @override
+  String get terminalTabDuplicate => 'Duplicate';
+
+  @override
+  String get terminalTabClose => 'Close';
+
+  @override
+  String get terminalTabCloseOthers => 'Close other tabs';
+
+  @override
+  String get terminalTabCloseRight => 'Close tabs to the right';
 }

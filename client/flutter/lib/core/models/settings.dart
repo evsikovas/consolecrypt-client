@@ -92,6 +92,7 @@ final class LocalSettings {
     this.customTerminalColors,
     this.reopenLastProfile = false,
     this.terminalFontSize = 13,
+    this.terminalFontFamily,
     this.terminalScrollback = 5000,
     this.clipboardClearSeconds = 30,
     this.autoLockMinutes = 15,
@@ -124,6 +125,9 @@ final class LocalSettings {
   /// Opening a profile can prompt for OS keychain access. Opt-in at startup.
   final bool reopenLastProfile;
   final double terminalFontSize;
+
+  /// Installed monospace family for terminals; null uses the platform default.
+  final String? terminalFontFamily;
   final int terminalScrollback;
 
   /// Copied secrets are wiped from the clipboard after this many seconds.
@@ -166,6 +170,8 @@ final class LocalSettings {
     TerminalColors? customTerminalColors,
     bool? reopenLastProfile,
     double? terminalFontSize,
+    String? terminalFontFamily,
+    bool resetTerminalFontFamily = false,
     int? terminalScrollback,
     int? clipboardClearSeconds,
     int? autoLockMinutes,
@@ -187,6 +193,7 @@ final class LocalSettings {
     customTerminalColors: customTerminalColors ?? this.customTerminalColors,
     reopenLastProfile: reopenLastProfile ?? this.reopenLastProfile,
     terminalFontSize: terminalFontSize ?? this.terminalFontSize,
+    terminalFontFamily: resetTerminalFontFamily ? null : (terminalFontFamily ?? this.terminalFontFamily),
     terminalScrollback: terminalScrollback ?? this.terminalScrollback,
     clipboardClearSeconds: clipboardClearSeconds ?? this.clipboardClearSeconds,
     autoLockMinutes: autoLockMinutes ?? this.autoLockMinutes,

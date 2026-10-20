@@ -119,6 +119,56 @@ void main() {
       expect(container.read(terminalTabsProvider).tabs, isEmpty);
     });
 
+    test('tabs can be renamed, duplicated and closed around a tab', () async {
+      final backend = MockBackend(config: const MockConfig.test());
+      final container = containerFor(backend);
+      await backend.debugSignInDemoAndUnlock();
+      final pi = (await backend.inventory.watchHosts().first).firstWhere((h) => h.name == 'raspberry-pi');
+      final controller = container.read(terminalTabsProvider.notifier);
+      final first = await controller.open(pi);
+      final second = await controller.duplicate(first);
+      final third = await controller.open(pi);
+      await pumpEventQueue();
+      controller.rename(second, '  build server  ');
+      expect(second.displayTitle, 'build server');
+      second.title = 'remote title';
+      expect(second.displayTitle, 'build server', reason: 'a user name wins over shell titles');
+      controller.rename(second, '');
+      expect(second.displayTitle, 'remote title');
+      await controller.closeToRight(second);
+      expect(container.read(terminalTabsProvider).tabs, [first, second]);
+      expect(third.state, isNot(SessionConnectionState.connecting));
+      await controller.closeOthers(second);
+      expect(container.read(terminalTabsProvider).tabs, [second]);
+    });
+
+    test('output that finishes in an unwatched tab marks it until it is shown', () async {
+      final grace = TerminalTabsController.activityGrace, quiet = TerminalTabsController.activityQuiet;
+      TerminalTabsController.activityGrace = Duration.zero;
+      TerminalTabsController.activityQuiet = const Duration(milliseconds: 20);
+      addTearDown(() {
+        TerminalTabsController.activityGrace = grace;
+        TerminalTabsController.activityQuiet = quiet;
+      });
+      final backend = MockBackend(config: const MockConfig.test());
+      final container = containerFor(backend);
+      await backend.debugSignInDemoAndUnlock();
+      final pi = (await backend.inventory.watchHosts().first).firstWhere((h) => h.name == 'raspberry-pi');
+      final controller = container.read(terminalTabsProvider.notifier);
+      final background = await controller.open(pi);
+      await controller.open(pi);
+      await pumpEventQueue();
+      controller.setViewing(true);
+      controller.runInTab(background, 'whoami');
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await pumpEventQueue();
+      expect(background.attention, isTrue);
+      expect(container.read(terminalTabsProvider).attentionCount, 1);
+      controller.activate(0);
+      expect(background.attention, isFalse);
+      expect(container.read(terminalTabsProvider).attentionCount, 0);
+    });
+
     test('switching profile closes the sessions of the previous profile', () async {
       final backend = MockBackend(config: const MockConfig.test());
       final container = containerFor(backend);

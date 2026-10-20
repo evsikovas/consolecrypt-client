@@ -345,8 +345,8 @@ class TerminalAppearanceControls extends ConsumerWidget {
                 ],
               ),
               style: TextStyle(
-                fontFamily: AppPlatform.monospaceFamily,
-                fontFamilyFallback: AppPlatform.monospaceFallback,
+                fontFamily: local.terminalFontFamily ?? AppPlatform.monospaceFamily,
+                fontFamilyFallback: [AppPlatform.monospaceFamily, ...AppPlatform.monospaceFallback],
                 fontSize: local.terminalFontSize,
                 height: 1.5,
               ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:consolecrypt/ai/command_palette.dart';
 import 'package:consolecrypt/app/commands.dart';
 import 'package:consolecrypt/app/gate.dart';
@@ -42,6 +44,12 @@ class TerminalScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(terminalTabsProvider);
+    // Offstage shell branches disable tickers: that is "not on screen" for
+    // the unseen-activity markers.
+    final visible = TickerMode.valuesOf(context).enabled;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted) ref.read(terminalTabsProvider.notifier).setViewing(visible);
+    });
     final l10n = context.l10n;
     final pad = AppPlatform.isMobile ? 6.0 : pagePadding(context);
     final Widget body;
@@ -118,7 +126,8 @@ class _TabStrip extends ConsumerWidget {
         for (final (i, tab) in state.tabs.indexed)
           GlassTab(
             key: ValueKey('tab-${tab.target.label}-$i'),
-            title: tab.title,
+            title: tab.displayTitle,
+            attention: tab.attention,
             subtitle: tab.isLocal ? context.l10n.terminalLocalComputer : tab.host?.username,
             state: _state(tab),
             tooltip: switch (_state(tab)) {
@@ -131,9 +140,73 @@ class _TabStrip extends ConsumerWidget {
       ],
       onSelect: controller.activate,
       onClose: (i) => controller.close(state.tabs[i]),
+      onContextMenu: (i, position) => unawaited(_tabMenu(context, ref, state.tabs[i], i, position)),
       onAdd: onNewTab,
       trailing: AppPlatform.isMobile ? null : _SessionToolbar(tab: active),
     );
+  }
+}
+
+Future<void> _tabMenu(BuildContext context, WidgetRef ref, TerminalTab tab, int index, Offset position) async {
+  final l10n = context.l10n;
+  final controller = ref.read(terminalTabsProvider.notifier);
+  final count = ref.read(terminalTabsProvider).tabs.length;
+  final action = await showGlassMenu<String>(
+    context: context,
+    anchor: position & const Size(1, 1),
+    entries: [
+      GlassMenuItem(
+        key: const ValueKey('terminal-tab-rename'),
+        value: 'rename',
+        label: l10n.terminalTabRename,
+        icon: Icons.drive_file_rename_outline,
+      ),
+      if (tab.customTitle != null)
+        GlassMenuItem(value: 'reset', label: l10n.terminalTabResetName, icon: Icons.undo_rounded),
+      GlassMenuItem(
+        key: const ValueKey('terminal-tab-duplicate'),
+        value: 'duplicate',
+        label: l10n.terminalTabDuplicate,
+        icon: Icons.copy_all_outlined,
+      ),
+      const GlassMenuDivider(),
+      GlassMenuItem(
+        key: const ValueKey('terminal-tab-close'),
+        value: 'close',
+        label: l10n.terminalTabClose,
+        icon: Icons.close_rounded,
+      ),
+      GlassMenuItem(
+        value: 'others',
+        label: l10n.terminalTabCloseOthers,
+        enabled: count > 1,
+      ),
+      GlassMenuItem(
+        value: 'right',
+        label: l10n.terminalTabCloseRight,
+        enabled: index < count - 1,
+      ),
+    ],
+  );
+  if (!context.mounted || action == null) return;
+  switch (action) {
+    case 'rename':
+      final name = await showTextInputDialog(
+        context,
+        title: l10n.terminalTabRenameTitle,
+        initial: tab.displayTitle,
+      );
+      if (name != null) controller.rename(tab, name);
+    case 'reset':
+      controller.rename(tab, null);
+    case 'duplicate':
+      await controller.duplicate(tab);
+    case 'close':
+      await controller.close(tab);
+    case 'others':
+      await controller.closeOthers(tab);
+    case 'right':
+      await controller.closeToRight(tab);
   }
 }
 

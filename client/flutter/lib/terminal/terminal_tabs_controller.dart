@@ -36,7 +36,17 @@ final class TerminalTab {
   /// Pending connect-time password question (password not stored).
   TerminalPasswordPrompt? passwordPrompt;
   String title;
+
+  /// Name chosen by the user; wins over titles set by the remote shell.
+  String? customTitle;
+  String get displayTitle => customTitle ?? title;
   bool exited = false;
+
+  /// Output finished (or the terminal bell rang) while nobody was looking at
+  /// this tab. Cleared when the tab is shown.
+  bool attention = false;
+  DateTime? _connectedAt;
+  Timer? _quiet;
 
   /// Input typed/inserted before the session is connected.
   final List<String> _pending = [];
@@ -76,6 +86,9 @@ final class TerminalTabsState {
   final int revision;
 
   TerminalTab? get active => tabs.isEmpty ? null : tabs[activeIndex.clamp(0, tabs.length - 1)];
+
+  /// Tabs with unseen finished activity.
+  int get attentionCount => tabs.where((tab) => tab.attention).length;
 
   TerminalTabsState copyWith({List<TerminalTab>? tabs, int? activeIndex}) =>
       TerminalTabsState(tabs: tabs ?? this.tabs, activeIndex: activeIndex ?? this.activeIndex, revision: revision + 1);
@@ -174,6 +187,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
               _touch();
             } else {
               tab.terminal.write(frame.text);
+              _noteActivity(tab, bell: frame.text.contains('\x07'));
             }
           })
       .._events = handle.events.listen((e) => _onEvent(tab, e));
@@ -203,6 +217,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
           ..message = message;
         if (state != SessionConnectionState.awaitingPassword) tab.passwordPrompt = null;
         if (state == SessionConnectionState.connected) {
+          tab._connectedAt ??= DateTime.now();
           tab.exited = false;
           if (tab.hostKey?.changed != true) tab.hostKey = null;
           final pending = List.of(tab._pending);
@@ -219,6 +234,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
         tab.title = title;
       case TerminalExited():
         tab.exited = true;
+        if (!_watched(tab)) tab.attention = true;
     }
     _touch();
   }
@@ -278,7 +294,60 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   }
 
   void activate(int index) {
-    if (index >= 0 && index < state.tabs.length) state = state.copyWith(activeIndex: index);
+    if (index < 0 || index >= state.tabs.length) return;
+    if (_viewing) _seen(state.tabs[index]);
+    state = state.copyWith(activeIndex: index);
+  }
+
+  /// Whether the terminal workspace is on screen (reported by the screen).
+  bool _viewing = false;
+
+  /// Output right after connecting (banner, prompt) is ignored for this long.
+  @visibleForTesting
+  static Duration activityGrace = const Duration(seconds: 3);
+
+  /// Quiet time after the last output that counts as "the command finished".
+  @visibleForTesting
+  static Duration activityQuiet = const Duration(milliseconds: 1500);
+
+  void setViewing(bool viewing) {
+    if (_viewing == viewing) return;
+    _viewing = viewing;
+    final active = state.active;
+    if (viewing && active != null && active.attention) {
+      _seen(active);
+      _touch();
+    }
+  }
+
+  void _seen(TerminalTab tab) {
+    tab._quiet?.cancel();
+    tab.attention = false;
+  }
+
+  bool _watched(TerminalTab tab) => _viewing && identical(state.active, tab);
+
+  /// Output in an unwatched tab marks it once the output goes quiet for a
+  /// moment (a command finished); a bell marks it at once. The first seconds
+  /// after connecting (banner, prompt) never count.
+  void _noteActivity(TerminalTab tab, {required bool bell}) {
+    final connected = tab._connectedAt;
+    if (_watched(tab) || connected == null || DateTime.now().difference(connected) < activityGrace) {
+      return;
+    }
+    tab._quiet?.cancel();
+    if (bell) {
+      if (!tab.attention) {
+        tab.attention = true;
+        _touch();
+      }
+      return;
+    }
+    tab._quiet = Timer(activityQuiet, () {
+      if (!_open.contains(tab) || _watched(tab) || tab.attention) return;
+      tab.attention = true;
+      _touch();
+    });
   }
 
   Future<void> answerHostKey(TerminalTab tab, HostKeyDecision decision) async {
@@ -305,6 +374,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
 
   Future<void> close(TerminalTab tab) async {
     _open.remove(tab);
+    tab._quiet?.cancel();
     _invalidateInput(tab);
     await tab._output?.cancel();
     await tab._events?.cancel();
@@ -312,6 +382,30 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     final tabs = [...state.tabs]..remove(tab);
     state = state.copyWith(tabs: tabs, activeIndex: state.activeIndex.clamp(0, tabs.isEmpty ? 0 : tabs.length - 1));
     await _service.close(tab.sessionId);
+  }
+
+  void rename(TerminalTab tab, String? name) {
+    final trimmed = name?.trim();
+    tab.customTitle = trimmed == null || trimmed.isEmpty ? null : trimmed;
+    _touch();
+  }
+
+  Future<TerminalTab> duplicate(TerminalTab tab) => openTarget(tab.target);
+
+  Future<void> closeOthers(TerminalTab keep) async {
+    for (final tab in [...state.tabs]) {
+      if (!identical(tab, keep)) await close(tab);
+    }
+    final index = state.tabs.indexOf(keep);
+    if (index >= 0) activate(index);
+  }
+
+  Future<void> closeToRight(TerminalTab tab) async {
+    final index = state.tabs.indexOf(tab);
+    if (index < 0) return;
+    for (final other in state.tabs.sublist(index + 1).toList()) {
+      await close(other);
+    }
   }
 
   Future<void> closeActive() async {

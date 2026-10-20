@@ -13651,6 +13651,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cluster overview'**
   String get kubeNavClusterOverview;
+
+  /// Settings label: terminal font family
+  ///
+  /// In en, this message translates to:
+  /// **'Font'**
+  String get settingsTerminalFontLabel;
+
+  /// Terminal font option: the platform monospace font
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get settingsTerminalFontSystem;
+
+  /// Terminal font option: type any installed font name
+  ///
+  /// In en, this message translates to:
+  /// **'Other font…'**
+  String get settingsTerminalFontCustom;
+
+  /// Dialog title: enter an installed monospace font name
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal font'**
+  String get settingsTerminalFontCustomTitle;
+
+  /// Dialog field hint for a custom terminal font
+  ///
+  /// In en, this message translates to:
+  /// **'Installed font name, e.g. JetBrains Mono'**
+  String get settingsTerminalFontCustomHint;
+
+  /// Terminal tab menu: rename the tab
+  ///
+  /// In en, this message translates to:
+  /// **'Rename…'**
+  String get terminalTabRename;
+
+  /// Dialog title: rename a terminal tab
+  ///
+  /// In en, this message translates to:
+  /// **'Tab name'**
+  String get terminalTabRenameTitle;
+
+  /// Terminal tab menu: drop the custom name
+  ///
+  /// In en, this message translates to:
+  /// **'Restore original name'**
+  String get terminalTabResetName;
+
+  /// Terminal tab menu: open the same target in a new tab
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get terminalTabDuplicate;
+
+  /// Terminal tab menu: close this tab
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get terminalTabClose;
+
+  /// Terminal tab menu: close all other tabs
+  ///
+  /// In en, this message translates to:
+  /// **'Close other tabs'**
+  String get terminalTabCloseOthers;
+
+  /// Terminal tab menu: close tabs after this one
+  ///
+  /// In en, this message translates to:
+  /// **'Close tabs to the right'**
+  String get terminalTabCloseRight;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

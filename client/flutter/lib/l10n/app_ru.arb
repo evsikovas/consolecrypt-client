@@ -4140,5 +4140,17 @@
   "kubeOverviewCpu": "Процессор",
   "kubeOverviewMemory": "Память",
   "kubeOverviewPodPhases": "Поды по состояниям",
-  "kubeNavClusterOverview": "Обзор кластера"
+  "kubeNavClusterOverview": "Обзор кластера",
+  "settingsTerminalFontLabel": "Шрифт",
+  "settingsTerminalFontSystem": "Системный по умолчанию",
+  "settingsTerminalFontCustom": "Другой шрифт…",
+  "settingsTerminalFontCustomTitle": "Шрифт терминала",
+  "settingsTerminalFontCustomHint": "Имя установленного шрифта, например JetBrains Mono",
+  "terminalTabRename": "Переименовать…",
+  "terminalTabRenameTitle": "Название вкладки",
+  "terminalTabResetName": "Вернуть исходное название",
+  "terminalTabDuplicate": "Дублировать",
+  "terminalTabClose": "Закрыть",
+  "terminalTabCloseOthers": "Закрыть другие вкладки",
+  "terminalTabCloseRight": "Закрыть вкладки справа"
 }

@@ -10376,5 +10376,53 @@
   "kubeNavClusterOverview": "Cluster overview",
   "@kubeNavClusterOverview": {
     "description": "Navigator item: live cluster dashboard"
+  },
+  "settingsTerminalFontLabel": "Font",
+  "@settingsTerminalFontLabel": {
+    "description": "Settings label: terminal font family"
+  },
+  "settingsTerminalFontSystem": "System default",
+  "@settingsTerminalFontSystem": {
+    "description": "Terminal font option: the platform monospace font"
+  },
+  "settingsTerminalFontCustom": "Other font…",
+  "@settingsTerminalFontCustom": {
+    "description": "Terminal font option: type any installed font name"
+  },
+  "settingsTerminalFontCustomTitle": "Terminal font",
+  "@settingsTerminalFontCustomTitle": {
+    "description": "Dialog title: enter an installed monospace font name"
+  },
+  "settingsTerminalFontCustomHint": "Installed font name, e.g. JetBrains Mono",
+  "@settingsTerminalFontCustomHint": {
+    "description": "Dialog field hint for a custom terminal font"
+  },
+  "terminalTabRename": "Rename…",
+  "@terminalTabRename": {
+    "description": "Terminal tab menu: rename the tab"
+  },
+  "terminalTabRenameTitle": "Tab name",
+  "@terminalTabRenameTitle": {
+    "description": "Dialog title: rename a terminal tab"
+  },
+  "terminalTabResetName": "Restore original name",
+  "@terminalTabResetName": {
+    "description": "Terminal tab menu: drop the custom name"
+  },
+  "terminalTabDuplicate": "Duplicate",
+  "@terminalTabDuplicate": {
+    "description": "Terminal tab menu: open the same target in a new tab"
+  },
+  "terminalTabClose": "Close",
+  "@terminalTabClose": {
+    "description": "Terminal tab menu: close this tab"
+  },
+  "terminalTabCloseOthers": "Close other tabs",
+  "@terminalTabCloseOthers": {
+    "description": "Terminal tab menu: close all other tabs"
+  },
+  "terminalTabCloseRight": "Close tabs to the right",
+  "@terminalTabCloseRight": {
+    "description": "Terminal tab menu: close tabs after this one"
   }
 }
