@@ -55,7 +55,7 @@ void main() {
     await tapKey(tester, 'nav-settings');
     final toggle = find.byKey(const ValueKey('device-unlock-switch'));
     expect(tester.widget<SwitchListTile>(toggle).onChanged, isNull);
-    expect(find.textContaining('Отпечаток не настроен'), findsOneWidget);
+    expect(find.textContaining('Биометрия не настроена'), findsOneWidget);
     b.vault.deviceAuthKind = DeviceAuthKind.touchId;
     b.vault.deviceAuthNotEnrolled = false;
     await tapKey(tester, 'device-unlock-refresh');
