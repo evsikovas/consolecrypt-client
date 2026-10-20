@@ -26,7 +26,10 @@ Future<void> confirmInstallUpdate(BuildContext context, WidgetRef ref) async {
       ],
     ),
   );
-  if (approved == true && context.mounted) {
+  if (approved == true &&
+      context.mounted &&
+      ref.context.mounted &&
+      identical(ref.read(updateControllerProvider).release, release)) {
     await ref
         .read(updateControllerProvider.notifier)
         .downloadAndInstall(macosSaveTitle: l.updateMacSaveTitle, macosSavePrompt: l.updateMacSavePrompt);
@@ -143,8 +146,13 @@ class UpdateSettingsSection extends ConsumerWidget {
 /// The startup check runs once, after persisted preferences arrive, even while
 /// the vault is locked. Demo/test backends never contact the update service.
 class UpdateNoticeScope extends ConsumerStatefulWidget {
-  const UpdateNoticeScope({required this.child, super.key});
+  const UpdateNoticeScope({required this.child, this.navigatorKey, super.key});
   final Widget child;
+
+  /// MaterialApp.builder is above its Router/Navigator. Its context cannot
+  /// host tooltips or dialogs; mount the notice in this navigator's overlay.
+  /// When used inside a route, the nearest Navigator is sufficient.
+  final GlobalKey<NavigatorState>? navigatorKey;
   @override
   ConsumerState<UpdateNoticeScope> createState() => _UpdateNoticeScopeState();
 }
@@ -152,9 +160,69 @@ class UpdateNoticeScope extends ConsumerStatefulWidget {
 class _UpdateNoticeScopeState extends ConsumerState<UpdateNoticeScope> {
   bool _started = false;
   String? _dismissed;
+  OverlayEntry? _notice;
+  OverlayState? _overlay;
+  bool _refreshScheduled = false;
+  bool _confirming = false;
+
+  @override
+  void dispose() {
+    _removeNotice();
+    super.dispose();
+  }
+
+  void _removeNotice() {
+    _notice?.remove();
+    _notice?.dispose();
+    _notice = null;
+    _overlay = null;
+  }
+
+  void _scheduleNotice() {
+    if (_refreshScheduled) return;
+    _refreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshScheduled = false;
+      if (!mounted) return;
+      final state = ref.read(updateControllerProvider);
+      final release = state.release;
+      final visible =
+          AppPlatform.supportsDirectUpdates &&
+          release != null &&
+          release.version != _dismissed &&
+          state.phase != UpdatePhase.opened;
+      final overlay = widget.navigatorKey?.currentState?.overlay ?? Navigator.maybeOf(context)?.overlay;
+      if (!visible || overlay == null || !overlay.mounted) {
+        _removeNotice();
+        return;
+      }
+      if (_overlay != overlay) {
+        _removeNotice();
+        _overlay = overlay;
+        _notice = OverlayEntry(builder: _buildNotice);
+        overlay.insert(_notice!);
+      } else {
+        _notice?.markNeedsBuild();
+      }
+    });
+  }
+
+  Future<void> _confirm(BuildContext noticeContext) async {
+    if (_confirming || ref.read(updateControllerProvider).busy) return;
+    _confirming = true;
+    try {
+      await confirmInstallUpdate(noticeContext, ref);
+    } finally {
+      _confirming = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (!AppPlatform.supportsDirectUpdates) return widget.child;
+    if (!AppPlatform.supportsDirectUpdates) {
+      if (_notice != null) _scheduleNotice();
+      return widget.child;
+    }
     final settings = ref.watch(localSettingsProvider).value;
     if (!_started && settings != null) {
       _started = true;
@@ -164,48 +232,53 @@ class _UpdateNoticeScopeState extends ConsumerState<UpdateNoticeScope> {
         });
       }
     }
-    final state = ref.watch(updateControllerProvider);
+    ref.watch(updateControllerProvider);
+    _scheduleNotice();
+    return widget.child;
+  }
+
+  Widget _buildNotice(BuildContext context) {
+    final state = ref.read(updateControllerProvider);
     final release = state.release;
-    final visible = release != null && release.version != _dismissed && state.phase != UpdatePhase.opened;
-    return Stack(
-      children: [
-        widget.child,
-        if (visible)
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: MediaQuery.paddingOf(context).bottom + 16,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
-                child: Material(
-                  borderRadius: BorderRadius.circular(16),
-                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                  elevation: 8,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(updateStatus(context.l10n, state))),
-                        const SizedBox(width: 8),
-                        GlassIconButton(
-                          tooltip: context.l10n.updateDownloadInstall,
-                          icon: Icons.download_rounded,
-                          onPressed: state.busy ? null : () => confirmInstallUpdate(context, ref),
-                        ),
-                        GlassIconButton(
-                          tooltip: context.l10n.commonClose,
-                          icon: Icons.close_rounded,
-                          onPressed: () => setState(() => _dismissed = release.version),
-                        ),
-                      ],
-                    ),
+    if (release == null || release.version == _dismissed || state.phase == UpdatePhase.opened) {
+      return const SizedBox.shrink();
+    }
+    return Positioned(
+      key: const ValueKey('update-notice'),
+      left: 16,
+      right: 16,
+      bottom: MediaQuery.paddingOf(context).bottom + 16,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Material(
+            borderRadius: BorderRadius.circular(16),
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
+            elevation: 8,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(child: Text(updateStatus(context.l10n, state))),
+                  const SizedBox(width: 8),
+                  GlassIconButton(
+                    key: const ValueKey('update-notice-install'),
+                    tooltip: context.l10n.updateDownloadInstall,
+                    icon: Icons.download_rounded,
+                    onPressed: state.busy ? null : () => unawaited(_confirm(context)),
                   ),
-                ),
+                  GlassIconButton(
+                    key: const ValueKey('update-notice-dismiss'),
+                    tooltip: context.l10n.commonClose,
+                    icon: Icons.close_rounded,
+                    onPressed: () => setState(() => _dismissed = release.version),
+                  ),
+                ],
               ),
             ),
           ),
-      ],
+        ),
+      ),
     );
   }
 }

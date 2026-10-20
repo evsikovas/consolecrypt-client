@@ -60,6 +60,7 @@ class ConsoleCryptApp extends ConsumerWidget {
           child: ColoredBox(
             color: AppPlatform.isMobile ? GlassTokens.of(context).ambient.base : Colors.transparent,
             child: UpdateNoticeScope(
+              navigatorKey: rootNavigatorKey,
               child: EnrollmentAutomationScope(
                 child: DesignGalleryShortcut(child: AppCommandsScope(child: child ?? const SizedBox.shrink())),
               ),
