@@ -366,29 +366,36 @@ fn cert_source(
         (Some(_), Some(_)) => Err(ImportError::AmbiguousAuthentication),
         (Some(data), None) => {
             let decoded = decode_secret(data)?;
-            let value = decoded.expose_secret();
-            let certificates = pem::parse_many(value).map_err(|_| ImportError::EmbeddedData)?;
-            if certificates.is_empty()
-                || certificates.len() > 64
-                || certificates.iter().any(|p| p.tag() != "CERTIFICATE")
-            {
-                return Err(ImportError::EmbeddedData);
-            }
-            let mut roots = rustls::RootCertStore::empty();
-            for certificate in &certificates {
-                roots
-                    .add(rustls::pki_types::CertificateDer::from(
-                        certificate.contents(),
-                    ))
-                    .map_err(|_| ImportError::EmbeddedData)?;
-            }
-            // Keep only parsed certificates. Unrelated plaintext surrounding
-            // the PEM blocks must not migrate into an inventory object.
-            Ok(CertificateSource::Pem(pem::encode_many(&certificates)))
+            Ok(CertificateSource::Pem(canonical_certificates(
+                decoded.expose_secret(),
+            )?))
         }
         (None, Some(file)) => Ok(CertificateSource::File(file_reference(file, source)?)),
         (None, None) => Err(ImportError::Authentication),
     }
+}
+
+pub(crate) fn canonical_certificates(value: &str) -> Result<String, ImportError> {
+    if value.len() > MAX_CONFIG_BYTES {
+        return Err(ImportError::EmbeddedData);
+    }
+    let certificates = pem::parse_many(value).map_err(|_| ImportError::EmbeddedData)?;
+    if certificates.is_empty()
+        || certificates.len() > 64
+        || certificates.iter().any(|p| p.tag() != "CERTIFICATE")
+    {
+        return Err(ImportError::EmbeddedData);
+    }
+    let mut roots = rustls::RootCertStore::empty();
+    for certificate in &certificates {
+        roots
+            .add(rustls::pki_types::CertificateDer::from(
+                certificate.contents(),
+            ))
+            .map_err(|_| ImportError::EmbeddedData)?;
+    }
+    // Unrelated plaintext surrounding PEM blocks never enters inventory.
+    Ok(pem::encode_many(&certificates))
 }
 
 fn ca_source(
