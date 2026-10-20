@@ -21,6 +21,7 @@ import 'package:consolecrypt/kubernetes/kube_forward_service.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_targets_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_targets_service.dart';
 import 'package:consolecrypt/kubernetes/kube_gitops_graph.dart';
+import 'package:consolecrypt/kubernetes/kube_gitops_timeline.dart';
 import 'package:consolecrypt/kubernetes/kube_insights_service.dart';
 import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
 import 'package:consolecrypt/kubernetes/kube_mutation_service.dart';
@@ -30,6 +31,7 @@ import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_summary.dart';
 import 'package:consolecrypt/kubernetes/kube_rollout_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_rollout_service.dart';
+import 'package:consolecrypt/kubernetes/kube_schema_fields.dart';
 import 'package:consolecrypt/kubernetes/kube_secret_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
 import 'package:consolecrypt/kubernetes/kube_terminal_panel.dart';
@@ -139,6 +141,244 @@ Future<ProviderContainer> _pump(
 }
 
 void main() {
+  testWidgets('cold connection completes discovery before resolving namespaces', (tester) async {
+    final service = _ColdDiscoveryService();
+    await _pump(tester, service);
+    expect(service.namespaceCalls, 0);
+    expect(service.requests, isEmpty);
+    service.discovery.complete();
+    await settle(tester);
+    expect(service.namespaceCalls, 1);
+    expect(service.requests, isNotEmpty);
+    await tester.tap(find.byKey(const ValueKey('kube-namespace')));
+    await settle(tester);
+    expect(find.text('kube-system'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('locking during discovery prevents subsequent namespace requests', (tester) async {
+    final service = _ColdDiscoveryService();
+    final container = await _pump(tester, service);
+    container.read(_scope.notifier).lock();
+    await settle(tester);
+    service.discovery.complete();
+    await settle(tester);
+    expect(service.namespaceCalls, 0);
+    expect(service.requests, isEmpty);
+    expect(service.disconnected, contains(_session.id));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('mobile navigation opens a full-screen resource on the selected logs tab', (tester) async {
+    final service = _LogService();
+    final container = await _pump(tester, service, size: const Size(412, 915), textScale: 1.3);
+    final nav = tester.widget<NavigationBar>(find.byKey(const ValueKey('kube-mobile-navigation')));
+    expect((nav.destinations.last as NavigationDestination).enabled, isFalse);
+    nav.onDestinationSelected!(3);
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('kube-resource-demo-pod')));
+    await settle(tester);
+    final details = find.byKey(const ValueKey('kube-resource-details'));
+    expect(ModalRoute.of(tester.element(details)), isA<MaterialPageRoute<void>>());
+    expect(tester.getSize(details).width, 412);
+    expect(find.byKey(const ValueKey('kube-log-lines')), findsOneWidget);
+    expect(service.logsCalls, isNotEmpty);
+    container.read(_scope.notifier).lock();
+    await settle(tester);
+    expect(details, findsNothing);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+  testWidgets('mobile Pod swipe opens logs or shell review without opening a terminal', (tester) async {
+    final service = _LogService()
+      ..session = const KubeSession(
+        id: 'opaque-native-session',
+        contextId: 'context',
+        serverVersion: 'v1',
+        production: false,
+      );
+    final terminal = _PodTerminalService();
+    await _pump(tester, service, size: const Size(412, 915), terminalService: terminal);
+    final swipe = find.byKey(const ValueKey('kube-resource-swipe-demo-pod'));
+    await tester.drag(swipe, const Offset(320, 0));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('kube-log-lines')), findsOneWidget);
+    expect(terminal.targets, isEmpty);
+    await tester.tap(find.text('Close').last);
+    await settle(tester);
+    await tester.drag(swipe, const Offset(-320, 0));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('kube-terminal-dialog')), findsOneWidget);
+    expect(terminal.targets, isEmpty);
+    await tester.tap(find.text('Cancel').last);
+    await settle(tester);
+    expect(terminal.targets, isEmpty);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+  testWidgets('mobile workload restart swipe requires typed approval and fresh resource version', (tester) async {
+    final service = _WorkloadSwipeService();
+    await _pump(tester, service, size: const Size(412, 915));
+    await tester.drag(find.byKey(const ValueKey('kube-resource-swipe-demo-pod')), const Offset(-320, 0));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('kube-confirm-name')), findsOneWidget);
+    expect(service.restarted, isEmpty);
+    expect(isEnabled(tester, 'kube-confirm-action'), isFalse);
+    await tester.enterText(find.byKey(const ValueKey('kube-confirm-name')), 'demo-pod');
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('kube-confirm-action')));
+    await settle(tester);
+    expect(service.restarted, [('demo-pod', 'latest-version')]);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+  testWidgets('tablet details retain the wide protected dialog over the resource table', (tester) async {
+    await _pump(tester, _Service(), size: const Size(1024, 900));
+    await tester.tap(find.byKey(const ValueKey('kube-resource-demo-pod')));
+    await settle(tester);
+    final details = find.byKey(const ValueKey('kube-resource-details'));
+    expect(ModalRoute.of(tester.element(details)), isA<PopupRoute<bool>>());
+    expect(tester.getSize(details).width, lessThan(1024));
+    expect(tester.getSize(details).width, greaterThan(700));
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+  testWidgets('mobile Flux swipe opens explicit review and never submits by itself', (tester) async {
+    final service = _InsightsService()
+      ..session = const KubeSession(
+        id: 'opaque-native-session',
+        contextId: 'context',
+        serverVersion: 'v1',
+        production: false,
+      )
+      ..access = const KubeWriteAccess(production: false);
+    await _pump(tester, service, size: const Size(412, 915));
+    tester.widget<NavigationBar>(find.byKey(const ValueKey('kube-mobile-navigation'))).onDestinationSelected!(4);
+    await settle(tester);
+    final swipe = find.byType(Dismissible);
+    expect(swipe, findsOneWidget);
+    await tester.drag(swipe, const Offset(320, 0));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('kube-gitops-confirm-name')), findsOneWidget);
+    expect(service.fluxActions, isEmpty);
+    expect(tester.widget<GlassButton>(find.byKey(const ValueKey('kube-gitops-confirm-action'))).onPressed, isNull);
+    await tester.tap(find.text('Cancel').last);
+    await settle(tester);
+    expect(swipe, findsOneWidget);
+    expect(service.fluxActions, isEmpty);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+  testWidgets('mobile Flux details keep native actions in a lower toolbar', (tester) async {
+    final service = _FluxDetailService();
+    await _pump(tester, service, size: const Size(412, 915), language: 'ru', textScale: 1.5);
+    tester.widget<NavigationBar>(find.byKey(const ValueKey('kube-mobile-navigation'))).onDestinationSelected!(4);
+    await settle(tester);
+    await tester.ensureVisible(find.text('demo-flux'));
+    await tester.tap(find.text('demo-flux'));
+    await settle(tester);
+    final bottom = find.byKey(const ValueKey('kube-gitops-bottom-actions'));
+    expect(bottom, findsOneWidget);
+    expect(
+      tester.getTopLeft(bottom).dy,
+      greaterThan(tester.getTopLeft(find.byKey(const ValueKey('kube-yaml-tab'))).dy),
+    );
+    expect(tester.widget<GlassButton>(find.byKey(const ValueKey('kube-gitops-detail-reconcile'))).onPressed, isNull);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+  testWidgets('dependency view is a layered graph on a wide window', (tester) async {
+    await _pump(tester, _InsightsService());
+    await tester.tap(find.byKey(const ValueKey('kube-view-gitops')));
+    await settle(tester);
+    await tester.ensureVisible(find.byKey(const ValueKey('kube-gitops-dependencies')));
+    await tester.tap(find.byKey(const ValueKey('kube-gitops-dependencies')));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('kube-dependency-list')), findsOneWidget);
+    expect(tester.widget<KubeGitOpsGraph>(find.byType(KubeGitOpsGraph)).dependencyLayout, isTrue);
+    expect(find.byKey(const ValueKey('kube-gitops-flow')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('schema field insertion preserves surrounding source and stale suggestions vanish on lock', (
+    tester,
+  ) async {
+    final service = _ManifestService()
+      ..schema = const {
+        'schema': {
+          'properties': {
+            'replicas': {'type': 'integer'},
+          },
+        },
+      };
+    final container = await _pump(tester, service);
+    final editor = TextEditingController(text: 'spec:\n  \n')..selection = const TextSelection.collapsed(offset: 8);
+    addTearDown(editor.dispose);
+    var edits = 0;
+    unawaited(
+      showKubeSchemaFields(
+        tester.element(find.byType(KubernetesScreen)),
+        session: service.session,
+        kind: _pods,
+        service: service,
+        editor: editor,
+        onChanged: () => edits++,
+      ),
+    );
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('kube-schema-insert-replicas')));
+    await settle(tester);
+    expect(editor.text, 'spec:\n  replicas: \n');
+    expect(edits, 1);
+    expect(service.applies, isEmpty);
+    unawaited(
+      showKubeSchemaFields(
+        tester.element(find.byType(KubernetesScreen)),
+        session: service.session,
+        kind: _pods,
+        service: service,
+        editor: editor,
+        onChanged: () => edits++,
+      ),
+    );
+    await settle(tester);
+    container.read(_scope.notifier).lock();
+    await settle(tester);
+    expect(find.byKey(const ValueKey('kube-schema-fields')), findsNothing);
+    expect(edits, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('overview timeline reads bounded UID-scoped events only after expansion', (tester) async {
+    final service = _TimelineService();
+    final container = await _pump(tester, service);
+    final resources = (await service.insights(service.session.id)).resources;
+    unawaited(
+      showAppDialog<void>(
+        tester.element(find.byType(KubernetesScreen)),
+        secure: true,
+        builder: (_) => GlassDialog(
+          title: 'Timeline',
+          content: SizedBox(
+            height: 450,
+            child: KubeGitOpsTimeline(session: service.session, resources: resources, service: service, onOpen: (_) {}),
+          ),
+        ),
+      ),
+    );
+    await settle(tester);
+    expect(service.eventReads, isEmpty);
+    await tester.tap(find.byKey(const ValueKey('kube-gitops-timeline')));
+    await settle(tester);
+    expect(service.eventReads, [('demo-flux', 'demo-flux')]);
+    expect(find.textContaining('ReconciliationSucceeded'), findsOneWidget);
+    expect(find.textContaining('main@sha1:event-revision'), findsOneWidget);
+    container.read(_scope.notifier).lock();
+    await settle(tester);
+    expect(find.textContaining('main@sha1:event-revision'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('masked YAML cannot be edited even when production writes are unlocked', (tester) async {
     final service = _MaskedService()..access = const KubeWriteAccess(production: false);
     await _pump(tester, service);
@@ -273,7 +513,7 @@ void main() {
   });
 
   testWidgets('bulk delete requires explicit context name and exact per-row preconditions', (tester) async {
-    final service = _MutationService();
+    final service = _MutationService()..access = const KubeWriteAccess(production: false);
     await _pump(tester, service);
     const kind = KubeResourceKind(
       group: '',
@@ -307,7 +547,7 @@ void main() {
     expect(isEnabled(tester, 'kube-bulk-run'), isFalse);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('bulk operations remain disabled in production even with an open write window', (tester) async {
+  testWidgets('bulk remains disabled in production even with an open write window', (tester) async {
     final service = _MutationService()
       ..access = KubeWriteAccess(production: true, expiresAt: DateTime.now().add(const Duration(minutes: 10)));
     await _pump(tester, service);
@@ -338,7 +578,7 @@ void main() {
     expect(isEnabled(tester, 'kube-bulk-run'), isFalse);
     expect(service.deleted, isEmpty);
     expect(tester.takeException(), isNull);
-  });
+  }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.windows}));
   testWidgets('Service forwarding chooses a Pod and mapped target port before starting', (tester) async {
     final service = _ForwardTargetService()
       ..session = const KubeSession(id: 'session', contextId: 'context', serverVersion: 'v1', production: false);
@@ -516,6 +756,78 @@ void main() {
     expect(container.read(kubeActiveNavigationProvider)?.resources.single.name, 'demo-pod');
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('graph keeps API group identities distinct and filters observed namespace and labels', (tester) async {
+    await _pump(tester, _Service(), size: const Size(412, 915));
+    const a = KubeObjectIdentity(group: 'one.example', kind: 'Widget', namespace: 'first', name: 'same');
+    const b = KubeObjectIdentity(group: 'two.example', kind: 'Widget', namespace: 'second', name: 'same');
+    KubeInsightResource resource(KubeObjectIdentity object, String label, String condition) => KubeInsightResource(
+      api: KubeResourceKind(
+        group: object.group,
+        version: 'v1',
+        resource: 'widgets',
+        kind: object.kind,
+        namespaced: true,
+      ),
+      resource: KubeResourceRow(
+        name: object.name,
+        namespace: object.namespace,
+        uid: object.group,
+        resourceVersion: '1',
+        object: {
+          'metadata': {
+            'labels': {'app': label},
+          },
+          'status': {
+            'conditions': [
+              {'type': condition, 'status': 'True'},
+            ],
+          },
+        },
+      ),
+    );
+    final opened = <String>[];
+    unawaited(
+      showAppDialog<void>(
+        tester.element(find.byType(KubernetesScreen)),
+        secure: true,
+        builder: (_) => GlassDialog(
+          title: 'Graph',
+          content: SizedBox(
+            height: 500,
+            child: KubeGitOpsGraph(
+              flow: const KubeGitOpsFlow(
+                nodes: [
+                  KubeFlowNode(object: a, ready: false),
+                  KubeFlowNode(object: b, ready: false),
+                ],
+              ),
+              resources: [resource(a, 'web', 'Reconciling'), resource(b, 'worker', 'Stalled')],
+              canOpen: (_) => true,
+              open: (object) => opened.add(object.group),
+            ),
+          ),
+        ),
+      ),
+    );
+    await settle(tester);
+    final first = find.byKey(const ValueKey('kube-gitops-tree-one.example/Widget/first/same'));
+    final second = find.byKey(const ValueKey('kube-gitops-tree-two.example/Widget/second/same'));
+    expect(first, findsOneWidget);
+    expect(second, findsOneWidget);
+    expect(find.descendant(of: first, matching: find.byIcon(Icons.sync)), findsOneWidget);
+    await tester.tap(second);
+    await settle(tester);
+    expect(opened, ['two.example']);
+    await tester.ensureVisible(find.byKey(const ValueKey('kube-graph-namespace')));
+    await tester.tap(find.byKey(const ValueKey('kube-graph-namespace')));
+    await settle(tester);
+    await tester.tap(find.text('first').last);
+    await settle(tester);
+    expect(first, findsOneWidget);
+    expect(second, findsNothing);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('GitOps graph renders cycles and provides a keyboard-accessible list', (tester) async {
     final service = _Service();
     await _pump(tester, service, size: const Size(412, 915), language: 'ru');
@@ -556,7 +868,7 @@ void main() {
     expect(find.byKey(const ValueKey('kube-gitops-flow')), findsOneWidget);
     await tester.tap(find.text('Список'));
     await settle(tester);
-    await tester.tap(find.text(a.label).first);
+    await tester.tap(find.byKey(const ValueKey('kube-gitops-tree-GitRepository/flux-system/source')));
     await settle(tester);
     expect(opened, isNotEmpty);
     expect(tester.takeException(), isNull);
@@ -804,7 +1116,7 @@ void main() {
       reason: 'Maintenance window',
     ));
     expect(tester.takeException(), isNull);
-  });
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   testWidgets('live logs are bounded, pause upstream and are revoked on lock', (tester) async {
     final service = _LogService();
     final container = await _pump(tester, service, size: const Size(412, 915), language: 'ru', textScale: 1.3);
@@ -1007,7 +1319,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('pagination merges identities before watching and list stays virtual', (tester) async {
+  testWidgets('pagination automatically merges the snapshot before watching and list stays virtual', (tester) async {
     final service = _Service()
       ..pages.addAll([
         _page([_row('demo-pod')], next: 'next-page'),
@@ -1017,17 +1329,115 @@ void main() {
         ]),
       ]);
     await _pump(tester, service);
-    expect(service.watches, isEmpty);
-    await tester.tap(find.byKey(const ValueKey('kube-load-more')));
-    await settle(tester);
     expect(service.requests.last.continueToken, 'next-page');
     expect(service.watches, hasLength(1));
+    expect(service.watchVersions, ['10']);
     expect(
       find.text('10,000 resources loaded'),
       findsNothing,
     ); // Localized message is intentionally not locale-formatted.
     expect(find.text('10000 resources loaded'), findsOneWidget);
     expect(find.byType(ListTile).evaluate().length, lessThan(50));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('pagination shows the first page while the next page waits and prevents duplicate requests', (
+    tester,
+  ) async {
+    final pending = Completer<KubeResourcePage>();
+    final service = _Service()
+      ..pages.add(_page([_row('first-pod')], next: 'next-page'))
+      ..continuationPending = pending;
+    await _pump(tester, service);
+    expect(find.text('first-pod'), findsOneWidget);
+    expect(service.requests, hasLength(2));
+    expect(service.watches, isEmpty);
+    expect(isEnabled(tester, 'kube-load-more'), isFalse);
+    await settle(tester);
+    expect(service.requests, hasLength(2));
+    pending.complete(_page([_row('second-pod')]));
+    await settle(tester);
+    expect(find.text('second-pod'), findsOneWidget);
+    expect(service.watchVersions, ['10']);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final cancellation in ['lock', 'background', 'view']) {
+    testWidgets('pagination drops pending pages after $cancellation', (tester) async {
+      final pending = Completer<KubeResourcePage>();
+      final service = _InsightsService()
+        ..pages.add(_page([_row('first-pod')], next: 'next-page'))
+        ..continuationPending = pending;
+      final container = await _pump(tester, service);
+      if (cancellation == 'lock') {
+        container.read(_scope.notifier).lock();
+      } else if (cancellation == 'background') {
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        addTearDown(() => tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed));
+      } else {
+        await tester.tap(find.byKey(const ValueKey('kube-view-gitops')));
+      }
+      await settle(tester);
+      pending.complete(_page([_row('stale-pod')], next: 'another-page'));
+      await settle(tester);
+      expect(service.requests, hasLength(2));
+      expect(service.watches, isEmpty);
+      expect(find.text('stale-pod'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('pagination errors stop automatic retries while preserving the first page', (tester) async {
+    final pending = Completer<KubeResourcePage>();
+    final service = _Service()
+      ..pages.add(_page([_row('first-pod')], next: 'next-page'))
+      ..continuationPending = pending;
+    await _pump(tester, service);
+    pending.completeError(StateError('private-server-error'));
+    await settle(tester);
+    expect(service.requests, hasLength(2));
+    expect(service.watches, isEmpty);
+    expect(find.text('first-pod'), findsOneWidget);
+    expect(find.textContaining('private-server-error'), findsNothing);
+    expect(isEnabled(tester, 'kube-load-more'), isTrue);
+    await settle(tester);
+    expect(service.requests, hasLength(2));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('pagination rejects a changing snapshot version instead of merging or watching it', (tester) async {
+    final service = _Service()
+      ..pages.addAll([
+        _page([_row('first-pod')], next: 'next-page'),
+        KubeResourcePage(items: [_row('inconsistent-pod')], resourceVersion: '20'),
+      ]);
+    await _pump(tester, service);
+    expect(service.requests, hasLength(2));
+    expect(service.watches, isEmpty);
+    expect(find.text('first-pod'), findsOneWidget);
+    expect(find.text('inconsistent-pod'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('pagination stops repeated tokens without looping', (tester) async {
+    final service = _Service()
+      ..pages.addAll([
+        _page([_row('first-pod')], next: 'repeated'),
+        _page([_row('second-pod')], next: 'repeated'),
+      ]);
+    await _pump(tester, service);
+    expect(service.requests, hasLength(2));
+    expect(service.watches, isEmpty);
+    expect(find.text('second-pod'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('pagination bounds empty unique pages as well as loaded resource count', (tester) async {
+    final service = _Service()..pages.addAll(List.generate(110, (i) => _page(const [], next: 'page-$i')));
+    await _pump(tester, service);
+    expect(service.requests, hasLength(100));
+    expect(service.watches, isEmpty);
+    expect(find.byKey(const ValueKey('kube-load-more')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -1115,6 +1525,29 @@ void main() {
   });
 }
 
+/// Mirrors native ResourceApi: namespace lookup resolves the discovery registry,
+/// which is empty until the asynchronous discovery request has completed.
+class _ColdDiscoveryService extends _Service {
+  final discovery = Completer<void>();
+  bool _discovered = false;
+  int namespaceCalls = 0;
+
+  @override
+  Future<List<KubeResourceKind>> discover(String sessionId) async {
+    await discovery.future;
+    final kinds = await super.discover(sessionId);
+    _discovered = true;
+    return kinds;
+  }
+
+  @override
+  Future<List<String>> namespaces(String sessionId) async {
+    namespaceCalls++;
+    if (!_discovered) throw StateError('UnknownResource: namespace discovery is incomplete');
+    return super.namespaces(sessionId);
+  }
+}
+
 class _Service implements KubeService, KubeBrowserService, KubeWatchService {
   final connected = <String>[];
   final disconnected = <String>[];
@@ -1122,8 +1555,10 @@ class _Service implements KubeService, KubeBrowserService, KubeWatchService {
   final logsCalls = <({String? container, bool previous})>[];
   final pages = <KubeResourcePage>[];
   final watches = <StreamController<KubeWatchEvent>>[];
+  final watchVersions = <String>[];
   Completer<KubeSession>? connectPending;
   Completer<KubeResourcePage>? listPending;
+  Completer<KubeResourcePage>? continuationPending;
   StateError? connectError, listError;
   int discoverCalls = 0;
   KubeSession session = _session;
@@ -1162,6 +1597,7 @@ class _Service implements KubeService, KubeBrowserService, KubeWatchService {
   }) async {
     requests.add((kind: kind, namespace: namespace, continueToken: continueToken));
     if (listError != null) throw listError!;
+    if (continueToken != null && continuationPending != null) return continuationPending!.future;
     return listPending?.future ?? (pages.isNotEmpty ? pages.removeAt(0) : _page([_row('demo-pod')]));
   }
 
@@ -1195,6 +1631,7 @@ class _Service implements KubeService, KubeBrowserService, KubeWatchService {
     String? labelSelector,
     required String resourceVersion,
   }) {
+    watchVersions.add(resourceVersion);
     final controller = StreamController<KubeWatchEvent>();
     watches.add(controller);
     return controller.stream;
@@ -1537,10 +1974,11 @@ class _ManifestService extends _MutationService implements KubeManifestService {
   }
   final revealed = <SecretText>[];
   final creates = <({bool dryRun, SecretText manifest})>[];
-  @override
-  Future<KubeJson> resourceSchema(String sessionId, KubeResourceKind kind) async => {
+  KubeJson schema = const {
     'schema': {'type': 'object'},
   };
+  @override
+  Future<KubeJson> resourceSchema(String sessionId, KubeResourceKind kind) async => schema;
   @override
   Future<KubeJson> compareManifest(String sessionId, KubeResourceRef resource, SecretText manifest) async => {
     'changes': <KubeJson>[],
@@ -1653,4 +2091,96 @@ class _MaskedService extends _MutationService {
     yaml: 'apiVersion: v1\nkind: Pod\nspec:\n  env: "[redacted]"\n',
     containers: [],
   );
+}
+
+class _TimelineService extends _InsightsService implements KubeOperationsService {
+  final eventReads = <(String, String)>[];
+  @override
+  Future<List<KubeResourceRow>> objectEvents(String sessionId, KubeResourceRef resource, String uid) async {
+    eventReads.add((resource.name, uid));
+    return const [
+      KubeResourceRow(
+        name: 'reconcile-event',
+        uid: 'event-uid',
+        resourceVersion: '3',
+        object: {
+          'lastTimestamp': '2026-10-20T10:00:00Z',
+          'reason': 'ReconciliationSucceeded',
+          'type': 'Normal',
+          'metadata': {
+            'annotations': {'reconcile.fluxcd.io/revision': 'main@sha1:event-revision'},
+          },
+        },
+      ),
+    ];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FluxDetailService extends _InsightsService {
+  @override
+  Future<KubeResourceDetail> getResource(String sessionId, KubeResourceRef resource) async => KubeResourceDetail(
+    object: {
+      'apiVersion': resource.api.apiVersion,
+      'kind': resource.api.kind,
+      'metadata': {
+        'name': resource.name,
+        'namespace': resource.namespace,
+        'uid': resource.name,
+        'resourceVersion': '11',
+      },
+      'spec': {'interval': '5m'},
+      'status': {
+        'conditions': [
+          {'type': 'Ready', 'status': 'True'},
+        ],
+      },
+    },
+    yaml: 'kind: Kustomization',
+    containers: const [],
+  );
+}
+
+class _WorkloadSwipeService extends _OperationsService {
+  _WorkloadSwipeService() {
+    session = const KubeSession(
+      id: 'opaque-native-session',
+      contextId: 'context',
+      serverVersion: 'v1',
+      production: false,
+    );
+  }
+  final restarted = <(String, String)>[];
+  @override
+  Future<List<KubeResourceKind>> discover(String sessionId) async => const [
+    KubeResourceKind(
+      group: 'apps',
+      version: 'v1',
+      resource: 'deployments',
+      kind: 'Deployment',
+      namespaced: true,
+      verbs: ['get', 'list', 'watch', 'patch'],
+    ),
+  ];
+  @override
+  Future<KubeResourceDetail> getResource(String sessionId, KubeResourceRef resource) async => KubeResourceDetail(
+    object: {
+      'apiVersion': resource.api.apiVersion,
+      'kind': resource.api.kind,
+      'metadata': {
+        'name': resource.name,
+        'namespace': resource.namespace,
+        'uid': resource.name,
+        'resourceVersion': 'latest-version',
+      },
+      'spec': {'replicas': 1},
+    },
+    yaml: 'kind: Deployment',
+    containers: const [],
+  );
+  @override
+  Future<void> restart(String sessionId, KubeResourceRef resource, String resourceVersion) async =>
+      restarted.add((resource.name, resourceVersion));
 }

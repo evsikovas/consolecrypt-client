@@ -11,6 +11,39 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+Future<bool> reviewKubeRestart(
+  BuildContext context, {
+  required KubeSession session,
+  required KubeResourceRef resource,
+  required KubeResourceDetail detail,
+  required KubeOperationsService service,
+}) async {
+  final container = ProviderScope.containerOf(context, listen: false),
+      scope = ProviderScope.containerOf(context, listen: false).read(kubeScopeProvider);
+  final version = (detail.object['metadata'] as Map?)?['resourceVersion'] as String? ?? '';
+  bool allowed() =>
+      context.mounted &&
+      scope.unlocked &&
+      identical(scope, container.read(kubeScopeProvider)) &&
+      (container.read(kubeWriteAccessProvider(session)).value?.canWrite ?? false);
+  if (!allowed() ||
+      version.isEmpty ||
+      resource.api.group != 'apps' ||
+      !const {'deployments', 'statefulsets', 'daemonsets'}.contains(resource.api.resource)) {
+    return false;
+  }
+  final approved = await showTypedKubeConfirmation(
+    context,
+    expected: resource.name,
+    title: context.l10n.kubeRestart,
+    message: context.l10n.kubeMutationConfirmHelp,
+    confirmLabel: context.l10n.kubeRestart,
+  );
+  if (!approved || !allowed()) return false;
+  await service.restart(session.id, resource, version);
+  return allowed();
+}
+
 class KubeResourceOperations extends ConsumerStatefulWidget {
   const KubeResourceOperations({
     required this.session,
@@ -39,6 +72,27 @@ class _KubeResourceOperationsState extends ConsumerState<KubeResourceOperations>
   Future<void> _action(String action, String label) async {
     if (!_canWrite || _busy || _version.isEmpty) return;
     final resource = widget.resource;
+    if (action == 'restart') {
+      setState(() {
+        _busy = true;
+        _failed = false;
+      });
+      try {
+        final changed = await reviewKubeRestart(
+          context,
+          session: widget.session,
+          resource: resource,
+          detail: widget.detail,
+          service: widget.service,
+        );
+        if (_current && changed) widget.onChanged();
+      } catch (_) {
+        if (_current) setState(() => _failed = true);
+      } finally {
+        if (_current) setState(() => _busy = false);
+      }
+      return;
+    }
     if (action == 'scale' || action == 'debug' || action == 'drain') {
       final changed = await showAppDialog<bool>(
         context,
@@ -68,11 +122,7 @@ class _KubeResourceOperationsState extends ConsumerState<KubeResourceOperations>
       _failed = false;
     });
     try {
-      if (action == 'restart') {
-        await widget.service.restart(widget.session.id, resource, _version);
-      } else {
-        await widget.service.cordon(widget.session.id, resource.name, _version, action == 'cordon');
-      }
+      await widget.service.cordon(widget.session.id, resource.name, _version, action == 'cordon');
       if (_current) widget.onChanged();
     } catch (_) {
       if (_current) setState(() => _failed = true);

@@ -5,6 +5,40 @@ use crate::state::{from_json, to_json, with_core};
 use cc_app_core::kubernetes_import::KubeImportChoice;
 use zeroize::Zeroizing;
 
+pub async fn kube_insights_watch_start(
+    session_id: String,
+    namespace: Option<String>,
+) -> Result<String, BridgeError> {
+    with_core(move |core| async move {
+        to_json(
+            &core
+                .kube_insights_watch_start(session_id, namespace)
+                .await?,
+        )
+    })
+    .await
+}
+
+pub async fn kube_insights_watch_poll(
+    session_id: String,
+    watch_id: String,
+) -> Result<String, BridgeError> {
+    with_core(move |core| async move {
+        to_json(&core.kube_insights_watch_poll(session_id, watch_id).await?)
+    })
+    .await
+}
+
+pub async fn kube_insights_watch_stop(
+    session_id: String,
+    watch_id: String,
+) -> Result<(), BridgeError> {
+    with_core(
+        move |core| async move { Ok(core.kube_insights_watch_stop(session_id, watch_id).await?) },
+    )
+    .await
+}
+
 pub async fn kube_rollout_history(
     session_id: String,
     reference_json: String,
@@ -194,6 +228,14 @@ pub async fn kube_import_commit(
 
 pub async fn kube_import_discard(ticket: String) -> Result<(), BridgeError> {
     with_core(move |core| async move { Ok(core.kube_import_discard(ticket).await?) }).await
+}
+
+pub async fn kube_import_inspect_exec(ticket: String, index: u32) -> Result<Vec<u8>, BridgeError> {
+    with_core(move |core| async move {
+        serde_json::to_vec(&core.kube_import_inspect_exec(ticket, index).await?)
+            .map_err(|_| BridgeError::internal("cannot encode import inspection"))
+    })
+    .await
 }
 
 pub async fn kube_context_delete(id: String) -> Result<(), BridgeError> {
@@ -389,6 +431,20 @@ pub async fn kube_helm_release(
         to_json(
             &core
                 .kube_helm_release(session_id, namespace, secret_name)
+                .await?,
+        )
+    })
+    .await
+}
+pub async fn kube_helm_compare_live(
+    session_id: String,
+    namespace: String,
+    secret_name: String,
+) -> Result<String, BridgeError> {
+    with_core(move |core| async move {
+        to_json(
+            &core
+                .kube_helm_compare_live(session_id, namespace, secret_name)
                 .await?,
         )
     })
@@ -665,6 +721,17 @@ pub async fn kube_create_resource(
 pub async fn kube_flux_discover(manual_path: Option<String>) -> Result<String, BridgeError> {
     with_core(move |core| async move { to_json(&core.kube_flux_discover(manual_path).await?) })
         .await
+}
+pub async fn kube_kubectl_discover() -> Result<String, BridgeError> {
+    with_core(move |core| async move { to_json(&core.kube_kubectl_discover().await?) }).await
+}
+pub async fn kube_kubectl_probe(path: String) -> Result<String, BridgeError> {
+    with_core(move |core| async move { to_json(&core.kube_kubectl_probe(path).await?) }).await
+}
+pub async fn kube_kubectl_review(method: String) -> Result<String, BridgeError> {
+    let method = serde_json::from_value(serde_json::Value::String(method))
+        .map_err(|_| BridgeError::invalid("method", "invalid_method"))?;
+    with_core(move |core| async move { to_json(&core.kube_kubectl_review(method).await?) }).await
 }
 pub async fn kube_flux_probe(path: String) -> Result<String, BridgeError> {
     with_core(move |core| async move { to_json(&core.kube_flux_probe(path).await?) }).await

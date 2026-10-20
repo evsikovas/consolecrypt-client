@@ -597,6 +597,31 @@ async fn read_secret(unlocked: &Unlocked, id: ObjectId) -> AppResult<SecretStrin
     ))
 }
 
+/// Finder-launched applications may lack Homebrew in PATH. Resolve these
+/// standard installation locations without executing login-shell startup
+/// files. This complete value is still displayed and hash-bound in consent.
+pub(crate) fn default_exec_path() -> String {
+    let inherited = std::env::var("PATH").unwrap_or_default();
+    #[cfg(target_os = "macos")]
+    {
+        let mut paths: Vec<_> = std::env::split_paths(&inherited).collect();
+        for path in ["/opt/homebrew/bin", "/usr/local/bin"] {
+            let path = std::path::PathBuf::from(path);
+            if !paths.contains(&path) {
+                paths.push(path);
+            }
+        }
+        std::env::join_paths(paths)
+            .ok()
+            .and_then(|value| value.into_string().ok())
+            .unwrap_or(inherited)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        inherited
+    }
+}
+
 async fn exec_request(
     unlocked: &Unlocked,
     context: &KubeContext,
@@ -653,6 +678,7 @@ async fn exec_request(
             environment.insert(name.to_string(), SecretString::from(value));
         }
     }
+    environment.insert("PATH".into(), SecretString::from(default_exec_path()));
     for (name, id) in env {
         // Imported variables are shown in the explicit command review and
         // included in the approval hash, including loader-related variables.

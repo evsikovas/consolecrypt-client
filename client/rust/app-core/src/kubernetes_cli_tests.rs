@@ -240,6 +240,7 @@ fn install_tickets_are_one_use_and_destination_change_does_not_clobber() {
     let runtime = FluxCliRuntime::default();
     let ticket = "fixture-ticket";
     let review = InstallReview {
+        tool: "flux".into(),
         ticket: ticket.into(),
         method: InstallMethod::Homebrew,
         operation: InstallOperation::Install,

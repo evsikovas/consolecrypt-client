@@ -150,6 +150,7 @@ pub(crate) struct LiveSession {
     pub forwards: Arc<crate::kubernetes_forward::ForwardRuntime>,
     pub ai: crate::kubernetes_ai::KubeAiRuntime,
     pub history: Option<crate::kubernetes_history::EventRecorder>,
+    pub insights_watch: crate::kubernetes_insights_watch::InsightsWatchRuntime,
     watches: Mutex<HashMap<String, Arc<StreamHandle<ResourceChange>>>>,
     logs: Mutex<HashMap<String, Arc<StreamHandle<String>>>>,
     _permit: OwnedSemaphorePermit,
@@ -157,6 +158,7 @@ pub(crate) struct LiveSession {
 
 impl Drop for LiveSession {
     fn drop(&mut self) {
+        self.insights_watch.close();
         self.ai.close();
         self.cancel.cancel();
         self.session.close();
@@ -447,6 +449,8 @@ impl AppCore {
                 Arc::new(LiveSession {
                     ai: crate::kubernetes_ai::KubeAiRuntime::default(),
                     history,
+                    insights_watch: crate::kubernetes_insights_watch::InsightsWatchRuntime::default(
+                    ),
                     session,
                     resources,
                     cancel,

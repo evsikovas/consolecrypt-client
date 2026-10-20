@@ -281,7 +281,7 @@ fn mask_manifest(manifest: &str) -> Result<String, ResourceError> {
     Ok(output.join("---\n"))
 }
 
-fn mask_workload_literals(value: &mut Value) {
+pub(crate) fn mask_workload_literals(value: &mut Value) {
     match value {
         Value::Object(values) => {
             for (key, value) in values {

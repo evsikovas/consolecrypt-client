@@ -63,6 +63,52 @@ fn pod(rv: &str) -> Value {
         "spec":{"containers":[{"name":"web","envFrom":[{"secretRef":{"name":"sample"}}]}]},"status":{"phase":"Running"}})
 }
 
+#[tokio::test]
+async fn helm_live_comparison_is_read_only_in_production_masked_and_partial_on_rbac() {
+    let fixture = Fixture::start().await;
+    let session = fixture.session(true);
+    let api = ResourceApi::new(&session);
+    api.discover().await.unwrap();
+    let comparison = api
+        .helm_compare_live("helm-compare", "sh.helm.release.v1.fixture.v4")
+        .await
+        .unwrap();
+    assert_eq!(comparison.revision, 4);
+    assert!(comparison.partial && comparison.masked_fields);
+    assert_eq!(comparison.items.len(), 4);
+    let changed = comparison
+        .items
+        .iter()
+        .find(|item| item.reference.name == "changed")
+        .unwrap();
+    assert_eq!(changed.state, "changed");
+    assert!(changed
+        .diff
+        .changes
+        .iter()
+        .any(|change| change.path == "/spec/containers/0/image"));
+    assert!(comparison.items.iter().any(|item| item.state == "missing"));
+    assert!(comparison
+        .items
+        .iter()
+        .any(|item| item.state == "unavailable"));
+    let output = serde_json::to_string(&comparison).unwrap();
+    assert!(!output.contains("private") && !output.contains("imagePullPolicy"));
+    assert!(fixture
+        .requests
+        .lock()
+        .unwrap()
+        .iter()
+        .all(|request| request.starts_with("GET ")));
+    session.guard().close();
+    assert_eq!(
+        api.helm_compare_live("helm-compare", "sh.helm.release.v1.fixture.v4")
+            .await
+            .unwrap_err(),
+        ResourceError::Closed
+    );
+}
+
 impl Fixture {
     async fn start() -> Self {
         let _ = rustls::crypto::ring::default_provider().install_default();
@@ -170,6 +216,65 @@ impl Fixture {
                     let mut status = "200 OK";
                     let body = if path == "/version" {
                         json!({"gitVersion":"v1.32.0"}).to_string()
+                    } else if path.starts_with("/api/v1/namespaces/helm-compare/secrets/sh.helm.release.v1.") {
+                        use base64::Engine;
+                        let object = |kind: &str, name: &str| {
+                            let mut object = json!({"apiVersion":"v1","kind":kind,
+                                "metadata":{"name":name,"namespace":"helm-compare"}});
+                            if kind == "Secret" {
+                                object["data"] = json!({"token":"private"});
+                            } else {
+                                object["spec"] = json!({"containers":[{"name":"web","image":"web:1",
+                                    "env":[{"name":"PASSWORD","value":"private-env"}]}]});
+                            }
+                            object
+                        };
+                        let mut objects = vec![object("Secret","masked"), object("Pod","changed"),
+                            object("Pod","missing"), object("Pod","blocked")];
+                        objects.push(json!({"apiVersion":"unknown/v1","kind":"Unknown","metadata":{"name":"skip"}}));
+                        let manifest = objects.into_iter().map(|object| serde_saphyr::to_string(&object).unwrap())
+                            .collect::<Vec<_>>().join("---\n");
+                        let release = json!({"name":"fixture","namespace":"helm-compare","version":4,
+                            "info":{"status":"deployed"},"chart":{"metadata":{"name":"fixture","version":"1"}},"manifest":manifest});
+                        let engine = base64::engine::general_purpose::STANDARD;
+                        json!({"apiVersion":"v1","kind":"Secret","type":"helm.sh/release.v1",
+                            "data":{"release":engine.encode(engine.encode(release.to_string()))}}).to_string()
+                    } else if path == "/api/v1/namespaces/helm-compare/secrets/masked" {
+                        json!({"apiVersion":"v1","kind":"Secret","metadata":{"name":"masked","namespace":"helm-compare"},
+                            "data":{"token":"different-private"}}).to_string()
+                    } else if path == "/api/v1/namespaces/helm-compare/pods/changed" {
+                        json!({"apiVersion":"v1","kind":"Pod","metadata":{"name":"changed","namespace":"helm-compare"},
+                            "spec":{"containers":[{"name":"web","image":"web:2","env":[{"name":"PASSWORD","value":"different-private-env"}],
+                                "imagePullPolicy":"Always"}]}}).to_string()
+                    } else if path == "/api/v1/namespaces/helm-compare/pods/missing" {
+                        status = "404 Not Found";
+                        "{}".into()
+                    } else if path == "/api/v1/namespaces/helm-compare/pods/blocked" {
+                        status = "403 Forbidden";
+                        "{}".into()
+                    } else if path.contains("/namespaces/privacy/") {
+                        let helm = path.contains("/helmreleases?");
+                        let object = if helm {
+                            json!({"apiVersion":"helm.toolkit.fluxcd.io/v2","kind":"HelmRelease",
+                                "metadata":{"name":"private","namespace":"privacy","uid":"private-id","resourceVersion":"1"},
+                                "spec":{"values":{"password":"fixture-table-secret"}}})
+                        } else {
+                            json!({"apiVersion":"v1","kind":"Secret",
+                                "metadata":{"name":"private","namespace":"privacy","uid":"private-id","resourceVersion":"1"},
+                                "data":{"credential":"fixture-table-secret"}})
+                        };
+                        if path.contains("includeObject=") {
+                            json!({"apiVersion":"meta.k8s.io/v1","kind":"Table","metadata":{"resourceVersion":"1"},
+                                "columnDefinitions":[{"name":"Credential","type":"string"}],
+                                "rows":[{"cells":["fixture-table-secret"],"object":object}]}).to_string()
+                        } else {
+                            json!({"metadata":{"resourceVersion":"1"},"items":[object]}).to_string()
+                        }
+                    } else if path.contains("/namespaces/oversized/gitrepositories?") {
+                        json!({"metadata":{"resourceVersion":"1"},"items":[{
+                            "apiVersion":"source.toolkit.fluxcd.io/v1","kind":"GitRepository",
+                            "metadata":{"name":"large","namespace":"oversized","uid":"large-id","resourceVersion":"1",
+                                "annotations":{"fixture": "x".repeat(512 * 1024)}}}]}).to_string()
                     } else if path == "/openapi/v3" {
                         json!({"paths":{"api/v1":{"serverRelativeURL":"/openapi/v3/api/v1?hash=fixture"}}}).to_string()
                     } else if path == "/openapi/v3/api/v1?hash=fixture" {
@@ -784,6 +889,70 @@ async fn websocket_exec_round_trip_and_loopback_forward_stop_with_vault_scope() 
         0
     );
     assert!(tokio::net::TcpStream::connect(address).await.is_err());
+}
+
+#[tokio::test]
+async fn overview_watch_has_a_lower_response_budget_than_full_resource_views() {
+    let fixture = Fixture::start().await;
+    let session = fixture.session(false);
+    let api = ResourceApi::new(&session);
+    api.discover().await.unwrap();
+    let kind = api
+        .resolve("source.toolkit.fluxcd.io", "v1", "gitrepositories")
+        .unwrap();
+    let (sender, _receiver) = tokio::sync::mpsc::channel(1);
+    assert_eq!(
+        api.watch_invalidation(
+            &kind,
+            Some("oversized".into()),
+            sender,
+            CancellationToken::new()
+        )
+        .await,
+        Err(ResourceError::TooLarge)
+    );
+    let requests = fixture.requests.lock().unwrap();
+    assert!(requests
+        .iter()
+        .any(|request| request.contains("/namespaces/oversized/") && request.contains("limit=25")));
+    assert!(!requests.iter().any(
+        |request| request.contains("/namespaces/oversized/") && request.contains("watch=true")
+    ));
+}
+
+#[tokio::test]
+async fn masked_resource_tables_do_not_request_or_expose_server_printer_cells() {
+    let fixture = Fixture::start().await;
+    let session = fixture.session(false);
+    let api = ResourceApi::new(&session);
+    api.discover().await.unwrap();
+    for (group, version, resource) in [
+        ("", "v1", "secrets"),
+        ("helm.toolkit.fluxcd.io", "v2", "helmreleases"),
+    ] {
+        let kind = api.resolve(group, version, resource).unwrap();
+        let table = api
+            .table(
+                &kind,
+                &ListQuery {
+                    namespace: Some("privacy".into()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(table.rows.len(), 1);
+        assert!(!serde_json::to_string(&table)
+            .unwrap()
+            .contains("fixture-table-secret"));
+    }
+    assert!(fixture
+        .requests
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|line| line.contains("/namespaces/privacy/"))
+        .all(|line| !line.contains("includeObject=")));
 }
 
 #[tokio::test]

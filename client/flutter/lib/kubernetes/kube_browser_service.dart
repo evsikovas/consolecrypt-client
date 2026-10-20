@@ -1,5 +1,9 @@
 import 'package:consolecrypt/kubernetes/kube_service.dart';
 
+/// UI entry points open the existing scoped detail/review flow, never perform
+/// an operation directly from a table gesture.
+enum KubeResourceOpenAction { logs, shell, restart }
+
 /// Handles are allocated by the native core and expire with the vault session.
 /// No kubeconfig, certificate, token or external command crosses this interface.
 abstract interface class KubeBrowserService {

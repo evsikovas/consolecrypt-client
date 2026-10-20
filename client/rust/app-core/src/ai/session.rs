@@ -833,13 +833,14 @@ impl AiSession {
 
     // ---- conversations -----------------------------------------------------------------
 
-    /// Persisted conversations of the vault.
+    /// General conversations of the vault. Kubernetes transcripts can only be
+    /// resumed through their context-scoped consent and runtime.
     pub(crate) fn stored_conversations(&self) -> Vec<AiConversation> {
         self.working()
             .objects()
             .into_iter()
             .filter_map(|o| match o {
-                VaultObject::AiConversation(c) => Some(c),
+                VaultObject::AiConversation(c) if c.kubernetes_context_id.is_none() => Some(c),
                 _ => None,
             })
             .collect()

@@ -739,20 +739,23 @@ mod tests {
 
     #[test]
     fn references_are_staged_without_opening_files_or_resolving_the_environment() {
+        let directory = tempfile::tempdir().unwrap();
         let text = config("    tokenFile: missing/never-read");
         assert_eq!(
             selected(&text).unwrap_err(),
             ImportError::RelativePathNeedsFile
         );
-        let batch = parse(&text, Some(Path::new("/private/fixture/config"))).unwrap();
+        let batch = parse(&text, Some(&directory.path().join("config"))).unwrap();
         let context = batch.entries.into_iter().next().unwrap().context.unwrap();
         match context.auth {
             ImportedAuth::Token(SecretSource::File(path)) => {
-                assert_eq!(path, PathBuf::from("/private/fixture/missing/never-read"))
+                assert_eq!(path, directory.path().join("missing/never-read"))
             }
             _ => panic!("expected staged file reference"),
         }
-        let context = selected(&config("    tokenFile: /never-existing/config-token")).unwrap();
+        let absolute = directory.path().join("never-existing-token");
+        let path = serde_json::to_string(&absolute).unwrap();
+        let context = selected(&config(&format!("    tokenFile: {path}"))).unwrap();
         assert!(matches!(
             context.auth,
             ImportedAuth::Token(SecretSource::File(_))
@@ -761,9 +764,12 @@ mod tests {
 
     #[test]
     fn exec_is_only_a_staged_descriptor_and_environment_values_are_secret() {
-        let text = config(
-            "    exec:\n      apiVersion: client.authentication.k8s.io/v1\n      interactiveMode: Never\n      command: /never-existing/do-not-run\n      args: [get-token, '--secret=private-argument']\n      env:\n      - name: CLOUD_SECRET\n        value: private-environment\n      provideClusterInfo: true"
-        );
+        let directory = tempfile::tempdir().unwrap();
+        let command = directory.path().join("do-not-run");
+        let encoded_command = serde_json::to_string(&command).unwrap();
+        let text = config(&format!(
+            "    exec:\n      apiVersion: client.authentication.k8s.io/v1\n      interactiveMode: Never\n      command: {encoded_command}\n      args: [get-token, '--secret=private-argument']\n      env:\n      - name: CLOUD_SECRET\n        value: private-environment\n      provideClusterInfo: true"
+        ));
         let batch = parse(&text, None).unwrap();
         let debug = format!("{batch:?}");
         for value in ["private-argument", "private-environment", "do-not-run"] {
@@ -772,7 +778,7 @@ mod tests {
         let context = batch.entries.into_iter().next().unwrap().context.unwrap();
         match context.auth {
             ImportedAuth::Exec(exec) => {
-                assert_eq!(exec.command, "/never-existing/do-not-run");
+                assert_eq!(Path::new(&exec.command), command);
                 assert_eq!(
                     exec.env["CLOUD_SECRET"].expose_secret(),
                     "private-environment"

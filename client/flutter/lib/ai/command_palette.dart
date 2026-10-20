@@ -467,6 +467,31 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
           onSelect: () => openKube(KubeNavigationRequest(scope: kubeScope!, contextId: connection.id)),
         ),
       if (activeKube != null && identical(activeKube.scope, kubeScope) && q.isNotEmpty) ...[
+        for (final resource
+            in activeKube.resources
+                .where(
+                  (resource) =>
+                      resource.api.group.endsWith('.toolkit.fluxcd.io') &&
+                      resource.api.group != 'notification.toolkit.fluxcd.io' &&
+                      matchesKube([resource.name, resource.api.kind, 'flux', l10n.kubeGitOpsReconcile]),
+                )
+                .take(20))
+          _Item(
+            group: _Group.kubernetes,
+            key: ValueKey('palette-flux-reconcile-${resource.id}'),
+            icon: Icons.sync_rounded,
+            title: '${l10n.kubeGitOpsReconcile} · ${resource.namespace ?? activeKube.namespace}/${resource.name}',
+            subtitle: 'Flux · ${resource.api.kind}', // l10n-ignore: API kind and product name.
+            onSelect: () => openKube(
+              KubeNavigationRequest(
+                scope: activeKube.scope,
+                contextId: activeKube.contextId,
+                namespace: resource.namespace,
+                resource: resource,
+                gitOpsAction: 'reconcile',
+              ),
+            ),
+          ),
         for (final namespace in activeKube.namespaces.where((name) => matchesKube([name])).take(20))
           _Item(
             group: _Group.kubernetes,
@@ -508,6 +533,22 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         ),
     ];
     final actions = <_Item>[
+      if (activeKube != null && activeKube.hasFlux && identical(activeKube.scope, kubeScope))
+        for (final action in ['flow', 'suspended'])
+          _Item(
+            key: ValueKey('palette-flux-$action'),
+            group: _Group.actions,
+            icon: action == 'flow' ? Icons.account_tree_outlined : Icons.pause_circle_outline,
+            title: 'Flux · ${action == 'flow' ? l10n.kubeGitOpsFlow : l10n.kubeGitOpsSuspended}', // l10n-ignore: product name plus localized action.
+            onSelect: () => openKube(
+              KubeNavigationRequest(
+                scope: activeKube.scope,
+                contextId: activeKube.contextId,
+                namespace: activeKube.namespace,
+                gitOpsAction: action,
+              ),
+            ),
+          ),
       if (kubernetesEnabled)
         _Item(
           key: const ValueKey('palette-open-kubernetes'),

@@ -258,7 +258,7 @@ mod tests {
                 .certificate_authority_pem
                 .unwrap()
                 .replace("\r\n", "\n"),
-            cert
+            cert.replace("\r\n", "\n")
         );
     }
 

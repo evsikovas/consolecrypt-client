@@ -11,12 +11,14 @@ import 'package:consolecrypt/kubernetes/kube_ai_service.dart';
 import 'package:consolecrypt/kubernetes/kube_auth_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_bulk_dialog.dart';
+import 'package:consolecrypt/kubernetes/kube_connection_status.dart';
 import 'package:consolecrypt/kubernetes/kube_create_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_flux_cli_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_flux_cli_service.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_restore.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_service.dart';
+import 'package:consolecrypt/kubernetes/kube_gitops_monitor.dart';
 import 'package:consolecrypt/kubernetes/kube_helm_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_history_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_history_service.dart';
@@ -30,6 +32,7 @@ import 'package:consolecrypt/kubernetes/kube_organization_service.dart';
 import 'package:consolecrypt/kubernetes/kube_permissions_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_details.dart';
+import 'package:consolecrypt/kubernetes/kube_resource_route.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_table_view.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
 import 'package:consolecrypt/kubernetes/kube_view_preferences_service.dart';
@@ -63,13 +66,18 @@ class KubeBrowser extends ConsumerStatefulWidget {
 
 class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingObserver {
   static const _maxRows = 10000;
+  static const _maxSnapshotPages = 100;
   final _selector = TextEditingController();
   final _selectedRows = <String>{};
   late final Set<String> _favoriteNamespaces, _favoriteKinds;
   bool _savingFavorites = false;
   String _resourceGroup = 'all';
   late final KubeScope _scope;
+  late final ProviderContainer _providerContainer;
   KubeSession? _session;
+  KubeGitOpsMonitor? _gitOps;
+  late final KubeGitOpsAlerts _gitOpsAlerts;
+  final _gitOpsToasts = <GlassToastHandle>[];
   List<KubeResourceKind> _kinds = const [];
   List<KubeTableColumn> _columns = const [];
   List<String> _namespaces = const [];
@@ -77,7 +85,12 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   final _objectTabs = <KubeResourceRef>[];
   KubeResourceKind? _kind;
   String? _namespace, _continueToken;
+  int _snapshotPages = 0;
   String _query = '', _labelSelector = '', _resourceVersion = '', _view = 'resources';
+  String? _gitOpsAction;
+  KubeResourceRef? _gitOpsTarget;
+  int _gitOpsIntent = 0;
+  bool _logsMode = false;
   bool _connecting = true, _loading = false, _loadingMore = false;
   bool _navigationPending = false, _snapshotPending = false;
   late final KubeActiveNavigation _navigationSnapshot;
@@ -98,6 +111,8 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   bool _iosSuspended = false;
   bool _live = false, _watchFailed = false, _foreground = true, _limited = false;
   int _generation = 0, _connectionGeneration = 0;
+  KubeConnectionStatuses? _connectionStatuses;
+  KubeConnectionCheck? _connectionCheck;
   // Cancelled by _stopWatch on filter, profile, lifecycle and disposal changes.
   // ignore: cancel_subscriptions
   StreamSubscription<KubeWatchEvent>? _watch;
@@ -111,14 +126,16 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   final _searchFocus = FocusNode();
   Set<String> _visibleRows = {};
 
-  bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(kubeScopeProvider));
+  bool get _current => mounted && _scope.unlocked && identical(_scope, _providerContainer.read(kubeScopeProvider));
 
   @override
   void initState() {
     super.initState();
     _scope = ref.read(kubeScopeProvider);
+    _providerContainer = ProviderScope.containerOf(context, listen: false);
     _navigationSnapshot = ref.read(kubeActiveNavigationProvider.notifier);
     _restoreController = ref.read(kubeForwardRestoreProvider.notifier);
+    _gitOpsAlerts = ref.read(kubeGitOpsAlertsProvider.notifier);
     _favoriteNamespaces = widget.connection.favouriteNamespaces.toSet();
     _favoriteKinds = widget.connection.favouriteKinds.toSet();
     _namespace = widget.connection.namespace.isEmpty ? null : widget.connection.namespace;
@@ -143,9 +160,18 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   }
 
   void _revoke() {
+    if (_connectionCheck case final check?) _connectionStatuses?.cancel(check);
+    _connectionCheck = null;
     _connectionGeneration++;
     _generation++;
     _stopWatch();
+    _gitOps?.dispose();
+    _gitOps = null;
+    for (final toast in _gitOpsToasts) {
+      toast.dismiss();
+    }
+    _gitOpsToasts.clear();
+    scheduleMicrotask(() => _gitOpsAlerts.update(_scope, widget.connection.id, 0));
     _disconnect(_session);
     _session = null;
     _rows.clear();
@@ -170,6 +196,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     if (state == AppLifecycleState.resumed) {
       if (!_foreground && _current) {
         _foreground = true;
+        _gitOps?.setForeground(true);
         if (_iosSuspended) {
           _iosSuspended = false;
           unawaited(_connect());
@@ -181,6 +208,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       _foreground = false;
+      _gitOps?.setForeground(false);
       if (AppPlatform.isIOS) {
         _iosSuspended = true;
         _revoke();
@@ -196,6 +224,10 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     if (!_current) return;
     _revoke();
     final requestGeneration = _connectionGeneration;
+    final statuses = ref.read(kubeConnectionStatusProvider.notifier);
+    _connectionStatuses = statuses;
+    final check = statuses.begin(_scope, widget.connection.id);
+    _connectionCheck = check;
     setState(() {
       _connecting = true;
       _connectionFailed = false;
@@ -217,10 +249,21 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
         throw StateError('Mismatched Kubernetes session'); // l10n-ignore: diagnostic
       }
       _session = connected;
-      final namespaces = _loadNamespaces(connected.id, requestGeneration);
+      final insights = widget.service;
+      if (insights is KubeInsightsService) {
+        _gitOps = KubeGitOpsMonitor(
+          session: connected,
+          service: insights as KubeInsightsService,
+          preferences: insights is KubeViewPreferencesService ? insights as KubeViewPreferencesService : null,
+          isCurrent: () => _current && _session?.id == connected?.id,
+          onNotice: _gitOpsNotice,
+        )..addListener(_gitOpsChanged);
+      }
       final kinds = await widget.service.discover(connected.id);
-      await namespaces;
       if (!_current || requestGeneration != _connectionGeneration) return;
+      await _loadNamespaces(connected.id, requestGeneration);
+      if (!_current || requestGeneration != _connectionGeneration) return;
+      statuses.available(check, connected.serverVersion);
       final sorted = kinds.where((kind) => kind.canList && !kind.resource.contains('/')).toList()
         ..sort((a, b) => a.kind.compareTo(b.kind));
       setState(() {
@@ -233,7 +276,11 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
       _scheduleNavigation();
     } catch (error) {
       if (!_current || requestGeneration != _connectionGeneration) return;
+      statuses.failed(check, error);
       _disconnect(connected);
+      _gitOps?.removeListener(_gitOpsChanged);
+      _gitOps?.dispose();
+      _gitOps = null;
       _session = null;
       setState(() {
         _connecting = false;
@@ -243,6 +290,39 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
             const {'exec_approval_required', 'oidc_login_required'}.contains(error.args['rule']);
       });
     }
+  }
+
+  void _gitOpsChanged() {
+    if (!_current) return;
+    final count = _gitOps?.alertCount ?? 0;
+    scheduleMicrotask(() => _gitOpsAlerts.update(_scope, widget.connection.id, count));
+    setState(() {});
+  }
+
+  void _gitOpsNotice(KubeGitOpsNotice notice) {
+    if (!_current || !_foreground || notice.resources.isEmpty) return;
+    final resource = notice.resources.first;
+    final label = '${resource.namespace ?? ''}/${resource.name}';
+    final l = context.l10n;
+    _gitOpsToasts.add(
+      GlassToast.show(
+        context,
+        GlassToastRequest(
+          message: notice.reminder
+              ? l.kubeGitOpsReminderDue(label, notice.resources.length)
+              : l.kubeGitOpsFailureNotice(label, notice.resources.length),
+          tone: GlassTone.warning,
+          duration: const Duration(seconds: 8),
+          icon: notice.reminder ? Icons.alarm : Icons.warning_amber,
+          actionLabel: l.commonOpen,
+          onAction: () {
+            if (!_current) return;
+            setState(() => _view = 'gitops');
+          },
+        ),
+      ),
+    );
+    if (_gitOpsToasts.length > 3) _gitOpsToasts.removeAt(0).dismiss();
   }
 
   Future<void> _restoreForwards(KubeSession session) async {
@@ -337,6 +417,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
       _metricsUnavailable = false;
       _columns = const [];
       _continueToken = null;
+      _snapshotPages = 0;
       _resourceVersion = '';
       _loading = true;
       _loadingMore = false;
@@ -362,12 +443,18 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
             namespace: kind.namespaced ? _namespace : null,
             labelSelector: _labelSelector.isEmpty ? null : _labelSelector,
           );
-      if (!_current || generation != _generation) return;
+      if (!_current || generation != _generation || !_foreground || _view != 'resources') return;
       setState(() {
         _columns = table?.columns ?? const [];
         _acceptPage(page);
+        _snapshotPages = 1;
+        _loading = false;
       });
-      _startWatch(generation);
+      if (_continueToken == null) {
+        _startWatch(generation);
+      } else {
+        unawaited(_more());
+      }
       unawaited(_loadMetrics());
     } catch (_) {
       if (_current && generation == _generation) setState(() => _requestFailed = true);
@@ -376,7 +463,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     }
   }
 
-  void _acceptPage(KubeResourcePage page) {
+  void _acceptPage(KubeResourcePage page, {bool preserveVersion = false}) {
     for (final row in page.items) {
       if (!_rows.containsKey(row.id) && _rows.length >= _maxRows) {
         _limited = true;
@@ -384,7 +471,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
       }
       _rows[row.id] = row;
     }
-    _resourceVersion = page.resourceVersion;
+    if (!preserveVersion) _resourceVersion = page.resourceVersion;
     _continueToken = page.continueToken?.isEmpty == true ? null : page.continueToken;
     if (_rows.length >= _maxRows && _continueToken != null) _limited = true;
   }
@@ -513,35 +600,63 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   Future<void> _more() async {
     final session = _session;
     final kind = _kind;
-    final token = _continueToken;
-    if (!_current || session == null || kind == null || token == null || _loadingMore || _limited) return;
+    if (!_current ||
+        !_foreground ||
+        _view != 'resources' ||
+        session == null ||
+        kind == null ||
+        _continueToken == null ||
+        _loadingMore ||
+        _limited) {
+      return;
+    }
     final generation = _generation;
+    final seenTokens = <String>{};
     setState(() {
       _loadingMore = true;
       _requestFailed = false;
     });
     try {
-      final tableService = widget.service;
-      final table = tableService is KubeTableService
-          ? await (tableService as KubeTableService).table(
+      while (_continueToken != null && !_limited) {
+        if (!_current || generation != _generation || !_foreground || _view != 'resources') return;
+        if (_snapshotPages >= _maxSnapshotPages) {
+          setState(() => _limited = true);
+          break;
+        }
+        final token = _continueToken!;
+        if (!seenTokens.add(token)) {
+          throw StateError('Repeated Kubernetes continuation token'); // l10n-ignore: diagnostic
+        }
+        final tableService = widget.service;
+        final table = tableService is KubeTableService
+            ? await (tableService as KubeTableService).table(
+                session.id,
+                kind,
+                namespace: kind.namespaced ? _namespace : null,
+                labelSelector: _labelSelector.isEmpty ? null : _labelSelector,
+                continueToken: token,
+              )
+            : null;
+        final page =
+            table?.page ??
+            await widget.service.listResources(
               session.id,
               kind,
               namespace: kind.namespaced ? _namespace : null,
               labelSelector: _labelSelector.isEmpty ? null : _labelSelector,
               continueToken: token,
-            )
-          : null;
-      final page =
-          table?.page ??
-          await widget.service.listResources(
-            session.id,
-            kind,
-            namespace: kind.namespaced ? _namespace : null,
-            labelSelector: _labelSelector.isEmpty ? null : _labelSelector,
-            continueToken: token,
-          );
-      if (!_current || generation != _generation) return;
-      setState(() => _acceptPage(page));
+            );
+        if (!_current || generation != _generation || !_foreground || _view != 'resources') return;
+        // Continuation pages belong to the first page's immutable snapshot.
+        // A changed version must be relisted, never watched as a merged snapshot.
+        if (page.resourceVersion != _resourceVersion) {
+          throw StateError('Kubernetes snapshot version changed'); // l10n-ignore: diagnostic
+        }
+        setState(() {
+          _snapshotPages++;
+          _acceptPage(page, preserveVersion: true);
+        });
+      }
       _startWatch(generation);
     } catch (_) {
       if (_current && generation == _generation) setState(() => _requestFailed = true);
@@ -555,6 +670,9 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     final session = _session;
     final kind = _kind;
     if (service is! KubeWatchService ||
+        !_current ||
+        generation != _generation ||
+        _view != 'resources' ||
         session == null ||
         kind == null ||
         !kind.canWatch ||
@@ -644,26 +762,31 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
         );
   }
 
-  Future<void> _details(KubeResourceRow row) async {
+  Future<void> _details(KubeResourceRow row, {KubeResourceOpenAction? action}) async {
     final kind = _kind;
     if (kind == null) return;
-    await _openObject(KubeResourceRef(api: kind, name: row.name, namespace: row.namespace));
+    await _openObject(
+      KubeResourceRef(api: kind, name: row.name, namespace: row.namespace),
+      action: action,
+    );
   }
 
-  Future<void> _openObject(KubeResourceRef resource) async {
+  Future<void> _openObject(KubeResourceRef resource, {KubeResourceOpenAction? action}) async {
     final session = _session;
     if (!_current || session == null || !resource.api.canRead) return;
     if (!_objectTabs.any((tab) => tab.id == resource.id)) {
       _objectTabs.add(resource);
       if (_objectTabs.length > 12) _objectTabs.removeAt(0);
     }
-    final changed = await showAppDialog<bool>(
+    final changed = await showKubeResourceDetails<bool>(
       context,
-      secure: true,
       builder: (_) => KubeResourceDetails(
         session: session,
         resource: resource,
         service: widget.service,
+        gitOpsMonitor: _gitOps,
+        initialLogs: _logsMode || action == KubeResourceOpenAction.logs,
+        initialAction: action,
         contextName: widget.connection.name,
         openedResources: List.of(_objectTabs),
         onSelectResource: (target) {
@@ -889,6 +1012,16 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
       _navigationPending = false;
       if (!_current || _session == null || !identical(request, ref.read(kubeNavigationProvider))) return;
       ref.read(kubeNavigationProvider.notifier).consume(request);
+      if (const ['flow', 'suspended', 'reconcile'].contains(request.gitOpsAction)) {
+        setState(() {
+          _view = 'gitops';
+          _gitOpsAction = request.gitOpsAction;
+          _gitOpsTarget = request.resource;
+          _gitOpsIntent++;
+          if (request.namespace != null) _namespace = request.namespace;
+        });
+        return;
+      }
       final target = request.resource;
       if (target != null) {
         final kind = _kinds.where((kind) => kind.id == target.api.id).firstOrNull;
@@ -937,7 +1070,10 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
           contextId: widget.connection.id,
           namespace: _namespace ?? '',
           namespaces: _namespaces,
-          resources: kind == null
+          hasFlux: _kinds.any((kind) => kind.group.endsWith('.toolkit.fluxcd.io')),
+          resources: _view == 'gitops'
+              ? (_gitOps?.data?.resources ?? []).take(500).map((entry) => entry.reference).toList()
+              : kind == null
               ? []
               : _rows.values
                     .take(500)
@@ -963,6 +1099,10 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     _scheduleNavigation();
     _publishNavigation();
     final session = _session;
+    final canWrite =
+        session != null &&
+        !session.production &&
+        (ref.watch(kubeWriteAccessProvider(session)).value?.canWrite ?? false);
     final rightPanel = _panelRight && !AppPlatform.isMobile && MediaQuery.sizeOf(context).width >= 1100;
     final query = _query.trim().toLowerCase();
     final rows = _rows.values
@@ -1195,10 +1335,17 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                                 service: widget.service as KubeInsightsService,
                               )
                             : KubeInsightsPanel(
-                                key: ValueKey((session.id, _namespace, _view)),
+                                key: ValueKey((session.id, _namespace, _view, _gitOpsIntent)),
                                 session: session,
                                 contextName: widget.connection.name,
                                 namespace: _namespace,
+                                monitor: _gitOps,
+                                initialAction: _gitOpsAction,
+                                initialResource: _gitOpsTarget,
+                                onInitialActionHandled: () {
+                                  _gitOpsAction = null;
+                                  _gitOpsTarget = null;
+                                },
                                 service: widget.service as KubeInsightsService,
                                 browser: widget.service,
                                 problems: _view == 'problems',
@@ -1248,6 +1395,26 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                                 _scheduleEnrichment();
                               }
                             },
+                            onMobileAction:
+                                AppPlatform.isMobile &&
+                                    (_kind!.isPod ||
+                                        const {
+                                          'Deployment',
+                                          'StatefulSet',
+                                          'DaemonSet',
+                                          'ReplicaSet',
+                                          'Job',
+                                        }.contains(_kind!.kind))
+                                ? (row, action) => _details(row, action: action)
+                                : null,
+                            mobileTrailingAction: _kind!.isPod && (session?.canExec ?? false)
+                                ? KubeResourceOpenAction.shell
+                                : canWrite &&
+                                      widget.service is KubeOperationsService &&
+                                      _kind!.group == 'apps' &&
+                                      const {'deployments', 'statefulsets', 'daemonsets'}.contains(_kind!.resource)
+                                ? KubeResourceOpenAction.restart
+                                : null,
                             contextId: widget.connection.id,
                             rows: rows,
                             kind: _kind!,
@@ -1272,9 +1439,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                             ],
                             selected: _selectedRows,
                             canSelect:
-                                session?.production == false &&
-                                widget.service is KubeMutationService &&
-                                _kind!.verbs.contains('delete'),
+                                canWrite && widget.service is KubeMutationService && _kind!.verbs.contains('delete'),
                             onSelection: (row) => setState(() {
                               if (_selectedRows.contains(row.id)) {
                                 _selectedRows.remove(row.id);
@@ -1319,6 +1484,57 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                       session != null &&
                       (_outputs.isNotEmpty || _logPins.isNotEmpty || _extraTerminals.isNotEmpty))
                     GlassButton(label: l.kubeShowPanel, icon: Icons.keyboard_arrow_up, onPressed: _showPanel),
+                  if (session != null && AppPlatform.isMobile)
+                    NavigationBar(
+                      key: const ValueKey('kube-mobile-navigation'),
+                      selectedIndex: _logsMode
+                          ? 3
+                          : _view == 'problems'
+                          ? 2
+                          : _view == 'gitops'
+                          ? 4
+                          : 1,
+                      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                      onDestinationSelected: (index) {
+                        if (index == 0) {
+                          widget.onClose();
+                          return;
+                        }
+                        final next = index == 2
+                            ? 'problems'
+                            : index == 4
+                            ? 'gitops'
+                            : 'resources';
+                        if ((index == 2 || index == 4) && widget.service is! KubeInsightsService) return;
+                        _generation++;
+                        _stopWatch();
+                        setState(() {
+                          _view = next;
+                          _logsMode = index == 3;
+                          if (_logsMode) {
+                            _kind = _kinds.where((kind) => kind.isPod).firstOrNull;
+                            _query = '';
+                            _resourceGroup = 'all';
+                          }
+                        });
+                        if (_view == 'resources') unawaited(_refresh());
+                      },
+                      destinations: [
+                        NavigationDestination(icon: const Icon(Icons.cloud_outlined), label: l.kubeClusters),
+                        NavigationDestination(icon: const Icon(Icons.dns_outlined), label: l.kubeResources),
+                        NavigationDestination(icon: const Icon(Icons.warning_amber_outlined), label: l.kubeProblems),
+                        NavigationDestination(icon: const Icon(Icons.article_outlined), label: l.kubeLogs),
+                        NavigationDestination(
+                          icon: const Icon(Icons.account_tree_outlined),
+                          label: l.kubeGitOps,
+                          enabled:
+                              widget.service is KubeInsightsService &&
+                              _kinds.any(
+                                (kind) => kind.group.endsWith('.toolkit.fluxcd.io') || kind.group == 'argoproj.io',
+                              ),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -1363,7 +1579,14 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
 
   Future<void> _bulk() async {
     final session = _session, kind = _kind;
-    if (!_current || session == null || session.production || kind == null || _selectedRows.isEmpty) return;
+    if (!_current ||
+        session == null ||
+        session.production ||
+        !(ref.read(kubeWriteAccessProvider(session)).value?.canWrite ?? false) ||
+        kind == null ||
+        _selectedRows.isEmpty) {
+      return;
+    }
     final selected = _rows.values.where((row) => _selectedRows.contains(row.id)).toList();
     if (selected.isEmpty) return;
     final changed = await showAppDialog<bool>(

@@ -21,6 +21,7 @@ import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/hosts/connection_picker.dart';
+import 'package:consolecrypt/kubernetes/kube_gitops_monitor.dart';
 import 'package:consolecrypt/sftp/edit_flows.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -331,6 +332,9 @@ class _Sidebar extends ConsumerWidget {
     final profile = ref.watch(activeProfileProvider);
     final tabs = ref.watch(terminalTabsProvider).tabs.length;
     final pending = ref.watch(devicesProvider).value?.pendingRequests.length ?? 0;
+    final kubeAlerts = kubernetesEnabled
+        ? ref.watch(kubeGitOpsAlertsProvider.select((alerts) => alerts.values.fold(0, (sum, count) => sum + count)))
+        : 0;
     final l10n = context.l10n;
     final items = _navItems.where((i) => !i.syncedOnly || (profile?.isSynced ?? false)).toList();
     return GlassSidebar(
@@ -363,9 +367,13 @@ class _Sidebar extends ConsumerWidget {
             badge: switch (item.branch) {
               ShellBranch.terminal when tabs > 0 => '$tabs',
               ShellBranch.devices when pending > 0 => '$pending',
+              ShellBranch.kubernetes when kubeAlerts > 0 => '$kubeAlerts',
               _ => null,
             },
-            badgeTone: item.branch == ShellBranch.devices ? GlassTone.warning : GlassTone.neutral,
+            badgeTone: switch (item.branch) {
+              ShellBranch.devices || ShellBranch.kubernetes => GlassTone.warning,
+              _ => GlassTone.neutral,
+            },
             onPressed: () {
               if (overlayTools) {
                 ref.read(workspaceToolsProvider.notifier).close();

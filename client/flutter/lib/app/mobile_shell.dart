@@ -29,6 +29,9 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
     final branch = ShellBranch.values[widget.navigationShell.currentIndex];
     final toolsOpen = ref.watch(workspaceToolsProvider.select((s) => s.selected != null));
     final profile = ref.watch(activeProfileProvider);
+    final kubeAlerts = kubernetesEnabled
+        ? ref.watch(kubeGitOpsAlertsProvider.select((alerts) => alerts.values.fold(0, (sum, count) => sum + count)))
+        : 0;
     final selected = _more ? 3 : _primary.indexOf(_navigationBranch(branch));
     final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
     final rdpVisible = branch == ShellBranch.rdp && !_more && !toolsOpen;
@@ -107,7 +110,9 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
                           minVerticalPadding: 14,
                           leading: Icon(item.icon),
                           title: Text(shellBranchLabel(item.branch, l)),
-                          trailing: const Icon(Icons.chevron_right_rounded),
+                          trailing: item.branch == ShellBranch.kubernetes && kubeAlerts > 0
+                              ? GlassBadge(label: '$kubeAlerts', tone: GlassTone.warning, dense: true)
+                              : const Icon(Icons.chevron_right_rounded),
                           onTap: () => _go(item.branch),
                         ),
                     const SizedBox(height: 16),
@@ -150,7 +155,10 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
                     selectedIcon: const Icon(Icons.folder_rounded),
                     label: l.navSftp,
                   ),
-                  NavigationDestination(icon: const Icon(Icons.grid_view_rounded), label: l.mobileMore),
+                  NavigationDestination(
+                    icon: Badge(isLabelVisible: kubeAlerts > 0, child: const Icon(Icons.grid_view_rounded)),
+                    label: l.mobileMore,
+                  ),
                 ],
               ),
       ),

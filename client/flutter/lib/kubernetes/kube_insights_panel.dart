@@ -1,13 +1,19 @@
 import 'dart:async';
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
-import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
+import 'package:consolecrypt/kubernetes/kube_gitops_actions.dart';
 import 'package:consolecrypt/kubernetes/kube_gitops_graph.dart';
+import 'package:consolecrypt/kubernetes/kube_gitops_monitor.dart';
+import 'package:consolecrypt/kubernetes/kube_gitops_timeline.dart';
 import 'package:consolecrypt/kubernetes/kube_insights_service.dart';
+import 'package:consolecrypt/kubernetes/kube_operations_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_details.dart';
+import 'package:consolecrypt/kubernetes/kube_resource_route.dart';
+import 'package:consolecrypt/kubernetes/kube_resource_table_view.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -23,6 +29,10 @@ class KubeInsightsPanel extends ConsumerStatefulWidget {
     this.onTerminalOpened,
     this.onExplain,
     this.cliPanel,
+    this.monitor,
+    this.initialAction,
+    this.initialResource,
+    this.onInitialActionHandled,
     super.key,
   });
   final KubeSession session;
@@ -34,6 +44,10 @@ class KubeInsightsPanel extends ConsumerStatefulWidget {
   final VoidCallback? onTerminalOpened;
   final void Function(KubeResourceRef?, String?)? onExplain;
   final Widget? cliPanel;
+  final KubeGitOpsMonitor? monitor;
+  final String? initialAction;
+  final KubeResourceRef? initialResource;
+  final VoidCallback? onInitialActionHandled;
   @override
   ConsumerState<KubeInsightsPanel> createState() => _KubeInsightsPanelState();
 }
@@ -46,17 +60,32 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
   String _filter = '', _category = 'all', _controller = 'all', _section = 'all';
   bool _dependencies = false, _flow = false;
   final _busyActions = <String>{};
+  final _selected = <String>{};
+  bool _bulkBusy = false, _bulkCancel = false;
+  bool _initialHandled = false;
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(kubeScopeProvider));
 
   @override
   void initState() {
     super.initState();
     _scope = ref.read(kubeScopeProvider);
-    unawaited(_load());
+    final monitor = widget.monitor;
+    if (monitor == null) {
+      unawaited(_load());
+    } else {
+      monitor.addListener(_monitorChanged);
+      scheduleMicrotask(() {
+        if (!_current) return;
+        monitor.show();
+        _monitorChanged();
+      });
+    }
   }
 
   @override
   void dispose() {
+    widget.monitor?.removeListener(_monitorChanged);
+    widget.monitor?.hide();
     _generation++;
     _data = null;
     super.dispose();
@@ -64,6 +93,10 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
 
   Future<void> _load() async {
     if (!_current) return;
+    if (widget.monitor != null) {
+      await widget.monitor!.refresh();
+      return;
+    }
     final generation = ++_generation;
     setState(() {
       _loading = true;
@@ -71,7 +104,10 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     });
     try {
       final data = await widget.service.insights(widget.session.id, namespace: widget.namespace);
-      if (_current && generation == _generation) setState(() => _data = data);
+      if (_current && generation == _generation) {
+        setState(() => _data = data);
+        _handleInitial();
+      }
     } catch (_) {
       if (_current && generation == _generation) setState(() => _failed = true);
     } finally {
@@ -79,16 +115,56 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     }
   }
 
-  Future<void> _open(KubeInsightResource resource) async {
+  void _monitorChanged() {
     if (!_current) return;
-    final changed = await showAppDialog<bool>(
+    final monitor = widget.monitor!;
+    setState(() {
+      _data = monitor.data;
+      _loading = monitor.loading;
+      _failed = monitor.failed;
+      if (_data != null) {
+        final keys = _data!.resources.map(_selectionKey).toSet();
+        _selected.removeWhere((key) => !keys.contains(key));
+      }
+    });
+    _handleInitial();
+  }
+
+  void _handleInitial() {
+    if (!_current || _initialHandled || widget.initialAction == null || _data == null) return;
+    _initialHandled = true;
+    scheduleMicrotask(() {
+      if (!_current) return;
+      widget.onInitialActionHandled?.call();
+      switch (widget.initialAction) {
+        case 'flow':
+          setState(() => _flow = true);
+        case 'suspended':
+          setState(() => _category = 'suspended');
+        case 'reconcile':
+          final resource = _data?.resources
+              .where((r) => r.reference.id == widget.initialResource?.id && r.isFlux)
+              .firstOrNull;
+          if (resource != null) {
+            unawaited(_act(resource, 'reconcile'));
+          } else {
+            setState(() => _failed = true);
+          }
+      }
+    });
+  }
+
+  Future<void> _open(KubeInsightResource resource, {bool controllerLogs = false}) async {
+    if (!_current) return;
+    final changed = await showKubeResourceDetails<bool>(
       context,
-      secure: true,
       builder: (_) => KubeResourceDetails(
         session: widget.session,
         contextName: widget.contextName,
         resource: resource.reference,
         service: widget.browser,
+        gitOpsMonitor: widget.monitor,
+        initialControllerLogs: controllerLogs,
         onTerminalOpened: widget.onTerminalOpened,
         onExplain: widget.onExplain,
       ),
@@ -98,22 +174,9 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
 
   Future<void> _act(KubeInsightResource resource, String action) async {
     if (!_current ||
+        _bulkBusy ||
         _busyActions.contains(resource.reference.id) ||
         !(ref.read(kubeWriteAccessProvider(widget.session)).value?.canWrite ?? false)) {
-      return;
-    }
-    final reason = await showAppDialog<String>(
-      context,
-      secure: true,
-      barrierDismissible: false,
-      builder: (_) => _GitOpsConfirmation(
-        resource: resource.resource.name,
-        title: _actionLabel(context.l10n, action),
-        reasonRequired: action == 'suspend' || action == 'resume',
-        help: action == 'reconcile_with_source' ? context.l10n.kubeGitOpsReconcileWithSourceHelp : null,
-      ),
-    );
-    if (!_current || reason == null || !(ref.read(kubeWriteAccessProvider(widget.session)).value?.canWrite ?? false)) {
       return;
     }
     setState(() {
@@ -121,23 +184,16 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
       _failed = false;
     });
     try {
-      if (resource.isArgo) {
-        await widget.service.argoAction(widget.session.id, resource.reference, switch (action) {
-          'sync' => KubeArgoAction.sync,
-          'hard_refresh' => KubeArgoAction.hardRefresh,
-          _ => KubeArgoAction.refresh,
-        });
-      } else {
-        await widget.service.fluxAction(widget.session.id, resource.reference, switch (action) {
-          'reconcile_with_source' => KubeFluxAction.reconcileWithSource,
-          'suspend' => KubeFluxAction.suspend,
-          'resume' => KubeFluxAction.resume,
-          'reset' => KubeFluxAction.resetFailures,
-          'force' => KubeFluxAction.forceUpgrade,
-          _ => KubeFluxAction.reconcile,
-        }, reason: reason.isEmpty ? null : reason);
-      }
-      if (_current) await _load();
+      final changed = await runKubeGitOpsAction(
+        context,
+        ref,
+        session: widget.session,
+        resource: resource,
+        service: widget.service,
+        action: action,
+        monitor: widget.monitor,
+      );
+      if (_current && changed) await _load();
     } catch (_) {
       if (_current) setState(() => _failed = true);
     } finally {
@@ -145,10 +201,43 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     }
   }
 
+  static String _selectionKey(KubeInsightResource resource) => '${resource.reference.id}/${resource.resource.uid}';
+
+  Future<void> _bulk(String action) async {
+    if (!_current || _bulkBusy || widget.session.production) return;
+    final resources = _data?.resources.where((r) => _selected.contains(_selectionKey(r))).toList() ?? [];
+    setState(() {
+      _bulkBusy = true;
+      _bulkCancel = false;
+      _failed = false;
+    });
+    try {
+      await runKubeGitOpsBulkAction(
+        context,
+        ref,
+        session: widget.session,
+        contextName: widget.contextName,
+        resources: resources,
+        service: widget.service,
+        action: action,
+        shouldContinue: () => _current && !_bulkCancel,
+        onCompleted: (resource) {
+          if (_current) setState(() => _selected.remove(_selectionKey(resource)));
+        },
+      );
+      if (_current) await _load();
+    } catch (_) {
+      if (_current) setState(() => _failed = true);
+    } finally {
+      if (_current) setState(() => _bulkBusy = false);
+    }
+  }
+
   KubeInsightResource? _find(KubeObjectIdentity identity) => _data?.resources
       .where(
         (entry) =>
             entry.api.kind == identity.kind &&
+            entry.api.group == identity.group &&
             entry.resource.name == identity.name &&
             (entry.resource.namespace ?? '') == identity.namespace,
       )
@@ -159,13 +248,21 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     final l = context.l10n;
     if (!_current) return const SizedBox.shrink();
     final data = _data;
-    final canWrite = ref.watch(kubeWriteAccessProvider(widget.session)).value?.canWrite ?? false;
+    final canWrite =
+        !(AppPlatform.isMobile && widget.session.production) &&
+        (ref.watch(kubeWriteAccessProvider(widget.session)).value?.canWrite ?? false);
+    final scoped = data == null ? <KubeInsightResource>[] : _scopedResources(data).toList();
+    final ready = scoped.where((r) => _ready(r) && !r.suspended).length;
+    final attention = scoped.where((r) => !_ready(r) && !r.suspended).length;
+    final suspended = scoped.where((r) => r.suspended).length;
+    final stalled = scoped.where(kubeGitOpsStalled).length;
+    final stale = scoped.where((r) => _issuesFor(data!, r).any((i) => i.code == 'flux_source_stale')).length;
     return LayoutBuilder(
       builder: (context, bounds) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: bounds.maxHeight * .58),
+            constraints: BoxConstraints(maxHeight: bounds.maxHeight * (AppPlatform.isMobile ? .45 : .58)),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -198,11 +295,36 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
                     ],
                   ),
                   if (_loading) const LinearProgressIndicator(),
+                  if (widget.monitor case final monitor?) _monitorSettings(monitor),
                   if (_failed) Text(l.kubeRequestFailed, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   if (data?.partial == true)
                     Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(l.kubeInsightsPartial)),
                   if (data != null) ...[
                     if (!widget.problems) ...[
+                      if (_selected.isNotEmpty)
+                        Wrap(
+                          spacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text('${l.kubeBulkActions}: ${_selected.length}'),
+                            if (_bulkBusy)
+                              GlassButton(label: l.commonCancel, onPressed: () => setState(() => _bulkCancel = true))
+                            else
+                              for (final action in ['reconcile', 'suspend', 'resume'])
+                                GlassButton(
+                                  key: ValueKey('kube-gitops-bulk-$action'),
+                                  label: kubeGitOpsActionLabel(l, action),
+                                  onPressed:
+                                      canWrite &&
+                                          !widget.session.production &&
+                                          data.resources
+                                              .where((r) => _selected.contains(_selectionKey(r)))
+                                              .every((r) => kubeGitOpsActions(r).contains(action))
+                                      ? () => _bulk(action)
+                                      : null,
+                                ),
+                          ],
+                        ),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
@@ -244,16 +366,25 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
                           ],
                         ),
                       ),
-                      if (_section == 'all') _recentReconciles(data),
+                      if (_section == 'all')
+                        KubeGitOpsTimeline(
+                          session: widget.session,
+                          resources: data.resources,
+                          service: widget.browser,
+                          namespace: widget.namespace,
+                          onOpen: (resource) => unawaited(_open(resource)),
+                        ),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
                             for (final category in [
                               ('all', l.kubeGitOpsAll),
-                              ('ready', '${l.kubeGitOpsReady} ${data.gitops.ready}'),
-                              ('attention', '${l.kubeGitOpsAttention} ${data.gitops.notReady + data.gitops.stalled}'),
-                              ('suspended', '${l.kubeGitOpsSuspended} ${data.gitops.suspended}'),
+                              ('ready', '${l.kubeGitOpsReady} $ready'),
+                              ('attention', '${l.kubeGitOpsAttention} $attention'),
+                              ('suspended', '${l.kubeGitOpsSuspended} $suspended'),
+                              ('stalled', '${l.kubeGitOpsStalled} $stalled'),
+                              ('stale', '${l.kubeGitOpsStale} $stale'),
                             ])
                               Padding(
                                 padding: const EdgeInsets.only(right: 8),
@@ -302,6 +433,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
                   : _flow
                   ? KubeGitOpsGraph(
                       flow: data.flow,
+                      resources: data.resources,
                       canOpen: (id) => _find(id) != null,
                       open: (id) {
                         final resource = _find(id);
@@ -317,44 +449,53 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     );
   }
 
-  Widget _recentReconciles(KubeInsights data) {
-    final entries = <({DateTime time, String revision, KubeInsightResource resource})>[];
-    for (final resource in data.resources.where((r) => r.isFlux || r.isArgo)) {
-      final status = resource.object['status'] as Map? ?? const {};
-      final times = <DateTime>[];
-      for (final condition in (status['conditions'] as List? ?? const []).whereType<Map<String, dynamic>>()) {
-        final time = DateTime.tryParse(condition['lastTransitionTime']?.toString() ?? '');
-        if (time != null) times.add(time);
-      }
-      final operation = status['operationState'] as Map?;
-      final finished = DateTime.tryParse(operation?['finishedAt']?.toString() ?? '');
-      if (finished != null) times.add(finished);
-      if (times.isEmpty) continue;
-      times.sort();
-      final revision =
-          status['lastAppliedRevision'] ??
-          (status['artifact'] as Map?)?['revision'] ??
-          (status['sync'] as Map?)?['revision'];
-      entries.add((time: times.last, revision: revision is String ? revision : '', resource: resource));
-    }
-    entries.sort((a, b) => b.time.compareTo(a.time));
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxHeight: 220),
-      child: SingleChildScrollView(
-        child: ExpansionTile(
-          title: Text(context.l10n.kubeGitOpsRecent),
+  Widget _monitorSettings(KubeGitOpsMonitor monitor) {
+    final l = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            if (entries.isEmpty) Text(context.l10n.kubeGitOpsHistoryEmpty),
-            for (final entry in entries.take(20))
-              ListTile(
-                leading: Icon(_ready(entry.resource) ? Icons.check_circle_outline : Icons.error_outline),
-                title: Text('${entry.resource.resource.namespace}/${entry.resource.resource.name}'),
-                subtitle: Text('${entry.time.toLocal()} · ${entry.revision}'),
-                onTap: () => _open(entry.resource),
+            if (monitor.live) Chip(label: Text(l.kubeLive), avatar: const Icon(Icons.sync, size: 16)),
+            if (monitor.watchPartial) Text(l.kubeInsightsPartial),
+            if (monitor.alertCount > 0)
+              ActionChip(
+                key: const ValueKey('kube-gitops-alerts'),
+                label: Text(l.kubeGitOpsUnread(monitor.alertCount)),
+                avatar: const Icon(Icons.notifications_active_outlined),
+                onPressed: monitor.acknowledge,
               ),
           ],
         ),
-      ),
+        if (monitor.preferences != null)
+          ExpansionTile(
+            title: Text(l.kubeGitOpsLocalAlerts),
+            children: [
+              SwitchListTile(
+                key: const ValueKey('kube-gitops-notifications'),
+                value: monitor.notifications,
+                title: Text(l.kubeGitOpsNotify),
+                subtitle: Text(l.kubeGitOpsNotifyHelp),
+                onChanged: (value) => unawaited(monitor.setNotifications(value)),
+              ),
+              if (monitor.preferencesFailed) Text(l.kubePreferencesFailed),
+              for (final reminder in monitor.reminders.values)
+                ListTile(
+                  title: Text(
+                    /* l10n-ignore: Kubernetes namespace and resource name. */ '${reminder.resource.namespace ?? ''}/${reminder.resource.name}',
+                  ),
+                  subtitle: Text(reminder.dueAt.toLocal().toString()),
+                  trailing: GlassIconButton(
+                    icon: Icons.alarm_off,
+                    tooltip: l.kubeGitOpsCancelReminder,
+                    onPressed: () => unawaited(monitor.cancelReminder(reminder.resource.id)),
+                  ),
+                ),
+            ],
+          ),
+      ],
     );
   }
 
@@ -362,6 +503,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     final l = context.l10n;
     final issues =
         data.issues
+            .where((issue) => widget.namespace == null || issue.namespace == widget.namespace)
             .where(
               (issue) => '${issue.name} ${issue.namespace ?? ''} ${issue.kind} ${_issueLabel(l, issue.code)}'
                   .toLowerCase()
@@ -388,9 +530,16 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
       itemCount: issues.length,
       itemBuilder: (context, index) {
         final issue = issues[index];
-        final resource = _find(
-          KubeObjectIdentity(kind: issue.kind, namespace: issue.namespace ?? '', name: issue.name),
-        );
+        final matches = data.resources
+            .where(
+              (r) =>
+                  r.api.kind == issue.kind && r.resource.name == issue.name && r.resource.namespace == issue.namespace,
+            )
+            .take(2)
+            .toList();
+        // Older issue DTOs lack an API group. Ambiguous kinds must not open an
+        // arbitrary group's object.
+        final resource = matches.length == 1 ? matches.single : null;
         return ContentSurface(
           child: ListTile(
             leading: Icon(issue.severity == 'error' ? Icons.error_outline : Icons.warning_amber_outlined),
@@ -424,36 +573,54 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     );
   }
 
+  Iterable<KubeInsightResource> _scopedResources(KubeInsights data) => data.resources.where((resource) {
+    if (widget.namespace != null && resource.resource.namespace != widget.namespace) return false;
+    if (!resource.isFlux && !resource.isArgo) return false;
+    if ((_controller == 'flux' && !resource.isFlux) || (_controller == 'argo' && !resource.isArgo)) return false;
+    final group = resource.api.group, kind = resource.api.kind;
+    if (!switch (_section) {
+      'sources' => group == 'source.toolkit.fluxcd.io',
+      'kustomization' => kind == 'Kustomization',
+      'helmrelease' => kind == 'HelmRelease',
+      'notifications' => group == 'notification.toolkit.fluxcd.io',
+      'images' => group == 'image.toolkit.fluxcd.io',
+      _ => true,
+    }) {
+      return false;
+    }
+    return true;
+  });
+
   Widget _resources(KubeInsights data, bool canWrite) {
     final l = context.l10n;
-    final resources = data.resources.where((resource) {
-      if (!resource.isFlux && !resource.isArgo) return false;
-      if ((_controller == 'flux' && !resource.isFlux) || (_controller == 'argo' && !resource.isArgo)) return false;
-      final group = resource.api.group, kind = resource.api.kind;
-      if (!switch (_section) {
-        'sources' => group == 'source.toolkit.fluxcd.io',
-        'kustomization' => kind == 'Kustomization',
-        'helmrelease' => kind == 'HelmRelease',
-        'notifications' => group == 'notification.toolkit.fluxcd.io',
-        'images' => group == 'image.toolkit.fluxcd.io',
-        _ => true,
-      }) {
-        return false;
-      }
-      if (!'${resource.api.kind} ${resource.resource.namespace ?? ''} ${resource.resource.name}'.toLowerCase().contains(
-        _filter,
-      )) {
-        return false;
-      }
-      final ready = _ready(resource);
-      return switch (_category) {
-        'ready' => ready && !resource.suspended,
-        'attention' => !ready && !resource.suspended,
-        'suspended' => resource.suspended,
-        _ => true,
-      };
-    }).toList()..sort((a, b) => a.resource.name.compareTo(b.resource.name));
+    final resources =
+        _scopedResources(data).where((resource) {
+          if (!'${resource.api.kind} ${resource.resource.namespace ?? ''} ${resource.resource.name}'
+              .toLowerCase()
+              .contains(_filter)) {
+            return false;
+          }
+          final ready = _ready(resource);
+          return switch (_category) {
+            'ready' => ready && !resource.suspended,
+            'attention' => !ready && !resource.suspended,
+            'suspended' => resource.suspended,
+            'stalled' => kubeGitOpsStalled(resource),
+            'stale' => _issuesFor(data, resource).any((i) => i.code == 'flux_source_stale'),
+            _ => true,
+          };
+        }).toList()..sort((a, b) {
+          if (_section == 'all') {
+            int rank(KubeInsightResource r) => _issuesFor(data, r).isNotEmpty || (!_ready(r) && !r.suspended) ? 0 : 1;
+            final attention = rank(a).compareTo(rank(b));
+            if (attention != 0) return attention;
+          }
+          return a.resource.name.compareTo(b.resource.name);
+        });
     if (resources.isEmpty) return Padding(padding: const EdgeInsets.all(12), child: Text(l.kubeNoGitOpsResources));
+    if (_section != 'all' && MediaQuery.sizeOf(context).width >= 900) {
+      return _table(resources, canWrite);
+    }
     return ListView.builder(
       key: const ValueKey('kube-gitops-resources'),
       itemCount: resources.length,
@@ -464,86 +631,229 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
             : _ready(resource)
             ? l.kubeGitOpsReady
             : l.kubeGitOpsAttention;
-        final actions = _actions(resource);
-        return ContentSurface(
+        final actions = kubeGitOpsActions(resource);
+        final tile = ContentSurface(
           child: ListTile(
             key: ValueKey('kube-gitops-${resource.resource.id}'),
-            leading: Icon(
-              resource.suspended
-                  ? Icons.pause_circle_outline
-                  : _ready(resource)
-                  ? Icons.check_circle_outline
-                  : Icons.error_outline,
-            ),
+            leading: !widget.session.production && resource.isFlux && actions.isNotEmpty
+                ? Checkbox(
+                    key: ValueKey('kube-gitops-select-${resource.resource.id}'),
+                    value: _selected.contains(_selectionKey(resource)),
+                    onChanged: _bulkBusy
+                        ? null
+                        : (value) => setState(() {
+                            if (value == true && _selected.length < 100) {
+                              _selected.add(_selectionKey(resource));
+                            } else {
+                              _selected.remove(_selectionKey(resource));
+                            }
+                          }),
+                  )
+                : Icon(
+                    resource.suspended
+                        ? Icons.pause_circle_outline
+                        : _ready(resource)
+                        ? Icons.check_circle_outline
+                        : Icons.error_outline,
+                  ),
             title: Text(resource.resource.name),
             subtitle: Text(
-              /* l10n-ignore: Localized issue/status labels, resource identifiers and numeric counts. */ '${resource.api.kind} · ${resource.resource.namespace ?? ''} · $status',
+              /* l10n-ignore: Localized issue/status labels, resource identifiers and numeric counts. */ '${resource.api.kind} · ${resource.resource.namespace ?? ''} · $status'
+              /* l10n-ignore: Already localized diagnostics for the same resource. */ '${_issuesFor(data, resource).isEmpty ? '' : '\n${_issuesFor(data, resource).take(2).map((i) => _issueLabel(l, i.code)).join(' · ')}'}',
             ), // l10n-ignore: Localized issue/status labels, resource identifiers and numeric counts.
             onTap: () => _open(resource),
             trailing: actions.isEmpty
                 ? null
                 : PopupMenuButton<String>(
                     key: ValueKey('kube-gitops-action-${resource.resource.id}'),
-                    enabled: canWrite && !_busyActions.contains(resource.reference.id),
+                    enabled: canWrite && !_bulkBusy && !_busyActions.contains(resource.reference.id),
                     tooltip: l.kubeGitOpsActions,
                     itemBuilder: (_) => actions
-                        .map((action) => PopupMenuItem(value: action, child: Text(_actionLabel(l, action))))
+                        .map((action) => PopupMenuItem(value: action, child: Text(kubeGitOpsActionLabel(l, action))))
                         .toList(),
                     onSelected: (action) => unawaited(_act(resource, action)),
                   ),
           ),
         );
+        if (!AppPlatform.isMobile || !resource.isFlux) return tile;
+        final reconcile =
+            canWrite && actions.contains('reconcile') && !_bulkBusy && !_busyActions.contains(resource.reference.id);
+        Widget swipeBackground(String label, IconData icon, Alignment alignment) => ColoredBox(
+          color: Theme.of(context).colorScheme.secondaryContainer,
+          child: Align(
+            alignment: alignment,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon), const SizedBox(width: 8), Text(label)]),
+            ),
+          ),
+        );
+        return Dismissible(
+          key: ValueKey('kube-gitops-swipe-${resource.reference.id}'),
+          direction: reconcile ? DismissDirection.horizontal : DismissDirection.endToStart,
+          background: swipeBackground(
+            reconcile ? l.kubeGitOpsReconcile : l.kubeGitOpsControllerLogs,
+            reconcile ? Icons.sync : Icons.article_outlined,
+            Alignment.centerLeft,
+          ),
+          secondaryBackground: swipeBackground(
+            l.kubeGitOpsControllerLogs,
+            Icons.article_outlined,
+            Alignment.centerRight,
+          ),
+          confirmDismiss: (direction) async {
+            // Swiping opens the same explicit action review; it never removes a
+            // row or submits a cluster mutation by itself.
+            if (!_current) return false;
+            if (direction == DismissDirection.startToEnd && reconcile) {
+              await _act(resource, 'reconcile');
+            } else {
+              await _open(resource, controllerLogs: true);
+            }
+            return false;
+          },
+          child: tile,
+        );
       },
     );
   }
 
+  Widget _table(List<KubeInsightResource> resources, bool canWrite) {
+    final l = context.l10n;
+    final rows = <KubeResourceRow>[];
+    final byId = <String, KubeInsightResource>{};
+    for (final resource in resources) {
+      final object = resource.object;
+      final spec = object['spec'] as Map? ?? const {}, status = object['status'] as Map? ?? const {};
+      final source = spec['sourceRef'] as Map? ?? spec['chartRef'] as Map? ?? const {};
+      final chart = (spec['chart'] as Map?)?['spec'] as Map?;
+      final revision =
+          status['lastAppliedRevision'] ??
+          (status['artifact'] as Map?)?['revision'] ??
+          (status['sync'] as Map?)?['revision'];
+      final times =
+          ((status['conditions'] as List?) ?? const [])
+              .whereType<Map<String, dynamic>>()
+              .map((c) => DateTime.tryParse(c['lastTransitionTime']?.toString() ?? ''))
+              .whereType<DateTime>()
+              .toList()
+            ..sort();
+      final row = KubeResourceRow(
+        name: resource.resource.name,
+        namespace: resource.resource.namespace,
+        uid: resource.resource.uid,
+        resourceVersion: resource.resource.resourceVersion,
+        createdAt: resource.resource.createdAt,
+        status: resource.suspended
+            ? l.kubeGitOpsSuspended
+            : _ready(resource)
+            ? l.kubeGitOpsReady
+            : l.kubeGitOpsAttention,
+        cells: [
+          source['name']?.toString() ?? chart?['chart']?.toString() ?? '—',
+          revision?.toString() ?? '—',
+          times.lastOrNull?.toLocal().toString() ?? '—',
+          spec['interval']?.toString() ?? '—',
+          resource.suspended ? l.kubeGitOpsSuspended : '—',
+        ],
+      );
+      rows.add(row);
+      byId[row.id] = resource;
+    }
+    return KubeResourceTableView(
+      key: ValueKey('kube-gitops-table-$_section'),
+      contextId: widget.session.contextId,
+      rows: rows,
+      kind: resources.first.api,
+      columns: [
+        l.kubeGitOpsSource,
+        l.kubeGitOpsRevision,
+        l.kubeGitOpsRecent,
+        l.kubeGitOpsInterval,
+        l.kubeGitOpsSuspended,
+      ].map((name) => KubeTableColumn(name: name, type: 'string', format: '', description: '', priority: 0)).toList(),
+      selected: {
+        for (final row in rows)
+          if (_selected.contains(_selectionKey(byId[row.id]!))) row.id,
+      },
+      canSelect: canWrite && !widget.session.production && !_bulkBusy,
+      onSelection: (row) => setState(() {
+        final resource = byId[row.id]!;
+        if (!resource.isFlux || kubeGitOpsActions(resource).isEmpty) return;
+        final key = _selectionKey(resource);
+        if (_selected.contains(key)) {
+          _selected.remove(key);
+        } else if (_selected.length < 100) {
+          _selected.add(key);
+        }
+      }),
+      onOpen: (row) => unawaited(_open(byId[row.id]!)),
+      hasMore: false,
+      loadingMore: false,
+      onMore: () {},
+    );
+  }
+
+  List<KubeIssue> _issuesFor(KubeInsights data, KubeInsightResource resource) => data.issues
+      .where(
+        (issue) =>
+            issue.kind == resource.api.kind &&
+            issue.name == resource.resource.name &&
+            issue.namespace == resource.resource.namespace,
+      )
+      .toList();
+
   Widget _dependencyView(KubeInsights data) {
     final l = context.l10n;
-    final edges = data.gitops.dependencies
-        .where((edge) => '${edge.from.label} ${edge.to.label}'.toLowerCase().contains(_filter))
-        .toList();
-    return ListView.builder(
+    final nodes = <String, KubeFlowNode>{}, labels = <String, String>{};
+    final edges = <KubeFlowEdge>[];
+    for (final edge in data.gitops.dependencies) {
+      if (widget.namespace != null && edge.from.namespace != widget.namespace) continue;
+      if (!'${edge.from.label} ${edge.to.label}'.toLowerCase().contains(_filter)) continue;
+      final source = _find(edge.from);
+      nodes[edge.from.label] = KubeFlowNode(object: edge.from, ready: source == null ? null : _ready(source));
+      nodes[edge.to.label] = KubeFlowNode(object: edge.to, ready: edge.ready && !edge.missing);
+      // Dependencies appear before the objects waiting for them.
+      edges.add(KubeFlowEdge(from: edge.to, to: edge.from, relation: 'dependency'));
+      if (edge.missing) labels[edge.to.label] = l.kubeDependencyMissing;
+      if (!edge.ready) {
+        final conditions = (source?.object['status'] as Map?)?['conditions'] as List? ?? const [];
+        final since = conditions
+            .whereType<Map<String, dynamic>>()
+            .where((c) => c['reason'] == 'DependencyNotReady')
+            .map((c) => c['lastTransitionTime'])
+            .whereType<String>()
+            .firstOrNull;
+        labels[edge.from.label] = [l.kubeDependencyWaiting, ?since].join(' · ');
+      }
+    }
+    return Column(
       key: const ValueKey('kube-dependency-list'),
-      itemCount: edges.length + (data.gitops.cycles.isEmpty ? 0 : 1),
-      itemBuilder: (context, index) {
-        if (data.gitops.cycles.isNotEmpty && index == 0) {
-          return ContentSurface(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l.kubeDependencyCycle, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                ...data.gitops.cycles.take(100).map((identity) => Text(identity.label)),
-              ],
-            ),
-          );
-        }
-        final edge = edges[index - (data.gitops.cycles.isEmpty ? 0 : 1)];
-        final source = _find(edge.from), target = _find(edge.to);
-        return ContentSurface(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextButton(onPressed: source == null ? null : () => _open(source), child: Text(edge.from.label)),
-              Row(
-                children: [
-                  Icon(edge.missing ? Icons.link_off : Icons.arrow_downward),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      edge.missing
-                          ? l.kubeDependencyMissing
-                          : edge.ready
-                          ? l.kubeDependencyReady
-                          : l.kubeDependencyWaiting,
-                    ),
-                  ),
-                ],
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (data.gitops.cycles.isNotEmpty)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 100),
+            child: SingleChildScrollView(
+              child: Text(
+                /* l10n-ignore: Localized cycle message followed by exact resource identities. */ '${l.kubeDependencyCycle}: ${data.gitops.cycles.take(100).map((c) => c.label).join(', ')}',
               ),
-              TextButton(onPressed: target == null ? null : () => _open(target), child: Text(edge.to.label)),
-            ],
+            ),
           ),
-        );
-      },
+        Expanded(
+          child: KubeGitOpsGraph(
+            flow: KubeGitOpsFlow(nodes: nodes.values.toList(), edges: edges),
+            resources: data.resources,
+            dependencyLayout: true,
+            statusLabel: (identity) => labels[identity.label],
+            canOpen: (identity) => _find(identity) != null,
+            open: (identity) {
+              final resource = _find(identity);
+              if (resource != null) unawaited(_open(resource));
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -557,29 +867,6 @@ bool _ready(KubeInsightResource resource) {
     (condition) => condition['type'] == 'Ready' && condition['status'] == 'True',
   );
 }
-
-List<String> _actions(KubeInsightResource resource) {
-  if (resource.isArgo) return ['refresh', 'hard_refresh', 'sync'];
-  if (!resource.isFlux || resource.api.group == 'notification.toolkit.fluxcd.io') return [];
-  return [
-    'reconcile',
-    if (const ['Kustomization', 'HelmRelease', 'HelmChart'].contains(resource.api.kind)) 'reconcile_with_source',
-    if (resource.api.kind != 'ImagePolicy') resource.suspended ? 'resume' : 'suspend',
-    if (resource.api.kind == 'HelmRelease') ...['reset', 'force'],
-  ];
-}
-
-String _actionLabel(AppLocalizations l, String action) => switch (action) {
-  'reconcile_with_source' => l.kubeGitOpsReconcileWithSource,
-  'suspend' => l.kubeGitOpsSuspend,
-  'resume' => l.kubeGitOpsResume,
-  'reset' => l.kubeGitOpsReset,
-  'force' => l.kubeGitOpsForce,
-  'sync' => l.kubeArgoSync,
-  'refresh' => l.kubeArgoRefresh,
-  'hard_refresh' => l.kubeArgoHardRefresh,
-  _ => l.kubeGitOpsReconcile,
-};
 
 String _issueLabel(AppLocalizations l, String code) => switch (code) {
   'certificate_expiring' => l.kubeIssueCertificateExpiring,
@@ -616,89 +903,3 @@ String _issueLabel(AppLocalizations l, String code) => switch (code) {
   'flux_suspended' => l.kubeIssueFluxSuspended,
   _ => l.kubeIssueCondition,
 };
-
-class _GitOpsConfirmation extends ConsumerStatefulWidget {
-  const _GitOpsConfirmation({required this.resource, required this.title, required this.reasonRequired, this.help});
-  final String resource, title;
-  final String? help;
-  final bool reasonRequired;
-  @override
-  ConsumerState<_GitOpsConfirmation> createState() => _GitOpsConfirmationState();
-}
-
-class _GitOpsConfirmationState extends ConsumerState<_GitOpsConfirmation> {
-  final _name = TextEditingController(), _reason = TextEditingController();
-  late final KubeScope _scope;
-  @override
-  void initState() {
-    super.initState();
-    _scope = ref.read(kubeScopeProvider);
-  }
-
-  @override
-  void dispose() {
-    _name.clear();
-    _reason.clear();
-    _name.dispose();
-    _reason.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    ref.listen(kubeScopeProvider, (_, next) {
-      if (identical(next, _scope)) return;
-      _name.clear();
-      _reason.clear();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final route = ModalRoute.of(context);
-        if (route?.isActive == true) Navigator.of(context).removeRoute(route!);
-      });
-    });
-    final l = context.l10n;
-    return GlassDialog(
-      key: const ValueKey('kube-gitops-confirm'),
-      title: widget.title,
-      content: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(widget.help ?? l.kubeGitOpsChangeHelp),
-            const SizedBox(height: 12),
-            SelectableText(widget.resource),
-            TextField(
-              key: const ValueKey('kube-gitops-confirm-name'),
-              controller: _name,
-              decoration: InputDecoration(labelText: l.kubeTypeName),
-              autocorrect: false,
-              enableSuggestions: false,
-              onChanged: (_) => setState(() {}),
-            ),
-            if (widget.reasonRequired)
-              TextField(
-                key: const ValueKey('kube-gitops-reason'),
-                controller: _reason,
-                decoration: InputDecoration(labelText: l.kubeGitOpsReason),
-                maxLength: 1024,
-                maxLines: 2,
-                onChanged: (_) => setState(() {}),
-              ),
-          ],
-        ),
-      ),
-      primaryAction: GlassButton.destructive(
-        key: const ValueKey('kube-gitops-confirm-action'),
-        label: widget.title,
-        onPressed:
-            _name.text == widget.resource &&
-                widget.resource.isNotEmpty &&
-                (!widget.reasonRequired ||
-                    (_reason.text.trim().isNotEmpty && !RegExp(r'[\x00-\x1f\x7f]').hasMatch(_reason.text)))
-            ? () => closeDialog(context, _reason.text.trim())
-            : null,
-      ),
-      secondaryActions: [GlassButton(label: l.commonCancel, onPressed: () => closeDialog<String>(context))],
-    );
-  }
-}

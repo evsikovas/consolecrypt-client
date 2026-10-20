@@ -166,9 +166,11 @@ mod tests {
 
     #[test]
     fn external_files_are_not_read_and_insecure_production_is_rejected() {
+        let directory = tempfile::tempdir().unwrap();
+        let token_path = serde_json::to_string(&directory.path().join("unapproved-token")).unwrap();
         assert_eq!(
             prepare(
-                source("    tokenFile: /unapproved/token"),
+                source(&format!("    tokenFile: {token_path}")),
                 true,
                 KubeRoute::Direct
             )

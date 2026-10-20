@@ -26,6 +26,8 @@ class KubeResourceTableView extends ConsumerStatefulWidget {
     required this.onMore,
     this.contextId,
     this.onVisibleRows,
+    this.onMobileAction,
+    this.mobileTrailingAction,
     super.key,
   });
   final List<KubeResourceRow> rows;
@@ -37,6 +39,8 @@ class KubeResourceTableView extends ConsumerStatefulWidget {
   final VoidCallback onMore;
   final String? contextId;
   final ValueChanged<Set<String>>? onVisibleRows;
+  final Future<void> Function(KubeResourceRow, KubeResourceOpenAction)? onMobileAction;
+  final KubeResourceOpenAction? mobileTrailingAction;
   @override
   ConsumerState<KubeResourceTableView> createState() => _KubeResourceTableViewState();
 }
@@ -292,7 +296,7 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
     itemBuilder: (context, index) {
       if (index == _rows.length) return _more();
       final row = _rows[index];
-      return ListTile(
+      final tile = ListTile(
         key: ValueKey('kube-resource-${row.id}'),
         selected: widget.selected.contains(row.id),
         leading: widget.canSelect ? _select(row) : null,
@@ -309,6 +313,39 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
         ),
         trailing: widget.kind.canRead ? const Icon(Icons.chevron_right) : null,
         onTap: widget.kind.canRead ? () => widget.onOpen(row) : null,
+      );
+      final action = widget.onMobileAction;
+      if (action == null || !widget.kind.canRead) return tile;
+      Widget background(KubeResourceOpenAction operation, Alignment alignment) => ColoredBox(
+        color: Theme.of(context).colorScheme.secondaryContainer,
+        child: Align(
+          alignment: alignment,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(switch (operation) {
+              KubeResourceOpenAction.logs => context.l10n.kubeLogs,
+              KubeResourceOpenAction.shell => context.l10n.kubePodTerminal,
+              KubeResourceOpenAction.restart => context.l10n.kubeRestart,
+            }),
+          ),
+        ),
+      );
+      return Dismissible(
+        key: ValueKey('kube-resource-swipe-${row.id}'),
+        direction: widget.mobileTrailingAction == null ? DismissDirection.startToEnd : DismissDirection.horizontal,
+        background: background(KubeResourceOpenAction.logs, Alignment.centerLeft),
+        secondaryBackground: widget.mobileTrailingAction == null
+            ? null
+            : background(widget.mobileTrailingAction!, Alignment.centerRight),
+        confirmDismiss: (direction) async {
+          if (!mounted) return false;
+          await action(
+            row,
+            direction == DismissDirection.startToEnd ? KubeResourceOpenAction.logs : widget.mobileTrailingAction!,
+          );
+          return false;
+        },
+        child: tile,
       );
     },
   );

@@ -14,6 +14,7 @@ macro_rules! redacted_debug {
 mod certificates;
 mod diff;
 mod forward_targets;
+mod helm_compare;
 mod history;
 mod metrics;
 mod operations;
@@ -33,7 +34,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    sync::{Arc, RwLock},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, RwLock,
+    },
     time::Duration,
 };
 use zeroize::Zeroizing;
@@ -41,6 +45,7 @@ use zeroize::Zeroizing;
 pub use certificates::{certificate_warning, CertificateWarning};
 pub use diff::{manifest_diff, ManifestChange, ManifestDiff};
 pub use forward_targets::{ForwardPort, ForwardTarget, ForwardTargets};
+pub use helm_compare::{HelmLiveComparison, HelmObjectComparison};
 pub use history::WorkloadRevision;
 pub use metrics::{parse_metrics, ContainerUsage, MetricUsage, ResourceAmounts};
 pub use operations::{DebugContainer, DrainCandidate};
@@ -268,6 +273,8 @@ pub struct ResourceApi {
     client: Client,
     guard: ProdGuard,
     discovered: Arc<RwLock<BTreeMap<String, ResourceKind>>>,
+    preferred_versions: Arc<RwLock<BTreeMap<String, String>>>,
+    discovery_incomplete: Arc<AtomicBool>,
 }
 
 redacted_debug!(
@@ -289,6 +296,8 @@ impl ResourceApi {
             client: session.client(),
             guard: session.guard().clone(),
             discovered: Arc::new(RwLock::new(BTreeMap::new())),
+            preferred_versions: Arc::new(RwLock::new(BTreeMap::new())),
+            discovery_incomplete: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -313,6 +322,7 @@ impl ResourceApi {
             return Err(ResourceError::TooLarge);
         }
         let mut requests = BTreeSet::new();
+        let mut preferred = BTreeMap::new();
         for group in groups {
             let Some(name) = group["name"].as_str() else {
                 continue;
@@ -325,6 +335,11 @@ impl ResourceApi {
             let versions = group["versions"]
                 .as_array()
                 .ok_or(ResourceError::InvalidResponse)?;
+            if let Some(version) = group["preferredVersion"]["version"].as_str() {
+                if versions.iter().any(|served| served["version"] == version) {
+                    preferred.insert(name.to_owned(), version.to_owned());
+                }
+            }
             for version in versions {
                 let version = version["version"]
                     .as_str()
@@ -366,7 +381,13 @@ impl ResourceApi {
             .map(|kind| (kind.key(), kind.clone()))
             .collect();
         *self.discovered.write().map_err(|_| ResourceError::Closed)? = map;
+        *self
+            .preferred_versions
+            .write()
+            .map_err(|_| ResourceError::Closed)? = preferred;
         unavailable_groups.sort();
+        self.discovery_incomplete
+            .store(!unavailable_groups.is_empty(), Ordering::Release);
         Ok(Discovery {
             server_version: version["gitVersion"]
                 .as_str()
@@ -386,6 +407,14 @@ impl ResourceApi {
             .values()
             .cloned()
             .collect())
+    }
+
+    pub fn preferred_version(&self, group: &str) -> Option<String> {
+        self.preferred_versions.read().ok()?.get(group).cloned()
+    }
+
+    pub fn discovery_is_partial(&self) -> bool {
+        self.discovery_incomplete.load(Ordering::Acquire)
     }
 
     pub fn resolve(
@@ -430,8 +459,20 @@ impl ResourceApi {
         kind: &ResourceKind,
         query: &ListQuery,
     ) -> Result<ResourcePage, ResourceError> {
+        self.list_bounded(kind, query, RESPONSE_LIMIT).await
+    }
+
+    async fn list_bounded(
+        &self,
+        kind: &ResourceKind,
+        query: &ListQuery,
+        response_limit: usize,
+    ) -> Result<ResourcePage, ResourceError> {
         let path = self.list_path(kind, query, "list")?;
-        let value = self.get_json(&path).await?;
+        let bytes = self
+            .bytes_request(Method::GET, &path, Vec::new(), None, response_limit)
+            .await?;
+        let value = serde_json::from_slice(&bytes).map_err(|_| ResourceError::InvalidResponse)?;
         page_from_value(value, kind, query.limit.unwrap_or(200) as usize)
     }
 
@@ -442,9 +483,16 @@ impl ResourceApi {
         kind: &ResourceKind,
         query: &ListQuery,
     ) -> Result<ResourceTable, ResourceError> {
-        // Secret table cells are server-generated and could contain values
+        // Table cells are server-generated and could contain masked values
         // independently of the object projection. Derive only safe columns.
-        if kind.group.is_empty() && kind.kind == "Secret" {
+        if (kind.group.is_empty() && kind.kind == "Secret")
+            || matches!(
+                (kind.group.as_str(), kind.kind.as_str()),
+                ("helm.toolkit.fluxcd.io", "HelmRelease")
+                    | ("kustomize.toolkit.fluxcd.io", "Kustomization")
+                    | ("notification.toolkit.fluxcd.io", "Provider" | "Receiver")
+            )
+        {
             let page = self.list(kind, query).await?;
             return Ok(basic_table(page));
         }
@@ -479,10 +527,15 @@ impl ResourceApi {
                 Ok(bytes)
             }) => result.map_err(|_|ResourceError::Timeout)??,
         };
-        let mut value: Value =
-            serde_json::from_slice(&bytes).map_err(|_| ResourceError::InvalidResponse)?;
+        let mut value = ProtectedJson(
+            serde_json::from_slice(&bytes).map_err(|_| ResourceError::InvalidResponse)?,
+        );
         if value["kind"] != "Table" || value["apiVersion"] != "meta.k8s.io/v1" {
-            let page = page_from_value(value, kind, query.limit.unwrap_or(200) as usize)?;
+            let page = page_from_value(
+                value.into_inner(),
+                kind,
+                query.limit.unwrap_or(200) as usize,
+            )?;
             return Ok(basic_table(page));
         }
         let columns = value["columnDefinitions"]
@@ -519,19 +572,18 @@ impl ResourceApi {
         if entries.len() > query.limit.unwrap_or(200) as usize {
             return Err(ResourceError::TooLarge);
         }
-        for mut row in std::mem::take(entries) {
+        for row in entries {
             let cells = row["cells"]
-                .as_array_mut()
-                .map(std::mem::take)
+                .as_array()
                 .ok_or(ResourceError::InvalidResponse)?;
             if cells.len() != columns.len() {
                 return Err(ResourceError::InvalidResponse);
             }
-            let mut object = row["object"].take();
+            let mut object = ProtectedJson(row["object"].take());
             redact_object(&mut object, kind, ReadOptions::default());
             rows.push(TableRow {
-                cells,
-                resource: row_from_value(object, kind)?,
+                cells: row["cells"].as_array().cloned().unwrap_or_default(),
+                resource: row_from_value(object.into_inner(), kind)?,
             });
         }
         Ok(ResourceTable {

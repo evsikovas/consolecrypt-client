@@ -6,6 +6,24 @@ const MAX_WATCH_LINE: usize = 2 * 1024 * 1024;
 const MAX_CACHE_ITEMS: usize = 20_000;
 const MAX_CACHE_BYTES: usize = 64 * 1024 * 1024;
 
+#[derive(Clone, Copy)]
+struct WatchLimits {
+    response_bytes: usize,
+    line_bytes: usize,
+    snapshot_items: usize,
+    snapshot_bytes: usize,
+}
+impl Default for WatchLimits {
+    fn default() -> Self {
+        Self {
+            response_bytes: RESPONSE_LIMIT,
+            line_bytes: MAX_WATCH_LINE,
+            snapshot_items: MAX_CACHE_ITEMS,
+            snapshot_bytes: MAX_CACHE_BYTES,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ResourceChange {
@@ -35,6 +53,50 @@ impl ResourceApi {
         sender: mpsc::Sender<ResourceChange>,
         stop: CancellationToken,
     ) -> Result<(), ResourceError> {
+        self.watch_with_limits(kind, options, sender, stop, WatchLimits::default())
+            .await
+    }
+
+    /// Lightweight invalidation consumers never retain objects. A separate
+    /// response/line budget keeps simultaneous GitOps kind subscriptions
+    /// bounded even when an API server ignores list limits.
+    pub async fn watch_invalidation(
+        &self,
+        kind: &ResourceKind,
+        namespace: Option<String>,
+        sender: mpsc::Sender<ResourceChange>,
+        stop: CancellationToken,
+    ) -> Result<(), ResourceError> {
+        self.watch_with_limits(
+            kind,
+            WatchOptions {
+                query: ListQuery {
+                    namespace,
+                    limit: Some(25),
+                    ..Default::default()
+                },
+                resource_version: None,
+            },
+            sender,
+            stop,
+            WatchLimits {
+                response_bytes: 512 * 1024,
+                line_bytes: 256 * 1024,
+                snapshot_items: 2_000,
+                snapshot_bytes: 16 * 1024 * 1024,
+            },
+        )
+        .await
+    }
+
+    async fn watch_with_limits(
+        &self,
+        kind: &ResourceKind,
+        options: WatchOptions,
+        sender: mpsc::Sender<ResourceChange>,
+        stop: CancellationToken,
+        limits: WatchLimits,
+    ) -> Result<(), ResourceError> {
         self.checked_kind(kind, "watch")?;
         let closed = self.guard.cancellation();
         tokio::select! {
@@ -42,7 +104,7 @@ impl ResourceApi {
             _ = closed.cancelled() => Err(ResourceError::Closed),
             _ = stop.cancelled() => Ok(()),
             _ = sender.closed() => Ok(()),
-            result = self.watch_loop(kind, options, sender.clone()) => result,
+            result = self.watch_loop(kind, options, sender.clone(), limits) => result,
         }
     }
 
@@ -51,6 +113,7 @@ impl ResourceApi {
         kind: &ResourceKind,
         options: WatchOptions,
         sender: mpsc::Sender<ResourceChange>,
+        limits: WatchLimits,
     ) -> Result<(), ResourceError> {
         let mut version = options.resource_version;
         if version.as_ref().is_some_and(|v| !safe_query_value(v, 128)) {
@@ -69,14 +132,16 @@ impl ResourceApi {
                 let mut bytes = 0;
                 let mut seen_tokens = BTreeSet::new();
                 loop {
-                    let page = self.list(kind, &query).await?;
+                    let page = self
+                        .list_bounded(kind, &query, limits.response_bytes)
+                        .await?;
                     items += page.items.len();
                     bytes += page
                         .items
                         .iter()
                         .map(|item| item.object.to_string().len())
                         .sum::<usize>();
-                    if items > MAX_CACHE_ITEMS || bytes > MAX_CACHE_BYTES {
+                    if items > limits.snapshot_items || bytes > limits.snapshot_bytes {
                         return Err(ResourceError::TooLarge);
                     }
                     // Every page in a paginated Kubernetes list belongs to
@@ -119,7 +184,9 @@ impl ResourceApi {
             };
             path.push('&');
             path.push_str(&parameters);
-            let result = self.watch_once(kind, &path, &sender, &mut version).await;
+            let result = self
+                .watch_once(kind, &path, &sender, &mut version, limits.line_bytes)
+                .await;
             match result {
                 Ok(()) => {
                     failures = 0;
@@ -151,6 +218,7 @@ impl ResourceApi {
         path: &str,
         sender: &mpsc::Sender<ResourceChange>,
         version: &mut Option<String>,
+        line_limit: usize,
     ) -> Result<(), ResourceError> {
         let mut body = tokio::time::timeout(
             Duration::from_secs(30),
@@ -168,7 +236,7 @@ impl ResourceApi {
             };
             if let Ok(data) = frame.map_err(|_| ResourceError::Transport)?.into_data() {
                 for chunk in data.split_inclusive(|byte| *byte == b'\n') {
-                    if pending.len().saturating_add(chunk.len()) > MAX_WATCH_LINE {
+                    if pending.len().saturating_add(chunk.len()) > line_limit {
                         return Err(ResourceError::TooLarge);
                     }
                     pending.extend_from_slice(chunk);

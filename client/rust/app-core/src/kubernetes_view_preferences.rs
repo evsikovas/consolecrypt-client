@@ -1,13 +1,28 @@
 //! Device-local presentation preferences, encrypted with the profile database.
 use crate::{AppCore, AppError, AppResult};
+use cc_k8s_core::resources::ResourceRef;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct KubeViewPreferences {
     pub workspace: Option<WorkspacePreferences>,
     pub tables: BTreeMap<String, TablePreferences>,
+    #[serde(default)]
+    pub gitops: Option<GitOpsPreferences>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GitOpsPreferences {
+    pub notifications: bool,
+    pub reminders: Vec<GitOpsReminder>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GitOpsReminder {
+    pub resource: ResourceRef,
+    pub due_at_ms: i64,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -31,6 +46,9 @@ pub enum KubeViewPreferencePatch {
     Table {
         resource_kind: String,
         preferences: TablePreferences,
+    },
+    Gitops {
+        preferences: GitOpsPreferences,
     },
 }
 fn valid_label(value: &str) -> bool {
@@ -56,6 +74,30 @@ impl KubeViewPreferencePatch {
                         valid_label(key) && width.is_finite() && (80.0..=600.0).contains(width)
                     })
                     && preferences.hidden.iter().all(|key| valid_label(key))
+            }
+            Self::Gitops { preferences } => {
+                let mut seen = BTreeSet::new();
+                preferences.reminders.len() <= 32
+                    && preferences.reminders.iter().all(|reminder| {
+                        let resource = &reminder.resource;
+                        let api = &resource.api;
+                        // Stored references are navigation hints, never executable actions.
+                        // Use the same bounded shape as discovery without persisting bodies.
+                        (api.group.is_empty() || valid_label(&api.group))
+                            && valid_label(&api.version)
+                            && valid_label(&api.resource)
+                            && valid_label(&api.kind)
+                            && api.verbs.len() <= 16
+                            && api.verbs.iter().all(|verb| valid_label(verb))
+                            && valid_label(&resource.name)
+                            && resource.namespace.as_deref().is_none_or(valid_label)
+                            && (0..=253_402_300_799_999).contains(&reminder.due_at_ms)
+                            && seen.insert((
+                                api.key(),
+                                resource.namespace.as_deref(),
+                                resource.name.as_str(),
+                            ))
+                    })
             }
         }
     }
@@ -93,6 +135,8 @@ impl AppCore {
             return Err(AppError::not_found("kube_context", id));
         }
         let key = format!("kubernetes.view.{id}");
+        let _profile = self.hold_session(&owner).await?;
+        let _generation = owner.hold_unlocked(&unlocked).await?;
         owner
             .storage
             .write(move |tx| {
@@ -114,12 +158,13 @@ impl AppCore {
                         }
                         current.tables.insert(resource_kind, preferences);
                     }
+                    KubeViewPreferencePatch::Gitops { preferences } => {
+                        current.gitops = Some(preferences);
+                    }
                 }
                 tx.setting_set(&key, &current)
             })
             .await?;
-        let _profile = self.hold_session(&owner).await?;
-        let _generation = owner.hold_unlocked(&unlocked).await?;
         Ok(())
     }
 }

@@ -16,9 +16,12 @@ import 'package:consolecrypt/kubernetes/kube_forward_mobile.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_service.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_targets_service.dart';
 import 'package:consolecrypt/kubernetes/kube_helm_cli_service.dart';
+import 'package:consolecrypt/kubernetes/kube_helm_comparison_service.dart';
 import 'package:consolecrypt/kubernetes/kube_history_service.dart';
 import 'package:consolecrypt/kubernetes/kube_insights_service.dart';
+import 'package:consolecrypt/kubernetes/kube_insights_watch_service.dart';
 import 'package:consolecrypt/kubernetes/kube_inventory_service.dart';
+import 'package:consolecrypt/kubernetes/kube_kubectl_service.dart';
 import 'package:consolecrypt/kubernetes/kube_logs_service.dart';
 import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
 import 'package:consolecrypt/kubernetes/kube_mutation_service.dart';
@@ -50,10 +53,14 @@ final class RustKubeService
         KubeLogService,
         KubeAdvancedLogService,
         KubeInsightsService,
+        KubeInsightsWatchService,
         KubeAuthService,
+        KubeImportExecService,
         KubeFluxCliService,
+        KubeKubectlService,
         KubeFluxPreferencesService,
         KubeHelmCliService,
+        KubeHelmComparisonService,
         KubeForwardService,
         KubeNetworkForwardService,
         KubeForwardTargetsService,
@@ -62,6 +69,22 @@ final class RustKubeService
         KubeMetricsService {
   const RustKubeService(this._hub);
   final RustBackend _hub;
+
+  @override
+  Future<KubeHelmComparison> compareHelmLive(String sessionId, String namespace, String secretName) async =>
+      KubeHelmComparison.fromJson(decodeObject(await guard(() => native.kubeHelmCompareLive(
+        sessionId: sessionId, namespace: namespace, secretName: secretName,
+      ))));
+
+  @override
+  Future<KubectlDiscovery> discoverKubectl() async =>
+      KubectlDiscovery.fromJson(decodeObject(await guard(native.kubeKubectlDiscover)));
+  @override
+  Future<FluxCliVersion> probeKubectl(String path) async =>
+      FluxCliVersion.fromJson(decodeObject(await guard(() => native.kubeKubectlProbe(path: path))));
+  @override
+  Future<FluxInstallReview> reviewKubectl(String method) async =>
+      FluxInstallReview.fromJson(decodeObject(await guard(() => native.kubeKubectlReview(method: method))));
 
   @override
   Future<KubeJson> readKubeViewPreferences(String contextId) async =>
@@ -697,6 +720,30 @@ final class RustKubeService
   );
 
   @override
+  Stream<KubeInsightsInvalidation> watchInsights(String sessionId, {String? namespace}) {
+    bool? previousPartial;
+    return _nativeStream(
+      start: () async {
+        final result = decodeObject(
+          await guard(() => native.kubeInsightsWatchStart(sessionId: sessionId, namespace: namespace)),
+        );
+        return result['id'] as String;
+      },
+      poll: (id) async =>
+          decodeObject(await guard(() => native.kubeInsightsWatchPoll(sessionId: sessionId, watchId: id))),
+      stop: (id) => guard(() => native.kubeInsightsWatchStop(sessionId: sessionId, watchId: id)),
+      decode: (page) {
+        final partial = page['partial'] == true;
+        final changed = partial != previousPartial;
+        previousPartial = partial;
+        return page['dirty'] == true || page['closed'] == true || changed
+            ? [KubeInsightsInvalidation(partial: partial, closed: page['closed'] == true)]
+            : const <KubeInsightsInvalidation>[];
+      },
+    );
+  }
+
+  @override
   Future<List<KubeHelmSummary>> helmHistory(String sessionId, {String? namespace, String? releaseName}) async =>
       List.unmodifiable(
         (jsonDecode(
@@ -791,6 +838,10 @@ final class RustKubeService
       resourceVersion: resourceVersion,
     ),
   );
+
+  @override
+  Future<KubeImportExecInspection> inspectImportExec(String ticket, int index) async =>
+      KubeImportExecInspection.fromBytes(await guard(() => native.kubeImportInspectExec(ticket: ticket, index: index)));
 
   @override
   Future<KubeExecReview> reviewExec(String contextId) async =>

@@ -27,6 +27,7 @@ pub enum ArgoAction {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ObjectIdentity {
+    pub group: String,
     pub kind: String,
     pub namespace: String,
     pub name: String,
@@ -79,17 +80,19 @@ pub fn flow_graph(objects: &[Value]) -> GitOpsFlow {
     let mut nodes = BTreeMap::new();
     let mut edges = BTreeSet::new();
     let mut truncated = objects.len() > 20_000;
+    let mut observed = BTreeMap::new();
+    for object in objects.iter().take(20_000) {
+        if let Some(id) = resource_identity(object) {
+            // Duplicate snapshots must not fabricate a definitive status.
+            observed
+                .entry(id)
+                .and_modify(|ready| *ready = None)
+                .or_insert_with(|| object_ready(object));
+        }
+    }
     for object in objects.iter().take(20_000) {
         let Some(id) = identity(object) else { continue };
-        let ready = object["status"]["conditions"]
-            .as_array()
-            .and_then(|conditions| {
-                conditions
-                    .iter()
-                    .find(|condition| condition["type"] == "Ready")
-                    .and_then(|condition| condition["status"].as_str())
-                    .map(|status| status == "True")
-            });
+        let ready = observed.get(&id).copied().flatten();
         nodes.insert(id, ready);
     }
     for object in objects.iter().take(20_000) {
@@ -99,8 +102,12 @@ pub fn flow_graph(objects: &[Value]) -> GitOpsFlow {
                 truncated = true;
                 return;
             }
-            nodes.entry(from.clone()).or_insert(None);
-            nodes.entry(to.clone()).or_insert(None);
+            nodes
+                .entry(from.clone())
+                .or_insert_with(|| observed.get(&from).copied().flatten());
+            nodes
+                .entry(to.clone())
+                .or_insert_with(|| observed.get(&to).copied().flatten());
             edges.insert(FlowEdge {
                 from,
                 to,
@@ -116,6 +123,7 @@ pub fn flow_graph(objects: &[Value]) -> GitOpsFlow {
                 if kind.len() <= 128 && name.len() <= 253 {
                     add(
                         ObjectIdentity {
+                            group: "source.toolkit.fluxcd.io".into(),
                             kind: kind.into(),
                             name: name.into(),
                             namespace: source["namespace"]
@@ -140,6 +148,7 @@ pub fn flow_graph(objects: &[Value]) -> GitOpsFlow {
             if let Some(name) = dependency["name"].as_str().filter(|name| name.len() <= 253) {
                 add(
                     ObjectIdentity {
+                        group: id.group.clone(),
                         kind: id.kind.clone(),
                         name: name.into(),
                         namespace: dependency["namespace"]
@@ -167,6 +176,7 @@ pub fn flow_graph(objects: &[Value]) -> GitOpsFlow {
                     add(
                         id.clone(),
                         ObjectIdentity {
+                            group: parts[2].into(),
                             namespace: parts[0].into(),
                             name: parts[1].into(),
                             kind: parts[3].into(),
@@ -192,6 +202,12 @@ pub fn flow_graph(objects: &[Value]) -> GitOpsFlow {
                         add(
                             id.clone(),
                             ObjectIdentity {
+                                group: resource["group"]
+                                    .as_str()
+                                    .unwrap_or("")
+                                    .chars()
+                                    .take(253)
+                                    .collect(),
                                 kind: kind.into(),
                                 name: name.into(),
                                 namespace: resource["namespace"]
@@ -475,6 +491,7 @@ pub fn overview(objects: &[Value]) -> GitOpsOverview {
                 continue;
             };
             let to = ObjectIdentity {
+                group: from.group.clone(),
                 kind: from.kind.clone(),
                 namespace: dependency["namespace"]
                     .as_str()
@@ -534,12 +551,19 @@ fn identity(object: &Value) -> Option<ObjectIdentity> {
     {
         return None;
     }
+    resource_identity(object)
+}
+
+fn resource_identity(object: &Value) -> Option<ObjectIdentity> {
+    let api = object["apiVersion"].as_str()?;
+    let group = api.split_once('/').map_or("", |(group, _)| group);
     let kind = object["kind"].as_str()?;
     let name = object["metadata"]["name"].as_str()?;
-    if name.len() > 253 || kind.len() > 128 {
+    if name.len() > 253 || kind.len() > 128 || group.len() > 253 {
         return None;
     }
     Some(ObjectIdentity {
+        group: group.into(),
         kind: kind.into(),
         namespace: object["metadata"]["namespace"]
             .as_str()
@@ -551,9 +575,153 @@ fn identity(object: &Value) -> Option<ObjectIdentity> {
     })
 }
 
+fn object_ready(object: &Value) -> Option<bool> {
+    if object["metadata"]["deletionTimestamp"].is_string() || object["spec"]["suspend"] == true {
+        return Some(false);
+    }
+    let api = object["apiVersion"].as_str().unwrap_or("");
+    let kind = object["kind"].as_str().unwrap_or("");
+    if api.starts_with("argoproj.io/") && kind == "Application" {
+        return object["status"].is_object().then(|| {
+            object["status"]["health"]["status"] == "Healthy"
+                && object["status"]["sync"]["status"] == "Synced"
+        });
+    }
+    let conditions = object["status"]["conditions"].as_array();
+    if conditions.is_some_and(|conditions| {
+        conditions.iter().any(|condition| {
+            matches!(
+                condition["type"].as_str(),
+                Some("Stalled" | "Reconciling" | "Failed")
+            ) && condition["status"] == "True"
+        })
+    }) {
+        return Some(false);
+    }
+    if let Some(ready) = conditions.and_then(|conditions| {
+        conditions
+            .iter()
+            .find(|condition| matches!(condition["type"].as_str(), Some("Ready" | "Complete")))
+    }) {
+        return Some(ready["status"] == "True");
+    }
+    if api == "apps/v1" {
+        if object["metadata"]["generation"]
+            .as_i64()
+            .is_some_and(|generation| {
+                object["status"]["observedGeneration"]
+                    .as_i64()
+                    .unwrap_or_default()
+                    < generation
+            })
+        {
+            return Some(false);
+        }
+        let replicas = object["spec"]["replicas"].as_u64().unwrap_or(1);
+        return match kind {
+            "Deployment" => object["status"].is_object().then(|| {
+                object["status"]["availableReplicas"].as_u64().unwrap_or(0) >= replicas
+                    && object["status"]["updatedReplicas"].as_u64().unwrap_or(0) >= replicas
+            }),
+            "StatefulSet" => object["status"].is_object().then(|| {
+                object["status"]["readyReplicas"].as_u64().unwrap_or(0) >= replicas
+                    && (!object["status"]["updateRevision"].is_string()
+                        || object["status"]["currentRevision"]
+                            == object["status"]["updateRevision"])
+            }),
+            "DaemonSet" => object["status"]["desiredNumberScheduled"]
+                .as_u64()
+                .map(|desired| {
+                    object["status"]["numberReady"].as_u64().unwrap_or(0) >= desired
+                        && object["status"]["updatedNumberScheduled"]
+                            .as_u64()
+                            .unwrap_or(0)
+                            >= desired
+                }),
+            _ => None,
+        };
+    }
+    match (api, kind, object["status"]["phase"].as_str()) {
+        ("v1", "Pod", Some("Succeeded")) => Some(true),
+        ("v1", "Pod", Some("Pending" | "Failed")) => Some(false),
+        ("v1", "PersistentVolumeClaim", Some(phase)) => Some(phase == "Bound"),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn flow_uses_observed_workload_and_argo_health_without_inventing_missing_status() {
+        let app = json!({"apiVersion":"argoproj.io/v1alpha1","kind":"Application",
+            "metadata":{"name":"app","namespace":"apps"},"status":{"health":{"status":"Healthy"},
+                "sync":{"status":"Synced"},"resources":[{"group":"apps","kind":"Deployment","name":"web","namespace":"apps"}]}});
+        let mut workload = json!({"apiVersion":"apps/v1","kind":"Deployment",
+            "metadata":{"name":"web","namespace":"apps","generation":2},"spec":{"replicas":3},
+            "status":{"observedGeneration":2,"updatedReplicas":3,"availableReplicas":3}});
+        let graph = flow_graph(&[app.clone(), workload.clone()]);
+        assert_eq!(
+            graph
+                .nodes
+                .iter()
+                .find(|n| n.object.name == "web")
+                .unwrap()
+                .ready,
+            Some(true)
+        );
+        assert_eq!(
+            graph
+                .nodes
+                .iter()
+                .find(|n| n.object.name == "app")
+                .unwrap()
+                .ready,
+            Some(true)
+        );
+        workload["status"]["observedGeneration"] = json!(1);
+        assert_eq!(
+            flow_graph(&[app, workload])
+                .nodes
+                .iter()
+                .find(|n| n.object.name == "web")
+                .unwrap()
+                .ready,
+            Some(false)
+        );
+    }
+    #[test]
+    fn flow_identifies_same_kind_and_name_by_api_group() {
+        let controller = json!({"apiVersion":"kustomize.toolkit.fluxcd.io/v1","kind":"Kustomization",
+            "metadata":{"name":"root","namespace":"apps"},"status":{"inventory":{"entries":[
+                {"id":"apps_web_apps_Deployment"},{"id":"apps_web_custom.example_Deployment"}]}}});
+        let a = json!({"apiVersion":"apps/v1","kind":"Deployment","metadata":{"name":"web","namespace":"apps"},
+            "spec":{"replicas":1},"status":{"availableReplicas":1,"updatedReplicas":1}});
+        let b = json!({"apiVersion":"custom.example/v1","kind":"Deployment","metadata":{"name":"web","namespace":"apps"},
+            "status":{"conditions":[{"type":"Ready","status":"False"}]}});
+        let graph = flow_graph(&[controller, a, b]);
+        let web = graph
+            .nodes
+            .iter()
+            .filter(|node| node.object.name == "web")
+            .collect::<Vec<_>>();
+        assert_eq!(web.len(), 2);
+        assert_eq!(
+            web.iter()
+                .find(|node| node.object.group == "apps")
+                .unwrap()
+                .ready,
+            Some(true)
+        );
+        assert_eq!(
+            web.iter()
+                .find(|node| node.object.group == "custom.example")
+                .unwrap()
+                .ready,
+            Some(false)
+        );
+        assert_eq!(graph.edges.len(), 2);
+    }
     #[test]
     fn flow_links_source_to_controller_to_inventory_and_keeps_unknown_status() {
         let source = json!({"apiVersion":"source.toolkit.fluxcd.io/v1","kind":"GitRepository","metadata":{"namespace":"apps","name":"source"},"status":{"conditions":[{"type":"Ready","status":"True"}]}});

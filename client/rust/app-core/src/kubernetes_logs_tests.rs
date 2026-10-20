@@ -203,6 +203,10 @@ async fn https_workload_selection_is_bounded_and_export_is_private_masked_and_re
         .unwrap();
         PathBuf::from(std::fs::read_to_string(marker).unwrap())
     };
+    #[cfg(windows)]
+    if std::env::var("CC_KUBE_WSL_LIVE").as_deref() == Ok("1") {
+        windows_wsl_terminal(&app, &session.id).await;
+    }
     app.lock().await.unwrap();
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     assert!(
@@ -220,4 +224,116 @@ async fn https_workload_selection_is_bounded_and_export_is_private_masked_and_re
         .await
         .is_err());
     assert!(!blocked.exists());
+}
+
+// Compile on every test host; only the explicitly enabled Windows run invokes
+// a user distribution. This also type-checks the fixture on macOS/Linux CI.
+#[cfg_attr(not(windows), allow(dead_code))]
+async fn windows_wsl_terminal(app: &AppCore, session: &str) {
+    let profiles = app.kube_context_terminal_profiles().await.unwrap();
+    let Some(profile) = profiles
+        .profiles
+        .iter()
+        .find(|profile| profile.id.starts_with("wsl:"))
+    else {
+        eprintln!("WSL_LIVE: SKIP — runner has no installed WSL distribution");
+        return;
+    };
+    let terminal = match app
+        .kube_context_terminal(session.into(), "default".into(), profile.id.clone())
+        .await
+    {
+        Ok(terminal) => terminal,
+        Err(AppError::InvalidInput { reason, .. }) if reason == "wsl_loopback_unavailable" => {
+            eprintln!("WSL_LIVE: BLOCKED as expected — distro cannot reach host loopback (NAT or Bash unavailable)");
+            return;
+        }
+        Err(error) => panic!("WSL context terminal failed: {}", error.code()),
+    };
+    let mut output = app.attach_terminal(terminal.clone()).await.unwrap();
+    // The command echo cannot pass: every marker is assembled at runtime.
+    // Python is optional in user distros, but when available it verifies the
+    // actual HTTPS proxy CA/token and the synthetic cluster response.
+    let python = r#"import os,json,base64,ssl,urllib.request,stat
+p=os.environ["KUBECONFIG"]
+assert stat.S_IMODE(os.stat(p).st_mode)==0o600
+c=json.load(open(p))
+assert "synthetic-logs-token" not in str(c)
+s=c["clusters"][0]["cluster"]
+assert s["server"].startswith("https://127.0.0.1:")
+ctx=ssl.create_default_context(cadata=base64.b64decode(s["certificate-authority-data"]).decode())
+r=urllib.request.Request(s["server"]+"/version",headers={"Authorization":"Bearer "+c["users"][0]["user"]["token"]})
+assert json.load(urllib.request.urlopen(r,context=ctx,timeout=10))["gitVersion"]=="v1.32.0"
+print("CC_"+"WSL_HTTPS_READY")
+"#;
+    let command = format!(
+        "printf '%s%s%s\\n' CC_WSL_ PATH= \"$KUBECONFIG\"; if command -v python3 >/dev/null 2>&1; then python3 -c '{}'; else test -f \"$KUBECONFIG\" && printf '%s%s\\n' CC_ WSL_PTY_ONLY; fi\r",
+        python.replace('\'',"'\\''")
+    );
+    app.terminal_write(terminal.clone(), command.into_bytes())
+        .await
+        .unwrap();
+    let frames = tokio::time::timeout(std::time::Duration::from_secs(25), async {
+        let mut text = String::from_utf8_lossy(&output.snapshot).into_owned();
+        loop {
+            let frame = output.output.recv().await.unwrap();
+            if let crate::dto::TerminalChunk::Data(bytes) = frame {
+                text.push_str(&String::from_utf8_lossy(&bytes));
+            }
+            assert!(text.len() < 128 * 1024, "bounded WSL fixture output");
+            let path = text
+                .lines()
+                .find_map(|line| line.trim().strip_prefix("CC_WSL_PATH="))
+                .map(str::to_owned);
+            if text.contains("CC_WSL_HTTPS_READY") {
+                break (true, path);
+            }
+            if text.contains("CC_WSL_PTY_ONLY") {
+                break (false, path);
+            }
+        }
+    })
+    .await
+    .unwrap();
+    app.close_terminal(terminal).await.unwrap();
+    let path = frames
+        .1
+        .expect("WSL shell reports its private capability path");
+    assert!(path.starts_with("/tmp/consolecrypt-kube.") && path.ends_with("/config"));
+    let executable = PathBuf::from(std::env::var_os("SystemRoot").expect("Windows system root"))
+        .join("System32/wsl.exe");
+    let binary = crate::kubernetes_cli::inspect(&executable).unwrap();
+    let args = vec![
+        "--distribution".into(),
+        profile.id.strip_prefix("wsl:").unwrap().into(),
+        "--exec".into(),
+        "/usr/bin/test".into(),
+        "!".into(),
+        "-e".into(),
+        path,
+    ];
+    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        loop {
+            let result = crate::kubernetes_cli::run(
+                &binary,
+                &args,
+                None,
+                std::time::Duration::from_secs(5),
+                tokio_util::sync::CancellationToken::new(),
+            )
+            .await
+            .unwrap();
+            if result.exit_code == 0 {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .expect("closing a WSL terminal removes the private capability");
+    if frames.0 {
+        eprintln!("WSL_LIVE: PASS — actual WSL PTY, private config, pinned HTTPS proxy");
+    } else {
+        eprintln!("WSL_LIVE: PARTIAL — actual WSL PTY and private config; python3 absent, HTTPS assertion skipped");
+    }
 }

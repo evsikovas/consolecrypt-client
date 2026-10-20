@@ -37,7 +37,7 @@ jobs:
   windows:
     needs: validate
     runs-on: [self-hosted, Windows, X64, consolecrypt, client]
-    timeout-minutes: 60
+    timeout-minutes: 180
     defaults:
       run:
         shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
@@ -49,6 +49,8 @@ jobs:
       - name: Register diagnostic workspace without cleanup
         run: '& client/scripts/cleanup-ci-workspace.ps1 -ClaimWorkspace'
       - name: Native terminal and Kubernetes regressions
+        env:
+          CC_KUBE_WSL_LIVE: '1'
         run: |
           & client/scripts/ci-windows.ps1 -NativeOnly
           if ($LASTEXITCODE -ne 0) { throw 'Windows native checks failed' }

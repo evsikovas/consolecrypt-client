@@ -86,6 +86,45 @@ abstract interface class KubeAuthService {
   Future<void> cancelAuth(String ticket);
 }
 
+abstract interface class KubeImportExecService {
+  Future<KubeImportExecInspection> inspectImportExec(String ticket, int index);
+}
+
+final class KubeImportExecInspection {
+  KubeImportExecInspection({
+    required this.command,
+    required this.arguments,
+    required this.environment,
+    required this.supported,
+    this.binaryPath,
+    this.binarySha256,
+  });
+  final String command;
+  final List<String> arguments;
+  final Map<String, String> environment;
+  final bool supported;
+  final String? binaryPath, binarySha256;
+  factory KubeImportExecInspection.fromBytes(Uint8List bytes) {
+    try {
+      final data = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+      return KubeImportExecInspection(
+        command: data['command'] as String,
+        arguments: (data['arguments'] as List).cast<String>(),
+        environment: (data['environment'] as Map).cast<String, String>(),
+        supported: data['supported'] as bool,
+        binaryPath: data['binary_path'] as String?,
+        binarySha256: data['binary_sha256'] as String?,
+      );
+    } finally {
+      bytes.fillRange(0, bytes.length, 0);
+    }
+  }
+  void dispose() {
+    arguments.clear();
+    environment.clear();
+  }
+}
+
 final kubeAuthServiceProvider = Provider<KubeAuthService?>((ref) {
   final service = ref.watch(kubeServiceProvider);
   return service is KubeAuthService ? service as KubeAuthService : null;

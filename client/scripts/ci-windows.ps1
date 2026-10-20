@@ -96,6 +96,7 @@ try {
     $env:CARGO_TARGET_DIR = Join-Path $Repo 'target\windows-rdp-tests'
     $NativeArguments = @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-terminal-core', '-p', 'cc-k8s-core', '-p', 'cc-app-core', '--all-targets')
     if (-not $NativeOnly) { $NativeArguments += @('-p', 'cc-rdp-core') }
+    if ($env:CC_KUBE_WSL_LIVE -eq '1') { $NativeArguments += @('--', '--nocapture') }
     Invoke-Checked cargo $NativeArguments
     # Compile the production Flutter boundary, including Windows-only cfg paths.
     Invoke-Checked cargo @('check', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-bridge', '--all-targets')

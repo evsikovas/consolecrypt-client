@@ -140,7 +140,12 @@ void main() {
       final socket = await Socket.connect('127.0.0.1', port);
       try {
         socket.add(utf8.encode('ios-forward'));
-        expect(utf8.decode(await socket.first.timeout(const Duration(seconds: 15))), 'ios-forward');
+        final received = <int>[];
+        await for (final chunk in socket.timeout(const Duration(seconds: 15))) {
+          received.addAll(chunk);
+          if (received.length >= 'ios-forward'.length) break;
+        }
+        expect(utf8.decode(received), 'ios-forward');
       } finally {
         socket.destroy();
       }

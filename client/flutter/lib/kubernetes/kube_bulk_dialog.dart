@@ -5,6 +5,7 @@ import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_mutation_service.dart';
 import 'package:consolecrypt/kubernetes/kube_operations_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
+import 'package:consolecrypt/kubernetes/kube_write_access.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -34,6 +35,10 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> {
   String? _failed;
   bool _busy = false, _cancel = false;
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(kubeScopeProvider));
+  bool get _canWrite =>
+      _current &&
+      !widget.session.production &&
+      (ref.read(kubeWriteAccessProvider(widget.session)).value?.canWrite ?? false);
   bool get _workload =>
       widget.kind.group == 'apps' && const ['Deployment', 'StatefulSet', 'DaemonSet'].contains(widget.kind.kind);
   @override
@@ -44,11 +49,7 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> {
   }
 
   Future<void> _run() async {
-    if (!_current ||
-        widget.session.production ||
-        _busy ||
-        _confirm.text != widget.contextName ||
-        widget.rows.length > 100) {
+    if (!_canWrite || _busy || _confirm.text != widget.contextName || widget.rows.length > 100) {
       return;
     }
     final replicas = int.tryParse(_replicas.text);
@@ -60,7 +61,7 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> {
     });
     try {
       for (final row in widget.rows) {
-        if (!_current || _cancel) break;
+        if (!_canWrite || _cancel) break;
         if (_completed.contains(row.id)) continue;
         final reference = KubeResourceRef(api: widget.kind, name: row.name, namespace: row.namespace);
         if (_action == 'delete') {
@@ -92,6 +93,7 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    ref.watch(kubeWriteAccessProvider(widget.session));
     ref.listen(kubeScopeProvider, (_, next) {
       if (identical(_scope, next)) return;
       _cancel = true;
@@ -170,10 +172,7 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> {
           key: const ValueKey('kube-bulk-run'),
           label: l.commonContinue,
           onPressed:
-              widget.session.production ||
-                  _busy ||
-                  _confirm.text != widget.contextName ||
-                  _completed.length == widget.rows.length
+              !_canWrite || _busy || _confirm.text != widget.contextName || _completed.length == widget.rows.length
               ? null
               : _run,
         ),

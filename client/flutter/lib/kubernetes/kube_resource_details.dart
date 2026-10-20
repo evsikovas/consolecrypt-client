@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -9,7 +10,10 @@ import 'package:consolecrypt/kubernetes/kube_forward_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_service.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_targets_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_targets_service.dart';
+import 'package:consolecrypt/kubernetes/kube_gitops_actions.dart';
 import 'package:consolecrypt/kubernetes/kube_gitops_details.dart';
+import 'package:consolecrypt/kubernetes/kube_gitops_graph.dart';
+import 'package:consolecrypt/kubernetes/kube_gitops_monitor.dart';
 import 'package:consolecrypt/kubernetes/kube_helm_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_insights_service.dart';
 import 'package:consolecrypt/kubernetes/kube_logs_panel.dart';
@@ -20,6 +24,7 @@ import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_relations_service.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_operations.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_relations.dart';
+import 'package:consolecrypt/kubernetes/kube_resource_route.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_summary.dart';
 import 'package:consolecrypt/kubernetes/kube_rollout_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_rollout_service.dart';
@@ -45,9 +50,16 @@ class KubeResourceDetails extends ConsumerStatefulWidget {
     this.openedResources = const [],
     this.onSelectResource,
     this.onCloseResource,
+    this.gitOpsMonitor,
+    this.initialAction,
+    this.initialLogs = false,
+    this.initialControllerLogs = false,
     super.key,
   });
   final KubeSession session;
+  final KubeGitOpsMonitor? gitOpsMonitor;
+  final bool initialLogs, initialControllerLogs;
+  final KubeResourceOpenAction? initialAction;
   final List<KubeResourceRef> ancestors, openedResources;
   final ValueChanged<KubeResourceRef>? onSelectResource, onCloseResource;
   final KubeResourceRef resource;
@@ -64,8 +76,9 @@ class KubeResourceDetails extends ConsumerStatefulWidget {
 class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with SingleTickerProviderStateMixin {
   late final KubeScope _scope;
   late final TabController _tabs;
+  final _gitOpsDetailsKey = GlobalKey<KubeGitOpsDetailsState>();
   KubeResourceDetail? _detail;
-  bool _loading = true, _failed = false;
+  bool _loading = true, _failed = false, _openedInitialControllerLogs = false, _openedInitialAction = false;
   int _generation = 0;
   bool _mutating = false, _mutationFailed = false, _changed = false;
   bool get _hasLogs =>
@@ -78,7 +91,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
   void initState() {
     super.initState();
     _scope = ref.read(kubeScopeProvider);
-    _tabs = TabController(length: _hasLogs ? 5 : 4, vsync: this)
+    _tabs = TabController(length: _hasLogs ? 5 : 4, initialIndex: widget.initialLogs && _hasLogs ? 2 : 0, vsync: this)
       ..addListener(() {
         if (mounted) setState(() {});
       });
@@ -109,7 +122,47 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
     } catch (_) {
       if (_current && generation == _generation) setState(() => _failed = true);
     } finally {
-      if (_current && generation == _generation) setState(() => _loading = false);
+      if (_current && generation == _generation) {
+        setState(() => _loading = false);
+        if (_detail != null && widget.initialAction != null && !_openedInitialAction) {
+          _openedInitialAction = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_current) unawaited(_reviewInitialAction());
+          });
+        }
+        if (_detail != null && widget.initialControllerLogs && !_openedInitialControllerLogs) {
+          _openedInitialControllerLogs = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_current) unawaited(_gitOpsDetailsKey.currentState?.openControllerLogs());
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _reviewInitialAction() async {
+    if (!_current || _detail == null) return;
+    if (widget.initialAction == KubeResourceOpenAction.shell && widget.resource.api.isPod) {
+      await _terminal();
+    } else if (widget.initialAction == KubeResourceOpenAction.restart && widget.service is KubeOperationsService) {
+      setState(() => _mutating = true);
+      try {
+        final changed = await reviewKubeRestart(
+          context,
+          session: widget.session,
+          resource: widget.resource,
+          detail: _detail!,
+          service: widget.service as KubeOperationsService,
+        );
+        if (_current && changed) {
+          _changed = true;
+          await _load();
+        }
+      } catch (_) {
+        if (_current) setState(() => _mutationFailed = true);
+      } finally {
+        if (_current) setState(() => _mutating = false);
+      }
     }
   }
 
@@ -142,14 +195,14 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
 
   Future<void> _related(KubeResourceRef resource) async {
     if (!_current) return;
-    final changed = await showAppDialog<bool>(
+    final changed = await showKubeResourceDetails<bool>(
       context,
-      secure: true,
       builder: (_) => KubeResourceDetails(
         session: widget.session,
         contextName: widget.contextName,
         resource: resource,
         service: widget.service,
+        gitOpsMonitor: widget.gitOpsMonitor,
         onTerminalOpened: _terminalOpened,
         onExplain: widget.onExplain == null ? null : _explain,
         onPinLogs: widget.onPinLogs,
@@ -163,7 +216,99 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
     }
   }
 
-  Future<void> _controllerLogs(KubeResourceRef controller, String filter) async {
+  KubeInsightResource? get _gitOpsResource {
+    final detail = _detail;
+    if (detail == null) return null;
+    final metadata = detail.object['metadata'] as Map?;
+    final resource = KubeInsightResource(
+      api: widget.resource.api,
+      resource: KubeResourceRow(
+        name: widget.resource.name,
+        namespace: widget.resource.namespace,
+        uid: metadata?['uid'] as String? ?? '',
+        resourceVersion: metadata?['resourceVersion'] as String? ?? '',
+        status: '',
+        object: detail.object,
+      ),
+    );
+    return resource.isFlux || resource.isArgo ? resource : null;
+  }
+
+  Future<void> _gitOpsAction(String action) async {
+    final resource = _gitOpsResource;
+    if (!_current || _mutating || resource == null || widget.service is! KubeInsightsService) return;
+    setState(() {
+      _mutating = true;
+      _mutationFailed = false;
+    });
+    try {
+      final changed = await runKubeGitOpsAction(
+        context,
+        ref,
+        session: widget.session,
+        resource: resource,
+        service: widget.service as KubeInsightsService,
+        action: action,
+        monitor: widget.gitOpsMonitor,
+      );
+      if (_current && changed) {
+        _changed = true;
+        await _load();
+        unawaited(widget.gitOpsMonitor?.refresh());
+      }
+    } catch (_) {
+      if (_current) setState(() => _mutationFailed = true);
+    } finally {
+      if (_current) setState(() => _mutating = false);
+    }
+  }
+
+  Future<void> _gitOpsGraph() async {
+    if (!_current || widget.service is! KubeInsightsService) return;
+    try {
+      final data =
+          widget.gitOpsMonitor?.data ?? await (widget.service as KubeInsightsService).insights(widget.session.id);
+      if (!mounted || !_current) return;
+      KubeResourceRef? find(KubeObjectIdentity id) => data.resources
+          .where(
+            (r) =>
+                r.api.kind == id.kind &&
+                r.api.group == id.group &&
+                r.resource.name == id.name &&
+                (r.resource.namespace ?? '') == id.namespace,
+          )
+          .firstOrNull
+          ?.reference;
+      await showAppDialog<void>(
+        context,
+        secure: true,
+        builder: (dialogContext) => GlassDialog(
+          title: context.l10n.kubeGitOpsFlow,
+          width: 1000,
+          content: SizedBox(
+            height: 520,
+            child: KubeGitOpsGraph(
+              flow: data.flow,
+              resources: data.resources,
+              canOpen: (id) => find(id) != null,
+              open: (id) {
+                final resource = find(id);
+                if (resource != null) unawaited(_related(resource));
+              },
+            ),
+          ),
+          primaryAction: GlassButton(
+            label: context.l10n.commonClose,
+            onPressed: () => closeDialog<void>(dialogContext),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (_current) setState(() => _failed = true);
+    }
+  }
+
+  Future<void> _controllerLogs(KubeResourceRef controller, String filter, [DateTime? since]) async {
     if (!_current) return;
     await showAppDialog<void>(
       context,
@@ -178,6 +323,9 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
             resource: controller,
             service: widget.service,
             initialFilter: filter,
+            initialSinceSeconds: since == null
+                ? null
+                : (DateTime.now().difference(since).inSeconds + 60).clamp(0, 604800),
           ),
         ),
         primaryAction: GlassButton(label: context.l10n.commonClose, onPressed: () => closeDialog<void>(dialogContext)),
@@ -305,11 +453,21 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
         const SingleActivator(LogicalKeyboardKey.keyY): () => shortcut(() => _tabs.animateTo(1)),
         const SingleActivator(LogicalKeyboardKey.keyD): () => shortcut(() => _tabs.animateTo(0)),
         const SingleActivator(LogicalKeyboardKey.keyL): () => shortcut(() {
-          if (_hasLogs) _tabs.animateTo(2);
+          if (_hasLogs) {
+            _tabs.animateTo(2);
+          } else {
+            unawaited(_gitOpsDetailsKey.currentState?.openControllerLogs());
+          }
         }),
         const SingleActivator(LogicalKeyboardKey.keyS): () => shortcut(() {
           if (widget.resource.api.isPod) unawaited(_terminal());
         }),
+        const SingleActivator(LogicalKeyboardKey.keyR): () => shortcut(() => unawaited(_gitOpsAction('reconcile'))),
+        const SingleActivator(LogicalKeyboardKey.keyR, shift: true): () =>
+            shortcut(() => unawaited(_gitOpsAction('reconcile_with_source'))),
+        const SingleActivator(LogicalKeyboardKey.keyP): () =>
+            shortcut(() => unawaited(_gitOpsAction(_gitOpsResource?.suspended == true ? 'resume' : 'suspend'))),
+        const SingleActivator(LogicalKeyboardKey.keyG): () => shortcut(() => unawaited(_gitOpsGraph())),
         const SingleActivator(LogicalKeyboardKey.delete): () => shortcut(() {
           if (canWrite && !_mutating) unawaited(_delete());
         }),
@@ -321,7 +479,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
           width: 980,
           title: '${widget.resource.api.kind} · ${widget.resource.name}',
           content: SizedBox(
-            height: 580,
+            height: AppPlatform.isMobile && MediaQuery.sizeOf(context).width < 720 ? double.infinity : 580,
             child: !_current
                 ? const SizedBox.shrink()
                 : Column(
@@ -386,6 +544,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
                         Text(l.kubeRequestFailed, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                       if (_mutationFailed)
                         Text(l.kubeApplyFailed, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                      if (!AppPlatform.isMobile && _gitOpsResource != null) _gitOpsActionBar(canWrite),
                       if (widget.service is KubeMutationService && detail != null)
                         Wrap(
                           spacing: 8,
@@ -471,6 +630,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
                           ),
                         ),
                       ],
+                      if (AppPlatform.isMobile && _gitOpsResource != null) _gitOpsActionBar(canWrite),
                     ],
                   ),
           ),
@@ -487,6 +647,36 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _gitOpsActionBar(bool canWrite) {
+    final l = context.l10n, resource = _gitOpsResource!;
+    return SingleChildScrollView(
+      key: ValueKey(AppPlatform.isMobile ? 'kube-gitops-bottom-actions' : 'kube-gitops-top-actions'),
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final action in kubeGitOpsActions(resource))
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GlassButton(
+                key: ValueKey('kube-gitops-detail-$action'),
+                label: kubeGitOpsActionLabel(l, action),
+                onPressed: canWrite && !_mutating ? () => _gitOpsAction(action) : null,
+              ),
+            ),
+          GlassButton(
+            label: l.kubeLogs,
+            icon: Icons.article_outlined,
+            onPressed: () {
+              if (_current) unawaited(_gitOpsDetailsKey.currentState?.openControllerLogs());
+            },
+          ),
+          const SizedBox(width: 8),
+          GlassButton(label: l.kubeGitOpsFlow, icon: Icons.account_tree_outlined, onPressed: _gitOpsGraph),
+        ],
       ),
     );
   }
@@ -630,12 +820,14 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
           ),
         if (widget.resource.api.group.endsWith('.toolkit.fluxcd.io') || widget.resource.api.group == 'argoproj.io')
           KubeGitOpsDetails(
+            key: _gitOpsDetailsKey,
             session: widget.session,
             resource: widget.resource,
             detail: detail,
             service: widget.service,
             onOpen: _related,
             onLogs: _controllerLogs,
+            onLogsAt: (controller, filter, since) => _controllerLogs(controller, filter, since),
             onHelm: widget.service is KubeInsightsService ? _helm : null,
             onChanged: () {
               _changed = true;

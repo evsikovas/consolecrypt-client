@@ -9,6 +9,7 @@ import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
 import 'package:consolecrypt/kubernetes/kube_manifest_snippets.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
+import 'package:consolecrypt/kubernetes/kube_schema_fields.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
 import 'package:consolecrypt/kubernetes/kube_yaml_editor.dart';
 import 'package:consolecrypt/kubernetes/kube_yaml_syntax.dart';
@@ -241,6 +242,25 @@ class _KubeCreateDialogState extends ConsumerState<KubeCreateDialog> {
                     decoration: InputDecoration(labelText: l.kubeYaml, counterText: ''),
                     onChanged: (_) => _changed(),
                   ),
+                  if (_schema != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: GlassButton(
+                        key: const ValueKey('kube-create-schema'),
+                        label: l.kubeSchemaFields,
+                        icon: Icons.help_outline,
+                        onPressed: !_canWrite || _busy
+                            ? null
+                            : () => showKubeSchemaFields(
+                                context,
+                                session: widget.session,
+                                kind: widget.kind,
+                                service: widget.service,
+                                editor: _yaml,
+                                onChanged: _changed,
+                              ),
+                      ),
+                    ),
                   if (_schema != null)
                     ExpansionTile(
                       title: Text(l.kubeSchema),

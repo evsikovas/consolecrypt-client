@@ -8,6 +8,15 @@ import 'error.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+Future<String> kubeInsightsWatchStart({required String sessionId, String? namespace}) =>
+    RustLib.instance.api.crateApiKubernetesKubeInsightsWatchStart(sessionId: sessionId, namespace: namespace);
+
+Future<String> kubeInsightsWatchPoll({required String sessionId, required String watchId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeInsightsWatchPoll(sessionId: sessionId, watchId: watchId);
+
+Future<void> kubeInsightsWatchStop({required String sessionId, required String watchId}) =>
+    RustLib.instance.api.crateApiKubernetesKubeInsightsWatchStop(sessionId: sessionId, watchId: watchId);
+
 Future<String> kubeRolloutHistory({required String sessionId, required String referenceJson}) =>
     RustLib.instance.api.crateApiKubernetesKubeRolloutHistory(sessionId: sessionId, referenceJson: referenceJson);
 
@@ -103,6 +112,9 @@ Future<String> kubeImportCommit({required String ticket, required String choices
 
 Future<void> kubeImportDiscard({required String ticket}) =>
     RustLib.instance.api.crateApiKubernetesKubeImportDiscard(ticket: ticket);
+
+Future<Uint8List> kubeImportInspectExec({required String ticket, required int index}) =>
+    RustLib.instance.api.crateApiKubernetesKubeImportInspectExec(ticket: ticket, index: index);
 
 Future<void> kubeContextDelete({required String id}) =>
     RustLib.instance.api.crateApiKubernetesKubeContextDelete(id: id);
@@ -228,6 +240,16 @@ Future<String> kubeHelmRelease({required String sessionId, required String names
       namespace: namespace,
       secretName: secretName,
     );
+
+Future<String> kubeHelmCompareLive({
+  required String sessionId,
+  required String namespace,
+  required String secretName,
+}) => RustLib.instance.api.crateApiKubernetesKubeHelmCompareLive(
+  sessionId: sessionId,
+  namespace: namespace,
+  secretName: secretName,
+);
 
 Future<void> kubeFluxAction({
   required String sessionId,
@@ -405,6 +427,14 @@ Future<String> kubeCreateResource({
 
 Future<String> kubeFluxDiscover({String? manualPath}) =>
     RustLib.instance.api.crateApiKubernetesKubeFluxDiscover(manualPath: manualPath);
+
+Future<String> kubeKubectlDiscover() => RustLib.instance.api.crateApiKubernetesKubeKubectlDiscover();
+
+Future<String> kubeKubectlProbe({required String path}) =>
+    RustLib.instance.api.crateApiKubernetesKubeKubectlProbe(path: path);
+
+Future<String> kubeKubectlReview({required String method}) =>
+    RustLib.instance.api.crateApiKubernetesKubeKubectlReview(method: method);
 
 Future<String> kubeFluxProbe({required String path}) =>
     RustLib.instance.api.crateApiKubernetesKubeFluxProbe(path: path);

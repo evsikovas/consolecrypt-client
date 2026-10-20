@@ -10,12 +10,16 @@ final class KubeNavigationRequest {
     this.namespace,
     this.resource,
     this.openAi = false,
+    this.gitOpsAction,
   });
   final KubeScope scope;
   final String contextId;
   final String? namespace;
   final KubeResourceRef? resource;
   final bool openAi;
+
+  /// Opens a GitOps view or a reviewed action; never grants write permission.
+  final String? gitOpsAction;
 }
 
 final kubeNavigationProvider = NotifierProvider<KubeNavigation, KubeNavigationRequest?>(KubeNavigation.new);
@@ -50,11 +54,13 @@ final class KubeNavigationSnapshot {
     required this.namespace,
     this.namespaces = const [],
     this.resources = const [],
+    this.hasFlux = false,
   });
   final KubeScope scope;
   final String owner, contextId, namespace;
   final List<String> namespaces;
   final List<KubeResourceRef> resources;
+  final bool hasFlux;
 }
 
 final kubeActiveNavigationProvider = NotifierProvider<KubeActiveNavigation, KubeNavigationSnapshot?>(
@@ -79,6 +85,7 @@ final class KubeActiveNavigation extends Notifier<KubeNavigationSnapshot?> {
       namespace: snapshot.namespace,
       namespaces: List.unmodifiable(snapshot.namespaces.take(500)),
       resources: List.unmodifiable(snapshot.resources.take(500)),
+      hasFlux: snapshot.hasFlux,
     );
   }
 

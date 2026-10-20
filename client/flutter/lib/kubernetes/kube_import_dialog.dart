@@ -6,6 +6,8 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/kubernetes/kube_auth_service.dart';
+import 'package:consolecrypt/kubernetes/kube_import_exec_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_inventory_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
@@ -212,6 +214,9 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
       _failure = null;
     });
     try {
+      for (final entry in _chosen.where((entry) => entry.authentication == 'exec')) {
+        if (!await _inspectExec(entry.index) || !_current || _expired) return;
+      }
       await _service.commit(preview.ticket, choices);
       if (!mounted || !_current) return;
       _preview = null;
@@ -232,6 +237,24 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
       }
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<bool> _inspectExec(int index) async {
+    final service = _service;
+    final preview = _preview;
+    if (service is! KubeImportExecService || preview == null || !_current || _expired) return false;
+    final inspection = await (service as KubeImportExecService).inspectImportExec(preview.ticket, index);
+    try {
+      if (!mounted || !_current || _expired) return false;
+      return await showAppDialog<bool>(
+            context,
+            secure: true,
+            builder: (_) => KubeImportExecDialog(inspection: inspection, scope: _scope),
+          ) ??
+          false;
+    } finally {
+      inspection.dispose();
     }
   }
 

@@ -114,14 +114,15 @@ final class KubeGitOpsOverview {
 }
 
 final class KubeObjectIdentity {
-  const KubeObjectIdentity({required this.kind, required this.namespace, required this.name});
-  final String kind, namespace, name;
+  const KubeObjectIdentity({required this.kind, required this.namespace, required this.name, this.group = ''});
+  final String kind, namespace, name, group;
   factory KubeObjectIdentity.fromJson(KubeJson json) => KubeObjectIdentity(
     kind: json['kind'] as String,
     namespace: json['namespace'] as String? ?? '',
     name: json['name'] as String,
+    group: json['group'] as String? ?? '',
   );
-  String get label => '$kind · $namespace/$name';
+  String get label => '$kind${group.isEmpty ? '' : ' ($group)'} · $namespace/$name';
 }
 
 final class KubeDependency {

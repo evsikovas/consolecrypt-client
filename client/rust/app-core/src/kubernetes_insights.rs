@@ -30,6 +30,21 @@ pub struct KubeInsights {
 }
 
 impl AppCore {
+    pub async fn kube_helm_compare_live(
+        &self,
+        session_id: String,
+        namespace: String,
+        secret_name: String,
+    ) -> AppResult<cc_k8s_core::resources::HelmLiveComparison> {
+        self.with_kube_session(&session_id, |live| async move {
+            live.resources
+                .helm_compare_live(&namespace, &secret_name)
+                .await
+                .map_err(super::kubernetes_runtime::resource_error)
+        })
+        .await
+    }
+
     pub async fn kube_insights(
         &self,
         session_id: String,

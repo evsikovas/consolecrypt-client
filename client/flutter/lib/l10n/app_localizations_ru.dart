@@ -7463,4 +7463,165 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeAutoShell => 'Определить оболочку автоматически';
+
+  @override
+  String get kubeGitOpsLocalAlerts => 'Уведомления и напоминания на этом устройстве';
+
+  @override
+  String get kubeGitOpsNotify => 'Сообщать о сбоях Flux';
+
+  @override
+  String get kubeGitOpsNotifyHelp =>
+      'Для этого контекста, пока приложение открыто. Новые переходы в Not ready или Stalled показываются уведомлением и значком.';
+
+  @override
+  String kubeGitOpsFailureNotice(String resource, int count) {
+    return 'Flux требует внимания: $resource ($count)';
+  }
+
+  @override
+  String kubeGitOpsReminderDue(String resource, int count) {
+    return 'Напоминание о кластере: $resource ($count)';
+  }
+
+  @override
+  String kubeGitOpsUnread(int count) {
+    return 'Непрочитанных уведомлений: $count';
+  }
+
+  @override
+  String get kubeGitOpsCancelReminder => 'Отменить напоминание';
+
+  @override
+  String get kubeGitOpsRemind => 'Локальное напоминание';
+
+  @override
+  String get kubeGitOpsNoReminder => 'Не напоминать';
+
+  @override
+  String kubeGitOpsRemindHours(int hours) {
+    return 'Напомнить через $hours ч';
+  }
+
+  @override
+  String get kubePreferencesFailed => 'Не удалось сохранить или загрузить настройки устройства. Попробуйте снова.';
+
+  @override
+  String get kubeContextWslHelp =>
+      'WSL требует Bash и WSL 1 либо зеркальный режим сети WSL 2. Перед запуском проверяется доступ к локальному прокси; режим NAT не поддерживается.';
+
+  @override
+  String get kubeContextWslUnavailable =>
+      'WSL не может подключиться к локальному прокси. Используйте WSL 1, зеркальный режим WSL 2 или PowerShell.';
+
+  @override
+  String get kubeKubectlMissing => 'kubectl не найден. Он нужен только для локального терминала кластера.';
+
+  @override
+  String get kubeKubectlInstall => 'Установить kubectl';
+
+  @override
+  String get kubeKubectlPackageHelp =>
+      'Источник пакета, версию и папку установки определяет конфигурация пакетного менеджера. Версия kubectl должна отличаться от кластера не более чем на одну минорную версию. Команда запускается в видимом терминале; kubeconfig ей не передаётся.';
+
+  @override
+  String get kubeKubectlDocs => 'Инструкция по установке';
+
+  @override
+  String get kubeKubectlCheck => 'Проверить kubectl';
+
+  @override
+  String get kubeSchemaFields => 'Поля из схемы кластера';
+
+  @override
+  String get kubeSchemaHelp =>
+      'Просматривайте поля и их описания из OpenAPI-схемы кластера. Вставка поля меняет только редактор; проверьте манифест перед применением.';
+
+  @override
+  String get kubeSchemaUnavailable =>
+      'Схема кластера недоступна. Перед применением всё равно требуется серверная проверка.';
+
+  @override
+  String get kubeSchemaRequired => 'Обязательное';
+
+  @override
+  String get kubeSchemaInsert => 'Вставить поле у курсора';
+
+  @override
+  String get kubeSchemaNoFields => 'Подходящие поля схемы не найдены.';
+
+  @override
+  String get kubeSchemaParent => 'Родительское поле';
+
+  @override
+  String get kubeSchemaRoot => 'Корневые поля';
+
+  @override
+  String get kubeGitOpsAppliedRevision => 'Применённая ревизия';
+
+  @override
+  String get kubeGitOpsLatestRevision => 'Последняя ревизия источника';
+
+  @override
+  String get kubeGraphExpand => 'Развернуть объекты';
+
+  @override
+  String get kubeClusters => 'Кластеры';
+
+  @override
+  String get kubeExecInspect => 'Просмотреть команду';
+
+  @override
+  String get kubeExecImportHelp =>
+      'Просмотрите команду перед импортом. Импорт её не запускает; разрешение на выполнение будет отдельно запрошено при подключении.';
+
+  @override
+  String get kubeExecBinaryUnavailable =>
+      'Исполняемый файл недоступен на этом устройстве. Путь и SHA-256 будут проверены перед запуском.';
+
+  @override
+  String get kubeGitOpsTimeline => 'История сверки состояния';
+
+  @override
+  String get kubeHelmCompareLive => 'Сравнить с кластером';
+
+  @override
+  String get kubeHelmCompareHelp =>
+      'Сравнение полей сохранённого манифеста с объектами кластера только для чтения. Значения по умолчанию и правила сверки контроллера не вычисляются.';
+
+  @override
+  String get kubeHelmCompareMasked => 'Скрытые поля не участвуют в сравнении.';
+
+  @override
+  String get kubeHelmCompareEqual => 'Видимые поля совпадают';
+
+  @override
+  String get kubeHelmCompareChanged => 'Есть отличия';
+
+  @override
+  String get kubeHelmCompareMissing => 'Объект отсутствует';
+
+  @override
+  String get kubeHelmTests => 'Тесты Helm';
+
+  @override
+  String get kubeGitOpsStalled => 'Сбой';
+
+  @override
+  String get kubeGitOpsStale => 'Устарели';
+
+  @override
+  String get kubeStatusUnknown => 'Ещё не проверен';
+
+  @override
+  String get kubeStatusChecking => 'Проверяется…';
+
+  @override
+  String get kubeStatusAvailable => 'Последняя проверка: доступен';
+
+  @override
+  String get kubeStatusForbidden => 'Последняя проверка: доступ запрещён';
+
+  @override
+  String get kubeStatusFailed => 'Последняя проверка: ошибка';
 }

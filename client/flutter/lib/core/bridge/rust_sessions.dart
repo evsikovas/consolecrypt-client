@@ -123,7 +123,13 @@ final class RustTerminalService
     }
     final metadata = info['target'] as Json;
     if (metadata['kind'] != 'local' ||
-        !const {'flux-install', 'flux-context', 'helm-rollback', 'kubernetes-context'}.contains(metadata['profile_id'])) {
+        !const {
+          'flux-install',
+          'kubectl-install',
+          'flux-context',
+          'helm-rollback',
+          'kubernetes-context',
+        }.contains(metadata['profile_id'])) {
       throw const AppException(AppErrorCode.validation, 'Terminal cannot be adopted');
     }
     final target = LocalTerminalTarget(
@@ -493,8 +499,12 @@ final class RustTerminalService
         // Timed out already.
       }
     }
-    await s.output.close();
-    await s.events.close();
+    // A single-subscription controller's close future waits for a listener.
+    // A caller may only consume output, or may pause a stream while its tab
+    // is hidden. Native resources are already revoked; neither consumer may
+    // prevent this session from closing or the vault from locking.
+    unawaited(s.output.close());
+    unawaited(s.events.close());
   }
 
   Future<void> dispose() async {

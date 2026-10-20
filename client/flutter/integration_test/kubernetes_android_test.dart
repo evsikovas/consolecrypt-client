@@ -53,9 +53,11 @@ void main() {
     final services = rust.services;
     KubeSession? session;
     try {
+      debugPrint('KUBE_SMOKE: create profile');
       await services.profiles.createLocalProfile(name: 'Kubernetes Android acceptance');
       await services.vault.createVault(name: 'Acceptance', passphrase: SecretText('it-${ObjectId.generate().value}'));
       await services.vault.confirmRecoveryKitSaved();
+      debugPrint('KUBE_SMOKE: vault unlocked');
       final kube = services.kubernetes!;
       final secret = SecretText(await config.readAsString());
       late KubeImportPreview preview;
@@ -65,13 +67,17 @@ void main() {
         secret.wipe();
         await config.delete();
       }
+      debugPrint('KUBE_SMOKE: import preview complete');
       expect(preview.entries, hasLength(1));
       expect(preview.entries.single.error, isNull);
       await kube.commit(preview.ticket, [KubeImportChoice(index: preview.entries.single.index, production: false)]);
+      debugPrint('KUBE_SMOKE: import committed');
       final connection = (await kube.inventory()).single;
       final browser = kube as KubeBrowserService;
       session = await browser.connect(connection.id);
-      final kinds = await browser.discover(session.id);
+      debugPrint('KUBE_SMOKE: connected');
+      final kinds = await browser.discover(session.id).timeout(const Duration(seconds: 60));
+      debugPrint('KUBE_SMOKE: discovery complete');
       final namespaces = kinds.singleWhere((kind) => kind.group.isEmpty && kind.resource == 'namespaces');
       final marker = await browser.getResource(session.id, KubeResourceRef(api: namespaces, name: _namespace));
       final metadata = marker.object['metadata'] as Map;
@@ -87,6 +93,7 @@ void main() {
       final pod = KubeResourceRef(api: podKind, namespace: _namespace, name: 'fixture-shell');
       expect(await browser.logs(session.id, pod), isNotEmpty);
 
+      debugPrint('KUBE_SMOKE: resource list and snapshot logs complete');
       final terminal = await services.terminal.openTarget(
         target: KubernetesTerminalTarget(
           sessionId: session.id,
@@ -105,12 +112,49 @@ void main() {
         if (output.toString().contains('CC_ANDROID_PTY') && !terminalDone.isCompleted) terminalDone.complete();
       });
       try {
+        debugPrint('KUBE_SMOKE: waiting for terminal output');
         await terminalDone.future.timeout(const Duration(seconds: 30));
       } finally {
-        await services.terminal.close(terminal.id);
+        debugPrint('KUBE_SMOKE: closing terminal');
+        await services.terminal.close(terminal.id).timeout(const Duration(seconds: 10));
         await subscription.cancel();
       }
 
+      debugPrint('KUBE_SMOKE: terminal complete');
+      final automatic = await services.terminal.openTarget(
+        target: KubernetesTerminalTarget(
+          sessionId: session.id,
+          contextName: connection.name,
+          namespace: _namespace,
+          pod: 'fixture-shell',
+          command: const ['/__consolecrypt_auto_shell__'],
+        ),
+        size: TerminalSize.initial,
+      );
+      final connected = Completer<void>(), autoDone = Completer<void>();
+      final autoOutput = StringBuffer();
+      final autoEvents = automatic.events.listen((event) {
+        if (event is TerminalStateChanged &&
+            event.state == SessionConnectionState.connected &&
+            !connected.isCompleted) {
+          connected.complete();
+        }
+      });
+      final autoFrames = automatic.output.listen((bytes) {
+        autoOutput.write(utf8.decode(bytes, allowMalformed: true));
+        if (autoOutput.toString().contains('CC_ANDROID_AUTO_READY') && !autoDone.isCompleted) autoDone.complete();
+      });
+      try {
+        await connected.future.timeout(const Duration(seconds: 25));
+        // The marker is split in the command so terminal echo cannot pass.
+        await services.terminal.write(automatic.id, utf8.encode("printf '%s%s' CC_ANDROID_ AUTO_READY\r"));
+        await autoDone.future.timeout(const Duration(seconds: 15));
+      } finally {
+        await services.terminal.close(automatic.id).timeout(const Duration(seconds: 10));
+        await autoEvents.cancel();
+        await autoFrames.cancel();
+      }
+      debugPrint('KUBE_SMOKE: automatic shell complete');
       // Render the actual production browser while the native-only assertions
       // use their independently revocable session.
       await tester.pumpWidget(
@@ -134,6 +178,7 @@ void main() {
         pod: 'fixture-shell',
         remotePort: 8080,
       );
+      debugPrint('KUBE_SMOKE: forward opened');
       expect(forward.address, startsWith('127.0.0.1:'));
       final http = HttpClient();
       try {
@@ -161,11 +206,13 @@ void main() {
         Socket.connect('127.0.0.1', int.parse(forward.address.split(':').last), timeout: const Duration(seconds: 2)),
         throwsA(isA<SocketException>()),
       );
+      debugPrint('KUBE_SMOKE: forward revoked, checking vault lock');
       await services.vault.lock();
       await expectLater(browser.listResources(session.id, podKind, namespace: _namespace), throwsA(isA<Exception>()));
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     } finally {
+      debugPrint('KUBE_SMOKE: cleanup');
       if (ready.existsSync()) await ready.delete();
       if (session != null) {
         try {

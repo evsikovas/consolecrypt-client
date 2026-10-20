@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_connection_editor.dart';
+import 'package:consolecrypt/kubernetes/kube_connection_status.dart';
 import 'package:consolecrypt/kubernetes/kube_export_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_history_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_history_service.dart';
@@ -76,6 +77,7 @@ class _KubernetesScreenState extends ConsumerState<KubernetesScreen> {
     final service = ref.watch(kubeServiceProvider);
     final request = ref.watch(kubeNavigationProvider);
     final state = ref.watch(kubeConnectionsProvider(scope));
+    final statuses = ref.watch(kubeConnectionStatusProvider);
     if (request != null && identical(request.scope, scope) && scope.unlocked && _selected?.id != request.contextId) {
       final connection = state.value?.where((entry) => entry.id == request.contextId).firstOrNull;
       if (connection != null) {
@@ -187,6 +189,14 @@ class _KubernetesScreenState extends ConsumerState<KubernetesScreen> {
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final connection = items[index];
+                final status = statuses[connection.id];
+                final statusText = switch (status?.state) {
+                  null => l.kubeStatusUnknown,
+                  KubeConnectionState.checking => l.kubeStatusChecking,
+                  KubeConnectionState.available => l.kubeStatusAvailable,
+                  KubeConnectionState.forbidden => l.kubeStatusForbidden,
+                  KubeConnectionState.failed => l.kubeStatusFailed,
+                };
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: ContentSurface(
@@ -208,9 +218,30 @@ class _KubernetesScreenState extends ConsumerState<KubernetesScreen> {
                             const Chip(label: Text('PROD')), // l10n-ignore: standard environment marker
                         ],
                       ),
-                      subtitle: Text(
-                        // l10n-ignore: Saved cluster metadata and already localized namespace label.
-                        /* l10n-ignore: Saved cluster metadata and already localized namespace label. */ '${connection.clusterName} · ${connection.server}\n${l.kubeNamespace}: ${connection.namespace}${connection.tags.isEmpty ? '' : ' · ${connection.tags.join(', ')}'}',
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            // l10n-ignore: Saved cluster metadata and already localized namespace label.
+                            /* l10n-ignore: Saved cluster metadata and already localized namespace label. */ '${connection.clusterName} · ${connection.server}\n${l.kubeNamespace}: ${connection.namespace}${connection.tags.isEmpty ? '' : ' · ${connection.tags.join(', ')}'}',
+                          ),
+                          Wrap(
+                            spacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Icon(switch (status?.state) {
+                                null => Icons.help_outline,
+                                KubeConnectionState.checking => Icons.hourglass_empty,
+                                KubeConnectionState.available => Icons.check_circle_outline,
+                                KubeConnectionState.forbidden => Icons.lock_outline,
+                                KubeConnectionState.failed => Icons.error_outline,
+                              }, size: 14),
+                              Text(statusText, key: ValueKey('kube-status-${connection.id}')),
+                              if (status?.serverVersion case final String version) Text(version),
+                            ],
+                          ),
+                        ],
                       ),
                       isThreeLine: true,
                       trailing: Row(

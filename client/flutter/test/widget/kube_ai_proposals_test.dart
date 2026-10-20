@@ -152,6 +152,7 @@ Future<ProviderContainer> _pump(WidgetTester tester, Widget child, _Service serv
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        kubeServiceProvider.overrideWithValue(const UnavailableKubeService()),
         kubeScopeProvider.overrideWith((ref) => ref.watch(_scope)),
         aiProvidersProvider.overrideWith((ref) => Stream.value(const [])),
         snippetServiceProvider.overrideWithValue(snippets),

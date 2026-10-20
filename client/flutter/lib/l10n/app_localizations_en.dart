@@ -7263,4 +7263,165 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeAutoShell => 'Detect shell automatically';
+
+  @override
+  String get kubeGitOpsLocalAlerts => 'Alerts and reminders on this device';
+
+  @override
+  String get kubeGitOpsNotify => 'Notify about Flux failures';
+
+  @override
+  String get kubeGitOpsNotifyHelp =>
+      'For this context while the app is open. New Not ready or Stalled transitions appear as a toast and a badge.';
+
+  @override
+  String kubeGitOpsFailureNotice(String resource, int count) {
+    return 'Flux needs attention: $resource ($count)';
+  }
+
+  @override
+  String kubeGitOpsReminderDue(String resource, int count) {
+    return 'Cluster reminder: $resource ($count)';
+  }
+
+  @override
+  String kubeGitOpsUnread(int count) {
+    return 'Unread alerts: $count';
+  }
+
+  @override
+  String get kubeGitOpsCancelReminder => 'Cancel reminder';
+
+  @override
+  String get kubeGitOpsRemind => 'Local reminder';
+
+  @override
+  String get kubeGitOpsNoReminder => 'Do not remind';
+
+  @override
+  String kubeGitOpsRemindHours(int hours) {
+    return 'Remind in $hours h';
+  }
+
+  @override
+  String get kubePreferencesFailed => 'Device preferences could not be saved or loaded. Try again.';
+
+  @override
+  String get kubeContextWslHelp =>
+      'WSL requires Bash and either WSL 1 or WSL 2 mirrored networking. Host loopback access is checked before launch; NAT networking is unsupported.';
+
+  @override
+  String get kubeContextWslUnavailable =>
+      'WSL cannot connect to the local proxy. Use WSL 1, WSL 2 mirrored networking or PowerShell.';
+
+  @override
+  String get kubeKubectlMissing => 'kubectl was not found. It is only needed for the local cluster terminal.';
+
+  @override
+  String get kubeKubectlInstall => 'Install kubectl';
+
+  @override
+  String get kubeKubectlPackageHelp =>
+      'The package manager configuration determines the package source, version and installation directory. Keep kubectl within one minor version of the cluster. The command runs in a visible terminal; no kubeconfig is passed to it.';
+
+  @override
+  String get kubeKubectlDocs => 'Installation instructions';
+
+  @override
+  String get kubeKubectlCheck => 'Check kubectl';
+
+  @override
+  String get kubeSchemaFields => 'Fields from the cluster schema';
+
+  @override
+  String get kubeSchemaHelp =>
+      'Browse fields and their descriptions from the cluster OpenAPI schema. Inserting a field only changes this editor; validate the manifest before applying.';
+
+  @override
+  String get kubeSchemaUnavailable =>
+      'The cluster schema is unavailable. Server validation is still required before applying.';
+
+  @override
+  String get kubeSchemaRequired => 'Required';
+
+  @override
+  String get kubeSchemaInsert => 'Insert field at cursor';
+
+  @override
+  String get kubeSchemaNoFields => 'No matching schema fields.';
+
+  @override
+  String get kubeSchemaParent => 'Parent field';
+
+  @override
+  String get kubeSchemaRoot => 'Root fields';
+
+  @override
+  String get kubeGitOpsAppliedRevision => 'Applied revision';
+
+  @override
+  String get kubeGitOpsLatestRevision => 'Latest source revision';
+
+  @override
+  String get kubeGraphExpand => 'Expand objects';
+
+  @override
+  String get kubeClusters => 'Clusters';
+
+  @override
+  String get kubeExecInspect => 'Inspect command';
+
+  @override
+  String get kubeExecImportHelp =>
+      'Review the command before importing. Import never runs it; execution requires a separate confirmation when connecting.';
+
+  @override
+  String get kubeExecBinaryUnavailable =>
+      'The executable is unavailable on this device. Its path and SHA-256 will be checked before execution.';
+
+  @override
+  String get kubeGitOpsTimeline => 'Reconciliation timeline';
+
+  @override
+  String get kubeHelmCompareLive => 'Compare with cluster';
+
+  @override
+  String get kubeHelmCompareHelp =>
+      'Read-only comparison of saved manifest fields with live objects. Server defaults and controller reconciliation rules are not evaluated.';
+
+  @override
+  String get kubeHelmCompareMasked => 'Masked fields are excluded from comparison.';
+
+  @override
+  String get kubeHelmCompareEqual => 'Visible fields match';
+
+  @override
+  String get kubeHelmCompareChanged => 'Differences found';
+
+  @override
+  String get kubeHelmCompareMissing => 'Object is missing';
+
+  @override
+  String get kubeHelmTests => 'Helm tests';
+
+  @override
+  String get kubeGitOpsStalled => 'Stalled';
+
+  @override
+  String get kubeGitOpsStale => 'Out of date';
+
+  @override
+  String get kubeStatusUnknown => 'Not checked yet';
+
+  @override
+  String get kubeStatusChecking => 'Checking…';
+
+  @override
+  String get kubeStatusAvailable => 'Last check: reachable';
+
+  @override
+  String get kubeStatusForbidden => 'Last check: access denied';
+
+  @override
+  String get kubeStatusFailed => 'Last check: failed';
 }

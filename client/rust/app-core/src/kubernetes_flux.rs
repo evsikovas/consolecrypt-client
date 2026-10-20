@@ -25,8 +25,7 @@ pub struct ContextTerminalProfiles {
     pub wsl_supported: bool,
 }
 
-/// Native shells can consume this machine's loopback capability. WSL2 NAT
-/// and Windows/WSL path translation are not silently treated as supported.
+/// Native shells can consume this machine's loopback capability directly.
 fn context_shells() -> Vec<(ContextShellProfile, PathBuf, Vec<String>)> {
     let mut profiles = Vec::new();
     if cfg!(target_os = "macos") {
@@ -100,6 +99,42 @@ fn context_shells() -> Vec<(ContextShellProfile, PathBuf, Vec<String>)> {
         .collect()
 }
 
+async fn wsl_shells() -> Vec<(ContextShellProfile, PathBuf, String)> {
+    #[cfg(windows)]
+    {
+        let Some(executable) = std::env::var_os("SystemRoot")
+            .map(PathBuf::from)
+            .filter(|path| path.is_absolute())
+            .map(|path| path.join("System32/wsl.exe"))
+            .filter(|path| path.is_file())
+        else {
+            return Vec::new();
+        };
+        cc_terminal_core::local::profiles()
+            .await
+            .ok()
+            .into_iter()
+            .flat_map(|profiles| profiles.profiles)
+            .filter(|profile| profile.kind == cc_terminal_core::local::LocalShellKind::Wsl)
+            .filter_map(|profile| {
+                Some((
+                    ContextShellProfile {
+                        id: profile.id,
+                        label: profile.label,
+                        shell: "bash".into(),
+                    },
+                    executable.clone(),
+                    profile.distribution?,
+                ))
+            })
+            .collect()
+    }
+    #[cfg(not(windows))]
+    {
+        Vec::new()
+    }
+}
+
 pub(crate) fn error(value: CliError) -> AppError {
     let rule = match value {
         CliError::UnsupportedPlatform => "desktop_only",
@@ -120,14 +155,17 @@ pub(crate) fn error(value: CliError) -> AppError {
 impl AppCore {
     pub async fn kube_context_terminal_profiles(&self) -> AppResult<ContextTerminalProfiles> {
         let (owner, unlocked) = self.unlocked().await?;
+        let wsl = wsl_shells().await;
         let _profile = self.hold_session(&owner).await?;
         let _generation = owner.hold_unlocked(&unlocked).await?;
+        let wsl_supported = !wsl.is_empty();
         Ok(ContextTerminalProfiles {
             profiles: context_shells()
                 .into_iter()
                 .map(|(profile, _, _)| profile)
+                .chain(wsl.into_iter().map(|(profile, _, _)| profile))
                 .collect(),
-            wsl_supported: false,
+            wsl_supported,
         })
     }
     pub async fn kube_context_terminal(
@@ -138,31 +176,57 @@ impl AppCore {
     ) -> AppResult<String> {
         let (owner, unlocked) = self.unlocked().await?;
         let live = unlocked.kube.get(&session_id)?;
-        let (profile, executable, arguments) = context_shells()
+        let native = context_shells()
             .into_iter()
-            .find(|(profile, _, _)| profile.id == profile_id)
-            .ok_or_else(|| AppError::invalid("kubernetes", "context_shell_unavailable"))?;
+            .find(|(profile, _, _)| profile.id == profile_id);
+        let wsl = if native.is_none() {
+            wsl_shells()
+                .await
+                .into_iter()
+                .find(|(profile, _, _)| profile.id == profile_id)
+        } else {
+            None
+        };
+        if native.is_none() && wsl.is_none() {
+            return Err(AppError::invalid("kubernetes", "context_shell_unavailable"));
+        }
         let lease = self
             .kube_cli_proxy_in_namespace(session_id, namespace.clone())
             .await?;
-        let mut environment = crate::kubernetes_cli::clean_environment();
-        environment.insert("KUBECONFIG".into(), lease.path().into_os_string());
-        let directory = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
-            .map(PathBuf::from)
-            .filter(|p| p.is_absolute() && p.is_dir())
-            .unwrap_or_else(|| {
-                executable
-                    .parent()
-                    .expect("absolute native shell")
-                    .to_owned()
-            });
+        let (profile, command, wsl_capability, distribution) =
+            if let Some((profile, executable, distribution)) = wsl {
+                let (command, capability) =
+                    crate::kubernetes_wsl::prepare(&executable, &distribution, &lease).await?;
+                (profile, command, Some(capability), Some(distribution))
+            } else {
+                let (profile, executable, arguments) =
+                    native.expect("validated native or WSL profile");
+                let mut environment = crate::kubernetes_cli::clean_environment();
+                environment.insert("KUBECONFIG".into(), lease.path().into_os_string());
+                let directory =
+                    std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+                        .map(PathBuf::from)
+                        .filter(|p| p.is_absolute() && p.is_dir())
+                        .unwrap_or_else(|| {
+                            executable
+                                .parent()
+                                .expect("absolute native shell")
+                                .to_owned()
+                        });
+                (
+                    profile,
+                    LocalCommand {
+                        executable,
+                        arguments,
+                        environment,
+                        directory,
+                    },
+                    None,
+                    None,
+                )
+            };
         let opened = cc_terminal_core::local::open_command(
-            LocalCommand {
-                executable,
-                arguments,
-                environment,
-                directory,
-            },
+            command,
             TerminalSize {
                 cols: 100,
                 rows: 30,
@@ -174,6 +238,7 @@ impl AppCore {
             inner: opened.lifetime.clone(),
             cancel: lease.cancellation(),
             lease: Some(lease),
+            wsl: wsl_capability,
         });
         watch_lifetime(&lifetime);
         let _profile = self.hold_session(&owner).await?;
@@ -192,7 +257,7 @@ impl AppCore {
             profile_id: "kubernetes-context".into(),
             shell: profile.shell,
             display_name: title.clone(),
-            distribution: None,
+            distribution,
         };
         let id = unlocked
             .ssh
@@ -309,6 +374,7 @@ impl AppCore {
             inner: opened.lifetime.clone(),
             lease: None,
             cancel: package.cancellation.clone(),
+            wsl: None,
         });
         watch_lifetime(&lifetime);
         let _profile = self.hold_session(&owner).await?;
@@ -317,9 +383,9 @@ impl AppCore {
             return Err(AppError::VaultLocked);
         }
         let target = TerminalTarget::Local {
-            profile_id: "flux-install".into(),
+            profile_id: format!("{}-install", review.tool),
             shell: "CLI".into(),
-            display_name: "Flux CLI".into(),
+            display_name: review.tool.clone(),
             distribution: None,
         };
         let id = unlocked
@@ -327,7 +393,7 @@ impl AppCore {
             .terminals
             .open_channel(
                 target,
-                "Flux CLI".into(),
+                review.tool,
                 TerminalSize {
                     cols: 100,
                     rows: 30,
@@ -422,6 +488,7 @@ impl AppCore {
             inner: opened.lifetime.clone(),
             cancel: lease.cancellation(),
             lease: Some(lease),
+            wsl: None,
         });
         watch_lifetime(&lifetime);
         let _profile = self.hold_session(&owner).await?;
@@ -484,12 +551,16 @@ struct ScopedCliLifetime {
     inner: Option<Arc<dyn ShellLifetime>>,
     lease: Option<Arc<CliProxyLease>>,
     cancel: CancellationToken,
+    wsl: Option<Arc<crate::kubernetes_wsl::WslCapability>>,
 }
 impl ShellLifetime for ScopedCliLifetime {
     fn close(&self) {
         self.cancel.cancel();
         if let Some(lease) = &self.lease {
             lease.close();
+        }
+        if let Some(wsl) = &self.wsl {
+            wsl.close();
         }
         if let Some(inner) = &self.inner {
             inner.close();

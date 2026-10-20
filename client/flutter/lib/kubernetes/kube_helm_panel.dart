@@ -7,6 +7,8 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_helm_cli_service.dart';
+import 'package:consolecrypt/kubernetes/kube_helm_comparison.dart';
+import 'package:consolecrypt/kubernetes/kube_helm_comparison_service.dart';
 import 'package:consolecrypt/kubernetes/kube_helm_rollback.dart';
 import 'package:consolecrypt/kubernetes/kube_insights_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
@@ -198,7 +200,7 @@ class _HelmDetailsState extends ConsumerState<_HelmDetails> with SingleTickerPro
     super.initState();
     _scope = ref.read(kubeScopeProvider);
     _selected = widget.selected;
-    _tabs = TabController(length: 5, vsync: this);
+    _tabs = TabController(length: widget.service is KubeHelmComparisonService ? 6 : 5, vsync: this);
     unawaited(_load());
   }
 
@@ -308,6 +310,7 @@ class _HelmDetailsState extends ConsumerState<_HelmDetails> with SingleTickerPro
                         Tab(text: l.kubeHelmComputedValues),
                         Tab(text: l.kubeHelmManifest),
                         Tab(key: const ValueKey('kube-helm-diff-tab'), text: l.kubeReviewChanges),
+                        if (widget.service is KubeHelmComparisonService) Tab(text: l.kubeHelmCompareLive),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -362,6 +365,13 @@ class _HelmDetailsState extends ConsumerState<_HelmDetails> with SingleTickerPro
                                 ),
                             ],
                           ),
+                          if (widget.service is KubeHelmComparisonService)
+                            KubeHelmComparisonPanel(
+                              session: widget.session,
+                              namespace: _selected.namespace,
+                              secretName: _selected.secretName,
+                              service: widget.service as KubeHelmComparisonService,
+                            ),
                         ],
                       ),
                     ),

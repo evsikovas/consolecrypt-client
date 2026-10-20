@@ -9,6 +9,7 @@ use tokio_rustls::TlsAcceptor;
 
 mod ai_revocation;
 mod ai_synced_history;
+mod insights_watch;
 mod response_revocation;
 mod view_preferences;
 
@@ -32,6 +33,12 @@ fn pod() -> Value {
 }
 impl Fixture {
     async fn start(paused: bool) -> Self {
+        Self::start_options(paused, false).await
+    }
+    async fn start_gitops() -> Self {
+        Self::start_options(false, true).await
+    }
+    async fn start_options(paused: bool, gitops: bool) -> Self {
         let _ = rustls::crypto::ring::default_provider().install_default();
         let certificate =
             rcgen::generate_simple_self_signed(vec!["kube.runtime.test".into()]).unwrap();
@@ -107,10 +114,33 @@ impl Fixture {
                                 reached.cancel();
                                 release.cancelled().await;
                             }
+                            let mut status = "200 OK";
                             let body = if path == "/version" {
                                 json!({"gitVersion":"v1.32.0"})
                             } else if path == "/apis" {
-                                json!({"groups":[]})
+                                if gitops { json!({"groups":[
+                                    {"name":"source.toolkit.fluxcd.io","preferredVersion":{"version":"v1"},
+                                        "versions":[{"version":"v1beta2"},{"version":"v1"}]},
+                                    {"name":"helm.toolkit.fluxcd.io","versions":[{"version":"v2"}]}
+                                ]}) } else { json!({"groups":[]}) }
+                            } else if gitops && ["/apis/source.toolkit.fluxcd.io/v1", "/apis/source.toolkit.fluxcd.io/v1beta2"].contains(&path) {
+                                json!({"resources":[{"name":"gitrepositories","kind":"GitRepository","namespaced":true,"verbs":["get","list","watch"]}]})
+                            } else if gitops && path == "/apis/helm.toolkit.fluxcd.io/v2" {
+                                json!({"resources":[{"name":"helmreleases","kind":"HelmRelease","namespaced":true,"verbs":["get","list","watch"]}]})
+                            } else if gitops && path.split('?').next().unwrap().ends_with("/helmreleases") {
+                                status = "403 Forbidden";
+                                json!({"message":"synthetic-private-rbac-error"})
+                            } else if gitops && path.split('?').next().unwrap().ends_with("/gitrepositories") {
+                                if path.contains("/namespaces/blocked/") {
+                                    status = "403 Forbidden";
+                                    json!({"message":"synthetic-private-rbac-error"})
+                                } else {
+                                let source = json!({"apiVersion":"source.toolkit.fluxcd.io/v1","kind":"GitRepository",
+                                    "metadata":{"name":"private-source","namespace":"default","uid":"source-id","resourceVersion":"2"},
+                                    "spec":{"url":"https://synthetic-private-source.invalid/repo"}});
+                                if path.contains("watch=true") { json!({"type":"MODIFIED","object":source}) }
+                                else { json!({"metadata":{"resourceVersion":"1"},"items":[source]}) }
+                                }
                             } else if path == "/api/v1" {
                                 json!({"resources":[{"name":"pods","kind":"Pod","namespaced":true,"verbs":["get","list","watch","patch","delete"]},
                                     {"name":"events","kind":"Event","namespaced":true,"verbs":["get","list","watch"]},
@@ -133,7 +163,7 @@ impl Fixture {
                             if length > 2*1024*1024 { return; }
                             let mut request_body = vec![0;length];
                             if stream.read_exact(&mut request_body).await.is_err() { return; }
-                            let response = format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+                            let response = format!("HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
                             let _ = stream.write_all(response.as_bytes()).await;
                             let _ = stream.shutdown().await;
                         });

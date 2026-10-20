@@ -23,6 +23,7 @@ class KubeLogsPanel extends ConsumerStatefulWidget {
     this.containers = const [],
     this.active = true,
     this.initialFilter = '',
+    this.initialSinceSeconds,
     super.key,
   });
   final KubeSession session;
@@ -31,6 +32,7 @@ class KubeLogsPanel extends ConsumerStatefulWidget {
   final List<String> containers;
   final bool active;
   final String initialFilter;
+  final int? initialSinceSeconds;
   @override
   ConsumerState<KubeLogsPanel> createState() => _KubeLogsPanelState();
 }
@@ -57,6 +59,7 @@ class _KubeLogsPanelState extends ConsumerState<KubeLogsPanel> with WidgetsBindi
     super.initState();
     _scope = ref.read(kubeScopeProvider);
     _search.text = widget.initialFilter;
+    _since = (widget.initialSinceSeconds ?? 0).clamp(0, 7 * 24 * 60 * 60);
     WidgetsBinding.instance.addObserver(this);
     if (widget.active) unawaited(_load());
   }
@@ -352,6 +355,11 @@ class _KubeLogsPanelState extends ConsumerState<KubeLogsPanel> with WidgetsBindi
                               DropdownMenuItem(value: 60, child: Text(l.kubeLogLastMinute)),
                               DropdownMenuItem(value: 3600, child: Text(l.kubeLogLastHour)),
                               DropdownMenuItem(value: 86400, child: Text(l.kubeLogLastDay)),
+                              if (!const {0, 60, 3600, 86400}.contains(_since))
+                                DropdownMenuItem(
+                                  value: _since,
+                                  child: Text(Duration(seconds: _since).toString().split('.').first),
+                                ),
                             ],
                             onChanged: (value) => _configure(() => _since = value ?? 0),
                           ),

@@ -8,6 +8,7 @@ use cc_k8s_core::{
     vault_import::prepare,
 };
 use cc_models::kubernetes::{KubeContext, KubeRoute};
+use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -17,7 +18,7 @@ use std::{
 };
 use tokio::time::Instant;
 use uuid::Uuid;
-use zeroize::Zeroizing;
+use zeroize::{Zeroize, Zeroizing};
 
 const PREVIEW_LIFETIME: Duration = Duration::from_secs(600);
 const MAX_PREVIEWS: usize = 4;
@@ -44,6 +45,32 @@ pub struct KubeImportEntry {
     pub requires_route: bool,
     pub insecure_tls: bool,
     pub error: Option<String>,
+}
+
+/// This is deliberately separate from ordinary preview metadata. Return it
+/// only to a protected, short-lived local modal; never cache or log it.
+#[derive(Serialize)]
+pub struct KubeImportExecInspection {
+    pub command: String,
+    pub arguments: Vec<String>,
+    pub environment: BTreeMap<String, String>,
+    pub binary_path: Option<String>,
+    pub binary_sha256: Option<String>,
+    pub supported: bool,
+}
+impl std::fmt::Debug for KubeImportExecInspection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("KubeImportExecInspection([protected])")
+    }
+}
+impl Drop for KubeImportExecInspection {
+    fn drop(&mut self) {
+        self.command.zeroize();
+        self.arguments.zeroize();
+        for value in self.environment.values_mut() {
+            value.zeroize();
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,6 +126,35 @@ impl ImportRuntime {
             .unwrap_or_else(|p| p.into_inner())
             .tickets
             .remove(&id);
+    }
+
+    fn inspect_exec(&self, id: Uuid, index: u32) -> AppResult<KubeImportExecInspection> {
+        let state = self.0.lock().unwrap_or_else(|p| p.into_inner());
+        if state.closed {
+            return Err(AppError::VaultLocked);
+        }
+        let context = state
+            .tickets
+            .get(&id)
+            .filter(|pending| pending.expires > Instant::now())
+            .and_then(|pending| pending.batch.entries.get(index as usize))
+            .and_then(|entry| entry.context.as_ref().ok())
+            .ok_or_else(|| invalid("preview_unavailable"))?;
+        let ImportedAuth::Exec(exec) = &context.auth else {
+            return Err(invalid("not_exec_authentication"));
+        };
+        Ok(KubeImportExecInspection {
+            command: exec.command.clone(),
+            arguments: exec.args.to_vec(),
+            environment: exec
+                .env
+                .iter()
+                .map(|(name, value)| (name.clone(), value.expose_secret().into()))
+                .collect(),
+            binary_path: None,
+            binary_sha256: None,
+            supported: !cfg!(any(target_os = "android", target_os = "ios")),
+        })
     }
 
     fn insert(self: &Arc<Self>, batch: ImportBatch) -> AppResult<KubeImportPreview> {
@@ -233,6 +289,46 @@ fn preview(id: Uuid, batch: &ImportBatch) -> KubeImportPreview {
 }
 
 impl AppCore {
+    /// Inspect the installed executable without executing it or granting any
+    /// permission. The later connect flow independently rehashes/reviews the
+    /// binary and effective environment before execution.
+    pub async fn kube_import_inspect_exec(
+        &self,
+        ticket: String,
+        index: u32,
+    ) -> AppResult<KubeImportExecInspection> {
+        let (owner, unlocked) = self.unlocked().await?;
+        let id = ticket
+            .parse()
+            .map_err(|_| invalid("invalid preview ticket"))?;
+        let mut inspection = unlocked.kube_imports.inspect_exec(id, index)?;
+        let inspection = crate::secrets::blocking(move || {
+            if inspection.supported {
+                let path = inspection
+                    .environment
+                    .get("PATH")
+                    .cloned()
+                    .unwrap_or_else(crate::kubernetes_auth::default_exec_path);
+                if let Ok(binary) =
+                    cc_k8s_core::auth::exec::resolve_binary(&inspection.command, &path)
+                {
+                    inspection.binary_path = Some(binary.to_string_lossy().into_owned());
+                    if let Ok(hash) = cc_k8s_core::auth::exec::binary_hash(&binary) {
+                        inspection.binary_sha256 =
+                            Some(hash.iter().map(|byte| format!("{byte:02x}")).collect());
+                    }
+                }
+            }
+            Ok(inspection)
+        })
+        .await?;
+        let _profile = self.hold_session(&owner).await?;
+        let _generation = owner.hold_unlocked(&unlocked).await?;
+        // Expiry/discard may occur while a large binary is being hashed.
+        drop(unlocked.kube_imports.inspect_exec(id, index)?);
+        Ok(inspection)
+    }
+
     /// Read only the file selected by the user. Its authentication references
     /// remain unopened until the later, explicit import confirmation.
     pub async fn kube_import_preview_file(&self, path: String) -> AppResult<KubeImportPreview> {
@@ -320,6 +416,71 @@ impl AppCore {
 mod tests {
     use super::*;
     use crate::AppConfig;
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn protected_exec_inspection_never_runs_or_approves_imported_command() {
+        use std::os::unix::fs::PermissionsExt;
+        let temp = tempfile::tempdir().unwrap();
+        let marker = temp.path().join("must-not-run");
+        let executable = temp.path().join("provider");
+        std::fs::write(
+            &executable,
+            format!("#!/bin/sh\ntouch '{}'\n", marker.display()),
+        )
+        .unwrap();
+        std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let app = app(&temp.path().join("data")).await;
+        let yaml = serde_json::json!({
+            "apiVersion":"v1","kind":"Config",
+            "clusters":[{"name":"cluster","cluster":{"server":"https://cluster.test"}}],
+            "users":[{"name":"user","user":{"exec":{
+                "command":executable,"args":["--private=fixture-argument"],
+                "env":[{"name":"PRIVATE_VALUE","value":"fixture-env"}],
+                "apiVersion":"client.authentication.k8s.io/v1","interactiveMode":"Never"
+            }}}],
+            "contexts":[{"name":"context","context":{"cluster":"cluster","user":"user"}}]
+        })
+        .to_string();
+        let preview = app
+            .kube_import_preview(Zeroizing::new(yaml.into_bytes()), None)
+            .await
+            .unwrap();
+        let metadata = serde_json::to_string(&preview).unwrap();
+        assert!(!metadata.contains("fixture-argument"));
+        assert!(!metadata.contains("fixture-env"));
+        let review = app
+            .kube_import_inspect_exec(preview.ticket.clone(), 0)
+            .await
+            .unwrap();
+        assert_eq!(review.arguments, ["--private=fixture-argument"]);
+        assert_eq!(review.environment["PRIVATE_VALUE"], "fixture-env");
+        assert_eq!(review.binary_sha256.as_ref().unwrap().len(), 64);
+        assert!(!format!("{review:?}").contains("fixture-env"));
+        assert!(!marker.exists());
+        let contexts = app
+            .kube_import_commit(
+                preview.ticket.clone(),
+                vec![choice(&preview, "context", false)],
+            )
+            .await
+            .unwrap();
+        assert!(app
+            .kube_import_inspect_exec(preview.ticket, 0)
+            .await
+            .is_err());
+        let error = app
+            .kube_connect(contexts[0].id.to_string())
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(error,AppError::InvalidInput {reason,..} if reason=="exec_approval_required")
+        );
+        assert!(
+            !marker.exists(),
+            "inspection and import never grant execution consent"
+        );
+    }
 
     fn yaml() -> Zeroizing<Vec<u8>> {
         Zeroizing::new(

@@ -45,6 +45,18 @@ async fn synced_kubernetes_chat_is_context_scoped_and_remote_changes_revoke_cons
     assert_eq!(history.len(), 1);
     assert!(history[0].synced);
     assert_eq!(history[0].conversation.id, conversation.id);
+    assert!(app.ai_list_conversations().await.unwrap().is_empty());
+    assert!(app
+        .ai_ask(
+            None,
+            crate::dto::AiAskRequestDto {
+                conversation_id: Some(conversation.id.to_string()),
+                question: "Resume outside the cluster".into(),
+            },
+            Default::default(),
+        )
+        .await
+        .is_err());
     let mut other = context.clone();
     other.id = ObjectId::new();
     other.name = "Other context".into();

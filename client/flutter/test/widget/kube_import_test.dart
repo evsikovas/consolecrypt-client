@@ -4,7 +4,9 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/kubernetes/kube_auth_service.dart';
 import 'package:consolecrypt/kubernetes/kube_import_dialog.dart';
+import 'package:consolecrypt/kubernetes/kube_import_exec_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
 import 'package:consolecrypt/kubernetes/kubernetes_screen.dart';
@@ -84,6 +86,47 @@ Future<void> _preview(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('exec import discloses exact invocation before save without granting execution', (tester) async {
+    final service = _Service()..exec = true;
+    await _pump(tester, service);
+    await _preview(tester);
+    expect(find.textContaining('private-argument'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('kube-import-submit')));
+    await settle(tester);
+    expect(service.commits, 0);
+    expect(find.byType(KubeImportExecDialog), findsOneWidget);
+    expect(find.textContaining('private-argument'), findsOneWidget);
+    expect(find.textContaining('private-environment'), findsOneWidget);
+    await tester.tap(find.descendant(of: find.byType(KubeImportExecDialog), matching: find.text('Cancel')));
+    await settle(tester);
+    expect(service.commits, 0);
+    expect(service.inspection!.arguments, isEmpty);
+    expect(service.inspection!.environment, isEmpty);
+    await tester.tap(find.byKey(const ValueKey('kube-import-submit')));
+    await settle(tester);
+    await tester.tap(find.descendant(of: find.byType(KubeImportExecDialog), matching: find.text('Continue')));
+    await settle(tester);
+    expect(service.commits, 1);
+    expect(service.inspected, 2);
+    expect(service.inspection!.arguments, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('locking during exec import inspection clears protected details without saving', (tester) async {
+    final service = _Service()..exec = true;
+    final container = await _pump(tester, service);
+    await _preview(tester);
+    await tester.tap(find.byKey(const ValueKey('kube-import-submit')));
+    await settle(tester);
+    container.read(_scope.notifier).lock();
+    await settle(tester);
+    expect(find.textContaining('private-argument'), findsNothing);
+    expect(service.commits, 0);
+    expect(service.inspection!.arguments, isEmpty);
+    expect(service.inspection!.environment, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('profile changes and locking hide prior inventory while the next scope is loading', (tester) async {
     final service = _Service()..inventoryPending = Completer<List<KubeConnection>>();
     final container = await _pump(tester, service, inventory: true);
@@ -211,7 +254,23 @@ KubeConnection _connection(String name) => KubeConnection(
   production: true,
 );
 
-class _Service implements KubeService {
+class _Service implements KubeService, KubeImportExecService {
+  bool exec = false;
+  int inspected = 0;
+  KubeImportExecInspection? inspection;
+  @override
+  Future<KubeImportExecInspection> inspectImportExec(String ticket, int index) async {
+    inspected++;
+    return inspection = KubeImportExecInspection(
+      command: 'provider',
+      arguments: ['private-argument'],
+      environment: {'SYNTHETIC_KEY': 'private-environment'},
+      supported: true,
+      binaryPath: '/usr/bin/provider',
+      binarySha256: List.filled(64, 'a').join(),
+    );
+  }
+
   SecretText? received;
   List<KubeImportChoice>? saved;
   int commits = 0;
@@ -222,23 +281,33 @@ class _Service implements KubeService {
   KubeImportPreview get result => KubeImportPreview(
     ticket: 'ticket',
     expiresAt: DateTime.now().toUtc().add(expiresAfter),
-    entries: const [
-      KubeImportEntry(
-        index: 0,
-        name: 'first',
-        server: 'https://first.example.test',
-        namespace: 'default',
-        authentication: 'token',
-      ),
-      KubeImportEntry(
-        index: 1,
-        name: 'second',
-        server: 'https://second.example.test',
-        namespace: 'default',
-        authentication: 'token',
-        pendingFiles: ['/selected/path/token'],
-      ),
-    ],
+    entries: exec
+        ? const [
+            KubeImportEntry(
+              index: 0,
+              name: 'exec',
+              server: 'https://fixture.test',
+              namespace: 'default',
+              authentication: 'exec',
+            ),
+          ]
+        : const [
+            KubeImportEntry(
+              index: 0,
+              name: 'first',
+              server: 'https://first.example.test',
+              namespace: 'default',
+              authentication: 'token',
+            ),
+            KubeImportEntry(
+              index: 1,
+              name: 'second',
+              server: 'https://second.example.test',
+              namespace: 'default',
+              authentication: 'token',
+              pendingFiles: ['/selected/path/token'],
+            ),
+          ],
   );
   @override
   Stream<void> changes() => const Stream.empty();

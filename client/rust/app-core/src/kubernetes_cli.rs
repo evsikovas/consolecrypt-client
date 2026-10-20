@@ -1,7 +1,9 @@
 //! Explicit desktop Flux CLI operations. Discovery never executes a candidate;
 //! every executable action originates from a user-confirmed native plan.
+mod kubectl;
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use futures::StreamExt;
+pub use kubectl::KubectlDiscovery;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -88,6 +90,7 @@ pub enum InstallOperation {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct InstallReview {
+    pub tool: String,
     pub ticket: String,
     pub method: InstallMethod,
     pub operation: InstallOperation,
@@ -309,6 +312,7 @@ impl FluxCliRuntime {
             };
         let ticket = Uuid::new_v4().to_string();
         let review = InstallReview {
+            tool: "flux".into(),
             ticket: ticket.clone(),
             method,
             operation,

@@ -1,3 +1,6 @@
-/// Internal builds may exercise the complete Kubernetes integration before
-/// its public release. Production packaging leaves this opt-in unset.
-const kubernetesEnabled = bool.fromEnvironment('CC_KUBERNETES');
+/// Kubernetes is available in release builds. Diagnostics may explicitly
+/// disable it when comparing an earlier navigation layout.
+const kubernetesEnabled = bool.fromEnvironment(
+  'CC_KUBERNETES',
+  defaultValue: true,
+);

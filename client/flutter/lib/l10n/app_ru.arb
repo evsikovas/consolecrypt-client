@@ -3873,5 +3873,223 @@
   "kubeAutoShell": "Определить оболочку автоматически",
   "@kubeAutoShell": {
     "description": "Explicit native shell detection in selected container."
+  },
+  "kubeGitOpsLocalAlerts": "Уведомления и напоминания на этом устройстве",
+  "@kubeGitOpsLocalAlerts": {
+    "description": "Kubernetes GitOps local alerts and reminders."
+  },
+  "kubeGitOpsNotify": "Сообщать о сбоях Flux",
+  "@kubeGitOpsNotify": {
+    "description": "Kubernetes GitOps local alerts and reminders."
+  },
+  "kubeGitOpsNotifyHelp": "Для этого контекста, пока приложение открыто. Новые переходы в Not ready или Stalled показываются уведомлением и значком.",
+  "@kubeGitOpsNotifyHelp": {
+    "description": "Kubernetes GitOps local alerts and reminders."
+  },
+  "kubeGitOpsFailureNotice": "Flux требует внимания: {resource} ({count})",
+  "@kubeGitOpsFailureNotice": {
+    "description": "Kubernetes GitOps local alerts and reminders.",
+    "placeholders": {
+      "resource": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "kubeGitOpsReminderDue": "Напоминание о кластере: {resource} ({count})",
+  "@kubeGitOpsReminderDue": {
+    "description": "Kubernetes GitOps local alerts and reminders.",
+    "placeholders": {
+      "resource": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "kubeGitOpsUnread": "Непрочитанных уведомлений: {count}",
+  "@kubeGitOpsUnread": {
+    "description": "Kubernetes GitOps local alerts and reminders.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "kubeGitOpsCancelReminder": "Отменить напоминание",
+  "@kubeGitOpsCancelReminder": {
+    "description": "Kubernetes GitOps local alerts and reminders."
+  },
+  "kubeGitOpsRemind": "Локальное напоминание",
+  "@kubeGitOpsRemind": {
+    "description": "Kubernetes GitOps local alerts and reminders."
+  },
+  "kubeGitOpsNoReminder": "Не напоминать",
+  "@kubeGitOpsNoReminder": {
+    "description": "Kubernetes GitOps local alerts and reminders."
+  },
+  "kubeGitOpsRemindHours": "Напомнить через {hours} ч",
+  "@kubeGitOpsRemindHours": {
+    "description": "Kubernetes GitOps local alerts and reminders.",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "kubePreferencesFailed": "Не удалось сохранить или загрузить настройки устройства. Попробуйте снова.",
+  "@kubePreferencesFailed": {
+    "description": "Kubernetes GitOps local alerts and reminders."
+  },
+  "kubeContextWslHelp": "WSL требует Bash и WSL 1 либо зеркальный режим сети WSL 2. Перед запуском проверяется доступ к локальному прокси; режим NAT не поддерживается.",
+  "@kubeContextWslHelp": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeContextWslUnavailable": "WSL не может подключиться к локальному прокси. Используйте WSL 1, зеркальный режим WSL 2 или PowerShell.",
+  "@kubeContextWslUnavailable": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeKubectlMissing": "kubectl не найден. Он нужен только для локального терминала кластера.",
+  "@kubeKubectlMissing": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeKubectlInstall": "Установить kubectl",
+  "@kubeKubectlInstall": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeKubectlPackageHelp": "Источник пакета, версию и папку установки определяет конфигурация пакетного менеджера. Версия kubectl должна отличаться от кластера не более чем на одну минорную версию. Команда запускается в видимом терминале; kubeconfig ей не передаётся.",
+  "@kubeKubectlPackageHelp": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeKubectlDocs": "Инструкция по установке",
+  "@kubeKubectlDocs": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeKubectlCheck": "Проверить kubectl",
+  "@kubeKubectlCheck": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeSchemaFields": "Поля из схемы кластера",
+  "@kubeSchemaFields": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeSchemaHelp": "Просматривайте поля и их описания из OpenAPI-схемы кластера. Вставка поля меняет только редактор; проверьте манифест перед применением.",
+  "@kubeSchemaHelp": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeSchemaUnavailable": "Схема кластера недоступна. Перед применением всё равно требуется серверная проверка.",
+  "@kubeSchemaUnavailable": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeSchemaRequired": "Обязательное",
+  "@kubeSchemaRequired": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeSchemaInsert": "Вставить поле у курсора",
+  "@kubeSchemaInsert": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeSchemaNoFields": "Подходящие поля схемы не найдены.",
+  "@kubeSchemaNoFields": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeSchemaParent": "Родительское поле",
+  "@kubeSchemaParent": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeSchemaRoot": "Корневые поля",
+  "@kubeSchemaRoot": {
+    "description": "Kubernetes schema assistance or local context terminal."
+  },
+  "kubeGitOpsAppliedRevision": "Применённая ревизия",
+  "@kubeGitOpsAppliedRevision": {
+    "description": "Kubernetes cluster navigation and GitOps details."
+  },
+  "kubeGitOpsLatestRevision": "Последняя ревизия источника",
+  "@kubeGitOpsLatestRevision": {
+    "description": "Kubernetes cluster navigation and GitOps details."
+  },
+  "kubeGraphExpand": "Развернуть объекты",
+  "@kubeGraphExpand": {
+    "description": "Kubernetes cluster navigation and GitOps details."
+  },
+  "kubeClusters": "Кластеры",
+  "@kubeClusters": {
+    "description": "Kubernetes cluster navigation and GitOps details."
+  },
+  "kubeExecInspect": "Просмотреть команду",
+  "@kubeExecInspect": {
+    "description": "Kubernetes authentication command import review."
+  },
+  "kubeExecImportHelp": "Просмотрите команду перед импортом. Импорт её не запускает; разрешение на выполнение будет отдельно запрошено при подключении.",
+  "@kubeExecImportHelp": {
+    "description": "Kubernetes authentication command import review."
+  },
+  "kubeExecBinaryUnavailable": "Исполняемый файл недоступен на этом устройстве. Путь и SHA-256 будут проверены перед запуском.",
+  "@kubeExecBinaryUnavailable": {
+    "description": "Kubernetes authentication command import review."
+  },
+  "kubeGitOpsTimeline": "История сверки состояния",
+  "@kubeGitOpsTimeline": {
+    "description": "Kubernetes GitOps and Helm comparison."
+  },
+  "kubeHelmCompareLive": "Сравнить с кластером",
+  "@kubeHelmCompareLive": {
+    "description": "Kubernetes GitOps and Helm comparison."
+  },
+  "kubeHelmCompareHelp": "Сравнение полей сохранённого манифеста с объектами кластера только для чтения. Значения по умолчанию и правила сверки контроллера не вычисляются.",
+  "@kubeHelmCompareHelp": {
+    "description": "Kubernetes GitOps and Helm comparison."
+  },
+  "kubeHelmCompareMasked": "Скрытые поля не участвуют в сравнении.",
+  "@kubeHelmCompareMasked": {
+    "description": "Kubernetes GitOps and Helm comparison."
+  },
+  "kubeHelmCompareEqual": "Видимые поля совпадают",
+  "@kubeHelmCompareEqual": {
+    "description": "Kubernetes GitOps and Helm comparison."
+  },
+  "kubeHelmCompareChanged": "Есть отличия",
+  "@kubeHelmCompareChanged": {
+    "description": "Kubernetes GitOps and Helm comparison."
+  },
+  "kubeHelmCompareMissing": "Объект отсутствует",
+  "@kubeHelmCompareMissing": {
+    "description": "Kubernetes GitOps and Helm comparison."
+  },
+  "kubeHelmTests": "Тесты Helm",
+  "@kubeHelmTests": {
+    "description": "Kubernetes GitOps and Helm comparison."
+  },
+  "kubeGitOpsStalled": "Сбой",
+  "@kubeGitOpsStalled": {
+    "description": "Kubernetes GitOps status filter."
+  },
+  "kubeGitOpsStale": "Устарели",
+  "@kubeGitOpsStale": {
+    "description": "Kubernetes GitOps status filter."
+  },
+  "kubeStatusUnknown": "Ещё не проверен",
+  "@kubeStatusUnknown": {
+    "description": "Kubernetes explicit connection check status."
+  },
+  "kubeStatusChecking": "Проверяется…",
+  "@kubeStatusChecking": {
+    "description": "Kubernetes explicit connection check status."
+  },
+  "kubeStatusAvailable": "Последняя проверка: доступен",
+  "@kubeStatusAvailable": {
+    "description": "Kubernetes explicit connection check status."
+  },
+  "kubeStatusForbidden": "Последняя проверка: доступ запрещён",
+  "@kubeStatusForbidden": {
+    "description": "Kubernetes explicit connection check status."
+  },
+  "kubeStatusFailed": "Последняя проверка: ошибка",
+  "@kubeStatusFailed": {
+    "description": "Kubernetes explicit connection check status."
   }
 }

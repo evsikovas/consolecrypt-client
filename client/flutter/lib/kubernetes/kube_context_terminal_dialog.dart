@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_context_terminal_service.dart';
+import 'package:consolecrypt/kubernetes/kube_kubectl_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -21,6 +23,7 @@ class _KubeContextTerminalDialogState extends ConsumerState<KubeContextTerminalD
   KubeContextTerminalProfiles? _profiles;
   String? _profile;
   bool _busy = true, _failed = false;
+  bool _wslUnavailable = false;
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(kubeScopeProvider));
   @override
   void initState() {
@@ -49,12 +52,18 @@ class _KubeContextTerminalDialogState extends ConsumerState<KubeContextTerminalD
     setState(() {
       _busy = true;
       _failed = false;
+      _wslUnavailable = false;
     });
     try {
       final id = await widget.service.openContextTerminal(widget.sessionId, widget.namespace, _profile!);
       if (mounted && _current) closeDialog(context, id);
-    } catch (_) {
-      if (_current) setState(() => _failed = true);
+    } catch (error) {
+      if (_current) {
+        setState(() {
+          _failed = true;
+          _wslUnavailable = error is AppException && error.args['rule'] == 'wsl_loopback_unavailable';
+        });
+      }
     } finally {
       if (_current) setState(() => _busy = false);
     }
@@ -79,8 +88,14 @@ class _KubeContextTerminalDialogState extends ConsumerState<KubeContextTerminalD
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(l.kubeContextTerminalHelp),
+            KubeKubectlPanel(
+              onTerminalOpened: (id) {
+                if (_current) closeDialog(context, id);
+              },
+            ),
             if (_busy) const LinearProgressIndicator(),
-            if (_failed) Text(l.kubeTerminalFailed),
+            if (_failed) Text(_wslUnavailable ? l.kubeContextWslUnavailable : l.kubeTerminalFailed),
+            if (_profile?.startsWith('wsl:') == true) Text(l.kubeContextWslHelp),
             if (_profiles != null)
               DropdownButtonFormField<String>(
                 initialValue: _profile,

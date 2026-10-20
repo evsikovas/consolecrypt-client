@@ -2,7 +2,7 @@
 //! Never reads the default kubeconfig or changes a production context.
 use base64::{engine::general_purpose::STANDARD, Engine};
 use cc_k8s_core::{
-    gitops::{overview, FluxAction},
+    gitops::{overview, ArgoAction, FluxAction},
     policy::{Audit, AuditEntry, DeviceClass, Policy},
     resources::{
         ListQuery, LogQuery, PodTerminalInput, PodTerminalOutput, PodTerminalRequest, ReadOptions,
@@ -299,7 +299,24 @@ async fn isolated_k3s_flux_helm_and_streams() {
         )
         .await
         .unwrap();
-    assert!(table.columns.iter().any(|column| column.name == "Ready"));
+    // Kustomization may hold substitutions; its columns are derived from the
+    // masked native projection instead of accepting raw server printer cells.
+    assert!(table.columns.iter().any(|column| column.name == "Status"));
+    let source_table = api
+        .table(
+            &api.resolve("source.toolkit.fluxcd.io", "v1", "gitrepositories")
+                .unwrap(),
+            &ListQuery {
+                namespace: Some(NAMESPACE.into()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert!(source_table
+        .columns
+        .iter()
+        .any(|column| column.name == "Ready"));
     let objects = table
         .rows
         .into_iter()
@@ -372,6 +389,17 @@ async fn isolated_k3s_flux_helm_and_streams() {
     assert_eq!(release.name, "fixture-helm");
     assert!(release.manifest.contains("Deployment"));
     assert!(release.computed_values.is_object());
+    let comparison = guarded
+        .helm_compare_live(NAMESPACE, &history.last().unwrap().secret_name)
+        .await
+        .unwrap();
+    assert_eq!(comparison.revision, release.revision);
+    assert!(!comparison.items.is_empty() && comparison.items.len() <= 128);
+    assert!(comparison
+        .items
+        .iter()
+        .any(|item| item.reference.api.kind == "Deployment"));
+    assert!(serde_json::to_vec(&comparison).unwrap().len() <= 1024 * 1024 + 1024);
     let workload = reference(&api, "apps", "v1", "deployments", "podinfo");
     assert!(!api.rollout_history(&workload).await.unwrap().is_empty());
     let relations = api.related_objects(&workload).await.unwrap();
@@ -506,4 +534,202 @@ async fn isolated_k3s_flux_helm_and_streams() {
         Err(ResourceError::Closed)
     );
     assert!(tokio::net::TcpStream::connect(address).await.is_err());
+}
+
+#[tokio::test]
+#[ignore = "requires explicit isolated k3s and official Argo Application CRD"]
+async fn isolated_argo_application_actions_and_production_guard() {
+    let session = session(false);
+    let api = ResourceApi::new(&session);
+    api.discover().await.unwrap();
+    let marker = api
+        .get(
+            &ResourceRef {
+                api: api.resolve("", "v1", "namespaces").unwrap(),
+                namespace: None,
+                name: NAMESPACE.into(),
+            },
+            ReadOptions::default(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        marker.object["metadata"]["labels"]["consolecrypt.dev/acceptance"], "0.6.2",
+        "refuse writes without disposable cluster marker"
+    );
+    let app = reference(
+        &api,
+        "argoproj.io",
+        "v1alpha1",
+        "applications",
+        "native-argo",
+    );
+    let manifest = Zeroizing::new(serde_saphyr::to_string(&json!({
+        "apiVersion": "argoproj.io/v1alpha1", "kind": "Application",
+        "metadata": {"name": app.name, "namespace": NAMESPACE},
+        "spec": {
+            "project": "default",
+            "source": {"repoURL": "https://example.invalid/acceptance.git", "path": ".", "targetRevision": "main"},
+            "destination": {"server": "https://kubernetes.default.svc", "namespace": NAMESPACE}
+        }
+    })).unwrap());
+    api.create(&app, manifest, false).await.unwrap();
+    api.argo_action(&app, ArgoAction::Refresh).await.unwrap();
+    assert_eq!(
+        api.get(&app, ReadOptions::default()).await.unwrap().object["metadata"]["annotations"]
+            ["argocd.argoproj.io/refresh"],
+        "normal"
+    );
+    api.argo_action(&app, ArgoAction::HardRefresh)
+        .await
+        .unwrap();
+    assert_eq!(
+        api.get(&app, ReadOptions::default()).await.unwrap().object["metadata"]["annotations"]
+            ["argocd.argoproj.io/refresh"],
+        "hard"
+    );
+    api.argo_action(&app, ArgoAction::Sync).await.unwrap();
+    let synced = api.get(&app, ReadOptions::default()).await.unwrap();
+    assert_eq!(synced.object["operation"]["sync"]["prune"], false);
+    assert_eq!(
+        synced.object["operation"]["initiatedBy"]["username"],
+        "consolecrypt"
+    );
+    assert!(synced.object["operation"]["sync"]["syncStrategy"]["apply"].is_object());
+    let production = self::session(true);
+    let guarded = ResourceApi::new(&production);
+    guarded.discover().await.unwrap();
+    for action in [
+        ArgoAction::Refresh,
+        ArgoAction::HardRefresh,
+        ArgoAction::Sync,
+    ] {
+        assert!(guarded.argo_action(&app, action).await.is_err());
+    }
+    assert_eq!(
+        api.get(&app, ReadOptions::default())
+            .await
+            .unwrap()
+            .summary
+            .resource_version,
+        synced.summary.resource_version,
+        "blocked actions must not change the resource"
+    );
+    api.delete(&app, &synced.summary.uid, &synced.summary.resource_version)
+        .await
+        .unwrap();
+    session.close();
+    production.close();
+}
+
+/// The explicitly owned scale namespace must contain exactly 1,000 Pods with
+/// schedulingGates, so measuring the API never starts benchmark containers.
+/// Each sample creates a new native client and discovery cache. This measures
+/// native network/decoding latency, not Flutter rendering or server cold start.
+#[tokio::test]
+#[ignore = "requires an owned 1,000 gated-Pod fixture and explicit acceptance kubeconfig"]
+async fn isolated_thousand_pods_cold_native_table_latency() {
+    use std::{collections::BTreeSet, time::Instant};
+    const SCALE_NAMESPACE: &str = "cc-acceptance-scale";
+    const SELECTOR: &str = "consolecrypt.dev/fixture=scale-1000";
+    for sample in 1..=3 {
+        let started = Instant::now();
+        let session = self::session(true);
+        let api = ResourceApi::new(&session);
+        assert!(api.server_version().await.unwrap().starts_with("v1."));
+        let discovery = api.discover().await.unwrap();
+        assert!(
+            discovery.unavailable_groups.is_empty(),
+            "benchmark discovery must not silently degrade"
+        );
+        // Match the UI order: namespaces requires completed discovery.
+        assert!(api
+            .namespaces()
+            .await
+            .unwrap()
+            .contains(&SCALE_NAMESPACE.to_owned()));
+        let marker = api
+            .get(
+                &ResourceRef {
+                    api: api.resolve("", "v1", "namespaces").unwrap(),
+                    namespace: None,
+                    name: SCALE_NAMESPACE.into(),
+                },
+                ReadOptions::default(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            marker.object["metadata"]["labels"]["consolecrypt.dev/acceptance"],
+            "0.6.2"
+        );
+        assert_eq!(
+            marker.object["metadata"]["labels"]["consolecrypt.dev/fixture"], "scale-1000",
+            "do not benchmark an unowned namespace"
+        );
+        let pods = api.resolve("", "v1", "pods").unwrap();
+        let mut query = ListQuery {
+            namespace: Some(SCALE_NAMESPACE.into()),
+            label_selector: Some(SELECTOR.into()),
+            limit: Some(200),
+            ..Default::default()
+        };
+        let mut identities = BTreeSet::new();
+        let mut continuations = BTreeSet::new();
+        let mut bytes = 0usize;
+        let mut pages = 0usize;
+        let mut snapshot = None;
+        let mut first_page_elapsed = Duration::ZERO;
+        loop {
+            let table = api.table(&pods, &query).await.unwrap();
+            pages += 1;
+            if pages == 1 {
+                first_page_elapsed = started.elapsed();
+            }
+            assert_eq!(table.rows.len(), 200);
+            assert!(!table.columns.is_empty());
+            let snapshot = snapshot.get_or_insert_with(|| table.resource_version.clone());
+            assert_eq!(&table.resource_version, snapshot);
+            bytes += serde_json::to_vec(&table).unwrap().len();
+            assert!(bytes <= 16 * 1024 * 1024, "bounded fixture result");
+            for row in table.rows {
+                assert!(identities.insert(row.resource.uid));
+                assert_eq!(row.resource.namespace.as_deref(), Some(SCALE_NAMESPACE));
+                assert_eq!(
+                    row.resource.object["spec"]["schedulingGates"][0]["name"],
+                    "consolecrypt.dev/acceptance",
+                    "benchmark Pods must remain unschedulable"
+                );
+                assert!(row.resource.object["status"]["containerStatuses"].is_null());
+            }
+            assert!(identities.len() <= 1000);
+            query.continue_token = table.continue_token;
+            let Some(next) = &query.continue_token else {
+                break;
+            };
+            assert!(continuations.insert(next.clone()));
+        }
+        let complete_elapsed = started.elapsed();
+        session.close();
+        eprintln!(
+            "CC_KUBE_SCALE {}",
+            json!({
+                "sample": sample,
+                "pods": identities.len(),
+                "pages": pages,
+                "page_limit": 200,
+                "cold_first_table_ms": first_page_elapsed.as_millis(),
+                "cold_full_table_ms": complete_elapsed.as_millis(),
+                "decoded_table_bytes": bytes,
+                "route": "verified_tls_over_ssh_loopback",
+                "measurement": "native_client_discovery_namespaces_and_table",
+            })
+        );
+        assert_eq!(identities.len(), 1000);
+        assert_eq!(pages, 5);
+        assert!(
+            first_page_elapsed <= Duration::from_secs(2),
+            "cold native first table exceeds the two-second acceptance target: {first_page_elapsed:?}"
+        );
+    }
 }

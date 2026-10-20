@@ -13069,6 +13069,294 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Detect shell automatically'**
   String get kubeAutoShell;
+
+  /// Kubernetes GitOps local alerts and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts and reminders on this device'**
+  String get kubeGitOpsLocalAlerts;
+
+  /// Kubernetes GitOps local alerts and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify about Flux failures'**
+  String get kubeGitOpsNotify;
+
+  /// Kubernetes GitOps local alerts and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'For this context while the app is open. New Not ready or Stalled transitions appear as a toast and a badge.'**
+  String get kubeGitOpsNotifyHelp;
+
+  /// Kubernetes GitOps local alerts and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Flux needs attention: {resource} ({count})'**
+  String kubeGitOpsFailureNotice(String resource, int count);
+
+  /// Kubernetes GitOps local alerts and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster reminder: {resource} ({count})'**
+  String kubeGitOpsReminderDue(String resource, int count);
+
+  /// Kubernetes GitOps local alerts and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread alerts: {count}'**
+  String kubeGitOpsUnread(int count);
+
+  /// Kubernetes GitOps local alerts and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel reminder'**
+  String get kubeGitOpsCancelReminder;
+
+  /// Kubernetes GitOps local alerts and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Local reminder'**
+  String get kubeGitOpsRemind;
+
+  /// Kubernetes GitOps local alerts and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Do not remind'**
+  String get kubeGitOpsNoReminder;
+
+  /// Kubernetes GitOps local alerts and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind in {hours} h'**
+  String kubeGitOpsRemindHours(int hours);
+
+  /// Kubernetes GitOps local alerts and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Device preferences could not be saved or loaded. Try again.'**
+  String get kubePreferencesFailed;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'WSL requires Bash and either WSL 1 or WSL 2 mirrored networking. Host loopback access is checked before launch; NAT networking is unsupported.'**
+  String get kubeContextWslHelp;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'WSL cannot connect to the local proxy. Use WSL 1, WSL 2 mirrored networking or PowerShell.'**
+  String get kubeContextWslUnavailable;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'kubectl was not found. It is only needed for the local cluster terminal.'**
+  String get kubeKubectlMissing;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Install kubectl'**
+  String get kubeKubectlInstall;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'The package manager configuration determines the package source, version and installation directory. Keep kubectl within one minor version of the cluster. The command runs in a visible terminal; no kubeconfig is passed to it.'**
+  String get kubeKubectlPackageHelp;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation instructions'**
+  String get kubeKubectlDocs;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Check kubectl'**
+  String get kubeKubectlCheck;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Fields from the cluster schema'**
+  String get kubeSchemaFields;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse fields and their descriptions from the cluster OpenAPI schema. Inserting a field only changes this editor; validate the manifest before applying.'**
+  String get kubeSchemaHelp;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'The cluster schema is unavailable. Server validation is still required before applying.'**
+  String get kubeSchemaUnavailable;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get kubeSchemaRequired;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert field at cursor'**
+  String get kubeSchemaInsert;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching schema fields.'**
+  String get kubeSchemaNoFields;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent field'**
+  String get kubeSchemaParent;
+
+  /// Kubernetes schema assistance or local context terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Root fields'**
+  String get kubeSchemaRoot;
+
+  /// Kubernetes cluster navigation and GitOps details.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied revision'**
+  String get kubeGitOpsAppliedRevision;
+
+  /// Kubernetes cluster navigation and GitOps details.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest source revision'**
+  String get kubeGitOpsLatestRevision;
+
+  /// Kubernetes cluster navigation and GitOps details.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand objects'**
+  String get kubeGraphExpand;
+
+  /// Kubernetes cluster navigation and GitOps details.
+  ///
+  /// In en, this message translates to:
+  /// **'Clusters'**
+  String get kubeClusters;
+
+  /// Kubernetes authentication command import review.
+  ///
+  /// In en, this message translates to:
+  /// **'Inspect command'**
+  String get kubeExecInspect;
+
+  /// Kubernetes authentication command import review.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the command before importing. Import never runs it; execution requires a separate confirmation when connecting.'**
+  String get kubeExecImportHelp;
+
+  /// Kubernetes authentication command import review.
+  ///
+  /// In en, this message translates to:
+  /// **'The executable is unavailable on this device. Its path and SHA-256 will be checked before execution.'**
+  String get kubeExecBinaryUnavailable;
+
+  /// Kubernetes GitOps and Helm comparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconciliation timeline'**
+  String get kubeGitOpsTimeline;
+
+  /// Kubernetes GitOps and Helm comparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with cluster'**
+  String get kubeHelmCompareLive;
+
+  /// Kubernetes GitOps and Helm comparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Read-only comparison of saved manifest fields with live objects. Server defaults and controller reconciliation rules are not evaluated.'**
+  String get kubeHelmCompareHelp;
+
+  /// Kubernetes GitOps and Helm comparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Masked fields are excluded from comparison.'**
+  String get kubeHelmCompareMasked;
+
+  /// Kubernetes GitOps and Helm comparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible fields match'**
+  String get kubeHelmCompareEqual;
+
+  /// Kubernetes GitOps and Helm comparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Differences found'**
+  String get kubeHelmCompareChanged;
+
+  /// Kubernetes GitOps and Helm comparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Object is missing'**
+  String get kubeHelmCompareMissing;
+
+  /// Kubernetes GitOps and Helm comparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Helm tests'**
+  String get kubeHelmTests;
+
+  /// Kubernetes GitOps status filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Stalled'**
+  String get kubeGitOpsStalled;
+
+  /// Kubernetes GitOps status filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Out of date'**
+  String get kubeGitOpsStale;
+
+  /// Kubernetes explicit connection check status.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked yet'**
+  String get kubeStatusUnknown;
+
+  /// Kubernetes explicit connection check status.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get kubeStatusChecking;
+
+  /// Kubernetes explicit connection check status.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check: reachable'**
+  String get kubeStatusAvailable;
+
+  /// Kubernetes explicit connection check status.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check: access denied'**
+  String get kubeStatusForbidden;
+
+  /// Kubernetes explicit connection check status.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check: failed'**
+  String get kubeStatusFailed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
