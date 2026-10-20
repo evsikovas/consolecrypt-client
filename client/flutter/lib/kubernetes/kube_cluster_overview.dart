@@ -118,11 +118,18 @@ class _KubeClusterOverviewState extends ConsumerState<KubeClusterOverview> {
         String? token;
         var pages = 0;
         do {
-          final page = await service.listResources(session, podKind, continueToken: token, limit: 500);
+          // The Table API carries the printed Pod status (Running, Completed,
+          // CrashLoopBackOff); the plain list only has readiness.
+          final table = service is KubeTableService
+              ? await (service as KubeTableService).table(session, podKind, continueToken: token, limit: 500)
+              : null;
+          final page = table?.page ?? await service.listResources(session, podKind, continueToken: token, limit: 500);
           if (!_current) return;
+          final statusColumn = table?.columns.indexWhere((column) => column.name.toLowerCase() == 'status') ?? -1;
           for (final pod in page.items) {
             total++;
-            phases.update(_phase(pod.status), (n) => n + 1, ifAbsent: () => 1);
+            final printed = statusColumn >= 0 && statusColumn < pod.cells.length ? pod.cells[statusColumn] : '';
+            phases.update(_phase(printed.isNotEmpty ? printed : pod.status), (n) => n + 1, ifAbsent: () => 1);
           }
           token = page.continueToken?.isEmpty == true ? null : page.continueToken;
         } while (token != null && ++pages < 10);
@@ -152,9 +159,11 @@ class _KubeClusterOverviewState extends ConsumerState<KubeClusterOverview> {
 
   static String _phase(String status) {
     final value = status.toLowerCase();
-    if (value == 'running') return 'Running';
+    if (value == 'running' || value == 'ready') return 'Running';
     if (value == 'succeeded' || value == 'completed') return 'Succeeded';
-    if (value == 'pending' || value.contains('creating') || value.contains('init')) return 'Pending';
+    if (value == 'pending' || value.contains('creating') || value.contains('init') || value == 'notready') {
+      return 'Pending';
+    }
     if (value.contains('backoff') || value.contains('error') || value == 'failed' || value.contains('evicted')) {
       return 'Failed';
     }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:consolecrypt/ai/command_palette.dart';
 import 'package:consolecrypt/app/commands.dart';
@@ -116,10 +117,27 @@ class _TabStrip extends ConsumerWidget {
     SessionConnectionState.disconnected => GlassTabState.disconnected,
   };
 
+  /// Second line of a tab: the host's list name (or its address when it has
+  /// none), its address / this computer's network name, or nothing.
+  static String? _subtitle(BuildContext context, TerminalTab tab, TerminalTabSubtitle mode) {
+    final host = tab.host;
+    String? text = switch (mode) {
+      TerminalTabSubtitle.off => null,
+      TerminalTabSubtitle.name when tab.isLocal => context.l10n.terminalLocalComputer,
+      TerminalTabSubtitle.address when tab.isLocal => Platform.localHostname,
+      TerminalTabSubtitle.name => host == null ? null : (host.name.trim().isEmpty ? host.address : host.name),
+      TerminalTabSubtitle.address => host?.address,
+    };
+    text = text?.trim();
+    return text == null || text.isEmpty || text == tab.displayTitle ? null : text;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = GlassStrings.of(context);
     final controller = ref.read(terminalTabsProvider.notifier);
+    final subtitleMode =
+        ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabSubtitle)) ?? TerminalTabSubtitle.name;
     return GlassTabStrip(
       activeIndex: state.activeIndex.clamp(0, state.tabs.length - 1),
       tabs: [
@@ -128,7 +146,7 @@ class _TabStrip extends ConsumerWidget {
             key: ValueKey('tab-${tab.target.label}-$i'),
             title: tab.displayTitle,
             attention: tab.attention,
-            subtitle: tab.isLocal ? context.l10n.terminalLocalComputer : tab.host?.username,
+            subtitle: _subtitle(context, tab, subtitleMode),
             state: _state(tab),
             tooltip: switch (_state(tab)) {
               GlassTabState.connected => strings.tabConnected,
@@ -176,26 +194,14 @@ Future<void> _tabMenu(BuildContext context, WidgetRef ref, TerminalTab tab, int 
         label: l10n.terminalTabClose,
         icon: Icons.close_rounded,
       ),
-      GlassMenuItem(
-        value: 'others',
-        label: l10n.terminalTabCloseOthers,
-        enabled: count > 1,
-      ),
-      GlassMenuItem(
-        value: 'right',
-        label: l10n.terminalTabCloseRight,
-        enabled: index < count - 1,
-      ),
+      GlassMenuItem(value: 'others', label: l10n.terminalTabCloseOthers, enabled: count > 1),
+      GlassMenuItem(value: 'right', label: l10n.terminalTabCloseRight, enabled: index < count - 1),
     ],
   );
   if (!context.mounted || action == null) return;
   switch (action) {
     case 'rename':
-      final name = await showTextInputDialog(
-        context,
-        title: l10n.terminalTabRenameTitle,
-        initial: tab.displayTitle,
-      );
+      final name = await showTextInputDialog(context, title: l10n.terminalTabRenameTitle, initial: tab.displayTitle);
       if (name != null) controller.rename(tab, name);
     case 'reset':
       controller.rename(tab, null);

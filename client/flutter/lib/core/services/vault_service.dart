@@ -51,4 +51,8 @@ abstract interface class VaultService {
   Future<void> resetPassphraseWithTrustedDevice({required SecretText newPassphrase});
 
   Future<void> changePassphrase({required SecretText current, required SecretText next});
+
+  /// Checks the passphrase without changing the lock state (step-up
+  /// confirmation for risky actions while unlocked). Wipes [passphrase].
+  Future<bool> verifyPassphrase(SecretText passphrase);
 }

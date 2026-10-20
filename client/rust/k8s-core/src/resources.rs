@@ -694,9 +694,10 @@ impl ResourceApi {
         if manifest.len() > MAX_MANIFEST {
             return Err(ResourceError::TooLarge);
         }
-        let object = ProtectedJson(
+        let mut object = ProtectedJson(
             serde_saphyr::from_str(&manifest).map_err(|_| ResourceError::InvalidRequest)?,
         );
+        strip_server_metadata(&mut object);
         validate_manifest(reference, &object)?;
         let path = self.object_path(reference, "patch")?;
         let parameters = {
@@ -1415,6 +1416,19 @@ fn contains_redacted_value(object: &Value) -> bool {
     }
 }
 
+/// Objects made by controllers (ReplicaSet Pods, Job Pods) carry
+/// `generateName` and other fields the server owns. An edit of an existing,
+/// named object never needs them, so they are dropped before applying
+/// instead of rejecting the whole manifest.
+fn strip_server_metadata(object: &mut Value) {
+    if let Some(metadata) = object.get_mut("metadata").and_then(Value::as_object_mut) {
+        if metadata.get("name").is_some_and(Value::is_string) {
+            metadata.remove("generateName");
+        }
+        metadata.remove("managedFields");
+    }
+}
+
 fn validate_manifest(reference: &ResourceRef, object: &Value) -> Result<(), ResourceError> {
     validate_manifest_identity(reference, object)?;
     if !object["metadata"]["resourceVersion"]
@@ -1537,6 +1551,32 @@ mod redaction_tests {
                 Err(ResourceError::InvalidRequest)
             );
         }
+    }
+    #[test]
+    fn controller_made_pods_can_be_edited() {
+        let descriptor = ResourceKind {
+            group: "".into(),
+            version: "v1".into(),
+            resource: "pods".into(),
+            kind: "Pod".into(),
+            namespaced: true,
+            verbs: vec!["patch".into()],
+        };
+        let reference = ResourceRef {
+            api: descriptor,
+            namespace: Some("apps".into()),
+            name: "web-7fd48655c6-xs4v2".into(),
+        };
+        let mut object = json!({"apiVersion":"v1","kind":"Pod",
+            "metadata":{"name":"web-7fd48655c6-xs4v2","generateName":"web-7fd48655c6-",
+                "namespace":"apps","resourceVersion":"7","managedFields":[{"manager":"kubelet"}]}});
+        assert_eq!(
+            validate_manifest(&reference, &object),
+            Err(ResourceError::InvalidRequest)
+        );
+        strip_server_metadata(&mut object);
+        assert!(validate_manifest(&reference, &object).is_ok());
+        assert!(object["metadata"].get("managedFields").is_none());
     }
     #[test]
     fn masked_config_maps_and_embedded_yaml_are_never_submitted_as_real_values() {

@@ -1079,15 +1079,16 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     final byId = <String, KubeInsightResource>{};
     for (final resource in resources) {
       final object = resource.object;
-      final spec = object['spec'] as Map? ?? const {}, status = object['status'] as Map? ?? const {};
-      final source = spec['sourceRef'] as Map? ?? spec['chartRef'] as Map? ?? const {};
-      final chart = (spec['chart'] as Map?)?['spec'] as Map?;
+      // Field shapes differ between kinds (HelmChart.spec.chart is a name,
+      // HelmRelease.spec.chart a template), so never cast blindly.
+      Map<Object?, Object?> map(Object? value) => value is Map ? value : const {};
+      final spec = map(object['spec']), status = map(object['status']);
+      final source = spec['sourceRef'] is Map ? map(spec['sourceRef']) : map(spec['chartRef']);
+      final chart = map(map(spec['chart'])['spec']);
       final revision =
-          status['lastAppliedRevision'] ??
-          (status['artifact'] as Map?)?['revision'] ??
-          (status['sync'] as Map?)?['revision'];
+          status['lastAppliedRevision'] ?? map(status['artifact'])['revision'] ?? map(status['sync'])['revision'];
       final times =
-          ((status['conditions'] as List?) ?? const [])
+          (status['conditions'] is List ? status['conditions']! as List : const <Object?>[])
               .whereType<Map<String, dynamic>>()
               .map((c) => DateTime.tryParse(c['lastTransitionTime']?.toString() ?? ''))
               .whereType<DateTime>()
@@ -1106,7 +1107,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
             : l.kubeGitOpsAttention,
         cells: [
           if (_section == 'all') resource.api.kind,
-          source['name']?.toString() ?? chart?['chart']?.toString() ?? '—',
+          source['name']?.toString() ?? chart['chart']?.toString() ?? spec['chart']?.toString() ?? '—',
           revision?.toString() ?? '—',
           times.lastOrNull?.toLocal().toString() ?? '—',
           spec['interval']?.toString() ?? '—',

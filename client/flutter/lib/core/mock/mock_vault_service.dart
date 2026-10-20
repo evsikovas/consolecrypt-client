@@ -283,6 +283,17 @@ final class MockVaultService implements VaultService {
   }
 
   @override
+  Future<bool> verifyPassphrase(SecretText passphrase) async {
+    final keys = _keys(_active());
+    await mockDelay(_cloud.config.kdfLatency);
+    try {
+      return passphrase.expose() == keys.passphrase;
+    } finally {
+      passphrase.wipe();
+    }
+  }
+
+  @override
   Future<void> changePassphrase({required SecretText current, required SecretText next}) async {
     final keys = _keys(_active());
     await mockDelay(_cloud.config.kdfLatency);

@@ -6026,7 +6026,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeAllowChangesHelp =>
-      'This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue.';
+      'This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Enter the vault passphrase to continue.';
 
   @override
   String get kubeCloseWriteWindow => 'Return to read only';
@@ -7611,4 +7611,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get terminalTabCloseRight => 'Close tabs to the right';
+
+  @override
+  String get kubeClusterProperties => 'Properties…';
+
+  @override
+  String get kubeMarkAsTest => 'Mark as test';
+
+  @override
+  String get kubeMarkAsProduction => 'Mark as production';
+
+  @override
+  String get kubeMarkAsTestConfirm =>
+      'Production safeguards (extra confirmations, read-only by default) will be turned off for this cluster.';
+
+  @override
+  String get kubeClusterColorMenu => 'Label colour…';
+
+  @override
+  String get settingsTerminalTabSubtitle => 'Tab subtitle';
+
+  @override
+  String get settingsTerminalTabSubtitleName => 'Name from the list';
+
+  @override
+  String get settingsTerminalTabSubtitleAddress => 'Address or computer name';
+
+  @override
+  String get settingsTerminalTabSubtitleOff => 'Hidden';
+
+  @override
+  String get kubeApplyConflict =>
+      'Another controller owns some of these fields, or the object changed. Turn on \"Take ownership of conflicting fields\" or reload the object.';
+
+  @override
+  String get kubeApplyForbidden => 'The cluster does not allow you to change this object.';
+
+  @override
+  String get kubeApplyInvalid =>
+      'The server rejected the YAML: check the syntax and fields that cannot be changed (most of a Pod\'s spec is immutable).';
+
+  @override
+  String get kubeVaultPasswordConfirm => 'Vault passphrase';
+
+  @override
+  String get kubeVaultPasswordWrong => 'Wrong passphrase.';
 }

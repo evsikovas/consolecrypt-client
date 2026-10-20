@@ -33,7 +33,6 @@ class SyncScreen extends ConsumerWidget {
       return PageScaffold(
         title: l10n.syncScreenTitle,
         scrollable: true,
-        maxWidth: 820,
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -75,7 +74,6 @@ class SyncScreen extends ConsumerWidget {
       title: l10n.syncScreenTitle,
       subtitle: profile?.serverUrl == null ? null : l10n.syncScreenServer('${profile!.serverUrl}'),
       scrollable: true,
-      maxWidth: 820,
       actions: [
         GlassButton.prominent(
           key: const ValueKey('sync-now'),

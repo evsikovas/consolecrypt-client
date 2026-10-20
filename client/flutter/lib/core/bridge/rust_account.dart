@@ -455,6 +455,10 @@ final class RustVaultService implements VaultService {
   }
 
   @override
+  Future<bool> verifyPassphrase(SecretText passphrase) =>
+      withSecret(passphrase, (p) => guard(() => rs_prof.vaultVerifyPassphrase(passphrase: p)));
+
+  @override
   Future<void> changePassphrase({required SecretText current, required SecretText next}) async {
     _checkNewPassphrase(next);
     try {

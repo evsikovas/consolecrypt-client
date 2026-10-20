@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
@@ -46,6 +47,7 @@ class _KubeYamlEditorState extends ConsumerState<KubeYamlEditor> with SingleTick
   KubeJson? _fieldDiff;
   String? _validatedSource;
   bool _busy = false, _failed = false, _force = false;
+  String? _failure;
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(kubeScopeProvider));
   bool get _masked => widget.original.yaml.contains('[redacted]');
   bool get _canWrite => !_masked && (ref.read(kubeWriteAccessProvider(widget.session)).value?.canWrite ?? false);
@@ -119,15 +121,28 @@ class _KubeYamlEditorState extends ConsumerState<KubeYamlEditor> with SingleTick
       });
       if (mounted) widget.onOutput?.call(context.l10n.kubeDryRun, preview.yaml);
       _tabs.animateTo(1);
-    } catch (_) {
-      if (_current) setState(() => _failed = true);
+    } catch (error) {
+      if (_current) {
+        setState(() {
+          _failed = true;
+          _failure = _rule(error);
+        });
+      }
     } finally {
       manifest.wipe();
       if (_current) setState(() => _busy = false);
     }
   }
 
+  static String? _rule(Object error) => error is AppException ? error.args['rule'] : null;
+
   Future<void> _apply() async {
+    // Apply always goes through a server-side dry run first; an unchecked
+    // edit is validated here and the review tab is shown before confirming.
+    if (_validatedSource != _yaml.text || _preview == null) {
+      await _validate();
+      if (!mounted || !_current || _validatedSource != _yaml.text || _preview == null) return;
+    }
     final source = _validatedSource;
     if (!_current || _busy || !_canWrite || source == null || source != _yaml.text || _preview == null) return;
     final approved = await showTypedKubeConfirmation(
@@ -153,10 +168,11 @@ class _KubeYamlEditorState extends ConsumerState<KubeYamlEditor> with SingleTick
       );
       if (mounted && _current) widget.onOutput?.call(context.l10n.kubeApplyYaml, result.yaml);
       if (mounted && _current) closeDialog(context, true);
-    } catch (_) {
+    } catch (error) {
       if (_current) {
         setState(() {
           _failed = true;
+          _failure = _rule(error);
           _preview = null;
           _fieldDiff = null;
           _validatedSource = null;
@@ -199,7 +215,13 @@ class _KubeYamlEditorState extends ConsumerState<KubeYamlEditor> with SingleTick
               KubeWriteBanner(session: widget.session, contextName: widget.contextName),
               if (_masked) Text(l.kubeMaskedEditHelp),
               if (_busy) const LinearProgressIndicator(),
-              if (_failed) Text(l.kubeApplyFailed, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              if (_failed)
+                Text(switch (_failure) {
+                  'conflict' => l.kubeApplyConflict,
+                  'forbidden' || 'unauthorized' => l.kubeApplyForbidden,
+                  'invalid_request' => l.kubeApplyInvalid,
+                  _ => l.kubeApplyFailed,
+                }, style: TextStyle(color: Theme.of(context).colorScheme.error)),
               TabBar(
                 controller: _tabs,
                 tabs: [
@@ -282,7 +304,7 @@ class _KubeYamlEditorState extends ConsumerState<KubeYamlEditor> with SingleTick
         primaryAction: GlassButton.destructive(
           key: const ValueKey('kube-yaml-apply'),
           label: l.kubeApplyYaml,
-          onPressed: canWrite && !_busy && preview != null && _validatedSource == _yaml.text ? _apply : null,
+          onPressed: canWrite && !_busy && (preview != null || _yaml.text != widget.original.yaml) ? _apply : null,
         ),
         secondaryActions: [
           GlassButton(

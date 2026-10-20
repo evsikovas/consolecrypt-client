@@ -62,7 +62,9 @@ class SecureSurface extends StatelessWidget {
       child: DecoratedBox(
         key: const ValueKey('secure-surface-fill'),
         decoration: ShapeDecoration(
-          color: tokens.optics.tintBase.withValues(alpha: alpha),
+          // Opaque, but tinted toward the app background so secure dialogs
+          // follow the chosen theme instead of a neutral black.
+          color: Color.lerp(tokens.optics.tintBase, tokens.ambient.average, 0.35)!.withValues(alpha: alpha),
           shape: shape.copyWith(
             side: BorderSide(color: rim, width: ic ? 1 : hair),
           ),

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
@@ -97,10 +98,11 @@ Future<ProviderContainer> _pump(
   Size size = const Size(1100, 900),
   double textScale = 1,
   TerminalService? terminalService,
+  bool unlockVault = false,
 }) async {
   final backend = testBackend();
   addTearDown(backend.dispose);
-  if (terminalService != null) await backend.debugSignInDemoAndUnlock();
+  if (terminalService != null || unlockVault) await backend.debugSignInDemoAndUnlock();
   addTearDown(service.dispose);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -1149,16 +1151,19 @@ void main() {
     expect(find.text('line-00005'), findsNothing);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('production write window requires an exact context name and can be closed', (tester) async {
+  testWidgets('production write window requires the vault passphrase and can be closed', (tester) async {
     final service = _MutationService();
-    await _pump(tester, service);
+    await _pump(tester, service, unlockVault: true);
     await tester.tap(find.byKey(const ValueKey('kube-write-window')));
     await settle(tester);
     expect(tester.widget<GlassButton>(find.byKey(const ValueKey('kube-confirm-action'))).onPressed, isNull);
-    await tester.enterText(find.byKey(const ValueKey('kube-confirm-name')), 'demo-cluster ');
+    await tester.enterText(find.byKey(const ValueKey('kube-confirm-passphrase-input')), 'wrong passphrase');
     await settle(tester);
-    expect(tester.widget<GlassButton>(find.byKey(const ValueKey('kube-confirm-action'))).onPressed, isNull);
-    await tester.enterText(find.byKey(const ValueKey('kube-confirm-name')), 'demo-cluster');
+    await tester.tap(find.byKey(const ValueKey('kube-confirm-action')));
+    await settle(tester);
+    expect(service.openedNames, isEmpty);
+    expect(find.text('Wrong passphrase.'), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('kube-confirm-passphrase-input')), MockCloud.demoPassphrase);
     await settle(tester);
     await tester.tap(find.byKey(const ValueKey('kube-confirm-action')));
     await settle(tester);

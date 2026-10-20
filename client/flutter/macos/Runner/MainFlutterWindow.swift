@@ -6,6 +6,7 @@ class MainFlutterWindow: NSWindow {
   private var accessibilityBridge: AccessibilityBridge?
   private var updateBridge: UpdateBridge?
   private var fullscreenBridge: FullscreenBridge?
+  private var fontsBridge: FontsBridge?
 
   override func awakeFromNib() {
     // macos_window_utils (MIT) hosts the Flutter view so the Dart side can
@@ -34,8 +35,35 @@ class MainFlutterWindow: NSWindow {
     updateBridge = UpdateBridge(messenger: flutterViewController.engine.binaryMessenger, window: self)
 
     fullscreenBridge = FullscreenBridge(messenger: flutterViewController.engine.binaryMessenger, window: self)
+    fontsBridge = FontsBridge(messenger: flutterViewController.engine.binaryMessenger)
 
     super.awakeFromNib()
+  }
+}
+
+/// `consolecrypt/fonts`: `monospaceFamilies` lists the installed fixed-pitch
+/// font families, so the terminal font picker offers only fonts that render.
+final class FontsBridge: NSObject {
+  private let channel: FlutterMethodChannel
+
+  init(messenger: FlutterBinaryMessenger) {
+    channel = FlutterMethodChannel(name: "consolecrypt/fonts", binaryMessenger: messenger)
+    super.init()
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "monospaceFamilies" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      let manager = NSFontManager.shared
+      let families = manager.availableFontFamilies.filter { family in
+        guard !family.hasPrefix(".") else { return false }
+        return manager.availableMembers(ofFontFamily: family)?.contains { member in
+          guard member.count > 3, let traits = member[3] as? NSNumber else { return false }
+          return NSFontTraitMask(rawValue: traits.uintValue).contains(.fixedPitchFontMask)
+        } ?? false
+      }
+      result(families.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending })
+    }
   }
 }
 

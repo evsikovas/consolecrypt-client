@@ -2,8 +2,10 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
+import 'package:consolecrypt/kubernetes/kube_cluster_menu.dart';
 import 'package:consolecrypt/kubernetes/kube_connection_status.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Resource sections of the desktop navigator, in display order.
@@ -114,7 +116,7 @@ List<KubeResourceKind> kubeNavigableKinds(List<KubeResourceKind> kinds) {
 /// Desktop resource navigator (left pane of the cluster workspace): saved
 /// clusters with their status, overview pages and collapsible groups of
 /// discovered kinds. Custom resources are grouped by API group with a filter.
-class KubeNavigator extends StatefulWidget {
+class KubeNavigator extends ConsumerStatefulWidget {
   const KubeNavigator({
     required this.connections,
     required this.currentConnectionId,
@@ -147,10 +149,10 @@ class KubeNavigator extends StatefulWidget {
   final ValueChanged<KubeConnection>? onSelectContext;
 
   @override
-  State<KubeNavigator> createState() => _KubeNavigatorState();
+  ConsumerState<KubeNavigator> createState() => _KubeNavigatorState();
 }
 
-class _KubeNavigatorState extends State<KubeNavigator> {
+class _KubeNavigatorState extends ConsumerState<KubeNavigator> {
   final _collapsed = <String>{'section:${KubeNavSection.storage.name}', 'section:${KubeNavSection.access.name}'};
   final _expandedGroups = <String>{};
   final _filter = TextEditingController();
@@ -426,7 +428,8 @@ class _KubeNavigatorState extends State<KubeNavigator> {
       null => p.tertiary,
     };
     final host = Uri.tryParse(connection.server)?.authority ?? connection.server;
-    return GlassInteractive(
+    final label = kubeClusterColor(connection.color);
+    final row = GlassInteractive(
       key: ValueKey('kube-nav-context-${connection.id}'),
       selected: current,
       semanticLabel: connection.name,
@@ -446,6 +449,15 @@ class _KubeNavigatorState extends State<KubeNavigator> {
             children: [
               StatusDot(color: color),
               const SizedBox(width: GlassSpacing.s8),
+              if (label != null) ...[
+                Container(
+                  key: ValueKey('kube-nav-context-color-${connection.id}'),
+                  width: 3,
+                  height: 26,
+                  decoration: BoxDecoration(color: label, borderRadius: BorderRadius.circular(2)),
+                ),
+                const SizedBox(width: GlassSpacing.s8),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,6 +486,13 @@ class _KubeNavigatorState extends State<KubeNavigator> {
           ),
         ),
       ),
+    );
+    return GestureDetector(
+      onSecondaryTapUp: (details) =>
+          openKubeClusterMenu(context, ref, connection, details.globalPosition, current: current),
+      onLongPressStart: (details) =>
+          openKubeClusterMenu(context, ref, connection, details.globalPosition, current: current),
+      child: row,
     );
   }
 

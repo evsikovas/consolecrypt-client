@@ -21,6 +21,7 @@ import 'package:consolecrypt/settings/screen_capture_settings.dart';
 import 'package:consolecrypt/settings/settings_dialogs.dart';
 import 'package:consolecrypt/settings/sftp_settings.dart';
 import 'package:consolecrypt/sync/enable_sync_dialog.dart';
+import 'package:consolecrypt/terminal/terminal_fonts.dart';
 import 'package:consolecrypt/updates/update_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -34,7 +35,6 @@ class SettingsScreen extends ConsumerWidget {
     return PageScaffold(
       title: context.l10n.settingsTitle,
       scrollable: true,
-      maxWidth: 900,
       body: const Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -406,7 +406,7 @@ class _TerminalSection extends ConsumerWidget {
                 items: [
                   GlassSelectItem(value: '', label: l10n.settingsTerminalFontSystem),
                   for (final family in {
-                    ...AppPlatform.terminalFontChoices,
+                    ...ref.watch(terminalFontFamiliesProvider).value ?? AppPlatform.terminalFontChoices,
                     ?local.terminalFontFamily,
                   })
                     GlassSelectItem(key: ValueKey('terminal-font-$family'), value: family, label: family),
@@ -440,6 +440,23 @@ class _TerminalSection extends ConsumerWidget {
             ),
           ),
           const TerminalAppearanceControls(),
+          LabeledValue(
+            label: l10n.settingsTerminalTabSubtitle,
+            value: Align(
+              alignment: Alignment.centerLeft,
+              child: GlassSelect<TerminalTabSubtitle>(
+                key: const ValueKey('terminal-tab-subtitle'),
+                value: local.terminalTabSubtitle,
+                semanticLabel: l10n.settingsTerminalTabSubtitle,
+                items: [
+                  GlassSelectItem(value: TerminalTabSubtitle.name, label: l10n.settingsTerminalTabSubtitleName),
+                  GlassSelectItem(value: TerminalTabSubtitle.address, label: l10n.settingsTerminalTabSubtitleAddress),
+                  GlassSelectItem(value: TerminalTabSubtitle.off, label: l10n.settingsTerminalTabSubtitleOff),
+                ],
+                onChanged: (v) => settings.updateLocal(settings.currentLocal.copyWith(terminalTabSubtitle: v)),
+              ),
+            ),
+          ),
           LabeledValue(
             label: l10n.settingsScrollbackLabel,
             value: Align(

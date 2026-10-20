@@ -60,6 +60,10 @@ enum AppThemeMode { system, light, dark }
 /// Presentation of the device-local workspace tools on the right.
 enum WorkspacePanelStyle { floating, expanded }
 
+/// Terminal tab second line: the host's list name ("This computer" for the
+/// local shell), its network address (computer name locally), or nothing.
+enum TerminalTabSubtitle { name, address, off }
+
 /// Terminal colours are independent of the interface; system follows it.
 enum TerminalColorScheme { system, dark, light, midnight, ocean, forest, amber, custom }
 
@@ -93,6 +97,7 @@ final class LocalSettings {
     this.reopenLastProfile = false,
     this.terminalFontSize = 13,
     this.terminalFontFamily,
+    this.terminalTabSubtitle = TerminalTabSubtitle.name,
     this.terminalScrollback = 5000,
     this.clipboardClearSeconds = 30,
     this.autoLockMinutes = 15,
@@ -128,6 +133,9 @@ final class LocalSettings {
 
   /// Installed monospace family for terminals; null uses the platform default.
   final String? terminalFontFamily;
+
+  /// Second line of terminal tabs: list name, network address, or nothing.
+  final TerminalTabSubtitle terminalTabSubtitle;
   final int terminalScrollback;
 
   /// Copied secrets are wiped from the clipboard after this many seconds.
@@ -172,6 +180,7 @@ final class LocalSettings {
     double? terminalFontSize,
     String? terminalFontFamily,
     bool resetTerminalFontFamily = false,
+    TerminalTabSubtitle? terminalTabSubtitle,
     int? terminalScrollback,
     int? clipboardClearSeconds,
     int? autoLockMinutes,
@@ -194,6 +203,7 @@ final class LocalSettings {
     reopenLastProfile: reopenLastProfile ?? this.reopenLastProfile,
     terminalFontSize: terminalFontSize ?? this.terminalFontSize,
     terminalFontFamily: resetTerminalFontFamily ? null : (terminalFontFamily ?? this.terminalFontFamily),
+    terminalTabSubtitle: terminalTabSubtitle ?? this.terminalTabSubtitle,
     terminalScrollback: terminalScrollback ?? this.terminalScrollback,
     clipboardClearSeconds: clipboardClearSeconds ?? this.clipboardClearSeconds,
     autoLockMinutes: autoLockMinutes ?? this.autoLockMinutes,

@@ -48,7 +48,6 @@ class BackupsScreen extends ConsumerWidget {
       title: l10n.backupsTitle,
       subtitle: l10n.backupsSubtitle,
       scrollable: true,
-      maxWidth: 900,
       actions: [
         GlassButton(
           onPressed: () => context.go(AppRoutes.restore),

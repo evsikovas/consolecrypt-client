@@ -8347,7 +8347,7 @@
   "@kubeAllowChanges": {
     "description": "Kubernetes guarded mutations: Allow changes for 10 minutes"
   },
-  "kubeAllowChangesHelp": "This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue.",
+  "kubeAllowChangesHelp": "This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Enter the vault passphrase to continue.",
   "@kubeAllowChangesHelp": {
     "description": "Kubernetes guarded mutations: This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue."
   },
@@ -10424,5 +10424,61 @@
   "terminalTabCloseRight": "Close tabs to the right",
   "@terminalTabCloseRight": {
     "description": "Terminal tab menu: close tabs after this one"
+  },
+  "kubeClusterProperties": "Properties…",
+  "@kubeClusterProperties": {
+    "description": "Cluster context menu: open the connection editor."
+  },
+  "kubeMarkAsTest": "Mark as test",
+  "@kubeMarkAsTest": {
+    "description": "Cluster context menu: turn off the production marker."
+  },
+  "kubeMarkAsProduction": "Mark as production",
+  "@kubeMarkAsProduction": {
+    "description": "Cluster context menu: turn on the production marker."
+  },
+  "kubeMarkAsTestConfirm": "Production safeguards (extra confirmations, read-only by default) will be turned off for this cluster.",
+  "@kubeMarkAsTestConfirm": {
+    "description": "Confirmation when a cluster stops being marked as production."
+  },
+  "kubeClusterColorMenu": "Label colour…",
+  "@kubeClusterColorMenu": {
+    "description": "Cluster context menu: choose the cluster's colour label."
+  },
+  "settingsTerminalTabSubtitle": "Tab subtitle",
+  "@settingsTerminalTabSubtitle": {
+    "description": "Setting: what the second line of a terminal tab shows."
+  },
+  "settingsTerminalTabSubtitleName": "Name from the list",
+  "@settingsTerminalTabSubtitleName": {
+    "description": "Tab subtitle option: host name from the inventory, or 'This computer'."
+  },
+  "settingsTerminalTabSubtitleAddress": "Address or computer name",
+  "@settingsTerminalTabSubtitleAddress": {
+    "description": "Tab subtitle option: host address, or this computer's network name."
+  },
+  "settingsTerminalTabSubtitleOff": "Hidden",
+  "@settingsTerminalTabSubtitleOff": {
+    "description": "Tab subtitle option: no second line."
+  },
+  "kubeApplyConflict": "Another controller owns some of these fields, or the object changed. Turn on \"Take ownership of conflicting fields\" or reload the object.",
+  "@kubeApplyConflict": {
+    "description": "YAML apply rejected with a conflict."
+  },
+  "kubeApplyForbidden": "The cluster does not allow you to change this object.",
+  "@kubeApplyForbidden": {
+    "description": "YAML apply rejected: no permission."
+  },
+  "kubeApplyInvalid": "The server rejected the YAML: check the syntax and fields that cannot be changed (most of a Pod's spec is immutable).",
+  "@kubeApplyInvalid": {
+    "description": "YAML apply rejected as invalid."
+  },
+  "kubeVaultPasswordConfirm": "Vault passphrase",
+  "@kubeVaultPasswordConfirm": {
+    "description": "Field label: confirm a production write window with the vault passphrase."
+  },
+  "kubeVaultPasswordWrong": "Wrong passphrase.",
+  "@kubeVaultPasswordWrong": {
+    "description": "Error under the vault passphrase field."
   }
 }

@@ -2055,13 +2055,17 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
             if (resources) ...[
               const SizedBox(width: GlassSpacing.s6),
               GlassBadge(label: '${rows.length}', dense: true),
-              if (widget.service is KubeOrganizationService && _kind != null)
+              if (widget.service is KubeOrganizationService && _kind != null) ...[
+                const SizedBox(width: GlassSpacing.s4),
                 GlassIconButton(
                   key: const ValueKey('kube-favorite-kind'),
+                  style: GlassIconButtonStyle.plain,
+                  color: _favoriteKinds.contains(_kind!.id) ? p.warning : null,
                   icon: _favoriteKinds.contains(_kind!.id) ? Icons.star_rounded : Icons.star_border_rounded,
                   tooltip: l.kubeFavorite,
                   onPressed: _savingFavorites ? null : () => _favorite(namespace: false),
                 ),
+              ],
             ],
           ],
         ),

@@ -10727,7 +10727,7 @@ abstract class AppLocalizations {
   /// Kubernetes guarded mutations: This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue.
   ///
   /// In en, this message translates to:
-  /// **'This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue.'**
+  /// **'This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Enter the vault passphrase to continue.'**
   String get kubeAllowChangesHelp;
 
   /// Kubernetes guarded mutations: Return to read only
@@ -13723,6 +13723,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close tabs to the right'**
   String get terminalTabCloseRight;
+
+  /// Cluster context menu: open the connection editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Properties…'**
+  String get kubeClusterProperties;
+
+  /// Cluster context menu: turn off the production marker.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as test'**
+  String get kubeMarkAsTest;
+
+  /// Cluster context menu: turn on the production marker.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as production'**
+  String get kubeMarkAsProduction;
+
+  /// Confirmation when a cluster stops being marked as production.
+  ///
+  /// In en, this message translates to:
+  /// **'Production safeguards (extra confirmations, read-only by default) will be turned off for this cluster.'**
+  String get kubeMarkAsTestConfirm;
+
+  /// Cluster context menu: choose the cluster's colour label.
+  ///
+  /// In en, this message translates to:
+  /// **'Label colour…'**
+  String get kubeClusterColorMenu;
+
+  /// Setting: what the second line of a terminal tab shows.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab subtitle'**
+  String get settingsTerminalTabSubtitle;
+
+  /// Tab subtitle option: host name from the inventory, or 'This computer'.
+  ///
+  /// In en, this message translates to:
+  /// **'Name from the list'**
+  String get settingsTerminalTabSubtitleName;
+
+  /// Tab subtitle option: host address, or this computer's network name.
+  ///
+  /// In en, this message translates to:
+  /// **'Address or computer name'**
+  String get settingsTerminalTabSubtitleAddress;
+
+  /// Tab subtitle option: no second line.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get settingsTerminalTabSubtitleOff;
+
+  /// YAML apply rejected with a conflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Another controller owns some of these fields, or the object changed. Turn on \"Take ownership of conflicting fields\" or reload the object.'**
+  String get kubeApplyConflict;
+
+  /// YAML apply rejected: no permission.
+  ///
+  /// In en, this message translates to:
+  /// **'The cluster does not allow you to change this object.'**
+  String get kubeApplyForbidden;
+
+  /// YAML apply rejected as invalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The server rejected the YAML: check the syntax and fields that cannot be changed (most of a Pod\'s spec is immutable).'**
+  String get kubeApplyInvalid;
+
+  /// Field label: confirm a production write window with the vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault passphrase'**
+  String get kubeVaultPasswordConfirm;
+
+  /// Error under the vault passphrase field.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong passphrase.'**
+  String get kubeVaultPasswordWrong;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -6225,7 +6225,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeAllowChangesHelp =>
-      'В этом прод-контексте откроется временное окно записи. Изменения будут записаны в локальный журнал аудита. Для продолжения введите точное имя контекста.';
+      'В этом прод-контексте откроется временное окно записи. Изменения будут записаны в локальный журнал аудита. Для продолжения введите пароль хранилища.';
 
   @override
   String get kubeCloseWriteWindow => 'Вернуть режим только для чтения';
@@ -7811,4 +7811,49 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get terminalTabCloseRight => 'Закрыть вкладки справа';
+
+  @override
+  String get kubeClusterProperties => 'Свойства…';
+
+  @override
+  String get kubeMarkAsTest => 'Пометить как тестовый';
+
+  @override
+  String get kubeMarkAsProduction => 'Пометить как продовый';
+
+  @override
+  String get kubeMarkAsTestConfirm =>
+      'Для этого кластера отключатся защиты прода: дополнительные подтверждения и режим только чтения по умолчанию.';
+
+  @override
+  String get kubeClusterColorMenu => 'Цвет метки…';
+
+  @override
+  String get settingsTerminalTabSubtitle => 'Подпись вкладки';
+
+  @override
+  String get settingsTerminalTabSubtitleName => 'Имя из списка';
+
+  @override
+  String get settingsTerminalTabSubtitleAddress => 'Адрес или имя компьютера';
+
+  @override
+  String get settingsTerminalTabSubtitleOff => 'Не показывать';
+
+  @override
+  String get kubeApplyConflict =>
+      'Часть полей принадлежит другому контроллеру, или объект изменился. Включите «Передать владение конфликтующими полями» или обновите объект.';
+
+  @override
+  String get kubeApplyForbidden => 'Кластер не разрешает вам изменять этот объект.';
+
+  @override
+  String get kubeApplyInvalid =>
+      'Сервер отклонил YAML: проверьте синтаксис и поля, которые нельзя менять (большая часть spec у Pod неизменяема).';
+
+  @override
+  String get kubeVaultPasswordConfirm => 'Пароль хранилища';
+
+  @override
+  String get kubeVaultPasswordWrong => 'Неверный пароль.';
 }

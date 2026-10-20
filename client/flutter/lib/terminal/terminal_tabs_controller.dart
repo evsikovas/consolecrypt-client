@@ -46,6 +46,7 @@ final class TerminalTab {
   /// this tab. Cleared when the tab is shown.
   bool attention = false;
   DateTime? _connectedAt;
+  DateTime? _resizedAt;
   Timer? _quiet;
 
   /// Input typed/inserted before the session is connected.
@@ -75,6 +76,17 @@ final class TerminalTab {
     return text.isEmpty ? null : text;
   }
 }
+
+final _oscSequence = RegExp(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)');
+final _csiSequence = RegExp(r'\x1b\[[0-9;?<>=!]*[ -/]*[@-~]');
+final _escSequence = RegExp(r'\x1b(?:[()#%][0-9A-Za-z]|[=>78DEHMNOZc\\])');
+
+/// Terminal output without escape sequences: titles (OSC, which end in BEL),
+/// cursor moves and modes. Prompt redraws and title updates are therefore
+/// not mistaken for a command's output or a bell.
+@visibleForTesting
+String visibleTerminalText(String text) =>
+    text.replaceAll(_oscSequence, '').replaceAll(_csiSequence, '').replaceAll(_escSequence, '');
 
 final class TerminalTabsState {
   const TerminalTabsState({this.tabs = const [], this.activeIndex = 0, this.revision = 0});
@@ -187,7 +199,8 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
               _touch();
             } else {
               tab.terminal.write(frame.text);
-              _noteActivity(tab, bell: frame.text.contains('\x07'));
+              final visible = visibleTerminalText(frame.text);
+              _noteActivity(tab, bell: visible.contains('\x07'), text: visible.trim().isNotEmpty);
             }
           })
       .._events = handle.events.listen((e) => _onEvent(tab, e));
@@ -200,7 +213,11 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   void _bindTerminal(TerminalTab tab, TerminalService service) {
     final terminal = tab.terminal;
     terminal.onOutput = (data) => _write(tab, data);
-    terminal.onResize = (w, h, _, _) => unawaited(service.resize(tab.sessionId, TerminalSize(w, h)));
+    terminal.onResize = (w, h, _, _) {
+      // The shell redraws its prompt after a resize; that is not activity.
+      tab._resizedAt = DateTime.now();
+      unawaited(service.resize(tab.sessionId, TerminalSize(w, h)));
+    };
     terminal.onTitleChange = (title) {
       tab.title = title;
       _touch();
@@ -306,7 +323,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   @visibleForTesting
   static Duration activityGrace = const Duration(seconds: 3);
 
-  /// Quiet time after the last output that counts as "the command finished".
+  /// Delay between the first unseen output and marking the tab.
   @visibleForTesting
   static Duration activityQuiet = const Duration(milliseconds: 1500);
 
@@ -327,22 +344,28 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
 
   bool _watched(TerminalTab tab) => _viewing && identical(state.active, tab);
 
-  /// Output in an unwatched tab marks it once the output goes quiet for a
-  /// moment (a command finished); a bell marks it at once. The first seconds
-  /// after connecting (banner, prompt) never count.
-  void _noteActivity(TerminalTab tab, {required bool bell}) {
-    final connected = tab._connectedAt;
-    if (_watched(tab) || connected == null || DateTime.now().difference(connected) < activityGrace) {
+  /// Output in an unwatched tab marks it shortly after it starts, whether the
+  /// command finished or keeps streaming (ping, tail -f); a bell marks it at
+  /// once. The first seconds after connecting (banner, prompt) never count.
+  void _noteActivity(TerminalTab tab, {required bool bell, required bool text}) {
+    final connected = tab._connectedAt, resized = tab._resizedAt, now = DateTime.now();
+    if (_watched(tab) ||
+        tab.attention ||
+        (!bell && !text) ||
+        connected == null ||
+        now.difference(connected) < activityGrace ||
+        (resized != null && now.difference(resized) < activityGrace)) {
       return;
     }
-    tab._quiet?.cancel();
     if (bell) {
+      tab._quiet?.cancel();
       if (!tab.attention) {
         tab.attention = true;
         _touch();
       }
       return;
     }
+    if (tab._quiet?.isActive ?? false) return;
     tab._quiet = Timer(activityQuiet, () {
       if (!_open.contains(tab) || _watched(tab) || tab.attention) return;
       tab.attention = true;

@@ -4,6 +4,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/kubernetes/kube_cluster_menu.dart';
 import 'package:consolecrypt/kubernetes/kube_import_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_inventory_service.dart';
 import 'package:consolecrypt/kubernetes/kube_organization_service.dart';
@@ -274,10 +275,7 @@ class _KubeConnectionEditorState extends ConsumerState<KubeConnectionEditor> {
                             const SizedBox(width: GlassSpacing.s12),
                             for (final value in <String?>[
                               null,
-                              ...{
-                                ...const ['#4285F4', '#22A06B', '#E56910', '#AE2E24', '#8270DB', '#1D9BB2'],
-                                ?_color,
-                              },
+                              ...{...kubeClusterColors, ?_color},
                             ])
                               Padding(
                                 padding: const EdgeInsets.only(right: 6),

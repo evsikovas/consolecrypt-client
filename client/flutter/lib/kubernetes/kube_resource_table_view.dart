@@ -181,10 +181,19 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
   String _value(KubeResourceRow row, _Column column) => switch (column.id) {
     'name' => row.name,
     'namespace' => row.namespace ?? '—',
-    'status' => row.status.isEmpty ? '—' : row.status,
+    'status' => _status(row),
     'age' => row.createdAt == null ? '—' : _age(DateTime.now().difference(row.createdAt!)),
     _ => column.index < row.cells.length ? row.cells[column.index] : '—',
   };
+
+  /// The server's printed "Status" column (Running, Completed,
+  /// CrashLoopBackOff) when present; otherwise the core's readiness summary.
+  String _status(KubeResourceRow row) {
+    final index = widget.columns.indexWhere((column) => column.name.toLowerCase() == 'status');
+    if (index >= 0 && index < row.cells.length && row.cells[index].trim().isNotEmpty) return row.cells[index];
+    return row.status.isEmpty ? '—' : row.status;
+  }
+
   String _age(Duration age) {
     if (age.isNegative) return '0s'; // l10n-ignore: compact Kubernetes duration notation.
     if (age.inDays > 0) return '${age.inDays}d'; // l10n-ignore: Kubernetes duration.
