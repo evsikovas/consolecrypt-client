@@ -15,6 +15,7 @@
 
 pub mod ai;
 pub mod credential;
+pub mod database;
 pub mod group;
 pub mod history;
 pub mod host;
@@ -74,6 +75,7 @@ pub enum ObjectKind {
     RdpHost,
     KubeCluster,
     KubeContext,
+    DbConnection,
     Group,
     JumpProfile,
     Proxy,
@@ -84,6 +86,7 @@ pub enum ObjectKind {
     Snippet,
     Note,
     HistoryEntry,
+    DbHistoryEntry,
     AiConversation,
     VaultSettings,
     AiProvider,
@@ -96,6 +99,7 @@ impl ObjectKind {
             | ObjectKind::RdpHost
             | ObjectKind::KubeCluster
             | ObjectKind::KubeContext
+            | ObjectKind::DbConnection
             | ObjectKind::Group
             | ObjectKind::JumpProfile
             | ObjectKind::Proxy
@@ -104,7 +108,9 @@ impl ObjectKind {
             | ObjectKind::KnownHost => KekClass::Inventory,
             ObjectKind::Secret => KekClass::Secrets,
             ObjectKind::Snippet | ObjectKind::Note => KekClass::Snippets,
-            ObjectKind::HistoryEntry | ObjectKind::AiConversation => KekClass::History,
+            ObjectKind::HistoryEntry | ObjectKind::DbHistoryEntry | ObjectKind::AiConversation => {
+                KekClass::History
+            }
             ObjectKind::VaultSettings | ObjectKind::AiProvider => KekClass::Settings,
         }
     }
@@ -118,6 +124,7 @@ pub enum VaultObject {
     RdpHost(rdp::RdpHost),
     KubeCluster(kubernetes::KubeCluster),
     KubeContext(kubernetes::KubeContext),
+    DbConnection(database::DbConnection),
     Group(group::Group),
     JumpProfile(host::JumpProfile),
     Proxy(host::Proxy),
@@ -128,6 +135,7 @@ pub enum VaultObject {
     Snippet(snippet::Snippet),
     Note(note::Note),
     HistoryEntry(history::HistoryEntry),
+    DbHistoryEntry(history::DbHistoryEntry),
     AiConversation(ai::AiConversation),
     VaultSettings(settings::VaultSettings),
     AiProvider(ai::AiProviderConfig),
@@ -140,6 +148,7 @@ impl VaultObject {
             VaultObject::RdpHost(_) => ObjectKind::RdpHost,
             VaultObject::KubeCluster(_) => ObjectKind::KubeCluster,
             VaultObject::KubeContext(_) => ObjectKind::KubeContext,
+            VaultObject::DbConnection(_) => ObjectKind::DbConnection,
             VaultObject::Group(_) => ObjectKind::Group,
             VaultObject::JumpProfile(_) => ObjectKind::JumpProfile,
             VaultObject::Proxy(_) => ObjectKind::Proxy,
@@ -150,6 +159,7 @@ impl VaultObject {
             VaultObject::Snippet(_) => ObjectKind::Snippet,
             VaultObject::Note(_) => ObjectKind::Note,
             VaultObject::HistoryEntry(_) => ObjectKind::HistoryEntry,
+            VaultObject::DbHistoryEntry(_) => ObjectKind::DbHistoryEntry,
             VaultObject::AiConversation(_) => ObjectKind::AiConversation,
             VaultObject::VaultSettings(_) => ObjectKind::VaultSettings,
             VaultObject::AiProvider(_) => ObjectKind::AiProvider,
@@ -162,6 +172,7 @@ impl VaultObject {
             VaultObject::RdpHost(o) => o.host.id,
             VaultObject::KubeCluster(o) => o.id,
             VaultObject::KubeContext(o) => o.id,
+            VaultObject::DbConnection(o) => o.id,
             VaultObject::Group(o) => o.id,
             VaultObject::JumpProfile(o) => o.id,
             VaultObject::Proxy(o) => o.id,
@@ -172,6 +183,7 @@ impl VaultObject {
             VaultObject::Snippet(o) => o.id,
             VaultObject::Note(o) => o.id,
             VaultObject::HistoryEntry(o) => o.id,
+            VaultObject::DbHistoryEntry(o) => o.id,
             VaultObject::AiConversation(o) => o.id,
             VaultObject::VaultSettings(o) => o.id,
             VaultObject::AiProvider(o) => o.id,

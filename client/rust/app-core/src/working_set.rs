@@ -355,6 +355,18 @@ impl WorkingSet {
 
     typed!(host, hosts, Host, Host);
     typed!(
+        db_history_entry,
+        db_history_entries,
+        DbHistoryEntry,
+        cc_models::history::DbHistoryEntry
+    );
+    typed!(
+        db_connection,
+        db_connections,
+        DbConnection,
+        cc_models::database::DbConnection
+    );
+    typed!(
         kube_cluster,
         kube_clusters,
         KubeCluster,

@@ -1,0 +1,47 @@
+[package]
+name = "cc-db-core"
+description = "Native database drivers, guarded queries and bounded result streams"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[dependencies]
+cc-models.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+futures.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+secrecy.workspace = true
+zeroize.workspace = true
+base64.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+url.workspace = true
+reqwest = { workspace = true, features = ["stream"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+rustls-pemfile = "2"
+webpki-roots = "1"
+tokio-postgres = { version = "0.7.18", features = ["with-chrono-0_4", "with-serde_json-1", "with-uuid-1", "array-impls"] }
+tokio-postgres-rustls = { version = "0.14", default-features = false, features = ["ring"] }
+mysql_async = { version = "0.37.1", default-features = false, features = ["minimal-rust", "rustls-tls", "ring", "tls12"] }
+redis = { version = "1.7.1", default-features = false, features = ["tokio-rustls-comp", "tls-rustls-webpki-roots", "acl", "streams", "num-bigint"] }
+mongodb = { version = "3.9.1", default-features = false, features = ["compat-3-3-0", "bson-3", "rustls-tls", "dns-resolver", "socks5-proxy", "redact-errors"] }
+sqlparser = { version = "0.62", features = ["visitor"] }
+sha2 = "0.11"
+percent-encoding = "2"
+
+[dev-dependencies]
+tempfile.workspace = true
+rcgen = "0.14"
+
+[lints]
+workspace = true

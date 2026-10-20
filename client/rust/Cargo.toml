@@ -17,6 +17,7 @@ members = [
     "search-core",
     "ai-core",
     "k8s-core",
+    "db-core",
     "app-core",
     "cc-cli",
     "bridge",
@@ -55,6 +56,7 @@ cc-sftp-core = { path = "sftp-core" }
 cc-search-core = { path = "search-core" }
 cc-ai-core = { path = "ai-core" }
 cc-k8s-core = { path = "k8s-core" }
+cc-db-core = { path = "db-core" }
 cc-app-core = { path = "app-core" }
 
 # common third-party

@@ -57,6 +57,10 @@ pub fn make_conflict_copy(payload: &ObjectPayload, new_id: ObjectId) -> ObjectPa
             o.id = new_id;
             suffix(&mut o.name);
         }
+        VaultObject::DbConnection(o) => {
+            o.id = new_id;
+            suffix(&mut o.name);
+        }
         VaultObject::KubeContext(o) => {
             o.id = new_id;
             suffix(&mut o.name);
@@ -96,6 +100,7 @@ pub fn make_conflict_copy(payload: &ObjectPayload, new_id: ObjectId) -> ObjectPa
             suffix(&mut o.title);
         }
         VaultObject::HistoryEntry(o) => o.id = new_id,
+        VaultObject::DbHistoryEntry(o) => o.id = new_id,
         VaultObject::AiConversation(o) => {
             o.id = new_id;
             suffix(&mut o.title);
@@ -116,6 +121,7 @@ pub fn payload_updated_at(payload: &ObjectPayload) -> Timestamp {
         VaultObject::Host(o) => o.updated_at,
         VaultObject::KubeCluster(o) => o.updated_at,
         VaultObject::KubeContext(o) => o.updated_at,
+        VaultObject::DbConnection(o) => o.updated_at,
         VaultObject::Group(o) => o.updated_at,
         VaultObject::JumpProfile(o) => o.updated_at,
         VaultObject::Proxy(o) => o.updated_at,
@@ -126,6 +132,7 @@ pub fn payload_updated_at(payload: &ObjectPayload) -> Timestamp {
         VaultObject::Snippet(o) => o.updated_at,
         VaultObject::Note(o) => o.updated_at,
         VaultObject::HistoryEntry(o) => o.executed_at,
+        VaultObject::DbHistoryEntry(o) => o.created_at,
         VaultObject::AiConversation(o) => o.updated_at,
         VaultObject::VaultSettings(o) => o.updated_at,
         VaultObject::AiProvider(o) => o.updated_at,

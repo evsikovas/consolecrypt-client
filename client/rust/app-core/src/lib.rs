@@ -34,6 +34,7 @@ mod backup;
 mod codec;
 mod config;
 mod credentials;
+pub mod database_inventory;
 mod devices;
 pub mod dto;
 mod edit;

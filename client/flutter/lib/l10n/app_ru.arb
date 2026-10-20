@@ -4207,5 +4207,785 @@
   "navPortForwards": "Пробросы портов",
   "kubeForwardsOpen": "Пробросы: {count}",
   "kubeForwardCopyAddress": "Скопировать локальный адрес",
-  "kubeForwardsEmptyHelp": "Запустите проброс из пода или сервиса: «Проброс порта»."
+  "kubeForwardsEmptyHelp": "Запустите проброс из пода или сервиса: «Проброс порта».",
+  "dbTitle": "Базы данных",
+  "@dbTitle": {
+    "description": "Database interface: Databases"
+  },
+  "dbSubtitle": "Зашифрованные подключения; запросы идут напрямую с этого устройства.",
+  "@dbSubtitle": {
+    "description": "Database interface: Encrypted connections; queries connect directly from this device."
+  },
+  "dbUnavailable": "Работа с базами данных недоступна в этой сборке.",
+  "@dbUnavailable": {
+    "description": "Database interface: Database support is unavailable in this build."
+  },
+  "dbNewConnection": "Новое подключение к БД",
+  "@dbNewConnection": {
+    "description": "Database interface: New database connection"
+  },
+  "dbImport": "Импорт подключения",
+  "@dbImport": {
+    "description": "Database interface: Import connection"
+  },
+  "dbConnectionString": "Строка подключения",
+  "@dbConnectionString": {
+    "description": "Database interface: Connection string"
+  },
+  "dbImportHelp": "Пароль остаётся в зашифрованном хранилище. Проверьте адрес перед сохранением.",
+  "@dbImportHelp": {
+    "description": "Database interface: The password stays in the encrypted vault. Review the destination before saving."
+  },
+  "dbImportPgpass": "Выбрать файл .pgpass",
+  "@dbImportPgpass": {
+    "description": "Database interface: Choose .pgpass file"
+  },
+  "dbImportExpired": "Срок предварительного просмотра истёк. Повторите импорт.",
+  "@dbImportExpired": {
+    "description": "Database interface: The import review expired. Import the source again."
+  },
+  "dbEmpty": "Подключений к базам данных пока нет.",
+  "@dbEmpty": {
+    "description": "Database interface: No database connections yet."
+  },
+  "dbFailed": "Не удалось выполнить операцию. Проверьте настройки подключения и права доступа.",
+  "@dbFailed": {
+    "description": "Database interface: The database operation failed. Check the connection settings and permissions."
+  },
+  "dbInvalid": "Проверьте выделенные поля.",
+  "@dbInvalid": {
+    "description": "Database interface: Check the highlighted fields."
+  },
+  "dbRequired": "Обязательное поле",
+  "@dbRequired": {
+    "description": "Database interface: Required"
+  },
+  "dbName": "Имя подключения",
+  "@dbName": {
+    "description": "Database interface: Connection name"
+  },
+  "dbEngine": "Движок БД",
+  "@dbEngine": {
+    "description": "Database interface: Database engine"
+  },
+  "dbHost": "Адрес",
+  "@dbHost": {
+    "description": "Database interface: Host"
+  },
+  "dbPort": "Порт",
+  "@dbPort": {
+    "description": "Database interface: Port"
+  },
+  "dbDatabase": "База данных / индекс Redis",
+  "@dbDatabase": {
+    "description": "Database interface: Database / Redis index"
+  },
+  "dbUsername": "Пользователь",
+  "@dbUsername": {
+    "description": "Database interface: Username"
+  },
+  "dbPassword": "Пароль",
+  "@dbPassword": {
+    "description": "Database interface: Password"
+  },
+  "dbSavePassword": "Сохранить пароль в зашифрованном хранилище",
+  "@dbSavePassword": {
+    "description": "Database interface: Save password in encrypted vault"
+  },
+  "dbSavedPassword": "Сохранённый пароль останется прежним, если его не заменить или удалить.",
+  "@dbSavedPassword": {
+    "description": "Database interface: An existing saved password is retained unless replaced or removed."
+  },
+  "dbClearPassword": "Удалить сохранённый пароль",
+  "@dbClearPassword": {
+    "description": "Database interface: Remove saved password"
+  },
+  "dbProduction": "Прод — всегда только чтение",
+  "@dbProduction": {
+    "description": "Database interface: Production — always read only"
+  },
+  "dbProductionHelp": "Для прод-подключений нет временного разрешения записи. Используйте учётную запись БД с правами только на чтение.",
+  "@dbProductionHelp": {
+    "description": "Database interface: Production connections never have a write window. Use a database account with read-only privileges."
+  },
+  "dbProd": "ПРОД",
+  "@dbProd": {
+    "description": "Database interface: PROD"
+  },
+  "dbReadOnly": "ТОЛЬКО ЧТЕНИЕ",
+  "@dbReadOnly": {
+    "description": "Database interface: READ ONLY"
+  },
+  "dbWriteAllowed": "Запись разрешена в этой сессии",
+  "@dbWriteAllowed": {
+    "description": "Database interface: Writes allowed for this session"
+  },
+  "dbAllowWrite": "Разрешить запись в этой сессии",
+  "@dbAllowWrite": {
+    "description": "Database interface: Allow writes for this session"
+  },
+  "dbAllowWriteHelp": "Запись будет разрешена только в текущей непрод-сессии. Опасные запросы потребуют отдельного подтверждения.",
+  "@dbAllowWriteHelp": {
+    "description": "Database interface: Only this non-production session will allow writes. Dangerous queries still require confirmation."
+  },
+  "dbRevokeWrite": "Вернуть режим только чтения",
+  "@dbRevokeWrite": {
+    "description": "Database interface: Return to read-only mode"
+  },
+  "dbPrivileges": "Проверить права",
+  "@dbPrivileges": {
+    "description": "Database interface: Check privileges"
+  },
+  "dbPrivilegesWarning": "У учётной записи могут быть права записи. Для прод-базы используйте роль только для чтения.",
+  "@dbPrivilegesWarning": {
+    "description": "Database interface: This account may have write privileges. Use a read-only role for production."
+  },
+  "dbServerReadOnly": "Серверная защита только для чтения включена.",
+  "@dbServerReadOnly": {
+    "description": "Database interface: Server read-only protection is active."
+  },
+  "dbRoleReadOnly": "Проверена роль учётной записи только для чтения.",
+  "@dbRoleReadOnly": {
+    "description": "Database interface: The account's read-only role was verified."
+  },
+  "dbGuardOnly": "Защита запросов включена; серверные права только для чтения не подтверждены.",
+  "@dbGuardOnly": {
+    "description": "Database interface: Native query protection is active; server read-only privileges are not verified."
+  },
+  "dbTls": "Защита TLS",
+  "@dbTls": {
+    "description": "Database interface: TLS protection"
+  },
+  "dbTlsVerify": "Проверять сертификат и имя сервера",
+  "@dbTlsVerify": {
+    "description": "Database interface: Verify certificate and hostname"
+  },
+  "dbTlsRequire": "Требовать шифрование",
+  "@dbTlsRequire": {
+    "description": "Database interface: Require encryption"
+  },
+  "dbTlsPrefer": "Предпочитать шифрование",
+  "@dbTlsPrefer": {
+    "description": "Database interface: Prefer encryption"
+  },
+  "dbTlsDisable": "Отключить TLS",
+  "@dbTlsDisable": {
+    "description": "Database interface: Disable TLS"
+  },
+  "dbTlsWarning": "Этот режим не проверяет подлинность сервера БД. Рекомендуется проверка сертификата и имени сервера.",
+  "@dbTlsWarning": {
+    "description": "Database interface: This mode does not verify the database server identity. Prefer certificate and hostname verification."
+  },
+  "dbTlsCa": "Сертификат центра сертификации (PEM)",
+  "@dbTlsCa": {
+    "description": "Database interface: Certificate authority (PEM)"
+  },
+  "dbTlsServerName": "Имя сервера для проверки TLS",
+  "@dbTlsServerName": {
+    "description": "Database interface: TLS server name override"
+  },
+  "dbClientCertificate": "Клиентский сертификат (PEM)",
+  "@dbClientCertificate": {
+    "description": "Database interface: Client certificate (PEM)"
+  },
+  "dbPrivateKey": "Закрытый ключ клиента (PEM)",
+  "@dbPrivateKey": {
+    "description": "Database interface: Client private key (PEM)"
+  },
+  "dbAuthMechanism": "Механизм авторизации",
+  "@dbAuthMechanism": {
+    "description": "Database interface: Authentication mechanism"
+  },
+  "dbAuthDefault": "По умолчанию",
+  "@dbAuthDefault": {
+    "description": "Database interface: Default"
+  },
+  "dbRoute": "Маршрут подключения",
+  "@dbRoute": {
+    "description": "Database interface: Connection route"
+  },
+  "dbDirect": "Напрямую",
+  "@dbDirect": {
+    "description": "Database interface: Direct"
+  },
+  "dbSsh": "Хост SSH",
+  "@dbSsh": {
+    "description": "Database interface: SSH host"
+  },
+  "dbJump": "Профиль SSH-переходов",
+  "@dbJump": {
+    "description": "Database interface: SSH jump profile"
+  },
+  "dbProxy": "Прокси",
+  "@dbProxy": {
+    "description": "Database interface: Proxy"
+  },
+  "dbRouteHelp": "Через SSH-маршрут TLS также проверяет исходное имя сервера БД.",
+  "@dbRouteHelp": {
+    "description": "Database interface: TLS verification uses the original database hostname through SSH routes too."
+  },
+  "dbGroup": "Группа",
+  "@dbGroup": {
+    "description": "Database interface: Group"
+  },
+  "dbUngrouped": "Без группы",
+  "@dbUngrouped": {
+    "description": "Database interface: No group"
+  },
+  "dbTags": "Метки через запятую",
+  "@dbTags": {
+    "description": "Database interface: Tags, separated by commas"
+  },
+  "dbColor": "Цвет (#RRGGBB)",
+  "@dbColor": {
+    "description": "Database interface: Color (#RRGGBB)"
+  },
+  "dbLimits": "Ограничения",
+  "@dbLimits": {
+    "description": "Database interface: Limits"
+  },
+  "dbMaxRows": "Начальное число строк результата",
+  "@dbMaxRows": {
+    "description": "Database interface: Initial result rows"
+  },
+  "dbStatementTimeout": "Таймаут запроса, секунды",
+  "@dbStatementTimeout": {
+    "description": "Database interface: Query timeout, seconds"
+  },
+  "dbConnectTimeout": "Таймаут подключения, секунды",
+  "@dbConnectTimeout": {
+    "description": "Database interface: Connection timeout, seconds"
+  },
+  "dbMemoryLimit": "Память результата, МиБ",
+  "@dbMemoryLimit": {
+    "description": "Database interface: Result memory, MiB"
+  },
+  "dbOptions": "Параметры драйвера",
+  "@dbOptions": {
+    "description": "Database interface: Driver settings"
+  },
+  "dbApplicationName": "Имя приложения",
+  "@dbApplicationName": {
+    "description": "Database interface: Application name"
+  },
+  "dbSearchPath": "Путь поиска схем через запятую",
+  "@dbSearchPath": {
+    "description": "Database interface: Search path, separated by commas"
+  },
+  "dbCharset": "Кодировка",
+  "@dbCharset": {
+    "description": "Database interface: Character set"
+  },
+  "dbMongoAuthSource": "База авторизации",
+  "@dbMongoAuthSource": {
+    "description": "Database interface: Authentication database"
+  },
+  "dbMongoReplicaSet": "Набор реплик",
+  "@dbMongoReplicaSet": {
+    "description": "Database interface: Replica set"
+  },
+  "dbMongoSrv": "Поиск серверов через DNS SRV",
+  "@dbMongoSrv": {
+    "description": "Database interface: Discover using DNS SRV"
+  },
+  "dbMongoReadPreference": "Предпочтение чтения",
+  "@dbMongoReadPreference": {
+    "description": "Database interface: Read preference"
+  },
+  "dbMongoReadHelp": "Предпочтение чтения выбирает реплику и не запрещает запись.",
+  "@dbMongoReadHelp": {
+    "description": "Database interface: Read preference selects a replica; it does not prohibit writes."
+  },
+  "dbTestConnection": "Проверить подключение",
+  "@dbTestConnection": {
+    "description": "Database interface: Test connection"
+  },
+  "dbTestSuccess": "Подключение установлено.",
+  "@dbTestSuccess": {
+    "description": "Database interface: Connection succeeded."
+  },
+  "dbDisconnect": "Отключиться",
+  "@dbDisconnect": {
+    "description": "Database interface: Disconnect"
+  },
+  "dbRefresh": "Обновить",
+  "@dbRefresh": {
+    "description": "Database interface: Refresh"
+  },
+  "dbDeleteHelp": "Удалить сохранённое подключение? Активные сессии будут закрыты.",
+  "@dbDeleteHelp": {
+    "description": "Database interface: Delete this saved connection? Active sessions will close."
+  },
+  "dbLocked": "Разблокируйте хранилище для доступа к подключениям БД.",
+  "@dbLocked": {
+    "description": "Database interface: Unlock the vault to access database connections."
+  },
+  "dbTree": "Структура",
+  "@dbTree": {
+    "description": "Database interface: Structure"
+  },
+  "dbDdl": "Показать DDL",
+  "@dbDdl": {
+    "description": "Database interface: Show DDL"
+  },
+  "dbFirstRows": "Первые 100 строк",
+  "@dbFirstRows": {
+    "description": "Database interface: Preview first 100 rows"
+  },
+  "dbInsertName": "Вставить имя",
+  "@dbInsertName": {
+    "description": "Database interface: Insert identifier"
+  },
+  "dbInspect": "Сведения об объекте",
+  "@dbInspect": {
+    "description": "Database interface: Object details"
+  },
+  "dbSampleSchema": "Схема по выборке документов",
+  "@dbSampleSchema": {
+    "description": "Database interface: Infer schema from sample"
+  },
+  "dbSampleHelp": "Для определения типов полей будут прочитаны документы выбранной коллекции. Данные не отправляются ИИ.",
+  "@dbSampleHelp": {
+    "description": "Database interface: This reads documents from the selected collection to infer field types. No data is sent to AI."
+  },
+  "dbLoadMore": "Загрузить ещё",
+  "@dbLoadMore": {
+    "description": "Database interface: Load more"
+  },
+  "dbEditor": "Редактор запросов",
+  "@dbEditor": {
+    "description": "Database interface: Query editor"
+  },
+  "dbNewQuery": "Новый запрос",
+  "@dbNewQuery": {
+    "description": "Database interface: New query"
+  },
+  "dbRun": "Выполнить",
+  "@dbRun": {
+    "description": "Database interface: Run"
+  },
+  "dbRunCurrent": "Текущий оператор",
+  "@dbRunCurrent": {
+    "description": "Database interface: Current statement"
+  },
+  "dbRunSelection": "Выделение",
+  "@dbRunSelection": {
+    "description": "Database interface: Selection"
+  },
+  "dbRunScript": "Весь скрипт",
+  "@dbRunScript": {
+    "description": "Database interface: Whole script"
+  },
+  "dbCancelQuery": "Отменить запрос",
+  "@dbCancelQuery": {
+    "description": "Database interface: Cancel query"
+  },
+  "dbFormat": "Форматировать запрос",
+  "@dbFormat": {
+    "description": "Database interface: Format query"
+  },
+  "dbComment": "Закомментировать строки",
+  "@dbComment": {
+    "description": "Database interface: Toggle line comments"
+  },
+  "dbFindReplace": "Поиск и замена",
+  "@dbFindReplace": {
+    "description": "Database interface: Find and replace"
+  },
+  "dbReplace": "Заменить",
+  "@dbReplace": {
+    "description": "Database interface: Replace"
+  },
+  "dbReplaceAll": "Заменить всё",
+  "@dbReplaceAll": {
+    "description": "Database interface: Replace all"
+  },
+  "dbVariables": "Переменные запроса",
+  "@dbVariables": {
+    "description": "Database interface: Query variables"
+  },
+  "dbVariablesHelp": "Значения передаются параметрами драйвера и не склеиваются с текстом запроса.",
+  "@dbVariablesHelp": {
+    "description": "Database interface: Values are bound as native parameters, never concatenated into the query."
+  },
+  "dbValueType": "Тип значения",
+  "@dbValueType": {
+    "description": "Database interface: Value type"
+  },
+  "dbValue": "Значение",
+  "@dbValue": {
+    "description": "Database interface: Value"
+  },
+  "dbReviewQuery": "Подтверждение запроса",
+  "@dbReviewQuery": {
+    "description": "Database interface: Review query"
+  },
+  "dbQueryBlocked": "Запрос запрещён политикой подключения. Используйте непрод-подключение с нужными правами.",
+  "@dbQueryBlocked": {
+    "description": "Database interface: This query is blocked by connection policy. Use a non-production connection with appropriate privileges."
+  },
+  "dbQueryDangerous": "Этот запрос может изменить или удалить данные. Проверьте весь запрос и введите имя подключения.",
+  "@dbQueryDangerous": {
+    "description": "Database interface: This query can change or delete data. Review the full query and type the connection name."
+  },
+  "dbReviewExpired": "Срок подтверждения истёк. Запустите запрос заново для повторной проверки.",
+  "@dbReviewExpired": {
+    "description": "Database interface: The review expired. Run the query again to obtain a fresh review."
+  },
+  "dbResults": "Результаты",
+  "@dbResults": {
+    "description": "Database interface: Results"
+  },
+  "dbGrid": "Сетка",
+  "@dbGrid": {
+    "description": "Database interface: Grid"
+  },
+  "dbRecords": "Записи",
+  "@dbRecords": {
+    "description": "Database interface: Records"
+  },
+  "dbNoResults": "Выполните запрос для просмотра результата.",
+  "@dbNoResults": {
+    "description": "Database interface: Run a query to see results."
+  },
+  "dbNull": "NULL",
+  "@dbNull": {
+    "description": "Database interface: NULL"
+  },
+  "dbTruncated": "Достигнут лимит результата. Для полной выгрузки используйте экспорт.",
+  "@dbTruncated": {
+    "description": "Database interface: Result limit reached. Export to stream the full result."
+  },
+  "dbCancelled": "Запрос отменён.",
+  "@dbCancelled": {
+    "description": "Database interface: Query cancelled."
+  },
+  "dbRunning": "Запрос выполняется…",
+  "@dbRunning": {
+    "description": "Database interface: Query running…"
+  },
+  "dbMessages": "Сообщения сервера",
+  "@dbMessages": {
+    "description": "Database interface: Server messages"
+  },
+  "dbShowValue": "Показать значение полностью",
+  "@dbShowValue": {
+    "description": "Database interface: Show full value"
+  },
+  "dbPinColumn": "Закрепить столбец",
+  "@dbPinColumn": {
+    "description": "Database interface: Pin column"
+  },
+  "dbUnpinColumn": "Открепить столбец",
+  "@dbUnpinColumn": {
+    "description": "Database interface: Unpin column"
+  },
+  "dbColumns": "Столбцы",
+  "@dbColumns": {
+    "description": "Database interface: Columns"
+  },
+  "dbCopyCell": "Скопировать ячейку",
+  "@dbCopyCell": {
+    "description": "Database interface: Copy cell"
+  },
+  "dbCopyRow": "Скопировать строку",
+  "@dbCopyRow": {
+    "description": "Database interface: Copy row"
+  },
+  "dbCopySelection": "Скопировать выделение",
+  "@dbCopySelection": {
+    "description": "Database interface: Copy selection"
+  },
+  "dbCopyResult": "Скопировать загруженный результат",
+  "@dbCopyResult": {
+    "description": "Database interface: Copy loaded result"
+  },
+  "dbSensitiveClipboard": "Буфер обмена очищается автоматически согласно настройкам безопасности.",
+  "@dbSensitiveClipboard": {
+    "description": "Database workspace interface."
+  },
+  "dbExport": "Экспорт результата",
+  "@dbExport": {
+    "description": "Database interface: Export result"
+  },
+  "dbExportFormat": "Формат",
+  "@dbExportFormat": {
+    "description": "Database interface: Format"
+  },
+  "dbExportHeader": "Добавить имена столбцов",
+  "@dbExportHeader": {
+    "description": "Database interface: Include column names"
+  },
+  "dbExportBom": "Метка UTF-8 BOM",
+  "@dbExportBom": {
+    "description": "Database interface: UTF-8 byte order mark (BOM)"
+  },
+  "dbExportDelimiter": "Разделитель",
+  "@dbExportDelimiter": {
+    "description": "Database interface: Delimiter"
+  },
+  "dbExportQuote": "Символ кавычек",
+  "@dbExportQuote": {
+    "description": "Database interface: Quote character"
+  },
+  "dbExportHelp": "Экспорт записывает полный результат потоком в выбранный файл. Результаты могут содержать чувствительные данные.",
+  "@dbExportHelp": {
+    "description": "Database interface: Export streams the full result to the selected file. Results may contain sensitive data."
+  },
+  "dbExportDone": "Экспорт завершён.",
+  "@dbExportDone": {
+    "description": "Database interface: Export completed."
+  },
+  "dbHistory": "История запросов",
+  "@dbHistory": {
+    "description": "Database interface: Query history"
+  },
+  "dbFavorites": "Избранное",
+  "@dbFavorites": {
+    "description": "Database interface: Favorites"
+  },
+  "dbAllQueries": "Все запросы",
+  "@dbAllQueries": {
+    "description": "Database interface: All queries"
+  },
+  "dbSuccessful": "Успешные",
+  "@dbSuccessful": {
+    "description": "Database interface: Successful"
+  },
+  "dbWithErrors": "С ошибками",
+  "@dbWithErrors": {
+    "description": "Database interface: With errors"
+  },
+  "dbHistoryLocal": "Локальная зашифрованная история",
+  "@dbHistoryLocal": {
+    "description": "Database interface: Local encrypted history"
+  },
+  "dbHistorySync": "Зашифрованная синхронизация",
+  "@dbHistorySync": {
+    "description": "Database interface: Encrypted synchronization"
+  },
+  "dbHistoryDisabled": "История отключена",
+  "@dbHistoryDisabled": {
+    "description": "Database interface: History disabled"
+  },
+  "dbClearHistory": "Очистить историю запросов",
+  "@dbClearHistory": {
+    "description": "Database interface: Clear query history"
+  },
+  "dbClearHistoryHelp": "Удалить сохранённую историю запросов этого подключения?",
+  "@dbClearHistoryHelp": {
+    "description": "Database interface: Delete the saved query history for this connection?"
+  },
+  "dbSaveSnippet": "Сохранить как сниппет",
+  "@dbSaveSnippet": {
+    "description": "Database interface: Save as snippet"
+  },
+  "dbSnippetName": "Имя сниппета",
+  "@dbSnippetName": {
+    "description": "Database interface: Snippet name"
+  },
+  "dbExplain": "EXPLAIN",
+  "@dbExplain": {
+    "description": "Database interface: EXPLAIN"
+  },
+  "dbExplainAnalyze": "Выполнить с ANALYZE",
+  "@dbExplainAnalyze": {
+    "description": "Database interface: Execute with ANALYZE"
+  },
+  "dbExplainAnalyzeHelp": "ANALYZE выполняет запрос для сбора измерений. Доступно только для непрод-подключений.",
+  "@dbExplainAnalyzeHelp": {
+    "description": "Database interface: ANALYZE executes the query to collect measurements. Available only for non-production connections."
+  },
+  "dbEditCell": "Изменить ячейку",
+  "@dbEditCell": {
+    "description": "Database interface: Edit cell"
+  },
+  "dbApplyEdits": "Проверить изменения",
+  "@dbApplyEdits": {
+    "description": "Database interface: Review pending edits"
+  },
+  "dbDiscardEdits": "Отменить изменения",
+  "@dbDiscardEdits": {
+    "description": "Database interface: Discard changes"
+  },
+  "dbCellEditsHelp": "Проверьте параметризованные UPDATE. Изменения применяются одной транзакцией с откатом при ошибке.",
+  "@dbCellEditsHelp": {
+    "description": "Database interface: Review the parameterized UPDATE statements. Changes are applied in one transaction; failure rolls it back."
+  },
+  "dbAi": "ИИ-помощник",
+  "@dbAi": {
+    "description": "Database interface: AI assistant"
+  },
+  "dbAiQuestion": "Опишите, что нужно",
+  "@dbAiQuestion": {
+    "description": "Database interface: Describe what you need"
+  },
+  "dbAiProvider": "Провайдер ИИ",
+  "@dbAiProvider": {
+    "description": "Database interface: AI provider"
+  },
+  "dbAiCompose": "Составить запрос",
+  "@dbAiCompose": {
+    "description": "Database interface: Compose query"
+  },
+  "dbAiExplain": "Объяснить запрос",
+  "@dbAiExplain": {
+    "description": "Database interface: Explain query"
+  },
+  "dbAiFix": "Исправить с ИИ",
+  "@dbAiFix": {
+    "description": "Database interface: Fix with AI"
+  },
+  "dbAiOptimize": "Оптимизировать с ИИ",
+  "@dbAiOptimize": {
+    "description": "Database interface: Optimize with AI"
+  },
+  "dbAiTranslate": "Перевести в другой диалект",
+  "@dbAiTranslate": {
+    "description": "Database interface: Translate dialect"
+  },
+  "dbAiSnippet": "Сниппет с переменными",
+  "@dbAiSnippet": {
+    "description": "Database interface: Create parameterized snippet"
+  },
+  "dbAiExamples": "Типовые запросы",
+  "@dbAiExamples": {
+    "description": "Database interface: Example queries"
+  },
+  "dbAiResult": "Объяснить выбранные строки",
+  "@dbAiResult": {
+    "description": "Database interface: Explain selected rows"
+  },
+  "dbAiDraft": "Черновик ИИ — проверьте перед принятием",
+  "@dbAiDraft": {
+    "description": "Database interface: AI draft — review before accepting"
+  },
+  "dbAiAccept": "Принять черновик",
+  "@dbAiAccept": {
+    "description": "Database interface: Accept draft"
+  },
+  "dbAiReject": "Отклонить",
+  "@dbAiReject": {
+    "description": "Database interface: Reject"
+  },
+  "dbAiRefine": "Уточнить",
+  "@dbAiRefine": {
+    "description": "Database interface: Refine"
+  },
+  "dbAiConsent": "Проверьте контекст ИИ",
+  "@dbAiConsent": {
+    "description": "Database interface: Review AI context"
+  },
+  "dbAiSchema": "Разрешить метаданные схемы",
+  "@dbAiSchema": {
+    "description": "Database interface: Allow schema metadata"
+  },
+  "dbAiRows": "Разрешить явно выбранные строки результата",
+  "@dbAiRows": {
+    "description": "Database interface: Allow explicitly selected result rows"
+  },
+  "dbAiSample": "Разрешить sample_rows (до 20 строк)",
+  "@dbAiSample": {
+    "description": "Database interface: Allow sample_rows (up to 20 rows)"
+  },
+  "dbAiReadonly": "Разрешить run_readonly (до 50 строк)",
+  "@dbAiReadonly": {
+    "description": "Database interface: Allow run_readonly (up to 50 rows)"
+  },
+  "dbAiConsentHelp": "Схема и данные строк требуют отдельного согласия. Вызовы инструментов только читают данные, показываются ниже и не могут применять изменения.",
+  "@dbAiConsentHelp": {
+    "description": "Database interface: Schema and row data require separate consent. Tool calls are read only, shown below, and cannot apply changes."
+  },
+  "dbAiExternal": "Это внешний провайдер. Строгая приватность заменяет имена перед отправкой и восстанавливает их локально.",
+  "@dbAiExternal": {
+    "description": "Database interface: This provider is external. Strict privacy replaces identifiers before sending and restores them locally."
+  },
+  "dbAiLocal": "Этот провайдер работает локально.",
+  "@dbAiLocal": {
+    "description": "Database interface: This provider runs locally."
+  },
+  "dbAiContextLimit": "Максимум объектов схемы в контексте",
+  "@dbAiContextLimit": {
+    "description": "Database interface: Maximum schema objects in context"
+  },
+  "dbAiTools": "Контекст, отправленный модели",
+  "@dbAiTools": {
+    "description": "Database interface: Context sent to the model"
+  },
+  "dbAiNoExecute": "Принятие черновика не выполняет его. Проверьте запрос и нажмите «Выполнить».",
+  "@dbAiNoExecute": {
+    "description": "Database interface: Accepting a draft never executes it. Use Run after reviewing."
+  },
+  "dbAiProdDdl": "Предложения DDL для прод-базы служат рекомендацией и не выполняются.",
+  "@dbAiProdDdl": {
+    "description": "Database interface: Production DDL suggestions are recommendations only and cannot be run."
+  },
+  "dbAiRevoke": "Отозвать согласие для ИИ",
+  "@dbAiRevoke": {
+    "description": "Database interface: Revoke AI consent"
+  },
+  "dbBackgroundIos": "На iOS выполняющийся запрос отменяется через 30 секунд в фоне.",
+  "@dbBackgroundIos": {
+    "description": "Database interface: On iOS, a running query is cancelled after 30 seconds in the background."
+  },
+  "dbCloseRunning": "Закрыть запрос и отменить его выполнение?",
+  "@dbCloseRunning": {
+    "description": "Database interface: Close this query and cancel its active request?"
+  },
+  "dbOperationFailed": "Операция с базой данных не выполнена. Проверьте подключение и права, затем повторите.",
+  "@dbOperationFailed": {
+    "description": "Database workspace interface."
+  },
+  "dbTreeSearch": "Поиск по загруженным объектам",
+  "@dbTreeSearch": {
+    "description": "Database workspace interface."
+  },
+  "dbInvalidValue": "Проверьте значение и его тип.",
+  "@dbInvalidValue": {
+    "description": "Database workspace interface."
+  },
+  "dbComplete": "Дополнить запрос",
+  "@dbComplete": {
+    "description": "Database workspace interface."
+  },
+  "dbBinaryPreview": "Просмотр hex (первые 4096 байт)",
+  "@dbBinaryPreview": {
+    "description": "Database workspace interface."
+  },
+  "dbAiNewConversation": "Новый разговор",
+  "@dbAiNewConversation": {
+    "description": "Database workspace interface."
+  },
+  "dbAiHistoryMessages": "Сообщений истории в запросе",
+  "@dbAiHistoryMessages": {
+    "description": "Database workspace interface."
+  },
+  "dbVerifiedReadOnly": "Режим только чтения проверен на стороне сервера.",
+  "@dbVerifiedReadOnly": {
+    "description": "Database workspace interface."
+  },
+  "dbRoleCanWrite": "У этой роли базы данных есть права записи. Используйте отдельную роль только для чтения в production.",
+  "@dbRoleCanWrite": {
+    "description": "Database workspace interface."
+  },
+  "dbResultStale": "Изменения применены. Выполните запрос снова для обновления результата.",
+  "@dbResultStale": {
+    "description": "Database workspace interface."
+  },
+  "dbAllowWritesHelp": "Разрешить запись в этой непродуктивной сессии? Каждый изменяющий запрос всё равно требует проверки. Разрешение завершится при закрытии подключения.",
+  "@dbAllowWritesHelp": {
+    "description": "Database workspace interface."
+  },
+  "dbCheckPrivileges": "Проверить права",
+  "@dbCheckPrivileges": {
+    "description": "Database workspace interface."
+  },
+  "dbAllowWrites": "Разрешить запись",
+  "@dbAllowWrites": {
+    "description": "Database workspace interface."
+  },
+  "dbUnverifiedReadOnly": "Режим только чтения на сервере не подтверждён. Используйте отдельную роль базы данных только для чтения.",
+  "@dbUnverifiedReadOnly": {
+    "description": "Database workspace interface."
+  }
 }

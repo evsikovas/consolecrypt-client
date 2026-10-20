@@ -141,19 +141,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String timeMinutesAgo(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count min ago');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count min ago',
+    );
     return '$_temp0';
   }
 
   @override
   String timeHoursAgo(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count h ago');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count h ago',
+    );
     return '$_temp0';
   }
 
   @override
   String timeDaysAgo(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count d ago');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count d ago',
+    );
     return '$_temp0';
   }
 
@@ -165,19 +177,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String timeInMinutes(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'in $count min');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count min',
+    );
     return '$_temp0';
   }
 
   @override
   String timeInHours(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'in $count h');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count h',
+    );
     return '$_temp0';
   }
 
   @override
   String timeInDays(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'in $count d');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count d',
+    );
     return '$_temp0';
   }
 
@@ -270,7 +294,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get strengthHintSequence => 'Avoid keyboard or alphabet sequences';
 
   @override
-  String get strengthHintCommon => 'Avoid common passwords and well-known phrases';
+  String get strengthHintCommon =>
+      'Avoid common passwords and well-known phrases';
 
   @override
   String strengthHintTooShort(int min) {
@@ -278,7 +303,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get strengthHintGood => 'Good. Store it somewhere safe — nobody can reset it for you.';
+  String get strengthHintGood =>
+      'Good. Store it somewhere safe — nobody can reset it for you.';
 
   @override
   String get strengthHintAddMore => 'Add more random words or characters';
@@ -302,13 +328,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get privacyProfileLocal => 'Local';
 
   @override
-  String get privacyProfileStrictDescription => 'Redact secrets and also IPs, hostnames, usernames, DB names';
+  String get privacyProfileStrictDescription =>
+      'Redact secrets and also IPs, hostnames, usernames, DB names';
 
   @override
-  String get privacyProfileStandardDescription => 'Redact secrets, keep host metadata';
+  String get privacyProfileStandardDescription =>
+      'Redact secrets, keep host metadata';
 
   @override
-  String get privacyProfileLocalDescription => 'For local models: more context; secrets still redacted';
+  String get privacyProfileLocalDescription =>
+      'For local models: more context; secrets still redacted';
 
   @override
   String get credentialKindPassword => 'Password';
@@ -338,13 +367,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hostKeyPolicyAcceptNew => 'Accept new';
 
   @override
-  String get hostKeyPolicyAskDescription => 'Confirm unknown host keys; changed keys always fail';
+  String get hostKeyPolicyAskDescription =>
+      'Confirm unknown host keys; changed keys always fail';
 
   @override
-  String get hostKeyPolicyStrictDescription => 'Only accept keys already in known hosts';
+  String get hostKeyPolicyStrictDescription =>
+      'Only accept keys already in known hosts';
 
   @override
-  String get hostKeyPolicyAcceptNewDescription => 'Record unknown keys automatically; changed keys always fail';
+  String get hostKeyPolicyAcceptNewDescription =>
+      'Record unknown keys automatically; changed keys always fail';
 
   @override
   String get sshBackendNative => 'Built-in (russh)';
@@ -374,10 +406,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyModeDisabled => 'Disabled';
 
   @override
-  String get historyModeLocalOnlyDescription => 'History stays on this device (default)';
+  String get historyModeLocalOnlyDescription =>
+      'History stays on this device (default)';
 
   @override
-  String get historyModeEncryptedSyncDescription => 'History is synced end-to-end encrypted';
+  String get historyModeEncryptedSyncDescription =>
+      'History is synced end-to-end encrypted';
 
   @override
   String get historyModeDisabledDescription => 'No command history is recorded';
@@ -400,13 +434,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileUnknownServer => 'server';
 
   @override
-  String get enableSyncStepAuthenticating => 'Signing in and registering this device';
+  String get enableSyncStepAuthenticating =>
+      'Signing in and registering this device';
 
   @override
-  String get enableSyncStepCreatingRemoteVault => 'Creating the vault on the server (same vault ID)';
+  String get enableSyncStepCreatingRemoteVault =>
+      'Creating the vault on the server (same vault ID)';
 
   @override
-  String get enableSyncStepReconnecting => 'Vault already exists on the server — merging';
+  String get enableSyncStepReconnecting =>
+      'Vault already exists on the server — merging';
 
   @override
   String get enableSyncStepUploading => 'Uploading encrypted objects';
@@ -430,13 +467,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tunnelKindDynamic => 'Dynamic (SOCKS5)';
 
   @override
-  String get tunnelKindLocalDescription => 'Forward a local port to a host reachable from the server';
+  String get tunnelKindLocalDescription =>
+      'Forward a local port to a host reachable from the server';
 
   @override
-  String get tunnelKindRemoteDescription => 'Expose a local service on a port of the server';
+  String get tunnelKindRemoteDescription =>
+      'Expose a local service on a port of the server';
 
   @override
-  String get tunnelKindDynamicDescription => 'Local SOCKS5 proxy through the server';
+  String get tunnelKindDynamicDescription =>
+      'Local SOCKS5 proxy through the server';
 
   @override
   String get snippetSourceUser => 'User';
@@ -557,7 +597,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String shellApprovalBannerMessage(String device, String platform, String ago) {
+  String shellApprovalBannerMessage(
+    String device,
+    String platform,
+    String ago,
+  ) {
     return '\"$device\" ($platform) asked to join your vault $ago. Approve only after comparing verification codes.';
   }
 
@@ -583,7 +627,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String syncStateOfflinePending(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'Offline · $count pending');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Offline · $count pending',
+    );
     return '$_temp0';
   }
 
@@ -594,7 +642,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncStatePaused => 'Sync paused';
 
   @override
-  String get syncIndicatorLocalTooltip => 'This profile is not synced. Enable sync in Settings.';
+  String get syncIndicatorLocalTooltip =>
+      'This profile is not synced. Enable sync in Settings.';
 
   @override
   String syncIndicatorPendingTooltip(String state, int count) {
@@ -614,14 +663,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorInvalidCredentials => 'Wrong e-mail or password.';
 
   @override
-  String get errorServerUnreachable => 'Server unreachable. Check the URL and your connection.';
+  String get errorServerUnreachable =>
+      'Server unreachable. Check the URL and your connection.';
 
   @override
   String get errorIncompatibleServer =>
       'This server version is not compatible with this app. Update the app or the server.';
 
   @override
-  String get errorRegistrationClosed => 'Registration is closed on this server.';
+  String get errorRegistrationClosed =>
+      'Registration is closed on this server.';
 
   @override
   String get errorEmailTaken => 'An account with this e-mail already exists.';
@@ -630,16 +681,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorWrongPassphrase => 'Wrong passphrase.';
 
   @override
-  String get errorInvalidRecoveryKey => 'This Recovery Key does not open the vault.';
+  String get errorInvalidRecoveryKey =>
+      'This Recovery Key does not open the vault.';
 
   @override
-  String get errorDeviceNotTrusted => 'This device is not trusted for the vault yet.';
+  String get errorDeviceNotTrusted =>
+      'This device is not trusted for the vault yet.';
 
   @override
-  String get errorOsAuthFailed => 'System authentication failed or was cancelled.';
+  String get errorOsAuthFailed =>
+      'System authentication failed or was cancelled.';
 
   @override
-  String get errorVerificationMismatch => 'Verification codes do not match — approval refused.';
+  String get errorVerificationMismatch =>
+      'Verification codes do not match — approval refused.';
 
   @override
   String get errorRequestExpired => 'The request has expired.';
@@ -651,10 +706,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorNotFound => 'Not found. It may have been deleted.';
 
   @override
-  String get errorConflict => 'This was changed elsewhere. Reload and try again.';
+  String get errorConflict =>
+      'This was changed elsewhere. Reload and try again.';
 
   @override
-  String get errorOffline => 'You are offline. The change will be retried when the connection is back.';
+  String get errorOffline =>
+      'You are offline. The change will be retried when the connection is back.';
 
   @override
   String get errorCancelled => 'Cancelled.';
@@ -663,7 +720,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorHostKeyRejected => 'The host key was rejected.';
 
   @override
-  String get errorHostKeyChanged => 'The host key has changed. The connection was blocked.';
+  String get errorHostKeyChanged =>
+      'The host key has changed. The connection was blocked.';
 
   @override
   String get errorAuthFailed => 'SSH authentication failed.';
@@ -678,7 +736,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorSessionExpired => 'Your session has expired. Sign in again.';
 
   @override
-  String get errorDeviceRevoked => 'This device has been revoked. Sign in again to register it.';
+  String get errorDeviceRevoked =>
+      'This device has been revoked. Sign in again to register it.';
 
   @override
   String get errorEmailNotVerified => 'Verify your e-mail address first.';
@@ -703,10 +762,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorPayloadTooLarge => 'The data is too large for the server.';
 
   @override
-  String get errorInvalidProof => 'Cryptographic check failed. The request was rejected.';
+  String get errorInvalidProof =>
+      'Cryptographic check failed. The request was rejected.';
 
   @override
-  String get errorServerUnavailable => 'The server is temporarily unavailable. Try again later.';
+  String get errorServerUnavailable =>
+      'The server is temporarily unavailable. Try again later.';
 
   @override
   String get errorReasonNameRequired => 'Enter a name.';
@@ -721,7 +782,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorReasonKeyPassphraseRequired => 'Enter the key passphrase.';
 
   @override
-  String get errorReasonAgentPathRequired => 'Enter the agent socket path or pipe name.';
+  String get errorReasonAgentPathRequired =>
+      'Enter the agent socket path or pipe name.';
 
   @override
   String get errorReasonInvalidEmail => 'Enter a valid e-mail address.';
@@ -760,25 +822,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorReasonNotACertificate => 'Not an OpenSSH certificate line.';
 
   @override
-  String get errorReasonNotAgentCredential => 'This is not an agent credential.';
+  String get errorReasonNotAgentCredential =>
+      'This is not an agent credential.';
 
   @override
   String get errorReasonKeyHasNoPassphrase => 'This key has no passphrase.';
 
   @override
-  String get errorReasonUnsupportedKeyAlgorithm => 'Generate Ed25519 or RSA 3072/4096 keys.';
+  String get errorReasonUnsupportedKeyAlgorithm =>
+      'Generate Ed25519 or RSA 3072/4096 keys.';
 
   @override
   String get errorReasonGroupCycle => 'A group cannot be inside itself.';
 
   @override
-  String get errorReasonJumpChainEmpty => 'A jump profile needs at least one hop.';
+  String get errorReasonJumpChainEmpty =>
+      'A jump profile needs at least one hop.';
 
   @override
   String get errorReasonHostNotFound => 'Host not found.';
 
   @override
-  String get errorReasonCredentialNotFound => 'The credential no longer exists.';
+  String get errorReasonCredentialNotFound =>
+      'The credential no longer exists.';
 
   @override
   String get errorReasonProfileNotFound => 'Profile not found.';
@@ -796,7 +862,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorReasonRequestNotFound => 'The request no longer exists.';
 
   @override
-  String get errorReasonSecretNotStored => 'No secret is stored for this credential.';
+  String get errorReasonSecretNotStored =>
+      'No secret is stored for this credential.';
 
   @override
   String get errorReasonSessionClosed => 'The session is closed.';
@@ -830,7 +897,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorReasonVaultExists => 'A vault already exists.';
 
   @override
-  String get errorReasonNotABackup => 'Not a ConsoleCrypt backup (or the file is missing).';
+  String get errorReasonNotABackup =>
+      'Not a ConsoleCrypt backup (or the file is missing).';
 
   @override
   String errorReasonBackupExtension(String extension) {
@@ -847,22 +915,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorReasonSyncedProfileRequired => 'This needs a synced profile.';
 
   @override
-  String get errorReasonLocalProfileNoAccount => 'Local profiles have no account.';
+  String get errorReasonLocalProfileNoAccount =>
+      'Local profiles have no account.';
 
   @override
   String get errorReasonNoDeviceRegistered => 'No device is registered.';
 
   @override
-  String get errorReasonTrustedDeviceRequired => 'Only an unlocked trusted device can do this.';
+  String get errorReasonTrustedDeviceRequired =>
+      'Only an unlocked trusted device can do this.';
 
   @override
-  String get errorReasonCurrentPassphraseWrong => 'The current passphrase is wrong.';
+  String get errorReasonCurrentPassphraseWrong =>
+      'The current passphrase is wrong.';
 
   @override
-  String get errorReasonCurrentPasswordWrong => 'The current password is wrong.';
+  String get errorReasonCurrentPasswordWrong =>
+      'The current password is wrong.';
 
   @override
-  String get errorReasonAccountMismatch => 'This profile belongs to a different account.';
+  String get errorReasonAccountMismatch =>
+      'This profile belongs to a different account.';
 
   @override
   String get validationFieldName => 'Name';
@@ -912,10 +985,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get serverUrlEmpty => 'Enter the URL of your ConsoleCrypt server';
 
   @override
-  String get serverUrlNotAUrl => 'Enter a full URL, e.g. https://sync.example.org';
+  String get serverUrlNotAUrl =>
+      'Enter a full URL, e.g. https://sync.example.org';
 
   @override
-  String get serverUrlInsecure => 'Use https:// (plain http is only allowed for localhost)';
+  String get serverUrlInsecure =>
+      'Use https:// (plain http is only allowed for localhost)';
 
   @override
   String get loginTitle => 'Connect to your server';
@@ -924,10 +999,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginTitleReauth => 'Sign in again';
 
   @override
-  String get loginSubtitle => 'Use the URL of your self-hosted ConsoleCrypt server.';
+  String get loginSubtitle =>
+      'Use the URL of your self-hosted ConsoleCrypt server.';
 
   @override
-  String get loginSubtitleReauth => 'Your session for this profile ended. Local data stays on this device.';
+  String get loginSubtitleReauth =>
+      'Your session for this profile ended. Local data stays on this device.';
 
   @override
   String get loginServerUrlLabel => 'Server URL';
@@ -936,12 +1013,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginCheckServer => 'Check';
 
   @override
-  String loginServerInfoRegistrationOpen(String serverVersion, String protocolVersion) {
+  String loginServerInfoRegistrationOpen(
+    String serverVersion,
+    String protocolVersion,
+  ) {
     return 'ConsoleCrypt server $serverVersion · protocol $protocolVersion · registration open';
   }
 
   @override
-  String loginServerInfoInviteOnly(String serverVersion, String protocolVersion) {
+  String loginServerInfoInviteOnly(
+    String serverVersion,
+    String protocolVersion,
+  ) {
     return 'ConsoleCrypt server $serverVersion · protocol $protocolVersion · invite only';
   }
 
@@ -961,7 +1044,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginPasswordLabel => 'Account password';
 
   @override
-  String get loginPasswordHelperRegister => 'At least 10 characters. Different from your vault passphrase.';
+  String get loginPasswordHelperRegister =>
+      'At least 10 characters. Different from your vault passphrase.';
 
   @override
   String get loginPasswordRequired => 'Enter your password';
@@ -979,7 +1063,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginDeviceNameLabel => 'Name of this device';
 
   @override
-  String get loginDeviceNameHelper => 'Shown in your device list, e.g. \"Work MacBook\".';
+  String get loginDeviceNameHelper =>
+      'Shown in your device list, e.g. \"Work MacBook\".';
 
   @override
   String get loginDeviceNameRequired => 'Enter a device name';
@@ -994,7 +1079,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginForgotPassword => 'Forgot account password?';
 
   @override
-  String get loginForgotNeedsServerAndEmail => 'Enter the server URL and your e-mail first';
+  String get loginForgotNeedsServerAndEmail =>
+      'Enter the server URL and your e-mail first';
 
   @override
   String get loginResetEmailSent =>
@@ -1043,7 +1129,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backupsNoCloudCopyTitle => 'This profile has no cloud copy';
 
   @override
-  String get backupsNoCloudCopyMessage => 'Backups are the only way to get your data back if this device is lost.';
+  String get backupsNoCloudCopyMessage =>
+      'Backups are the only way to get your data back if this device is lost.';
 
   @override
   String get backupsSyncedMessage =>
@@ -1057,7 +1144,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String backupsObjectCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count objects', one: '$count object');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count objects',
+      one: '$count object',
+    );
     return '$_temp0';
   }
 
@@ -1213,7 +1305,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get welcomeServerAction => 'Sign in or create account';
 
   @override
-  String get welcomeRestoreFromBackup => 'Restore from a backup file (.ccbackup)';
+  String get welcomeRestoreFromBackup =>
+      'Restore from a backup file (.ccbackup)';
 
   @override
   String get welcomeProfilesHint =>
@@ -1248,7 +1341,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get credentialsEmptyTitle => 'No credentials yet';
 
   @override
-  String get credentialsEmptyMessage => 'Generate an Ed25519 key, import an existing OpenSSH key, or store a password.';
+  String get credentialsEmptyMessage =>
+      'Generate an Ed25519 key, import an existing OpenSSH key, or store a password.';
 
   @override
   String credentialsListUser(String username) {
@@ -1288,10 +1382,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get credentialsDetailsFingerprint => 'Fingerprint';
 
   @override
-  String get credentialsDetailsPassphraseRemembered => 'Remembered (stored as a separate encrypted secret)';
+  String get credentialsDetailsPassphraseRemembered =>
+      'Remembered (stored as a separate encrypted secret)';
 
   @override
-  String get credentialsDetailsPassphraseAsked => 'Asked when connecting — the key keeps its own protection';
+  String get credentialsDetailsPassphraseAsked =>
+      'Asked when connecting — the key keeps its own protection';
 
   @override
   String get credentialsDetailsAgentSocket => 'Agent socket';
@@ -1328,7 +1424,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get credentialDialogKeyPassphrase => 'Key passphrase';
 
   @override
-  String get credentialDialogRememberPassphrase => 'Remember SSH key passphrase';
+  String get credentialDialogRememberPassphrase =>
+      'Remember SSH key passphrase';
 
   @override
   String get credentialDialogAgentTitle => 'SSH agent';
@@ -1345,7 +1442,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get credentialDialogAgentNotice => 'Keys stay in the agent; ConsoleCrypt never sees them.';
+  String get credentialDialogAgentNotice =>
+      'Keys stay in the agent; ConsoleCrypt never sees them.';
 
   @override
   String get credentialGenerateTitle => 'Generate SSH key';
@@ -1369,7 +1467,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get credentialGeneratePassphraseLabel => 'Key passphrase (optional)';
 
   @override
-  String get credentialGeneratePassphraseHelper => 'Protects the key itself, in addition to vault encryption.';
+  String get credentialGeneratePassphraseHelper =>
+      'Protects the key itself, in addition to vault encryption.';
 
   @override
   String get credentialGenerateRepeatPassphrase => 'Repeat key passphrase';
@@ -1385,7 +1484,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get credentialGenerateDoneTitle => 'Key generated';
 
   @override
-  String get credentialGenerateDoneMessage => 'Add this public key to ~/.ssh/authorized_keys on your servers:';
+  String get credentialGenerateDoneMessage =>
+      'Add this public key to ~/.ssh/authorized_keys on your servers:';
 
   @override
   String get credentialImportTitle => 'Import OpenSSH key';
@@ -1403,7 +1503,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get credentialImportUnknownAlgorithm => 'Key';
 
   @override
-  String get credentialImportEncryptedNotice => 'Passphrase-protected: it stays encrypted in your vault.';
+  String get credentialImportEncryptedNotice =>
+      'Passphrase-protected: it stays encrypted in your vault.';
 
   @override
   String get credentialImportInvalidKey => 'Invalid key';
@@ -1426,7 +1527,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get approveDeviceStepCompare => '2. Compare it with the code computed here, group by group:';
+  String get approveDeviceStepCompare =>
+      '2. Compare it with the code computed here, group by group:';
 
   @override
   String approveDeviceCodesMatchCheckbox(String name) {
@@ -1565,7 +1667,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncScreenTitle => 'Sync';
 
   @override
-  String get syncScreenLocalSubtitle => 'This profile has no server and no account. Nothing leaves this device.';
+  String get syncScreenLocalSubtitle =>
+      'This profile has no server and no account. Nothing leaves this device.';
 
   @override
   String get syncScreenLocalBody =>
@@ -1623,7 +1726,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncScreenProblems => 'Problems';
 
   @override
-  String get syncScreenIssueRetryable => 'Sync failed — will retry automatically';
+  String get syncScreenIssueRetryable =>
+      'Sync failed — will retry automatically';
 
   @override
   String get syncScreenIssue => 'Sync failed';
@@ -1632,7 +1736,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncScreenDisconnectTitle => 'Disconnect';
 
   @override
-  String get syncScreenDisconnectBody => 'Stop syncing this profile and keep its data locally.';
+  String get syncScreenDisconnectBody =>
+      'Stop syncing this profile and keep its data locally.';
 
   @override
   String get syncScreenDisconnect => 'Disconnect…';
@@ -1676,7 +1781,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get enableSyncDialogServerUrl => 'Server URL';
 
   @override
-  String enableSyncDialogServerInfo(String serverVersion, String protocolVersion) {
+  String enableSyncDialogServerInfo(
+    String serverVersion,
+    String protocolVersion,
+  ) {
     return 'ConsoleCrypt server $serverVersion · protocol $protocolVersion';
   }
 
@@ -1693,17 +1801,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get enableSyncDialogPassword => 'Account password';
 
   @override
-  String get enableSyncDialogPasswordHelper => 'At least 10 characters. Not your vault passphrase.';
+  String get enableSyncDialogPasswordHelper =>
+      'At least 10 characters. Not your vault passphrase.';
 
   @override
   String get enableSyncDialogDeviceName => 'Name of this device';
 
   @override
-  String get enableSyncDialogCredentialsRequired => 'Enter your e-mail and password';
+  String get enableSyncDialogCredentialsRequired =>
+      'Enter your e-mail and password';
 
   @override
   String enableSyncDialogUploadedObjects(int uploaded, int total) {
-    String _temp0 = intl.Intl.pluralLogic(total, locale: localeName, other: '$uploaded of $total encrypted objects');
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$uploaded of $total encrypted objects',
+    );
     return '$_temp0';
   }
 
@@ -1914,11 +2028,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hostEditorJumpCustom => 'Custom chain';
 
   @override
-  String get hostEditorJumpInheritHelp => 'Uses the jump profile of the group (if any), otherwise connects directly.';
+  String get hostEditorJumpInheritHelp =>
+      'Uses the jump profile of the group (if any), otherwise connects directly.';
 
   @override
   String hostEditorJumpProfileItem(int count, String name) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$name ($count hops)');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$name ($count hops)',
+    );
     return '$_temp0';
   }
 
@@ -1957,7 +2076,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hostEditorEffectiveTitle => 'Effective settings';
 
   @override
-  String get hostEditorEffectiveSubtitle => 'Resolved from this host and its group chain — what a connection will use.';
+  String get hostEditorEffectiveSubtitle =>
+      'Resolved from this host and its group chain — what a connection will use.';
 
   @override
   String get hostEditorEffectiveGroup => 'Group';
@@ -2010,19 +2130,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hostEditorCredentialPrompt => 'Password — asked when connecting';
 
   @override
-  String get hostEditorProblemJumpHostDeleted => 'A jump host in the chain was deleted';
+  String get hostEditorProblemJumpHostDeleted =>
+      'A jump host in the chain was deleted';
 
   @override
   String get hostEditorProblemSelfJump => 'The host cannot jump through itself';
 
   @override
-  String get hostEditorProblemNoCredential => 'No credential: you will be asked for a password when connecting';
+  String get hostEditorProblemNoCredential =>
+      'No credential: you will be asked for a password when connecting';
 
   @override
-  String get hostEditorProblemCredentialMissing => 'The selected credential no longer exists';
+  String get hostEditorProblemCredentialMissing =>
+      'The selected credential no longer exists';
 
   @override
-  String get hostEditorProblemNoUsername => 'No username: set one on the host or on a group';
+  String get hostEditorProblemNoUsername =>
+      'No username: set one on the host or on a group';
 
   @override
   String get hostAuthModePassword => 'Password';
@@ -2066,16 +2190,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hostAuthNewPasswordLabel => 'New password';
 
   @override
-  String get hostAuthPasswordHelper => 'Leave empty to be asked when connecting.';
+  String get hostAuthPasswordHelper =>
+      'Leave empty to be asked when connecting.';
 
   @override
   String get hostAuthSavePassword => 'Save password in vault';
 
   @override
-  String get hostAuthSavePasswordOn => 'Stored end-to-end encrypted as a separate secret; never shown again.';
+  String get hostAuthSavePasswordOn =>
+      'Stored end-to-end encrypted as a separate secret; never shown again.';
 
   @override
-  String get hostAuthSavePasswordOff => 'Nothing is stored — the terminal asks for the password each time you connect.';
+  String get hostAuthSavePasswordOff =>
+      'Nothing is stored — the terminal asks for the password each time you connect.';
 
   @override
   String get hostAuthKeepSaved => 'Keep the saved password';
@@ -2121,7 +2248,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get hostAuthAgentNote => 'Keys stay in the agent; ConsoleCrypt never sees them.';
+  String get hostAuthAgentNote =>
+      'Keys stay in the agent; ConsoleCrypt never sees them.';
 
   @override
   String get hostAuthInheritNoGroup =>
@@ -2144,7 +2272,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hostAuthPreviewPasswordSaved => 'Password · saved in vault';
 
   @override
-  String get hostAuthPreviewPasswordPrompt => 'Password · asked when connecting';
+  String get hostAuthPreviewPasswordPrompt =>
+      'Password · asked when connecting';
 
   @override
   String hostAuthPreviewSshKey(String name) {
@@ -2157,10 +2286,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get hostAuthErrorKeyRequired => 'Choose, generate or import an SSH key';
+  String get hostAuthErrorKeyRequired =>
+      'Choose, generate or import an SSH key';
 
   @override
-  String get hostAuthErrorAgentPathRequired => 'Enter the agent socket path or pipe name';
+  String get hostAuthErrorAgentPathRequired =>
+      'Enter the agent socket path or pipe name';
 
   @override
   String get hostAuthPickerTitle => 'Use existing credential';
@@ -2175,7 +2306,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String hostAuthPickerUsedBy(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'used by $count host(s)');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'used by $count host(s)',
+    );
     return '$_temp0';
   }
 
@@ -2219,7 +2354,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupsTitle => 'Groups';
 
   @override
-  String get groupsSubtitle => 'Hosts inherit username, port, credential and jump profile from their group chain.';
+  String get groupsSubtitle =>
+      'Hosts inherit username, port, credential and jump profile from their group chain.';
 
   @override
   String get groupsNewGroup => 'New group';
@@ -2232,7 +2368,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String groupsHostCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count hosts');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hosts',
+    );
     return '$_temp0';
   }
 
@@ -2287,7 +2427,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupsNoParent => 'None (top level)';
 
   @override
-  String get groupsDefaultsHeading => 'Defaults inherited by hosts (leave empty to inherit from the parent)';
+  String get groupsDefaultsHeading =>
+      'Defaults inherited by hosts (leave empty to inherit from the parent)';
 
   @override
   String get groupsInherit => 'Inherit';
@@ -2305,7 +2446,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupsEditJumpProfile => 'Edit jump profile';
 
   @override
-  String get groupsJumpProfilesEmpty => 'Reusable ordered chains of jump hosts.';
+  String get groupsJumpProfilesEmpty =>
+      'Reusable ordered chains of jump hosts.';
 
   @override
   String get settingsTitle => 'Settings';
@@ -2410,7 +2552,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsAutoLockAfterHours(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'after $count hours', one: 'after 1 hour');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'after $count hours',
+      one: 'after 1 hour',
+    );
     return '$_temp0';
   }
 
@@ -2448,7 +2595,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDefaultPrivacyLabel => 'Default privacy';
 
   @override
-  String get settingsKeepAiConversations => 'Keep AI conversations in the vault';
+  String get settingsKeepAiConversations =>
+      'Keep AI conversations in the vault';
 
   @override
   String get settingsKeepAiConversationsHelp =>
@@ -2473,12 +2621,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsScrollbackLines(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count lines', one: '$count line');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lines',
+      one: '$count line',
+    );
     return '$_temp0';
   }
 
   @override
-  String get settingsTerminalBuffersNote => 'Terminal buffers stay on this device and are never synced.';
+  String get settingsTerminalBuffersNote =>
+      'Terminal buffers stay on this device and are never synced.';
 
   @override
   String get settingsAppearanceSecurityTitle => 'Appearance & security';
@@ -2519,7 +2673,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsRemoveKnownHostMessage => 'The next connection will ask you to verify the host key again.';
+  String get settingsRemoveKnownHostMessage =>
+      'The next connection will ask you to verify the host key again.';
 
   @override
   String get settingsDialogPassphraseChanged => 'Vault passphrase changed';
@@ -2579,7 +2734,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsDialogVaultPassphraseUnchanged => 'This does not change your vault passphrase.';
+  String get settingsDialogVaultPassphraseUnchanged =>
+      'This does not change your vault passphrase.';
 
   @override
   String get aiProviderDialogAddTitle => 'Add AI provider';
@@ -2606,16 +2762,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiProviderDialogChatModelLabel => 'Chat model';
 
   @override
-  String get aiProviderDialogEmbeddingModelLabel => 'Embedding model (optional)';
+  String get aiProviderDialogEmbeddingModelLabel =>
+      'Embedding model (optional)';
 
   @override
   String get aiProviderDialogApiKeyLabel => 'API key';
 
   @override
-  String get aiProviderDialogApiKeyStoredHint => 'A key is stored — type to replace it';
+  String get aiProviderDialogApiKeyStoredHint =>
+      'A key is stored — type to replace it';
 
   @override
-  String get aiProviderDialogApiKeyOptionalHint => 'Optional for local providers';
+  String get aiProviderDialogApiKeyOptionalHint =>
+      'Optional for local providers';
 
   @override
   String get aiProviderDialogApiKeyHelp =>
@@ -2685,7 +2844,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get runFlowAckUnknown => 'I reviewed this command; its effect is not known to local rules';
+  String get runFlowAckUnknown =>
+      'I reviewed this command; its effect is not known to local rules';
 
   @override
   String get runFlowRun => 'Run';
@@ -2703,7 +2863,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get snippetEditorTitleEdit => 'Edit snippet';
 
   @override
-  String get snippetEditorAiDraftBanner => 'Drafted by AI. Review the command and its risk before saving.';
+  String get snippetEditorAiDraftBanner =>
+      'Drafted by AI. Review the command and its risk before saving.';
 
   @override
   String get snippetEditorTemplateLabel => 'Command template';
@@ -2755,7 +2916,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get snippetsEmptyTitle => 'No snippets yet';
 
   @override
-  String get snippetsEmptyMessage => 'Save commands you use often — or let AI draft them.';
+  String get snippetsEmptyMessage =>
+      'Save commands you use often — or let AI draft them.';
 
   @override
   String get snippetsNothingFound => 'Nothing found';
@@ -2786,7 +2948,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get snippetsDeleteMessage => 'The snippet is removed from this vault.';
 
   @override
-  String get aiChatSubtitle => 'Answers never run by themselves: Insert or Run… always asks you first.';
+  String get aiChatSubtitle =>
+      'Answers never run by themselves: Insert or Run… always asks you first.';
 
   @override
   String get aiChatProviderLabel => 'Provider';
@@ -2800,7 +2963,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get aiChatLocalModelNotice => 'Local model · nothing leaves this machine.';
+  String get aiChatLocalModelNotice =>
+      'Local model · nothing leaves this machine.';
 
   @override
   String get aiChatNoProviderBanner => 'No AI provider configured.';
@@ -2809,10 +2973,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiChatEmptyTitle => 'Ask anything about your servers';
 
   @override
-  String get aiChatEmptyMessage => 'e.g. \"find the biggest files in /var/log\" or \"restart nginx safely\"';
+  String get aiChatEmptyMessage =>
+      'e.g. \"find the biggest files in /var/log\" or \"restart nginx safely\"';
 
   @override
-  String get aiChatInputHint => 'Message (Enter to send, Shift+Enter for a new line)';
+  String get aiChatInputHint =>
+      'Message (Enter to send, Shift+Enter for a new line)';
 
   @override
   String get aiChatStop => 'Stop';
@@ -2827,7 +2993,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiChatSelectToInclude => 'Select text in a terminal to include it';
 
   @override
-  String get aiChatErrorNoProvider => 'No AI provider configured. Add one in Settings → AI providers.';
+  String get aiChatErrorNoProvider =>
+      'No AI provider configured. Add one in Settings → AI providers.';
 
   @override
   String get aiChatErrorRequestFailed => 'The AI request failed.';
@@ -2853,10 +3020,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paletteLockVault => 'Lock vault';
 
   @override
-  String get paletteSearchHint => 'Find a host by name or IP, a snippet, an action, or describe a command…';
+  String get paletteSearchHint =>
+      'Find a host by name or IP, a snippet, an action, or describe a command…';
 
   @override
-  String get paletteAskSelectionHint => 'Ask about the selected terminal output…';
+  String get paletteAskSelectionHint =>
+      'Ask about the selected terminal output…';
 
   @override
   String get paletteAiSuggestion => 'AI suggestion';
@@ -2865,7 +3034,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paletteThinking => 'Thinking…';
 
   @override
-  String get paletteErrorNoProvider => 'No AI provider configured. Add Ollama, LM Studio or DeepSeek in Settings.';
+  String get paletteErrorNoProvider =>
+      'No AI provider configured. Add Ollama, LM Studio or DeepSeek in Settings.';
 
   @override
   String paletteRiskMismatch(String aiRisk, String localRisk) {
@@ -2896,8 +3066,10 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Sanitized ($profile) before leaving this device · $count items redacted',
-      one: 'Sanitized ($profile) before leaving this device · $count item redacted',
+      other:
+          'Sanitized ($profile) before leaving this device · $count items redacted',
+      one:
+          'Sanitized ($profile) before leaving this device · $count item redacted',
     );
     return '$_temp0';
   }
@@ -3014,7 +3186,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sftpNotConnectedTitle => 'Not connected';
 
   @override
-  String get sftpNotConnectedMessage => 'Pick a host to browse, transfer and edit its files.';
+  String get sftpNotConnectedMessage =>
+      'Pick a host to browse, transfer and edit its files.';
 
   @override
   String get sftpLocalPaneTitle => 'This device';
@@ -3034,7 +3207,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sftpDeleteFolderMessage => 'The folder and everything inside it are deleted on the server.';
+  String get sftpDeleteFolderMessage =>
+      'The folder and everything inside it are deleted on the server.';
 
   @override
   String get sftpDeleteFileMessage => 'The file is deleted on the server.';
@@ -3236,13 +3410,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sftpStatusFolders(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count folders', one: '$count folder');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count folders',
+      one: '$count folder',
+    );
     return '$_temp0';
   }
 
   @override
   String sftpStatusFiles(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count files', one: '$count file');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files',
+      one: '$count file',
+    );
     return '$_temp0';
   }
 
@@ -3369,7 +3553,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sftpDragItems(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count items', one: '$count item');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items',
+      one: '$count item',
+    );
     return '$_temp0';
   }
 
@@ -3404,7 +3593,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sftpInfoLinkTarget => 'Points to';
 
   @override
-  String get sftpInfoSymlinkNote => 'Permissions of a symbolic link apply to the item it points to.';
+  String get sftpInfoSymlinkNote =>
+      'Permissions of a symbolic link apply to the item it points to.';
 
   @override
   String get sftpInfoOthers => 'Others';
@@ -3450,7 +3640,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sftpQuickLookMemoryNote => 'Loaded into memory only — nothing is saved on this device.';
+  String get sftpQuickLookMemoryNote =>
+      'Loaded into memory only — nothing is saved on this device.';
 
   @override
   String get sftpQuickLookOpenInEditor => 'Open in editor';
@@ -3462,7 +3653,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sftpTransfersClear => 'Clear finished';
 
   @override
-  String get sftpTransfersEmpty => 'No transfers yet. Drop files onto the list or use Upload here…';
+  String get sftpTransfersEmpty =>
+      'No transfers yet. Drop files onto the list or use Upload here…';
 
   @override
   String get sftpTransferDirectionUpload => 'Upload';
@@ -3560,7 +3752,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sftpEditNotAFile => 'Only regular files can be opened for editing.';
+  String get sftpEditNotAFile =>
+      'Only regular files can be opened for editing.';
 
   @override
   String get sftpEditHintTitle => 'Editing in another app';
@@ -3599,13 +3792,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sftpConflictOverwriteTitle => 'Overwrite the server file';
 
   @override
-  String get sftpConflictOverwriteBody => 'Upload your version. The other changes on the server are lost.';
+  String get sftpConflictOverwriteBody =>
+      'Upload your version. The other changes on the server are lost.';
 
   @override
   String get sftpConflictRecreateTitle => 'Upload my version again';
 
   @override
-  String get sftpConflictRecreateBody => 'Create the file on the server again from your local copy.';
+  String get sftpConflictRecreateBody =>
+      'Create the file on the server again from your local copy.';
 
   @override
   String get sftpConflictKeepTitle => 'Keep both';
@@ -3619,7 +3814,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sftpConflictDiscardTitle => 'Discard my changes';
 
   @override
-  String get sftpConflictDiscardBody => 'Replace your local copy with the server version.';
+  String get sftpConflictDiscardBody =>
+      'Replace your local copy with the server version.';
 
   @override
   String get sftpConflictLater => 'Decide later';
@@ -3641,7 +3837,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sftpLeftoverUnknownHost => 'Unknown host — can only be deleted';
 
   @override
-  String get sftpLeftoverUnreadable => 'Session data is damaged — can only be deleted';
+  String get sftpLeftoverUnreadable =>
+      'Session data is damaged — can only be deleted';
 
   @override
   String get sftpLeftoversRecover => 'Recover selected';
@@ -3701,20 +3898,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tunnelsEmptyTitle => 'No tunnels yet';
 
   @override
-  String get tunnelsEmptyMessage => 'e.g. 127.0.0.1:15432 → db.internal:5432 through a bastion.';
+  String get tunnelsEmptyMessage =>
+      'e.g. 127.0.0.1:15432 → db.internal:5432 through a bastion.';
 
   @override
   String get tunnelsDeletedHost => '(deleted host)';
 
   @override
   String tunnelsStatusRunning(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'Running · $count conn.');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Running · $count conn.',
+    );
     return '$_temp0';
   }
 
   @override
   String tunnelsStatusRunningSince(int count, String ago) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'Running since $ago · $count conn.');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Running since $ago · $count conn.',
+    );
     return '$_temp0';
   }
 
@@ -3753,16 +3959,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get tunnelsDeleteMessage => 'The tunnel is stopped and removed from the vault.';
+  String get tunnelsDeleteMessage =>
+      'The tunnel is stopped and removed from the vault.';
 
   @override
-  String get tunnelsErrorChooseHost => 'Choose the host that carries the tunnel';
+  String get tunnelsErrorChooseHost =>
+      'Choose the host that carries the tunnel';
 
   @override
   String get tunnelsEdit => 'Edit tunnel';
 
   @override
-  String get tunnelsHostLabel => 'Through host (SSH connection incl. its jump chain)';
+  String get tunnelsHostLabel =>
+      'Through host (SSH connection incl. its jump chain)';
 
   @override
   String get tunnelsBindAddressRemote => 'Bind address on the server';
@@ -3793,7 +4002,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get tunnelsPublicBindAck => 'I understand this tunnel is reachable from the network';
+  String get tunnelsPublicBindAck =>
+      'I understand this tunnel is reachable from the network';
 
   @override
   String get tunnelsAutoStart => 'Start automatically after unlock';
@@ -3814,7 +4024,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get approvalWaitCodeLabel => 'Verification code of this device';
 
   @override
-  String get approvalWaitWaiting => 'Waiting for approval… The request expires in 24 hours.';
+  String get approvalWaitWaiting =>
+      'Waiting for approval… The request expires in 24 hours.';
 
   @override
   String get approvalWaitMismatchWarning =>
@@ -3830,7 +4041,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createVaultTitle => 'Create your vault passphrase';
 
   @override
-  String get createVaultSubtitleLocal => 'It encrypts everything in this profile on this device.';
+  String get createVaultSubtitleLocal =>
+      'It encrypts everything in this profile on this device.';
 
   @override
   String get createVaultSubtitleSynced =>
@@ -3870,7 +4082,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recoveryKitGenerateNew => 'Generate a new Recovery Kit';
 
   @override
-  String get recoveryKitPrintUnavailable => 'Printing arrives with M5. For now, write the words down.';
+  String get recoveryKitPrintUnavailable =>
+      'Printing arrives with M5. For now, write the words down.';
 
   @override
   String get recoveryKitPrint => 'Print / Save as PDF';
@@ -3879,7 +4092,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recoveryKitCopyWords => 'Copy words';
 
   @override
-  String get recoveryKitSavedConfirmation => 'I have stored my Recovery Kit somewhere safe';
+  String get recoveryKitSavedConfirmation =>
+      'I have stored my Recovery Kit somewhere safe';
 
   @override
   String get recoveryKitRevealFirst => 'Reveal the kit first';
@@ -3910,7 +4124,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get verifyKitTitle => 'Confirm your Recovery Kit';
 
   @override
-  String get verifyKitNoKit => 'No Recovery Kit in memory. Go back to generate one.';
+  String get verifyKitNoKit =>
+      'No Recovery Kit in memory. Go back to generate one.';
 
   @override
   String get verifyKitBackToRecoveryKit => 'Back to Recovery Kit';
@@ -3925,7 +4140,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get verifyKitMismatch => 'Those words don\'t match your Recovery Kit. Check your kit and try again.';
+  String get verifyKitMismatch =>
+      'Those words don\'t match your Recovery Kit. Check your kit and try again.';
 
   @override
   String get verifyKitBackToKit => 'Back to kit';
@@ -3944,7 +4160,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingLocalNoticeKitTitle => 'Keep your Recovery Kit safe';
 
   @override
-  String get onboardingLocalNoticeKitBody => 'It opens the vault if you forget your passphrase.';
+  String get onboardingLocalNoticeKitBody =>
+      'It opens the vault if you forget your passphrase.';
 
   @override
   String get onboardingLocalNoticeBackupsTitle => 'Make encrypted backups';
@@ -3954,7 +4171,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Export a .ccbackup file, or let ConsoleCrypt back up to a folder automatically.';
 
   @override
-  String get onboardingLocalNoticeLossTitle => 'Lost device without a backup = lost data';
+  String get onboardingLocalNoticeLossTitle =>
+      'Lost device without a backup = lost data';
 
   @override
   String get onboardingLocalNoticeLossBody =>
@@ -4008,7 +4226,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recoveryTitle => 'Recover vault access';
 
   @override
-  String get recoverySubtitle => 'Forgot your vault passphrase? Open the vault another way and set a new passphrase.';
+  String get recoverySubtitle =>
+      'Forgot your vault passphrase? Open the vault another way and set a new passphrase.';
 
   @override
   String get recoveryMethodRecoveryKey => 'Recovery Key';
@@ -4017,10 +4236,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recoveryMethodTrustedDevice => 'This trusted device';
 
   @override
-  String get recoveryWordsInstructions => 'Type the 24 words from your Recovery Kit, or paste the text of its QR code.';
+  String get recoveryWordsInstructions =>
+      'Type the 24 words from your Recovery Kit, or paste the text of its QR code.';
 
   @override
-  String get recoveryInputHint => 'word1 word2 … word24  or  consolecrypt-recovery:v1:…';
+  String get recoveryInputHint =>
+      'word1 word2 … word24  or  consolecrypt-recovery:v1:…';
 
   @override
   String get recoveryQrRecognised => 'QR text recognised';
@@ -4039,7 +4260,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get recoveryDeviceNotTrusted => 'This device is not trusted for the vault. Use your Recovery Key instead.';
+  String get recoveryDeviceNotTrusted =>
+      'This device is not trusted for the vault. Use your Recovery Key instead.';
 
   @override
   String get recoveryNewPassphraseLabel => 'New vault passphrase';
@@ -4054,7 +4276,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recoverySubmitRecoveryKey => 'Recover and set passphrase';
 
   @override
-  String get recoveryLostEverythingTitle => 'Lost the passphrase, the Recovery Key and every trusted device?';
+  String get recoveryLostEverythingTitle =>
+      'Lost the passphrase, the Recovery Key and every trusted device?';
 
   @override
   String get recoveryLostEverythingLocal =>
@@ -4107,7 +4330,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutLicenseServer => 'Sync server';
 
   @override
-  String get aboutOpenSource => 'ConsoleCrypt is open-source software. Your connections are secure.';
+  String get aboutOpenSource =>
+      'ConsoleCrypt is open-source software. Your connections are secure.';
 
   @override
   String get settingsAboutTitle => 'About';
@@ -4127,10 +4351,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Shown solid because Reduce Transparency is on in the system settings.';
 
   @override
-  String get settingsGlassSolidRemote => 'Shown solid in a remote desktop session.';
+  String get settingsGlassSolidRemote =>
+      'Shown solid in a remote desktop session.';
 
   @override
-  String get settingsGlassSolidBattery => 'Shown solid to save battery (battery saver / Low Power Mode).';
+  String get settingsGlassSolidBattery =>
+      'Shown solid to save battery (battery saver / Low Power Mode).';
 
   @override
   String get settingsGlassSolidPerformance => 'Glass reduced for performance.';
@@ -4145,10 +4371,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSidebarEdgeToEdge => 'Edge to edge';
 
   @override
-  String get secretFieldCyrillicHint => 'Typed text contains Cyrillic letters — check the keyboard layout.';
+  String get secretFieldCyrillicHint =>
+      'Typed text contains Cyrillic letters — check the keyboard layout.';
 
   @override
-  String get secretFieldNonLatinHint => 'Typed text contains letters outside A–Z — check the keyboard layout.';
+  String get secretFieldNonLatinHint =>
+      'Typed text contains letters outside A–Z — check the keyboard layout.';
 
   @override
   String get passphraseLayoutNotice =>
@@ -4162,7 +4390,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'This vault exists only on this device. Once deleted, it can come back only from a backup file (.ccbackup) opened with its passphrase or Recovery Kit. Without one, every host, key and password in it is lost for good.';
 
   @override
-  String get deleteProfileAcknowledge => 'I understand that this cannot be undone';
+  String get deleteProfileAcknowledge =>
+      'I understand that this cannot be undone';
 
   @override
   String runFlowConfirmTitleDestructive(String host) {
@@ -4199,7 +4428,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsColorHex => 'HEX colour';
 
   @override
-  String get settingsColorInvalid => 'Enter six hexadecimal digits, for example #4C8DFF.';
+  String get settingsColorInvalid =>
+      'Enter six hexadecimal digits, for example #4C8DFF.';
 
   @override
   String get settingsResetUi => 'Reset text size and colours';
@@ -4236,7 +4466,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTerminalPreview => 'Terminal preview';
 
   @override
-  String get settingsAppearanceLocalHint => 'Saved on this device. No restart required.';
+  String get settingsAppearanceLocalHint =>
+      'Saved on this device. No restart required.';
 
   @override
   String get errorSecureStore =>
@@ -4246,7 +4477,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get welcomeResumeTitle => 'Open a profile';
 
   @override
-  String get welcomeResumeHelp => 'Your profiles are on this device. Choose one to continue.';
+  String get welcomeResumeHelp =>
+      'Your profiles are on this device. Choose one to continue.';
 
   @override
   String get welcomeKeychainHelp =>
@@ -4256,7 +4488,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reopenLastProfile => 'Open the last profile at startup';
 
   @override
-  String get reopenLastProfileHelp => 'May show the system keychain prompt before the app opens.';
+  String get reopenLastProfileHelp =>
+      'May show the system keychain prompt before the app opens.';
 
   @override
   String get settingsTerminalThemeCustom => 'Custom';
@@ -4298,7 +4531,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not import this theme. Choose a valid iTerm XML preset or ConsoleCrypt JSON file, up to 256 KB. Your saved theme has not changed.';
 
   @override
-  String get terminalThemeExportError => 'Could not save the theme. Choose another location and try again.';
+  String get terminalThemeExportError =>
+      'Could not save the theme. Choose another location and try again.';
 
   @override
   String get terminalColorBackground => 'Background';
@@ -4338,17 +4572,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deviceUnlockTitle => 'Fingerprint unlock';
 
   @override
-  String get deviceUnlockHelp => 'Confirm access with your fingerprint. macOS may also offer your account password.';
+  String get deviceUnlockHelp =>
+      'Confirm access with your fingerprint. macOS may also offer your account password.';
 
   @override
   String get deviceUnlockLocalOnly =>
       'Only for this vault on this device. Your passphrase and Recovery Key remain available.';
 
   @override
-  String get deviceUnlockEnableReason => 'Allow unlocking your ConsoleCrypt vault on this Mac';
+  String get deviceUnlockEnableReason =>
+      'Allow unlocking your ConsoleCrypt vault on this Mac';
 
   @override
-  String get deviceUnlockNeedsTrust => 'First unlock the vault with its passphrase on this device.';
+  String get deviceUnlockNeedsTrust =>
+      'First unlock the vault with its passphrase on this device.';
 
   @override
   String get deviceUnlockNotEnrolled =>
@@ -4387,7 +4624,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get snippetPackage => 'Package';
 
   @override
-  String get snippetPackageHint => 'Choose an existing name or enter a new one. Leave empty for no package.';
+  String get snippetPackageHint =>
+      'Choose an existing name or enter a new one. Leave empty for no package.';
 
   @override
   String get snippetAllPackages => 'All snippets';
@@ -4446,20 +4684,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get snippetNoConnected => 'Connect a terminal first.';
 
   @override
-  String get snippetTargetsChanged => 'The profile or selected terminals changed. Choose your targets again.';
+  String get snippetTargetsChanged =>
+      'The profile or selected terminals changed. Choose your targets again.';
 
   @override
   String get snippetUnsafePaste =>
       'This terminal does not support safe multiline paste. Use Run to review the script before execution.';
 
   @override
-  String get snippetSyncHint => 'Saved in the vault · synced when sync is enabled';
+  String get snippetSyncHint =>
+      'Saved in the vault · synced when sync is enabled';
 
   @override
   String get snippetPackLinux => 'Linux diagnostics';
 
   @override
-  String get snippetPackLinuxDescription => 'System load, disks, memory, ports and service logs. For Linux hosts.';
+  String get snippetPackLinuxDescription =>
+      'System load, disks, memory, ports and service logs. For Linux hosts.';
 
   @override
   String get snippetPackDocker => 'Docker';
@@ -4565,10 +4806,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inventoryEffectiveDefaults => 'Saved settings and inheritance';
 
   @override
-  String get inventoryIncludesSubgroups => 'Hosts in this group and its subgroups';
+  String get inventoryIncludesSubgroups =>
+      'Hosts in this group and its subgroups';
 
   @override
-  String get inventoryEmptyHelp => 'Add hosts or groups to organize your servers.';
+  String get inventoryEmptyHelp =>
+      'Add hosts or groups to organize your servers.';
 
   @override
   String get inventorySearchHelp => 'Try another search or clear the filters.';
@@ -4615,7 +4858,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mobileDeviceAuth => 'Fingerprint or PIN';
 
   @override
-  String get mobileDeviceAuthHelp => 'Confirm your identity using the fingerprint sensor or your phone’s screen lock.';
+  String get mobileDeviceAuthHelp =>
+      'Confirm your identity using the fingerprint sensor or your phone’s screen lock.';
 
   @override
   String get mobileBackupsHelp =>
@@ -4647,7 +4891,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get terminalClearSelection => 'Clear selection';
 
   @override
-  String get terminalPasteConfirmTitle => 'Paste multiple lines or control characters?';
+  String get terminalPasteConfirmTitle =>
+      'Paste multiple lines or control characters?';
 
   @override
   String get terminalPasteConfirmMessage =>
@@ -4680,7 +4925,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Screenshots are allowed. Current macOS versions do not provide a reliable way for this app to block screenshots or screen recording.';
 
   @override
-  String get screenCaptureError => 'Could not read or apply the screenshot setting. Refresh its status and try again.';
+  String get screenCaptureError =>
+      'Could not read or apply the screenshot setting. Refresh its status and try again.';
 
   @override
   String get updatesTitle => 'Updates';
@@ -4735,7 +4981,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Allow ConsoleCrypt to install updates in the Android settings that opened, then press Download and install again.';
 
   @override
-  String get updateInstallerOpened => 'The system installer is open. Complete installation there.';
+  String get updateInstallerOpened =>
+      'The system installer is open. Complete installation there.';
 
   @override
   String get updateFailed => 'Could not complete the update.';
@@ -4759,7 +5006,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharingTitle => 'Sharing';
 
   @override
-  String get sharingSubtitle => 'Selected data for verified devices on this server.';
+  String get sharingSubtitle =>
+      'Selected data for verified devices on this server.';
 
   @override
   String get sharingUnavailable => 'Sharing is unavailable on this server.';
@@ -4783,10 +5031,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharingEmpty => 'No shared items yet.';
 
   @override
-  String get sharingReceivedHelp => 'Items your colleagues shared with you. Verify the owner before accepting access.';
+  String get sharingReceivedHelp =>
+      'Items your colleagues shared with you. Verify the owner before accepting access.';
 
   @override
-  String get sharingOwnedHelp => 'Manage the items you shared, recipient permissions, and access revocation.';
+  String get sharingOwnedHelp =>
+      'Manage the items you shared, recipient permissions, and access revocation.';
 
   @override
   String get sharingReceivedEmpty => 'Nothing has been shared with you yet';
@@ -4845,7 +5095,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharingCode => 'Verification code';
 
   @override
-  String get sharingConfirmed => 'The code matches the code on my colleague’s device';
+  String get sharingConfirmed =>
+      'The code matches the code on my colleague’s device';
 
   @override
   String get sharingEmail => 'Colleague’s email';
@@ -4863,10 +5114,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharingEditor => 'Edit';
 
   @override
-  String get sharingReaderHelp => 'Can read and keep copies; cannot change the shared item.';
+  String get sharingReaderHelp =>
+      'Can read and keep copies; cannot change the shared item.';
 
   @override
-  String get sharingEditorHelp => 'Can read and edit content; the owner manages access.';
+  String get sharingEditorHelp =>
+      'Can read and edit content; the owner manages access.';
 
   @override
   String get sharingPreview => 'What will be shared';
@@ -4883,7 +5136,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'The recipient can read and keep this secret. Revoking access cannot remove copies already read. SSH access also requires changing credentials on the target server.';
 
   @override
-  String get sharingSecretConfirmed => 'I understand and allow this secret to be shared with the selected devices';
+  String get sharingSecretConfirmed =>
+      'I understand and allow this secret to be shared with the selected devices';
 
   @override
   String get sharingHost => 'Host';
@@ -4935,7 +5189,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharingRevoke => 'Revoke access';
 
   @override
-  String get sharingRevokeHelp => 'Future updates will use a new key. Copies already read remain with the recipient.';
+  String get sharingRevokeHelp =>
+      'Future updates will use a new key. Copies already read remain with the recipient.';
 
   @override
   String get sharingStop => 'Delete shared item';
@@ -4958,7 +5213,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharingEdit => 'Edit shared item';
 
   @override
-  String get sharingChangeSaved => 'The change was saved or queued for sending.';
+  String get sharingChangeSaved =>
+      'The change was saved or queued for sending.';
 
   @override
   String get sharingName => 'Name';
@@ -4982,13 +5238,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharingCommand => 'Command';
 
   @override
-  String get sharingNoDevices => 'No devices found. Check the address and your colleague’s email verification.';
+  String get sharingNoDevices =>
+      'No devices found. Check the address and your colleague’s email verification.';
 
   @override
   String get sharingNoAutoRun => 'Received commands never run automatically.';
 
   @override
-  String get sharingOwnerDeviceOnly => 'Manage access on the owner device that created this item.';
+  String get sharingOwnerDeviceOnly =>
+      'Manage access on the owner device that created this item.';
 
   @override
   String get sharingWorking => 'Preparing secure sharing…';
@@ -5031,7 +5289,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'The shared host address or port changed. Review and confirm the new endpoint before connecting with your credentials.';
 
   @override
-  String get sharingTunnelVerify => 'Verify access to the shared host before starting the tunnel manually.';
+  String get sharingTunnelVerify =>
+      'Verify access to the shared host before starting the tunnel manually.';
 
   @override
   String get sharingPromptPassword => 'Ask for password when connecting';
@@ -5055,10 +5314,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Choose independently shared items. A group contains references only and grants no access to their contents.';
 
   @override
-  String get sharingCollectionEmpty => 'Share the required items separately first.';
+  String get sharingCollectionEmpty =>
+      'Share the required items separately first.';
 
   @override
-  String get sharingCollectionUnavailable => 'Item unavailable: separate access is required.';
+  String get sharingCollectionUnavailable =>
+      'Item unavailable: separate access is required.';
 
   @override
   String get sharingCollectionChildren => 'Group items';
@@ -5169,7 +5430,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get enrollmentAccept => 'Grant access';
 
   @override
-  String get enrollmentManualConfirmed => 'I approve adding this device with the displayed permissions';
+  String get enrollmentManualConfirmed =>
+      'I approve adding this device with the displayed permissions';
 
   @override
   String get enrollmentActive => 'Active';
@@ -5196,7 +5458,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get enrollmentBlocked => 'Current access and history must be reviewed';
 
   @override
-  String get enrollmentCreateConfirmed => 'I authorize adding this user’s own devices within the selected limits';
+  String get enrollmentCreateConfirmed =>
+      'I authorize adding this user’s own devices within the selected limits';
 
   @override
   String glassOpenTerminalTabs(int count) {
@@ -5233,7 +5496,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdpEmptyTitle => 'A desktop in a tab';
 
   @override
-  String get rdpEmptyHelp => 'Enter a Windows server and account. Verify the server certificate before signing in.';
+  String get rdpEmptyHelp =>
+      'Enter a Windows server and account. Verify the server certificate before signing in.';
 
   @override
   String get rdpLocked => 'Unlock your vault to open RDP.';
@@ -5245,10 +5509,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdpConnected => 'Connected';
 
   @override
-  String get rdpDisconnected => 'Connection closed. Create a connection to sign in again.';
+  String get rdpDisconnected =>
+      'Connection closed. Create a connection to sign in again.';
 
   @override
-  String get rdpConnectionFailed => 'Connection failed. Check the address, account and certificate.';
+  String get rdpConnectionFailed =>
+      'Connection failed. Check the address, account and certificate.';
 
   @override
   String get rdpSecureAttention => 'Ctrl + Alt + Delete';
@@ -5282,7 +5548,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'The password is used for this sign-in only and is not saved. It is not sent before you confirm the certificate.';
 
   @override
-  String get rdpInvalidForm => 'Enter an address, a port from 1 to 65535, username and password.';
+  String get rdpInvalidForm =>
+      'Enter an address, a port from 1 to 65535, username and password.';
 
   @override
   String get rdpCertificateTitle => 'Verify the RDP certificate';
@@ -5295,17 +5562,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdpFingerprint => 'Certificate SHA-256';
 
   @override
-  String get rdpCertificateConfirm => 'I compared the entire certificate fingerprint';
+  String get rdpCertificateConfirm =>
+      'I compared the entire certificate fingerprint';
 
   @override
   String get rdpCertificateChanged =>
       'The server certificate changed. Sign-in was blocked; create a new connection and verify the fingerprint.';
 
   @override
-  String get rdpAuthenticationFailed => 'Windows rejected sign-in. Check the username, domain and password.';
+  String get rdpAuthenticationFailed =>
+      'Windows rejected sign-in. Check the username, domain and password.';
 
   @override
-  String get rdpResizeUnavailable => 'The server does not support this screen size. Continue at the original size.';
+  String get rdpResizeUnavailable =>
+      'The server does not support this screen size. Continue at the original size.';
 
   @override
   String get rdpWorkspaceHelp =>
@@ -5322,7 +5592,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Ctrl+V (⌘V on Mac) sends and pastes text. Send and Receive exchange text separately. Access is off by default.';
 
   @override
-  String get rdpFolderHelp => 'Give the remote computer access only to a selected folder. Read-only by default.';
+  String get rdpFolderHelp =>
+      'Give the remote computer access only to a selected folder. Read-only by default.';
 
   @override
   String get rdpSelectFolder => 'Select folder…';
@@ -5341,13 +5612,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'The remote computer will be able to create, change and delete files in this folder.';
 
   @override
-  String get rdpFolderUnsupported => 'Folder sharing is unavailable on this device.';
+  String get rdpFolderUnsupported =>
+      'Folder sharing is unavailable on this device.';
 
   @override
   String get rdpPermissionsFailed => 'Could not apply permissions. Try again.';
 
   @override
-  String get rdpClipboardReceived => 'Text received. The clipboard will expire according to your security settings.';
+  String get rdpClipboardReceived =>
+      'Text received. The clipboard will expire according to your security settings.';
 
   @override
   String get rdpClipboardSent => 'Text sent to the remote computer.';
@@ -5362,7 +5635,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdpReceiveClipboard => 'Receive clipboard text';
 
   @override
-  String get rdpSavedPasswordHelp => 'The password will be taken from this host’s encrypted credential.';
+  String get rdpSavedPasswordHelp =>
+      'The password will be taken from this host’s encrypted credential.';
 
   @override
   String get hostProtocolLabel => 'Connection type';
@@ -5381,7 +5655,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdpFolderPending => 'Windows is connecting the folder…';
 
   @override
-  String get rdpFolderReady => 'Folder connected. Open it in Windows File Explorer.';
+  String get rdpFolderReady =>
+      'Folder connected. Open it in Windows File Explorer.';
 
   @override
   String get rdpFolderDenied =>
@@ -5392,7 +5667,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Windows did not connect the folder. Check that drive redirection is allowed on the server, then reconnect.';
 
   @override
-  String get rdpFolderChooseFailed => 'Could not open the selected folder. Check access to it and select it again.';
+  String get rdpFolderChooseFailed =>
+      'Could not open the selected folder. Check access to it and select it again.';
 
   @override
   String get rdpFolderChooseLimit =>
@@ -5417,7 +5693,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdpClipboardLimit => 'Only text up to 64 KiB can be transferred.';
 
   @override
-  String get rdpClipboardBusy => 'The previous clipboard request is still being processed. Wait and try again.';
+  String get rdpClipboardBusy =>
+      'The previous clipboard request is still being processed. Wait and try again.';
 
   @override
   String get rdpClipboardEmpty => 'No text is available in the clipboard.';
@@ -5441,7 +5718,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdpShowBar => 'Show connection bar (Ctrl+Alt+Home)';
 
   @override
-  String get rdpFullscreenFailed => 'Could not change full-screen mode. Try the window controls.';
+  String get rdpFullscreenFailed =>
+      'Could not change full-screen mode. Try the window controls.';
 
   @override
   String get rdpMobileTouchpad => 'Touchpad';
@@ -5505,13 +5783,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get localAiError => 'Local AI needs attention';
 
   @override
-  String get localAiUnsupported => 'Available on supported Windows and macOS computers.';
+  String get localAiUnsupported =>
+      'Available on supported Windows and macOS computers.';
 
   @override
   String get localAiDefault => 'Use by default after installation';
 
   @override
-  String get localAiDeviceOnly => 'Only on this computer. Other devices and saved provider settings stay independent.';
+  String get localAiDeviceOnly =>
+      'Only on this computer. Other devices and saved provider settings stay independent.';
 
   @override
   String get localAiInstall => 'Install local AI';
@@ -5530,17 +5810,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'Uses memory and CPU while running; stops after 15 minutes without requests. Small models may make mistakes. Review commands before running them.';
 
   @override
-  String get localAiOperationFailed => 'The local AI operation could not be completed. Check its status and try again.';
+  String get localAiOperationFailed =>
+      'The local AI operation could not be completed. Check its status and try again.';
 
   @override
   String get localAiInstallFailed =>
       'Installation failed. Check the internet connection and free disk space, then try again.';
 
   @override
-  String get localAiFilesChanged => 'The installed files could not be verified. Remove the model and install it again.';
+  String get localAiFilesChanged =>
+      'The installed files could not be verified. Remove the model and install it again.';
 
   @override
-  String get localAiStartFailed => 'The model could not start or stopped unexpectedly. Free some memory and try again.';
+  String get localAiStartFailed =>
+      'The model could not start or stopped unexpectedly. Free some memory and try again.';
 
   @override
   String get localAiStorageUnavailable =>
@@ -5559,7 +5842,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get localAiModelInstalled => 'Installed';
 
   @override
-  String get localAiRuntimeMissing => 'The inference engine is missing. Repair it; downloaded models will be kept.';
+  String get localAiRuntimeMissing =>
+      'The inference engine is missing. Repair it; downloaded models will be kept.';
 
   @override
   String get localAiBundledRuntimeMissing =>
@@ -5626,13 +5910,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get terminalLocalUnavailable => 'No local shells are available.';
 
   @override
-  String get terminalLocalSandboxUnavailable => 'Local shells are unavailable in this sandboxed build.';
+  String get terminalLocalSandboxUnavailable =>
+      'Local shells are unavailable in this sandboxed build.';
 
   @override
   String get terminalLocalRefresh => 'Refresh local shells';
 
   @override
-  String get terminalLocalEmptyMessage => 'Open a local shell or connect to an SSH host in a new tab.';
+  String get terminalLocalEmptyMessage =>
+      'Open a local shell or connect to an SSH host in a new tab.';
 
   @override
   String get terminalLocalOpen => 'Open terminal';
@@ -5641,7 +5927,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get terminalLocalRestart => 'Restart shell';
 
   @override
-  String get terminalLocalInsertOnly => 'Insert the command, review it, then press Enter in the local terminal.';
+  String get terminalLocalInsertOnly =>
+      'Insert the command, review it, then press Enter in the local terminal.';
 
   @override
   String get rdpMobileMenu => 'Session controls';
@@ -5674,7 +5961,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdpMobileBackAgain => 'Press Back again to minimize the session';
 
   @override
-  String get rdpMobileDisconnectConfirm => 'Disconnect from the remote desktop?';
+  String get rdpMobileDisconnectConfirm =>
+      'Disconnect from the remote desktop?';
 
   @override
   String get rdpMobileClipboard => 'Clipboard';
@@ -5684,7 +5972,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Slide your finger on the desktop to move the cursor. Lift and reposition your finger to continue.';
 
   @override
-  String get rdpMobileIntroZoom => 'Two fingers: tap to right-click, slide to scroll, pinch to zoom.';
+  String get rdpMobileIntroZoom =>
+      'Two fingers: tap to right-click, slide to scroll, pinch to zoom.';
 
   @override
   String get rdpMobileIntroMenu =>
@@ -5704,7 +5993,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdpMobileDefaultMode => 'Default input mode';
 
   @override
-  String get rdpMobileAutoDefault => 'Touchpad on phones, direct touch on tablets';
+  String get rdpMobileAutoDefault =>
+      'Touchpad on phones, direct touch on tablets';
 
   @override
   String get rdpMobileSpeed => 'Pointer speed';
@@ -5797,7 +6087,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeChooseAgain => 'Choose another configuration';
 
   @override
-  String get kubeEmpty => 'No Kubernetes connections yet. Import a kubeconfig to add contexts.';
+  String get kubeEmpty =>
+      'No Kubernetes connections yet. Import a kubeconfig to add contexts.';
 
   @override
   String get kubeNamespace => 'Namespace';
@@ -5809,7 +6100,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeProduction => 'Production: protect against changes';
 
   @override
-  String get kubeApproveFiles => 'Read these referenced files for the selected contexts';
+  String get kubeApproveFiles =>
+      'Read these referenced files for the selected contexts';
 
   @override
   String get kubeExecHelp =>
@@ -5824,10 +6116,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not import the configuration. Check the selected contexts and files, then review it again.';
 
   @override
-  String get kubeFileFailed => 'Select a regular UTF-8 file no larger than 4 MiB.';
+  String get kubeFileFailed =>
+      'Select a regular UTF-8 file no larger than 4 MiB.';
 
   @override
-  String get kubeExpired => 'This preview has expired. Review the configuration again.';
+  String get kubeExpired =>
+      'This preview has expired. Review the configuration again.';
 
   @override
   String get kubeTlsRequired =>
@@ -5881,7 +6175,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeConnecting => 'Connecting to cluster…';
 
   @override
-  String get kubeConnectionFailed => 'Could not connect. Check the network, authentication and connection route.';
+  String get kubeConnectionFailed =>
+      'Could not connect. Check the network, authentication and connection route.';
 
   @override
   String get kubeRetry => 'Try again';
@@ -5893,7 +6188,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeReadOnly => 'Production · read only';
 
   @override
-  String get kubeReadOnlyHelp => 'This context is protected against changes by the native Kubernetes client.';
+  String get kubeReadOnlyHelp =>
+      'This context is protected against changes by the native Kubernetes client.';
 
   @override
   String get kubeResources => 'Resources';
@@ -5918,7 +6214,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'No readable resource types were discovered. Check this account’s Kubernetes permissions.';
 
   @override
-  String get kubeRequestFailed => 'Could not load cluster data. Check the connection and Kubernetes permissions.';
+  String get kubeRequestFailed =>
+      'Could not load cluster data. Check the connection and Kubernetes permissions.';
 
   @override
   String get kubeNamespacesFailed =>
@@ -5940,7 +6237,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeWatchFailed => 'Live updates stopped. Refresh to reconnect.';
 
   @override
-  String get kubeResourceLimit => 'The in-memory limit is 10,000 resources. Narrow the namespace or label filter.';
+  String get kubeResourceLimit =>
+      'The in-memory limit is 10,000 resources. Narrow the namespace or label filter.';
 
   @override
   String get kubeOverview => 'Overview';
@@ -5964,10 +6262,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeNoLogs => 'No log lines to display.';
 
   @override
-  String get kubeLogTailHelp => 'The last 500 lines are loaded into memory. Refresh to retrieve a new tail.';
+  String get kubeLogTailHelp =>
+      'The last 500 lines are loaded into memory. Refresh to retrieve a new tail.';
 
   @override
-  String get kubeSecretRedacted => 'Secret values are hidden. This view contains metadata and key names only.';
+  String get kubeSecretRedacted =>
+      'Secret values are hidden. This view contains metadata and key names only.';
 
   @override
   String get kubeStatus => 'Status';
@@ -5991,7 +6291,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeNotReported => 'Not reported';
 
   @override
-  String get kubeSessionEnded => 'The connection has ended. Reconnect to load cluster data.';
+  String get kubeSessionEnded =>
+      'The connection has ended. Reconnect to load cluster data.';
 
   @override
   String kubeLoadedCount(int count) {
@@ -6037,7 +6338,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get kubeWriteWindowFailed => 'Could not change the write window. Reconnect and try again.';
+  String get kubeWriteWindowFailed =>
+      'Could not change the write window. Reconnect and try again.';
 
   @override
   String get kubeTypeName => 'Type the exact name above';
@@ -6097,7 +6399,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeResumeLogs => 'Resume';
 
   @override
-  String get kubeLogBufferHelp => 'Live log buffer: up to 20,000 lines and 2 MiB, kept only in memory.';
+  String get kubeLogBufferHelp =>
+      'Live log buffer: up to 20,000 lines and 2 MiB, kept only in memory.';
 
   @override
   String get kubeLogOptions => 'Log options';
@@ -6131,13 +6434,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeDependencies => 'Dependencies';
 
   @override
-  String get kubeNoVisibleProblems => 'No problems were found among the resources that could be inspected.';
+  String get kubeNoVisibleProblems =>
+      'No problems were found among the resources that could be inspected.';
 
   @override
-  String get kubeNoProblems => 'No known problems were found in the inspected resources.';
+  String get kubeNoProblems =>
+      'No known problems were found in the inspected resources.';
 
   @override
-  String get kubeNoGitOpsResources => 'No Flux or Argo CD resources match this filter.';
+  String get kubeNoGitOpsResources =>
+      'No Flux or Argo CD resources match this filter.';
 
   @override
   String get kubeGitOpsActions => 'Controller actions';
@@ -6216,13 +6522,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeIssueCondition => 'Resource requires attention';
 
   @override
-  String get kubeIssueRolloutDeadline => 'Workload rollout exceeded its deadline';
+  String get kubeIssueRolloutDeadline =>
+      'Workload rollout exceeded its deadline';
 
   @override
   String get kubeIssueReplicaFailure => 'Controller could not create replicas';
 
   @override
-  String get kubeIssueReplicasUnavailable => 'Some workload replicas are unavailable';
+  String get kubeIssueReplicasUnavailable =>
+      'Some workload replicas are unavailable';
 
   @override
   String get kubeIssueVolumePending => 'Volume claim is waiting for storage';
@@ -6240,7 +6548,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeIssueArgoOutOfSync => 'Argo CD application is out of sync';
 
   @override
-  String get kubeIssueFluxPending => 'Flux has not observed the latest configuration';
+  String get kubeIssueFluxPending =>
+      'Flux has not observed the latest configuration';
 
   @override
   String get kubeIssueFluxNotReady => 'Flux resource is not ready';
@@ -6266,7 +6575,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeHelmHistory => 'Release history';
 
   @override
-  String get kubeHelmSecretsMasked => 'Sensitive values are masked. Values and manifests remain in memory only.';
+  String get kubeHelmSecretsMasked =>
+      'Sensitive values are masked. Values and manifests remain in memory only.';
 
   @override
   String get kubeHelmValues => 'User values';
@@ -6304,10 +6614,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeExecAllow => 'Allow this command';
 
   @override
-  String get kubeAuthFailed => 'Authentication could not be completed. Check the connection settings and try again.';
+  String get kubeAuthFailed =>
+      'Authentication could not be completed. Check the connection settings and try again.';
 
   @override
-  String get kubeAuthExpired => 'This request has expired. Start authentication again.';
+  String get kubeAuthExpired =>
+      'This request has expired. Start authentication again.';
 
   @override
   String get kubeOidcTitle => 'Sign in to the cluster';
@@ -6333,7 +6645,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubePodTerminal => 'Pod terminal';
 
   @override
-  String get kubeExecProductionBlocked => 'Terminal access is disabled for this production context.';
+  String get kubeExecProductionBlocked =>
+      'Terminal access is disabled for this production context.';
 
   @override
   String get kubeAttach => 'Attach to process';
@@ -6375,7 +6688,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'The port is available only on this device at 127.0.0.1. The forward stops when you disconnect the cluster or lock the profile.';
 
   @override
-  String get kubeForwardProductionBlocked => 'Port forwarding is disabled for this production context.';
+  String get kubeForwardProductionBlocked =>
+      'Port forwarding is disabled for this production context.';
 
   @override
   String get kubeRemotePort => 'Container TCP port';
@@ -6390,7 +6704,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeStartForward => 'Start forwarding';
 
   @override
-  String get kubeForwardCreated => 'Forwarding is running. Manage it in Tunnels or the cluster panel.';
+  String get kubeForwardCreated =>
+      'Forwarding is running. Manage it in Tunnels or the cluster panel.';
 
   @override
   String get kubeForwardFailed =>
@@ -6491,7 +6806,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeMeasuredAt => 'Measured at';
 
   @override
-  String get kubeMetricsUnavailable => 'Metrics are unavailable. Check metrics-server and access permissions.';
+  String get kubeMetricsUnavailable =>
+      'Metrics are unavailable. Check metrics-server and access permissions.';
 
   @override
   String get kubeWorkloadPods => 'Workload Pods';
@@ -6503,7 +6819,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeFluxCliTitle => 'Flux CLI';
 
   @override
-  String get kubeFluxCliHelp => 'Optional desktop tools. Cluster access uses a temporary local proxy.';
+  String get kubeFluxCliHelp =>
+      'Optional desktop tools. Cluster access uses a temporary local proxy.';
 
   @override
   String get kubeFluxCliPath => 'Path to Flux';
@@ -6540,7 +6857,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Official downloads require SHA-256 and Cosign verification. Package commands open in a visible terminal.';
 
   @override
-  String get kubeFluxCliFailed => 'The CLI operation failed or verification was unavailable.';
+  String get kubeFluxCliFailed =>
+      'The CLI operation failed or verification was unavailable.';
 
   @override
   String get kubeFluxCliOutput => 'CLI output';
@@ -6595,7 +6913,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeRecordEvents => 'Keep event history';
 
   @override
-  String get kubeRecordEventsHelp => 'Encrypted on this device for 7 days. Event history is not synchronized.';
+  String get kubeRecordEventsHelp =>
+      'Encrypted on this device for 7 days. Event history is not synchronized.';
 
   @override
   String get kubeScanFolder => 'Scan a kubeconfig folder';
@@ -6615,7 +6934,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeExport => 'Export kubeconfig';
 
   @override
-  String get kubeExportHelp => 'A kubeconfig file can contain credentials. Save it only to a trusted location.';
+  String get kubeExportHelp =>
+      'A kubeconfig file can contain credentials. Save it only to a trusted location.';
 
   @override
   String get kubeIncludeCredentials => 'Include credentials';
@@ -6637,7 +6957,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeAiDefaultProvider => 'Default provider on this device';
 
   @override
-  String get kubeAiConfigMaps => 'Allow reading ConfigMap values for this question';
+  String get kubeAiConfigMaps =>
+      'Allow reading ConfigMap values for this question';
 
   @override
   String get kubeAiUnresolved =>
@@ -6650,7 +6971,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeAiTruncated => 'Result was truncated.';
 
   @override
-  String get kubeAiToolFailed => 'This check could not complete. Data may be missing or access may be restricted.';
+  String get kubeAiToolFailed =>
+      'This check could not complete. Data may be missing or access may be restricted.';
 
   @override
   String get kubeAiFailed =>
@@ -6692,40 +7014,47 @@ class AppLocalizationsEn extends AppLocalizations {
       'Only the connection settings are shared by default. Authentication, local routes and approvals remain on this device.';
 
   @override
-  String get sharingKubeIncludeCredentials => 'Include authentication credentials';
+  String get sharingKubeIncludeCredentials =>
+      'Include authentication credentials';
 
   @override
   String get sharingKubeCredentialWarning =>
       'Recipients can use these credentials to access the cluster. Share them only with verified devices you trust. Revoking the share does not revoke credentials already copied by a recipient.';
 
   @override
-  String get sharingKubeCredentialsIncluded => 'Authentication is included; values stay hidden.';
+  String get sharingKubeCredentialsIncluded =>
+      'Authentication is included; values stay hidden.';
 
   @override
-  String get sharingKubeCredentialsExcluded => 'Authentication is not included.';
+  String get sharingKubeCredentialsExcluded =>
+      'Authentication is not included.';
 
   @override
   String get sharingKubeCopyHelp =>
       'Save a personal copy of this connection. Choose your own route. Authentication is imported only with your explicit selection; executable plugins still require approval on this device.';
 
   @override
-  String get sharingKubeImportCredentials => 'Import the included authentication credentials';
+  String get sharingKubeImportCredentials =>
+      'Import the included authentication credentials';
 
   @override
   String get sharingKubeRouteRequired =>
       'This connection requires a route. Select a saved SSH host or jump profile on this device.';
 
   @override
-  String get sharingKubeUnsupported => 'This server does not support sharing Kubernetes contexts.';
+  String get sharingKubeUnsupported =>
+      'This server does not support sharing Kubernetes contexts.';
 
   @override
-  String get sharingKubeSnapshotChanged => 'Review this connection again if its settings or credentials have changed.';
+  String get sharingKubeSnapshotChanged =>
+      'Review this connection again if its settings or credentials have changed.';
 
   @override
   String get kubeHistory => 'Event history';
 
   @override
-  String get kubeHistoryHelp => 'Local encrypted history for the last 7 days. Enable recording in connection settings.';
+  String get kubeHistoryHelp =>
+      'Local encrypted history for the last 7 days. Enable recording in connection settings.';
 
   @override
   String get kubeHistoryRecording => 'Recording cluster events';
@@ -6737,7 +7066,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeHistoryConnecting => 'Reconnecting the event recorder…';
 
   @override
-  String get kubeHistoryUnavailable => 'Event recording is unavailable; saved history remains readable.';
+  String get kubeHistoryUnavailable =>
+      'Event recording is unavailable; saved history remains readable.';
 
   @override
   String get kubeHistoryWarnings => 'Warnings only';
@@ -6811,19 +7141,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeCompare => 'Compare';
 
   @override
-  String get kubeDiffTruncated => 'The diff is truncated. Review the full resource before applying changes.';
+  String get kubeDiffTruncated =>
+      'The diff is truncated. Review the full resource before applying changes.';
 
   @override
   String get kubeNoChanges => 'No changes';
 
   @override
-  String get kubeDiffReview => 'Review changed fields. Secret values remain hidden.';
+  String get kubeDiffReview =>
+      'Review changed fields. Secret values remain hidden.';
 
   @override
   String get kubeFluxCliAdviceMissing => 'Flux CLI was not found. Install it?';
 
   @override
-  String get kubeFluxCliAdviceUpdate => 'The CLI is older than Flux in this cluster. Update it?';
+  String get kubeFluxCliAdviceUpdate =>
+      'The CLI is older than Flux in this cluster. Update it?';
 
   @override
   String get kubeFluxCliNeverSuggest => 'Do not suggest again';
@@ -6839,7 +7172,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Open a new terminal window after updating PATH. On macOS/Linux, add the shown line to the indicated profile file.';
 
   @override
-  String get kubeFluxCliPathAdded => 'The directory was added to the user PATH.';
+  String get kubeFluxCliPathAdded =>
+      'The directory was added to the user PATH.';
 
   @override
   String get kubeFluxCliController => 'Flux version in the cluster';
@@ -6872,7 +7206,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeIssuePendingVolume => 'Pod is waiting for a volume';
 
   @override
-  String get kubeIssueSuspendedLong => 'Reconciliation suspended for over 24 hours';
+  String get kubeIssueSuspendedLong =>
+      'Reconciliation suspended for over 24 hours';
 
   @override
   String get kubeIssueSourceStale => 'Source artifact is out of date';
@@ -6884,7 +7219,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeIssueDependencyNotReady => 'Dependency is not ready';
 
   @override
-  String get kubeIssueDependencyMissing => 'Dependency is missing or unavailable';
+  String get kubeIssueDependencyMissing =>
+      'Dependency is missing or unavailable';
 
   @override
   String get kubeExitCode => 'Exit code';
@@ -6960,7 +7296,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeLogMask => 'Mask recognized secrets before exporting';
 
   @override
-  String get kubeLogTargetsTruncated => 'Showing the first 8 pods. Open a specific pod to view others.';
+  String get kubeLogTargetsTruncated =>
+      'Showing the first 8 pods. Open a specific pod to view others.';
 
   @override
   String get kubeLogSaved => 'Logs saved.';
@@ -6969,7 +7306,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeTags => 'Tags, separated by commas';
 
   @override
-  String get kubeTagsHelp => 'Cluster tags and color are shared by its saved contexts.';
+  String get kubeTagsHelp =>
+      'Cluster tags and color are shared by its saved contexts.';
 
   @override
   String get kubeColor => 'Cluster color';
@@ -7030,7 +7368,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeAllocatable => 'Allocatable';
 
   @override
-  String get kubeResourceBudgetsUnavailable => 'Resource requests and limits are unavailable.';
+  String get kubeResourceBudgetsUnavailable =>
+      'Resource requests and limits are unavailable.';
 
   @override
   String get kubeBulkActions => 'Selected resources';
@@ -7040,7 +7379,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Review the exact list and type the context name. Operations run in order; cancellation stops after the current operation. Up to 100 resources.';
 
   @override
-  String get kubeBulkProductionBlocked => 'Bulk changes are disabled in production contexts.';
+  String get kubeBulkProductionBlocked =>
+      'Bulk changes are disabled in production contexts.';
 
   @override
   String get kubeBulkFailed =>
@@ -7124,7 +7464,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeGitOpsDrift => 'Drift detection';
 
   @override
-  String get kubeGitOpsHistoryEmpty => 'No reconciliation history is available.';
+  String get kubeGitOpsHistoryEmpty =>
+      'No reconciliation history is available.';
 
   @override
   String get kubeGitOpsControllerUnavailable =>
@@ -7138,7 +7479,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Request a new reconciliation for this source. Enter its exact name to continue.';
 
   @override
-  String get kubeGitOpsMetadataOnly => 'Only object references are shown here. Secret values are hidden.';
+  String get kubeGitOpsMetadataOnly =>
+      'Only object references are shown here. Secret values are hidden.';
 
   @override
   String get kubeResourceConfiguration => 'Workload and node configuration';
@@ -7237,7 +7579,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Choose a kubectl snippet containing YAML or JSON. Review identifiers and variables in the editor before server validation.';
 
   @override
-  String get kubeNoManifestSnippets => 'No manifest snippets yet. Save YAML or JSON as a kubectl snippet in Snippets.';
+  String get kubeNoManifestSnippets =>
+      'No manifest snippets yet. Save YAML or JSON as a kubectl snippet in Snippets.';
 
   @override
   String get kubeGitOpsSources => 'Sources';
@@ -7304,7 +7647,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get kubePreferencesFailed => 'Device preferences could not be saved or loaded. Try again.';
+  String get kubePreferencesFailed =>
+      'Device preferences could not be saved or loaded. Try again.';
 
   @override
   String get kubeContextWslHelp =>
@@ -7315,7 +7659,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'WSL cannot connect to the local proxy. Use WSL 1, WSL 2 mirrored networking or PowerShell.';
 
   @override
-  String get kubeKubectlMissing => 'kubectl was not found. It is only needed for the local cluster terminal.';
+  String get kubeKubectlMissing =>
+      'kubectl was not found. It is only needed for the local cluster terminal.';
 
   @override
   String get kubeKubectlInstall => 'Install kubectl';
@@ -7390,7 +7735,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Read-only comparison of saved manifest fields with live objects. Server defaults and controller reconciliation rules are not evaluated.';
 
   @override
-  String get kubeHelmCompareMasked => 'Masked fields are excluded from comparison.';
+  String get kubeHelmCompareMasked =>
+      'Masked fields are excluded from comparison.';
 
   @override
   String get kubeHelmCompareEqual => 'Visible fields match';
@@ -7589,7 +7935,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTerminalFontCustomTitle => 'Terminal font';
 
   @override
-  String get settingsTerminalFontCustomHint => 'Installed font name, e.g. JetBrains Mono';
+  String get settingsTerminalFontCustomHint =>
+      'Installed font name, e.g. JetBrains Mono';
 
   @override
   String get terminalTabRename => 'Rename…';
@@ -7645,7 +7992,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Another controller owns some of these fields, or the object changed. Turn on \"Take ownership of conflicting fields\" or reload the object.';
 
   @override
-  String get kubeApplyForbidden => 'The cluster does not allow you to change this object.';
+  String get kubeApplyForbidden =>
+      'The cluster does not allow you to change this object.';
 
   @override
   String get kubeApplyInvalid =>
@@ -7707,7 +8055,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sshConfigImportKeys => 'Import keys from IdentityFile';
 
   @override
-  String get sshConfigImportKeysHelp => 'A key is stored in the vault as it is; an encrypted key keeps its passphrase.';
+  String get sshConfigImportKeysHelp =>
+      'A key is stored in the vault as it is; an encrypted key keeps its passphrase.';
 
   @override
   String sshConfigVia(String hosts) {
@@ -7715,7 +8064,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sshConfigProxyCommand => 'ProxyCommand is not supported; the host is imported without it';
+  String get sshConfigProxyCommand =>
+      'ProxyCommand is not supported; the host is imported without it';
 
   @override
   String sshConfigKeyFailed(String path) {
@@ -7749,7 +8099,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsShortcutCaptureHint => 'Press a combination with ⌘/Ctrl or Alt. Esc cancels.';
+  String get settingsShortcutCaptureHint =>
+      'Press a combination with ⌘/Ctrl or Alt. Esc cancels.';
 
   @override
   String settingsShortcutConflict(String command) {
@@ -7778,7 +8129,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get kubeMetricsInsecureTls => 'Kubelets use self-signed certificates (--kubelet-insecure-tls)';
+  String get kubeMetricsInsecureTls =>
+      'Kubelets use self-signed certificates (--kubelet-insecure-tls)';
 
   @override
   String get kubeMetricsInsecureTlsHelp =>
@@ -7816,5 +8168,627 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeForwardCopyAddress => 'Copy local address';
 
   @override
-  String get kubeForwardsEmptyHelp => 'Start one from a Pod or Service: Port forward.';
+  String get kubeForwardsEmptyHelp =>
+      'Start one from a Pod or Service: Port forward.';
+
+  @override
+  String get dbTitle => 'Databases';
+
+  @override
+  String get dbSubtitle =>
+      'Encrypted connections; queries connect directly from this device.';
+
+  @override
+  String get dbUnavailable => 'Database support is unavailable in this build.';
+
+  @override
+  String get dbNewConnection => 'New database connection';
+
+  @override
+  String get dbImport => 'Import connection';
+
+  @override
+  String get dbConnectionString => 'Connection string';
+
+  @override
+  String get dbImportHelp =>
+      'The password stays in the encrypted vault. Review the destination before saving.';
+
+  @override
+  String get dbImportPgpass => 'Choose .pgpass file';
+
+  @override
+  String get dbImportExpired =>
+      'The import review expired. Import the source again.';
+
+  @override
+  String get dbEmpty => 'No database connections yet.';
+
+  @override
+  String get dbFailed =>
+      'The database operation failed. Check the connection settings and permissions.';
+
+  @override
+  String get dbInvalid => 'Check the highlighted fields.';
+
+  @override
+  String get dbRequired => 'Required';
+
+  @override
+  String get dbName => 'Connection name';
+
+  @override
+  String get dbEngine => 'Database engine';
+
+  @override
+  String get dbHost => 'Host';
+
+  @override
+  String get dbPort => 'Port';
+
+  @override
+  String get dbDatabase => 'Database / Redis index';
+
+  @override
+  String get dbUsername => 'Username';
+
+  @override
+  String get dbPassword => 'Password';
+
+  @override
+  String get dbSavePassword => 'Save password in encrypted vault';
+
+  @override
+  String get dbSavedPassword =>
+      'An existing saved password is retained unless replaced or removed.';
+
+  @override
+  String get dbClearPassword => 'Remove saved password';
+
+  @override
+  String get dbProduction => 'Production — always read only';
+
+  @override
+  String get dbProductionHelp =>
+      'Production connections never have a write window. Use a database account with read-only privileges.';
+
+  @override
+  String get dbProd => 'PROD';
+
+  @override
+  String get dbReadOnly => 'READ ONLY';
+
+  @override
+  String get dbWriteAllowed => 'Writes allowed for this session';
+
+  @override
+  String get dbAllowWrite => 'Allow writes for this session';
+
+  @override
+  String get dbAllowWriteHelp =>
+      'Only this non-production session will allow writes. Dangerous queries still require confirmation.';
+
+  @override
+  String get dbRevokeWrite => 'Return to read-only mode';
+
+  @override
+  String get dbPrivileges => 'Check privileges';
+
+  @override
+  String get dbPrivilegesWarning =>
+      'This account may have write privileges. Use a read-only role for production.';
+
+  @override
+  String get dbServerReadOnly => 'Server read-only protection is active.';
+
+  @override
+  String get dbRoleReadOnly => 'The account\'s read-only role was verified.';
+
+  @override
+  String get dbGuardOnly =>
+      'Native query protection is active; server read-only privileges are not verified.';
+
+  @override
+  String get dbTls => 'TLS protection';
+
+  @override
+  String get dbTlsVerify => 'Verify certificate and hostname';
+
+  @override
+  String get dbTlsRequire => 'Require encryption';
+
+  @override
+  String get dbTlsPrefer => 'Prefer encryption';
+
+  @override
+  String get dbTlsDisable => 'Disable TLS';
+
+  @override
+  String get dbTlsWarning =>
+      'This mode does not verify the database server identity. Prefer certificate and hostname verification.';
+
+  @override
+  String get dbTlsCa => 'Certificate authority (PEM)';
+
+  @override
+  String get dbTlsServerName => 'TLS server name override';
+
+  @override
+  String get dbClientCertificate => 'Client certificate (PEM)';
+
+  @override
+  String get dbPrivateKey => 'Client private key (PEM)';
+
+  @override
+  String get dbAuthMechanism => 'Authentication mechanism';
+
+  @override
+  String get dbAuthDefault => 'Default';
+
+  @override
+  String get dbRoute => 'Connection route';
+
+  @override
+  String get dbDirect => 'Direct';
+
+  @override
+  String get dbSsh => 'SSH host';
+
+  @override
+  String get dbJump => 'SSH jump profile';
+
+  @override
+  String get dbProxy => 'Proxy';
+
+  @override
+  String get dbRouteHelp =>
+      'TLS verification uses the original database hostname through SSH routes too.';
+
+  @override
+  String get dbGroup => 'Group';
+
+  @override
+  String get dbUngrouped => 'No group';
+
+  @override
+  String get dbTags => 'Tags, separated by commas';
+
+  @override
+  String get dbColor => 'Color (#RRGGBB)';
+
+  @override
+  String get dbLimits => 'Limits';
+
+  @override
+  String get dbMaxRows => 'Initial result rows';
+
+  @override
+  String get dbStatementTimeout => 'Query timeout, seconds';
+
+  @override
+  String get dbConnectTimeout => 'Connection timeout, seconds';
+
+  @override
+  String get dbMemoryLimit => 'Result memory, MiB';
+
+  @override
+  String get dbOptions => 'Driver settings';
+
+  @override
+  String get dbApplicationName => 'Application name';
+
+  @override
+  String get dbSearchPath => 'Search path, separated by commas';
+
+  @override
+  String get dbCharset => 'Character set';
+
+  @override
+  String get dbMongoAuthSource => 'Authentication database';
+
+  @override
+  String get dbMongoReplicaSet => 'Replica set';
+
+  @override
+  String get dbMongoSrv => 'Discover using DNS SRV';
+
+  @override
+  String get dbMongoReadPreference => 'Read preference';
+
+  @override
+  String get dbMongoReadHelp =>
+      'Read preference selects a replica; it does not prohibit writes.';
+
+  @override
+  String get dbTestConnection => 'Test connection';
+
+  @override
+  String get dbTestSuccess => 'Connection succeeded.';
+
+  @override
+  String get dbDisconnect => 'Disconnect';
+
+  @override
+  String get dbRefresh => 'Refresh';
+
+  @override
+  String get dbDeleteHelp =>
+      'Delete this saved connection? Active sessions will close.';
+
+  @override
+  String get dbLocked => 'Unlock the vault to access database connections.';
+
+  @override
+  String get dbTree => 'Structure';
+
+  @override
+  String get dbDdl => 'Show DDL';
+
+  @override
+  String get dbFirstRows => 'Preview first 100 rows';
+
+  @override
+  String get dbInsertName => 'Insert identifier';
+
+  @override
+  String get dbInspect => 'Object details';
+
+  @override
+  String get dbSampleSchema => 'Infer schema from sample';
+
+  @override
+  String get dbSampleHelp =>
+      'This reads documents from the selected collection to infer field types. No data is sent to AI.';
+
+  @override
+  String get dbLoadMore => 'Load more';
+
+  @override
+  String get dbEditor => 'Query editor';
+
+  @override
+  String get dbNewQuery => 'New query';
+
+  @override
+  String get dbRun => 'Run';
+
+  @override
+  String get dbRunCurrent => 'Current statement';
+
+  @override
+  String get dbRunSelection => 'Selection';
+
+  @override
+  String get dbRunScript => 'Whole script';
+
+  @override
+  String get dbCancelQuery => 'Cancel query';
+
+  @override
+  String get dbFormat => 'Format query';
+
+  @override
+  String get dbComment => 'Toggle line comments';
+
+  @override
+  String get dbFindReplace => 'Find and replace';
+
+  @override
+  String get dbReplace => 'Replace';
+
+  @override
+  String get dbReplaceAll => 'Replace all';
+
+  @override
+  String get dbVariables => 'Query variables';
+
+  @override
+  String get dbVariablesHelp =>
+      'Values are bound as native parameters, never concatenated into the query.';
+
+  @override
+  String get dbValueType => 'Value type';
+
+  @override
+  String get dbValue => 'Value';
+
+  @override
+  String get dbReviewQuery => 'Review query';
+
+  @override
+  String get dbQueryBlocked =>
+      'This query is blocked by connection policy. Use a non-production connection with appropriate privileges.';
+
+  @override
+  String get dbQueryDangerous =>
+      'This query can change or delete data. Review the full query and type the connection name.';
+
+  @override
+  String get dbReviewExpired =>
+      'The review expired. Run the query again to obtain a fresh review.';
+
+  @override
+  String get dbResults => 'Results';
+
+  @override
+  String get dbGrid => 'Grid';
+
+  @override
+  String get dbRecords => 'Records';
+
+  @override
+  String get dbNoResults => 'Run a query to see results.';
+
+  @override
+  String get dbNull => 'NULL';
+
+  @override
+  String get dbTruncated =>
+      'Result limit reached. Export to stream the full result.';
+
+  @override
+  String get dbCancelled => 'Query cancelled.';
+
+  @override
+  String get dbRunning => 'Query running…';
+
+  @override
+  String get dbMessages => 'Server messages';
+
+  @override
+  String get dbShowValue => 'Show full value';
+
+  @override
+  String get dbPinColumn => 'Pin column';
+
+  @override
+  String get dbUnpinColumn => 'Unpin column';
+
+  @override
+  String get dbColumns => 'Columns';
+
+  @override
+  String get dbCopyCell => 'Copy cell';
+
+  @override
+  String get dbCopyRow => 'Copy row';
+
+  @override
+  String get dbCopySelection => 'Copy selection';
+
+  @override
+  String get dbCopyResult => 'Copy loaded result';
+
+  @override
+  String get dbSensitiveClipboard =>
+      'The clipboard is cleared automatically according to your security settings.';
+
+  @override
+  String get dbExport => 'Export result';
+
+  @override
+  String get dbExportFormat => 'Format';
+
+  @override
+  String get dbExportHeader => 'Include column names';
+
+  @override
+  String get dbExportBom => 'UTF-8 byte order mark (BOM)';
+
+  @override
+  String get dbExportDelimiter => 'Delimiter';
+
+  @override
+  String get dbExportQuote => 'Quote character';
+
+  @override
+  String get dbExportHelp =>
+      'Export streams the full result to the selected file. Results may contain sensitive data.';
+
+  @override
+  String get dbExportDone => 'Export completed.';
+
+  @override
+  String get dbHistory => 'Query history';
+
+  @override
+  String get dbFavorites => 'Favorites';
+
+  @override
+  String get dbAllQueries => 'All queries';
+
+  @override
+  String get dbSuccessful => 'Successful';
+
+  @override
+  String get dbWithErrors => 'With errors';
+
+  @override
+  String get dbHistoryLocal => 'Local encrypted history';
+
+  @override
+  String get dbHistorySync => 'Encrypted synchronization';
+
+  @override
+  String get dbHistoryDisabled => 'History disabled';
+
+  @override
+  String get dbClearHistory => 'Clear query history';
+
+  @override
+  String get dbClearHistoryHelp =>
+      'Delete the saved query history for this connection?';
+
+  @override
+  String get dbSaveSnippet => 'Save as snippet';
+
+  @override
+  String get dbSnippetName => 'Snippet name';
+
+  @override
+  String get dbExplain => 'EXPLAIN';
+
+  @override
+  String get dbExplainAnalyze => 'Execute with ANALYZE';
+
+  @override
+  String get dbExplainAnalyzeHelp =>
+      'ANALYZE executes the query to collect measurements. Available only for non-production connections.';
+
+  @override
+  String get dbEditCell => 'Edit cell';
+
+  @override
+  String get dbApplyEdits => 'Review pending edits';
+
+  @override
+  String get dbDiscardEdits => 'Discard changes';
+
+  @override
+  String get dbCellEditsHelp =>
+      'Review the parameterized UPDATE statements. Changes are applied in one transaction; failure rolls it back.';
+
+  @override
+  String get dbAi => 'AI assistant';
+
+  @override
+  String get dbAiQuestion => 'Describe what you need';
+
+  @override
+  String get dbAiProvider => 'AI provider';
+
+  @override
+  String get dbAiCompose => 'Compose query';
+
+  @override
+  String get dbAiExplain => 'Explain query';
+
+  @override
+  String get dbAiFix => 'Fix with AI';
+
+  @override
+  String get dbAiOptimize => 'Optimize with AI';
+
+  @override
+  String get dbAiTranslate => 'Translate dialect';
+
+  @override
+  String get dbAiSnippet => 'Create parameterized snippet';
+
+  @override
+  String get dbAiExamples => 'Example queries';
+
+  @override
+  String get dbAiResult => 'Explain selected rows';
+
+  @override
+  String get dbAiDraft => 'AI draft — review before accepting';
+
+  @override
+  String get dbAiAccept => 'Accept draft';
+
+  @override
+  String get dbAiReject => 'Reject';
+
+  @override
+  String get dbAiRefine => 'Refine';
+
+  @override
+  String get dbAiConsent => 'Review AI context';
+
+  @override
+  String get dbAiSchema => 'Allow schema metadata';
+
+  @override
+  String get dbAiRows => 'Allow explicitly selected result rows';
+
+  @override
+  String get dbAiSample => 'Allow sample_rows (up to 20 rows)';
+
+  @override
+  String get dbAiReadonly => 'Allow run_readonly (up to 50 rows)';
+
+  @override
+  String get dbAiConsentHelp =>
+      'Schema and row data require separate consent. Tool calls are read only, shown below, and cannot apply changes.';
+
+  @override
+  String get dbAiExternal =>
+      'This provider is external. Strict privacy replaces identifiers before sending and restores them locally.';
+
+  @override
+  String get dbAiLocal => 'This provider runs locally.';
+
+  @override
+  String get dbAiContextLimit => 'Maximum schema objects in context';
+
+  @override
+  String get dbAiTools => 'Context sent to the model';
+
+  @override
+  String get dbAiNoExecute =>
+      'Accepting a draft never executes it. Use Run after reviewing.';
+
+  @override
+  String get dbAiProdDdl =>
+      'Production DDL suggestions are recommendations only and cannot be run.';
+
+  @override
+  String get dbAiRevoke => 'Revoke AI consent';
+
+  @override
+  String get dbBackgroundIos =>
+      'On iOS, a running query is cancelled after 30 seconds in the background.';
+
+  @override
+  String get dbCloseRunning =>
+      'Close this query and cancel its active request?';
+
+  @override
+  String get dbOperationFailed =>
+      'The database operation failed. Check the connection and permissions, then retry.';
+
+  @override
+  String get dbTreeSearch => 'Search loaded objects';
+
+  @override
+  String get dbInvalidValue => 'Check the value and its type.';
+
+  @override
+  String get dbComplete => 'Complete query';
+
+  @override
+  String get dbBinaryPreview => 'Hex preview (first 4096 bytes)';
+
+  @override
+  String get dbAiNewConversation => 'New conversation';
+
+  @override
+  String get dbAiHistoryMessages => 'History messages in request';
+
+  @override
+  String get dbVerifiedReadOnly =>
+      'Server-side read-only protection is verified.';
+
+  @override
+  String get dbRoleCanWrite =>
+      'This database role has write privileges. Use a dedicated read-only role for production.';
+
+  @override
+  String get dbResultStale =>
+      'Changes applied. Run the query again to refresh this result.';
+
+  @override
+  String get dbAllowWritesHelp =>
+      'Allow writes for this non-production session? Each changing query still requires review. This permission ends when the connection closes.';
+
+  @override
+  String get dbCheckPrivileges => 'Check privileges';
+
+  @override
+  String get dbAllowWrites => 'Allow writes';
+
+  @override
+  String get dbUnverifiedReadOnly =>
+      'Server-side read-only protection is unverified. Use a dedicated read-only database role.';
 }

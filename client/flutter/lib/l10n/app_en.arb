@@ -10747,5 +10747,785 @@
   "kubeForwardsEmptyHelp": "Start one from a Pod or Service: Port forward.",
   "@kubeForwardsEmptyHelp": {
     "description": "Empty state of the port forwards panel."
+  },
+  "dbTitle": "Databases",
+  "@dbTitle": {
+    "description": "Database interface: Databases"
+  },
+  "dbSubtitle": "Encrypted connections; queries connect directly from this device.",
+  "@dbSubtitle": {
+    "description": "Database interface: Encrypted connections; queries connect directly from this device."
+  },
+  "dbUnavailable": "Database support is unavailable in this build.",
+  "@dbUnavailable": {
+    "description": "Database interface: Database support is unavailable in this build."
+  },
+  "dbNewConnection": "New database connection",
+  "@dbNewConnection": {
+    "description": "Database interface: New database connection"
+  },
+  "dbImport": "Import connection",
+  "@dbImport": {
+    "description": "Database interface: Import connection"
+  },
+  "dbConnectionString": "Connection string",
+  "@dbConnectionString": {
+    "description": "Database interface: Connection string"
+  },
+  "dbImportHelp": "The password stays in the encrypted vault. Review the destination before saving.",
+  "@dbImportHelp": {
+    "description": "Database interface: The password stays in the encrypted vault. Review the destination before saving."
+  },
+  "dbImportPgpass": "Choose .pgpass file",
+  "@dbImportPgpass": {
+    "description": "Database interface: Choose .pgpass file"
+  },
+  "dbImportExpired": "The import review expired. Import the source again.",
+  "@dbImportExpired": {
+    "description": "Database interface: The import review expired. Import the source again."
+  },
+  "dbEmpty": "No database connections yet.",
+  "@dbEmpty": {
+    "description": "Database interface: No database connections yet."
+  },
+  "dbFailed": "The database operation failed. Check the connection settings and permissions.",
+  "@dbFailed": {
+    "description": "Database interface: The database operation failed. Check the connection settings and permissions."
+  },
+  "dbInvalid": "Check the highlighted fields.",
+  "@dbInvalid": {
+    "description": "Database interface: Check the highlighted fields."
+  },
+  "dbRequired": "Required",
+  "@dbRequired": {
+    "description": "Database interface: Required"
+  },
+  "dbName": "Connection name",
+  "@dbName": {
+    "description": "Database interface: Connection name"
+  },
+  "dbEngine": "Database engine",
+  "@dbEngine": {
+    "description": "Database interface: Database engine"
+  },
+  "dbHost": "Host",
+  "@dbHost": {
+    "description": "Database interface: Host"
+  },
+  "dbPort": "Port",
+  "@dbPort": {
+    "description": "Database interface: Port"
+  },
+  "dbDatabase": "Database / Redis index",
+  "@dbDatabase": {
+    "description": "Database interface: Database / Redis index"
+  },
+  "dbUsername": "Username",
+  "@dbUsername": {
+    "description": "Database interface: Username"
+  },
+  "dbPassword": "Password",
+  "@dbPassword": {
+    "description": "Database interface: Password"
+  },
+  "dbSavePassword": "Save password in encrypted vault",
+  "@dbSavePassword": {
+    "description": "Database interface: Save password in encrypted vault"
+  },
+  "dbSavedPassword": "An existing saved password is retained unless replaced or removed.",
+  "@dbSavedPassword": {
+    "description": "Database interface: An existing saved password is retained unless replaced or removed."
+  },
+  "dbClearPassword": "Remove saved password",
+  "@dbClearPassword": {
+    "description": "Database interface: Remove saved password"
+  },
+  "dbProduction": "Production — always read only",
+  "@dbProduction": {
+    "description": "Database interface: Production — always read only"
+  },
+  "dbProductionHelp": "Production connections never have a write window. Use a database account with read-only privileges.",
+  "@dbProductionHelp": {
+    "description": "Database interface: Production connections never have a write window. Use a database account with read-only privileges."
+  },
+  "dbProd": "PROD",
+  "@dbProd": {
+    "description": "Database interface: PROD"
+  },
+  "dbReadOnly": "READ ONLY",
+  "@dbReadOnly": {
+    "description": "Database interface: READ ONLY"
+  },
+  "dbWriteAllowed": "Writes allowed for this session",
+  "@dbWriteAllowed": {
+    "description": "Database interface: Writes allowed for this session"
+  },
+  "dbAllowWrite": "Allow writes for this session",
+  "@dbAllowWrite": {
+    "description": "Database interface: Allow writes for this session"
+  },
+  "dbAllowWriteHelp": "Only this non-production session will allow writes. Dangerous queries still require confirmation.",
+  "@dbAllowWriteHelp": {
+    "description": "Database interface: Only this non-production session will allow writes. Dangerous queries still require confirmation."
+  },
+  "dbRevokeWrite": "Return to read-only mode",
+  "@dbRevokeWrite": {
+    "description": "Database interface: Return to read-only mode"
+  },
+  "dbPrivileges": "Check privileges",
+  "@dbPrivileges": {
+    "description": "Database interface: Check privileges"
+  },
+  "dbPrivilegesWarning": "This account may have write privileges. Use a read-only role for production.",
+  "@dbPrivilegesWarning": {
+    "description": "Database interface: This account may have write privileges. Use a read-only role for production."
+  },
+  "dbServerReadOnly": "Server read-only protection is active.",
+  "@dbServerReadOnly": {
+    "description": "Database interface: Server read-only protection is active."
+  },
+  "dbRoleReadOnly": "The account's read-only role was verified.",
+  "@dbRoleReadOnly": {
+    "description": "Database interface: The account's read-only role was verified."
+  },
+  "dbGuardOnly": "Native query protection is active; server read-only privileges are not verified.",
+  "@dbGuardOnly": {
+    "description": "Database interface: Native query protection is active; server read-only privileges are not verified."
+  },
+  "dbTls": "TLS protection",
+  "@dbTls": {
+    "description": "Database interface: TLS protection"
+  },
+  "dbTlsVerify": "Verify certificate and hostname",
+  "@dbTlsVerify": {
+    "description": "Database interface: Verify certificate and hostname"
+  },
+  "dbTlsRequire": "Require encryption",
+  "@dbTlsRequire": {
+    "description": "Database interface: Require encryption"
+  },
+  "dbTlsPrefer": "Prefer encryption",
+  "@dbTlsPrefer": {
+    "description": "Database interface: Prefer encryption"
+  },
+  "dbTlsDisable": "Disable TLS",
+  "@dbTlsDisable": {
+    "description": "Database interface: Disable TLS"
+  },
+  "dbTlsWarning": "This mode does not verify the database server identity. Prefer certificate and hostname verification.",
+  "@dbTlsWarning": {
+    "description": "Database interface: This mode does not verify the database server identity. Prefer certificate and hostname verification."
+  },
+  "dbTlsCa": "Certificate authority (PEM)",
+  "@dbTlsCa": {
+    "description": "Database interface: Certificate authority (PEM)"
+  },
+  "dbTlsServerName": "TLS server name override",
+  "@dbTlsServerName": {
+    "description": "Database interface: TLS server name override"
+  },
+  "dbClientCertificate": "Client certificate (PEM)",
+  "@dbClientCertificate": {
+    "description": "Database interface: Client certificate (PEM)"
+  },
+  "dbPrivateKey": "Client private key (PEM)",
+  "@dbPrivateKey": {
+    "description": "Database interface: Client private key (PEM)"
+  },
+  "dbAuthMechanism": "Authentication mechanism",
+  "@dbAuthMechanism": {
+    "description": "Database interface: Authentication mechanism"
+  },
+  "dbAuthDefault": "Default",
+  "@dbAuthDefault": {
+    "description": "Database interface: Default"
+  },
+  "dbRoute": "Connection route",
+  "@dbRoute": {
+    "description": "Database interface: Connection route"
+  },
+  "dbDirect": "Direct",
+  "@dbDirect": {
+    "description": "Database interface: Direct"
+  },
+  "dbSsh": "SSH host",
+  "@dbSsh": {
+    "description": "Database interface: SSH host"
+  },
+  "dbJump": "SSH jump profile",
+  "@dbJump": {
+    "description": "Database interface: SSH jump profile"
+  },
+  "dbProxy": "Proxy",
+  "@dbProxy": {
+    "description": "Database interface: Proxy"
+  },
+  "dbRouteHelp": "TLS verification uses the original database hostname through SSH routes too.",
+  "@dbRouteHelp": {
+    "description": "Database interface: TLS verification uses the original database hostname through SSH routes too."
+  },
+  "dbGroup": "Group",
+  "@dbGroup": {
+    "description": "Database interface: Group"
+  },
+  "dbUngrouped": "No group",
+  "@dbUngrouped": {
+    "description": "Database interface: No group"
+  },
+  "dbTags": "Tags, separated by commas",
+  "@dbTags": {
+    "description": "Database interface: Tags, separated by commas"
+  },
+  "dbColor": "Color (#RRGGBB)",
+  "@dbColor": {
+    "description": "Database interface: Color (#RRGGBB)"
+  },
+  "dbLimits": "Limits",
+  "@dbLimits": {
+    "description": "Database interface: Limits"
+  },
+  "dbMaxRows": "Initial result rows",
+  "@dbMaxRows": {
+    "description": "Database interface: Initial result rows"
+  },
+  "dbStatementTimeout": "Query timeout, seconds",
+  "@dbStatementTimeout": {
+    "description": "Database interface: Query timeout, seconds"
+  },
+  "dbConnectTimeout": "Connection timeout, seconds",
+  "@dbConnectTimeout": {
+    "description": "Database interface: Connection timeout, seconds"
+  },
+  "dbMemoryLimit": "Result memory, MiB",
+  "@dbMemoryLimit": {
+    "description": "Database interface: Result memory, MiB"
+  },
+  "dbOptions": "Driver settings",
+  "@dbOptions": {
+    "description": "Database interface: Driver settings"
+  },
+  "dbApplicationName": "Application name",
+  "@dbApplicationName": {
+    "description": "Database interface: Application name"
+  },
+  "dbSearchPath": "Search path, separated by commas",
+  "@dbSearchPath": {
+    "description": "Database interface: Search path, separated by commas"
+  },
+  "dbCharset": "Character set",
+  "@dbCharset": {
+    "description": "Database interface: Character set"
+  },
+  "dbMongoAuthSource": "Authentication database",
+  "@dbMongoAuthSource": {
+    "description": "Database interface: Authentication database"
+  },
+  "dbMongoReplicaSet": "Replica set",
+  "@dbMongoReplicaSet": {
+    "description": "Database interface: Replica set"
+  },
+  "dbMongoSrv": "Discover using DNS SRV",
+  "@dbMongoSrv": {
+    "description": "Database interface: Discover using DNS SRV"
+  },
+  "dbMongoReadPreference": "Read preference",
+  "@dbMongoReadPreference": {
+    "description": "Database interface: Read preference"
+  },
+  "dbMongoReadHelp": "Read preference selects a replica; it does not prohibit writes.",
+  "@dbMongoReadHelp": {
+    "description": "Database interface: Read preference selects a replica; it does not prohibit writes."
+  },
+  "dbTestConnection": "Test connection",
+  "@dbTestConnection": {
+    "description": "Database interface: Test connection"
+  },
+  "dbTestSuccess": "Connection succeeded.",
+  "@dbTestSuccess": {
+    "description": "Database interface: Connection succeeded."
+  },
+  "dbDisconnect": "Disconnect",
+  "@dbDisconnect": {
+    "description": "Database interface: Disconnect"
+  },
+  "dbRefresh": "Refresh",
+  "@dbRefresh": {
+    "description": "Database interface: Refresh"
+  },
+  "dbDeleteHelp": "Delete this saved connection? Active sessions will close.",
+  "@dbDeleteHelp": {
+    "description": "Database interface: Delete this saved connection? Active sessions will close."
+  },
+  "dbLocked": "Unlock the vault to access database connections.",
+  "@dbLocked": {
+    "description": "Database interface: Unlock the vault to access database connections."
+  },
+  "dbTree": "Structure",
+  "@dbTree": {
+    "description": "Database interface: Structure"
+  },
+  "dbDdl": "Show DDL",
+  "@dbDdl": {
+    "description": "Database interface: Show DDL"
+  },
+  "dbFirstRows": "Preview first 100 rows",
+  "@dbFirstRows": {
+    "description": "Database interface: Preview first 100 rows"
+  },
+  "dbInsertName": "Insert identifier",
+  "@dbInsertName": {
+    "description": "Database interface: Insert identifier"
+  },
+  "dbInspect": "Object details",
+  "@dbInspect": {
+    "description": "Database interface: Object details"
+  },
+  "dbSampleSchema": "Infer schema from sample",
+  "@dbSampleSchema": {
+    "description": "Database interface: Infer schema from sample"
+  },
+  "dbSampleHelp": "This reads documents from the selected collection to infer field types. No data is sent to AI.",
+  "@dbSampleHelp": {
+    "description": "Database interface: This reads documents from the selected collection to infer field types. No data is sent to AI."
+  },
+  "dbLoadMore": "Load more",
+  "@dbLoadMore": {
+    "description": "Database interface: Load more"
+  },
+  "dbEditor": "Query editor",
+  "@dbEditor": {
+    "description": "Database interface: Query editor"
+  },
+  "dbNewQuery": "New query",
+  "@dbNewQuery": {
+    "description": "Database interface: New query"
+  },
+  "dbRun": "Run",
+  "@dbRun": {
+    "description": "Database interface: Run"
+  },
+  "dbRunCurrent": "Current statement",
+  "@dbRunCurrent": {
+    "description": "Database interface: Current statement"
+  },
+  "dbRunSelection": "Selection",
+  "@dbRunSelection": {
+    "description": "Database interface: Selection"
+  },
+  "dbRunScript": "Whole script",
+  "@dbRunScript": {
+    "description": "Database interface: Whole script"
+  },
+  "dbCancelQuery": "Cancel query",
+  "@dbCancelQuery": {
+    "description": "Database interface: Cancel query"
+  },
+  "dbFormat": "Format query",
+  "@dbFormat": {
+    "description": "Database interface: Format query"
+  },
+  "dbComment": "Toggle line comments",
+  "@dbComment": {
+    "description": "Database interface: Toggle line comments"
+  },
+  "dbFindReplace": "Find and replace",
+  "@dbFindReplace": {
+    "description": "Database interface: Find and replace"
+  },
+  "dbReplace": "Replace",
+  "@dbReplace": {
+    "description": "Database interface: Replace"
+  },
+  "dbReplaceAll": "Replace all",
+  "@dbReplaceAll": {
+    "description": "Database interface: Replace all"
+  },
+  "dbVariables": "Query variables",
+  "@dbVariables": {
+    "description": "Database interface: Query variables"
+  },
+  "dbVariablesHelp": "Values are bound as native parameters, never concatenated into the query.",
+  "@dbVariablesHelp": {
+    "description": "Database interface: Values are bound as native parameters, never concatenated into the query."
+  },
+  "dbValueType": "Value type",
+  "@dbValueType": {
+    "description": "Database interface: Value type"
+  },
+  "dbValue": "Value",
+  "@dbValue": {
+    "description": "Database interface: Value"
+  },
+  "dbReviewQuery": "Review query",
+  "@dbReviewQuery": {
+    "description": "Database interface: Review query"
+  },
+  "dbQueryBlocked": "This query is blocked by connection policy. Use a non-production connection with appropriate privileges.",
+  "@dbQueryBlocked": {
+    "description": "Database interface: This query is blocked by connection policy. Use a non-production connection with appropriate privileges."
+  },
+  "dbQueryDangerous": "This query can change or delete data. Review the full query and type the connection name.",
+  "@dbQueryDangerous": {
+    "description": "Database interface: This query can change or delete data. Review the full query and type the connection name."
+  },
+  "dbReviewExpired": "The review expired. Run the query again to obtain a fresh review.",
+  "@dbReviewExpired": {
+    "description": "Database interface: The review expired. Run the query again to obtain a fresh review."
+  },
+  "dbResults": "Results",
+  "@dbResults": {
+    "description": "Database interface: Results"
+  },
+  "dbGrid": "Grid",
+  "@dbGrid": {
+    "description": "Database interface: Grid"
+  },
+  "dbRecords": "Records",
+  "@dbRecords": {
+    "description": "Database interface: Records"
+  },
+  "dbNoResults": "Run a query to see results.",
+  "@dbNoResults": {
+    "description": "Database interface: Run a query to see results."
+  },
+  "dbNull": "NULL",
+  "@dbNull": {
+    "description": "Database interface: NULL"
+  },
+  "dbTruncated": "Result limit reached. Export to stream the full result.",
+  "@dbTruncated": {
+    "description": "Database interface: Result limit reached. Export to stream the full result."
+  },
+  "dbCancelled": "Query cancelled.",
+  "@dbCancelled": {
+    "description": "Database interface: Query cancelled."
+  },
+  "dbRunning": "Query running…",
+  "@dbRunning": {
+    "description": "Database interface: Query running…"
+  },
+  "dbMessages": "Server messages",
+  "@dbMessages": {
+    "description": "Database interface: Server messages"
+  },
+  "dbShowValue": "Show full value",
+  "@dbShowValue": {
+    "description": "Database interface: Show full value"
+  },
+  "dbPinColumn": "Pin column",
+  "@dbPinColumn": {
+    "description": "Database interface: Pin column"
+  },
+  "dbUnpinColumn": "Unpin column",
+  "@dbUnpinColumn": {
+    "description": "Database interface: Unpin column"
+  },
+  "dbColumns": "Columns",
+  "@dbColumns": {
+    "description": "Database interface: Columns"
+  },
+  "dbCopyCell": "Copy cell",
+  "@dbCopyCell": {
+    "description": "Database interface: Copy cell"
+  },
+  "dbCopyRow": "Copy row",
+  "@dbCopyRow": {
+    "description": "Database interface: Copy row"
+  },
+  "dbCopySelection": "Copy selection",
+  "@dbCopySelection": {
+    "description": "Database interface: Copy selection"
+  },
+  "dbCopyResult": "Copy loaded result",
+  "@dbCopyResult": {
+    "description": "Database interface: Copy loaded result"
+  },
+  "dbSensitiveClipboard": "The clipboard is cleared automatically according to your security settings.",
+  "@dbSensitiveClipboard": {
+    "description": "Database workspace interface."
+  },
+  "dbExport": "Export result",
+  "@dbExport": {
+    "description": "Database interface: Export result"
+  },
+  "dbExportFormat": "Format",
+  "@dbExportFormat": {
+    "description": "Database interface: Format"
+  },
+  "dbExportHeader": "Include column names",
+  "@dbExportHeader": {
+    "description": "Database interface: Include column names"
+  },
+  "dbExportBom": "UTF-8 byte order mark (BOM)",
+  "@dbExportBom": {
+    "description": "Database interface: UTF-8 byte order mark (BOM)"
+  },
+  "dbExportDelimiter": "Delimiter",
+  "@dbExportDelimiter": {
+    "description": "Database interface: Delimiter"
+  },
+  "dbExportQuote": "Quote character",
+  "@dbExportQuote": {
+    "description": "Database interface: Quote character"
+  },
+  "dbExportHelp": "Export streams the full result to the selected file. Results may contain sensitive data.",
+  "@dbExportHelp": {
+    "description": "Database interface: Export streams the full result to the selected file. Results may contain sensitive data."
+  },
+  "dbExportDone": "Export completed.",
+  "@dbExportDone": {
+    "description": "Database interface: Export completed."
+  },
+  "dbHistory": "Query history",
+  "@dbHistory": {
+    "description": "Database interface: Query history"
+  },
+  "dbFavorites": "Favorites",
+  "@dbFavorites": {
+    "description": "Database interface: Favorites"
+  },
+  "dbAllQueries": "All queries",
+  "@dbAllQueries": {
+    "description": "Database interface: All queries"
+  },
+  "dbSuccessful": "Successful",
+  "@dbSuccessful": {
+    "description": "Database interface: Successful"
+  },
+  "dbWithErrors": "With errors",
+  "@dbWithErrors": {
+    "description": "Database interface: With errors"
+  },
+  "dbHistoryLocal": "Local encrypted history",
+  "@dbHistoryLocal": {
+    "description": "Database interface: Local encrypted history"
+  },
+  "dbHistorySync": "Encrypted synchronization",
+  "@dbHistorySync": {
+    "description": "Database interface: Encrypted synchronization"
+  },
+  "dbHistoryDisabled": "History disabled",
+  "@dbHistoryDisabled": {
+    "description": "Database interface: History disabled"
+  },
+  "dbClearHistory": "Clear query history",
+  "@dbClearHistory": {
+    "description": "Database interface: Clear query history"
+  },
+  "dbClearHistoryHelp": "Delete the saved query history for this connection?",
+  "@dbClearHistoryHelp": {
+    "description": "Database interface: Delete the saved query history for this connection?"
+  },
+  "dbSaveSnippet": "Save as snippet",
+  "@dbSaveSnippet": {
+    "description": "Database interface: Save as snippet"
+  },
+  "dbSnippetName": "Snippet name",
+  "@dbSnippetName": {
+    "description": "Database interface: Snippet name"
+  },
+  "dbExplain": "EXPLAIN",
+  "@dbExplain": {
+    "description": "Database interface: EXPLAIN"
+  },
+  "dbExplainAnalyze": "Execute with ANALYZE",
+  "@dbExplainAnalyze": {
+    "description": "Database interface: Execute with ANALYZE"
+  },
+  "dbExplainAnalyzeHelp": "ANALYZE executes the query to collect measurements. Available only for non-production connections.",
+  "@dbExplainAnalyzeHelp": {
+    "description": "Database interface: ANALYZE executes the query to collect measurements. Available only for non-production connections."
+  },
+  "dbEditCell": "Edit cell",
+  "@dbEditCell": {
+    "description": "Database interface: Edit cell"
+  },
+  "dbApplyEdits": "Review pending edits",
+  "@dbApplyEdits": {
+    "description": "Database interface: Review pending edits"
+  },
+  "dbDiscardEdits": "Discard changes",
+  "@dbDiscardEdits": {
+    "description": "Database interface: Discard changes"
+  },
+  "dbCellEditsHelp": "Review the parameterized UPDATE statements. Changes are applied in one transaction; failure rolls it back.",
+  "@dbCellEditsHelp": {
+    "description": "Database interface: Review the parameterized UPDATE statements. Changes are applied in one transaction; failure rolls it back."
+  },
+  "dbAi": "AI assistant",
+  "@dbAi": {
+    "description": "Database interface: AI assistant"
+  },
+  "dbAiQuestion": "Describe what you need",
+  "@dbAiQuestion": {
+    "description": "Database interface: Describe what you need"
+  },
+  "dbAiProvider": "AI provider",
+  "@dbAiProvider": {
+    "description": "Database interface: AI provider"
+  },
+  "dbAiCompose": "Compose query",
+  "@dbAiCompose": {
+    "description": "Database interface: Compose query"
+  },
+  "dbAiExplain": "Explain query",
+  "@dbAiExplain": {
+    "description": "Database interface: Explain query"
+  },
+  "dbAiFix": "Fix with AI",
+  "@dbAiFix": {
+    "description": "Database interface: Fix with AI"
+  },
+  "dbAiOptimize": "Optimize with AI",
+  "@dbAiOptimize": {
+    "description": "Database interface: Optimize with AI"
+  },
+  "dbAiTranslate": "Translate dialect",
+  "@dbAiTranslate": {
+    "description": "Database interface: Translate dialect"
+  },
+  "dbAiSnippet": "Create parameterized snippet",
+  "@dbAiSnippet": {
+    "description": "Database interface: Create parameterized snippet"
+  },
+  "dbAiExamples": "Example queries",
+  "@dbAiExamples": {
+    "description": "Database interface: Example queries"
+  },
+  "dbAiResult": "Explain selected rows",
+  "@dbAiResult": {
+    "description": "Database interface: Explain selected rows"
+  },
+  "dbAiDraft": "AI draft — review before accepting",
+  "@dbAiDraft": {
+    "description": "Database interface: AI draft — review before accepting"
+  },
+  "dbAiAccept": "Accept draft",
+  "@dbAiAccept": {
+    "description": "Database interface: Accept draft"
+  },
+  "dbAiReject": "Reject",
+  "@dbAiReject": {
+    "description": "Database interface: Reject"
+  },
+  "dbAiRefine": "Refine",
+  "@dbAiRefine": {
+    "description": "Database interface: Refine"
+  },
+  "dbAiConsent": "Review AI context",
+  "@dbAiConsent": {
+    "description": "Database interface: Review AI context"
+  },
+  "dbAiSchema": "Allow schema metadata",
+  "@dbAiSchema": {
+    "description": "Database interface: Allow schema metadata"
+  },
+  "dbAiRows": "Allow explicitly selected result rows",
+  "@dbAiRows": {
+    "description": "Database interface: Allow explicitly selected result rows"
+  },
+  "dbAiSample": "Allow sample_rows (up to 20 rows)",
+  "@dbAiSample": {
+    "description": "Database interface: Allow sample_rows (up to 20 rows)"
+  },
+  "dbAiReadonly": "Allow run_readonly (up to 50 rows)",
+  "@dbAiReadonly": {
+    "description": "Database interface: Allow run_readonly (up to 50 rows)"
+  },
+  "dbAiConsentHelp": "Schema and row data require separate consent. Tool calls are read only, shown below, and cannot apply changes.",
+  "@dbAiConsentHelp": {
+    "description": "Database interface: Schema and row data require separate consent. Tool calls are read only, shown below, and cannot apply changes."
+  },
+  "dbAiExternal": "This provider is external. Strict privacy replaces identifiers before sending and restores them locally.",
+  "@dbAiExternal": {
+    "description": "Database interface: This provider is external. Strict privacy replaces identifiers before sending and restores them locally."
+  },
+  "dbAiLocal": "This provider runs locally.",
+  "@dbAiLocal": {
+    "description": "Database interface: This provider runs locally."
+  },
+  "dbAiContextLimit": "Maximum schema objects in context",
+  "@dbAiContextLimit": {
+    "description": "Database interface: Maximum schema objects in context"
+  },
+  "dbAiTools": "Context sent to the model",
+  "@dbAiTools": {
+    "description": "Database interface: Context sent to the model"
+  },
+  "dbAiNoExecute": "Accepting a draft never executes it. Use Run after reviewing.",
+  "@dbAiNoExecute": {
+    "description": "Database interface: Accepting a draft never executes it. Use Run after reviewing."
+  },
+  "dbAiProdDdl": "Production DDL suggestions are recommendations only and cannot be run.",
+  "@dbAiProdDdl": {
+    "description": "Database interface: Production DDL suggestions are recommendations only and cannot be run."
+  },
+  "dbAiRevoke": "Revoke AI consent",
+  "@dbAiRevoke": {
+    "description": "Database interface: Revoke AI consent"
+  },
+  "dbBackgroundIos": "On iOS, a running query is cancelled after 30 seconds in the background.",
+  "@dbBackgroundIos": {
+    "description": "Database interface: On iOS, a running query is cancelled after 30 seconds in the background."
+  },
+  "dbCloseRunning": "Close this query and cancel its active request?",
+  "@dbCloseRunning": {
+    "description": "Database interface: Close this query and cancel its active request?"
+  },
+  "dbOperationFailed": "The database operation failed. Check the connection and permissions, then retry.",
+  "@dbOperationFailed": {
+    "description": "Database workspace interface."
+  },
+  "dbTreeSearch": "Search loaded objects",
+  "@dbTreeSearch": {
+    "description": "Database workspace interface."
+  },
+  "dbInvalidValue": "Check the value and its type.",
+  "@dbInvalidValue": {
+    "description": "Database workspace interface."
+  },
+  "dbComplete": "Complete query",
+  "@dbComplete": {
+    "description": "Database workspace interface."
+  },
+  "dbBinaryPreview": "Hex preview (first 4096 bytes)",
+  "@dbBinaryPreview": {
+    "description": "Database workspace interface."
+  },
+  "dbAiNewConversation": "New conversation",
+  "@dbAiNewConversation": {
+    "description": "Database workspace interface."
+  },
+  "dbAiHistoryMessages": "History messages in request",
+  "@dbAiHistoryMessages": {
+    "description": "Database workspace interface."
+  },
+  "dbVerifiedReadOnly": "Server-side read-only protection is verified.",
+  "@dbVerifiedReadOnly": {
+    "description": "Database workspace interface."
+  },
+  "dbRoleCanWrite": "This database role has write privileges. Use a dedicated read-only role for production.",
+  "@dbRoleCanWrite": {
+    "description": "Database workspace interface."
+  },
+  "dbResultStale": "Changes applied. Run the query again to refresh this result.",
+  "@dbResultStale": {
+    "description": "Database workspace interface."
+  },
+  "dbAllowWritesHelp": "Allow writes for this non-production session? Each changing query still requires review. This permission ends when the connection closes.",
+  "@dbAllowWritesHelp": {
+    "description": "Database workspace interface."
+  },
+  "dbCheckPrivileges": "Check privileges",
+  "@dbCheckPrivileges": {
+    "description": "Database workspace interface."
+  },
+  "dbAllowWrites": "Allow writes",
+  "@dbAllowWrites": {
+    "description": "Database workspace interface."
+  },
+  "dbUnverifiedReadOnly": "Server-side read-only protection is unverified. Use a dedicated read-only database role.",
+  "@dbUnverifiedReadOnly": {
+    "description": "Database workspace interface."
   }
 }

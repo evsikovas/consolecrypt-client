@@ -258,7 +258,7 @@ fn object(snapshot: &BTreeMap<ObjectId, Entry>, id: ObjectId) -> AppResult<&Vaul
 
 /// Include inherited SSH/jump/proxy credentials as well as direct Kubernetes
 /// credentials. A remote edit cannot silently redirect an existing connection.
-fn dependencies(
+pub(crate) fn dependencies(
     snapshot: &BTreeMap<ObjectId, Entry>,
     root: ObjectId,
 ) -> AppResult<BTreeMap<ObjectId, i64>> {
@@ -277,6 +277,11 @@ fn dependencies(
         result.insert(id, entry.revision);
         if let Item::Object(value) = &entry.item {
             match value.as_ref() {
+                VaultObject::DbConnection(v) => {
+                    pending.extend(v.route.reference());
+                    pending.extend(v.auth.secret_ids());
+                    pending.extend(v.group_id);
+                }
                 VaultObject::KubeContext(v) => {
                     pending.push(v.cluster_id);
                     pending.extend(v.auth.secret_ids());

@@ -15,3 +15,20 @@ pub struct HistoryEntry {
     pub exit_code: Option<i32>,
     pub executed_at: Timestamp,
 }
+
+/// Database query history contains the source template, never bound parameter
+/// values, connection credentials, result rows, or raw database error messages.
+/// It becomes a vault object only after an explicit encrypted-sync preference.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DbHistoryEntry {
+    pub id: ObjectId,
+    pub connection_id: ObjectId,
+    pub engine: crate::database::DbEngine,
+    pub text: crate::secret::SecretValue,
+    pub created_at: Timestamp,
+    pub elapsed_ms: u64,
+    pub rows: u64,
+    pub error_code: Option<String>,
+    #[serde(default)]
+    pub favorite: bool,
+}

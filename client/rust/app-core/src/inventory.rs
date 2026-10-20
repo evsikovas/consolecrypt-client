@@ -28,6 +28,24 @@ fn exists(ws: &WorkingSet, id: ObjectId, kind: ObjectKind, field: &str) -> AppRe
 /// Referential integrity of an object about to be saved.
 pub(crate) fn validate_refs(ws: &WorkingSet, obj: &VaultObject) -> AppResult<()> {
     match obj {
+        VaultObject::DbConnection(connection) => {
+            use cc_models::database::DbRoute;
+            connection.validate()?;
+            match &connection.route {
+                DbRoute::Direct => {}
+                DbRoute::Ssh { host_id } => exists(ws, *host_id, ObjectKind::Host, "route")?,
+                DbRoute::Jump { jump_profile_id } => {
+                    exists(ws, *jump_profile_id, ObjectKind::JumpProfile, "route")?
+                }
+                DbRoute::Proxy { proxy_id } => exists(ws, *proxy_id, ObjectKind::Proxy, "route")?,
+            }
+            if let Some(id) = connection.group_id {
+                exists(ws, id, ObjectKind::Group, "group_id")?;
+            }
+            for id in connection.auth.secret_ids() {
+                exists(ws, id, ObjectKind::Secret, "auth")?;
+            }
+        }
         VaultObject::KubeCluster(cluster) => {
             use cc_models::kubernetes::KubeRoute;
             cluster.validate()?;
@@ -160,6 +178,11 @@ fn referrers(ws: &WorkingSet, id: ObjectId) -> Vec<String> {
     let mut out = Vec::new();
     for o in ws.objects() {
         let hit = match &o {
+            VaultObject::DbConnection(c) => {
+                c.route.reference() == Some(id)
+                    || c.group_id == Some(id)
+                    || c.auth.secret_ids().contains(&id)
+            }
             VaultObject::KubeCluster(c) => c.route.reference() == Some(id),
             VaultObject::KubeContext(c) => c.cluster_id == id || c.auth.secret_ids().contains(&id),
             VaultObject::RdpHost(h) => h.credential_id == Some(id) || h.group_id == Some(id),

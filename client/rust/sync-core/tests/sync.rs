@@ -464,7 +464,9 @@ async fn websocket_1011_reconnects_without_forgetting_credentials() {
                 _ => {}
             }
         }
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
     // An unavailable server-side session DB is a transient condition,
     // unlike the authenticated application close code for revocation.
     server.close_websockets(1011);
@@ -473,12 +475,16 @@ async fn websocket_1011_reconnects_without_forgetting_credentials() {
         loop {
             match rx.recv().await.unwrap() {
                 WsEvent::Disconnected { .. } => disconnected = true,
-                WsEvent::Event(cc_protocol::events::ServerEvent::Hello { .. }) if disconnected => break,
+                WsEvent::Event(cc_protocol::events::ServerEvent::Hello { .. }) if disconnected => {
+                    break
+                }
                 WsEvent::Terminated { .. } => panic!("transient close revoked the session"),
                 _ => {}
             }
         }
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
     assert!(b.api.is_authenticated().await.unwrap());
     assert!(b.api.me().await.is_ok());
     events.shutdown().await;

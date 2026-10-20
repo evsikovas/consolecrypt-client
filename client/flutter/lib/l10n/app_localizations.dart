@@ -62,7 +62,8 @@ import 'app_localizations_ru.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -70,7 +71,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -82,15 +84,19 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('ru'),
+  ];
 
   /// Button: dismiss a dialog without changes.
   ///
@@ -1752,13 +1758,19 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · registration open'**
-  String loginServerInfoRegistrationOpen(String serverVersion, String protocolVersion);
+  String loginServerInfoRegistrationOpen(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Login screen: result of a successful server check when registration is invite-only.
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · invite only'**
-  String loginServerInfoInviteOnly(String serverVersion, String protocolVersion);
+  String loginServerInfoInviteOnly(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Login screen: segmented button option to sign in to an existing account.
   ///
@@ -3054,7 +3066,10 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion}'**
-  String enableSyncDialogServerInfo(String serverVersion, String protocolVersion);
+  String enableSyncDialogServerInfo(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Enable-sync wizard segment: register a new account.
   ///
@@ -14053,9 +14068,1180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start one from a Pod or Service: Port forward.'**
   String get kubeForwardsEmptyHelp;
+
+  /// Database interface: Databases
+  ///
+  /// In en, this message translates to:
+  /// **'Databases'**
+  String get dbTitle;
+
+  /// Database interface: Encrypted connections; queries connect directly from this device.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted connections; queries connect directly from this device.'**
+  String get dbSubtitle;
+
+  /// Database interface: Database support is unavailable in this build.
+  ///
+  /// In en, this message translates to:
+  /// **'Database support is unavailable in this build.'**
+  String get dbUnavailable;
+
+  /// Database interface: New database connection
+  ///
+  /// In en, this message translates to:
+  /// **'New database connection'**
+  String get dbNewConnection;
+
+  /// Database interface: Import connection
+  ///
+  /// In en, this message translates to:
+  /// **'Import connection'**
+  String get dbImport;
+
+  /// Database interface: Connection string
+  ///
+  /// In en, this message translates to:
+  /// **'Connection string'**
+  String get dbConnectionString;
+
+  /// Database interface: The password stays in the encrypted vault. Review the destination before saving.
+  ///
+  /// In en, this message translates to:
+  /// **'The password stays in the encrypted vault. Review the destination before saving.'**
+  String get dbImportHelp;
+
+  /// Database interface: Choose .pgpass file
+  ///
+  /// In en, this message translates to:
+  /// **'Choose .pgpass file'**
+  String get dbImportPgpass;
+
+  /// Database interface: The import review expired. Import the source again.
+  ///
+  /// In en, this message translates to:
+  /// **'The import review expired. Import the source again.'**
+  String get dbImportExpired;
+
+  /// Database interface: No database connections yet.
+  ///
+  /// In en, this message translates to:
+  /// **'No database connections yet.'**
+  String get dbEmpty;
+
+  /// Database interface: The database operation failed. Check the connection settings and permissions.
+  ///
+  /// In en, this message translates to:
+  /// **'The database operation failed. Check the connection settings and permissions.'**
+  String get dbFailed;
+
+  /// Database interface: Check the highlighted fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the highlighted fields.'**
+  String get dbInvalid;
+
+  /// Database interface: Required
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get dbRequired;
+
+  /// Database interface: Connection name
+  ///
+  /// In en, this message translates to:
+  /// **'Connection name'**
+  String get dbName;
+
+  /// Database interface: Database engine
+  ///
+  /// In en, this message translates to:
+  /// **'Database engine'**
+  String get dbEngine;
+
+  /// Database interface: Host
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get dbHost;
+
+  /// Database interface: Port
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get dbPort;
+
+  /// Database interface: Database / Redis index
+  ///
+  /// In en, this message translates to:
+  /// **'Database / Redis index'**
+  String get dbDatabase;
+
+  /// Database interface: Username
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get dbUsername;
+
+  /// Database interface: Password
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get dbPassword;
+
+  /// Database interface: Save password in encrypted vault
+  ///
+  /// In en, this message translates to:
+  /// **'Save password in encrypted vault'**
+  String get dbSavePassword;
+
+  /// Database interface: An existing saved password is retained unless replaced or removed.
+  ///
+  /// In en, this message translates to:
+  /// **'An existing saved password is retained unless replaced or removed.'**
+  String get dbSavedPassword;
+
+  /// Database interface: Remove saved password
+  ///
+  /// In en, this message translates to:
+  /// **'Remove saved password'**
+  String get dbClearPassword;
+
+  /// Database interface: Production — always read only
+  ///
+  /// In en, this message translates to:
+  /// **'Production — always read only'**
+  String get dbProduction;
+
+  /// Database interface: Production connections never have a write window. Use a database account with read-only privileges.
+  ///
+  /// In en, this message translates to:
+  /// **'Production connections never have a write window. Use a database account with read-only privileges.'**
+  String get dbProductionHelp;
+
+  /// Database interface: PROD
+  ///
+  /// In en, this message translates to:
+  /// **'PROD'**
+  String get dbProd;
+
+  /// Database interface: READ ONLY
+  ///
+  /// In en, this message translates to:
+  /// **'READ ONLY'**
+  String get dbReadOnly;
+
+  /// Database interface: Writes allowed for this session
+  ///
+  /// In en, this message translates to:
+  /// **'Writes allowed for this session'**
+  String get dbWriteAllowed;
+
+  /// Database interface: Allow writes for this session
+  ///
+  /// In en, this message translates to:
+  /// **'Allow writes for this session'**
+  String get dbAllowWrite;
+
+  /// Database interface: Only this non-production session will allow writes. Dangerous queries still require confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Only this non-production session will allow writes. Dangerous queries still require confirmation.'**
+  String get dbAllowWriteHelp;
+
+  /// Database interface: Return to read-only mode
+  ///
+  /// In en, this message translates to:
+  /// **'Return to read-only mode'**
+  String get dbRevokeWrite;
+
+  /// Database interface: Check privileges
+  ///
+  /// In en, this message translates to:
+  /// **'Check privileges'**
+  String get dbPrivileges;
+
+  /// Database interface: This account may have write privileges. Use a read-only role for production.
+  ///
+  /// In en, this message translates to:
+  /// **'This account may have write privileges. Use a read-only role for production.'**
+  String get dbPrivilegesWarning;
+
+  /// Database interface: Server read-only protection is active.
+  ///
+  /// In en, this message translates to:
+  /// **'Server read-only protection is active.'**
+  String get dbServerReadOnly;
+
+  /// Database interface: The account's read-only role was verified.
+  ///
+  /// In en, this message translates to:
+  /// **'The account\'s read-only role was verified.'**
+  String get dbRoleReadOnly;
+
+  /// Database interface: Native query protection is active; server read-only privileges are not verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Native query protection is active; server read-only privileges are not verified.'**
+  String get dbGuardOnly;
+
+  /// Database interface: TLS protection
+  ///
+  /// In en, this message translates to:
+  /// **'TLS protection'**
+  String get dbTls;
+
+  /// Database interface: Verify certificate and hostname
+  ///
+  /// In en, this message translates to:
+  /// **'Verify certificate and hostname'**
+  String get dbTlsVerify;
+
+  /// Database interface: Require encryption
+  ///
+  /// In en, this message translates to:
+  /// **'Require encryption'**
+  String get dbTlsRequire;
+
+  /// Database interface: Prefer encryption
+  ///
+  /// In en, this message translates to:
+  /// **'Prefer encryption'**
+  String get dbTlsPrefer;
+
+  /// Database interface: Disable TLS
+  ///
+  /// In en, this message translates to:
+  /// **'Disable TLS'**
+  String get dbTlsDisable;
+
+  /// Database interface: This mode does not verify the database server identity. Prefer certificate and hostname verification.
+  ///
+  /// In en, this message translates to:
+  /// **'This mode does not verify the database server identity. Prefer certificate and hostname verification.'**
+  String get dbTlsWarning;
+
+  /// Database interface: Certificate authority (PEM)
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate authority (PEM)'**
+  String get dbTlsCa;
+
+  /// Database interface: TLS server name override
+  ///
+  /// In en, this message translates to:
+  /// **'TLS server name override'**
+  String get dbTlsServerName;
+
+  /// Database interface: Client certificate (PEM)
+  ///
+  /// In en, this message translates to:
+  /// **'Client certificate (PEM)'**
+  String get dbClientCertificate;
+
+  /// Database interface: Client private key (PEM)
+  ///
+  /// In en, this message translates to:
+  /// **'Client private key (PEM)'**
+  String get dbPrivateKey;
+
+  /// Database interface: Authentication mechanism
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication mechanism'**
+  String get dbAuthMechanism;
+
+  /// Database interface: Default
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get dbAuthDefault;
+
+  /// Database interface: Connection route
+  ///
+  /// In en, this message translates to:
+  /// **'Connection route'**
+  String get dbRoute;
+
+  /// Database interface: Direct
+  ///
+  /// In en, this message translates to:
+  /// **'Direct'**
+  String get dbDirect;
+
+  /// Database interface: SSH host
+  ///
+  /// In en, this message translates to:
+  /// **'SSH host'**
+  String get dbSsh;
+
+  /// Database interface: SSH jump profile
+  ///
+  /// In en, this message translates to:
+  /// **'SSH jump profile'**
+  String get dbJump;
+
+  /// Database interface: Proxy
+  ///
+  /// In en, this message translates to:
+  /// **'Proxy'**
+  String get dbProxy;
+
+  /// Database interface: TLS verification uses the original database hostname through SSH routes too.
+  ///
+  /// In en, this message translates to:
+  /// **'TLS verification uses the original database hostname through SSH routes too.'**
+  String get dbRouteHelp;
+
+  /// Database interface: Group
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get dbGroup;
+
+  /// Database interface: No group
+  ///
+  /// In en, this message translates to:
+  /// **'No group'**
+  String get dbUngrouped;
+
+  /// Database interface: Tags, separated by commas
+  ///
+  /// In en, this message translates to:
+  /// **'Tags, separated by commas'**
+  String get dbTags;
+
+  /// Database interface: Color (#RRGGBB)
+  ///
+  /// In en, this message translates to:
+  /// **'Color (#RRGGBB)'**
+  String get dbColor;
+
+  /// Database interface: Limits
+  ///
+  /// In en, this message translates to:
+  /// **'Limits'**
+  String get dbLimits;
+
+  /// Database interface: Initial result rows
+  ///
+  /// In en, this message translates to:
+  /// **'Initial result rows'**
+  String get dbMaxRows;
+
+  /// Database interface: Query timeout, seconds
+  ///
+  /// In en, this message translates to:
+  /// **'Query timeout, seconds'**
+  String get dbStatementTimeout;
+
+  /// Database interface: Connection timeout, seconds
+  ///
+  /// In en, this message translates to:
+  /// **'Connection timeout, seconds'**
+  String get dbConnectTimeout;
+
+  /// Database interface: Result memory, MiB
+  ///
+  /// In en, this message translates to:
+  /// **'Result memory, MiB'**
+  String get dbMemoryLimit;
+
+  /// Database interface: Driver settings
+  ///
+  /// In en, this message translates to:
+  /// **'Driver settings'**
+  String get dbOptions;
+
+  /// Database interface: Application name
+  ///
+  /// In en, this message translates to:
+  /// **'Application name'**
+  String get dbApplicationName;
+
+  /// Database interface: Search path, separated by commas
+  ///
+  /// In en, this message translates to:
+  /// **'Search path, separated by commas'**
+  String get dbSearchPath;
+
+  /// Database interface: Character set
+  ///
+  /// In en, this message translates to:
+  /// **'Character set'**
+  String get dbCharset;
+
+  /// Database interface: Authentication database
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication database'**
+  String get dbMongoAuthSource;
+
+  /// Database interface: Replica set
+  ///
+  /// In en, this message translates to:
+  /// **'Replica set'**
+  String get dbMongoReplicaSet;
+
+  /// Database interface: Discover using DNS SRV
+  ///
+  /// In en, this message translates to:
+  /// **'Discover using DNS SRV'**
+  String get dbMongoSrv;
+
+  /// Database interface: Read preference
+  ///
+  /// In en, this message translates to:
+  /// **'Read preference'**
+  String get dbMongoReadPreference;
+
+  /// Database interface: Read preference selects a replica; it does not prohibit writes.
+  ///
+  /// In en, this message translates to:
+  /// **'Read preference selects a replica; it does not prohibit writes.'**
+  String get dbMongoReadHelp;
+
+  /// Database interface: Test connection
+  ///
+  /// In en, this message translates to:
+  /// **'Test connection'**
+  String get dbTestConnection;
+
+  /// Database interface: Connection succeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection succeeded.'**
+  String get dbTestSuccess;
+
+  /// Database interface: Disconnect
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get dbDisconnect;
+
+  /// Database interface: Refresh
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get dbRefresh;
+
+  /// Database interface: Delete this saved connection? Active sessions will close.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this saved connection? Active sessions will close.'**
+  String get dbDeleteHelp;
+
+  /// Database interface: Unlock the vault to access database connections.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock the vault to access database connections.'**
+  String get dbLocked;
+
+  /// Database interface: Structure
+  ///
+  /// In en, this message translates to:
+  /// **'Structure'**
+  String get dbTree;
+
+  /// Database interface: Show DDL
+  ///
+  /// In en, this message translates to:
+  /// **'Show DDL'**
+  String get dbDdl;
+
+  /// Database interface: Preview first 100 rows
+  ///
+  /// In en, this message translates to:
+  /// **'Preview first 100 rows'**
+  String get dbFirstRows;
+
+  /// Database interface: Insert identifier
+  ///
+  /// In en, this message translates to:
+  /// **'Insert identifier'**
+  String get dbInsertName;
+
+  /// Database interface: Object details
+  ///
+  /// In en, this message translates to:
+  /// **'Object details'**
+  String get dbInspect;
+
+  /// Database interface: Infer schema from sample
+  ///
+  /// In en, this message translates to:
+  /// **'Infer schema from sample'**
+  String get dbSampleSchema;
+
+  /// Database interface: This reads documents from the selected collection to infer field types. No data is sent to AI.
+  ///
+  /// In en, this message translates to:
+  /// **'This reads documents from the selected collection to infer field types. No data is sent to AI.'**
+  String get dbSampleHelp;
+
+  /// Database interface: Load more
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get dbLoadMore;
+
+  /// Database interface: Query editor
+  ///
+  /// In en, this message translates to:
+  /// **'Query editor'**
+  String get dbEditor;
+
+  /// Database interface: New query
+  ///
+  /// In en, this message translates to:
+  /// **'New query'**
+  String get dbNewQuery;
+
+  /// Database interface: Run
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get dbRun;
+
+  /// Database interface: Current statement
+  ///
+  /// In en, this message translates to:
+  /// **'Current statement'**
+  String get dbRunCurrent;
+
+  /// Database interface: Selection
+  ///
+  /// In en, this message translates to:
+  /// **'Selection'**
+  String get dbRunSelection;
+
+  /// Database interface: Whole script
+  ///
+  /// In en, this message translates to:
+  /// **'Whole script'**
+  String get dbRunScript;
+
+  /// Database interface: Cancel query
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel query'**
+  String get dbCancelQuery;
+
+  /// Database interface: Format query
+  ///
+  /// In en, this message translates to:
+  /// **'Format query'**
+  String get dbFormat;
+
+  /// Database interface: Toggle line comments
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle line comments'**
+  String get dbComment;
+
+  /// Database interface: Find and replace
+  ///
+  /// In en, this message translates to:
+  /// **'Find and replace'**
+  String get dbFindReplace;
+
+  /// Database interface: Replace
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get dbReplace;
+
+  /// Database interface: Replace all
+  ///
+  /// In en, this message translates to:
+  /// **'Replace all'**
+  String get dbReplaceAll;
+
+  /// Database interface: Query variables
+  ///
+  /// In en, this message translates to:
+  /// **'Query variables'**
+  String get dbVariables;
+
+  /// Database interface: Values are bound as native parameters, never concatenated into the query.
+  ///
+  /// In en, this message translates to:
+  /// **'Values are bound as native parameters, never concatenated into the query.'**
+  String get dbVariablesHelp;
+
+  /// Database interface: Value type
+  ///
+  /// In en, this message translates to:
+  /// **'Value type'**
+  String get dbValueType;
+
+  /// Database interface: Value
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get dbValue;
+
+  /// Database interface: Review query
+  ///
+  /// In en, this message translates to:
+  /// **'Review query'**
+  String get dbReviewQuery;
+
+  /// Database interface: This query is blocked by connection policy. Use a non-production connection with appropriate privileges.
+  ///
+  /// In en, this message translates to:
+  /// **'This query is blocked by connection policy. Use a non-production connection with appropriate privileges.'**
+  String get dbQueryBlocked;
+
+  /// Database interface: This query can change or delete data. Review the full query and type the connection name.
+  ///
+  /// In en, this message translates to:
+  /// **'This query can change or delete data. Review the full query and type the connection name.'**
+  String get dbQueryDangerous;
+
+  /// Database interface: The review expired. Run the query again to obtain a fresh review.
+  ///
+  /// In en, this message translates to:
+  /// **'The review expired. Run the query again to obtain a fresh review.'**
+  String get dbReviewExpired;
+
+  /// Database interface: Results
+  ///
+  /// In en, this message translates to:
+  /// **'Results'**
+  String get dbResults;
+
+  /// Database interface: Grid
+  ///
+  /// In en, this message translates to:
+  /// **'Grid'**
+  String get dbGrid;
+
+  /// Database interface: Records
+  ///
+  /// In en, this message translates to:
+  /// **'Records'**
+  String get dbRecords;
+
+  /// Database interface: Run a query to see results.
+  ///
+  /// In en, this message translates to:
+  /// **'Run a query to see results.'**
+  String get dbNoResults;
+
+  /// Database interface: NULL
+  ///
+  /// In en, this message translates to:
+  /// **'NULL'**
+  String get dbNull;
+
+  /// Database interface: Result limit reached. Export to stream the full result.
+  ///
+  /// In en, this message translates to:
+  /// **'Result limit reached. Export to stream the full result.'**
+  String get dbTruncated;
+
+  /// Database interface: Query cancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Query cancelled.'**
+  String get dbCancelled;
+
+  /// Database interface: Query running…
+  ///
+  /// In en, this message translates to:
+  /// **'Query running…'**
+  String get dbRunning;
+
+  /// Database interface: Server messages
+  ///
+  /// In en, this message translates to:
+  /// **'Server messages'**
+  String get dbMessages;
+
+  /// Database interface: Show full value
+  ///
+  /// In en, this message translates to:
+  /// **'Show full value'**
+  String get dbShowValue;
+
+  /// Database interface: Pin column
+  ///
+  /// In en, this message translates to:
+  /// **'Pin column'**
+  String get dbPinColumn;
+
+  /// Database interface: Unpin column
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin column'**
+  String get dbUnpinColumn;
+
+  /// Database interface: Columns
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get dbColumns;
+
+  /// Database interface: Copy cell
+  ///
+  /// In en, this message translates to:
+  /// **'Copy cell'**
+  String get dbCopyCell;
+
+  /// Database interface: Copy row
+  ///
+  /// In en, this message translates to:
+  /// **'Copy row'**
+  String get dbCopyRow;
+
+  /// Database interface: Copy selection
+  ///
+  /// In en, this message translates to:
+  /// **'Copy selection'**
+  String get dbCopySelection;
+
+  /// Database interface: Copy loaded result
+  ///
+  /// In en, this message translates to:
+  /// **'Copy loaded result'**
+  String get dbCopyResult;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'The clipboard is cleared automatically according to your security settings.'**
+  String get dbSensitiveClipboard;
+
+  /// Database interface: Export result
+  ///
+  /// In en, this message translates to:
+  /// **'Export result'**
+  String get dbExport;
+
+  /// Database interface: Format
+  ///
+  /// In en, this message translates to:
+  /// **'Format'**
+  String get dbExportFormat;
+
+  /// Database interface: Include column names
+  ///
+  /// In en, this message translates to:
+  /// **'Include column names'**
+  String get dbExportHeader;
+
+  /// Database interface: UTF-8 byte order mark (BOM)
+  ///
+  /// In en, this message translates to:
+  /// **'UTF-8 byte order mark (BOM)'**
+  String get dbExportBom;
+
+  /// Database interface: Delimiter
+  ///
+  /// In en, this message translates to:
+  /// **'Delimiter'**
+  String get dbExportDelimiter;
+
+  /// Database interface: Quote character
+  ///
+  /// In en, this message translates to:
+  /// **'Quote character'**
+  String get dbExportQuote;
+
+  /// Database interface: Export streams the full result to the selected file. Results may contain sensitive data.
+  ///
+  /// In en, this message translates to:
+  /// **'Export streams the full result to the selected file. Results may contain sensitive data.'**
+  String get dbExportHelp;
+
+  /// Database interface: Export completed.
+  ///
+  /// In en, this message translates to:
+  /// **'Export completed.'**
+  String get dbExportDone;
+
+  /// Database interface: Query history
+  ///
+  /// In en, this message translates to:
+  /// **'Query history'**
+  String get dbHistory;
+
+  /// Database interface: Favorites
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get dbFavorites;
+
+  /// Database interface: All queries
+  ///
+  /// In en, this message translates to:
+  /// **'All queries'**
+  String get dbAllQueries;
+
+  /// Database interface: Successful
+  ///
+  /// In en, this message translates to:
+  /// **'Successful'**
+  String get dbSuccessful;
+
+  /// Database interface: With errors
+  ///
+  /// In en, this message translates to:
+  /// **'With errors'**
+  String get dbWithErrors;
+
+  /// Database interface: Local encrypted history
+  ///
+  /// In en, this message translates to:
+  /// **'Local encrypted history'**
+  String get dbHistoryLocal;
+
+  /// Database interface: Encrypted synchronization
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted synchronization'**
+  String get dbHistorySync;
+
+  /// Database interface: History disabled
+  ///
+  /// In en, this message translates to:
+  /// **'History disabled'**
+  String get dbHistoryDisabled;
+
+  /// Database interface: Clear query history
+  ///
+  /// In en, this message translates to:
+  /// **'Clear query history'**
+  String get dbClearHistory;
+
+  /// Database interface: Delete the saved query history for this connection?
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the saved query history for this connection?'**
+  String get dbClearHistoryHelp;
+
+  /// Database interface: Save as snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Save as snippet'**
+  String get dbSaveSnippet;
+
+  /// Database interface: Snippet name
+  ///
+  /// In en, this message translates to:
+  /// **'Snippet name'**
+  String get dbSnippetName;
+
+  /// Database interface: EXPLAIN
+  ///
+  /// In en, this message translates to:
+  /// **'EXPLAIN'**
+  String get dbExplain;
+
+  /// Database interface: Execute with ANALYZE
+  ///
+  /// In en, this message translates to:
+  /// **'Execute with ANALYZE'**
+  String get dbExplainAnalyze;
+
+  /// Database interface: ANALYZE executes the query to collect measurements. Available only for non-production connections.
+  ///
+  /// In en, this message translates to:
+  /// **'ANALYZE executes the query to collect measurements. Available only for non-production connections.'**
+  String get dbExplainAnalyzeHelp;
+
+  /// Database interface: Edit cell
+  ///
+  /// In en, this message translates to:
+  /// **'Edit cell'**
+  String get dbEditCell;
+
+  /// Database interface: Review pending edits
+  ///
+  /// In en, this message translates to:
+  /// **'Review pending edits'**
+  String get dbApplyEdits;
+
+  /// Database interface: Discard changes
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes'**
+  String get dbDiscardEdits;
+
+  /// Database interface: Review the parameterized UPDATE statements. Changes are applied in one transaction; failure rolls it back.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the parameterized UPDATE statements. Changes are applied in one transaction; failure rolls it back.'**
+  String get dbCellEditsHelp;
+
+  /// Database interface: AI assistant
+  ///
+  /// In en, this message translates to:
+  /// **'AI assistant'**
+  String get dbAi;
+
+  /// Database interface: Describe what you need
+  ///
+  /// In en, this message translates to:
+  /// **'Describe what you need'**
+  String get dbAiQuestion;
+
+  /// Database interface: AI provider
+  ///
+  /// In en, this message translates to:
+  /// **'AI provider'**
+  String get dbAiProvider;
+
+  /// Database interface: Compose query
+  ///
+  /// In en, this message translates to:
+  /// **'Compose query'**
+  String get dbAiCompose;
+
+  /// Database interface: Explain query
+  ///
+  /// In en, this message translates to:
+  /// **'Explain query'**
+  String get dbAiExplain;
+
+  /// Database interface: Fix with AI
+  ///
+  /// In en, this message translates to:
+  /// **'Fix with AI'**
+  String get dbAiFix;
+
+  /// Database interface: Optimize with AI
+  ///
+  /// In en, this message translates to:
+  /// **'Optimize with AI'**
+  String get dbAiOptimize;
+
+  /// Database interface: Translate dialect
+  ///
+  /// In en, this message translates to:
+  /// **'Translate dialect'**
+  String get dbAiTranslate;
+
+  /// Database interface: Create parameterized snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Create parameterized snippet'**
+  String get dbAiSnippet;
+
+  /// Database interface: Example queries
+  ///
+  /// In en, this message translates to:
+  /// **'Example queries'**
+  String get dbAiExamples;
+
+  /// Database interface: Explain selected rows
+  ///
+  /// In en, this message translates to:
+  /// **'Explain selected rows'**
+  String get dbAiResult;
+
+  /// Database interface: AI draft — review before accepting
+  ///
+  /// In en, this message translates to:
+  /// **'AI draft — review before accepting'**
+  String get dbAiDraft;
+
+  /// Database interface: Accept draft
+  ///
+  /// In en, this message translates to:
+  /// **'Accept draft'**
+  String get dbAiAccept;
+
+  /// Database interface: Reject
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get dbAiReject;
+
+  /// Database interface: Refine
+  ///
+  /// In en, this message translates to:
+  /// **'Refine'**
+  String get dbAiRefine;
+
+  /// Database interface: Review AI context
+  ///
+  /// In en, this message translates to:
+  /// **'Review AI context'**
+  String get dbAiConsent;
+
+  /// Database interface: Allow schema metadata
+  ///
+  /// In en, this message translates to:
+  /// **'Allow schema metadata'**
+  String get dbAiSchema;
+
+  /// Database interface: Allow explicitly selected result rows
+  ///
+  /// In en, this message translates to:
+  /// **'Allow explicitly selected result rows'**
+  String get dbAiRows;
+
+  /// Database interface: Allow sample_rows (up to 20 rows)
+  ///
+  /// In en, this message translates to:
+  /// **'Allow sample_rows (up to 20 rows)'**
+  String get dbAiSample;
+
+  /// Database interface: Allow run_readonly (up to 50 rows)
+  ///
+  /// In en, this message translates to:
+  /// **'Allow run_readonly (up to 50 rows)'**
+  String get dbAiReadonly;
+
+  /// Database interface: Schema and row data require separate consent. Tool calls are read only, shown below, and cannot apply changes.
+  ///
+  /// In en, this message translates to:
+  /// **'Schema and row data require separate consent. Tool calls are read only, shown below, and cannot apply changes.'**
+  String get dbAiConsentHelp;
+
+  /// Database interface: This provider is external. Strict privacy replaces identifiers before sending and restores them locally.
+  ///
+  /// In en, this message translates to:
+  /// **'This provider is external. Strict privacy replaces identifiers before sending and restores them locally.'**
+  String get dbAiExternal;
+
+  /// Database interface: This provider runs locally.
+  ///
+  /// In en, this message translates to:
+  /// **'This provider runs locally.'**
+  String get dbAiLocal;
+
+  /// Database interface: Maximum schema objects in context
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum schema objects in context'**
+  String get dbAiContextLimit;
+
+  /// Database interface: Context sent to the model
+  ///
+  /// In en, this message translates to:
+  /// **'Context sent to the model'**
+  String get dbAiTools;
+
+  /// Database interface: Accepting a draft never executes it. Use Run after reviewing.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepting a draft never executes it. Use Run after reviewing.'**
+  String get dbAiNoExecute;
+
+  /// Database interface: Production DDL suggestions are recommendations only and cannot be run.
+  ///
+  /// In en, this message translates to:
+  /// **'Production DDL suggestions are recommendations only and cannot be run.'**
+  String get dbAiProdDdl;
+
+  /// Database interface: Revoke AI consent
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke AI consent'**
+  String get dbAiRevoke;
+
+  /// Database interface: On iOS, a running query is cancelled after 30 seconds in the background.
+  ///
+  /// In en, this message translates to:
+  /// **'On iOS, a running query is cancelled after 30 seconds in the background.'**
+  String get dbBackgroundIos;
+
+  /// Database interface: Close this query and cancel its active request?
+  ///
+  /// In en, this message translates to:
+  /// **'Close this query and cancel its active request?'**
+  String get dbCloseRunning;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'The database operation failed. Check the connection and permissions, then retry.'**
+  String get dbOperationFailed;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Search loaded objects'**
+  String get dbTreeSearch;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the value and its type.'**
+  String get dbInvalidValue;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete query'**
+  String get dbComplete;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Hex preview (first 4096 bytes)'**
+  String get dbBinaryPreview;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'New conversation'**
+  String get dbAiNewConversation;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'History messages in request'**
+  String get dbAiHistoryMessages;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Server-side read-only protection is verified.'**
+  String get dbVerifiedReadOnly;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'This database role has write privileges. Use a dedicated read-only role for production.'**
+  String get dbRoleCanWrite;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes applied. Run the query again to refresh this result.'**
+  String get dbResultStale;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow writes for this non-production session? Each changing query still requires review. This permission ends when the connection closes.'**
+  String get dbAllowWritesHelp;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Check privileges'**
+  String get dbCheckPrivileges;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow writes'**
+  String get dbAllowWrites;
+
+  /// Database workspace interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Server-side read-only protection is unverified. Use a dedicated read-only database role.'**
+  String get dbUnverifiedReadOnly;
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -14064,7 +15250,8 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'ru'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'ru'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
