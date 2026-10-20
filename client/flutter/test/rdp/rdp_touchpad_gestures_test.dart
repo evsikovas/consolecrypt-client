@@ -5,6 +5,13 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('a resized desktop keeps the cursor at the same relative spot', () {
+    final pad = RdpTouchpad((_) {})..configure(1280, 720, 1280);
+    expect(pad.position, const Offset(640, 360));
+    pad.configure(480, 1040, 390);
+    expect(pad.position, const Offset(240, 520));
+  });
+
   testWidgets('pinch locks its decision and never sends a wheel or click', (tester) async {
     final inputs = <RdpInput>[], scales = <double>[];
     final pad = RdpTouchpad(inputs.addAll, onScale: (factor, _) => scales.add(factor));

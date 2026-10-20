@@ -102,46 +102,92 @@ class _RdpMobileOverlayState extends State<RdpMobileOverlay> {
               ),
             ),
           if (widget.open)
-            Positioned(
-              left: 0,
-              right: 0,
-              top: (position.dy > 60 ? position.dy - 58 : position.dy + 48).clamp(
-                0,
-                math.max(0, constraints.maxHeight - widget.bottomInset - 48),
-              ),
-              child: _GlassSurface(
-                child: Listener(
-                  onPointerDown: (_) => _timer?.cancel(),
-                  onPointerUp: (_) => _schedule(),
-                  child: SingleChildScrollView(
-                    key: const ValueKey('rdp-mobile-panel'),
-                    scrollDirection: Axis.horizontal,
-                    child: ExcludeFocus(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (final action in widget.actions)
-                            TextButton.icon(
-                              key: action.key,
-                              style: TextButton.styleFrom(
-                                minimumSize: const Size(44, 48),
-                                foregroundColor: action.selected ? const Color(0xff82b4ff) : Colors.white,
-                              ),
-                              onPressed: action.invoke == null
-                                  ? null
-                                  : () {
-                                      _schedule();
-                                      action.invoke!();
-                                    },
-                              icon: Icon(action.icon, size: 20),
-                              label: Text(action.label),
-                            ),
-                        ],
+            // A card inside the screen margins: actions wrap into rows
+            // instead of running off both edges, and the card sits above
+            // the menu button in the lower half, below it in the upper half.
+            Builder(
+              builder: (context) {
+                final above = position.dy - 16;
+                final below = constraints.maxHeight - widget.bottomInset - position.dy - 60;
+                final up = above >= below;
+                return Positioned(
+                  left: 12,
+                  right: 12,
+                  top: up ? null : position.dy + 52,
+                  bottom: up ? constraints.maxHeight - position.dy + 8 : null,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: 820, maxHeight: math.max(64, up ? above : below)),
+                      child: _GlassSurface(
+                        radius: 20,
+                        child: Listener(
+                          onPointerDown: (_) => _timer?.cancel(),
+                          onPointerUp: (_) => _schedule(),
+                          child: LayoutBuilder(
+                            builder: (context, box) {
+                              // An even grid of tiles (icon over a short label).
+                              const gap = 6.0;
+                              final fit = ((box.maxWidth - 16 + gap) / (92 + gap)).floor().clamp(3, 8);
+                              final count = math.max(1, widget.actions.length);
+                              // Balanced rows: no lone tile on the last row.
+                              final columns = math.min(fit, (count / (count / fit).ceil()).ceil());
+                              final tile = (box.maxWidth - 16 - gap * (columns - 1)) / columns;
+                              return SingleChildScrollView(
+                                key: const ValueKey('rdp-mobile-panel'),
+                                padding: const EdgeInsets.all(8),
+                                child: ExcludeFocus(
+                                  child: Wrap(
+                                    spacing: gap,
+                                    runSpacing: gap,
+                                    children: [
+                                      for (final action in widget.actions)
+                                        SizedBox(
+                                          width: tile,
+                                          height: 72,
+                                          child: TextButton(
+                                            key: action.key,
+                                            style: TextButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                                              backgroundColor: action.selected
+                                                  ? const Color(0x3382b4ff)
+                                                  : const Color(0x14ffffff),
+                                              foregroundColor: action.selected ? const Color(0xff82b4ff) : Colors.white,
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                            ),
+                                            onPressed: action.invoke == null
+                                                ? null
+                                                : () {
+                                                    _schedule();
+                                                    action.invoke!();
+                                                  },
+                                            child: Column(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Icon(action.icon, size: 22),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  action.label,
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(fontSize: 11.5, height: 1.15),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           Positioned(
             left: position.dx,

@@ -311,7 +311,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
         _kinds = sorted;
         _kind = sorted.where((kind) => kind.isPod).firstOrNull ?? sorted.firstOrNull;
         _connecting = false;
-        // Desktop opens on the live cluster overview, like Lens.
+        // Desktop opens on the live cluster overview.
         if (_desktopLayout && widget.service is KubeMetricsService && _view == 'resources') _view = 'cluster';
       });
       _publishAiHost();
@@ -1832,7 +1832,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                                     bottom: 0,
                                     right: 0,
                                     width: inspectorWidth,
-                                    // Lens-style drawer over the table: the list keeps
+                                    // Drawer over the table: the list keeps
                                     // its columns instead of being squeezed.
                                     child: DecoratedBox(
                                       decoration: BoxDecoration(

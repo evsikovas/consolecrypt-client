@@ -7,6 +7,26 @@ Pod, туннели, Helm, GitOps и помощника ИИ. Основные �
 API Kubernetes: устанавливать `kubectl`, `flux` или `helm` для просмотра,
 логов, shell и port-forward не нужно.
 
+### Интерфейс на компьютере
+
+Слева — навигатор: список кластеров и сворачиваемые группы ресурсов
+(нагрузки, сеть, конфигурация, хранилище, доступ, кластер, GitOps,
+пользовательские ресурсы по API-группам и избранное). Кнопка со стрелкой
+сворачивает навигатор, а главное меню приложения при работе с кластером
+сворачивается автоматически.
+
+Кластер открывается на обзоре: узлы, запущенные поды, пространства имён,
+проблемы, загрузка CPU и памяти с графиками и состояния подов. Метрики берутся
+из metrics-server. Если его нет, обзор предложит установить базовую версию в
+`kube-system`; для локальных кластеров с самоподписанными сертификатами kubelet
+включите `--kubelet-insecure-tls`. Для production-кластера сначала откройте
+окно записи.
+
+Карточка объекта открывается поверх таблицы. Логи и терминал — в нижней
+панели, помощник ИИ и активные пробросы портов — в правой панели.
+Правый клик по кластеру открывает меню: переименовать, свойства, пометить как
+тестовый или продовый, цвет метки, поделиться и экспорт kubeconfig.
+
 ### Подключение
 
 1. Откройте Kubernetes и импортируйте kubeconfig из файла или вставьте YAML.
@@ -44,16 +64,22 @@ kubeconfig тоже выполняется отдельно и создаёт ф
 состояние, YAML, события и связанные объекты. Для поддерживаемых workloads
 можно открыть историю rollout и сравнить ревизии.
 
-Изменение YAML проходит через предварительный просмотр отличий и dry-run.
-Применение, удаление, масштабирование и restart требуют действия пользователя.
-Конфликт владения полями не перезаписывается без отдельного подтверждения.
+Изменение YAML проходит через предварительный просмотр отличий и dry-run:
+«Применить» сначала проверяет изменения на сервере. Применение, удаление,
+масштабирование и restart требуют действия пользователя. Конфликт владения
+полями не перезаписывается без отдельного подтверждения; при отказе показано,
+какой менеджер полей (например, контроллер) владеет полем или какие поля
+сервер отклонил. У запущенного Pod можно менять только образ,
+`activeDeadlineSeconds`, добавлять tolerations, а также метки и аннотации —
+остальное меняется через владельца (Deployment, StatefulSet и т.п.).
 Secret скрывает значения по умолчанию; просмотр значений выполняется отдельно.
 Документ с маркерами `[redacted]` нельзя применить: скрытые значения не
 заменяются текстом масок.
 
 «Прод» принудительно ограничивает изменения в ядре, включая запросы внешних
 CLI через локальный прокси. На компьютере можно явно открыть временное окно
-записи; на телефоне оно недоступно. Массовые изменения запрещены в production
+записи на 10 минут — оно подтверждается паролем хранилища; на телефоне окно
+недоступно. Массовые изменения запрещены в production
 даже при открытом окне. Exec и port-forward имеют отдельные разрешения
 production-контекста.
 
@@ -128,6 +154,25 @@ Pod terminals, tunnels, Helm, GitOps and AI assistance. Browsing, logs, shell
 and port forwarding use the Kubernetes API directly and require no installed
 `kubectl`, `flux` or `helm`.
 
+### Desktop layout
+
+The navigator on the left lists clusters and collapsible resource groups
+(workloads, network, configuration, storage, access, cluster, GitOps, custom
+resources by API group and favourites). The arrow button collapses it, and the
+app sidebar collapses automatically while a cluster is open.
+
+A cluster opens on its overview: nodes, running Pods, namespaces, problems,
+CPU and memory with charts, and Pod states. Metrics come from metrics-server.
+When it is missing, the overview offers to install a basic one into
+`kube-system`; turn on `--kubelet-insecure-tls` for local clusters whose
+kubelets use self-signed certificates. Open a write window first on a
+production cluster.
+
+Object details open over the table. Logs and terminals live in the bottom
+panel; the AI assistant and active port forwards live in the right panel.
+Right-click a cluster for rename, properties, test or production marker,
+colour label, sharing and kubeconfig export.
+
 ### Connect and share
 
 Import a kubeconfig file or paste YAML, select contexts and review each API
@@ -161,14 +206,18 @@ filters and column settings to narrow it down. Details include status, YAML,
 events and related objects. Supported workloads expose rollout history and
 revision comparison.
 
-YAML editing includes a diff and dry-run. Applying, deleting, scaling and
-restarting require user action; field ownership conflicts are not overridden
-without separate approval. Secret values are hidden until explicitly revealed. Documents containing
+YAML editing includes a diff and dry-run: Apply validates on the server
+first. Applying, deleting, scaling and restarting require user action; field
+ownership conflicts are not overridden without separate approval, and a
+refusal names the field manager (for example, a controller) that owns a field
+or the fields the server rejected. A running Pod only accepts changes to its
+image, `activeDeadlineSeconds`, added tolerations, labels and annotations;
+change the rest through its owner (Deployment, StatefulSet and so on). Secret values are hidden until explicitly revealed. Documents containing
 `[redacted]` markers cannot be applied, preventing masks from replacing values.
 
 Production restrictions are enforced by the native core, including external
-CLI requests through the local proxy. Desktop allows an explicitly approved
-temporary write window; mobile does not. Bulk mutations remain prohibited in
+CLI requests through the local proxy. Desktop allows a 10-minute write window
+confirmed with the vault passphrase; mobile does not. Bulk mutations remain prohibited in
 production even during a write window. Exec and port forwarding have separate
 production permissions.
 

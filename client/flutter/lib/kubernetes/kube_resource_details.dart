@@ -761,7 +761,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
     );
   }
 
-  /// One row of object actions (Lens-style drawer toolbar).
+  /// One row of object actions (drawer toolbar).
   Widget _actions(KubeResourceDetail detail, {required bool canWrite, required bool masked}) {
     final l = context.l10n;
     final metadata = detail.object['metadata'] as Map?;

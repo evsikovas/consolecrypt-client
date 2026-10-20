@@ -40,12 +40,17 @@ class RdpTouchpad extends ChangeNotifier {
   /// Use the rendered desktop's scale, preserving sub-pixel motion. Coordinates
   /// are clamped before rounding so even the last row/column remains in bounds.
   void configure(int width, int height, double displayWidth) {
+    final previous = (_width, _height);
     _width = width;
     _height = height;
     _scale = displayWidth > 0 ? width / displayWidth : 1;
     if (!_initialized) {
       _position = Offset(width / 2, height / 2);
       _initialized = true;
+    } else if (previous != (width, height) && previous.$1 > 0 && previous.$2 > 0) {
+      // A resized desktop (rotation, fit) keeps the cursor at the same
+      // relative spot instead of pinning it to the nearest edge.
+      _position = Offset(_position.dx * width / previous.$1, _position.dy * height / previous.$2);
     }
     _position = _clamp(_position);
   }
