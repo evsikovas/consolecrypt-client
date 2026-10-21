@@ -117,6 +117,10 @@ async fn exercise(variable: &str, engine: DbEngine) {
         Err(DbError::PolicyDenied | DbError::ApprovalRequired | DbError::InvalidRequest)
     ));
     assert!(session.explain(&request("SELECT 1"), false).await.is_ok());
+    // The test role is a superuser: production warns about it.
+    let report = session.privileges().await.unwrap();
+    assert_eq!(report.has_write_privileges, Some(true));
+    assert!(report.warning_codes.contains(&"production_role_can_write"));
     assert!(session.explain(&request("SELECT 1"), true).await.is_err());
     let roots = session.tree(None, None).await.unwrap();
     assert!(!roots.nodes.is_empty());
@@ -231,6 +235,37 @@ async fn exercise(variable: &str, engine: DbEngine) {
         columns.iter().any(|c| c.label == "secret_token"),
         "{columns:?}"
     );
+    // A file export runs the read-only query again and streams every row.
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("items.csv");
+    let progress = std::sync::Arc::new(cc_db_core::export::ExportProgress::default());
+    let options: cc_db_core::export::ExportOptions =
+        serde_json::from_value(serde_json::json!({"format": "csv"})).unwrap();
+    dev.export(
+        &request("SELECT id, name FROM cc_items ORDER BY id"),
+        0,
+        options.clone(),
+        path.clone(),
+        progress.clone(),
+        tokio_util::sync::CancellationToken::new(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        std::fs::read_to_string(&path).unwrap(),
+        "id,name\r\n1,alpha\r\n2,beta\r\n"
+    );
+    assert!(dev
+        .export(
+            &request("DELETE FROM cc_items WHERE id = 1"),
+            0,
+            options,
+            directory.path().join("no.csv"),
+            progress,
+            tokio_util::sync::CancellationToken::new(),
+        )
+        .await
+        .is_err());
     write(&dev, "DROP TABLE cc_items").await.unwrap();
     dev.close();
 }

@@ -2,12 +2,13 @@
 //! dropped on lock; credentials are read from the vault only while connecting.
 use crate::{AppCore, AppError, AppResult};
 use cc_db_core::{
+    export::{format_rows, ExportOptions, ExportProgress},
     introspect::{quote_identifier, DbCompletion},
     parser::editor::{self, QueryScope},
     streaming::DbQueryStream,
     transport::DbCredentials,
-    DbError, DbObjectKind, DbObjectRef, DbQueryEvent, DbQueryRequest, DbSession, DbSessionInfo,
-    DbTreePage,
+    DbCell, DbColumn, DbError, DbObjectKind, DbObjectRef, DbQueryEvent, DbQueryRequest, DbSession,
+    DbSessionInfo, DbTreePage,
 };
 use cc_models::database::{DbConnection, DbEngine};
 use secrecy::SecretString;
@@ -37,16 +38,58 @@ struct LiveQuery {
     recorded: AtomicBool,
 }
 
+/// One statement result kept for copying until the query is released.
+struct KeptResult {
+    columns: Vec<DbColumn>,
+    table: Option<DbObjectRef>,
+    rows: Vec<Vec<DbCell>>,
+}
+
+/// What a query produced and how to run it again for a file export.
+struct QueryResults {
+    session_id: String,
+    request: DbQueryRequest,
+    sets: Mutex<Vec<KeptResult>>,
+    bytes: std::sync::atomic::AtomicUsize,
+}
+
+struct RunningExport {
+    progress: Arc<ExportProgress>,
+    cancel: CancellationToken,
+}
+
+/// Results by query id plus their insertion order for eviction.
+type KeptQueries = (
+    HashMap<String, Arc<QueryResults>>,
+    std::collections::VecDeque<String>,
+);
+
 #[derive(Default)]
 pub(crate) struct DbRuntime {
     shutdown: CancellationToken,
     sessions: Mutex<HashMap<String, Arc<DbSession>>>,
     queries: Mutex<HashMap<String, Arc<LiveQuery>>>,
+    /// Loaded rows per query id, oldest first, released with the query.
+    results: Mutex<KeptQueries>,
+    exports: Mutex<HashMap<String, RunningExport>>,
 }
 
 impl DbRuntime {
     pub(crate) fn close(&self) {
         self.shutdown.cancel();
+        {
+            let mut results = self.results.lock().unwrap_or_else(|e| e.into_inner());
+            results.0.clear();
+            results.1.clear();
+        }
+        for (_, export) in self
+            .exports
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .drain()
+        {
+            export.cancel.cancel();
+        }
         self.queries
             .lock()
             .unwrap_or_else(|e| e.into_inner())
@@ -70,6 +113,16 @@ impl DbRuntime {
             .ok_or_else(|| invalid("session_closed"))
     }
 
+    fn results(&self, id: &str) -> AppResult<Arc<QueryResults>> {
+        self.results
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .0
+            .get(id)
+            .cloned()
+            .ok_or_else(|| invalid("query_closed"))
+    }
+
     fn query(&self, id: &str) -> AppResult<Arc<LiveQuery>> {
         self.queries
             .lock()
@@ -77,6 +130,56 @@ impl DbRuntime {
             .get(id)
             .cloned()
             .ok_or_else(|| invalid("query_closed"))
+    }
+}
+
+impl QueryResults {
+    /// Keeps started columns and loaded rows within the result memory budget.
+    fn keep(&self, events: &[DbQueryEvent]) {
+        let mut sets = self.sets.lock().unwrap_or_else(|e| e.into_inner());
+        for event in events {
+            match event {
+                DbQueryEvent::Started {
+                    result_index,
+                    columns,
+                    editable_table,
+                } if *result_index as usize == sets.len() => sets.push(KeptResult {
+                    columns: columns.clone(),
+                    table: editable_table.clone(),
+                    rows: Vec::new(),
+                }),
+                DbQueryEvent::Rows { result_index, rows } => {
+                    let Some(set) = sets.get_mut(*result_index as usize) else {
+                        continue;
+                    };
+                    for row in rows {
+                        let size: usize = row.iter().map(cell_size).sum::<usize>() + 16;
+                        let used = self.bytes.fetch_add(size, Ordering::Relaxed);
+                        if used + size > cc_db_core::DEFAULT_RESULT_BYTES {
+                            return;
+                        }
+                        set.rows.push(row.clone());
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+fn cell_size(cell: &DbCell) -> usize {
+    match cell {
+        DbCell::Null | DbCell::Bool(_) => 1,
+        DbCell::Int(v)
+        | DbCell::Uint(v)
+        | DbCell::Decimal(v)
+        | DbCell::Float(v)
+        | DbCell::Text(v)
+        | DbCell::Date(v)
+        | DbCell::Time(v)
+        | DbCell::Timestamp(v)
+        | DbCell::Binary(v)
+        | DbCell::Json(v) => v.len() + 8,
     }
 }
 
@@ -363,6 +466,15 @@ impl AppCore {
         session.complete(&text, cursor).await.map_err(db_error)
     }
 
+    pub async fn db_privileges(
+        &self,
+        session_id: String,
+    ) -> AppResult<cc_db_core::introspect::DbPrivilegeReport> {
+        let (_, unlocked) = self.unlocked().await?;
+        let session = unlocked.db.session(&session_id)?;
+        session.privileges().await.map_err(db_error)
+    }
+
     pub async fn db_prepare_query(
         &self,
         session_id: String,
@@ -435,6 +547,32 @@ impl AppCore {
             return Err(invalid("too_many_queries"));
         }
         let id = uuid::Uuid::new_v4().to_string();
+        {
+            let mut kept = unlocked
+                .db
+                .results
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            while kept.1.len() >= MAX_QUERIES {
+                if let Some(oldest) = kept.1.pop_front() {
+                    kept.0.remove(&oldest);
+                }
+            }
+            kept.0.insert(
+                id.clone(),
+                Arc::new(QueryResults {
+                    session_id: session_id.clone(),
+                    request: DbQueryRequest {
+                        text: request.text.clone(),
+                        parameters: request.parameters.clone(),
+                        approval_ticket: None,
+                    },
+                    sets: Mutex::new(Vec::new()),
+                    bytes: Default::default(),
+                }),
+            );
+            kept.1.push_back(id.clone());
+        }
         queries.insert(
             id.clone(),
             Arc::new(LiveQuery {
@@ -494,6 +632,9 @@ impl AppCore {
             })
             .sum();
         query.rows.fetch_add(rows as u64, Ordering::Relaxed);
+        if let Ok(kept) = unlocked.db.results(&query_id) {
+            kept.keep(&events);
+        }
         if terminal {
             unlocked
                 .db
@@ -526,6 +667,142 @@ impl AppCore {
         Ok(events)
     }
 
+    /// Formats loaded rows of one result (all or the selected rows/columns).
+    pub async fn db_copy_result(
+        &self,
+        query_id: String,
+        result_index: u32,
+        rows: Option<Vec<u32>>,
+        columns: Option<Vec<u32>>,
+        options: ExportOptions,
+    ) -> AppResult<String> {
+        let (_, unlocked) = self.unlocked().await?;
+        let kept = unlocked.db.results(&query_id)?;
+        let engine = unlocked.db.session(&kept.session_id)?.info().engine;
+        let sets = kept.sets.lock().unwrap_or_else(|e| e.into_inner());
+        let set = sets
+            .get(result_index as usize)
+            .ok_or_else(|| invalid("result_unavailable"))?;
+        let picked_columns: Vec<usize> = match &columns {
+            Some(columns) => columns.iter().map(|c| *c as usize).collect(),
+            None => (0..set.columns.len()).collect(),
+        };
+        if picked_columns.iter().any(|c| *c >= set.columns.len()) {
+            return Err(invalid("result_unavailable"));
+        }
+        let pick = |row: &Vec<DbCell>| -> Vec<DbCell> {
+            picked_columns.iter().map(|c| row[*c].clone()).collect()
+        };
+        let selected: Vec<Vec<DbCell>> = match &rows {
+            Some(rows) => rows
+                .iter()
+                .map(|r| set.rows.get(*r as usize).map(pick))
+                .collect::<Option<_>>()
+                .ok_or_else(|| invalid("result_unavailable"))?,
+            None => set.rows.iter().map(pick).collect(),
+        };
+        let column_list: Vec<DbColumn> = picked_columns
+            .iter()
+            .map(|c| set.columns[*c].clone())
+            .collect();
+        format_rows(engine, &column_list, &selected, set.table.as_ref(), options).map_err(db_error)
+    }
+
+    /// Starts streaming one result of a read-only query into `path`.
+    pub async fn db_export_start(
+        &self,
+        query_id: String,
+        result_index: u32,
+        options: ExportOptions,
+        path: String,
+    ) -> AppResult<String> {
+        let (_, unlocked) = self.unlocked().await?;
+        let kept = unlocked.db.results(&query_id)?;
+        let session = unlocked.db.session(&kept.session_id)?;
+        let path = std::path::PathBuf::from(path);
+        if !path.is_absolute() || !path.parent().is_some_and(std::path::Path::is_dir) {
+            return Err(invalid("export_path_invalid"));
+        }
+        let id = uuid::Uuid::new_v4().to_string();
+        let progress = Arc::new(ExportProgress::default());
+        let cancel = unlocked.db.shutdown.child_token();
+        unlocked
+            .db
+            .exports
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(
+                id.clone(),
+                RunningExport {
+                    progress: progress.clone(),
+                    cancel: cancel.clone(),
+                },
+            );
+        let request = kept.request.clone();
+        tokio::spawn(async move {
+            let export: futures::future::BoxFuture<'_, Result<(), DbError>> =
+                Box::pin(session.export(
+                    &request,
+                    result_index,
+                    options,
+                    path.clone(),
+                    progress.clone(),
+                    cancel.clone(),
+                ));
+            let result = export.await;
+            match result {
+                Ok(()) => {}
+                Err(DbError::Cancelled) => {
+                    progress.cancelled.store(true, Ordering::Release);
+                    let _ = tokio::fs::remove_file(&path).await;
+                }
+                Err(error) => {
+                    *progress.error.lock().unwrap_or_else(|e| e.into_inner()) = Some(match error {
+                        DbError::PolicyDenied => "export_requires_read_only",
+                        DbError::InvalidRequest => "export_path_invalid",
+                        _ => "export_failed",
+                    });
+                    let _ = tokio::fs::remove_file(&path).await;
+                }
+            }
+            progress.done.store(true, Ordering::Release);
+        });
+        Ok(id)
+    }
+
+    /// Progress of an export; a finished export is forgotten once reported.
+    pub async fn db_export_progress(&self, export_id: String) -> AppResult<serde_json::Value> {
+        let (_, unlocked) = self.unlocked().await?;
+        let mut exports = unlocked
+            .db
+            .exports
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let export = exports
+            .get(&export_id)
+            .ok_or_else(|| invalid("export_closed"))?;
+        let mut snapshot = export.progress.snapshot();
+        snapshot["id"] = serde_json::Value::String(export_id.clone());
+        if export.progress.done.load(Ordering::Acquire) {
+            exports.remove(&export_id);
+        }
+        Ok(snapshot)
+    }
+
+    pub async fn db_export_cancel(&self, export_id: String) -> AppResult<()> {
+        let (_, unlocked) = self.unlocked().await?;
+        if let Some(export) = unlocked
+            .db
+            .exports
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(&export_id)
+        {
+            export.cancel.cancel();
+        }
+        Ok(())
+    }
+
     pub async fn db_load_more(&self, query_id: String, rows: u32) -> AppResult<()> {
         let (_, unlocked) = self.unlocked().await?;
         let query = unlocked.db.query(&query_id)?;
@@ -546,6 +823,15 @@ impl AppCore {
 
     pub async fn db_release(&self, query_id: String) -> AppResult<()> {
         let (_, unlocked) = self.unlocked().await?;
+        {
+            let mut kept = unlocked
+                .db
+                .results
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            kept.0.remove(&query_id);
+            kept.1.retain(|id| id != &query_id);
+        }
         if let Some(query) = unlocked
             .db
             .queries

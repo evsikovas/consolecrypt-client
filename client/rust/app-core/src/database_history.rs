@@ -233,6 +233,80 @@ impl AppCore {
         Ok(())
     }
 
+    /// Saves a history entry as a snippet (SnippetSource::History). Its
+    /// `{{variables}}` become snippet variables; the dialect follows the engine.
+    pub async fn db_save_history_snippet(
+        &self,
+        history_id: String,
+        name: String,
+    ) -> AppResult<String> {
+        use cc_models::database::DbEngine;
+        use cc_models::snippet::{
+            template_variables, RiskLevel, Snippet, SnippetSource, SnippetType, SnippetVariable,
+        };
+        let (owner, unlocked) = self.unlocked().await?;
+        let id = crate::dto::parse_id("history_id", &history_id)?;
+        let name = name.trim().to_owned();
+        if name.is_empty() || name.len() > 200 {
+            return Err(invalid("invalid_snippet_name"));
+        }
+        let row = match unlocked.working().db_history_entry(id) {
+            Some(row) => row,
+            None => {
+                let rows: Vec<DbHistoryEntry> = owner
+                    .storage
+                    .setting_get(RECORDS)
+                    .await?
+                    .unwrap_or_default();
+                rows.into_iter()
+                    .find(|row| row.id == id)
+                    .ok_or_else(|| invalid("history_unavailable"))?
+            }
+        };
+        let (snippet_type, shell) = match row.engine {
+            DbEngine::Postgresql => (SnippetType::Postgresql, None),
+            DbEngine::Mysql => (SnippetType::Sql, Some("mysql")),
+            DbEngine::Mariadb => (SnippetType::Sql, Some("mariadb")),
+            DbEngine::Clickhouse => (SnippetType::Sql, Some("clickhouse")),
+            DbEngine::Redis => (SnippetType::RedisCli, None),
+            DbEngine::Mongodb => (SnippetType::Shell, Some("mongosh")),
+        };
+        let template = row.text.expose_secret().to_owned();
+        let now = chrono::Utc::now();
+        let snippet = Snippet {
+            id: ObjectId::new(),
+            name,
+            description: String::new(),
+            package_name: None,
+            catalog_id: None,
+            snippet_type,
+            shell: shell.map(str::to_owned),
+            variables: template_variables(&template)
+                .into_iter()
+                .map(|name| SnippetVariable {
+                    name,
+                    description: String::new(),
+                    default: None,
+                    required: true,
+                })
+                .collect(),
+            template,
+            tags: vec!["database".into()],
+            risk_level: RiskLevel::Unknown,
+            source: SnippetSource::History,
+            created_by: None,
+            created_at: now,
+            updated_at: now,
+            last_used_at: None,
+            usage_count: 0,
+        };
+        let snippet_id = snippet.id.to_string();
+        let _profile = self.hold_session(&owner).await?;
+        let _generation = owner.hold_unlocked(&unlocked).await?;
+        unlocked.writer.put(VaultObject::Snippet(snippet)).await?;
+        Ok(snippet_id)
+    }
+
     pub async fn db_delete_history(&self, connection_id: String) -> AppResult<()> {
         let (owner, unlocked) = self.unlocked().await?;
         let id = crate::dto::parse_id("connection_id", &connection_id)?;

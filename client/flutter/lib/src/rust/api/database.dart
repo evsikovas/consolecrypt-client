@@ -8,6 +8,8 @@ import 'error.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Selection`
+
 Future<String> dbConnections() => RustLib.instance.api.crateApiDatabaseDbConnections();
 
 Future<String> dbSaveConnection({required String connectionJson, Uint8List? password, Uint8List? privateKey}) => RustLib
@@ -102,3 +104,61 @@ Future<void> dbHistoryFavorite({required String historyId, required bool favorit
 
 Future<void> dbDeleteHistory({required String connectionId}) =>
     RustLib.instance.api.crateApiDatabaseDbDeleteHistory(connectionId: connectionId);
+
+Future<String> dbPrivileges({required String sessionId}) =>
+    RustLib.instance.api.crateApiDatabaseDbPrivileges(sessionId: sessionId);
+
+/// Stages a connection string; the review never contains the password.
+Future<String> dbImportUri({required List<int> uri}) => RustLib.instance.api.crateApiDatabaseDbImportUri(uri: uri);
+
+Future<String> dbImportPgpass({required List<int> contents}) =>
+    RustLib.instance.api.crateApiDatabaseDbImportPgpass(contents: contents);
+
+/// `$PGPASSFILE` or `~/.pgpass`; "null" when there is none.
+Future<String> dbImportDefaultPgpass() => RustLib.instance.api.crateApiDatabaseDbImportDefaultPgpass();
+
+Future<int> dbConfirmImport({required String ticket, required String choicesJson}) =>
+    RustLib.instance.api.crateApiDatabaseDbConfirmImport(ticket: ticket, choicesJson: choicesJson);
+
+Future<void> dbDiscardImport({required String ticket}) =>
+    RustLib.instance.api.crateApiDatabaseDbDiscardImport(ticket: ticket);
+
+Future<String> dbHistoryPolicy({required String connectionId}) =>
+    RustLib.instance.api.crateApiDatabaseDbHistoryPolicy(connectionId: connectionId);
+
+Future<void> dbSetHistoryPolicy({required String connectionId, required String policy}) =>
+    RustLib.instance.api.crateApiDatabaseDbSetHistoryPolicy(connectionId: connectionId, policy: policy);
+
+Future<String> dbSaveHistorySnippet({required String historyId, required String name}) =>
+    RustLib.instance.api.crateApiDatabaseDbSaveHistorySnippet(historyId: historyId, name: name);
+
+/// Loaded rows of one result formatted for the clipboard.
+Future<String> dbCopyResult({
+  required String queryId,
+  required int resultIndex,
+  required String selectionJson,
+  required String optionsJson,
+}) => RustLib.instance.api.crateApiDatabaseDbCopyResult(
+  queryId: queryId,
+  resultIndex: resultIndex,
+  selectionJson: selectionJson,
+  optionsJson: optionsJson,
+);
+
+Future<String> dbExportStart({
+  required String queryId,
+  required int resultIndex,
+  required String optionsJson,
+  required String path,
+}) => RustLib.instance.api.crateApiDatabaseDbExportStart(
+  queryId: queryId,
+  resultIndex: resultIndex,
+  optionsJson: optionsJson,
+  path: path,
+);
+
+Future<String> dbExportProgress({required String exportId}) =>
+    RustLib.instance.api.crateApiDatabaseDbExportProgress(exportId: exportId);
+
+Future<void> dbExportCancel({required String exportId}) =>
+    RustLib.instance.api.crateApiDatabaseDbExportCancel(exportId: exportId);

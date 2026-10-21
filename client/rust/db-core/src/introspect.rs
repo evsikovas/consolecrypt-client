@@ -35,6 +35,14 @@ pub fn quote_identifier(engine: DbEngine, object: &DbObjectRef) -> String {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct DbPrivilegeReport {
+    pub server_read_only: crate::DbServerReadOnly,
+    /// None when the engine offers no reliable check.
+    pub has_write_privileges: Option<bool>,
+    pub warning_codes: Vec<&'static str>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct DbCompletion {
     /// Text inserted at the cursor (the part after what was already typed).
@@ -360,6 +368,79 @@ impl DbSession {
         Ok(CompletionCache {
             tables: triple(self.catalogue(tables, &[]).await?),
             columns: triple(self.catalogue(columns, &[]).await?),
+        })
+    }
+
+    /// Whether the signed-in role can change data, for the "check privileges"
+    /// action: production connections should use a read-only role.
+    pub async fn privileges(&self) -> Result<DbPrivilegeReport, DbError> {
+        let writable = match self.info.engine {
+            DbEngine::Postgresql => {
+                let rows = self
+                    .catalogue(
+                        "SELECT (r.rolsuper OR r.rolcreatedb OR r.rolcreaterole \
+                         OR pg_catalog.has_database_privilege(pg_catalog.current_database(), 'CREATE') \
+                         OR EXISTS (SELECT 1 FROM pg_catalog.pg_roles w WHERE w.rolname = 'pg_write_all_data' \
+                           AND pg_catalog.pg_has_role(w.oid, 'MEMBER')) \
+                         OR EXISTS (SELECT 1 FROM information_schema.role_table_grants g \
+                           WHERE g.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')) \
+                         OR EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n \
+                           ON n.oid = c.relnamespace WHERE c.relkind IN ('r', 'p') \
+                           AND n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema' \
+                           AND pg_catalog.pg_has_role(c.relowner, 'USAGE')))::text \
+                         FROM pg_catalog.pg_roles r WHERE r.rolname = current_user",
+                        &[],
+                    )
+                    .await?;
+                rows.first()
+                    .and_then(|row| row.first())
+                    .map(|value| value == "true")
+            }
+            DbEngine::Mysql | DbEngine::Mariadb => {
+                let rows = self
+                    .catalogue("SHOW GRANTS FOR CURRENT_USER()", &[])
+                    .await?;
+                Some(rows.iter().filter_map(|row| row.first()).any(|grant| {
+                    let grant = grant.to_ascii_uppercase();
+                    let privileges = grant
+                        .strip_prefix("GRANT ")
+                        .and_then(|rest| rest.split(" ON ").next())
+                        .unwrap_or("");
+                    privileges.split(',').map(str::trim).any(|privilege| {
+                        matches!(
+                            privilege,
+                            "ALL PRIVILEGES"
+                                | "INSERT"
+                                | "UPDATE"
+                                | "DELETE"
+                                | "CREATE"
+                                | "DROP"
+                                | "ALTER"
+                                | "INDEX"
+                                | "CREATE VIEW"
+                                | "TRIGGER"
+                                | "EVENT"
+                                | "CREATE ROUTINE"
+                                | "ALTER ROUTINE"
+                                | "FILE"
+                                | "SUPER"
+                        )
+                    })
+                }))
+            }
+            _ => None,
+        };
+        let mut warning_codes = Vec::new();
+        if self.info.production && writable == Some(true) {
+            warning_codes.push("production_role_can_write");
+        }
+        if writable.is_none() {
+            warning_codes.push("privileges_unverified");
+        }
+        Ok(DbPrivilegeReport {
+            server_read_only: self.info.server_read_only.clone(),
+            has_write_privileges: writable,
+            warning_codes,
         })
     }
 

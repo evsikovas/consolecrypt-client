@@ -34,7 +34,7 @@ impl Driver {
     }
 
     /// Runs one guarded statement in the form its engine parsed.
-    fn run<'a>(
+    pub(crate) fn run<'a>(
         &'a mut self,
         statement: &'a ParsedStatement,
         read_only: bool,

@@ -2,7 +2,7 @@
 //! (polled event batches), structure browsing and query history. JSON in and
 //! out; passwords travel as bytes and never return.
 use crate::api::error::BridgeError;
-use crate::state::{from_json, opt_secret_string, to_json, with_core};
+use crate::state::{from_json, opt_secret_string, secret_string, to_json, with_core};
 use cc_db_core::{DbObjectRef, DbQueryRequest};
 use cc_models::{
     database::{DbConnection, DbEngine},
@@ -197,4 +197,103 @@ pub async fn db_history_favorite(history_id: String, favorite: bool) -> Result<(
 
 pub async fn db_delete_history(connection_id: String) -> Result<(), BridgeError> {
     with_core(move |c| async move { Ok(c.db_delete_history(connection_id).await?) }).await
+}
+
+pub async fn db_privileges(session_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.db_privileges(session_id).await?) }).await
+}
+
+/// Stages a connection string; the review never contains the password.
+pub async fn db_import_uri(uri: Vec<u8>) -> Result<String, BridgeError> {
+    let uri = SecretString::from(secret_string("uri", uri)?);
+    with_core(move |c| async move { to_json(&c.db_import_uri(uri).await?) }).await
+}
+
+pub async fn db_import_pgpass(contents: Vec<u8>) -> Result<String, BridgeError> {
+    let contents = SecretString::from(secret_string("contents", contents)?);
+    with_core(move |c| async move { to_json(&c.db_import_pgpass(contents).await?) }).await
+}
+
+/// `$PGPASSFILE` or `~/.pgpass`; "null" when there is none.
+pub async fn db_import_default_pgpass() -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.db_import_default_pgpass().await?) }).await
+}
+
+pub async fn db_confirm_import(ticket: String, choices_json: String) -> Result<u32, BridgeError> {
+    let choices: Vec<cc_app_core::DbImportChoice> = from_json("choices", &choices_json)?;
+    with_core(move |c| async move { Ok(c.db_confirm_import(ticket, choices).await? as u32) }).await
+}
+
+pub async fn db_discard_import(ticket: String) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.db_discard_import(ticket).await?) }).await
+}
+
+pub async fn db_history_policy(connection_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.db_history_policy(connection_id).await?) }).await
+}
+
+pub async fn db_set_history_policy(
+    connection_id: String,
+    policy: String,
+) -> Result<(), BridgeError> {
+    let policy = from_json("policy", &format!("\"{policy}\""))?;
+    with_core(move |c| async move { Ok(c.db_set_history_policy(connection_id, policy).await?) })
+        .await
+}
+
+pub async fn db_save_history_snippet(
+    history_id: String,
+    name: String,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move { Ok(c.db_save_history_snippet(history_id, name).await?) }).await
+}
+
+#[derive(serde::Deserialize)]
+struct Selection {
+    rows: Option<Vec<u32>>,
+    columns: Option<Vec<u32>>,
+}
+
+/// Loaded rows of one result formatted for the clipboard.
+pub async fn db_copy_result(
+    query_id: String,
+    result_index: u32,
+    selection_json: String,
+    options_json: String,
+) -> Result<String, BridgeError> {
+    let selection: Selection = from_json("selection", &selection_json)?;
+    let options = from_json("options", &options_json)?;
+    with_core(move |c| async move {
+        Ok(c.db_copy_result(
+            query_id,
+            result_index,
+            selection.rows,
+            selection.columns,
+            options,
+        )
+        .await?)
+    })
+    .await
+}
+
+pub async fn db_export_start(
+    query_id: String,
+    result_index: u32,
+    options_json: String,
+    path: String,
+) -> Result<String, BridgeError> {
+    let options = from_json("options", &options_json)?;
+    with_core(move |c| async move {
+        Ok(c.db_export_start(query_id, result_index, options, path)
+            .await?)
+    })
+    .await
+}
+
+pub async fn db_export_progress(export_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.db_export_progress(export_id).await?) }).await
+}
+
+pub async fn db_export_cancel(export_id: String) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.db_export_cancel(export_id).await?) }).await
 }

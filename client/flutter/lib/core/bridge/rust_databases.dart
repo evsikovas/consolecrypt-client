@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:consolecrypt/core/bridge/mapping.dart';
@@ -12,17 +13,15 @@ import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/src/rust/api/database.dart' as native;
 import 'package:consolecrypt/src/rust/api/inventory.dart' as rs_inv;
+import 'package:file_selector/file_selector.dart';
 
 /// Native databases: connections live in the vault, sessions and query streams
 /// in the core. Passwords cross the bridge only as wiped byte buffers.
-final class RustDbService implements DbService, DbQueryService, DbHistoryService {
+final class RustDbService implements DbService, DbQueryService, DbHistoryService, DbPgpassFileService, DbExportService {
   RustDbService(this._hub);
   final RustBackend _hub;
   final _sessions = <String, DbSessionInfo>{};
   final _local = StreamController<void>.broadcast();
-
-  static Never _unsupported() =>
-      throw const AppException(AppErrorCode.unsupported, 'Not available in this preview'); // l10n-ignore: diagnostic
 
   static Future<T> _secret<T>(SecretText? value, Future<T> Function(Uint8List? bytes) call) =>
       value == null ? call(null) : withSecret(value, call);
@@ -132,23 +131,69 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
     }
   }
 
-  @override
-  Future<DbImportReview> importConnectionString(SecretText uri) {
-    uri.wipe();
-    _unsupported();
+  static DbImportReview _review(String json) {
+    final review = jsonDecode(json) as DbJson;
+    return DbImportReview(
+      ticket: review['ticket'] as String,
+      expiresAt: DateTime.now().add(Duration(seconds: review['expires_in_seconds'] as int? ?? 600)),
+      entries: [
+        for (final entry in (review['entries'] as List).cast<DbJson>())
+          DbImportEntry(
+            index: entry['index'] as int,
+            name: entry['name'] as String,
+            engine: DbEngine.parse(entry['engine'] as String),
+            host: entry['host'] as String,
+            port: entry['port'] as int,
+            database: entry['database'] as String? ?? '',
+            username: entry['username'] as String? ?? '',
+            hasPassword: entry['has_password'] as bool? ?? false,
+            warningCodes: (entry['warning_codes'] as List? ?? const []).cast<String>(),
+          ),
+      ],
+    );
   }
 
   @override
-  Future<DbImportReview> importPgpass(SecretText contents) {
-    contents.wipe();
-    _unsupported();
+  Future<DbImportReview> importConnectionString(SecretText uri) async {
+    try {
+      return _review(await withSecret(uri, (bytes) => guard(() => native.dbImportUri(uri: bytes))));
+    } finally {
+      uri.wipe();
+    }
   }
 
   @override
-  Future<void> confirmImport(String ticket, List<DbImportChoice> choices) => _unsupported();
+  Future<DbImportReview> importPgpass(SecretText contents) async {
+    try {
+      return _review(await withSecret(contents, (bytes) => guard(() => native.dbImportPgpass(contents: bytes))));
+    } finally {
+      contents.wipe();
+    }
+  }
+
+  /// `~/.pgpass` (or `$PGPASSFILE`) when present, otherwise a file chooser.
+  @override
+  Future<DbImportReview?> selectPgpassFile() async {
+    final found = await guard(native.dbImportDefaultPgpass);
+    if (found != 'null') return _review(found);
+    final file = await openFile();
+    if (file == null) return null;
+    final bytes = await file.readAsBytes();
+    final contents = SecretText.fromBytes(bytes);
+    bytes.fillRange(0, bytes.length, 0);
+    return importPgpass(contents);
+  }
 
   @override
-  Future<void> discardImport(String ticket) async {}
+  Future<void> confirmImport(String ticket, List<DbImportChoice> choices) async {
+    await guard(
+      () => native.dbConfirmImport(ticket: ticket, choicesJson: jsonEncode([for (final c in choices) c.toJson()])),
+    );
+    _local.add(null);
+  }
+
+  @override
+  Future<void> discardImport(String ticket) => guard(() => native.dbDiscardImport(ticket: ticket));
 
   // Sessions and queries.
 
@@ -164,8 +209,18 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
   }
 
   @override
-  Future<DbPrivilegeReport> checkPrivileges(String sessionId) async =>
-      DbPrivilegeReport(serverReadOnly: _sessions[sessionId]?.serverReadOnly ?? DbServerReadOnly.unverified);
+  Future<DbPrivilegeReport> checkPrivileges(String sessionId) async {
+    final json = jsonDecode(await guard(() => native.dbPrivileges(sessionId: sessionId))) as DbJson;
+    return DbPrivilegeReport(
+      serverReadOnly: switch (json['server_read_only']) {
+        'enforced' => DbServerReadOnly.enforced,
+        'role_verified' => DbServerReadOnly.roleVerified,
+        _ => DbServerReadOnly.unverified,
+      },
+      hasWritePrivileges: json['has_write_privileges'] as bool?,
+      warningCodes: (json['warning_codes'] as List? ?? const []).cast<String>(),
+    );
+  }
 
   @override
   Future<DbSessionInfo> allowSessionWrite(String sessionId) async =>
@@ -316,10 +371,24 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
   // History.
 
   @override
-  Future<DbHistoryPolicy> historyPolicy(String connectionId) async => DbHistoryPolicy.local;
+  Future<DbHistoryPolicy> historyPolicy(String connectionId) async =>
+      switch (jsonDecode(await guard(() => native.dbHistoryPolicy(connectionId: connectionId)))) {
+        'encrypted_sync' => DbHistoryPolicy.encryptedSync,
+        'disabled' => DbHistoryPolicy.disabled,
+        _ => DbHistoryPolicy.local,
+      };
 
   @override
-  Future<void> setHistoryPolicy(String connectionId, DbHistoryPolicy policy) => _unsupported();
+  Future<void> setHistoryPolicy(String connectionId, DbHistoryPolicy policy) => guard(
+    () => native.dbSetHistoryPolicy(
+      connectionId: connectionId,
+      policy: switch (policy) {
+        DbHistoryPolicy.local => 'local',
+        DbHistoryPolicy.encryptedSync => 'encrypted_sync',
+        DbHistoryPolicy.disabled => 'disabled',
+      },
+    ),
+  );
 
   @override
   Future<DbHistoryPage> history(
@@ -366,8 +435,76 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
       guard(() => native.dbHistoryFavorite(historyId: historyId, favorite: favorite));
 
   @override
-  Future<void> saveHistorySnippet(String historyId, String name) => _unsupported();
+  Future<void> saveHistorySnippet(String historyId, String name) =>
+      guard(() => native.dbSaveHistorySnippet(historyId: historyId, name: name));
 
   @override
   Future<void> deleteHistory(String connectionId) => guard(() => native.dbDeleteHistory(connectionId: connectionId));
+
+  // Copy and export.
+
+  @override
+  Future<SecretText> copyResult(
+    String sessionId,
+    String queryId,
+    int resultIndex,
+    DbResultSelection selection,
+    DbExportOptions options,
+  ) async => SecretText(
+    await guard(
+      () => native.dbCopyResult(
+        queryId: queryId,
+        resultIndex: resultIndex,
+        selectionJson: jsonEncode(selection.toJson()),
+        optionsJson: jsonEncode(options.toJson()),
+      ),
+    ),
+  );
+
+  @override
+  Future<DbExportDestination?> chooseExportDestination(DbExportOptions options) async {
+    final extension = switch (options.format) {
+      DbExportFormat.csv => 'csv',
+      DbExportFormat.tsv => 'tsv',
+      DbExportFormat.json => 'json',
+      DbExportFormat.ndjson => 'ndjson',
+      DbExportFormat.markdown => 'md',
+      DbExportFormat.insert => 'sql',
+    };
+    final location = await getSaveLocation(suggestedName: 'result.$extension'); // l10n-ignore: file name
+    if (location == null) return null;
+    return DbExportDestination(id: location.path, label: location.path.split(Platform.pathSeparator).last);
+  }
+
+  @override
+  Future<String> startExport(
+    String sessionId,
+    String queryId,
+    int resultIndex,
+    DbExportOptions options,
+    DbExportDestination destination,
+  ) => guard(
+    () => native.dbExportStart(
+      queryId: queryId,
+      resultIndex: resultIndex,
+      optionsJson: jsonEncode(options.toJson()),
+      path: destination.id,
+    ),
+  );
+
+  @override
+  Stream<DbExportProgress> watchExport(String sessionId, String exportId) async* {
+    while (true) {
+      final progress = DbExportProgress.fromJson(
+        jsonDecode(await guard(() => native.dbExportProgress(exportId: exportId))) as DbJson,
+      );
+      yield progress;
+      if (progress.done || progress.cancelled || progress.error != null) return;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    }
+  }
+
+  @override
+  Future<void> cancelExport(String sessionId, String exportId) =>
+      guard(() => native.dbExportCancel(exportId: exportId));
 }
