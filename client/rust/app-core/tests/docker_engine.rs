@@ -1,0 +1,157 @@
+//! Docker section through app-core: the local engine and a saved SSH host
+//! whose `docker.sock` is forwarded over `direct-streamlocal`. Gated by
+//! `CC_SSH_IT=1` (needs Docker):
+//!
+//! ```sh
+//! CC_SSH_IT=1 cargo test -p cc-app-core --test docker_engine -- --nocapture
+//! ```
+
+mod common;
+
+use cc_app_core::*;
+use cc_models::host::HostKeyPolicy;
+use cc_ssh_core::testing::{self, SshTestbed};
+use common::*;
+use secrecy::ExposeSecret;
+use std::time::Duration;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn docker_over_ssh_reports_missing_rights_then_lists_logs_and_forwards() {
+    if !testing::enabled() {
+        eprintln!("skipped: set CC_SSH_IT=1 to run Docker integration tests");
+        return;
+    }
+    let tb = tokio::task::spawn_blocking(SshTestbed::start_docker_host)
+        .await
+        .unwrap()
+        .expect("docker host testbed");
+    let tmp = tempfile::tempdir().unwrap();
+    let app = common::app(&tmp.path().join("app"));
+    app.create_local_profile("Docker IT".into(), PASSPHRASE.into())
+        .await
+        .unwrap();
+    let s = &tb.secrets;
+    let cred = app
+        .import_ssh_key(
+            "it key".into(),
+            Some(s.user.clone()),
+            s.key.private_openssh.expose_secret().to_owned(),
+            None,
+            false,
+            None,
+        )
+        .await
+        .unwrap();
+    let mut h = host("docker-host", "127.0.0.1", Some(&cred.id));
+    h.port = Some(tb.bastion1_port);
+    h.host_key_policy = HostKeyPolicy::AcceptNew;
+    let saved = app.save_host(h).await.unwrap();
+
+    let hosts = app.docker_hosts().await.unwrap();
+    assert!(hosts.iter().any(|h| h.id == saved.id && h.kind == "ssh"));
+
+    // Without the docker group the socket is refused, with the group named.
+    match app.docker_connect(saved.id.clone()).await.unwrap() {
+        DockerConnectOutcome::Failed { failure, detail } => {
+            assert_eq!(failure, "permission_denied");
+            assert_eq!(detail, "docker");
+        }
+        other => panic!("expected a permission failure, got {other:?}"),
+    }
+    tb.exec_in(&tb.bastion1, "addgroup tester docker").unwrap();
+
+    let session = match app.docker_connect(saved.id.clone()).await.unwrap() {
+        DockerConnectOutcome::Connected(session) => session,
+        other => panic!("expected a session, got {other:?}"),
+    };
+    assert!(!session.engine_version.is_empty());
+    let containers = app
+        .docker_containers(session.id.clone(), true)
+        .await
+        .unwrap();
+    let me = containers
+        .iter()
+        .find(|c| c.name == tb.bastion1)
+        .expect("the SSH host container is listed");
+    assert_eq!(me.state, "running");
+    let inspect = app
+        .docker_inspect(session.id.clone(), me.id.clone())
+        .await
+        .unwrap();
+    let env = inspect["Config"]["Env"].to_string();
+    assert!(env.contains("CC_IT_PASSWORD=••••••"), "{env}");
+
+    // Logs of the host container contain sshd's start line.
+    let stream = app
+        .docker_logs_start(session.id.clone(), me.id.clone(), 200, false, false)
+        .await
+        .unwrap();
+    let mut lines = Vec::new();
+    while let Some(batch) = app.docker_logs_poll(stream.clone(), 1000).await.unwrap() {
+        lines.extend(batch);
+    }
+    assert!(
+        lines.iter().any(|l| l.text.contains("Server listening on")),
+        "{lines:?}"
+    );
+
+    // Port 8080 of the container through the SSH host.
+    let forward = app
+        .docker_forward_start(session.id.clone(), me.id.clone(), 8080, 0)
+        .await
+        .unwrap();
+    let mut socket = tokio::net::TcpStream::connect(&forward.address)
+        .await
+        .unwrap();
+    socket
+        .write_all(b"GET / HTTP/1.0\r\nHost: x\r\n\r\n")
+        .await
+        .unwrap();
+    let mut page = String::new();
+    tokio::time::timeout(Duration::from_secs(10), socket.read_to_string(&mut page))
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(page.contains("hello from"), "{page}");
+    drop(socket);
+    // Counters land when the tunnelled connection has finished.
+    let mut counted = false;
+    for _ in 0..50 {
+        let listed = app.docker_forwards().await.unwrap();
+        if listed
+            .iter()
+            .any(|f| f.id == forward.id && f.bytes_received > 0)
+        {
+            counted = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    assert!(counted, "forward counted the transfer");
+    app.docker_forward_stop(forward.id.clone()).await.unwrap();
+    app.docker_disconnect(session.id.clone()).await.unwrap();
+    assert!(app.docker_containers(session.id, true).await.is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn docker_on_this_computer() {
+    if !testing::enabled() {
+        eprintln!("skipped: set CC_SSH_IT=1 to run Docker integration tests");
+        return;
+    }
+    let tmp = tempfile::tempdir().unwrap();
+    let app = common::app(&tmp.path().join("app"));
+    app.create_local_profile("Docker local".into(), PASSPHRASE.into())
+        .await
+        .unwrap();
+    let hosts = app.docker_hosts().await.unwrap();
+    assert_eq!(hosts.first().map(|h| h.kind), Some("local"));
+    match app.docker_connect("local".into()).await.unwrap() {
+        DockerConnectOutcome::Connected(session) => {
+            assert!(session.containers_total >= 1);
+            app.docker_disconnect(session.id).await.unwrap();
+        }
+        other => panic!("local engine: {other:?}"),
+    }
+}

@@ -208,6 +208,7 @@ pub(crate) struct Unlocked {
     pub db: crate::database_runtime::DbRuntime,
     pub(crate) db_imports: crate::database_import::DbImports,
     pub(crate) db_ai: crate::database_ai::DbAiRuntime,
+    pub(crate) docker: crate::docker_runtime::DockerRuntime,
     pub db_history_lock: tokio::sync::Mutex<()>,
     event_stream: tokio::sync::Mutex<Option<EventStream>>,
     tasks: Mutex<Vec<JoinHandle<()>>>,
@@ -293,6 +294,7 @@ impl Unlocked {
         self.db.close();
         self.db_imports.clear();
         self.db_ai.close();
+        self.docker.close();
         self.edit.stop_all().await;
         self.transfers.cancel_all();
         self.ai.shutdown().await;
@@ -535,6 +537,7 @@ impl Session {
             db: crate::database_runtime::DbRuntime::default(),
             db_imports: Default::default(),
             db_ai: Default::default(),
+            docker: Default::default(),
             db_history_lock: tokio::sync::Mutex::new(()),
             event_stream: tokio::sync::Mutex::new(None),
             tasks: Mutex::new(Vec::new()),

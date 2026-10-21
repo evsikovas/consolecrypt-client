@@ -207,13 +207,18 @@ pub enum TerminalTarget {
         pod: String,
         container: Option<String>,
     },
+    /// A shell in a Docker container; `host_id` is None on this computer.
+    Docker {
+        host_id: Option<ObjectId>,
+        container: String,
+    },
 }
 
 impl TerminalTarget {
     pub fn host_id(&self) -> Option<ObjectId> {
         match self {
             Self::Ssh { host_id } => Some(*host_id),
-            Self::Local { .. } | Self::Kubernetes { .. } => None,
+            Self::Local { .. } | Self::Kubernetes { .. } | Self::Docker { .. } => None,
         }
     }
 }

@@ -239,12 +239,67 @@ impl SshTestbed {
         Ok(tb)
     }
 
+    /// One published host with the local Docker socket mounted and Unix
+    /// socket forwarding enabled; `tester` is not in the socket's group yet.
+    pub fn start_docker_host() -> Result<Self, String> {
+        build_image()?;
+        let id = uuid::Uuid::new_v4().simple().to_string()[..10].to_string();
+        let mut tb = SshTestbed {
+            bastion1: format!("cc-it-{id}-dockerhost"),
+            bastion1_port: 0,
+            bastion2: None,
+            target: None,
+            containers: Vec::new(),
+            networks: Vec::new(),
+            id,
+            secrets: TestSecrets::generate(),
+        };
+        let network = format!("cc-it-{}-a", tb.id);
+        docker(&["network", "create", &network])?;
+        tb.networks.push(network.clone());
+        let host = tb.bastion1.clone();
+        tb.run_container_with(
+            &host,
+            &network,
+            true,
+            &format!("127.0.0.1,localhost,{host}"),
+            // The host socket stays untouched; a relay inside owns the copy.
+            &["-v", "/var/run/docker.sock:/host-docker.sock"],
+        )?;
+        let port = docker(&["port", &host, "22/tcp"])?;
+        tb.bastion1_port = port
+            .lines()
+            .find_map(|l| l.rsplit(':').next()?.trim().parse().ok())
+            .ok_or_else(|| format!("cannot parse mapped port from {port:?}"))?;
+        tb.wait_ready(&host)?;
+        // A relay socket owned by group `docker`, as on a Linux engine host.
+        tb.exec_in(
+            &host,
+            "apk add --no-cache socat >/dev/null && addgroup docker && \\
+             (socat UNIX-LISTEN:/var/run/docker.sock,fork,group=docker,mode=660 UNIX-CONNECT:/host-docker.sock >/dev/null 2>&1 &) && \\
+             sed -i 's/^AllowStreamLocalForwarding no/AllowStreamLocalForwarding yes/' /etc/ssh/sshd_config && kill -HUP 1",
+        )?;
+        std::thread::sleep(Duration::from_millis(800));
+        Ok(tb)
+    }
+
     fn run_container(
         &mut self,
         name: &str,
         network: &str,
         publish: bool,
         principals: &str,
+    ) -> Result<(), String> {
+        self.run_container_with(name, network, publish, principals, &[])
+    }
+
+    fn run_container_with(
+        &mut self,
+        name: &str,
+        network: &str,
+        publish: bool,
+        principals: &str,
+        extra: &[&str],
     ) -> Result<(), String> {
         let authorized = format!(
             "{}\n{}",
@@ -275,6 +330,7 @@ impl SshTestbed {
         if publish {
             args.extend(["-p", "127.0.0.1::22"]);
         }
+        args.extend(extra.iter().copied());
         args.push(IMAGE);
         docker_env(
             &args,

@@ -980,6 +980,7 @@ dependencies = [
  "cc-ai-core",
  "cc-crypto-core",
  "cc-db-core",
+ "cc-docker-core",
  "cc-k8s-core",
  "cc-models",
  "cc-platform-core",
