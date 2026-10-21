@@ -100,7 +100,11 @@ class MockDockerService implements DockerService {
           'Env': [
             'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
             'APP_ENV=production',
-            if (container.image.startsWith('postgres')) 'POSTGRES_PASSWORD=••••••',
+            if (container.image.startsWith('postgres')) ...[
+              'POSTGRES_DB=shop',
+              'POSTGRES_USER=shop',
+              'POSTGRES_PASSWORD=••••••',
+            ],
             if (container.composeService == 'api') 'API_TOKEN=••••••',
           ],
           'Labels': {
@@ -415,12 +419,12 @@ services:
   api:
     image: example/shop-api:2.4.1
     environment:
-      DATABASE_URL: postgres://shop:demo-secret-value@postgres:5432/shop
-      API_TOKEN: demo-secret-value
+      DATABASE_URL: postgres://shop:\${POSTGRES_PASSWORD}@postgres:5432/shop
+      API_TOKEN: \${API_TOKEN}
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_PASSWORD: demo-secret-value
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
     volumes:
       - shop_data:/var/lib/postgresql/data
   redis:
@@ -443,7 +447,7 @@ volumes:
   grafana:
     image: grafana/grafana:11.2.0
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: demo-secret-value
+      GF_SECURITY_ADMIN_PASSWORD: \${GRAFANA_PASSWORD}
 '''; // l10n-ignore: demo file
 
   static DockerContainer _copy(DockerContainer c, {required DockerContainerState state, required String status}) =>

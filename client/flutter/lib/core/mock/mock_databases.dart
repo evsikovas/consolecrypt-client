@@ -17,13 +17,70 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
   var _next = 0;
 
   late final List<DbConnection> _connections = [
-    _connection('pg', 'shop-prod', DbEngine.postgresql, 'db.shop.internal', production: true, database: 'shop'),
+    _connection(
+      'pg',
+      'shop-prod',
+      DbEngine.postgresql,
+      'db.shop.internal',
+      production: true,
+      database: 'shop',
+      route: const DbRoute(kind: DbRouteKind.ssh, reference: _bastion),
+      color: '#E5484D',
+    ),
     _connection('pg-dev', 'shop-dev', DbEngine.postgresql, 'localhost', production: false, database: 'shop'),
-    _connection('my', 'billing', DbEngine.mysql, 'billing.internal', production: true, database: 'billing'),
-    _connection('ch', 'analytics', DbEngine.clickhouse, 'ch.internal', production: true, database: 'events'),
-    _connection('redis', 'cache', DbEngine.redis, 'redis.internal', production: false, database: '0'),
-    _connection('mongo', 'catalog', DbEngine.mongodb, 'mongo.internal', production: false, database: 'catalog'),
+    _connection(
+      'my',
+      'billing',
+      DbEngine.mysql,
+      'billing.internal',
+      production: true,
+      database: 'billing',
+      route: const DbRoute(kind: DbRouteKind.docker, reference: _dockerHost, container: 'billing-mysql-1'),
+      color: '#F5A524',
+    ),
+    _connection(
+      'ch',
+      'analytics',
+      DbEngine.clickhouse,
+      'ch.internal',
+      production: true,
+      database: 'events',
+      route: const DbRoute(
+        kind: DbRouteKind.kubernetes,
+        reference: _cluster,
+        namespace: 'analytics',
+        targetKind: DbKubeTargetKind.statefulSet,
+        targetName: 'clickhouse',
+      ),
+      color: '#8E4EC6',
+    ),
+    _connection(
+      'redis',
+      'cache',
+      DbEngine.redis,
+      'redis.internal',
+      production: false,
+      database: '0',
+      route: const DbRoute(kind: DbRouteKind.tunnel, reference: _redisTunnel),
+    ),
+    _connection(
+      'mongo',
+      'catalog',
+      DbEngine.mongodb,
+      'mongo.internal',
+      production: false,
+      database: 'catalog',
+      route: const DbRoute(kind: DbRouteKind.jump, reference: _jump),
+      color: '#30A46C',
+    ),
   ];
+
+  // Route targets offered by the connection form (demo names only).
+  static const _bastion = 'mock-host-bastion-a';
+  static const _dockerHost = 'mock-host-web-01';
+  static const _jump = 'mock-jump-bastion';
+  static const _cluster = 'mock-kube-demo';
+  static const _redisTunnel = 'mock-tunnel-redis';
 
   static DbConnection _connection(
     String id,
@@ -32,6 +89,8 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
     String host, {
     required bool production,
     required String database,
+    DbRoute route = const DbRoute(),
+    String? color,
   }) => DbConnection(
     id: id,
     name: name,
@@ -40,9 +99,13 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
     port: engine.port,
     database: database,
     username: 'app',
+    // A saved (demo) password: the workspace opens without asking.
+    auth: const DbAuth(passwordSecretId: 'mock-db-password'),
+    route: route,
     production: production,
     options: DbDriverOptions(engine: engine),
     tags: [if (production) 'prod' else 'dev'],
+    color: color,
   );
 
   DbConnection _byId(String id) => _connections.firstWhere((c) => c.id == id);
@@ -57,7 +120,33 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
   Future<List<DbConnection>> connections() async => List.unmodifiable(_connections);
 
   @override
-  Future<DbConnectionChoices> connectionChoices() async => const DbConnectionChoices();
+  Future<DbConnectionChoices> connectionChoices() async => const DbConnectionChoices(
+    routes: [
+      DbRouteChoice(
+        route: DbRoute(kind: DbRouteKind.ssh, reference: _bastion),
+        label: 'bastion-a',
+      ),
+      DbRouteChoice(
+        route: DbRoute(kind: DbRouteKind.ssh, reference: _dockerHost),
+        label: 'web-01',
+      ),
+      DbRouteChoice(
+        route: DbRoute(kind: DbRouteKind.jump, reference: _jump),
+        label: 'bastion-chain',
+      ),
+      DbRouteChoice(
+        route: DbRoute(kind: DbRouteKind.kubernetes, reference: _cluster),
+        label: 'demo-cluster',
+      ),
+      DbRouteChoice(
+        route: DbRoute(kind: DbRouteKind.tunnel, reference: _redisTunnel),
+        label: 'redis-cache',
+        host: 'redis.internal',
+        port: 6379,
+        localPort: 16379,
+      ),
+    ],
+  );
 
   @override
   Future<DbConnection> saveConnection(DbConnectionDraft draft) async {
@@ -552,17 +641,24 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
 
   @override
   Future<List<DbAiProvider>> aiProviders() async => const [
-    DbAiProvider(id: 'local', name: 'Local model', external: false),
+    DbAiProvider(id: 'local', name: 'qwen3-4b (local)', external: false),
   ];
 
+  /// Tickets whose question was asked in Russian: the canned answer follows.
+  final _russianTickets = <String>{};
+
   @override
-  Future<DbAiReview> prepareAi(String sessionId, String providerId, DbAiRequest request) async => DbAiReview(
-    ticket: 'ai-${_next++}',
-    provider: const DbAiProvider(id: 'local', name: 'Local model', external: false),
-    connectionName: _byId(_sessions[sessionId]?.connectionId ?? 'pg').name,
-    expiresAt: DateTime.now().add(const Duration(minutes: 2)),
-    schemaObjects: const ['public.orders', 'public.customers'],
-  );
+  Future<DbAiReview> prepareAi(String sessionId, String providerId, DbAiRequest request) async {
+    final ticket = 'ai-${_next++}';
+    if (RegExp('[А-Яа-яЁё]').hasMatch(request.question)) _russianTickets.add(ticket);
+    return DbAiReview(
+      ticket: ticket,
+      provider: const DbAiProvider(id: 'local', name: 'qwen3-4b (local)', external: false),
+      connectionName: _byId(_sessions[sessionId]?.connectionId ?? 'pg').name,
+      expiresAt: DateTime.now().add(const Duration(minutes: 2)),
+      schemaObjects: const ['public.orders', 'public.customers'],
+    );
+  }
 
   @override
   Stream<DbAiEvent> askAi(String sessionId, String ticket, DbAiConsent consent) async* {
@@ -576,7 +672,11 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
     );
     yield DbAiEvent(
       kind: DbAiEventKind.explanation,
-      content: SecretText('Top 10 customers by paid revenue over the last 30 days.'),
+      content: SecretText(
+        _russianTickets.remove(ticket)
+            ? 'Десять клиентов с наибольшей оплаченной выручкой за последние 30 дней.'
+            : 'Top 10 customers by paid revenue over the last 30 days.',
+      ),
     );
     yield const DbAiEvent(kind: DbAiEventKind.done);
   }

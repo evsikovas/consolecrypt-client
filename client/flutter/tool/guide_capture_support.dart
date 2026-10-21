@@ -55,6 +55,20 @@ const guideScreens = [
   'sharing-roles',
   'sharing-secret',
   'enrollment-owner',
+  'db-connections',
+  'db-connections-list',
+  'db-connection-form',
+  'db-workspace',
+  'db-explain',
+  'db-ai',
+  'docker-hosts',
+  'docker-containers',
+  'docker-details',
+  'docker-volumes',
+  'docker-compose-menu',
+  'docker-compose-yaml',
+  'docker-database',
+  'docker-forwards',
 ];
 
 // Explicit synthetic profiles. Capture fixtures never discover or spawn a

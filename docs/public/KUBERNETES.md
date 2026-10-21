@@ -103,6 +103,23 @@ IP-интерфейс после предупреждения; на телефо
 Сборка и проверка Kubernetes на iOS отложены. Текущий выпуск включает
 macOS, Windows, Linux и Android. Блокировка хранилища закрывает сессии.
 
+Запущенные пробросы Kubernetes и Docker собраны в общей правой панели
+«Проброс портов»: состояние, локальный адрес с копированием, трафик и
+остановка. Панель открывается сама после запуска проброса.
+
+### Подключение к базе данных
+
+У Pod со стандартным портом базы данных (PostgreSQL, MySQL, MariaDB,
+ClickHouse, Redis, MongoDB) есть кнопка «Подключиться к БД». Если в разделе
+«Базы данных» уже сохранено подключение с тем же маршрутом, оно сразу
+открывается. Иначе открывается форма с маршрутом через Kubernetes: для Pod
+из StatefulSet — к самому Pod (у него постоянное имя), иначе к единственному
+Service, выбирающему Pod, или к его Deployment, чтобы подключение пережило
+перезапуск подов. Имя базы и пользователь подставляются из переменных
+окружения контейнера, если они заданы явно; значения из Secret не читаются.
+Проброс порта восстанавливается при каждом подключении к базе, а в
+production действуют разрешения port-forward этого контекста.
+
 ### Helm и GitOps
 
 Helm показывает историю релиза, values, манифест и различия между ревизиями.
@@ -237,6 +254,22 @@ tunnel closes its listener. Android keeps active forwards in a foreground
 service with a notification and stop action. The iOS build and Kubernetes
 testing are deferred; this release targets macOS, Windows, Linux and Android.
 Locking the vault closes sessions.
+
+Running Kubernetes and Docker forwards share the right-hand “Port forwards”
+panel with state, the local address and a copy button, traffic and Stop. The
+panel opens by itself when a forward starts.
+
+### Connect to a database
+
+A Pod with a standard database port (PostgreSQL, MySQL, MariaDB, ClickHouse,
+Redis, MongoDB) has a “Connect to database” button. A connection with the same
+route already saved in Databases opens at once. Otherwise a form opens with a
+Kubernetes route: to the Pod itself for a StatefulSet Pod (its name is
+stable), otherwise to the only Service selecting the Pod or to its Deployment,
+so the connection survives Pod restarts. The database name and user come from
+literal container environment variables; values from Secrets are not read.
+The forward is restored on every database connect, and production contexts
+keep their port-forward permissions.
 
 ### Helm and GitOps
 

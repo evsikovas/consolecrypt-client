@@ -22,6 +22,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/app_services.dart' show DeviceLocalAiBridge;
+import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/hosts/known_hosts_import.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
 import 'package:consolecrypt/sharing/enrollment_owner.dart';
@@ -686,6 +687,8 @@ void main() {
           );
           expect(tester.widget<GlassButton>(find.byKey(const ValueKey('enrollment-grant-create'))).onPressed, isNull);
         }
+        if (_guide && screen.startsWith('db-')) await _databaseScreen(tester, screen, l10n);
+        if (_guide && screen.startsWith('docker-')) await _dockerScreen(tester, screen, l10n);
         expect(tester.takeException(), isNull);
         if (_guide) _assertGuideScreen(tester, screen, l10n);
         final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
@@ -700,6 +703,92 @@ void main() {
         });
       }, variant: TargetPlatformVariant.only(platform));
     }
+  }
+}
+
+/// Databases section on the mock backend: demo connections, a synthetic shop
+/// schema, canned results, plan and assistant draft. Nothing leaves the test.
+Future<void> _databaseScreen(WidgetTester tester, String screen, AppLocalizations l10n) async {
+  await tapKey(tester, 'nav-databases');
+  if (screen == 'db-connections-list') await tapKey(tester, 'db-view-list');
+  if (screen == 'db-connection-form') {
+    await tapKey(tester, 'db-menu-ch');
+    await tester.tap(find.text(l10n.commonEdit).last);
+    await settle(tester);
+    await tester.ensureVisible(find.byKey(const ValueKey('db-route')));
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('db-route')));
+    await settle(tester);
+  }
+  if (const ['db-workspace', 'db-explain', 'db-ai'].contains(screen)) {
+    await tapKey(tester, 'db-connection-pg');
+    await tester.tap(find.text('public').first);
+    await settle(tester);
+    await tester.tap(find.text('orders').first);
+    await settle(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('db-query-editor')),
+      'SELECT o.id, c.name AS customer, c.email, o.total, o.status, o.created_at\n'
+      'FROM orders o\nJOIN customers c ON c.id = o.customer_id\n'
+      "WHERE o.created_at >= now() - interval '7 days'\nORDER BY o.created_at DESC\nLIMIT 100;",
+    );
+    await tester.pump();
+    await tapKey(tester, 'db-run');
+    if (screen == 'db-explain') {
+      await tapKey(tester, 'db-explain');
+      await tester.tap(find.text(l10n.dbExplain).last);
+      await settle(tester);
+    }
+    if (screen == 'db-ai') {
+      await tapKey(tester, 'db-toggle-ai');
+      await tester.enterText(
+        find.byKey(const ValueKey('db-ai-question')),
+        l10n.localeName == 'en'
+            ? 'Top 10 customers by paid revenue for 30 days'
+            : 'Топ-10 клиентов по оплаченной выручке за 30 дней',
+      );
+      await tester.pump();
+      await tester.tap(find.widgetWithText(GlassButton, l10n.dbAi).last);
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('db-ai-consent-schema')));
+      await tester.pump();
+      await tapKey(tester, 'db-ai-consent-submit');
+    }
+  }
+}
+
+String _dockerId(WidgetTester tester, String name) => tester
+    .widget<DockerContainerRow>(find.ancestor(of: find.text(name), matching: find.byType(DockerContainerRow)).first)
+    .container
+    .id;
+
+/// Docker section on MockDockerService: demo compose projects on this
+/// computer; secrets stay masked (the reveal flow is never run here).
+Future<void> _dockerScreen(WidgetTester tester, String screen, AppLocalizations l10n) async {
+  await tapKey(tester, 'nav-docker');
+  if (screen == 'docker-hosts') return;
+  await tapKey(tester, 'docker-connect-local');
+  switch (screen) {
+    case 'docker-details':
+      await tapKey(tester, 'docker-container-${_dockerId(tester, 'shop-postgres-1')}');
+      await Scrollable.ensureVisible(tester.element(find.byKey(const ValueKey('docker-mounts'))), alignment: .3);
+      await settle(tester);
+    case 'docker-volumes':
+      await tapKey(tester, 'docker-view-volumes');
+    case 'docker-compose-menu':
+      await tapKey(tester, 'docker-compose-menu-button-shop');
+    case 'docker-compose-yaml':
+      await tapKey(tester, 'docker-compose-menu-button-shop');
+      await tapKey(tester, 'docker-compose-menu-viewYaml');
+    case 'docker-database':
+      await tapKey(tester, 'docker-database-${_dockerId(tester, 'shop-postgres-1')}');
+    case 'docker-forwards':
+      await tapKey(tester, 'docker-menu-button-${_dockerId(tester, 'shop-postgres-1')}');
+      await tapKey(tester, 'docker-menu-forward');
+      await tester.enterText(find.byKey(const ValueKey('docker-forward-local')), '15432');
+      await tester.pump();
+      await tapKey(tester, 'docker-forward-start');
+      await tapKey(tester, 'docker-forward-done');
   }
 }
 
@@ -794,6 +883,35 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
     case 'sharing-secret':
       expect(find.text('••••••••'), findsOneWidget);
       expect(tester.widget<GlassButton>(find.byKey(const ValueKey('sharing-secret-publish'))).onPressed, isNull);
+    case 'db-connections' || 'db-connections-list':
+      expect(find.byKey(const ValueKey('db-connection-pg')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-route-ch')), findsOneWidget);
+    case 'db-connection-form':
+      expect(find.byKey(const ValueKey('db-field-kubeTarget')), findsOneWidget);
+    case 'db-workspace':
+      expect(find.byKey(const ValueKey('db-result-grid')), findsOneWidget);
+      expect(texts, contains('Anna Petrova'));
+    case 'db-explain':
+      expect(texts, contains('Hash Join'));
+    case 'db-ai':
+      expect(find.byKey(const ValueKey('db-ai-accept')), findsOneWidget);
+    case 'docker-hosts':
+      expect(find.byKey(const ValueKey('docker-host-local')), findsOneWidget);
+    case 'docker-containers':
+      expect(find.byKey(const ValueKey('docker-group-shop')), findsOneWidget);
+    case 'docker-details':
+      expect(find.byKey(const ValueKey('docker-mounts')), findsOneWidget);
+      expect(texts, isNot(contains('demo-secret-value')));
+    case 'docker-volumes':
+      expect(texts, contains('shop_data'));
+    case 'docker-compose-menu':
+      expect(find.byKey(const ValueKey('docker-compose-menu-viewYaml')), findsOneWidget);
+    case 'docker-compose-yaml':
+      expect(find.byKey(const ValueKey('docker-compose-text')), findsOneWidget);
+    case 'docker-database':
+      expect(find.byKey(const ValueKey('db-field-dockerContainer')), findsOneWidget);
+    case 'docker-forwards':
+      expect(texts, contains('127.0.0.1:15432'));
     case 'enrollment-owner':
       expect(find.text(guideRecipient.code), findsOneWidget);
       expect(find.text(l10n.sharingReader), findsWidgets);
