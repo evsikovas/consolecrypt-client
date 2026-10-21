@@ -292,7 +292,11 @@ impl AppCore {
     ) -> AppResult<Arc<DbSession>> {
         if !matches!(
             connection.engine,
-            DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb
+            DbEngine::Postgresql
+                | DbEngine::Mysql
+                | DbEngine::Mariadb
+                | DbEngine::Clickhouse
+                | DbEngine::Redis
         ) {
             return Err(invalid("engine_unavailable"));
         }

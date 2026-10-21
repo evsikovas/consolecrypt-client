@@ -319,3 +319,59 @@ fn mongo_parameters_cannot_replace_identifiers_or_inject_operators() {
     q.parameters[0].value = DbCell::Json(r#"{"$ne":null}"#.into());
     assert!(g.prepare(&q).is_err());
 }
+fn sql_text(statement: &ParsedStatement) -> &str {
+    match statement {
+        ParsedStatement::Sql { text, .. } => text,
+        other => panic!("unexpected {other:?}"),
+    }
+}
+#[test]
+fn backslash_literals_cannot_smuggle_uninspected_sql() {
+    // The server unescapes `\\` inside the literal; a verbatim rendering would
+    // end the first string early and execute ` FROM url(...)` uninspected.
+    for engine in [DbEngine::Clickhouse, DbEngine::Mysql, DbEngine::Mariadb] {
+        let g = guard(engine, true, false);
+        let text = r"SELECT 'x\\', ' FROM url(1) -- ', 'a\\nb', 'it''s'";
+        let prepared = g.prepare(&request(text)).unwrap();
+        assert!(prepared[0].is_read_only(), "{engine:?}");
+        assert_eq!(sql_text(prepared[0].parsed()), text, "{engine:?}");
+    }
+    // Where a string is rendered without escaping, the mismatch fails closed.
+    let g = guard(DbEngine::Clickhouse, true, false);
+    assert!(g.prepare(&request(r"SHOW TABLES LIKE 'x\\'")).is_err());
+    // PostgreSQL standard strings have no backslash escapes.
+    let g = guard(DbEngine::Postgresql, true, false);
+    let prepared = g.prepare(&request(r"SELECT 'x\'")).unwrap();
+    assert_eq!(sql_text(prepared[0].parsed()), r"SELECT 'x\'");
+}
+#[test]
+fn clickhouse_type_names_keep_their_case_sensitive_spelling() {
+    let g = guard(DbEngine::Clickhouse, true, false);
+    let prepared = g
+        .prepare(&request(
+            "SELECT CAST(1 AS String), CAST(2 AS Nullable(Float64)), CAST(3 AS Int8), \
+             CAST([4] AS Array(Int64)), CAST('a' AS Enum8('a' = 1, 'b''c' = 2)), \
+             CAST(5 AS Map(String, LowCardinality(String)))",
+        ))
+        .unwrap();
+    assert_eq!(
+        sql_text(prepared[0].parsed()),
+        "SELECT CAST(1 AS String), CAST(2 AS Nullable(Float64)), CAST(3 AS Int8), \
+         CAST([4] AS Array(Int64)), CAST('a' AS Enum8('a' = 1, 'b\\'c' = 2)), \
+         CAST(5 AS Map(String, LowCardinality(String)))"
+    );
+    let g = guard(DbEngine::Clickhouse, false, false);
+    let mut q = request(
+        "CREATE TABLE t (a String, b Nullable(Float64), c Enum16('x' = 1)) \
+         ENGINE = MergeTree ORDER BY a",
+    );
+    let review = g.review(&q).unwrap();
+    g.approve(&review.ticket).unwrap();
+    q.approval_ticket = Some(review.ticket);
+    let prepared = g.prepare(&q).unwrap();
+    let text = sql_text(prepared[0].parsed());
+    assert!(
+        text.starts_with("CREATE TABLE t (a String, b Nullable(Float64), c Enum16('x' = 1))"),
+        "{text}"
+    );
+}

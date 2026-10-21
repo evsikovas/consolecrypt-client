@@ -105,6 +105,10 @@ impl DbSession {
                     .ok_or(DbError::QueryFailed)?;
                 Ok(format!("{ddl};"))
             }
+            DbEngine::Clickhouse => match &mut *self.driver.lock().await {
+                Driver::ClickHouse(driver) => driver.ddl(object).await,
+                _ => Err(DbError::InvalidRequest),
+            },
             DbEngine::Redis => match &mut *self.driver.lock().await {
                 Driver::Redis(driver) => driver.describe(object).await,
                 _ => Err(DbError::InvalidRequest),

@@ -108,8 +108,8 @@ impl fmt::Debug for TlsProfile {
     }
 }
 impl TlsProfile {
-    pub fn new(connection: &DbConnection, credentials: &DbCredentials) -> Result<Self, DbError> {
-        let provider = Arc::new(rustls::crypto::ring::default_provider());
+    /// The connection's pinned CA, or the bundled web PKI roots.
+    pub fn roots(connection: &DbConnection) -> Result<RootCertStore, DbError> {
         let mut roots = RootCertStore::empty();
         if let Some(ca) = &connection.tls.certificate_authority_pem {
             for certificate in rustls_pemfile::certs(&mut io::Cursor::new(ca)) {
@@ -123,6 +123,12 @@ impl TlsProfile {
         } else {
             roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
         }
+        Ok(roots)
+    }
+
+    pub fn new(connection: &DbConnection, credentials: &DbCredentials) -> Result<Self, DbError> {
+        let provider = Arc::new(rustls::crypto::ring::default_provider());
+        let roots = Self::roots(connection)?;
         let builder = ClientConfig::builder_with_provider(provider.clone())
             .with_safe_default_protocol_versions()
             .map_err(|_| DbError::TlsFailed)?

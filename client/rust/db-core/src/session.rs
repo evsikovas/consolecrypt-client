@@ -2,6 +2,7 @@
 //! vault connection, guarded query streams and read-only structure browsing.
 //! Production and read-only policy come only from the stored connection.
 use crate::{
+    clickhouse::ClickHouse,
     guard::{DbGuard, GuardPolicy},
     mysql::Mysql,
     parser::ParsedStatement,
@@ -25,6 +26,7 @@ pub(crate) enum Driver {
     Postgres(Postgres),
     Mysql(Mysql),
     Redis(Redis),
+    ClickHouse(ClickHouse),
 }
 
 impl Driver {
@@ -33,6 +35,7 @@ impl Driver {
             Self::Postgres(driver) => &driver.version,
             Self::Mysql(driver) => &driver.version,
             Self::Redis(driver) => &driver.version,
+            Self::ClickHouse(driver) => &driver.version,
         }
     }
 
@@ -63,15 +66,16 @@ impl Driver {
         parent: Option<&'a DbObjectRef>,
         cursor: Option<&'a str>,
     ) -> BoxFuture<'a, Result<DbTreePage, DbError>> {
-        if let Self::Redis(driver) = self {
-            return driver.browse(parent, cursor);
+        match self {
+            Self::Redis(driver) => driver.browse(parent, cursor),
+            Self::ClickHouse(driver) => driver.browse(parent, cursor),
+            _ => Box::pin(async {
+                Ok(DbTreePage {
+                    nodes: Vec::new(),
+                    next_cursor: None,
+                })
+            }),
         }
-        Box::pin(async {
-            Ok(DbTreePage {
-                nodes: Vec::new(),
-                next_cursor: None,
-            })
-        })
     }
 
     /// Plain SQL with bound parameters (catalogue and DDL lookups).
@@ -90,6 +94,9 @@ impl Driver {
                 }
                 Self::Mysql(driver) => driver.query(sql, bindings, read_only, sink, cancel).await,
                 Self::Redis(_) => Err(DbError::InvalidRequest),
+                Self::ClickHouse(driver) => {
+                    driver.query(sql, bindings, read_only, sink, cancel).await
+                }
             }
         })
     }
@@ -117,7 +124,7 @@ impl fmt::Debug for DbSession {
 }
 
 impl DbSession {
-    /// Opens PostgreSQL, MySQL/MariaDB or Redis. Other engines are not available yet.
+    /// Opens PostgreSQL, MySQL/MariaDB, ClickHouse or Redis. MongoDB is not available yet.
     pub async fn open(
         id: String,
         connection: &DbConnection,
@@ -135,6 +142,9 @@ impl DbSession {
             ),
             DbEngine::Redis => Driver::Redis(
                 Redis::connect(connection, credentials, connector, scope.clone()).await?,
+            ),
+            DbEngine::Clickhouse => Driver::ClickHouse(
+                ClickHouse::connect(connection, credentials, connector, scope.clone()).await?,
             ),
             _ => return Err(DbError::InvalidRequest),
         };
@@ -169,7 +179,8 @@ impl DbSession {
                 production: connection.production,
                 read_only,
                 // SQL drivers open every guarded read in a server read-only
-                // transaction. Redis has no server switch (use a read-only ACL user).
+                // transaction; ClickHouse sends readonly=2 with every read. Redis
+                // has no server switch (use a read-only ACL user).
                 server_read_only: if read_only && connection.engine != DbEngine::Redis {
                     DbServerReadOnly::Enforced
                 } else {

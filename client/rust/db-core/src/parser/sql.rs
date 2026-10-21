@@ -3,8 +3,9 @@ use crate::guard::QueryRisk;
 use crate::types::{DbCell, DbError, DbParameter, DbQueryRequest};
 use cc_models::database::DbEngine;
 use sqlparser::ast::{
-    BinaryOperator, DataType, Expr, Ident, ObjectName, ObjectNamePart, Query, Select, Statement,
-    TableFactor, Value, ValueWithSpan, VisitMut, VisitorMut,
+    AlterColumnOperation, AlterTableOperation, ArrayElemTypeDef, BinaryOperator, DataType,
+    EnumMember, Expr, Ident, ObjectName, ObjectNamePart, Query, Select, Statement, TableFactor,
+    Value, ValueWithSpan, VisitMut, VisitorMut,
 };
 use sqlparser::dialect::{ClickHouseDialect, Dialect, MySqlDialect, PostgreSqlDialect};
 use sqlparser::parser::Parser;
@@ -41,6 +42,7 @@ pub(super) fn parse(
     let mut result = Vec::with_capacity(statements.len());
     let mut all_used = BTreeSet::new();
     for statement in &mut statements {
+        verify_rendering(engine, dialect.as_ref(), statement)?;
         let mut visitor = GuardVisitor {
             engine,
             default_schema,
@@ -58,6 +60,7 @@ pub(super) fn parse(
             return Err(error);
         }
         all_used.extend(visitor.used);
+        spell(engine, statement);
         // Execute the inspected AST, never original text with conditional
         // comments or dialect-dependent uninspected trailing fragments.
         result.push(ClassifiedStatement {
@@ -73,6 +76,177 @@ pub(super) fn parse(
         return Err(DbError::InvalidRequest);
     }
     Ok(result)
+}
+
+/// The executed text is the rendered AST. It must re-parse to exactly the
+/// statement the guard inspected: sqlparser unescapes backslashes in MySQL and
+/// ClickHouse literals but renders them back verbatim, so `'x\\', ' FROM t'`
+/// would otherwise reach the server as `'x\', ' FROM t'` with a hidden clause.
+fn verify_rendering(
+    engine: DbEngine,
+    dialect: &dyn Dialect,
+    statement: &Statement,
+) -> Result<(), DbError> {
+    let mut probe = statement.clone();
+    spell(engine, &mut probe);
+    let text = Zeroizing::new(probe.to_string());
+    let reparsed = Parser::new(dialect)
+        .with_recursion_limit(64)
+        .try_with_sql(&text)
+        .map_err(|_| DbError::InvalidRequest)?
+        .parse_statements()
+        .map_err(|_| DbError::InvalidRequest)?;
+    if reparsed.len() != 1 || reparsed[0] != *statement {
+        return Err(DbError::InvalidRequest);
+    }
+    Ok(())
+}
+
+/// Renders literals and type names in the server's own spelling.
+fn spell(engine: DbEngine, statement: &mut Statement) {
+    if matches!(
+        engine,
+        DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Clickhouse
+    ) {
+        let _ = statement.visit(&mut Spelling { engine });
+    }
+}
+
+struct Spelling {
+    engine: DbEngine,
+}
+
+impl VisitorMut for Spelling {
+    type Break = ();
+
+    fn pre_visit_value(&mut self, value: &mut ValueWithSpan) -> ControlFlow<()> {
+        // Both servers treat a backslash in a quoted literal as an escape.
+        if let Value::SingleQuotedString(text)
+        | Value::DoubleQuotedString(text)
+        | Value::NationalStringLiteral(text)
+        | Value::SingleQuotedByteStringLiteral(text)
+        | Value::DoubleQuotedByteStringLiteral(text) = &mut value.value
+        {
+            if text.contains('\\') {
+                *text = text.replace('\\', "\\\\");
+            }
+        }
+        ControlFlow::Continue(())
+    }
+
+    fn pre_visit_expr(&mut self, expr: &mut Expr) -> ControlFlow<()> {
+        if self.engine == DbEngine::Clickhouse {
+            match expr {
+                Expr::Cast { data_type, .. }
+                | Expr::Convert {
+                    data_type: Some(data_type),
+                    ..
+                } => clickhouse_type_spelling(data_type),
+                Expr::TypedString(value) => clickhouse_type_spelling(&mut value.data_type),
+                _ => {}
+            }
+        }
+        ControlFlow::Continue(())
+    }
+
+    fn pre_visit_statement(&mut self, statement: &mut Statement) -> ControlFlow<()> {
+        if self.engine != DbEngine::Clickhouse {
+            return ControlFlow::Continue(());
+        }
+        match statement {
+            Statement::CreateTable(create) => {
+                for column in &mut create.columns {
+                    clickhouse_type_spelling(&mut column.data_type);
+                }
+            }
+            Statement::CreateView(view) => {
+                for column in &mut view.columns {
+                    if let Some(data_type) = &mut column.data_type {
+                        clickhouse_type_spelling(data_type);
+                    }
+                }
+            }
+            Statement::AlterTable(alter) => {
+                for operation in &mut alter.operations {
+                    match operation {
+                        AlterTableOperation::AddColumn { column_def, .. } => {
+                            clickhouse_type_spelling(&mut column_def.data_type)
+                        }
+                        AlterTableOperation::ModifyColumn { data_type, .. }
+                        | AlterTableOperation::ChangeColumn { data_type, .. }
+                        | AlterTableOperation::AlterColumn {
+                            op: AlterColumnOperation::SetDataType { data_type, .. },
+                            ..
+                        } => clickhouse_type_spelling(data_type),
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+        ControlFlow::Continue(())
+    }
+}
+
+/// sqlparser renders `String`, `Float64`, `Int8`, `Int64` and `Enum8/16` in
+/// upper case; ClickHouse type families are case-sensitive.
+fn clickhouse_type_spelling(data_type: &mut DataType) {
+    let name = match data_type {
+        DataType::String(None) => "String",
+        DataType::Float64 => "Float64",
+        DataType::Int8(None) => "Int8",
+        DataType::Int64 => "Int64",
+        DataType::Enum(members, Some(bits @ (8 | 16))) => {
+            let members = members
+                .iter()
+                .map(|member| match member {
+                    EnumMember::Name(name) => clickhouse_string(name),
+                    EnumMember::NamedValue(name, value) => {
+                        format!("{} = {value}", clickhouse_string(name))
+                    }
+                })
+                .collect();
+            *data_type = DataType::Custom(
+                ObjectName(vec![ObjectNamePart::Identifier(Ident::new(format!(
+                    "Enum{bits}"
+                )))]),
+                members,
+            );
+            return;
+        }
+        DataType::Array(
+            ArrayElemTypeDef::AngleBracket(inner)
+            | ArrayElemTypeDef::SquareBracket(inner, _)
+            | ArrayElemTypeDef::Parenthesis(inner),
+        )
+        | DataType::Nullable(inner)
+        | DataType::LowCardinality(inner) => return clickhouse_type_spelling(inner),
+        DataType::Map(key, value) => {
+            clickhouse_type_spelling(key);
+            return clickhouse_type_spelling(value);
+        }
+        DataType::Tuple(fields) => {
+            for field in fields {
+                clickhouse_type_spelling(&mut field.field_type);
+            }
+            return;
+        }
+        DataType::Nested(columns) => {
+            for column in columns {
+                clickhouse_type_spelling(&mut column.data_type);
+            }
+            return;
+        }
+        _ => return,
+    };
+    *data_type = DataType::Custom(
+        ObjectName(vec![ObjectNamePart::Identifier(Ident::new(name))]),
+        Vec::new(),
+    );
+}
+
+fn clickhouse_string(text: &str) -> String {
+    format!("'{}'", text.replace('\\', "\\\\").replace('\'', "\\'"))
 }
 
 struct GuardVisitor<'a> {
@@ -373,7 +547,6 @@ impl VisitorMut for GuardVisitor<'_> {
 }
 
 fn safe_type(data_type: &DataType) -> bool {
-    use sqlparser::ast::ArrayElemTypeDef;
     match data_type {
         DataType::Custom(..) | DataType::Struct(..) | DataType::Union(..) => false,
         DataType::Array(ArrayElemTypeDef::AngleBracket(inner))
