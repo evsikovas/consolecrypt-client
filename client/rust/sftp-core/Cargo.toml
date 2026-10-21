@@ -17,6 +17,7 @@ test-harness = []
 [dependencies]
 cc-ssh-core.workspace = true
 cc-platform-core.workspace = true
+dunce.workspace = true
 tokio.workspace = true
 thiserror.workspace = true
 tracing.workspace = true

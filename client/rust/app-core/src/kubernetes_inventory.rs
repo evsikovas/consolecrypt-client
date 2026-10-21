@@ -265,10 +265,7 @@ fn export_destination(path: &Path) -> AppResult<PathBuf> {
     if !path.is_absolute() || path.file_name().is_none() {
         return Err(invalid("invalid_path"));
     }
-    let parent = path
-        .parent()
-        .ok_or_else(|| invalid("invalid_path"))?
-        .canonicalize()
+    let parent = dunce::canonicalize(path.parent().ok_or_else(|| invalid("invalid_path"))?)
         .map_err(|_| invalid("invalid_path"))?;
     let destination = parent.join(path.file_name().ok_or_else(|| invalid("invalid_path"))?);
     if destination
@@ -280,8 +277,7 @@ fn export_destination(path: &Path) -> AppResult<PathBuf> {
     // Keep the system client's active configuration untouched.
     if let Some(home) = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }) {
         let active = PathBuf::from(home).join(".kube");
-        if active
-            .canonicalize()
+        if dunce::canonicalize(active)
             .ok()
             .is_some_and(|p| p.join("config") == destination)
         {
@@ -295,9 +291,8 @@ fn scan(root: &Path) -> AppResult<Vec<String>> {
     if !root.is_absolute() {
         return Err(invalid("invalid_directory"));
     }
-    let root = root
-        .canonicalize()
-        .map_err(|_| invalid("invalid_directory"))?;
+    // Found kubeconfig paths are shown to the user: no verbatim prefix.
+    let root = dunce::canonicalize(root).map_err(|_| invalid("invalid_directory"))?;
     if !root.is_dir() {
         return Err(invalid("invalid_directory"));
     }

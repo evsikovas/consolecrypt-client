@@ -12,6 +12,7 @@ publish.workspace = true
 [dependencies]
 cc-models.workspace = true
 cc-ai-core.workspace = true
+dunce.workspace = true
 x509-parser = "0.18"
 rcgen = "0.14"
 tokio-rustls = { version = "=0.26.5", default-features = false, features = ["ring", "tls12"] }

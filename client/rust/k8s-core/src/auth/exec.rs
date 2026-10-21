@@ -146,7 +146,7 @@ impl ExecEngine {
             return Err(AuthError::InteractiveRequired);
         }
         request.binary =
-            std::fs::canonicalize(&request.binary).map_err(|_| AuthError::InvalidConfiguration)?;
+            dunce::canonicalize(&request.binary).map_err(|_| AuthError::InvalidConfiguration)?;
         let path = request.binary.clone();
         let binary_hash = tokio::task::spawn_blocking(move || binary_hash(&path))
             .await
@@ -415,7 +415,7 @@ pub fn resolve_binary(command: &str, search_path: &str) -> Result<PathBuf, AuthE
     desktop_only()?;
     let path = Path::new(command);
     if path.is_absolute() {
-        return std::fs::canonicalize(path).map_err(|_| AuthError::InvalidConfiguration);
+        return dunce::canonicalize(path).map_err(|_| AuthError::InvalidConfiguration);
     }
     if path.components().count() != 1 || command.is_empty() {
         return Err(AuthError::InvalidConfiguration);
@@ -432,7 +432,7 @@ pub fn resolve_binary(command: &str, search_path: &str) -> Result<PathBuf, AuthE
             candidate
         };
         if candidate.is_file() {
-            return std::fs::canonicalize(candidate).map_err(|_| AuthError::InvalidConfiguration);
+            return dunce::canonicalize(candidate).map_err(|_| AuthError::InvalidConfiguration);
         }
     }
     Err(AuthError::InvalidConfiguration)

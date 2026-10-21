@@ -229,10 +229,7 @@ fn export_destination(path: &Path) -> AppResult<PathBuf> {
     if !path.is_absolute() || path.file_name().is_none() {
         return Err(invalid("invalid_path"));
     }
-    let parent = path
-        .parent()
-        .ok_or_else(|| invalid("invalid_path"))?
-        .canonicalize()
+    let parent = dunce::canonicalize(path.parent().ok_or_else(|| invalid("invalid_path"))?)
         .map_err(|_| invalid("invalid_path"))?;
     let path = parent.join(path.file_name().ok_or_else(|| invalid("invalid_path"))?);
     if path.symlink_metadata().is_ok() {

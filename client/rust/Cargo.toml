@@ -81,6 +81,9 @@ hex = "0.4"
 url = "2"
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "http2"] }
 tempfile = "3"
+# Canonical local paths without the Windows verbatim `\\?\` prefix where they
+# are shown or stored (CC0-1.0 OR MIT-0 OR Apache-2.0; already in the lockfile).
+dunce = "1"
 # SQLite: exactly one libsqlite3-sys may be linked into the app, so every crate
 # that needs SQLite (storage-core, search-core) uses THIS entry. SQLCipher with
 # vendored OpenSSL gives an encrypted local DB (CLIENT_SPEC §2) incl. FTS5.
