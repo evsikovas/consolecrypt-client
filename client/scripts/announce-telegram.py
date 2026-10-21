@@ -28,7 +28,7 @@ import urllib.request
 from pathlib import Path
 
 REPO = "evsikovas/consolecrypt-client"
-SITE = {"ru": "https://consolecrypt.dev/download.html", "en": "https://consolecrypt.dev/download.html"}
+SITE = {"ru": "https://consolecrypt.dev/download", "en": "https://consolecrypt.dev/download"}
 CONFIG = Path.home() / ".config" / "consolecrypt" / "telegram.env"
 STATE = Path.home() / ".config" / "consolecrypt" / "telegram-announced.json"
 LIMIT = 4096  # Telegram message text limit (after entity parsing).
