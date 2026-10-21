@@ -292,6 +292,8 @@ async fn compose_files_on_this_computer() {
     };
     let read = |path: &str| std::fs::read_to_string(path).unwrap_or_default();
     exercise(&app, &session.id, project, "compose.yaml", &read).await;
+    // Group/world-writable directory warning: Unix permission bits only.
+    #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o777)).unwrap();
