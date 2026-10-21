@@ -28,6 +28,7 @@ final class RustDbService
         DbExportService,
         DbCellEditService,
         DbObjectInspectService,
+        DbProductionWriteService,
         DbAiService {
   RustDbService(this._hub);
   final RustBackend _hub;
@@ -269,6 +270,41 @@ final class RustDbService
       _session(await guard(() => native.dbSetSessionWrite(sessionId: sessionId, allow: false)));
 
   @override
+  Future<DbSessionInfo> sessionState(String sessionId) async =>
+      _session(await guard(() => native.dbSessionState(sessionId: sessionId)));
+
+  @override
+  Future<DbSessionInfo> unlockProduction(
+    String sessionId, {
+    required String typedConnectionName,
+    required SecretText passphrase,
+    required int minutes,
+  }) async {
+    try {
+      return _session(
+        await withSecret(
+          passphrase,
+          (bytes) => guard(
+            () => native.dbUnlockProduction(
+              sessionId: sessionId,
+              typedConnectionName: typedConnectionName,
+              passphrase: bytes,
+              minutes: minutes,
+            ),
+          ),
+        ),
+      );
+    } on AppException catch (error) {
+      if (error.code == AppErrorCode.wrongPassphrase) throw const DbWrongPassphrase();
+      rethrow;
+    }
+  }
+
+  @override
+  Future<DbSessionInfo> lockProduction(String sessionId) async =>
+      _session(await guard(() => native.dbLockProduction(sessionId: sessionId)));
+
+  @override
   Future<DbTreePage> tree(String sessionId, {DbObjectRef? parent, String? cursor, bool refresh = false}) async =>
       DbTreePage.fromJson(
         jsonDecode(
@@ -464,6 +500,7 @@ final class RustDbService
             rows: entry['rows'] as int? ?? 0,
             errorCode: entry['error_code'] as String?,
             favorite: entry['favorite'] as bool? ?? false,
+            productionWrite: entry['production_write'] as bool? ?? false,
           ),
       ],
       nextCursor: json['next_cursor'] as String?,
