@@ -60,6 +60,10 @@ pub struct MockServerConfig {
     /// verified, a missing one is only counted), `true` = required
     /// (`422 invalid_proof` / `missing`).
     pub require_request_proof: bool,
+    /// Protocol 1.7 new-device protection: advertise the capability, emit
+    /// `device_registered`, report quarantine (14 days, the registering
+    /// device exempt) and enforce it on revoke / `logout all`.
+    pub device_protection: bool,
 }
 
 impl Default for MockServerConfig {
@@ -71,6 +75,7 @@ impl Default for MockServerConfig {
             email_verification_required: false,
             minimum_protocol: ProtocolVersion::new(PROTOCOL_VERSION.major, 0),
             require_request_proof: false,
+            device_protection: false,
         }
     }
 }

@@ -90,6 +90,12 @@ final class MockAuthService implements AuthService {
   }
 
   @override
+  Future<LogoutAllResult> logoutAllSessions() async {
+    await logout();
+    return const LogoutAllResult();
+  }
+
+  @override
   Future<void> logout() async {
     await mockDelay(_cloud.config.latency);
     final record = _cloud.activeRecord;

@@ -382,6 +382,7 @@ impl Http {
                 supports_groups: false,
                 supports_secrets: false,
                 supports_kube_contexts: false,
+                supports_db_connections: false,
                 supports_owner_online_enrollment_v1: true,
             }),
             reply: Mutex::new(Value::Null),

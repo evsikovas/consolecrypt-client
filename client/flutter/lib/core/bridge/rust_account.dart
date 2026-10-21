@@ -221,6 +221,21 @@ final class RustAuthService implements AuthService {
   }
 
   @override
+  Future<LogoutAllResult> logoutAllSessions() async {
+    final id = _hub.activeInfo?['id'] as String?;
+    if (id == null) return const LogoutAllResult();
+    final result = logoutAllFromJson(decodeObject(await guard(rs_account.accountLogoutAll)));
+    try {
+      await guard(rs_prof.vaultLock);
+    } on AppException {
+      // Not unlocked.
+    }
+    _hub.signedOut.add(id);
+    await _hub.refreshState();
+    return result;
+  }
+
+  @override
   Future<void> requestPasswordReset({required Uri serverUrl, required String email}) =>
       guard(() => rs_account.accountRequestPasswordReset(serverUrl: serverUrl.toString(), email: email.trim()));
 
@@ -530,6 +545,13 @@ final class RustDevicesService implements DevicesService {
     await guard(() => rs_sync.devicesRename(deviceId: deviceId.value, name: name));
     await _quietRefresh();
   }
+
+  @override
+  Stream<List<NewDeviceNotice>> watchNewDevices() => _hub.newDevices.stream;
+
+  @override
+  void dismissNewDevice(DeviceId deviceId) =>
+      _hub.newDevices.value = ([..._hub.newDevices.value.where((n) => n.deviceId != deviceId)]);
 }
 
 // ---- sync ---------------------------------------------------------------------------------

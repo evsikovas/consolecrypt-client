@@ -908,6 +908,17 @@ async fn ws_event_task(mut rx: broadcast::Receiver<WsEvent>, ctx: Arc<AppCtx>, o
                     is_self: device_id == own,
                 }),
                 ServerEvent::RecoveryChanged { .. } => ctx.emit(AppEvent::RecoveryChanged),
+                ServerEvent::DeviceRegistered {
+                    device_id,
+                    name,
+                    platform,
+                    created_at,
+                } if device_id != own => ctx.emit(AppEvent::DeviceRegistered {
+                    device_id: device_id.to_string(),
+                    name,
+                    platform: platform.as_str().to_owned(),
+                    created_at_ms: crate::dto::ms(&created_at),
+                }),
                 _ => {}
             },
             Ok(WsEvent::Terminated { reason }) => {

@@ -181,6 +181,7 @@ async fn handler(State(state): State<Arc<Mock>>, request: Request) -> Response {
                 supports_groups: false,
                 supports_secrets: false,
                 supports_kube_contexts: false,
+                supports_db_connections: false,
                 supports_owner_online_enrollment_v1: false,
             })
             .unwrap(),

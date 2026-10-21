@@ -232,6 +232,7 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
                 supports_groups: state.supports_groups.load(Ordering::SeqCst),
                 supports_secrets: state.supports_secrets.load(Ordering::SeqCst),
                 supports_kube_contexts: state.supports_kube_contexts.load(Ordering::SeqCst),
+                supports_db_connections: false,
                 supports_owner_online_enrollment_v1: false,
             },
         );
@@ -284,6 +285,9 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
                         SharedItemKind::Secret => query
                             .get("include_secrets")
                             .is_some_and(|value| value == "true"),
+                        SharedItemKind::DbConnection => query
+                            .get("include_db_connections")
+                            .is_some_and(|v| v == "true"),
                     }
                     && history
                         .state

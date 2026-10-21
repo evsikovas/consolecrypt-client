@@ -5,8 +5,8 @@ use super::{MockServerConfig, RequestProofStats};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use cc_protocol::auth::{
-    AccountInfo, AuthResponse, ChangePasswordRequest, LoginRequest, LogoutRequest, RefreshRequest,
-    RegisterRequest, ResetPasswordRequest, SecretString, TokenPair,
+    AccountInfo, AuthResponse, ChangePasswordRequest, LoginRequest, LogoutRequest, LogoutResponse,
+    RefreshRequest, RegisterRequest, ResetPasswordRequest, SecretString, TokenPair,
 };
 use cc_protocol::canonical::{device_approval_message, device_login_message};
 use cc_protocol::devices::{
@@ -118,6 +118,8 @@ struct Device {
     created_at: Timestamp,
     last_seen_at: Option<Timestamp>,
     revoked_at: Option<Timestamp>,
+    /// Registered the account: never in quarantine (protocol 1.7).
+    first: bool,
 }
 
 struct Session {
@@ -587,6 +589,7 @@ impl State {
                 created_at: now,
                 last_seen_at: Some(now),
                 revoked_at: None,
+                first: true,
             },
         );
         let tokens = self.new_session(user_id, device_id);
@@ -637,6 +640,7 @@ impl State {
                     false,
                 )?;
                 let now = Utc::now();
+                let (name, platform) = (req.device.name.clone(), req.device.platform);
                 self.devices.insert(
                     device_id,
                     Device {
@@ -646,12 +650,24 @@ impl State {
                         created_at: now,
                         last_seen_at: Some(now),
                         revoked_at: None,
+                        first: false,
                     },
                 );
                 self.emit_to(
                     Audience::User(user_id),
                     ServerEvent::DeviceAdded { device_id },
                 );
+                if self.cfg.device_protection {
+                    self.emit_to(
+                        Audience::User(user_id),
+                        ServerEvent::DeviceRegistered {
+                            device_id,
+                            name,
+                            platform,
+                            created_at: now,
+                        },
+                    );
+                }
             }
         }
         let tokens = self.new_session(user_id, device_id);
@@ -708,7 +724,27 @@ impl State {
         Ok(self.issue_tokens(session_id))
     }
 
-    pub(crate) fn logout(&mut self, p: Principal, req: LogoutRequest) {
+    /// `Some` = a device in quarantine kept trusted devices signed in.
+    pub(crate) fn logout(&mut self, p: Principal, req: LogoutRequest) -> Option<LogoutResponse> {
+        if req.all_sessions {
+            if let Some(until) = self.quarantine_until(p.device_id) {
+                let trusted: Vec<DeviceId> = self
+                    .devices
+                    .keys()
+                    .copied()
+                    .filter(|d| *d != p.device_id && self.trusted_anywhere(*d))
+                    .collect();
+                let ids = self
+                    .revoke_sessions(|s| s.user_id == p.user_id && !trusted.contains(&s.device_id));
+                let response = LogoutResponse {
+                    sessions_revoked: ids.len() as u32,
+                    trusted_devices_kept: trusted.len() as u32,
+                    quarantine_until: Some(until),
+                };
+                self.close_sessions(p.user_id, ids);
+                return Some(response);
+            }
+        }
         let ids = if req.all_sessions {
             self.revoke_sessions(|s| s.user_id == p.user_id)
         } else {
@@ -721,6 +757,24 @@ impl State {
             }
         };
         self.close_sessions(p.user_id, ids);
+        None
+    }
+
+    /// End of `device_id`'s quarantine while it runs (protocol 1.7).
+    fn quarantine_until(&self, device_id: DeviceId) -> Option<Timestamp> {
+        let d = self.devices.get(&device_id)?;
+        if !self.cfg.device_protection || d.first || d.status == DeviceStatus::Revoked {
+            return None;
+        }
+        let end = d.created_at + chrono::Duration::days(14);
+        (end > Utc::now()).then_some(end)
+    }
+
+    /// Holds a live device envelope of any vault.
+    fn trusted_anywhere(&self, device_id: DeviceId) -> bool {
+        self.vaults
+            .values()
+            .any(|v| v.state != VaultState::Deleted && self.is_trusted(device_id, v))
     }
 
     pub(crate) fn me(&self, p: Principal) -> MResult<AccountInfo> {
@@ -877,11 +931,13 @@ impl State {
             encryption_public_key: d.reg.encryption_public_key.clone(),
             signing_public_key: d.reg.signing_public_key.clone(),
             status: d.status,
-            trusted_vaults: trusted,
+            trusted_vaults: trusted.clone(),
             created_at: d.created_at,
             last_seen_at: d.last_seen_at,
             revoked_at: d.revoked_at,
             is_current: d.reg.device_id == current,
+            trusted: !trusted.is_empty(),
+            quarantine_until: self.quarantine_until(d.reg.device_id),
         }
     }
 
@@ -1202,6 +1258,15 @@ impl State {
 
     pub(crate) fn revoke(&mut self, p: Principal, device_id: DeviceId) -> MResult<()> {
         self.own_account_device(&p, device_id)?;
+        if device_id != p.device_id && self.trusted_anywhere(device_id) {
+            if let Some(until) = self.quarantine_until(p.device_id) {
+                return Err(err(
+                    ErrorCode::DeviceInQuarantine,
+                    "this device is new and cannot act on trusted devices yet",
+                )
+                .with_details(serde_json::json!({ "until": until })));
+            }
+        }
         self.revoke_device_internal(device_id);
         Ok(())
     }

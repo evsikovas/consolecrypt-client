@@ -1166,6 +1166,11 @@ pub struct DeviceDto {
     pub created_at_ms: i64,
     pub last_seen_at_ms: Option<i64>,
     pub revoked_at_ms: Option<i64>,
+    /// Holds a device envelope for any vault (protocol 1.7; older servers:
+    /// derived from the trusted vaults).
+    pub trusted: bool,
+    /// New-device quarantine end while it runs (protocol 1.7).
+    pub quarantine_until_ms: Option<i64>,
 }
 
 /// A pending "trust this device" request.
@@ -1187,6 +1192,19 @@ pub struct TrustRequestDto {
 pub struct DeviceListDto {
     pub devices: Vec<DeviceDto>,
     pub pending_requests: Vec<TrustRequestDto>,
+    /// The server advertises new-device protection (protocol 1.7
+    /// `capabilities.device_protection`): `trusted` / quarantine are
+    /// meaningful. `false` for older servers — keep the old UI.
+    pub device_protection: bool,
+}
+
+/// Result of "sign out on all devices".
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LogoutAllDto {
+    /// Trusted devices that stayed signed in because this device is new
+    /// (protocol 1.7 quarantine); `0` = every session was ended.
+    pub trusted_devices_kept: u32,
+    pub quarantine_until_ms: Option<i64>,
 }
 
 /// Step 1 of approving a device: show `verification_code` and ask "does it
@@ -1543,6 +1561,14 @@ pub enum AppEvent {
     DeviceRevoked {
         device_id: String,
         is_self: bool,
+    },
+    /// A new device signed in to the account (protocol 1.7). Trusted
+    /// devices offer "Revoke" / "It's me".
+    DeviceRegistered {
+        device_id: String,
+        name: String,
+        platform: String,
+        created_at_ms: i64,
     },
     /// Another device asks to be trusted (approve on a trusted device).
     DeviceApprovalRequested {

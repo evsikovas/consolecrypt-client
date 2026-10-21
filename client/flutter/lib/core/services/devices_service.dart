@@ -26,4 +26,11 @@ abstract interface class DevicesService {
   Future<void> revoke(DeviceId deviceId, {String? reason});
 
   Future<void> rename(DeviceId deviceId, String name);
+
+  /// New devices that signed in while this app was running (protocol 1.7),
+  /// newest last; empty on servers without device protection.
+  Stream<List<NewDeviceNotice>> watchNewDevices();
+
+  /// "It's me" (or after revoking): forget the notice.
+  void dismissNewDevice(DeviceId deviceId);
 }

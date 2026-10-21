@@ -139,6 +139,12 @@ struct Environment {
     transport: Option<SharingApi>,
 }
 
+/// A protocol 1.6 database-connection share reached a build without that
+/// kind (never requested by it).
+fn unsupported_db_connection() -> AppError {
+    AppError::Unsupported("shared database connections need a newer app".into())
+}
+
 impl Environment {
     fn supports(&self, kind: SharedItemKind) -> bool {
         match kind {
@@ -146,6 +152,9 @@ impl Environment {
             SharedItemKind::Group => self.pin.supports_groups,
             SharedItemKind::Secret => self.pin.supports_secrets,
             SharedItemKind::KubeContext => self.pin.supports_kube_contexts,
+            // Protocol 1.6 database connections: not supported by this
+            // build (the server lists them only on explicit request).
+            SharedItemKind::DbConnection => false,
         }
     }
 
@@ -431,6 +440,7 @@ fn item_dto(
             SharedItemKind::Group => SharingKindDto::Group,
             SharedItemKind::Secret => SharingKindDto::Secret,
             SharedItemKind::KubeContext => SharingKindDto::KubeContext,
+            SharedItemKind::DbConnection => return Err(unsupported_db_connection()),
         },
         owner_user_id: access.owner_user_id.to_string(),
         owner_device_id: access.owner_device_id.to_string(),
@@ -616,6 +626,7 @@ impl AppCore {
                 SharedItemKind::Group => SharingKindDto::Group,
                 SharedItemKind::Secret => SharingKindDto::Secret,
                 SharedItemKind::KubeContext => SharingKindDto::KubeContext,
+                SharedItemKind::DbConnection => return Err(unsupported_db_connection()),
             },
             owner_user_id: String::new(),
             owner_device_id: String::new(),

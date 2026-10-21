@@ -28,6 +28,9 @@ final class RustBackend {
   final authState = ValueStreamController<AuthState>(AuthState.signedOut);
   final syncStatus = ValueStreamController<SyncStatus>(SyncStatus.paused);
   final devices = ValueStreamController<DevicesSnapshot>(DevicesSnapshot.empty);
+
+  /// `device_registered` notices not answered yet (protocol 1.7).
+  final newDevices = ValueStreamController<List<NewDeviceNotice>>(const []);
   final localSettings = ValueStreamController<LocalSettings>(const LocalSettings());
 
   // Inventory mirror (empty while locked) -------------------------------------------
@@ -557,7 +560,15 @@ final class RustBackend {
           if (id != null) signedOut.add(id);
           _publishState();
         case 'device_revoked':
+          final revoked = e['device_id'];
+          newDevices.value = ([...newDevices.value.where((n) => n.deviceId.value != revoked)]);
           await refreshState();
+          await _refreshDevicesQuietly();
+        case 'device_registered':
+          final notice = newDeviceNoticeFromJson(e);
+          if (notice != null && !newDevices.value.any((n) => n.deviceId == notice.deviceId)) {
+            newDevices.value = ([...newDevices.value, notice]);
+          }
           await _refreshDevicesQuietly();
         case 'device_approval_requested':
           await _refreshDevicesQuietly();
@@ -663,6 +674,7 @@ final class RustBackend {
       authState,
       syncStatus,
       devices,
+      newDevices,
       localSettings,
       hosts,
       groups,

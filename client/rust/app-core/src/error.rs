@@ -118,6 +118,14 @@ pub enum AppError {
     /// Rate limited by the server.
     #[error("rate limited")]
     RateLimited { retry_after_secs: Option<u64> },
+    /// This device is new (protocol 1.7 quarantine) and may not act on
+    /// trusted devices until `until_ms`.
+    #[error("this device is new and cannot act on trusted devices yet")]
+    DeviceInQuarantine { until_ms: Option<i64> },
+    /// Too many vault unlock attempts from untrusted devices of the account
+    /// (protocol 1.7).
+    #[error("too many vault unlock requests from new devices")]
+    EnvelopeRateLimited { retry_after_secs: Option<u64> },
     /// Any other structured server error (`code` = protocol error code).
     #[error("server error {status} ({code}): {message}")]
     Server {
@@ -263,6 +271,8 @@ impl AppError {
             AppError::DeviceNotTrusted => "device_not_trusted",
             AppError::UpgradeRequired => "upgrade_required",
             AppError::RateLimited { .. } => "rate_limited",
+            AppError::DeviceInQuarantine { .. } => "device_in_quarantine",
+            AppError::EnvelopeRateLimited { .. } => "envelope_rate_limited",
             AppError::Server { .. } => "server",
             AppError::Approval(_) => "approval",
             AppError::ConnectionPlan(_) | AppError::ConnectionPlanRejected { .. } => {
@@ -377,7 +387,13 @@ impl AppError {
             }
             AppError::RateLimited {
                 retry_after_secs: Some(s),
+            }
+            | AppError::EnvelopeRateLimited {
+                retry_after_secs: Some(s),
             } => put("retry_after_seconds", s.to_string()),
+            AppError::DeviceInQuarantine {
+                until_ms: Some(until),
+            } => put("until_ms", until.to_string()),
             AppError::Server { status, code, .. } => {
                 put("status", status.to_string());
                 put("protocol_code", code.clone());
@@ -634,6 +650,14 @@ impl From<ApiError> for AppError {
                     AppError::AlreadyExists(field)
                 }
                 ErrorCode::UpgradeRequired => AppError::UpgradeRequired,
+                ErrorCode::DeviceInQuarantine => AppError::DeviceInQuarantine {
+                    until_ms: detail_str(&error.details, "until")
+                        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                        .map(|t| t.timestamp_millis()),
+                },
+                ErrorCode::EnvelopeRateLimited => AppError::EnvelopeRateLimited {
+                    retry_after_secs: error.retry_after_seconds.map(u64::from),
+                },
                 ErrorCode::InvalidProof
                     if matches!(
                         detail_str(&error.details, "reason"),
@@ -847,6 +871,28 @@ mod tests {
             );
         }
         assert_eq!(AppError::VaultLocked.code(), "vault_locked");
+    }
+
+    #[test]
+    fn device_protection_errors_keep_their_dates() {
+        let mut quarantine = cc_protocol::ApiError::new(ErrorCode::DeviceInQuarantine, "new");
+        quarantine.details = Some(serde_json::json!({ "until": "2026-11-04T10:00:00Z" }));
+        let e: AppError = ApiError::Server {
+            status: 403,
+            error: Box::new(quarantine),
+        }
+        .into();
+        assert_eq!(e.code(), "device_in_quarantine");
+        assert_eq!(e.args()["until_ms"], "1793786400000");
+        let mut limited = cc_protocol::ApiError::new(ErrorCode::EnvelopeRateLimited, "slow down");
+        limited.retry_after_seconds = Some(120);
+        let e: AppError = ApiError::Server {
+            status: 429,
+            error: Box::new(limited),
+        }
+        .into();
+        assert_eq!(e.code(), "envelope_rate_limited");
+        assert_eq!(e.args()["retry_after_seconds"], "120");
     }
 
     #[test]

@@ -22,6 +22,8 @@
 /// | InvalidProof | invalidProof |
 /// | UpgradeRequired | incompatibleServer |
 /// | RateLimited | rateLimited (`args.retry_after_seconds`) |
+/// | DeviceInQuarantine (1.7) | deviceInQuarantine (`args.until_ms`) |
+/// | EnvelopeRateLimited (1.7) | envelopeRateLimited (`args.retry_after_seconds`) |
 /// | Internal | internal |
 /// | Unavailable | serverUnavailable |
 /// | (transport failure) | serverUnreachable / offline |
@@ -29,6 +31,7 @@ library;
 
 import 'package:consolecrypt/core/models/validation.dart';
 import 'package:consolecrypt/core/services/errors.dart';
+import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
 
 /// Localized, user-presentable text for any error surfaced by a service call.
@@ -73,6 +76,18 @@ String errorCodeMessage(AppLocalizations l, AppErrorCode code, {Map<String, Stri
   AppErrorCode.payloadTooLarge => l.errorPayloadTooLarge,
   AppErrorCode.invalidProof => l.errorInvalidProof,
   AppErrorCode.serverUnavailable => l.errorServerUnavailable,
+  AppErrorCode.deviceInQuarantine => switch (int.tryParse(args['until_ms'] ?? '')) {
+    final ms? => l.errorDeviceInQuarantineUntil(
+      formatDateTime(l, DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true)),
+    ),
+    _ => l.errorDeviceInQuarantine,
+  },
+  AppErrorCode.envelopeRateLimited => switch (int.tryParse(args['retry_after_seconds'] ?? '')) {
+    final seconds? when seconds > 0 => l.errorEnvelopeRateLimitedUntil(
+      formatDateTime(l, DateTime.now().add(Duration(seconds: seconds))),
+    ),
+    _ => l.errorEnvelopeRateLimited,
+  },
   AppErrorCode.sharingReconciliationRequired => l.sharingReconcileHelp,
 };
 

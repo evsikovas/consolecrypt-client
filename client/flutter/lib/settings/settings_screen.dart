@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/l10n/labels.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/ai_service.dart';
+import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/language_picker.dart';
@@ -131,6 +132,31 @@ class _ProfilesSection extends ConsumerWidget {
   }
 }
 
+/// "Sign out on all devices": on a protocol 1.7 server a new device keeps
+/// trusted devices signed in, which the result message explains.
+Future<void> _signOutEverywhere(BuildContext context, WidgetRef ref) async {
+  final l10n = context.l10n;
+  final ok = await showConfirmDialog(
+    context,
+    title: l10n.settingsSignOutEverywhereTitle,
+    message: l10n.settingsSignOutEverywhereMessage,
+    confirmLabel: l10n.settingsSignOutEverywhereConfirm,
+    destructive: true,
+  );
+  if (!ok || !context.mounted) return;
+  final result = await runWithFeedback(context, () => ref.read(authServiceProvider).logoutAllSessions());
+  if (result == null || !context.mounted) return;
+  final until = result.quarantineUntil;
+  showSnack(
+    context,
+    result.trustedDevicesKept > 0 && until != null
+        ? l10n.settingsSignOutEverywhereKept(result.trustedDevicesKept, formatDate(l10n, until))
+        : l10n.settingsSignOutEverywhereDone,
+    tone: GlassTone.success,
+  );
+  context.go(AppRoutes.hosts);
+}
+
 class _AccountSyncSection extends ConsumerWidget {
   const _AccountSyncSection();
 
@@ -187,6 +213,11 @@ class _AccountSyncSection extends ConsumerWidget {
                   if (context.mounted) context.go(AppRoutes.hosts);
                 },
                 label: l10n.settingsSignOut,
+              ),
+              GlassButton.plain(
+                key: const ValueKey('settings-sign-out-everywhere'),
+                onPressed: () => _signOutEverywhere(context, ref),
+                label: l10n.settingsSignOutEverywhere,
               ),
             ],
           ),

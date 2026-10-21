@@ -195,7 +195,7 @@ impl AppCore {
                 )
                 .await
             } else {
-                api.logout(&Default::default()).await
+                api.logout(&Default::default()).await.map(|_| ())
             };
             if let Err(e) = r {
                 tracing::warn!(error = %e, "server call during disconnect failed");

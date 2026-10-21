@@ -69,6 +69,7 @@ impl OwnDeviceEnrollmentApi {
             SharedItemKind::Group => self.capabilities.supports_groups,
             SharedItemKind::Secret => self.capabilities.supports_secrets,
             SharedItemKind::KubeContext => self.capabilities.supports_kube_contexts,
+            SharedItemKind::DbConnection => self.capabilities.supports_db_connections,
         };
         if !self.capabilities.supports_owner_online_enrollment_v1 || !kind {
             return Err(config("owner-online enrollment is disabled"));

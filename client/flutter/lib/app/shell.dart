@@ -889,7 +889,12 @@ class _ShellBanners extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pending = ref.watch(devicesProvider).value?.pendingRequests ?? const <DeviceTrustRequest>[];
-    if (pending.isEmpty) return const SizedBox.shrink();
+    const announced = _NewDeviceBanner();
+    if (pending.isEmpty) return announced;
+    return Column(mainAxisSize: MainAxisSize.min, children: [announced, _pendingBanner(context, pending)]);
+  }
+
+  Widget _pendingBanner(BuildContext context, List<DeviceTrustRequest> pending) {
     if (AppPlatform.isMobile) {
       return Material(
         color: GlassTokens.of(context).palette.warning.withValues(alpha: .12),
@@ -922,6 +927,71 @@ class _ShellBanners extends ConsumerWidget {
           formatRelative(l10n, first.createdAt),
         ),
         action: TextButton(onPressed: () => context.go(AppRoutes.devices), child: Text(l10n.commonReview)),
+      ),
+    );
+  }
+}
+
+/// "A new device signed in" (protocol 1.7 `device_registered`), only on a
+/// device that is itself trusted for the open vault: "It's me" dismisses,
+/// "Revoke…" revokes after confirmation.
+class _NewDeviceBanner extends ConsumerWidget {
+  const _NewDeviceBanner();
+
+  Future<void> _revoke(BuildContext context, WidgetRef ref, NewDeviceNotice notice) async {
+    final l10n = context.l10n;
+    final ok = await showConfirmDialog(
+      context,
+      title: l10n.devicesRevokeTitle(notice.name),
+      message: l10n.devicesRevokeMessage,
+      confirmLabel: l10n.devicesRevokeConfirm,
+      destructive: true,
+    );
+    if (!ok || !context.mounted) return;
+    final service = ref.read(devicesServiceProvider);
+    final done = await runWithFeedback(context, () async {
+      await service.revoke(notice.deviceId);
+      return true;
+    }, success: l10n.shellNewDeviceRevoked(notice.name));
+    if (done ?? false) service.dismissNewDevice(notice.deviceId);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notices = ref.watch(newDevicesProvider).value ?? const <NewDeviceNotice>[];
+    if (notices.isEmpty) return const SizedBox.shrink();
+    final vaultId = ref.watch(vaultStatusProvider).value?.vaultId;
+    final current = ref.watch(devicesProvider).value?.current;
+    // Only a trusted device can vouch for (or revoke) the newcomer.
+    if (current == null || !current.isTrustedFor(vaultId)) return const SizedBox.shrink();
+    final notice = notices.last;
+    final l10n = context.l10n;
+    final pad = pagePadding(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(pad, GlassSpacing.s4, pad, GlassSpacing.s4),
+      child: InfoBanner(
+        key: const ValueKey('new-device-banner'),
+        tone: BannerTone.warning,
+        icon: Icons.phonelink_lock_rounded,
+        title: l10n.shellNewDeviceTitle(notice.name, notice.platform.localized(l10n)),
+        message: l10n.shellNewDeviceMessage(formatRelative(l10n, notice.createdAt)),
+        action: Wrap(
+          spacing: GlassSpacing.s8,
+          runSpacing: GlassSpacing.s4,
+          children: [
+            GlassButton(
+              key: const ValueKey('new-device-its-me'),
+              onPressed: () => ref.read(devicesServiceProvider).dismissNewDevice(notice.deviceId),
+              label: l10n.shellNewDeviceItsMe,
+            ),
+            GlassButton(
+              key: const ValueKey('new-device-revoke'),
+              style: GlassButtonStyle.destructiveQuiet,
+              onPressed: () => _revoke(context, ref, notice),
+              label: l10n.shellNewDeviceRevoke,
+            ),
+          ],
+        ),
       ),
     );
   }

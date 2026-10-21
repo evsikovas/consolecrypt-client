@@ -74,6 +74,9 @@ final aiProvidersProvider = StreamProvider<List<AiProviderConfig>>(
   (ref) => ref.watch(aiServiceProvider).watchProviders(),
 );
 final devicesProvider = StreamProvider<DevicesSnapshot>((ref) => ref.watch(devicesServiceProvider).watchDevices());
+final newDevicesProvider = StreamProvider<List<NewDeviceNotice>>(
+  (ref) => ref.watch(devicesServiceProvider).watchNewDevices(),
+);
 final syncStatusProvider = StreamProvider<SyncStatus>((ref) => ref.watch(syncServiceProvider).watchStatus());
 final localSettingsProvider = StreamProvider<LocalSettings>((ref) => ref.watch(settingsServiceProvider).watchLocal());
 final vaultSettingsProvider = StreamProvider<VaultSettings?>((ref) => ref.watch(settingsServiceProvider).watchVault());

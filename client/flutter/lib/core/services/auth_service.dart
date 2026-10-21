@@ -21,6 +21,11 @@ abstract interface class AuthService {
   /// Revokes the session; local data of the profile stays on the device.
   Future<void> logout();
 
+  /// Ends every session of the account and signs this device out. On a
+  /// protocol 1.7 server a new device (quarantine) keeps trusted devices
+  /// signed in; the result says how many.
+  Future<LogoutAllResult> logoutAllSessions();
+
   /// Account-level reset e-mail. Does not grant vault access (ADR-0004).
   Future<void> requestPasswordReset({required Uri serverUrl, required String email});
 

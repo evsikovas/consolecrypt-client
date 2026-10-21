@@ -238,9 +238,17 @@ class _ChangeAccountPasswordDialogState extends ConsumerState<ChangeAccountPassw
     final current = SecretText(_current.text);
     final next = SecretText(_next.text);
     try {
+      // A new device's change keeps trusted devices signed in (protocol 1.7).
+      final newDevice = ref.read(devicesProvider).value?.current?.inQuarantine ?? false;
       await ref.read(authServiceProvider).changeAccountPassword(current: current, next: next);
       if (mounted) {
-        showSnack(context, context.l10n.settingsDialogAccountPasswordChanged, tone: GlassTone.success);
+        showSnack(
+          context,
+          newDevice
+              ? context.l10n.settingsDialogAccountPasswordChangedNewDevice
+              : context.l10n.settingsDialogAccountPasswordChanged,
+          tone: GlassTone.success,
+        );
         closeDialog<void>(context);
       }
     } on AppException catch (e) {

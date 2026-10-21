@@ -41,6 +41,9 @@ fn device_dto(d: &DeviceInfo, vault: Option<VaultId>) -> DeviceDto {
         created_at_ms: ms(&d.created_at),
         last_seen_at_ms: opt_ms(&d.last_seen_at),
         revoked_at_ms: opt_ms(&d.revoked_at),
+        // Servers before 1.7 omit `trusted` (false): derive it.
+        trusted: d.trusted || !d.trusted_vaults.is_empty(),
+        quarantine_until_ms: opt_ms(&d.quarantine_until),
     }
 }
 
@@ -61,11 +64,18 @@ impl AppCore {
     /// Devices of the account and pending trust requests.
     pub async fn list_devices(&self) -> AppResult<DeviceListDto> {
         let s = self.session().await?;
-        let r = s.api()?.list_devices().await?;
+        let api = s.api()?;
+        let r = api.list_devices().await?;
+        // Capability gate (protocol 1.7); an unreachable meta keeps the old UI.
+        let device_protection = api
+            .meta()
+            .await
+            .is_ok_and(|m| m.capabilities.device_protection);
         let vault = s.vault_id();
         Ok(DeviceListDto {
             devices: r.devices.iter().map(|d| device_dto(d, vault)).collect(),
             pending_requests: r.pending_requests.iter().map(request_dto).collect(),
+            device_protection,
         })
     }
 
