@@ -93,6 +93,37 @@ impl Database {
         self.path.as_deref()
     }
 
+    /// Re-encrypt the whole database under `new_key` (SQLCipher
+    /// `PRAGMA rekey`). Atomic: the WAL is checkpointed and the rekey runs
+    /// with a rollback journal, so a crash leaves the file entirely under
+    /// the old key (rolled back on the next open) or entirely under the new
+    /// one. The connection keeps working with the new key.
+    pub fn rekey(&mut self, new_key: &DatabaseKey) -> Result<()> {
+        let wal = self.path.is_some();
+        if wal {
+            self.conn
+                .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()))?;
+            let _mode: String = self
+                .conn
+                .query_row("PRAGMA journal_mode = DELETE", [], |r| r.get(0))?;
+        }
+        let rekeyed = self.conn.execute_batch(&new_key.rekey_statement());
+        // Validate with a real read either way.
+        let check = self
+            .conn
+            .query_row("SELECT count(*) FROM sqlite_master", [], |r| {
+                r.get::<_, i64>(0)
+            });
+        if wal {
+            let _mode: String = self
+                .conn
+                .query_row("PRAGMA journal_mode = WAL", [], |r| r.get(0))?;
+        }
+        rekeyed?;
+        check?;
+        Ok(())
+    }
+
     /// Current schema version.
     pub fn schema_version(&self) -> Result<i64> {
         migrations::current_version(&self.conn)
