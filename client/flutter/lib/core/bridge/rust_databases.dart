@@ -184,6 +184,7 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
                 () => native.dbTree(
                   sessionId: sessionId,
                   parentJson: parent == null ? null : jsonEncode(parent.toJson()),
+                  cursor: cursor,
                 ),
               ),
             )

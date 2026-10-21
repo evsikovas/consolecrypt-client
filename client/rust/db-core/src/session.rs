@@ -49,12 +49,19 @@ impl Driver {
         }
     }
 
-    /// Structure below `parent` for engines without SQL catalogues.
+    /// Structure below `parent` for engines without SQL catalogues; `cursor`
+    /// continues a paged listing (Redis SCAN).
     fn browse<'a>(
         &'a mut self,
         _parent: Option<&'a DbObjectRef>,
-    ) -> BoxFuture<'a, Result<Vec<DbTreeNode>, DbError>> {
-        Box::pin(async { Ok(Vec::new()) })
+        _cursor: Option<&'a str>,
+    ) -> BoxFuture<'a, Result<DbTreePage, DbError>> {
+        Box::pin(async {
+            Ok(DbTreePage {
+                nodes: Vec::new(),
+                next_cursor: None,
+            })
+        })
     }
 
     /// Plain SQL with bound parameters (catalogue and DDL lookups).
@@ -206,7 +213,11 @@ impl DbSession {
 
     /// Children of `parent` (None = the top level). Fixed catalogue queries in
     /// a read-only transaction; names travel as bound parameters.
-    pub async fn tree(&self, parent: Option<&DbObjectRef>) -> Result<DbTreePage, DbError> {
+    pub async fn tree(
+        &self,
+        parent: Option<&DbObjectRef>,
+        cursor: Option<&str>,
+    ) -> Result<DbTreePage, DbError> {
         let mut driver = self.driver.lock().await;
         let engine = self.info.engine;
         let text = |value: &str| DbParameter {
@@ -275,7 +286,7 @@ impl DbSession {
                     return Ok(DbTreePage { nodes: Vec::new(), next_cursor: None })
                 }
                 _ => {
-                    return Ok(DbTreePage { nodes: driver.browse(parent).await?, next_cursor: None })
+                    return driver.browse(parent, cursor).await
                 }
             };
         let mut rows = Collect::default();

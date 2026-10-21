@@ -289,7 +289,7 @@ abstract class RustLibApi extends BaseApi {
 
   Future<String> crateApiDatabaseDbTestConnection({required String connectionJson, Uint8List? password});
 
-  Future<String> crateApiDatabaseDbTree({required String sessionId, String? parentJson});
+  Future<String> crateApiDatabaseDbTree({required String sessionId, String? parentJson, String? cursor});
 
   Future<void> crateApiSyncDevicesConfirmApproval({required String requestId, required String confirmedCode});
 
@@ -2461,25 +2461,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "db_test_connection", argNames: ["connectionJson", "password"]);
 
   @override
-  Future<String> crateApiDatabaseDbTree({required String sessionId, String? parentJson}) {
+  Future<String> crateApiDatabaseDbTree({required String sessionId, String? parentJson, String? cursor}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_opt_String(parentJson, serializer);
+          sse_encode_opt_String(cursor, serializer);
           pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 62, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbTreeConstMeta,
-        argValues: [sessionId, parentJson],
+        argValues: [sessionId, parentJson, cursor],
         apiImpl: this,
       ),
     );
   }
 
   TaskConstMeta get kCrateApiDatabaseDbTreeConstMeta =>
-      const TaskConstMeta(debugName: "db_tree", argNames: ["sessionId", "parentJson"]);
+      const TaskConstMeta(debugName: "db_tree", argNames: ["sessionId", "parentJson", "cursor"]);
 
   @override
   Future<void> crateApiSyncDevicesConfirmApproval({required String requestId, required String confirmedCode}) {

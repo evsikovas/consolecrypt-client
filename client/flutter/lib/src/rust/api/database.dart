@@ -30,8 +30,8 @@ Future<void> dbDisconnect({required String sessionId}) =>
 Future<String> dbSetSessionWrite({required String sessionId, required bool allow}) =>
     RustLib.instance.api.crateApiDatabaseDbSetSessionWrite(sessionId: sessionId, allow: allow);
 
-Future<String> dbTree({required String sessionId, String? parentJson}) =>
-    RustLib.instance.api.crateApiDatabaseDbTree(sessionId: sessionId, parentJson: parentJson);
+Future<String> dbTree({required String sessionId, String? parentJson, String? cursor}) =>
+    RustLib.instance.api.crateApiDatabaseDbTree(sessionId: sessionId, parentJson: parentJson, cursor: cursor);
 
 Future<String> dbIdentifier({required String sessionId, required String objectJson}) =>
     RustLib.instance.api.crateApiDatabaseDbIdentifier(sessionId: sessionId, objectJson: objectJson);

@@ -65,11 +65,12 @@ pub async fn db_set_session_write(session_id: String, allow: bool) -> Result<Str
 pub async fn db_tree(
     session_id: String,
     parent_json: Option<String>,
+    cursor: Option<String>,
 ) -> Result<String, BridgeError> {
     let parent: Option<DbObjectRef> = parent_json
         .map(|json| from_json("parent", &json))
         .transpose()?;
-    with_core(move |c| async move { to_json(&c.db_tree(session_id, parent).await?) }).await
+    with_core(move |c| async move { to_json(&c.db_tree(session_id, parent, cursor).await?) }).await
 }
 
 pub async fn db_identifier(session_id: String, object_json: String) -> Result<String, BridgeError> {

@@ -279,10 +279,17 @@ impl AppCore {
         &self,
         session_id: String,
         parent: Option<DbObjectRef>,
+        cursor: Option<String>,
     ) -> AppResult<DbTreePage> {
         let (_, unlocked) = self.unlocked().await?;
         let session = unlocked.db.session(&session_id)?;
-        session.tree(parent.as_ref()).await.map_err(db_error)
+        if cursor.as_ref().is_some_and(|cursor| cursor.len() > 256) {
+            return Err(invalid("invalid_cursor"));
+        }
+        session
+            .tree(parent.as_ref(), cursor.as_deref())
+            .await
+            .map_err(db_error)
     }
 
     /// Quoted identifier for an object (PostgreSQL "schema"."name", MySQL `db`.`name`).

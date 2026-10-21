@@ -116,7 +116,7 @@ async fn exercise(variable: &str, engine: DbEngine) {
         session.execute(&request("CREATE TABLE cc_probe (id int)")),
         Err(DbError::PolicyDenied | DbError::ApprovalRequired | DbError::InvalidRequest)
     ));
-    let roots = session.tree(None).await.unwrap();
+    let roots = session.tree(None, None).await.unwrap();
     assert!(!roots.nodes.is_empty());
     session.close();
 
@@ -147,7 +147,7 @@ async fn exercise(variable: &str, engine: DbEngine) {
     // Structure: the table and its primary-key column are visible.
     let parent = match engine {
         DbEngine::Postgresql => {
-            dev.tree(None)
+            dev.tree(None, None)
                 .await
                 .unwrap()
                 .nodes
@@ -157,7 +157,7 @@ async fn exercise(variable: &str, engine: DbEngine) {
                 .reference
         }
         _ => {
-            dev.tree(None)
+            dev.tree(None, None)
                 .await
                 .unwrap()
                 .nodes
@@ -167,7 +167,7 @@ async fn exercise(variable: &str, engine: DbEngine) {
                 .reference
         }
     };
-    let tables = dev.tree(Some(&parent)).await.unwrap();
+    let tables = dev.tree(Some(&parent), None).await.unwrap();
     let table = tables
         .nodes
         .iter()
@@ -176,7 +176,7 @@ async fn exercise(variable: &str, engine: DbEngine) {
         .reference
         .clone();
     assert_eq!(table.kind, DbObjectKind::Table);
-    let columns = dev.tree(Some(&table)).await.unwrap();
+    let columns = dev.tree(Some(&table), None).await.unwrap();
     assert!(columns
         .nodes
         .iter()
