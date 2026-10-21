@@ -9816,4 +9816,45 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dockerTerminalHint => 'Терминал даёт полный доступ к контейнеру, включая переменные окружения.';
+
+  @override
+  String get updateWindowsInstallHelp =>
+      'ConsoleCrypt закроется, установщик обновит приложение и запустит его снова. SSH-сеансы будут закрыты, профили и хранилища сохранятся.';
+
+  @override
+  String get updatePortableHelp =>
+      'Эта копия ConsoleCrypt запущена из распакованного ZIP-архива и не может обновиться сама. Откройте страницу загрузки и скачайте установщик или новый ZIP-архив. Профили и хранилища сохранятся.';
+
+  @override
+  String get updateOpenDownloadPage => 'Открыть страницу загрузки';
+
+  @override
+  String get updateErrorNetwork =>
+      'Не удалось скачать обновление: сервер недоступен или соединение прервалось. Проверьте подключение и повторите попытку.';
+
+  @override
+  String get updateErrorIntegrity =>
+      'Скачанный файл не совпал с подписанным размером или контрольной суммой и не установлен. Повторите загрузку.';
+
+  @override
+  String get updateErrorFeed =>
+      'Не удалось проверить сведения об обновлении (подпись, формат или срок действия). Ничего не установлено.';
+
+  @override
+  String get updateErrorRollback =>
+      'Сервер вернул более старые сведения об обновлениях, чем это устройство уже получало. Возможна подмена; ничего не установлено.';
+
+  @override
+  String updateErrorLaunch(String code) {
+    return 'Не удалось запустить установщик (код ошибки Windows $code). Возможно, его заблокировал антивирус. Скачайте установщик со страницы загрузки.';
+  }
+
+  @override
+  String get updateErrorStorage =>
+      'Не удалось сохранить обновление во временную папку. Освободите место на диске и повторите попытку.';
+
+  @override
+  String updateErrorBrowser(String url) {
+    return 'Не удалось открыть браузер. Страница загрузки: $url';
+  }
 }

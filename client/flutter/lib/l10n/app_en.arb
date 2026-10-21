@@ -13168,5 +13168,55 @@
   "dockerTerminalHint": "The terminal gives full access to the container, including its environment variables.",
   "@dockerTerminalHint": {
     "description": "Container terminal dialog: one-time note shown the first time in a profile."
+  },
+  "updateWindowsInstallHelp": "ConsoleCrypt closes, the installer updates it and starts it again. SSH sessions are closed; profiles and vaults are kept.",
+  "@updateWindowsInstallHelp": {
+    "description": "Windows update confirmation: what happens after downloading the installer"
+  },
+  "updatePortableHelp": "This copy of ConsoleCrypt runs from an unpacked ZIP archive and cannot update itself. Open the download page and get the installer or the new ZIP archive. Profiles and vaults are kept.",
+  "@updatePortableHelp": {
+    "description": "Windows portable (ZIP) copy: why the in-app update is unavailable and what to do"
+  },
+  "updateOpenDownloadPage": "Open download page",
+  "@updateOpenDownloadPage": {
+    "description": "Button that opens the official ConsoleCrypt download page in the browser"
+  },
+  "updateErrorNetwork": "The update could not be downloaded: the server is unreachable or the connection was interrupted. Check the connection and retry.",
+  "@updateErrorNetwork": {
+    "description": "Update failure: network or HTTP error"
+  },
+  "updateErrorIntegrity": "The downloaded file does not match the signed size or checksum and was not installed. Retry the download.",
+  "@updateErrorIntegrity": {
+    "description": "Update failure: installer size or SHA-256 mismatch"
+  },
+  "updateErrorFeed": "The update information could not be verified (signature, format or validity period). Nothing was installed.",
+  "@updateErrorFeed": {
+    "description": "Update failure: the signed update feed did not verify"
+  },
+  "updateErrorRollback": "The server returned older update information than this device has already seen. It may have been replaced; nothing was installed.",
+  "@updateErrorRollback": {
+    "description": "Update failure: an older signed feed was replayed"
+  },
+  "updateErrorLaunch": "The installer could not be started (Windows error {code}). Antivirus software may have blocked it. Download the installer from the download page.",
+  "@updateErrorLaunch": {
+    "description": "Update failure: starting the downloaded installer failed; code is the OS error number",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "updateErrorStorage": "The update could not be saved to the temporary folder. Free up disk space and retry.",
+  "@updateErrorStorage": {
+    "description": "Update failure: the temporary download file could not be created"
+  },
+  "updateErrorBrowser": "The browser could not be opened. Download page: {url}",
+  "@updateErrorBrowser": {
+    "description": "Opening the download page failed; shows the address to open manually",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
   }
 }

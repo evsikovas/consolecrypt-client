@@ -9588,4 +9588,45 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get dockerTerminalHint =>
       'The terminal gives full access to the container, including its environment variables.';
+
+  @override
+  String get updateWindowsInstallHelp =>
+      'ConsoleCrypt closes, the installer updates it and starts it again. SSH sessions are closed; profiles and vaults are kept.';
+
+  @override
+  String get updatePortableHelp =>
+      'This copy of ConsoleCrypt runs from an unpacked ZIP archive and cannot update itself. Open the download page and get the installer or the new ZIP archive. Profiles and vaults are kept.';
+
+  @override
+  String get updateOpenDownloadPage => 'Open download page';
+
+  @override
+  String get updateErrorNetwork =>
+      'The update could not be downloaded: the server is unreachable or the connection was interrupted. Check the connection and retry.';
+
+  @override
+  String get updateErrorIntegrity =>
+      'The downloaded file does not match the signed size or checksum and was not installed. Retry the download.';
+
+  @override
+  String get updateErrorFeed =>
+      'The update information could not be verified (signature, format or validity period). Nothing was installed.';
+
+  @override
+  String get updateErrorRollback =>
+      'The server returned older update information than this device has already seen. It may have been replaced; nothing was installed.';
+
+  @override
+  String updateErrorLaunch(String code) {
+    return 'The installer could not be started (Windows error $code). Antivirus software may have blocked it. Download the installer from the download page.';
+  }
+
+  @override
+  String get updateErrorStorage =>
+      'The update could not be saved to the temporary folder. Free up disk space and retry.';
+
+  @override
+  String updateErrorBrowser(String url) {
+    return 'The browser could not be opened. Download page: $url';
+  }
 }

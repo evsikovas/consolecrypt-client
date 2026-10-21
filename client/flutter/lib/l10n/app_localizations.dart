@@ -17167,6 +17167,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The terminal gives full access to the container, including its environment variables.'**
   String get dockerTerminalHint;
+
+  /// Windows update confirmation: what happens after downloading the installer
+  ///
+  /// In en, this message translates to:
+  /// **'ConsoleCrypt closes, the installer updates it and starts it again. SSH sessions are closed; profiles and vaults are kept.'**
+  String get updateWindowsInstallHelp;
+
+  /// Windows portable (ZIP) copy: why the in-app update is unavailable and what to do
+  ///
+  /// In en, this message translates to:
+  /// **'This copy of ConsoleCrypt runs from an unpacked ZIP archive and cannot update itself. Open the download page and get the installer or the new ZIP archive. Profiles and vaults are kept.'**
+  String get updatePortableHelp;
+
+  /// Button that opens the official ConsoleCrypt download page in the browser
+  ///
+  /// In en, this message translates to:
+  /// **'Open download page'**
+  String get updateOpenDownloadPage;
+
+  /// Update failure: network or HTTP error
+  ///
+  /// In en, this message translates to:
+  /// **'The update could not be downloaded: the server is unreachable or the connection was interrupted. Check the connection and retry.'**
+  String get updateErrorNetwork;
+
+  /// Update failure: installer size or SHA-256 mismatch
+  ///
+  /// In en, this message translates to:
+  /// **'The downloaded file does not match the signed size or checksum and was not installed. Retry the download.'**
+  String get updateErrorIntegrity;
+
+  /// Update failure: the signed update feed did not verify
+  ///
+  /// In en, this message translates to:
+  /// **'The update information could not be verified (signature, format or validity period). Nothing was installed.'**
+  String get updateErrorFeed;
+
+  /// Update failure: an older signed feed was replayed
+  ///
+  /// In en, this message translates to:
+  /// **'The server returned older update information than this device has already seen. It may have been replaced; nothing was installed.'**
+  String get updateErrorRollback;
+
+  /// Update failure: starting the downloaded installer failed; code is the OS error number
+  ///
+  /// In en, this message translates to:
+  /// **'The installer could not be started (Windows error {code}). Antivirus software may have blocked it. Download the installer from the download page.'**
+  String updateErrorLaunch(String code);
+
+  /// Update failure: the temporary download file could not be created
+  ///
+  /// In en, this message translates to:
+  /// **'The update could not be saved to the temporary folder. Free up disk space and retry.'**
+  String get updateErrorStorage;
+
+  /// Opening the download page failed; shows the address to open manually
+  ///
+  /// In en, this message translates to:
+  /// **'The browser could not be opened. Download page: {url}'**
+  String updateErrorBrowser(String url);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

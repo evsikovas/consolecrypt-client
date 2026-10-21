@@ -730,6 +730,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'custom_terminal_colors': s.customTerminalColors?.toJson(),
   'reopen_last_profile': s.reopenLastProfile,
   'check_updates_automatically': s.checkUpdatesAutomatically,
+  'update_feed_issued_at': s.updateFeedIssuedAt?.toUtc().toIso8601String(),
   'prefer_device_local_ai': s.preferDeviceLocalAi,
   'rdp_mobile': s.rdpMobile.toJson(),
   'terminal_font_size': s.terminalFontSize,
@@ -772,6 +773,10 @@ LocalSettings localSettingsFromJson(Json j) {
     customTerminalColors: TerminalColors.tryFromJson(j['custom_terminal_colors']),
     reopenLastProfile: j['reopen_last_profile'] == true,
     checkUpdatesAutomatically: j['check_updates_automatically'] != false,
+    updateFeedIssuedAt: switch (j['update_feed_issued_at']) {
+      final String value => DateTime.tryParse(value)?.toUtc(),
+      _ => null,
+    },
     preferDeviceLocalAi: j['prefer_device_local_ai'] != false,
     rdpMobile: RdpMobileSettings.fromJson(j['rdp_mobile']),
     sftpDefaultEditor: _appRefFromJson(j['sftp_default_editor']),

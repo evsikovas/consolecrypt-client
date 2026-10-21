@@ -20,11 +20,54 @@ const updateVerificationKey = String.fromEnvironment(
 );
 
 class UpdateException implements Exception {
-  const UpdateException(this.code);
+  const UpdateException(this.code, [this.detail]);
   final String code;
+
+  /// Non-sensitive diagnostic, e.g. the OS error number of a failed launch.
+  final String? detail;
   @override
-  String toString() => 'UpdateException($code)';
+  String toString() => 'UpdateException($code${detail == null ? '' : ', $detail'})';
 }
+
+/// The newest authenticated `issuedAt` this device has accepted. A replayed
+/// older (still unexpired) feed must not hide a newer release for the rest of
+/// its 100-day validity window.
+abstract interface class UpdateFeedHighWater {
+  Future<DateTime?> read();
+  Future<void> write(DateTime issuedAt);
+}
+
+/// Starts a program without waiting for it (the Windows installer).
+typedef InstallerLauncher = Future<void> Function(String executable, List<String> arguments);
+
+Future<void> _startDetached(String executable, List<String> arguments) =>
+    Process.start(executable, arguments, mode: ProcessStartMode.detached);
+
+/// `\\?\C:\x` → `C:\x` and `\\?\UNC\host\share` → `\\host\share`. Verbatim
+/// paths break programs that resolve themselves (Inno Setup) and must not be shown.
+String withoutVerbatimPrefix(String path) {
+  if (path.startsWith(r'\\?\UNC\')) return '\\\\${path.substring(8)}';
+  if (RegExp(r'^\\\\\?\\[A-Za-z]:\\').hasMatch(path)) return path.substring(4);
+  return path;
+}
+
+/// Inno Setup leaves its uninstaller (`unins000.exe`) next to the installed
+/// app. A copy unpacked from the portable ZIP has none: the installer would
+/// update a different folder, so that copy cannot update itself.
+bool windowsInstalledByInstaller(Iterable<String> siblingNames) =>
+    siblingNames.any((name) => RegExp(r'^unins\d{3}\.exe$', caseSensitive: false).hasMatch(name));
+
+/// Inno Setup arguments for an in-place update. `/WAITPID` and `/RELAUNCH`
+/// are read by ConsoleCrypt.iss: setup waits until this process has exited
+/// (no files in use, no Restart Manager prompt) and starts the updated app.
+List<String> windowsInstallerArguments(int processId) => [
+  '/SP-',
+  '/SILENT',
+  '/NORESTART',
+  '/CLOSEAPPLICATIONS',
+  '/RELAUNCH=1',
+  '/WAITPID=$processId',
+];
 
 final class UpdateRelease {
   const UpdateRelease({
@@ -97,6 +140,8 @@ Future<UpdateRelease?> verifyUpdateFeed(
   int currentBuild = kAppBuildNumber,
   String publicKey = updateVerificationKey,
   DateTime? now,
+  DateTime? notBefore,
+  void Function(DateTime issuedAt)? onAuthenticated,
 }) async {
   if (envelope.length > 65536) throw const UpdateException('manifest_size');
   try {
@@ -123,6 +168,8 @@ Future<UpdateRelease?> verifyUpdateFeed(
         !expires.isAfter(issued)) {
       throw const UpdateException('manifest_expired');
     }
+    if (notBefore != null && issued.isBefore(notBefore)) throw const UpdateException('manifest_rollback');
+    onAuthenticated?.call(issued);
     final version = data['version'] as String;
     _version(version);
     final asset = (data['platforms'] as Map<String, dynamic>)[platform];
@@ -162,20 +209,57 @@ class UpdateService {
     HttpClient Function()? clientFactory,
     this.publicKey = updateVerificationKey,
     MethodChannel? macosChannel,
+    this._feedHighWater,
+    InstallerLauncher? launcher,
+    this._platform,
+    Future<bool> Function()? windowsInstalled,
+    int? processId,
   }) : _clientFactory = clientFactory ?? HttpClient.new,
-       _macos = macosChannel ?? const MethodChannel('consolecrypt/macos_updates');
+       _macos = macosChannel ?? const MethodChannel('consolecrypt/macos_updates'),
+       _launch = launcher ?? _startDetached,
+       _windowsInstalled = windowsInstalled ?? _probeWindowsInstall,
+       _processId = processId ?? pid;
   final HttpClient Function() _clientFactory;
   final MethodChannel _macos;
   final String publicKey;
+  final UpdateFeedHighWater? _feedHighWater;
+  final InstallerLauncher _launch;
+  final String? _platform;
+  final Future<bool> Function() _windowsInstalled;
+  final int _processId;
   static const _android = MethodChannel('consolecrypt/updates');
 
-  String get platform => Platform.isWindows
-      ? 'windows-x64'
-      : Platform.isMacOS
-      ? 'macos-universal'
-      : Platform.isAndroid
-      ? 'android-arm64'
-      : 'unsupported';
+  /// The verified installer stays open (and locked) from the last hash check
+  /// until this process exits, so its bytes cannot change before Setup reads them.
+  RandomAccessFile? _launchedInstaller;
+
+  String get platform =>
+      _platform ??
+      (Platform.isWindows
+          ? 'windows-x64'
+          : Platform.isMacOS
+          ? 'macos-universal'
+          : Platform.isAndroid
+          ? 'android-arm64'
+          : 'unsupported');
+
+  static Future<bool> _probeWindowsInstall() async {
+    try {
+      final folder = File(withoutVerbatimPrefix(Platform.resolvedExecutable)).parent;
+      final names = await folder
+          .list(followLinks: false)
+          .map((entry) => entry.uri.pathSegments.lastWhere((s) => s.isNotEmpty))
+          .toList();
+      return windowsInstalledByInstaller(names);
+    } on Object {
+      // Unknown: offering the download page is safe, a misdirected installer is not.
+      return false;
+    }
+  }
+
+  /// Whether the downloaded installer can update this copy in place. A
+  /// portable Windows copy is sent to the download page instead.
+  Future<bool> canInstallInPlace() async => platform != 'windows-x64' || await _windowsInstalled();
 
   HttpClient _client() => _clientFactory()
     ..connectionTimeout = const Duration(seconds: 15)
@@ -196,7 +280,7 @@ class UpdateService {
         url = url.resolve(next);
         continue;
       }
-      if (response.statusCode != HttpStatus.ok) throw const UpdateException('http');
+      if (response.statusCode != HttpStatus.ok) throw UpdateException('http', '${response.statusCode}');
       return response;
     }
     throw const UpdateException('redirect');
@@ -212,9 +296,39 @@ class UpdateService {
         bytes.addAll(chunk);
         if (bytes.length > 65536) throw const UpdateException('manifest_size');
       }
-      return await verifyUpdateFeed(bytes, platform: platform, publicKey: publicKey);
+      final now = DateTime.now().toUtc();
+      var floor = await _feedHighWater?.read();
+      // A corrupt future value must not block every later feed.
+      if (floor != null && floor.isAfter(now.add(const Duration(minutes: 10)))) floor = null;
+      DateTime? issued;
+      final release = await verifyUpdateFeed(
+        bytes,
+        platform: platform,
+        publicKey: publicKey,
+        now: now,
+        notBefore: floor,
+        onAuthenticated: (value) => issued = value,
+      );
+      final accepted = issued;
+      if (accepted != null && (floor == null || accepted.isAfter(floor))) await _feedHighWater?.write(accepted);
+      return release;
     } finally {
       client.close(force: true);
+    }
+  }
+
+  /// Removes installers left by earlier attempts (they are kept for the
+  /// running Setup until this app exits).
+  static Future<void> _removeStale(Directory root, String prefix) async {
+    try {
+      final cutoff = DateTime.now().subtract(const Duration(hours: 12));
+      await for (final entry in root.list(followLinks: false)) {
+        final name = entry.uri.pathSegments.lastWhere((s) => s.isNotEmpty);
+        if (entry is! Directory || !name.startsWith(prefix)) continue;
+        if (entry.statSync().modified.isBefore(cutoff)) await entry.delete(recursive: true);
+      }
+    } on Object {
+      // Best effort only.
     }
   }
 
@@ -228,15 +342,28 @@ class UpdateService {
         if (path == null) throw const UpdateException('storage');
         folder = await Directory(path).createTemp('release-');
       } else {
-        folder = await Directory.systemTemp.createTemp('consolecrypt-update-');
+        await _removeStale(Directory.systemTemp, 'consolecrypt-update-');
+        try {
+          folder = await Directory.systemTemp.createTemp('consolecrypt-update-');
+        } on FileSystemException catch (error) {
+          throw UpdateException('storage', '${error.osError?.errorCode ?? ''}');
+        }
       }
-      final file = File('${folder.path}/${release.fileName}');
+      // A fresh random folder and an exclusively created file: nothing else
+      // chose this path, and the bytes are verified again right before launch.
+      final file = File('${folder.path}${Platform.pathSeparator}${release.fileName}');
+      try {
+        await file.create(exclusive: true);
+        output = await file.open(mode: FileMode.writeOnly);
+      } on FileSystemException catch (error) {
+        throw UpdateException('storage', '${error.osError?.errorCode ?? ''}');
+      }
       final response = await _get(client, release.url);
       if (response.contentLength != -1 && response.contentLength != release.bytes) {
         throw const UpdateException('size');
       }
-      output = await file.open(mode: FileMode.write);
       var received = 0;
+      progress(0);
       await for (final chunk in response.timeout(const Duration(seconds: 45))) {
         received += chunk.length;
         if (received > release.bytes) throw const UpdateException('size');
@@ -267,6 +394,54 @@ class UpdateService {
     }
   }
 
+  /// Hashes through [handle] itself, so the checked bytes are the open file's.
+  static Future<void> _verifyOpen(RandomAccessFile handle, UpdateRelease release) async {
+    if (await handle.length() != release.bytes) throw const UpdateException('checksum');
+    await handle.setPosition(0);
+    final sink = _DigestSink();
+    final input = digest.sha256.startChunkedConversion(sink);
+    var remaining = release.bytes;
+    while (remaining > 0) {
+      final chunk = await handle.read(remaining < 1 << 20 ? remaining : 1 << 20);
+      if (chunk.isEmpty) throw const UpdateException('checksum');
+      input.add(chunk);
+      remaining -= chunk.length;
+    }
+    input.close();
+    if (sink.value.toString() != release.sha256) throw const UpdateException('checksum');
+  }
+
+  /// Windows: open the installer (Dart's handle denies delete/rename while
+  /// open), take a shared lock (no process can write the bytes), hash those
+  /// bytes and only then start Setup. The handle stays open until exit.
+  Future<UpdateInstallResult> _installWindows(File file, UpdateRelease release) async {
+    final RandomAccessFile handle;
+    try {
+      handle = await file.open();
+    } on FileSystemException {
+      throw const UpdateException('checksum');
+    }
+    try {
+      try {
+        await handle.lock(FileLock.shared, 0, release.bytes);
+      } on FileSystemException {
+        throw const UpdateException('checksum');
+      }
+      await _verifyOpen(handle, release);
+      try {
+        await _launch(withoutVerbatimPrefix(file.absolute.path), windowsInstallerArguments(_processId));
+      } on ProcessException catch (error) {
+        throw UpdateException('launch', '${error.errorCode}');
+      }
+      await _launchedInstaller?.close();
+      _launchedInstaller = handle;
+      return UpdateInstallResult.exitWindows;
+    } on Object {
+      await handle.close();
+      rethrow;
+    }
+  }
+
   Future<UpdateInstallResult> install(
     File file,
     UpdateRelease release, {
@@ -274,15 +449,11 @@ class UpdateService {
     String? macosSavePrompt,
   }) async {
     if (release.platform != platform) throw const UpdateException('platform');
-    await verifyInstaller(file, release);
-    if (Platform.isWindows) {
-      await Process.start(file.path, [
-        '/SILENT',
-        '/CLOSEAPPLICATIONS',
-        '/RESTARTAPPLICATIONS',
-      ], mode: ProcessStartMode.detached);
-      return UpdateInstallResult.exitWindows;
+    if (platform == 'windows-x64') {
+      if (!await canInstallInPlace()) throw const UpdateException('portable');
+      return _installWindows(file, release);
     }
+    await verifyInstaller(file, release);
     if (Platform.isMacOS) {
       // Opening the sandbox cache directly propagates quarantine's
       // no-user-consent bit to the app copied out of the DMG. The native
@@ -307,4 +478,12 @@ class UpdateService {
     }
     throw const UpdateException('platform');
   }
+}
+
+final class _DigestSink implements Sink<digest.Digest> {
+  late digest.Digest value;
+  @override
+  void add(digest.Digest data) => value = data;
+  @override
+  void close() {}
 }

@@ -111,6 +111,7 @@ final class LocalSettings {
     this.workspacePanelStyle = WorkspacePanelStyle.floating,
     this.sftpDefaultEditor,
     this.checkUpdatesAutomatically = true,
+    this.updateFeedIssuedAt,
     this.preferDeviceLocalAi = true,
     this.rdpMobile = const RdpMobileSettings(),
     this.databasesView = CollectionView.cards,
@@ -173,6 +174,9 @@ final class LocalSettings {
   /// Only release metadata is fetched. Installers require user confirmation.
   final bool checkUpdatesAutomatically;
 
+  /// Newest accepted update feed `issuedAt`; older signed feeds are refused.
+  final DateTime? updateFeedIssuedAt;
+
   /// Effective only after installing the optional model on this computer.
   /// This preference never changes synced provider defaults.
   final bool preferDeviceLocalAi;
@@ -209,6 +213,7 @@ final class LocalSettings {
     AppRef? sftpDefaultEditor,
     bool resetSftpDefaultEditor = false,
     bool? checkUpdatesAutomatically,
+    DateTime? updateFeedIssuedAt,
     bool? preferDeviceLocalAi,
     RdpMobileSettings? rdpMobile,
     CollectionView? databasesView,
@@ -234,6 +239,7 @@ final class LocalSettings {
     workspacePanelStyle: workspacePanelStyle ?? this.workspacePanelStyle,
     sftpDefaultEditor: resetSftpDefaultEditor ? null : (sftpDefaultEditor ?? this.sftpDefaultEditor),
     checkUpdatesAutomatically: checkUpdatesAutomatically ?? this.checkUpdatesAutomatically,
+    updateFeedIssuedAt: updateFeedIssuedAt ?? this.updateFeedIssuedAt,
     preferDeviceLocalAi: preferDeviceLocalAi ?? this.preferDeviceLocalAi,
     rdpMobile: rdpMobile ?? this.rdpMobile,
     databasesView: databasesView ?? this.databasesView,
