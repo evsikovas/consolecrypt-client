@@ -533,6 +533,89 @@ impl DbSession {
         }
     }
 
+    /// Compact schema for an assistant: up to `limit` tables, those named in
+    /// `hints` first, each with its columns and types. No data.
+    pub async fn schema_context(&self, hints: &str, limit: usize) -> Result<Vec<String>, DbError> {
+        let mut cache = self.completion.lock().await;
+        if cache.is_none() {
+            *cache = Some(self.load_completion().await?);
+        }
+        let cache = cache.as_ref().expect("loaded above");
+        let hints = hints.to_lowercase();
+        let mut tables: Vec<&(String, String, String)> = cache.tables.iter().collect();
+        // Mentioned tables first, then the rest in catalogue order.
+        tables.sort_by_key(|(_, table, _)| !hints.contains(&table.to_lowercase()));
+        Ok(tables
+            .into_iter()
+            .take(limit.clamp(1, 100))
+            .map(|(container, table, kind)| {
+                let columns: Vec<String> = cache
+                    .columns
+                    .iter()
+                    .filter(|(owner, _, _)| owner == table)
+                    .take(200)
+                    .map(|(_, column, kind)| format!("{column} {kind}"))
+                    .collect();
+                format!("{kind} {container}.{table} ({})", columns.join(", "))
+            })
+            .collect())
+    }
+
+    /// Table names matching `query` (case-insensitive substring).
+    pub async fn find_tables(&self, query: &str, limit: usize) -> Result<Vec<String>, DbError> {
+        let mut cache = self.completion.lock().await;
+        if cache.is_none() {
+            *cache = Some(self.load_completion().await?);
+        }
+        let query = query.to_lowercase();
+        Ok(cache
+            .as_ref()
+            .expect("loaded above")
+            .tables
+            .iter()
+            .filter(|(container, table, _)| {
+                table.to_lowercase().contains(&query) || container.to_lowercase().contains(&query)
+            })
+            .take(limit.clamp(1, 200))
+            .map(|(container, table, _)| format!("{container}.{table}"))
+            .collect())
+    }
+
+    /// Runs a read-only request and keeps at most `limit` rows. Anything the
+    /// guard does not classify as a read is refused, even on development.
+    pub async fn read_rows(
+        self: &Arc<Self>,
+        request: &DbQueryRequest,
+        limit: usize,
+    ) -> Result<(Vec<crate::DbColumn>, Vec<Vec<DbCell>>), DbError> {
+        let review = self.guard.review(request)?;
+        if review.risk != crate::guard::QueryRisk::ReadOnly || review.statement_count != 1 {
+            return Err(DbError::PolicyDenied);
+        }
+        let mut stream = self.execute(request)?;
+        let (mut columns, mut rows) = (Vec::new(), Vec::new());
+        while let Some(event) = stream.events.recv().await {
+            match event {
+                DbQueryEvent::Started { columns: started, .. } if columns.is_empty() => columns = started,
+                DbQueryEvent::Rows { rows: batch, .. } => {
+                    rows.extend(batch.into_iter().take(limit - rows.len()));
+                    if rows.len() >= limit {
+                        stream.cancel();
+                        break;
+                    }
+                }
+                DbQueryEvent::Paused { .. } => {
+                    stream.cancel();
+                    break;
+                }
+                DbQueryEvent::Error { .. } => return Err(DbError::QueryFailed),
+                DbQueryEvent::Done | DbQueryEvent::Cancelled => break,
+                _ => {}
+            }
+        }
+        Ok((columns, rows))
+    }
+
     /// Forgets cached completion names (after DDL or an explicit refresh).
     pub async fn refresh_completion(&self) {
         *self.completion.lock().await = None;

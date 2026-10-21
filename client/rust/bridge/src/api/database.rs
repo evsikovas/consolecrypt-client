@@ -329,3 +329,42 @@ pub async fn db_inspect(
     with_core(move |c| async move { to_json(&c.db_inspect(session_id, object, sample).await?) })
         .await
 }
+
+pub async fn db_ai_providers() -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.db_ai_providers().await?) }).await
+}
+
+/// Stages an assistant request; the review lists what consent would send.
+pub async fn db_ai_prepare(
+    session_id: String,
+    provider_id: String,
+    request_json: String,
+) -> Result<String, BridgeError> {
+    let request: cc_app_core::DbAiRequest = from_json("request", &request_json)?;
+    with_core(
+        move |c| async move { to_json(&c.db_ai_prepare(session_id, provider_id, request).await?) },
+    )
+    .await
+}
+
+pub async fn db_ai_ask(
+    session_id: String,
+    ticket: String,
+    consent_json: String,
+) -> Result<(), BridgeError> {
+    let consent: cc_app_core::DbAiConsent = from_json("consent", &consent_json)?;
+    with_core(move |c| async move { Ok(c.db_ai_ask(session_id, ticket, consent).await?) }).await
+}
+
+pub async fn db_ai_poll(ticket: String, wait_ms: u32) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.db_ai_poll(ticket, u64::from(wait_ms)).await?) })
+        .await
+}
+
+pub async fn db_ai_cancel(ticket: String) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.db_ai_cancel(ticket).await?) }).await
+}
+
+pub async fn db_ai_revoke(session_id: String) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.db_ai_revoke(session_id).await?) }).await
+}

@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/bridge/rust_account.dart';
 import 'package:consolecrypt/core/bridge/rust_backend.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
+import 'package:consolecrypt/db/db_ai_service.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
@@ -25,7 +26,8 @@ final class RustDbService
         DbPgpassFileService,
         DbExportService,
         DbCellEditService,
-        DbObjectInspectService {
+        DbObjectInspectService,
+        DbAiService {
   RustDbService(this._hub);
   final RustBackend _hub;
   final _sessions = <String, DbSessionInfo>{};
@@ -556,4 +558,81 @@ final class RustDbService
     );
     return value is Map ? value.cast<String, dynamic>() : {'value': value};
   }
+
+  // Query assistant.
+
+  static DbAiProvider _provider(DbJson json) =>
+      DbAiProvider(id: json['id'] as String, name: json['name'] as String, external: json['external'] as bool? ?? true);
+
+  @override
+  Future<List<DbAiProvider>> aiProviders() async => [
+    for (final item in (jsonDecode(await guard(native.dbAiProviders)) as List).cast<DbJson>()) _provider(item),
+  ];
+
+  @override
+  Future<DbAiReview> prepareAi(String sessionId, String providerId, DbAiRequest request) async {
+    final json = jsonDecode(
+      await guard(
+        () => native.dbAiPrepare(
+          sessionId: sessionId,
+          providerId: providerId,
+          requestJson: jsonEncode({
+            'action': request.action.name,
+            'question': request.question,
+            'query': request.query,
+            'error_code': request.errorCode,
+            'plan': request.plan,
+            'object': request.object?.toJson(),
+            'target_engine': request.targetEngine?.wireName,
+            'conversation_id': request.conversationId,
+            'query_id': request.queryId,
+            'result_index': request.resultIndex,
+            'selected_rows': request.selectedRows,
+            'context_limit': request.contextLimit,
+          }),
+        ),
+      ),
+    ) as DbJson;
+    return DbAiReview(
+      ticket: json['ticket'] as String,
+      provider: _provider(json['provider'] as DbJson),
+      connectionName: json['connection_name'] as String? ?? '',
+      expiresAt: DateTime.now().add(Duration(seconds: json['expires_in_seconds'] as int? ?? 120)),
+      schemaObjects: (json['schema_objects'] as List? ?? const []).cast<String>(),
+      hasSelectedRows: json['has_selected_rows'] as bool? ?? false,
+      historyMessages: json['history_messages'] as int? ?? 0,
+    );
+  }
+
+  @override
+  Stream<DbAiEvent> askAi(String sessionId, String ticket, DbAiConsent consent) async* {
+    await guard(() => native.dbAiAsk(sessionId: sessionId, ticket: ticket, consentJson: jsonEncode(consent.toJson())));
+    while (true) {
+      final List<DbJson> events;
+      try {
+        events = (jsonDecode(await guard(() => native.dbAiPoll(ticket: ticket, waitMs: 1000))) as List).cast<DbJson>();
+      } on AppException {
+        return; // cancelled or locked
+      }
+      for (final event in events) {
+        final kind = DbAiEventKind.values.firstWhere((k) => k.name == event['kind'], orElse: () => DbAiEventKind.error);
+        final content = event['content'] as String?;
+        yield DbAiEvent(
+          kind: kind,
+          content: content == null ? null : SecretText(content),
+          tool: event['tool'] as String?,
+          code: event['code'] as String?,
+          conversationId: event['conversation_id'] as String?,
+          isDdl: event['is_ddl'] as bool? ?? false,
+        );
+        if (kind == DbAiEventKind.done || kind == DbAiEventKind.error) return;
+      }
+    }
+  }
+
+  @override
+  Future<void> cancelAi(String sessionId, String ticket) => guard(() => native.dbAiCancel(ticket: ticket));
+
+  @override
+  Future<void> revokeAiConsent(String sessionId) => guard(() => native.dbAiRevoke(sessionId: sessionId));
 }

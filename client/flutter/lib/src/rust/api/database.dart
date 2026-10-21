@@ -179,3 +179,24 @@ Future<void> dbDiscardCellEdits({required String ticket}) =>
 /// MongoDB collection description, or sampled schema with `sample` documents.
 Future<String> dbInspect({required String sessionId, required String objectJson, int? sample}) =>
     RustLib.instance.api.crateApiDatabaseDbInspect(sessionId: sessionId, objectJson: objectJson, sample: sample);
+
+Future<String> dbAiProviders() => RustLib.instance.api.crateApiDatabaseDbAiProviders();
+
+/// Stages an assistant request; the review lists what consent would send.
+Future<String> dbAiPrepare({required String sessionId, required String providerId, required String requestJson}) =>
+    RustLib.instance.api.crateApiDatabaseDbAiPrepare(
+      sessionId: sessionId,
+      providerId: providerId,
+      requestJson: requestJson,
+    );
+
+Future<void> dbAiAsk({required String sessionId, required String ticket, required String consentJson}) =>
+    RustLib.instance.api.crateApiDatabaseDbAiAsk(sessionId: sessionId, ticket: ticket, consentJson: consentJson);
+
+Future<String> dbAiPoll({required String ticket, required int waitMs}) =>
+    RustLib.instance.api.crateApiDatabaseDbAiPoll(ticket: ticket, waitMs: waitMs);
+
+Future<void> dbAiCancel({required String ticket}) => RustLib.instance.api.crateApiDatabaseDbAiCancel(ticket: ticket);
+
+Future<void> dbAiRevoke({required String sessionId}) =>
+    RustLib.instance.api.crateApiDatabaseDbAiRevoke(sessionId: sessionId);

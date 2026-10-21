@@ -108,13 +108,18 @@ impl DbRuntime {
         }
     }
 
-    fn session(&self, id: &str) -> AppResult<Arc<DbSession>> {
+    pub(crate) fn session(&self, id: &str) -> AppResult<Arc<DbSession>> {
         self.sessions
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .get(id)
             .cloned()
             .ok_or_else(|| invalid("session_closed"))
+    }
+
+    /// Cancelled when the vault locks or the profile closes.
+    pub(crate) fn cancellation(&self) -> &CancellationToken {
+        &self.shutdown
     }
 
     fn results(&self, id: &str) -> AppResult<Arc<QueryResults>> {
