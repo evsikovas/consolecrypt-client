@@ -348,18 +348,12 @@ class _OperationDialogState extends ConsumerState<_OperationDialog> {
                         onChanged: (_) => setState(() {}),
                       ),
                       if (widget.detail.containers.isNotEmpty)
-                        DropdownButtonFormField<String>(
-                          initialValue: _container,
-                          isExpanded: true,
-                          decoration: InputDecoration(labelText: l.kubeContainer),
-                          items: widget.detail.containers
-                              .map(
-                                (name) => DropdownMenuItem(
-                                  value: name,
-                                  child: Text(name, overflow: TextOverflow.ellipsis),
-                                ),
-                              )
-                              .toList(),
+                        GlassDropdownField<String>(
+                          value: _container,
+                          label: l.kubeContainer,
+                          items: [
+                            for (final name in widget.detail.containers) GlassSelectItem(value: name, label: name),
+                          ],
                           onChanged: _busy ? null : (value) => setState(() => _container = value),
                         ),
                     ],

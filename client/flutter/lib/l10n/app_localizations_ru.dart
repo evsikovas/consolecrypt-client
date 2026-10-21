@@ -9170,4 +9170,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String shellAiDeviceError(String model) {
     return 'ИИ: встроенная модель не запустилась · $model';
   }
+
+  @override
+  String get dbEditorHint => 'Напишите запрос… ⌘↵ — выполнить';
+
+  @override
+  String dbRowCount(String count) {
+    return 'Строк: $count';
+  }
+
+  @override
+  String dbRowsAffected(int count) {
+    return 'Затронуто: $count';
+  }
+
+  @override
+  String get dbStatusReady => 'Готово';
 }

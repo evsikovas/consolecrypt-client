@@ -115,7 +115,7 @@ class _SharingKubePublishDialogState extends ConsumerState<SharingKubePublishDia
                     GlassButton(label: l.commonRetry, onPressed: _busy ? null : _load),
                   ],
                   if (_preview case final preview?) ...[
-                    Text(l.sharingPreview, style: Theme.of(context).textTheme.titleMedium),
+                    Text(l.sharingPreview, style: Theme.of(context).textTheme.titleSmall),
                     const SizedBox(height: 8),
                     SharingProjectionView(preview.previewJson),
                     Text(l.sharingKubeExclude),
@@ -242,26 +242,18 @@ class _SharingKubeCopyDialogState extends ConsumerState<SharingKubeCopyDialog> {
                     Text(l.sharingKubeCopyHelp),
                     if (requiresRoute) Text(l.sharingKubeRouteRequired),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
+                    GlassDropdownField<String>(
                       key: const ValueKey('sharing-kube-route'),
-                      initialValue: available.contains(_route) ? _route : null,
-                      isExpanded: true,
-                      decoration: InputDecoration(labelText: l.kubeRoute),
+                      value: available.contains(_route) ? _route : null,
+                      label: l.kubeRoute,
                       items: [
-                        if (!requiresRoute) DropdownMenuItem(value: '', child: Text(l.kubeRouteDirect)),
+                        if (!requiresRoute) GlassSelectItem(value: '', label: l.kubeRouteDirect),
                         for (final host in hosts)
-                          DropdownMenuItem(
+                          GlassSelectItem(
                             value: 'ssh:${host.id.value}',
-                            child: Text(
-                              /* l10n-ignore: SSH protocol and saved host name. */ 'SSH · ${host.name}',
-                              overflow: TextOverflow.ellipsis,
-                            ), // l10n-ignore: SSH protocol and saved host name.
-                          ),
-                        for (final jump in jumps)
-                          DropdownMenuItem(
-                            value: 'jump:${jump.id.value}',
-                            child: Text(jump.name, overflow: TextOverflow.ellipsis),
-                          ),
+                            label: /* l10n-ignore: SSH protocol and saved host name. */ 'SSH · ${host.name}',
+                          ), // l10n-ignore: SSH protocol and saved host name.
+                        for (final jump in jumps) GlassSelectItem(value: 'jump:${jump.id.value}', label: jump.name),
                       ],
                       onChanged: _busy ? null : (value) => setState(() => _route = value),
                     ),

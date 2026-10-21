@@ -85,9 +85,29 @@ GlassTokens personalizeTokens(GlassTokens tokens, LocalSettings settings) {
     unknown: p.unknown,
     success: p.success,
   );
+  final o = tokens.optics;
+  // Glass and the opaque overlays built from it (menus, tooltips, dialogs)
+  // take the same background hue as the cards.
+  final optics = tint == null
+      ? o
+      : GlassOptics(
+          tintBase: surface(o.tintBase),
+          rimStops: o.rimStops,
+          rimAngleDegrees: o.rimAngleDegrees,
+          secureRim: o.secureRim,
+          highContrastRim: o.highContrastRim,
+          darkEdge: o.darkEdge,
+          highlightTop: o.highlightTop,
+          highlightHeight: o.highlightHeight,
+          hotspotRadius: o.hotspotRadius,
+          hotspotAlpha: o.hotspotAlpha,
+          hotspotPressedAlpha: o.hotspotPressedAlpha,
+          clearDimming: o.clearDimming,
+        );
   return tokens.copyWith(
     palette: palette,
     surfaces: surfaces,
+    optics: optics,
     ambient: ambient,
     typography: tokens.typography.scaled(settings.effectiveUiFontScale),
   );

@@ -87,6 +87,19 @@ void main() {
     }
   });
 
+  test('the background colour also tints menus, tooltips and dialogs', () {
+    for (final brightness in Brightness.values) {
+      final plain = AppTheme.build(brightness);
+      final tinted = AppTheme.build(brightness, preferences: const LocalSettings(uiBackgroundColor: 0x7C5CFC));
+      final plainTokens = plain.extension<GlassTokens>()!, tintedTokens = tinted.extension<GlassTokens>()!;
+      expect(tintedTokens.optics.tintBase, isNot(plainTokens.optics.tintBase));
+      expect(tinted.popupMenuTheme.color, tintedTokens.optics.tintBase.withValues(alpha: 1));
+      expect(tinted.dialogTheme.backgroundColor, isNot(plain.dialogTheme.backgroundColor));
+      // Material dropdown values use titleMedium: it stays body-sized.
+      expect(tinted.textTheme.titleMedium!.fontSize, tintedTokens.typography.body.fontSize);
+    }
+  });
+
   test('interface font scaling does not change terminal settings or opaque colours', () {
     for (final scale in [.8, 1.2]) {
       final tokens = AppTheme.light(

@@ -12302,5 +12302,31 @@
         "type": "String"
       }
     }
+  },
+  "dbEditorHint": "Write a query… ⌘↵ runs it",
+  "@dbEditorHint": {
+    "description": "Placeholder of the empty query editor."
+  },
+  "dbRowCount": "Rows: {count}",
+  "@dbRowCount": {
+    "description": "Database status bar: number of rows loaded in the result.",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "dbRowsAffected": "Affected: {count}",
+  "@dbRowsAffected": {
+    "description": "Database status bar: number of rows changed by the statement.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dbStatusReady": "Ready",
+  "@dbStatusReady": {
+    "description": "Database status bar: idle state."
   }
 }

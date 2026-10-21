@@ -16183,6 +16183,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'AI: built-in model failed to start · {model}'**
   String shellAiDeviceError(String model);
+
+  /// Placeholder of the empty query editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a query… ⌘↵ runs it'**
+  String get dbEditorHint;
+
+  /// Database status bar: number of rows loaded in the result.
+  ///
+  /// In en, this message translates to:
+  /// **'Rows: {count}'**
+  String dbRowCount(String count);
+
+  /// Database status bar: number of rows changed by the statement.
+  ///
+  /// In en, this message translates to:
+  /// **'Affected: {count}'**
+  String dbRowsAffected(int count);
+
+  /// Database status bar: idle state.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get dbStatusReady;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

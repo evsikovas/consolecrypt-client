@@ -126,18 +126,10 @@ class _KubeKubectlPanelState extends ConsumerState<KubeKubectlPanel> {
         if (_discovery != null) ...[
           if (_path == null) Text(l.kubeKubectlMissing),
           if (_path != null) ...[
-            DropdownButtonFormField<String>(
+            GlassDropdownField<String>(
               key: ValueKey(_discovery),
-              initialValue: _path,
-              isExpanded: true,
-              items: _discovery!.candidates
-                  .map(
-                    (path) => DropdownMenuItem(
-                      value: path,
-                      child: Text(path, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ),
-                  )
-                  .toList(),
+              value: _path,
+              items: [for (final path in _discovery!.candidates) GlassSelectItem(value: path, label: path)],
               onChanged: _busy
                   ? null
                   : (value) => setState(() {
@@ -149,23 +141,21 @@ class _KubeKubectlPanelState extends ConsumerState<KubeKubectlPanel> {
             TextButton(onPressed: _busy ? null : _probe, child: Text(l.kubeKubectlCheck)),
           ],
           if (_path == null && _discovery!.methods.isNotEmpty) ...[
-            DropdownButtonFormField<String>(
-              initialValue: _method,
-              isExpanded: true,
-              items: _discovery!.methods
-                  .map(
-                    (method) => DropdownMenuItem(
-                      value: method,
-                      child: Text(switch (method) {
-                        'homebrew' => 'Homebrew',
-                        'winget' => 'winget',
-                        'scoop' => 'Scoop',
-                        'chocolatey' => 'Chocolatey',
-                        _ => method,
-                      }), // l10n-ignore: package manager names.
-                    ),
-                  )
-                  .toList(),
+            GlassDropdownField<String>(
+              value: _method,
+              items: [
+                for (final method in _discovery!.methods)
+                  GlassSelectItem(
+                    value: method,
+                    label: switch (method) {
+                      'homebrew' => 'Homebrew', // l10n-ignore: package manager names.
+                      'winget' => 'winget',
+                      'scoop' => 'Scoop', // l10n-ignore: package manager names.
+                      'chocolatey' => 'Chocolatey', // l10n-ignore: package manager names.
+                      _ => method,
+                    },
+                  ),
+              ],
               onChanged: _busy ? null : (value) => setState(() => _method = value),
             ),
             TextButton(onPressed: _busy ? null : _install, child: Text(l.kubeKubectlInstall)),

@@ -101,12 +101,11 @@ class _DbVariablesDialogState extends ConsumerState<DbVariablesDialog> {
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Column(
                       children: [
-                        DropdownButtonFormField<DbCellKind>(
-                          isExpanded: true,
-                          initialValue: _types[i],
-                          decoration: InputDecoration(labelText: '${widget.names[i]} · ${l.dbValueType}'),
-                          items: [for (final t in types) DropdownMenuItem(value: t, child: Text(t.wireName))],
-                          onChanged: (t) => setState(() => _types[i] = t!),
+                        GlassDropdownField<DbCellKind>(
+                          value: _types[i],
+                          label: '${widget.names[i]} · ${l.dbValueType}',
+                          items: [for (final t in types) GlassSelectItem(value: t, label: t.wireName)],
+                          onChanged: (t) => setState(() => _types[i] = t),
                         ),
                         if (_types[i] != DbCellKind.nullValue)
                           TextFormField(

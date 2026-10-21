@@ -91,19 +91,17 @@ class _KubeRolloutDialogState extends ConsumerState<KubeRolloutDialog> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     Widget selector(bool before) => Expanded(
-      child: DropdownButtonFormField<int>(
+      child: GlassDropdownField<int>(
         key: ValueKey(before ? 'kube-rollout-before' : 'kube-rollout-after'),
-        initialValue: before ? _before : _after,
-        isExpanded: true,
-        decoration: InputDecoration(labelText: before ? l.kubeDiffBefore : l.kubeDiffAfter),
-        items: _history
-            .map(
-              (row) => DropdownMenuItem(
-                value: row['revision'] as int,
-                child: Text(/* l10n-ignore: Kubernetes revision number. */ '#${row['revision']}'),
-              ),
-            )
-            .toList(),
+        value: before ? _before : _after,
+        label: before ? l.kubeDiffBefore : l.kubeDiffAfter,
+        items: [
+          for (final row in _history)
+            GlassSelectItem(
+              value: row['revision'] as int,
+              label: /* l10n-ignore: Kubernetes revision number. */ '#${row['revision']}',
+            ),
+        ],
         onChanged: _loading
             ? null
             : (value) => setState(() {

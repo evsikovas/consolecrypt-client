@@ -228,7 +228,7 @@ class _SharingGroupPublishDialogState extends ConsumerState<SharingGroupPublishD
                       onChanged: (_) => setState(() => _preview = _editorProjection()),
                     ),
                   const SizedBox(height: 12),
-                  Text(l.sharingCollectionChildren, style: Theme.of(context).textTheme.titleMedium),
+                  Text(l.sharingCollectionChildren, style: Theme.of(context).textTheme.titleSmall),
                   if (_available.isEmpty) Text(l.sharingCollectionEmpty),
                   for (final item in _available)
                     CheckboxListTile(

@@ -1,4 +1,5 @@
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -37,17 +38,16 @@ class RdpMobileSettingsSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(l.rdpMobileDefaultMode),
-          DropdownButton<RdpMobileMode>(
+          GlassSelect<RdpMobileMode>(
             value: s.mode,
-            isExpanded: true,
+            expand: true,
+            semanticLabel: l.rdpMobileDefaultMode,
             items: [
-              DropdownMenuItem(value: RdpMobileMode.automatic, child: Text(l.rdpMobileAutoDefault)),
-              DropdownMenuItem(value: RdpMobileMode.touchpad, child: Text(l.rdpMobileTouchpad)),
-              DropdownMenuItem(value: RdpMobileMode.direct, child: Text(l.rdpMobileDirectTouch)),
+              GlassSelectItem(value: RdpMobileMode.automatic, label: l.rdpMobileAutoDefault),
+              GlassSelectItem(value: RdpMobileMode.touchpad, label: l.rdpMobileTouchpad),
+              GlassSelectItem(value: RdpMobileMode.direct, label: l.rdpMobileDirectTouch),
             ],
-            onChanged: (mode) {
-              if (mode != null) save(s.copyWith(mode: mode));
-            },
+            onChanged: (mode) => save(s.copyWith(mode: mode)),
           ),
           slider(l.rdpMobileSpeed, s.speed, .5, 3, 25, (v) => save(s.copyWith(speed: v))),
           SwitchListTile(
@@ -63,15 +63,14 @@ class RdpMobileSettingsSection extends ConsumerWidget {
           ),
           slider(l.rdpMobileClarity, s.clarity, 1, 2, 10, (v) => save(s.copyWith(clarity: v))),
           Text(l.rdpMobileWindowsScale),
-          DropdownButton<int>(
+          GlassSelect<int>(
             value: s.windowsScale,
-            isExpanded: true,
+            expand: true,
+            semanticLabel: l.rdpMobileWindowsScale,
             items: [
-              for (final scale in [100, 125, 150]) DropdownMenuItem(value: scale, child: Text('$scale %')),
+              for (final scale in [100, 125, 150]) GlassSelectItem(value: scale, label: '$scale %'),
             ],
-            onChanged: (scale) {
-              if (scale != null) save(s.copyWith(windowsScale: scale));
-            },
+            onChanged: (scale) => save(s.copyWith(windowsScale: scale)),
           ),
           SwitchListTile(
             title: Text(l.rdpMobileAutoHide),
@@ -79,17 +78,16 @@ class RdpMobileSettingsSection extends ConsumerWidget {
             onChanged: (v) => save(s.copyWith(autoHide: v)),
           ),
           Text(l.rdpMobileOrientation),
-          DropdownButton<RdpMobileOrientation>(
+          GlassSelect<RdpMobileOrientation>(
             value: s.orientation,
-            isExpanded: true,
+            expand: true,
+            semanticLabel: l.rdpMobileOrientation,
             items: [
-              DropdownMenuItem(value: RdpMobileOrientation.automatic, child: Text(l.rdpMobileAutomatic)),
-              DropdownMenuItem(value: RdpMobileOrientation.landscape, child: Text(l.rdpMobileLandscape)),
-              DropdownMenuItem(value: RdpMobileOrientation.portrait, child: Text(l.rdpMobilePortrait)),
+              GlassSelectItem(value: RdpMobileOrientation.automatic, label: l.rdpMobileAutomatic),
+              GlassSelectItem(value: RdpMobileOrientation.landscape, label: l.rdpMobileLandscape),
+              GlassSelectItem(value: RdpMobileOrientation.portrait, label: l.rdpMobilePortrait),
             ],
-            onChanged: (o) {
-              if (o != null) save(s.copyWith(orientation: o));
-            },
+            onChanged: (o) => save(s.copyWith(orientation: o)),
           ),
         ],
       ),

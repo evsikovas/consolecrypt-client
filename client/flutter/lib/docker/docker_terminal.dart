@@ -91,20 +91,15 @@ class _TerminalDialogState extends ConsumerState<_TerminalDialog> {
             style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
           ),
           const SizedBox(height: GlassSpacing.s12),
-          DropdownButtonFormField<String>(
+          GlassDropdownField<String>(
             key: const ValueKey('docker-terminal-shell'),
-            initialValue: _shell,
-            isExpanded: true,
-            decoration: InputDecoration(labelText: l.dockerShell),
+            value: _shell,
+            label: l.dockerShell,
             items: [
-              DropdownMenuItem(value: dockerAutoShell, child: Text(l.dockerAutoShell)),
-              for (final shell in dockerShells) DropdownMenuItem(value: shell, child: Text(shell)),
+              GlassSelectItem(value: dockerAutoShell, label: l.dockerAutoShell),
+              for (final shell in dockerShells) GlassSelectItem(value: shell, label: shell),
             ],
-            onChanged: _busy
-                ? null
-                : (value) {
-                    if (value != null) setState(() => _shell = value);
-                  },
+            onChanged: _busy ? null : (value) => setState(() => _shell = value),
           ),
           if (_busy) const Padding(padding: EdgeInsets.only(top: 8), child: LinearProgressIndicator(minHeight: 2)),
           if (_failed)

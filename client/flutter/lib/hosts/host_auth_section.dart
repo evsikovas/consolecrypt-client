@@ -377,19 +377,17 @@ class HostAuthSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DropdownButtonFormField<Object?>(
+        GlassDropdownField<Object>(
           key: ValueKey('host-key-credential-${draft.epoch}'),
-          isExpanded: true,
-          borderRadius: BorderRadius.circular(tokens.radii.menu),
-          initialValue: selected?.id,
-          decoration: InputDecoration(labelText: l10n.hostAuthKeyLabel),
+          value: selected?.id,
+          label: l10n.hostAuthKeyLabel,
           items: [
             for (final k in keys)
-              DropdownMenuItem(
+              GlassSelectItem(
                 value: k.id,
-                child: Text('${k.name} · ${k.keyAlgorithm?.localized(l10n) ?? k.kind.localized(l10n)}'),
+                label: '${k.name} · ${k.keyAlgorithm?.localized(l10n) ?? k.kind.localized(l10n)}',
               ),
-            DropdownMenuItem(value: newCredentialEntry, child: Text(l10n.hostsNewCredentialEntry)),
+            GlassSelectItem(value: newCredentialEntry, label: l10n.hostsNewCredentialEntry),
           ],
           onChanged: (v) async {
             if (v == newCredentialEntry) {

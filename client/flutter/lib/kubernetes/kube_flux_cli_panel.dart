@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
@@ -356,17 +357,9 @@ class _KubeFluxCliPanelState extends ConsumerState<KubeFluxCliPanel> {
               TextButton(onPressed: enabled ? _showPath : null, child: Text(l10n.kubeFluxCliPathHelp)),
             if (_pathAdvice?.present == true) Text(l10n.kubeFluxCliPathAdded),
             if (_discovery?.candidates.isNotEmpty == true) ...[
-              DropdownButtonFormField<String>(
-                initialValue: _path,
-                isExpanded: true,
-                items: _discovery!.candidates
-                    .map(
-                      (path) => DropdownMenuItem(
-                        value: path,
-                        child: Text(path, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ),
-                    )
-                    .toList(),
+              GlassDropdownField<String>(
+                value: _path,
+                items: [for (final path in _discovery!.candidates) GlassSelectItem(value: path, label: path)],
                 onChanged: enabled
                     ? (path) => setState(() {
                         _path = path;
@@ -388,18 +381,10 @@ class _KubeFluxCliPanelState extends ConsumerState<KubeFluxCliPanel> {
               enabled: enabled,
               decoration: InputDecoration(labelText: l10n.kubeFluxCliVersion),
             ),
-            DropdownButtonFormField<String>(
-              initialValue: _method ?? 'official_release',
-              isExpanded: true,
-              decoration: InputDecoration(labelText: l10n.kubeFluxCliMethod),
-              items: methods
-                  .map(
-                    (method) => DropdownMenuItem(
-                      value: method,
-                      child: Text(_methodLabel(method), overflow: TextOverflow.ellipsis),
-                    ),
-                  )
-                  .toList(),
+            GlassDropdownField<String>(
+              value: _method ?? 'official_release',
+              label: l10n.kubeFluxCliMethod,
+              items: [for (final method in methods) GlassSelectItem(value: method, label: _methodLabel(method))],
               onChanged: enabled ? (method) => setState(() => _method = method) : null,
             ),
             Wrap(
@@ -425,13 +410,13 @@ class _KubeFluxCliPanelState extends ConsumerState<KubeFluxCliPanel> {
             ),
             if (_path != null) ...[
               const Divider(),
-              DropdownButtonFormField<String>(
-                initialValue: _action,
-                isExpanded: true,
-                items: ['check', 'trace', 'tree', 'events', 'logs', 'diff']
-                    .map((action) => DropdownMenuItem(value: action, child: Text('flux $action')))
-                    .toList(), // l10n-ignore: CLI verbs
-                onChanged: enabled ? (action) => setState(() => _action = action!) : null,
+              GlassDropdownField<String>(
+                value: _action,
+                items: [
+                  for (final action in ['check', 'trace', 'tree', 'events', 'logs', 'diff'])
+                    GlassSelectItem(value: action, label: 'flux $action'), // l10n-ignore: CLI verbs
+                ],
+                onChanged: enabled ? (action) => setState(() => _action = action) : null,
               ),
               if (['trace', 'tree', 'diff'].contains(_action))
                 TextField(

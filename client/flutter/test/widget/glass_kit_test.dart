@@ -375,6 +375,77 @@ void main() {
       expect(find.text('Delete…'), findsNothing);
     }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
+    testWidgets('dropdown field: label, glass menu, validation', (tester) async {
+      final form = GlobalKey<FormState>();
+      String? picked;
+      await pumpGlass(
+        tester,
+        Center(
+          child: SizedBox(
+            width: 280,
+            child: Form(
+              key: form,
+              child: GlassDropdownField<String>(
+                key: const ValueKey('field'),
+                label: 'Range',
+                items: const [
+                  GlassSelectItem(value: 'all', label: 'All time'),
+                  GlassSelectItem(value: 'hour', label: 'Last hour', key: ValueKey('item-hour')),
+                ],
+                onChanged: (v) => picked = v,
+                validator: (v) => v == null ? 'Required' : null,
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Range'), findsOneWidget);
+      expect(form.currentState!.validate(), isFalse);
+      await tester.pump();
+      expect(find.text('Required'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('field')));
+      await tester.pumpAndSettle();
+      expect(find.byType(DropdownMenuItem<String>), findsNothing);
+      expect(_liveBackdrops(), hasLength(1), reason: 'the choices open on the glass menu');
+      await tester.tap(find.byKey(const ValueKey('item-hour')));
+      await tester.pumpAndSettle();
+      expect(picked, 'hour');
+      expect(find.text('Last hour'), findsOneWidget);
+      expect(form.currentState!.validate(), isTrue);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+    testWidgets('dropdown field: a null "none" item can be picked', (tester) async {
+      String? picked = 'a';
+      await pumpGlass(
+        tester,
+        Center(
+          child: SizedBox(
+            width: 280,
+            child: GlassDropdownField<String?>(
+              key: const ValueKey('field'),
+              value: 'a',
+              items: const [
+                GlassSelectItem(value: null, label: 'None', key: ValueKey('item-none')),
+                GlassSelectItem(value: 'a', label: 'A'),
+              ],
+              onChanged: (v) => picked = v,
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('field')));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(picked, 'a', reason: 'dismissing is not a choice');
+      await tester.tap(find.byKey(const ValueKey('field')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('item-none')));
+      await tester.pumpAndSettle();
+      expect(picked, isNull);
+      expect(find.text('None'), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
     testWidgets('dialog: live thick glass, Enter submits, Escape cancels', (tester) async {
       var submitted = 0;
       await pumpGlass(

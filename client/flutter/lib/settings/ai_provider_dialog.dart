@@ -119,16 +119,12 @@ class _AiProviderDialogState extends ConsumerState<AiProviderDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DropdownButtonFormField<AiProviderKind>(
-              isExpanded: true,
-              borderRadius: BorderRadius.circular(tokens.radii.menu),
+            GlassDropdownField<AiProviderKind>(
               key: const ValueKey('provider-kind'),
-              initialValue: _config.provider,
-              decoration: InputDecoration(labelText: l10n.aiProviderDialogProviderLabel),
-              items: [
-                for (final k in AiProviderKind.values) DropdownMenuItem(value: k, child: Text(k.localized(l10n))),
-              ],
-              onChanged: (k) => k == null ? null : _setKind(k),
+              value: _config.provider,
+              label: l10n.aiProviderDialogProviderLabel,
+              items: [for (final k in AiProviderKind.values) GlassSelectItem(value: k, label: k.localized(l10n))],
+              onChanged: _setKind,
             ),
             const SizedBox(height: GlassSpacing.s12),
             TextField(

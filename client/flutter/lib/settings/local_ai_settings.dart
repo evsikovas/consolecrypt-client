@@ -61,59 +61,32 @@ class LocalAiSettings extends ConsumerWidget {
           children: [
             KeyedSubtree(
               key: const ValueKey('local-ai-model'),
-              child: DropdownButtonFormField<String>(
+              child: GlassDropdownField<String>(
                 key: ValueKey((runtime.selectedModel.id, status.selectionRevision)),
-                initialValue: runtime.selectedModel.id,
-                isExpanded: true,
-                itemHeight: 64,
-                selectedItemBuilder: (_) => [
-                  for (final model in LocalAiCatalog.models)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('${tier(model)} · ${model.label}', overflow: TextOverflow.ellipsis),
-                    ),
-                ],
-                decoration: InputDecoration(labelText: l.localAiModel),
+                value: runtime.selectedModel.id,
+                label: l.localAiModel,
                 items: [
                   for (final model in LocalAiCatalog.models)
-                    DropdownMenuItem(
+                    GlassSelectItem(
+                      // Star marks the recommended model, a done mark the installed ones.
+                      key: hardware?.recommendedModel?.id == model.id
+                          ? ValueKey('local-ai-recommended-${model.id}')
+                          : null,
                       value: model.id,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('${tier(model)} · ${model.label}', overflow: TextOverflow.ellipsis),
-                                Text(
-                                  l.localAiModelRequirements(formatBytes(l, model.bytes), model.recommendedRamGiB),
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (status.installedModelIds.contains(model.id))
-                            Tooltip(message: l.localAiModelInstalled, child: const Icon(Icons.check_rounded, size: 18)),
-                          if (hardware?.recommendedModel?.id == model.id)
-                            Tooltip(
-                              message: l.localAiRecommended,
-                              child: Icon(
-                                Icons.star_rounded,
-                                key: ValueKey('local-ai-recommended-${model.id}'),
-                                color: Theme.of(context).colorScheme.primary,
-                                size: 20,
-                              ),
-                            ),
-                        ],
-                      ),
+                      label: '${tier(model)} · ${model.label}',
+                      subtitle: [
+                        l.localAiModelRequirements(formatBytes(l, model.bytes), model.recommendedRamGiB),
+                        if (status.installedModelIds.contains(model.id)) l.localAiModelInstalled,
+                        if (hardware?.recommendedModel?.id == model.id) l.localAiRecommended,
+                      ].join(' · '), // l10n-ignore: Separator between localized facts.
+                      icon: hardware?.recommendedModel?.id == model.id
+                          ? Icons.star_rounded
+                          : status.installedModelIds.contains(model.id)
+                          ? Icons.download_done_rounded
+                          : null,
                     ),
                 ],
-                onChanged: busy
-                    ? null
-                    : (id) {
-                        if (id != null) perform(() => runtime.selectModel(id));
-                      },
+                onChanged: busy ? null : (id) => perform(() => runtime.selectModel(id)),
               ),
             ),
             const SizedBox(height: 12),

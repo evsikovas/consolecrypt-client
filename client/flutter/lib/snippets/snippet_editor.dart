@@ -195,16 +195,13 @@ class _SnippetEditorDialogState extends ConsumerState<SnippetEditorDialog> {
                 ),
                 const SizedBox(width: GlassSpacing.s12),
                 Expanded(
-                  child: DropdownButtonFormField<SnippetType>(
-                    isExpanded: true,
-                    borderRadius: BorderRadius.circular(tokens.radii.menu),
-                    initialValue: _type,
-                    decoration: InputDecoration(labelText: l10n.snippetsTypeLabel),
+                  child: GlassDropdownField<SnippetType>(
+                    value: _type,
+                    label: l10n.snippetsTypeLabel,
                     items: [
-                      for (final type in SnippetType.values)
-                        DropdownMenuItem(value: type, child: Text(type.localized(l10n))),
+                      for (final type in SnippetType.values) GlassSelectItem(value: type, label: type.localized(l10n)),
                     ],
-                    onChanged: (v) => setState(() => _type = v ?? _type),
+                    onChanged: (v) => setState(() => _type = v),
                   ),
                 ),
               ],

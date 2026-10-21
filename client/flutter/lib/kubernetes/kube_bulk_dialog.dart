@@ -118,18 +118,17 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> {
                   children: [
                     Text(l.kubeBulkHelp),
                     if (widget.session.production) Text(l.kubeBulkProductionBlocked),
-                    DropdownButtonFormField<String>(
-                      initialValue: _action,
-                      isExpanded: true,
+                    GlassDropdownField<String>(
+                      value: _action,
                       items: [
                         if (widget.service is KubeMutationService && widget.kind.verbs.contains('delete'))
-                          DropdownMenuItem(value: 'delete', child: Text(l.commonDelete)),
+                          GlassSelectItem(value: 'delete', label: l.commonDelete),
                         if (_workload && widget.service is KubeOperationsService)
-                          DropdownMenuItem(value: 'restart', child: Text(l.kubeRestart)),
+                          GlassSelectItem(value: 'restart', label: l.kubeRestart),
                         if (_workload && widget.kind.kind != 'DaemonSet' && widget.service is KubeOperationsService)
-                          DropdownMenuItem(value: 'scale', child: Text(l.kubeScale)),
+                          GlassSelectItem(value: 'scale', label: l.kubeScale),
                       ],
-                      onChanged: _busy || _completed.isNotEmpty ? null : (value) => setState(() => _action = value!),
+                      onChanged: _busy || _completed.isNotEmpty ? null : (value) => setState(() => _action = value),
                     ),
                     if (_action == 'scale')
                       TextField(

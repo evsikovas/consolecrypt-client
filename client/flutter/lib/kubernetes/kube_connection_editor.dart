@@ -246,14 +246,14 @@ class _KubeConnectionEditorState extends ConsumerState<KubeConnectionEditor> {
                     if (widget.connection == null) ...[
                       field('kube-editor-server', _server, l.kubeServerUrl),
                       field('kube-editor-ca', _ca, l.kubeCertificateAuthority, lines: 3),
-                      DropdownButtonFormField<String>(
-                        initialValue: _auth,
-                        decoration: InputDecoration(labelText: l.kubeAuthentication),
+                      GlassDropdownField<String>(
+                        value: _auth,
+                        label: l.kubeAuthentication,
                         items: [
-                          DropdownMenuItem(value: 'token', child: Text(l.kubeAuthToken)),
-                          DropdownMenuItem(value: 'certificate', child: Text(l.kubeAuthCertificate)),
+                          GlassSelectItem(value: 'token', label: l.kubeAuthToken),
+                          GlassSelectItem(value: 'certificate', label: l.kubeAuthCertificate),
                         ],
-                        onChanged: _busy ? null : (value) => setState(() => _auth = value!),
+                        onChanged: _busy ? null : (value) => setState(() => _auth = value),
                       ),
                       if (_auth == 'token')
                         field('kube-editor-token', _token, l.kubeAuthToken, secret: true)

@@ -315,7 +315,7 @@ class _SharingPublishDialogState extends ConsumerState<SharingPublishDialog> {
                   if (_busy) const LinearProgressIndicator(),
                   if (_failed) Text(l.sharingUnavailable),
                   if (_preview != null) ...[
-                    Text(l.sharingPreview, style: Theme.of(context).textTheme.titleMedium),
+                    Text(l.sharingPreview, style: Theme.of(context).textTheme.titleSmall),
                     const SizedBox(height: 8),
                     SharingProjectionView(_preview!),
                     const SizedBox(height: 8),

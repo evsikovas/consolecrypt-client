@@ -431,26 +431,20 @@ class _HelmDetailsState extends ConsumerState<_HelmDetails> with SingleTickerPro
                   KubeWriteBanner(session: widget.session, contextName: widget.contextName),
                   Text(l.kubeHelmSecretsMasked),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
+                  GlassDropdownField<String>(
                     key: const ValueKey('kube-helm-revision'),
-                    initialValue: _selected.id,
-                    isExpanded: true,
-                    decoration: InputDecoration(labelText: l.kubeHelmHistory),
-                    items: widget.history
-                        .map(
-                          (entry) => DropdownMenuItem(
-                            value: entry.id,
-                            child: Text(
-                              '${l.kubeHelmRevision(entry.revision)} · ${entry.status}',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        )
-                        .toList(),
+                    value: _selected.id,
+                    label: l.kubeHelmHistory,
+                    items: [
+                      for (final entry in widget.history)
+                        GlassSelectItem(
+                          value: entry.id,
+                          label: '${l.kubeHelmRevision(entry.revision)} · ${entry.status}',
+                        ),
+                    ],
                     onChanged: _loading
                         ? null
                         : (id) {
-                            if (id == null) return;
                             _selected = widget.history.firstWhere((entry) => entry.id == id);
                             if (_compare?.id == id) _compare = null;
                             unawaited(_load());
@@ -490,26 +484,17 @@ class _HelmDetailsState extends ConsumerState<_HelmDetails> with SingleTickerPro
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              DropdownButtonFormField<String>(
+                              GlassDropdownField<String>(
                                 key: const ValueKey('kube-helm-compare'),
-                                initialValue: _compare?.id ?? '',
-                                isExpanded: true,
-                                decoration: InputDecoration(labelText: l.kubeHelmCompare),
+                                value: _compare?.id ?? '',
+                                label: l.kubeHelmCompare,
                                 items: [
-                                  DropdownMenuItem(value: '', child: Text(l.kubeHelmChooseRevision)),
-                                  ...widget.history
-                                      .where((entry) => entry.id != _selected.id)
-                                      .map(
-                                        (entry) => DropdownMenuItem(
-                                          value: entry.id,
-                                          child: Text(l.kubeHelmRevision(entry.revision)),
-                                        ),
-                                      ),
+                                  GlassSelectItem(value: '', label: l.kubeHelmChooseRevision),
+                                  for (final entry in widget.history.where((entry) => entry.id != _selected.id))
+                                    GlassSelectItem(value: entry.id, label: l.kubeHelmRevision(entry.revision)),
                                 ],
                                 onChanged: (id) {
-                                  _compare = id == null || id.isEmpty
-                                      ? null
-                                      : widget.history.firstWhere((entry) => entry.id == id);
+                                  _compare = id.isEmpty ? null : widget.history.firstWhere((entry) => entry.id == id);
                                   unawaited(_load());
                                 },
                               ),

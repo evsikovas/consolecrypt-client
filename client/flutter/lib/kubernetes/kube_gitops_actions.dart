@@ -217,20 +217,19 @@ class _GitOpsConfirmationState extends ConsumerState<_GitOpsConfirmation> {
                 onChanged: (_) => setState(() {}),
               ),
             if (widget.allowReminder)
-              DropdownButtonFormField<Duration>(
+              GlassDropdownField<Duration>(
                 key: const ValueKey('kube-gitops-reminder'),
-                initialValue: _reminder,
-                isExpanded: true,
-                decoration: InputDecoration(labelText: l.kubeGitOpsRemind),
+                value: _reminder,
+                label: l.kubeGitOpsRemind,
                 items: [
-                  DropdownMenuItem(value: Duration.zero, child: Text(l.kubeGitOpsNoReminder)),
+                  GlassSelectItem(value: Duration.zero, label: l.kubeGitOpsNoReminder),
                   for (final hours in [1, 2, 24])
-                    DropdownMenuItem(
+                    GlassSelectItem(
                       value: Duration(hours: hours),
-                      child: Text(l.kubeGitOpsRemindHours(hours)),
+                      label: l.kubeGitOpsRemindHours(hours),
                     ),
                 ],
-                onChanged: (value) => setState(() => _reminder = value ?? Duration.zero),
+                onChanged: (value) => setState(() => _reminder = value),
               ),
           ],
         ),

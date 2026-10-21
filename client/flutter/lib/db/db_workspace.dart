@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/db/db_ai_panel.dart';
@@ -62,7 +63,9 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   bool _connecting = false, _failed = false;
   Object? _connectError;
   String _view = 'query';
-  bool _aiOpen = false;
+  String? _side;
+  bool _navOpen = true;
+  double _navWidth = 280;
   double _editorFraction = .4;
   DbObjectRef? _selectedObject;
   DbJson? _lastPlan;
@@ -482,163 +485,429 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     }
   }
 
+  bool get _hasHistory => _backend is DbHistoryService;
+  bool get _hasAi => _backend is DbAiService;
+
+  Color? get _connectionColor {
+    final color = widget.connection.color;
+    if (color == null || !RegExp(r'^#[a-fA-F0-9]{6}$').hasMatch(color)) return null;
+    return Color(int.parse('ff${color.substring(1)}', radix: 16));
+  }
+
+  /// Opens a side panel (from the editor or a shortcut); on narrow layouts
+  /// the same panel replaces the editor view.
+  void _showSide(String side) => setState(() {
+    _side = side;
+    _view = side;
+  });
+
+  void _toggleSide(String side) => setState(() {
+    _side = _side == side ? null : side;
+    _view = _side ?? 'query';
+  });
+
+  /// Rounded panel that clips its content to the surface corners.
+  Widget _panel(Key key, Widget child, {bool solid = false}) {
+    final radius = GlassTokens.of(context).radii.card;
+    return ContentSurface(
+      key: key,
+      kind: solid ? ContentSurfaceKind.solid : ContentSurfaceKind.content,
+      radius: radius,
+      padding: EdgeInsets.zero,
+      child: ClipRRect(borderRadius: BorderRadius.circular(radius), child: child),
+    );
+  }
+
+  Widget _separator() => Container(height: 1, color: GlassTokens.of(context).surfaces.separator);
+
+  /// Title row of a docked panel: icon, caption and trailing actions.
+  Widget _panelHeader(IconData icon, String title, List<Widget> actions) {
+    final tokens = GlassTokens.of(context);
+    return SizedBox(
+      height: 36,
+      child: Padding(
+        padding: const EdgeInsets.only(left: GlassSpacing.s12, right: GlassSpacing.s4),
+        child: Row(
+          children: [
+            Icon(icon, size: 15, color: tokens.secondaryLabel),
+            const SizedBox(width: GlassSpacing.s6),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel, fontWeight: FontWeight.w600),
+              ),
+            ),
+            ...actions,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tool(String key, IconData icon, String tooltip, VoidCallback? onPressed, {bool selected = false}) =>
+      GlassIconButton(
+        key: ValueKey(key),
+        icon: icon,
+        tooltip: tooltip,
+        size: 30,
+        iconSize: 17,
+        selected: selected,
+        style: GlassIconButtonStyle.plain,
+        onPressed: onPressed,
+      );
+
+  Widget _header(DbSessionInfo session, {required bool wide}) {
+    final l = context.l10n, tokens = GlassTokens.of(context);
+    final readOnly = session.readOnly || session.production;
+    return ContentSurface(
+      key: const ValueKey('db-header'),
+      padding: const EdgeInsets.fromLTRB(GlassSpacing.s6, GlassSpacing.s6, GlassSpacing.s8, GlassSpacing.s6),
+      child: Row(
+        children: [
+          _tool('db-close', Icons.arrow_back_rounded, l.commonClose, widget.onClose),
+          const SizedBox(width: GlassSpacing.s6),
+          Icon(Icons.storage_rounded, size: 20, color: _connectionColor ?? tokens.palette.accent),
+          const SizedBox(width: GlassSpacing.s8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.connection.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
+                ),
+                Text(
+                  '${session.engine.label} ${session.serverVersion}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel),
+                ),
+              ],
+            ),
+          ),
+          if (session.production) ...[
+            GlassBadge(label: l.dbProd, tone: GlassTone.danger, icon: Icons.shield_outlined, dense: true),
+            const SizedBox(width: GlassSpacing.s6),
+          ],
+          if (wide) ...[
+            GlassBadge(
+              key: const ValueKey('db-access-badge'),
+              label: readOnly ? l.dbReadOnly : l.dbWriteAllowed,
+              tone: readOnly ? GlassTone.neutral : GlassTone.warning,
+              icon: readOnly ? Icons.lock_outline_rounded : Icons.edit_outlined,
+              dense: true,
+            ),
+            const SizedBox(width: GlassSpacing.s6),
+          ],
+          if (!session.production)
+            _tool(
+              'db-write-mode',
+              session.readOnly ? Icons.lock_rounded : Icons.lock_open_rounded,
+              session.readOnly ? l.dbAllowWrites : l.dbReadOnly,
+              _writeMode,
+            ),
+          _tool('db-privileges', Icons.verified_user_outlined, l.dbCheckPrivileges, _privileges),
+          if (wide) ...[
+            Container(
+              width: 1,
+              height: 18,
+              margin: const EdgeInsets.symmetric(horizontal: GlassSpacing.s6),
+              color: tokens.surfaces.separator,
+            ),
+            _tool(
+              'db-toggle-tree',
+              Icons.account_tree_outlined,
+              l.dbTree,
+              () => setState(() => _navOpen = !_navOpen),
+              selected: _navOpen,
+            ),
+            if (_hasHistory)
+              _tool(
+                'db-toggle-history',
+                Icons.history_rounded,
+                l.dbHistory,
+                () => _toggleSide('history'),
+                selected: _side == 'history',
+              ),
+            if (_hasAi)
+              _tool(
+                'db-toggle-ai',
+                Icons.auto_awesome_outlined,
+                l.dbAi,
+                () => _toggleSide('ai'),
+                selected: _side == 'ai',
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _statusBar(_QueryTab tab, DbSessionInfo session, DbResultSet? result) {
+    final l = context.l10n, tokens = GlassTokens.of(context);
+    final busy = tab.preparing || tab.result.running;
+    final failed = tab.result.errorCode != null;
+    final style = tokens.typography.caption.copyWith(color: tokens.secondaryLabel);
+    final facts = [
+      if (result != null) l.dbRowCount('${result.rows.length}${result.hasMore ? '+' : ''}'),
+      if (result?.affectedRows != null) l.dbRowsAffected(result!.affectedRows!),
+      if (result != null) l.dbElapsed(result.elapsedMs),
+    ];
+    return Container(
+      key: const ValueKey('db-status-bar'),
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s12),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: tokens.surfaces.separator)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: busy
+                  ? tokens.palette.accent
+                  : failed
+                  ? tokens.palette.danger
+                  : tokens.palette.success,
+            ),
+          ),
+          const SizedBox(width: GlassSpacing.s6),
+          Expanded(
+            child: Text(
+              [
+                busy
+                    ? l.dbRunning
+                    : failed
+                    ? l.dbOperationFailed
+                    : tab.result.cancelled
+                    ? l.dbCancelled
+                    : l.dbStatusReady,
+                ...facts,
+              ].join('  ·  '), // l10n-ignore: Visual separator between status facts.
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: style,
+            ),
+          ),
+          if (result?.truncated ?? false)
+            Tooltip(
+              message: l.dbTruncated,
+              child: Icon(Icons.warning_amber_rounded, size: 14, color: tokens.palette.warning),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _results(_QueryTab tab, DbSessionInfo session) {
-    final l = context.l10n, results = tab.result.results;
+    final l = context.l10n, tokens = GlassTokens.of(context), results = tab.result.results;
     final result = results.where((r) => r.index == tab.resultIndex).firstOrNull ?? results.firstOrNull;
-    return Column(
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (final item in results)
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: ChoiceChip(
-                    label: Text(
-                      '${l.dbResults} ${item.index + 1} · ${item.rows.length} · ${l.dbElapsed(item.elapsedMs)}',
-                    ),
-                    selected: result == item,
-                    onSelected: (_) => setState(() {
-                      tab.resultIndex = item.index;
+    return _panel(
+      const ValueKey('db-results'),
+      solid: true,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _panelHeader(Icons.table_rows_outlined, l.dbResults, [
+            if (results.length > 1)
+              Flexible(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: GlassSegmented<int>(
+                    key: const ValueKey('db-result-sets'),
+                    inChrome: false,
+                    segments: [for (final item in results) GlassSegment(value: item.index, label: '${item.index + 1}')],
+                    selected: result?.index ?? 0,
+                    onChanged: (index) => setState(() {
+                      tab.resultIndex = index;
                       tab.selectedRows.clear();
                       tab.edits.clear();
                     }),
                   ),
                 ),
-              if (result != null && _backend is DbExportService)
-                IconButton(
-                  tooltip: l.dbExport,
-                  icon: const Icon(Icons.download),
-                  onPressed: () => _export(tab, result),
-                ),
-              if (tab.result.notices.isNotEmpty)
-                IconButton(
-                  tooltip: l.dbMessages,
-                  icon: const Icon(Icons.message_outlined),
-                  onPressed: () async {
-                    final value = SecretText(tab.result.notices.join('\n'));
-                    try {
-                      await showAppDialog<void>(
-                        context,
-                        secure: true,
-                        builder: (_) => DbProtectedTextDialog(title: l.dbMessages, value: value),
-                      );
-                    } finally {
-                      value.wipe();
-                    }
-                  },
-                ),
-            ],
-          ),
-        ),
-        if (tab.preparing || tab.result.running) const LinearProgressIndicator(),
-        if (tab.result.errorCode != null) Text(l.dbOperationFailed),
-        if (tab.result.cancelled) Text(l.dbCancelled),
-        if (tab.stale) Text(l.dbResultStale),
-        if (tab.edits.isNotEmpty)
-          Wrap(
-            spacing: 8,
-            children: [
-              GlassButton(
-                label: '${l.dbApplyEdits} (${tab.edits.length})',
-                onPressed: result == null ? null : () => _applyEdits(tab, result),
               ),
-              GlassButton(label: l.dbDiscardEdits, onPressed: () => setState(tab.edits.clear)),
-            ],
+            if (result != null && _backend is DbExportService)
+              _tool('db-export', Icons.file_download_outlined, l.dbExport, () => _export(tab, result)),
+            if (tab.result.notices.isNotEmpty)
+              _tool('db-messages', Icons.chat_bubble_outline_rounded, l.dbMessages, () async {
+                final value = SecretText(tab.result.notices.join('\n'));
+                try {
+                  await showAppDialog<void>(
+                    context,
+                    secure: true,
+                    builder: (_) => DbProtectedTextDialog(title: l.dbMessages, value: value),
+                  );
+                } finally {
+                  value.wipe();
+                }
+              }),
+          ]),
+          _separator(),
+          SizedBox(height: 2, child: tab.preparing || tab.result.running ? const LinearProgressIndicator() : null),
+          if (tab.result.errorCode != null || tab.stale)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(GlassSpacing.s8, GlassSpacing.s6, GlassSpacing.s8, 0),
+              child: InfoBanner(
+                tone: tab.result.errorCode != null ? BannerTone.danger : BannerTone.warning,
+                message: tab.result.errorCode != null ? l.dbOperationFailed : l.dbResultStale,
+              ),
+            ),
+          if (tab.edits.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(GlassSpacing.s8, GlassSpacing.s6, GlassSpacing.s8, 0),
+              child: Wrap(
+                spacing: GlassSpacing.s8,
+                runSpacing: GlassSpacing.s6,
+                children: [
+                  GlassButton(
+                    label: '${l.dbApplyEdits} (${tab.edits.length})',
+                    style: GlassButtonStyle.prominent,
+                    size: GlassControlSize.sm,
+                    onPressed: result == null ? null : () => _applyEdits(tab, result),
+                  ),
+                  GlassButton(
+                    label: l.dbDiscardEdits,
+                    size: GlassControlSize.sm,
+                    onPressed: () => setState(tab.edits.clear),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: result == null
+                ? Center(
+                    child: Text(
+                      l.dbNoResults,
+                      style: tokens.typography.caption.copyWith(color: tokens.palette.tertiary),
+                    ),
+                  )
+                : DbResultGrid(
+                    key: ValueKey('${tab.id}:${result.index}'),
+                    result: result,
+                    production: session.production,
+                    onCopy: _backend is DbExportService ? (selection) => _export(tab, result, selection) : null,
+                    onEdit:
+                        !_mobile &&
+                            !session.readOnly &&
+                            !session.production &&
+                            result.editableTable != null &&
+                            result.columns.any((c) => c.primaryKey) &&
+                            _backend is DbCellEditService
+                        ? (row, col) => _editCell(tab, result, row, col)
+                        : null,
+                    onSelection: (rows) => setState(() => tab.selectedRows = rows),
+                    onMore: result.hasMore ? () => tab.result.more() : null,
+                    loadingMore: tab.result.loadingMore,
+                  ),
           ),
+          _statusBar(tab, session, result),
+        ],
+      ),
+    );
+  }
+
+  Widget _queryPane(_QueryTab tab, DbSessionInfo session) {
+    final l = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GlassTabStrip(
+          key: const ValueKey('db-query-tabs'),
+          tabs: [
+            for (final item in _tabs)
+              GlassTab(
+                key: ValueKey('db-query-tab-${item.id}'),
+                title: '${l.dbEditor} ${item.id}',
+                state: item.result.running ? GlassTabState.reconnecting : GlassTabState.none,
+              ),
+          ],
+          activeIndex: _active,
+          onSelect: (i) => setState(() => _active = i),
+          onClose: (i) => _closeTab(_tabs[i]),
+          onAdd: _tabs.length < 12 ? () => setState(() => _addTab()) : null,
+        ),
+        const SizedBox(height: GlassSpacing.s8),
         Expanded(
-          child: result == null
-              ? Center(child: Text(l.dbNoResults))
-              : DbResultGrid(
-                  key: ValueKey('${tab.id}:${result.index}'),
-                  result: result,
-                  production: session.production,
-                  onCopy: _backend is DbExportService ? (selection) => _export(tab, result, selection) : null,
-                  onEdit:
-                      !_mobile &&
-                          !session.readOnly &&
-                          !session.production &&
-                          result.editableTable != null &&
-                          result.columns.any((c) => c.primaryKey) &&
-                          _backend is DbCellEditService
-                      ? (row, col) => _editCell(tab, result, row, col)
-                      : null,
-                  onSelection: (rows) => setState(() => tab.selectedRows = rows),
-                  onMore: result.hasMore ? () => tab.result.more() : null,
-                  loadingMore: tab.result.loadingMore,
+          child: LayoutBuilder(
+            builder: (context, bounds) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: bounds.maxHeight * _editorFraction,
+                  child: _panel(
+                    const ValueKey('db-editor-panel'),
+                    solid: true,
+                    DbQueryEditor(
+                      key: ValueKey(tab.id),
+                      controller: tab.controller,
+                      session: session,
+                      service: _service!,
+                      isCurrent: () => _tabCurrent(tab),
+                      running: tab.preparing || tab.result.running,
+                      onRun: _run,
+                      onCancel: tab.result.cancel,
+                      onExplain: _explain,
+                      onHistory: _hasHistory ? () => _showSide('history') : null,
+                      onAi: _hasAi ? () => _showSide('ai') : null,
+                    ),
+                  ),
                 ),
+                _Splitter(
+                  key: const ValueKey('db-editor-splitter'),
+                  vertical: false,
+                  onDrag: (dy) =>
+                      setState(() => _editorFraction = (_editorFraction + dy / bounds.maxHeight).clamp(.2, .75)),
+                ),
+                Expanded(child: _results(tab, session)),
+              ],
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _queryPane(_QueryTab tab, DbSessionInfo session) => Column(
-    children: [
-      SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (var i = 0; i < _tabs.length; i++)
-              InputChip(
-                label: Text('${context.l10n.dbEditor} ${_tabs[i].id}'),
-                selected: _active == i,
-                onPressed: () => setState(() => _active = i),
-                onDeleted: () => _closeTab(_tabs[i]),
-              ),
-            IconButton(
-              tooltip: context.l10n.dbNewQuery,
-              icon: const Icon(Icons.add),
-              onPressed: _tabs.length < 12 ? () => setState(() => _addTab()) : null,
-            ),
-          ],
-        ),
-      ),
-      Expanded(
-        child: LayoutBuilder(
-          builder: (context, bounds) {
-            final height = bounds.maxHeight * _editorFraction;
-            return Column(
-              children: [
-                SizedBox(
-                  height: height,
-                  child: DbQueryEditor(
-                    key: ValueKey(tab.id),
-                    controller: tab.controller,
-                    session: session,
-                    service: _service!,
-                    isCurrent: () => _tabCurrent(tab),
-                    running: tab.preparing || tab.result.running,
-                    onRun: _run,
-                    onCancel: tab.result.cancel,
-                    onExplain: _explain,
-                    onHistory: _backend is DbHistoryService ? () => setState(() => _view = 'history') : null,
-                    onAi: _backend is DbAiService
-                        ? () => setState(() {
-                            _aiOpen = true;
-                            if (MediaQuery.sizeOf(context).width < 1100) _view = 'ai';
-                          })
-                        : null,
-                  ),
-                ),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onVerticalDragUpdate: (d) => setState(
-                    () => _editorFraction = (_editorFraction + d.delta.dy / bounds.maxHeight).clamp(.2, .75),
-                  ),
-                  child: const SizedBox(
-                    height: 12,
-                    child: Center(child: SizedBox(width: 48, child: Divider(thickness: 3))),
-                  ),
-                ),
-                Expanded(child: _results(tab, session)),
-              ],
-            );
-          },
-        ),
-      ),
-    ],
+  Widget _navigator(Widget tree) => _panel(
+    const ValueKey('db-navigator'),
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _panelHeader(Icons.account_tree_outlined, context.l10n.dbTree, const []),
+        _separator(),
+        Expanded(child: tree),
+      ],
+    ),
   );
+
+  Widget _sidePanel(String side, DbSessionInfo session) {
+    final l = context.l10n, history = side == 'history';
+    return _panel(
+      ValueKey('db-side-$side'),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _panelHeader(history ? Icons.history_rounded : Icons.auto_awesome_outlined, history ? l.dbHistory : l.dbAi, [
+            _tool('db-side-close', Icons.close_rounded, l.commonClose, () => setState(() => _side = null)),
+          ]),
+          _separator(),
+          Expanded(
+            child: history
+                ? DbHistoryPanel(connection: widget.connection, service: _backend! as DbHistoryService, onDraft: _draft)
+                : _ai(session),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _ai(DbSessionInfo session) => DbAiPanel(
     key: ValueKey('ai-${session.id}'),
     service: _backend! as DbAiService,
@@ -652,6 +921,71 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     selectedRows: _tab?.selectedRows ?? const [],
     plan: _lastPlan,
   );
+
+  Widget _connectPane() {
+    final l = context.l10n, tokens = GlassTokens.of(context);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 380),
+        child: ContentSurface(
+          key: const ValueKey('db-connect-pane'),
+          padding: const EdgeInsets.all(GlassSpacing.s24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Icon(Icons.storage_rounded, size: 32, color: _connectionColor ?? tokens.palette.accent),
+              const SizedBox(height: GlassSpacing.s8),
+              Text(
+                widget.connection.name,
+                textAlign: TextAlign.center,
+                style: tokens.typography.title3.copyWith(color: tokens.palette.label),
+              ),
+              Text(
+                widget.connection.engine.label,
+                textAlign: TextAlign.center,
+                style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel),
+              ),
+              const SizedBox(height: GlassSpacing.s16),
+              if (_connecting) const Center(child: CircularProgressIndicator()),
+              if (_failed) ...[
+                InfoBanner(
+                  tone: BannerTone.danger,
+                  message: _connectError == null ? l.dbOperationFailed : dbFailureText(_connectError!, l),
+                ),
+                const SizedBox(height: GlassSpacing.s12),
+              ],
+              if (_asksPassword && !_connecting) ...[
+                SecretField(
+                  key: const ValueKey('db-connect-password'),
+                  controller: _password,
+                  label: l.dbPassword,
+                  autofocus: true,
+                  onSubmitted: (_) => _connect(),
+                ),
+                const SizedBox(height: GlassSpacing.s12),
+              ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  GlassButton(label: l.commonClose, onPressed: widget.onClose),
+                  if (!_connecting) ...[
+                    const SizedBox(width: GlassSpacing.s8),
+                    GlassButton(
+                      label: _asksPassword || !_failed ? l.commonConnect : l.commonRetry,
+                      style: GlassButtonStyle.prominent,
+                      onPressed: _connect,
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(dbScopeProvider, (_, next) {
@@ -661,146 +995,154 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     final l = context.l10n, session = _session, tab = _tab;
     if (!_current) return Center(child: Text(l.dbLocked));
     if (_service == null) return Center(child: Text(l.dbUnavailable));
-    if (session == null || tab == null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(widget.connection.name),
-            if (_connecting) const CircularProgressIndicator(),
-            if (_failed)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text(
-                  _connectError == null ? l.dbOperationFailed : dbFailureText(_connectError!, l),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-            if (_asksPassword && !_connecting)
-              SizedBox(
-                width: 320,
-                child: SecretField(
-                  key: const ValueKey('db-connect-password'),
-                  controller: _password,
-                  label: l.dbPassword,
-                  autofocus: true,
-                  onSubmitted: (_) => _connect(),
-                ),
-              ),
-            if (!_connecting)
-              GlassButton(label: _asksPassword || !_failed ? l.commonConnect : l.commonRetry, onPressed: _connect),
-            GlassButton(label: l.commonClose, onPressed: widget.onClose),
-          ],
-        ),
-      );
-    }
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: Wrap(
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(widget.connection.name, style: Theme.of(context).textTheme.titleMedium),
-              Text('${session.engine.label} ${session.serverVersion}'),
-              if (session.production) Chip(label: Text(l.dbProduction)),
-              Chip(label: Text(session.readOnly ? l.dbReadOnly : l.dbWriteAllowed)),
-              IconButton(
-                tooltip: l.dbCheckPrivileges,
-                icon: const Icon(Icons.verified_user_outlined),
-                onPressed: _privileges,
-              ),
-              if (!session.production)
-                IconButton(
-                  tooltip: session.readOnly ? l.dbAllowWrites : l.dbReadOnly,
-                  icon: Icon(session.readOnly ? Icons.lock : Icons.lock_open),
-                  onPressed: _writeMode,
-                ),
-              IconButton(tooltip: l.commonClose, icon: const Icon(Icons.close), onPressed: widget.onClose),
-            ],
-          ),
-        ),
-        if (session.production && session.serverReadOnly == DbServerReadOnly.unverified) Text(l.dbUnverifiedReadOnly),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, bounds) {
-              final wide = bounds.maxWidth >= 850, full = bounds.maxWidth >= 1100;
-              final tree = DbObjectTree(
-                key: ValueKey(session.id),
-                session: session,
-                service: _service!,
-                onDraft: _draft,
-                onInsert: (value) {
-                  if (_current) _tab?.controller.insert(value);
-                },
-                onSelect: (object) => setState(() => _selectedObject = object),
-              );
-              final navigation = SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    if (!wide)
-                      ChoiceChip(
-                        label: Text(l.dbTree),
-                        selected: _view == 'tree',
-                        onSelected: (_) => setState(() => _view = 'tree'),
-                      ),
-                    ChoiceChip(
-                      label: Text(l.dbEditor),
-                      selected: _view == 'query',
-                      onSelected: (_) => setState(() => _view = 'query'),
-                    ),
-                    if (_backend is DbHistoryService)
-                      ChoiceChip(
-                        label: Text(l.dbHistory),
-                        selected: _view == 'history',
-                        onSelected: (_) => setState(() => _view = 'history'),
-                      ),
-                    if (_backend is DbAiService)
-                      ChoiceChip(
-                        label: Text(l.dbAi),
-                        selected: full ? _aiOpen : _view == 'ai',
-                        onSelected: (v) => setState(() {
-                          if (full) {
-                            _aiOpen = v;
-                          } else {
-                            _view = 'ai';
-                          }
-                        }),
-                      ),
-                  ],
-                ),
-              );
-              final Widget content = switch (_view) {
-                'tree' when !wide => tree,
-                'history' when _backend is DbHistoryService => DbHistoryPanel(
-                  connection: widget.connection,
-                  service: _backend,
-                  onDraft: _draft,
-                ),
-                'ai' when !full && _backend is DbAiService => _ai(session),
-                _ => _queryPane(tab, session),
-              };
-              return Row(
+    if (session == null || tab == null) return _connectPane();
+    final pad = _mobile ? GlassSpacing.s8 : GlassSpacing.s12;
+    return Material(
+      type: MaterialType.transparency,
+      child: Padding(
+        padding: EdgeInsets.all(pad),
+        child: LayoutBuilder(
+          builder: (context, bounds) {
+            final wide = bounds.maxWidth >= 900;
+            final tree = DbObjectTree(
+              key: ValueKey(session.id),
+              session: session,
+              service: _service!,
+              onDraft: _draft,
+              onInsert: (value) {
+                if (_current) _tab?.controller.insert(value);
+              },
+              onSelect: (object) => setState(() => _selectedObject = object),
+            );
+            final side = switch (_side) {
+              'history' when _hasHistory => 'history',
+              'ai' when _hasAi => 'ai',
+              _ => null,
+            };
+            final Widget body;
+            if (wide) {
+              // Navigator | editor + results | optional history/AI panel.
+              final showNav = _navOpen && (side == null || bounds.maxWidth >= 1100);
+              final navWidth = _navWidth.clamp(200.0, bounds.maxWidth * .35);
+              body = Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (wide) SizedBox(width: 240, child: tree),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        navigation,
-                        Expanded(child: content),
-                      ],
+                  if (showNav) ...[
+                    SizedBox(width: navWidth, child: _navigator(tree)),
+                    _Splitter(
+                      key: const ValueKey('db-navigator-splitter'),
+                      vertical: true,
+                      onDrag: (dx) => setState(() => _navWidth = (navWidth + dx).clamp(200.0, bounds.maxWidth * .35)),
                     ),
-                  ),
-                  if (full && _aiOpen && _backend is DbAiService) SizedBox(width: 330, child: _ai(session)),
+                  ],
+                  Expanded(child: _queryPane(tab, session)),
+                  if (side != null) ...[
+                    const SizedBox(width: GlassSpacing.s8),
+                    SizedBox(width: bounds.maxWidth >= 1300 ? 380 : 330, child: _sidePanel(side, session)),
+                  ],
                 ],
               );
-            },
+            } else {
+              final view = switch (_view) {
+                'history' when _hasHistory => 'history',
+                'ai' when _hasAi => 'ai',
+                'tree' => 'tree',
+                _ => 'query',
+              };
+              body = Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  GlassSegmented<String>(
+                    key: const ValueKey('db-view'),
+                    inChrome: false,
+                    expand: true,
+                    segments: [
+                      GlassSegment(value: 'tree', label: l.dbTree, icon: Icons.account_tree_outlined),
+                      GlassSegment(value: 'query', label: l.dbEditor, icon: Icons.code_rounded),
+                      if (_hasHistory) GlassSegment(value: 'history', label: l.dbHistory, icon: Icons.history_rounded),
+                      if (_hasAi) GlassSegment(value: 'ai', label: l.dbAi, icon: Icons.auto_awesome_outlined),
+                    ],
+                    selected: view,
+                    onChanged: (value) => setState(() => _view = value),
+                  ),
+                  const SizedBox(height: GlassSpacing.s8),
+                  Expanded(
+                    child: switch (view) {
+                      'tree' => _navigator(tree),
+                      'history' || 'ai' => _sidePanel(view, session),
+                      _ => _queryPane(tab, session),
+                    },
+                  ),
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _header(session, wide: wide),
+                if (session.production && session.serverReadOnly == DbServerReadOnly.unverified)
+                  Padding(
+                    padding: const EdgeInsets.only(top: GlassSpacing.s8),
+                    child: InfoBanner(tone: BannerTone.warning, message: l.dbUnverifiedReadOnly),
+                  ),
+                const SizedBox(height: GlassSpacing.s8),
+                Expanded(child: body),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Drag handle between two panes; [vertical] bars resize columns.
+class _Splitter extends StatefulWidget {
+  const _Splitter({required this.vertical, required this.onDrag, super.key});
+  final bool vertical;
+  final ValueChanged<double> onDrag;
+  @override
+  State<_Splitter> createState() => _SplitterState();
+}
+
+class _SplitterState extends State<_Splitter> {
+  bool _hover = false, _dragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = GlassTokens.of(context);
+    final active = _hover || _dragging;
+    final vertical = widget.vertical;
+    void start(DragStartDetails _) => setState(() => _dragging = true);
+    void end(DragEndDetails _) => setState(() => _dragging = false);
+    return MouseRegion(
+      cursor: vertical ? SystemMouseCursors.resizeColumn : SystemMouseCursors.resizeRow,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragStart: vertical ? start : null,
+        onHorizontalDragUpdate: vertical ? (d) => widget.onDrag(d.delta.dx) : null,
+        onHorizontalDragEnd: vertical ? end : null,
+        onVerticalDragStart: vertical ? null : start,
+        onVerticalDragUpdate: vertical ? null : (d) => widget.onDrag(d.delta.dy),
+        onVerticalDragEnd: vertical ? null : end,
+        child: SizedBox(
+          width: vertical ? GlassSpacing.s8 : null,
+          height: vertical ? null : GlassSpacing.s8,
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              width: vertical ? 3 : 40,
+              height: vertical ? 40 : 3,
+              decoration: ShapeDecoration(
+                shape: const StadiumBorder(),
+                color: active ? tokens.palette.accent : tokens.surfaces.separator,
+              ),
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 }

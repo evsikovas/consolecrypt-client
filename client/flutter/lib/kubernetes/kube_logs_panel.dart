@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -304,21 +305,15 @@ class _KubeLogsPanelState extends ConsumerState<KubeLogsPanel> with WidgetsBindi
                       if (targets.length > 1)
                         SizedBox(
                           width: 230,
-                          child: DropdownButtonFormField<String>(
+                          child: GlassDropdownField<String>(
                             key: ValueKey(('log-pods', _pod)),
-                            initialValue: _pod ?? '',
-                            isExpanded: true,
+                            value: _pod ?? '',
                             items: [
-                              DropdownMenuItem(value: '', child: Text(l.kubeLogAllPods)),
-                              ...targets.map(
-                                (target) => DropdownMenuItem(
-                                  value: target.pod,
-                                  child: Text(target.pod, overflow: TextOverflow.ellipsis),
-                                ),
-                              ),
+                              GlassSelectItem(value: '', label: l.kubeLogAllPods),
+                              ...targets.map((target) => GlassSelectItem(value: target.pod, label: target.pod)),
                             ],
                             onChanged: (value) => _configure(() {
-                              _pod = value?.isEmpty == true ? null : value;
+                              _pod = value.isEmpty ? null : value;
                               _container = null;
                             }),
                           ),
@@ -326,42 +321,35 @@ class _KubeLogsPanelState extends ConsumerState<KubeLogsPanel> with WidgetsBindi
                       if (containers.isNotEmpty)
                         SizedBox(
                           width: 190,
-                          child: DropdownButtonFormField<String>(
+                          child: GlassDropdownField<String>(
                             key: ValueKey(('log-containers', _container, containers.join(','))),
-                            initialValue: _container ?? '',
-                            isExpanded: true,
-                            decoration: InputDecoration(labelText: l.kubeContainer),
+                            value: _container ?? '',
+                            label: l.kubeContainer,
                             items: [
-                              DropdownMenuItem(value: '', child: Text(l.kubeLogDefaultContainer)),
-                              ...containers.map(
-                                (name) => DropdownMenuItem(
-                                  value: name,
-                                  child: Text(name, overflow: TextOverflow.ellipsis),
-                                ),
-                              ),
+                              GlassSelectItem(value: '', label: l.kubeLogDefaultContainer),
+                              ...containers.map((name) => GlassSelectItem(value: name, label: name)),
                             ],
-                            onChanged: (value) => _configure(() => _container = value?.isEmpty == true ? null : value),
+                            onChanged: (value) => _configure(() => _container = value.isEmpty ? null : value),
                           ),
                         ),
                       if (_advanced != null)
                         SizedBox(
                           width: 190,
-                          child: DropdownButtonFormField<int>(
-                            initialValue: _since,
-                            decoration: InputDecoration(labelText: l.kubeLogSince),
-                            isExpanded: true,
+                          child: GlassDropdownField<int>(
+                            value: _since,
+                            label: l.kubeLogSince,
                             items: [
-                              DropdownMenuItem(value: 0, child: Text(l.kubeLogAllTime)),
-                              DropdownMenuItem(value: 60, child: Text(l.kubeLogLastMinute)),
-                              DropdownMenuItem(value: 3600, child: Text(l.kubeLogLastHour)),
-                              DropdownMenuItem(value: 86400, child: Text(l.kubeLogLastDay)),
+                              GlassSelectItem(value: 0, label: l.kubeLogAllTime),
+                              GlassSelectItem(value: 60, label: l.kubeLogLastMinute),
+                              GlassSelectItem(value: 3600, label: l.kubeLogLastHour),
+                              GlassSelectItem(value: 86400, label: l.kubeLogLastDay),
                               if (!const {0, 60, 3600, 86400}.contains(_since))
-                                DropdownMenuItem(
+                                GlassSelectItem(
                                   value: _since,
-                                  child: Text(Duration(seconds: _since).toString().split('.').first),
+                                  label: Duration(seconds: _since).toString().split('.').first,
                                 ),
                             ],
-                            onChanged: (value) => _configure(() => _since = value ?? 0),
+                            onChanged: (value) => _configure(() => _since = value),
                           ),
                         ),
                       TextButton(onPressed: _busy ? null : _load, child: Text(l.kubeRefreshDetails)),
@@ -436,21 +424,18 @@ class _KubeLogsPanelState extends ConsumerState<KubeLogsPanel> with WidgetsBindi
                       ),
                       SizedBox(
                         width: 170,
-                        child: DropdownButton<String>(
+                        child: GlassSelect<String>(
                           value: _level,
-                          isExpanded: true,
-                          items: ['all', 'error', 'warn', 'info', 'debug']
-                              .map(
-                                (level) => DropdownMenuItem(
-                                  value: level,
-                                  child: Text(
-                                    level == 'all' ? l.kubeLogAllLevels : level.toUpperCase(),
-                                  ), // l10n-ignore: log severity values
-                                ),
-                              )
-                              .toList(),
+                          expand: true,
+                          items: [
+                            for (final level in ['all', 'error', 'warn', 'info', 'debug'])
+                              GlassSelectItem(
+                                value: level,
+                                label: level == 'all' ? l.kubeLogAllLevels : level.toUpperCase(),
+                              ),
+                          ],
                           onChanged: (level) {
-                            setState(() => _level = level ?? 'all');
+                            setState(() => _level = level);
                             _scheduleFilter();
                           },
                         ),

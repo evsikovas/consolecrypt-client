@@ -10,11 +10,14 @@ import 'package:material_ui/material_ui.dart';
 /// One option of a [GlassSelect].
 @immutable
 final class GlassSelectItem<T> {
-  const GlassSelectItem({required this.value, required this.label, this.icon, this.key});
+  const GlassSelectItem({required this.value, required this.label, this.icon, this.subtitle, this.key});
 
   final T value;
   final String label;
   final IconData? icon;
+
+  /// Second line in the menu only (e.g. size and requirements).
+  final String? subtitle;
 
   /// Key of the menu item (for tests).
   final Key? key;
@@ -58,22 +61,23 @@ class GlassSelect<T> extends StatelessWidget {
             : () {
                 final anchor = glassAnchorRect(context);
                 unawaited(
-                  showGlassMenu<T>(
+                  showGlassMenu<_Picked<T>>(
                     context: context,
                     anchor: anchor,
                     minWidth: math.max(anchor.width, 160),
                     entries: [
                       for (final item in items)
-                        GlassMenuItem<T>(
+                        GlassMenuItem<_Picked<T>>(
                           key: item.key,
-                          value: item.value,
+                          value: _Picked(item.value),
                           label: item.label,
                           icon: item.icon,
+                          subtitle: item.subtitle,
                           checked: item.value == value,
                         ),
                     ],
                   ).then((picked) {
-                    if (picked != null && picked != value) change(picked);
+                    if (picked != null && picked.value != value) change(picked.value);
                   }),
                 );
               },
@@ -121,4 +125,120 @@ class GlassSelect<T> extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Form-field variant of [GlassSelect]: the same fill, label and error line
+/// as the app's text fields, opening the glass menu instead of a Material
+/// dropdown (so it follows the appearance settings and the compact type).
+class GlassDropdownField<T> extends FormField<T> {
+  GlassDropdownField({
+    required List<GlassSelectItem<T>> items,
+    required ValueChanged<T>? onChanged,
+    T? value,
+    String? label,
+    String? hint,
+    String? helper,
+    IconData? prefixIcon,
+    super.validator,
+    super.autovalidateMode,
+    super.key,
+  }) : super(
+         initialValue: value,
+         enabled: onChanged != null,
+         builder: (field) {
+           final state = field as _GlassDropdownFieldState<T>;
+           final tokens = GlassTokens.of(state.context);
+           final current = items.where((i) => i.value == field.value).firstOrNull;
+           final enabled = onChanged != null;
+           final fg = tokens.palette.label.withValues(alpha: enabled ? 1 : 0.38);
+           return Builder(
+             builder: (context) => GlassInteractive(
+               semanticLabel: label == null ? current?.label : '$label: ${current?.label ?? ''}',
+               minHitSize: 0,
+               onPressed: !enabled
+                   ? null
+                   : () {
+                       final anchor = glassAnchorRect(context);
+                       unawaited(
+                         showGlassMenu<_Picked<T>>(
+                           context: context,
+                           anchor: anchor,
+                           minWidth: math.max(anchor.width, 160),
+                           entries: [
+                             for (final item in items)
+                               GlassMenuItem<_Picked<T>>(
+                                 key: item.key,
+                                 value: _Picked(item.value),
+                                 label: item.label,
+                                 icon: item.icon,
+                                 subtitle: item.subtitle,
+                                 checked: item.value == field.value,
+                               ),
+                           ],
+                         ).then((picked) {
+                           if (picked == null || picked.value == field.value || !state.mounted) return;
+                           field.didChange(picked.value);
+                           onChanged(picked.value);
+                         }),
+                       );
+                     },
+               builder: (context, interaction) => InputDecorator(
+                 isFocused: interaction.focusVisible,
+                 isHovering: interaction.hovered,
+                 isEmpty: current == null,
+                 decoration: InputDecoration(
+                   labelText: label,
+                   hintText: hint,
+                   helperText: helper,
+                   errorText: field.errorText,
+                   enabled: enabled,
+                   prefixIcon: prefixIcon == null ? null : Icon(prefixIcon, size: 18),
+                   suffixIcon: Icon(Icons.unfold_more_rounded, size: 16, color: tokens.secondaryLabel),
+                   suffixIconConstraints: const BoxConstraints(minWidth: 30, minHeight: 20),
+                 ),
+                 child: current == null
+                     ? null
+                     : Row(
+                         children: [
+                           if (current.icon != null) ...[
+                             Icon(current.icon, size: 16, color: fg),
+                             const SizedBox(width: GlassSpacing.s6),
+                           ],
+                           Expanded(
+                             child: Text(
+                               current.label,
+                               maxLines: 1,
+                               overflow: TextOverflow.ellipsis,
+                               style: tokens.typography.body.copyWith(color: fg),
+                             ),
+                           ),
+                         ],
+                       ),
+               ),
+             ),
+           );
+         },
+       );
+
+  @override
+  FormFieldState<T> createState() => _GlassDropdownFieldState<T>();
+}
+
+class _GlassDropdownFieldState<T> extends FormFieldState<T> {
+  @override
+  void didUpdateWidget(GlassDropdownField<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Parent-driven value (like DropdownButtonFormField's `initialValue`
+    // being replaced by a rebuilt `value`).
+    if (widget.initialValue != oldWidget.initialValue && widget.initialValue != value) {
+      setValue(widget.initialValue);
+    }
+  }
+}
+
+/// Menu result wrapper, so a `null` item stays distinguishable from a
+/// dismissed menu.
+final class _Picked<T> {
+  const _Picked(this.value);
+  final T value;
 }

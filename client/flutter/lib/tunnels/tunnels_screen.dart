@@ -299,13 +299,11 @@ class _TunnelEditorDialogState extends ConsumerState<TunnelEditorDialog> {
               decoration: InputDecoration(labelText: l10n.commonName),
             ),
             const SizedBox(height: GlassSpacing.s12),
-            DropdownButtonFormField<ObjectId>(
-              isExpanded: true,
-              borderRadius: BorderRadius.circular(tokens.radii.menu),
+            GlassDropdownField<ObjectId>(
               key: const ValueKey('tunnel-host'),
-              initialValue: hosts.any((h) => h.id == _hostId) ? _hostId : null,
-              decoration: InputDecoration(labelText: l10n.tunnelsHostLabel),
-              items: [for (final h in hosts) DropdownMenuItem(value: h.id, child: Text('${h.name} (${h.address})'))],
+              value: hosts.any((h) => h.id == _hostId) ? _hostId : null,
+              label: l10n.tunnelsHostLabel,
+              items: [for (final h in hosts) GlassSelectItem(value: h.id, label: '${h.name} (${h.address})')],
               onChanged: (v) => setState(() => _hostId = v),
             ),
             const SizedBox(height: GlassSpacing.s12),

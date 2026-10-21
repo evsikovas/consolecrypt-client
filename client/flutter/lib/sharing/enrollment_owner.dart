@@ -193,7 +193,7 @@ class _EnrollmentOwnerDialogState extends ConsumerState<EnrollmentOwnerDialog> {
                       ),
                     ),
                   const SizedBox(height: 12),
-                  Text(l.enrollmentRequests, style: Theme.of(context).textTheme.titleMedium),
+                  Text(l.enrollmentRequests, style: Theme.of(context).textTheme.titleSmall),
                   for (final r in _requests)
                     ContentSurface(
                       child: Column(

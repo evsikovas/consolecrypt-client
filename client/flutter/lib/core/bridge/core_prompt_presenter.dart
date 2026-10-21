@@ -121,7 +121,7 @@ class _CorePromptPresenterState extends ConsumerState<CorePromptPresenter> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l.terminalUnknownHostTitle(host), style: theme.textTheme.titleMedium),
+            Text(l.terminalUnknownHostTitle(host), style: theme.textTheme.titleSmall),
             const SizedBox(height: 12),
             Text(l.terminalUnknownHostMessage),
             const SizedBox(height: 12),
@@ -169,7 +169,7 @@ class _CorePromptPresenterState extends ConsumerState<CorePromptPresenter> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: theme.textTheme.titleMedium),
+            Text(title, style: theme.textTheme.titleSmall),
             if (retry) ...[
               const SizedBox(height: 8),
               Text(l.terminalPasswordRetry, style: TextStyle(color: theme.colorScheme.error)),

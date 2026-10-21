@@ -308,19 +308,13 @@ class _KubeAiPanelState extends ConsumerState<KubeAiPanel> with WidgetsBindingOb
                   Text(
                     /* l10n-ignore: Kubernetes kind, namespace and resource name. */ '${widget.selected!.api.kind} · ${widget.selected!.namespace ?? ''}/${widget.selected!.name}',
                   ), // l10n-ignore: Kubernetes kind, namespace and resource name.
-                DropdownButtonFormField<String>(
+                GlassDropdownField<String>(
                   key: const ValueKey('kube-ai-provider'),
-                  initialValue: _providerId ?? '',
-                  isExpanded: true,
-                  decoration: InputDecoration(labelText: l.kubeAiProvider),
+                  value: _providerId ?? '',
+                  label: l.kubeAiProvider,
                   items: [
-                    DropdownMenuItem(value: '', child: Text(l.kubeAiDefaultProvider)),
-                    ...providers.map(
-                      (provider) => DropdownMenuItem(
-                        value: provider.id.value,
-                        child: Text(provider.name, overflow: TextOverflow.ellipsis),
-                      ),
-                    ),
+                    GlassSelectItem(value: '', label: l.kubeAiDefaultProvider),
+                    ...providers.map((provider) => GlassSelectItem(value: provider.id.value, label: provider.name)),
                   ],
                   onChanged: _busy ? null : (value) => setState(() => _providerId = value == '' ? null : value),
                 ),

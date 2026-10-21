@@ -225,21 +225,18 @@ class _DbImportDialogState extends ConsumerState<DbImportDialog> {
                                 }),
                         ),
                         if (_choices?.routes.isNotEmpty ?? false)
-                          DropdownButtonFormField<int>(
-                            isExpanded: true,
-                            initialValue: -1,
-                            decoration: InputDecoration(labelText: l.dbRoute),
+                          GlassDropdownField<int>(
+                            value: -1,
+                            label: l.dbRoute,
                             items: [
-                              DropdownMenuItem(value: -1, child: Text(l.dbDirect)),
+                              GlassSelectItem(value: -1, label: l.dbDirect),
                               for (var i = 0; i < _choices!.routes.length; i++)
-                                DropdownMenuItem(value: i, child: Text(_choices!.routes[i].label)),
+                                GlassSelectItem(value: i, label: _choices!.routes[i].label),
                             ],
                             onChanged: _busy
                                 ? null
                                 : (i) => setState(
-                                    () => _routes[entry.index] = i == null || i < 0
-                                        ? const DbRoute()
-                                        : _choices!.routes[i].route,
+                                    () => _routes[entry.index] = i < 0 ? const DbRoute() : _choices!.routes[i].route,
                                   ),
                           ),
                         if (entry.hasPassword)

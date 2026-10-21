@@ -1211,25 +1211,21 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
           if (widget.connections.isNotEmpty && widget.onSelectContext != null)
             SizedBox(
               width: 240,
-              child: DropdownButtonFormField<String>(
+              child: GlassDropdownField<String>(
                 key: const ValueKey('kube-context-switch'),
-                initialValue: widget.connection.id,
-                isExpanded: true,
-                decoration: InputDecoration(labelText: l.kubeCommandContext),
-                items: widget.connections
-                    .map(
-                      (connection) => DropdownMenuItem(
-                        value: connection.id,
-                        child: Text(
-                          // l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers.
-                          /* l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers. */ '${connection.production ? 'PROD · ' : ''}${connection.name}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    )
-                    .toList(),
+                value: widget.connection.id,
+                label: l.kubeCommandContext,
+                items: [
+                  for (final connection in widget.connections)
+                    GlassSelectItem(
+                      value: connection.id,
+                      // l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers.
+                      label: /* l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers. */
+                          '${connection.production ? 'PROD · ' : ''}${connection.name}',
+                    ),
+                ],
                 onChanged: (id) {
-                  if (id != null && id != widget.connection.id && _current) {
+                  if (id != widget.connection.id && _current) {
                     final target = widget.connections.where((connection) => connection.id == id).firstOrNull;
                     if (target != null) widget.onSelectContext?.call(target);
                   }
@@ -1374,23 +1370,19 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                         ),
                       ),
                     if (_view != 'resources' && widget.service is KubeInsightsService && session != null) ...[
-                      DropdownButtonFormField<String>(
+                      GlassDropdownField<String>(
                         key: const ValueKey('kube-insights-namespace'),
-                        initialValue: _namespace ?? '',
-                        isExpanded: true,
-                        decoration: InputDecoration(labelText: l.kubeNamespace),
+                        value: _namespace ?? '',
+                        label: l.kubeNamespace,
                         items: [
-                          DropdownMenuItem(value: '', child: Text(l.kubeAllNamespaces)),
-                          ..._namespaces.map(
-                            (name) => DropdownMenuItem(
+                          GlassSelectItem(value: '', label: l.kubeAllNamespaces),
+                          for (final name in _namespaces)
+                            GlassSelectItem(
                               value: name,
-                              child: Text(
-                                // l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers.
-                                /* l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers. */ '${_favoriteNamespaces.contains(name) ? '★ ' : ''}$name',
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                              // l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers.
+                              label: /* l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers. */
+                                  '${_favoriteNamespaces.contains(name) ? '★ ' : ''}$name',
                             ),
-                          ),
                         ],
                         onChanged: (value) => setState(() => _namespace = value == '' ? null : value),
                       ),
@@ -2510,74 +2502,71 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
             ),
             SizedBox(
               width: fieldWidth,
-              child: DropdownButtonFormField<String>(
-                key: const ValueKey('kube-kind'),
-                initialValue: _kind?.id,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: l.kubeResourceKind,
-                  suffixIcon: widget.service is KubeOrganizationService
-                      ? IconButton(
-                          tooltip: l.kubeFavorite,
-                          icon: Icon(_favoriteKinds.contains(_kind?.id) ? Icons.star : Icons.star_border),
-                          onPressed: _savingFavorites ? null : () => _favorite(namespace: false),
-                        )
-                      : null,
-                ),
-                items: sortedKinds
-                    .map(
-                      (kind) => DropdownMenuItem(
-                        value: kind.id,
-                        child: Text(
-                          // l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers.
-                          /* l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers. */ '${_favoriteKinds.contains(kind.id) ? '★ ' : ''}${kind.kind} · ${kind.apiVersion}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (id) {
-                  if (id == null) return;
-                  setState(() => _kind = _kinds.firstWhere((kind) => kind.id == id));
-                  unawaited(_refresh());
-                },
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GlassDropdownField<String>(
+                      key: const ValueKey('kube-kind'),
+                      value: _kind?.id,
+                      label: l.kubeResourceKind,
+                      items: [
+                        for (final kind in sortedKinds)
+                          GlassSelectItem(
+                            value: kind.id,
+                            // l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers.
+                            label: /* l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers. */
+                                '${_favoriteKinds.contains(kind.id) ? '★ ' : ''}${kind.kind} · ${kind.apiVersion}',
+                          ),
+                      ],
+                      onChanged: (id) {
+                        setState(() => _kind = _kinds.firstWhere((kind) => kind.id == id));
+                        unawaited(_refresh());
+                      },
+                    ),
+                  ),
+                  if (widget.service is KubeOrganizationService)
+                    IconButton(
+                      tooltip: l.kubeFavorite,
+                      icon: Icon(_favoriteKinds.contains(_kind?.id) ? Icons.star : Icons.star_border),
+                      onPressed: _savingFavorites ? null : () => _favorite(namespace: false),
+                    ),
+                ],
               ),
             ),
             SizedBox(
               width: fieldWidth,
-              child: DropdownButtonFormField<String>(
-                key: const ValueKey('kube-namespace'),
-                initialValue: _namespace ?? '',
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: l.kubeNamespace,
-                  suffixIcon: widget.service is KubeOrganizationService
-                      ? IconButton(
-                          tooltip: l.kubeFavorite,
-                          icon: Icon(_favoriteNamespaces.contains(_namespace) ? Icons.star : Icons.star_border),
-                          onPressed: _savingFavorites || _namespace == null ? null : () => _favorite(namespace: true),
-                        )
-                      : null,
-                ),
-                items: [
-                  DropdownMenuItem(value: '', child: Text(l.kubeAllNamespaces)),
-                  ...sortedNamespaces.map(
-                    (name) => DropdownMenuItem(
-                      value: name,
-                      child: Text(
-                        // l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers.
-                        /* l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers. */ '${_favoriteNamespaces.contains(name) ? '★ ' : ''}$name',
-                        overflow: TextOverflow.ellipsis,
-                      ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GlassDropdownField<String>(
+                      key: const ValueKey('kube-namespace'),
+                      value: _namespace ?? '',
+                      label: l.kubeNamespace,
+                      items: [
+                        GlassSelectItem(value: '', label: l.kubeAllNamespaces),
+                        for (final name in sortedNamespaces)
+                          GlassSelectItem(
+                            value: name,
+                            // l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers.
+                            label: /* l10n-ignore: Saved context or discovered Kubernetes identifiers with PROD/favorite markers. */
+                                '${_favoriteNamespaces.contains(name) ? '★ ' : ''}$name',
+                          ),
+                      ],
+                      onChanged: _kind?.namespaced != true
+                          ? null
+                          : (value) {
+                              setState(() => _namespace = value == '' ? null : value);
+                              unawaited(_refresh());
+                            },
                     ),
                   ),
+                  if (widget.service is KubeOrganizationService)
+                    IconButton(
+                      tooltip: l.kubeFavorite,
+                      icon: Icon(_favoriteNamespaces.contains(_namespace) ? Icons.star : Icons.star_border),
+                      onPressed: _savingFavorites || _namespace == null ? null : () => _favorite(namespace: true),
+                    ),
                 ],
-                onChanged: _kind?.namespaced != true
-                    ? null
-                    : (value) {
-                        setState(() => _namespace = value == '' ? null : value);
-                        unawaited(_refresh());
-                      },
               ),
             ),
             SizedBox(

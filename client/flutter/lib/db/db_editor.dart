@@ -196,6 +196,76 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
     }
   }
 
+  /// One row: run (with its modes), cancel, then editing and plan tools.
+  Widget _toolbar(BuildContext context) {
+    final l = context.l10n, tokens = GlassTokens.of(context);
+    Widget tool(String key, IconData icon, String tooltip, VoidCallback? onPressed) => GlassIconButton(
+      key: ValueKey(key),
+      icon: icon,
+      tooltip: tooltip,
+      size: 30,
+      iconSize: 17,
+      style: GlassIconButtonStyle.plain,
+      onPressed: onPressed,
+    );
+    Widget divider() => Container(
+      width: 1,
+      height: 18,
+      margin: const EdgeInsets.symmetric(horizontal: GlassSpacing.s6),
+      color: tokens.surfaces.separator,
+    );
+    final sql = widget.session.engine != DbEngine.redis;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(GlassSpacing.s6, GlassSpacing.s6, GlassSpacing.s6, GlassSpacing.s4),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            GlassButton(
+              key: const ValueKey('db-run'),
+              label: l.dbRun,
+              icon: Icons.play_arrow_rounded,
+              style: GlassButtonStyle.prominent,
+              size: GlassControlSize.sm,
+              tooltip: '${l.dbRunCurrent} (⌘↵)', // l10n-ignore: shortcut glyphs
+              onPressed: widget.running ? null : () => widget.onRun(DbRunMode.current),
+            ),
+            GlassMenuButton<DbRunMode>(
+              key: const ValueKey('db-run-modes'),
+              entries: [
+                GlassMenuItem(value: DbRunMode.current, label: l.dbRunCurrent, icon: Icons.play_arrow_rounded),
+                GlassMenuItem(value: DbRunMode.selection, label: l.dbRunSelection, icon: Icons.highlight_alt_rounded),
+                GlassMenuItem(value: DbRunMode.script, label: l.dbRunScript, icon: Icons.playlist_play_rounded),
+              ],
+              onSelected: (mode) {
+                if (!widget.running) widget.onRun(mode);
+              },
+              builder: (context, open) => tool('db-run-menu', Icons.expand_more_rounded, l.dbRunScript, open),
+            ),
+            tool('db-cancel', Icons.stop_rounded, l.dbCancelQuery, widget.running ? widget.onCancel : null),
+            divider(),
+            if (widget.onExplain != null && sql)
+              GlassMenuButton<bool>(
+                key: const ValueKey('db-explain-menu'),
+                entries: [
+                  GlassMenuItem(value: false, label: l.dbExplain, icon: Icons.account_tree_outlined),
+                  if (!widget.session.production)
+                    GlassMenuItem(value: true, label: l.dbExplainAnalyze, icon: Icons.speed_rounded),
+                ],
+                onSelected: widget.onExplain!,
+                builder: (context, open) => tool('db-explain', Icons.account_tree_outlined, l.dbExplain, open),
+              ),
+            tool('db-format', Icons.format_align_left_rounded, l.dbFormat, _busy ? null : _format),
+            tool('db-complete', Icons.auto_fix_high_rounded, l.dbComplete, _busy ? null : _complete),
+            if (sql) tool('db-comment', Icons.code_rounded, l.dbComment, _comments),
+            tool('db-find', Icons.find_replace_rounded, l.dbFindReplace, () => setState(() => _findOpen = !_findOpen)),
+            if (widget.onAi != null) ...[divider(), tool('db-ai', Icons.auto_awesome_rounded, l.dbAi, widget.onAi)],
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -225,58 +295,8 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
       },
       child: Column(
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                TextButton.icon(
-                  key: const ValueKey('db-run'),
-                  onPressed: widget.running ? null : () => widget.onRun(DbRunMode.current),
-                  icon: const Icon(Icons.play_arrow),
-                  label: Text(l.dbRun),
-                ),
-                PopupMenuButton<DbRunMode>(
-                  onSelected: widget.running ? null : widget.onRun,
-                  itemBuilder: (_) => [
-                    PopupMenuItem(value: DbRunMode.current, child: Text(l.dbRunCurrent)),
-                    PopupMenuItem(value: DbRunMode.selection, child: Text(l.dbRunSelection)),
-                    PopupMenuItem(value: DbRunMode.script, child: Text(l.dbRunScript)),
-                  ],
-                ),
-                if (widget.running)
-                  IconButton(tooltip: l.dbCancelQuery, onPressed: widget.onCancel, icon: const Icon(Icons.stop)),
-                IconButton(
-                  tooltip: l.dbFormat,
-                  onPressed: _busy ? null : _format,
-                  icon: const Icon(Icons.format_align_left),
-                ),
-                IconButton(
-                  tooltip: l.dbComplete,
-                  onPressed: _busy ? null : _complete,
-                  icon: const Icon(Icons.auto_fix_high),
-                ),
-                if (widget.session.engine != DbEngine.redis)
-                  IconButton(tooltip: l.dbComment, onPressed: _comments, icon: const Icon(Icons.code)),
-                IconButton(
-                  tooltip: l.dbFindReplace,
-                  onPressed: () => setState(() => _findOpen = !_findOpen),
-                  icon: const Icon(Icons.find_replace),
-                ),
-                if (widget.onExplain != null && widget.session.engine != DbEngine.redis)
-                  PopupMenuButton<bool>(
-                    tooltip: l.dbExplain,
-                    icon: const Icon(Icons.account_tree),
-                    onSelected: widget.onExplain,
-                    itemBuilder: (_) => [
-                      PopupMenuItem(value: false, child: Text(l.dbExplain)),
-                      if (!widget.session.production) PopupMenuItem(value: true, child: Text(l.dbExplainAnalyze)),
-                    ],
-                  ),
-                if (widget.onAi != null)
-                  IconButton(tooltip: l.dbAi, onPressed: widget.onAi, icon: const Icon(Icons.auto_awesome)),
-              ],
-            ),
-          ),
+          _toolbar(context),
+          Container(height: 1, color: GlassTokens.of(context).surfaces.separator),
           if (_busy) const LinearProgressIndicator(),
           if (_findOpen)
             Padding(
@@ -285,18 +305,12 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
                 spacing: 6,
                 children: [
                   SizedBox(
-                    width: 150,
-                    child: TextField(
-                      controller: _find,
-                      decoration: InputDecoration(labelText: l.commonSearch),
-                    ),
+                    width: 180,
+                    child: GlassField(controller: _find, search: true, placeholder: l.commonSearch),
                   ),
                   SizedBox(
-                    width: 150,
-                    child: TextField(
-                      controller: _replace,
-                      decoration: InputDecoration(labelText: l.dbReplace),
-                    ),
+                    width: 180,
+                    child: GlassField(controller: _replace, placeholder: l.dbReplace),
                   ),
                   IconButton(
                     tooltip: l.dbReplace,
@@ -308,20 +322,23 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
               ),
             ),
           Expanded(
-            child: TextField(
-              key: const ValueKey('db-query-editor'),
-              controller: widget.controller,
-              focusNode: _focus,
-              expands: true,
-              maxLines: null,
-              minLines: null,
-              decoration: InputDecoration(labelText: l.dbEditor, alignLabelWithHint: true),
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
-              textAlignVertical: TextAlignVertical.top,
-              autocorrect: false,
-              enableSuggestions: false,
-              smartDashesType: SmartDashesType.disabled,
-              smartQuotesType: SmartQuotesType.disabled,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(GlassSpacing.s12, GlassSpacing.s8, GlassSpacing.s12, GlassSpacing.s8),
+              child: TextField(
+                key: const ValueKey('db-query-editor'),
+                controller: widget.controller,
+                focusNode: _focus,
+                expands: true,
+                maxLines: null,
+                minLines: null,
+                decoration: InputDecoration.collapsed(hintText: l.dbEditorHint),
+                style: GlassTokens.of(context).typography.mono.copyWith(fontSize: 13.5, height: 1.45),
+                textAlignVertical: TextAlignVertical.top,
+                autocorrect: false,
+                enableSuggestions: false,
+                smartDashesType: SmartDashesType.disabled,
+                smartQuotesType: SmartQuotesType.disabled,
+              ),
             ),
           ),
         ],

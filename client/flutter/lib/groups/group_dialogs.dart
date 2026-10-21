@@ -148,7 +148,6 @@ class _GroupDialogState extends ConsumerState<_GroupDialog> {
       }
     }
     final tokens = GlassTokens.of(context);
-    final menuRadius = BorderRadius.circular(tokens.radii.menu);
     return GlassDialog(
       key: const ValueKey('group-dialog'),
       title: widget.group == null ? l10n.groupsNewGroup : l10n.groupsEditGroup,
@@ -164,15 +163,13 @@ class _GroupDialogState extends ConsumerState<_GroupDialog> {
               decoration: InputDecoration(labelText: l10n.commonName),
             ),
             const SizedBox(height: GlassSpacing.s12),
-            DropdownButtonFormField<ObjectId?>(
-              isExpanded: true,
-              borderRadius: menuRadius,
-              initialValue: byId.containsKey(_parent) ? _parent : null,
-              decoration: InputDecoration(labelText: l10n.groupsParentGroup),
+            GlassDropdownField<ObjectId?>(
+              value: byId.containsKey(_parent) ? _parent : null,
+              label: l10n.groupsParentGroup,
               items: [
-                DropdownMenuItem(value: null, child: Text(l10n.groupsNoParent)),
+                GlassSelectItem(value: null, label: l10n.groupsNoParent),
                 for (final g in groups.where((g) => !excluded.contains(g.id)))
-                  DropdownMenuItem(value: g.id, child: Text(groupPathName(byId, g.id))),
+                  GlassSelectItem(value: g.id, label: groupPathName(byId, g.id)),
               ],
               onChanged: (v) => setState(() => _parent = v),
             ),
@@ -206,16 +203,14 @@ class _GroupDialogState extends ConsumerState<_GroupDialog> {
               ],
             ),
             const SizedBox(height: GlassSpacing.s12),
-            DropdownButtonFormField<Object?>(
+            GlassDropdownField<Object?>(
               key: ValueKey('group-credential-$_credentialEpoch'),
-              isExpanded: true,
-              borderRadius: menuRadius,
-              initialValue: credentials.any((c) => c.id == _credential) ? _credential : null,
-              decoration: InputDecoration(labelText: l10n.groupsCredential),
+              value: credentials.any((c) => c.id == _credential) ? _credential : null,
+              label: l10n.groupsCredential,
               items: [
-                DropdownMenuItem(value: null, child: Text(l10n.groupsInherit)),
-                for (final c in credentials) DropdownMenuItem(value: c.id, child: Text(c.name)),
-                DropdownMenuItem(value: newCredentialEntry, child: Text(l10n.hostsNewCredentialEntry)),
+                GlassSelectItem(value: null, label: l10n.groupsInherit),
+                for (final c in credentials) GlassSelectItem(value: c.id, label: c.name),
+                GlassSelectItem(value: newCredentialEntry, label: l10n.hostsNewCredentialEntry),
               ],
               onChanged: (v) async {
                 if (v == newCredentialEntry) {
@@ -230,14 +225,12 @@ class _GroupDialogState extends ConsumerState<_GroupDialog> {
               },
             ),
             const SizedBox(height: GlassSpacing.s12),
-            DropdownButtonFormField<ObjectId?>(
-              isExpanded: true,
-              borderRadius: menuRadius,
-              initialValue: profiles.any((p) => p.id == _jump) ? _jump : null,
-              decoration: InputDecoration(labelText: l10n.groupsJumpProfile),
+            GlassDropdownField<ObjectId?>(
+              value: profiles.any((p) => p.id == _jump) ? _jump : null,
+              label: l10n.groupsJumpProfile,
               items: [
-                DropdownMenuItem(value: null, child: Text(l10n.groupsJumpInherit)),
-                for (final p in profiles) DropdownMenuItem(value: p.id, child: Text(p.name)),
+                GlassSelectItem(value: null, label: l10n.groupsJumpInherit),
+                for (final p in profiles) GlassSelectItem(value: p.id, label: p.name),
               ],
               onChanged: (v) => setState(() => _jump = v),
             ),

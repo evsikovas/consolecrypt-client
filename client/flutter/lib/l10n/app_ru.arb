@@ -5147,5 +5147,9 @@
   "workspaceForwardsEmptyHelp": "Пробросьте порт пода Kubernetes или контейнера Docker — активные пробросы появятся здесь.",
   "shellAiDeviceIdle": "ИИ: встроенная модель не запущена (запустится при запросе) · {model}",
   "shellAiDeviceStarting": "ИИ: встроенная модель запускается · {model}",
-  "shellAiDeviceError": "ИИ: встроенная модель не запустилась · {model}"
+  "shellAiDeviceError": "ИИ: встроенная модель не запустилась · {model}",
+  "dbEditorHint": "Напишите запрос… ⌘↵ — выполнить",
+  "dbRowCount": "Строк: {count}",
+  "dbRowsAffected": "Затронуто: {count}",
+  "dbStatusReady": "Готово"
 }

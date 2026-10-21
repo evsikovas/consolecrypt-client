@@ -421,27 +421,16 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
                                     Text(l.kubeTlsRequired),
                                   if (entry.requiresRoute) ...[
                                     Text(l.kubeRouteRequired),
-                                    DropdownButtonFormField<String>(
+                                    GlassDropdownField<String>(
                                       key: ValueKey('kube-route-${entry.index}'),
-                                      isExpanded: true,
-                                      decoration: InputDecoration(labelText: l.kubeRoute),
-                                      items: hosts
-                                          .map(
-                                            (host) => DropdownMenuItem(
-                                              value: host.id.value,
-                                              child: Text(host.name, overflow: TextOverflow.ellipsis),
-                                            ),
-                                          )
-                                          .toList(),
+                                      label: l.kubeRoute,
+                                      items: [
+                                        for (final host in hosts)
+                                          GlassSelectItem(value: host.id.value, label: host.name),
+                                      ],
                                       onChanged: _busy || _expired
                                           ? null
-                                          : (value) => setState(() {
-                                              if (value == null) {
-                                                _sshRoutes.remove(entry.index);
-                                              } else {
-                                                _sshRoutes[entry.index] = value;
-                                              }
-                                            }),
+                                          : (value) => setState(() => _sshRoutes[entry.index] = value),
                                     ),
                                   ],
                                 ],

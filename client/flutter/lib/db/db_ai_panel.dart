@@ -236,38 +236,23 @@ class _DbAiPanelState extends ConsumerState<DbAiPanel> {
                 padding: const EdgeInsets.all(8),
                 child: Column(
                   children: [
-                    DropdownButtonFormField<String>(
-                      isExpanded: true,
-                      initialValue: _provider,
-                      decoration: InputDecoration(labelText: l.dbAiProvider),
-                      items: [
-                        for (final p in _providers)
-                          DropdownMenuItem(
-                            value: p.id,
-                            child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                          ),
-                      ],
+                    GlassDropdownField<String>(
+                      value: _provider,
+                      label: l.dbAiProvider,
+                      items: [for (final p in _providers) GlassSelectItem(value: p.id, label: p.name)],
                       onChanged: _busy ? null : (v) => setState(() => _provider = v),
                     ),
-                    DropdownButtonFormField<DbAiAction>(
-                      isExpanded: true,
-                      initialValue: _action,
-                      decoration: InputDecoration(labelText: l.dbAi),
-                      items: [
-                        for (final a in DbAiAction.values)
-                          DropdownMenuItem(
-                            value: a,
-                            child: Text(_label(a, l), maxLines: 1, overflow: TextOverflow.ellipsis),
-                          ),
-                      ],
-                      onChanged: _busy ? null : (v) => setState(() => _action = v!),
+                    GlassDropdownField<DbAiAction>(
+                      value: _action,
+                      label: l.dbAi,
+                      items: [for (final a in DbAiAction.values) GlassSelectItem(value: a, label: _label(a, l))],
+                      onChanged: _busy ? null : (v) => setState(() => _action = v),
                     ),
                     if (_action == DbAiAction.translate)
-                      DropdownButtonFormField<DbEngine>(
-                        isExpanded: true,
-                        initialValue: _target,
-                        items: [for (final e in DbEngine.values) DropdownMenuItem(value: e, child: Text(e.label))],
-                        onChanged: _busy ? null : (v) => setState(() => _target = v!),
+                      GlassDropdownField<DbEngine>(
+                        value: _target,
+                        items: [for (final e in DbEngine.values) GlassSelectItem(value: e, label: e.label)],
+                        onChanged: _busy ? null : (v) => setState(() => _target = v),
                       ),
                     TextField(
                       controller: _contextLimit,

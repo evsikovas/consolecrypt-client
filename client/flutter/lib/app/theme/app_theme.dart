@@ -93,7 +93,8 @@ abstract final class AppTheme {
       headlineMedium: t.title1,
       headlineSmall: t.title1,
       titleLarge: t.title2,
-      titleMedium: t.title3,
+      // material_ui draws dropdown values with titleMedium: keep it body-sized.
+      titleMedium: t.body,
       titleSmall: t.bodyEmph,
       bodyLarge: t.body,
       bodyMedium: t.body,

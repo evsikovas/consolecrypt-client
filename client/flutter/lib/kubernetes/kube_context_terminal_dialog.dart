@@ -97,10 +97,9 @@ class _KubeContextTerminalDialogState extends ConsumerState<KubeContextTerminalD
             if (_failed) Text(_wslUnavailable ? l.kubeContextWslUnavailable : l.kubeTerminalFailed),
             if (_profile?.startsWith('wsl:') == true) Text(l.kubeContextWslHelp),
             if (_profiles != null)
-              DropdownButtonFormField<String>(
-                initialValue: _profile,
-                isExpanded: true,
-                items: _profiles!.profiles.map((p) => DropdownMenuItem(value: p.id, child: Text(p.label))).toList(),
+              GlassDropdownField<String>(
+                value: _profile,
+                items: [for (final p in _profiles!.profiles) GlassSelectItem(value: p.id, label: p.label)],
                 onChanged: _busy ? null : (v) => setState(() => _profile = v),
               ),
           ],

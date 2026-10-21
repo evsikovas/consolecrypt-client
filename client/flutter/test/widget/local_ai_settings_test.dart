@@ -6,6 +6,7 @@ import 'package:consolecrypt/ai/local_ai_providers.dart';
 import 'package:consolecrypt/app/app.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -137,10 +138,10 @@ void main() {
       await settle(tester);
       expect(
         tester
-            .widget<DropdownButtonFormField<String>>(
+            .widget<GlassDropdownField<String>>(
               find.descendant(
                 of: find.byKey(const ValueKey('local-ai-model')),
-                matching: find.byType(DropdownButtonFormField<String>),
+                matching: find.byType(GlassDropdownField<String>),
               ),
             )
             .initialValue,

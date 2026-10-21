@@ -8958,4 +8958,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String shellAiDeviceError(String model) {
     return 'AI: built-in model failed to start · $model';
   }
+
+  @override
+  String get dbEditorHint => 'Write a query… ⌘↵ runs it';
+
+  @override
+  String dbRowCount(String count) {
+    return 'Rows: $count';
+  }
+
+  @override
+  String dbRowsAffected(int count) {
+    return 'Affected: $count';
+  }
+
+  @override
+  String get dbStatusReady => 'Ready';
 }

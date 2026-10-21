@@ -166,7 +166,7 @@ class _KubeAuthDialogState extends ConsumerState<KubeAuthDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(widget.connection.name, style: Theme.of(context).textTheme.titleMedium),
+              Text(widget.connection.name, style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 12),
               Text(_mobileExec ? l.kubeExecMobile : (_exec ? l.kubeExecReviewHelp : l.kubeOidcHelp)),
               if (_loading || _busy) ...[

@@ -104,19 +104,11 @@ class _PodTerminalDialogState extends ConsumerState<_PodTerminalDialog> {
                   Text('${widget.contextName} · ${widget.resource.namespace}/${widget.resource.name}'),
                   if (!widget.session.canExec) Text(l.kubeExecProductionBlocked),
                   if (widget.containers.isNotEmpty)
-                    DropdownButtonFormField<String>(
+                    GlassDropdownField<String>(
                       key: const ValueKey('kube-terminal-container'),
-                      initialValue: _container,
-                      isExpanded: true,
-                      decoration: InputDecoration(labelText: l.kubeContainer),
-                      items: widget.containers
-                          .map(
-                            (name) => DropdownMenuItem(
-                              value: name,
-                              child: Text(name, overflow: TextOverflow.ellipsis),
-                            ),
-                          )
-                          .toList(),
+                      value: _container,
+                      label: l.kubeContainer,
+                      items: [for (final name in widget.containers) GlassSelectItem(value: name, label: name)],
                       onChanged: _busy ? null : (value) => setState(() => _container = value),
                     ),
                   SwitchListTile(
@@ -128,21 +120,16 @@ class _PodTerminalDialogState extends ConsumerState<_PodTerminalDialog> {
                     onChanged: _busy ? null : (value) => setState(() => _attach = value),
                   ),
                   if (!_attach)
-                    DropdownButtonFormField<String>(
+                    GlassDropdownField<String>(
                       key: const ValueKey('kube-terminal-shell'),
-                      initialValue: _shell,
-                      isExpanded: true,
-                      decoration: InputDecoration(labelText: l.kubeShell),
+                      value: _shell,
+                      label: l.kubeShell,
                       items: [
-                        DropdownMenuItem(value: '/__consolecrypt_auto_shell__', child: Text(l.kubeAutoShell)),
+                        GlassSelectItem(value: '/__consolecrypt_auto_shell__', label: l.kubeAutoShell),
                         for (final shell in const ['/bin/sh', '/bin/bash', '/bin/ash'])
-                          DropdownMenuItem(value: shell, child: Text(shell)),
+                          GlassSelectItem(value: shell, label: shell),
                       ],
-                      onChanged: _busy
-                          ? null
-                          : (value) {
-                              if (value != null) setState(() => _shell = value);
-                            },
+                      onChanged: _busy ? null : (value) => setState(() => _shell = value),
                     ),
                   if (_busy) const LinearProgressIndicator(),
                   if (_failed) Text(l.kubeTerminalFailed, style: TextStyle(color: Theme.of(context).colorScheme.error)),

@@ -351,7 +351,6 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
     List<JumpProfile> profiles,
   ) {
     final tokens = GlassTokens.of(context);
-    final menuRadius = BorderRadius.circular(tokens.radii.menu);
     final l10n = context.l10n;
     final sortedGroups = [...groups]
       ..sort((a, b) => groupPathName(groupsById, a.id).compareTo(groupPathName(groupsById, b.id)));
@@ -454,16 +453,13 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
                   ),
                   const SizedBox(height: GlassSpacing.s12),
                 ],
-                DropdownButtonFormField<ObjectId?>(
-                  isExpanded: true,
-                  borderRadius: menuRadius,
+                GlassDropdownField<ObjectId?>(
                   key: const ValueKey('host-group'),
-                  initialValue: groups.any((g) => g.id == _groupId) ? _groupId : null,
-                  decoration: InputDecoration(labelText: l10n.hostEditorGroupLabel),
+                  value: groups.any((g) => g.id == _groupId) ? _groupId : null,
+                  label: l10n.hostEditorGroupLabel,
                   items: [
-                    DropdownMenuItem(value: null, child: Text(l10n.hostEditorNoGroup)),
-                    for (final g in sortedGroups)
-                      DropdownMenuItem(value: g.id, child: Text(groupPathName(groupsById, g.id))),
+                    GlassSelectItem(value: null, label: l10n.hostEditorNoGroup),
+                    for (final g in sortedGroups) GlassSelectItem(value: g.id, label: groupPathName(groupsById, g.id)),
                   ],
                   onChanged: (v) => _set(() => _onGroupChanged(v, groupsById)),
                 ),
@@ -504,17 +500,12 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
                       l10n.hostEditorJumpInheritHelp,
                       style: tokens.typography.body.copyWith(color: tokens.secondaryLabel),
                     ),
-                    JumpMode.profile => DropdownButtonFormField<ObjectId?>(
-                      isExpanded: true,
-                      borderRadius: menuRadius,
-                      initialValue: profiles.any((p) => p.id == _jumpProfileId) ? _jumpProfileId : null,
-                      decoration: InputDecoration(labelText: l10n.hostEditorJumpProfile),
+                    JumpMode.profile => GlassDropdownField<ObjectId>(
+                      value: profiles.any((p) => p.id == _jumpProfileId) ? _jumpProfileId : null,
+                      label: l10n.hostEditorJumpProfile,
                       items: [
                         for (final p in profiles)
-                          DropdownMenuItem(
-                            value: p.id,
-                            child: Text(l10n.hostEditorJumpProfileItem(p.chain.length, p.name)),
-                          ),
+                          GlassSelectItem(value: p.id, label: l10n.hostEditorJumpProfileItem(p.chain.length, p.name)),
                       ],
                       onChanged: (v) => _set(() => _jumpProfileId = v),
                     ),
@@ -554,15 +545,11 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
                     style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
                   ),
                   const SizedBox(height: GlassSpacing.s12),
-                  DropdownButtonFormField<SshBackend>(
-                    isExpanded: true,
-                    borderRadius: menuRadius,
-                    initialValue: _backend,
-                    decoration: InputDecoration(labelText: l10n.hostEditorSshBackend),
-                    items: [
-                      for (final b in SshBackend.values) DropdownMenuItem(value: b, child: Text(b.localized(l10n))),
-                    ],
-                    onChanged: (v) => setState(() => _backend = v ?? SshBackend.native),
+                  GlassDropdownField<SshBackend>(
+                    value: _backend,
+                    label: l10n.hostEditorSshBackend,
+                    items: [for (final b in SshBackend.values) GlassSelectItem(value: b, label: b.localized(l10n))],
+                    onChanged: (v) => setState(() => _backend = v),
                   ),
                   const SizedBox(height: GlassSpacing.s12),
                   TextFormField(

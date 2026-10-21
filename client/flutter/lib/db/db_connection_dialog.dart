@@ -327,18 +327,14 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                   ),
                 if (_check != null) ...[Text(l.dbTestSuccess), Text(_check!.serverVersion)],
                 _input('name', l.dbName, required: true),
-                DropdownButtonFormField<DbEngine>(
+                GlassDropdownField<DbEngine>(
                   key: const ValueKey('db-engine'),
-                  initialValue: _engine,
-                  isExpanded: true,
-                  decoration: InputDecoration(labelText: l.dbEngine),
-                  items: [
-                    for (final engine in DbEngine.values) DropdownMenuItem(value: engine, child: Text(engine.label)),
-                  ],
+                  value: _engine,
+                  label: l.dbEngine,
+                  items: [for (final engine in DbEngine.values) GlassSelectItem(value: engine, label: engine.label)],
                   onChanged: _busy || widget.connection != null
                       ? null
                       : (value) {
-                          if (value == null) return;
                           setState(() {
                             _engine = value;
                             _field('port').text = '${value.port}';
@@ -377,26 +373,25 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                   title: Text(l.dbTls),
                   initiallyExpanded: false,
                   children: [
-                    DropdownButtonFormField<DbTlsMode>(
+                    GlassDropdownField<DbTlsMode>(
                       key: const ValueKey('db-tls'),
-                      initialValue: _tls,
-                      isExpanded: true,
+                      value: _tls,
                       items: [
                         for (final mode in DbTlsMode.values)
-                          DropdownMenuItem(
+                          GlassSelectItem(
                             value: mode,
-                            child: Text(switch (mode) {
+                            label: switch (mode) {
                               DbTlsMode.verify => l.dbTlsVerify,
                               DbTlsMode.require => l.dbTlsRequire,
                               DbTlsMode.prefer => l.dbTlsPrefer,
                               DbTlsMode.disable => l.dbTlsDisable,
-                            }),
+                            },
                           ),
                       ],
                       onChanged: _busy
                           ? null
                           : (v) => setState(() {
-                              _tls = v!;
+                              _tls = v;
                               _tlsChosen = true;
                               _tlsAuto = false;
                             }),
@@ -408,20 +403,17 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                     _input('certificate', l.dbClientCertificate, lines: 3),
                     _input('key', l.dbPrivateKey, secret: true),
                     if (_engine == DbEngine.mongodb)
-                      DropdownButtonFormField<DbAuthMechanism>(
-                        initialValue: _mechanism,
-                        decoration: InputDecoration(labelText: l.dbAuthMechanism),
-                        isExpanded: true,
+                      GlassDropdownField<DbAuthMechanism>(
+                        value: _mechanism,
+                        label: l.dbAuthMechanism,
                         items: [
                           for (final mechanism in DbAuthMechanism.values)
-                            DropdownMenuItem(
+                            GlassSelectItem(
                               value: mechanism,
-                              child: Text(
-                                mechanism == DbAuthMechanism.defaultAuth ? l.dbAuthDefault : mechanism.wireName,
-                              ),
+                              label: mechanism == DbAuthMechanism.defaultAuth ? l.dbAuthDefault : mechanism.wireName,
                             ),
                         ],
-                        onChanged: _busy ? null : (v) => setState(() => _mechanism = v!),
+                        onChanged: _busy ? null : (v) => setState(() => _mechanism = v),
                       ),
                   ],
                 ),
@@ -431,19 +423,18 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                     if (choices == null)
                       const LinearProgressIndicator()
                     else
-                      DropdownButtonFormField<int>(
+                      GlassDropdownField<int>(
                         key: const ValueKey('db-route'),
-                        isExpanded: true,
-                        initialValue: _route.kind == DbRouteKind.direct
+                        value: _route.kind == DbRouteKind.direct
                             ? -1
                             : choices.routes.indexWhere(
                                 (r) => r.route.kind == _route.kind && r.route.reference == _route.reference,
                               ),
-                        decoration: InputDecoration(labelText: l.dbRoute),
+                        label: l.dbRoute,
                         items: [
-                          DropdownMenuItem(value: -1, child: Text(l.dbDirect)),
+                          GlassSelectItem(value: -1, label: l.dbDirect),
                           for (var i = 0; i < choices.routes.length; i++)
-                            DropdownMenuItem(value: i, child: Text(choices.routes[i].label)),
+                            GlassSelectItem(value: i, label: choices.routes[i].label),
                         ],
                         validator: (_) =>
                             _route.kind != DbRouteKind.direct &&
@@ -454,7 +445,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                             : null,
                         onChanged: _busy
                             ? null
-                            : (i) => setState(() => _route = i == -1 ? const DbRoute() : choices.routes[i!].route),
+                            : (i) => setState(() => _route = i == -1 ? const DbRoute() : choices.routes[i].route),
                       ),
                     Text(l.dbRouteHelp),
                   ],
@@ -499,15 +490,14 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                         title: Text(l.dbMongoSrv),
                         onChanged: _busy ? null : (v) => setState(() => _srv = v!),
                       ),
-                      DropdownButtonFormField<DbMongoReadPreference>(
-                        initialValue: _readPreference,
-                        isExpanded: true,
-                        decoration: InputDecoration(labelText: l.dbMongoReadPreference),
+                      GlassDropdownField<DbMongoReadPreference>(
+                        value: _readPreference,
+                        label: l.dbMongoReadPreference,
                         items: [
                           for (final preference in DbMongoReadPreference.values)
-                            DropdownMenuItem(value: preference, child: Text(preference.wireName)),
+                            GlassSelectItem(value: preference, label: preference.wireName),
                         ],
-                        onChanged: _busy ? null : (v) => setState(() => _readPreference = v!),
+                        onChanged: _busy ? null : (v) => setState(() => _readPreference = v),
                       ),
                       Text(l.dbMongoReadHelp),
                     ],
@@ -516,14 +506,13 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                 ExpansionTile(
                   title: Text(l.dbGroup),
                   children: [
-                    DropdownButtonFormField<String>(
-                      initialValue: choices?.groups.any((g) => g.id == _group) == true ? _group : '',
-                      isExpanded: true,
-                      decoration: InputDecoration(labelText: l.dbGroup),
+                    GlassDropdownField<String>(
+                      value: choices?.groups.any((g) => g.id == _group) == true ? _group : '',
+                      label: l.dbGroup,
                       items: [
-                        DropdownMenuItem(value: '', child: Text(l.dbUngrouped)),
+                        GlassSelectItem(value: '', label: l.dbUngrouped),
                         for (final group in choices?.groups ?? const <DbGroupChoice>[])
-                          DropdownMenuItem(value: group.id, child: Text(group.label)),
+                          GlassSelectItem(value: group.id, label: group.label),
                       ],
                       onChanged: _busy ? null : (value) => setState(() => _group = value == '' ? null : value),
                     ),

@@ -153,16 +153,15 @@ class _DbExportDialogState extends ConsumerState<DbExportDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(widget.selection == null ? l.dbExportHelp : l.dbSensitiveClipboard),
-              DropdownButtonFormField<DbExportFormat>(
-                isExpanded: true,
-                initialValue: _format,
-                decoration: InputDecoration(labelText: l.dbExportFormat),
+              GlassDropdownField<DbExportFormat>(
+                value: _format,
+                label: l.dbExportFormat,
                 items: [
                   for (final format in DbExportFormat.values)
                     if (format != DbExportFormat.insert || widget.session.engine.sql)
-                      DropdownMenuItem(value: format, child: Text(format.name.toUpperCase())),
+                      GlassSelectItem(value: format, label: format.name.toUpperCase()),
                 ],
-                onChanged: _busy ? null : (v) => setState(() => _format = v!),
+                onChanged: _busy ? null : (v) => setState(() => _format = v),
               ),
               if (_format == DbExportFormat.csv || _format == DbExportFormat.tsv) ...[
                 CheckboxListTile(

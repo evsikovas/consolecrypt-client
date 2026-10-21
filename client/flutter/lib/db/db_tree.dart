@@ -72,6 +72,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
   late final DbScope _scope = ref.read(dbScopeProvider);
   final _branches = <String, _Branch>{}, _expanded = <String>{};
   String _filter = '';
+  String? _selected;
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(dbScopeProvider));
   @override
   void initState() {
@@ -200,26 +201,62 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
     return rows;
   }
 
+  /// Actions of one object, offered from the row menu and right click.
+  List<GlassMenuEntry<String>> _menu(AppLocalizations l, DbObjectRef object) => [
+    if (const [
+      DbObjectKind.table,
+      DbObjectKind.view,
+      DbObjectKind.materializedView,
+      DbObjectKind.collection,
+      DbObjectKind.redisKey,
+      DbObjectKind.redisDatabase,
+    ].contains(object.kind))
+      GlassMenuItem(value: 'query', label: l.dbFirstRows, icon: Icons.table_rows_outlined),
+    GlassMenuItem(value: 'insert', label: l.dbInsertName, icon: Icons.input_rounded),
+    if (_describable.contains(object.kind)) GlassMenuItem(value: 'ddl', label: l.dbDdl, icon: Icons.code_rounded),
+    if (widget.service is DbObjectInspectService) ...[
+      GlassMenuItem(value: 'inspect', label: l.dbInspect, icon: Icons.info_outline_rounded),
+      if (object.kind == DbObjectKind.collection)
+        GlassMenuItem(value: 'sample', label: l.dbSampleSchema, icon: Icons.schema_outlined),
+    ],
+  ];
+
+  Future<void> _menuAt(DbObjectRef object, Rect anchor) async {
+    final value = await showGlassMenu<String>(context: context, anchor: anchor, entries: _menu(context.l10n, object));
+    if (value != null && _current) await _action(value, object);
+  }
+
+  void _toggle(DbObjectRef object) {
+    final expanded = _expanded.contains(object.id);
+    setState(() => expanded ? _expanded.remove(object.id) : _expanded.add(object.id));
+    if (!expanded) unawaited(_load(object));
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.watch(dbScopeProvider);
     if (!_current) return const SizedBox.shrink();
-    final l = context.l10n, rows = _visible();
+    final l = context.l10n, tokens = GlassTokens.of(context), p = tokens.palette, rows = _visible();
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.fromLTRB(GlassSpacing.s8, GlassSpacing.s8, GlassSpacing.s4, GlassSpacing.s6),
           child: Row(
             children: [
               Expanded(
-                child: TextField(
-                  decoration: InputDecoration(labelText: l.dbTreeSearch),
+                child: GlassField(
+                  key: const ValueKey('db-tree-search'),
+                  search: true,
+                  placeholder: l.dbTreeSearch,
                   onChanged: (v) => setState(() => _filter = v.toLowerCase()),
                 ),
               ),
-              IconButton(
+              GlassIconButton(
+                key: const ValueKey('db-tree-refresh'),
+                icon: Icons.refresh_rounded,
                 tooltip: l.commonRetry,
-                icon: const Icon(Icons.refresh),
+                style: GlassIconButtonStyle.plain,
                 onPressed: () {
                   _expanded.clear();
                   _branches.clear();
@@ -230,72 +267,128 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            itemCount: rows.length,
-            itemBuilder: (context, index) {
-              final (node, parent, depth) = rows[index];
-              if (node == null) {
-                final branch = _branches[parent?.id ?? '']!;
-                return Padding(
-                  padding: EdgeInsets.only(left: depth * 12.0),
-                  child: branch.loading
-                      ? const LinearProgressIndicator()
-                      : TextButton(
-                          onPressed: () => _load(parent, more: branch.cursor != null, refresh: branch.failed),
-                          child: Text(branch.failed ? l.commonRetry : l.dbLoadMore),
+          child: ScrollEdgeEffect(
+            bottom: true,
+            extent: 12,
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(GlassSpacing.s4, 0, GlassSpacing.s4, GlassSpacing.s8),
+              itemCount: rows.length,
+              itemExtent: 28,
+              itemBuilder: (context, index) {
+                final (node, parent, depth) = rows[index];
+                final indent = 8.0 + depth * 14.0;
+                if (node == null) {
+                  final branch = _branches[parent?.id ?? '']!;
+                  return Padding(
+                    padding: EdgeInsets.only(left: indent + 18),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: branch.loading
+                          ? const SizedBox(width: 80, child: LinearProgressIndicator(minHeight: 2))
+                          : GlassButton.plain(
+                              label: branch.failed ? l.commonRetry : l.dbLoadMore,
+                              onPressed: () => _load(parent, more: branch.cursor != null, refresh: branch.failed),
+                            ),
+                    ),
+                  );
+                }
+                final object = node.reference, expanded = _expanded.contains(object.id);
+                final selected = _selected == object.id;
+                return GestureDetector(
+                  onSecondaryTapUp: (details) => unawaited(
+                    _menuAt(object, Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1)),
+                  ),
+                  onLongPressStart: (details) => unawaited(
+                    _menuAt(object, Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1)),
+                  ),
+                  onDoubleTap: node.hasChildren ? () => _toggle(object) : () => unawaited(_action('insert', object)),
+                  child: GlassInteractive(
+                    key: ValueKey('db-object-${object.id}'),
+                    selected: selected,
+                    semanticLabel: object.name,
+                    onPressed: () {
+                      setState(() => _selected = object.id);
+                      widget.onSelect?.call(object);
+                      if (node.hasChildren) _toggle(object);
+                    },
+                    builder: (context, state) => DecoratedBox(
+                      decoration: ShapeDecoration(
+                        color: selected
+                            ? tokens.sidebarSelection
+                            : state.hovered
+                            ? tokens.surfaces.fillHover
+                            : Colors.transparent,
+                        shape: GlassRadii.shape(tokens.radii.row),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.only(left: indent, right: 2),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              child: node.hasChildren
+                                  ? Icon(
+                                      expanded ? Icons.expand_more_rounded : Icons.chevron_right_rounded,
+                                      size: 16,
+                                      color: tokens.secondaryLabel,
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              _kindIcon(node),
+                              size: 15,
+                              color: node.primaryKey
+                                  ? p.warning
+                                  : node.foreignKey != null
+                                  ? p.accent
+                                  : tokens.secondaryLabel,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                object.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: (selected ? tokens.typography.bodyEmph : tokens.typography.body).copyWith(
+                                  color: selected ? p.accent : p.label,
+                                ),
+                              ),
+                            ),
+                            if (node.detail case final detail? when detail.isNotEmpty) ...[
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  detail,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: tokens.typography.caption.copyWith(color: p.tertiary),
+                                ),
+                              ),
+                            ] else
+                              const Spacer(),
+                            if (state.hovered || selected)
+                              GlassMenuButton<String>(
+                                key: ValueKey('db-object-menu-${object.id}'),
+                                entries: _menu(l, object),
+                                onSelected: (value) => unawaited(_action(value, object)),
+                                builder: (context, open) => GlassIconButton(
+                                  icon: Icons.more_horiz_rounded,
+                                  tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+                                  size: 22,
+                                  iconSize: 14,
+                                  style: GlassIconButtonStyle.plain,
+                                  onPressed: open,
+                                ),
+                              ),
+                          ],
                         ),
+                      ),
+                    ),
+                  ),
                 );
-              }
-              final object = node.reference, expanded = _expanded.contains(node.reference.id);
-              return Padding(
-                padding: EdgeInsets.only(left: depth * 12.0),
-                child: ListTile(
-                  key: ValueKey('db-object-${object.id}'),
-                  leading: node.hasChildren
-                      ? IconButton(
-                          icon: Icon(expanded ? Icons.expand_more : Icons.chevron_right),
-                          onPressed: () {
-                            setState(() {
-                              if (!_expanded.remove(object.id)) _expanded.add(object.id);
-                            });
-                            if (!expanded) _load(object);
-                          },
-                        )
-                      : Icon(_kindIcon(node), size: 20),
-                  title: Row(
-                    children: [
-                      if (node.hasChildren) ...[Icon(_kindIcon(node), size: 16), const SizedBox(width: 6)],
-                      Expanded(child: Text(object.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                    ],
-                  ),
-                  subtitle: node.detail == null
-                      ? null
-                      : Text(node.detail!, maxLines: 2, overflow: TextOverflow.ellipsis),
-                  onTap: () => widget.onSelect?.call(object),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (a) => _action(a, object),
-                    itemBuilder: (_) => [
-                      PopupMenuItem(value: 'insert', child: Text(l.dbInsertName)),
-                      if (const [
-                        DbObjectKind.table,
-                        DbObjectKind.view,
-                        DbObjectKind.materializedView,
-                        DbObjectKind.collection,
-                        DbObjectKind.redisKey,
-                        DbObjectKind.redisDatabase,
-                      ].contains(object.kind))
-                        PopupMenuItem(value: 'query', child: Text(l.dbFirstRows)),
-                      if (_describable.contains(object.kind)) PopupMenuItem(value: 'ddl', child: Text(l.dbDdl)),
-                      if (widget.service is DbObjectInspectService) ...[
-                        PopupMenuItem(value: 'inspect', child: Text(l.dbInspect)),
-                        if (object.kind == DbObjectKind.collection)
-                          PopupMenuItem(value: 'sample', child: Text(l.dbSampleSchema)),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            },
+              },
+            ),
           ),
         ),
       ],
