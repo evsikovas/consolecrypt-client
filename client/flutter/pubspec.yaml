@@ -43,7 +43,7 @@ dependencies:
   # Native open/save/folder dialogs for backups (flutter.dev, BSD-3-Clause).
   file_selector: ^1.1.0
   # Declarative iTerm colour preset import (MIT); never executes XML content.
-  xml: ^7.0.1
+  xml: ^7.1.0
   # Drop files from Finder/Explorer into the SFTP browser = upload (Apache-2.0;
   # MixinNetwork). Drop-in only; drag-out is deferred (lib/sftp/widgets/sftp_drop_target.dart).
   desktop_drop: ^0.8.4
