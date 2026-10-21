@@ -127,55 +127,100 @@ pub async fn vault_unlock_with_passphrase(passphrase: Vec<u8>) -> Result<(), Bri
     with_core(move |c| async move { Ok(c.unlock_with_passphrase(passphrase).await?) }).await
 }
 
-/// OS / biometric unlock via the device envelope. Needs a fresh grant of
-/// the OS authenticator (see [`vault_unlock_with_device_attested`]); without
-/// one it fails with `os_auth_failed`.
-pub async fn vault_unlock_with_device() -> Result<(), BridgeError> {
-    with_core(move |c| async move { Ok(c.unlock_with_device().await?) }).await
+/// Device unlock (S5): the core asks the OS (Touch ID / Windows Hello /
+/// keyring) to release the profile's unlock key, showing `reason`. Cancel
+/// or failure → `os_auth_failed`; a changed enrollment →
+/// `os_auth_invalidated` (unlock with the passphrase, enable again).
+/// Android uses [`vault_unlock_with_device_material`].
+pub async fn vault_unlock_with_device(reason: String) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.unlock_with_device(reason).await?) }).await
 }
 
-/// Unlock with the device envelope after the UI's OS prompt (Touch ID)
-/// succeeded **just now**: grants the core's authenticator once, then
-/// unlocks (the device key never leaves the core).
-pub async fn vault_unlock_with_device_attested() -> Result<(), BridgeError> {
-    let auth = crate::api::app::os_auth();
-    auth.grant_once();
-    let r = with_core(move |c| async move { Ok(c.unlock_with_device().await?) }).await;
-    auth.revoke();
-    r
-}
-
-/// Forgot passphrase on a trusted device after the UI's OS prompt
-/// succeeded just now (see [`vault_unlock_with_device_attested`]).
-pub async fn vault_reset_passphrase_with_device_attested(next: Vec<u8>) -> Result<(), BridgeError> {
+/// Forgot passphrase with device unlock on: OS prompt (`reason`) → set
+/// `next` as the new passphrase.
+pub async fn vault_reset_passphrase_with_device(
+    next: Vec<u8>,
+    reason: String,
+) -> Result<(), BridgeError> {
     let next = secret_string("new_passphrase", next)?;
-    let auth = crate::api::app::os_auth();
-    auth.grant_once();
-    let r =
-        with_core(move |c| async move { Ok(c.reset_passphrase_with_device(next).await?) }).await;
-    auth.revoke();
-    r
+    with_core(move |c| async move { Ok(c.reset_passphrase_with_device(next, reason).await?) }).await
 }
 
-/// Whether "Unlock with Touch ID / Windows Hello" can be offered →
-/// `DeviceUnlockDto` (`available`, `kind`, `has_device_envelope`,
-/// `not_enrolled`).
+/// Device unlock state of the open profile → `DeviceUnlockDto`
+/// (`enabled`, `available`, `kind`, `has_vault`, `not_enrolled`,
+/// `protection`, `external`, `reoffer`).
 pub async fn vault_device_unlock_info() -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.device_unlock_info().await?) }).await
 }
 
-/// Change this profile's local opt-in. Enabling must follow a successful
-/// native OS prompt just now; the core consumes the grant and verifies the
-/// device envelope. Disabling needs an unlocked vault but no OS prompt.
-pub async fn vault_set_device_unlock_enabled_attested(enabled: bool) -> Result<(), BridgeError> {
-    let auth = crate::api::app::os_auth();
-    if enabled {
-        auth.grant_once();
-    }
-    let r =
-        with_core(move |c| async move { Ok(c.set_device_unlock_enabled(enabled).await?) }).await;
-    auth.revoke();
-    r
+/// Switch device unlock on (the OS may prompt with `reason`) or off. Needs
+/// an unlocked vault. `allow_unprotected`: the user confirmed the warning
+/// for a platform without OS protection (`protection == "convenience"`).
+pub async fn vault_set_device_unlock_enabled(
+    enabled: bool,
+    reason: String,
+    allow_unprotected: bool,
+) -> Result<(), BridgeError> {
+    with_core(move |c| async move {
+        Ok(
+            c.set_device_unlock_enabled(enabled, reason, allow_unprotected)
+                .await?,
+        )
+    })
+    .await
+}
+
+/// The user declined switching device unlock on again (after migration or
+/// a fingerprint change).
+pub async fn vault_dismiss_device_unlock_offer() -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.dismiss_device_unlock_offer().await?) }).await
+}
+
+// ---- Android: the app performs the OS step (BiometricPrompt + Keystore) ----
+
+/// The Keystore blob the app decrypts inside `BiometricPrompt` (`None` =
+/// device unlock off).
+pub async fn vault_device_unlock_handle() -> Result<Option<Vec<u8>>, BridgeError> {
+    with_core(move |c| async move { Ok(c.device_unlock_handle().await?) }).await
+}
+
+/// Unlock with the material the app's `CryptoObject` decrypted. A wrong
+/// value cannot open the vault.
+pub async fn vault_unlock_with_device_material(material: Vec<u8>) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.unlock_with_device_material(material).await?) }).await
+}
+
+/// Switch device unlock on with material the app generated and encrypted
+/// with its Keystore key inside a successful `BiometricPrompt` (`handle`:
+/// that ciphertext, `kind`: `fingerprint` | `face_id` | `device_credential`).
+pub async fn vault_enable_device_unlock_with_material(
+    material: Vec<u8>,
+    handle: Vec<u8>,
+    kind: String,
+) -> Result<(), BridgeError> {
+    with_core(move |c| async move {
+        Ok(c.enable_device_unlock_with_material(material, handle, kind)
+            .await?)
+    })
+    .await
+}
+
+/// The app's Keystore key was permanently invalidated (biometrics changed).
+pub async fn vault_device_unlock_invalidated() -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.device_unlock_invalidated().await?) }).await
+}
+
+/// Android variant of [`vault_reset_passphrase_with_device`].
+pub async fn vault_reset_passphrase_with_device_material(
+    material: Vec<u8>,
+    next: Vec<u8>,
+) -> Result<(), BridgeError> {
+    let next = secret_string("new_passphrase", next)?;
+    with_core(move |c| async move {
+        Ok(c.reset_passphrase_with_device_material(material, next)
+            .await?)
+    })
+    .await
 }
 
 pub async fn vault_unlock_with_recovery_key(recovery_input: Vec<u8>) -> Result<(), BridgeError> {
@@ -237,12 +282,6 @@ pub async fn vault_change_passphrase(current: Vec<u8>, next: Vec<u8>) -> Result<
     let current = secret_string("current_passphrase", current)?;
     let next = secret_string("new_passphrase", next)?;
     with_core(move |c| async move { Ok(c.change_passphrase(current, next).await?) }).await
-}
-
-/// Forgot passphrase on a trusted device (OS authentication).
-pub async fn vault_reset_passphrase_with_device(next: Vec<u8>) -> Result<(), BridgeError> {
-    let next = secret_string("new_passphrase", next)?;
-    with_core(move |c| async move { Ok(c.reset_passphrase_with_device(next).await?) }).await
 }
 
 /// Forgot passphrase, Recovery Key: unlock + set a new passphrase.

@@ -4,7 +4,7 @@
 use crate::api::error::BridgeError;
 use crate::frb_generated::StreamSink;
 use crate::state::{self, run, to_json};
-use cc_app_core::platform::{ExternalOsAuthenticator, OsAuthAvailability, OsAuthKind};
+use cc_app_core::platform::{ExternalDeviceKeys, OsAuthKind};
 use cc_app_core::{AppConfig, AppCore, AppError, HostKeyDecision, KdfPolicy, SecureStoreKind};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -69,42 +69,42 @@ pub enum HostKeyAnswer {
     Reject,
 }
 
-/// What the OS offers for user-presence checks (reported by the UI after
-/// querying LocalAuthentication / Windows Hello).
+/// What the OS offers for user-presence checks (reported by the Android
+/// app after querying `BiometricManager`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OsAuthKindChoice {
     TouchId,
     FaceId,
+    /// Android fingerprint / class-3 biometrics.
+    Fingerprint,
     WindowsHello,
     /// OS account password / PIN.
     DeviceCredential,
 }
 
-/// The core's OS authenticator: fed by the UI's platform prompt (Touch ID
-/// via the `consolecrypt/local_auth` channel), consumed once by the next
-/// device unlock / passphrase reset (ADR-0101 §8, ADR-0107).
-pub(crate) fn os_auth() -> Arc<ExternalOsAuthenticator> {
-    static OS_AUTH: OnceLock<Arc<ExternalOsAuthenticator>> = OnceLock::new();
-    OS_AUTH
-        .get_or_init(|| Arc::new(ExternalOsAuthenticator::new()))
+/// Android's device unlock protector: the app runs `BiometricPrompt` with
+/// a Keystore `CryptoObject` and hands the core the decrypted material
+/// (S5). Everywhere else the core asks the OS itself (Secure Enclave,
+/// Windows Hello, Secret Service).
+pub(crate) fn external_device_keys() -> Arc<ExternalDeviceKeys> {
+    static KEYS: OnceLock<Arc<ExternalDeviceKeys>> = OnceLock::new();
+    KEYS.get_or_init(|| Arc::new(ExternalDeviceKeys::new()))
         .clone()
 }
 
-/// Report what the OS can do for user-presence checks (`None` = nothing;
-/// `not_enrolled` = hardware without enrolled biometrics / passcode).
+/// Android only: report what `BiometricManager` offers (`None` = nothing;
+/// `not_enrolled` = no biometrics / screen lock). Affects only what the UI
+/// offers — the core never trusts it for unlocking. No effect elsewhere.
 #[flutter_rust_bridge::frb(sync)]
 pub fn os_auth_report(kind: Option<OsAuthKindChoice>, not_enrolled: bool) {
-    let availability = match kind {
-        Some(k) => OsAuthAvailability::Available(match k {
-            OsAuthKindChoice::TouchId => OsAuthKind::TouchId,
-            OsAuthKindChoice::FaceId => OsAuthKind::FaceId,
-            OsAuthKindChoice::WindowsHello => OsAuthKind::WindowsHello,
-            OsAuthKindChoice::DeviceCredential => OsAuthKind::DeviceCredential,
-        }),
-        None if not_enrolled => OsAuthAvailability::NotEnrolled,
-        None => OsAuthAvailability::Unsupported,
-    };
-    os_auth().set_availability(availability);
+    let kind = kind.map(|k| match k {
+        OsAuthKindChoice::TouchId => OsAuthKind::TouchId,
+        OsAuthKindChoice::FaceId => OsAuthKind::FaceId,
+        OsAuthKindChoice::Fingerprint => OsAuthKind::Fingerprint,
+        OsAuthKindChoice::WindowsHello => OsAuthKind::WindowsHello,
+        OsAuthKindChoice::DeviceCredential => OsAuthKind::DeviceCredential,
+    });
+    external_device_keys().set_status(kind, not_enrolled);
 }
 
 #[flutter_rust_bridge::frb(init)]
@@ -164,11 +164,16 @@ pub async fn core_init(config: CoreConfig) -> Result<CoreInfo, BridgeError> {
     // A global subscriber can only be installed once per process.
     let _ = cc_app_core::logging::init(directives.as_deref());
     let app_config = app_config(&config);
-    let auth = os_auth();
+    let device_keys: Option<Arc<dyn cc_app_core::platform::DeviceKeyProtector>> =
+        if cfg!(target_os = "android") && app_config.secure_store == SecureStoreKind::Os {
+            Some(external_device_keys())
+        } else {
+            None
+        };
     // OS keychain initialization is blocking. In particular, Secret Service's
     // blocking executor must never be entered from a Tokio async worker.
     let core = run(initialize_blocking(move || {
-        AppCore::with_os_authenticator(app_config, auth).map_err(BridgeError::from)
+        AppCore::with_device_keys(app_config, device_keys).map_err(BridgeError::from)
     }))
     .await?;
     let out = info(&core, false);

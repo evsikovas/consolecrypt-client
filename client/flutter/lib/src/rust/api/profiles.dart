@@ -74,31 +74,69 @@ Future<String> vaultJoinWithRecoveryKey({
 Future<void> vaultUnlockWithPassphrase({required List<int> passphrase}) =>
     RustLib.instance.api.crateApiProfilesVaultUnlockWithPassphrase(passphrase: passphrase);
 
-/// OS / biometric unlock via the device envelope. Needs a fresh grant of
-/// the OS authenticator (see [`vault_unlock_with_device_attested`]); without
-/// one it fails with `os_auth_failed`.
-Future<void> vaultUnlockWithDevice() => RustLib.instance.api.crateApiProfilesVaultUnlockWithDevice();
+/// Device unlock (S5): the core asks the OS (Touch ID / Windows Hello /
+/// keyring) to release the profile's unlock key, showing `reason`. Cancel
+/// or failure → `os_auth_failed`; a changed enrollment →
+/// `os_auth_invalidated` (unlock with the passphrase, enable again).
+/// Android uses [`vault_unlock_with_device_material`].
+Future<void> vaultUnlockWithDevice({required String reason}) =>
+    RustLib.instance.api.crateApiProfilesVaultUnlockWithDevice(reason: reason);
 
-/// Unlock with the device envelope after the UI's OS prompt (Touch ID)
-/// succeeded **just now**: grants the core's authenticator once, then
-/// unlocks (the device key never leaves the core).
-Future<void> vaultUnlockWithDeviceAttested() => RustLib.instance.api.crateApiProfilesVaultUnlockWithDeviceAttested();
+/// Forgot passphrase with device unlock on: OS prompt (`reason`) → set
+/// `next` as the new passphrase.
+Future<void> vaultResetPassphraseWithDevice({required List<int> next, required String reason}) =>
+    RustLib.instance.api.crateApiProfilesVaultResetPassphraseWithDevice(next: next, reason: reason);
 
-/// Forgot passphrase on a trusted device after the UI's OS prompt
-/// succeeded just now (see [`vault_unlock_with_device_attested`]).
-Future<void> vaultResetPassphraseWithDeviceAttested({required List<int> next}) =>
-    RustLib.instance.api.crateApiProfilesVaultResetPassphraseWithDeviceAttested(next: next);
-
-/// Whether "Unlock with Touch ID / Windows Hello" can be offered →
-/// `DeviceUnlockDto` (`available`, `kind`, `has_device_envelope`,
-/// `not_enrolled`).
+/// Device unlock state of the open profile → `DeviceUnlockDto`
+/// (`enabled`, `available`, `kind`, `has_vault`, `not_enrolled`,
+/// `protection`, `external`, `reoffer`).
 Future<String> vaultDeviceUnlockInfo() => RustLib.instance.api.crateApiProfilesVaultDeviceUnlockInfo();
 
-/// Change this profile's local opt-in. Enabling must follow a successful
-/// native OS prompt just now; the core consumes the grant and verifies the
-/// device envelope. Disabling needs an unlocked vault but no OS prompt.
-Future<void> vaultSetDeviceUnlockEnabledAttested({required bool enabled}) =>
-    RustLib.instance.api.crateApiProfilesVaultSetDeviceUnlockEnabledAttested(enabled: enabled);
+/// Switch device unlock on (the OS may prompt with `reason`) or off. Needs
+/// an unlocked vault. `allow_unprotected`: the user confirmed the warning
+/// for a platform without OS protection (`protection == "convenience"`).
+Future<void> vaultSetDeviceUnlockEnabled({
+  required bool enabled,
+  required String reason,
+  required bool allowUnprotected,
+}) => RustLib.instance.api.crateApiProfilesVaultSetDeviceUnlockEnabled(
+  enabled: enabled,
+  reason: reason,
+  allowUnprotected: allowUnprotected,
+);
+
+/// The user declined switching device unlock on again (after migration or
+/// a fingerprint change).
+Future<void> vaultDismissDeviceUnlockOffer() => RustLib.instance.api.crateApiProfilesVaultDismissDeviceUnlockOffer();
+
+/// The Keystore blob the app decrypts inside `BiometricPrompt` (`None` =
+/// device unlock off).
+Future<Uint8List?> vaultDeviceUnlockHandle() => RustLib.instance.api.crateApiProfilesVaultDeviceUnlockHandle();
+
+/// Unlock with the material the app's `CryptoObject` decrypted. A wrong
+/// value cannot open the vault.
+Future<void> vaultUnlockWithDeviceMaterial({required List<int> material}) =>
+    RustLib.instance.api.crateApiProfilesVaultUnlockWithDeviceMaterial(material: material);
+
+/// Switch device unlock on with material the app generated and encrypted
+/// with its Keystore key inside a successful `BiometricPrompt` (`handle`:
+/// that ciphertext, `kind`: `fingerprint` | `face_id` | `device_credential`).
+Future<void> vaultEnableDeviceUnlockWithMaterial({
+  required List<int> material,
+  required List<int> handle,
+  required String kind,
+}) => RustLib.instance.api.crateApiProfilesVaultEnableDeviceUnlockWithMaterial(
+  material: material,
+  handle: handle,
+  kind: kind,
+);
+
+/// The app's Keystore key was permanently invalidated (biometrics changed).
+Future<void> vaultDeviceUnlockInvalidated() => RustLib.instance.api.crateApiProfilesVaultDeviceUnlockInvalidated();
+
+/// Android variant of [`vault_reset_passphrase_with_device`].
+Future<void> vaultResetPassphraseWithDeviceMaterial({required List<int> material, required List<int> next}) =>
+    RustLib.instance.api.crateApiProfilesVaultResetPassphraseWithDeviceMaterial(material: material, next: next);
 
 Future<void> vaultUnlockWithRecoveryKey({required List<int> recoveryInput}) =>
     RustLib.instance.api.crateApiProfilesVaultUnlockWithRecoveryKey(recoveryInput: recoveryInput);
@@ -127,10 +165,6 @@ Future<String> vaultRegenerateRecoveryKit() => RustLib.instance.api.crateApiProf
 
 Future<void> vaultChangePassphrase({required List<int> current, required List<int> next}) =>
     RustLib.instance.api.crateApiProfilesVaultChangePassphrase(current: current, next: next);
-
-/// Forgot passphrase on a trusted device (OS authentication).
-Future<void> vaultResetPassphraseWithDevice({required List<int> next}) =>
-    RustLib.instance.api.crateApiProfilesVaultResetPassphraseWithDevice(next: next);
 
 /// Forgot passphrase, Recovery Key: unlock + set a new passphrase.
 Future<void> vaultResetPassphraseWithRecoveryKey({required List<int> recoveryInput, required List<int> next}) =>

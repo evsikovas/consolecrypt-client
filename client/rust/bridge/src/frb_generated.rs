@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1510930027;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1591620141;
 
 // Section: executor
 
@@ -14472,6 +14472,41 @@ fn wire__crate__api__profiles__vault_create_impl(
         },
     )
 }
+fn wire__crate__api__profiles__vault_device_unlock_handle_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vault_device_unlock_handle",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, crate::api::error::BridgeError>(
+                    (move || async move {
+                        let output_ok = crate::api::profiles::vault_device_unlock_handle().await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__profiles__vault_device_unlock_info_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -14499,6 +14534,122 @@ fn wire__crate__api__profiles__vault_device_unlock_info_impl(
                 transform_result_sse::<_, crate::api::error::BridgeError>(
                     (move || async move {
                         let output_ok = crate::api::profiles::vault_device_unlock_info().await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__profiles__vault_device_unlock_invalidated_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vault_device_unlock_invalidated",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, crate::api::error::BridgeError>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::profiles::vault_device_unlock_invalidated().await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__profiles__vault_dismiss_device_unlock_offer_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vault_dismiss_device_unlock_offer",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, crate::api::error::BridgeError>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::profiles::vault_dismiss_device_unlock_offer().await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__profiles__vault_enable_device_unlock_with_material_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vault_enable_device_unlock_with_material",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_material = <Vec<u8>>::sse_decode(&mut deserializer);
+            let api_handle = <Vec<u8>>::sse_decode(&mut deserializer);
+            let api_kind = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, crate::api::error::BridgeError>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::profiles::vault_enable_device_unlock_with_material(
+                                api_material,
+                                api_handle,
+                                api_kind,
+                            )
+                            .await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -14792,13 +14943,15 @@ fn wire__crate__api__profiles__vault_reset_passphrase_with_device_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_next = <Vec<u8>>::sse_decode(&mut deserializer);
+            let api_reason = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, crate::api::error::BridgeError>(
                     (move || async move {
-                        let output_ok =
-                            crate::api::profiles::vault_reset_passphrase_with_device(api_next)
-                                .await?;
+                        let output_ok = crate::api::profiles::vault_reset_passphrase_with_device(
+                            api_next, api_reason,
+                        )
+                        .await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -14807,7 +14960,7 @@ fn wire__crate__api__profiles__vault_reset_passphrase_with_device_impl(
         },
     )
 }
-fn wire__crate__api__profiles__vault_reset_passphrase_with_device_attested_impl(
+fn wire__crate__api__profiles__vault_reset_passphrase_with_device_material_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -14815,7 +14968,7 @@ fn wire__crate__api__profiles__vault_reset_passphrase_with_device_attested_impl(
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "vault_reset_passphrase_with_device_attested",
+            debug_name: "vault_reset_passphrase_with_device_material",
             port: Some(port_),
             mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
@@ -14829,13 +14982,15 @@ fn wire__crate__api__profiles__vault_reset_passphrase_with_device_attested_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_material = <Vec<u8>>::sse_decode(&mut deserializer);
             let api_next = <Vec<u8>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, crate::api::error::BridgeError>(
                     (move || async move {
                         let output_ok =
-                            crate::api::profiles::vault_reset_passphrase_with_device_attested(
+                            crate::api::profiles::vault_reset_passphrase_with_device_material(
+                                api_material,
                                 api_next,
                             )
                             .await?;
@@ -14889,7 +15044,7 @@ fn wire__crate__api__profiles__vault_reset_passphrase_with_recovery_key_impl(
         },
     )
 }
-fn wire__crate__api__profiles__vault_set_device_unlock_enabled_attested_impl(
+fn wire__crate__api__profiles__vault_set_device_unlock_enabled_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -14897,7 +15052,7 @@ fn wire__crate__api__profiles__vault_set_device_unlock_enabled_attested_impl(
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "vault_set_device_unlock_enabled_attested",
+            debug_name: "vault_set_device_unlock_enabled",
             port: Some(port_),
             mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
@@ -14912,15 +15067,18 @@ fn wire__crate__api__profiles__vault_set_device_unlock_enabled_attested_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_enabled = <bool>::sse_decode(&mut deserializer);
+            let api_reason = <String>::sse_decode(&mut deserializer);
+            let api_allow_unprotected = <bool>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, crate::api::error::BridgeError>(
                     (move || async move {
-                        let output_ok =
-                            crate::api::profiles::vault_set_device_unlock_enabled_attested(
-                                api_enabled,
-                            )
-                            .await?;
+                        let output_ok = crate::api::profiles::vault_set_device_unlock_enabled(
+                            api_enabled,
+                            api_reason,
+                            api_allow_unprotected,
+                        )
+                        .await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -15023,11 +15181,13 @@ fn wire__crate__api__profiles__vault_unlock_with_device_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_reason = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, crate::api::error::BridgeError>(
                     (move || async move {
-                        let output_ok = crate::api::profiles::vault_unlock_with_device().await?;
+                        let output_ok =
+                            crate::api::profiles::vault_unlock_with_device(api_reason).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -15036,7 +15196,7 @@ fn wire__crate__api__profiles__vault_unlock_with_device_impl(
         },
     )
 }
-fn wire__crate__api__profiles__vault_unlock_with_device_attested_impl(
+fn wire__crate__api__profiles__vault_unlock_with_device_material_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -15044,7 +15204,7 @@ fn wire__crate__api__profiles__vault_unlock_with_device_attested_impl(
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "vault_unlock_with_device_attested",
+            debug_name: "vault_unlock_with_device_material",
             port: Some(port_),
             mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
@@ -15058,12 +15218,14 @@ fn wire__crate__api__profiles__vault_unlock_with_device_attested_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_material = <Vec<u8>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, crate::api::error::BridgeError>(
                     (move || async move {
                         let output_ok =
-                            crate::api::profiles::vault_unlock_with_device_attested().await?;
+                            crate::api::profiles::vault_unlock_with_device_material(api_material)
+                                .await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -15648,8 +15810,9 @@ impl SseDecode for crate::api::app::OsAuthKindChoice {
         return match inner {
             0 => crate::api::app::OsAuthKindChoice::TouchId,
             1 => crate::api::app::OsAuthKindChoice::FaceId,
-            2 => crate::api::app::OsAuthKindChoice::WindowsHello,
-            3 => crate::api::app::OsAuthKindChoice::DeviceCredential,
+            2 => crate::api::app::OsAuthKindChoice::Fingerprint,
+            3 => crate::api::app::OsAuthKindChoice::WindowsHello,
+            4 => crate::api::app::OsAuthKindChoice::DeviceCredential,
             _ => unreachable!("Invalid variant for OsAuthKindChoice: {}", inner),
         };
     }
@@ -17024,101 +17187,125 @@ fn pde_ffi_dispatcher_primary_impl(
             data_len,
         ),
         371 => wire__crate__api__profiles__vault_create_impl(port, ptr, rust_vec_len, data_len),
-        372 => wire__crate__api__profiles__vault_device_unlock_info_impl(
+        372 => wire__crate__api__profiles__vault_device_unlock_handle_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        373 => wire__crate__api__profiles__vault_has_pending_recovery_kit_impl(
+        373 => wire__crate__api__profiles__vault_device_unlock_info_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        374 => {
+        374 => wire__crate__api__profiles__vault_device_unlock_invalidated_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        375 => wire__crate__api__profiles__vault_dismiss_device_unlock_offer_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        376 => wire__crate__api__profiles__vault_enable_device_unlock_with_material_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        377 => wire__crate__api__profiles__vault_has_pending_recovery_kit_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        378 => {
             wire__crate__api__profiles__vault_is_unlocked_impl(port, ptr, rust_vec_len, data_len)
         }
-        375 => wire__crate__api__profiles__vault_join_with_passphrase_impl(
+        379 => wire__crate__api__profiles__vault_join_with_passphrase_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        376 => wire__crate__api__profiles__vault_join_with_recovery_key_impl(
+        380 => wire__crate__api__profiles__vault_join_with_recovery_key_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        377 => wire__crate__api__profiles__vault_lock_impl(port, ptr, rust_vec_len, data_len),
-        378 => wire__crate__api__profiles__vault_recovery_kit_available_impl(
+        381 => wire__crate__api__profiles__vault_lock_impl(port, ptr, rust_vec_len, data_len),
+        382 => wire__crate__api__profiles__vault_recovery_kit_available_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        379 => wire__crate__api__profiles__vault_regenerate_recovery_kit_impl(
+        383 => wire__crate__api__profiles__vault_regenerate_recovery_kit_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        380 => wire__crate__api__profiles__vault_reset_passphrase_with_device_impl(
+        384 => wire__crate__api__profiles__vault_reset_passphrase_with_device_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        381 => wire__crate__api__profiles__vault_reset_passphrase_with_device_attested_impl(
+        385 => wire__crate__api__profiles__vault_reset_passphrase_with_device_material_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        382 => wire__crate__api__profiles__vault_reset_passphrase_with_recovery_key_impl(
+        386 => wire__crate__api__profiles__vault_reset_passphrase_with_recovery_key_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        383 => wire__crate__api__profiles__vault_set_device_unlock_enabled_attested_impl(
+        387 => wire__crate__api__profiles__vault_set_device_unlock_enabled_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        384 => {
+        388 => {
             wire__crate__api__inventory__vault_settings_get_impl(port, ptr, rust_vec_len, data_len)
         }
-        385 => {
+        389 => {
             wire__crate__api__inventory__vault_settings_save_impl(port, ptr, rust_vec_len, data_len)
         }
-        386 => wire__crate__api__profiles__vault_unlock_with_device_impl(
+        390 => wire__crate__api__profiles__vault_unlock_with_device_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        387 => wire__crate__api__profiles__vault_unlock_with_device_attested_impl(
+        391 => wire__crate__api__profiles__vault_unlock_with_device_material_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        388 => wire__crate__api__profiles__vault_unlock_with_passphrase_impl(
+        392 => wire__crate__api__profiles__vault_unlock_with_passphrase_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        389 => wire__crate__api__profiles__vault_unlock_with_recovery_key_impl(
+        393 => wire__crate__api__profiles__vault_unlock_with_recovery_key_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        390 => wire__crate__api__profiles__vault_verify_passphrase_impl(
+        394 => wire__crate__api__profiles__vault_verify_passphrase_impl(
             port,
             ptr,
             rust_vec_len,
@@ -17443,8 +17630,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::app::OsAuthKindChoice {
         match self {
             Self::TouchId => 0.into_dart(),
             Self::FaceId => 1.into_dart(),
-            Self::WindowsHello => 2.into_dart(),
-            Self::DeviceCredential => 3.into_dart(),
+            Self::Fingerprint => 2.into_dart(),
+            Self::WindowsHello => 3.into_dart(),
+            Self::DeviceCredential => 4.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -18263,8 +18451,9 @@ impl SseEncode for crate::api::app::OsAuthKindChoice {
             match self {
                 crate::api::app::OsAuthKindChoice::TouchId => 0,
                 crate::api::app::OsAuthKindChoice::FaceId => 1,
-                crate::api::app::OsAuthKindChoice::WindowsHello => 2,
-                crate::api::app::OsAuthKindChoice::DeviceCredential => 3,
+                crate::api::app::OsAuthKindChoice::Fingerprint => 2,
+                crate::api::app::OsAuthKindChoice::WindowsHello => 3,
+                crate::api::app::OsAuthKindChoice::DeviceCredential => 4,
                 _ => {
                     unimplemented!("");
                 }
