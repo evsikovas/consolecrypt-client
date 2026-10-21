@@ -8939,4 +8939,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerNoVolumes => 'No volumes on this engine.';
+
+  @override
+  String get workspaceForwardsEmptyHelp =>
+      'Forward a port from a Kubernetes pod or a Docker container; running forwards show here.';
 }

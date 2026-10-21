@@ -16159,6 +16159,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No volumes on this engine.'**
   String get dockerNoVolumes;
+
+  /// Empty shared port-forwards panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Forward a port from a Kubernetes pod or a Docker container; running forwards show here.'**
+  String get workspaceForwardsEmptyHelp;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

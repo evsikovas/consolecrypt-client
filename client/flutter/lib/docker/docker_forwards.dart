@@ -227,9 +227,12 @@ String dockerForwardLocalAddress(String address) =>
 /// Running Docker forwards: copyable address, traffic and a stop button.
 /// Refreshes every 3 s while visible and in the foreground.
 class DockerForwardsPanel extends ConsumerStatefulWidget {
-  const DockerForwardsPanel({required this.service, this.onClose, super.key});
+  const DockerForwardsPanel({required this.service, this.onClose, this.embedded = false, super.key});
   final DockerService service;
   final VoidCallback? onClose;
+
+  /// Inside the shared forwards panel: the cards only (nothing when empty).
+  final bool embedded;
   @override
   ConsumerState<DockerForwardsPanel> createState() => _DockerForwardsPanelState();
 }
@@ -282,6 +285,15 @@ class _DockerForwardsPanelState extends ConsumerState<DockerForwardsPanel> with 
     final tokens = GlassTokens.of(context);
     final result = ref.watch(dockerForwardsProvider);
     final forwards = result.value ?? const <DockerForward>[];
+    if (widget.embedded) {
+      return Column(
+        key: const ValueKey('docker-forwards-embedded'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final forward in forwards) ...[_card(context, forward), const SizedBox(height: GlassSpacing.s8)],
+        ],
+      );
+    }
     return ContentSurface(
       key: const ValueKey('docker-forwards-panel'),
       kind: ContentSurfaceKind.solid,

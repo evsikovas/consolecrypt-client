@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:consolecrypt/app/workspace_forwards.dart';
+import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/mock/mock_docker.dart';
@@ -330,15 +332,41 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('docker-forward-done')));
     await settle(tester);
 
-    // The Docker forwards panel opens on the right with the new forward.
-    expect(find.byKey(const ValueKey('docker-forwards-panel')), findsOneWidget);
-    final forward = (await service.forwards()).single;
-    expect(find.byKey(ValueKey('docker-forward-${forward.id}')), findsOneWidget);
+    // The shared right panel (with the Kubernetes forwards) opens.
+    final container = ProviderScope.containerOf(tester.element(find.byType(DockerScreen)));
+    expect(container.read(workspaceToolsProvider).selected, WorkspaceTool.forwards);
+    expect((await service.forwards()).single.containerName, 'shop-postgres-1');
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('the shared forwards panel lists and stops Docker forwards', (tester) async {
+    final service = _Docker();
+    final session = await service.connect(DockerHost.localId);
+    final container = (await service.containers(session.id)).firstWhere((c) => c.name == 'shop-postgres-1');
+    final forward = await service.startForward(session.id, container.id, remotePort: 5432);
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appServicesProvider.overrideWithValue(backend.services),
+          dockerServiceProvider.overrideWithValue(service),
+          dockerScopeProvider.overrideWithValue(const DockerScope('profile', true)),
+        ],
+        child: const MaterialApp(
+          locale: Locale('en'),
+          localizationsDelegates: [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: WorkspaceForwardsPanel()),
+        ),
+      ),
+    );
+    await settle(tester);
+    expect(find.text('Docker'), findsOneWidget);
     expect(find.text('→ shop-postgres-1:5432'), findsOneWidget);
     await tester.tap(find.byKey(ValueKey('docker-forward-stop-${forward.id}')));
     await settle(tester);
     expect(await service.forwards(), isEmpty);
-    expect(find.text('No port forwards'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

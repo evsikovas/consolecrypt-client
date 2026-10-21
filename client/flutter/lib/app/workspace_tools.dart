@@ -2,9 +2,12 @@ import 'package:consolecrypt/ai/ai_chat_screen.dart';
 import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/symbols.dart';
+import 'package:consolecrypt/app/workspace_forwards.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/docker/docker_providers.dart';
+import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_ai_host.dart';
 import 'package:consolecrypt/kubernetes/kube_ai_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_panel.dart';
@@ -17,7 +20,7 @@ import 'package:material_ui/material_ui.dart';
 /// Tools offered in this build (port forwards only with Kubernetes).
 List<WorkspaceTool> get workspaceTools => [
   for (final tool in WorkspaceTool.values)
-    if (tool != WorkspaceTool.forwards || kubernetesEnabled) tool,
+    if (tool != WorkspaceTool.forwards || kubernetesEnabled || dockerEnabled) tool,
 ];
 
 String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (tool) {
@@ -42,9 +45,16 @@ class WorkspaceToolRail extends ConsumerWidget {
     final selected = ref.watch(workspaceToolsProvider).selected;
     final l = context.l10n;
     final scope = ref.watch(kubeScopeProvider);
-    final forwards = kubernetesEnabled && scope.unlocked
-        ? (ref.watch(kubeForwardsProvider(scope)).value ?? const []).where((f) => f.state == 'running').length
+    final docker = dockerEnabled && ref.watch(dockerServiceProvider) != null
+        ? (ref.watch(dockerForwardsProvider).value ?? const [])
+              .where((f) => f.state == DockerForwardState.running)
+              .length
         : 0;
+    final forwards =
+        docker +
+        (kubernetesEnabled && scope.unlocked
+            ? (ref.watch(kubeForwardsProvider(scope)).value ?? const []).where((f) => f.state == 'running').length
+            : 0);
     return Padding(
       padding: integrated ? EdgeInsets.zero : const EdgeInsets.fromLTRB(8, 8, 0, 8),
       child: GlassSurface(
@@ -193,7 +203,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                         : switch (tool) {
                                             WorkspaceTool.ai => const _AiTool(),
                                             WorkspaceTool.snippets => const SnippetsScreen(embedded: true),
-                                            WorkspaceTool.forwards => const KubeForwardsPanel(embedded: true),
+                                            WorkspaceTool.forwards => const WorkspaceForwardsPanel(),
                                           },
                                   ),
                                 ),

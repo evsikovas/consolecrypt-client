@@ -290,9 +290,22 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
 
 /// Runtime-only forwards never become inventory items or survive profile lock.
 class KubeForwardsPanel extends ConsumerStatefulWidget {
-  const KubeForwardsPanel({this.sessionId, this.showEmpty = false, this.embedded = false, super.key});
+  const KubeForwardsPanel({
+    this.sessionId,
+    this.showEmpty = false,
+    this.embedded = false,
+    this.title,
+    this.bounded = true,
+    super.key,
+  });
   final String? sessionId;
   final bool showEmpty;
+
+  /// Section title instead of "Port forwards" (shared panel: "Kubernetes").
+  final String? title;
+
+  /// Limits the inline list height; the shared panel scrolls as a whole.
+  final bool bounded;
 
   /// Right workspace panel: fills the height, no section title.
   final bool embedded;
@@ -364,6 +377,13 @@ class _KubeForwardsPanelState extends ConsumerState<KubeForwardsPanel> with Widg
             separatorBuilder: (_, _) => const SizedBox(height: GlassSpacing.s8),
             itemBuilder: (_, index) => cards[index],
           )
+        : !widget.bounded
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final card in cards) ...[card, const SizedBox(height: GlassSpacing.s8)],
+            ],
+          )
         : ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 260),
             child: ListView.separated(
@@ -401,7 +421,10 @@ class _KubeForwardsPanelState extends ConsumerState<KubeForwardsPanel> with Widg
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l.kubePortForwards, style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label)),
+          Text(
+            widget.title ?? l.kubePortForwards,
+            style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
+          ),
           const SizedBox(height: GlassSpacing.s6),
           if (result.hasError) Text(l.kubeRequestFailed, style: TextStyle(color: tokens.palette.danger)),
           if (forwards.isEmpty) Text(l.kubeNoForwards, style: TextStyle(color: tokens.secondaryLabel)),

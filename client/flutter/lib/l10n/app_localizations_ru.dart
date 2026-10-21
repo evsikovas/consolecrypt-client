@@ -9151,4 +9151,8 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dockerNoVolumes => 'Томов на этом движке нет.';
+
+  @override
+  String get workspaceForwardsEmptyHelp =>
+      'Пробросьте порт пода Kubernetes или контейнера Docker — активные пробросы появятся здесь.';
 }

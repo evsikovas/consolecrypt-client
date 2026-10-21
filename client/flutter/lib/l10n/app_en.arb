@@ -12271,5 +12271,9 @@
   "dockerNoVolumes": "No volumes on this engine.",
   "@dockerNoVolumes": {
     "description": "Empty volumes view."
+  },
+  "workspaceForwardsEmptyHelp": "Forward a port from a Kubernetes pod or a Docker container; running forwards show here.",
+  "@workspaceForwardsEmptyHelp": {
+    "description": "Empty shared port-forwards panel."
   }
 }

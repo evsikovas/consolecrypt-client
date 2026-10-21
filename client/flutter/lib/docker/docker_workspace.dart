@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
@@ -48,7 +50,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   final _collapsed = <String>{};
   final _busy = <String>{};
   Timer? _timer;
-  bool _foreground = true, _loading = false, _loaded = false, _forwardsOpen = false;
+  bool _foreground = true, _loading = false, _loaded = false;
   DockerStateFilter _filter = DockerStateFilter.all;
   bool _volumes = false;
   final _volumeList = GlobalKey<DockerVolumeListState>();
@@ -107,7 +109,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
 
   /// From the last layout: the workspace is narrower than the window when
   /// the sidebar is shown.
-  bool _wide = false, _both = false;
+  bool _wide = false;
 
   void _open(DockerContainer container, [DockerDetailsTab tab = DockerDetailsTab.overview]) {
     if (!_wide) {
@@ -138,12 +140,17 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
       _selected = container.id;
       _tab = tab;
       _tabRequest++;
-      if (!_both) _forwardsOpen = false;
     });
   }
 
+  /// Running forwards live in the shared right panel with the Kubernetes
+  /// ones; narrow layouts push a page instead.
   void _toggleForwards() {
-    if (!_wide) {
+    if (!AppPlatform.isMobile && _wide) {
+      ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.forwards);
+      return;
+    }
+    if (!_wide || AppPlatform.isMobile) {
       unawaited(
         Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -155,7 +162,6 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
       );
       return;
     }
-    setState(() => _forwardsOpen = !_forwardsOpen);
   }
 
   DockerContainerActions get _actions => DockerContainerActions(
@@ -204,7 +210,9 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
       session: widget.session,
       container: container,
     );
-    if (created == true && mounted && _wide && !_forwardsOpen) _toggleForwards();
+    if (created == true && mounted && !AppPlatform.isMobile && _wide) {
+      ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.forwards);
+    }
   }
 
   @override
@@ -251,9 +259,8 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
         child: LayoutBuilder(
           builder: (context, constraints) {
             final wide = _wide = constraints.maxWidth >= _sideBySide;
-            final both = _both = constraints.maxWidth >= _bothPanels;
-            final showForwards = wide && _forwardsOpen;
-            final showDetails = wide && selected != null && (!showForwards || both);
+            final both = constraints.maxWidth >= _bothPanels;
+            final showDetails = wide && selected != null;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -265,7 +272,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                   total: _loaded ? containers.length : null,
                   loading: _loading,
                   forwards: forwards?.length ?? 0,
-                  forwardsOpen: _forwardsOpen,
+                  forwardsOpen: ref.watch(workspaceToolsProvider).selected == WorkspaceTool.forwards,
                   onRefresh: () {
                     unawaited(_refresh());
                     unawaited(_volumeList.currentState?.refresh());
@@ -351,7 +358,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                       if (showDetails) ...[
                         const SizedBox(width: GlassSpacing.s12),
                         SizedBox(
-                          width: both && showForwards ? 440 : 480,
+                          width: both ? 520 : 480,
                           child: DockerContainerDetails(
                             key: ValueKey(('docker-details', selected.id)),
                             service: widget.service,
@@ -361,16 +368,6 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                             tabRequest: _tabRequest,
                             onClose: () => setState(() => _selected = null),
                             actions: _actions,
-                          ),
-                        ),
-                      ],
-                      if (showForwards) ...[
-                        const SizedBox(width: GlassSpacing.s12),
-                        SizedBox(
-                          width: 340,
-                          child: DockerForwardsPanel(
-                            service: widget.service,
-                            onClose: () => setState(() => _forwardsOpen = false),
                           ),
                         ),
                       ],

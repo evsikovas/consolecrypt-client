@@ -5143,5 +5143,6 @@
   "dockerVolumesOther": "Прочие тома",
   "dockerVolumeCount": "{count, plural, one{{count} том} few{{count} тома} many{{count} томов} other{{count} тома}}",
   "dockerVolumeUnused": "не используется",
-  "dockerNoVolumes": "Томов на этом движке нет."
+  "dockerNoVolumes": "Томов на этом движке нет.",
+  "workspaceForwardsEmptyHelp": "Пробросьте порт пода Kubernetes или контейнера Docker — активные пробросы появятся здесь."
 }
