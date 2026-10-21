@@ -58,6 +58,24 @@ final class RustDockerService implements DockerService {
   }
 
   @override
+  Future<DockerJson> revealInspect(String sessionId, String containerId, SecretText passphrase) async {
+    try {
+      final json = await withSecret(
+        passphrase,
+        (bytes) =>
+            guard(() => native.dockerInspectReveal(sessionId: sessionId, container: containerId, passphrase: bytes)),
+      );
+      return jsonDecode(json) as DockerJson;
+    } on AppException catch (error) {
+      if (error.code == AppErrorCode.wrongPassphrase) throw const DockerWrongPassphrase();
+      rethrow;
+    }
+  }
+
+  @override
+  bool containsSecret(String text) => native.dockerContainsSecret(text: text);
+
+  @override
   Future<void> action(String sessionId, String containerId, DockerAction action) =>
       guard(() => native.dockerAction(sessionId: sessionId, container: containerId, action: action.name));
 
@@ -151,6 +169,14 @@ final class RustDockerService implements DockerService {
   }
 
   @override
+  Future<DockerComposeProject?> composeReveal(String sessionId, String project, String grant) async {
+    final json = jsonDecode(
+      await guard(() => native.dockerComposeReveal(sessionId: sessionId, project: project, grant: grant)),
+    );
+    return json == null ? null : DockerComposeProject.fromJson(json as DockerJson);
+  }
+
+  @override
   Future<String> composeUnlock(String sessionId, String project, SecretText passphrase) async {
     try {
       return await withSecret(
@@ -170,6 +196,7 @@ final class RustDockerService implements DockerService {
     String grant,
     List<DockerComposeEdit> edits, {
     bool apply = true,
+    bool allowSharedDirs = false,
   }) async {
     // The edited texts travel as one UTF-8 buffer that is zeroed here and
     // in the core.
@@ -191,6 +218,7 @@ final class RustDockerService implements DockerService {
           grant: grant,
           edits: payload,
           apply: apply,
+          allowSharedDirs: allowSharedDirs,
         ),
       );
       return dockerComposeSaveResultFromJson(jsonDecode(json) as DockerJson);

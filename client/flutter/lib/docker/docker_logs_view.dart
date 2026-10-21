@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -13,7 +14,9 @@ const dockerLogLimit = 10000;
 
 /// Live tail of one container: stderr in its own colour, timestamps,
 /// pause, follow (stick to the end), find, copy and clear. Nothing is
-/// written to disk.
+/// written to disk. Logs are shown as they are, but copied text that holds
+/// a secret (the core's masking rules) goes to the clipboard as a secret
+/// and is cleared automatically.
 class DockerLogsView extends ConsumerStatefulWidget {
   const DockerLogsView({
     required this.service,
@@ -41,6 +44,18 @@ class _DockerLogsViewState extends ConsumerState<DockerLogsView> with WidgetsBin
   int _generation = 0, _dropped = 0;
 
   bool get _paused => _frozen != null;
+
+  /// Text selected in the lines (copy shortcuts and the context menu).
+  String _selection = '';
+
+  Future<void> _copy(String text) async {
+    if (text.isEmpty) return;
+    if (widget.service.containsSecret(text)) {
+      await copySecretWithNotice(context, ref, text, what: context.l10n.copyWhatText);
+    } else {
+      await copyPlainWithNotice(context, ref, text);
+    }
+  }
 
   @override
   void initState() {
@@ -206,9 +221,7 @@ class _DockerLogsViewState extends ConsumerState<DockerLogsView> with WidgetsBin
               size: 28,
               iconSize: 16,
               style: GlassIconButtonStyle.plain,
-              onPressed: visible.isEmpty
-                  ? null
-                  : () => copyPlainWithNotice(context, ref, visible.map(_render).join('\n')),
+              onPressed: visible.isEmpty ? null : () => unawaited(_copy(visible.map(_render).join('\n'))),
             ),
             GlassIconButton(
               key: const ValueKey('docker-log-clear'),
@@ -258,20 +271,49 @@ class _DockerLogsViewState extends ConsumerState<DockerLogsView> with WidgetsBin
                       style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
                     ),
                   )
-                : SelectionArea(
-                    child: ListView.builder(
-                      key: const ValueKey('docker-log-lines'),
-                      controller: _scroll,
-                      padding: const EdgeInsets.all(8),
-                      itemCount: visible.length,
-                      itemBuilder: (_, index) {
-                        final line = visible[index];
-                        return Text(
-                          _render(line),
-                          key: ValueKey('docker-log-line-$index'),
-                          style: mono.copyWith(color: line.stream == DockerLogStream.stderr ? p.danger : p.label),
-                        );
+                : Shortcuts(
+                    shortcuts: const {
+                      SingleActivator(LogicalKeyboardKey.keyC, meta: true): _CopyLogSelection(),
+                      SingleActivator(LogicalKeyboardKey.keyC, control: true): _CopyLogSelection(),
+                    },
+                    child: Actions(
+                      actions: {
+                        _CopyLogSelection: CallbackAction<_CopyLogSelection>(
+                          onInvoke: (_) => unawaited(_copy(_selection)),
+                        ),
                       },
+                      child: SelectionArea(
+                        onSelectionChanged: (content) => _selection = content?.plainText ?? '',
+                        contextMenuBuilder: (context, state) => AdaptiveTextSelectionToolbar.buttonItems(
+                          anchors: state.contextMenuAnchors,
+                          buttonItems: [
+                            for (final item in state.contextMenuButtonItems)
+                              if (item.type == ContextMenuButtonType.copy)
+                                item.copyWith(
+                                  onPressed: () {
+                                    state.hideToolbar();
+                                    unawaited(_copy(_selection));
+                                  },
+                                )
+                              else
+                                item,
+                          ],
+                        ),
+                        child: ListView.builder(
+                          key: const ValueKey('docker-log-lines'),
+                          controller: _scroll,
+                          padding: const EdgeInsets.all(8),
+                          itemCount: visible.length,
+                          itemBuilder: (_, index) {
+                            final line = visible[index];
+                            return Text(
+                              _render(line),
+                              key: ValueKey('docker-log-line-$index'),
+                              style: mono.copyWith(color: line.stream == DockerLogStream.stderr ? p.danger : p.label),
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
           ),
@@ -279,4 +321,9 @@ class _DockerLogsViewState extends ConsumerState<DockerLogsView> with WidgetsBin
       ],
     );
   }
+}
+
+/// Copy of the selected log text through the secret check.
+class _CopyLogSelection extends Intent {
+  const _CopyLogSelection();
 }

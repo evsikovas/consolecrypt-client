@@ -77,65 +77,100 @@ class MockDockerService implements DockerService {
   @override
   Future<DockerContainerDetail> inspect(String sessionId, String containerId) async {
     await mockDelay(latency);
-    final container = _list(sessionId).where((c) => c.id == containerId).firstOrNull;
-    if (container == null) throw const DockerException(DockerFailure.other, 'no such container');
+    final container = _find(sessionId, containerId);
+    return DockerContainerDetail(container: container, inspect: _inspect(container, full: false));
+  }
+
+  @override
+  Future<DockerJson> revealInspect(String sessionId, String containerId, SecretText passphrase) async {
+    await mockDelay(latency);
+    if (passphrase.expose() != demoPassphrase) throw const DockerWrongPassphrase();
+    return _inspect(_find(sessionId, containerId), full: true);
+  }
+
+  /// Demo stand-in for the core's detector (the native build uses it).
+  @override
+  bool containsSecret(String text) => _secretPattern.hasMatch(text);
+
+  static final _secretPattern = RegExp(
+    r'(password|passwd|secret|token|api[_-]?key)\s*[=:]\s*\S|' // l10n-ignore: pattern
+    r'[a-z][a-z0-9+.-]*://[^/\s:@]*:[^@\s]+@|' // l10n-ignore: pattern
+    r'--(password|requirepass|token|secret|api-key)[= ]\S|' // l10n-ignore: pattern
+    r'-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(ghp_|glpat-|xox[abpr]-|AKIA)[A-Za-z0-9_-]{10,}', // l10n-ignore: pattern
+    caseSensitive: false,
+  );
+
+  DockerContainer _find(String sessionId, String containerId) =>
+      _list(sessionId).where((c) => c.id == containerId).firstOrNull ??
+      (throw const DockerException(DockerFailure.other, 'no such container'));
+
+  /// The inspect JSON; without [full] secrets read `••••••` as the core
+  /// masks them.
+  DockerJson _inspect(DockerContainer container, {required bool full}) {
+    String secret(String value) => full ? value : '••••••'; // l10n-ignore: native mask
     final created = container.createdAt ?? DateTime.utc(2026, 10, 1);
-    return DockerContainerDetail(
-      container: container,
-      inspect: {
-        'Id': container.id,
-        'Name': '/${container.name}',
-        'Created': created.toIso8601String(),
-        'Path': 'docker-entrypoint.sh',
-        'Args': [container.composeService ?? container.name],
-        'RestartCount': container.name.contains('worker') ? 3 : 0,
-        'State': {
-          'Status': container.state.name,
-          'Running': container.state == DockerContainerState.running,
-          'StartedAt': created.add(const Duration(minutes: 1)).toIso8601String(),
-          if (container.health != null) 'Health': {'Status': container.health},
-        },
-        'Config': {
-          'Image': container.image,
-          'Env': [
-            'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
-            'APP_ENV=production',
-            if (container.image.startsWith('postgres')) ...[
-              'POSTGRES_DB=shop',
-              'POSTGRES_USER=shop',
-              'POSTGRES_PASSWORD=••••••',
-            ],
-            if (container.composeService == 'api') 'API_TOKEN=••••••',
+    final redis = container.image.startsWith('redis');
+    final command = redis
+        ? ['redis-server', '--requirepass', secret('demo-redis-pass'), '--appendonly', 'yes'] // l10n-ignore: demo
+        : [container.composeService ?? container.name];
+    return {
+      'Id': container.id,
+      'Name': '/${container.name}',
+      'Created': created.toIso8601String(),
+      'Path': 'docker-entrypoint.sh',
+      'Args': command,
+      'RestartCount': container.name.contains('worker') ? 3 : 0,
+      'State': {
+        'Status': container.state.name,
+        'Running': container.state == DockerContainerState.running,
+        'StartedAt': created.add(const Duration(minutes: 1)).toIso8601String(),
+        if (container.health != null) 'Health': {'Status': container.health},
+      },
+      'Config': {
+        'Image': container.image,
+        'Cmd': command,
+        'Env': [
+          'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+          'APP_ENV=production',
+          if (container.image.startsWith('postgres')) ...[
+            'POSTGRES_DB=shop',
+            'POSTGRES_USER=shop',
+            'POSTGRES_PASSWORD=${secret('demo-postgres-pass')}', // l10n-ignore: demo
           ],
-          'Labels': {
-            if (container.composeProject != null) 'com.docker.compose.project': container.composeProject,
-            if (container.composeService != null) 'com.docker.compose.service': container.composeService,
-            'org.opencontainers.image.source': 'https://example.org/${container.image.split(':').first}',
-          },
-          'ExposedPorts': {
-            for (final port in container.ports) '${port.privatePort}/${port.protocol}': <String, Object>{},
-          },
-        },
-        'Mounts': [
-          if (container.image.startsWith('postgres') || container.image.startsWith('redis'))
-            {
-              'Type': 'volume',
-              'Name': '${container.composeProject ?? 'data'}_data',
-              'Source': '/var/lib/docker/volumes/${container.composeProject ?? 'data'}_data/_data',
-              'Destination': container.image.startsWith('postgres') ? '/var/lib/postgresql/data' : '/data',
-              'RW': true,
-            },
-          if (container.composeService == 'web')
-            {'Type': 'bind', 'Source': '/srv/shop/nginx.conf', 'Destination': '/etc/nginx/nginx.conf', 'RW': false},
+          if (container.composeService == 'api') ...[
+            'DATABASE_URL=postgres://shop:${secret('demo-postgres-pass')}@postgres:5432/shop', // l10n-ignore: demo
+            'API_TOKEN=${secret('demo-api-token')}', // l10n-ignore: demo
+          ],
         ],
-        'NetworkSettings': {
-          'Networks': {
-            for (final entry in container.networks.entries)
-              entry.key: {'IPAddress': entry.value, 'Gateway': '172.18.0.1'},
-          },
+        'Labels': {
+          if (container.composeProject != null) 'com.docker.compose.project': container.composeProject,
+          if (container.composeService != null) 'com.docker.compose.service': container.composeService,
+          if (container.composeService == 'api') 'com.example.deploy.token': secret('demo-deploy-token'),
+          'org.opencontainers.image.source': 'https://example.org/${container.image.split(':').first}',
+        },
+        'ExposedPorts': {
+          for (final port in container.ports) '${port.privatePort}/${port.protocol}': <String, Object>{},
         },
       },
-    );
+      'Mounts': [
+        if (container.image.startsWith('postgres') || redis)
+          {
+            'Type': 'volume',
+            'Name': '${container.composeProject ?? 'data'}_data',
+            'Source': '/var/lib/docker/volumes/${container.composeProject ?? 'data'}_data/_data',
+            'Destination': container.image.startsWith('postgres') ? '/var/lib/postgresql/data' : '/data',
+            'RW': true,
+          },
+        if (container.composeService == 'web')
+          {'Type': 'bind', 'Source': '/srv/shop/nginx.conf', 'Destination': '/etc/nginx/nginx.conf', 'RW': false},
+      ],
+      'NetworkSettings': {
+        'Networks': {
+          for (final entry in container.networks.entries)
+            entry.key: {'IPAddress': entry.value, 'Gateway': '172.18.0.1'},
+        },
+      },
+    };
   }
 
   @override
@@ -192,8 +227,14 @@ class MockDockerService implements DockerService {
           controller.addError(const DockerException(DockerFailure.connectionFailed, 'session closed'));
           return;
         }
+        final api = _containers[sessionId]!.any((c) => c.id == containerId && c.composeService == 'api');
         controller.add([
           line(DockerLogStream.stdout, 'Starting service…'),
+          if (api)
+            line(
+              DockerLogStream.stdout,
+              'connecting to postgres://shop:demo-postgres-pass@postgres:5432/shop', // l10n-ignore: demo log
+            ),
           line(DockerLogStream.stdout, 'Listening on 0.0.0.0:8080'),
           line(DockerLogStream.stderr, 'deprecation: config key "workers" is ignored'),
           ...batch(),
@@ -273,9 +314,8 @@ class MockDockerService implements DockerService {
   Future<List<String>> revealEnvironment(String sessionId, String containerId, SecretText passphrase) async {
     await mockDelay(latency);
     if (passphrase.expose() != demoPassphrase) throw const DockerWrongPassphrase();
-    final detail = await inspect(sessionId, containerId);
-    final env = ((detail.inspect['Config'] as Map)['Env'] as List).cast<String>();
-    return [for (final entry in env) entry.replaceAll('••••••', 'demo-secret-value')]; // l10n-ignore: demo value
+    final full = _inspect(_find(sessionId, containerId), full: true);
+    return ((full['Config'] as Map)['Env'] as List).cast<String>();
   }
 
   /// Compose files of the demo projects (path → text), shared by sessions.
@@ -298,11 +338,30 @@ class MockDockerService implements DockerService {
   final _grants = <String>{};
   final _composeJobs = <String, String>{};
 
+  /// Directories the demo reports as writable by other users.
+  static const composeSharedDirs = ['/opt/monitoring']; // l10n-ignore: demo path
+
+  /// Literal secrets in the demo files and how the core masks them.
+  static const _composeSecrets = {
+    'demo-redis-pass': '••••••', // l10n-ignore: demo
+    'https://demo-sentry-key@o1.ingest.example.org/7': '••••••', // l10n-ignore: demo
+    'demo-grafana-admin': '••••••', // l10n-ignore: demo
+  };
+
   static String composeDigest(String text) =>
       text.codeUnits.fold<int>(17, (h, c) => (h * 31 + c) & 0x7fffffff).toRadixString(16);
 
   @override
-  Future<DockerComposeProject> composeProject(String sessionId, String project) async {
+  Future<DockerComposeProject> composeProject(String sessionId, String project) =>
+      _composeProject(sessionId, project, full: false);
+
+  @override
+  Future<DockerComposeProject?> composeReveal(String sessionId, String project, String grant) async {
+    if (!_grants.contains('$sessionId/$project/$grant')) return null;
+    return _composeProject(sessionId, project, full: true);
+  }
+
+  Future<DockerComposeProject> _composeProject(String sessionId, String project, {required bool full}) async {
     await mockDelay(latency);
     if (!_list(sessionId).any((c) => c.composeProject == project)) {
       throw const DockerComposeException(DockerComposeFailure.projectGone);
@@ -318,12 +377,21 @@ class MockDockerService implements DockerService {
           if (path == composeRootOnly)
             DockerComposeFile(path: path, error: DockerComposeFileError.permissionDenied)
           else if (composeFiles[path] case final text?)
-            DockerComposeFile(path: path, content: SecretText(text), digest: composeDigest(text), size: text.length)
+            DockerComposeFile(
+              path: path,
+              content: SecretText(full ? text : _maskCompose(text)),
+              digest: composeDigest(text),
+              size: text.length,
+              masked: !full && _maskCompose(text) != text,
+            )
           else
             DockerComposeFile(path: path, error: DockerComposeFileError.notFound),
       ],
     );
   }
+
+  static String _maskCompose(String text) =>
+      _composeSecrets.entries.fold(text, (masked, entry) => masked.replaceAll(entry.key, entry.value));
 
   @override
   Future<String> composeUnlock(String sessionId, String project, SecretText passphrase) async {
@@ -346,6 +414,7 @@ class MockDockerService implements DockerService {
     String grant,
     List<DockerComposeEdit> edits, {
     bool apply = true,
+    bool allowSharedDirs = false,
   }) async {
     await mockDelay(latency);
     final texts = [for (final edit in edits) edit.content.expose()];
@@ -353,6 +422,12 @@ class MockDockerService implements DockerService {
       edit.content.wipe();
     }
     if (!_grants.contains('$sessionId/$project/$grant')) return const DockerComposeLocked();
+    final shared = {
+      for (final edit in edits)
+        if (composeSharedDirs.contains(edit.path.substring(0, edit.path.lastIndexOf('/'))))
+          edit.path.substring(0, edit.path.lastIndexOf('/')),
+    };
+    if (shared.isNotEmpty && !allowSharedDirs) return DockerComposeUnsafeDirectory(shared.toList());
     for (final (index, edit) in edits.indexed) {
       final current = composeFiles[edit.path];
       if (current == null) return DockerComposeWriteFailed(edit.path, DockerComposeWriteError.notFound);
@@ -421,6 +496,7 @@ services:
     environment:
       DATABASE_URL: postgres://shop:\${POSTGRES_PASSWORD}@postgres:5432/shop
       API_TOKEN: \${API_TOKEN}
+      SENTRY_DSN: https://demo-sentry-key@o1.ingest.example.org/7
   postgres:
     image: postgres:16
     environment:
@@ -429,6 +505,7 @@ services:
       - shop_data:/var/lib/postgresql/data
   redis:
     image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "demo-redis-pass", "--appendonly", "yes"]
 volumes:
   shop_data: {}
 '''; // l10n-ignore: demo file
@@ -447,7 +524,7 @@ volumes:
   grafana:
     image: grafana/grafana:11.2.0
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: \${GRAFANA_PASSWORD}
+      GF_SECURITY_ADMIN_PASSWORD: demo-grafana-admin
 '''; // l10n-ignore: demo file
 
   static DockerContainer _copy(DockerContainer c, {required DockerContainerState state, required String status}) =>

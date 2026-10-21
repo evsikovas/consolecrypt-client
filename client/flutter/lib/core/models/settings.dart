@@ -114,6 +114,7 @@ final class LocalSettings {
     this.preferDeviceLocalAi = true,
     this.rdpMobile = const RdpMobileSettings(),
     this.databasesView = CollectionView.cards,
+    this.dockerTerminalHintShown = false,
   });
 
   final AppThemeMode themeMode;
@@ -180,6 +181,10 @@ final class LocalSettings {
   /// Databases screen layout: cards grid or compact list.
   final CollectionView databasesView;
 
+  /// The one-time note that a container terminal gives full access
+  /// (environment included) was shown in this profile.
+  final bool dockerTerminalHintShown;
+
   LocalSettings copyWith({
     AppThemeMode? themeMode,
     double? uiFontScale,
@@ -207,6 +212,7 @@ final class LocalSettings {
     bool? preferDeviceLocalAi,
     RdpMobileSettings? rdpMobile,
     CollectionView? databasesView,
+    bool? dockerTerminalHintShown,
   }) => LocalSettings(
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
@@ -231,5 +237,6 @@ final class LocalSettings {
     preferDeviceLocalAi: preferDeviceLocalAi ?? this.preferDeviceLocalAi,
     rdpMobile: rdpMobile ?? this.rdpMobile,
     databasesView: databasesView ?? this.databasesView,
+    dockerTerminalHintShown: dockerTerminalHintShown ?? this.dockerTerminalHintShown,
   );
 }

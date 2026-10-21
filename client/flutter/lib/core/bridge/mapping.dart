@@ -702,6 +702,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'sidebar_style': s.sidebarStyle.wireName,
   'workspace_panel_style': s.workspacePanelStyle.name,
   'databases_view': s.databasesView.name,
+  'docker_terminal_hint_shown': s.dockerTerminalHintShown,
   'sftp_default_editor': s.sftpDefaultEditor == null
       ? null
       : {'kind': s.sftpDefaultEditor!.kind.wireName, 'value': s.sftpDefaultEditor!.value},
@@ -762,6 +763,7 @@ LocalSettings localSettingsFromJson(Json j) {
       d.workspacePanelStyle,
     ),
     databasesView: _byWire(CollectionView.values, (view) => view.name, j['databases_view'], d.databasesView),
+    dockerTerminalHintShown: j['docker_terminal_hint_shown'] == true,
   );
 }
 

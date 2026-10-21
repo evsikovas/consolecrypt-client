@@ -16705,6 +16705,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The project\'s containers do not record which compose files created them.'**
   String get dockerComposeFilesUnknown;
+
+  /// Docker: button that shows masked inspect JSON or compose files in full after the vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Show in full'**
+  String get dockerShowFull;
+
+  /// Docker: note next to inspect JSON or compose files shown with secrets masked.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords, tokens and keys are hidden.'**
+  String get dockerSecretsMasked;
+
+  /// Docker: passphrase dialog before showing the unmasked inspect JSON.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the vault passphrase to show the full inspect JSON of {name}, passwords and tokens included. Copying it then clears the clipboard automatically.'**
+  String dockerJsonRevealHelp(String name);
+
+  /// Compose files dialog: passphrase gate before showing unmasked files.
+  ///
+  /// In en, this message translates to:
+  /// **'Compose files can contain passwords. Enter the vault passphrase to show the files of {project} in full.'**
+  String dockerComposeRevealHelp(String project);
+
+  /// Compose editor: the save detected a swapped temporary file before replacing anything.
+  ///
+  /// In en, this message translates to:
+  /// **'A temporary file for {path} was replaced or changed on the host by someone else during the save. Nothing was written to {path}.'**
+  String dockerComposeTampered(String path);
+
+  /// Compose editor: a foreign file was renamed into place and the original was restored.
+  ///
+  /// In en, this message translates to:
+  /// **'{path} was replaced on the host by someone else during the save. The original was restored from the backup {backup}.'**
+  String dockerComposeTamperedRestored(String path, String backup);
+
+  /// Compose editor: a foreign file was renamed into place and restoring failed.
+  ///
+  /// In en, this message translates to:
+  /// **'{path} was replaced on the host by someone else during the save, and the original could not be put back. Restore it from the backup {backup}.'**
+  String dockerComposeTamperedNotRestored(String path, String backup);
+
+  /// Compose editor: title of the warning about a directory other users can write to.
+  ///
+  /// In en, this message translates to:
+  /// **'Save in a shared directory?'**
+  String get dockerComposeUnsafeDirTitle;
+
+  /// Compose editor: warning about a group or world writable project directory.
+  ///
+  /// In en, this message translates to:
+  /// **'The project directory can be written by other users: {dirs}. Saving may be unsafe: they could swap the temporary file or the backup while it is written.'**
+  String dockerComposeUnsafeDirHelp(String dirs);
+
+  /// Compose editor: confirm saving into a directory other users can write to.
+  ///
+  /// In en, this message translates to:
+  /// **'Save anyway'**
+  String get dockerComposeSaveAnyway;
+
+  /// Container terminal dialog: one-time note shown the first time in a profile.
+  ///
+  /// In en, this message translates to:
+  /// **'The terminal gives full access to the container, including its environment variables.'**
+  String get dockerTerminalHint;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

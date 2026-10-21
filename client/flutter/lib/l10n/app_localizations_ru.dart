@@ -9512,4 +9512,49 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get dockerComposeFilesUnknown =>
       'Контейнеры проекта не хранят сведений о том, из каких файлов compose они созданы.';
+
+  @override
+  String get dockerShowFull => 'Показать полностью';
+
+  @override
+  String get dockerSecretsMasked => 'Пароли, токены и ключи скрыты.';
+
+  @override
+  String dockerJsonRevealHelp(String name) {
+    return 'Введите пароль хранилища, чтобы показать полный JSON inspect контейнера $name, включая пароли и токены. Скопированный текст будет автоматически удалён из буфера обмена.';
+  }
+
+  @override
+  String dockerComposeRevealHelp(String project) {
+    return 'Файлы compose могут содержать пароли. Введите пароль хранилища, чтобы показать файлы проекта $project полностью.';
+  }
+
+  @override
+  String dockerComposeTampered(String path) {
+    return 'Во время сохранения кто-то другой заменил или изменил на хосте временный файл для $path. В $path ничего не записано.';
+  }
+
+  @override
+  String dockerComposeTamperedRestored(String path, String backup) {
+    return 'Во время сохранения кто-то другой подменил $path на хосте. Исходный файл восстановлен из резервной копии $backup.';
+  }
+
+  @override
+  String dockerComposeTamperedNotRestored(String path, String backup) {
+    return 'Во время сохранения кто-то другой подменил $path на хосте, и вернуть исходный файл не удалось. Восстановите его из резервной копии $backup.';
+  }
+
+  @override
+  String get dockerComposeUnsafeDirTitle => 'Сохранить в общий каталог?';
+
+  @override
+  String dockerComposeUnsafeDirHelp(String dirs) {
+    return 'Каталог проекта доступен на запись другим пользователям: $dirs. Сохранение может быть небезопасным: они могут подменить временный файл или резервную копию во время записи.';
+  }
+
+  @override
+  String get dockerComposeSaveAnyway => 'Всё равно сохранить';
+
+  @override
+  String get dockerTerminalHint => 'Терминал даёт полный доступ к контейнеру, включая переменные окружения.';
 }

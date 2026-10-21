@@ -16,7 +16,7 @@ import '../helpers/test_app.dart';
 
 /// Records saves; can fail validation or writing on demand.
 class _Docker extends MockDockerService {
-  final saves = <({String grant, List<String> paths, bool apply})>[];
+  final saves = <({String grant, List<String> paths, bool apply, bool allowSharedDirs})>[];
   DockerComposeSaveResult? nextResult;
   Exception? projectError;
 
@@ -34,8 +34,9 @@ class _Docker extends MockDockerService {
     String grant,
     List<DockerComposeEdit> edits, {
     bool apply = true,
+    bool allowSharedDirs = false,
   }) async {
-    saves.add((grant: grant, paths: [for (final e in edits) e.path], apply: apply));
+    saves.add((grant: grant, paths: [for (final e in edits) e.path], apply: apply, allowSharedDirs: allowSharedDirs));
     final forced = nextResult;
     if (forced != null) {
       nextResult = null;
@@ -44,7 +45,7 @@ class _Docker extends MockDockerService {
       }
       return forced;
     }
-    return super.composeSave(sessionId, project, grant, edits, apply: apply);
+    return super.composeSave(sessionId, project, grant, edits, apply: apply, allowSharedDirs: allowSharedDirs);
   }
 }
 
@@ -308,6 +309,92 @@ void main() {
     expect(find.textContaining('do not record which compose files'), findsOneWidget);
     expect(find.byKey(const ValueKey('docker-compose-edit')), findsNothing);
     await tapKey(tester, 'docker-compose-close');
+  });
+
+  testWidgets('compose files are masked until the passphrase; editing shows the source', (tester) async {
+    await _pump(tester);
+    await tapKey(tester, 'docker-compose-menu-button-shop');
+    await tapKey(tester, 'docker-compose-menu-viewYaml');
+    String shown() =>
+        tester.widget<SelectableText>(find.byKey(const ValueKey('docker-compose-text'))).textSpan!.toPlainText();
+    expect(shown(), contains('command: ["redis-server", "--requirepass", "••••••", "--appendonly", "yes"]'));
+    expect(shown(), contains('SENTRY_DSN: ••••••'));
+    expect(shown(), isNot(contains('demo-redis-pass')));
+    expect(find.textContaining('Passwords, tokens and keys are hidden.'), findsOneWidget);
+    final lines = shown().split('\n').length;
+
+    await tapKey(tester, 'docker-compose-reveal');
+    expect(find.textContaining('show the files of shop in full'), findsOneWidget);
+    await _unlock(tester, 'wrong');
+    expect(find.byKey(const ValueKey('docker-compose-wrong-passphrase')), findsOneWidget);
+    await _unlock(tester);
+    expect(find.byKey(const ValueKey('docker-compose-editor')), findsNothing);
+    expect(shown(), contains('"--requirepass", "demo-redis-pass"'));
+    expect(shown().split('\n'), hasLength(lines), reason: 'masking keeps every line');
+    expect(find.textContaining('Passwords, tokens and keys are hidden.'), findsNothing);
+
+    // Hidden again; editing reuses the grant and starts from the source.
+    await tapKey(tester, 'docker-compose-hide');
+    expect(shown(), isNot(contains('demo-redis-pass')));
+    await tapKey(tester, 'docker-compose-edit');
+    expect(find.byKey(const ValueKey('docker-compose-unlock-panel')), findsNothing);
+    expect(_editorText(tester), contains('demo-redis-pass'));
+    await tapKey(tester, 'docker-compose-cancel-edit');
+    await tapKey(tester, 'docker-compose-close');
+  });
+
+  testWidgets('a swapped file and a directory shared with other users are explained', (tester) async {
+    final docker = await _pump(tester);
+    await tapKey(tester, 'docker-compose-menu-button-shop');
+    await tapKey(tester, 'docker-compose-menu-editYaml');
+    await _unlock(tester);
+    await tester.enterText(find.byKey(const ValueKey('docker-compose-editor')), 'services: {}\n');
+    await tester.pump();
+    docker.nextResult = const DockerComposeTampered('/srv/shop/compose.yaml');
+    await tapKey(tester, 'docker-compose-save-only');
+    expect(find.textContaining('replaced or changed on the host by someone else'), findsOneWidget);
+    docker.nextResult = const DockerComposeTampered(
+      '/srv/shop/compose.yaml',
+      backup: '/srv/shop/compose.yaml.bak-1',
+      restored: true,
+    );
+    await tapKey(tester, 'docker-compose-save-only');
+    expect(find.textContaining('restored from the backup /srv/shop/compose.yaml.bak-1'), findsOneWidget);
+    await tapKey(tester, 'docker-compose-cancel-edit');
+    await tapKey(tester, 'confirm-ok');
+    await tapKey(tester, 'docker-compose-close');
+
+    // /opt/monitoring is writable by other users in the demo.
+    await tapKey(tester, 'docker-compose-menu-button-monitoring');
+    await tapKey(tester, 'docker-compose-menu-editYaml');
+    await _unlock(tester);
+    const edited = 'services:\n  grafana:\n    image: grafana/grafana:11.3.0\n';
+    await tester.enterText(find.byKey(const ValueKey('docker-compose-editor')), edited);
+    await tester.pump();
+    await tapKey(tester, 'docker-compose-save-only');
+    expect(find.text('Save in a shared directory?'), findsOneWidget);
+    expect(find.textContaining('can be written by other users: /opt/monitoring'), findsOneWidget);
+    await tapKey(tester, 'confirm-cancel');
+    expect(docker.composeFiles['/opt/monitoring/docker-compose.yml'], isNot(edited));
+    expect(_editorText(tester), edited);
+    await tapKey(tester, 'docker-compose-save-only');
+    await tapKey(tester, 'confirm-ok');
+    expect(docker.saves.last.allowSharedDirs, isTrue);
+    expect(docker.composeFiles['/opt/monitoring/docker-compose.yml'], edited);
+    await tapKey(tester, 'docker-compose-close');
+  });
+
+  test('mock reveal needs a live grant', () async {
+    final docker = MockDockerService();
+    final session = await docker.connect(DockerHost.localId);
+    expect(await docker.composeReveal(session.id, 'shop', 'forged'), isNull);
+    final grant = await docker.composeUnlock(session.id, 'shop', SecretText(MockDockerService.demoPassphrase));
+    final full = await docker.composeReveal(session.id, 'shop', grant);
+    expect(full!.files.first.content!.expose(), contains('demo-redis-pass'));
+    expect(full.files.first.masked, isFalse);
+    final masked = await docker.composeProject(session.id, 'shop');
+    expect(masked.files.first.masked, isTrue);
+    expect(masked.files.first.digest, full.files.first.digest);
   });
 
   test('mock compose save wipes the edited text', () async {

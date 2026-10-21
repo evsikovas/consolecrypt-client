@@ -9291,4 +9291,50 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerComposeFilesUnknown => 'The project\'s containers do not record which compose files created them.';
+
+  @override
+  String get dockerShowFull => 'Show in full';
+
+  @override
+  String get dockerSecretsMasked => 'Passwords, tokens and keys are hidden.';
+
+  @override
+  String dockerJsonRevealHelp(String name) {
+    return 'Enter the vault passphrase to show the full inspect JSON of $name, passwords and tokens included. Copying it then clears the clipboard automatically.';
+  }
+
+  @override
+  String dockerComposeRevealHelp(String project) {
+    return 'Compose files can contain passwords. Enter the vault passphrase to show the files of $project in full.';
+  }
+
+  @override
+  String dockerComposeTampered(String path) {
+    return 'A temporary file for $path was replaced or changed on the host by someone else during the save. Nothing was written to $path.';
+  }
+
+  @override
+  String dockerComposeTamperedRestored(String path, String backup) {
+    return '$path was replaced on the host by someone else during the save. The original was restored from the backup $backup.';
+  }
+
+  @override
+  String dockerComposeTamperedNotRestored(String path, String backup) {
+    return '$path was replaced on the host by someone else during the save, and the original could not be put back. Restore it from the backup $backup.';
+  }
+
+  @override
+  String get dockerComposeUnsafeDirTitle => 'Save in a shared directory?';
+
+  @override
+  String dockerComposeUnsafeDirHelp(String dirs) {
+    return 'The project directory can be written by other users: $dirs. Saving may be unsafe: they could swap the temporary file or the backup while it is written.';
+  }
+
+  @override
+  String get dockerComposeSaveAnyway => 'Save anyway';
+
+  @override
+  String get dockerTerminalHint =>
+      'The terminal gives full access to the container, including its environment variables.';
 }

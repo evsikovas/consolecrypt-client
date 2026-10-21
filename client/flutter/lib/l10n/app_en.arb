@@ -12760,5 +12760,85 @@
   "dockerComposeFilesUnknown": "The project's containers do not record which compose files created them.",
   "@dockerComposeFilesUnknown": {
     "description": "Compose files dialog: labels lack the config file paths."
+  },
+  "dockerShowFull": "Show in full",
+  "@dockerShowFull": {
+    "description": "Docker: button that shows masked inspect JSON or compose files in full after the vault passphrase."
+  },
+  "dockerSecretsMasked": "Passwords, tokens and keys are hidden.",
+  "@dockerSecretsMasked": {
+    "description": "Docker: note next to inspect JSON or compose files shown with secrets masked."
+  },
+  "dockerJsonRevealHelp": "Enter the vault passphrase to show the full inspect JSON of {name}, passwords and tokens included. Copying it then clears the clipboard automatically.",
+  "@dockerJsonRevealHelp": {
+    "description": "Docker: passphrase dialog before showing the unmasked inspect JSON.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeRevealHelp": "Compose files can contain passwords. Enter the vault passphrase to show the files of {project} in full.",
+  "@dockerComposeRevealHelp": {
+    "description": "Compose files dialog: passphrase gate before showing unmasked files.",
+    "placeholders": {
+      "project": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeTampered": "A temporary file for {path} was replaced or changed on the host by someone else during the save. Nothing was written to {path}.",
+  "@dockerComposeTampered": {
+    "description": "Compose editor: the save detected a swapped temporary file before replacing anything.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeTamperedRestored": "{path} was replaced on the host by someone else during the save. The original was restored from the backup {backup}.",
+  "@dockerComposeTamperedRestored": {
+    "description": "Compose editor: a foreign file was renamed into place and the original was restored.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "backup": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeTamperedNotRestored": "{path} was replaced on the host by someone else during the save, and the original could not be put back. Restore it from the backup {backup}.",
+  "@dockerComposeTamperedNotRestored": {
+    "description": "Compose editor: a foreign file was renamed into place and restoring failed.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "backup": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeUnsafeDirTitle": "Save in a shared directory?",
+  "@dockerComposeUnsafeDirTitle": {
+    "description": "Compose editor: title of the warning about a directory other users can write to."
+  },
+  "dockerComposeUnsafeDirHelp": "The project directory can be written by other users: {dirs}. Saving may be unsafe: they could swap the temporary file or the backup while it is written.",
+  "@dockerComposeUnsafeDirHelp": {
+    "description": "Compose editor: warning about a group or world writable project directory.",
+    "placeholders": {
+      "dirs": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeSaveAnyway": "Save anyway",
+  "@dockerComposeSaveAnyway": {
+    "description": "Compose editor: confirm saving into a directory other users can write to."
+  },
+  "dockerTerminalHint": "The terminal gives full access to the container, including its environment variables.",
+  "@dockerTerminalHint": {
+    "description": "Container terminal dialog: one-time note shown the first time in a profile."
   }
 }
