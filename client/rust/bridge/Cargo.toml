@@ -31,6 +31,7 @@ flutter_rust_bridge = "=2.13.0"
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 serde.workspace = true
 serde_json.workspace = true
+chrono.workspace = true
 zeroize.workspace = true
 tracing.workspace = true
 

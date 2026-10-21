@@ -10,6 +10,26 @@ use cc_models::{
 };
 use cc_ssh_core::secrecy::SecretString;
 
+/// A connection from the editor: a new one has an empty id and no
+/// timestamps yet (the core assigns them on save).
+fn connection_from_json(json: &str) -> Result<DbConnection, BridgeError> {
+    let mut value: serde_json::Value = from_json("connection", json)?;
+    if let Some(object) = value.as_object_mut() {
+        if object.get("id").and_then(serde_json::Value::as_str) == Some("") {
+            object.insert("id".into(), cc_models::ObjectId::NIL.to_string().into());
+        }
+        let now = serde_json::to_value(chrono::Utc::now())
+            .map_err(|_| BridgeError::invalid("connection", "malformed connection"))?;
+        for key in ["created_at", "updated_at"] {
+            if object.get(key).is_none_or(serde_json::Value::is_null) {
+                object.insert(key.into(), now.clone());
+            }
+        }
+    }
+    serde_json::from_value(value)
+        .map_err(|_| BridgeError::invalid("connection", "malformed connection"))
+}
+
 pub async fn db_connections() -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.db_connections().await?) }).await
 }
@@ -19,7 +39,7 @@ pub async fn db_save_connection(
     password: Option<Vec<u8>>,
     private_key: Option<Vec<u8>>,
 ) -> Result<String, BridgeError> {
-    let connection: DbConnection = from_json("connection", &connection_json)?;
+    let connection = connection_from_json(&connection_json)?;
     let password = opt_secret_string("password", password)?.map(SecretValue::new);
     let private_key = opt_secret_string("private_key", private_key)?.map(SecretValue::new);
     with_core(move |c| async move {
@@ -39,7 +59,7 @@ pub async fn db_test_connection(
     connection_json: String,
     password: Option<Vec<u8>>,
 ) -> Result<String, BridgeError> {
-    let connection: DbConnection = from_json("connection", &connection_json)?;
+    let connection = connection_from_json(&connection_json)?;
     let password = opt_secret_string("password", password)?.map(SecretString::from);
     with_core(move |c| async move { to_json(&c.db_test_connection(connection, password).await?) })
         .await
@@ -367,4 +387,20 @@ pub async fn db_ai_cancel(ticket: String) -> Result<(), BridgeError> {
 
 pub async fn db_ai_revoke(session_id: String) -> Result<(), BridgeError> {
     with_core(move |c| async move { Ok(c.db_ai_revoke(session_id).await?) }).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Exactly what the connection form sends for a new connection.
+    const NEW_FROM_FORM: &str = r#"{"id":"","name":"forever/forever-postgres-0","engine":"postgresql","host":"127.0.0.1","port":15432,"database":"forever","username":"postgres","auth":{"password_secret_id":null,"mechanism":"default","client_certificate":null},"tls":{"mode":"prefer","certificate_authority_pem":null,"server_name":null},"route":{"kind":"direct"},"production":false,"limits":{"max_rows":1000,"statement_timeout_seconds":60,"connect_timeout_seconds":10,"result_memory_bytes":67108864},"options":{"kind":"postgresql","application_name":"ConsoleCrypt","search_path":[]},"group_id":null,"tags":["kubernetes"],"color":null}"#;
+
+    #[test]
+    fn new_connections_from_the_form_parse() {
+        let connection = connection_from_json(NEW_FROM_FORM).unwrap();
+        assert_eq!(connection.id, cc_models::ObjectId::NIL);
+        assert_eq!(connection.port, 15432);
+        assert_eq!(connection.tls.mode, cc_models::database::DbTlsMode::Prefer);
+    }
 }

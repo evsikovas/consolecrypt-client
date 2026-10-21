@@ -1037,6 +1037,7 @@ dependencies = [
  "cc-ssh-core",
  "cc-sync-core",
  "cc-vault-core",
+ "chrono",
  "flutter_rust_bridge",
  "jni 0.22.4",
  "ndk-context",

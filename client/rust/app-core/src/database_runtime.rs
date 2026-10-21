@@ -359,9 +359,13 @@ impl AppCore {
     /// Checks an unsaved draft: opens and closes a session.
     pub async fn db_test_connection(
         &self,
-        connection: DbConnection,
+        mut connection: DbConnection,
         password: Option<SecretString>,
     ) -> AppResult<DbLiveSession> {
+        // A connection being created has no id yet.
+        if connection.id == cc_models::ObjectId::NIL {
+            connection.id = cc_models::ObjectId::new();
+        }
         connection.validate()?;
         let session = self.db_open(&connection, password).await?;
         let info = live(&session);
