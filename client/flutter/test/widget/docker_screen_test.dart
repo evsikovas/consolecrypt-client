@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:consolecrypt/app/workspace_forwards.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
@@ -10,6 +9,7 @@ import 'package:consolecrypt/core/mock/mock_docker.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
@@ -20,6 +20,7 @@ import 'package:consolecrypt/docker/docker_screen.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/docker/docker_terminal.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -64,6 +65,16 @@ class _SshDocker extends _Docker {
   }
 }
 
+/// Records what was copied and how (secrets are cleared automatically).
+class _Clipboard extends SecureClipboard {
+  final secrets = <String>[];
+  final plain = <String>[];
+  @override
+  Future<void> copySecret(String value, {bool Function()? isCurrent}) async => secrets.add(value);
+  @override
+  Future<void> copyPlain(String value) async => plain.add(value);
+}
+
 class _Terminal implements TerminalService, DockerTerminalService {
   final targets = <DockerTerminalTarget>[];
   @override
@@ -100,6 +111,8 @@ Future<void> _pump(
   Size size = const Size(1400, 900),
   TerminalService? terminal,
   MockBackend? signedIn,
+  ValueNotifier<DockerScope>? scope,
+  SecureClipboard? clipboard,
 }) async {
   final backend = signedIn ?? testBackend();
   addTearDown(backend.dispose);
@@ -113,7 +126,16 @@ Future<void> _pump(
       overrides: [
         appServicesProvider.overrideWithValue(backend.services),
         dockerServiceProvider.overrideWithValue(available ? service ?? _Docker() : null),
-        dockerScopeProvider.overrideWithValue(const DockerScope('profile', true)),
+        if (scope == null)
+          dockerScopeProvider.overrideWithValue(const DockerScope('profile', true))
+        else
+          dockerScopeProvider.overrideWith((ref) {
+            void changed() => ref.invalidateSelf();
+            scope.addListener(changed);
+            ref.onDispose(() => scope.removeListener(changed));
+            return scope.value;
+          }),
+        if (clipboard != null) secureClipboardProvider.overrideWithValue(clipboard),
         if (terminal != null) terminalServiceProvider.overrideWithValue(terminal),
         if (unlocked) activeProfileProvider.overrideWithValue(backend.profiles.currentProfiles.active),
       ],
@@ -136,6 +158,15 @@ Future<void> _pump(
 
 Future<void> _connectLocal(WidgetTester tester) async {
   await tester.tap(find.byKey(const ValueKey('docker-connect-local')));
+  await settle(tester);
+}
+
+/// Select all, then copy, with [modifier] held.
+Future<void> _copyAllWithKeyboard(WidgetTester tester, LogicalKeyboardKey modifier) async {
+  await tester.sendKeyDownEvent(modifier);
+  await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+  await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+  await tester.sendKeyUpEvent(modifier);
   await settle(tester);
 }
 
@@ -299,9 +330,9 @@ void main() {
     await tester.enterText(find.byKey(const ValueKey('docker-reveal-passphrase')), MockDockerService.demoPassphrase);
     await tapKey(tester, 'docker-reveal-submit');
     expect(find.byKey(const ValueKey('docker-reveal-dialog')), findsNothing);
-    expect(find.textContaining('POSTGRES_PASSWORD=demo-secret-value'), findsOneWidget);
+    expect(find.textContaining('POSTGRES_PASSWORD=demo-postgres-pass'), findsOneWidget);
     await tapKey(tester, 'docker-env-hide');
-    expect(find.textContaining('demo-secret-value'), findsNothing);
+    expect(find.textContaining('demo-postgres-pass'), findsNothing);
 
     final api = _id(tester, 'shop-api-1');
     await tapKey(tester, 'docker-logs-$api');
@@ -337,6 +368,152 @@ void main() {
     await settle(tester);
     expect(find.byKey(const ValueKey('docker-container-details')), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'inspect JSON hides secrets until the passphrase; the full JSON is copied as a secret and dropped on lock',
+    (tester) async {
+      final scope = ValueNotifier(const DockerScope('profile', true));
+      final clipboard = _Clipboard();
+      await _pump(tester, scope: scope, clipboard: clipboard);
+      await _connectLocal(tester);
+      await tester.ensureVisible(find.text('shop-redis-1'));
+      await tester.tap(find.text('shop-redis-1'));
+      await settle(tester);
+      // The overview's command line comes from the masked inspect.
+      expect(find.textContaining('redis-server --requirepass ••••••'), findsOneWidget);
+      expect(find.textContaining('demo-redis-pass'), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('docker-tab-json')));
+      await settle(tester);
+      expect(find.byKey(const ValueKey('docker-json-masked')), findsOneWidget);
+      await tester.tap(find.byTooltip('Show full value'));
+      await settle(tester);
+      String raw() => tester
+          .widgetList<SelectableText>(
+            find.descendant(
+              of: find.byKey(const ValueKey('docker-inspect-json')),
+              matching: find.byType(SelectableText),
+            ),
+          )
+          .map((text) => text.data ?? '')
+          .join();
+      expect(raw(), contains('"--requirepass",\n      "••••••"'));
+      expect(raw(), isNot(contains('demo-redis-pass')));
+      // The masked JSON is ordinary text.
+      await tapKey(tester, 'docker-json-copy');
+      expect(clipboard.plain.single, isNot(contains('demo-redis-pass')));
+
+      await tapKey(tester, 'docker-json-reveal');
+      expect(find.byKey(const ValueKey('docker-json-reveal-dialog')), findsOneWidget);
+      await tester.enterText(find.byKey(const ValueKey('docker-reveal-passphrase')), 'wrong');
+      await tapKey(tester, 'docker-reveal-submit');
+      expect(find.text('Wrong vault passphrase.'), findsOneWidget);
+      await tester.enterText(find.byKey(const ValueKey('docker-reveal-passphrase')), MockDockerService.demoPassphrase);
+      await tapKey(tester, 'docker-reveal-submit');
+      expect(find.byKey(const ValueKey('docker-json-hide')), findsOneWidget);
+      await tester.tap(find.byTooltip('Show full value'));
+      await settle(tester);
+      expect(raw(), contains('demo-redis-pass'));
+      await tapKey(tester, 'docker-json-copy');
+      expect(clipboard.secrets.single, contains('demo-redis-pass'));
+      expect(clipboard.plain, hasLength(1));
+
+      // Locking the vault drops the full JSON.
+      scope.value = const DockerScope('profile', false);
+      await settle(tester);
+      expect(find.textContaining('demo-redis-pass'), findsNothing);
+    },
+  );
+
+  testWidgets('the full JSON is dropped when the card closes or reloads', (tester) async {
+    await _pump(tester);
+    await _connectLocal(tester);
+    await tester.ensureVisible(find.text('shop-api-1'));
+    await tester.tap(find.text('shop-api-1'));
+    await settle(tester);
+    // Overview: the URL password and the token label are masked.
+    final overview = find.byKey(const ValueKey('docker-overview'));
+    for (final text in ['DATABASE_URL=postgres://shop:••••••@postgres:5432/shop', 'com.example.deploy.token']) {
+      final finder = find.textContaining(text);
+      await tester.dragUntilVisible(finder, overview, const Offset(0, -150));
+      expect(finder, findsWidgets);
+    }
+    expect(find.textContaining('demo-'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('docker-tab-json')));
+    await settle(tester);
+    await tapKey(tester, 'docker-json-reveal');
+    await tester.enterText(find.byKey(const ValueKey('docker-reveal-passphrase')), MockDockerService.demoPassphrase);
+    await tapKey(tester, 'docker-reveal-submit');
+    expect(find.byKey(const ValueKey('docker-json-full-view')), findsOneWidget);
+    await tapKey(tester, 'docker-details-refresh');
+    expect(find.byKey(const ValueKey('docker-json-masked-view')), findsOneWidget);
+    expect(find.byKey(const ValueKey('docker-json-reveal')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('docker-details-close')));
+    await settle(tester);
+    await tester.tap(find.text('shop-api-1'));
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('docker-tab-json')));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('docker-json-masked-view')), findsOneWidget);
+  });
+
+  testWidgets('copied log text with a secret goes to the clipboard as a secret', (tester) async {
+    final clipboard = _Clipboard();
+    await _pump(tester, clipboard: clipboard);
+    await _connectLocal(tester);
+    final api = _id(tester, 'shop-api-1');
+    await tapKey(tester, 'docker-logs-$api');
+    // Logs are shown as they are.
+    expect(find.textContaining('postgres://shop:demo-postgres-pass@'), findsOneWidget);
+    await tapKey(tester, 'docker-log-copy');
+    expect(clipboard.secrets.single, contains('demo-postgres-pass'));
+    expect(clipboard.plain, isEmpty);
+
+    await tester.enterText(find.byKey(const ValueKey('docker-log-find-input')), 'GET /api');
+    await tester.pump();
+    await tapKey(tester, 'docker-log-copy');
+    expect(clipboard.plain.single, startsWith('GET /api/orders/'));
+
+    // A selection copied with the keyboard takes the same path.
+    await tester.enterText(find.byKey(const ValueKey('docker-log-find-input')), 'connecting');
+    await tester.pump();
+    await tester.tap(find.textContaining('connecting to'));
+    await tester.pump();
+    await _copyAllWithKeyboard(tester, LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+    expect(clipboard.secrets, hasLength(2));
+    expect(clipboard.secrets.last, contains('demo-postgres-pass'));
+  });
+
+  testWidgets('on macOS Cmd+C on selected log lines takes the secret path too', (tester) async {
+    final clipboard = _Clipboard();
+    await _pump(tester, clipboard: clipboard);
+    await _connectLocal(tester);
+    await tapKey(tester, 'docker-logs-${_id(tester, 'shop-api-1')}');
+    await tester.tap(find.textContaining('connecting to'));
+    await tester.pump();
+    await _copyAllWithKeyboard(tester, LogicalKeyboardKey.metaLeft);
+    expect(clipboard.secrets.single, contains('demo-postgres-pass'));
+    expect(clipboard.plain, isEmpty);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('the first container terminal of a profile says it gives full access, once', (tester) async {
+    final terminal = _Terminal();
+    await _pump(tester, terminal: terminal);
+    await _connectLocal(tester);
+    final web = _id(tester, 'shop-web-1');
+    await tapKey(tester, 'docker-terminal-$web');
+    expect(find.byKey(const ValueKey('docker-terminal-hint')), findsOneWidget);
+    expect(
+      find.text('The terminal gives full access to the container, including its environment variables.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('docker-terminal-open')));
+    await settle(tester);
+    await tapKey(tester, 'docker-terminal-$web');
+    expect(find.byKey(const ValueKey('docker-terminal-dialog')), findsOneWidget);
+    expect(find.byKey(const ValueKey('docker-terminal-hint')), findsNothing);
   });
 
   testWidgets('forward dialog is prefilled with the container ports and starts a forward', (tester) async {

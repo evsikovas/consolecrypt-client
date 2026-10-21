@@ -64,6 +64,7 @@ const guideScreens = [
   'docker-hosts',
   'docker-containers',
   'docker-details',
+  'docker-json',
   'docker-volumes',
   'docker-compose-menu',
   'docker-compose-yaml',

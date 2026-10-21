@@ -117,23 +117,6 @@ fn health(status: &str) -> Option<String> {
     }
 }
 
-fn mask_env(inspect: &mut Value) {
-    if let Some(env) = inspect
-        .pointer_mut("/Config/Env")
-        .and_then(Value::as_array_mut)
-    {
-        for entry in env {
-            if let Some(text) = entry.as_str() {
-                if let Some((key, value)) = text.split_once('=') {
-                    if crate::sensitive_key(key) && !value.is_empty() {
-                        *entry = Value::String(format!("{key}=••••••"));
-                    }
-                }
-            }
-        }
-    }
-}
-
 impl DockerClient {
     pub fn new(connector: SharedConnector) -> Self {
         Self { connector }
@@ -403,17 +386,23 @@ impl DockerClient {
             .collect())
     }
 
-    /// `docker inspect` with secret-looking environment values hidden.
+    /// `docker inspect` with every secret hidden
+    /// ([`crate::secrets::mask_inspect`]).
     pub async fn inspect(&self, id: &str) -> Result<Value, DockerError> {
-        let mut value = self
-            .json(
-                Method::GET,
-                &format!("/containers/{}/json", checked(id)?),
-                None,
-            )
-            .await?;
-        mask_env(&mut value);
+        let mut value = self.inspect_unmasked(id).await?;
+        crate::mask_inspect(&mut value);
         Ok(value)
+    }
+
+    /// `docker inspect` as the engine returns it, secrets included. Callers
+    /// must have confirmed the vault passphrase first.
+    pub async fn inspect_unmasked(&self, id: &str) -> Result<Value, DockerError> {
+        self.json(
+            Method::GET,
+            &format!("/containers/{}/json", checked(id)?),
+            None,
+        )
+        .await
     }
 
     pub async fn action(&self, id: &str, action: ContainerAction) -> Result<(), DockerError> {
@@ -450,7 +439,7 @@ impl DockerClient {
         cancel: CancellationToken,
     ) -> Result<(), DockerError> {
         let id = checked(id)?;
-        let tty = self.inspect(id).await?["Config"]["Tty"]
+        let tty = self.inspect_unmasked(id).await?["Config"]["Tty"]
             .as_bool()
             .unwrap_or(false);
         let path = format!(
@@ -586,21 +575,6 @@ mod tests {
         for bad in ["", "../images", "a/b", "a?b", "-x", "a b"] {
             assert!(checked(bad).is_err(), "{bad}");
         }
-    }
-
-    #[test]
-    fn secret_environment_is_masked() {
-        let mut inspect = json!({"Config": {"Env": ["POSTGRES_PASSWORD=hunter2", "PATH=/usr/bin", "API_TOKEN=", "AWS_SECRET_ACCESS_KEY=x"]}});
-        mask_env(&mut inspect);
-        assert_eq!(
-            inspect["Config"]["Env"],
-            json!([
-                "POSTGRES_PASSWORD=••••••",
-                "PATH=/usr/bin",
-                "API_TOKEN=",
-                "AWS_SECRET_ACCESS_KEY=••••••"
-            ])
-        );
     }
 
     #[test]

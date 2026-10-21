@@ -24,9 +24,33 @@ pub async fn docker_containers(session_id: String, all: bool) -> Result<String, 
     with_core(move |c| async move { to_json(&c.docker_containers(session_id, all).await?) }).await
 }
 
+/// `docker inspect` with every secret masked natively.
 pub async fn docker_inspect(session_id: String, container: String) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.docker_inspect(session_id, container).await?) })
         .await
+}
+
+/// The full `docker inspect` after the vault passphrase (sent as bytes).
+pub async fn docker_inspect_reveal(
+    session_id: String,
+    container: String,
+    passphrase: Vec<u8>,
+) -> Result<String, BridgeError> {
+    let passphrase = crate::state::secret_string("passphrase", passphrase)?;
+    with_core(move |c| async move {
+        to_json(
+            &c.docker_inspect_reveal(session_id, container, passphrase)
+                .await?,
+        )
+    })
+    .await
+}
+
+/// Whether `text` holds something the Docker views mask (log selections
+/// are then copied as a secret).
+#[flutter_rust_bridge::frb(sync)]
+pub fn docker_contains_secret(text: String) -> bool {
+    cc_app_core::docker_contains_secret(&text)
 }
 
 pub async fn docker_action(
@@ -126,8 +150,8 @@ pub async fn docker_reveal_environment(
     .await
 }
 
-/// The compose files of a project, read on the engine host (contents are
-/// secret: they may hold passwords).
+/// The compose files of a project, read on the engine host, with secrets
+/// masked (`"masked": true` per file where something was hidden).
 pub async fn docker_compose_project(
     session_id: String,
     project: String,
@@ -153,15 +177,30 @@ pub async fn docker_compose_unlock(
     .await
 }
 
+/// The full compose texts under an edit grant; `null` once it expired.
+pub async fn docker_compose_reveal(
+    session_id: String,
+    project: String,
+    grant: String,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move {
+        to_json(&c.docker_compose_reveal(session_id, project, grant).await?)
+    })
+    .await
+}
+
 /// Validates and saves edited files (`edits`: UTF-8 JSON
 /// `[{"path","content","digest"}]`, zeroized here); with `apply` runs
-/// `up -d` as a job. `{"outcome": "saved" | "invalid" | ...}`.
+/// `up -d` as a job. `allow_shared_dirs`: the user agreed to save in
+/// directories other users can write to. `{"outcome": "saved" | "invalid"
+/// | "tampered" | "unsafe_directory" | ...}`.
 pub async fn docker_compose_save(
     session_id: String,
     project: String,
     grant: String,
     edits: Vec<u8>,
     apply: bool,
+    allow_shared_dirs: bool,
 ) -> Result<String, BridgeError> {
     let mut edits = edits;
     let parsed = serde_json::from_slice::<Vec<cc_app_core::ComposeEdit>>(&edits);
@@ -174,7 +213,7 @@ pub async fn docker_compose_save(
     })?;
     with_core(move |c| async move {
         to_json(
-            &c.docker_compose_save(session_id, project, grant, edits, apply)
+            &c.docker_compose_save(session_id, project, grant, edits, apply, allow_shared_dirs)
                 .await?,
         )
     })

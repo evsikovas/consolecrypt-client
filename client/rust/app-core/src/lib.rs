@@ -49,7 +49,9 @@ pub use database_runtime::{DbLiveSession, DbPreparedQueryDto, DbQueryReviewDto};
 pub use docker_compose::{
     ComposeEdit, ComposeFileDto, ComposeJobUpdate, ComposeProjectDto, ComposeSaveOutcome,
 };
-pub use docker_runtime::{DockerConnectOutcome, DockerForwardDto, DockerHostDto, DockerSessionDto};
+pub use docker_runtime::{
+    docker_contains_secret, DockerConnectOutcome, DockerForwardDto, DockerHostDto, DockerSessionDto,
+};
 mod devices;
 pub mod dto;
 mod edit;

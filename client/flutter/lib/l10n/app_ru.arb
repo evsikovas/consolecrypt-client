@@ -5397,5 +5397,85 @@
   "settingsSignOutEverywhereConfirm": "Выйти везде",
   "settingsSignOutEverywhereDone": "Выполнен выход на всех устройствах.",
   "settingsSignOutEverywhereKept": "{count, plural, one{Это устройство новое, поэтому {count} доверенное устройство не затронуто (до {date}). Сеансы новых устройств завершены.} few{Это устройство новое, поэтому {count} доверенных устройства не затронуты (до {date}). Сеансы новых устройств завершены.} many{Это устройство новое, поэтому {count} доверенных устройств не затронуты (до {date}). Сеансы новых устройств завершены.} other{Это устройство новое, поэтому {count} доверенного устройства не затронуты (до {date}). Сеансы новых устройств завершены.}}",
-  "settingsDialogAccountPasswordChangedNewDevice": "Пароль аккаунта изменён. Это устройство новое, поэтому доверенные устройства остались в аккаунте."
+  "settingsDialogAccountPasswordChangedNewDevice": "Пароль аккаунта изменён. Это устройство новое, поэтому доверенные устройства остались в аккаунте.",
+  "dockerShowFull": "Показать полностью",
+  "@dockerShowFull": {
+    "description": "Docker: button that shows masked inspect JSON or compose files in full after the vault passphrase."
+  },
+  "dockerSecretsMasked": "Пароли, токены и ключи скрыты.",
+  "@dockerSecretsMasked": {
+    "description": "Docker: note next to inspect JSON or compose files shown with secrets masked."
+  },
+  "dockerJsonRevealHelp": "Введите пароль хранилища, чтобы показать полный JSON inspect контейнера {name}, включая пароли и токены. Скопированный текст будет автоматически удалён из буфера обмена.",
+  "@dockerJsonRevealHelp": {
+    "description": "Docker: passphrase dialog before showing the unmasked inspect JSON.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeRevealHelp": "Файлы compose могут содержать пароли. Введите пароль хранилища, чтобы показать файлы проекта {project} полностью.",
+  "@dockerComposeRevealHelp": {
+    "description": "Compose files dialog: passphrase gate before showing unmasked files.",
+    "placeholders": {
+      "project": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeTampered": "Во время сохранения кто-то другой заменил или изменил на хосте временный файл для {path}. В {path} ничего не записано.",
+  "@dockerComposeTampered": {
+    "description": "Compose editor: the save detected a swapped temporary file before replacing anything.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeTamperedRestored": "Во время сохранения кто-то другой подменил {path} на хосте. Исходный файл восстановлен из резервной копии {backup}.",
+  "@dockerComposeTamperedRestored": {
+    "description": "Compose editor: a foreign file was renamed into place and the original was restored.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "backup": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeTamperedNotRestored": "Во время сохранения кто-то другой подменил {path} на хосте, и вернуть исходный файл не удалось. Восстановите его из резервной копии {backup}.",
+  "@dockerComposeTamperedNotRestored": {
+    "description": "Compose editor: a foreign file was renamed into place and restoring failed.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "backup": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeUnsafeDirTitle": "Сохранить в общий каталог?",
+  "@dockerComposeUnsafeDirTitle": {
+    "description": "Compose editor: title of the warning about a directory other users can write to."
+  },
+  "dockerComposeUnsafeDirHelp": "Каталог проекта доступен на запись другим пользователям: {dirs}. Сохранение может быть небезопасным: они могут подменить временный файл или резервную копию во время записи.",
+  "@dockerComposeUnsafeDirHelp": {
+    "description": "Compose editor: warning about a group or world writable project directory.",
+    "placeholders": {
+      "dirs": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeSaveAnyway": "Всё равно сохранить",
+  "@dockerComposeSaveAnyway": {
+    "description": "Compose editor: confirm saving into a directory other users can write to."
+  },
+  "dockerTerminalHint": "Терминал даёт полный доступ к контейнеру, включая переменные окружения.",
+  "@dockerTerminalHint": {
+    "description": "Container terminal dialog: one-time note shown the first time in a profile."
+  }
 }

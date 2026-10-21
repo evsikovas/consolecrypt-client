@@ -13,9 +13,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// The compose files of [project], read on the engine host: read-only with
-/// line numbers, editable after the vault passphrase. Saving validates on
-/// the host first, keeps a backup and (optionally) runs `up -d`, whose
-/// output is shown here. Contents are secrets and are wiped on close.
+/// line numbers and secrets masked by the core; the full text and editing
+/// need the vault passphrase. Saving validates on the host first, keeps a
+/// backup and (optionally) runs `up -d`, whose output is shown here.
+/// Contents are secrets and are wiped on close.
 Future<void> showDockerComposeDialog(
   BuildContext context, {
   required DockerService service,
@@ -62,6 +63,12 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
   final _passphrase = TextEditingController();
   String? _grant;
   bool _unlocking = false, _wrong = false, _unlockFailed = false, _expired = false;
+
+  /// [_texts] are the full texts (after the passphrase), not the masked view.
+  bool _revealed = false;
+
+  /// The passphrase step leads to editing (else only to the full text).
+  late bool _unlockForEdit = widget.edit;
 
   /// A save waiting for a fresh grant (`true`: then apply).
   bool? _pendingSave;
@@ -114,7 +121,12 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
       _loadError = null;
     });
     try {
-      final project = await widget.service.composeProject(widget.session.id, widget.project);
+      final grant = _grant;
+      final revealed = _revealed && grant != null
+          ? await widget.service.composeReveal(widget.session.id, widget.project, grant)
+          : null;
+      if (revealed == null) _revealed = false;
+      final project = revealed ?? await widget.service.composeProject(widget.session.id, widget.project);
       if (!mounted) {
         project.wipe();
         return;
@@ -134,7 +146,59 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
     }
   }
 
+  /// Replaces the masked view by the full texts under the current grant;
+  /// false when the grant expired.
+  Future<bool> _reveal() async {
+    final grant = _grant;
+    if (grant == null) return false;
+    final project = await widget.service.composeReveal(widget.session.id, widget.project, grant);
+    if (project == null) {
+      _grant = null;
+      return false;
+    }
+    if (!mounted) {
+      project.wipe();
+      return false;
+    }
+    _project?.wipe();
+    setState(() {
+      _project = project;
+      _revealed = true;
+      _texts = [for (final file in project.files) file.content?.expose()];
+      if (_index >= project.files.length) _index = 0;
+    });
+    return true;
+  }
+
+  /// Back to the masked view (the grant stays for editing).
+  Future<void> _hide() async {
+    setState(() => _revealed = false);
+    await _load();
+  }
+
+  Future<void> _askPassphrase({required bool edit}) async {
+    if (_grant != null) {
+      try {
+        if (await _reveal()) {
+          if (edit && mounted) _startEditing();
+          return;
+        }
+      } catch (_) {
+        if (mounted) setState(() => _requestFailed = true);
+        return;
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _unlockForEdit = edit;
+      _mode = _Mode.unlock;
+      _expired = false;
+    });
+  }
+
   void _startEditing() {
+    // Editing starts from the full texts only, never the masked view.
+    if (!_revealed) return;
     _disposeEditors();
     setState(() {
       _editors = [
@@ -155,13 +219,10 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
   }
 
   void _edit() {
-    if (_grant != null) {
+    if (_grant != null && _revealed) {
       _startEditing();
     } else {
-      setState(() {
-        _mode = _Mode.unlock;
-        _expired = false;
-      });
+      unawaited(_askPassphrase(edit: true));
     }
   }
 
@@ -187,8 +248,14 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
           _expired = false;
         });
         await _save(apply: pending);
-      } else {
-        _startEditing();
+      } else if (await _reveal()) {
+        if (_unlockForEdit) {
+          _startEditing();
+        } else if (mounted) {
+          setState(() => _mode = _Mode.view);
+        }
+      } else if (mounted) {
+        setState(() => _unlockFailed = true);
       }
     } on DockerWrongPassphrase {
       if (mounted) setState(() => _wrong = true);
@@ -200,10 +267,11 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
     }
   }
 
-  Future<void> _save({required bool apply}) async {
+  Future<void> _save({required bool apply, bool allowSharedDirs = false}) async {
     final grant = _grant;
     final project = _project;
     if (_saving || grant == null || project == null || !_dirty) return;
+    List<String>? sharedDirs;
     final edits = [
       for (final (i, editor) in _editors.indexed)
         if (editor != null && editor.text != _texts[i] && project.files[i].digest != null)
@@ -222,7 +290,14 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
       _jobFailed = false;
     });
     try {
-      final result = await widget.service.composeSave(widget.session.id, widget.project, grant, edits, apply: apply);
+      final result = await widget.service.composeSave(
+        widget.session.id,
+        widget.project,
+        grant,
+        edits,
+        apply: apply,
+        allowSharedDirs: allowSharedDirs,
+      );
       if (!mounted) return;
       switch (result) {
         case DockerComposeLocked():
@@ -240,6 +315,8 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
           _disposeEditors();
           await _load();
           if (jobId != null && mounted) _follow(jobId);
+        case DockerComposeUnsafeDirectory(:final dirs):
+          sharedDirs = dirs;
         default:
           setState(() => _result = result);
       }
@@ -250,6 +327,18 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
         if (!edit.content.isWiped) edit.content.wipe();
       }
       if (mounted) setState(() => _saving = false);
+    }
+    if (sharedDirs != null && mounted) {
+      final l = context.l10n;
+      final agreed = await showConfirmDialog(
+        context,
+        title: l.dockerComposeUnsafeDirTitle,
+        message: l.dockerComposeUnsafeDirHelp(sharedDirs.join(', ')),
+        confirmLabel: l.dockerComposeSaveAnyway,
+        destructive: true,
+        secure: true,
+      );
+      if (agreed && mounted) await _save(apply: apply, allowSharedDirs: true);
     }
   }
 
@@ -398,7 +487,11 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _expired ? l.dockerComposeUnlockExpired : l.dockerComposeUnlockHelp(widget.project),
+              _expired
+                  ? l.dockerComposeUnlockExpired
+                  : _unlockForEdit
+                  ? l.dockerComposeUnlockHelp(widget.project)
+                  : l.dockerComposeRevealHelp(widget.project),
               style: tokens.typography.callout.copyWith(color: tokens.palette.label),
             ),
             const SizedBox(height: GlassSpacing.s12),
@@ -491,8 +584,17 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
         return line(l.dockerComposeMissing, danger);
       case DockerComposeRunFailed(:final detail):
         return line(l.dockerComposeRunFailed(detail), danger);
-      case DockerComposeLocked():
+      case DockerComposeLocked() || DockerComposeUnsafeDirectory():
         return null;
+      case DockerComposeTampered(:final path, :final backup, :final restored):
+        return line(
+          backup == null
+              ? l.dockerComposeTampered(path)
+              : restored
+              ? l.dockerComposeTamperedRestored(path, backup)
+              : l.dockerComposeTamperedNotRestored(path, backup),
+          danger,
+        );
       case DockerComposeSaved(:final backups, :final jobId):
         final end = _jobEnd;
         final success = tokens.typography.callout.copyWith(color: tokens.palette.success);
@@ -539,6 +641,8 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
     final facts = [
       if (project != null && project.workingDir.isNotEmpty) l.dockerComposeWorkingDir(project.workingDir),
       if (project != null && project.envFiles.isNotEmpty) l.dockerComposeEnvFiles(project.envFiles.join(', ')),
+      if (_mode == _Mode.view && project != null && !_revealed && project.files.any((file) => file.masked))
+        l.dockerSecretsMasked,
     ];
     final Widget body;
     if (_loading && project == null) {
@@ -571,6 +675,7 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
       );
     }
     final canEdit = _texts.any((text) => text != null) && !_applying && !_saving;
+    final masked = !_revealed && (project?.files.any((file) => file.masked) ?? false);
     final List<Widget> secondary;
     final Widget? primary;
     switch (_mode) {
@@ -581,6 +686,20 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
             label: l.commonClose,
             onPressed: () => unawaited(_close()),
           ),
+          if (masked)
+            GlassButton(
+              key: const ValueKey('docker-compose-reveal'),
+              label: l.dockerShowFull,
+              icon: Icons.visibility_outlined,
+              onPressed: () => unawaited(_askPassphrase(edit: false)),
+            )
+          else if (_revealed)
+            GlassButton(
+              key: const ValueKey('docker-compose-hide'),
+              label: l.dockerHideSecrets,
+              icon: Icons.visibility_off_outlined,
+              onPressed: _loading ? null : () => unawaited(_hide()),
+            ),
         ];
         primary = project == null
             ? null
@@ -602,7 +721,7 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
             ? null
             : GlassButton.prominent(
                 key: const ValueKey('docker-compose-unlock'),
-                label: l.dockerComposeUnlock,
+                label: _unlockForEdit || _expired ? l.dockerComposeUnlock : l.dockerShowFull,
                 busy: _unlocking,
                 onPressed: _unlocking ? null : () => unawaited(_unlock()),
               );

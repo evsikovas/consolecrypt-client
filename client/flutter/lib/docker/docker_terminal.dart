@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
@@ -45,6 +49,25 @@ class _TerminalDialog extends ConsumerStatefulWidget {
 class _TerminalDialogState extends ConsumerState<_TerminalDialog> {
   String _shell = dockerAutoShell;
   bool _busy = false, _failed = false;
+
+  /// First container terminal of this profile: say once that it gives full
+  /// access (the vault passphrase only guards what the Docker views show).
+  late final bool _hint = !ref.read(settingsServiceProvider).currentLocal.dockerTerminalHintShown;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_hint) unawaited(_rememberHint());
+  }
+
+  Future<void> _rememberHint() async {
+    final settings = ref.read(settingsServiceProvider);
+    try {
+      await settings.updateLocal(settings.currentLocal.copyWith(dockerTerminalHintShown: true));
+    } catch (_) {
+      // A hint only; it shows again next time.
+    }
+  }
 
   Future<void> _open() async {
     if (_busy) return;
@@ -91,6 +114,14 @@ class _TerminalDialogState extends ConsumerState<_TerminalDialog> {
             style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
           ),
           const SizedBox(height: GlassSpacing.s12),
+          if (_hint) ...[
+            InfoBanner(
+              key: const ValueKey('docker-terminal-hint'),
+              tone: BannerTone.info,
+              message: l.dockerTerminalHint,
+            ),
+            const SizedBox(height: GlassSpacing.s12),
+          ],
           GlassDropdownField<String>(
             key: const ValueKey('docker-terminal-shell'),
             value: _shell,

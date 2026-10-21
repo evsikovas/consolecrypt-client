@@ -4,7 +4,15 @@
 //! `docker compose config -q` against a candidate written next to the
 //! original before anything is replaced. `up -d` then runs as a job whose
 //! output the UI polls. Editing needs the vault passphrase (a short-lived
-//! grant per project); file contents are treated as secrets.
+//! grant per project); file contents are treated as secrets and shown
+//! masked until then.
+//!
+//! Saving never trusts a name twice: candidates and backups are created
+//! exclusively without following links and written through the one open
+//! file; the candidate is checked to still be that file before and after
+//! validation and before and after it replaces the original (inode on this
+//! computer, SHA-256 over SFTP), and a swapped file is restored from the
+//! backup.
 use crate::{AppCore, AppError, AppResult};
 use async_trait::async_trait;
 use cc_docker_core::compose::{
@@ -93,19 +101,65 @@ pub(crate) trait ComposeHost: Send + Sync {
     async fn real_path(&self, path: &str) -> Result<String, HostFileError>;
     /// Permission bits, when the host reports them.
     async fn mode(&self, path: &str) -> Result<Option<u32>, HostFileError>;
-    /// Creates `path` exclusively ([`HostFileError::Exists`] if taken).
+    /// Creates `path` exclusively ([`HostFileError::Exists`] if taken, a
+    /// link included) and writes `data` and the final `mode` through the one
+    /// open file, never by name. Returns what identifies the new file.
     async fn create_new(
         &self,
         path: &str,
         data: &[u8],
         mode: Option<u32>,
-    ) -> Result<(), HostFileError>;
+    ) -> Result<FileStamp, HostFileError>;
+    /// Whether `path` (not followed if a link) is still the regular file
+    /// `stamp` describes.
+    async fn verify(&self, path: &str, stamp: &FileStamp) -> Result<bool, HostFileError>;
+    /// Whether users other than this one can rename or replace entries of
+    /// directory `path`.
+    async fn shared_dir(&self, path: &str) -> Result<bool, HostFileError>;
     /// Renames `from` over `to` (atomically where the host can).
     async fn replace(&self, from: &str, to: &str) -> Result<(), HostFileError>;
     async fn remove(&self, path: &str) -> Result<(), HostFileError>;
     /// Runs `argv` (no shell interpretation of any word), passing each
     /// output line to `on_line`.
     async fn run(&self, argv: &[String], on_line: LineSink<'_>) -> Result<RunOutput, RunError>;
+}
+
+/// What identifies a file a save created, checked again before it is
+/// trusted.
+pub(crate) enum FileStamp {
+    /// This computer: device and inode of the created file, which stays open
+    /// so the inode cannot be reused meanwhile.
+    #[cfg(unix)]
+    Inode {
+        _file: std::fs::File,
+        dev: u64,
+        ino: u64,
+    },
+    /// Elsewhere: the SHA-256 of what was written.
+    Digest(String),
+}
+
+impl fmt::Debug for FileStamp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            #[cfg(unix)]
+            Self::Inode { dev, ino, .. } => write!(f, "Inode({dev}:{ino})"),
+            Self::Digest(digest) => write!(f, "Digest({digest})"),
+        }
+    }
+}
+
+/// Whether others (root aside) can rename or replace entries of a directory
+/// with permission bits `mode` owned by `owner`: group or world writable
+/// (unless sticky and ours), or owned by another user. `me` unknown: only
+/// the permission bits count.
+pub(crate) fn shared_directory(mode: u32, owner: u32, me: Option<u32>) -> bool {
+    let others_write = mode & 0o022 != 0;
+    let sticky = mode & 0o1000 != 0;
+    match me {
+        Some(me) => (owner != me && owner != 0) || (others_write && (!sticky || owner != me)),
+        None => others_write,
+    }
 }
 
 /// Splits raw output into clean lines and keeps a bounded copy.
@@ -266,31 +320,89 @@ impl ComposeHost for LocalComposeHost {
         path: &str,
         data: &[u8],
         mode: Option<u32>,
-    ) -> Result<(), HostFileError> {
+    ) -> Result<FileStamp, HostFileError> {
         use tokio::io::AsyncWriteExt;
         let mut options = tokio::fs::OpenOptions::new();
+        // `create_new` is O_EXCL (a link is a taken name); O_NOFOLLOW too.
         options.write(true).create_new(true);
         #[cfg(unix)]
-        options.mode(0o600);
+        options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
         let mut file = options.open(path).await.map_err(|e| io_error(&e))?;
         let written = async {
             file.write_all(data).await?;
-            file.sync_all().await?;
             #[cfg(unix)]
             if let Some(mode) = mode {
                 use std::os::unix::fs::PermissionsExt;
-                tokio::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).await?;
+                // fchmod on the open file, not chmod by name.
+                file.set_permissions(std::fs::Permissions::from_mode(mode & 0o7777))
+                    .await?;
             }
             #[cfg(not(unix))]
             let _ = mode;
+            file.sync_all().await?;
             Ok::<_, std::io::Error>(())
         }
         .await;
         if let Err(error) = written {
+            drop(file);
             let _ = tokio::fs::remove_file(path).await;
             return Err(io_error(&error));
         }
-        Ok(())
+        let file = file.into_std().await;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            if let Ok(meta) = file.metadata() {
+                return Ok(FileStamp::Inode {
+                    dev: meta.dev(),
+                    ino: meta.ino(),
+                    _file: file,
+                });
+            }
+        }
+        drop(file);
+        Ok(FileStamp::Digest(digest(data)))
+    }
+
+    async fn verify(&self, path: &str, stamp: &FileStamp) -> Result<bool, HostFileError> {
+        let meta = match tokio::fs::symlink_metadata(path).await {
+            Ok(meta) => meta,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+            Err(error) => return Err(io_error(&error)),
+        };
+        if !meta.is_file() {
+            return Ok(false);
+        }
+        match stamp {
+            #[cfg(unix)]
+            FileStamp::Inode { dev, ino, .. } => {
+                use std::os::unix::fs::MetadataExt;
+                Ok(meta.dev() == *dev && meta.ino() == *ino)
+            }
+            FileStamp::Digest(expected) => {
+                let mut bytes = self.read(path, MAX_FILE).await?;
+                let same = digest(&bytes) == *expected;
+                bytes.zeroize();
+                Ok(same)
+            }
+        }
+    }
+
+    async fn shared_dir(&self, path: &str) -> Result<bool, HostFileError> {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            let meta = tokio::fs::metadata(path).await.map_err(|e| io_error(&e))?;
+            #[allow(unsafe_code)]
+            // SAFETY: geteuid has no preconditions and cannot fail.
+            let me = unsafe { libc::geteuid() };
+            Ok(shared_directory(meta.mode() & 0o7777, meta.uid(), Some(me)))
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = path;
+            Ok(false)
+        }
     }
 
     async fn replace(&self, from: &str, to: &str) -> Result<(), HostFileError> {
@@ -377,6 +489,8 @@ fn sftp_error(error: SftpError) -> HostFileError {
 pub(crate) struct SshComposeHost {
     session: Arc<SshSession>,
     sftp: tokio::sync::OnceCell<SftpClient>,
+    /// `id -u` of the SSH user, asked once.
+    uid: tokio::sync::OnceCell<Option<u32>>,
 }
 
 impl fmt::Debug for SshComposeHost {
@@ -390,6 +504,7 @@ impl SshComposeHost {
         Self {
             session,
             sftp: tokio::sync::OnceCell::new(),
+            uid: tokio::sync::OnceCell::new(),
         }
     }
 
@@ -414,10 +529,15 @@ impl Drop for SshComposeHost {
     }
 }
 
-#[async_trait]
-impl ComposeHost for SshComposeHost {
-    async fn read(&self, path: &str, max: u64) -> Result<Vec<u8>, HostFileError> {
-        let sftp = self.sftp().await?;
+/// File operations over SFTP, shared by [`SshComposeHost`] and tests.
+mod sftp_files {
+    use super::*;
+
+    pub(crate) async fn read(
+        sftp: &SftpClient,
+        path: &str,
+        max: u64,
+    ) -> Result<Vec<u8>, HostFileError> {
         let entry = sftp.stat(path).await.map_err(sftp_error)?;
         if entry.kind != EntryKind::File {
             return Err(HostFileError::NotAFile);
@@ -430,6 +550,82 @@ impl ComposeHost for SshComposeHost {
             return Err(HostFileError::TooLarge);
         }
         Ok(bytes)
+    }
+
+    /// One open (`CREATE | EXCLUDE | WRITE`), then write, `fsetstat`,
+    /// `fsync` and close on that handle.
+    pub(crate) async fn create_new(
+        sftp: &SftpClient,
+        path: &str,
+        data: &[u8],
+        mode: Option<u32>,
+    ) -> Result<FileStamp, HostFileError> {
+        sftp.create_exclusive_with(path, mode.unwrap_or(0o600), data)
+            .await
+            .map_err(sftp_error)?;
+        Ok(FileStamp::Digest(digest(data)))
+    }
+
+    /// SFTP has no inodes: a regular file (lstat) whose content hashes to
+    /// what was written.
+    pub(crate) async fn verify(
+        sftp: &SftpClient,
+        path: &str,
+        stamp: &FileStamp,
+    ) -> Result<bool, HostFileError> {
+        let FileStamp::Digest(expected) = stamp else {
+            return Ok(false);
+        };
+        match sftp.lstat(path).await {
+            Ok(entry) if entry.kind == EntryKind::File => {}
+            Ok(_) | Err(SftpError::NotFound(_)) => return Ok(false),
+            Err(error) => return Err(sftp_error(error)),
+        }
+        let mut bytes = match read(sftp, path, MAX_FILE).await {
+            Ok(bytes) => bytes,
+            Err(HostFileError::NotFound | HostFileError::TooLarge | HostFileError::NotAFile) => {
+                return Ok(false)
+            }
+            Err(error) => return Err(error),
+        };
+        let same = digest(&bytes) == *expected;
+        bytes.zeroize();
+        Ok(same)
+    }
+
+    pub(crate) async fn replace(
+        sftp: &SftpClient,
+        from: &str,
+        to: &str,
+    ) -> Result<(), HostFileError> {
+        if sftp.supports_posix_rename() {
+            return sftp.posix_rename(from, to).await.map_err(sftp_error);
+        }
+        // SFTP v3 rename refuses an existing target; the backup is already
+        // in place and the result is verified, so remove-then-rename is safe
+        // enough here.
+        sftp.remove_file(to).await.map_err(sftp_error)?;
+        sftp.rename(from, to).await.map_err(sftp_error)
+    }
+
+    pub(crate) async fn shared_dir(
+        sftp: &SftpClient,
+        path: &str,
+        me: Option<u32>,
+    ) -> Result<bool, HostFileError> {
+        let entry = sftp.stat(path).await.map_err(sftp_error)?;
+        Ok(match (entry.permissions, entry.uid) {
+            (Some(mode), Some(owner)) => shared_directory(mode, owner, me),
+            (Some(mode), None) => shared_directory(mode, 0, None),
+            _ => false,
+        })
+    }
+}
+
+#[async_trait]
+impl ComposeHost for SshComposeHost {
+    async fn read(&self, path: &str, max: u64) -> Result<Vec<u8>, HostFileError> {
+        sftp_files::read(self.sftp().await?, path, max).await
     }
 
     async fn real_path(&self, path: &str) -> Result<String, HostFileError> {
@@ -455,33 +651,27 @@ impl ComposeHost for SshComposeHost {
         path: &str,
         data: &[u8],
         mode: Option<u32>,
-    ) -> Result<(), HostFileError> {
-        let sftp = self.sftp().await?;
-        sftp.create_file(path, 0o600).await.map_err(sftp_error)?;
-        let written = async {
-            sftp.write(path, data).await?;
-            if let Some(mode) = mode {
-                sftp.chmod(path, mode).await?;
-            }
-            Ok::<_, SftpError>(())
-        }
-        .await;
-        if let Err(error) = written {
-            let _ = sftp.remove_file(path).await;
-            return Err(sftp_error(error));
-        }
-        Ok(())
+    ) -> Result<FileStamp, HostFileError> {
+        sftp_files::create_new(self.sftp().await?, path, data, mode).await
+    }
+
+    async fn verify(&self, path: &str, stamp: &FileStamp) -> Result<bool, HostFileError> {
+        sftp_files::verify(self.sftp().await?, path, stamp).await
+    }
+
+    async fn shared_dir(&self, path: &str) -> Result<bool, HostFileError> {
+        let me = *self
+            .uid
+            .get_or_init(|| async {
+                let output = self.run(&["id".into(), "-u".into()], &|_| {}).await.ok()?;
+                output.output.trim().parse().ok()
+            })
+            .await;
+        sftp_files::shared_dir(self.sftp().await?, path, me).await
     }
 
     async fn replace(&self, from: &str, to: &str) -> Result<(), HostFileError> {
-        let sftp = self.sftp().await?;
-        if sftp.supports_posix_rename() {
-            return sftp.posix_rename(from, to).await.map_err(sftp_error);
-        }
-        // SFTP v3 rename refuses an existing target; the backup is already
-        // in place, so remove-then-rename is safe enough here.
-        sftp.remove_file(to).await.map_err(sftp_error)?;
-        sftp.rename(from, to).await.map_err(sftp_error)
+        sftp_files::replace(self.sftp().await?, from, to).await
     }
 
     async fn remove(&self, path: &str) -> Result<(), HostFileError> {
@@ -543,6 +733,8 @@ pub struct ComposeFileDto {
     /// `not_found`, `permission_denied`, `too_large`, `not_a_file`,
     /// `not_text` or `io_error`.
     pub error: Option<&'static str>,
+    /// `content` has secrets hidden (the full text needs the passphrase).
+    pub masked: bool,
 }
 
 impl fmt::Debug for ComposeFileDto {
@@ -551,6 +743,7 @@ impl fmt::Debug for ComposeFileDto {
             .field("path", &self.path)
             .field("size", &self.size)
             .field("error", &self.error)
+            .field("masked", &self.masked)
             .finish_non_exhaustive()
     }
 }
@@ -616,6 +809,17 @@ pub enum ComposeSaveOutcome {
     RunFailed { detail: String },
     /// The edit permission expired: ask for the passphrase again.
     Locked,
+    /// A file this save created was replaced or changed on the host before
+    /// it was used (`compose_tampered`). With `backup` the original had
+    /// already been replaced; `restored` says whether it was put back.
+    Tampered {
+        path: String,
+        backup: Option<String>,
+        restored: bool,
+    },
+    /// Other users can write to these directories (temporary files and
+    /// backups go there); save again only with the user's consent.
+    UnsafeDirectory { dirs: Vec<String> },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -648,6 +852,7 @@ pub(crate) async fn read_project(
             digest: None,
             size: 0,
             error: None,
+            masked: false,
         };
         match host.read(path, MAX_FILE).await {
             Ok(bytes) => {
@@ -674,6 +879,28 @@ pub(crate) async fn read_project(
         host: kind,
         files,
     }
+}
+
+/// Hides secrets in every file's text (`cc_docker_core::mask_compose`);
+/// digests stay those of the files as read.
+pub(crate) fn mask_project(project: &mut ComposeProjectDto) {
+    for file in &mut project.files {
+        if let Some(content) = &mut file.content {
+            let (masked, found) = cc_docker_core::mask_compose(content);
+            if found {
+                content.zeroize();
+                *content = masked;
+                file.masked = true;
+            }
+        }
+    }
+}
+
+/// 128 random bits as hex: candidate names nobody can guess.
+pub(crate) fn random_tag() -> AppResult<String> {
+    let mut bytes = [0u8; 16];
+    cc_crypto_core::fill_random(&mut bytes)?;
+    Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
 /// `docker compose` when the plugin answers, else `docker-compose`.
@@ -707,15 +934,75 @@ async fn remove_all(host: &dyn ComposeHost, paths: &[String]) {
     }
 }
 
+/// One edited file: the original as it is now (unchanged since opened,
+/// resolved through symlinks, with its permission bits) and where its
+/// candidate goes.
+struct Target {
+    real: String,
+    original: Vec<u8>,
+    mode: Option<u32>,
+    candidate: String,
+}
+
+impl Drop for Target {
+    fn drop(&mut self) {
+        self.original.zeroize();
+    }
+}
+
+/// Puts the original text (what the backup holds) back at `target.real`
+/// after a foreign file took its place. Another swap can win this rename
+/// too, so it is tried a few times, each with a fresh candidate checked
+/// after the rename.
+async fn restore(host: &dyn ComposeHost, target: &Target, tag: &str) -> bool {
+    for attempt in 0..3 {
+        let candidate = candidate_path(&target.real, &format!("{tag}-restore{attempt}"));
+        let Ok(stamp) = host
+            .create_new(&candidate, &target.original, target.mode)
+            .await
+        else {
+            continue;
+        };
+        if host.replace(&candidate, &target.real).await.is_err() {
+            let _ = host.remove(&candidate).await;
+            continue;
+        }
+        if host.verify(&target.real, &stamp).await.unwrap_or(false) {
+            return true;
+        }
+    }
+    false
+}
+
+/// The first edit whose candidate is no longer the file this save wrote.
+async fn swapped<'a>(
+    host: &dyn ComposeHost,
+    edits: &'a [ComposeEdit],
+    targets: &[Target],
+    stamps: &[FileStamp],
+) -> Option<&'a ComposeEdit> {
+    for ((edit, target), stamp) in edits.iter().zip(targets).zip(stamps) {
+        if !host.verify(&target.candidate, stamp).await.unwrap_or(false) {
+            return Some(edit);
+        }
+    }
+    None
+}
+
 /// Validate-then-write: candidates next to the originals, `config -q` with
 /// them standing in, then a timestamped backup of each original and a
-/// rename over it. Nothing is replaced unless validation passed.
+/// rename over it. Nothing is replaced unless validation passed, and a
+/// candidate is used only while it is still the file this save wrote
+/// (checked before and after validation and around the rename; a foreign
+/// file renamed in is replaced by the original again). Directories other
+/// users can write to need `allow_shared_dirs`.
 pub(crate) async fn save(
     host: &dyn ComposeHost,
     location: &ComposeLocation,
     edits: &[ComposeEdit],
     stamp: &str,
     tag: &str,
+    allow_shared_dirs: bool,
 ) -> AppResult<Saved> {
     if edits.is_empty() {
         return Err(AppError::invalid("docker", "compose_nothing_to_save"));
@@ -734,19 +1021,6 @@ pub(crate) async fn save(
     let Some(cli) = detect_cli(host).await else {
         return rejected(ComposeSaveOutcome::ComposeMissing);
     };
-    // The originals as they are now: unchanged since opened, resolved
-    // through symlinks, with their permission bits.
-    struct Target {
-        real: String,
-        original: Vec<u8>,
-        mode: Option<u32>,
-        candidate: String,
-    }
-    impl Drop for Target {
-        fn drop(&mut self) {
-            self.original.zeroize();
-        }
-    }
     let mut targets = Vec::new();
     for edit in edits {
         let failed = |error: HostFileError| {
@@ -778,19 +1052,57 @@ pub(crate) async fn save(
             candidate,
         });
     }
+    if !allow_shared_dirs {
+        let dirs = targets
+            .iter()
+            .map(|target| compose::parent(&target.real).to_owned())
+            .chain([location.working_dir.clone()]);
+        let mut checked: Vec<String> = Vec::new();
+        let mut shared = Vec::new();
+        for dir in dirs {
+            if checked.contains(&dir) {
+                continue;
+            }
+            if host.shared_dir(&dir).await.unwrap_or(false) {
+                shared.push(dir.clone());
+            }
+            checked.push(dir);
+        }
+        if !shared.is_empty() {
+            return rejected(ComposeSaveOutcome::UnsafeDirectory { dirs: shared });
+        }
+    }
+    let tampered = |path: &str, backup: Option<String>, restored: bool| {
+        rejected(ComposeSaveOutcome::Tampered {
+            path: path.to_owned(),
+            backup,
+            restored,
+        })
+    };
     let mut written = Vec::new();
+    let mut stamps = Vec::new();
     for (edit, target) in edits.iter().zip(&targets) {
-        if let Err(error) = host
+        match host
             .create_new(&target.candidate, edit.content.as_bytes(), target.mode)
             .await
         {
-            remove_all(host, &written).await;
-            return rejected(ComposeSaveOutcome::WriteFailed {
-                path: edit.path.clone(),
-                reason: error.code(),
-            });
+            Ok(stamp) => {
+                written.push(target.candidate.clone());
+                stamps.push(stamp);
+            }
+            Err(error) => {
+                remove_all(host, &written).await;
+                return rejected(ComposeSaveOutcome::WriteFailed {
+                    path: edit.path.clone(),
+                    reason: error.code(),
+                });
+            }
         }
-        written.push(target.candidate.clone());
+    }
+    // Validation must see exactly what this save wrote.
+    if let Some(edit) = swapped(host, edits, &targets, &stamps).await {
+        remove_all(host, &written).await;
+        return tampered(&edit.path, None, false);
     }
     let files: Vec<String> = location
         .config_files
@@ -827,6 +1139,10 @@ pub(crate) async fn save(
         remove_all(host, &written).await;
         return rejected(outcome);
     }
+    if let Some(edit) = swapped(host, edits, &targets, &stamps).await {
+        remove_all(host, &written).await;
+        return tampered(&edit.path, None, false);
+    }
     let mut backups = Vec::new();
     for (edit, target) in edits.iter().zip(&targets) {
         let mut saved = None;
@@ -836,7 +1152,7 @@ pub(crate) async fn save(
                 .create_new(&backup, &target.original, target.mode)
                 .await
             {
-                Ok(()) => {
+                Ok(_) => {
                     saved = Some(Ok(backup));
                     break;
                 }
@@ -865,13 +1181,23 @@ pub(crate) async fn save(
             }
         }
     }
-    for (index, (edit, target)) in edits.iter().zip(&targets).enumerate() {
+    for (index, ((edit, target), stamp)) in edits.iter().zip(&targets).zip(&stamps).enumerate() {
+        if !host.verify(&target.candidate, stamp).await.unwrap_or(false) {
+            remove_all(host, &written[index..]).await;
+            return tampered(&edit.path, None, false);
+        }
         if let Err(error) = host.replace(&target.candidate, &target.real).await {
             remove_all(host, &written[index..]).await;
             return rejected(ComposeSaveOutcome::WriteFailed {
                 path: edit.path.clone(),
                 reason: error.code(),
             });
+        }
+        // The rename moved whatever had the candidate's name by then.
+        if !host.verify(&target.real, stamp).await.unwrap_or(false) {
+            let restored = restore(host, target, tag).await;
+            remove_all(host, &written[index + 1..]).await;
+            return tampered(&edit.path, Some(backups[index].clone()), restored);
         }
     }
     Ok(Saved::Written { backups, cli })
@@ -1092,14 +1418,33 @@ impl AppCore {
         Ok((location, host, kind, target.cancel))
     }
 
-    /// The project's compose files, read on the engine host.
+    /// The project's compose files, read on the engine host, with secrets
+    /// hidden (see [`Self::docker_compose_reveal`]).
     pub async fn docker_compose_project(
         &self,
         session_id: String,
         project: String,
     ) -> AppResult<ComposeProjectDto> {
         let (location, host, kind, _) = self.compose_context(&session_id, &project).await?;
-        Ok(read_project(host.as_ref(), &location, kind).await)
+        let mut files = read_project(host.as_ref(), &location, kind).await;
+        mask_project(&mut files);
+        Ok(files)
+    }
+
+    /// The full texts under a grant from [`Self::docker_compose_unlock`];
+    /// `None` once the grant expired (ask for the passphrase again).
+    pub async fn docker_compose_reveal(
+        &self,
+        session_id: String,
+        project: String,
+        grant: String,
+    ) -> AppResult<Option<ComposeProjectDto>> {
+        let (_, unlocked) = self.unlocked().await?;
+        if !unlocked.docker.compose.check(&grant, &session_id, &project) {
+            return Ok(None);
+        }
+        let (location, host, kind, _) = self.compose_context(&session_id, &project).await?;
+        Ok(Some(read_project(host.as_ref(), &location, kind).await))
     }
 
     /// Checks the vault passphrase and returns a grant to edit the project.
@@ -1121,6 +1466,8 @@ impl AppCore {
     }
 
     /// Validates and writes the edited files; with `apply` starts `up -d`.
+    /// `allow_shared_dirs` is the user's consent to save in directories
+    /// other users can write to ([`ComposeSaveOutcome::UnsafeDirectory`]).
     pub async fn docker_compose_save(
         &self,
         session_id: String,
@@ -1128,6 +1475,7 @@ impl AppCore {
         grant: String,
         edits: Vec<ComposeEdit>,
         apply: bool,
+        allow_shared_dirs: bool,
     ) -> AppResult<ComposeSaveOutcome> {
         let (_, unlocked) = self.unlocked().await?;
         if !unlocked.docker.compose.check(&grant, &session_id, &project) {
@@ -1135,8 +1483,17 @@ impl AppCore {
         }
         let (location, host, _, cancel) = self.compose_context(&session_id, &project).await?;
         let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
-        let tag = uuid::Uuid::new_v4().simple().to_string()[..12].to_owned();
-        let (backups, cli) = match save(host.as_ref(), &location, &edits, &stamp, &tag).await? {
+        let tag = random_tag()?;
+        let saved = save(
+            host.as_ref(),
+            &location,
+            &edits,
+            &stamp,
+            &tag,
+            allow_shared_dirs,
+        )
+        .await?;
+        let (backups, cli) = match saved {
             Saved::Written { backups, cli } => (backups, cli),
             Saved::Rejected(outcome) => return Ok(outcome),
         };
@@ -1223,6 +1580,12 @@ mod tests {
         invalid_marker: Option<&'static str>,
         deny_writes_in: Option<&'static str>,
         runs: Mutex<Vec<Vec<String>>>,
+        /// Directories reported as writable by other users.
+        shared: Vec<&'static str>,
+        /// Overwrites every candidate while `config -q` runs.
+        swap_during_validation: bool,
+        /// Puts foreign text in place of the original right after a rename.
+        swap_after_replace: bool,
     }
 
     impl FakeHost {
@@ -1275,7 +1638,7 @@ mod tests {
             path: &str,
             data: &[u8],
             mode: Option<u32>,
-        ) -> Result<(), HostFileError> {
+        ) -> Result<FileStamp, HostFileError> {
             if self.deny_writes_in.is_some_and(|dir| path.starts_with(dir)) {
                 return Err(HostFileError::PermissionDenied);
             }
@@ -1286,12 +1649,32 @@ mod tests {
             files.insert(path.to_owned(), (data.to_vec(), mode.unwrap_or(0o600)));
             drop(files);
             self.note(format!("create {path}"));
-            Ok(())
+            Ok(FileStamp::Digest(digest(data)))
+        }
+        async fn verify(&self, path: &str, stamp: &FileStamp) -> Result<bool, HostFileError> {
+            let FileStamp::Digest(expected) = stamp else {
+                return Ok(false);
+            };
+            Ok(self
+                .files
+                .lock()
+                .unwrap()
+                .get(path)
+                .is_some_and(|(bytes, _)| digest(bytes) == *expected))
+        }
+        async fn shared_dir(&self, path: &str) -> Result<bool, HostFileError> {
+            Ok(self.shared.contains(&path))
         }
         async fn replace(&self, from: &str, to: &str) -> Result<(), HostFileError> {
             let mut files = self.files.lock().unwrap();
             let entry = files.remove(from).ok_or(HostFileError::NotFound)?;
             files.insert(to.to_owned(), entry);
+            if self.swap_after_replace
+                && from.contains(".consolecrypt-")
+                && !from.contains("-restore")
+            {
+                files.insert(to.to_owned(), (b"image: evil\n".to_vec(), 0o666));
+            }
             drop(files);
             self.note(format!("replace {from} -> {to}"));
             Ok(())
@@ -1319,7 +1702,14 @@ mod tests {
             }
             if argv.ends_with(&["config".to_owned(), "-q".to_owned()]) {
                 self.note("validate".into());
-                let files = self.files.lock().unwrap();
+                let mut files = self.files.lock().unwrap();
+                if self.swap_during_validation {
+                    for (path, (bytes, _)) in files.iter_mut() {
+                        if path.contains(".consolecrypt-") {
+                            *bytes = b"image: evil\n".to_vec();
+                        }
+                    }
+                }
                 for (index, word) in argv.iter().enumerate() {
                     if index > 0 && argv[index - 1] == "-f" {
                         let (bytes, _) = files.get(word).expect("validated file exists");
@@ -1408,6 +1798,7 @@ mod tests {
             &[edit("/srv/shop/compose.yaml", changed, BASE)],
             "20261021-091500",
             "t1",
+            false,
         )
         .await
         .unwrap();
@@ -1480,6 +1871,7 @@ mod tests {
             &[edit("/srv/shop/compose.yaml", "BROKEN: [", BASE)],
             "s",
             "t2",
+            false,
         )
         .await
         .unwrap();
@@ -1510,6 +1902,7 @@ mod tests {
             &[edit("/srv/shop/compose.yaml", "x: 1\n", "services: {}\n")],
             "s",
             "t3",
+            false,
         )
         .await
         .unwrap();
@@ -1530,7 +1923,9 @@ mod tests {
         };
         let edits = [edit("/srv/shop/compose.yaml", "a: 1\n", BASE)];
         assert_eq!(
-            save(&host, &location(), &edits, "s", "t").await.unwrap(),
+            save(&host, &location(), &edits, "s", "t", false)
+                .await
+                .unwrap(),
             Saved::Rejected(ComposeSaveOutcome::ComposeMissing)
         );
         // The standalone binary is used when the plugin is missing.
@@ -1543,7 +1938,9 @@ mod tests {
             ])
         };
         assert!(matches!(
-            save(&host, &location(), &edits, "s", "t").await.unwrap(),
+            save(&host, &location(), &edits, "s", "t", false)
+                .await
+                .unwrap(),
             Saved::Written {
                 cli: ComposeCli::Standalone,
                 ..
@@ -1554,7 +1951,9 @@ mod tests {
             ..FakeHost::with(&[("/srv/shop/compose.yaml", BASE)])
         };
         assert_eq!(
-            save(&host, &location(), &edits, "s", "t").await.unwrap(),
+            save(&host, &location(), &edits, "s", "t", false)
+                .await
+                .unwrap(),
             Saved::Rejected(ComposeSaveOutcome::WriteFailed {
                 path: "/srv/shop/compose.yaml".into(),
                 reason: "permission_denied"
@@ -1576,6 +1975,7 @@ mod tests {
             &[edit("/srv/shop/compose.yaml", "a: 1\n", BASE)],
             "s",
             "t",
+            false,
         )
         .await
         .unwrap();
@@ -1599,7 +1999,9 @@ mod tests {
             ],
             vec![],
         ] {
-            assert!(save(&host, &location(), &edits, "s", "t").await.is_err());
+            assert!(save(&host, &location(), &edits, "s", "t", false)
+                .await
+                .is_err());
         }
         assert!(host.log().is_empty());
     }
@@ -1673,19 +2075,26 @@ mod tests {
         assert_eq!(host.read(&path, 3).await, Err(HostFileError::TooLarge));
         assert_eq!(host.mode(&path).await.unwrap(), Some(0o640));
         let other = format!("{path}.new");
-        host.create_new(&other, b"a: 1\n", Some(0o640))
+        let stamp = host
+            .create_new(&other, b"a: 1\n", Some(0o640))
             .await
             .unwrap();
-        assert_eq!(
+        assert!(matches!(
             host.create_new(&other, b"b", None).await,
             Err(HostFileError::Exists)
-        );
+        ));
+        assert!(host.verify(&other, &stamp).await.unwrap());
+        assert!(!host.verify(&path, &stamp).await.unwrap());
         assert_eq!(
             std::fs::metadata(&other).unwrap().permissions().mode() & 0o7777,
             0o640
         );
         host.replace(&other, &path).await.unwrap();
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "a: 1\n");
+        assert!(
+            host.verify(&path, &stamp).await.unwrap(),
+            "rename keeps the inode"
+        );
         assert_eq!(
             host.read(&format!("{path}.missing"), MAX_FILE).await,
             Err(HostFileError::NotFound)
@@ -1702,5 +2111,577 @@ mod tests {
                 .unwrap_err(),
             RunError::NotFound
         );
+    }
+
+    #[tokio::test]
+    async fn a_candidate_changed_during_validation_is_never_used() {
+        let host = FakeHost {
+            swap_during_validation: true,
+            ..FakeHost::with(&[
+                ("/srv/shop/compose.yaml", BASE),
+                ("/srv/shop/compose.override.yaml", OVERRIDE),
+            ])
+        };
+        let saved = save(
+            &host,
+            &location(),
+            &[edit("/srv/shop/compose.yaml", "a: 1\n", BASE)],
+            "s",
+            "t",
+            false,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            saved,
+            Saved::Rejected(ComposeSaveOutcome::Tampered {
+                path: "/srv/shop/compose.yaml".into(),
+                backup: None,
+                restored: false,
+            })
+        );
+        assert_eq!(host.text("/srv/shop/compose.yaml").as_deref(), Some(BASE));
+        assert_eq!(host.files.lock().unwrap().len(), 2, "candidate removed");
+    }
+
+    #[tokio::test]
+    async fn a_foreign_file_renamed_in_is_replaced_by_the_backup() {
+        let host = FakeHost {
+            swap_after_replace: true,
+            ..FakeHost::with(&[
+                ("/srv/shop/compose.yaml", BASE),
+                ("/srv/shop/compose.override.yaml", OVERRIDE),
+            ])
+        };
+        let saved = save(
+            &host,
+            &location(),
+            &[edit("/srv/shop/compose.yaml", "a: 1\n", BASE)],
+            "s",
+            "t",
+            false,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            saved,
+            Saved::Rejected(ComposeSaveOutcome::Tampered {
+                path: "/srv/shop/compose.yaml".into(),
+                backup: Some("/srv/shop/compose.yaml.bak-s".into()),
+                restored: true,
+            })
+        );
+        assert_eq!(host.text("/srv/shop/compose.yaml").as_deref(), Some(BASE));
+        assert_eq!(
+            host.text("/srv/shop/compose.yaml.bak-s").as_deref(),
+            Some(BASE)
+        );
+    }
+
+    #[tokio::test]
+    async fn shared_directories_need_consent() {
+        let host = FakeHost {
+            shared: vec!["/srv/shop"],
+            ..FakeHost::with(&[
+                ("/srv/shop/compose.yaml", BASE),
+                ("/srv/shop/compose.override.yaml", OVERRIDE),
+            ])
+        };
+        let edits = [edit("/srv/shop/compose.yaml", "a: 1\n", BASE)];
+        assert_eq!(
+            save(&host, &location(), &edits, "s", "t", false)
+                .await
+                .unwrap(),
+            Saved::Rejected(ComposeSaveOutcome::UnsafeDirectory {
+                dirs: vec!["/srv/shop".into()]
+            })
+        );
+        assert!(host.log().is_empty(), "nothing written before consent");
+        assert!(matches!(
+            save(&host, &location(), &edits, "s", "t", true)
+                .await
+                .unwrap(),
+            Saved::Written { .. }
+        ));
+    }
+
+    #[test]
+    fn directories_others_can_write_to() {
+        const ME: u32 = 1000;
+        const OTHER: u32 = 1001;
+        assert!(!shared_directory(0o755, ME, Some(ME)));
+        assert!(!shared_directory(0o755, 0, Some(ME)), "root-owned is fine");
+        assert!(!shared_directory(0o1777, ME, Some(ME)), "sticky and ours");
+        assert!(shared_directory(0o777, ME, Some(ME)));
+        assert!(shared_directory(0o775, ME, Some(ME)));
+        assert!(
+            shared_directory(0o1777, 0, Some(ME)),
+            "sticky, others' files"
+        );
+        assert!(shared_directory(0o755, OTHER, Some(ME)));
+        assert!(shared_directory(0o757, 0, None));
+        assert!(!shared_directory(0o755, OTHER, None));
+    }
+
+    #[test]
+    fn temporary_names_carry_128_random_bits() {
+        let a = random_tag().unwrap();
+        let b = random_tag().unwrap();
+        assert_eq!(a.len(), 32);
+        assert!(a.bytes().all(|c| c.is_ascii_hexdigit()));
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn project_view_is_masked_with_the_original_digest() {
+        let secret = "services:\n  db:\n    environment:\n      POSTGRES_PASSWORD: hunter2\n";
+        let mut project = ComposeProjectDto {
+            project: "shop".into(),
+            working_dir: "/srv/shop".into(),
+            env_files: vec![],
+            host: "local",
+            files: vec![
+                ComposeFileDto {
+                    path: "/srv/shop/compose.yaml".into(),
+                    content: Some(secret.into()),
+                    digest: Some(digest(secret.as_bytes())),
+                    size: secret.len() as u64,
+                    error: None,
+                    masked: false,
+                },
+                ComposeFileDto {
+                    path: "/srv/shop/compose.override.yaml".into(),
+                    content: Some(OVERRIDE.into()),
+                    digest: Some(digest(OVERRIDE.as_bytes())),
+                    size: 0,
+                    error: None,
+                    masked: false,
+                },
+            ],
+        };
+        mask_project(&mut project);
+        let file = &project.files[0];
+        assert!(file.masked);
+        assert_eq!(
+            file.content.as_deref(),
+            Some("services:\n  db:\n    environment:\n      POSTGRES_PASSWORD: ••••••\n")
+        );
+        assert_eq!(file.digest, Some(digest(secret.as_bytes())));
+        assert!(!project.files[1].masked);
+        assert_eq!(project.files[1].content.as_deref(), Some(OVERRIDE));
+    }
+
+    /// Commands for hosts whose files are real: `version` and `config -q`
+    /// succeed; `on_validate` runs while the candidate is being checked.
+    async fn scripted_run(argv: &[String], on_validate: &(dyn Fn() + Send + Sync)) -> RunOutput {
+        if argv.ends_with(&["config".to_owned(), "-q".to_owned()]) {
+            on_validate();
+        }
+        RunOutput {
+            exit: Some(0),
+            output: String::new(),
+        }
+    }
+
+    /// The SFTP file operations of the SSH host against the in-process
+    /// server over a temporary directory.
+    struct SftpHost {
+        sftp: SftpClient,
+        root: std::path::PathBuf,
+        on_validate: Box<dyn Fn() + Send + Sync>,
+        on_replace: Box<dyn Fn() + Send + Sync>,
+    }
+
+    #[async_trait]
+    impl ComposeHost for SftpHost {
+        async fn read(&self, path: &str, max: u64) -> Result<Vec<u8>, HostFileError> {
+            sftp_files::read(&self.sftp, path, max).await
+        }
+        async fn real_path(&self, path: &str) -> Result<String, HostFileError> {
+            self.sftp.canonicalize(path).await.map_err(sftp_error)
+        }
+        async fn mode(&self, path: &str) -> Result<Option<u32>, HostFileError> {
+            Ok(self.sftp.stat(path).await.map_err(sftp_error)?.permissions)
+        }
+        async fn create_new(
+            &self,
+            path: &str,
+            data: &[u8],
+            mode: Option<u32>,
+        ) -> Result<FileStamp, HostFileError> {
+            sftp_files::create_new(&self.sftp, path, data, mode).await
+        }
+        async fn verify(&self, path: &str, stamp: &FileStamp) -> Result<bool, HostFileError> {
+            sftp_files::verify(&self.sftp, path, stamp).await
+        }
+        async fn shared_dir(&self, path: &str) -> Result<bool, HostFileError> {
+            sftp_files::shared_dir(&self.sftp, path, None).await
+        }
+        async fn replace(&self, from: &str, to: &str) -> Result<(), HostFileError> {
+            sftp_files::replace(&self.sftp, from, to).await?;
+            if !from.contains("-restore") {
+                (self.on_replace)();
+            }
+            Ok(())
+        }
+        async fn remove(&self, path: &str) -> Result<(), HostFileError> {
+            self.sftp.remove_file(path).await.map_err(sftp_error)
+        }
+        async fn run(&self, argv: &[String], _: LineSink<'_>) -> Result<RunOutput, RunError> {
+            Ok(scripted_run(argv, &*self.on_validate).await)
+        }
+    }
+
+    impl fmt::Debug for SftpHost {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("SftpHost")
+                .field("root", &self.root)
+                .finish()
+        }
+    }
+
+    #[cfg(unix)]
+    async fn sftp_host(
+        posix_rename: bool,
+        on_validate: Box<dyn Fn() + Send + Sync>,
+        on_replace: Box<dyn Fn() + Send + Sync>,
+    ) -> (tempfile::TempDir, SftpHost) {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let shop = dir.path().join("srv/shop");
+        std::fs::create_dir_all(&shop).unwrap();
+        std::fs::set_permissions(&shop, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::write(shop.join("compose.yaml"), BASE).unwrap();
+        std::fs::set_permissions(
+            shop.join("compose.yaml"),
+            std::fs::Permissions::from_mode(0o640),
+        )
+        .unwrap();
+        std::fs::write(shop.join("compose.override.yaml"), OVERRIDE).unwrap();
+        let mut server = cc_sftp_core::test_server::LocalFsServer::new(dir.path().to_path_buf());
+        if !posix_rename {
+            server = server.without_posix_rename();
+        }
+        let sftp = cc_sftp_core::test_server::connect(server).await.unwrap();
+        let root = dir.path().to_path_buf();
+        (
+            dir,
+            SftpHost {
+                sftp,
+                root,
+                on_validate,
+                on_replace,
+            },
+        )
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn sftp_save_writes_candidates_and_backups_through_handles() {
+        use std::os::unix::fs::PermissionsExt;
+        for posix_rename in [true, false] {
+            let (dir, host) = sftp_host(posix_rename, Box::new(|| {}), Box::new(|| {})).await;
+            let changed = "services:\n  web:\n    image: nginx:1.27\n";
+            let saved = save(
+                &host,
+                &location(),
+                &[edit("/srv/shop/compose.yaml", changed, BASE)],
+                "s",
+                "t",
+                false,
+            )
+            .await
+            .unwrap();
+            assert!(matches!(saved, Saved::Written { .. }), "{saved:?}");
+            let shop = dir.path().join("srv/shop");
+            assert_eq!(
+                std::fs::read_to_string(shop.join("compose.yaml")).unwrap(),
+                changed
+            );
+            assert_eq!(
+                std::fs::read_to_string(shop.join("compose.yaml.bak-s")).unwrap(),
+                BASE
+            );
+            for name in ["compose.yaml", "compose.yaml.bak-s"] {
+                assert_eq!(
+                    std::fs::metadata(shop.join(name))
+                        .unwrap()
+                        .permissions()
+                        .mode()
+                        & 0o7777,
+                    0o640,
+                    "{name}"
+                );
+            }
+            assert!(!shop.join(".compose.yaml.consolecrypt-t.tmp").exists());
+        }
+    }
+
+    /// The candidate becomes a link to the owner's file while `config -q`
+    /// runs: nothing is renamed, the link target is untouched.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn sftp_candidate_swapped_for_a_link_is_tampering() {
+        let victim_dir = tempfile::tempdir().unwrap();
+        let victim = victim_dir.path().join("authorized_keys");
+        std::fs::write(&victim, "ssh-ed25519 AAAA\n").unwrap();
+        let holder: Arc<Mutex<Option<std::path::PathBuf>>> = Arc::default();
+        let swap = {
+            let holder = holder.clone();
+            let victim = victim.clone();
+            Box::new(move || {
+                let root = holder.lock().unwrap().clone().unwrap();
+                let candidate = root.join("srv/shop/.compose.yaml.consolecrypt-t.tmp");
+                std::fs::remove_file(&candidate).unwrap();
+                std::os::unix::fs::symlink(&victim, &candidate).unwrap();
+            })
+        };
+        let (dir, host) = sftp_host(true, swap, Box::new(|| {})).await;
+        *holder.lock().unwrap() = Some(dir.path().to_path_buf());
+        let saved = save(
+            &host,
+            &location(),
+            &[edit("/srv/shop/compose.yaml", "a: 1\n", BASE)],
+            "s",
+            "t",
+            false,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            saved,
+            Saved::Rejected(ComposeSaveOutcome::Tampered {
+                path: "/srv/shop/compose.yaml".into(),
+                backup: None,
+                restored: false,
+            })
+        );
+        let shop = dir.path().join("srv/shop");
+        assert_eq!(
+            std::fs::read_to_string(shop.join("compose.yaml")).unwrap(),
+            BASE
+        );
+        assert_eq!(
+            std::fs::read_to_string(&victim).unwrap(),
+            "ssh-ed25519 AAAA\n"
+        );
+        assert!(!shop.join(".compose.yaml.consolecrypt-t.tmp").exists());
+    }
+
+    /// Something else is renamed into the original's place: the original
+    /// comes back from the backup.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn sftp_foreign_file_after_rename_is_restored_from_the_backup() {
+        let holder: Arc<Mutex<Option<std::path::PathBuf>>> = Arc::default();
+        let swap = {
+            let holder = holder.clone();
+            Box::new(move || {
+                let root = holder.lock().unwrap().clone().unwrap();
+                std::fs::write(root.join("srv/shop/compose.yaml"), "image: evil\n").unwrap();
+            })
+        };
+        let (dir, host) = sftp_host(true, Box::new(|| {}), swap).await;
+        *holder.lock().unwrap() = Some(dir.path().to_path_buf());
+        let saved = save(
+            &host,
+            &location(),
+            &[edit("/srv/shop/compose.yaml", "a: 1\n", BASE)],
+            "s",
+            "t",
+            false,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            saved,
+            Saved::Rejected(ComposeSaveOutcome::Tampered {
+                path: "/srv/shop/compose.yaml".into(),
+                backup: Some("/srv/shop/compose.yaml.bak-s".into()),
+                restored: true,
+            })
+        );
+        let shop = dir.path().join("srv/shop");
+        assert_eq!(
+            std::fs::read_to_string(shop.join("compose.yaml")).unwrap(),
+            BASE
+        );
+    }
+
+    /// This computer's file operations with scripted commands.
+    #[derive(Debug)]
+    struct LocalFiles {
+        files: LocalComposeHost,
+    }
+
+    #[async_trait]
+    impl ComposeHost for LocalFiles {
+        async fn read(&self, path: &str, max: u64) -> Result<Vec<u8>, HostFileError> {
+            self.files.read(path, max).await
+        }
+        async fn real_path(&self, path: &str) -> Result<String, HostFileError> {
+            self.files.real_path(path).await
+        }
+        async fn mode(&self, path: &str) -> Result<Option<u32>, HostFileError> {
+            self.files.mode(path).await
+        }
+        async fn create_new(
+            &self,
+            path: &str,
+            data: &[u8],
+            mode: Option<u32>,
+        ) -> Result<FileStamp, HostFileError> {
+            self.files.create_new(path, data, mode).await
+        }
+        async fn verify(&self, path: &str, stamp: &FileStamp) -> Result<bool, HostFileError> {
+            self.files.verify(path, stamp).await
+        }
+        async fn shared_dir(&self, path: &str) -> Result<bool, HostFileError> {
+            self.files.shared_dir(path).await
+        }
+        async fn replace(&self, from: &str, to: &str) -> Result<(), HostFileError> {
+            self.files.replace(from, to).await
+        }
+        async fn remove(&self, path: &str) -> Result<(), HostFileError> {
+            self.files.remove(path).await
+        }
+        async fn run(&self, argv: &[String], _: LineSink<'_>) -> Result<RunOutput, RunError> {
+            Ok(scripted_run(argv, &|| {}).await)
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn local_shared_directory_is_reported() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let host = LocalComposeHost { socket: None };
+        let path = dir.path().to_str().unwrap();
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(!host.shared_dir(path).await.unwrap());
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o777)).unwrap();
+        assert!(host.shared_dir(path).await.unwrap());
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+    }
+
+    /// Another process swaps every candidate it sees for a link to the
+    /// owner's file and plants links at the backup names, as fast as it
+    /// can, during 1000 saves: the linked file is never written or
+    /// re-moded, and the compose file only ever holds text this save wrote.
+    #[cfg(unix)]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn local_race_never_writes_through_a_link() {
+        use std::os::unix::fs::PermissionsExt;
+        use std::sync::atomic::{AtomicBool, Ordering};
+        const ROUNDS: usize = 1000;
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+        let shop = root.join("shop");
+        std::fs::create_dir(&shop).unwrap();
+        let victim = root.join("authorized_keys");
+        std::fs::write(&victim, "ssh-ed25519 AAAA\n").unwrap();
+        std::fs::set_permissions(&victim, std::fs::Permissions::from_mode(0o600)).unwrap();
+        let compose = shop.join("compose.yaml");
+        std::fs::write(&compose, "v: 0\n").unwrap();
+        std::fs::set_permissions(&compose, std::fs::Permissions::from_mode(0o644)).unwrap();
+        for round in 0..ROUNDS {
+            let _ = std::os::unix::fs::symlink(
+                &victim,
+                shop.join(format!("compose.yaml.bak-r{round}")),
+            );
+        }
+        let stop = Arc::new(AtomicBool::new(false));
+        let attacker = {
+            let stop = stop.clone();
+            let shop = shop.clone();
+            let victim = victim.clone();
+            std::thread::spawn(move || {
+                let mut swaps = 0u32;
+                while !stop.load(Ordering::Relaxed) {
+                    let Ok(entries) = std::fs::read_dir(&shop) else {
+                        continue;
+                    };
+                    for entry in entries.flatten() {
+                        let name = entry.file_name().to_string_lossy().into_owned();
+                        if name.contains(".consolecrypt-") && !name.ends_with(".stolen") {
+                            let path = entry.path();
+                            if std::fs::rename(&path, shop.join(format!("{name}.stolen"))).is_ok()
+                                && std::os::unix::fs::symlink(&victim, &path).is_ok()
+                            {
+                                swaps += 1;
+                            }
+                        }
+                    }
+                }
+                swaps
+            })
+        };
+        let location = ComposeLocation {
+            project: "race".into(),
+            working_dir: shop.to_str().unwrap().into(),
+            config_files: vec![compose.to_str().unwrap().into()],
+            env_files: vec![],
+        };
+        let host = LocalFiles {
+            files: LocalComposeHost { socket: None },
+        };
+        let mut texts = vec!["v: 0\n".to_owned()];
+        let (mut written, mut tampered, mut unrestored_rounds) = (0, 0, 0);
+        for round in 0..ROUNDS {
+            let current = std::fs::read(&compose).unwrap();
+            let text = format!("v: {}\n", round + 1);
+            texts.push(text.clone());
+            let edits = [ComposeEdit {
+                path: location.config_files[0].clone(),
+                content: text,
+                digest: digest(&current),
+            }];
+            let tag = random_tag().unwrap();
+            let outcome = save(&host, &location, &edits, &format!("r{round}"), &tag, true)
+                .await
+                .unwrap();
+            let unrestored = matches!(
+                outcome,
+                Saved::Rejected(ComposeSaveOutcome::Tampered {
+                    restored: false,
+                    backup: Some(_),
+                    ..
+                })
+            );
+            match outcome {
+                Saved::Written { .. } => written += 1,
+                Saved::Rejected(ComposeSaveOutcome::Tampered { .. }) => tampered += 1,
+                Saved::Rejected(ComposeSaveOutcome::WriteFailed { .. }) => {}
+                other => panic!("round {round}: {other:?}"),
+            }
+            let meta = std::fs::symlink_metadata(&compose).unwrap();
+            if unrestored {
+                // Reported as such: the user restores from the backup.
+                unrestored_rounds += 1;
+                std::fs::remove_file(&compose).unwrap();
+                std::fs::write(&compose, &current).unwrap();
+            } else {
+                assert!(
+                    meta.is_file(),
+                    "round {round}: the compose file is a link only when reported"
+                );
+            }
+            let now = std::fs::read_to_string(&compose).unwrap();
+            assert!(texts.contains(&now), "round {round}: {now:?}");
+        }
+        stop.store(true, Ordering::Relaxed);
+        let swaps = attacker.join().unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&victim).unwrap(),
+            "ssh-ed25519 AAAA\n"
+        );
+        assert_eq!(
+            std::fs::metadata(&victim).unwrap().permissions().mode() & 0o7777,
+            0o600
+        );
+        eprintln!(
+            "{written} written, {tampered} tampered ({unrestored_rounds} not restored), {swaps} swaps"
+        );
+        assert!(written + tampered > 0);
     }
 }

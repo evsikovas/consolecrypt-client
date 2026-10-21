@@ -9,10 +9,14 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 mod client;
 pub mod compose;
+mod compose_mask;
 mod logs;
+pub mod secrets;
 pub use client::{
     ContainerSummary, DockerClient, EngineInfo, ExecSession, LogLine, PortMapping, VolumeSummary,
 };
+pub use compose_mask::mask_compose;
+pub use secrets::{contains_secret, mask_inspect, mask_secrets, sensitive_key, MASK};
 
 pub trait DockerStream: AsyncRead + AsyncWrite + Unpin + Send {}
 impl<T: AsyncRead + AsyncWrite + Unpin + Send> DockerStream for T {}
@@ -115,26 +119,6 @@ pub fn local_socket() -> Option<std::path::PathBuf> {
     }
     candidates.push(PathBuf::from("/var/run/docker.sock"));
     candidates.into_iter().find(|path| path.exists())
-}
-
-/// Environment entries whose name looks secret have their value hidden.
-pub fn sensitive_key(name: &str) -> bool {
-    let name = name.to_ascii_lowercase();
-    [
-        "password",
-        "passwd",
-        "pwd",
-        "token",
-        "secret",
-        "api_key",
-        "apikey",
-        "private_key",
-        "credential",
-        "access_key",
-        "auth",
-    ]
-    .iter()
-    .any(|marker| name.contains(marker))
 }
 
 /// Shared handle used by the runtime.

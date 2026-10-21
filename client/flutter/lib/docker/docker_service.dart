@@ -7,6 +7,10 @@ import 'package:consolecrypt/core/security/secret_text.dart';
 
 typedef DockerJson = Map<String, dynamic>;
 
+/// What the core puts in place of a hidden value (same length for every
+/// secret).
+const dockerSecretMask = '••••••'; // l10n-ignore: native mask
+
 enum DockerHostKind { local, ssh }
 
 /// Where containers are listed from.
@@ -133,8 +137,9 @@ final class DockerContainer {
   );
 }
 
-/// `docker inspect` of one container (environment values of keys that look
-/// secret are masked natively).
+/// `docker inspect` of one container with every secret masked natively
+/// (environment, command line, labels, URL passwords, keys, tokens); the
+/// full JSON needs the vault passphrase ([DockerService.revealInspect]).
 final class DockerContainerDetail {
   const DockerContainerDetail({required this.container, required this.inspect});
   final DockerContainer container;
@@ -223,11 +228,13 @@ final class DockerVolume {
 enum DockerComposeFileError { notFound, permissionDenied, tooLarge, notAFile, notText, readFailed }
 
 /// One compose file as read on the engine host. [content] is secret (compose
-/// files often hold passwords); the dialog wipes it on close.
+/// files often hold passwords); the dialog wipes it on close. [masked]: the
+/// core hid secrets in [content] (the full text needs the passphrase).
 final class DockerComposeFile {
-  DockerComposeFile({required this.path, this.content, this.digest, this.size = 0, this.error});
+  DockerComposeFile({required this.path, this.content, this.digest, this.size = 0, this.error, this.masked = false});
   final String path;
   final SecretText? content;
+  final bool masked;
 
   /// SHA-256 of what was read; a save refuses when the file changed since.
   final String? digest;
@@ -239,6 +246,7 @@ final class DockerComposeFile {
     content: json['content'] == null ? null : SecretText(json['content'] as String),
     digest: json['digest'] as String?,
     size: json['size'] as int? ?? 0,
+    masked: json['masked'] as bool? ?? false,
     error: switch (json['error']) {
       null => null,
       'not_found' => DockerComposeFileError.notFound,
@@ -332,6 +340,23 @@ final class DockerComposeLocked extends DockerComposeSaveResult {
   const DockerComposeLocked();
 }
 
+/// A temporary file of the save was replaced or changed on the host before
+/// it was used. With [backup] the original had already been replaced;
+/// [restored] says whether it was put back from the backup.
+final class DockerComposeTampered extends DockerComposeSaveResult {
+  const DockerComposeTampered(this.path, {this.backup, this.restored = false});
+  final String path;
+  final String? backup;
+  final bool restored;
+}
+
+/// Other users can write to these directories; save again only after the
+/// user agreed ([DockerService.composeSave] `allowSharedDirs`).
+final class DockerComposeUnsafeDirectory extends DockerComposeSaveResult {
+  const DockerComposeUnsafeDirectory(this.dirs);
+  final List<String> dirs;
+}
+
 DockerComposeSaveResult dockerComposeSaveResultFromJson(DockerJson json) => switch (json['outcome']) {
   'saved' => DockerComposeSaved(
     backups: (json['backups'] as List? ?? const []).cast<String>(),
@@ -346,6 +371,12 @@ DockerComposeSaveResult dockerComposeSaveResultFromJson(DockerJson json) => swit
   }),
   'compose_missing' => const DockerComposeMissing(),
   'locked' => const DockerComposeLocked(),
+  'tampered' => DockerComposeTampered(
+    json['path'] as String? ?? '',
+    backup: json['backup'] as String?,
+    restored: json['restored'] as bool? ?? false,
+  ),
+  'unsafe_directory' => DockerComposeUnsafeDirectory((json['dirs'] as List? ?? const []).cast<String>()),
   _ => DockerComposeRunFailed(json['detail'] as String? ?? ''),
 };
 
@@ -401,7 +432,18 @@ abstract interface class DockerService {
   Future<void> disconnect(String sessionId);
 
   Future<List<DockerContainer>> containers(String sessionId, {bool all = true});
+
+  /// `docker inspect` with secrets masked natively.
   Future<DockerContainerDetail> inspect(String sessionId, String containerId);
+
+  /// The full `docker inspect`, secrets included; the core checks the vault
+  /// [passphrase] first (throws [DockerWrongPassphrase]). The caller wipes
+  /// [passphrase] and drops the result on close, lock and profile change.
+  Future<DockerJson> revealInspect(String sessionId, String containerId, SecretText passphrase);
+
+  /// Whether [text] holds something the core would mask (copied log lines
+  /// then go to the clipboard as a secret).
+  bool containsSecret(String text);
   Future<void> action(String sessionId, String containerId, DockerAction action);
 
   /// Last [tail] lines, then new lines while [follow] (cancel the
@@ -421,9 +463,13 @@ abstract interface class DockerService {
   /// The caller wipes [passphrase].
   Future<List<String>> revealEnvironment(String sessionId, String containerId, SecretText passphrase);
 
-  /// The project's compose files, read on the engine host. Throws
-  /// [DockerComposeException] when they cannot be located.
+  /// The project's compose files, read on the engine host, with secrets
+  /// masked. Throws [DockerComposeException] when they cannot be located.
   Future<DockerComposeProject> composeProject(String sessionId, String project);
+
+  /// The full texts under a [grant] from [composeUnlock]; null once the
+  /// grant expired (ask for the passphrase again).
+  Future<DockerComposeProject?> composeReveal(String sessionId, String project, String grant);
 
   /// Checks the vault [passphrase] (throws [DockerWrongPassphrase]) and
   /// returns a short-lived grant to edit [project]. Wipes [passphrase].
@@ -431,12 +477,15 @@ abstract interface class DockerService {
 
   /// Validates the edited files on the host, then writes them (keeping
   /// backups); with [apply] runs `up -d` as a job. Wipes the edits' content.
+  /// [allowSharedDirs] is the user's consent after
+  /// [DockerComposeUnsafeDirectory].
   Future<DockerComposeSaveResult> composeSave(
     String sessionId,
     String project,
     String grant,
     List<DockerComposeEdit> edits, {
     bool apply = true,
+    bool allowSharedDirs = false,
   });
 
   /// Output of an `up -d` job until it ends (the last update has `done`).

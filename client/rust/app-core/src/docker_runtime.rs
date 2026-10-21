@@ -263,6 +263,12 @@ impl Drop for ShellLife {
     }
 }
 
+/// Whether `text` holds something the Docker views would mask (copied log
+/// lines go to the clipboard as a secret then).
+pub fn docker_contains_secret(text: &str) -> bool {
+    cc_docker_core::contains_secret(text)
+}
+
 fn session_dto(id: String, host_id: &str, host_name: String, info: EngineInfo) -> DockerSessionDto {
     DockerSessionDto {
         id,
@@ -525,6 +531,8 @@ impl AppCore {
             .map_err(docker_error)
     }
 
+    /// `docker inspect` with every secret hidden (environment, command
+    /// line, labels, URL passwords, keys, tokens).
     pub async fn docker_inspect(
         &self,
         session_id: String,
@@ -533,6 +541,25 @@ impl AppCore {
         let (_, unlocked) = self.unlocked().await?;
         let live = unlocked.docker.session(&session_id)?;
         live.client.inspect(&container).await.map_err(docker_error)
+    }
+
+    /// `docker inspect` as the engine returns it, only after the vault
+    /// passphrase checks out (the same step-up as the environment).
+    pub async fn docker_inspect_reveal(
+        &self,
+        session_id: String,
+        container: String,
+        passphrase: String,
+    ) -> AppResult<serde_json::Value> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        if !self.verify_passphrase(passphrase).await? {
+            return Err(AppError::WrongPassphrase);
+        }
+        live.client
+            .inspect_unmasked(&container)
+            .await
+            .map_err(docker_error)
     }
 
     pub async fn docker_action(

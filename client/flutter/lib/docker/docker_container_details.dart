@@ -56,6 +56,11 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
   Object? _error;
   int _generation = 0;
 
+  /// The unmasked inspect after the vault passphrase; dropped on close,
+  /// reload, lock and profile change.
+  DockerJson? _fullInspect;
+  late final _scope = ref.read(dockerScopeProvider);
+
   @override
   void initState() {
     super.initState();
@@ -72,8 +77,27 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
   @override
   void dispose() {
     _generation++;
+    _fullInspect = null;
     _tabs.dispose();
     super.dispose();
+  }
+
+  Future<void> _revealJson() async {
+    final container = widget.container;
+    final full = await showAppDialog<DockerJson>(
+      context,
+      secure: true,
+      barrierDismissible: false,
+      builder: (context) => _RevealDialog(
+        dialogKey: 'docker-json-reveal-dialog',
+        title: context.l10n.dockerShowFull,
+        help: context.l10n.dockerJsonRevealHelp(container.name),
+        reveal: (passphrase) => widget.service.revealInspect(widget.session.id, container.id, passphrase),
+      ),
+    );
+    if (full != null && mounted && identical(_scope, ref.read(dockerScopeProvider))) {
+      setState(() => _fullInspect = full);
+    }
   }
 
   Future<void> _load() async {
@@ -81,6 +105,7 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
     setState(() {
       _loading = true;
       _error = null;
+      _fullInspect = null;
     });
     try {
       final detail = await widget.service.inspect(widget.session.id, widget.container.id);
@@ -94,6 +119,9 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(dockerScopeProvider, (_, next) {
+      if (!identical(next, _scope) && mounted) setState(() => _fullInspect = null);
+    });
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
     final p = tokens.palette;
@@ -109,7 +137,10 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
       size: GlassControlSize.sm,
       onPressed: busy ? null : onPressed,
     );
-    final json = _detail == null ? '' : const JsonEncoder.withIndent('  ').convert(_detail!.inspect);
+    final full = _fullInspect;
+    final shown = full ?? _detail?.inspect;
+    final json = shown == null ? '' : const JsonEncoder.withIndent('  ').convert(shown);
+    final masked = full == null && json.contains(dockerSecretMask);
     return ContentSurface(
       key: const ValueKey('docker-container-details'),
       kind: ContentSurfaceKind.solid,
@@ -292,17 +323,47 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: GlassButton.plain(
-                                key: const ValueKey('docker-json-copy'),
-                                label: l.dockerCopyJson,
-                                icon: Icons.content_copy_rounded,
-                                onPressed: () => copyPlainWithNotice(context, ref, json),
-                              ),
+                            Wrap(
+                              spacing: GlassSpacing.s6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                GlassButton.plain(
+                                  key: const ValueKey('docker-json-copy'),
+                                  label: l.dockerCopyJson,
+                                  icon: Icons.content_copy_rounded,
+                                  // The full JSON is a secret: auto-cleared.
+                                  onPressed: () => full != null
+                                      ? copySecretWithNotice(context, ref, json, what: l.dockerInspectJson)
+                                      : copyPlainWithNotice(context, ref, json),
+                                ),
+                                if (masked)
+                                  GlassButton.plain(
+                                    key: const ValueKey('docker-json-reveal'),
+                                    label: l.dockerShowFull,
+                                    icon: Icons.visibility_outlined,
+                                    onPressed: () => unawaited(_revealJson()),
+                                  ),
+                                if (full != null)
+                                  GlassButton.plain(
+                                    key: const ValueKey('docker-json-hide'),
+                                    label: l.dockerHideSecrets,
+                                    icon: Icons.visibility_off_outlined,
+                                    onPressed: () => setState(() => _fullInspect = null),
+                                  ),
+                                if (masked)
+                                  Text(
+                                    l.dockerSecretsMasked,
+                                    key: const ValueKey('docker-json-masked'),
+                                    style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel),
+                                  ),
+                              ],
                             ),
                             Expanded(
-                              child: DbDocumentView(document: _detail!.inspect, rawText: json),
+                              child: DbDocumentView(
+                                key: ValueKey(full == null ? 'docker-json-masked-view' : 'docker-json-full-view'),
+                                document: shown!,
+                                rawText: json,
+                              ),
                             ),
                           ],
                         ),
@@ -530,14 +591,19 @@ class _EnvironmentSectionState extends ConsumerState<_EnvironmentSection> {
   late final _scope = ref.read(dockerScopeProvider);
   bool get _current => mounted && identical(_scope, ref.read(dockerScopeProvider));
 
-  bool get _hasSecrets => widget.env.any((entry) => entry.endsWith('=••••••')); // l10n-ignore: native mask
+  bool get _hasSecrets => widget.env.any((entry) => entry.contains(dockerSecretMask));
 
   Future<void> _reveal() async {
     final revealed = await showAppDialog<List<String>>(
       context,
       secure: true,
       barrierDismissible: false,
-      builder: (_) => _RevealDialog(service: widget.service, session: widget.session, container: widget.container),
+      builder: (context) => _RevealDialog(
+        dialogKey: 'docker-reveal-dialog',
+        title: context.l10n.dockerRevealSecrets,
+        help: context.l10n.dockerRevealHelp(widget.container.name),
+        reveal: (passphrase) => widget.service.revealEnvironment(widget.session.id, widget.container.id, passphrase),
+      ),
     );
     if (revealed != null && _current) setState(() => _revealed = revealed);
   }
@@ -611,16 +677,17 @@ class _EnvironmentSectionState extends ConsumerState<_EnvironmentSection> {
   }
 }
 
-class _RevealDialog extends ConsumerStatefulWidget {
-  const _RevealDialog({required this.service, required this.session, required this.container});
-  final DockerService service;
-  final DockerSessionInfo session;
-  final DockerContainer container;
+/// Asks for the vault passphrase and returns what [reveal] produced with it
+/// (null on cancel). The passphrase is wiped after the attempt.
+class _RevealDialog<T> extends ConsumerStatefulWidget {
+  const _RevealDialog({required this.dialogKey, required this.title, required this.help, required this.reveal});
+  final String dialogKey, title, help;
+  final Future<T> Function(SecretText passphrase) reveal;
   @override
-  ConsumerState<_RevealDialog> createState() => _RevealDialogState();
+  ConsumerState<_RevealDialog<T>> createState() => _RevealDialogState<T>();
 }
 
-class _RevealDialogState extends ConsumerState<_RevealDialog> {
+class _RevealDialogState<T> extends ConsumerState<_RevealDialog<T>> {
   final _passphrase = TextEditingController();
   bool _busy = false, _wrong = false, _failed = false;
 
@@ -642,8 +709,8 @@ class _RevealDialogState extends ConsumerState<_RevealDialog> {
     final secret = SecretText(_passphrase.text);
     _passphrase.clear();
     try {
-      final env = await widget.service.revealEnvironment(widget.session.id, widget.container.id, secret);
-      if (mounted) closeDialog(context, env);
+      final revealed = await widget.reveal(secret);
+      if (mounted) closeDialog(context, revealed);
     } on DockerWrongPassphrase {
       if (mounted) setState(() => _wrong = true);
     } catch (_) {
@@ -658,15 +725,15 @@ class _RevealDialogState extends ConsumerState<_RevealDialog> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     return GlassDialog(
-      key: const ValueKey('docker-reveal-dialog'),
-      title: l.dockerRevealSecrets,
+      key: ValueKey(widget.dialogKey),
+      title: widget.title,
       content: SizedBox(
         width: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(l.dockerRevealHelp(widget.container.name)),
+            Text(widget.help),
             const SizedBox(height: GlassSpacing.s12),
             SecretField(
               key: const ValueKey('docker-reveal-passphrase'),
@@ -686,7 +753,7 @@ class _RevealDialogState extends ConsumerState<_RevealDialog> {
       ],
       primaryAction: GlassButton(
         key: const ValueKey('docker-reveal-submit'),
-        label: l.dockerRevealSecrets,
+        label: widget.title,
         busy: _busy,
         onPressed: _busy ? null : () => unawaited(_submit()),
       ),
