@@ -23,8 +23,25 @@ Future<String> dockerInfo({required String sessionId}) =>
 Future<String> dockerContainers({required String sessionId, required bool all}) =>
     RustLib.instance.api.crateApiDockerDockerContainers(sessionId: sessionId, all: all);
 
+/// `docker inspect` with every secret masked natively.
 Future<String> dockerInspect({required String sessionId, required String container}) =>
     RustLib.instance.api.crateApiDockerDockerInspect(sessionId: sessionId, container: container);
+
+/// The full `docker inspect` after the vault passphrase (sent as bytes).
+Future<String> dockerInspectReveal({
+  required String sessionId,
+  required String container,
+  required List<int> passphrase,
+}) => RustLib.instance.api.crateApiDockerDockerInspectReveal(
+  sessionId: sessionId,
+  container: container,
+  passphrase: passphrase,
+);
+
+/// Whether `text` holds something the Docker views mask (log selections
+/// are then copied as a secret).
+bool dockerContainsSecret({required String text}) =>
+    RustLib.instance.api.crateApiDockerDockerContainsSecret(text: text);
 
 Future<void> dockerAction({required String sessionId, required String container, required String action}) =>
     RustLib.instance.api.crateApiDockerDockerAction(sessionId: sessionId, container: container, action: action);
@@ -97,8 +114,8 @@ Future<String> dockerRevealEnvironment({
   passphrase: passphrase,
 );
 
-/// The compose files of a project, read on the engine host (contents are
-/// secret: they may hold passwords).
+/// The compose files of a project, read on the engine host, with secrets
+/// masked (`"masked": true` per file where something was hidden).
 Future<String> dockerComposeProject({required String sessionId, required String project}) =>
     RustLib.instance.api.crateApiDockerDockerComposeProject(sessionId: sessionId, project: project);
 
@@ -114,21 +131,29 @@ Future<String> dockerComposeUnlock({
   passphrase: passphrase,
 );
 
+/// The full compose texts under an edit grant; `null` once it expired.
+Future<String> dockerComposeReveal({required String sessionId, required String project, required String grant}) =>
+    RustLib.instance.api.crateApiDockerDockerComposeReveal(sessionId: sessionId, project: project, grant: grant);
+
 /// Validates and saves edited files (`edits`: UTF-8 JSON
 /// `[{"path","content","digest"}]`, zeroized here); with `apply` runs
-/// `up -d` as a job. `{"outcome": "saved" | "invalid" | ...}`.
+/// `up -d` as a job. `allow_shared_dirs`: the user agreed to save in
+/// directories other users can write to. `{"outcome": "saved" | "invalid"
+/// | "tampered" | "unsafe_directory" | ...}`.
 Future<String> dockerComposeSave({
   required String sessionId,
   required String project,
   required String grant,
   required List<int> edits,
   required bool apply,
+  required bool allowSharedDirs,
 }) => RustLib.instance.api.crateApiDockerDockerComposeSave(
   sessionId: sessionId,
   project: project,
   grant: grant,
   edits: edits,
   apply: apply,
+  allowSharedDirs: allowSharedDirs,
 );
 
 /// New output lines of an `up` job and whether it ended.

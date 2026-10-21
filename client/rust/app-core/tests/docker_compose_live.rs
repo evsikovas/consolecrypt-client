@@ -20,8 +20,10 @@ use common::*;
 use secrecy::ExposeSecret;
 use std::process::Command;
 
-const SERVICE_V1: &str = "services:\n  app:\n    image: alpine:3.20\n    command: [\"sleep\", \"600\"]\n    labels:\n      cc.version: \"1\"\n";
-const SERVICE_V2: &str = "services:\n  app:\n    image: alpine:3.20\n    command: [\"sleep\", \"600\"]\n    labels:\n      cc.version: \"2\"\n";
+const SERVICE_V1: &str = "services:\n  app:\n    image: alpine:3.20\n    command: [\"sleep\", \"600\"]\n    environment:\n      DB_PASSWORD: hunter2\n    labels:\n      cc.version: \"1\"\n";
+const SERVICE_V1_MASKED: &str = "services:\n  app:\n    image: alpine:3.20\n    command: [\"sleep\", \"600\"]\n    environment:\n      DB_PASSWORD: ••••••\n    labels:\n      cc.version: \"1\"\n";
+const SERVICE_V2: &str = "services:\n  app:\n    image: alpine:3.20\n    command: [\"sleep\", \"600\"]\n    environment:\n      DB_PASSWORD: hunter2\n    labels:\n      cc.version: \"2\"\n";
+const SERVICE_V3: &str = "services:\n  app:\n    image: alpine:3.20\n    command: [\"sleep\", \"600\"]\n    labels:\n      cc.version: \"3\"\n";
 const BROKEN: &str = "services:\n  app:\n    image: [alpine\n";
 
 fn edits(path: &str, content: &str, digest: &str) -> Vec<ComposeEdit> {
@@ -85,7 +87,9 @@ async fn exercise(
         .find(|f| f.path.ends_with(path_suffix))
         .unwrap_or_else(|| panic!("{files:?}"))
         .clone();
-    assert_eq!(file.content.as_deref(), Some(SERVICE_V1));
+    // Shown without the passphrase: the password is masked, lines kept.
+    assert_eq!(file.content.as_deref(), Some(SERVICE_V1_MASKED));
+    assert!(file.masked);
     let digest = file.digest.clone().unwrap();
 
     let wrong = app
@@ -100,14 +104,29 @@ async fn exercise(
             "forged".into(),
             edits(&file.path, SERVICE_V2, &digest),
             true,
+            false,
         )
         .await
         .unwrap();
     assert_eq!(locked, ComposeSaveOutcome::Locked);
+    assert!(app
+        .docker_compose_reveal(session.into(), project.into(), "forged".into())
+        .await
+        .unwrap()
+        .is_none());
     let grant = app
         .docker_compose_unlock(session.into(), project.into(), PASSPHRASE.into())
         .await
         .unwrap();
+    let full = app
+        .docker_compose_reveal(session.into(), project.into(), grant.clone())
+        .await
+        .unwrap()
+        .expect("grant is valid");
+    let revealed = full.files.iter().find(|f| f.path == file.path).unwrap();
+    assert_eq!(revealed.content.as_deref(), Some(SERVICE_V1));
+    assert!(!revealed.masked);
+    assert_eq!(revealed.digest.as_deref(), Some(digest.as_str()));
 
     let invalid = app
         .docker_compose_save(
@@ -116,6 +135,7 @@ async fn exercise(
             grant.clone(),
             edits(&file.path, BROKEN, &digest),
             true,
+            false,
         )
         .await
         .unwrap();
@@ -135,6 +155,7 @@ async fn exercise(
             grant.clone(),
             edits(&file.path, SERVICE_V2, "0000"),
             true,
+            false,
         )
         .await
         .unwrap();
@@ -150,6 +171,7 @@ async fn exercise(
             grant,
             edits(&file.path, SERVICE_V2, &digest),
             true,
+            false,
         )
         .await
         .unwrap();
@@ -174,6 +196,67 @@ async fn exercise(
     ]);
     assert_eq!(version, "2", "recreated by up -d: {lines:?}");
     backups[0].clone()
+}
+
+/// A project directory every user can write to: saving asks first, then
+/// writes with consent.
+async fn shared_directory(
+    app: &AppCore,
+    session: &str,
+    project: &str,
+    path_suffix: &str,
+    dir: &str,
+    read_on_host: &dyn Fn(&str) -> String,
+) {
+    let files = app
+        .docker_compose_project(session.into(), project.into())
+        .await
+        .unwrap();
+    let file = files
+        .files
+        .iter()
+        .find(|f| f.path.ends_with(path_suffix))
+        .unwrap()
+        .clone();
+    let digest = file.digest.clone().unwrap();
+    let grant = app
+        .docker_compose_unlock(session.into(), project.into(), PASSPHRASE.into())
+        .await
+        .unwrap();
+    let asked = app
+        .docker_compose_save(
+            session.into(),
+            project.into(),
+            grant.clone(),
+            edits(&file.path, SERVICE_V3, &digest),
+            false,
+            false,
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        asked,
+        ComposeSaveOutcome::UnsafeDirectory {
+            dirs: vec![dir.to_owned()]
+        }
+    );
+    assert_eq!(read_on_host(&file.path), SERVICE_V2);
+    let saved = app
+        .docker_compose_save(
+            session.into(),
+            project.into(),
+            grant,
+            edits(&file.path, SERVICE_V3, &digest),
+            false,
+            true,
+        )
+        .await
+        .unwrap();
+    assert!(
+        matches!(saved, ComposeSaveOutcome::Saved { job_id: None, .. }),
+        "{saved:?}"
+    );
+    assert_eq!(read_on_host(&file.path), SERVICE_V3);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -209,6 +292,21 @@ async fn compose_files_on_this_computer() {
     };
     let read = |path: &str| std::fs::read_to_string(path).unwrap_or_default();
     exercise(&app, &session.id, project, "compose.yaml", &read).await;
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o777)).unwrap();
+        let real = dir.path().canonicalize().unwrap();
+        shared_directory(
+            &app,
+            &session.id,
+            project,
+            "compose.yaml",
+            real.to_str().unwrap(),
+            &read,
+        )
+        .await;
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+    }
     let unknown = app
         .docker_compose_project(session.id.clone(), "cc-no-such-project".into())
         .await
@@ -239,7 +337,8 @@ async fn compose_files_over_ssh() {
             "apk add --no-cache docker-cli docker-cli-compose >/dev/null && addgroup tester docker && \
              mkdir -p /srv/cc && printf '%s' '{SERVICE_V1}' > /srv/cc/compose.yaml && \
              printf 'services: {{}}\\n' > /srv/cc/compose.override.yaml && \
-             chown tester /srv/cc /srv/cc/compose.yaml && chmod 600 /srv/cc/compose.override.yaml && \
+             chown tester /srv/cc /srv/cc/compose.yaml && chmod 755 /srv/cc && \
+             chmod 600 /srv/cc/compose.override.yaml && \
              cd /srv/cc && docker compose -p {project} -f compose.yaml -f compose.override.yaml up -d"
         ),
     )
@@ -297,6 +396,7 @@ async fn compose_files_over_ssh() {
             grant,
             edits("/srv/cc/compose.yaml", SERVICE_V2, &digest),
             true,
+            false,
         )
         .await
         .unwrap();
@@ -318,6 +418,16 @@ async fn compose_files_over_ssh() {
         .exec_in(&host, &format!("stat -c %U '{backup}'"))
         .unwrap();
     assert_eq!(owner, "tester");
+    tb.exec_in(&host, "chmod 0777 /srv/cc").unwrap();
+    shared_directory(
+        &app,
+        &session.id,
+        project,
+        "/compose.yaml",
+        "/srv/cc",
+        &read_full,
+    )
+    .await;
     app.docker_disconnect(session.id).await.unwrap();
     remove_project(project);
 }
