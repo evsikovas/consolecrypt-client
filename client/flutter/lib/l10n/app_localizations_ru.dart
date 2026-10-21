@@ -8683,6 +8683,43 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbTlsLocalHint => 'Локальный адрес: TLS переключён на «prefer» (у проброса порта обычно нет TLS).';
 
   @override
+  String get dbTransportVerified => 'TLS (проверен)';
+
+  @override
+  String get dbTransportUnverified => 'TLS (без проверки сертификата)';
+
+  @override
+  String get dbTransportTunnel => 'Без TLS — защищено туннелем';
+
+  @override
+  String get dbTransportPlaintext => 'Без TLS';
+
+  @override
+  String get dbTlsPreferHelp => 'TLS, если сервер поддерживает; без TLS только через туннель или на этом компьютере.';
+
+  @override
+  String get dbTlsRequireHelp => 'Шифрование без проверки сертификата.';
+
+  @override
+  String get dbTlsAllowUnbound => 'Разрешить вход без привязки к TLS (менее безопасно)';
+
+  @override
+  String get dbTlsAllowUnboundHelp =>
+      'Только для серверов с аутентификацией md5 или password либо без SCRAM-SHA-256-PLUS. Без проверки сертификата перехватчик сможет получить пароль.';
+
+  @override
+  String get dbErrorTlsUnavailable =>
+      'Сервер не поддерживает TLS. Подключение без шифрования передаст пароль в открытом виде. Выберите режим «Отключить TLS» явно, если это допустимо.';
+
+  @override
+  String get dbErrorChannelBinding =>
+      'Сервер не привязал пароль к этому TLS-соединению (SCRAM-SHA-256-PLUS), а сертификат не проверяется: перехватчик мог бы получить пароль. Выберите «Проверять сертификат и имя сервера», включите SCRAM на сервере или разрешите вход без привязки к TLS в разделе «Защита TLS».';
+
+  @override
+  String get dbErrorCleartext =>
+      'Сервер запросил пароль в открытом виде по незашифрованному сетевому подключению. Включите TLS или подключайтесь через туннель.';
+
+  @override
   String get colorPickerCustom => 'Свой цвет';
 
   @override

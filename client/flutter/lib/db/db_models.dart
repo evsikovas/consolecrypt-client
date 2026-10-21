@@ -55,18 +55,29 @@ enum DbMongoReadPreference {
 }
 
 final class DbTls {
-  const DbTls({this.mode = DbTlsMode.verify, this.certificateAuthorityPem, this.serverName});
+  const DbTls({
+    this.mode = DbTlsMode.verify,
+    this.certificateAuthorityPem,
+    this.serverName,
+    this.allowUnboundAuth = false,
+  });
   final DbTlsMode mode;
   final String? certificateAuthorityPem, serverName;
+
+  /// PostgreSQL "require": allow a password without SCRAM channel binding.
+  final bool allowUnboundAuth;
   factory DbTls.fromJson(DbJson json) => DbTls(
     mode: DbTlsMode.values.byName(json['mode'] as String? ?? 'verify'),
     certificateAuthorityPem: json['certificate_authority_pem'] as String?,
     serverName: json['server_name'] as String?,
+    allowUnboundAuth: json['allow_unbound_auth'] as bool? ?? false,
   );
   DbJson toJson() => {
     'mode': mode.name,
     'certificate_authority_pem': certificateAuthorityPem,
     'server_name': serverName,
+    // Omitted when off: older clients reject unknown fields.
+    if (allowUnboundAuth) 'allow_unbound_auth': true,
   };
 }
 
@@ -404,6 +415,30 @@ final class DbColumn {
 
 enum DbServerReadOnly { enforced, roleVerified, unverified }
 
+/// What protects a live session: verified TLS, TLS without certificate
+/// verification, no TLS inside a tunnel (or on this computer), or nothing.
+enum DbTransportSecurity {
+  verified,
+  unverified,
+  tunnel,
+  plaintext;
+
+  static DbTransportSecurity? parse(Object? value) => values.where((e) => e.name == value).firstOrNull;
+
+  /// What a saved connection gets before it is opened, or null when only the
+  /// server can tell ("prefer" inside a tunnel or on this computer).
+  static DbTransportSecurity? expected(DbConnection connection, {required bool loopback}) {
+    final protected = connection.route.kind != DbRouteKind.direct && connection.route.kind != DbRouteKind.proxy;
+    final local = protected || (connection.route.kind == DbRouteKind.direct && loopback);
+    return switch (connection.tls.mode) {
+      DbTlsMode.verify => verified,
+      DbTlsMode.require => unverified,
+      DbTlsMode.prefer => local ? null : verified,
+      DbTlsMode.disable => local ? tunnel : plaintext,
+    };
+  }
+}
+
 final class DbSessionInfo {
   const DbSessionInfo({
     required this.id,
@@ -413,11 +448,13 @@ final class DbSessionInfo {
     required this.production,
     required this.readOnly,
     required this.serverReadOnly,
+    this.transportSecurity,
   });
   final String id, connectionId, serverVersion;
   final DbEngine engine;
   final bool production, readOnly;
   final DbServerReadOnly serverReadOnly;
+  final DbTransportSecurity? transportSecurity;
   factory DbSessionInfo.fromJson(DbJson json) => DbSessionInfo(
     id: json['id'] as String,
     connectionId: json['connection_id'] as String,
@@ -430,6 +467,7 @@ final class DbSessionInfo {
       'role_verified' => DbServerReadOnly.roleVerified,
       _ => DbServerReadOnly.unverified,
     },
+    transportSecurity: DbTransportSecurity.parse(json['transport_security']),
   );
 }
 

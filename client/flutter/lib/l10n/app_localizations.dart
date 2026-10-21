@@ -15326,6 +15326,72 @@ abstract class AppLocalizations {
   /// **'Local address: TLS set to \"prefer\" (a port-forward usually has no TLS).'**
   String get dbTlsLocalHint;
 
+  /// Database TLS status: TLS with a verified certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'TLS (verified)'**
+  String get dbTransportVerified;
+
+  /// Database TLS status: TLS without certificate verification.
+  ///
+  /// In en, this message translates to:
+  /// **'TLS (certificate not verified)'**
+  String get dbTransportUnverified;
+
+  /// Database TLS status: no TLS, inside a tunnel, forward or on this computer.
+  ///
+  /// In en, this message translates to:
+  /// **'No TLS — protected by a tunnel'**
+  String get dbTransportTunnel;
+
+  /// Database TLS status: no encryption over the network.
+  ///
+  /// In en, this message translates to:
+  /// **'No TLS'**
+  String get dbTransportPlaintext;
+
+  /// Connection form: what the TLS mode prefer does.
+  ///
+  /// In en, this message translates to:
+  /// **'TLS if the server supports it; without TLS only through a tunnel or on this computer.'**
+  String get dbTlsPreferHelp;
+
+  /// Connection form: what the TLS mode require does.
+  ///
+  /// In en, this message translates to:
+  /// **'Encryption without certificate verification.'**
+  String get dbTlsRequireHelp;
+
+  /// Connection form: PostgreSQL require mode accepts passwords without SCRAM channel binding.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow sign-in without TLS binding (less secure)'**
+  String get dbTlsAllowUnbound;
+
+  /// Connection form: explains the risk of sign-in without channel binding.
+  ///
+  /// In en, this message translates to:
+  /// **'Only for servers with md5 or password authentication or without SCRAM-SHA-256-PLUS. Without a verified certificate, an interceptor could then obtain the password.'**
+  String get dbTlsAllowUnboundHelp;
+
+  /// Database connection error: the server refused TLS on a network route.
+  ///
+  /// In en, this message translates to:
+  /// **'The server does not support TLS. Connecting without encryption would send the password in clear text. Choose \"Disable TLS\" explicitly if that is acceptable.'**
+  String get dbErrorTlsUnavailable;
+
+  /// Database connection error: PostgreSQL did not use SCRAM channel binding.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not bind the password to this TLS session (SCRAM-SHA-256-PLUS), and the certificate is not verified: an interceptor could obtain the password. Choose \"Verify certificate and hostname\", use SCRAM on the server, or allow sign-in without TLS binding in TLS protection.'**
+  String get dbErrorChannelBinding;
+
+  /// Database connection error: a cleartext password request without TLS was refused.
+  ///
+  /// In en, this message translates to:
+  /// **'The server asked for the password in clear text over an unencrypted network connection. Enable TLS or connect through a tunnel.'**
+  String get dbErrorCleartext;
+
   /// Opens the custom colour picker for a label colour.
   ///
   /// In en, this message translates to:

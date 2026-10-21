@@ -37,6 +37,11 @@ async fn new_connection_from_the_form_tests_saves_and_opens() {
         .await
         .expect("test an unsaved connection");
     assert!(tested.info.server_version.starts_with("17"), "{tested:?}");
+    // "prefer" to a loopback address after resolution: no TLS, nothing exposed.
+    assert_eq!(
+        tested.info.transport_security,
+        cc_db_core::DbTransportSecurity::Tunnel
+    );
     let saved = app
         .db_save_connection(
             connection,

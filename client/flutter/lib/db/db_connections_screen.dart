@@ -7,9 +7,11 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/view_mode_toggle.dart';
 import 'package:consolecrypt/db/db_connection_dialog.dart';
+import 'package:consolecrypt/db/db_errors.dart';
 import 'package:consolecrypt/db/db_import_dialog.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
+import 'package:consolecrypt/db/db_transport_badge.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -160,8 +162,10 @@ class _DbConnectionsScreenState extends ConsumerState<DbConnectionsScreen> {
                         )
                         .toList()
                       ..sort((a, b) => a.name.compareTo(b.name));
+                final observed = ref.watch(dbLastSecurityProvider);
                 Widget entry(DbConnection c) => _DbConnectionEntry(
                   connection: c,
+                  security: observed[c.id] ?? DbTransportSecurity.expected(c, loopback: dbLoopbackHost(c.host)),
                   cards: cards,
                   canShare: widget.onShare != null,
                   onOpen: () => widget.onOpen(c),
@@ -259,6 +263,7 @@ IconData _engineIcon(DbEngine engine) => switch (engine.wireName) {
 class _DbConnectionEntry extends StatelessWidget {
   const _DbConnectionEntry({
     required this.connection,
+    required this.security,
     required this.cards,
     required this.canShare,
     required this.onOpen,
@@ -266,6 +271,10 @@ class _DbConnectionEntry extends StatelessWidget {
   });
 
   final DbConnection connection;
+
+  /// Seen in the last session, or what the settings guarantee; null when
+  /// only the server can tell.
+  final DbTransportSecurity? security;
   final bool cards, canShare;
   final VoidCallback onOpen;
   final ValueChanged<_DbAction> onAction;
@@ -326,6 +335,10 @@ class _DbConnectionEntry extends StatelessWidget {
           ),
         ),
         if (route != null) ...[const SizedBox(width: GlassSpacing.s6), route],
+        if (security case final security?) ...[
+          const SizedBox(width: GlassSpacing.s6),
+          DbTransportBadge(security, compact: true, key: ValueKey('db-transport-${connection.id}')),
+        ],
       ],
     );
     final captionText = Text(

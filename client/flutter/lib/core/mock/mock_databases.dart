@@ -214,6 +214,7 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
       production: connection.production,
       readOnly: connection.production,
       serverReadOnly: connection.production ? DbServerReadOnly.enforced : DbServerReadOnly.unverified,
+      transportSecurity: DbTransportSecurity.expected(connection, loopback: false) ?? DbTransportSecurity.tunnel,
     );
     return _sessions[session.id] = session;
   }
@@ -235,6 +236,7 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
       production: s.production,
       readOnly: s.production || !allow,
       serverReadOnly: s.serverReadOnly,
+      transportSecurity: s.transportSecurity,
     );
   }
 

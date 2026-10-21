@@ -1,13 +1,17 @@
 //! Opt-in acceptance against disposable local databases:
 //! CC_DB_LIVE_PG=host:port:user:password:database (PostgreSQL) and
 //! CC_DB_LIVE_MYSQL=host:port:user:password:database (MySQL/MariaDB).
+//! CC_DB_LIVE_PG_TLS (same form, a server with ssl=on and SCRAM) with
+//! CC_DB_LIVE_PG_TLS_CA=path of the CA that issued its certificate for the host.
+use async_trait::async_trait;
 use cc_db_core::{
-    transport::{DbCredentials, DirectConnector},
-    DbCell, DbError, DbObjectKind, DbQueryEvent, DbQueryRequest, DbSession,
+    transport::{DbConnector, DbCredentials, DbDestination, DbIo, DbPath, DirectConnector},
+    DbCell, DbError, DbObjectKind, DbQueryEvent, DbQueryRequest, DbSession, DbTransportSecurity,
 };
 use cc_models::database::{DbConnection, DbEngine, DbTlsMode};
 use secrecy::SecretString;
 use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 
 fn target(
     variable: &str,
@@ -328,4 +332,107 @@ async fn postgres_production_reads_and_development_writes() {
 #[tokio::test]
 async fn mysql_production_reads_and_development_writes() {
     exercise("CC_DB_LIVE_MYSQL", DbEngine::Mysql).await;
+}
+
+/// Dials the address directly but reports the path of a real route: the
+/// network (direct to another host) or a tunnel (Kubernetes forward).
+#[derive(Debug)]
+struct Route(DbPath);
+
+#[async_trait]
+impl DbConnector for Route {
+    async fn connect(
+        &self,
+        destination: &DbDestination,
+        cancel: CancellationToken,
+    ) -> Result<DbIo, DbError> {
+        DirectConnector.connect(destination, cancel).await
+    }
+    async fn connect_path(
+        &self,
+        destination: &DbDestination,
+        cancel: CancellationToken,
+    ) -> Result<(DbIo, DbPath), DbError> {
+        Ok((self.connect(destination, cancel).await?, self.0))
+    }
+}
+
+async fn open(
+    connection: &DbConnection,
+    credentials: &DbCredentials,
+    connector: Arc<dyn DbConnector>,
+) -> Result<DbSession, DbError> {
+    DbSession::open("tls".into(), connection, credentials, connector, false).await
+}
+
+#[tokio::test]
+async fn postgres_prefer_without_tls_only_on_loopback_or_through_a_tunnel() {
+    let Some((mut connection, credentials)) = target("CC_DB_LIVE_PG", DbEngine::Postgresql, true)
+    else {
+        eprintln!("CC_DB_LIVE_PG not set; skipped");
+        return;
+    };
+    connection.tls.mode = DbTlsMode::Prefer;
+    for connector in [
+        Arc::new(DirectConnector) as Arc<dyn DbConnector>,
+        Arc::new(Route(DbPath::Tunnel)),
+    ] {
+        let session = open(&connection, &credentials, connector).await.unwrap();
+        assert_eq!(
+            session.info().transport_security,
+            DbTransportSecurity::Tunnel
+        );
+    }
+    // The same server reached over the network: no plaintext password.
+    assert_eq!(
+        open(&connection, &credentials, Arc::new(Route(DbPath::Network)))
+            .await
+            .err(),
+        Some(DbError::TlsUnavailable)
+    );
+    connection.tls.mode = DbTlsMode::Disable;
+    let session = open(&connection, &credentials, Arc::new(Route(DbPath::Network)))
+        .await
+        .unwrap();
+    assert_eq!(
+        session.info().transport_security,
+        DbTransportSecurity::Plaintext
+    );
+}
+
+#[tokio::test]
+async fn postgres_tls_binds_scram_to_the_session() {
+    let Some((mut connection, credentials)) =
+        target("CC_DB_LIVE_PG_TLS", DbEngine::Postgresql, true)
+    else {
+        eprintln!("CC_DB_LIVE_PG_TLS not set; skipped");
+        return;
+    };
+    let network = || Arc::new(Route(DbPath::Network)) as Arc<dyn DbConnector>;
+    // Channel binding is required without verification: the session opens
+    // only through SCRAM-SHA-256-PLUS.
+    connection.tls.mode = DbTlsMode::Require;
+    let session = open(&connection, &credentials, network()).await.unwrap();
+    assert_eq!(
+        session.info().transport_security,
+        DbTransportSecurity::Unverified
+    );
+    assert_eq!(
+        run(&Arc::new(session), "SELECT 1").await.unwrap(),
+        vec![vec!["1".to_string()]]
+    );
+    let Ok(authority) = std::env::var("CC_DB_LIVE_PG_TLS_CA") else {
+        return;
+    };
+    connection.tls.certificate_authority_pem = Some(std::fs::read_to_string(authority).unwrap());
+    for mode in [DbTlsMode::Verify, DbTlsMode::Prefer] {
+        connection.tls.mode = mode;
+        for connector in [network(), Arc::new(DirectConnector)] {
+            let session = open(&connection, &credentials, connector).await.unwrap();
+            assert_eq!(
+                session.info().transport_security,
+                DbTransportSecurity::Verified
+            );
+        }
+    }
 }

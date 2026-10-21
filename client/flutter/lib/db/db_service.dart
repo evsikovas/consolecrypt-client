@@ -64,9 +64,15 @@ final class DbImportChoice {
 }
 
 final class DbConnectionCheck {
-  const DbConnectionCheck({required this.serverVersion, required this.serverReadOnly, this.warningCodes = const []});
+  const DbConnectionCheck({
+    required this.serverVersion,
+    required this.serverReadOnly,
+    this.transportSecurity,
+    this.warningCodes = const [],
+  });
   final String serverVersion;
   final DbServerReadOnly serverReadOnly;
+  final DbTransportSecurity? transportSecurity;
   final List<String> warningCodes;
 }
 

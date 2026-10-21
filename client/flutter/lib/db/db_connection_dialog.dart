@@ -11,6 +11,7 @@ import 'package:consolecrypt/db/db_errors.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_service.dart';
+import 'package:consolecrypt/db/db_transport_badge.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -33,7 +34,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
   late final DbService? _service;
   late DbEngine _engine;
   late DbTlsMode _tls;
-  bool _tlsChosen = false, _tlsAuto = false;
+  bool _tlsChosen = false, _tlsAuto = false, _allowUnbound = false;
   Object? _error;
   late DbAuthMechanism _mechanism;
   late DbMongoReadPreference _readPreference;
@@ -52,6 +53,9 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
   bool get _kube => _route.kind == DbRouteKind.kubernetes;
   bool get _docker => _route.kind == DbRouteKind.docker;
   bool get _tunnel => _route.kind == DbRouteKind.tunnel;
+
+  /// PostgreSQL "require" binds the password to TLS unless the user opts out.
+  bool get _unboundChoice => _engine == DbEngine.postgresql && _tls == DbTlsMode.require;
 
   /// Kubernetes and Docker forwards listen on loopback; the port is the
   /// container port.
@@ -91,6 +95,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
     final c = widget.connection ?? widget.template;
     _engine = c?.engine ?? DbEngine.postgresql;
     _tls = c?.tls.mode ?? DbTlsMode.verify;
+    _allowUnbound = c?.tls.allowUnboundAuth ?? false;
     _mechanism = c?.auth.mechanism ?? DbAuthMechanism.defaultAuth;
     _production = c?.production ?? true;
     _resp3 = c?.options.resp3 ?? false;
@@ -203,7 +208,12 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
           keySecretId: old?.auth.keySecretId,
           mechanism: _mechanism,
         ),
-        tls: DbTls(mode: _tls, certificateAuthorityPem: nullable('ca'), serverName: nullable('serverName')),
+        tls: DbTls(
+          mode: _tls,
+          certificateAuthorityPem: nullable('ca'),
+          serverName: nullable('serverName'),
+          allowUnboundAuth: _unboundChoice && _allowUnbound,
+        ),
         route: _routeValue,
         groupId: _group,
         tags: _value('tags').split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toSet().toList(),
@@ -392,7 +402,15 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                     _error == null ? l.dbFailed : dbFailureText(_error!, l),
                     style: TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
-                if (_check != null) ...[Text(l.dbTestSuccess), Text(_check!.serverVersion)],
+                if (_check case final check?) ...[
+                  Text(l.dbTestSuccess),
+                  Text(check.serverVersion),
+                  if (check.transportSecurity case final security?)
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: DbTransportBadge(security, key: const ValueKey('db-test-transport')),
+                    ),
+                ],
                 _input('name', l.dbName, required: true),
                 GlassDropdownField<DbEngine>(
                   key: const ValueKey('db-engine'),
@@ -478,8 +496,18 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                               _tlsAuto = false;
                             }),
                     ),
+                    if (_tls == DbTlsMode.prefer) Text(l.dbTlsPreferHelp, key: const ValueKey('db-tls-help')),
+                    if (_tls == DbTlsMode.require) Text(l.dbTlsRequireHelp, key: const ValueKey('db-tls-help')),
                     if (_tlsAuto) Text(l.dbTlsLocalHint),
                     if (_tls != DbTlsMode.verify && !_tlsAuto) Text(l.dbTlsWarning),
+                    if (_unboundChoice)
+                      CheckboxListTile(
+                        key: const ValueKey('db-tls-unbound'),
+                        value: _allowUnbound,
+                        title: Text(l.dbTlsAllowUnbound),
+                        subtitle: Text(l.dbTlsAllowUnboundHelp),
+                        onChanged: _busy ? null : (v) => setState(() => _allowUnbound = v!),
+                      ),
                     _input('serverName', l.dbTlsServerName),
                     _input('ca', l.dbTlsCa, lines: 3),
                     _input('certificate', l.dbClientCertificate, lines: 3),

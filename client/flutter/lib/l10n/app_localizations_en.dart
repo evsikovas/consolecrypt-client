@@ -8479,6 +8479,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dbTlsLocalHint => 'Local address: TLS set to \"prefer\" (a port-forward usually has no TLS).';
 
   @override
+  String get dbTransportVerified => 'TLS (verified)';
+
+  @override
+  String get dbTransportUnverified => 'TLS (certificate not verified)';
+
+  @override
+  String get dbTransportTunnel => 'No TLS — protected by a tunnel';
+
+  @override
+  String get dbTransportPlaintext => 'No TLS';
+
+  @override
+  String get dbTlsPreferHelp => 'TLS if the server supports it; without TLS only through a tunnel or on this computer.';
+
+  @override
+  String get dbTlsRequireHelp => 'Encryption without certificate verification.';
+
+  @override
+  String get dbTlsAllowUnbound => 'Allow sign-in without TLS binding (less secure)';
+
+  @override
+  String get dbTlsAllowUnboundHelp =>
+      'Only for servers with md5 or password authentication or without SCRAM-SHA-256-PLUS. Without a verified certificate, an interceptor could then obtain the password.';
+
+  @override
+  String get dbErrorTlsUnavailable =>
+      'The server does not support TLS. Connecting without encryption would send the password in clear text. Choose \"Disable TLS\" explicitly if that is acceptable.';
+
+  @override
+  String get dbErrorChannelBinding =>
+      'The server did not bind the password to this TLS session (SCRAM-SHA-256-PLUS), and the certificate is not verified: an interceptor could obtain the password. Choose \"Verify certificate and hostname\", use SCRAM on the server, or allow sign-in without TLS binding in TLS protection.';
+
+  @override
+  String get dbErrorCleartext =>
+      'The server asked for the password in clear text over an unencrypted network connection. Enable TLS or connect through a tunnel.';
+
+  @override
   String get colorPickerCustom => 'Custom colour';
 
   @override

@@ -335,6 +335,14 @@ fn classify(error: mysql_async::Error) -> DbError {
             1317 | 3024 | 1969 => DbError::Cancelled,
             _ => DbError::QueryFailed,
         },
+        // Prefer and Require never continue without TLS.
+        mysql_async::Error::Driver(mysql_async::DriverError::NoClientSslFlagFromServer) => {
+            DbError::TlsUnavailable
+        }
+        // mysql_clear_password stays disabled: the password is never sent as is.
+        mysql_async::Error::Driver(mysql_async::DriverError::CleartextPluginDisabled) => {
+            DbError::CleartextRefused
+        }
         _ => {
             let text = error.to_string().to_ascii_lowercase();
             if text.contains("tls") || text.contains("ssl") || text.contains("certificate") {
@@ -342,6 +350,112 @@ fn classify(error: mysql_async::Error) -> DbError {
             } else {
                 DbError::ConnectionFailed
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::transport::DirectConnector;
+    use secrecy::SecretString;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    const PASSWORD: &str = "canary-mysql-password";
+
+    fn packet(sequence: u8, payload: &[u8]) -> Vec<u8> {
+        let mut packet = (payload.len() as u32).to_le_bytes()[..3].to_vec();
+        packet.push(sequence);
+        packet.extend_from_slice(payload);
+        packet
+    }
+
+    /// A fake MySQL 8 without TLS: after the handshake response it switches
+    /// to mysql_clear_password and records every byte the client sent.
+    async fn fake() -> (u16, tokio::task::JoinHandle<Vec<u8>>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let task = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            // PROTOCOL_41, SECURE_CONNECTION, PLUGIN_AUTH, CONNECT_WITH_DB… but no SSL.
+            let capabilities: u32 = 0x0028_a209;
+            let mut handshake = vec![10];
+            handshake.extend_from_slice(b"8.0.36\0");
+            handshake.extend_from_slice(&7u32.to_le_bytes());
+            handshake.extend_from_slice(b"abcdefgh\0");
+            handshake.extend_from_slice(&capabilities.to_le_bytes()[..2]);
+            handshake.push(45);
+            handshake.extend_from_slice(&2u16.to_le_bytes());
+            handshake.extend_from_slice(&capabilities.to_le_bytes()[2..]);
+            handshake.push(21);
+            handshake.extend_from_slice(&[0; 10]);
+            handshake.extend_from_slice(b"ijklmnopqrst\0");
+            handshake.extend_from_slice(b"mysql_native_password\0");
+            let mut received = Vec::new();
+            if stream.write_all(&packet(0, &handshake)).await.is_err() {
+                return received;
+            }
+            let mut buffer = [0; 1024];
+            let mut switched = false;
+            while let Ok(Ok(count @ 1..)) =
+                tokio::time::timeout(Duration::from_secs(3), stream.read(&mut buffer)).await
+            {
+                received.extend_from_slice(&buffer[..count]);
+                if !switched {
+                    switched = true;
+                    let mut switch = vec![0xfe];
+                    switch.extend_from_slice(b"mysql_clear_password\0");
+                    let _ = stream.write_all(&packet(2, &switch)).await;
+                }
+            }
+            received
+        });
+        (port, task)
+    }
+
+    async fn attempt(port: u16, mode: DbTlsMode) -> Result<Mysql, DbError> {
+        let mut connection = DbConnection::new("fake", "127.0.0.1", DbEngine::Mysql);
+        connection.port = port;
+        connection.username = "root".into();
+        connection.tls.mode = mode;
+        let credentials = DbCredentials {
+            password: Some(SecretString::from(PASSWORD)),
+            client_key_pem: None,
+        };
+        Mysql::connect(
+            &connection,
+            &credentials,
+            Arc::new(DirectConnector),
+            CancellationToken::new(),
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn cleartext_password_plugin_is_refused() {
+        let (port, server) = fake().await;
+        assert_eq!(
+            attempt(port, DbTlsMode::Disable).await.err(),
+            Some(DbError::CleartextRefused)
+        );
+        let received = server.await.unwrap();
+        // The handshake response arrived (a native-password hash), the password did not.
+        assert!(!received.is_empty());
+        assert!(!received
+            .windows(PASSWORD.len())
+            .any(|window| window == PASSWORD.as_bytes()));
+    }
+
+    #[tokio::test]
+    async fn prefer_and_require_never_continue_without_tls() {
+        for mode in [DbTlsMode::Prefer, DbTlsMode::Require, DbTlsMode::Verify] {
+            let (port, server) = fake().await;
+            assert_eq!(
+                attempt(port, mode).await.err(),
+                Some(DbError::TlsUnavailable)
+            );
+            // Not even the handshake response (user name) was sent.
+            assert!(server.await.unwrap().is_empty(), "{mode:?}");
         }
     }
 }

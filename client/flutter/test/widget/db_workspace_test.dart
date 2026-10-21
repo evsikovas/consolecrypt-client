@@ -40,6 +40,7 @@ DbSessionInfo _session({bool production = true, bool readOnly = true}) => DbSess
   production: production,
   readOnly: readOnly,
   serverReadOnly: DbServerReadOnly.enforced,
+  transportSecurity: DbTransportSecurity.unverified,
 );
 
 class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiService {
@@ -231,6 +232,13 @@ Future<void> _type(WidgetTester tester, String text) async {
 }
 
 void main() {
+  testWidgets('the header shows what protects the session and the card remembers it', (tester) async {
+    final container = await _pump(tester, _Service());
+    final l = tester.element(find.byType(DbWorkspace)).l10n;
+    expect(find.byKey(const ValueKey('db-transport-badge')), findsOneWidget);
+    expect(find.text(l.dbTransportUnverified), findsOneWidget);
+    expect(container.read(dbLastSecurityProvider), {'connection': DbTransportSecurity.unverified});
+  });
   testWidgets('current statement runs through native parser/review and keeps typed results', (tester) async {
     final service = _Service();
     await _pump(tester, service);

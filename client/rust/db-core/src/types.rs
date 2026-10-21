@@ -1,4 +1,4 @@
-use cc_models::database::DbEngine;
+use cc_models::database::{DbEngine, DbTlsMode};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -96,6 +96,35 @@ pub enum DbServerReadOnly {
     Unverified,
 }
 
+/// What actually protects a live session, shown to the user.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DbTransportSecurity {
+    /// TLS with a verified certificate chain and server name.
+    Verified,
+    /// TLS without certificate verification ("require").
+    Unverified,
+    /// No database TLS; a tunnel or this computer carries the socket.
+    Tunnel,
+    /// No TLS over the network.
+    Plaintext,
+}
+impl DbTransportSecurity {
+    pub(crate) fn of(mode: DbTlsMode, plaintext: bool, path: crate::transport::DbPath) -> Self {
+        if plaintext || mode == DbTlsMode::Disable {
+            if path.protected() {
+                Self::Tunnel
+            } else {
+                Self::Plaintext
+            }
+        } else if mode == DbTlsMode::Require {
+            Self::Unverified
+        } else {
+            Self::Verified
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DbSessionInfo {
     pub id: String,
@@ -105,6 +134,7 @@ pub struct DbSessionInfo {
     pub production: bool,
     pub read_only: bool,
     pub server_read_only: DbServerReadOnly,
+    pub transport_security: DbTransportSecurity,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -291,6 +321,16 @@ pub enum DbError {
     AuthenticationFailed,
     #[error("database TLS verification failed")]
     TlsFailed,
+    /// The server refused TLS on a path where a password must not travel in
+    /// plaintext ("prefer" over the network is never downgraded).
+    #[error("database server does not support TLS")]
+    TlsUnavailable,
+    /// "require" without a verified certificate needs SCRAM channel binding.
+    #[error("database server did not use channel binding")]
+    ChannelBindingUnsupported,
+    /// The server asked for a cleartext password over an unencrypted network socket.
+    #[error("database server requested a cleartext password without TLS")]
+    CleartextRefused,
     #[error("database query failed")]
     QueryFailed,
     #[error("database operation timed out")]
