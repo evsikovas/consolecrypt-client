@@ -93,7 +93,7 @@
 
 ### Режим «Прод»
 
-Прод-подключение работает только на чтение, и защита у него в два слоя:
+Прод-подключение открывается только на чтение, и защита у него в два слоя:
 
 - **На сервере.** PostgreSQL и MySQL/MariaDB выполняют каждый запрос в
   транзакции только для чтения. ClickHouse получает `readonly=2` в каждом
@@ -103,10 +103,24 @@
   попытки снять защиту (`SET transaction_read_only`, `COPY … TO PROGRAM`,
   `INTO OUTFILE`, `FLUSHALL`, `$out`, `$merge` и подобные) не отправляются.
 
-Временного разрешения записи у прод-подключений нет: для изменений используйте
-отдельное непрод-подключение с другой учётной записью. Кнопка «Проверить
-права» в шапке рабочей области сообщает, подтверждена ли защита на сервере и
-есть ли у роли права записи. Для прода лучше использовать роль только для
+Когда изменить прод всё же нужно, кнопка **«Разблокировать прод»** в шапке
+рабочей области открывает временное окно записи. Нужно ввести пароль хранилища
+(он проверяется в ядре приложения), набрать имя подключения и выбрать срок:
+5, 15 или 30 минут. Пока окно открыто, в шапке горит красная метка «Запись в
+прод до ЧЧ:ММ» с обратным отсчётом и кнопкой «Заблокировать». Каждый
+изменяющий запрос по-прежнему показывается на проверку, и для него нужно
+ввести имя подключения; ячейки результата можно редактировать. Окно
+принадлежит только этому сеансу и закрывается само по истечении срока, по
+кнопке «Заблокировать», при отключении, блокировке хранилища или смене
+профиля. Серверная защита снимается только для разрешённых изменений: чтения
+по-прежнему идут в транзакциях только для чтения. Роль только для чтения
+сервер не пропустит и в открытом окне — после разблокировки приложение
+проверяет права и предупреждает, если роль не может писать. Изменения,
+сделанные в окне, отмечаются в истории запросов. На телефонах окно записи
+недоступно.
+
+Кнопка «Проверить права» в шапке рабочей области сообщает, подтверждена ли
+защита на сервере и есть ли у роли права записи. Для прода лучше использовать роль только для
 чтения: в PostgreSQL — `SELECT` или `pg_read_all_data`, в MySQL — `SELECT`, в
 ClickHouse — профиль `readonly=1`, в Redis — ACL `+@read -@write`, в MongoDB —
 роль `read`.
@@ -166,7 +180,10 @@ ClickHouse — профиль `readonly=1`, в Redis — ACL `+@read -@write`, �
 
 В меню объекта: «Первые 100 строк», «Показать DDL» (для Redis — описание
 ключа, для MongoDB — параметры коллекции и индексы), «Вставить имя» и
-«Сведения об объекте». Для коллекций MongoDB есть «Схема по выборке
+«Сведения об объекте». DDL показывается блоком кода с номерами строк и
+подсветкой, каждый оператор (`CREATE TABLE`, каждый `CREATE INDEX`) отделён
+чертой, длинные строки прокручиваются вбок; кнопки «Копировать» и «Открыть в
+редакторе» (DDL открывается в новой вкладке). Для коллекций MongoDB есть «Схема по выборке
 документов»: типы полей и доля документов, в которых поле встречается.
 
 ### Редактор и выполнение
@@ -190,6 +207,13 @@ MongoDB принимает команды в привычном синтакси
 | История | `⌘H` | `Ctrl+H` |
 | ИИ-помощник | `⌘I` | `Ctrl+I` |
 
+Без выделения выполняется оператор на строке курсора, как в классических
+SQL-клиентах: операторы разделяются `;` (вне строк и комментариев) и пустыми
+строками; с любой строки многострочного оператора выполняется он целиком;
+если на строке два оператора, выбирается тот, что под курсором; на пустой
+строке — ближайший оператор выше (если его нет — ниже). В Redis и MongoDB
+правило то же.
+
 Весь скрипт выполняется по одному оператору и останавливается на первой
 ошибке. Переменные `{{name}}` заполняются в отдельном окне и передаются
 драйверу как параметры, а не вставляются в текст.
@@ -209,6 +233,12 @@ ANALYZE» добавляет реальное время, но выполняе�
 именами вроде `password`, `token`, `secret` скрыты, а при копировании буфер
 обмена очищается автоматически.
 
+Щелчок по ячейке выделяет её рамкой (`⌘C` / `Ctrl+C` копирует значение),
+щелчок по номеру строки выбирает строку, Shift+щелчок расширяет выбор,
+⌘/Ctrl+щелчок добавляет или убирает строку, Esc снимает выбор. В строке
+состояния видно «Выбрано строк: N»; копирование, экспорт и ИИ-помощник
+работают с выбранными строками, если они есть.
+
 Копировать можно ячейку, строку, выделение или весь загруженный результат в
 CSV, TSV, JSON, NDJSON, Markdown или как SQL `INSERT`. «Экспорт результата»
 заново выполняет запрос и записывает все строки без лимита сетки, с
@@ -217,12 +247,17 @@ CSV, TSV, JSON, NDJSON, Markdown или как SQL `INSERT`. «Экспорт р
 
 ### Редактирование ячеек
 
-На компьютере в непрод-сессии с разрешённой записью можно менять ячейки
-результата простого `SELECT` из одной таблицы с первичным ключом. Изменения
-копятся. «Проверить изменения» показывает сгенерированные
-`UPDATE … WHERE <первичный ключ>` (значения передаются параметрами); после
-подтверждения они выполняются одной транзакцией. Если какое-то изменение не
-нашло свою строку, откатываются все. На проде редактирование недоступно.
+На компьютере в сессии с разрешённой записью (непрод-подключение или прод с
+открытым окном записи) можно менять ячейки результата простого `SELECT` из
+одной таблицы с первичным ключом. Двойной щелчок по ячейке открывает
+редактирование прямо в таблице: Enter сохраняет значение в списке изменений,
+Esc отменяет, Tab переходит к следующей ячейке. Тип значения берётся из
+описания колонки в результате и проверяется при вводе; NULL задаётся
+отдельным переключателем. Изменённые ячейки подсвечиваются. «Проверить
+изменения» показывает сгенерированные `UPDATE … WHERE <первичный ключ>`
+(значения передаются параметрами); после подтверждения они выполняются одной
+транзакцией. Если какое-то изменение не нашло свою строку, откатываются все.
+Без права записи двойной щелчок открывает просмотр значения.
 
 ### История
 
@@ -340,11 +375,24 @@ connection with the same route or a prefilled form.
 
 ### Production
 
-Production connections are read-only in two layers: the server (read-only
+Production connections open read-only in two layers: the server (read-only
 transactions in PostgreSQL and MySQL/MariaDB, `readonly=2` in ClickHouse, role
 checks in MongoDB) and the native query guard, which blocks changing
-statements and attempts to lift the protection. There is no temporary write
-window; use a separate non-production connection. “Check privileges” reports
+statements and attempts to lift the protection.
+
+When production must be changed, **Unlock production** in the workspace
+header opens a temporary write window: enter the vault passphrase (checked by
+the app core), type the connection name and pick 5, 15 or 30 minutes. While it
+is open the header shows a red “Production writes until HH:MM” badge with a
+countdown and a **Lock** button. Every changing statement is still shown for
+review and needs the connection name typed; result cells can be edited. The
+window belongs to that session only and closes when the time runs out, on
+Lock, on disconnect, vault lock or profile change. Server-side protection is
+lifted only for the permitted changes — reads still run in read-only
+transactions — and a read-only role still refuses: the app checks privileges
+after unlocking and warns when the role cannot write. Changes made in the
+window are marked in query history. Phones never get a write window.
+“Check privileges” reports
 whether server-side protection is verified and whether the role can write.
 Prefer read-only roles: `SELECT` or `pg_read_all_data` in PostgreSQL, `SELECT`
 in MySQL, a `readonly=1` profile in ClickHouse, ACL `+@read -@write` in Redis
@@ -383,7 +431,8 @@ already copied password; change it on the database server.
 The structure tree loads lazily and sorts objects into folders (tables,
 views, functions, sequences, dictionaries; columns, indexes, constraints,
 triggers, projections). The expanded table is framed and keys carry icons.
-Object menus offer the first 100 rows, DDL, the quoted identifier and
+Object menus offer the first 100 rows, DDL (a numbered, highlighted code
+block per statement, with Copy and Open in editor), the quoted identifier and
 details; MongoDB collections can infer a schema from a sample. Redis keys are
 grouped by `:` and read with `SCAN`.
 
@@ -391,7 +440,10 @@ The editor numbers lines, highlights syntax, completes keywords, tables and
 columns at the caret (including aliases), formats, toggles comments and finds
 and replaces. MongoDB accepts familiar shell syntax such as
 `db.orders.find({ status: "paid" })`. Shortcuts use ⌘ on macOS and Ctrl on
-Windows and Linux: Enter runs the selection or current statement, `⌥X` /
+Windows and Linux: Enter runs the selection or the statement on the caret's
+line (statements end at `;` and at blank lines; any line of a multi-line
+statement runs all of it; on a blank line the nearest statement above runs,
+else the one below), `⌥X` /
 `Alt+X` (or Shift+Enter with the modifier) runs the whole script, Space
 completes (`⌃Space` on macOS), Shift+F formats, `/` comments, F finds, `.`
 cancels, E explains, H opens history and I opens the AI assistant. Scripts
@@ -411,10 +463,19 @@ clipboard automatically. Copy a cell, row, selection or the loaded result as
 CSV, TSV, JSON, NDJSON, Markdown or `INSERT`; file export re-runs read-only
 queries and streams every row with progress and cancellation.
 
-On desktop, non-production sessions with writes allowed can edit cells of a
-simple single-table `SELECT` with a primary key. Pending edits are reviewed as
-parameterized `UPDATE` statements and applied in one transaction that rolls
-back unless every change hit exactly one row.
+A click focuses a cell (⌘C / Ctrl+C copies its value); a click on the row
+number selects the row, Shift+click extends the selection and ⌘/Ctrl+click
+toggles a row, Esc clears it. The status line counts selected rows, and copy,
+export and the AI assistant use the selection when there is one.
+
+On desktop, sessions with writes allowed (non-production, or production in
+its write window) can edit cells of a simple single-table `SELECT` with a
+primary key: double-click a cell to edit it in place, Enter keeps the value,
+Esc cancels and Tab moves to the next cell. The value is checked and bound
+with the column's type from the result; NULL is an explicit toggle. Pending
+edits are highlighted, reviewed as parameterized `UPDATE` statements and
+applied in one transaction that rolls back unless every change hit exactly
+one row. Without write access a double-click opens the value viewer.
 
 History is kept per connection — text, time, duration, rows and error, never
 parameter values or data — with filters for successful, failed and favourite

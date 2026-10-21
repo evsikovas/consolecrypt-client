@@ -9881,4 +9881,96 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get kubeGitOpsForceTooltip =>
       'Flux однократно выполнит установку или обновление Helm, даже если ничего не изменилось (flux reconcile helmrelease --force)';
+
+  @override
+  String get copyWhatDdl => 'DDL';
+
+  @override
+  String get copyWhatValue => 'значение';
+
+  @override
+  String get dbOpenInEditor => 'Открыть в редакторе';
+
+  @override
+  String get dbUnlockProduction => 'Разблокировать прод';
+
+  @override
+  String get dbUnlockProductionTitle => 'Разблокировать прод для изменений';
+
+  @override
+  String dbUnlockProductionWarning(String name) {
+    return 'Изменения пойдут прямо в прод-базу «$name». Каждый изменяющий запрос по-прежнему показывается на проверку с именем подключения. Запись снова блокируется, когда истечёт время, по кнопке «Заблокировать», при отключении или блокировке хранилища.';
+  }
+
+  @override
+  String get dbVaultPassphrase => 'Пароль хранилища';
+
+  @override
+  String dbTypeConnectionName(String name) {
+    return 'Введите имя подключения: $name';
+  }
+
+  @override
+  String get dbUnlockFor => 'Разрешить запись на';
+
+  @override
+  String dbMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count минуты',
+      many: '$count минут',
+      few: '$count минуты',
+      one: '$count минуту',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbWrongPassphrase => 'Неверный пароль хранилища.';
+
+  @override
+  String dbProdWriteUntil(String time) {
+    return 'Запись в прод до $time';
+  }
+
+  @override
+  String dbProdWriteLeft(String time) {
+    return 'Осталось $time';
+  }
+
+  @override
+  String get dbLockProduction => 'Заблокировать';
+
+  @override
+  String get dbProdWriteLocked => 'Запись в прод снова заблокирована.';
+
+  @override
+  String get dbProdRoleReadOnly =>
+      'Роль этого подключения в базе не может изменять данные, поэтому сервер отклонит запись даже при разблокированном проде.';
+
+  @override
+  String get dbHistoryProdWrite => 'Изменение в проде';
+
+  @override
+  String get dbSetNull => 'Установить NULL';
+
+  @override
+  String get dbCellEditHint => 'Enter — сохранить, Esc — отменить, Tab — следующая ячейка';
+
+  @override
+  String get dbPendingEdit => 'Изменено, ещё не применено';
+
+  @override
+  String dbSelectedRows(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Выбрано строк: $count',
+      many: 'Выбрано строк: $count',
+      few: 'Выбрано строк: $count',
+      one: 'Выбрано строк: $count',
+    );
+    return '$_temp0';
+  }
 }

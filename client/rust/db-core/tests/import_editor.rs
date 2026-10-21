@@ -162,3 +162,142 @@ fn formatting_preserves_bound_templates_and_quoted_literals() {
     assert!(mongo.contains("\"find\""));
     assert!(mongo.contains("\"$param\""));
 }
+
+/// Runs "current statement" for `marked`, where `‸` marks the caret.
+fn current(engine: DbEngine, marked: &str) -> String {
+    let caret = marked.find('‸').expect("caret marker");
+    let text = marked.replacen('‸', "", 1);
+    let units = text[..caret].encode_utf16().count();
+    prepare_query(engine, &text, QueryScope::Current, units, units)
+        .unwrap_or_else(|error| panic!("{marked:?}: {error:?}"))
+        .text
+}
+
+#[test]
+fn current_statement_is_the_one_on_the_caret_line() {
+    let pg = DbEngine::Postgresql;
+    // Any line of a multi-line statement runs the whole statement.
+    let script = "SELECT 1;\n\nSELECT id,\n       name\n  FROM items\n WHERE id > 1;\n\nSELECT 3;";
+    for line in [
+        "SELECT id,",
+        "       name",
+        "  FROM items",
+        " WHERE id > 1;",
+    ] {
+        let at = script.find(line).unwrap() + 2;
+        let marked = format!("{}‸{}", &script[..at], &script[at..]);
+        assert_eq!(
+            current(pg, &marked),
+            "SELECT id,\n       name\n  FROM items\n WHERE id > 1"
+        );
+    }
+    // The caret after the `;` at the end of the line still means that line.
+    assert_eq!(current(pg, "SELECT 1;‸\nSELECT 2;"), "SELECT 1");
+    assert_eq!(current(pg, "SELECT 1;\nSELECT 2;‸"), "SELECT 2");
+    assert_eq!(current(pg, "‸SELECT 1;\nSELECT 2;"), "SELECT 1");
+    assert_eq!(current(pg, "SELECT 1;\n‸SELECT 2;"), "SELECT 2");
+    // Blank lines separate statements without a `;`.
+    assert_eq!(
+        current(pg, "SELECT 1\n\nSELECT 2‸\nFROM t"),
+        "SELECT 2\nFROM t"
+    );
+    assert_eq!(current(pg, "SELECT 1‸\n\nSELECT 2"), "SELECT 1");
+    assert_eq!(current(pg, "SELECT 1\n  \t\nSELECT ‸2"), "SELECT 2");
+}
+
+#[test]
+fn current_statement_on_a_blank_line_takes_the_nearest_above_then_below() {
+    let pg = DbEngine::Postgresql;
+    assert_eq!(current(pg, "SELECT 1;\n\n‸\n\nSELECT 2;"), "SELECT 1");
+    assert_eq!(current(pg, "SELECT 1;\n‸\nSELECT 2;"), "SELECT 1");
+    assert_eq!(current(pg, "‸\n\nSELECT 2;\nSELECT 3;"), "SELECT 2");
+    assert_eq!(current(pg, "SELECT 1;\n\n  ‸"), "SELECT 1");
+    assert!(prepare_query(pg, "\n\n", QueryScope::Current, 1, 1).is_err());
+    assert!(prepare_query(pg, "-- only a comment\n", QueryScope::Current, 0, 0).is_err());
+}
+
+#[test]
+fn current_statement_picks_the_one_under_the_caret_column() {
+    let pg = DbEngine::Postgresql;
+    assert_eq!(current(pg, "SELECT 1; SEL‸ECT 2; SELECT 3;"), "SELECT 2");
+    assert_eq!(current(pg, "SELECT ‸1; SELECT 2;"), "SELECT 1");
+    assert_eq!(current(pg, "SELECT 1;‸ SELECT 2;"), "SELECT 1");
+    assert_eq!(current(pg, "SELECT 1; ‸SELECT 2;"), "SELECT 2");
+    assert_eq!(current(pg, "SELECT 1; SELECT 2;   ‸"), "SELECT 2");
+    // A statement continuing on the next line still belongs to its first line.
+    assert_eq!(current(pg, "SELECT 1; SELECT‸\n  2;"), "SELECT\n  2");
+}
+
+#[test]
+fn current_statement_respects_comments_and_strings() {
+    let pg = DbEngine::Postgresql;
+    // `;` inside strings, quoted identifiers, dollar quotes and comments
+    // never splits; blank lines inside a string or comment do not either.
+    assert_eq!(
+        current(pg, "SELECT 'a;\n\nb' AS \"x;y\"‸;\nSELECT 2;"),
+        "SELECT 'a;\n\nb' AS \"x;y\""
+    );
+    assert_eq!(
+        current(pg, "SELECT $$\n;\n\n$$;‸\nSELECT 2;"),
+        "SELECT $$\n;\n\n$$"
+    );
+    assert_eq!(
+        current(pg, "SELECT 1 /* ;\n\n */ + ‸1;"),
+        "SELECT 1 /* ;\n\n */ + 1"
+    );
+    // A comment line above a statement belongs to it; the comment itself
+    // is not sent.
+    assert_eq!(
+        current(pg, "SELECT 1;\n-- the next one‸\nSELECT 2;"),
+        "SELECT 2"
+    );
+    // A comment after `;` on the same line stays with that statement.
+    assert_eq!(current(pg, "SELECT 1; -- note‸\nSELECT 2;"), "SELECT 1");
+    assert_eq!(
+        current(pg, "SELECT 1 -- no semicolon‸\n\nSELECT 2"),
+        "SELECT 1"
+    );
+    let mysql = DbEngine::Mysql;
+    assert_eq!(
+        current(mysql, "# note\nSELECT 'a;b'‸;\nSELECT 2;"),
+        "SELECT 'a;b'"
+    );
+    let ch = DbEngine::Clickhouse;
+    assert_eq!(
+        current(ch, "SELECT 1\n\nSELECT ‸2\nFORMAT JSON"),
+        "SELECT 2\nFORMAT JSON"
+    );
+}
+
+#[test]
+fn current_statement_follows_the_same_lines_in_redis_and_mongo() {
+    let redis = DbEngine::Redis;
+    assert_eq!(current(redis, "GET a\nGET ‸b\nGET c"), "GET b");
+    assert_eq!(current(redis, "GET a\n\n‸\nGET c"), "GET a");
+    assert_eq!(current(redis, "‸\nGET c"), "GET c");
+    assert_eq!(current(redis, "# heading‸\nGET c"), "GET c");
+    assert_eq!(current(redis, "SET k \"one\ntwo\"\nGET ‸k"), "GET k");
+    assert_eq!(
+        current(redis, "SET k \"one‸\ntwo\"\nGET k"),
+        "SET k \"one\ntwo\""
+    );
+    let mongo = DbEngine::Mongodb;
+    let script = "db.a.find({\n  \"x\": 1,\n\n  \"y\": \";\"\n})\n\ndb.b.find({})";
+    assert_eq!(
+        current(mongo, &script.replacen("\"y\"", "\"y‸\"", 1)),
+        "db.a.find({\n  \"x\": 1,\n\n  \"y\": \";\"\n})"
+    );
+    assert_eq!(current(mongo, &format!("{script}‸")), "db.b.find({})");
+    assert_eq!(
+        current(mongo, "db.a.find({}); db.b.‸find({})"),
+        "db.b.find({})"
+    );
+    assert_eq!(
+        current(mongo, "// first\ndb.a.find({})‸\n\ndb.b.find({})"),
+        "db.a.find({})"
+    );
+    assert_eq!(
+        current(mongo, "db.a.find({})\n\n‸\n\ndb.b.find({})"),
+        "db.a.find({})"
+    );
+}

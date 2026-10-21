@@ -9653,4 +9653,87 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get kubeGitOpsForceTooltip =>
       'Flux performs a one-off Helm install or upgrade even if nothing changed (flux reconcile helmrelease --force)';
+
+  @override
+  String get copyWhatDdl => 'DDL';
+
+  @override
+  String get copyWhatValue => 'value';
+
+  @override
+  String get dbOpenInEditor => 'Open in editor';
+
+  @override
+  String get dbUnlockProduction => 'Unlock production';
+
+  @override
+  String get dbUnlockProductionTitle => 'Unlock production for changes';
+
+  @override
+  String dbUnlockProductionWarning(String name) {
+    return 'Changes will go straight to the production database “$name”. Every changing statement is still shown for review with the connection name. Writes lock again when the time runs out, when you lock them, disconnect or lock the vault.';
+  }
+
+  @override
+  String get dbVaultPassphrase => 'Vault passphrase';
+
+  @override
+  String dbTypeConnectionName(String name) {
+    return 'Type the connection name: $name';
+  }
+
+  @override
+  String get dbUnlockFor => 'Allow writes for';
+
+  @override
+  String dbMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count minutes', one: '$count minute');
+    return '$_temp0';
+  }
+
+  @override
+  String get dbWrongPassphrase => 'Wrong vault passphrase.';
+
+  @override
+  String dbProdWriteUntil(String time) {
+    return 'Production writes until $time';
+  }
+
+  @override
+  String dbProdWriteLeft(String time) {
+    return '$time left';
+  }
+
+  @override
+  String get dbLockProduction => 'Lock';
+
+  @override
+  String get dbProdWriteLocked => 'Production writes are locked again.';
+
+  @override
+  String get dbProdRoleReadOnly =>
+      'This connection\'s database role cannot change data, so the server refuses writes even while production is unlocked.';
+
+  @override
+  String get dbHistoryProdWrite => 'Production change';
+
+  @override
+  String get dbSetNull => 'Set to NULL';
+
+  @override
+  String get dbCellEditHint => 'Enter saves, Esc cancels, Tab moves to the next cell';
+
+  @override
+  String get dbPendingEdit => 'Changed, not applied yet';
+
+  @override
+  String dbSelectedRows(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Selected: $count rows',
+      one: 'Selected: $count row',
+    );
+    return '$_temp0';
+  }
 }

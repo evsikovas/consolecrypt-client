@@ -64,6 +64,7 @@ final class DbHistoryEntry {
     this.rows = 0,
     this.errorCode,
     this.favorite = false,
+    this.productionWrite = false,
   });
   final String id, connectionId, text;
   final DbEngine engine;
@@ -71,6 +72,9 @@ final class DbHistoryEntry {
   final int elapsedMs, rows;
   final String? errorCode;
   final bool favorite;
+
+  /// Changed data of a production connection in its temporary write window.
+  final bool productionWrite;
   @override
   String toString() => 'DbHistoryEntry(<redacted>)';
 }
@@ -107,6 +111,28 @@ abstract interface class DbQueryService {
   Future<void> cancelQuery(String sessionId, String queryId);
   Future<void> releaseQuery(String sessionId, String queryId);
   Future<DbExplainPlan> explain(String sessionId, DbQueryRequest request, {bool analyze = false});
+}
+
+/// The vault passphrase did not match when unlocking production writes.
+final class DbWrongPassphrase implements Exception {
+  const DbWrongPassphrase();
+}
+
+/// Temporary write windows of production sessions. The core checks the vault
+/// passphrase and the typed connection name, owns the expiry and re-locks on
+/// disconnect, vault lock and profile change.
+abstract interface class DbProductionWriteService {
+  /// Live write state of a session (asked again when a window runs out).
+  Future<DbSessionInfo> sessionState(String sessionId);
+
+  /// Opens the window for [minutes] (5, 15 or 30); throws [DbWrongPassphrase].
+  Future<DbSessionInfo> unlockProduction(
+    String sessionId, {
+    required String typedConnectionName,
+    required SecretText passphrase,
+    required int minutes,
+  });
+  Future<DbSessionInfo> lockProduction(String sessionId);
 }
 
 abstract interface class DbHistoryService {

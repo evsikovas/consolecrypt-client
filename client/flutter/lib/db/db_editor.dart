@@ -9,40 +9,48 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
+final _highlightTokens = RegExp(
+  r'''(--[^\n]*|//[^\n]*|/\*[\s\S]*?\*/|'(?:''|[^'])*'|\"(?:\\.|[^\"])*\"|\b(?:SELECT|FROM|WHERE|JOIN|LEFT|RIGHT|GROUP|BY|ORDER|LIMIT|OFFSET|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH|AS|AND|OR|NOT|NULL|TRUE|FALSE|SET|GET|SCAN|HGETALL|ZRANGE|FIND|AGGREGATE|MATCH|PROJECT|SORT|TABLE|INDEX|UNIQUE|PRIMARY|KEY|FOREIGN|REFERENCES|CONSTRAINT|DEFAULT|CHECK|ON|USING|VIEW|SEQUENCE|FUNCTION|PROCEDURE|TRIGGER|RETURNS|BEGIN|END|IF|EXISTS|ENGINE|PARTITION|INTO|VALUES)\b|\{\{[A-Za-z_][A-Za-z0-9_]*\}\}|\b\d+(?:\.\d+)?\b)''',
+  caseSensitive: false,
+);
+
+/// Syntax colours for query text: comments, strings, keywords, variables and
+/// numbers. Presentation only (the editor and the DDL view share it).
+TextSpan dbHighlight(BuildContext context, String text, {TextStyle? style}) {
+  final theme = Theme.of(context);
+  final children = <InlineSpan>[];
+  var end = 0;
+  for (final match in _highlightTokens.allMatches(text)) {
+    if (match.start > end) children.add(TextSpan(text: text.substring(end, match.start)));
+    final token = match[0]!;
+    final color = token.startsWith('--') || token.startsWith('//') || token.startsWith('/*')
+        ? theme.hintColor
+        : token.startsWith("'") || token.startsWith('"')
+        ? theme.colorScheme.tertiary
+        : theme.colorScheme.primary;
+    children.add(
+      TextSpan(
+        text: token,
+        style: TextStyle(color: color),
+      ),
+    );
+    end = match.end;
+  }
+  children.add(TextSpan(text: text.substring(end)));
+  return TextSpan(style: style, children: children);
+}
+
 /// Highlighting is presentation only; native dialect parsing defines statement
 /// boundaries, parameter positions and the security classification.
 class DbEditorController extends TextEditingController {
   DbEditorController({super.text});
-  static final _tokens = RegExp(
-    r'''(--[^\n]*|//[^\n]*|/\*[\s\S]*?\*/|'(?:''|[^'])*'|\"(?:\\.|[^\"])*\"|\b(?:SELECT|FROM|WHERE|JOIN|LEFT|RIGHT|GROUP|BY|ORDER|LIMIT|OFFSET|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH|AS|AND|OR|NOT|NULL|TRUE|FALSE|SET|GET|SCAN|HGETALL|ZRANGE|FIND|AGGREGATE|MATCH|PROJECT|SORT)\b|\{\{[A-Za-z_][A-Za-z0-9_]*\}\}|\b\d+(?:\.\d+)?\b)''',
-    caseSensitive: false,
-  );
   @override
   TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
     // Keep very large scripts editable without a regexp pass on every frame.
     if (text.length > 131072 || (withComposing && value.composing.isValid && !value.composing.isCollapsed)) {
       return super.buildTextSpan(context: context, style: style, withComposing: withComposing);
     }
-    final children = <InlineSpan>[];
-    var end = 0;
-    for (final match in _tokens.allMatches(text)) {
-      if (match.start > end) children.add(TextSpan(text: text.substring(end, match.start)));
-      final token = match[0]!;
-      final color = token.startsWith('--') || token.startsWith('//') || token.startsWith('/*')
-          ? Theme.of(context).hintColor
-          : token.startsWith("'") || token.startsWith('"')
-          ? Theme.of(context).colorScheme.tertiary
-          : Theme.of(context).colorScheme.primary;
-      children.add(
-        TextSpan(
-          text: token,
-          style: TextStyle(color: color),
-        ),
-      );
-      end = match.end;
-    }
-    children.add(TextSpan(text: text.substring(end)));
-    return TextSpan(style: style, children: children);
+    return dbHighlight(context, text, style: style);
   }
 
   void insert(String value) {

@@ -13242,5 +13242,119 @@
   "kubeGitOpsForceTooltip": "Flux performs a one-off Helm install or upgrade even if nothing changed (flux reconcile helmrelease --force)",
   "@kubeGitOpsForceTooltip": {
     "description": "Tooltip of the Flux HelmRelease force upgrade action"
+  },
+  "copyWhatDdl": "DDL",
+  "@copyWhatDdl": {
+    "description": "Noun for the copied notice: a database object's creation statement."
+  },
+  "copyWhatValue": "value",
+  "@copyWhatValue": {
+    "description": "Noun for the copied notice: one result cell value."
+  },
+  "dbOpenInEditor": "Open in editor",
+  "@dbOpenInEditor": {
+    "description": "DDL dialog: put the statements into a new query tab."
+  },
+  "dbUnlockProduction": "Unlock production",
+  "@dbUnlockProduction": {
+    "description": "Database workspace header button: open a temporary write window on a production connection."
+  },
+  "dbUnlockProductionTitle": "Unlock production for changes",
+  "@dbUnlockProductionTitle": {
+    "description": "Title of the dialog that opens a temporary production write window."
+  },
+  "dbUnlockProductionWarning": "Changes will go straight to the production database “{name}”. Every changing statement is still shown for review with the connection name. Writes lock again when the time runs out, when you lock them, disconnect or lock the vault.",
+  "@dbUnlockProductionWarning": {
+    "description": "Warning in the production unlock dialog; name is the connection name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbVaultPassphrase": "Vault passphrase",
+  "@dbVaultPassphrase": {
+    "description": "Production unlock dialog: vault passphrase field label."
+  },
+  "dbTypeConnectionName": "Type the connection name: {name}",
+  "@dbTypeConnectionName": {
+    "description": "Production unlock dialog: label of the field where the connection name is typed to confirm.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbUnlockFor": "Allow writes for",
+  "@dbUnlockFor": {
+    "description": "Production unlock dialog: label above the 5/15/30 minute choice."
+  },
+  "dbMinutes": "{count, plural, one{{count} minute} other{{count} minutes}}",
+  "@dbMinutes": {
+    "description": "Production unlock dialog: length of the write window in minutes.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dbWrongPassphrase": "Wrong vault passphrase.",
+  "@dbWrongPassphrase": {
+    "description": "Production unlock dialog: the vault passphrase did not match."
+  },
+  "dbProdWriteUntil": "Production writes until {time}",
+  "@dbProdWriteUntil": {
+    "description": "Database workspace header badge while a production write window is open; time is the local end time (HH:MM).",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dbProdWriteLeft": "{time} left",
+  "@dbProdWriteLeft": {
+    "description": "Database workspace header: countdown of the production write window (mm:ss).",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dbLockProduction": "Lock",
+  "@dbLockProduction": {
+    "description": "Database workspace header button: end the production write window now."
+  },
+  "dbProdWriteLocked": "Production writes are locked again.",
+  "@dbProdWriteLocked": {
+    "description": "Notice when the production write window ends."
+  },
+  "dbProdRoleReadOnly": "This connection's database role cannot change data, so the server refuses writes even while production is unlocked.",
+  "@dbProdRoleReadOnly": {
+    "description": "Banner when the production write window is open but the privilege check shows the role cannot write."
+  },
+  "dbHistoryProdWrite": "Production change",
+  "@dbHistoryProdWrite": {
+    "description": "Query history badge: the query changed data in a production write window."
+  },
+  "dbSetNull": "Set to NULL",
+  "@dbSetNull": {
+    "description": "Inline cell editor: toggle that stores NULL instead of the typed value."
+  },
+  "dbCellEditHint": "Enter saves, Esc cancels, Tab moves to the next cell",
+  "@dbCellEditHint": {
+    "description": "Inline cell editor tooltip with its keys."
+  },
+  "dbPendingEdit": "Changed, not applied yet",
+  "@dbPendingEdit": {
+    "description": "Tooltip of a result cell with a pending edit."
+  },
+  "dbSelectedRows": "{count, plural, one{Selected: {count} row} other{Selected: {count} rows}}",
+  "@dbSelectedRows": {
+    "description": "Result status line: number of selected rows.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

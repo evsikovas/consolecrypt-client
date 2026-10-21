@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/db/db_ddl_dialog.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
@@ -202,6 +203,17 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
           return;
         case 'ddl':
           value = await widget.service.ddl(widget.session.id, object);
+          if (!mounted || !_current) return;
+          final open = await showAppDialog<bool>(
+            context,
+            secure: true,
+            builder: (_) => DbDdlDialog(title: object.name, value: value!, engine: widget.session.engine),
+          );
+          if (open == true && _current && !value.isWiped) {
+            final blocks = widget.session.engine.sql ? splitSqlStatements(value.expose()) : [value.expose()];
+            widget.onDraft(blocks.join('\n\n'));
+          }
+          return;
         case 'inspect':
         case 'sample':
           final service = widget.service;

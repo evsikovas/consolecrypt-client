@@ -14,6 +14,7 @@ import 'package:consolecrypt/db/db_export_dialog.dart';
 import 'package:consolecrypt/db/db_history_panel.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_plan_view.dart';
+import 'package:consolecrypt/db/db_prod_unlock_dialog.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_dialogs.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
@@ -23,6 +24,7 @@ import 'package:consolecrypt/db/db_transport_badge.dart';
 import 'package:consolecrypt/db/db_tree.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 
 final class _QueryTab {
@@ -30,7 +32,10 @@ final class _QueryTab {
   final int id;
   final DbEditorController controller;
   final DbResultController result;
-  final edits = <DbCellEdit>[];
+
+  /// Values typed into cells of the shown result, by (row, column), until
+  /// they are applied (reviewed as UPDATE statements) or discarded.
+  final pending = <(int, int), DbCell>{};
   int resultIndex = 0;
   List<int> selectedRows = [];
   bool preparing = false, stale = false;
@@ -38,7 +43,7 @@ final class _QueryTab {
     controller.clear();
     controller.dispose();
     result.dispose();
-    edits.clear();
+    pending.clear();
     selectedRows.clear();
   }
 }
@@ -71,6 +76,12 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   DbObjectRef? _selectedObject;
   DbJson? _lastPlan;
   Timer? _background;
+
+  /// Ticks the production write countdown; asks the core again at the end.
+  Timer? _prodTimer;
+
+  /// The privilege check after unlocking production: the role cannot write.
+  bool _roleCannotWrite = false;
   final _password = TextEditingController();
 
   /// Connections saved without a password ask for it on every open; the
@@ -110,6 +121,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
         _session = session;
         _addTab();
       });
+      _watchProductionWrite();
       ref.read(dbLastSecurityProvider.notifier).record(widget.connection.id, session.transportSecurity);
       widget.onSessionChanged?.call(session);
     } catch (error) {
@@ -178,6 +190,9 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   void _closeSession() {
     _generation++;
     _background?.cancel();
+    _prodTimer?.cancel();
+    _prodTimer = null;
+    _roleCannotWrite = false;
     final session = _session;
     _session = null;
     for (final tab in _tabs) {
@@ -264,8 +279,8 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
       final review = await _service!.reviewQuery(session.id, request);
       reviewTicket = review.ticket;
       if (!_tabCurrent(tab)) return;
-      if (review.risk == DbQueryRisk.blocked ||
-          ((session.production || session.readOnly) && review.risk != DbQueryRisk.read)) {
+      final live = _session ?? session;
+      if (review.risk == DbQueryRisk.blocked || (!live.writable && review.risk != DbQueryRisk.read)) {
         final suggestion = review.suggestion;
         if (suggestion != null && mounted) {
           final l = context.l10n;
@@ -297,7 +312,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
         if (mounted) showSnack(context, context.l10n.dbReviewExpired, error: true);
         return;
       }
-      tab.edits.clear();
+      tab.pending.clear();
       tab.selectedRows.clear();
       tab.resultIndex = 0;
       tab.stale = false;
@@ -366,6 +381,100 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     }
   }
 
+  DbProductionWriteService? get _prodWrites => _backend is DbProductionWriteService ? _backend : null;
+
+  void _setSession(DbSessionInfo updated) {
+    if (!_current || _session?.id != updated.id) return;
+    setState(() => _session = updated);
+    _watchProductionWrite();
+  }
+
+  /// Keeps the countdown of an open production write window running and,
+  /// when it ends, asks the core for the re-locked state.
+  void _watchProductionWrite() {
+    _prodTimer?.cancel();
+    _prodTimer = null;
+    final session = _session;
+    if (session == null || !session.productionWriteOpen) return;
+    _prodTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final current = _session;
+      if (!_current || current == null) {
+        _prodTimer?.cancel();
+        return;
+      }
+      if (current.productionWriteOpen) {
+        setState(() {});
+        return;
+      }
+      _prodTimer?.cancel();
+      _prodTimer = null;
+      setState(() {});
+      unawaited(_refreshSession(notify: true));
+    });
+  }
+
+  Future<void> _refreshSession({bool notify = false}) async {
+    final session = _session, service = _prodWrites;
+    if (session == null || service == null) return;
+    try {
+      final updated = await service.sessionState(session.id);
+      _setSession(updated);
+    } catch (_) {}
+    if (notify && _current && mounted) showSnack(context, context.l10n.dbProdWriteLocked);
+  }
+
+  Future<void> _unlockProduction() async {
+    final session = _session, service = _prodWrites;
+    if (!_current || session == null || service == null || !session.production || _mobile) return;
+    final updated = await showAppDialog<DbSessionInfo>(
+      context,
+      secure: true,
+      builder: (_) => DbProdUnlockDialog(service: service, session: session, connectionName: widget.connection.name),
+    );
+    if (updated == null || !_current || _session?.id != session.id) return;
+    _roleCannotWrite = false;
+    _setSession(updated);
+    // A read-only role still refuses on the server: say so right away.
+    try {
+      final report = await _service!.checkPrivileges(session.id);
+      if (_current && _session?.id == session.id) setState(() => _roleCannotWrite = report.hasWritePrivileges == false);
+    } catch (_) {}
+  }
+
+  Future<void> _lockProduction() async {
+    final session = _session, service = _prodWrites;
+    if (!_current || session == null || service == null) return;
+    try {
+      _setSession(await service.lockProduction(session.id));
+      if (_current) setState(() => _roleCannotWrite = false);
+    } catch (_) {
+      _error();
+    }
+  }
+
+  /// Copies one result value: masked columns through the clipboard that
+  /// clears itself.
+  Future<void> _copyCell(DbResultSet result, int row, int column) async {
+    if (!_current) return;
+    final info = result.columns[column], cell = result.rows[row][column];
+    final l = context.l10n;
+    if (info.sensitive) {
+      await copySecretWithNotice(context, ref, cell.text, what: l.copyWhatValue);
+    } else {
+      await copyPlainWithNotice(context, ref, cell.text, what: l.copyWhatValue);
+    }
+  }
+
+  /// Cell edits are possible when writes are allowed (a non-production
+  /// session or an open production window) on a single-table result with a
+  /// primary key, on desktop.
+  bool _canEdit(DbSessionInfo session, DbResultSet result) =>
+      !_mobile &&
+      session.writable &&
+      result.editableTable != null &&
+      result.columns.any((c) => c.primaryKey) &&
+      _backend is DbCellEditService;
+
   Future<void> _explain(bool analyze) async {
     final tab = _tab, session = _session;
     if (tab == null || session == null || tab.preparing || (analyze && session.production)) return;
@@ -411,52 +520,43 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     );
   }
 
-  Future<void> _editCell(_QueryTab tab, DbResultSet result, int row, int column) async {
+  void _editCell(_QueryTab tab, DbResultSet result, int row, int column, DbCell value) {
     final session = _session;
-    if (!_tabCurrent(tab) ||
-        session == null ||
-        session.production ||
-        session.readOnly ||
-        _mobile ||
-        result.editableTable == null ||
-        !result.columns.any((c) => c.primaryKey)) {
-      return;
-    }
-    final values = await showAppDialog<List<DbParameter>>(
-      context,
-      secure: true,
-      builder: (_) => DbVariablesDialog(names: [result.columns[column].name]),
-    );
-    if (!_tabCurrent(tab) || values == null || values.length != 1) return;
-    setState(
-      () => tab.edits.add(
-        DbCellEdit(
-          originalPrimaryKey: {
-            for (var i = 0; i < result.columns.length; i++)
-              if (result.columns[i].primaryKey) result.columns[i].name: result.rows[row][i],
-          },
-          column: result.columns[column].name,
-          value: values.single.value,
-        ),
-      ),
-    );
+    if (!_tabCurrent(tab) || session == null || !_canEdit(session, result)) return;
+    final original = result.rows[row][column];
+    final same = original.kind == value.kind && original.text == value.text;
+    setState(() {
+      if (same) {
+        tab.pending.remove((row, column));
+      } else {
+        tab.pending[(row, column)] = value;
+      }
+    });
   }
 
   Future<void> _applyEdits(_QueryTab tab, DbResultSet result) async {
     final service = _backend, session = _session;
     if (!_tabCurrent(tab) ||
         session == null ||
-        session.production ||
-        session.readOnly ||
-        _mobile ||
+        !_canEdit(session, result) ||
         service is! DbCellEditService ||
-        result.editableTable == null ||
-        tab.edits.isEmpty) {
+        tab.pending.isEmpty) {
       return;
     }
+    final edits = [
+      for (final MapEntry(key: (row, column), :value) in tab.pending.entries)
+        DbCellEdit(
+          originalPrimaryKey: {
+            for (var i = 0; i < result.columns.length; i++)
+              if (result.columns[i].primaryKey) result.columns[i].name: result.rows[row][i],
+          },
+          column: result.columns[column].name,
+          value: value,
+        ),
+    ];
     DbCellEditReview? review;
     try {
-      review = await service.reviewCellEdits(session.id, result.editableTable!, List.of(tab.edits));
+      review = await service.reviewCellEdits(session.id, result.editableTable!, edits);
       if (!mounted || !_tabCurrent(tab)) return;
       final approved = await showAppDialog<bool>(
         context,
@@ -471,7 +571,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
       await service.commitCellEdits(session.id, review.ticket);
       if (_tabCurrent(tab)) {
         setState(() {
-          tab.edits.clear();
+          tab.pending.clear();
           tab.stale = true;
         });
       }
@@ -560,9 +660,70 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
         onPressed: onPressed,
       );
 
+  /// Production write window controls: the unlock button, or the "writes
+  /// until" badge with its countdown and the lock button.
+  List<Widget> _productionWrite(DbSessionInfo session, {required bool wide}) {
+    final l = context.l10n, tokens = GlassTokens.of(context);
+    if (!session.production || _prodWrites == null) return const [];
+    final until = session.productionWriteUntil;
+    if (session.productionWriteOpen && until != null) {
+      final left = until.difference(DateTime.now());
+      final seconds = left.inSeconds.clamp(0, 24 * 3600);
+      final countdown = '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}'; // l10n-ignore: mm:ss countdown
+      final time = DateFormat.Hm(Localizations.localeOf(context).toLanguageTag()).format(until);
+      return [
+        if (wide) ...[
+          GlassBadge(
+            key: const ValueKey('db-prod-write-badge'),
+            label: l.dbProdWriteUntil(time),
+            tone: GlassTone.danger,
+            icon: Icons.lock_open_rounded,
+            dense: true,
+          ),
+          const SizedBox(width: GlassSpacing.s6),
+        ],
+        Tooltip(
+          message: l.dbProdWriteUntil(time),
+          child: Text(
+            wide ? l.dbProdWriteLeft(countdown) : countdown,
+            key: const ValueKey('db-prod-write-countdown'),
+            style: tokens.typography.caption.copyWith(
+              color: tokens.palette.danger,
+              fontWeight: FontWeight.w600,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+        const SizedBox(width: GlassSpacing.s6),
+        GlassButton(
+          key: const ValueKey('db-prod-lock'),
+          label: l.dbLockProduction,
+          icon: Icons.lock_rounded,
+          size: GlassControlSize.sm,
+          onPressed: _lockProduction,
+        ),
+        const SizedBox(width: GlassSpacing.s6),
+      ];
+    }
+    if (!session.canUnlockProduction || _mobile) return const [];
+    return [
+      if (wide)
+        GlassButton(
+          key: const ValueKey('db-prod-unlock'),
+          label: l.dbUnlockProduction,
+          icon: Icons.lock_open_rounded,
+          size: GlassControlSize.sm,
+          onPressed: _unlockProduction,
+        )
+      else
+        _tool('db-prod-unlock', Icons.lock_open_rounded, l.dbUnlockProduction, _unlockProduction),
+      const SizedBox(width: GlassSpacing.s6),
+    ];
+  }
+
   Widget _header(DbSessionInfo session, {required bool wide}) {
     final l = context.l10n, tokens = GlassTokens.of(context);
-    final readOnly = session.readOnly || session.production;
+    final readOnly = !session.writable;
     return ContentSurface(
       key: const ValueKey('db-header'),
       padding: const EdgeInsets.fromLTRB(GlassSpacing.s6, GlassSpacing.s6, GlassSpacing.s8, GlassSpacing.s6),
@@ -600,7 +761,8 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
             GlassBadge(label: l.dbProd, tone: GlassTone.danger, icon: Icons.shield_outlined, dense: true),
             const SizedBox(width: GlassSpacing.s6),
           ],
-          if (wide) ...[
+          ..._productionWrite(session, wide: wide),
+          if (wide && !session.productionWriteOpen) ...[
             GlassBadge(
               key: const ValueKey('db-access-badge'),
               label: readOnly ? l.dbReadOnly : l.dbWriteAllowed,
@@ -661,6 +823,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     final style = tokens.typography.caption.copyWith(color: tokens.secondaryLabel);
     final facts = [
       if (result != null) l.dbRowCount('${result.rows.length}${result.hasMore ? '+' : ''}'),
+      if (result != null && tab.selectedRows.isNotEmpty) l.dbSelectedRows(tab.selectedRows.length),
       if (result?.affectedRows != null && result!.columns.isEmpty) l.dbRowsAffected(result.affectedRows!),
       if (result != null) l.dbElapsed(result.elapsedMs),
     ];
@@ -733,7 +896,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
           onChanged: (index) => setState(() {
             tab.resultIndex = index;
             tab.selectedRows.clear();
-            tab.edits.clear();
+            tab.pending.clear();
           }),
         ),
       ],
@@ -741,7 +904,16 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     ];
     final actions = [
       if (result != null && _backend is DbExportService)
-        _tool('db-export', Icons.file_download_outlined, l.dbExport, () => _export(tab, result)),
+        _tool(
+          'db-export',
+          Icons.file_download_outlined,
+          l.dbExport,
+          () => _export(
+            tab,
+            result,
+            tab.selectedRows.isEmpty ? null : DbResultSelection(rows: List.of(tab.selectedRows)),
+          ),
+        ),
       if (tab.result.notices.isNotEmpty)
         _tool('db-messages', Icons.chat_bubble_outline_rounded, l.dbMessages, () async {
           final value = SecretText(tab.result.notices.join('\n'));
@@ -772,7 +944,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
                 message: tab.result.errorCode != null ? l.dbOperationFailed : l.dbResultStale,
               ),
             ),
-          if (tab.edits.isNotEmpty)
+          if (tab.pending.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(GlassSpacing.s8, GlassSpacing.s6, GlassSpacing.s8, 0),
               child: Wrap(
@@ -780,7 +952,8 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
                 runSpacing: GlassSpacing.s6,
                 children: [
                   GlassButton(
-                    label: '${l.dbApplyEdits} (${tab.edits.length})',
+                    key: const ValueKey('db-apply-edits'),
+                    label: '${l.dbApplyEdits} (${tab.pending.length})',
                     style: GlassButtonStyle.prominent,
                     size: GlassControlSize.sm,
                     onPressed: result == null ? null : () => _applyEdits(tab, result),
@@ -788,7 +961,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
                   GlassButton(
                     label: l.dbDiscardEdits,
                     size: GlassControlSize.sm,
-                    onPressed: () => setState(tab.edits.clear),
+                    onPressed: () => setState(tab.pending.clear),
                   ),
                 ],
               ),
@@ -806,17 +979,12 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
                     result: result,
                     leading: title,
                     trailing: actions,
-                    production: session.production,
                     onCopy: _backend is DbExportService ? (selection) => _export(tab, result, selection) : null,
-                    onEdit:
-                        !_mobile &&
-                            !session.readOnly &&
-                            !session.production &&
-                            result.editableTable != null &&
-                            result.columns.any((c) => c.primaryKey) &&
-                            _backend is DbCellEditService
-                        ? (row, col) => _editCell(tab, result, row, col)
+                    onCopyCell: (row, column) => unawaited(_copyCell(result, row, column)),
+                    onCellEdit: _canEdit(session, result)
+                        ? (row, column, value) => _editCell(tab, result, row, column, value)
                         : null,
+                    pending: tab.pending,
                     onSelection: (rows) => setState(() => tab.selectedRows = rows),
                     onMore: result.hasMore ? () => tab.result.more() : null,
                     loadingMore: tab.result.loadingMore,
@@ -1094,10 +1262,21 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _header(session, wide: wide),
-                if (session.production && session.serverReadOnly == DbServerReadOnly.unverified)
+                if (session.production &&
+                    !session.productionWriteOpen &&
+                    session.serverReadOnly == DbServerReadOnly.unverified)
                   Padding(
                     padding: const EdgeInsets.only(top: GlassSpacing.s8),
                     child: InfoBanner(tone: BannerTone.warning, message: l.dbUnverifiedReadOnly),
+                  ),
+                if (session.productionWriteOpen && _roleCannotWrite)
+                  Padding(
+                    padding: const EdgeInsets.only(top: GlassSpacing.s8),
+                    child: InfoBanner(
+                      key: const ValueKey('db-prod-role-read-only'),
+                      tone: BannerTone.warning,
+                      message: l.dbProdRoleReadOnly,
+                    ),
                   ),
                 const SizedBox(height: GlassSpacing.s8),
                 Expanded(child: body),

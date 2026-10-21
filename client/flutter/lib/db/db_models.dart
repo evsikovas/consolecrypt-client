@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:consolecrypt/core/security/secret_text.dart';
 
 typedef DbJson = Map<String, dynamic>;
@@ -449,12 +451,29 @@ final class DbSessionInfo {
     required this.readOnly,
     required this.serverReadOnly,
     this.transportSecurity,
+    this.canUnlockProduction = false,
+    this.productionWriteUntil,
   });
   final String id, connectionId, serverVersion;
   final DbEngine engine;
   final bool production, readOnly;
   final DbServerReadOnly serverReadOnly;
   final DbTransportSecurity? transportSecurity;
+
+  /// A production session can ask for a temporary write window (not on phones).
+  final bool canUnlockProduction;
+
+  /// End of the open production write window, as reported by the core.
+  final DateTime? productionWriteUntil;
+
+  /// The production write window is open (by this device's clock; the core
+  /// enforces its own expiry).
+  bool get productionWriteOpen => production && !readOnly && (productionWriteUntil?.isAfter(DateTime.now()) ?? false);
+
+  /// Changing statements may run: an allowed non-production session or an
+  /// open production write window.
+  bool get writable => production ? productionWriteOpen : !readOnly;
+
   factory DbSessionInfo.fromJson(DbJson json) => DbSessionInfo(
     id: json['id'] as String,
     connectionId: json['connection_id'] as String,
@@ -468,6 +487,11 @@ final class DbSessionInfo {
       _ => DbServerReadOnly.unverified,
     },
     transportSecurity: DbTransportSecurity.parse(json['transport_security']),
+    canUnlockProduction: json['can_unlock_production'] as bool? ?? false,
+    productionWriteUntil: switch (json['production_write_expires_at_ms']) {
+      final int ms => DateTime.fromMillisecondsSinceEpoch(ms),
+      _ => null,
+    },
   );
 }
 
@@ -663,4 +687,105 @@ final class DbExportProgress {
     cancelled: json['cancelled'] as bool,
     error: json['error'] as String?,
   );
+}
+
+/// The value kind a result column binds as when a cell is edited, from the
+/// column type in the result metadata. A loaded non-NULL [sample] decides
+/// types the name does not tell (MySQL BLOB also carries TEXT columns).
+DbCellKind dbColumnKind(DbColumn column, {DbCell? sample}) {
+  var type = column.typeName.toLowerCase().trim();
+  if (type.startsWith('mysql_type_')) type = type.substring('mysql_type_'.length);
+  for (final wrapper in const ['nullable(', 'lowcardinality(']) {
+    while (type.startsWith(wrapper)) {
+      type = type.substring(wrapper.length);
+    }
+  }
+  final base = type.split(RegExp(r'[(\s]')).first;
+  final fallback = sample == null || sample.kind == DbCellKind.nullValue ? DbCellKind.text : sample.kind;
+  if (type.endsWith('[]') || base.startsWith('_') || const {'array', 'map', 'tuple'}.contains(base)) {
+    return DbCellKind.text;
+  }
+  if (base.contains('blob')) return fallback == DbCellKind.binary ? DbCellKind.binary : DbCellKind.text;
+  if (base.contains('interval')) return DbCellKind.text;
+  if (const {'bool', 'boolean'}.contains(base)) return DbCellKind.boolValue;
+  if (base.startsWith('decimal') || base.startsWith('newdecimal') || base == 'numeric' || base == 'money') {
+    return DbCellKind.decimal;
+  }
+  if (base.startsWith('float') || base == 'double' || base == 'real') return DbCellKind.float;
+  if (base.startsWith('uint') || type.contains('unsigned')) return DbCellKind.uint;
+  if (RegExp(
+    r'^(int\d*|integer|bigint|smallint|tinyint|mediumint|tiny|short|long|longlong|int24|year|'
+    r'serial\d?|bigserial|smallserial)$',
+  ).hasMatch(base)) {
+    return DbCellKind.intValue;
+  }
+  if (base.startsWith('json')) return DbCellKind.json;
+  if (base.startsWith('timestamp') || base.startsWith('datetime')) return DbCellKind.timestamp;
+  if (base.startsWith('date') || base == 'newdate') return DbCellKind.date;
+  if (base.startsWith('time')) return DbCellKind.time;
+  if (const {'bytea', 'binary', 'varbinary'}.contains(base)) return DbCellKind.binary;
+  if (const {
+    'uuid',
+    'text',
+    'varchar',
+    'char',
+    'bpchar',
+    'string',
+    'name',
+    'citext',
+    'var_string',
+    'enum',
+    'set',
+  }.contains(base)) {
+    return DbCellKind.text;
+  }
+  return fallback;
+}
+
+/// The typed value for text typed into a cell of [kind], or null when it is
+/// not a valid value of that kind. Values stay text; the driver binds them.
+DbCell? dbCellFromInput(DbCellKind kind, String input) {
+  final text = input.trim();
+  switch (kind) {
+    case DbCellKind.nullValue:
+      return const DbCell.nullValue();
+    case DbCellKind.intValue:
+      return BigInt.tryParse(text) == null ? null : DbCell(kind, text);
+    case DbCellKind.uint:
+      final value = BigInt.tryParse(text);
+      return value == null || value.isNegative ? null : DbCell(kind, text);
+    case DbCellKind.decimal:
+    case DbCellKind.float:
+      final number = RegExp(r'^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$').hasMatch(text);
+      final special =
+          kind == DbCellKind.float &&
+          const {'nan', 'infinity', '-infinity', 'inf', '-inf'}.contains(text.toLowerCase());
+      return number || special ? DbCell(kind, text) : null;
+    case DbCellKind.boolValue:
+      return switch (text.toLowerCase()) {
+        'true' || 't' || '1' || 'yes' || 'y' || 'on' => const DbCell(DbCellKind.boolValue, true),
+        'false' || 'f' || '0' || 'no' || 'n' || 'off' => const DbCell(DbCellKind.boolValue, false),
+        _ => null,
+      };
+    case DbCellKind.json:
+      try {
+        jsonDecode(text);
+        return DbCell(kind, text);
+      } catch (_) {
+        return null;
+      }
+    case DbCellKind.date:
+    case DbCellKind.time:
+    case DbCellKind.timestamp:
+      return text.isEmpty ? null : DbCell(kind, text);
+    case DbCellKind.binary:
+      try {
+        base64.decode(text);
+        return DbCell(kind, text);
+      } catch (_) {
+        return null;
+      }
+    case DbCellKind.text:
+      return DbCell(kind, input);
+  }
 }

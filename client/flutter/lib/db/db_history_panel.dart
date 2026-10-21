@@ -247,8 +247,25 @@ class _DbHistoryPanelState extends ConsumerState<DbHistoryPanel> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontFamily: 'monospace'),
                 ),
-                subtitle: Text(
-                  '$when · ${l.dbElapsed(entry.elapsedMs)} · ${entry.rows} · ${entry.engine.label}$failed', // l10n-ignore: metadata
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$when · ${l.dbElapsed(entry.elapsedMs)} · ${entry.rows} · ${entry.engine.label}$failed', // l10n-ignore: metadata
+                    ),
+                    if (entry.productionWrite)
+                      Padding(
+                        padding: const EdgeInsets.only(top: GlassSpacing.s4),
+                        child: GlassBadge(
+                          key: ValueKey('db-history-prod-write-${entry.id}'),
+                          label: l.dbHistoryProdWrite,
+                          tone: GlassTone.danger,
+                          icon: Icons.edit_note_rounded,
+                          dense: true,
+                        ),
+                      ),
+                  ],
                 ),
                 onTap: () {
                   if (_current) widget.onDraft(entry.text);

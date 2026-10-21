@@ -406,6 +406,44 @@ async fn clickhouse_production_reads_and_development_writes() {
 }
 
 #[tokio::test]
+async fn clickhouse_production_write_window() {
+    let Some((mut connection, credentials)) = target(true) else {
+        eprintln!("{VARIABLE} not set; skipped");
+        return;
+    };
+    connection.name = "orders-prod".into();
+    let prod = open(&connection, &credentials).await;
+    let create = "CREATE TABLE cc_prod_window (id UInt32) ENGINE = MergeTree ORDER BY id";
+    assert!(write(&prod, create).await.is_err());
+    prod.guard()
+        .open_production_write("orders-prod", Duration::from_secs(300))
+        .unwrap();
+    write(&prod, "DROP TABLE IF EXISTS cc_prod_window")
+        .await
+        .unwrap();
+    write(&prod, create).await.unwrap();
+    write(&prod, "INSERT INTO cc_prod_window VALUES (1)")
+        .await
+        .unwrap();
+    assert_eq!(
+        run(&prod, "SELECT count() FROM cc_prod_window")
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
+    prod.guard().close_production_write();
+    assert!(write(&prod, "INSERT INTO cc_prod_window VALUES (2)")
+        .await
+        .is_err());
+    prod.guard()
+        .open_production_write("orders-prod", Duration::from_secs(300))
+        .unwrap();
+    write(&prod, "DROP TABLE cc_prod_window").await.unwrap();
+    prod.close();
+}
+
+#[tokio::test]
 async fn clickhouse_wrong_password_is_an_authentication_error() {
     let Some((connection, _)) = target(true) else {
         eprintln!("{VARIABLE} not set; skipped");

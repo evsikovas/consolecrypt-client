@@ -23,6 +23,8 @@ pub(crate) struct Mysql {
     options: Opts,
     _relay: LocalRelay,
     timeout: Duration,
+    /// Production sessions are READ ONLY at the session level.
+    production: bool,
     pub version: String,
 }
 impl fmt::Debug for Mysql {
@@ -126,6 +128,7 @@ impl Mysql {
             options,
             _relay: relay,
             timeout,
+            production: connection.production,
             version: version.ok_or(DbError::QueryFailed)?,
         })
     }
@@ -146,8 +149,46 @@ impl Mysql {
         })
     }
 
-    /// Runs statements in one transaction: all commit or none do.
+    /// Runs statements in one transaction: all commit or none do. A
+    /// production session leaves its session-level READ ONLY only for a
+    /// write the guard permitted in an open production write window (DDL
+    /// commits implicitly, outside the explicit READ WRITE transaction), and
+    /// returns to it right after.
     pub fn query_all<'a>(
+        &'a mut self,
+        statements: &'a [(&'a str, &'a [DbParameter])],
+        read_only: bool,
+        sink: &'a mut (dyn RowConsumer + Send),
+        cancel: CancellationToken,
+    ) -> futures::future::BoxFuture<'a, Result<(), DbError>> {
+        Box::pin(async move {
+            let lift = self.production && !read_only;
+            if lift {
+                let client = self.connection.as_mut().ok_or(DbError::SessionClosed)?;
+                client
+                    .query_drop(String::from("SET SESSION TRANSACTION READ WRITE"))
+                    .await
+                    .map_err(classify)?;
+            }
+            let result = self.transaction(statements, read_only, sink, cancel).await;
+            if lift {
+                let restored = match self.connection.as_mut() {
+                    Some(client) => client
+                        .query_drop(String::from("SET SESSION TRANSACTION READ ONLY"))
+                        .await
+                        .is_ok(),
+                    None => true,
+                };
+                // Never keep a production connection writable.
+                if !restored {
+                    self.connection.take();
+                }
+            }
+            result
+        })
+    }
+
+    fn transaction<'a>(
         &'a mut self,
         statements: &'a [(&'a str, &'a [DbParameter])],
         read_only: bool,

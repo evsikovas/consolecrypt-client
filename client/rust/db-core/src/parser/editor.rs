@@ -42,13 +42,7 @@ pub fn prepare_query(
         QueryScope::Selection if start < end => &text[start..end],
         QueryScope::Selection => return Err(DbError::InvalidRequest),
         QueryScope::Current => {
-            let ranges = ranges(engine, text)?;
-            let (start, end) = ranges
-                .iter()
-                .copied()
-                .find(|(from, to)| start >= *from && start < *to)
-                .or_else(|| ranges.last().copied().filter(|(_, to)| start == *to))
-                .ok_or(DbError::InvalidRequest)?;
+            let (start, end) = current_statement(engine, text, start)?;
             &text[start..end]
         }
     };
@@ -282,64 +276,161 @@ fn dialect(engine: DbEngine) -> Result<Box<dyn Dialect>, DbError> {
     }
 }
 
-fn ranges(engine: DbEngine, text: &str) -> Result<Vec<(usize, usize)>, DbError> {
-    let mut ends = Vec::new();
-    match engine {
-        DbEngine::Mongodb => {
-            // Restricted JSON/collection expressions already enforce balanced
-            // nesting and quote-aware semicolon boundaries.
-            for part in super::mongo::split(text)? {
-                let start = part.as_ptr() as usize - text.as_ptr() as usize;
-                let end = start + part.len();
-                let suffix = &text[end..];
-                let whitespace = suffix.len() - suffix.trim_start().len();
-                ends.push(if suffix.trim_start().starts_with(';') {
-                    end + whitespace + 1
-                } else {
-                    end
-                });
+/// One runnable statement of the editor text: `start..end` is what runs (its
+/// first token through its `;`), `first_line..=last_line` the editor lines it
+/// occupies, including comments written directly above or after it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Statement {
+    start: usize,
+    end: usize,
+    first_line: usize,
+    last_line: usize,
+}
+
+/// Byte offsets of line starts, for line numbers of byte offsets.
+struct Lines(Vec<usize>);
+
+impl Lines {
+    fn new(text: &str) -> Self {
+        let mut starts = vec![0];
+        starts.extend(
+            text.bytes()
+                .enumerate()
+                .filter(|(_, byte)| *byte == b'\n')
+                .map(|(offset, _)| offset + 1),
+        );
+        Self(starts)
+    }
+
+    /// Zero-based line of a byte offset.
+    fn line(&self, offset: usize) -> usize {
+        self.0
+            .partition_point(|start| *start <= offset)
+            .saturating_sub(1)
+    }
+
+    /// Line of the last byte of `start..end` (a newline belongs to the line
+    /// it ends).
+    fn last_line(&self, start: usize, end: usize) -> usize {
+        self.line(end.saturating_sub(1).max(start))
+    }
+
+    /// Byte offset of a 1-based tokenizer location (columns count characters).
+    fn offset(
+        &self,
+        text: &str,
+        location: sqlparser::tokenizer::Location,
+    ) -> Result<usize, DbError> {
+        let line = usize::try_from(location.line).map_err(|_| DbError::InvalidRequest)?;
+        let column = usize::try_from(location.column).map_err(|_| DbError::InvalidRequest)?;
+        let start = *self
+            .0
+            .get(line.checked_sub(1).ok_or(DbError::InvalidRequest)?)
+            .ok_or(DbError::InvalidRequest)?;
+        let mut offset = start;
+        for (index, character) in text[start..].chars().enumerate() {
+            if index + 1 == column {
+                return Ok(offset);
             }
+            offset += character.len_utf8();
         }
+        if text[start..].chars().count() + 1 == column {
+            Ok(text.len())
+        } else {
+            Err(DbError::InvalidRequest)
+        }
+    }
+}
+
+/// Statements being collected: comments and code between two delimiters.
+#[derive(Default)]
+struct Group {
+    first_line: Option<usize>,
+    start: Option<usize>,
+    end: usize,
+    last_line: usize,
+}
+
+impl Group {
+    fn comment(&mut self, first: usize, last: usize) {
+        self.first_line.get_or_insert(first);
+        self.last_line = self.last_line.max(last);
+    }
+
+    fn code(&mut self, start: usize, end: usize, first: usize, last: usize) {
+        self.first_line.get_or_insert(first);
+        self.start.get_or_insert(start);
+        self.end = end;
+        self.last_line = self.last_line.max(last);
+    }
+
+    /// The finished statement; a group of comments only is not one.
+    fn finish(&mut self, statements: &mut Vec<Statement>) {
+        let group = std::mem::take(self);
+        if let (Some(start), Some(first_line)) = (group.start, group.first_line) {
+            statements.push(Statement {
+                start,
+                end: group.end,
+                first_line,
+                last_line: group.last_line,
+            });
+        }
+    }
+}
+
+/// Statements of the editor text, delimited like the classic SQL clients: by
+/// `;` outside strings and comments, and by blank lines. Redis runs one
+/// command per line.
+fn statements(engine: DbEngine, text: &str) -> Result<Vec<Statement>, DbError> {
+    let lines = Lines::new(text);
+    let mut statements = Vec::new();
+    let mut group = Group::default();
+    // Line of the previous token (blank lines split) and of the `;` that
+    // closed the previous statement (a comment after it stays with it).
+    let mut previous: Option<usize> = None;
+    let mut closed: Option<usize> = None;
+    let mut token =
+        |kind: Piece, start: usize, end: usize, group: &mut Group, out: &mut Vec<Statement>| {
+            let (first, last) = (lines.line(start), lines.last_line(start, end));
+            if previous.is_some_and(|line| first > line + 1) {
+                group.finish(out);
+                closed = None;
+            }
+            previous = Some(last);
+            match kind {
+                Piece::Comment if group.first_line.is_none() && closed == Some(first) => {
+                    if let Some(statement) = out.last_mut() {
+                        statement.last_line = statement.last_line.max(last);
+                    }
+                }
+                Piece::Comment => group.comment(first, last),
+                Piece::Code => group.code(start, end, first, last),
+                Piece::Delimiter => {
+                    if group.start.is_some() {
+                        group.code(start, end, first, last);
+                    }
+                    group.finish(out);
+                    closed = Some(last);
+                }
+            }
+        };
+    match engine {
         DbEngine::Redis => {
             super::redis::tokenize(text)?;
-            let mut quote = None;
-            let mut escaped = false;
-            let mut comment = false;
-            let mut line_empty = true;
-            for (offset, byte) in text.bytes().enumerate() {
-                if comment {
-                    if byte == b'\n' {
-                        comment = false;
-                        line_empty = true;
-                        ends.push(offset + 1);
-                    }
-                    continue;
+            for (start, end, comment) in redis_lines(text) {
+                let kind = if comment { Piece::Comment } else { Piece::Code };
+                token(kind, start, end, &mut group, &mut statements);
+                // Every command line is its own statement.
+                if !comment {
+                    group.finish(&mut statements);
                 }
-                if line_empty && byte == b'#' {
-                    comment = true;
-                    continue;
-                }
-                if !byte.is_ascii_whitespace() {
-                    line_empty = false;
-                }
-                if byte == b'\n' && quote.is_none() {
-                    line_empty = true;
-                }
-                if escaped {
-                    escaped = false;
-                    continue;
-                }
-                if byte == b'\\' {
-                    escaped = true;
-                    continue;
-                }
-                match quote {
-                    Some(current) if current == byte => quote = None,
-                    Some(_) => {}
-                    None if matches!(byte, b'\'' | b'"') => quote = Some(byte),
-                    None if byte == b'\n' => ends.push(offset + 1),
-                    _ => {}
-                }
+            }
+        }
+        DbEngine::Mongodb => {
+            // Validates balanced nesting and quotes like the script parser.
+            super::mongo::split(text)?;
+            for (kind, start, end) in mongo_pieces(text) {
+                token(kind, start, end, &mut group, &mut statements);
             }
         }
         _ => {
@@ -350,23 +441,194 @@ fn ranges(engine: DbEngine, text: &str) -> Result<Vec<(usize, usize)>, DbError> 
             if tokens.len() > 50000 {
                 return Err(DbError::ResultLimit);
             }
-            for token in tokens {
-                if token.token == Token::SemiColon {
-                    ends.push(super::template::byte_offset(text, token.span.end)?);
+            for item in tokens {
+                use sqlparser::tokenizer::Whitespace;
+                let kind = match &item.token {
+                    Token::EOF
+                    | Token::Whitespace(
+                        Whitespace::Space | Whitespace::Newline | Whitespace::Tab,
+                    ) => continue,
+                    Token::Whitespace(_) => Piece::Comment,
+                    Token::SemiColon => Piece::Delimiter,
+                    _ => Piece::Code,
+                };
+                let start = lines.offset(text, item.span.start)?;
+                let end = lines.offset(text, item.span.end)?;
+                if end <= start {
+                    continue;
                 }
+                token(kind, start, end, &mut group, &mut statements);
             }
         }
     }
-    ends.push(text.len());
-    ends.sort_unstable();
-    ends.dedup();
-    let mut start = 0;
-    Ok(ends
-        .into_iter()
-        .map(|end| {
-            let range = (start, end);
-            start = end;
-            range
-        })
-        .collect())
+    group.finish(&mut statements);
+    Ok(statements)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Piece {
+    Comment,
+    Code,
+    Delimiter,
+}
+
+/// Redis commands (trimmed, quote-aware across lines) and `#` comment lines
+/// as (start, end, comment).
+fn redis_lines(text: &str) -> Vec<(usize, usize, bool)> {
+    let mut result = Vec::new();
+    let mut quote = None;
+    let mut escaped = false;
+    let mut start: Option<usize> = None;
+    let mut end = 0;
+    let mut comment = false;
+    for (offset, byte) in text.bytes().enumerate() {
+        if comment {
+            if byte == b'\n' {
+                comment = false;
+                result.push((start.take().unwrap_or(offset), offset, true));
+            }
+            continue;
+        }
+        let Some(from) = start else {
+            if !byte.is_ascii_whitespace() {
+                start = Some(offset);
+                end = offset + 1;
+                comment = byte == b'#';
+                if !comment {
+                    quote = matches!(byte, b'\'' | b'"').then_some(byte);
+                    escaped = byte == b'\\';
+                }
+            }
+            continue;
+        };
+        if escaped {
+            escaped = false;
+            end = offset + 1;
+        } else if byte == b'\\' {
+            escaped = true;
+            end = offset + 1;
+        } else if let Some(current) = quote {
+            if current == byte {
+                quote = None;
+            }
+            end = offset + 1;
+        } else if byte == b'\n' {
+            result.push((from, end, false));
+            start = None;
+        } else if matches!(byte, b'\'' | b'"') {
+            quote = Some(byte);
+            end = offset + 1;
+        } else if !byte.is_ascii_whitespace() {
+            end = offset + 1;
+        }
+    }
+    if let Some(from) = start {
+        result.push((from, if comment { text.len() } else { end }, comment));
+    }
+    result
+}
+
+/// MongoDB expressions: code runs between top-level `;`, `//` comment lines
+/// are kept apart; strings and nesting are respected.
+fn mongo_pieces(text: &str) -> Vec<(Piece, usize, usize)> {
+    let bytes = text.as_bytes();
+    let mut pieces = Vec::new();
+    let mut depth = 0usize;
+    let mut string = false;
+    let mut escaped = false;
+    let mut index = 0;
+    let mut code: Option<(usize, usize)> = None;
+    let push_code = |code: &mut Option<(usize, usize)>, pieces: &mut Vec<(Piece, usize, usize)>| {
+        if let Some((start, end)) = code.take() {
+            pieces.push((Piece::Code, start, end));
+        }
+    };
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if string {
+            if escaped {
+                escaped = false;
+            } else if byte == b'\\' {
+                escaped = true;
+            } else if byte == b'"' {
+                string = false;
+            }
+        } else if depth == 0 && byte == b'/' && bytes.get(index + 1) == Some(&b'/') {
+            push_code(&mut code, &mut pieces);
+            let end = text[index..]
+                .find('\n')
+                .map_or(text.len(), |at| index + at + 1);
+            pieces.push((Piece::Comment, index, end));
+            index = end;
+            continue;
+        } else {
+            match byte {
+                b'"' => string = true,
+                b'(' | b'{' | b'[' => depth += 1,
+                b')' | b'}' | b']' => depth = depth.saturating_sub(1),
+                b';' if depth == 0 => {
+                    push_code(&mut code, &mut pieces);
+                    pieces.push((Piece::Delimiter, index, index + 1));
+                    index += 1;
+                    continue;
+                }
+                _ => {}
+            }
+        }
+        if byte.is_ascii_whitespace() && !string {
+            // Each line of code is reported separately so blank lines between
+            // two expressions are seen.
+            if byte == b'\n' && depth == 0 {
+                push_code(&mut code, &mut pieces);
+            }
+        } else {
+            let start = code.map_or(index, |(start, _)| start);
+            code = Some((start, index + 1));
+        }
+        index += 1;
+    }
+    push_code(&mut code, &mut pieces);
+    pieces
+}
+
+/// The statement for a caret at byte `caret`: the one on the caret's line
+/// (the one under the caret when a line holds several), else the nearest one
+/// above, else the nearest one below.
+fn current_statement(
+    engine: DbEngine,
+    text: &str,
+    caret: usize,
+) -> Result<(usize, usize), DbError> {
+    let statements = statements(engine, text)?;
+    let line = Lines::new(text).line(caret);
+    let on_line: Vec<&Statement> = statements
+        .iter()
+        .filter(|statement| statement.first_line <= line && line <= statement.last_line)
+        .collect();
+    let chosen = if on_line.is_empty() {
+        statements
+            .iter()
+            .rev()
+            .find(|statement| statement.last_line < line)
+            .or_else(|| {
+                statements
+                    .iter()
+                    .find(|statement| statement.first_line > line)
+            })
+    } else {
+        on_line
+            .iter()
+            .find(|statement| statement.start <= caret && caret <= statement.end)
+            .or_else(|| {
+                on_line
+                    .iter()
+                    .rev()
+                    .find(|statement| statement.start <= caret)
+            })
+            .or_else(|| on_line.first())
+            .copied()
+    };
+    chosen
+        .map(|statement| (statement.start, statement.end))
+        .ok_or(DbError::InvalidRequest)
 }
