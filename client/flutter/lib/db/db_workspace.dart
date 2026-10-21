@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/db/db_ai_panel.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
 import 'package:consolecrypt/db/db_editor.dart';
+import 'package:consolecrypt/db/db_errors.dart';
 import 'package:consolecrypt/db/db_export_dialog.dart';
 import 'package:consolecrypt/db/db_history_panel.dart';
 import 'package:consolecrypt/db/db_models.dart';
@@ -59,6 +60,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   final _tabs = <_QueryTab>[];
   int _active = 0, _nextId = 1, _generation = 0;
   bool _connecting = false, _failed = false;
+  Object? _connectError;
   String _view = 'query';
   bool _aiOpen = false;
   double _editorFraction = .4;
@@ -105,8 +107,13 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
         _addTab();
       });
       widget.onSessionChanged?.call(session);
-    } catch (_) {
-      if (_current && generation == _generation) setState(() => _failed = true);
+    } catch (error) {
+      if (_current && generation == _generation) {
+        setState(() {
+          _failed = true;
+          _connectError = error;
+        });
+      }
     } finally {
       if (_current && generation == _generation) setState(() => _connecting = false);
     }
@@ -661,7 +668,15 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
           children: [
             Text(widget.connection.name),
             if (_connecting) const CircularProgressIndicator(),
-            if (_failed) Text(l.dbOperationFailed),
+            if (_failed)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Text(
+                  _connectError == null ? l.dbOperationFailed : dbFailureText(_connectError!, l),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
             if (_asksPassword && !_connecting)
               SizedBox(
                 width: 320,

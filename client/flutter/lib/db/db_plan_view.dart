@@ -20,37 +20,37 @@ double? _number(Object? value) => switch (value) {
 /// PostgreSQL and ClickHouse JSON plans: `{"Plan": {"Node Type", "Plans": [...]}}`.
 DbPlanNode? _pgNode(Object? value) {
   if (value is! Map) return null;
-  final node = value['Plan'] is Map ? value['Plan'] as Map : value;
-  final type = node['Node Type'];
+  final node = value['Plan'] is Map ? value['Plan'] as Map : value; // l10n-ignore: plan key
+  final type = node['Node Type']; // l10n-ignore: plan key
   if (type is! String) return null;
   final target = [
-    for (final key in ['Relation Name', 'Index Name', 'Function Name', 'CTE Name'])
+    for (final key in ['Relation Name', 'Index Name', 'Function Name', 'CTE Name']) // l10n-ignore: plan key
       if (node[key] is String) node[key] as String,
   ];
   final details = [
     for (final key in [
-      'Join Type',
-      'Index Cond',
-      'Hash Cond',
-      'Merge Cond',
-      'Filter',
-      'Sort Key',
-      'Group Key',
-      'Description',
-      'Indexes',
+      'Join Type', // l10n-ignore: plan key
+      'Index Cond', // l10n-ignore: plan key
+      'Hash Cond', // l10n-ignore: plan key
+      'Merge Cond', // l10n-ignore: plan key
+      'Filter', // l10n-ignore: plan key
+      'Sort Key', // l10n-ignore: plan key
+      'Group Key', // l10n-ignore: plan key
+      'Description', // l10n-ignore: plan key
+      'Indexes', // l10n-ignore: plan key
     ])
       if (node[key] != null)
         '$key: ${node[key] is List ? (node[key] as List).join(', ') : node[key]}', // l10n-ignore: plan field
   ];
-  final loops = _number(node['Actual Loops']) ?? 1;
-  final actual = _number(node['Actual Total Time']);
+  final loops = _number(node['Actual Loops']) ?? 1; // l10n-ignore: plan key
+  final actual = _number(node['Actual Total Time']); // l10n-ignore: plan key
   return DbPlanNode(
     label: target.isEmpty ? type : '$type · ${target.join(' · ')}', // l10n-ignore: plan label
     detail: details.join('\n'),
-    rows: _number(node['Actual Rows']) ?? _number(node['Plan Rows']),
+    rows: _number(node['Actual Rows']) ?? _number(node['Plan Rows']), // l10n-ignore: plan key
     timeMs: actual == null ? null : actual * loops,
-    cost: _number(node['Total Cost']),
-    children: [for (final child in (node['Plans'] as List? ?? const [])) ?_pgNode(child)],
+    cost: _number(node['Total Cost']), // l10n-ignore: plan key
+    children: [for (final child in (node['Plans'] as List? ?? const [])) ?_pgNode(child)], // l10n-ignore: plan key
   );
 }
 
@@ -87,7 +87,7 @@ DbPlanNode _mysqlNode(String name, Object? value) {
 DbPlanNode? parsePlan(DbJson document) {
   final plan = document['plan'] ?? document;
   if (plan is List && plan.isNotEmpty) return _pgNode(plan.first);
-  if (plan is Map && plan['Plan'] != null) return _pgNode(plan);
+  if (plan is Map && plan['Plan'] != null) return _pgNode(plan); // l10n-ignore: plan key
   const block = 'query_block'; // l10n-ignore: plan key
   if (plan is Map && plan[block] != null) return _mysqlNode(block, plan[block]);
   return null;

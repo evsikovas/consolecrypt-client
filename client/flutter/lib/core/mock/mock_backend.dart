@@ -3,6 +3,7 @@ import 'package:consolecrypt/core/mock/mock_auth_service.dart';
 import 'package:consolecrypt/core/mock/mock_backup_service.dart';
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/mock/mock_config.dart';
+import 'package:consolecrypt/core/mock/mock_databases.dart';
 import 'package:consolecrypt/core/mock/mock_devices_service.dart';
 import 'package:consolecrypt/core/mock/mock_inventory_service.dart';
 import 'package:consolecrypt/core/mock/mock_profile_service.dart';
@@ -79,6 +80,7 @@ final class MockBackend implements DeveloperControls {
     files: files,
     sftpBrowser: sftpBrowser,
     prompts: prompts,
+    databases: MockDbService(),
     developer: this,
     onDispose: dispose,
   );

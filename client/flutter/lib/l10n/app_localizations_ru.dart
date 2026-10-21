@@ -8195,7 +8195,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbTags => 'Метки через запятую';
 
   @override
-  String get dbColor => 'Цвет (#RRGGBB)';
+  String get dbColor => 'Цвет';
 
   @override
   String get dbLimits => 'Ограничения';
@@ -8661,4 +8661,27 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbPlanJson => 'JSON';
+
+  @override
+  String get dbErrorTls =>
+      'Не удалось установить TLS: сервер не поддерживает TLS или сертификат не прошёл проверку. Для проброса порта или локальной базы выберите TLS «prefer» или «disable»; для удалённого сервера проверьте сертификат и имя сервера.';
+
+  @override
+  String get dbErrorAuth => 'Сервер отклонил вход: проверьте пользователя, пароль и имя базы.';
+
+  @override
+  String get dbErrorConnection =>
+      'Не удаётся подключиться к серверу: проверьте адрес, порт и что проброс порта или туннель запущен.';
+
+  @override
+  String get dbErrorTimeout => 'Сервер не ответил вовремя. Проверьте адрес и таймаут подключения.';
+
+  @override
+  String get dbErrorRoute => 'Выбранный маршрут недоступен: проверьте SSH-хост или jump-профиль.';
+
+  @override
+  String get dbTlsLocalHint => 'Локальный адрес: TLS переключён на «prefer» (у проброса порта обычно нет TLS).';
+
+  @override
+  String get colorPickerCustom => 'Свой цвет';
 }

@@ -4436,7 +4436,7 @@
   "@dbTags": {
     "description": "Database interface: Tags, separated by commas"
   },
-  "dbColor": "Цвет (#RRGGBB)",
+  "dbColor": "Цвет",
   "@dbColor": {
     "description": "Database interface: Color (#RRGGBB)"
   },
@@ -4998,5 +4998,12 @@
   "dbPlanRows": "{count} строк",
   "dbPlanCost": "стоимость {cost}",
   "dbPlanTree": "Дерево плана",
-  "dbPlanJson": "JSON"
+  "dbPlanJson": "JSON",
+  "dbErrorTls": "Не удалось установить TLS: сервер не поддерживает TLS или сертификат не прошёл проверку. Для проброса порта или локальной базы выберите TLS «prefer» или «disable»; для удалённого сервера проверьте сертификат и имя сервера.",
+  "dbErrorAuth": "Сервер отклонил вход: проверьте пользователя, пароль и имя базы.",
+  "dbErrorConnection": "Не удаётся подключиться к серверу: проверьте адрес, порт и что проброс порта или туннель запущен.",
+  "dbErrorTimeout": "Сервер не ответил вовремя. Проверьте адрес и таймаут подключения.",
+  "dbErrorRoute": "Выбранный маршрут недоступен: проверьте SSH-хост или jump-профиль.",
+  "dbTlsLocalHint": "Локальный адрес: TLS переключён на «prefer» (у проброса порта обычно нет TLS).",
+  "colorPickerCustom": "Свой цвет"
 }

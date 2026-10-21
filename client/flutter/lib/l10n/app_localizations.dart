@@ -14399,7 +14399,7 @@ abstract class AppLocalizations {
   /// Database interface: Color (#RRGGBB)
   ///
   /// In en, this message translates to:
-  /// **'Color (#RRGGBB)'**
+  /// **'Color'**
   String get dbColor;
 
   /// Database interface: Limits
@@ -15289,6 +15289,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'JSON'**
   String get dbPlanJson;
+
+  /// Database connection error: TLS.
+  ///
+  /// In en, this message translates to:
+  /// **'TLS failed: the server does not offer TLS or its certificate did not pass the check. For a port-forward or a local database choose TLS \"prefer\" or \"disable\"; for a remote server check the certificate and server name.'**
+  String get dbErrorTls;
+
+  /// Database connection error: authentication.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in refused: check the user name, password and database name.'**
+  String get dbErrorAuth;
+
+  /// Database connection error: unreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot reach the server: check the address, the port and that the port-forward or tunnel is running.'**
+  String get dbErrorConnection;
+
+  /// Database connection error: timeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not answer in time. Check the address and the connection timeout.'**
+  String get dbErrorTimeout;
+
+  /// Database connection error: route.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected route is unavailable: check the SSH host or jump profile.'**
+  String get dbErrorRoute;
+
+  /// Hint shown when a loopback host switches TLS to prefer.
+  ///
+  /// In en, this message translates to:
+  /// **'Local address: TLS set to \"prefer\" (a port-forward usually has no TLS).'**
+  String get dbTlsLocalHint;
+
+  /// Opens the custom colour picker for a label colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom colour'**
+  String get colorPickerCustom;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

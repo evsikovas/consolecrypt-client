@@ -7993,7 +7993,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dbTags => 'Tags, separated by commas';
 
   @override
-  String get dbColor => 'Color (#RRGGBB)';
+  String get dbColor => 'Color';
 
   @override
   String get dbLimits => 'Limits';
@@ -8457,4 +8457,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbPlanJson => 'JSON';
+
+  @override
+  String get dbErrorTls =>
+      'TLS failed: the server does not offer TLS or its certificate did not pass the check. For a port-forward or a local database choose TLS \"prefer\" or \"disable\"; for a remote server check the certificate and server name.';
+
+  @override
+  String get dbErrorAuth => 'Sign-in refused: check the user name, password and database name.';
+
+  @override
+  String get dbErrorConnection =>
+      'Cannot reach the server: check the address, the port and that the port-forward or tunnel is running.';
+
+  @override
+  String get dbErrorTimeout => 'The server did not answer in time. Check the address and the connection timeout.';
+
+  @override
+  String get dbErrorRoute => 'The selected route is unavailable: check the SSH host or jump profile.';
+
+  @override
+  String get dbTlsLocalHint => 'Local address: TLS set to \"prefer\" (a port-forward usually has no TLS).';
+
+  @override
+  String get colorPickerCustom => 'Custom colour';
 }

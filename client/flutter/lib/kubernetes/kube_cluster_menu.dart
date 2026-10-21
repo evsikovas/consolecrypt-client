@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/widgets/color_label_picker.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_connection_editor.dart';
 import 'package:consolecrypt/kubernetes/kube_export_dialog.dart';
@@ -14,13 +15,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Colour labels offered for clusters (shared with the connection editor).
-const kubeClusterColors = ['#4285F4', '#22A06B', '#E56910', '#AE2E24', '#8270DB', '#1D9BB2'];
+const kubeClusterColors = kLabelColors;
 
-Color? kubeClusterColor(String? value) {
-  if (value == null) return null;
-  final rgb = int.tryParse(value.replaceFirst('#', ''), radix: 16);
-  return rgb == null ? null : Color(0xFF000000 | rgb);
-}
+Color? kubeClusterColor(String? value) => labelColor(value);
 
 /// Context menu of a cluster row: rename, properties, production marker,
 /// colour label and delete. [current] clusters cannot be deleted while open.

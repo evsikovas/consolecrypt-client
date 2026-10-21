@@ -335,6 +335,13 @@ fn classify(error: mysql_async::Error) -> DbError {
             1317 | 3024 | 1969 => DbError::Cancelled,
             _ => DbError::QueryFailed,
         },
-        _ => DbError::ConnectionFailed,
+        _ => {
+            let text = error.to_string().to_ascii_lowercase();
+            if text.contains("tls") || text.contains("ssl") || text.contains("certificate") {
+                DbError::TlsFailed
+            } else {
+                DbError::ConnectionFailed
+            }
+        }
     }
 }

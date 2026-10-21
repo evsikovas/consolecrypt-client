@@ -4,8 +4,10 @@ import 'dart:io';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/widgets/color_label_picker.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
+import 'package:consolecrypt/db/db_errors.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_service.dart';
@@ -26,6 +28,8 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
   late final DbService? _service;
   late DbEngine _engine;
   late DbTlsMode _tls;
+  bool _tlsChosen = false, _tlsAuto = false;
+  Object? _error;
   late DbAuthMechanism _mechanism;
   late DbMongoReadPreference _readPreference;
   late bool _production, _resp3, _srv;
@@ -55,6 +59,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
     _srv = c?.options.srv ?? false;
     _readPreference = c?.options.readPreference ?? DbMongoReadPreference.secondaryPreferred;
     _route = c?.route ?? const DbRoute();
+    _tlsChosen = c != null;
     _group = c?.groupId;
     final values = {
       'name': c?.name ?? '',
@@ -84,6 +89,19 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
     for (final entry in values.entries) {
       _fields[entry.key] = TextEditingController(text: entry.value);
     }
+    // A port-forward or local database usually has no TLS: unless the user
+    // picked a mode, loopback hosts start with "prefer".
+    _field('host').addListener(() {
+      if (_tlsChosen || !mounted) return;
+      final local = dbLoopbackHost(_value('host'));
+      final wanted = local ? DbTlsMode.prefer : DbTlsMode.verify;
+      if (wanted != _tls || local != _tlsAuto) {
+        setState(() {
+          _tls = wanted;
+          _tlsAuto = local;
+        });
+      }
+    });
     unawaited(_loadChoices());
   }
 
@@ -198,8 +216,13 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
           closeDialog(context, saved);
         }
       }
-    } catch (_) {
-      if (_current) setState(() => _failed = true);
+    } catch (error) {
+      if (_current) {
+        setState(() {
+          _failed = true;
+          _error = error;
+        });
+      }
     } finally {
       draft.wipe();
       if (identical(_pendingDraft, draft)) _pendingDraft = null;
@@ -292,7 +315,11 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
               children: [
                 if (_busy) const LinearProgressIndicator(),
                 if (_service == null) Text(l.dbUnavailable),
-                if (_failed) Text(l.dbFailed, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                if (_failed)
+                  Text(
+                    _error == null ? l.dbFailed : dbFailureText(_error!, l),
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
                 if (_check != null) ...[Text(l.dbTestSuccess), Text(_check!.serverVersion)],
                 _input('name', l.dbName, required: true),
                 DropdownButtonFormField<DbEngine>(
@@ -361,9 +388,16 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                             }),
                           ),
                       ],
-                      onChanged: _busy ? null : (v) => setState(() => _tls = v!),
+                      onChanged: _busy
+                          ? null
+                          : (v) => setState(() {
+                              _tls = v!;
+                              _tlsChosen = true;
+                              _tlsAuto = false;
+                            }),
                     ),
-                    if (_tls != DbTlsMode.verify) Text(l.dbTlsWarning),
+                    if (_tlsAuto) Text(l.dbTlsLocalHint),
+                    if (_tls != DbTlsMode.verify && !_tlsAuto) Text(l.dbTlsWarning),
                     _input('serverName', l.dbTlsServerName),
                     _input('ca', l.dbTlsCa, lines: 3),
                     _input('certificate', l.dbClientCertificate, lines: 3),
@@ -489,7 +523,21 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                       onChanged: _busy ? null : (value) => setState(() => _group = value == '' ? null : value),
                     ),
                     _input('tags', l.dbTags),
-                    _input('color', l.dbColor),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l.dbColor, style: Theme.of(context).textTheme.labelLarge),
+                          const SizedBox(height: 8),
+                          ColorLabelPicker(
+                            value: _value('color').isEmpty ? null : _value('color'),
+                            enabled: !_busy,
+                            onChanged: (color) => setState(() => _field('color').text = color ?? ''),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ],

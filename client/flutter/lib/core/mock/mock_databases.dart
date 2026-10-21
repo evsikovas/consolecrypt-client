@@ -1,0 +1,589 @@
+import 'dart:async';
+
+import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/db/db_ai_service.dart';
+import 'package:consolecrypt/db/db_models.dart';
+import 'package:consolecrypt/db/db_query_service.dart';
+import 'package:consolecrypt/db/db_service.dart';
+
+// Demo data of the mock backend; nothing here is shown in release builds.
+// l10n-ignore-file
+
+/// In-memory databases for the demo/mock backend: one connection per engine,
+/// a small shop schema, results, history and a canned assistant answer.
+final class MockDbService implements DbService, DbQueryService, DbHistoryService, DbExportService, DbAiService {
+  final _changes = StreamController<void>.broadcast();
+  final _history = <DbHistoryEntry>[];
+  var _next = 0;
+
+  late final List<DbConnection> _connections = [
+    _connection('pg', 'shop-prod', DbEngine.postgresql, 'db.shop.internal', production: true, database: 'shop'),
+    _connection('pg-dev', 'shop-dev', DbEngine.postgresql, 'localhost', production: false, database: 'shop'),
+    _connection('my', 'billing', DbEngine.mysql, 'billing.internal', production: true, database: 'billing'),
+    _connection('ch', 'analytics', DbEngine.clickhouse, 'ch.internal', production: true, database: 'events'),
+    _connection('redis', 'cache', DbEngine.redis, 'redis.internal', production: false, database: '0'),
+    _connection('mongo', 'catalog', DbEngine.mongodb, 'mongo.internal', production: false, database: 'catalog'),
+  ];
+
+  static DbConnection _connection(
+    String id,
+    String name,
+    DbEngine engine,
+    String host, {
+    required bool production,
+    required String database,
+  }) => DbConnection(
+    id: id,
+    name: name,
+    engine: engine,
+    host: host,
+    port: engine.port,
+    database: database,
+    username: 'app',
+    production: production,
+    options: DbDriverOptions(engine: engine),
+    tags: [if (production) 'prod' else 'dev'],
+  );
+
+  DbConnection _byId(String id) => _connections.firstWhere((c) => c.id == id);
+  final _sessions = <String, DbSessionInfo>{};
+
+  // Connections.
+
+  @override
+  Stream<void> changes() => _changes.stream;
+
+  @override
+  Future<List<DbConnection>> connections() async => List.unmodifiable(_connections);
+
+  @override
+  Future<DbConnectionChoices> connectionChoices() async => const DbConnectionChoices();
+
+  @override
+  Future<DbConnection> saveConnection(DbConnectionDraft draft) async {
+    final json = draft.metadata.toJson();
+    if ((json['id'] as String? ?? '').isEmpty) json['id'] = 'mock-${_next++}';
+    final saved = DbConnection.fromJson(json);
+    _connections
+      ..removeWhere((c) => c.id == saved.id)
+      ..add(saved);
+    draft.wipe();
+    _changes.add(null);
+    return saved;
+  }
+
+  @override
+  Future<void> deleteConnection(String id) async {
+    _connections.removeWhere((c) => c.id == id);
+    _changes.add(null);
+  }
+
+  @override
+  Future<DbConnectionCheck> testConnection(DbConnectionDraft draft) async {
+    draft.wipe();
+    return const DbConnectionCheck(serverVersion: '17.2', serverReadOnly: DbServerReadOnly.enforced);
+  }
+
+  @override
+  Future<DbImportReview> importConnectionString(SecretText uri) async {
+    uri.wipe();
+    return DbImportReview(
+      ticket: 'import',
+      expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+      entries: const [
+        DbImportEntry(index: 0, name: 'orders', engine: DbEngine.postgresql, host: 'orders.internal', port: 5432),
+      ],
+    );
+  }
+
+  @override
+  Future<DbImportReview> importPgpass(SecretText contents) => importConnectionString(contents);
+
+  @override
+  Future<void> confirmImport(String ticket, List<DbImportChoice> choices) async {}
+
+  @override
+  Future<void> discardImport(String ticket) async {}
+
+  // Sessions.
+
+  @override
+  Future<DbSessionInfo> connect(String connectionId, {SecretText? temporaryPassword}) async {
+    temporaryPassword?.wipe();
+    final connection = _byId(connectionId);
+    final session = DbSessionInfo(
+      id: 'session-$connectionId',
+      connectionId: connectionId,
+      engine: connection.engine,
+      serverVersion: switch (connection.engine) {
+        DbEngine.postgresql => '17.2',
+        DbEngine.mysql || DbEngine.mariadb => '8.4.3',
+        DbEngine.clickhouse => '25.8.2',
+        DbEngine.redis => '7.4.1',
+        DbEngine.mongodb => '7.0.14',
+      },
+      production: connection.production,
+      readOnly: connection.production,
+      serverReadOnly: connection.production ? DbServerReadOnly.enforced : DbServerReadOnly.unverified,
+    );
+    return _sessions[session.id] = session;
+  }
+
+  @override
+  Future<void> disconnect(String sessionId) async => _sessions.remove(sessionId);
+
+  @override
+  Future<DbPrivilegeReport> checkPrivileges(String sessionId) async =>
+      const DbPrivilegeReport(serverReadOnly: DbServerReadOnly.enforced, hasWritePrivileges: false);
+
+  DbSessionInfo _write(String sessionId, bool allow) {
+    final s = _sessions[sessionId]!;
+    return _sessions[sessionId] = DbSessionInfo(
+      id: s.id,
+      connectionId: s.connectionId,
+      engine: s.engine,
+      serverVersion: s.serverVersion,
+      production: s.production,
+      readOnly: s.production || !allow,
+      serverReadOnly: s.serverReadOnly,
+    );
+  }
+
+  @override
+  Future<DbSessionInfo> allowSessionWrite(String sessionId) async => _write(sessionId, true);
+
+  @override
+  Future<DbSessionInfo> revokeSessionWrite(String sessionId) async => _write(sessionId, false);
+
+  static const _tables = {
+    'customers': [
+      ('id', 'bigint', true),
+      ('email', 'text', false),
+      ('name', 'text', false),
+      ('created_at', 'timestamptz', false),
+    ],
+    'orders': [
+      ('id', 'bigint', true),
+      ('customer_id', 'bigint', false),
+      ('total', 'numeric(12,2)', false),
+      ('status', 'text', false),
+      ('created_at', 'timestamptz', false),
+    ],
+    'order_items': [
+      ('id', 'bigint', true),
+      ('order_id', 'bigint', false),
+      ('sku', 'text', false),
+      ('quantity', 'integer', false),
+    ],
+    'products': [('sku', 'text', true), ('title', 'text', false), ('price', 'numeric(10,2)', false)],
+  };
+
+  @override
+  Future<DbTreePage> tree(String sessionId, {DbObjectRef? parent, String? cursor, bool refresh = false}) async {
+    final engine = _sessions[sessionId]?.engine ?? DbEngine.postgresql;
+    DbTreeNode node(DbObjectRef ref, {bool children = true, String? detail, bool pk = false, DbObjectRef? fk}) =>
+        DbTreeNode(reference: ref, hasChildren: children, detail: detail, primaryKey: pk, foreignKey: fk);
+    if (engine == DbEngine.redis) {
+      if (parent == null) {
+        return DbTreePage(
+          nodes: [
+            for (var i = 0; i < 4; i++)
+              node(
+                DbObjectRef(database: '$i', kind: DbObjectKind.redisDatabase, name: 'db$i'),
+                detail: '${[1284, 12, 0, 3][i]} keys',
+              ),
+          ],
+        );
+      }
+      return DbTreePage(
+        nodes: [
+          node(
+            DbObjectRef(database: parent.database, kind: DbObjectKind.redisDatabase, name: 'session:', parentName: ''),
+            detail: '1 204',
+          ),
+          node(
+            DbObjectRef(database: parent.database, kind: DbObjectKind.redisDatabase, name: 'rate:', parentName: ''),
+            detail: '77',
+          ),
+          node(
+            DbObjectRef(database: parent.database, kind: DbObjectKind.redisKey, name: 'config:flags', parentName: ''),
+            children: false,
+            detail: 'hash · no TTL',
+          ),
+          node(
+            DbObjectRef(database: parent.database, kind: DbObjectKind.redisKey, name: 'queue:mail', parentName: ''),
+            children: false,
+            detail: 'list · no TTL',
+          ),
+        ],
+      );
+    }
+    if (engine == DbEngine.mongodb) {
+      if (parent == null) {
+        return DbTreePage(
+          nodes: [node(const DbObjectRef(database: 'catalog', kind: DbObjectKind.database, name: 'catalog'))],
+        );
+      }
+      if (parent.kind == DbObjectKind.database) {
+        return DbTreePage(
+          nodes: [
+            for (final c in ['products', 'reviews', 'categories'])
+              node(
+                DbObjectRef(database: 'catalog', kind: DbObjectKind.collection, name: c),
+                detail: 'collection',
+              ),
+          ],
+        );
+      }
+      return DbTreePage(
+        nodes: [
+          node(
+            DbObjectRef(database: 'catalog', kind: DbObjectKind.indexObject, name: '_id_', parentName: parent.name),
+            children: false,
+            detail: '{ _id: 1 } unique',
+          ),
+          node(
+            DbObjectRef(database: 'catalog', kind: DbObjectKind.indexObject, name: 'sku_1', parentName: parent.name),
+            children: false,
+            detail: '{ sku: 1 } unique',
+          ),
+        ],
+      );
+    }
+    if (parent == null) {
+      return DbTreePage(
+        nodes: [
+          for (final schema in ['public', 'analytics'])
+            node(DbObjectRef(database: 'shop', schema: schema, kind: DbObjectKind.schema, name: schema)),
+        ],
+      );
+    }
+    if (parent.kind == DbObjectKind.schema || parent.kind == DbObjectKind.database) {
+      return DbTreePage(
+        nodes: [
+          for (final table in _tables.keys)
+            node(DbObjectRef(database: 'shop', schema: parent.name, kind: DbObjectKind.table, name: table)),
+          node(DbObjectRef(database: 'shop', schema: parent.name, kind: DbObjectKind.view, name: 'daily_revenue')),
+          node(
+            DbObjectRef(database: 'shop', schema: parent.name, kind: DbObjectKind.function, name: 'order_total'),
+            children: false,
+          ),
+        ],
+      );
+    }
+    final columns = _tables[parent.name] ?? const [];
+    return DbTreePage(
+      nodes: [
+        for (final (name, type, pk) in columns)
+          node(
+            DbObjectRef(
+              database: 'shop',
+              schema: parent.schema,
+              kind: DbObjectKind.column,
+              name: name,
+              parentName: parent.name,
+            ),
+            children: false,
+            detail: type,
+            pk: pk,
+            fk: name.endsWith('_id') && name != 'id'
+                ? DbObjectRef(
+                    database: 'shop',
+                    schema: 'public',
+                    kind: DbObjectKind.table,
+                    name: '${name.replaceAll('_id', '')}s',
+                  )
+                : null,
+          ),
+        node(
+          DbObjectRef(
+            database: 'shop',
+            schema: parent.schema,
+            kind: DbObjectKind.indexObject,
+            name: '${parent.name}_pkey',
+            parentName: parent.name,
+          ),
+          children: false,
+          detail: 'CREATE UNIQUE INDEX ${parent.name}_pkey ON public.${parent.name} USING btree (id)',
+        ),
+      ],
+    );
+  }
+
+  @override
+  Future<SecretText> ddl(String sessionId, DbObjectRef object) async {
+    final columns = _tables[object.name] ?? const [];
+    return SecretText(
+      'CREATE TABLE "public"."${object.name}" (\n'
+      '${columns.map((c) => '    ${c.$1} ${c.$2}${c.$3 ? ' NOT NULL' : ''}').join(',\n')},\n'
+      '    CONSTRAINT ${object.name}_pkey PRIMARY KEY (id)\n);',
+    );
+  }
+
+  @override
+  Future<String> identifier(String sessionId, DbObjectRef object) async =>
+      object.schema == null ? '"${object.name}"' : '"${object.schema}"."${object.name}"';
+
+  @override
+  Future<String> objectQuery(String sessionId, DbObjectRef object, {int limit = 100}) async =>
+      'SELECT * FROM ${await identifier(sessionId, object)} LIMIT $limit';
+
+  @override
+  Future<DbPreparedQuery> prepareQuery(
+    String sessionId,
+    String text, {
+    required DbRunMode mode,
+    required int selectionStart,
+    required int selectionEnd,
+  }) async => DbPreparedQuery(text: text.trim());
+
+  @override
+  Future<String> formatQuery(DbEngine engine, String text) async => text
+      .replaceAllMapped(
+        RegExp(r'\s+(FROM|WHERE|GROUP BY|ORDER BY|LIMIT|JOIN|LEFT JOIN)\s', caseSensitive: false),
+        (m) => '\n${m[1]!.toUpperCase()} ',
+      )
+      .trim();
+
+  @override
+  Future<List<DbCompletion>> completeQuery(String sessionId, String text, int cursor) async => [
+    for (final table in _tables.keys) DbCompletion(insertText: table, label: table, detail: 'table · public'),
+  ];
+
+  @override
+  Future<DbQueryReview> reviewQuery(String sessionId, DbQueryRequest request) async {
+    final upper = request.text.trimLeft().toUpperCase();
+    final read = ['SELECT', 'WITH', 'SHOW', 'EXPLAIN', 'GET', 'SCAN', 'HGETALL', 'DB.'].any(upper.startsWith);
+    final session = _sessions[sessionId];
+    final blocked = !read && (session?.production ?? true);
+    return DbQueryReview(
+      ticket: 'review-${_next++}',
+      risk: read ? DbQueryRisk.read : (blocked ? DbQueryRisk.blocked : DbQueryRisk.write),
+      expiresAt: DateTime.now().add(const Duration(minutes: 1)),
+      suggestion: upper.startsWith('KEYS') ? 'SCAN 0 MATCH * COUNT 100' : null,
+    );
+  }
+
+  final _queries = <String, DbQueryRequest>{};
+
+  @override
+  Future<String> execute(String sessionId, DbQueryRequest request) async {
+    final id = 'query-${_next++}';
+    _queries[id] = request;
+    final session = _sessions[sessionId];
+    if (session != null) {
+      _history.insert(
+        0,
+        DbHistoryEntry(
+          id: 'history-${_next++}',
+          connectionId: session.connectionId,
+          engine: session.engine,
+          text: request.text,
+          createdAt: DateTime.now(),
+          elapsedMs: 14,
+          rows: 8,
+        ),
+      );
+    }
+    return id;
+  }
+
+  static DbCell _text(String value) => DbCell(DbCellKind.text, value);
+  static DbCell _int(int value) => DbCell(DbCellKind.intValue, '$value');
+
+  @override
+  Stream<DbQueryEvent> watchQuery(String sessionId, String queryId) async* {
+    const columns = [
+      DbColumn(name: 'id', typeName: 'int8', nullable: false, primaryKey: true),
+      DbColumn(name: 'customer', typeName: 'text'),
+      DbColumn(name: 'email', typeName: 'text'),
+      DbColumn(name: 'total', typeName: 'numeric'),
+      DbColumn(name: 'status', typeName: 'text'),
+      DbColumn(name: 'created_at', typeName: 'timestamptz'),
+    ];
+    const names = [
+      'Anna Petrova',
+      'Ivan Smirnov',
+      'Maria Kuznetsova',
+      'Oleg Volkov',
+      'Elena Sokolova',
+      'Pavel Orlov',
+      'Irina Lebedeva',
+      'Sergey Kozlov',
+    ];
+    const statuses = ['paid', 'shipped', 'paid', 'refunded', 'paid', 'new', 'shipped', 'paid'];
+    yield const DbQueryEvent(
+      kind: DbQueryEventKind.started,
+      columns: columns,
+      editableTable: DbObjectRef(database: 'shop', schema: 'public', kind: DbObjectKind.table, name: 'orders'),
+    );
+    yield DbQueryEvent(
+      kind: DbQueryEventKind.rows,
+      rows: [
+        for (var i = 0; i < names.length; i++)
+          [
+            _int(10240 + i),
+            _text(names[i]),
+            _text('${names[i].split(' ').first.toLowerCase()}@example.com'),
+            DbCell(DbCellKind.decimal, (1290.5 + i * 317.25).toStringAsFixed(2)),
+            _text(statuses[i]),
+            DbCell(DbCellKind.timestamp, '2026-10-${(20 - i).toString().padLeft(2, '0')} 1${i % 10}:24:0${i % 10}+03'),
+          ],
+      ],
+    );
+    yield const DbQueryEvent(kind: DbQueryEventKind.statementDone, elapsedMs: 14);
+    yield const DbQueryEvent(kind: DbQueryEventKind.done);
+  }
+
+  @override
+  Future<void> loadMore(String sessionId, String queryId, {int rows = 1000}) async {}
+
+  @override
+  Future<void> cancelQuery(String sessionId, String queryId) async {}
+
+  @override
+  Future<void> releaseQuery(String sessionId, String queryId) async => _queries.remove(queryId);
+
+  @override
+  Future<DbExplainPlan> explain(String sessionId, DbQueryRequest request, {bool analyze = false}) async =>
+      DbExplainPlan(
+        engine: _sessions[sessionId]?.engine ?? DbEngine.postgresql,
+        analyzed: analyze,
+        document: {
+          'plan': [
+            {
+              'Plan': {
+                'Node Type': 'Hash Join',
+                'Join Type': 'Inner',
+                'Hash Cond': '(o.customer_id = c.id)',
+                'Total Cost': 412.8,
+                'Plan Rows': 1840,
+                'Plans': [
+                  {
+                    'Node Type': 'Seq Scan',
+                    'Relation Name': 'orders',
+                    'Filter': "(status = 'paid'::text)",
+                    'Total Cost': 288.1,
+                    'Plan Rows': 1840,
+                  },
+                  {
+                    'Node Type': 'Hash',
+                    'Total Cost': 64.5,
+                    'Plans': [
+                      {
+                        'Node Type': 'Index Scan',
+                        'Relation Name': 'customers',
+                        'Index Name': 'customers_pkey',
+                        'Total Cost': 61.2,
+                        'Plan Rows': 950,
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      );
+
+  // History.
+
+  @override
+  Future<DbHistoryPolicy> historyPolicy(String connectionId) async => DbHistoryPolicy.local;
+
+  @override
+  Future<void> setHistoryPolicy(String connectionId, DbHistoryPolicy policy) async {}
+
+  @override
+  Future<DbHistoryPage> history(
+    String connectionId, {
+    String query = '',
+    bool? succeeded,
+    bool favoritesOnly = false,
+    String? cursor,
+    int limit = 100,
+  }) async => DbHistoryPage(
+    entries: [
+      for (final entry in _history)
+        if (entry.connectionId == connectionId && entry.text.toLowerCase().contains(query.toLowerCase())) entry,
+    ],
+  );
+
+  @override
+  Future<void> setFavorite(String historyId, bool favorite) async {}
+
+  @override
+  Future<void> saveHistorySnippet(String historyId, String name) async {}
+
+  @override
+  Future<void> deleteHistory(String connectionId) async => _history.removeWhere((e) => e.connectionId == connectionId);
+
+  // Export.
+
+  @override
+  Future<SecretText> copyResult(
+    String sessionId,
+    String queryId,
+    int resultIndex,
+    DbResultSelection selection,
+    DbExportOptions options,
+  ) async => SecretText('id,customer\n10240,Anna Petrova\n');
+
+  @override
+  Future<DbExportDestination?> chooseExportDestination(DbExportOptions options) async => null;
+
+  @override
+  Future<String> startExport(
+    String sessionId,
+    String queryId,
+    int resultIndex,
+    DbExportOptions options,
+    DbExportDestination destination,
+  ) async => 'export';
+
+  @override
+  Stream<DbExportProgress> watchExport(String sessionId, String exportId) =>
+      Stream.value(const DbExportProgress(id: 'export', rows: 8, bytes: 512, done: true));
+
+  @override
+  Future<void> cancelExport(String sessionId, String exportId) async {}
+
+  // Assistant.
+
+  @override
+  Future<List<DbAiProvider>> aiProviders() async => const [
+    DbAiProvider(id: 'local', name: 'Local model', external: false),
+  ];
+
+  @override
+  Future<DbAiReview> prepareAi(String sessionId, String providerId, DbAiRequest request) async => DbAiReview(
+    ticket: 'ai-${_next++}',
+    provider: const DbAiProvider(id: 'local', name: 'Local model', external: false),
+    connectionName: _byId(_sessions[sessionId]?.connectionId ?? 'pg').name,
+    expiresAt: DateTime.now().add(const Duration(minutes: 2)),
+    schemaObjects: const ['public.orders', 'public.customers'],
+  );
+
+  @override
+  Stream<DbAiEvent> askAi(String sessionId, String ticket, DbAiConsent consent) async* {
+    yield DbAiEvent(kind: DbAiEventKind.context, content: SecretText('public.orders, public.customers'));
+    yield DbAiEvent(
+      kind: DbAiEventKind.draft,
+      content: SecretText(
+        'SELECT c.name, sum(o.total) AS revenue\nFROM orders o\nJOIN customers c ON c.id = o.customer_id\n'
+        "WHERE o.status = 'paid' AND o.created_at >= now() - interval '30 days'\nGROUP BY c.name\nORDER BY revenue DESC\nLIMIT 10;",
+      ),
+    );
+    yield DbAiEvent(
+      kind: DbAiEventKind.explanation,
+      content: SecretText('Top 10 customers by paid revenue over the last 30 days.'),
+    );
+    yield const DbAiEvent(kind: DbAiEventKind.done);
+  }
+
+  @override
+  Future<void> cancelAi(String sessionId, String ticket) async {}
+
+  @override
+  Future<void> revokeAiConsent(String sessionId) async {}
+}

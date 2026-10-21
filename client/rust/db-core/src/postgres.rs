@@ -335,6 +335,11 @@ fn classify(error: tokio_postgres::Error) -> DbError {
         Some("57014") => DbError::Cancelled,
         Some("25006" | "42501") => DbError::PolicyDenied,
         _ if error.is_closed() => DbError::ConnectionFailed,
+        // Driver messages carry no secrets; only their kind is kept.
+        None if error.to_string().contains("TLS") => DbError::TlsFailed,
+        None if error.to_string().starts_with("error connecting to server") => {
+            DbError::ConnectionFailed
+        }
         _ => DbError::QueryFailed,
     }
 }
