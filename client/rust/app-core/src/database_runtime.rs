@@ -2,6 +2,7 @@
 //! dropped on lock; credentials are read from the vault only while connecting.
 use crate::{AppCore, AppError, AppResult};
 use cc_db_core::{
+    edit::DbCellEdit,
     export::{format_rows, ExportOptions, ExportProgress},
     introspect::{quote_identifier, DbCompletion},
     parser::editor::{self, QueryScope},
@@ -72,11 +73,14 @@ pub(crate) struct DbRuntime {
     /// Loaded rows per query id, oldest first, released with the query.
     results: Mutex<KeptQueries>,
     exports: Mutex<HashMap<String, RunningExport>>,
+    /// Reviewed cell edits by ticket: (session id, generated request).
+    edits: Mutex<HashMap<String, (String, DbQueryRequest)>>,
 }
 
 impl DbRuntime {
     pub(crate) fn close(&self) {
         self.shutdown.cancel();
+        self.edits.lock().unwrap_or_else(|e| e.into_inner()).clear();
         {
             let mut results = self.results.lock().unwrap_or_else(|e| e.into_inner());
             results.0.clear();
@@ -222,6 +226,15 @@ pub struct DbQueryReviewDto {
     pub expires_in_seconds: u64,
     /// A runnable read-only alternative to a refused query.
     pub suggestion: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DbCellEditReviewDto {
+    pub ticket: String,
+    /// Statement text with `{{p0}}` placeholders; values stay bound.
+    pub sql: String,
+    pub rows: usize,
+    pub expires_in_seconds: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -812,6 +825,65 @@ impl AppCore {
         {
             export.cancel.cancel();
         }
+        Ok(())
+    }
+
+    /// Generated `UPDATE` statements for grid edits, reviewed like any write.
+    pub async fn db_review_cell_edits(
+        &self,
+        session_id: String,
+        table: DbObjectRef,
+        edits: Vec<DbCellEdit>,
+    ) -> AppResult<DbCellEditReviewDto> {
+        let (_, unlocked) = self.unlocked().await?;
+        let session = unlocked.db.session(&session_id)?;
+        let (request, rows) = session
+            .review_cell_edits(&table, &edits)
+            .await
+            .map_err(db_error)?;
+        let review = session.guard().review(&request).map_err(db_error)?;
+        let ticket = review.ticket.clone();
+        let mut pending = unlocked.db.edits.lock().unwrap_or_else(|e| e.into_inner());
+        if pending.len() >= MAX_QUERIES {
+            pending.clear();
+        }
+        let sql = request.text.clone();
+        pending.insert(ticket.clone(), (session_id, request));
+        Ok(DbCellEditReviewDto {
+            ticket,
+            sql,
+            rows,
+            expires_in_seconds: review.expires_in_seconds,
+        })
+    }
+
+    /// Applies reviewed edits in one transaction; returns the changed rows.
+    pub async fn db_commit_cell_edits(&self, session_id: String, ticket: String) -> AppResult<u64> {
+        let (_, unlocked) = self.unlocked().await?;
+        let (owner, mut request) = unlocked
+            .db
+            .edits
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&ticket)
+            .ok_or_else(|| invalid("edits_expired"))?;
+        if owner != session_id {
+            return Err(invalid("edits_expired"));
+        }
+        let session = unlocked.db.session(&session_id)?;
+        session.guard().approve(&ticket).map_err(db_error)?;
+        request.approval_ticket = Some(ticket);
+        session.apply_cell_edits(&request).await.map_err(db_error)
+    }
+
+    pub async fn db_discard_cell_edits(&self, ticket: String) -> AppResult<()> {
+        let (_, unlocked) = self.unlocked().await?;
+        unlocked
+            .db
+            .edits
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&ticket);
         Ok(())
     }
 

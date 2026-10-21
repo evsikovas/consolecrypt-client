@@ -134,6 +134,20 @@ impl Postgres {
         cancel: CancellationToken,
     ) -> futures::future::BoxFuture<'a, Result<(), DbError>> {
         Box::pin(async move {
+            self.query_all(&[(sql, bindings)], read_only, sink, cancel)
+                .await
+        })
+    }
+
+    /// Runs statements in one transaction: all commit or none do.
+    pub fn query_all<'a>(
+        &'a mut self,
+        statements: &'a [(&'a str, &'a [DbParameter])],
+        read_only: bool,
+        sink: &'a mut (dyn RowConsumer + Send),
+        cancel: CancellationToken,
+    ) -> futures::future::BoxFuture<'a, Result<(), DbError>> {
+        Box::pin(async move {
             let started = Instant::now();
             batch(
                 &self.client,
@@ -156,14 +170,22 @@ impl Postgres {
                 let _ = batch(&self.client, "ROLLBACK").await;
                 return Err(classify(error));
             }
-            let query = self.stream(sql, bindings, sink);
+            let query = async {
+                // Results are reported in order; nothing commits until all succeed.
+                for (sql, bindings) in statements {
+                    let affected = self.stream(sql, bindings, &mut *sink).await?;
+                    let elapsed = started.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+                    sink.statement_done(elapsed, affected).await?;
+                }
+                Ok::<_, DbError>(())
+            };
             let result = tokio::select! {
                 biased;
                 _ = cancel.cancelled() => Err(DbError::Cancelled),
                 result = tokio::time::timeout(self.timeout, query) => result.unwrap_or(Err(DbError::Timeout)),
             };
-            let affected = match result {
-                Ok(affected) => affected,
+            match result {
+                Ok(()) => {}
                 Err(error) => {
                     // Cancel the server operation, not only the waiting Rust future.
                     // If cleanup stalls, close the socket rather than reuse a live
@@ -180,13 +202,8 @@ impl Postgres {
                     }
                     return Err(error);
                 }
-            };
-            batch(&self.client, "COMMIT").await.map_err(classify)?;
-            sink.statement_done(
-                started.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
-                affected,
-            )
-            .await
+            }
+            batch(&self.client, "COMMIT").await.map_err(classify)
         })
     }
 

@@ -162,3 +162,16 @@ Future<String> dbExportProgress({required String exportId}) =>
 
 Future<void> dbExportCancel({required String exportId}) =>
     RustLib.instance.api.crateApiDatabaseDbExportCancel(exportId: exportId);
+
+Future<String> dbReviewCellEdits({required String sessionId, required String tableJson, required String editsJson}) =>
+    RustLib.instance.api.crateApiDatabaseDbReviewCellEdits(
+      sessionId: sessionId,
+      tableJson: tableJson,
+      editsJson: editsJson,
+    );
+
+Future<int> dbCommitCellEdits({required String sessionId, required String ticket}) =>
+    RustLib.instance.api.crateApiDatabaseDbCommitCellEdits(sessionId: sessionId, ticket: ticket);
+
+Future<void> dbDiscardCellEdits({required String ticket}) =>
+    RustLib.instance.api.crateApiDatabaseDbDiscardCellEdits(ticket: ticket);

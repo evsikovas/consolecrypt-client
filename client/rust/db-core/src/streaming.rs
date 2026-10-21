@@ -87,6 +87,8 @@ pub(crate) struct QuerySink {
     batch: Vec<Vec<DbCell>>,
     batch_bytes: usize,
     truncated: bool,
+    /// Source table and primary key of an editable first result.
+    editable: Option<(DbObjectRef, Vec<String>)>,
 }
 impl fmt::Debug for QuerySink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -122,8 +124,14 @@ impl QuerySink {
             batch: Vec::new(),
             batch_bytes: 0,
             truncated: false,
+            editable: None,
         };
         (stream, sink)
+    }
+
+    /// Marks the first result editable when it carries the whole primary key.
+    pub fn set_editable(&mut self, table: DbObjectRef, primary_key: Vec<String>) {
+        self.editable = Some((table, primary_key));
     }
 
     async fn emit(&self, event: DbQueryEvent) -> Result<(), DbError> {
@@ -170,9 +178,18 @@ impl QuerySink {
 impl RowConsumer for QuerySink {
     async fn start(
         &mut self,
-        columns: Vec<DbColumn>,
-        editable_table: Option<DbObjectRef>,
+        mut columns: Vec<DbColumn>,
+        mut editable_table: Option<DbObjectRef>,
     ) -> Result<(), DbError> {
+        if let Some((table, key)) = self.editable.take().filter(|_| self.result_index == 0) {
+            let unique = |name: &str| columns.iter().filter(|c| c.name == name).count() == 1;
+            if editable_table.is_none() && key.iter().all(|name| unique(name)) {
+                for column in &mut columns {
+                    column.primary_key = key.contains(&column.name);
+                }
+                editable_table = Some(table);
+            }
+        }
         if columns.len() > 4096 || bounded_size(&columns)? > MAX_EVENT_BYTES / 2 {
             return Err(DbError::ResultLimit);
         }

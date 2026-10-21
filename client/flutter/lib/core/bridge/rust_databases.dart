@@ -17,7 +17,8 @@ import 'package:file_selector/file_selector.dart';
 
 /// Native databases: connections live in the vault, sessions and query streams
 /// in the core. Passwords cross the bridge only as wiped byte buffers.
-final class RustDbService implements DbService, DbQueryService, DbHistoryService, DbPgpassFileService, DbExportService {
+final class RustDbService
+    implements DbService, DbQueryService, DbHistoryService, DbPgpassFileService, DbExportService, DbCellEditService {
   RustDbService(this._hub);
   final RustBackend _hub;
   final _sessions = <String, DbSessionInfo>{};
@@ -509,4 +510,33 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
   @override
   Future<void> cancelExport(String sessionId, String exportId) =>
       guard(() => native.dbExportCancel(exportId: exportId));
+
+  // Cell edits (non-production, desktop).
+
+  @override
+  Future<DbCellEditReview> reviewCellEdits(String sessionId, DbObjectRef table, List<DbCellEdit> edits) async {
+    final json = jsonDecode(
+      await guard(
+        () => native.dbReviewCellEdits(
+          sessionId: sessionId,
+          tableJson: jsonEncode(table.toJson()),
+          editsJson: jsonEncode([for (final edit in edits) edit.toJson()]),
+        ),
+      ),
+    ) as DbJson;
+    return DbCellEditReview(
+      ticket: json['ticket'] as String,
+      sql: SecretText(json['sql'] as String),
+      expiresAt: DateTime.now().add(Duration(seconds: json['expires_in_seconds'] as int? ?? 60)),
+      rows: json['rows'] as int,
+    );
+  }
+
+  @override
+  Future<void> commitCellEdits(String sessionId, String ticket) =>
+      guard(() => native.dbCommitCellEdits(sessionId: sessionId, ticket: ticket));
+
+  @override
+  Future<void> discardCellEdits(String sessionId, String ticket) =>
+      guard(() => native.dbDiscardCellEdits(ticket: ticket));
 }

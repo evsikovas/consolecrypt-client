@@ -206,6 +206,56 @@ async fn exercise(variable: &str, engine: DbEngine) {
         .position(|node| node.reference.kind == DbObjectKind::Index)
         .unwrap();
     assert!(id < index, "columns come first");
+    // A single-table read is editable by its primary key.
+    let mut stream = dev
+        .execute(&request("SELECT * FROM cc_items ORDER BY id"))
+        .unwrap();
+    let mut editable = None;
+    while let Some(event) = stream.events.recv().await {
+        match event {
+            DbQueryEvent::Started {
+                columns,
+                editable_table,
+                ..
+            } => {
+                assert!(columns.iter().any(|c| c.name == "id" && c.primary_key));
+                editable = editable_table;
+            }
+            DbQueryEvent::Done | DbQueryEvent::Error { .. } => break,
+            _ => {}
+        }
+    }
+    let editable = editable.expect("editable source table");
+    let edit = |id: &str, value: &str| cc_db_core::edit::DbCellEdit {
+        original_primary_key: [("id".to_string(), DbCell::Int(id.into()))].into(),
+        column: "name".into(),
+        value: DbCell::Text(value.into()),
+    };
+    let apply = |edits: Vec<cc_db_core::edit::DbCellEdit>| {
+        let dev = dev.clone();
+        let editable = editable.clone();
+        async move {
+            let (mut edit_request, _) = dev.review_cell_edits(&editable, &edits).await?;
+            let review = dev.guard().review(&edit_request)?;
+            dev.guard().approve(&review.ticket)?;
+            edit_request.approval_ticket = Some(review.ticket.clone());
+            dev.apply_cell_edits(&edit_request).await
+        }
+    };
+    assert_eq!(apply(vec![edit("1", "it's alpha")]).await.unwrap(), 1);
+    // One edit misses its row: the whole batch rolls back.
+    assert!(apply(vec![edit("2", "changed"), edit("99", "ghost")])
+        .await
+        .is_err());
+    assert_eq!(
+        run(&dev, "SELECT name FROM cc_items ORDER BY id")
+            .await
+            .unwrap(),
+        vec![vec!["it's alpha".to_string()], vec!["beta".to_string()]]
+    );
+    write(&dev, "UPDATE cc_items SET name = 'alpha' WHERE id = 1")
+        .await
+        .unwrap();
     // DDL, plans and completion read the same objects.
     let ddl = dev.ddl(&table).await.unwrap();
     assert!(

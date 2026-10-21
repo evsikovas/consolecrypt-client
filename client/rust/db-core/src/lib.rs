@@ -3,6 +3,7 @@
 
 pub mod types;
 pub use types::*;
+pub mod edit;
 pub mod export;
 pub mod guard;
 pub mod import;

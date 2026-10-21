@@ -140,7 +140,24 @@ impl Mysql {
         sink: &'a mut (dyn RowConsumer + Send),
         cancel: CancellationToken,
     ) -> futures::future::BoxFuture<'a, Result<(), DbError>> {
-        let sql = sql.to_owned();
+        Box::pin(async move {
+            self.query_all(&[(sql, bindings)], read_only, sink, cancel)
+                .await
+        })
+    }
+
+    /// Runs statements in one transaction: all commit or none do.
+    pub fn query_all<'a>(
+        &'a mut self,
+        statements: &'a [(&'a str, &'a [DbParameter])],
+        read_only: bool,
+        sink: &'a mut (dyn RowConsumer + Send),
+        cancel: CancellationToken,
+    ) -> futures::future::BoxFuture<'a, Result<(), DbError>> {
+        let owned: Vec<(String, &'a [DbParameter])> = statements
+            .iter()
+            .map(|(sql, bindings)| ((*sql).to_owned(), *bindings))
+            .collect();
         Box::pin(async move {
             let started = Instant::now();
             let client = self.connection.as_mut().ok_or(DbError::SessionClosed)?;
@@ -153,20 +170,24 @@ impl Mysql {
                 .await
                 .map_err(classify)?;
             let id = client.id();
-            let operation = Self::stream(client, sql, bindings, sink);
+            let operation = async {
+                // Results are reported in order; nothing commits until all succeed.
+                for (sql, bindings) in owned {
+                    let affected = Self::stream(&mut *client, sql, bindings, &mut *sink).await?;
+                    sink.statement_done(started.elapsed().as_millis() as u64, Some(affected))
+                        .await?;
+                }
+                Ok::<_, DbError>(())
+            };
             let result = tokio::select! {
                 biased; _ = cancel.cancelled() => Err(DbError::Cancelled),
                 result = tokio::time::timeout(self.timeout, operation) => result.unwrap_or(Err(DbError::Timeout)),
             };
             match result {
-                Ok(affected) => {
-                    client
-                        .query_drop(String::from("COMMIT"))
-                        .await
-                        .map_err(classify)?;
-                    sink.statement_done(started.elapsed().as_millis() as u64, Some(affected))
-                        .await
-                }
+                Ok(()) => client
+                    .query_drop(String::from("COMMIT"))
+                    .await
+                    .map_err(classify),
                 Err(error) => {
                     if matches!(
                         error,

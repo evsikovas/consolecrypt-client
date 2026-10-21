@@ -297,3 +297,24 @@ pub async fn db_export_progress(export_id: String) -> Result<String, BridgeError
 pub async fn db_export_cancel(export_id: String) -> Result<(), BridgeError> {
     with_core(move |c| async move { Ok(c.db_export_cancel(export_id).await?) }).await
 }
+
+pub async fn db_review_cell_edits(
+    session_id: String,
+    table_json: String,
+    edits_json: String,
+) -> Result<String, BridgeError> {
+    let table: DbObjectRef = from_json("table", &table_json)?;
+    let edits: Vec<cc_db_core::edit::DbCellEdit> = from_json("edits", &edits_json)?;
+    with_core(
+        move |c| async move { to_json(&c.db_review_cell_edits(session_id, table, edits).await?) },
+    )
+    .await
+}
+
+pub async fn db_commit_cell_edits(session_id: String, ticket: String) -> Result<u64, BridgeError> {
+    with_core(move |c| async move { Ok(c.db_commit_cell_edits(session_id, ticket).await?) }).await
+}
+
+pub async fn db_discard_cell_edits(ticket: String) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.db_discard_cell_edits(ticket).await?) }).await
+}

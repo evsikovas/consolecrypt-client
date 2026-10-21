@@ -207,6 +207,15 @@ impl DbSession {
         let session = Arc::clone(self);
         tokio::spawn(async move {
             let cancel = sink.cancel.clone();
+            if let [statement] = statements.as_slice() {
+                if let ParsedStatement::Sql { text, .. } = statement.parsed() {
+                    if statement.is_read_only() {
+                        if let Some((table, key)) = session.editable_source(text).await {
+                            sink.set_editable(table, key);
+                        }
+                    }
+                }
+            }
             let result = async {
                 let mut driver = session.driver.lock().await;
                 for statement in &statements {
