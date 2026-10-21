@@ -746,7 +746,9 @@ fn executable(path: &Path) -> Result<PathBuf> {
     if !path.is_absolute() {
         return Err(CliError::Invalid);
     }
-    let path = path.canonicalize().map_err(|_| CliError::NotFound)?;
+    // Shown in the Flux/kubectl/helm panels and stored as the manual path:
+    // never the Windows verbatim `\\?\` form.
+    let path = dunce::canonicalize(path).map_err(|_| CliError::NotFound)?;
     let metadata = path.metadata().map_err(|_| CliError::NotFound)?;
     if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_BINARY as u64 {
         return Err(CliError::Invalid);

@@ -30,6 +30,7 @@ Future<bool> runKubeGitOpsAction(
     builder: (_) => _GitOpsConfirmation(
       resource: resource.resource.name,
       title: kubeGitOpsActionLabel(context.l10n, action),
+      effect: resource.isFlux ? kubeGitOpsActionHelp(context.l10n, action) : null,
       reasonRequired: action == 'suspend' || action == 'resume',
       allowReminder: (action == 'suspend' || action == 'resume') && monitor?.preferences != null,
       help: action == 'reconcile_with_source' ? context.l10n.kubeGitOpsReconcileWithSourceHelp : null,
@@ -93,6 +94,7 @@ Future<void> runKubeGitOpsBulkAction(
     builder: (_) => _GitOpsConfirmation(
       resource: contextName,
       title: kubeGitOpsActionLabel(context.l10n, action),
+      effect: kubeGitOpsActionHelp(context.l10n, action),
       reasonRequired: action == 'suspend' || action == 'resume',
       help: context.l10n.kubeBulkHelp,
       resources: resources.map((r) => '${r.api.kind} · ${r.resource.namespace ?? ''}/${r.resource.name}').toList(),
@@ -134,17 +136,33 @@ String kubeGitOpsActionLabel(AppLocalizations l, String action) => switch (actio
   _ => l.kubeGitOpsReconcile,
 };
 
+/// What a Flux action does, in plain words with the matching flux command
+/// (tooltips and the confirmation dialog). Argo actions are self-explanatory.
+String? kubeGitOpsActionHelp(AppLocalizations l, String action) => switch (action) {
+  'reconcile' => l.kubeGitOpsReconcileTooltip,
+  'reconcile_with_source' => l.kubeGitOpsReconcileWithSourceTooltip,
+  'suspend' => l.kubeGitOpsSuspendTooltip,
+  'resume' => l.kubeGitOpsResumeTooltip,
+  'reset' => l.kubeGitOpsResetTooltip,
+  'force' => l.kubeGitOpsForceTooltip,
+  _ => null,
+};
+
 class _GitOpsConfirmation extends ConsumerStatefulWidget {
   const _GitOpsConfirmation({
     required this.resource,
     required this.title,
     required this.reasonRequired,
+    this.effect,
     this.help,
     this.allowReminder = false,
     this.resources = const [],
   });
   final String resource, title;
   final String? help;
+
+  /// What the controller will do (Flux actions).
+  final String? effect;
   final bool reasonRequired;
   final bool allowReminder;
   final List<String> resources;
@@ -191,6 +209,10 @@ class _GitOpsConfirmationState extends ConsumerState<_GitOpsConfirmation> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (widget.effect case final effect?) ...[
+              Text(effect, key: const ValueKey('kube-gitops-confirm-effect')),
+              const SizedBox(height: GlassSpacing.s8),
+            ],
             Text(widget.help ?? l.kubeGitOpsChangeHelp),
             if (widget.resources.isNotEmpty)
               ConstrainedBox(

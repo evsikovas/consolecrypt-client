@@ -142,7 +142,7 @@ async fn discovery_does_not_execute_and_probe_has_clean_bounded_environment() {
     assert!(found
         .candidates
         .iter()
-        .any(|candidate| candidate.path == binary.canonicalize().unwrap()));
+        .any(|candidate| candidate.path == dunce::canonicalize(&binary).unwrap()));
     assert!(!marker.exists());
     let result = runtime
         .probe(&binary, CancellationToken::new())

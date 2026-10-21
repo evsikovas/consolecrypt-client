@@ -2999,11 +2999,11 @@
   "kubeDependencyMissing": "Зависимость не найдена",
   "kubeDependencyReady": "Зависит от готового ресурса",
   "kubeDependencyWaiting": "Ожидает зависимость",
-  "kubeGitOpsSuspend": "Приостановить согласование",
-  "kubeGitOpsResume": "Возобновить согласование",
+  "kubeGitOpsSuspend": "Приостановить синхронизацию",
+  "kubeGitOpsResume": "Возобновить синхронизацию",
   "kubeGitOpsReset": "Сбросить счётчик ошибок",
   "kubeGitOpsForce": "Принудительно обновить Helm",
-  "kubeGitOpsReconcile": "Согласовать сейчас",
+  "kubeGitOpsReconcile": "Синхронизировать сейчас",
   "kubeArgoSync": "Синхронизировать приложение",
   "kubeArgoRefresh": "Обновить состояние приложения",
   "kubeArgoHardRefresh": "Обновить состояние и манифесты",
@@ -3029,8 +3029,8 @@
   "kubeIssueArgoOutOfSync": "Приложение Argo CD не синхронизировано",
   "kubeIssueFluxPending": "Flux ещё не обработал последнюю конфигурацию",
   "kubeIssueFluxNotReady": "Ресурс Flux не готов",
-  "kubeIssueFluxStalled": "Согласование Flux остановилось с ошибкой",
-  "kubeIssueFluxSuspended": "Согласование Flux приостановлено",
+  "kubeIssueFluxStalled": "Синхронизация Flux остановилась с ошибкой",
+  "kubeIssueFluxSuspended": "Синхронизация Flux приостановлена",
   "kubeHelmAllRevisions": "Показать все ревизии",
   "kubeHelmEmpty": "Релизов Helm с таким фильтром нет.",
   "kubeHelmRevision": "Ревизия {revision}",
@@ -3344,7 +3344,7 @@
   "@kubeIssuePendingVolume": {
     "description": "Kubernetes diagnostics and command navigation"
   },
-  "kubeIssueSuspendedLong": "Сверка приостановлена более 24 часов",
+  "kubeIssueSuspendedLong": "Синхронизация приостановлена более 24 часов",
   "@kubeIssueSuspendedLong": {
     "description": "Kubernetes diagnostics and command navigation"
   },
@@ -3819,11 +3819,11 @@
   "@kubeForwardRestoreFailed": {
     "description": "Kubernetes runtime label."
   },
-  "kubeGitOpsReconcileWithSource": "Обновить вместе с источником",
+  "kubeGitOpsReconcileWithSource": "Синхронизировать вместе с источником",
   "@kubeGitOpsReconcileWithSource": {
     "description": "Kubernetes guarded GitOps operation."
   },
-  "kubeGitOpsReconcileWithSourceHelp": "Запросить обновление цепочки источников, затем этого ресурса. Готовность контроллеров отображается в живом статусе. Подтвердите точное имя ресурса.",
+  "kubeGitOpsReconcileWithSourceHelp": "Запросить обновление цепочки источников, затем синхронизацию этого ресурса. Готовность контроллеров отображается в живом статусе. Подтвердите точное имя ресурса.",
   "@kubeGitOpsReconcileWithSourceHelp": {
     "description": "Kubernetes guarded GitOps operation."
   },
@@ -5490,5 +5490,21 @@
   "dockerTerminalHint": "Терминал даёт полный доступ к контейнеру, включая переменные окружения.",
   "@dockerTerminalHint": {
     "description": "Container terminal dialog: one-time note shown the first time in a profile."
-  }
+  },
+  "updateWindowsInstallHelp": "ConsoleCrypt закроется, установщик обновит приложение и запустит его снова. SSH-сеансы будут закрыты, профили и хранилища сохранятся.",
+  "updatePortableHelp": "Эта копия ConsoleCrypt запущена из распакованного ZIP-архива и не может обновиться сама. Откройте страницу загрузки и скачайте установщик или новый ZIP-архив. Профили и хранилища сохранятся.",
+  "updateOpenDownloadPage": "Открыть страницу загрузки",
+  "updateErrorNetwork": "Не удалось скачать обновление: сервер недоступен или соединение прервалось. Проверьте подключение и повторите попытку.",
+  "updateErrorIntegrity": "Скачанный файл не совпал с подписанным размером или контрольной суммой и не установлен. Повторите загрузку.",
+  "updateErrorFeed": "Не удалось проверить сведения об обновлении (подпись, формат или срок действия). Ничего не установлено.",
+  "updateErrorRollback": "Сервер вернул более старые сведения об обновлениях, чем это устройство уже получало. Возможна подмена; ничего не установлено.",
+  "updateErrorLaunch": "Не удалось запустить установщик (код ошибки Windows {code}). Возможно, его заблокировал антивирус. Скачайте установщик со страницы загрузки.",
+  "updateErrorStorage": "Не удалось сохранить обновление во временную папку. Освободите место на диске и повторите попытку.",
+  "updateErrorBrowser": "Не удалось открыть браузер. Страница загрузки: {url}",
+  "kubeGitOpsReconcileTooltip": "Flux немедленно сверит выбранные ресурсы с Git и применит изменения (flux reconcile)",
+  "kubeGitOpsReconcileWithSourceTooltip": "Flux сначала получит свежую версию источника (Git-репозитория или чарта), затем синхронизирует выбранный ресурс (flux reconcile --with-source)",
+  "kubeGitOpsSuspendTooltip": "Flux перестанет применять изменения из Git к выбранным ресурсам, пока синхронизацию не возобновят (flux suspend)",
+  "kubeGitOpsResumeTooltip": "Flux снова начнёт применять изменения из Git к выбранным ресурсам и сразу синхронизирует их (flux resume)",
+  "kubeGitOpsResetTooltip": "Обнулит счётчик неудачных установок и обновлений HelmRelease, чтобы Flux попробовал снова (flux reconcile helmrelease --reset)",
+  "kubeGitOpsForceTooltip": "Flux однократно выполнит установку или обновление Helm, даже если ничего не изменилось (flux reconcile helmrelease --force)"
 }

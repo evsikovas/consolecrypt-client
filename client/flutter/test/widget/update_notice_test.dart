@@ -145,6 +145,97 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await settle(tester);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  testWidgets('the notice shows download progress and a clear failure with retry and the download page', (
+    tester,
+  ) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    setTestLocale(backend, AppLocale.ru);
+    final service = _Service();
+    addTearDown(service.dispose);
+    final opened = <Uri>[];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appServicesProvider.overrideWithValue(backend.services),
+          updateServiceProvider.overrideWithValue(service),
+          updateOpenUrlProvider.overrideWithValue((uri) async {
+            opened.add(uri);
+            return true;
+          }),
+        ],
+        child: const ConsoleCryptApp(),
+      ),
+    );
+    await settle(tester);
+    final container = ProviderScope.containerOf(tester.element(find.byType(ConsoleCryptApp)));
+    await container.read(updateControllerProvider.notifier).check();
+    await settle(tester);
+    expect(find.byKey(const ValueKey('update-notice-progress')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('update-notice-install')));
+    await settle(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Скачать и установить'));
+    await settle(tester);
+    final progress = tester.widget<LinearProgressIndicator>(find.byKey(const ValueKey('update-notice-progress')));
+    expect(progress.value, .25);
+    expect(find.text('Скачивание: 25%'), findsOneWidget);
+
+    service.failDownload(const UpdateException('launch', '225'));
+    await settle(tester);
+    expect(container.read(updateControllerProvider).phase, UpdatePhase.failed);
+    expect(find.byKey(const ValueKey('update-notice-progress')), findsNothing);
+    expect(find.textContaining('код ошибки Windows 225'), findsOneWidget);
+    expect(find.byTooltip('Повторить'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('update-notice-download-page')));
+    await settle(tester);
+    expect(opened.single, Uri.parse('https://consolecrypt.dev/download?lang=ru'));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await settle(tester);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('a portable Windows copy explains itself and opens the download page instead of installing', (
+    tester,
+  ) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    setTestLocale(backend, AppLocale.en);
+    final service = _Service()..inPlace = false;
+    addTearDown(service.dispose);
+    const browser = false;
+    final opened = <Uri>[];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appServicesProvider.overrideWithValue(backend.services),
+          updateServiceProvider.overrideWithValue(service),
+          updateOpenUrlProvider.overrideWithValue((uri) async {
+            opened.add(uri);
+            return browser;
+          }),
+        ],
+        child: const ConsoleCryptApp(),
+      ),
+    );
+    await settle(tester);
+    final container = ProviderScope.containerOf(tester.element(find.byType(ConsoleCryptApp)));
+    await container.read(updateControllerProvider.notifier).check();
+    await settle(tester);
+    expect(find.byKey(const ValueKey('update-notice-install')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('update-notice-download-page')));
+    await settle(tester);
+    expect(find.textContaining('unpacked ZIP archive'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Open download page'));
+    await settle(tester);
+    expect(opened.single, Uri.parse('https://consolecrypt.dev/download?lang=en'));
+    expect(service.downloads, 0);
+    // A browser that cannot be opened is reported with the address.
+    expect(find.textContaining('https://consolecrypt.dev/download?lang=en'), findsOneWidget);
+    expect(container.read(updateControllerProvider).error, 'browser');
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await settle(tester);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 }
 
 class _Service extends UpdateService {
@@ -153,6 +244,12 @@ class _Service extends UpdateService {
   int downloads = 0;
   int installs = 0;
   String version = '9.0.0';
+  bool inPlace = true;
+
+  @override
+  Future<bool> canInstallInPlace() async => inPlace;
+
+  void failDownload(Object error) => _download.completeError(error);
 
   @override
   Future<UpdateRelease?> check() async => UpdateRelease(

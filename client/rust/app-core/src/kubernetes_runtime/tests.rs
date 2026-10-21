@@ -608,7 +608,12 @@ async fn exports_are_explicit_private_non_overwriting_and_inventory_edit_preserv
         .kube_scan_config_files(dir.path().to_string_lossy().into())
         .await
         .unwrap();
-    assert!(found.contains(&full.canonicalize().unwrap().to_string_lossy().into_owned()));
+    assert!(found.contains(
+        &dunce::canonicalize(&full)
+            .unwrap()
+            .to_string_lossy()
+            .into_owned()
+    ));
     let edited = app
         .kube_context_update(
             context.id.to_string(),

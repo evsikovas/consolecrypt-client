@@ -41,6 +41,7 @@ cc-sftp-core.workspace = true
 cc-search-core.workspace = true
 cc-ai-core.workspace = true
 cc-k8s-core.workspace = true
+dunce.workspace = true
 url.workspace = true
 reqwest = { workspace = true, features = ["stream"] }
 sha2 = "0.11"

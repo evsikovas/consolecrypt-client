@@ -8582,13 +8582,13 @@
   "@kubeDependencyWaiting": {
     "description": "Kubernetes cluster interface: Waiting for dependency"
   },
-  "kubeGitOpsSuspend": "Suspend reconciliation",
+  "kubeGitOpsSuspend": "Pause sync",
   "@kubeGitOpsSuspend": {
-    "description": "Kubernetes cluster interface: Suspend reconciliation"
+    "description": "Flux action button (flux suspend): stop applying changes from Git"
   },
-  "kubeGitOpsResume": "Resume reconciliation",
+  "kubeGitOpsResume": "Resume sync",
   "@kubeGitOpsResume": {
-    "description": "Kubernetes cluster interface: Resume reconciliation"
+    "description": "Flux action button (flux resume): apply changes from Git again"
   },
   "kubeGitOpsReset": "Reset failure counter",
   "@kubeGitOpsReset": {
@@ -8598,9 +8598,9 @@
   "@kubeGitOpsForce": {
     "description": "Kubernetes cluster interface: Force Helm upgrade"
   },
-  "kubeGitOpsReconcile": "Reconcile now",
+  "kubeGitOpsReconcile": "Sync now",
   "@kubeGitOpsReconcile": {
-    "description": "Kubernetes cluster interface: Reconcile now"
+    "description": "Flux action button (flux reconcile): apply the state from Git now"
   },
   "kubeArgoSync": "Sync application",
   "@kubeArgoSync": {
@@ -8702,13 +8702,13 @@
   "@kubeIssueFluxNotReady": {
     "description": "Kubernetes cluster interface: Flux resource is not ready"
   },
-  "kubeIssueFluxStalled": "Flux reconciliation has stalled",
+  "kubeIssueFluxStalled": "Flux sync has stalled with an error",
   "@kubeIssueFluxStalled": {
-    "description": "Kubernetes cluster interface: Flux reconciliation has stalled"
+    "description": "Kubernetes diagnostics: a Flux resource reports Stalled"
   },
-  "kubeIssueFluxSuspended": "Flux reconciliation is suspended",
+  "kubeIssueFluxSuspended": "Flux sync is paused",
   "@kubeIssueFluxSuspended": {
-    "description": "Kubernetes cluster interface: Flux reconciliation is suspended"
+    "description": "Kubernetes diagnostics: a Flux resource is suspended"
   },
   "kubeHelmAllRevisions": "Show all revisions",
   "@kubeHelmAllRevisions": {
@@ -9519,9 +9519,9 @@
   "@kubeIssuePendingVolume": {
     "description": "Kubernetes diagnostics and command navigation"
   },
-  "kubeIssueSuspendedLong": "Reconciliation suspended for over 24 hours",
+  "kubeIssueSuspendedLong": "Sync paused for over 24 hours",
   "@kubeIssueSuspendedLong": {
-    "description": "Kubernetes diagnostics and command navigation"
+    "description": "Kubernetes diagnostics: a Flux resource has been suspended for more than a day"
   },
   "kubeIssueSourceStale": "Source artifact is out of date",
   "@kubeIssueSourceStale": {
@@ -9955,13 +9955,13 @@
   "@kubeForwardRestoreFailed": {
     "description": "Kubernetes runtime label."
   },
-  "kubeGitOpsReconcileWithSource": "Reconcile with source",
+  "kubeGitOpsReconcileWithSource": "Sync with source",
   "@kubeGitOpsReconcileWithSource": {
-    "description": "Kubernetes guarded GitOps operation."
+    "description": "Flux action button (flux reconcile --with-source): refresh the source, then sync the resource"
   },
-  "kubeGitOpsReconcileWithSourceHelp": "Queue reconciliation of the source chain, then this resource. Controller readiness is shown by the live status. Confirm the exact resource name.",
+  "kubeGitOpsReconcileWithSourceHelp": "Queue a sync of the source chain, then of this resource. Controller readiness is shown by the live status. Confirm the exact resource name.",
   "@kubeGitOpsReconcileWithSourceHelp": {
-    "description": "Kubernetes guarded GitOps operation."
+    "description": "Confirmation text for the Flux sync-with-source action"
   },
   "kubeForwardNetwork": "Allow access from the local network",
   "@kubeForwardNetwork": {
@@ -13168,5 +13168,79 @@
   "dockerTerminalHint": "The terminal gives full access to the container, including its environment variables.",
   "@dockerTerminalHint": {
     "description": "Container terminal dialog: one-time note shown the first time in a profile."
+  },
+  "updateWindowsInstallHelp": "ConsoleCrypt closes, the installer updates it and starts it again. SSH sessions are closed; profiles and vaults are kept.",
+  "@updateWindowsInstallHelp": {
+    "description": "Windows update confirmation: what happens after downloading the installer"
+  },
+  "updatePortableHelp": "This copy of ConsoleCrypt runs from an unpacked ZIP archive and cannot update itself. Open the download page and get the installer or the new ZIP archive. Profiles and vaults are kept.",
+  "@updatePortableHelp": {
+    "description": "Windows portable (ZIP) copy: why the in-app update is unavailable and what to do"
+  },
+  "updateOpenDownloadPage": "Open download page",
+  "@updateOpenDownloadPage": {
+    "description": "Button that opens the official ConsoleCrypt download page in the browser"
+  },
+  "updateErrorNetwork": "The update could not be downloaded: the server is unreachable or the connection was interrupted. Check the connection and retry.",
+  "@updateErrorNetwork": {
+    "description": "Update failure: network or HTTP error"
+  },
+  "updateErrorIntegrity": "The downloaded file does not match the signed size or checksum and was not installed. Retry the download.",
+  "@updateErrorIntegrity": {
+    "description": "Update failure: installer size or SHA-256 mismatch"
+  },
+  "updateErrorFeed": "The update information could not be verified (signature, format or validity period). Nothing was installed.",
+  "@updateErrorFeed": {
+    "description": "Update failure: the signed update feed did not verify"
+  },
+  "updateErrorRollback": "The server returned older update information than this device has already seen. It may have been replaced; nothing was installed.",
+  "@updateErrorRollback": {
+    "description": "Update failure: an older signed feed was replayed"
+  },
+  "updateErrorLaunch": "The installer could not be started (Windows error {code}). Antivirus software may have blocked it. Download the installer from the download page.",
+  "@updateErrorLaunch": {
+    "description": "Update failure: starting the downloaded installer failed; code is the OS error number",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "updateErrorStorage": "The update could not be saved to the temporary folder. Free up disk space and retry.",
+  "@updateErrorStorage": {
+    "description": "Update failure: the temporary download file could not be created"
+  },
+  "updateErrorBrowser": "The browser could not be opened. Download page: {url}",
+  "@updateErrorBrowser": {
+    "description": "Opening the download page failed; shows the address to open manually",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "kubeGitOpsReconcileTooltip": "Flux immediately compares the selected resources with Git and applies the changes (flux reconcile)",
+  "@kubeGitOpsReconcileTooltip": {
+    "description": "Tooltip of the Flux Sync now action"
+  },
+  "kubeGitOpsReconcileWithSourceTooltip": "Flux first fetches the latest source (Git repository or chart), then syncs the selected resource (flux reconcile --with-source)",
+  "@kubeGitOpsReconcileWithSourceTooltip": {
+    "description": "Tooltip of the Flux Sync with source action"
+  },
+  "kubeGitOpsSuspendTooltip": "Flux stops applying changes from Git to the selected resources until sync is resumed (flux suspend)",
+  "@kubeGitOpsSuspendTooltip": {
+    "description": "Tooltip of the Flux Pause sync action"
+  },
+  "kubeGitOpsResumeTooltip": "Flux applies changes from Git to the selected resources again and syncs them right away (flux resume)",
+  "@kubeGitOpsResumeTooltip": {
+    "description": "Tooltip of the Flux Resume sync action"
+  },
+  "kubeGitOpsResetTooltip": "Clears the failed install and upgrade count of the HelmRelease so Flux tries again (flux reconcile helmrelease --reset)",
+  "@kubeGitOpsResetTooltip": {
+    "description": "Tooltip of the Flux HelmRelease reset failure counter action"
+  },
+  "kubeGitOpsForceTooltip": "Flux performs a one-off Helm install or upgrade even if nothing changed (flux reconcile helmrelease --force)",
+  "@kubeGitOpsForceTooltip": {
+    "description": "Tooltip of the Flux HelmRelease force upgrade action"
   }
 }

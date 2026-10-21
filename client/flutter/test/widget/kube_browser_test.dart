@@ -286,7 +286,14 @@ void main() {
       tester.getTopLeft(bottom).dy,
       greaterThan(tester.getTopLeft(find.byKey(const ValueKey('kube-yaml-tab'))).dy),
     );
-    expect(tester.widget<GlassButton>(find.byKey(const ValueKey('kube-gitops-detail-reconcile'))).onPressed, isNull);
+    final reconcile = tester.widget<GlassButton>(find.byKey(const ValueKey('kube-gitops-detail-reconcile')));
+    expect(reconcile.onPressed, isNull);
+    expect(reconcile.label, 'Синхронизировать сейчас');
+    expect(reconcile.tooltip, 'Flux немедленно сверит выбранные ресурсы с Git и применит изменения (flux reconcile)');
+    expect(
+      tester.widget<GlassButton>(find.byKey(const ValueKey('kube-gitops-detail-suspend'))).tooltip,
+      'Flux перестанет применять изменения из Git к выбранным ресурсам, пока синхронизацию не возобновят (flux suspend)',
+    );
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
@@ -1105,8 +1112,13 @@ void main() {
     await settle(tester);
     await tester.tap(find.byKey(const ValueKey('kube-gitops-action-demo-flux')));
     await settle(tester);
-    await tester.tap(find.text('Suspend reconciliation'));
+    await tester.tap(find.text('Pause sync'));
     await settle(tester);
+    // The confirmation says what Flux will do, not only the Flux verb.
+    expect(
+      find.text('Flux stops applying changes from Git to the selected resources until sync is resumed (flux suspend)'),
+      findsOneWidget,
+    );
     await tester.enterText(find.byKey(const ValueKey('kube-gitops-confirm-name')), 'demo-flux');
     await settle(tester);
     expect(tester.widget<GlassButton>(find.byKey(const ValueKey('kube-gitops-confirm-action'))).onPressed, isNull);

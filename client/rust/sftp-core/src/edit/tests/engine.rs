@@ -253,8 +253,8 @@ async fn open_downloads_privately_and_opens_editor() {
         s.id().to_string()
     );
     assert_eq!(
-        std::fs::canonicalize(dir.parent().unwrap()).unwrap(),
-        std::fs::canonicalize(&f.root).unwrap()
+        dunce::canonicalize(dir.parent().unwrap()).unwrap(),
+        dunce::canonicalize(&f.root).unwrap()
     );
     #[cfg(unix)]
     {

@@ -12,14 +12,38 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 Future<void> confirmInstallUpdate(BuildContext context, WidgetRef ref) async {
-  final release = ref.read(updateControllerProvider).release;
+  final state = ref.read(updateControllerProvider);
+  final release = state.release;
   if (release == null) return;
   final l = context.l10n;
+  if (!state.inPlace) {
+    // A portable (unpacked ZIP) Windows copy: Setup would install a second
+    // copy elsewhere and this one would keep offering the same update.
+    final open = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l.updateAvailable(release.version)),
+        content: Text(l.updatePortableHelp),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(l.updateOpenDownloadPage)),
+        ],
+      ),
+    );
+    if (open == true && context.mounted) await openUpdateDownloadPage(context, ref);
+    return;
+  }
   final approved = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       title: Text(l.updateAvailable(release.version)),
-      content: Text(AppPlatform.isMacOS ? l.updateMacInstallHelp : l.updateInstallHelp),
+      content: Text(
+        AppPlatform.isMacOS
+            ? l.updateMacInstallHelp
+            : AppPlatform.isWindows
+            ? l.updateWindowsInstallHelp
+            : l.updateInstallHelp,
+      ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l.commonCancel)),
         FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(l.updateDownloadInstall)),
@@ -36,6 +60,20 @@ Future<void> confirmInstallUpdate(BuildContext context, WidgetRef ref) async {
   }
 }
 
+Uri _downloadPage(AppLocalizations l) => updateDownloadPage(l.localeName.split('_').first);
+
+/// Opens the official download page; a failure is reported, never ignored.
+Future<void> openUpdateDownloadPage(BuildContext context, WidgetRef ref) async {
+  final page = _downloadPage(context.l10n);
+  var opened = false;
+  try {
+    opened = await ref.read(updateOpenUrlProvider)(page);
+  } on Object {
+    opened = false;
+  }
+  if (!opened && ref.context.mounted) ref.read(updateControllerProvider.notifier).downloadPageFailed();
+}
+
 String updateStatus(AppLocalizations l, UpdateState state) => switch (state.phase) {
   UpdatePhase.idle => l.updateCurrentVersion(kAppFullVersion),
   UpdatePhase.checking => l.updateChecking,
@@ -46,6 +84,25 @@ String updateStatus(AppLocalizations l, UpdateState state) => switch (state.phas
   UpdatePhase.permission => l.updateAndroidPermission,
   UpdatePhase.opened => AppPlatform.isMacOS ? l.updateMacInstallerOpened : l.updateInstallerOpened,
   UpdatePhase.failed => l.updateFailed,
+};
+
+/// What went wrong and what to do next, for every failure code.
+String updateErrorMessage(AppLocalizations l, UpdateState state) => switch (state.error) {
+  'destination_exists' => l.updateMacDestinationExists,
+  'network' || 'http' || 'redirect' || 'url' => l.updateErrorNetwork,
+  'size' || 'checksum' => l.updateErrorIntegrity,
+  'signature' ||
+  'manifest_format' ||
+  'manifest_size' ||
+  'manifest_expired' ||
+  'asset' ||
+  'version' => l.updateErrorFeed,
+  'manifest_rollback' => l.updateErrorRollback,
+  'launch' => l.updateErrorLaunch(state.errorDetail ?? '?'),
+  'storage' => l.updateErrorStorage,
+  'portable' => l.updatePortableHelp,
+  'browser' => l.updateErrorBrowser(_downloadPage(l).toString()),
+  _ => l.updateFailedHelp,
 };
 
 class UpdateSettingsSection extends ConsumerWidget {
@@ -113,8 +170,10 @@ class UpdateSettingsSection extends ConsumerWidget {
           if (state.phase == UpdatePhase.failed)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(state.error == 'destination_exists' ? l.updateMacDestinationExists : l.updateFailedHelp),
+              child: SelectableText(updateErrorMessage(l, state), key: const ValueKey('updates-error')),
             ),
+          if (release != null && !state.inPlace && state.phase != UpdatePhase.failed)
+            Padding(padding: const EdgeInsets.only(top: 8), child: Text(l.updatePortableHelp)),
           const SizedBox(height: GlassSpacing.s12),
           Wrap(
             spacing: GlassSpacing.s8,
@@ -127,13 +186,20 @@ class UpdateSettingsSection extends ConsumerWidget {
                 busy: state.phase == UpdatePhase.checking,
                 onPressed: state.busy ? null : ref.read(updateControllerProvider.notifier).check,
               ),
-              if (release != null && state.phase != UpdatePhase.opened)
+              if (release != null && state.inPlace && state.phase != UpdatePhase.opened)
                 GlassButton(
                   key: const ValueKey('updates-install'),
-                  label: l.updateDownloadInstall,
+                  label: state.phase == UpdatePhase.failed ? l.commonRetry : l.updateDownloadInstall,
                   icon: Icons.download_rounded,
                   busy: state.phase == UpdatePhase.downloading || state.phase == UpdatePhase.installing,
                   onPressed: state.busy ? null : () => confirmInstallUpdate(context, ref),
+                ),
+              if (release != null && (!state.inPlace || state.phase == UpdatePhase.failed))
+                GlassButton(
+                  key: const ValueKey('updates-download-page'),
+                  label: l.updateOpenDownloadPage,
+                  icon: Icons.open_in_new_rounded,
+                  onPressed: state.busy ? null : () => openUpdateDownloadPage(context, ref),
                 ),
             ],
           ),
@@ -243,6 +309,9 @@ class _UpdateNoticeScopeState extends ConsumerState<UpdateNoticeScope> {
     if (release == null || release.version == _dismissed || state.phase == UpdatePhase.opened) {
       return const SizedBox.shrink();
     }
+    final l = context.l10n;
+    final failed = state.phase == UpdatePhase.failed;
+    final downloading = state.phase == UpdatePhase.downloading;
     return Positioned(
       key: const ValueKey('update-notice'),
       left: 16,
@@ -259,17 +328,48 @@ class _UpdateNoticeScopeState extends ConsumerState<UpdateNoticeScope> {
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  Expanded(child: Text(updateStatus(context.l10n, state))),
-                  const SizedBox(width: 8),
-                  GlassIconButton(
-                    key: const ValueKey('update-notice-install'),
-                    tooltip: context.l10n.updateDownloadInstall,
-                    icon: Icons.download_rounded,
-                    onPressed: state.busy ? null : () => unawaited(_confirm(context)),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(updateStatus(l, state), key: const ValueKey('update-notice-status')),
+                        if (downloading || state.phase == UpdatePhase.installing)
+                          Padding(
+                            padding: const EdgeInsets.only(top: GlassSpacing.s8),
+                            child: LinearProgressIndicator(
+                              key: const ValueKey('update-notice-progress'),
+                              value: downloading ? state.progress : null,
+                            ),
+                          ),
+                        if (failed)
+                          Padding(
+                            padding: const EdgeInsets.only(top: GlassSpacing.s4),
+                            child: Text(updateErrorMessage(l, state), key: const ValueKey('update-notice-error')),
+                          ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
+                  if (state.inPlace)
+                    GlassIconButton(
+                      key: const ValueKey('update-notice-install'),
+                      tooltip: failed ? l.commonRetry : l.updateDownloadInstall,
+                      icon: failed ? Icons.refresh_rounded : Icons.download_rounded,
+                      onPressed: state.busy ? null : () => unawaited(_confirm(context)),
+                    ),
+                  if (!state.inPlace || failed)
+                    GlassIconButton(
+                      key: const ValueKey('update-notice-download-page'),
+                      tooltip: l.updateOpenDownloadPage,
+                      icon: Icons.open_in_new_rounded,
+                      onPressed: state.busy
+                          ? null
+                          : () => unawaited(state.inPlace ? openUpdateDownloadPage(context, ref) : _confirm(context)),
+                    ),
                   GlassIconButton(
                     key: const ValueKey('update-notice-dismiss'),
-                    tooltip: context.l10n.commonClose,
+                    tooltip: l.commonClose,
                     icon: Icons.close_rounded,
                     onPressed: () => setState(() => _dismissed = release.version),
                   ),

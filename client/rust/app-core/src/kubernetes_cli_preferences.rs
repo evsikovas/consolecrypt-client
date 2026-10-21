@@ -48,6 +48,22 @@ impl std::fmt::Debug for FluxPathAdvice {
     }
 }
 
+impl FluxPreferences {
+    /// Versions up to 0.8.5 stored the Flux binary chosen from discovery in
+    /// the Windows verbatim form (`\\?\C:\…`) and showed it like that.
+    /// Normalize on load and save; the path is canonicalized again (dunce)
+    /// before every use, so both spellings resolve to the same binary.
+    fn migrate_paths(mut self) -> Self {
+        if let Some(path) = self.manual_path.as_mut() {
+            *path = cc_platform_core::strip_verbatim_prefix(path);
+        }
+        for path in self.diff_directories.values_mut() {
+            *path = cc_platform_core::strip_verbatim_prefix(path);
+        }
+        self
+    }
+}
+
 fn validate(preferences: &FluxPreferences) -> AppResult<()> {
     fn valid_path(value: &str) -> bool {
         value.len() <= 8192
@@ -132,8 +148,12 @@ impl AppCore {
         session_id: Option<String>,
     ) -> AppResult<FluxPreferencesView> {
         let (owner, unlocked) = self.unlocked().await?;
-        let preferences: FluxPreferences =
-            owner.storage()?.setting_get(KEY).await?.unwrap_or_default();
+        let preferences = owner
+            .storage()?
+            .setting_get::<FluxPreferences>(KEY)
+            .await?
+            .unwrap_or_default()
+            .migrate_paths();
         validate(&preferences)?;
         let controller_version =
             if let Some(session_id) = session_id {
@@ -166,6 +186,7 @@ impl AppCore {
         })
     }
     pub async fn kube_flux_preferences_save(&self, preferences: FluxPreferences) -> AppResult<()> {
+        let preferences = preferences.migrate_paths();
         validate(&preferences)?;
         let (owner, unlocked) = self.unlocked().await?;
         let _profile = self.hold_session(&owner).await?;
@@ -215,6 +236,33 @@ mod tests {
             ..Default::default()
         })
         .is_err());
+    }
+    #[test]
+    fn stored_windows_verbatim_paths_are_migrated_to_the_displayed_form() {
+        let stored = FluxPreferences {
+            manual_path: Some(r"\\?\C:\ProgramData\chocolatey\bin\flux.exe".into()),
+            diff_directories: BTreeMap::from([
+                ("ctx/ns/app".into(), r"\\?\UNC\server\share\gitops".into()),
+                ("ctx/ns/other".into(), r"D:\work\gitops".into()),
+            ]),
+            ..Default::default()
+        }
+        .migrate_paths();
+        assert_eq!(
+            stored.manual_path.as_deref(),
+            Some(r"C:\ProgramData\chocolatey\bin\flux.exe")
+        );
+        assert_eq!(
+            stored.diff_directories["ctx/ns/app"],
+            r"\\server\share\gitops"
+        );
+        assert_eq!(stored.diff_directories["ctx/ns/other"], r"D:\work\gitops");
+        let unix = FluxPreferences {
+            manual_path: Some("/usr/local/bin/flux".into()),
+            ..Default::default()
+        }
+        .migrate_paths();
+        assert_eq!(unix.manual_path.as_deref(), Some("/usr/local/bin/flux"));
     }
     #[test]
     fn controller_advice_ignores_component_versions_and_prereleases() {

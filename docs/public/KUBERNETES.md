@@ -135,8 +135,10 @@ Rollback доступен на компьютере через отдельно 
 GitOps показывает Flux sources, Kustomizations, HelmReleases, уведомления,
 image automation и Argo CD Applications, если соответствующие CRD доступны.
 Обзор, зависимости и карта ресурсов помогают перейти от источника к workload.
-Reconcile, reconcile с источником, suspend/resume и Argo sync/refresh проходят
-подтверждение и ограничения production. Приостановка может сопровождаться
+«Синхронизировать сейчас» (flux reconcile), «Синхронизировать вместе с
+источником», «Приостановить/Возобновить синхронизацию» (flux suspend/resume) и
+Argo sync/refresh проходят подтверждение и ограничения production; подсказки
+и окно подтверждения объясняют, что сделает Flux. Приостановка может сопровождаться
 причиной и локальным напоминанием; напоминание само ничего не возобновляет.
 
 Необязательные уведомления Flux включаются для контекста и работают внутри
@@ -281,9 +283,10 @@ a controller drift verdict. RBAC limitations, partial results and masked fields 
 
 GitOps discovers available Flux sources, Kustomizations, HelmReleases,
 notifications, image automation and Argo CD Applications. Overview,
-dependencies and resource flow connect sources to workloads. Reconcile,
-reconcile with source, suspend/resume and Argo sync/refresh require confirmation
-and obey production restrictions. Suspension can include a reason and a local
+dependencies and resource flow connect sources to workloads. Sync now
+(flux reconcile), Sync with source, Pause/Resume sync (flux suspend/resume) and
+Argo sync/refresh require confirmation and obey production restrictions; tooltips
+and the confirmation explain what Flux will do. Suspension can include a reason and a local
 reminder; reminders never resume resources automatically.
 
 Optional Flux alerts operate within the running app. Optional event history

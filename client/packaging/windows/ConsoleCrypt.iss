@@ -44,4 +44,43 @@ Name: "{autoprograms}\ConsoleCrypt"; Filename: "{app}\ConsoleCrypt.exe"
 Name: "{autodesktop}\ConsoleCrypt"; Filename: "{app}\ConsoleCrypt.exe"; Tasks: desktopicon
 [Run]
 Filename: "{app}\ConsoleCrypt.exe"; Description: "{cm:LaunchProgram,ConsoleCrypt}"; Flags: nowait postinstall skipifsilent
+; In-app update (/SILENT /RELAUNCH=1): start the updated app again.
+Filename: "{app}\ConsoleCrypt.exe"; Flags: nowait; Check: RelaunchAfterUpdate
 ; Vaults are outside {app}; uninstall never deletes the user's data.
+
+[Code]
+{ In-app updates pass /WAITPID=<pid> /RELAUNCH=1 (lib/updates/update_service.dart).
+  Setup waits for that ConsoleCrypt process to exit before files are replaced,
+  so no file is in use and no Restart Manager prompt appears. }
+const
+  SYNCHRONIZE = $00100000;
+
+function OpenProcess(DesiredAccess: Cardinal; InheritHandle: Cardinal; ProcessId: Cardinal): Cardinal;
+  external 'OpenProcess@kernel32.dll stdcall';
+function WaitForSingleObject(Target: Cardinal; Milliseconds: Cardinal): Cardinal;
+  external 'WaitForSingleObject@kernel32.dll stdcall';
+function CloseHandle(Target: Cardinal): Cardinal;
+  external 'CloseHandle@kernel32.dll stdcall';
+
+function InitializeSetup(): Boolean;
+var
+  ProcessId: Integer;
+  ProcessHandle: Cardinal;
+begin
+  ProcessId := StrToIntDef(ExpandConstant('{param:waitpid|0}'), 0);
+  if ProcessId > 0 then
+  begin
+    ProcessHandle := OpenProcess(SYNCHRONIZE, 0, ProcessId);
+    if ProcessHandle <> 0 then
+    begin
+      WaitForSingleObject(ProcessHandle, 60000);
+      CloseHandle(ProcessHandle);
+    end;
+  end;
+  Result := True;
+end;
+
+function RelaunchAfterUpdate(): Boolean;
+begin
+  Result := WizardSilent() and (ExpandConstant('{param:relaunch|0}') = '1');
+end;

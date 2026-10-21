@@ -265,7 +265,7 @@ impl EditManager {
             overwrite_limit: cfg.secure_overwrite_limit,
             committed: false,
         };
-        let result = match std::fs::canonicalize(&dir) {
+        let result = match dunce::canonicalize(&dir) {
             Ok(canonical) => {
                 self.open_in(
                     canonical, id, remote, host_id, &requested, &target, keys, with,
@@ -476,7 +476,7 @@ impl EditManager {
             return Err(EditError::Busy(m.remote_path));
         }
         let _guard = OpeningGuard::acquire(&self.inner.registry, keys.clone(), &m.remote_path)?;
-        let dir = std::fs::canonicalize(&dir).map_err(|e| EditError::local(&dir, e))?;
+        let dir = dunce::canonicalize(&dir).map_err(|e| EditError::local(&dir, e))?;
         let open_with = with.clone().unwrap_or_default();
         let (mut actor, session, rx) = Actor::new(
             NewSession {

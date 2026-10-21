@@ -296,7 +296,9 @@ impl ComposeHost for LocalComposeHost {
         let real = tokio::fs::canonicalize(path)
             .await
             .map_err(|e| io_error(&e))?;
-        real.to_str()
+        // Compared with user-chosen project paths and shown: drop `\\?\`.
+        dunce::simplified(&real)
+            .to_str()
             .map(str::to_owned)
             .ok_or_else(|| HostFileError::Other("path".into()))
     }

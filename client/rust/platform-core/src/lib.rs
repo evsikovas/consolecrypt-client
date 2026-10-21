@@ -9,6 +9,7 @@
 //!   [`UnsupportedDeviceKeys`] declines, [`InMemoryDeviceKeys`] for tests.
 //! * [`FileOpener`] / [`open_path`] / [`open_with`] / [`choose_app_and_open`] /
 //!   [`reveal`] — open local files with the default or a chosen application.
+//! * [`strip_verbatim_prefix`] — the user-facing form of Windows `\\?\` paths.
 
 mod auth;
 mod device_key;
@@ -22,6 +23,7 @@ mod linux_secret_service;
 pub mod open;
 #[cfg(all(feature = "os-keychain", not(target_os = "linux")))]
 mod os_store;
+mod paths;
 mod secure_store;
 
 pub use auth::{OsAuthError, OsAuthKind};
@@ -44,6 +46,7 @@ pub use open::{
 };
 #[cfg(all(feature = "os-keychain", not(target_os = "linux")))]
 pub use os_store::{OsSecureStore, DEFAULT_SERVICE};
+pub use paths::strip_verbatim_prefix;
 pub use secure_store::{
     validate_secret_name, InMemorySecureStore, SecureStore, SecureStoreError, MAX_SECRET_LEN,
     MAX_SECRET_NAME_LEN,

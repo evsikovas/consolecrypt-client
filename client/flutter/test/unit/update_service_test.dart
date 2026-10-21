@@ -301,6 +301,261 @@ void main() {
     await expectLater(service.install(file, release), throwsA(isA<UpdateException>()));
     expect(calls.length, before);
   });
+  group('Windows in-place install', () {
+    late Directory folder;
+    late UpdateRelease release;
+    late File installer;
+    setUp(() async {
+      folder = await Directory.systemTemp.createTemp('consolecrypt-windows-update-test-');
+      release = UpdateRelease(
+        version: '0.8.6',
+        build: 33000,
+        platform: 'windows-x64',
+        url: Uri.parse('https://updates.consolecrypt.dev/releases/0.8.6/setup.exe'),
+        bytes: 3,
+        sha256: sha256.convert([1, 2, 3]).toString(),
+        notes: const {},
+      );
+      installer = File('${folder.path}/${release.fileName}');
+      await installer.writeAsBytes([1, 2, 3]);
+    });
+    tearDown(() => folder.delete(recursive: true));
+
+    UpdateService windows({
+      required List<(String, List<String>)> launches,
+      bool installed = true,
+      Exception? failure,
+    }) => UpdateService(
+      platform: 'windows-x64',
+      processId: 4242,
+      windowsInstalled: () async => installed,
+      launcher: (executable, arguments) async {
+        if (failure != null) throw failure;
+        // The verified bytes are still in place while Setup starts.
+        expect(File(executable).readAsBytesSync(), [1, 2, 3]);
+        launches.add((executable, arguments));
+      },
+    );
+
+    test('verifies the bytes right before launch and asks Setup to wait for this process', () async {
+      final launches = <(String, List<String>)>[];
+      final service = windows(launches: launches);
+      expect(await service.install(installer, release), UpdateInstallResult.exitWindows);
+      expect(launches.single.$1, installer.absolute.path);
+      expect(launches.single.$2, [
+        '/SP-',
+        '/SILENT',
+        '/NORESTART',
+        '/CLOSEAPPLICATIONS',
+        '/RELAUNCH=1',
+        '/WAITPID=4242',
+      ]);
+    });
+
+    test('a file changed after download is never launched', () async {
+      final launches = <(String, List<String>)>[];
+      final service = windows(launches: launches);
+      for (final bytes in <List<int>>[
+        [3, 2, 1],
+        [1, 2],
+        [1, 2, 3, 4],
+      ]) {
+        await installer.writeAsBytes(bytes);
+        await expectLater(
+          service.install(installer, release),
+          throwsA(isA<UpdateException>().having((e) => e.code, 'code', 'checksum')),
+        );
+      }
+      await installer.delete();
+      await expectLater(service.install(installer, release), throwsA(isA<UpdateException>()));
+      expect(launches, isEmpty);
+    });
+
+    test('a failed launch is reported with the OS error number', () async {
+      final service = windows(launches: [], failure: const ProcessException('setup.exe', [], 'blocked', 225));
+      await expectLater(
+        service.install(installer, release),
+        throwsA(
+          isA<UpdateException>().having((e) => e.code, 'code', 'launch').having((e) => e.detail, 'detail', '225'),
+        ),
+      );
+      // The file is released after a failure (a retry downloads fresh bytes).
+      await installer.delete();
+    });
+
+    test('a portable ZIP copy is never handed to Setup', () async {
+      final launches = <(String, List<String>)>[];
+      final service = windows(launches: launches, installed: false);
+      expect(await service.canInstallInPlace(), isFalse);
+      await expectLater(
+        service.install(installer, release),
+        throwsA(isA<UpdateException>().having((e) => e.code, 'code', 'portable')),
+      );
+      expect(launches, isEmpty);
+      expect(
+        await UpdateService(platform: 'macos-universal', windowsInstalled: () async => false).canInstallInPlace(),
+        isTrue,
+      );
+    });
+  });
+
+  test('installed and portable Windows copies are told apart by the Inno Setup uninstaller', () {
+    expect(windowsInstalledByInstaller(['ConsoleCrypt.exe', 'unins000.exe', 'unins000.dat']), isTrue);
+    expect(windowsInstalledByInstaller(['ConsoleCrypt.exe', 'UNINS001.EXE']), isTrue);
+    expect(windowsInstalledByInstaller(['ConsoleCrypt.exe', 'flutter_windows.dll', 'data']), isFalse);
+    expect(windowsInstalledByInstaller(['ConsoleCrypt.exe', 'unins000.dat']), isFalse);
+    expect(windowsInstalledByInstaller(['uninstall.exe']), isFalse);
+  });
+
+  test('verbatim Windows paths are simplified for Setup and display', () {
+    expect(
+      withoutVerbatimPrefix(r'\\?\C:\Users\me\AppData\Local\Temp\x\setup.exe'),
+      r'C:\Users\me\AppData\Local\Temp\x\setup.exe',
+    );
+    expect(withoutVerbatimPrefix(r'\\?\UNC\server\share\setup.exe'), r'\\server\share\setup.exe');
+    expect(withoutVerbatimPrefix(r'C:\ProgramData\chocolatey\bin\flux.exe'), r'C:\ProgramData\chocolatey\bin\flux.exe');
+    expect(withoutVerbatimPrefix(r'\\server\share\a'), r'\\server\share\a');
+    expect(withoutVerbatimPrefix(r'\\?\GLOBALROOT\Device\x'), r'\\?\GLOBALROOT\Device\x');
+    expect(withoutVerbatimPrefix('/tmp/consolecrypt-update-x/setup.exe'), '/tmp/consolecrypt-update-x/setup.exe');
+  });
+
+  test('an older signed feed than the last accepted one is refused (no update freeze)', () async {
+    final issued = clock;
+    expect(
+      await verifyUpdateFeed(
+        await envelope(),
+        platform: 'windows-x64',
+        currentVersion: '0.1.10',
+        publicKey: publicKey,
+        now: clock,
+        notBefore: issued,
+      ),
+      isNotNull,
+    );
+    DateTime? seen;
+    await verifyUpdateFeed(
+      await envelope(),
+      platform: 'windows-x64',
+      currentVersion: '0.1.10',
+      publicKey: publicKey,
+      now: clock,
+      onAuthenticated: (value) => seen = value,
+    );
+    expect(seen, issued);
+    await expectLater(
+      verifyUpdateFeed(
+        await envelope(),
+        platform: 'windows-x64',
+        currentVersion: '0.1.10',
+        publicKey: publicKey,
+        now: clock,
+        notBefore: issued.add(const Duration(seconds: 1)),
+      ),
+      throwsA(isA<UpdateException>().having((e) => e.code, 'code', 'manifest_rollback')),
+    );
+  });
+
+  test('check persists the newest feed time and rejects a replayed older feed', () async {
+    final now = DateTime.now().toUtc();
+    payload['version'] = '99.0.0';
+    Future<List<int>> feedIssued(DateTime issued) async {
+      payload['issuedAt'] = issued.toIso8601String();
+      payload['expiresAt'] = issued.add(const Duration(days: 90)).toIso8601String();
+      return envelope();
+    }
+
+    final store = _HighWater();
+    Future<UpdateRelease?> checkWith(List<int> body) => UpdateService(
+      clientFactory: () => _Client(_Response([body])),
+      publicKey: publicKey,
+      platform: 'windows-x64',
+      feedHighWater: store,
+    ).check();
+
+    final newer = await feedIssued(now.subtract(const Duration(hours: 1)));
+    final older = await feedIssued(now.subtract(const Duration(days: 3)));
+    expect(await checkWith(newer), isNotNull);
+    expect(store.value, now.subtract(const Duration(hours: 1)));
+    expect(store.writes, 1);
+    expect(await checkWith(newer), isNotNull, reason: 'the same feed again is fine');
+    expect(store.writes, 1);
+    await expectLater(
+      checkWith(older),
+      throwsA(isA<UpdateException>().having((e) => e.code, 'code', 'manifest_rollback')),
+    );
+    expect(store.value, now.subtract(const Duration(hours: 1)));
+    // A corrupt value in the future does not block updates forever.
+    store.value = now.add(const Duration(days: 365));
+    expect(await checkWith(older), isNotNull);
+    expect(store.value, now.subtract(const Duration(days: 3)));
+  });
+
+  test('the accepted feed time survives settings serialization', () {
+    final issued = DateTime.utc(2026, 10, 21, 12, 32, 16, 322);
+    final reopened = localSettingsFromJson(
+      localSettingsToJson(const LocalSettings().copyWith(updateFeedIssuedAt: issued)),
+    );
+    expect(reopened.updateFeedIssuedAt, issued);
+    expect(localSettingsFromJson({}).updateFeedIssuedAt, isNull);
+    expect(localSettingsFromJson({'update_feed_issued_at': 'garbage'}).updateFeedIssuedAt, isNull);
+    expect(reopened.copyWith(terminalFontSize: 16).updateFeedIssuedAt, issued);
+  });
+
+  test(
+    'controller: portable copies never download, launch failures keep their detail, Windows exits for Setup',
+    () async {
+      final release = UpdateRelease(
+        version: '0.8.6',
+        build: 33000,
+        platform: 'windows-x64',
+        url: Uri.parse('https://updates.consolecrypt.dev/releases/0.8.6/setup.exe'),
+        bytes: 3,
+        sha256: sha256.convert([1, 2, 3]).toString(),
+        notes: const {},
+      );
+      final fake = _InstallService(release)..inPlace = false;
+      var exits = 0;
+      final container = ProviderContainer(
+        overrides: [
+          updateServiceProvider.overrideWithValue(fake),
+          updateAppExitProvider.overrideWithValue(() async => exits++),
+        ],
+      );
+      addTearDown(container.dispose);
+      addTearDown(() => fake.folder.delete(recursive: true));
+      final controller = container.read(updateControllerProvider.notifier);
+      await controller.check();
+      expect(container.read(updateControllerProvider).inPlace, isFalse);
+      await controller.downloadAndInstall();
+      expect(fake.downloads, 0);
+      expect(container.read(updateControllerProvider).error, 'portable');
+
+      fake.inPlace = true;
+      await controller.check();
+      fake.failure = const UpdateException('launch', '5');
+      await controller.downloadAndInstall();
+      final failed = container.read(updateControllerProvider);
+      expect((failed.phase, failed.error, failed.errorDetail), (UpdatePhase.failed, 'launch', '5'));
+      expect(exits, 0);
+
+      fake.result = UpdateInstallResult.exitWindows;
+      await controller.downloadAndInstall();
+      expect(container.read(updateControllerProvider).phase, UpdatePhase.opened);
+      expect(exits, 1);
+    },
+  );
+}
+
+class _HighWater implements UpdateFeedHighWater {
+  DateTime? value;
+  int writes = 0;
+  @override
+  Future<DateTime?> read() async => value;
+  @override
+  Future<void> write(DateTime issuedAt) async {
+    writes++;
+    value = issuedAt;
+  }
 }
 
 class _InstallService extends UpdateService {
@@ -312,8 +567,13 @@ class _InstallService extends UpdateService {
   bool failNext = false;
   bool permissionNext = false;
   bool cancelNext = false;
+  bool inPlace = true;
+  UpdateException? failure;
+  UpdateInstallResult result = UpdateInstallResult.opened;
   @override
   Future<UpdateRelease?> check() async => release;
+  @override
+  Future<bool> canInstallInPlace() async => inPlace;
   @override
   Future<File> download(UpdateRelease release, void Function(double) progress) async {
     downloads++;
@@ -344,7 +604,11 @@ class _InstallService extends UpdateService {
       permissionNext = false;
       return UpdateInstallResult.androidPermission;
     }
-    return UpdateInstallResult.opened;
+    if (failure case final error?) {
+      failure = null;
+      throw error;
+    }
+    return result;
   }
 }
 
