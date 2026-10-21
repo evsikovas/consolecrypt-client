@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:consolecrypt/app/app_info.dart';
 import 'package:crypto/crypto.dart' as digest;
 import 'package:cryptography/cryptography.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 
 const updateFeedUrl = String.fromEnvironment(
@@ -232,6 +233,13 @@ class UpdateService {
   /// The verified installer stays open (and locked) from the last hash check
   /// until this process exits, so its bytes cannot change before Setup reads them.
   RandomAccessFile? _launchedInstaller;
+
+  /// Lets tests remove the installer's folder (Windows refuses while it is open).
+  @visibleForTesting
+  Future<void> releaseInstaller() async {
+    await _launchedInstaller?.close();
+    _launchedInstaller = null;
+  }
 
   String get platform =>
       _platform ??

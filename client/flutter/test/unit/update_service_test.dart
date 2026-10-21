@@ -341,6 +341,7 @@ void main() {
       final launches = <(String, List<String>)>[];
       final service = windows(launches: launches);
       expect(await service.install(installer, release), UpdateInstallResult.exitWindows);
+      addTearDown(service.releaseInstaller);
       expect(launches.single.$1, installer.absolute.path);
       expect(launches.single.$2, [
         '/SP-',

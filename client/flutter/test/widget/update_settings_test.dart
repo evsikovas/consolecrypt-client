@@ -185,7 +185,8 @@ void main() {
 }
 
 class _Service extends UpdateService {
-  _Service({this.offer = false});
+  // An installed copy, so a Windows test host offers the in-place install.
+  _Service({this.offer = false}) : super(windowsInstalled: () async => true);
   final bool offer;
   int checks = 0;
   int downloads = 0;
