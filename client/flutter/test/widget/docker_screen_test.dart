@@ -147,7 +147,7 @@ void main() {
     final standalone = tester.getTopLeft(find.byKey(const ValueKey('docker-group-')));
     expect(monitoring.dy, lessThan(shop.dy));
     expect(shop.dy, lessThan(standalone.dy));
-    expect(find.text('Containers'), findsOneWidget);
+    expect(tester.widget<Text>(find.byKey(const ValueKey('docker-group-title-'))).data, 'Containers');
     expect(tester.widget<Text>(find.byKey(const ValueKey('docker-group-count-shop'))).data, '4/4 running');
     expect(tester.widget<Text>(find.byKey(const ValueKey('docker-group-count-monitoring'))).data, '1/2 running');
     expect(find.text('(web)'), findsOneWidget);
@@ -255,11 +255,24 @@ void main() {
     expect(find.byKey(const ValueKey('docker-container-details')), findsOneWidget);
     expect(find.text('postgres:16'), findsWidgets);
     final overview = find.byKey(const ValueKey('docker-overview'));
-    for (final text in ['172.18.0.2', '/var/lib/postgresql/data (volume)', 'POSTGRES_PASSWORD=••••••']) {
+    for (final text in ['172.18.0.2', '/var/lib/postgresql/data', 'POSTGRES_PASSWORD=••••••']) {
       final finder = find.textContaining(text);
       await tester.dragUntilVisible(finder, overview, const Offset(0, -150));
       expect(finder, findsOneWidget);
     }
+    expect(find.byKey(const ValueKey('docker-mounts')), findsOneWidget);
+
+    // Secrets appear only after the vault passphrase.
+    await tapKey(tester, 'docker-env-reveal');
+    await tester.enterText(find.byKey(const ValueKey('docker-reveal-passphrase')), 'wrong');
+    await tapKey(tester, 'docker-reveal-submit');
+    expect(find.text('Wrong vault passphrase.'), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('docker-reveal-passphrase')), MockDockerService.demoPassphrase);
+    await tapKey(tester, 'docker-reveal-submit');
+    expect(find.byKey(const ValueKey('docker-reveal-dialog')), findsNothing);
+    expect(find.textContaining('POSTGRES_PASSWORD=demo-secret-value'), findsOneWidget);
+    await tapKey(tester, 'docker-env-hide');
+    expect(find.textContaining('demo-secret-value'), findsNothing);
 
     final api = _id(tester, 'shop-api-1');
     await tapKey(tester, 'docker-logs-$api');
@@ -425,6 +438,19 @@ void main() {
         formatDockerPort(const DockerPort(privatePort: 80, publicPort: 80, protocol: 'tcp', ip: '::')),
         '[::]:80→80/tcp',
       );
+    });
+
+    testWidgets('volumes view lists volumes with the containers using them', (tester) async {
+      await _pump(tester);
+      await _connectLocal(tester);
+      await tapKey(tester, 'docker-view-volumes');
+      expect(find.byKey(const ValueKey('docker-volumes')), findsOneWidget);
+      expect(find.text('shop_data'), findsOneWidget);
+      expect(find.text('orphaned-cache'), findsOneWidget);
+      expect(find.text('not used'), findsOneWidget);
+      expect(find.byKey(const ValueKey('docker-state-filter')), findsNothing);
+      await tapKey(tester, 'docker-view-containers');
+      expect(find.byKey(const ValueKey('docker-state-filter')), findsOneWidget);
     });
 
     test('groups sort projects and keep standalone containers last', () {

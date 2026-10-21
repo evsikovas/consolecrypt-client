@@ -105,3 +105,23 @@ pub async fn docker_forwards() -> Result<String, BridgeError> {
 pub async fn docker_forward_stop(forward_id: String) -> Result<(), BridgeError> {
     with_core(move |c| async move { Ok(c.docker_forward_stop(forward_id).await?) }).await
 }
+
+pub async fn docker_volumes(session_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.docker_volumes(session_id).await?) }).await
+}
+
+/// Environment with secrets after the vault passphrase (sent as bytes).
+pub async fn docker_reveal_environment(
+    session_id: String,
+    container: String,
+    passphrase: Vec<u8>,
+) -> Result<String, BridgeError> {
+    let passphrase = crate::state::secret_string("passphrase", passphrase)?;
+    with_core(move |c| async move {
+        to_json(
+            &c.docker_reveal_environment(session_id, container, passphrase)
+                .await?,
+        )
+    })
+    .await
+}

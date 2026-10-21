@@ -16057,6 +16057,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stopped {count}'**
   String dockerFilterStopped(int count);
+
+  /// Reveal secret environment values of a container.
+  ///
+  /// In en, this message translates to:
+  /// **'Show secrets'**
+  String get dockerRevealSecrets;
+
+  /// Hide revealed environment values.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide secrets'**
+  String get dockerHideSecrets;
+
+  /// Reveal dialog explanation.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the vault passphrase to show the passwords and tokens in the environment of {name}. Copied values clear from the clipboard automatically.'**
+  String dockerRevealHelp(String name);
+
+  /// Field for the vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault passphrase'**
+  String get dockerVaultPassphrase;
+
+  /// Error: wrong vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong vault passphrase.'**
+  String get dockerWrongPassphrase;
+
+  /// Mounts table column.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get dockerMountType;
+
+  /// Mounts table column.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get dockerMountSource;
+
+  /// Mounts table column.
+  ///
+  /// In en, this message translates to:
+  /// **'Destination'**
+  String get dockerMountDestination;
+
+  /// Mounts table column.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get dockerMountMode;
+
+  /// Read-only mount.
+  ///
+  /// In en, this message translates to:
+  /// **'ro'**
+  String get dockerMountReadOnly;
+
+  /// Read-write mount.
+  ///
+  /// In en, this message translates to:
+  /// **'rw'**
+  String get dockerMountReadWrite;
+
+  /// Switch between containers and volumes.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get dockerView;
+
+  /// Docker volumes view.
+  ///
+  /// In en, this message translates to:
+  /// **'Volumes'**
+  String get dockerVolumes;
+
+  /// Volumes not created by compose.
+  ///
+  /// In en, this message translates to:
+  /// **'Other volumes'**
+  String get dockerVolumesOther;
+
+  /// Number of volumes in a group.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 volume} other{{count} volumes}}'**
+  String dockerVolumeCount(int count);
+
+  /// A volume no container mounts.
+  ///
+  /// In en, this message translates to:
+  /// **'not used'**
+  String get dockerVolumeUnused;
+
+  /// Empty volumes view.
+  ///
+  /// In en, this message translates to:
+  /// **'No volumes on this engine.'**
+  String get dockerNoVolumes;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

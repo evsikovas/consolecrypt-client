@@ -12193,5 +12193,83 @@
         "type": "int"
       }
     }
+  },
+  "dockerRevealSecrets": "Show secrets",
+  "@dockerRevealSecrets": {
+    "description": "Reveal secret environment values of a container."
+  },
+  "dockerHideSecrets": "Hide secrets",
+  "@dockerHideSecrets": {
+    "description": "Hide revealed environment values."
+  },
+  "dockerRevealHelp": "Enter the vault passphrase to show the passwords and tokens in the environment of {name}. Copied values clear from the clipboard automatically.",
+  "@dockerRevealHelp": {
+    "description": "Reveal dialog explanation.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerVaultPassphrase": "Vault passphrase",
+  "@dockerVaultPassphrase": {
+    "description": "Field for the vault passphrase."
+  },
+  "dockerWrongPassphrase": "Wrong vault passphrase.",
+  "@dockerWrongPassphrase": {
+    "description": "Error: wrong vault passphrase."
+  },
+  "dockerMountType": "Type",
+  "@dockerMountType": {
+    "description": "Mounts table column."
+  },
+  "dockerMountSource": "Source",
+  "@dockerMountSource": {
+    "description": "Mounts table column."
+  },
+  "dockerMountDestination": "Destination",
+  "@dockerMountDestination": {
+    "description": "Mounts table column."
+  },
+  "dockerMountMode": "Mode",
+  "@dockerMountMode": {
+    "description": "Mounts table column."
+  },
+  "dockerMountReadOnly": "ro",
+  "@dockerMountReadOnly": {
+    "description": "Read-only mount."
+  },
+  "dockerMountReadWrite": "rw",
+  "@dockerMountReadWrite": {
+    "description": "Read-write mount."
+  },
+  "dockerView": "Show",
+  "@dockerView": {
+    "description": "Switch between containers and volumes."
+  },
+  "dockerVolumes": "Volumes",
+  "@dockerVolumes": {
+    "description": "Docker volumes view."
+  },
+  "dockerVolumesOther": "Other volumes",
+  "@dockerVolumesOther": {
+    "description": "Volumes not created by compose."
+  },
+  "dockerVolumeCount": "{count, plural, =1{1 volume} other{{count} volumes}}",
+  "@dockerVolumeCount": {
+    "description": "Number of volumes in a group.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dockerVolumeUnused": "not used",
+  "@dockerVolumeUnused": {
+    "description": "A volume no container mounts."
+  },
+  "dockerNoVolumes": "No volumes on this engine.",
+  "@dockerNoVolumes": {
+    "description": "Empty volumes view."
   }
 }

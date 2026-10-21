@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:consolecrypt/core/mock/mock_config.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 
 /// In-memory Docker: this computer plus two SSH hosts (one whose user is not
@@ -236,6 +237,42 @@ class MockDockerService implements DockerService {
 
   @override
   Future<void> stopForward(String forwardId) async => _forwards.remove(forwardId);
+
+  /// Demo vault passphrase for revealing secrets.
+  static const demoPassphrase = 'demo'; // l10n-ignore: demo value
+
+  @override
+  Future<List<DockerVolume>> volumes(String sessionId) async {
+    await mockDelay(latency);
+    final list = _list(sessionId);
+    return [
+      for (final project in {...list.map((c) => c.composeProject).nonNulls})
+        DockerVolume(
+          name: '${project}_data', // l10n-ignore: demo volume
+          driver: 'local', // l10n-ignore: demo driver
+          mountpoint: '/var/lib/docker/volumes/${project}_data/_data', // l10n-ignore: demo path
+          composeProject: project,
+          usedBy: [
+            for (final c in list)
+              if (c.composeProject == project && c.composeService != 'web') c.name,
+          ],
+        ),
+      const DockerVolume(
+        name: 'orphaned-cache',
+        driver: 'local',
+        mountpoint: '/var/lib/docker/volumes/orphaned-cache/_data',
+      ), // l10n-ignore: demo volume
+    ];
+  }
+
+  @override
+  Future<List<String>> revealEnvironment(String sessionId, String containerId, SecretText passphrase) async {
+    await mockDelay(latency);
+    if (passphrase.expose() != demoPassphrase) throw const DockerWrongPassphrase();
+    final detail = await inspect(sessionId, containerId);
+    final env = ((detail.inspect['Config'] as Map)['Env'] as List).cast<String>();
+    return [for (final entry in env) entry.replaceAll('••••••', 'demo-secret-value')]; // l10n-ignore: demo value
+  }
 
   static DockerContainer _copy(DockerContainer c, {required DockerContainerState state, required String status}) =>
       DockerContainer(

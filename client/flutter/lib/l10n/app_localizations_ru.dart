@@ -9088,4 +9088,67 @@ class AppLocalizationsRu extends AppLocalizations {
   String dockerFilterStopped(int count) {
     return 'Остановленные $count';
   }
+
+  @override
+  String get dockerRevealSecrets => 'Показать секреты';
+
+  @override
+  String get dockerHideSecrets => 'Скрыть секреты';
+
+  @override
+  String dockerRevealHelp(String name) {
+    return 'Введите пароль хранилища, чтобы показать пароли и токены из окружения $name. Скопированные значения сами удалятся из буфера обмена.';
+  }
+
+  @override
+  String get dockerVaultPassphrase => 'Пароль хранилища';
+
+  @override
+  String get dockerWrongPassphrase => 'Неверный пароль хранилища.';
+
+  @override
+  String get dockerMountType => 'Тип';
+
+  @override
+  String get dockerMountSource => 'Источник';
+
+  @override
+  String get dockerMountDestination => 'Путь в контейнере';
+
+  @override
+  String get dockerMountMode => 'Режим';
+
+  @override
+  String get dockerMountReadOnly => 'ro';
+
+  @override
+  String get dockerMountReadWrite => 'rw';
+
+  @override
+  String get dockerView => 'Показать';
+
+  @override
+  String get dockerVolumes => 'Тома';
+
+  @override
+  String get dockerVolumesOther => 'Прочие тома';
+
+  @override
+  String dockerVolumeCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count тома',
+      many: '$count томов',
+      few: '$count тома',
+      one: '$count том',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dockerVolumeUnused => 'не используется';
+
+  @override
+  String get dockerNoVolumes => 'Томов на этом движке нет.';
 }

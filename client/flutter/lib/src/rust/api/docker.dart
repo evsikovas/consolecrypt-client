@@ -82,3 +82,17 @@ Future<String> dockerForwards() => RustLib.instance.api.crateApiDockerDockerForw
 
 Future<void> dockerForwardStop({required String forwardId}) =>
     RustLib.instance.api.crateApiDockerDockerForwardStop(forwardId: forwardId);
+
+Future<String> dockerVolumes({required String sessionId}) =>
+    RustLib.instance.api.crateApiDockerDockerVolumes(sessionId: sessionId);
+
+/// Environment with secrets after the vault passphrase (sent as bytes).
+Future<String> dockerRevealEnvironment({
+  required String sessionId,
+  required String container,
+  required List<int> passphrase,
+}) => RustLib.instance.api.crateApiDockerDockerRevealEnvironment(
+  sessionId: sessionId,
+  container: container,
+  passphrase: passphrase,
+);

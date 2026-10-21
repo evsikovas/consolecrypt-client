@@ -3,12 +3,15 @@ import 'dart:convert';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/db/db_document_view.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
 import 'package:consolecrypt/docker/docker_logs_view.dart';
+import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -255,7 +258,12 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
             child: TabBarView(
               controller: _tabs,
               children: [
-                _DockerOverview(container: container, detail: _detail),
+                _DockerOverview(
+                  container: container,
+                  detail: _detail,
+                  service: widget.service,
+                  session: widget.session,
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(GlassSpacing.s12, GlassSpacing.s8, GlassSpacing.s12, 0),
                   child: DockerLogsView(
@@ -298,9 +306,11 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
 }
 
 class _DockerOverview extends StatelessWidget {
-  const _DockerOverview({required this.container, required this.detail});
+  const _DockerOverview({required this.container, required this.detail, required this.service, required this.session});
   final DockerContainer container;
   final DockerContainerDetail? detail;
+  final DockerService service;
+  final DockerSessionInfo session;
 
   @override
   Widget build(BuildContext context) {
@@ -363,7 +373,13 @@ class _DockerOverview extends StatelessWidget {
         if (ports.isNotEmpty)
           _Section(
             title: l.dockerPorts,
-            child: Wrap(spacing: 8, runSpacing: 4, children: [for (final port in ports) mono(port)]),
+            child: Column(
+              key: const ValueKey('docker-ports'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final port in ports) Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: mono(port)),
+              ],
+            ),
           ),
         if (networks.isNotEmpty)
           _Section(
@@ -379,13 +395,7 @@ class _DockerOverview extends StatelessWidget {
         if (mounts.isNotEmpty)
           _Section(
             title: l.dockerMounts,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final mount in mounts)
-                  Padding(padding: const EdgeInsets.symmetric(vertical: 3), child: mono(_mountText(mount, text))),
-              ],
-            ),
+            child: _MountsTable(mounts: mounts, text: text),
           ),
         if (labels.isNotEmpty)
           _Section(
@@ -396,33 +406,275 @@ class _DockerOverview extends StatelessWidget {
             ),
           ),
         if (env.isNotEmpty)
-          _Section(
-            title: l.dockerEnvironment,
-            child: Column(
-              key: const ValueKey('docker-env'),
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final value in env) Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: mono(value)),
-              ],
-            ),
+          _EnvironmentSection(
+            key: ValueKey('docker-env-section-${container.id}'),
+            env: env,
+            service: service,
+            session: session,
+            container: container,
           ),
       ],
     );
   }
 }
 
-/// `source → destination (type, ro)` of one mount.
-String _mountText(Map<Object?, Object?> mount, String Function(Object?) text) {
-  final source = text(mount['Source']).isEmpty ? text(mount['Name']) : text(mount['Source']);
-  final type = text(mount['Type']);
-  final mode = mount['RW'] == false ? ', ro' : ''; // l10n-ignore: mount mode token
-  return '$source → ${text(mount['Destination'])}${type.isEmpty ? '' : ' ($type$mode)'}';
+/// Volumes and bind mounts: type, source (volume name or host path),
+/// destination and read-only flag.
+class _MountsTable extends StatelessWidget {
+  const _MountsTable({required this.mounts, required this.text});
+  final List<Map<Object?, Object?>> mounts;
+  final String Function(Object?) text;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final head = tokens.typography.caption.copyWith(color: tokens.secondaryLabel);
+    final mono = tokens.typography.mono.copyWith(fontSize: 12, color: tokens.palette.label);
+    TableRow row(List<Widget> cells) => TableRow(
+      children: [
+        for (final cell in cells) Padding(padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6), child: cell),
+      ],
+    );
+    return DecoratedBox(
+      key: const ValueKey('docker-mounts'),
+      decoration: ShapeDecoration(
+        color: tokens.surfaces.fillField,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.radii.card),
+          side: BorderSide(color: tokens.surfaces.hairlineCard),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(GlassSpacing.s6),
+        child: Table(
+          columnWidths: const {
+            0: IntrinsicColumnWidth(),
+            1: FlexColumnWidth(),
+            2: FlexColumnWidth(),
+            3: IntrinsicColumnWidth(),
+          },
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: [
+            row([
+              Text(l.dockerMountType, style: head),
+              Text(l.dockerMountSource, style: head),
+              Text(l.dockerMountDestination, style: head),
+              Text(l.dockerMountMode, style: head),
+            ]),
+            for (final mount in mounts)
+              row([
+                Text(text(mount['Type']), style: mono.copyWith(color: tokens.secondaryLabel)),
+                SelectableText(
+                  text(mount['Type']) == 'volume' &&
+                          text(mount['Name'])
+                              .isNotEmpty // l10n-ignore: mount type
+                      ? text(mount['Name'])
+                      : text(mount['Source']),
+                  style: mono.copyWith(color: tokens.palette.accent),
+                ),
+                SelectableText(text(mount['Destination']), style: mono),
+                Text(mount['RW'] == false ? l.dockerMountReadOnly : l.dockerMountReadWrite, style: mono),
+              ]),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Environment, with secret values hidden until the vault passphrase is
+/// entered; revealed values can be copied one by one (auto-cleared).
+class _EnvironmentSection extends ConsumerStatefulWidget {
+  const _EnvironmentSection({
+    required this.env,
+    required this.service,
+    required this.session,
+    required this.container,
+    super.key,
+  });
+  final List<String> env;
+  final DockerService service;
+  final DockerSessionInfo session;
+  final DockerContainer container;
+  @override
+  ConsumerState<_EnvironmentSection> createState() => _EnvironmentSectionState();
+}
+
+class _EnvironmentSectionState extends ConsumerState<_EnvironmentSection> {
+  List<String>? _revealed;
+  late final _scope = ref.read(dockerScopeProvider);
+  bool get _current => mounted && identical(_scope, ref.read(dockerScopeProvider));
+
+  bool get _hasSecrets => widget.env.any((entry) => entry.endsWith('=••••••')); // l10n-ignore: native mask
+
+  Future<void> _reveal() async {
+    final revealed = await showAppDialog<List<String>>(
+      context,
+      secure: true,
+      barrierDismissible: false,
+      builder: (_) => _RevealDialog(service: widget.service, session: widget.session, container: widget.container),
+    );
+    if (revealed != null && _current) setState(() => _revealed = revealed);
+  }
+
+  @override
+  void dispose() {
+    _revealed = null;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(dockerScopeProvider, (_, next) {
+      if (!identical(next, _scope) && mounted) setState(() => _revealed = null);
+    });
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final entries = _revealed ?? widget.env;
+    final mono = tokens.typography.mono.copyWith(fontSize: 12, color: tokens.palette.label);
+    return _Section(
+      title: l.dockerEnvironment,
+      trailing: _revealed != null
+          ? GlassButton.plain(
+              key: const ValueKey('docker-env-hide'),
+              label: l.dockerHideSecrets,
+              icon: Icons.visibility_off_outlined,
+              onPressed: () => setState(() => _revealed = null),
+            )
+          : _hasSecrets
+          ? GlassButton.plain(
+              key: const ValueKey('docker-env-reveal'),
+              label: l.dockerRevealSecrets,
+              icon: Icons.visibility_outlined,
+              onPressed: () => unawaited(_reveal()),
+            )
+          : null,
+      child: Column(
+        key: const ValueKey('docker-env'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final entry in entries)
+            Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: SelectableText(entry, style: mono),
+                  ),
+                ),
+                if (_revealed != null && entry.contains('='))
+                  GlassIconButton(
+                    icon: Icons.copy_rounded,
+                    tooltip: l.commonCopy,
+                    size: 24,
+                    iconSize: 14,
+                    style: GlassIconButtonStyle.plain,
+                    onPressed: () => unawaited(
+                      copySecretWithNotice(
+                        context,
+                        ref,
+                        entry.substring(entry.indexOf('=') + 1),
+                        what: entry.split('=').first,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RevealDialog extends ConsumerStatefulWidget {
+  const _RevealDialog({required this.service, required this.session, required this.container});
+  final DockerService service;
+  final DockerSessionInfo session;
+  final DockerContainer container;
+  @override
+  ConsumerState<_RevealDialog> createState() => _RevealDialogState();
+}
+
+class _RevealDialogState extends ConsumerState<_RevealDialog> {
+  final _passphrase = TextEditingController();
+  bool _busy = false, _wrong = false, _failed = false;
+
+  @override
+  void dispose() {
+    _passphrase
+      ..clear()
+      ..dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_busy || _passphrase.text.isEmpty) return;
+    setState(() {
+      _busy = true;
+      _wrong = false;
+      _failed = false;
+    });
+    final secret = SecretText(_passphrase.text);
+    _passphrase.clear();
+    try {
+      final env = await widget.service.revealEnvironment(widget.session.id, widget.container.id, secret);
+      if (mounted) closeDialog(context, env);
+    } on DockerWrongPassphrase {
+      if (mounted) setState(() => _wrong = true);
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    } finally {
+      secret.wipe();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return GlassDialog(
+      key: const ValueKey('docker-reveal-dialog'),
+      title: l.dockerRevealSecrets,
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l.dockerRevealHelp(widget.container.name)),
+            const SizedBox(height: GlassSpacing.s12),
+            SecretField(
+              key: const ValueKey('docker-reveal-passphrase'),
+              controller: _passphrase,
+              label: l.dockerVaultPassphrase,
+              autofocus: true,
+              enabled: !_busy,
+              onSubmitted: (_) => unawaited(_submit()),
+            ),
+            if (_wrong) Text(l.dockerWrongPassphrase, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            if (_failed) Text(l.dockerRequestFailed, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ],
+        ),
+      ),
+      secondaryActions: [
+        GlassButton(label: l.commonCancel, onPressed: _busy ? null : () => closeDialog<void>(context)),
+      ],
+      primaryAction: GlassButton(
+        key: const ValueKey('docker-reveal-submit'),
+        label: l.dockerRevealSecrets,
+        busy: _busy,
+        onPressed: _busy ? null : () => unawaited(_submit()),
+      ),
+    );
+  }
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child});
+  const _Section({required this.title, required this.child, this.trailing});
   final String title;
   final Widget child;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -432,7 +684,14 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title, style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label)),
+          Row(
+            children: [
+              Expanded(
+                child: Text(title, style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label)),
+              ),
+              ?trailing,
+            ],
+          ),
           const SizedBox(height: GlassSpacing.s6),
           child,
         ],

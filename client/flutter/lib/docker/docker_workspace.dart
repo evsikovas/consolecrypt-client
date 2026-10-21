@@ -11,6 +11,7 @@ import 'package:consolecrypt/docker/docker_forwards.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/docker/docker_terminal.dart';
+import 'package:consolecrypt/docker/docker_volume_list.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -49,6 +50,8 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   Timer? _timer;
   bool _foreground = true, _loading = false, _loaded = false, _forwardsOpen = false;
   DockerStateFilter _filter = DockerStateFilter.all;
+  bool _volumes = false;
+  final _volumeList = GlobalKey<DockerVolumeListState>();
   Object? _error;
   String _query = '';
   String? _selected;
@@ -213,7 +216,9 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
     final selected = containers.where((c) => c.id == _selected).firstOrNull;
     final forwards = ref.watch(dockerForwardsProvider).value?.where((f) => f.state == DockerForwardState.running);
     final pad = pagePadding(context);
-    final list = _error != null && !_loaded
+    final list = _volumes
+        ? DockerVolumeList(key: _volumeList, service: widget.service, session: widget.session, query: _query)
+        : _error != null && !_loaded
         ? Center(
             child: InfoBanner(
               key: const ValueKey('docker-containers-error'),
@@ -261,7 +266,10 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                   loading: _loading,
                   forwards: forwards?.length ?? 0,
                   forwardsOpen: _forwardsOpen,
-                  onRefresh: _refresh,
+                  onRefresh: () {
+                    unawaited(_refresh());
+                    unawaited(_volumeList.currentState?.refresh());
+                  },
                   onForwards: _toggleForwards,
                   onDisconnect: widget.onDisconnect,
                 ),
@@ -271,6 +279,21 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                   runSpacing: GlassSpacing.s8,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
+                    GlassSegmented<bool>(
+                      key: const ValueKey('docker-view'),
+                      inChrome: false,
+                      semanticLabel: l.dockerView,
+                      selected: _volumes,
+                      onChanged: (value) => setState(() => _volumes = value),
+                      segments: [
+                        GlassSegment(
+                          key: const ValueKey('docker-view-containers'),
+                          value: false,
+                          label: l.dockerStandalone,
+                        ),
+                        GlassSegment(key: const ValueKey('docker-view-volumes'), value: true, label: l.dockerVolumes),
+                      ],
+                    ),
                     SizedBox(
                       width: constraints.maxWidth < 600 ? constraints.maxWidth : 320,
                       child: GlassField(
@@ -281,30 +304,31 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                         onChanged: (value) => setState(() => _query = value),
                       ),
                     ),
-                    GlassSegmented<DockerStateFilter>(
-                      key: const ValueKey('docker-state-filter'),
-                      inChrome: false,
-                      semanticLabel: l.dockerStateFilter,
-                      selected: _filter,
-                      onChanged: (value) => setState(() => _filter = value),
-                      segments: [
-                        GlassSegment(
-                          key: const ValueKey('docker-filter-all'),
-                          value: DockerStateFilter.all,
-                          label: l.dockerFilterAll(containers.length),
-                        ),
-                        GlassSegment(
-                          key: const ValueKey('docker-filter-running'),
-                          value: DockerStateFilter.running,
-                          label: l.dockerFilterRunning(active),
-                        ),
-                        GlassSegment(
-                          key: const ValueKey('docker-filter-stopped'),
-                          value: DockerStateFilter.stopped,
-                          label: l.dockerFilterStopped(containers.length - active),
-                        ),
-                      ],
-                    ),
+                    if (!_volumes)
+                      GlassSegmented<DockerStateFilter>(
+                        key: const ValueKey('docker-state-filter'),
+                        inChrome: false,
+                        semanticLabel: l.dockerStateFilter,
+                        selected: _filter,
+                        onChanged: (value) => setState(() => _filter = value),
+                        segments: [
+                          GlassSegment(
+                            key: const ValueKey('docker-filter-all'),
+                            value: DockerStateFilter.all,
+                            label: l.dockerFilterAll(containers.length),
+                          ),
+                          GlassSegment(
+                            key: const ValueKey('docker-filter-running'),
+                            value: DockerStateFilter.running,
+                            label: l.dockerFilterRunning(active),
+                          ),
+                          GlassSegment(
+                            key: const ValueKey('docker-filter-stopped'),
+                            value: DockerStateFilter.stopped,
+                            label: l.dockerFilterStopped(containers.length - active),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
                 if (_error != null && _loaded)

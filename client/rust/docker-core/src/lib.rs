@@ -9,7 +9,9 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 mod client;
 mod logs;
-pub use client::{ContainerSummary, DockerClient, EngineInfo, ExecSession, LogLine, PortMapping};
+pub use client::{
+    ContainerSummary, DockerClient, EngineInfo, ExecSession, LogLine, PortMapping, VolumeSummary,
+};
 
 pub trait DockerStream: AsyncRead + AsyncWrite + Unpin + Send {}
 impl<T: AsyncRead + AsyncWrite + Unpin + Send> DockerStream for T {}

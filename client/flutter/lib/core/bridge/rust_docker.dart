@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:consolecrypt/core/bridge/mapping.dart';
+import 'package:consolecrypt/core/bridge/rust_account.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/src/rust/api/docker.dart' as native;
@@ -106,6 +108,29 @@ final class RustDockerService implements DockerService {
       },
     );
     return controller.stream;
+  }
+
+  @override
+  Future<List<DockerVolume>> volumes(String sessionId) async => [
+    for (final item
+        in (jsonDecode(await guard(() => native.dockerVolumes(sessionId: sessionId))) as List).cast<DockerJson>())
+      DockerVolume.fromJson(item),
+  ];
+
+  @override
+  Future<List<String>> revealEnvironment(String sessionId, String containerId, SecretText passphrase) async {
+    try {
+      final json = await withSecret(
+        passphrase,
+        (bytes) => guard(
+          () => native.dockerRevealEnvironment(sessionId: sessionId, container: containerId, passphrase: bytes),
+        ),
+      );
+      return (jsonDecode(json) as List).cast<String>();
+    } on AppException catch (error) {
+      if (error.code == AppErrorCode.wrongPassphrase) throw const DockerWrongPassphrase();
+      rethrow;
+    }
   }
 
   @override

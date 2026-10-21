@@ -437,6 +437,34 @@ impl AppCore {
         ))
     }
 
+    pub async fn docker_volumes(
+        &self,
+        session_id: String,
+    ) -> AppResult<Vec<cc_docker_core::VolumeSummary>> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        live.client.volumes().await.map_err(docker_error)
+    }
+
+    /// The container's environment with secret values, only after the vault
+    /// passphrase checks out (a step-up like the production write window).
+    pub async fn docker_reveal_environment(
+        &self,
+        session_id: String,
+        container: String,
+        passphrase: String,
+    ) -> AppResult<Vec<String>> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        if !self.verify_passphrase(passphrase).await? {
+            return Err(AppError::WrongPassphrase);
+        }
+        live.client
+            .environment(&container)
+            .await
+            .map_err(docker_error)
+    }
+
     pub async fn docker_inspect(
         &self,
         session_id: String,

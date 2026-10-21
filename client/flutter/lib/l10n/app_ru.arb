@@ -5126,5 +5126,22 @@
   "dockerStateFilter": "Состояние контейнеров",
   "dockerFilterAll": "Все {count}",
   "dockerFilterRunning": "Запущенные {count}",
-  "dockerFilterStopped": "Остановленные {count}"
+  "dockerFilterStopped": "Остановленные {count}",
+  "dockerRevealSecrets": "Показать секреты",
+  "dockerHideSecrets": "Скрыть секреты",
+  "dockerRevealHelp": "Введите пароль хранилища, чтобы показать пароли и токены из окружения {name}. Скопированные значения сами удалятся из буфера обмена.",
+  "dockerVaultPassphrase": "Пароль хранилища",
+  "dockerWrongPassphrase": "Неверный пароль хранилища.",
+  "dockerMountType": "Тип",
+  "dockerMountSource": "Источник",
+  "dockerMountDestination": "Путь в контейнере",
+  "dockerMountMode": "Режим",
+  "dockerMountReadOnly": "ro",
+  "dockerMountReadWrite": "rw",
+  "dockerView": "Показать",
+  "dockerVolumes": "Тома",
+  "dockerVolumesOther": "Прочие тома",
+  "dockerVolumeCount": "{count, plural, one{{count} том} few{{count} тома} many{{count} томов} other{{count} тома}}",
+  "dockerVolumeUnused": "не используется",
+  "dockerNoVolumes": "Томов на этом движке нет."
 }

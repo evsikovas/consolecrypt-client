@@ -3,6 +3,8 @@
 /// The native core does all networking; this file is the UI contract.
 library;
 
+import 'package:consolecrypt/core/security/secret_text.dart';
+
 typedef DockerJson = Map<String, dynamic>;
 
 enum DockerHostKind { local, ssh }
@@ -193,6 +195,35 @@ final class DockerForward {
   );
 }
 
+/// A named volume and the containers that mount it.
+final class DockerVolume {
+  const DockerVolume({
+    required this.name,
+    this.driver = '',
+    this.mountpoint = '',
+    this.composeProject,
+    this.usedBy = const [],
+    this.createdAt,
+  });
+  final String name, driver, mountpoint;
+  final String? composeProject;
+  final List<String> usedBy;
+  final DateTime? createdAt;
+  factory DockerVolume.fromJson(DockerJson json) => DockerVolume(
+    name: json['name'] as String,
+    driver: json['driver'] as String? ?? '',
+    mountpoint: json['mountpoint'] as String? ?? '',
+    composeProject: json['compose_project'] as String?,
+    usedBy: (json['used_by'] as List? ?? const []).cast<String>(),
+    createdAt: json['created_at'] == null ? null : DateTime.tryParse(json['created_at'] as String),
+  );
+}
+
+/// The vault passphrase was wrong when revealing secrets.
+final class DockerWrongPassphrase implements Exception {
+  const DockerWrongPassphrase();
+}
+
 final class DockerException implements Exception {
   const DockerException(this.failure, [this.detail = '']);
   final DockerFailure failure;
@@ -224,6 +255,13 @@ abstract interface class DockerService {
     bool follow = true,
     bool timestamps = false,
   });
+
+  Future<List<DockerVolume>> volumes(String sessionId);
+
+  /// The container's environment with secret values; the core checks the
+  /// vault [passphrase] first and throws [DockerWrongPassphrase] if wrong.
+  /// The caller wipes [passphrase].
+  Future<List<String>> revealEnvironment(String sessionId, String containerId, SecretText passphrase);
 
   Future<DockerForward> startForward(
     String sessionId,

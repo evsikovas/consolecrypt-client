@@ -51,6 +51,19 @@ pub struct ContainerSummary {
     pub health: Option<String>,
 }
 
+/// A named volume and the containers that mount it.
+#[derive(Debug, Clone, Serialize)]
+pub struct VolumeSummary {
+    pub name: String,
+    pub driver: String,
+    pub mountpoint: String,
+    pub scope: String,
+    pub created_at: Option<String>,
+    pub compose_project: Option<String>,
+    /// Container names (running or not) that mount the volume.
+    pub used_by: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct LogLine {
     pub stream: &'static str,
@@ -285,6 +298,70 @@ impl DockerClient {
                     networks,
                 }
             })
+            .collect())
+    }
+
+    /// Volumes with the containers mounting them.
+    pub async fn volumes(&self) -> Result<Vec<VolumeSummary>, DockerError> {
+        let listed = self.json(Method::GET, "/volumes", None).await?;
+        let containers = self
+            .json(Method::GET, "/containers/json?all=1", None)
+            .await?;
+        let mut used: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for container in containers.as_array().into_iter().flatten() {
+            let name = container["Names"][0]
+                .as_str()
+                .unwrap_or_default()
+                .trim_start_matches('/')
+                .to_owned();
+            for mount in container["Mounts"].as_array().into_iter().flatten() {
+                if let Some(volume) = mount["Name"].as_str().filter(|_| mount["Type"] == "volume") {
+                    used.entry(volume.to_owned())
+                        .or_default()
+                        .push(name.clone());
+                }
+            }
+        }
+        let mut volumes: Vec<VolumeSummary> = listed["Volumes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|volume| {
+                let name = volume["Name"].as_str().unwrap_or_default().to_owned();
+                let mut used_by = used.remove(&name).unwrap_or_default();
+                used_by.sort();
+                VolumeSummary {
+                    driver: volume["Driver"].as_str().unwrap_or_default().to_owned(),
+                    mountpoint: volume["Mountpoint"].as_str().unwrap_or_default().to_owned(),
+                    scope: volume["Scope"].as_str().unwrap_or_default().to_owned(),
+                    created_at: volume["CreatedAt"].as_str().map(str::to_owned),
+                    compose_project: volume["Labels"]["com.docker.compose.project"]
+                        .as_str()
+                        .map(str::to_owned),
+                    used_by,
+                    name,
+                }
+            })
+            .collect();
+        volumes.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(volumes)
+    }
+
+    /// The container's environment as configured, secrets included. Callers
+    /// must have confirmed the vault passphrase first.
+    pub async fn environment(&self, id: &str) -> Result<Vec<String>, DockerError> {
+        let value = self
+            .json(
+                Method::GET,
+                &format!("/containers/{}/json", checked(id)?),
+                None,
+            )
+            .await?;
+        Ok(value["Config"]["Env"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|entry| entry.as_str().map(str::to_owned))
             .collect())
     }
 

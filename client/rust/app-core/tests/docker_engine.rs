@@ -197,6 +197,56 @@ async fn docker_on_this_computer() {
     match app.docker_connect("local".into()).await.unwrap() {
         DockerConnectOutcome::Connected(session) => {
             assert!(session.containers_total >= 1);
+            // Secrets show only after the vault passphrase.
+            let name = "cc-docker-reveal";
+            let _ = std::process::Command::new("docker")
+                .args(["rm", "-f", name])
+                .output();
+            let run = std::process::Command::new("docker")
+                .args([
+                    "run",
+                    "-d",
+                    "--name",
+                    name,
+                    "-e",
+                    "API_TOKEN=s3cr3t",
+                    "-v",
+                    "cc-docker-reveal-data:/data",
+                    "alpine:3.20",
+                    "sleep",
+                    "300",
+                ])
+                .output()
+                .unwrap();
+            assert!(run.status.success());
+            let masked = app
+                .docker_inspect(session.id.clone(), name.into())
+                .await
+                .unwrap();
+            assert!(!masked["Config"]["Env"].to_string().contains("s3cr3t"));
+            let wrong = app
+                .docker_reveal_environment(
+                    session.id.clone(),
+                    name.into(),
+                    "wrong passphrase".into(),
+                )
+                .await;
+            assert!(matches!(wrong, Err(AppError::WrongPassphrase)), "{wrong:?}");
+            let env = app
+                .docker_reveal_environment(session.id.clone(), name.into(), PASSPHRASE.into())
+                .await
+                .unwrap();
+            assert!(env.iter().any(|e| e == "API_TOKEN=s3cr3t"));
+            let volumes = app.docker_volumes(session.id.clone()).await.unwrap();
+            assert!(volumes
+                .iter()
+                .any(|v| v.name == "cc-docker-reveal-data" && v.used_by == [name.to_string()]));
+            let _ = std::process::Command::new("docker")
+                .args(["rm", "-f", name])
+                .output();
+            let _ = std::process::Command::new("docker")
+                .args(["volume", "rm", "cc-docker-reveal-data"])
+                .output();
             app.docker_disconnect(session.id).await.unwrap();
         }
         other => panic!("local engine: {other:?}"),

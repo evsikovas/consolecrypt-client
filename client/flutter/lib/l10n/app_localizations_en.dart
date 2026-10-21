@@ -8883,4 +8883,60 @@ class AppLocalizationsEn extends AppLocalizations {
   String dockerFilterStopped(int count) {
     return 'Stopped $count';
   }
+
+  @override
+  String get dockerRevealSecrets => 'Show secrets';
+
+  @override
+  String get dockerHideSecrets => 'Hide secrets';
+
+  @override
+  String dockerRevealHelp(String name) {
+    return 'Enter the vault passphrase to show the passwords and tokens in the environment of $name. Copied values clear from the clipboard automatically.';
+  }
+
+  @override
+  String get dockerVaultPassphrase => 'Vault passphrase';
+
+  @override
+  String get dockerWrongPassphrase => 'Wrong vault passphrase.';
+
+  @override
+  String get dockerMountType => 'Type';
+
+  @override
+  String get dockerMountSource => 'Source';
+
+  @override
+  String get dockerMountDestination => 'Destination';
+
+  @override
+  String get dockerMountMode => 'Mode';
+
+  @override
+  String get dockerMountReadOnly => 'ro';
+
+  @override
+  String get dockerMountReadWrite => 'rw';
+
+  @override
+  String get dockerView => 'Show';
+
+  @override
+  String get dockerVolumes => 'Volumes';
+
+  @override
+  String get dockerVolumesOther => 'Other volumes';
+
+  @override
+  String dockerVolumeCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count volumes', one: '1 volume');
+    return '$_temp0';
+  }
+
+  @override
+  String get dockerVolumeUnused => 'not used';
+
+  @override
+  String get dockerNoVolumes => 'No volumes on this engine.';
 }
