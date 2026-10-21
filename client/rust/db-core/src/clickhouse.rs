@@ -54,6 +54,9 @@ pub(crate) struct ClickHouse {
     database: String,
     settings: Vec<(String, u64)>,
     production: bool,
+    /// Set by the session only while it runs a changing statement permitted
+    /// by an open production write window.
+    pub(crate) production_write: bool,
     /// The user's settings profile is `readonly=1`: the server refuses every
     /// setting change, and already refuses every write.
     profile_read_only: bool,
@@ -150,6 +153,7 @@ impl ClickHouse {
             database: connection.database.clone(),
             settings,
             production: connection.production,
+            production_write: false,
             profile_read_only: false,
             timeout: Duration::from_secs(u64::from(connection.limits.statement_timeout_seconds)),
             _relay: relay,
@@ -236,7 +240,7 @@ impl ClickHouse {
             // A failure after the first rows arrives as plain text, which can
             // never parse as a row (the default writes `["Code: ..."]`).
             pair("http_write_exception_in_output_format", b"0");
-            if read_only || self.production {
+            if read_only || (self.production && !self.production_write) {
                 // readonly=2: no writes, no DDL, and `readonly` itself is frozen.
                 pair("readonly", b"2");
                 pair("max_result_rows", RESULT_ROW_CAP.to_string().as_bytes());

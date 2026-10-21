@@ -239,7 +239,9 @@ impl DbSession {
 
     /// The table and primary key a single-table read can edit, if any.
     pub(crate) async fn editable_source(&self, sql: &str) -> Option<(DbObjectRef, Vec<String>)> {
-        if self.info.production || self.guard.policy().mobile {
+        // Production results are editable too, but only an open production
+        // write window lets the edits through the guard.
+        if self.guard.policy().mobile {
             return None;
         }
         let (qualifier, name) = single_table(self.info.engine, sql)?;
@@ -271,7 +273,7 @@ impl DbSession {
         table: &DbObjectRef,
         edits: &[DbCellEdit],
     ) -> Result<(DbQueryRequest, usize), DbError> {
-        if self.info.production || table.kind != DbObjectKind::Table {
+        if self.guard.is_read_only() || table.kind != DbObjectKind::Table {
             return Err(DbError::PolicyDenied);
         }
         let key = self.primary_key(table).await?;

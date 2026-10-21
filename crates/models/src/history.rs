@@ -31,4 +31,8 @@ pub struct DbHistoryEntry {
     pub error_code: Option<String>,
     #[serde(default)]
     pub favorite: bool,
+    /// A change made in a production session during its temporary write
+    /// window (absent in entries written before windows existed).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub production_write: bool,
 }

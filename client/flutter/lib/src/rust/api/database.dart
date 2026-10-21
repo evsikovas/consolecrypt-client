@@ -33,6 +33,27 @@ Future<void> dbDisconnect({required String sessionId}) =>
 Future<String> dbSetSessionWrite({required String sessionId, required bool allow}) =>
     RustLib.instance.api.crateApiDatabaseDbSetSessionWrite(sessionId: sessionId, allow: allow);
 
+/// Live write state of a session (production write window included).
+Future<String> dbSessionState({required String sessionId}) =>
+    RustLib.instance.api.crateApiDatabaseDbSessionState(sessionId: sessionId);
+
+/// Opens a temporary production write window after the vault passphrase
+/// (sent as bytes) and the typed connection name check out.
+Future<String> dbUnlockProduction({
+  required String sessionId,
+  required String typedConnectionName,
+  required List<int> passphrase,
+  required int minutes,
+}) => RustLib.instance.api.crateApiDatabaseDbUnlockProduction(
+  sessionId: sessionId,
+  typedConnectionName: typedConnectionName,
+  passphrase: passphrase,
+  minutes: minutes,
+);
+
+Future<String> dbLockProduction({required String sessionId}) =>
+    RustLib.instance.api.crateApiDatabaseDbLockProduction(sessionId: sessionId);
+
 Future<String> dbTree({required String sessionId, String? parentJson, String? cursor}) =>
     RustLib.instance.api.crateApiDatabaseDbTree(sessionId: sessionId, parentJson: parentJson, cursor: cursor);
 

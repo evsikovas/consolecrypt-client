@@ -82,6 +82,33 @@ pub async fn db_set_session_write(session_id: String, allow: bool) -> Result<Str
         .await
 }
 
+/// Live write state of a session (production write window included).
+pub async fn db_session_state(session_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.db_session_state(session_id).await?) }).await
+}
+
+/// Opens a temporary production write window after the vault passphrase
+/// (sent as bytes) and the typed connection name check out.
+pub async fn db_unlock_production(
+    session_id: String,
+    typed_connection_name: String,
+    passphrase: Vec<u8>,
+    minutes: u32,
+) -> Result<String, BridgeError> {
+    let passphrase = secret_string("passphrase", passphrase)?;
+    with_core(move |c| async move {
+        to_json(
+            &c.db_unlock_production(session_id, typed_connection_name, passphrase, minutes)
+                .await?,
+        )
+    })
+    .await
+}
+
+pub async fn db_lock_production(session_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.db_lock_production(session_id).await?) }).await
+}
+
 pub async fn db_tree(
     session_id: String,
     parent_json: Option<String>,

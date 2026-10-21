@@ -16,6 +16,8 @@ use zeroize::Zeroizing;
 
 const APPROVAL_LIFETIME: Duration = Duration::from_secs(300);
 const MAX_APPROVALS: usize = 64;
+/// Lengths of a production write window the user can pick, in minutes.
+pub const PRODUCTION_WRITE_MINUTES: [u64; 3] = [5, 15, 30];
 
 /// Constructed only from the unlocked native connection and its live revision.
 #[derive(Debug, Clone)]
@@ -27,6 +29,9 @@ pub struct GuardPolicy {
     /// First explicitly selected PostgreSQL schema, or "public". Never used
     /// for function lookup; read-only drivers set search_path to pg_catalog.
     pub default_schema: String,
+    /// Saved connection name; opening a production write window requires
+    /// the user to type it.
+    pub connection_name: String,
     pub production: bool,
     pub mobile: bool,
 }
@@ -70,8 +75,31 @@ struct Approval {
 #[derive(Debug)]
 struct GuardState {
     writes_allowed: bool,
+    /// End of a production write window opened by the user (vault
+    /// passphrase and the typed connection name). Production sessions write
+    /// only before it; it never outlives the session.
+    production_write_until: Option<Instant>,
     epoch: u64,
     approvals: BTreeMap<String, Approval>,
+}
+
+impl GuardState {
+    /// Re-locks an expired production window: the epoch changes, so every
+    /// approval and permit issued in the window stops working.
+    fn expire(&mut self) {
+        if self
+            .production_write_until
+            .is_some_and(|until| until <= Instant::now())
+        {
+            self.production_write_until = None;
+            self.revoke();
+        }
+    }
+
+    fn revoke(&mut self) {
+        self.epoch = self.epoch.wrapping_add(1);
+        self.approvals.clear();
+    }
 }
 
 #[derive(Debug)]
@@ -91,6 +119,7 @@ pub struct GuardedStatement {
     parsed: ParsedStatement,
     risk: QueryRisk,
     requires_server_read_only: bool,
+    production_write: bool,
     consumed: AtomicBool,
 }
 
@@ -119,6 +148,12 @@ impl GuardedStatement {
     pub fn requires_server_read_only(&self) -> bool {
         self.requires_server_read_only
     }
+
+    /// A changing statement of a production session, permitted by an open
+    /// production write window.
+    pub fn production_write(&self) -> bool {
+        self.production_write
+    }
 }
 
 impl DbGuard {
@@ -130,6 +165,7 @@ impl DbGuard {
             cancel,
             state: Mutex::new(GuardState {
                 writes_allowed,
+                production_write_until: None,
                 epoch: 0,
                 approvals: BTreeMap::new(),
             }),
@@ -145,12 +181,83 @@ impl DbGuard {
     }
 
     pub fn is_read_only(&self) -> bool {
-        self.policy.production
-            || self
-                .state
-                .lock()
-                .map(|state| !state.writes_allowed)
-                .unwrap_or(true)
+        self.state
+            .lock()
+            .map(|mut state| !self.writable(&mut state))
+            .unwrap_or(true)
+    }
+
+    /// Whether changing statements may run now: a production session only
+    /// inside its write window, any other session after the user allowed it.
+    fn writable(&self, state: &mut GuardState) -> bool {
+        if self.cancel.is_cancelled() {
+            return false;
+        }
+        if self.policy.production {
+            state.expire();
+            !self.policy.mobile && state.production_write_until.is_some()
+        } else {
+            state.writes_allowed
+        }
+    }
+
+    /// Opens a production write window for `duration` (one of
+    /// [`PRODUCTION_WRITE_MINUTES`]). Call only after the vault passphrase
+    /// checked out; `typed_connection_name` is what the user typed. Mobile
+    /// sessions and non-production sessions never get one.
+    pub fn open_production_write(
+        &self,
+        typed_connection_name: &str,
+        duration: Duration,
+    ) -> Result<Instant, DbError> {
+        self.live()?;
+        if !self.policy.production
+            || self.policy.mobile
+            || !PRODUCTION_WRITE_MINUTES
+                .iter()
+                .any(|minutes| Duration::from_secs(minutes * 60) == duration)
+        {
+            return Err(DbError::PolicyDenied);
+        }
+        if typed_connection_name != self.policy.connection_name {
+            return Err(DbError::InvalidRequest);
+        }
+        let mut state = self.state.lock().map_err(|_| DbError::SessionClosed)?;
+        self.live()?;
+        let until = Instant::now() + duration;
+        state.production_write_until = Some(until);
+        state.revoke();
+        Ok(until)
+    }
+
+    /// Time left in the production write window, if one is open.
+    pub fn production_write_remaining(&self) -> Option<Duration> {
+        let mut state = self.state.lock().ok()?;
+        if !self.policy.production || !self.writable(&mut state) {
+            return None;
+        }
+        state
+            .production_write_until
+            .and_then(|until| until.checked_duration_since(Instant::now()))
+    }
+
+    /// Ends the production write window now (the user locked it, the vault
+    /// locked or the session closes).
+    pub fn close_production_write(&self) {
+        if let Ok(mut state) = self.state.lock() {
+            if state.production_write_until.take().is_some() {
+                state.revoke();
+            }
+        }
+    }
+
+    /// The highest risk of a request, without issuing anything.
+    pub fn risk(&self, request: &DbQueryRequest) -> Result<QueryRisk, DbError> {
+        parser::parse(self.policy.engine, &self.policy.default_schema, request)?
+            .iter()
+            .map(|statement| statement.risk)
+            .max()
+            .ok_or(DbError::InvalidRequest)
     }
 
     fn live(&self) -> Result<(), DbError> {
@@ -177,8 +284,8 @@ impl DbGuard {
     pub fn revoke_session_write(&self) {
         if let Ok(mut state) = self.state.lock() {
             state.writes_allowed = false;
-            state.epoch = state.epoch.wrapping_add(1);
-            state.approvals.clear();
+            state.production_write_until = None;
+            state.revoke();
         }
     }
 
@@ -211,7 +318,8 @@ impl DbGuard {
             .ok_or(DbError::InvalidRequest)?;
         let mut state = self.state.lock().map_err(|_| DbError::SessionClosed)?;
         self.live()?;
-        if risk != QueryRisk::ReadOnly && (self.policy.production || !state.writes_allowed) {
+        let writable = self.writable(&mut state);
+        if risk != QueryRisk::ReadOnly && !writable {
             return Err(DbError::PolicyDenied);
         }
         let now = Instant::now();
@@ -247,6 +355,7 @@ impl DbGuard {
     pub fn approve(&self, ticket: &str) -> Result<(), DbError> {
         self.live()?;
         let mut state = self.state.lock().map_err(|_| DbError::SessionClosed)?;
+        state.expire();
         let epoch = state.epoch;
         let approval = state
             .approvals
@@ -268,7 +377,8 @@ impl DbGuard {
             .ok_or(DbError::InvalidRequest)?;
         let mut state = self.state.lock().map_err(|_| DbError::SessionClosed)?;
         self.live()?;
-        if risk != QueryRisk::ReadOnly && (self.policy.production || !state.writes_allowed) {
+        let writable = self.writable(&mut state);
+        if risk != QueryRisk::ReadOnly && !writable {
             return Err(DbError::PolicyDenied);
         }
         if risk == QueryRisk::Destructive {
@@ -289,7 +399,7 @@ impl DbGuard {
             }
         }
         let epoch = state.epoch;
-        let force_read_only = self.policy.production || !state.writes_allowed;
+        let force_read_only = !writable;
         Ok(batch
             .into_iter()
             .map(|statement| GuardedStatement {
@@ -297,6 +407,9 @@ impl DbGuard {
                 epoch,
                 engine: self.policy.engine,
                 requires_server_read_only: force_read_only || statement.risk == QueryRisk::ReadOnly,
+                production_write: self.policy.production
+                    && !force_read_only
+                    && statement.risk != QueryRisk::ReadOnly,
                 parsed: statement.parsed,
                 risk: statement.risk,
                 consumed: AtomicBool::new(false),
@@ -312,17 +425,93 @@ impl DbGuard {
 
     pub fn validate_permit(&self, statement: &GuardedStatement) -> Result<(), DbError> {
         self.live()?;
-        let state = self.state.lock().map_err(|_| DbError::SessionClosed)?;
+        let mut state = self.state.lock().map_err(|_| DbError::SessionClosed)?;
         self.live()?;
+        let writable = self.writable(&mut state);
         if statement.guard != self.identity
             || statement.engine != self.policy.engine
             || statement.epoch != state.epoch
-            || (statement.risk != QueryRisk::ReadOnly
-                && (self.policy.production || !state.writes_allowed))
+            || (statement.risk != QueryRisk::ReadOnly && !writable)
             || statement.consumed.swap(true, Ordering::AcqRel)
         {
             return Err(DbError::PolicyDenied);
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn production() -> DbGuard {
+        DbGuard::new(
+            GuardPolicy {
+                engine: DbEngine::Postgresql,
+                session_id: "s".into(),
+                connection_id: ObjectId::new(),
+                connection_revision: "r".into(),
+                default_schema: "public".into(),
+                connection_name: "orders-prod".into(),
+                production: true,
+                mobile: false,
+            },
+            CancellationToken::new(),
+        )
+    }
+
+    fn request(text: &str) -> DbQueryRequest {
+        DbQueryRequest {
+            text: text.into(),
+            parameters: vec![],
+            approval_ticket: None,
+        }
+    }
+
+    #[test]
+    fn an_expired_production_window_relocks_and_voids_its_permits() {
+        let guard = production();
+        guard
+            .open_production_write("orders-prod", Duration::from_secs(300))
+            .unwrap();
+        let review = guard.review(&request("DELETE FROM items")).unwrap();
+        let permits = guard
+            .prepare(&request("INSERT INTO items VALUES (1)"))
+            .unwrap();
+        assert!(permits[0].production_write());
+        // The window runs out.
+        guard.state.lock().unwrap().production_write_until =
+            Instant::now().checked_sub(Duration::from_millis(1));
+        assert!(guard.is_read_only());
+        assert_eq!(guard.production_write_remaining(), None);
+        assert!(matches!(
+            guard.validate_permit(&permits[0]),
+            Err(DbError::PolicyDenied)
+        ));
+        assert!(matches!(
+            guard.approve(&review.ticket),
+            Err(DbError::ApprovalRequired)
+        ));
+        assert!(matches!(
+            guard.prepare(&request("INSERT INTO items VALUES (1)")),
+            Err(DbError::PolicyDenied)
+        ));
+        assert!(guard.state.lock().unwrap().production_write_until.is_none());
+        // Reads keep working.
+        let read = guard.prepare(&request("SELECT 1")).unwrap();
+        guard.validate_permit(&read[0]).unwrap();
+        assert!(!read[0].production_write());
+    }
+
+    #[test]
+    fn remaining_time_counts_down_from_the_chosen_length() {
+        let guard = production();
+        let until = guard
+            .open_production_write("orders-prod", Duration::from_secs(15 * 60))
+            .unwrap();
+        let remaining = guard.production_write_remaining().unwrap();
+        assert!(remaining <= Duration::from_secs(15 * 60));
+        assert!(remaining > Duration::from_secs(14 * 60));
+        assert!(until > Instant::now());
     }
 }

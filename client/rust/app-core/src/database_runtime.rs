@@ -37,6 +37,8 @@ struct LiveQuery {
     started: Instant,
     rows: AtomicU64,
     recorded: AtomicBool,
+    /// Changes data of a production session in its write window.
+    production_write: bool,
 }
 
 /// One statement result kept for copying until the query is released.
@@ -217,12 +219,17 @@ fn db_error(error: DbError) -> AppError {
 }
 
 /// Session metadata plus the live write state (non-production sessions can
-/// allow writes for the session).
+/// allow writes for the session, production sessions open a temporary write
+/// window).
 #[derive(Debug, Clone, Serialize)]
 pub struct DbLiveSession {
     #[serde(flatten)]
     pub info: DbSessionInfo,
     pub writes_allowed: bool,
+    /// A production session can ask for a write window (not on phones).
+    pub can_unlock_production: bool,
+    /// End of the open production write window (Unix milliseconds).
+    pub production_write_expires_at_ms: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -254,8 +261,14 @@ pub struct DbPreparedQueryDto {
 fn live(session: &DbSession) -> DbLiveSession {
     let mut info = session.info().clone();
     info.read_only = session.guard().is_read_only();
+    let remaining = session.guard().production_write_remaining();
     DbLiveSession {
         writes_allowed: !info.read_only,
+        can_unlock_production: info.production && !session.guard().policy().mobile,
+        production_write_expires_at_ms: remaining.map(|remaining| {
+            chrono::Utc::now().timestamp_millis()
+                + i64::try_from(remaining.as_millis()).unwrap_or(i64::MAX / 2)
+        }),
         info,
     }
 }
@@ -414,6 +427,60 @@ impl AppCore {
         } else {
             session.guard().revoke_session_write();
         }
+        Ok(live(&session))
+    }
+
+    /// Live write state of a session (a production write window ends on its
+    /// own; the workspace asks again when its countdown runs out).
+    pub async fn db_session_state(&self, session_id: String) -> AppResult<DbLiveSession> {
+        let (_, unlocked) = self.unlocked().await?;
+        let session = unlocked.db.session(&session_id)?;
+        Ok(live(&session))
+    }
+
+    /// Opens a temporary write window on a production session after the
+    /// vault passphrase checks out and the user typed the connection name.
+    /// The window belongs to this session only and closes on expiry, on
+    /// [`Self::db_lock_production`], on disconnect, vault lock or profile
+    /// change. Every changing statement still needs its review.
+    pub async fn db_unlock_production(
+        &self,
+        session_id: String,
+        typed_connection_name: String,
+        passphrase: String,
+        minutes: u32,
+    ) -> AppResult<DbLiveSession> {
+        let (_, unlocked) = self.unlocked().await?;
+        let session = unlocked.db.session(&session_id)?;
+        if !session.info().production || session.guard().policy().mobile {
+            return Err(invalid("production_write_unavailable"));
+        }
+        if !cc_db_core::guard::PRODUCTION_WRITE_MINUTES.contains(&u64::from(minutes)) {
+            return Err(invalid("production_write_duration"));
+        }
+        if typed_connection_name != session.guard().policy().connection_name {
+            return Err(invalid("connection_name_mismatch"));
+        }
+        if !self.verify_passphrase(passphrase).await? {
+            return Err(AppError::WrongPassphrase);
+        }
+        // The session may have closed while the passphrase was checked.
+        let session = unlocked.db.session(&session_id)?;
+        session
+            .guard()
+            .open_production_write(
+                &typed_connection_name,
+                Duration::from_secs(u64::from(minutes) * 60),
+            )
+            .map_err(db_error)?;
+        Ok(live(&session))
+    }
+
+    /// Closes the production write window now.
+    pub async fn db_lock_production(&self, session_id: String) -> AppResult<DbLiveSession> {
+        let (_, unlocked) = self.unlocked().await?;
+        let session = unlocked.db.session(&session_id)?;
+        session.guard().close_production_write();
         Ok(live(&session))
     }
 
@@ -593,6 +660,13 @@ impl AppCore {
         if let Some(ticket) = &request.approval_ticket {
             session.guard().approve(ticket).map_err(db_error)?;
         }
+        // Recorded in history as a production change: it only got a permit
+        // because the write window is open.
+        let production_write = session.info().production
+            && session
+                .guard()
+                .risk(&request)
+                .is_ok_and(|risk| risk != cc_db_core::guard::QueryRisk::ReadOnly);
         let stream = session.execute(&request).map_err(db_error)?;
         let info = session.info();
         let connection_id = crate::dto::parse_id("connection_id", &info.connection_id)?;
@@ -643,6 +717,7 @@ impl AppCore {
                 started: Instant::now(),
                 rows: AtomicU64::new(0),
                 recorded: AtomicBool::new(false),
+                production_write,
             }),
         );
         Ok(id)
@@ -718,6 +793,7 @@ impl AppCore {
                     rows: query.rows.load(Ordering::Relaxed),
                     error_code,
                     favorite: false,
+                    production_write: query.production_write,
                 };
                 // History is best effort: a full or locked store never fails the query.
                 let _ = self.db_record_query(&owner, &unlocked, entry).await;
@@ -893,21 +969,43 @@ impl AppCore {
 
     /// Applies reviewed edits in one transaction; returns the changed rows.
     pub async fn db_commit_cell_edits(&self, session_id: String, ticket: String) -> AppResult<u64> {
-        let (_, unlocked) = self.unlocked().await?;
-        let (owner, mut request) = unlocked
+        let (owner, unlocked) = self.unlocked().await?;
+        let (reviewed_for, mut request) = unlocked
             .db
             .edits
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .remove(&ticket)
             .ok_or_else(|| invalid("edits_expired"))?;
-        if owner != session_id {
+        if reviewed_for != session_id {
             return Err(invalid("edits_expired"));
         }
         let session = unlocked.db.session(&session_id)?;
         session.guard().approve(&ticket).map_err(db_error)?;
         request.approval_ticket = Some(ticket);
-        session.apply_cell_edits(&request).await.map_err(db_error)
+        let started = Instant::now();
+        let result = session.apply_cell_edits(&request).await;
+        if session.info().production {
+            // Production edits are written to history like production
+            // queries: the reviewed statement template, never the values.
+            let entry = cc_models::history::DbHistoryEntry {
+                id: cc_models::ObjectId::new(),
+                connection_id: crate::dto::parse_id(
+                    "connection_id",
+                    &session.info().connection_id,
+                )?,
+                engine: session.info().engine,
+                text: cc_models::secret::SecretValue::new(request.text.clone()),
+                created_at: chrono::Utc::now(),
+                elapsed_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+                rows: *result.as_ref().unwrap_or(&0),
+                error_code: result.as_ref().err().map(|_| "edits_failed".to_owned()),
+                favorite: false,
+                production_write: true,
+            };
+            let _ = self.db_record_query(&owner, &unlocked, entry).await;
+        }
+        result.map_err(db_error)
     }
 
     pub async fn db_discard_cell_edits(&self, ticket: String) -> AppResult<()> {

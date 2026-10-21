@@ -33,6 +33,14 @@ pub(crate) enum Driver {
 }
 
 impl Driver {
+    /// Lets ClickHouse leave `readonly=2` for one production write the guard
+    /// permitted; other engines take the access mode from `read_only`.
+    pub(crate) fn set_production_write(&mut self, allowed: bool) {
+        if let Self::ClickHouse(driver) = self {
+            driver.production_write = allowed;
+        }
+    }
+
     fn version(&self) -> &str {
         match self {
             Self::Postgres(driver) => &driver.version,
@@ -193,6 +201,7 @@ impl DbSession {
                 connection_id: connection.id,
                 connection_revision: connection.updated_at.to_string(),
                 default_schema,
+                connection_name: connection.name.clone(),
                 production: connection.production,
                 mobile,
             },
@@ -264,14 +273,17 @@ impl DbSession {
                 let mut driver = session.driver.lock().await;
                 for statement in &statements {
                     session.guard.validate_permit(statement)?;
-                    driver
+                    driver.set_production_write(statement.production_write());
+                    let result = driver
                         .run(
                             statement.parsed(),
                             statement.is_read_only(),
                             &mut sink,
                             cancel.clone(),
                         )
-                        .await?;
+                        .await;
+                    driver.set_production_write(false);
+                    result?;
                 }
                 Ok(())
             }

@@ -334,6 +334,88 @@ async fn mysql_production_reads_and_development_writes() {
     exercise("CC_DB_LIVE_MYSQL", DbEngine::Mysql).await;
 }
 
+/// A production session writes only inside its write window, through the
+/// usual review, and is read-only again once the window closes.
+async fn production_window(variable: &str, engine: DbEngine) {
+    let Some((mut connection, credentials)) = target(variable, engine, true) else {
+        eprintln!("{variable} not set; skipped");
+        return;
+    };
+    connection.name = "orders-prod".into();
+    let session = Arc::new(
+        DbSession::open(
+            "prod-window".into(),
+            &connection,
+            &credentials,
+            Arc::new(DirectConnector),
+            false,
+        )
+        .await
+        .unwrap(),
+    );
+    let five = std::time::Duration::from_secs(300);
+    assert!(write(&session, "CREATE TABLE cc_prod_window (id int)")
+        .await
+        .is_err());
+    assert!(session
+        .guard()
+        .open_production_write("orders", five)
+        .is_err());
+    session
+        .guard()
+        .open_production_write("orders-prod", five)
+        .unwrap();
+    write(&session, "DROP TABLE IF EXISTS cc_prod_window")
+        .await
+        .unwrap();
+    write(
+        &session,
+        "CREATE TABLE cc_prod_window (id int primary key, note varchar(20))",
+    )
+    .await
+    .unwrap();
+    write(&session, "INSERT INTO cc_prod_window VALUES (1, 'kept')")
+        .await
+        .unwrap();
+    assert_eq!(
+        run(&session, "SELECT note FROM cc_prod_window")
+            .await
+            .unwrap(),
+        vec![vec!["kept".to_string()]]
+    );
+    // Reads still run in server read-only transactions inside the window.
+    assert!(run(&session, "SELECT 1").await.is_ok());
+    session.guard().close_production_write();
+    assert!(session.guard().is_read_only());
+    assert!(
+        write(&session, "INSERT INTO cc_prod_window VALUES (2, 'lost')")
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        run(&session, "SELECT count(*) FROM cc_prod_window")
+            .await
+            .unwrap(),
+        vec![vec!["1".to_string()]]
+    );
+    session
+        .guard()
+        .open_production_write("orders-prod", five)
+        .unwrap();
+    write(&session, "DROP TABLE cc_prod_window").await.unwrap();
+    session.close();
+}
+
+#[tokio::test]
+async fn postgres_production_write_window() {
+    production_window("CC_DB_LIVE_PG", DbEngine::Postgresql).await;
+}
+
+#[tokio::test]
+async fn mysql_production_write_window() {
+    production_window("CC_DB_LIVE_MYSQL", DbEngine::Mysql).await;
+}
+
 /// Dials the address directly but reports the path of a real route: the
 /// network (direct to another host) or a tunnel (Kubernetes forward).
 #[derive(Debug)]
