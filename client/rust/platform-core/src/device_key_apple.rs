@@ -14,7 +14,7 @@
 //!   the SE *public* key (no prompt); its public half goes into the handle;
 //! * release — the enclave computes the same secret with its private key,
 //!   which the OS allows only after Touch ID / the password (`LAContext`
-//!   prompt with our reason).
+//!   prompt with our reason). Enabling runs one release as a check.
 //!
 //! Enrollment changes: the handle records `LAContext`'s biometric domain
 //! state at creation; a different state at release (fingerprint added or
@@ -446,6 +446,22 @@ fn ecdh(private: &Owned, public: &Owned) -> Result<KeyMaterial, OsAuthError> {
     Ok(Zeroizing::new(shared.bytes().to_vec()))
 }
 
+/// A new enclave key and its material, without any prompt.
+fn create_unverified() -> Result<ProtectedKey, OsAuthError> {
+    let enclave = generate(true)?;
+    let oid = token_oid(&enclave)?;
+    let enclave_public = public_key_from(&public_bytes(&enclave)?)?;
+    let ephemeral = generate(false)?;
+    let ephemeral_public = public_bytes(&ephemeral)?;
+    // Software side of the exchange: no enclave use, no prompt.
+    let material = ecdh(&ephemeral, &enclave_public)?;
+    let state = current_domain_state();
+    Ok(ProtectedKey {
+        material,
+        handle: handle::encode(HANDLE_V1, &[&oid, &ephemeral_public, &state]),
+    })
+}
+
 impl DeviceKeyProtector for SecureEnclaveDeviceKeys {
     fn status(&self) -> DeviceKeyStatus {
         let Ok(ctx) = LaContext::new() else {
@@ -474,22 +490,20 @@ impl DeviceKeyProtector for SecureEnclaveDeviceKeys {
         }
     }
 
-    fn create(&self, _label: &str, _reason: &str) -> Result<ProtectedKey, OsAuthError> {
+    fn create(&self, _label: &str, reason: &str) -> Result<ProtectedKey, OsAuthError> {
         if !self.status().available() {
             return Err(OsAuthError::Unsupported);
         }
-        let enclave = generate(true)?;
-        let oid = token_oid(&enclave)?;
-        let enclave_public = public_key_from(&public_bytes(&enclave)?)?;
-        let ephemeral = generate(false)?;
-        let ephemeral_public = public_bytes(&ephemeral)?;
-        // Software side of the exchange: no enclave use, no prompt.
-        let material = ecdh(&ephemeral, &enclave_public)?;
-        let state = current_domain_state();
-        Ok(ProtectedKey {
-            material,
-            handle: handle::encode(HANDLE_V1, &[&oid, &ephemeral_public, &state]),
-        })
+        let created = create_unverified()?;
+        // One Touch ID / password prompt: the user can pass it and the
+        // enclave really yields the same secret.
+        let again = self.release(&created.handle, reason)?;
+        if *again != *created.material {
+            return Err(OsAuthError::Platform(
+                "Secure Enclave key check failed".into(),
+            ));
+        }
+        Ok(created)
     }
 
     fn release(&self, handle_bytes: &[u8], reason: &str) -> Result<KeyMaterial, OsAuthError> {
@@ -534,7 +548,7 @@ mod tests {
         }
         assert_eq!(status.protection, UnlockProtection::System);
         // Creating an enclave key and the software half needs no prompt.
-        match k.create("test", "test") {
+        match create_unverified() {
             Ok(created) => {
                 assert!(created.material.len() >= 32);
                 let fields = handle::decode(HANDLE_V1, &created.handle, 3).unwrap();
@@ -560,7 +574,7 @@ mod tests {
     #[ignore = "shows the OS authentication prompt"]
     fn secure_enclave_prompt() {
         let k = SecureEnclaveDeviceKeys::new();
-        let created = k.create("manual", "create").unwrap();
+        let created = create_unverified().unwrap();
         let r = k.release(&created.handle, "ConsoleCrypt test: approve or cancel");
         match r {
             Ok(m) => {
