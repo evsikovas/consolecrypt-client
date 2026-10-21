@@ -102,6 +102,14 @@ if [[ -d "$SRC/client/rust/rdp-core" ]]; then
   cp "$SRC/client/rust/rdp-core/THIRD_PARTY_NOTICES.txt" "$OUT/ConsoleCrypt.app/Contents/Resources/RDP-THIRD-PARTY-NOTICES.txt"
 fi
 
+# Xcode links the Rust core into cc_bridge with its full local symbol table
+# (~100 MB). Drop local symbols before signing; exported FFI symbols stay.
+BRIDGE="$OUT/ConsoleCrypt.app/Contents/Frameworks/cc_bridge.framework/Versions/A/cc_bridge"
+if [[ "$MODE" == release && -f "$BRIDGE" ]]; then
+  echo "==> stripping local symbols from the native core"
+  strip -x "$BRIDGE" 2>&1 | grep -v "invalidate the code signature" || true
+fi
+
 LOCAL_AI_BUNDLED=0
 if [[ -f "$SRC/client/scripts/bundle-macos-local-ai.py" ]]; then
   echo "==> verified local AI helpers (Apple Silicon + Intel)"
