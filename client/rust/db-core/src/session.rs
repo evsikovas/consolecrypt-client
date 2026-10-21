@@ -18,12 +18,46 @@ use std::{fmt, sync::Arc};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
+/// One native driver per engine. SQL engines share the catalogue queries in
+/// [`DbSession::tree`]; other engines browse and describe through the driver.
 enum Driver {
     Postgres(Postgres),
     Mysql(Mysql),
 }
 
 impl Driver {
+    fn version(&self) -> &str {
+        match self {
+            Self::Postgres(driver) => &driver.version,
+            Self::Mysql(driver) => &driver.version,
+        }
+    }
+
+    /// Runs one guarded statement in the form its engine parsed.
+    fn run<'a>(
+        &'a mut self,
+        statement: &'a ParsedStatement,
+        read_only: bool,
+        sink: &'a mut (dyn RowConsumer + Send),
+        cancel: CancellationToken,
+    ) -> BoxFuture<'a, Result<(), DbError>> {
+        match statement {
+            ParsedStatement::Sql { text, parameters } => {
+                self.query(text, parameters, read_only, sink, cancel)
+            }
+            _ => Box::pin(async { Err(DbError::InvalidRequest) }),
+        }
+    }
+
+    /// Structure below `parent` for engines without SQL catalogues.
+    fn browse<'a>(
+        &'a mut self,
+        _parent: Option<&'a DbObjectRef>,
+    ) -> BoxFuture<'a, Result<Vec<DbTreeNode>, DbError>> {
+        Box::pin(async { Ok(Vec::new()) })
+    }
+
+    /// Plain SQL with bound parameters (catalogue and DDL lookups).
     fn query<'a>(
         &'a mut self,
         sql: &'a str,
@@ -82,10 +116,7 @@ impl DbSession {
             ),
             _ => return Err(DbError::InvalidRequest),
         };
-        let server_version = match &driver {
-            Driver::Postgres(driver) => driver.version.clone(),
-            Driver::Mysql(driver) => driver.version.clone(),
-        };
+        let server_version = driver.version().to_owned();
         let default_schema = match &connection.options {
             DbOptions::Postgresql { search_path, .. } => search_path
                 .first()
@@ -156,13 +187,9 @@ impl DbSession {
                 let mut driver = session.driver.lock().await;
                 for statement in &statements {
                     session.guard.validate_permit(statement)?;
-                    let ParsedStatement::Sql { text, parameters } = statement.parsed() else {
-                        return Err(DbError::InvalidRequest);
-                    };
                     driver
-                        .query(
-                            text,
-                            parameters,
+                        .run(
+                            statement.parsed(),
                             statement.is_read_only(),
                             &mut sink,
                             cancel.clone(),
@@ -244,7 +271,12 @@ impl DbSession {
                     vec![text(&parent.unwrap().database), text(&parent.unwrap().name)],
                     column_node,
                 ),
-                _ => return Ok(DbTreePage { nodes: Vec::new(), next_cursor: None }),
+                (DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb, _) => {
+                    return Ok(DbTreePage { nodes: Vec::new(), next_cursor: None })
+                }
+                _ => {
+                    return Ok(DbTreePage { nodes: driver.browse(parent).await?, next_cursor: None })
+                }
             };
         let mut rows = Collect::default();
         driver
