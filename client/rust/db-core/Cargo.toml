@@ -34,6 +34,7 @@ tokio-postgres = { version = "0.7.18", features = ["with-chrono-0_4", "with-serd
 tokio-postgres-rustls = { version = "0.14", default-features = false, features = ["ring"] }
 mysql_async = { version = "0.37.1", default-features = false, features = ["minimal-rust", "rustls-tls", "ring", "tls12"] }
 redis = { version = "1.7.1", default-features = false, features = ["tokio-rustls-comp", "tls-rustls-webpki-roots", "acl", "streams", "num-bigint"] }
+bson = { version = "3.1.0", features = ["serde_json-1"] }
 mongodb = { version = "3.9.1", default-features = false, features = ["compat-3-3-0", "bson-3", "rustls-tls", "dns-resolver", "socks5-proxy", "redact-errors"] }
 sqlparser = { version = "0.62", features = ["visitor"] }
 sha2 = "0.11"

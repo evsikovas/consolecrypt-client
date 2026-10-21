@@ -109,11 +109,14 @@ impl DbSession {
                 Driver::ClickHouse(driver) => driver.ddl(object).await,
                 _ => Err(DbError::InvalidRequest),
             },
+            DbEngine::Mongodb => match &mut *self.driver.lock().await {
+                Driver::Mongo(driver) => driver.describe(object).await,
+                _ => Err(DbError::InvalidRequest),
+            },
             DbEngine::Redis => match &mut *self.driver.lock().await {
                 Driver::Redis(driver) => driver.describe(object).await,
                 _ => Err(DbError::InvalidRequest),
             },
-            _ => Err(DbError::InvalidRequest),
         }
     }
 
@@ -492,6 +495,10 @@ impl DbSession {
                     _ => format!("GET {key}"),
                 })
             }
+            (DbEngine::Mongodb, DbObjectKind::Collection) => Ok(format!(
+                "db.getCollection({}).find({{}}).limit({limit})",
+                serde_json::Value::String(object.name.clone())
+            )),
             (DbEngine::Redis, DbObjectKind::RedisDatabase) => {
                 // A folder is its prefix; a database lists everything.
                 let pattern = if object.parent_name.is_some() {
@@ -504,6 +511,24 @@ impl DbSession {
                     crate::parser::redis_quote(pattern.as_bytes())
                 ))
             }
+            _ => Err(DbError::InvalidRequest),
+        }
+    }
+
+    /// Sampled field types and presence of a MongoDB collection (`sample`
+    /// documents, at most 1000), or its description without sampling.
+    pub async fn inspect(
+        &self,
+        object: &DbObjectRef,
+        sample: Option<u32>,
+    ) -> Result<serde_json::Value, DbError> {
+        match &mut *self.driver.lock().await {
+            Driver::Mongo(driver) => match sample {
+                Some(sample) => driver.inspect(object, sample.clamp(1, 1000)).await,
+                None => driver.describe(object).await.map(|text| {
+                    serde_json::from_str(&text).unwrap_or(serde_json::Value::String(text))
+                }),
+            },
             _ => Err(DbError::InvalidRequest),
         }
     }

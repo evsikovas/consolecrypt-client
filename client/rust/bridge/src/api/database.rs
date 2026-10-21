@@ -318,3 +318,14 @@ pub async fn db_commit_cell_edits(session_id: String, ticket: String) -> Result<
 pub async fn db_discard_cell_edits(ticket: String) -> Result<(), BridgeError> {
     with_core(move |c| async move { Ok(c.db_discard_cell_edits(ticket).await?) }).await
 }
+
+/// MongoDB collection description, or sampled schema with `sample` documents.
+pub async fn db_inspect(
+    session_id: String,
+    object_json: String,
+    sample: Option<u32>,
+) -> Result<String, BridgeError> {
+    let object: DbObjectRef = from_json("object", &object_json)?;
+    with_core(move |c| async move { to_json(&c.db_inspect(session_id, object, sample).await?) })
+        .await
+}

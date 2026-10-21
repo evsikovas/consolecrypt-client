@@ -99,6 +99,8 @@ pub(crate) struct TlsProfile {
     pub config: Arc<ClientConfig>,
     pub name: String,
     pub mode: DbTlsMode,
+    /// The configured host; the server-name override applies to it only.
+    host: String,
 }
 impl fmt::Debug for TlsProfile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -167,6 +169,7 @@ impl TlsProfile {
             config: Arc::new(config),
             name,
             mode: connection.tls.mode,
+            host: connection.host.clone(),
         })
     }
 
@@ -176,8 +179,13 @@ impl TlsProfile {
         }
         // Protocols without TLS negotiation never downgrade after a failed
         // handshake, including Prefer. No password is retried over plaintext.
-        let name = ServerName::try_from(name.unwrap_or(&self.name).to_owned())
-            .map_err(|_| DbError::TlsFailed)?;
+        // Other hosts (discovered replica-set members) verify their own name;
+        // the configured host keeps its explicit server-name override.
+        let name = match name {
+            Some(name) if !name.eq_ignore_ascii_case(&self.host) => name,
+            _ => &self.name,
+        };
+        let name = ServerName::try_from(name.to_owned()).map_err(|_| DbError::TlsFailed)?;
         tokio_rustls::TlsConnector::from(self.config.clone())
             .connect(name, stream)
             .await
@@ -350,8 +358,8 @@ pub(crate) struct SocksCredentials {
     pub username: SecretString,
     pub password: SecretString,
 }
-// Used by the MongoDB driver (next 0.7 milestone).
-#[allow(dead_code)]
+/// Loopback SOCKS5 endpoint for the MongoDB driver: random per-session
+/// credentials, only the listed destinations, TLS performed by the relay.
 pub(crate) struct MongoRelay {
     pub relay: LocalRelay,
     pub authentication: Arc<SocksCredentials>,
@@ -361,7 +369,6 @@ impl fmt::Debug for MongoRelay {
         f.write_str("MongoRelay([SCOPED])")
     }
 }
-#[allow(dead_code)]
 impl MongoRelay {
     pub async fn new(
         connector: Arc<dyn DbConnector>,

@@ -1,18 +1,166 @@
 use super::{ClassifiedStatement, ParsedStatement, MAX_STATEMENTS};
 use crate::guard::QueryRisk;
 use crate::types::{DbCell, DbError, DbParameter, DbQueryRequest};
+use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde_json::{json, Map, Value};
 use std::collections::BTreeSet;
+use std::fmt;
+use zeroize::Zeroize;
+
+/// The written key order of every object in a command. `serde_json` maps sort
+/// their keys, but MongoDB reads sort specifications, index keys, embedded
+/// document equality and inserted documents in the order they were written,
+/// and expects the command name first. Parsed from the same text as the
+/// classified command; duplicate keys are refused so that what the guard
+/// classified is exactly what the driver sends.
+#[derive(Clone, Default, PartialEq, Eq)]
+pub enum KeyOrder {
+    /// A scalar, or a position whose order is irrelevant.
+    #[default]
+    Leaf,
+    Object(Vec<(String, KeyOrder)>),
+    Array(Vec<KeyOrder>),
+}
+
+impl KeyOrder {
+    fn object<const N: usize>(entries: [(&str, KeyOrder); N]) -> Self {
+        Self::Object(
+            entries
+                .into_iter()
+                .map(|(key, order)| (key.to_owned(), order))
+                .collect(),
+        )
+    }
+
+    fn set(&mut self, key: &str, order: KeyOrder) {
+        if let Self::Object(entries) = self {
+            match entries.iter_mut().find(|(name, _)| name == key) {
+                Some(entry) => entry.1 = order,
+                None => entries.push((key.to_owned(), order)),
+            }
+        }
+    }
+
+    /// Order of the child object or array stored under `key`.
+    pub fn child(&self, key: &str) -> Option<&KeyOrder> {
+        match self {
+            Self::Object(entries) => entries
+                .iter()
+                .find(|(name, _)| name == key)
+                .map(|(_, order)| order),
+            _ => None,
+        }
+    }
+
+    /// Keys of this object in written order (empty for leaves and arrays).
+    pub fn keys(&self) -> impl Iterator<Item = &str> {
+        let entries: &[(String, KeyOrder)] = match self {
+            Self::Object(entries) => entries,
+            _ => &[],
+        };
+        entries.iter().map(|(name, _)| name.as_str())
+    }
+
+    /// Order of the array element at `index`.
+    pub fn element(&self, index: usize) -> Option<&KeyOrder> {
+        match self {
+            Self::Array(items) => items.get(index),
+            _ => None,
+        }
+    }
+}
+
+impl Zeroize for KeyOrder {
+    fn zeroize(&mut self) {
+        match self {
+            Self::Leaf => {}
+            Self::Object(entries) => {
+                for (key, order) in entries.iter_mut() {
+                    key.zeroize();
+                    order.zeroize();
+                }
+                entries.clear();
+            }
+            Self::Array(items) => {
+                items.iter_mut().for_each(Zeroize::zeroize);
+                items.clear();
+            }
+        }
+    }
+}
+
+impl fmt::Debug for KeyOrder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("KeyOrder([REDACTED])")
+    }
+}
+
+impl<'de> Deserialize<'de> for KeyOrder {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Order;
+        impl<'de> Visitor<'de> for Order {
+            type Value = KeyOrder;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("a JSON value")
+            }
+            fn visit_bool<E>(self, _: bool) -> Result<KeyOrder, E> {
+                Ok(KeyOrder::Leaf)
+            }
+            fn visit_i64<E>(self, _: i64) -> Result<KeyOrder, E> {
+                Ok(KeyOrder::Leaf)
+            }
+            fn visit_u64<E>(self, _: u64) -> Result<KeyOrder, E> {
+                Ok(KeyOrder::Leaf)
+            }
+            fn visit_f64<E>(self, _: f64) -> Result<KeyOrder, E> {
+                Ok(KeyOrder::Leaf)
+            }
+            fn visit_str<E>(self, _: &str) -> Result<KeyOrder, E> {
+                Ok(KeyOrder::Leaf)
+            }
+            fn visit_unit<E>(self) -> Result<KeyOrder, E> {
+                Ok(KeyOrder::Leaf)
+            }
+            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<KeyOrder, A::Error> {
+                let mut items = Vec::new();
+                while let Some(item) = seq.next_element()? {
+                    items.push(item);
+                }
+                Ok(KeyOrder::Array(items))
+            }
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<KeyOrder, A::Error> {
+                let mut seen = BTreeSet::new();
+                let mut entries = Vec::new();
+                while let Some(key) = map.next_key::<String>()? {
+                    // serde_json keeps the last duplicate; the guard must not
+                    // classify a different value than the one that is sent.
+                    if !seen.insert(key.clone()) {
+                        return Err(de::Error::custom("duplicate key"));
+                    }
+                    entries.push((key, map.next_value()?));
+                }
+                Ok(KeyOrder::Object(entries))
+            }
+        }
+        deserializer.deserialize_any(Order)
+    }
+}
 
 pub(super) fn parse(request: &DbQueryRequest) -> Result<Vec<ClassifiedStatement>, DbError> {
     let parts = split(&request.text)?;
     let mut result = Vec::new();
     let mut used = BTreeSet::new();
     for text in parts {
-        let mut command = if text.trim_start().starts_with('{') {
-            serde_json::from_str(text).map_err(|_| DbError::InvalidRequest)?
+        let (mut command, order) = if text.trim_start().starts_with('{') {
+            // The key order comes from the same text; duplicate keys are
+            // refused there, so the classified map is the executed one.
+            let order = serde_json::from_str(text).map_err(|_| DbError::InvalidRequest)?;
+            (
+                serde_json::from_str(text).map_err(|_| DbError::InvalidRequest)?,
+                order,
+            )
         } else {
-            expression(text)?
+            ordered_expression(text)?
         };
         reject_identifier_parameters(&command, 0)?;
         classify(&command)?;
@@ -20,7 +168,7 @@ pub(super) fn parse(request: &DbQueryRequest) -> Result<Vec<ClassifiedStatement>
         inspect_json(&command, 0)?;
         let (risk, reason) = classify(&command)?;
         result.push(ClassifiedStatement {
-            parsed: ParsedStatement::Mongo { command },
+            parsed: ParsedStatement::Mongo { command, order },
             risk,
             reason,
         });
@@ -482,6 +630,12 @@ fn inspect_pipeline(pipeline: &[Value], depth: usize) -> Result<(), DbError> {
 }
 
 pub(super) fn expression(text: &str) -> Result<Value, DbError> {
+    ordered_expression(text).map(|(command, _)| command)
+}
+
+/// Builds the command and the source key order of every user-written object
+/// it embeds (filters, projections, sort specs, pipelines, documents).
+fn ordered_expression(text: &str) -> Result<(Value, KeyOrder), DbError> {
     let mut parser = Expression {
         text: text.trim(),
         offset: 0,
@@ -490,15 +644,19 @@ pub(super) fn expression(text: &str) -> Result<Value, DbError> {
     parser.literal(".")?;
     let mut collection = parser.identifier()?;
     if collection == "runCommand" {
-        let arguments = parser.arguments()?;
+        let (arguments, orders) = parser.arguments()?;
         parser.end()?;
         if arguments.len() != 1 {
             return Err(DbError::InvalidRequest);
         }
-        return arguments.into_iter().next().ok_or(DbError::InvalidRequest);
+        return arguments
+            .into_iter()
+            .zip(orders)
+            .next()
+            .ok_or(DbError::InvalidRequest);
     }
     if collection == "getCollection" {
-        let arguments = parser.arguments()?;
+        let (arguments, _) = parser.arguments()?;
         if arguments.len() != 1 {
             return Err(DbError::InvalidRequest);
         }
@@ -512,61 +670,119 @@ pub(super) fn expression(text: &str) -> Result<Value, DbError> {
     }
     parser.literal(".")?;
     let method = parser.identifier()?;
-    let arguments = parser.arguments()?;
+    let (arguments, orders) = parser.arguments()?;
     let empty = json!({});
     let first = arguments.first().cloned().unwrap_or_else(|| empty.clone());
-    let mut command = match method.as_str() {
-        "find" if arguments.len() <= 2 => {
-            let mut command = json!({"find":collection,"filter":first});
+    let order = |index: usize| orders.get(index).cloned().unwrap_or_default();
+    let leaf = || KeyOrder::Leaf;
+    let (mut command, mut order) = match method.as_str() {
+        "find" | "findOne" if arguments.len() <= 2 => {
+            let mut command = if method == "find" {
+                json!({"find":collection,"filter":first})
+            } else {
+                json!({"find":collection,"filter":first,"limit":1,"singleBatch":true})
+            };
             if let Some(projection) = arguments.get(1) {
                 command["projection"] = projection.clone();
             }
-            command
+            let order = KeyOrder::object([
+                ("find", leaf()),
+                ("filter", order(0)),
+                ("projection", order(1)),
+            ]);
+            (command, order)
         }
-        "findOne" if arguments.len() <= 2 => {
-            let mut command =
-                json!({"find":collection,"filter":first,"limit":1,"singleBatch":true});
-            if let Some(projection) = arguments.get(1) {
-                command["projection"] = projection.clone();
-            }
-            command
-        }
-        "aggregate" if arguments.len() == 1 => {
-            json!({"aggregate":collection,"pipeline":first,"cursor":{}})
-        }
-        "count" if arguments.len() <= 1 => json!({"count":collection,"query":first}),
-        "countDocuments" if arguments.len() <= 1 => {
-            json!({"aggregate":collection,"pipeline":[{"$match":first},{"$count":"count"}],"cursor":{}})
-        }
-        "estimatedDocumentCount" if arguments.is_empty() => json!({"count":collection}),
-        "distinct" if (1..=2).contains(&arguments.len()) => {
-            json!({"distinct":collection,"key":first,"query":arguments.get(1).unwrap_or(&empty)})
-        }
-        "getIndexes" if arguments.is_empty() => json!({"listIndexes":collection}),
-        "stats" if arguments.is_empty() => json!({"collStats":collection}),
-        "insertOne" if arguments.len() == 1 => json!({"insert":collection,"documents":[first]}),
-        "insertMany" if arguments.len() == 1 && first.is_array() => {
-            json!({"insert":collection,"documents":first})
-        }
-        "deleteOne" | "deleteMany" if arguments.len() == 1 => {
-            json!({"delete":collection,"deletes":[{"q":first,"limit":if method=="deleteOne"{1}else{0}}]})
-        }
-        "updateOne" | "updateMany" | "replaceOne" if arguments.len() == 2 => {
-            json!({"update":collection,"updates":[{"q":first,"u":arguments[1],"multi":method=="updateMany"}]})
-        }
-        "drop" if arguments.is_empty() => json!({"drop":collection}),
-        "dropIndex" if arguments.len() == 1 => json!({"dropIndexes":collection,"index":first}),
+        "aggregate" if arguments.len() == 1 => (
+            json!({"aggregate":collection,"pipeline":first,"cursor":{}}),
+            KeyOrder::object([("aggregate", leaf()), ("pipeline", order(0))]),
+        ),
+        "count" if arguments.len() <= 1 => (
+            json!({"count":collection,"query":first}),
+            KeyOrder::object([("count", leaf()), ("query", order(0))]),
+        ),
+        "countDocuments" if arguments.len() <= 1 => (
+            json!({"aggregate":collection,"pipeline":[{"$match":first},{"$count":"count"}],"cursor":{}}),
+            KeyOrder::object([
+                ("aggregate", leaf()),
+                (
+                    "pipeline",
+                    KeyOrder::Array(vec![KeyOrder::object([("$match", order(0))]), leaf()]),
+                ),
+            ]),
+        ),
+        "estimatedDocumentCount" if arguments.is_empty() => (
+            json!({"count":collection}),
+            KeyOrder::object([("count", leaf())]),
+        ),
+        "distinct" if (1..=2).contains(&arguments.len()) => (
+            json!({"distinct":collection,"key":first,"query":arguments.get(1).unwrap_or(&empty)}),
+            KeyOrder::object([("distinct", leaf()), ("key", leaf()), ("query", order(1))]),
+        ),
+        "getIndexes" if arguments.is_empty() => (
+            json!({"listIndexes":collection}),
+            KeyOrder::object([("listIndexes", leaf())]),
+        ),
+        "stats" if arguments.is_empty() => (
+            json!({"collStats":collection}),
+            KeyOrder::object([("collStats", leaf())]),
+        ),
+        "insertOne" if arguments.len() == 1 => (
+            json!({"insert":collection,"documents":[first]}),
+            KeyOrder::object([
+                ("insert", leaf()),
+                ("documents", KeyOrder::Array(vec![order(0)])),
+            ]),
+        ),
+        "insertMany" if arguments.len() == 1 && first.is_array() => (
+            json!({"insert":collection,"documents":first}),
+            KeyOrder::object([("insert", leaf()), ("documents", order(0))]),
+        ),
+        "deleteOne" | "deleteMany" if arguments.len() == 1 => (
+            json!({"delete":collection,"deletes":[{"q":first,"limit":if method=="deleteOne"{1}else{0}}]}),
+            KeyOrder::object([
+                ("delete", leaf()),
+                (
+                    "deletes",
+                    KeyOrder::Array(vec![KeyOrder::object([("q", order(0)), ("limit", leaf())])]),
+                ),
+            ]),
+        ),
+        "updateOne" | "updateMany" | "replaceOne" if arguments.len() == 2 => (
+            json!({"update":collection,"updates":[{"q":first,"u":arguments[1],"multi":method=="updateMany"}]}),
+            KeyOrder::object([
+                ("update", leaf()),
+                (
+                    "updates",
+                    KeyOrder::Array(vec![KeyOrder::object([
+                        ("q", order(0)),
+                        ("u", order(1)),
+                        ("multi", leaf()),
+                    ])]),
+                ),
+            ]),
+        ),
+        "drop" if arguments.is_empty() => (
+            json!({"drop":collection}),
+            KeyOrder::object([("drop", leaf())]),
+        ),
+        "dropIndex" if arguments.len() == 1 => (
+            json!({"dropIndexes":collection,"index":first}),
+            KeyOrder::object([("dropIndexes", leaf()), ("index", order(0))]),
+        ),
         _ => return Err(DbError::PolicyDenied),
     };
     while parser.remaining().starts_with('.') {
         parser.literal(".")?;
         let modifier = parser.identifier()?;
-        let arguments = parser.arguments()?;
+        let (arguments, mut orders) = parser.arguments()?;
         if command.get("find").is_none() || arguments.len() != 1 {
             return Err(DbError::PolicyDenied);
         }
         match modifier.as_str() {
-            "sort" if arguments[0].is_object() => command["sort"] = arguments[0].clone(),
+            "sort" if arguments[0].is_object() => {
+                command["sort"] = arguments[0].clone();
+                order.set("sort", orders.pop().unwrap_or_default());
+            }
             "limit" | "skip" => {
                 let value = arguments[0]
                     .as_u64()
@@ -578,7 +794,7 @@ pub(super) fn expression(text: &str) -> Result<Value, DbError> {
         }
     }
     parser.end()?;
-    Ok(command)
+    Ok((command, order))
 }
 
 struct Expression<'a> {
@@ -615,7 +831,7 @@ impl Expression<'_> {
         Ok(value)
     }
 
-    fn arguments(&mut self) -> Result<Vec<Value>, DbError> {
+    fn arguments(&mut self) -> Result<(Vec<Value>, Vec<KeyOrder>), DbError> {
         self.literal("(")?;
         let start = self.offset;
         let bytes = self.text.as_bytes();
@@ -634,11 +850,13 @@ impl Expression<'_> {
             } else if byte == b'"' {
                 string = true;
             } else if byte == b')' {
+                let text = format!("[{}]", &self.text[start..self.offset]);
                 let arguments: Vec<Value> =
-                    serde_json::from_str(&format!("[{}]", &self.text[start..self.offset]))
-                        .map_err(|_| DbError::InvalidRequest)?;
+                    serde_json::from_str(&text).map_err(|_| DbError::InvalidRequest)?;
+                let orders: Vec<KeyOrder> =
+                    serde_json::from_str(&text).map_err(|_| DbError::InvalidRequest)?;
                 self.offset += 1;
-                return Ok(arguments);
+                return Ok((arguments, orders));
             } else if byte == b'(' {
                 return Err(DbError::PolicyDenied);
             }

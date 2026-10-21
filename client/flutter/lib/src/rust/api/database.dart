@@ -175,3 +175,7 @@ Future<int> dbCommitCellEdits({required String sessionId, required String ticket
 
 Future<void> dbDiscardCellEdits({required String ticket}) =>
     RustLib.instance.api.crateApiDatabaseDbDiscardCellEdits(ticket: ticket);
+
+/// MongoDB collection description, or sampled schema with `sample` documents.
+Future<String> dbInspect({required String sessionId, required String objectJson, int? sample}) =>
+    RustLib.instance.api.crateApiDatabaseDbInspect(sessionId: sessionId, objectJson: objectJson, sample: sample);

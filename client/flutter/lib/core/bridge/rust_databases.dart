@@ -539,4 +539,14 @@ final class RustDbService
   @override
   Future<void> discardCellEdits(String sessionId, String ticket) =>
       guard(() => native.dbDiscardCellEdits(ticket: ticket));
+
+  @override
+  Future<DbJson> inspectObject(String sessionId, DbObjectRef object, {int? sampleDocuments}) async {
+    final value = jsonDecode(
+      await guard(
+        () => native.dbInspect(sessionId: sessionId, objectJson: jsonEncode(object.toJson()), sample: sampleDocuments),
+      ),
+    );
+    return value is Map ? value.cast<String, dynamic>() : {'value': value};
+  }
 }

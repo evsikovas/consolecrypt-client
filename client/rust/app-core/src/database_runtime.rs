@@ -297,6 +297,7 @@ impl AppCore {
                 | DbEngine::Mariadb
                 | DbEngine::Clickhouse
                 | DbEngine::Redis
+                | DbEngine::Mongodb
         ) {
             return Err(invalid("engine_unavailable"));
         }
@@ -473,6 +474,17 @@ impl AppCore {
             return Err(invalid("invalid_request"));
         }
         session.complete(&text, cursor).await.map_err(db_error)
+    }
+
+    pub async fn db_inspect(
+        &self,
+        session_id: String,
+        object: DbObjectRef,
+        sample: Option<u32>,
+    ) -> AppResult<serde_json::Value> {
+        let (_, unlocked) = self.unlocked().await?;
+        let session = unlocked.db.session(&session_id)?;
+        session.inspect(&object, sample).await.map_err(db_error)
     }
 
     pub async fn db_privileges(

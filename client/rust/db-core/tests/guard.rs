@@ -309,7 +309,7 @@ fn mongo_parameters_cannot_replace_identifiers_or_inject_operators() {
     let mut q = request(r#"db.items.find({"name":{"$param":"name"}})"#);
     q.parameters.push(param("name", r#"{"$where":"evil"}"#));
     let p = g.prepare(&q).unwrap();
-    let ParsedStatement::Mongo { command } = p[0].parsed() else {
+    let ParsedStatement::Mongo { command, .. } = p[0].parsed() else {
         panic!()
     };
     assert!(command["filter"]["name"].is_string());
@@ -374,4 +374,46 @@ fn clickhouse_type_names_keep_their_case_sensitive_spelling() {
         text.starts_with("CREATE TABLE t (a String, b Nullable(Float64), c Enum16('x' = 1))"),
         "{text}"
     );
+}
+#[test]
+fn mongo_commands_keep_written_key_order_and_refuse_duplicate_keys() {
+    let g = guard(DbEngine::Mongodb, false, false);
+    let order = |text: &str| {
+        let p = g.prepare(&request(text)).unwrap();
+        let ParsedStatement::Mongo { order, .. } = p[0].parsed() else {
+            panic!()
+        };
+        order.clone()
+    };
+    let find = order(r#"db.items.find({"b":1,"a":{"z":1,"y":2}}).sort({"b":1,"a":-1})"#);
+    assert_eq!(find.keys().next(), Some("find"));
+    assert_eq!(
+        find.child("sort").unwrap().keys().collect::<Vec<_>>(),
+        ["b", "a"]
+    );
+    let filter = find.child("filter").unwrap();
+    assert_eq!(filter.keys().collect::<Vec<_>>(), ["b", "a"]);
+    assert_eq!(
+        filter.child("a").unwrap().keys().collect::<Vec<_>>(),
+        ["z", "y"]
+    );
+    let insert = order(r#"db.items.insertOne({"z":1,"a":2})"#);
+    let document = insert.child("documents").unwrap().element(0).unwrap();
+    assert_eq!(document.keys().collect::<Vec<_>>(), ["z", "a"]);
+    let json = order(r#"{"filter":{"y":1,"x":1},"find":"items"}"#);
+    assert_eq!(json.keys().collect::<Vec<_>>(), ["filter", "find"]);
+    // serde_json keeps the last duplicate; refusing duplicates keeps the
+    // classified command identical to the sent one.
+    for query in [
+        r#"{"aggregate":"items","pipeline":[{"$out":"x"}],"pipeline":[],"cursor":{}}"#,
+        r#"{"aggregate":"items","pipeline":[],"pipeline":[{"$match":{}}],"cursor":{}}"#,
+        r#"{"find":"items","filter":{"a":1,"a":2}}"#,
+        r#"db.items.find({"a":1,"a":{"$gt":0}})"#,
+        r#"db.items.find({}).sort({"a":1,"a":-1})"#,
+    ] {
+        assert!(
+            matches!(g.prepare(&request(query)), Err(DbError::InvalidRequest)),
+            "accepted {query}"
+        );
+    }
 }

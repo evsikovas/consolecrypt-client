@@ -15,6 +15,8 @@ pub(crate) use redis::quote as redis_quote;
 mod sql;
 mod template;
 
+pub use mongo::KeyOrder;
+
 pub const MAX_STATEMENTS: usize = 256;
 
 pub enum ParsedStatement {
@@ -27,6 +29,8 @@ pub enum ParsedStatement {
     },
     Mongo {
         command: serde_json::Value,
+        /// Written key order of `command`; see [`KeyOrder`].
+        order: KeyOrder,
     },
 }
 
@@ -53,7 +57,10 @@ impl Drop for ParsedStatement {
                 }
             }
             Self::Redis { argv } => argv.zeroize(),
-            Self::Mongo { command } => wipe_json(command),
+            Self::Mongo { command, order } => {
+                wipe_json(command);
+                order.zeroize();
+            }
         }
     }
 }

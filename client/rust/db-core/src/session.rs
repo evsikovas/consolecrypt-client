@@ -4,6 +4,7 @@
 use crate::{
     clickhouse::ClickHouse,
     guard::{DbGuard, GuardPolicy},
+    mongo::Mongo,
     mysql::Mysql,
     parser::ParsedStatement,
     postgres::Postgres,
@@ -27,6 +28,7 @@ pub(crate) enum Driver {
     Mysql(Mysql),
     Redis(Redis),
     ClickHouse(ClickHouse),
+    Mongo(Mongo),
 }
 
 impl Driver {
@@ -36,6 +38,7 @@ impl Driver {
             Self::Mysql(driver) => &driver.version,
             Self::Redis(driver) => &driver.version,
             Self::ClickHouse(driver) => &driver.version,
+            Self::Mongo(driver) => &driver.version,
         }
     }
 
@@ -55,7 +58,10 @@ impl Driver {
                 Self::Redis(driver) => driver.command(argv, sink, cancel),
                 _ => Box::pin(async { Err(DbError::InvalidRequest) }),
             },
-            _ => Box::pin(async { Err(DbError::InvalidRequest) }),
+            ParsedStatement::Mongo { command, order } => match self {
+                Self::Mongo(driver) => driver.command(command, order, read_only, sink, cancel),
+                _ => Box::pin(async { Err(DbError::InvalidRequest) }),
+            },
         }
     }
 
@@ -69,6 +75,7 @@ impl Driver {
         match self {
             Self::Redis(driver) => driver.browse(parent, cursor),
             Self::ClickHouse(driver) => driver.browse(parent, cursor),
+            Self::Mongo(driver) => driver.browse(parent, cursor),
             _ => Box::pin(async {
                 Ok(DbTreePage {
                     nodes: Vec::new(),
@@ -97,6 +104,7 @@ impl Driver {
                 Self::ClickHouse(driver) => {
                     driver.query(sql, bindings, read_only, sink, cancel).await
                 }
+                Self::Mongo(_) => Err(DbError::InvalidRequest),
             }
         })
     }
@@ -124,7 +132,7 @@ impl fmt::Debug for DbSession {
 }
 
 impl DbSession {
-    /// Opens PostgreSQL, MySQL/MariaDB, ClickHouse or Redis. MongoDB is not available yet.
+    /// Opens PostgreSQL, MySQL/MariaDB, ClickHouse, Redis or MongoDB.
     pub async fn open(
         id: String,
         connection: &DbConnection,
@@ -146,7 +154,9 @@ impl DbSession {
             DbEngine::Clickhouse => Driver::ClickHouse(
                 ClickHouse::connect(connection, credentials, connector, scope.clone()).await?,
             ),
-            _ => return Err(DbError::InvalidRequest),
+            DbEngine::Mongodb => Driver::Mongo(
+                Mongo::connect(connection, credentials, connector, scope.clone()).await?,
+            ),
         };
         let server_version = driver.version().to_owned();
         let default_schema = match &connection.options {
@@ -170,6 +180,16 @@ impl DbSession {
             scope.clone(),
         );
         let read_only = guard.is_read_only();
+        let server_read_only = match &driver {
+            // MongoDB has no read-only session; only its roles can be verified.
+            Driver::Mongo(driver) => driver.server_read_only.clone(),
+            // Redis has no server switch (use a read-only ACL user).
+            Driver::Redis(_) => DbServerReadOnly::Unverified,
+            // SQL drivers open every guarded read in a server read-only
+            // transaction; ClickHouse sends readonly=2 with every read.
+            _ if read_only => DbServerReadOnly::Enforced,
+            _ => DbServerReadOnly::Unverified,
+        };
         Ok(Self {
             info: DbSessionInfo {
                 id,
@@ -178,14 +198,7 @@ impl DbSession {
                 server_version,
                 production: connection.production,
                 read_only,
-                // SQL drivers open every guarded read in a server read-only
-                // transaction; ClickHouse sends readonly=2 with every read. Redis
-                // has no server switch (use a read-only ACL user).
-                server_read_only: if read_only && connection.engine != DbEngine::Redis {
-                    DbServerReadOnly::Enforced
-                } else {
-                    DbServerReadOnly::Unverified
-                },
+                server_read_only,
             },
             guard,
             driver: Mutex::new(driver),

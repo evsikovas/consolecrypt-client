@@ -9,6 +9,7 @@ pub mod export;
 pub mod guard;
 pub mod import;
 pub mod introspect;
+mod mongo;
 mod mysql;
 pub mod parser;
 mod postgres;

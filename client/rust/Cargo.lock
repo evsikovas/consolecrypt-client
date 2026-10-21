@@ -824,6 +824,7 @@ dependencies = [
  "rand 0.9.5",
  "serde",
  "serde_bytes",
+ "serde_json",
  "simdutf8",
  "thiserror 2.0.21",
  "time",
@@ -1103,6 +1104,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
+ "bson",
  "bytes",
  "cc-models",
  "chrono",

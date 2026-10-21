@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 694637782;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 71126351;
 
 // Section: executor
 
@@ -2633,6 +2633,49 @@ fn wire__crate__api__database__db_import_uri_impl(
                 transform_result_sse::<_, crate::api::error::BridgeError>(
                     (move || async move {
                         let output_ok = crate::api::database::db_import_uri(api_uri).await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__database__db_inspect_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "db_inspect",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_session_id = <String>::sse_decode(&mut deserializer);
+            let api_object_json = <String>::sse_decode(&mut deserializer);
+            let api_sample = <Option<u32>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, crate::api::error::BridgeError>(
+                    (move || async move {
+                        let output_ok = crate::api::database::db_inspect(
+                            api_session_id,
+                            api_object_json,
+                            api_sample,
+                        )
+                        .await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -15093,908 +15136,909 @@ fn pde_ffi_dispatcher_primary_impl(
         ),
         66 => wire__crate__api__database__db_import_pgpass_impl(port, ptr, rust_vec_len, data_len),
         67 => wire__crate__api__database__db_import_uri_impl(port, ptr, rust_vec_len, data_len),
-        68 => wire__crate__api__database__db_load_more_impl(port, ptr, rust_vec_len, data_len),
-        69 => wire__crate__api__database__db_object_query_impl(port, ptr, rust_vec_len, data_len),
-        70 => wire__crate__api__database__db_poll_impl(port, ptr, rust_vec_len, data_len),
-        71 => wire__crate__api__database__db_prepare_query_impl(port, ptr, rust_vec_len, data_len),
-        72 => wire__crate__api__database__db_privileges_impl(port, ptr, rust_vec_len, data_len),
-        73 => wire__crate__api__database__db_release_impl(port, ptr, rust_vec_len, data_len),
-        74 => wire__crate__api__database__db_review_impl(port, ptr, rust_vec_len, data_len),
-        75 => {
+        68 => wire__crate__api__database__db_inspect_impl(port, ptr, rust_vec_len, data_len),
+        69 => wire__crate__api__database__db_load_more_impl(port, ptr, rust_vec_len, data_len),
+        70 => wire__crate__api__database__db_object_query_impl(port, ptr, rust_vec_len, data_len),
+        71 => wire__crate__api__database__db_poll_impl(port, ptr, rust_vec_len, data_len),
+        72 => wire__crate__api__database__db_prepare_query_impl(port, ptr, rust_vec_len, data_len),
+        73 => wire__crate__api__database__db_privileges_impl(port, ptr, rust_vec_len, data_len),
+        74 => wire__crate__api__database__db_release_impl(port, ptr, rust_vec_len, data_len),
+        75 => wire__crate__api__database__db_review_impl(port, ptr, rust_vec_len, data_len),
+        76 => {
             wire__crate__api__database__db_review_cell_edits_impl(port, ptr, rust_vec_len, data_len)
         }
-        76 => {
+        77 => {
             wire__crate__api__database__db_save_connection_impl(port, ptr, rust_vec_len, data_len)
         }
-        77 => wire__crate__api__database__db_save_history_snippet_impl(
+        78 => wire__crate__api__database__db_save_history_snippet_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        78 => wire__crate__api__database__db_set_history_policy_impl(
+        79 => wire__crate__api__database__db_set_history_policy_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        79 => {
+        80 => {
             wire__crate__api__database__db_set_session_write_impl(port, ptr, rust_vec_len, data_len)
         }
-        80 => {
+        81 => {
             wire__crate__api__database__db_test_connection_impl(port, ptr, rust_vec_len, data_len)
         }
-        81 => wire__crate__api__database__db_tree_impl(port, ptr, rust_vec_len, data_len),
-        82 => {
+        82 => wire__crate__api__database__db_tree_impl(port, ptr, rust_vec_len, data_len),
+        83 => {
             wire__crate__api__sync__devices_confirm_approval_impl(port, ptr, rust_vec_len, data_len)
         }
-        83 => {
+        84 => {
             wire__crate__api__sync__devices_finish_approval_impl(port, ptr, rust_vec_len, data_len)
         }
-        84 => wire__crate__api__sync__devices_list_impl(port, ptr, rust_vec_len, data_len),
-        85 => wire__crate__api__sync__devices_own_code_impl(port, ptr, rust_vec_len, data_len),
-        86 => wire__crate__api__sync__devices_reject_impl(port, ptr, rust_vec_len, data_len),
-        87 => wire__crate__api__sync__devices_rename_impl(port, ptr, rust_vec_len, data_len),
-        88 => {
+        85 => wire__crate__api__sync__devices_list_impl(port, ptr, rust_vec_len, data_len),
+        86 => wire__crate__api__sync__devices_own_code_impl(port, ptr, rust_vec_len, data_len),
+        87 => wire__crate__api__sync__devices_reject_impl(port, ptr, rust_vec_len, data_len),
+        88 => wire__crate__api__sync__devices_rename_impl(port, ptr, rust_vec_len, data_len),
+        89 => {
             wire__crate__api__sync__devices_request_approval_impl(port, ptr, rust_vec_len, data_len)
         }
-        89 => wire__crate__api__sync__devices_revoke_impl(port, ptr, rust_vec_len, data_len),
-        90 => {
+        90 => wire__crate__api__sync__devices_revoke_impl(port, ptr, rust_vec_len, data_len),
+        91 => {
             wire__crate__api__sync__devices_start_approval_impl(port, ptr, rust_vec_len, data_len)
         }
-        91 => wire__crate__api__sftp__edit_discard_leftover_impl(port, ptr, rust_vec_len, data_len),
-        92 => wire__crate__api__sftp__edit_leftovers_impl(port, ptr, rust_vec_len, data_len),
-        93 => wire__crate__api__sftp__edit_open_impl(port, ptr, rust_vec_len, data_len),
-        94 => wire__crate__api__sftp__edit_reopen_impl(port, ptr, rust_vec_len, data_len),
-        95 => wire__crate__api__sftp__edit_resolve_impl(port, ptr, rust_vec_len, data_len),
-        96 => wire__crate__api__sftp__edit_resume_impl(port, ptr, rust_vec_len, data_len),
-        97 => wire__crate__api__sftp__edit_reveal_impl(port, ptr, rust_vec_len, data_len),
-        98 => wire__crate__api__sftp__edit_sessions_impl(port, ptr, rust_vec_len, data_len),
-        99 => wire__crate__api__sftp__edit_stop_impl(port, ptr, rust_vec_len, data_len),
-        100 => wire__crate__api__sftp__edit_sync_now_impl(port, ptr, rust_vec_len, data_len),
-        101 => {
+        92 => wire__crate__api__sftp__edit_discard_leftover_impl(port, ptr, rust_vec_len, data_len),
+        93 => wire__crate__api__sftp__edit_leftovers_impl(port, ptr, rust_vec_len, data_len),
+        94 => wire__crate__api__sftp__edit_open_impl(port, ptr, rust_vec_len, data_len),
+        95 => wire__crate__api__sftp__edit_reopen_impl(port, ptr, rust_vec_len, data_len),
+        96 => wire__crate__api__sftp__edit_resolve_impl(port, ptr, rust_vec_len, data_len),
+        97 => wire__crate__api__sftp__edit_resume_impl(port, ptr, rust_vec_len, data_len),
+        98 => wire__crate__api__sftp__edit_reveal_impl(port, ptr, rust_vec_len, data_len),
+        99 => wire__crate__api__sftp__edit_sessions_impl(port, ptr, rust_vec_len, data_len),
+        100 => wire__crate__api__sftp__edit_stop_impl(port, ptr, rust_vec_len, data_len),
+        101 => wire__crate__api__sftp__edit_sync_now_impl(port, ptr, rust_vec_len, data_len),
+        102 => {
             wire__crate__api__enrollment__enrollment_accept_impl(port, ptr, rust_vec_len, data_len)
         }
-        102 => wire__crate__api__enrollment__enrollment_challenge_impl(
+        103 => wire__crate__api__enrollment__enrollment_challenge_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        103 => {
+        104 => {
             wire__crate__api__enrollment__enrollment_create_impl(port, ptr, rust_vec_len, data_len)
         }
-        104 => {
+        105 => {
             wire__crate__api__enrollment__enrollment_endorse_impl(port, ptr, rust_vec_len, data_len)
         }
-        105 => {
+        106 => {
             wire__crate__api__enrollment__enrollment_export_impl(port, ptr, rust_vec_len, data_len)
         }
-        106 => {
+        107 => {
             wire__crate__api__enrollment__enrollment_grants_impl(port, ptr, rust_vec_len, data_len)
         }
-        107 => {
+        108 => {
             wire__crate__api__enrollment__enrollment_inspect_impl(port, ptr, rust_vec_len, data_len)
         }
-        108 => {
+        109 => {
             wire__crate__api__enrollment__enrollment_pending_impl(port, ptr, rust_vec_len, data_len)
         }
-        109 => {
+        110 => {
             wire__crate__api__enrollment__enrollment_prepare_impl(port, ptr, rust_vec_len, data_len)
         }
-        110 => wire__crate__api__enrollment__enrollment_process_automatic_impl(
+        111 => wire__crate__api__enrollment__enrollment_process_automatic_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        111 => wire__crate__api__enrollment__enrollment_reconcile_impl(
+        112 => wire__crate__api__enrollment__enrollment_reconcile_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        112 => wire__crate__api__enrollment__enrollment_requests_impl(
+        113 => wire__crate__api__enrollment__enrollment_requests_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        113 => {
+        114 => {
             wire__crate__api__enrollment__enrollment_respond_impl(port, ptr, rust_vec_len, data_len)
         }
-        114 => wire__crate__api__enrollment__enrollment_restore_pairing_impl(
+        115 => wire__crate__api__enrollment__enrollment_restore_pairing_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        115 => {
+        116 => {
             wire__crate__api__enrollment__enrollment_revoke_impl(port, ptr, rust_vec_len, data_len)
         }
-        116 => {
+        117 => {
             wire__crate__api__enrollment__enrollment_submit_impl(port, ptr, rust_vec_len, data_len)
         }
-        117 => wire__crate__api__inventory__groups_delete_impl(port, ptr, rust_vec_len, data_len),
-        118 => wire__crate__api__inventory__groups_list_impl(port, ptr, rust_vec_len, data_len),
-        119 => wire__crate__api__inventory__groups_save_impl(port, ptr, rust_vec_len, data_len),
-        120 => wire__crate__api__inventory__hosts_delete_impl(port, ptr, rust_vec_len, data_len),
-        121 => wire__crate__api__inventory__hosts_describe_connection_impl(
+        118 => wire__crate__api__inventory__groups_delete_impl(port, ptr, rust_vec_len, data_len),
+        119 => wire__crate__api__inventory__groups_list_impl(port, ptr, rust_vec_len, data_len),
+        120 => wire__crate__api__inventory__groups_save_impl(port, ptr, rust_vec_len, data_len),
+        121 => wire__crate__api__inventory__hosts_delete_impl(port, ptr, rust_vec_len, data_len),
+        122 => wire__crate__api__inventory__hosts_describe_connection_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        122 => wire__crate__api__inventory__hosts_list_impl(port, ptr, rust_vec_len, data_len),
-        123 => {
+        123 => wire__crate__api__inventory__hosts_list_impl(port, ptr, rust_vec_len, data_len),
+        124 => {
             wire__crate__api__inventory__hosts_plan_preview_impl(port, ptr, rust_vec_len, data_len)
         }
-        124 => wire__crate__api__inventory__hosts_save_impl(port, ptr, rust_vec_len, data_len),
-        125 => wire__crate__api__inventory__hosts_save_with_auth_impl(
+        125 => wire__crate__api__inventory__hosts_save_impl(port, ptr, rust_vec_len, data_len),
+        126 => wire__crate__api__inventory__hosts_save_with_auth_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        126 => wire__crate__api__inventory__hosts_ssh_config_preview_impl(
+        127 => wire__crate__api__inventory__hosts_ssh_config_preview_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        127 => wire__crate__api__app__init_app_impl(port, ptr, rust_vec_len, data_len),
-        128 => wire__crate__api__inventory__jump_profiles_delete_impl(
+        128 => wire__crate__api__app__init_app_impl(port, ptr, rust_vec_len, data_len),
+        129 => wire__crate__api__inventory__jump_profiles_delete_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        129 => {
+        130 => {
             wire__crate__api__inventory__jump_profiles_list_impl(port, ptr, rust_vec_len, data_len)
         }
-        130 => {
+        131 => {
             wire__crate__api__inventory__jump_profiles_save_impl(port, ptr, rust_vec_len, data_len)
         }
-        131 => {
+        132 => {
             wire__crate__api__inventory__known_hosts_list_impl(port, ptr, rust_vec_len, data_len)
         }
-        132 => {
+        133 => {
             wire__crate__api__inventory__known_hosts_remove_impl(port, ptr, rust_vec_len, data_len)
         }
-        133 => wire__crate__api__kubernetes__kube_ai_cancel_impl(port, ptr, rust_vec_len, data_len),
-        134 => wire__crate__api__kubernetes__kube_ai_delete_conversation_impl(
+        134 => wire__crate__api__kubernetes__kube_ai_cancel_impl(port, ptr, rust_vec_len, data_len),
+        135 => wire__crate__api__kubernetes__kube_ai_delete_conversation_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        135 => {
+        136 => {
             wire__crate__api__kubernetes__kube_ai_history_impl(port, ptr, rust_vec_len, data_len)
         }
-        136 => wire__crate__api__kubernetes__kube_ai_poll_impl(port, ptr, rust_vec_len, data_len),
-        137 => {
+        137 => wire__crate__api__kubernetes__kube_ai_poll_impl(port, ptr, rust_vec_len, data_len),
+        138 => {
             wire__crate__api__kubernetes__kube_ai_prepare_impl(port, ptr, rust_vec_len, data_len)
         }
-        138 => wire__crate__api__kubernetes__kube_ai_revoke_impl(port, ptr, rust_vec_len, data_len),
-        139 => wire__crate__api__kubernetes__kube_ai_start_impl(port, ptr, rust_vec_len, data_len),
-        140 => {
+        139 => wire__crate__api__kubernetes__kube_ai_revoke_impl(port, ptr, rust_vec_len, data_len),
+        140 => wire__crate__api__kubernetes__kube_ai_start_impl(port, ptr, rust_vec_len, data_len),
+        141 => {
             wire__crate__api__kubernetes__kube_apply_yaml_impl(port, ptr, rust_vec_len, data_len)
         }
-        141 => {
+        142 => {
             wire__crate__api__kubernetes__kube_argo_action_impl(port, ptr, rust_vec_len, data_len)
         }
-        142 => {
+        143 => {
             wire__crate__api__kubernetes__kube_auth_cancel_impl(port, ptr, rust_vec_len, data_len)
         }
-        143 => wire__crate__api__kubernetes__kube_close_write_window_impl(
+        144 => wire__crate__api__kubernetes__kube_close_write_window_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        144 => wire__crate__api__kubernetes__kube_cluster_labels_impl(
+        145 => wire__crate__api__kubernetes__kube_cluster_labels_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        145 => {
+        146 => {
             wire__crate__api__kubernetes__kube_clusters_list_impl(port, ptr, rust_vec_len, data_len)
         }
-        146 => wire__crate__api__kubernetes__kube_connect_impl(port, ptr, rust_vec_len, data_len),
-        147 => wire__crate__api__kubernetes__kube_context_delete_impl(
+        147 => wire__crate__api__kubernetes__kube_connect_impl(port, ptr, rust_vec_len, data_len),
+        148 => wire__crate__api__kubernetes__kube_context_delete_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        148 => wire__crate__api__kubernetes__kube_context_favourites_impl(
+        149 => wire__crate__api__kubernetes__kube_context_favourites_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        149 => wire__crate__api__kubernetes__kube_context_terminal_impl(
+        150 => wire__crate__api__kubernetes__kube_context_terminal_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        150 => wire__crate__api__kubernetes__kube_context_terminal_profiles_impl(
+        151 => wire__crate__api__kubernetes__kube_context_terminal_profiles_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        151 => wire__crate__api__kubernetes__kube_context_update_impl(
+        152 => wire__crate__api__kubernetes__kube_context_update_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        152 => {
+        153 => {
             wire__crate__api__kubernetes__kube_contexts_list_impl(port, ptr, rust_vec_len, data_len)
         }
-        153 => wire__crate__api__kubernetes__kube_cordon_impl(port, ptr, rust_vec_len, data_len),
-        154 => wire__crate__api__kubernetes__kube_create_resource_impl(
+        154 => wire__crate__api__kubernetes__kube_cordon_impl(port, ptr, rust_vec_len, data_len),
+        155 => wire__crate__api__kubernetes__kube_create_resource_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        155 => wire__crate__api__kubernetes__kube_debug_container_impl(
+        156 => wire__crate__api__kubernetes__kube_debug_container_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        156 => {
+        157 => {
             wire__crate__api__kubernetes__kube_disconnect_impl(port, ptr, rust_vec_len, data_len)
         }
-        157 => wire__crate__api__kubernetes__kube_discover_impl(port, ptr, rust_vec_len, data_len),
-        158 => {
+        158 => wire__crate__api__kubernetes__kube_discover_impl(port, ptr, rust_vec_len, data_len),
+        159 => {
             wire__crate__api__kubernetes__kube_drain_plan_impl(port, ptr, rust_vec_len, data_len)
         }
-        159 => {
+        160 => {
             wire__crate__api__kubernetes__kube_event_history_impl(port, ptr, rust_vec_len, data_len)
         }
-        160 => wire__crate__api__kubernetes__kube_event_history_clear_impl(
+        161 => wire__crate__api__kubernetes__kube_event_history_clear_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        161 => wire__crate__api__kubernetes__kube_evict_pod_impl(port, ptr, rust_vec_len, data_len),
-        162 => {
+        162 => wire__crate__api__kubernetes__kube_evict_pod_impl(port, ptr, rust_vec_len, data_len),
+        163 => {
             wire__crate__api__kubernetes__kube_exec_approve_impl(port, ptr, rust_vec_len, data_len)
         }
-        163 => {
+        164 => {
             wire__crate__api__kubernetes__kube_exec_review_impl(port, ptr, rust_vec_len, data_len)
         }
-        164 => wire__crate__api__kubernetes__kube_export_context_impl(
+        165 => wire__crate__api__kubernetes__kube_export_context_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        165 => {
+        166 => {
             wire__crate__api__kubernetes__kube_export_logs_impl(port, ptr, rust_vec_len, data_len)
         }
-        166 => {
+        167 => {
             wire__crate__api__kubernetes__kube_flux_action_impl(port, ptr, rust_vec_len, data_len)
         }
-        167 => {
+        168 => {
             wire__crate__api__kubernetes__kube_flux_approve_impl(port, ptr, rust_vec_len, data_len)
         }
-        168 => {
+        169 => {
             wire__crate__api__kubernetes__kube_flux_cancel_impl(port, ptr, rust_vec_len, data_len)
         }
-        169 => {
+        170 => {
             wire__crate__api__kubernetes__kube_flux_discover_impl(port, ptr, rust_vec_len, data_len)
         }
-        170 => {
+        171 => {
             wire__crate__api__kubernetes__kube_flux_path_add_impl(port, ptr, rust_vec_len, data_len)
         }
-        171 => wire__crate__api__kubernetes__kube_flux_preferences_impl(
+        172 => wire__crate__api__kubernetes__kube_flux_preferences_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        172 => wire__crate__api__kubernetes__kube_flux_preferences_save_impl(
+        173 => wire__crate__api__kubernetes__kube_flux_preferences_save_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        173 => {
+        174 => {
             wire__crate__api__kubernetes__kube_flux_probe_impl(port, ptr, rust_vec_len, data_len)
         }
-        174 => {
+        175 => {
             wire__crate__api__kubernetes__kube_flux_review_impl(port, ptr, rust_vec_len, data_len)
         }
-        175 => wire__crate__api__kubernetes__kube_flux_run_impl(port, ptr, rust_vec_len, data_len),
-        176 => {
+        176 => wire__crate__api__kubernetes__kube_flux_run_impl(port, ptr, rust_vec_len, data_len),
+        177 => {
             wire__crate__api__kubernetes__kube_flux_terminal_impl(port, ptr, rust_vec_len, data_len)
         }
-        177 => {
+        178 => {
             wire__crate__api__kubernetes__kube_forward_list_impl(port, ptr, rust_vec_len, data_len)
         }
-        178 => {
+        179 => {
             wire__crate__api__kubernetes__kube_forward_start_impl(port, ptr, rust_vec_len, data_len)
         }
-        179 => wire__crate__api__kubernetes__kube_forward_start_configured_impl(
+        180 => wire__crate__api__kubernetes__kube_forward_start_configured_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        180 => {
+        181 => {
             wire__crate__api__kubernetes__kube_forward_stop_impl(port, ptr, rust_vec_len, data_len)
         }
-        181 => wire__crate__api__kubernetes__kube_forward_targets_impl(
+        182 => wire__crate__api__kubernetes__kube_forward_targets_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        182 => wire__crate__api__kubernetes__kube_helm_compare_live_impl(
+        183 => wire__crate__api__kubernetes__kube_helm_compare_live_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        183 => {
+        184 => {
             wire__crate__api__kubernetes__kube_helm_history_impl(port, ptr, rust_vec_len, data_len)
         }
-        184 => {
+        185 => {
             wire__crate__api__kubernetes__kube_helm_release_impl(port, ptr, rust_vec_len, data_len)
         }
-        185 => wire__crate__api__kubernetes__kube_helm_rollback_approve_impl(
+        186 => wire__crate__api__kubernetes__kube_helm_rollback_approve_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        186 => wire__crate__api__kubernetes__kube_helm_rollback_review_impl(
+        187 => wire__crate__api__kubernetes__kube_helm_rollback_review_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        187 => wire__crate__api__kubernetes__kube_history_status_impl(
+        188 => wire__crate__api__kubernetes__kube_history_status_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        188 => {
+        189 => {
             wire__crate__api__kubernetes__kube_import_commit_impl(port, ptr, rust_vec_len, data_len)
         }
-        189 => wire__crate__api__kubernetes__kube_import_discard_impl(
+        190 => wire__crate__api__kubernetes__kube_import_discard_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        190 => wire__crate__api__kubernetes__kube_import_inspect_exec_impl(
+        191 => wire__crate__api__kubernetes__kube_import_inspect_exec_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        191 => wire__crate__api__kubernetes__kube_import_preview_impl(
+        192 => wire__crate__api__kubernetes__kube_import_preview_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        192 => wire__crate__api__kubernetes__kube_import_preview_file_impl(
+        193 => wire__crate__api__kubernetes__kube_import_preview_file_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        193 => wire__crate__api__kubernetes__kube_insights_impl(port, ptr, rust_vec_len, data_len),
-        194 => wire__crate__api__kubernetes__kube_insights_watch_poll_impl(
+        194 => wire__crate__api__kubernetes__kube_insights_impl(port, ptr, rust_vec_len, data_len),
+        195 => wire__crate__api__kubernetes__kube_insights_watch_poll_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        195 => wire__crate__api__kubernetes__kube_insights_watch_start_impl(
+        196 => wire__crate__api__kubernetes__kube_insights_watch_start_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        196 => wire__crate__api__kubernetes__kube_insights_watch_stop_impl(
+        197 => wire__crate__api__kubernetes__kube_insights_watch_stop_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        197 => wire__crate__api__kubernetes__kube_inventory_impl(port, ptr, rust_vec_len, data_len),
-        198 => wire__crate__api__kubernetes__kube_kubectl_discover_impl(
+        198 => wire__crate__api__kubernetes__kube_inventory_impl(port, ptr, rust_vec_len, data_len),
+        199 => wire__crate__api__kubernetes__kube_kubectl_discover_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        199 => {
+        200 => {
             wire__crate__api__kubernetes__kube_kubectl_probe_impl(port, ptr, rust_vec_len, data_len)
         }
-        200 => wire__crate__api__kubernetes__kube_kubectl_review_impl(
+        201 => wire__crate__api__kubernetes__kube_kubectl_review_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        201 => {
+        202 => {
             wire__crate__api__kubernetes__kube_log_targets_impl(port, ptr, rust_vec_len, data_len)
         }
-        202 => wire__crate__api__kubernetes__kube_logs_impl(port, ptr, rust_vec_len, data_len),
-        203 => wire__crate__api__kubernetes__kube_logs_poll_impl(port, ptr, rust_vec_len, data_len),
-        204 => {
+        203 => wire__crate__api__kubernetes__kube_logs_impl(port, ptr, rust_vec_len, data_len),
+        204 => wire__crate__api__kubernetes__kube_logs_poll_impl(port, ptr, rust_vec_len, data_len),
+        205 => {
             wire__crate__api__kubernetes__kube_logs_start_impl(port, ptr, rust_vec_len, data_len)
         }
-        205 => wire__crate__api__kubernetes__kube_logs_stop_impl(port, ptr, rust_vec_len, data_len),
-        206 => {
+        206 => wire__crate__api__kubernetes__kube_logs_stop_impl(port, ptr, rust_vec_len, data_len),
+        207 => {
             wire__crate__api__kubernetes__kube_manifest_diff_impl(port, ptr, rust_vec_len, data_len)
         }
-        207 => wire__crate__api__kubernetes__kube_metrics_impl(port, ptr, rust_vec_len, data_len),
-        208 => {
+        208 => wire__crate__api__kubernetes__kube_metrics_impl(port, ptr, rust_vec_len, data_len),
+        209 => {
             wire__crate__api__kubernetes__kube_namespaces_impl(port, ptr, rust_vec_len, data_len)
         }
-        209 => {
+        210 => {
             wire__crate__api__kubernetes__kube_object_events_impl(port, ptr, rust_vec_len, data_len)
         }
-        210 => {
+        211 => {
             wire__crate__api__kubernetes__kube_oidc_begin_impl(port, ptr, rust_vec_len, data_len)
         }
-        211 => {
+        212 => {
             wire__crate__api__kubernetes__kube_oidc_complete_impl(port, ptr, rust_vec_len, data_len)
         }
-        212 => {
+        213 => {
             wire__crate__api__kubernetes__kube_permissions_impl(port, ptr, rust_vec_len, data_len)
         }
-        213 => wire__crate__api__kubernetes__kube_related_objects_impl(
+        214 => wire__crate__api__kubernetes__kube_related_objects_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        214 => wire__crate__api__kubernetes__kube_request_write_window_impl(
+        215 => wire__crate__api__kubernetes__kube_request_write_window_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        215 => wire__crate__api__kubernetes__kube_resource_delete_impl(
+        216 => wire__crate__api__kubernetes__kube_resource_delete_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        216 => {
+        217 => {
             wire__crate__api__kubernetes__kube_resource_get_impl(port, ptr, rust_vec_len, data_len)
         }
-        217 => wire__crate__api__kubernetes__kube_resources_list_impl(
+        218 => wire__crate__api__kubernetes__kube_resources_list_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        218 => wire__crate__api__kubernetes__kube_resources_table_impl(
+        219 => wire__crate__api__kubernetes__kube_resources_table_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        219 => wire__crate__api__kubernetes__kube_restart_impl(port, ptr, rust_vec_len, data_len),
-        220 => {
+        220 => wire__crate__api__kubernetes__kube_restart_impl(port, ptr, rust_vec_len, data_len),
+        221 => {
             wire__crate__api__kubernetes__kube_rollout_diff_impl(port, ptr, rust_vec_len, data_len)
         }
-        221 => wire__crate__api__kubernetes__kube_rollout_history_impl(
+        222 => wire__crate__api__kubernetes__kube_rollout_history_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        222 => wire__crate__api__kubernetes__kube_scale_impl(port, ptr, rust_vec_len, data_len),
-        223 => wire__crate__api__kubernetes__kube_scan_config_files_impl(
+        223 => wire__crate__api__kubernetes__kube_scale_impl(port, ptr, rust_vec_len, data_len),
+        224 => wire__crate__api__kubernetes__kube_scan_config_files_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        224 => wire__crate__api__kubernetes__kube_schema_impl(port, ptr, rust_vec_len, data_len),
-        225 => {
+        225 => wire__crate__api__kubernetes__kube_schema_impl(port, ptr, rust_vec_len, data_len),
+        226 => {
             wire__crate__api__kubernetes__kube_secret_reveal_impl(port, ptr, rust_vec_len, data_len)
         }
-        226 => {
+        227 => {
             wire__crate__api__kubernetes__kube_terminal_open_impl(port, ptr, rust_vec_len, data_len)
         }
-        227 => wire__crate__api__kubernetes__kube_view_preferences_impl(
+        228 => wire__crate__api__kubernetes__kube_view_preferences_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        228 => wire__crate__api__kubernetes__kube_view_preferences_update_impl(
+        229 => wire__crate__api__kubernetes__kube_view_preferences_update_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        229 => {
+        230 => {
             wire__crate__api__kubernetes__kube_watch_poll_impl(port, ptr, rust_vec_len, data_len)
         }
-        230 => {
+        231 => {
             wire__crate__api__kubernetes__kube_watch_start_impl(port, ptr, rust_vec_len, data_len)
         }
-        231 => {
+        232 => {
             wire__crate__api__kubernetes__kube_watch_stop_impl(port, ptr, rust_vec_len, data_len)
         }
-        232 => {
+        233 => {
             wire__crate__api__kubernetes__kube_workload_pods_impl(port, ptr, rust_vec_len, data_len)
         }
-        233 => {
+        234 => {
             wire__crate__api__kubernetes__kube_write_access_impl(port, ptr, rust_vec_len, data_len)
         }
-        235 => wire__crate__api__profiles__profiles_close_impl(port, ptr, rust_vec_len, data_len),
-        236 => wire__crate__api__profiles__profiles_create_local_impl(
+        236 => wire__crate__api__profiles__profiles_close_impl(port, ptr, rust_vec_len, data_len),
+        237 => wire__crate__api__profiles__profiles_create_local_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        237 => wire__crate__api__profiles__profiles_create_synced_impl(
+        238 => wire__crate__api__profiles__profiles_create_synced_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        238 => wire__crate__api__profiles__profiles_last_active_id_impl(
+        239 => wire__crate__api__profiles__profiles_last_active_id_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        239 => wire__crate__api__profiles__profiles_list_impl(port, ptr, rust_vec_len, data_len),
-        240 => wire__crate__api__profiles__profiles_open_impl(port, ptr, rust_vec_len, data_len),
-        241 => wire__crate__api__profiles__profiles_remote_vaults_impl(
+        240 => wire__crate__api__profiles__profiles_list_impl(port, ptr, rust_vec_len, data_len),
+        241 => wire__crate__api__profiles__profiles_open_impl(port, ptr, rust_vec_len, data_len),
+        242 => wire__crate__api__profiles__profiles_remote_vaults_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        242 => wire__crate__api__profiles__profiles_remove_impl(port, ptr, rust_vec_len, data_len),
-        243 => wire__crate__api__profiles__profiles_rename_impl(port, ptr, rust_vec_len, data_len),
-        244 => {
+        243 => wire__crate__api__profiles__profiles_remove_impl(port, ptr, rust_vec_len, data_len),
+        244 => wire__crate__api__profiles__profiles_rename_impl(port, ptr, rust_vec_len, data_len),
+        245 => {
             wire__crate__api__app__prompt_answer_host_key_impl(port, ptr, rust_vec_len, data_len)
         }
-        245 => {
+        246 => {
             wire__crate__api__app__prompt_answer_passphrase_impl(port, ptr, rust_vec_len, data_len)
         }
-        246 => {
+        247 => {
             wire__crate__api__app__prompt_answer_password_impl(port, ptr, rust_vec_len, data_len)
         }
-        247 => wire__crate__api__rdp__rdp_capabilities_impl(port, ptr, rust_vec_len, data_len),
-        248 => wire__crate__api__rdp__rdp_commit_clipboard_paste_impl(
+        248 => wire__crate__api__rdp__rdp_capabilities_impl(port, ptr, rust_vec_len, data_len),
+        249 => wire__crate__api__rdp__rdp_commit_clipboard_paste_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        249 => wire__crate__api__rdp__rdp_connect_impl(port, ptr, rust_vec_len, data_len),
-        250 => wire__crate__api__rdp__rdp_connect_with_permissions_impl(
+        250 => wire__crate__api__rdp__rdp_connect_impl(port, ptr, rust_vec_len, data_len),
+        251 => wire__crate__api__rdp__rdp_connect_with_permissions_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        251 => wire__crate__api__rdp__rdp_disconnect_impl(port, ptr, rust_vec_len, data_len),
-        252 => {
+        252 => wire__crate__api__rdp__rdp_disconnect_impl(port, ptr, rust_vec_len, data_len),
+        253 => {
             wire__crate__api__rdp__rdp_offer_clipboard_text_impl(port, ptr, rust_vec_len, data_len)
         }
-        253 => wire__crate__api__rdp__rdp_offer_clipboard_text_confirmed_impl(
+        254 => wire__crate__api__rdp__rdp_offer_clipboard_text_confirmed_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        254 => wire__crate__api__rdp__rdp_permissions_impl(port, ptr, rust_vec_len, data_len),
-        255 => {
+        255 => wire__crate__api__rdp__rdp_permissions_impl(port, ptr, rust_vec_len, data_len),
+        256 => {
             wire__crate__api__rdp__rdp_permissions_default_impl(port, ptr, rust_vec_len, data_len)
         }
-        256 => wire__crate__api__rdp__rdp_pick_directory_impl(port, ptr, rust_vec_len, data_len),
-        257 => wire__crate__api__rdp__rdp_poll_impl(port, ptr, rust_vec_len, data_len),
-        258 => wire__crate__api__rdp__rdp_probe_certificate_impl(port, ptr, rust_vec_len, data_len),
-        259 => wire__crate__api__rdp__rdp_release_directory_grant_impl(
+        257 => wire__crate__api__rdp__rdp_pick_directory_impl(port, ptr, rust_vec_len, data_len),
+        258 => wire__crate__api__rdp__rdp_poll_impl(port, ptr, rust_vec_len, data_len),
+        259 => wire__crate__api__rdp__rdp_probe_certificate_impl(port, ptr, rust_vec_len, data_len),
+        260 => wire__crate__api__rdp__rdp_release_directory_grant_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        260 => wire__crate__api__rdp__rdp_request_clipboard_text_impl(
+        261 => wire__crate__api__rdp__rdp_request_clipboard_text_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        261 => wire__crate__api__rdp_hosts__rdp_saved_host_connect_impl(
+        262 => wire__crate__api__rdp_hosts__rdp_saved_host_connect_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        262 => wire__crate__api__rdp_hosts__rdp_saved_host_probe_impl(
+        263 => wire__crate__api__rdp_hosts__rdp_saved_host_probe_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        263 => wire__crate__api__rdp__rdp_send_input_impl(port, ptr, rust_vec_len, data_len),
-        264 => wire__crate__api__rdp__rdp_set_permissions_impl(port, ptr, rust_vec_len, data_len),
-        265 => {
+        264 => wire__crate__api__rdp__rdp_send_input_impl(port, ptr, rust_vec_len, data_len),
+        265 => wire__crate__api__rdp__rdp_set_permissions_impl(port, ptr, rust_vec_len, data_len),
+        266 => {
             wire__crate__api__rdp__rdp_take_clipboard_text_impl(port, ptr, rust_vec_len, data_len)
         }
-        266 => wire__crate__api__app__server_probe_impl(port, ptr, rust_vec_len, data_len),
-        267 => wire__crate__api__ssh__sftp_cancel_transfer_impl(port, ptr, rust_vec_len, data_len),
-        268 => wire__crate__api__sftp__sftp_chmod_impl(port, ptr, rust_vec_len, data_len),
-        269 => wire__crate__api__sftp__sftp_clear_finished_transfers_impl(
+        267 => wire__crate__api__app__server_probe_impl(port, ptr, rust_vec_len, data_len),
+        268 => wire__crate__api__ssh__sftp_cancel_transfer_impl(port, ptr, rust_vec_len, data_len),
+        269 => wire__crate__api__sftp__sftp_chmod_impl(port, ptr, rust_vec_len, data_len),
+        270 => wire__crate__api__sftp__sftp_clear_finished_transfers_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        270 => wire__crate__api__ssh__sftp_close_impl(port, ptr, rust_vec_len, data_len),
-        271 => wire__crate__api__sftp__sftp_create_file_impl(port, ptr, rust_vec_len, data_len),
-        272 => wire__crate__api__sftp__sftp_duplicate_impl(port, ptr, rust_vec_len, data_len),
-        273 => wire__crate__api__ssh__sftp_home_impl(port, ptr, rust_vec_len, data_len),
-        274 => wire__crate__api__ssh__sftp_list_impl(port, ptr, rust_vec_len, data_len),
-        275 => wire__crate__api__sftp__sftp_list_detailed_impl(port, ptr, rust_vec_len, data_len),
-        276 => wire__crate__api__ssh__sftp_mkdir_impl(port, ptr, rust_vec_len, data_len),
-        277 => wire__crate__api__ssh__sftp_open_impl(port, ptr, rust_vec_len, data_len),
-        278 => wire__crate__api__sftp__sftp_read_preview_impl(port, ptr, rust_vec_len, data_len),
-        279 => wire__crate__api__ssh__sftp_remove_impl(port, ptr, rust_vec_len, data_len),
-        280 => wire__crate__api__ssh__sftp_rename_impl(port, ptr, rust_vec_len, data_len),
-        281 => {
+        271 => wire__crate__api__ssh__sftp_close_impl(port, ptr, rust_vec_len, data_len),
+        272 => wire__crate__api__sftp__sftp_create_file_impl(port, ptr, rust_vec_len, data_len),
+        273 => wire__crate__api__sftp__sftp_duplicate_impl(port, ptr, rust_vec_len, data_len),
+        274 => wire__crate__api__ssh__sftp_home_impl(port, ptr, rust_vec_len, data_len),
+        275 => wire__crate__api__ssh__sftp_list_impl(port, ptr, rust_vec_len, data_len),
+        276 => wire__crate__api__sftp__sftp_list_detailed_impl(port, ptr, rust_vec_len, data_len),
+        277 => wire__crate__api__ssh__sftp_mkdir_impl(port, ptr, rust_vec_len, data_len),
+        278 => wire__crate__api__ssh__sftp_open_impl(port, ptr, rust_vec_len, data_len),
+        279 => wire__crate__api__sftp__sftp_read_preview_impl(port, ptr, rust_vec_len, data_len),
+        280 => wire__crate__api__ssh__sftp_remove_impl(port, ptr, rust_vec_len, data_len),
+        281 => wire__crate__api__ssh__sftp_rename_impl(port, ptr, rust_vec_len, data_len),
+        282 => {
             wire__crate__api__sftp__sftp_resolve_directory_impl(port, ptr, rust_vec_len, data_len)
         }
-        282 => wire__crate__api__ssh__sftp_retry_transfer_impl(port, ptr, rust_vec_len, data_len),
-        283 => wire__crate__api__sftp__sftp_stat_impl(port, ptr, rust_vec_len, data_len),
-        284 => wire__crate__api__ssh__sftp_transfer_impl(port, ptr, rust_vec_len, data_len),
-        285 => wire__crate__api__sftp__sftp_transfers_impl(port, ptr, rust_vec_len, data_len),
-        286 => wire__crate__api__sharing__sharing_accept_impl(port, ptr, rust_vec_len, data_len),
-        287 => wire__crate__api__sharing__sharing_copy_host_impl(port, ptr, rust_vec_len, data_len),
-        288 => wire__crate__api__sharing__sharing_copy_kube_context_impl(
+        283 => wire__crate__api__ssh__sftp_retry_transfer_impl(port, ptr, rust_vec_len, data_len),
+        284 => wire__crate__api__sftp__sftp_stat_impl(port, ptr, rust_vec_len, data_len),
+        285 => wire__crate__api__ssh__sftp_transfer_impl(port, ptr, rust_vec_len, data_len),
+        286 => wire__crate__api__sftp__sftp_transfers_impl(port, ptr, rust_vec_len, data_len),
+        287 => wire__crate__api__sharing__sharing_accept_impl(port, ptr, rust_vec_len, data_len),
+        288 => wire__crate__api__sharing__sharing_copy_host_impl(port, ptr, rust_vec_len, data_len),
+        289 => wire__crate__api__sharing__sharing_copy_kube_context_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        289 => wire__crate__api__sharing__sharing_copy_secret_credential_impl(
+        290 => wire__crate__api__sharing__sharing_copy_secret_credential_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        290 => {
+        291 => {
             wire__crate__api__sharing__sharing_copy_snippet_impl(port, ptr, rust_vec_len, data_len)
         }
-        291 => wire__crate__api__sharing__sharing_delete_impl(port, ptr, rust_vec_len, data_len),
-        292 => {
+        292 => wire__crate__api__sharing__sharing_delete_impl(port, ptr, rust_vec_len, data_len),
+        293 => {
             wire__crate__api__sharing__sharing_detach_host_impl(port, ptr, rust_vec_len, data_len)
         }
-        293 => wire__crate__api__sharing__sharing_discard_pending_impl(
+        294 => wire__crate__api__sharing__sharing_discard_pending_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        294 => wire__crate__api__sharing__sharing_discover_impl(port, ptr, rust_vec_len, data_len),
-        295 => wire__crate__api__sharing__sharing_edit_impl(port, ptr, rust_vec_len, data_len),
-        296 => {
+        295 => wire__crate__api__sharing__sharing_discover_impl(port, ptr, rust_vec_len, data_len),
+        296 => wire__crate__api__sharing__sharing_edit_impl(port, ptr, rust_vec_len, data_len),
+        297 => {
             wire__crate__api__sharing__sharing_edit_secret_impl(port, ptr, rust_vec_len, data_len)
         }
-        297 => wire__crate__api__sharing__sharing_flush_impl(port, ptr, rust_vec_len, data_len),
-        298 => wire__crate__api__sharing__sharing_identity_impl(port, ptr, rust_vec_len, data_len),
-        299 => wire__crate__api__sharing__sharing_inspect_impl(port, ptr, rust_vec_len, data_len),
-        300 => wire__crate__api__sharing__sharing_list_impl(port, ptr, rust_vec_len, data_len),
-        301 => wire__crate__api__sharing__sharing_outbox_impl(port, ptr, rust_vec_len, data_len),
-        302 => {
+        298 => wire__crate__api__sharing__sharing_flush_impl(port, ptr, rust_vec_len, data_len),
+        299 => wire__crate__api__sharing__sharing_identity_impl(port, ptr, rust_vec_len, data_len),
+        300 => wire__crate__api__sharing__sharing_inspect_impl(port, ptr, rust_vec_len, data_len),
+        301 => wire__crate__api__sharing__sharing_list_impl(port, ptr, rust_vec_len, data_len),
+        302 => wire__crate__api__sharing__sharing_outbox_impl(port, ptr, rust_vec_len, data_len),
+        303 => {
             wire__crate__api__sharing__sharing_preview_group_impl(port, ptr, rust_vec_len, data_len)
         }
-        303 => {
+        304 => {
             wire__crate__api__sharing__sharing_preview_host_impl(port, ptr, rust_vec_len, data_len)
         }
-        304 => wire__crate__api__sharing__sharing_preview_kube_context_impl(
+        305 => wire__crate__api__sharing__sharing_preview_kube_context_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        305 => wire__crate__api__sharing__sharing_preview_secret_impl(
+        306 => wire__crate__api__sharing__sharing_preview_secret_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        306 => wire__crate__api__sharing__sharing_preview_snippet_impl(
+        307 => wire__crate__api__sharing__sharing_preview_snippet_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        307 => wire__crate__api__sharing__sharing_publish_impl(port, ptr, rust_vec_len, data_len),
-        308 => wire__crate__api__sharing__sharing_publish_kube_context_impl(
+        308 => wire__crate__api__sharing__sharing_publish_impl(port, ptr, rust_vec_len, data_len),
+        309 => wire__crate__api__sharing__sharing_publish_kube_context_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        309 => wire__crate__api__sharing__sharing_publish_secret_impl(
+        310 => wire__crate__api__sharing__sharing_publish_secret_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        310 => wire__crate__api__sharing__sharing_reconcile_impl(port, ptr, rust_vec_len, data_len),
-        311 => wire__crate__api__sharing__sharing_refresh_bound_host_impl(
+        311 => wire__crate__api__sharing__sharing_reconcile_impl(port, ptr, rust_vec_len, data_len),
+        312 => wire__crate__api__sharing__sharing_refresh_bound_host_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        312 => wire__crate__api__sharing__sharing_refresh_bound_host_expected_impl(
+        313 => wire__crate__api__sharing__sharing_refresh_bound_host_expected_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        313 => {
+        314 => {
             wire__crate__api__sharing__sharing_reveal_secret_impl(port, ptr, rust_vec_len, data_len)
         }
-        314 => wire__crate__api__sharing__sharing_rotate_impl(port, ptr, rust_vec_len, data_len),
-        315 => wire__crate__api__sharing__sharing_status_impl(port, ptr, rust_vec_len, data_len),
-        316 => wire__crate__api__inventory__snippets_delete_impl(port, ptr, rust_vec_len, data_len),
-        317 => wire__crate__api__inventory__snippets_list_impl(port, ptr, rust_vec_len, data_len),
-        318 => wire__crate__api__inventory__snippets_render_impl(port, ptr, rust_vec_len, data_len),
-        319 => wire__crate__api__inventory__snippets_save_impl(port, ptr, rust_vec_len, data_len),
-        320 => wire__crate__api__inventory__snippets_search_impl(port, ptr, rust_vec_len, data_len),
-        321 => wire__crate__api__sync__sync_disconnect_impl(port, ptr, rust_vec_len, data_len),
-        322 => wire__crate__api__sync__sync_enable_impl(port, ptr, rust_vec_len, data_len),
-        323 => wire__crate__api__sync__sync_now_impl(port, ptr, rust_vec_len, data_len),
-        324 => wire__crate__api__sync__sync_reauthenticate_impl(port, ptr, rust_vec_len, data_len),
-        325 => wire__crate__api__sync__sync_status_impl(port, ptr, rust_vec_len, data_len),
-        326 => wire__crate__api__ssh__terminal_attach_impl(port, ptr, rust_vec_len, data_len),
-        327 => wire__crate__api__ssh__terminal_close_impl(port, ptr, rust_vec_len, data_len),
-        328 => wire__crate__api__ssh__terminal_info_impl(port, ptr, rust_vec_len, data_len),
-        329 => {
+        315 => wire__crate__api__sharing__sharing_rotate_impl(port, ptr, rust_vec_len, data_len),
+        316 => wire__crate__api__sharing__sharing_status_impl(port, ptr, rust_vec_len, data_len),
+        317 => wire__crate__api__inventory__snippets_delete_impl(port, ptr, rust_vec_len, data_len),
+        318 => wire__crate__api__inventory__snippets_list_impl(port, ptr, rust_vec_len, data_len),
+        319 => wire__crate__api__inventory__snippets_render_impl(port, ptr, rust_vec_len, data_len),
+        320 => wire__crate__api__inventory__snippets_save_impl(port, ptr, rust_vec_len, data_len),
+        321 => wire__crate__api__inventory__snippets_search_impl(port, ptr, rust_vec_len, data_len),
+        322 => wire__crate__api__sync__sync_disconnect_impl(port, ptr, rust_vec_len, data_len),
+        323 => wire__crate__api__sync__sync_enable_impl(port, ptr, rust_vec_len, data_len),
+        324 => wire__crate__api__sync__sync_now_impl(port, ptr, rust_vec_len, data_len),
+        325 => wire__crate__api__sync__sync_reauthenticate_impl(port, ptr, rust_vec_len, data_len),
+        326 => wire__crate__api__sync__sync_status_impl(port, ptr, rust_vec_len, data_len),
+        327 => wire__crate__api__ssh__terminal_attach_impl(port, ptr, rust_vec_len, data_len),
+        328 => wire__crate__api__ssh__terminal_close_impl(port, ptr, rust_vec_len, data_len),
+        329 => wire__crate__api__ssh__terminal_info_impl(port, ptr, rust_vec_len, data_len),
+        330 => {
             wire__crate__api__ssh__terminal_local_profiles_impl(port, ptr, rust_vec_len, data_len)
         }
-        330 => wire__crate__api__ssh__terminal_open_impl(port, ptr, rust_vec_len, data_len),
-        331 => wire__crate__api__ssh__terminal_open_local_impl(port, ptr, rust_vec_len, data_len),
-        332 => wire__crate__api__ssh__terminal_resize_impl(port, ptr, rust_vec_len, data_len),
-        333 => wire__crate__api__ssh__terminal_write_impl(port, ptr, rust_vec_len, data_len),
-        334 => wire__crate__api__ssh__tunnel_start_impl(port, ptr, rust_vec_len, data_len),
-        335 => wire__crate__api__ssh__tunnel_statuses_impl(port, ptr, rust_vec_len, data_len),
-        336 => wire__crate__api__ssh__tunnel_stop_impl(port, ptr, rust_vec_len, data_len),
-        337 => wire__crate__api__inventory__tunnels_delete_impl(port, ptr, rust_vec_len, data_len),
-        338 => wire__crate__api__inventory__tunnels_list_impl(port, ptr, rust_vec_len, data_len),
-        339 => wire__crate__api__inventory__tunnels_save_impl(port, ptr, rust_vec_len, data_len),
-        340 => wire__crate__api__app__ui_store_get_impl(port, ptr, rust_vec_len, data_len),
-        341 => wire__crate__api__app__ui_store_set_impl(port, ptr, rust_vec_len, data_len),
-        342 => wire__crate__api__profiles__vault_acknowledge_recovery_kit_impl(
+        331 => wire__crate__api__ssh__terminal_open_impl(port, ptr, rust_vec_len, data_len),
+        332 => wire__crate__api__ssh__terminal_open_local_impl(port, ptr, rust_vec_len, data_len),
+        333 => wire__crate__api__ssh__terminal_resize_impl(port, ptr, rust_vec_len, data_len),
+        334 => wire__crate__api__ssh__terminal_write_impl(port, ptr, rust_vec_len, data_len),
+        335 => wire__crate__api__ssh__tunnel_start_impl(port, ptr, rust_vec_len, data_len),
+        336 => wire__crate__api__ssh__tunnel_statuses_impl(port, ptr, rust_vec_len, data_len),
+        337 => wire__crate__api__ssh__tunnel_stop_impl(port, ptr, rust_vec_len, data_len),
+        338 => wire__crate__api__inventory__tunnels_delete_impl(port, ptr, rust_vec_len, data_len),
+        339 => wire__crate__api__inventory__tunnels_list_impl(port, ptr, rust_vec_len, data_len),
+        340 => wire__crate__api__inventory__tunnels_save_impl(port, ptr, rust_vec_len, data_len),
+        341 => wire__crate__api__app__ui_store_get_impl(port, ptr, rust_vec_len, data_len),
+        342 => wire__crate__api__app__ui_store_set_impl(port, ptr, rust_vec_len, data_len),
+        343 => wire__crate__api__profiles__vault_acknowledge_recovery_kit_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        343 => wire__crate__api__profiles__vault_change_passphrase_impl(
+        344 => wire__crate__api__profiles__vault_change_passphrase_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        344 => wire__crate__api__profiles__vault_create_impl(port, ptr, rust_vec_len, data_len),
-        345 => wire__crate__api__profiles__vault_device_unlock_info_impl(
+        345 => wire__crate__api__profiles__vault_create_impl(port, ptr, rust_vec_len, data_len),
+        346 => wire__crate__api__profiles__vault_device_unlock_info_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        346 => wire__crate__api__profiles__vault_has_pending_recovery_kit_impl(
+        347 => wire__crate__api__profiles__vault_has_pending_recovery_kit_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        347 => {
+        348 => {
             wire__crate__api__profiles__vault_is_unlocked_impl(port, ptr, rust_vec_len, data_len)
         }
-        348 => wire__crate__api__profiles__vault_join_with_passphrase_impl(
+        349 => wire__crate__api__profiles__vault_join_with_passphrase_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        349 => wire__crate__api__profiles__vault_join_with_recovery_key_impl(
+        350 => wire__crate__api__profiles__vault_join_with_recovery_key_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        350 => wire__crate__api__profiles__vault_lock_impl(port, ptr, rust_vec_len, data_len),
-        351 => wire__crate__api__profiles__vault_recovery_kit_available_impl(
+        351 => wire__crate__api__profiles__vault_lock_impl(port, ptr, rust_vec_len, data_len),
+        352 => wire__crate__api__profiles__vault_recovery_kit_available_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        352 => wire__crate__api__profiles__vault_regenerate_recovery_kit_impl(
+        353 => wire__crate__api__profiles__vault_regenerate_recovery_kit_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        353 => wire__crate__api__profiles__vault_reset_passphrase_with_device_impl(
+        354 => wire__crate__api__profiles__vault_reset_passphrase_with_device_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        354 => wire__crate__api__profiles__vault_reset_passphrase_with_device_attested_impl(
+        355 => wire__crate__api__profiles__vault_reset_passphrase_with_device_attested_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        355 => wire__crate__api__profiles__vault_reset_passphrase_with_recovery_key_impl(
+        356 => wire__crate__api__profiles__vault_reset_passphrase_with_recovery_key_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        356 => wire__crate__api__profiles__vault_set_device_unlock_enabled_attested_impl(
+        357 => wire__crate__api__profiles__vault_set_device_unlock_enabled_attested_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        357 => {
+        358 => {
             wire__crate__api__inventory__vault_settings_get_impl(port, ptr, rust_vec_len, data_len)
         }
-        358 => {
+        359 => {
             wire__crate__api__inventory__vault_settings_save_impl(port, ptr, rust_vec_len, data_len)
         }
-        359 => wire__crate__api__profiles__vault_unlock_with_device_impl(
+        360 => wire__crate__api__profiles__vault_unlock_with_device_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        360 => wire__crate__api__profiles__vault_unlock_with_device_attested_impl(
+        361 => wire__crate__api__profiles__vault_unlock_with_device_attested_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        361 => wire__crate__api__profiles__vault_unlock_with_passphrase_impl(
+        362 => wire__crate__api__profiles__vault_unlock_with_passphrase_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        362 => wire__crate__api__profiles__vault_unlock_with_recovery_key_impl(
+        363 => wire__crate__api__profiles__vault_unlock_with_recovery_key_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        363 => wire__crate__api__profiles__vault_verify_passphrase_impl(
+        364 => wire__crate__api__profiles__vault_verify_passphrase_impl(
             port,
             ptr,
             rust_vec_len,
@@ -16014,7 +16058,7 @@ fn pde_ffi_dispatcher_sync_impl(
     match func_id {
         23 => wire__crate__api__app__core_data_dir_impl(ptr, rust_vec_len, data_len),
         26 => wire__crate__api__app__core_is_initialized_impl(ptr, rust_vec_len, data_len),
-        234 => wire__crate__api__app__os_auth_report_impl(ptr, rust_vec_len, data_len),
+        235 => wire__crate__api__app__os_auth_report_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
