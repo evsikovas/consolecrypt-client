@@ -7,7 +7,7 @@
 //! in a zeroizing wrapper and logged as an audit line without the value.
 
 use crate::app::AppCore;
-use crate::dto::{parse_id, AppEvent};
+use crate::dto::{opt_ms, parse_id, AppEvent, LogoutAllDto};
 use crate::error::{AppError, AppResult};
 use cc_models::credential::CredentialKind;
 use cc_protocol::auth::{ChangePasswordRequest, ForgotPasswordRequest, LogoutRequest};
@@ -67,6 +67,31 @@ impl AppCore {
             profile_id: s.profile_id.to_string(),
         });
         Ok(())
+    }
+
+    /// "Sign out on all devices" of the open **synced** profile: like
+    /// [`AppCore::logout`], but every session of the account is ended — except,
+    /// on a protocol 1.7 server, those of trusted devices when this device is
+    /// still new (quarantine); the result says how many were kept.
+    pub async fn logout_all_sessions(&self) -> AppResult<LogoutAllDto> {
+        let s = self.session().await?;
+        if s.kind().await? != ProfileKind::Synced {
+            return Err(AppError::LocalProfile);
+        }
+        let api = s.api()?;
+        let kept = api.logout(&LogoutRequest { all_sessions: true }).await?;
+        if let Some(u) = s.unlocked_opt().await {
+            u.stop_engine().await;
+        }
+        api.clear_tokens().await?;
+        tracing::info!(profile_id = %s.profile_id, "signed out on all devices");
+        self.inner.ctx.emit(AppEvent::SignedOut {
+            profile_id: s.profile_id.to_string(),
+        });
+        Ok(LogoutAllDto {
+            trusted_devices_kept: kept.as_ref().map_or(0, |k| k.trusted_devices_kept),
+            quarantine_until_ms: kept.and_then(|k| opt_ms(&k.quarantine_until)),
+        })
     }
 
     /// Ask `server_url` to send an **account** password-reset e-mail to

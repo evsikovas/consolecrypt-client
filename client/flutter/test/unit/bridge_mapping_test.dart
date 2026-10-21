@@ -108,6 +108,18 @@ void main() {
       expect(server('unavailable'), AppErrorCode.serverUnavailable);
     });
 
+    test('new-device protection errors keep their dates and map from the server table (protocol 1.7)', () {
+      final quarantine = mapBridgeError(_e('device_in_quarantine', {'until_ms': '1793786400000'}));
+      expect(quarantine.code, AppErrorCode.deviceInQuarantine);
+      expect(quarantine.args['until_ms'], '1793786400000');
+      final limited = mapBridgeError(_e('envelope_rate_limited', {'retry_after_seconds': '600'}));
+      expect(limited.code, AppErrorCode.envelopeRateLimited);
+      expect(limited.args['retry_after_seconds'], '600');
+      AppErrorCode server(String protocol) => mapBridgeError(_e('server', {'protocol_code': protocol})).code;
+      expect(server('device_in_quarantine'), AppErrorCode.deviceInQuarantine);
+      expect(server('envelope_rate_limited'), AppErrorCode.envelopeRateLimited);
+    });
+
     test('a reason sent by the core wins over the derived one', () {
       final e = mapBridgeError(_e('invalid_input', {'field': 'x'}, 'weak_passphrase'));
       expect(e.reason, AppErrorReason.weakPassphrase);
@@ -117,6 +129,56 @@ void main() {
       final e = toAppException(StateError('secret-ish detail'));
       expect(e.code, AppErrorCode.internal);
       expect(e.message, isNot(contains('secret-ish')));
+    });
+  });
+
+  group('device protection DTOs (protocol 1.7)', () {
+    test('device list carries trust, quarantine and the capability; older shapes stay neutral', () {
+      final snapshot = devicesFromJson({
+        'device_protection': true,
+        'devices': [
+          {
+            'device_id': 'd1',
+            'name': 'New laptop',
+            'platform': 'linux',
+            'status': 'active',
+            'trusted_for_vault': false,
+            'is_current': false,
+            'created_at_ms': 1,
+            'trusted': false,
+            'quarantine_until_ms': DateTime.now().add(const Duration(days: 3)).millisecondsSinceEpoch,
+          },
+        ],
+        'pending_requests': <Object?>[],
+      });
+      expect(snapshot.deviceProtection, isTrue);
+      expect(snapshot.devices.single.trusted, isFalse);
+      expect(snapshot.devices.single.inQuarantine, isTrue);
+      final old = devicesFromJson({
+        'devices': [
+          {'device_id': 'd1', 'name': 'x', 'platform': 'macos', 'status': 'active', 'created_at_ms': 1},
+        ],
+      });
+      expect(old.deviceProtection, isFalse);
+      expect(old.devices.single.trusted, isNull);
+      expect(old.devices.single.inQuarantine, isFalse);
+    });
+
+    test('device_registered and logout-all results decode', () {
+      final notice = newDeviceNoticeFromJson({
+        'type': 'device_registered',
+        'device_id': 'd2',
+        'name': 'Stranger',
+        'platform': 'windows',
+        'created_at_ms': 1000,
+      })!;
+      expect(notice.deviceId, const DeviceId('d2'));
+      expect(notice.platform, DevicePlatform.windows);
+      expect(newDeviceNoticeFromJson({'type': 'device_registered'}), isNull);
+      final kept = logoutAllFromJson({'trusted_devices_kept': 2, 'quarantine_until_ms': 5000});
+      expect(kept.trustedDevicesKept, 2);
+      expect(kept.quarantineUntil, isNotNull);
+      expect(logoutAllFromJson({'trusted_devices_kept': 0}).quarantineUntil, isNull);
     });
   });
 

@@ -28,8 +28,8 @@ pub use tokens::{MemoryTokenStore, TokenStore, TokenStoreError};
 
 use cc_protocol::auth::{
     AccountInfo, AuthResponse, ChangePasswordRequest, ForgotPasswordRequest, LoginRequest,
-    LogoutRequest, RefreshRequest, RegisterRequest, ResetPasswordRequest, SecretString, TokenPair,
-    VerifyEmailRequest,
+    LogoutRequest, LogoutResponse, RefreshRequest, RegisterRequest, ResetPasswordRequest,
+    SecretString, TokenPair, VerifyEmailRequest,
 };
 use cc_protocol::devices::{
     ApproveDeviceRequest, AttestDeviceRequest, CreateDeviceTrustRequest, DeviceInfo,
@@ -644,14 +644,28 @@ impl ApiClient {
 
     /// `POST /v1/auth/logout`; clears local tokens unless the request failed
     /// for network reasons.
-    pub async fn logout(&self, req: &LogoutRequest) -> Result<(), ApiError> {
-        let r = self
-            .authed_empty(
+    ///
+    /// Protocol 1.7: `all_sessions` from a device in new-device quarantine
+    /// answers `200` [`LogoutResponse`] (trusted devices stayed signed in);
+    /// otherwise `204` → `None`.
+    pub async fn logout(&self, req: &LogoutRequest) -> Result<Option<LogoutResponse>, ApiError> {
+        let r = match self
+            .send_authed(
                 Method::POST,
                 self.endpoint(paths::AUTH_LOGOUT),
                 Some(to_json(req)?),
             )
-            .await;
+            .await
+        {
+            Ok(raw) => check(raw).and_then(|raw| {
+                if raw.status == StatusCode::NO_CONTENT || raw.body.is_empty() {
+                    Ok(None)
+                } else {
+                    decode::<LogoutResponse>(&raw).map(Some)
+                }
+            }),
+            Err(e) => Err(e),
+        };
         match &r {
             Err(e) if e.is_offline() => {}
             _ => self.clear_tokens().await?,

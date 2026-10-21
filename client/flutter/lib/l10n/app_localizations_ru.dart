@@ -309,10 +309,12 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get strengthHintSequence => 'Избегайте последовательностей клавиш и букв алфавита';
+  String get strengthHintSequence =>
+      'Избегайте последовательностей клавиш и букв алфавита';
 
   @override
-  String get strengthHintCommon => 'Избегайте распространённых паролей и известных фраз';
+  String get strengthHintCommon =>
+      'Избегайте распространённых паролей и известных фраз';
 
   @override
   String strengthHintTooShort(int min) {
@@ -320,7 +322,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get strengthHintGood => 'Хорошо. Храните её в надёжном месте — сбросить её за вас никто не сможет.';
+  String get strengthHintGood =>
+      'Хорошо. Храните её в надёжном месте — сбросить её за вас никто не сможет.';
 
   @override
   String get strengthHintAddMore => 'Добавьте ещё случайных слов или символов';
@@ -344,10 +347,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get privacyProfileLocal => 'Локальный';
 
   @override
-  String get privacyProfileStrictDescription => 'Скрывать секреты, а также IP-адреса, имена хостов, пользователей и БД';
+  String get privacyProfileStrictDescription =>
+      'Скрывать секреты, а также IP-адреса, имена хостов, пользователей и БД';
 
   @override
-  String get privacyProfileStandardDescription => 'Скрывать секреты, сохранять метаданные хостов';
+  String get privacyProfileStandardDescription =>
+      'Скрывать секреты, сохранять метаданные хостов';
 
   @override
   String get privacyProfileLocalDescription =>
@@ -385,7 +390,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Подтверждать неизвестные ключи хостов; изменённый ключ всегда блокирует подключение';
 
   @override
-  String get hostKeyPolicyStrictDescription => 'Принимать только ключи из списка известных хостов';
+  String get hostKeyPolicyStrictDescription =>
+      'Принимать только ключи из списка известных хостов';
 
   @override
   String get hostKeyPolicyAcceptNewDescription =>
@@ -419,10 +425,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get historyModeDisabled => 'Отключена';
 
   @override
-  String get historyModeLocalOnlyDescription => 'История хранится только на этом устройстве (по умолчанию)';
+  String get historyModeLocalOnlyDescription =>
+      'История хранится только на этом устройстве (по умолчанию)';
 
   @override
-  String get historyModeEncryptedSyncDescription => 'История синхронизируется со сквозным шифрованием';
+  String get historyModeEncryptedSyncDescription =>
+      'История синхронизируется со сквозным шифрованием';
 
   @override
   String get historyModeDisabledDescription => 'История команд не записывается';
@@ -445,13 +453,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get profileUnknownServer => 'сервер';
 
   @override
-  String get enableSyncStepAuthenticating => 'Вход и регистрация этого устройства';
+  String get enableSyncStepAuthenticating =>
+      'Вход и регистрация этого устройства';
 
   @override
-  String get enableSyncStepCreatingRemoteVault => 'Создание хранилища на сервере (тот же ID хранилища)';
+  String get enableSyncStepCreatingRemoteVault =>
+      'Создание хранилища на сервере (тот же ID хранилища)';
 
   @override
-  String get enableSyncStepReconnecting => 'Хранилище уже есть на сервере — объединение';
+  String get enableSyncStepReconnecting =>
+      'Хранилище уже есть на сервере — объединение';
 
   @override
   String get enableSyncStepUploading => 'Выгрузка зашифрованных объектов';
@@ -475,13 +486,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get tunnelKindDynamic => 'Динамический (SOCKS5)';
 
   @override
-  String get tunnelKindLocalDescription => 'Пробросить локальный порт на хост, доступный с сервера';
+  String get tunnelKindLocalDescription =>
+      'Пробросить локальный порт на хост, доступный с сервера';
 
   @override
-  String get tunnelKindRemoteDescription => 'Открыть локальный сервис на порту сервера';
+  String get tunnelKindRemoteDescription =>
+      'Открыть локальный сервис на порту сервера';
 
   @override
-  String get tunnelKindDynamicDescription => 'Локальный SOCKS5-прокси через сервер';
+  String get tunnelKindDynamicDescription =>
+      'Локальный SOCKS5-прокси через сервер';
 
   @override
   String get snippetSourceUser => 'Пользователь';
@@ -604,7 +618,11 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String shellApprovalBannerMessage(String device, String platform, String ago) {
+  String shellApprovalBannerMessage(
+    String device,
+    String platform,
+    String ago,
+  ) {
     return 'Устройство «$device» ($platform) запросило доступ к вашему хранилищу $ago. Одобряйте только после сравнения кодов проверки.';
   }
 
@@ -648,7 +666,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get syncStatePaused => 'Синхронизация приостановлена';
 
   @override
-  String get syncIndicatorLocalTooltip => 'Этот профиль не синхронизируется. Включите синхронизацию в настройках.';
+  String get syncIndicatorLocalTooltip =>
+      'Этот профиль не синхронизируется. Включите синхронизацию в настройках.';
 
   @override
   String syncIndicatorPendingTooltip(String state, int count) {
@@ -670,10 +689,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errorInvalidCredentials => 'Неверный e-mail или пароль.';
 
   @override
-  String get errorServerUnreachable => 'Сервер недоступен. Проверьте URL и подключение к сети.';
+  String get errorServerUnreachable =>
+      'Сервер недоступен. Проверьте URL и подключение к сети.';
 
   @override
-  String get errorIncompatibleServer => 'Версия сервера несовместима с приложением. Обновите приложение или сервер.';
+  String get errorIncompatibleServer =>
+      'Версия сервера несовместима с приложением. Обновите приложение или сервер.';
 
   @override
   String get errorRegistrationClosed => 'Регистрация на этом сервере закрыта.';
@@ -685,16 +706,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errorWrongPassphrase => 'Неверная парольная фраза.';
 
   @override
-  String get errorInvalidRecoveryKey => 'Этот ключ восстановления не открывает хранилище.';
+  String get errorInvalidRecoveryKey =>
+      'Этот ключ восстановления не открывает хранилище.';
 
   @override
-  String get errorDeviceNotTrusted => 'Это устройство ещё не является доверенным для хранилища.';
+  String get errorDeviceNotTrusted =>
+      'Это устройство ещё не является доверенным для хранилища.';
 
   @override
-  String get errorOsAuthFailed => 'Системная аутентификация не пройдена или отменена.';
+  String get errorOsAuthFailed =>
+      'Системная аутентификация не пройдена или отменена.';
 
   @override
-  String get errorVerificationMismatch => 'Коды проверки не совпадают — подтверждение отклонено.';
+  String get errorVerificationMismatch =>
+      'Коды проверки не совпадают — подтверждение отклонено.';
 
   @override
   String get errorRequestExpired => 'Срок действия запроса истёк.';
@@ -706,10 +731,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errorNotFound => 'Не найдено. Возможно, объект был удалён.';
 
   @override
-  String get errorConflict => 'Объект был изменён в другом месте. Обновите данные и повторите попытку.';
+  String get errorConflict =>
+      'Объект был изменён в другом месте. Обновите данные и повторите попытку.';
 
   @override
-  String get errorOffline => 'Нет подключения. Изменение будет повторено после восстановления связи.';
+  String get errorOffline =>
+      'Нет подключения. Изменение будет повторено после восстановления связи.';
 
   @override
   String get errorCancelled => 'Отменено.';
@@ -718,7 +745,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errorHostKeyRejected => 'Ключ хоста отклонён.';
 
   @override
-  String get errorHostKeyChanged => 'Ключ хоста изменился. Подключение заблокировано.';
+  String get errorHostKeyChanged =>
+      'Ключ хоста изменился. Подключение заблокировано.';
 
   @override
   String get errorAuthFailed => 'Ошибка SSH-аутентификации.';
@@ -733,7 +761,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errorSessionExpired => 'Сеанс истёк. Войдите снова.';
 
   @override
-  String get errorDeviceRevoked => 'Это устройство отозвано. Войдите снова, чтобы зарегистрировать его.';
+  String get errorDeviceRevoked =>
+      'Это устройство отозвано. Войдите снова, чтобы зарегистрировать его.';
 
   @override
   String get errorEmailNotVerified => 'Сначала подтвердите адрес e-mail.';
@@ -761,10 +790,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errorPayloadTooLarge => 'Данные слишком велики для сервера.';
 
   @override
-  String get errorInvalidProof => 'Криптографическая проверка не пройдена. Запрос отклонён.';
+  String get errorInvalidProof =>
+      'Криптографическая проверка не пройдена. Запрос отклонён.';
 
   @override
-  String get errorServerUnavailable => 'Сервер временно недоступен. Повторите позже.';
+  String get errorServerUnavailable =>
+      'Сервер временно недоступен. Повторите позже.';
 
   @override
   String get errorReasonNameRequired => 'Введите имя.';
@@ -776,10 +807,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errorReasonPasswordRequired => 'Введите пароль.';
 
   @override
-  String get errorReasonKeyPassphraseRequired => 'Введите парольную фразу ключа.';
+  String get errorReasonKeyPassphraseRequired =>
+      'Введите парольную фразу ключа.';
 
   @override
-  String get errorReasonAgentPathRequired => 'Укажите путь к сокету агента или имя канала (pipe).';
+  String get errorReasonAgentPathRequired =>
+      'Укажите путь к сокету агента или имя канала (pipe).';
 
   @override
   String get errorReasonInvalidEmail => 'Введите корректный адрес e-mail.';
@@ -798,7 +831,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get errorReasonWeakPassphrase => 'Выберите более надёжную парольную фразу.';
+  String get errorReasonWeakPassphrase =>
+      'Выберите более надёжную парольную фразу.';
 
   @override
   String get errorReasonInvalidBaseUrl => 'Введите корректный базовый URL.';
@@ -824,22 +858,27 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errorReasonNotAgentCredential => 'Это не учётные данные агента.';
 
   @override
-  String get errorReasonKeyHasNoPassphrase => 'У этого ключа нет парольной фразы.';
+  String get errorReasonKeyHasNoPassphrase =>
+      'У этого ключа нет парольной фразы.';
 
   @override
-  String get errorReasonUnsupportedKeyAlgorithm => 'Генерируйте ключи Ed25519 или RSA 3072/4096.';
+  String get errorReasonUnsupportedKeyAlgorithm =>
+      'Генерируйте ключи Ed25519 или RSA 3072/4096.';
 
   @override
-  String get errorReasonGroupCycle => 'Группа не может находиться внутри самой себя.';
+  String get errorReasonGroupCycle =>
+      'Группа не может находиться внутри самой себя.';
 
   @override
-  String get errorReasonJumpChainEmpty => 'Профилю jump-хостов нужен хотя бы один узел.';
+  String get errorReasonJumpChainEmpty =>
+      'Профилю jump-хостов нужен хотя бы один узел.';
 
   @override
   String get errorReasonHostNotFound => 'Хост не найден.';
 
   @override
-  String get errorReasonCredentialNotFound => 'Учётные данные больше не существуют.';
+  String get errorReasonCredentialNotFound =>
+      'Учётные данные больше не существуют.';
 
   @override
   String get errorReasonProfileNotFound => 'Профиль не найден.';
@@ -857,7 +896,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errorReasonRequestNotFound => 'Запрос больше не существует.';
 
   @override
-  String get errorReasonSecretNotStored => 'Для этих учётных данных секрет не сохранён.';
+  String get errorReasonSecretNotStored =>
+      'Для этих учётных данных секрет не сохранён.';
 
   @override
   String get errorReasonSessionClosed => 'Сеанс закрыт.';
@@ -891,7 +931,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errorReasonVaultExists => 'Хранилище уже существует.';
 
   @override
-  String get errorReasonNotABackup => 'Это не резервная копия ConsoleCrypt (или файл отсутствует).';
+  String get errorReasonNotABackup =>
+      'Это не резервная копия ConsoleCrypt (или файл отсутствует).';
 
   @override
   String errorReasonBackupExtension(String extension) {
@@ -899,31 +940,38 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get errorReasonBackupFolderRequired => 'Сначала выберите папку для резервных копий.';
+  String get errorReasonBackupFolderRequired =>
+      'Сначала выберите папку для резервных копий.';
 
   @override
-  String get errorReasonKeepAtLeastOne => 'Храните хотя бы одну резервную копию.';
+  String get errorReasonKeepAtLeastOne =>
+      'Храните хотя бы одну резервную копию.';
 
   @override
-  String get errorReasonSyncedProfileRequired => 'Для этого нужен синхронизируемый профиль.';
+  String get errorReasonSyncedProfileRequired =>
+      'Для этого нужен синхронизируемый профиль.';
 
   @override
-  String get errorReasonLocalProfileNoAccount => 'У локальных профилей нет аккаунта.';
+  String get errorReasonLocalProfileNoAccount =>
+      'У локальных профилей нет аккаунта.';
 
   @override
   String get errorReasonNoDeviceRegistered => 'Устройство не зарегистрировано.';
 
   @override
-  String get errorReasonTrustedDeviceRequired => 'Это может сделать только разблокированное доверенное устройство.';
+  String get errorReasonTrustedDeviceRequired =>
+      'Это может сделать только разблокированное доверенное устройство.';
 
   @override
-  String get errorReasonCurrentPassphraseWrong => 'Текущая парольная фраза неверна.';
+  String get errorReasonCurrentPassphraseWrong =>
+      'Текущая парольная фраза неверна.';
 
   @override
   String get errorReasonCurrentPasswordWrong => 'Текущий пароль неверен.';
 
   @override
-  String get errorReasonAccountMismatch => 'Этот профиль принадлежит другому аккаунту.';
+  String get errorReasonAccountMismatch =>
+      'Этот профиль принадлежит другому аккаунту.';
 
   @override
   String get validationFieldName => 'Имя';
@@ -967,16 +1015,19 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get validationJumpChainSelf => 'Хост не может использовать себя как jump-хост.';
+  String get validationJumpChainSelf =>
+      'Хост не может использовать себя как jump-хост.';
 
   @override
   String get serverUrlEmpty => 'Введите URL вашего сервера ConsoleCrypt';
 
   @override
-  String get serverUrlNotAUrl => 'Введите полный URL, например https://sync.example.org';
+  String get serverUrlNotAUrl =>
+      'Введите полный URL, например https://sync.example.org';
 
   @override
-  String get serverUrlInsecure => 'Используйте https:// (обычный http разрешён только для localhost)';
+  String get serverUrlInsecure =>
+      'Используйте https:// (обычный http разрешён только для localhost)';
 
   @override
   String get loginTitle => 'Подключение к вашему серверу';
@@ -985,10 +1036,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get loginTitleReauth => 'Войдите снова';
 
   @override
-  String get loginSubtitle => 'Укажите URL вашего собственного (self-hosted) сервера ConsoleCrypt.';
+  String get loginSubtitle =>
+      'Укажите URL вашего собственного (self-hosted) сервера ConsoleCrypt.';
 
   @override
-  String get loginSubtitleReauth => 'Сеанс этого профиля завершён. Локальные данные остаются на этом устройстве.';
+  String get loginSubtitleReauth =>
+      'Сеанс этого профиля завершён. Локальные данные остаются на этом устройстве.';
 
   @override
   String get loginServerUrlLabel => 'URL сервера';
@@ -997,12 +1050,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get loginCheckServer => 'Проверить';
 
   @override
-  String loginServerInfoRegistrationOpen(String serverVersion, String protocolVersion) {
+  String loginServerInfoRegistrationOpen(
+    String serverVersion,
+    String protocolVersion,
+  ) {
     return 'Сервер ConsoleCrypt $serverVersion · протокол $protocolVersion · регистрация открыта';
   }
 
   @override
-  String loginServerInfoInviteOnly(String serverVersion, String protocolVersion) {
+  String loginServerInfoInviteOnly(
+    String serverVersion,
+    String protocolVersion,
+  ) {
     return 'Сервер ConsoleCrypt $serverVersion · протокол $protocolVersion · только по приглашениям';
   }
 
@@ -1022,7 +1081,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get loginPasswordLabel => 'Пароль аккаунта';
 
   @override
-  String get loginPasswordHelperRegister => 'Не менее 10 символов. Должен отличаться от парольной фразы хранилища.';
+  String get loginPasswordHelperRegister =>
+      'Не менее 10 символов. Должен отличаться от парольной фразы хранилища.';
 
   @override
   String get loginPasswordRequired => 'Введите пароль';
@@ -1040,7 +1100,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get loginDeviceNameLabel => 'Имя этого устройства';
 
   @override
-  String get loginDeviceNameHelper => 'Отображается в списке ваших устройств, например «Рабочий MacBook».';
+  String get loginDeviceNameHelper =>
+      'Отображается в списке ваших устройств, например «Рабочий MacBook».';
 
   @override
   String get loginDeviceNameRequired => 'Введите имя устройства';
@@ -1055,7 +1116,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get loginForgotPassword => 'Забыли пароль аккаунта?';
 
   @override
-  String get loginForgotNeedsServerAndEmail => 'Сначала введите URL сервера и ваш e-mail';
+  String get loginForgotNeedsServerAndEmail =>
+      'Сначала введите URL сервера и ваш e-mail';
 
   @override
   String get loginResetEmailSent =>
@@ -1115,7 +1177,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get backupsRecentTitle => 'Последние резервные копии';
 
   @override
-  String get backupsRecentEmpty => 'Из этого профиля ещё не создано ни одной резервной копии.';
+  String get backupsRecentEmpty =>
+      'Из этого профиля ещё не создано ни одной резервной копии.';
 
   @override
   String backupsObjectCount(int count) {
@@ -1175,7 +1238,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get backupsNextRunLabel => 'Следующий запуск';
 
   @override
-  String get backupsLastRunFailed => 'Последнее автоматическое резервное копирование не удалось';
+  String get backupsLastRunFailed =>
+      'Последнее автоматическое резервное копирование не удалось';
 
   @override
   String backupsWrittenTo(String folder) {
@@ -1227,7 +1291,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get restoreUnlockRecoveryKey => 'Ключ восстановления';
 
   @override
-  String get restorePassphraseLabel => 'Парольная фраза хранилища из резервной копии';
+  String get restorePassphraseLabel =>
+      'Парольная фраза хранилища из резервной копии';
 
   @override
   String get restoreRecoveryInputLabel => '24 слова или текст QR-кода';
@@ -1284,7 +1349,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get welcomeServerAction => 'Войти или создать аккаунт';
 
   @override
-  String get welcomeRestoreFromBackup => 'Восстановить из резервной копии (.ccbackup)';
+  String get welcomeRestoreFromBackup =>
+      'Восстановить из резервной копии (.ccbackup)';
 
   @override
   String get welcomeProfilesHint =>
@@ -1360,10 +1426,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get credentialsDetailsFingerprint => 'Отпечаток';
 
   @override
-  String get credentialsDetailsPassphraseRemembered => 'Сохранена (хранится как отдельный зашифрованный секрет)';
+  String get credentialsDetailsPassphraseRemembered =>
+      'Сохранена (хранится как отдельный зашифрованный секрет)';
 
   @override
-  String get credentialsDetailsPassphraseAsked => 'Запрашивается при подключении — ключ сохраняет собственную защиту';
+  String get credentialsDetailsPassphraseAsked =>
+      'Запрашивается при подключении — ключ сохраняет собственную защиту';
 
   @override
   String get credentialsDetailsAgentSocket => 'Сокет агента';
@@ -1391,7 +1459,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get credentialDialogNewPasswordTitle => 'Новый пароль';
 
   @override
-  String get credentialDialogUsernameOptional => 'Имя пользователя (необязательно)';
+  String get credentialDialogUsernameOptional =>
+      'Имя пользователя (необязательно)';
 
   @override
   String get credentialDialogPasswordLabel => 'Пароль';
@@ -1400,7 +1469,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get credentialDialogKeyPassphrase => 'Парольная фраза ключа';
 
   @override
-  String get credentialDialogRememberPassphrase => 'Запомнить парольную фразу SSH-ключа';
+  String get credentialDialogRememberPassphrase =>
+      'Запомнить парольную фразу SSH-ключа';
 
   @override
   String get credentialDialogAgentTitle => 'SSH-агент';
@@ -1409,7 +1479,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get credentialDialogAgentDefaultName => 'SSH-агент';
 
   @override
-  String get credentialDialogAgentPathLabel => 'Путь к сокету или имя канала (pipe)';
+  String get credentialDialogAgentPathLabel =>
+      'Путь к сокету или имя канала (pipe)';
 
   @override
   String credentialDialogAgentPathHint(String unixPath, String windowsPath) {
@@ -1417,7 +1488,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get credentialDialogAgentNotice => 'Ключи остаются в агенте; ConsoleCrypt никогда их не видит.';
+  String get credentialDialogAgentNotice =>
+      'Ключи остаются в агенте; ConsoleCrypt никогда их не видит.';
 
   @override
   String get credentialGenerateTitle => 'Генерация SSH-ключа';
@@ -1438,16 +1510,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String get credentialGenerateCommentLabel => 'Комментарий (необязательно)';
 
   @override
-  String get credentialGeneratePassphraseLabel => 'Парольная фраза ключа (необязательно)';
+  String get credentialGeneratePassphraseLabel =>
+      'Парольная фраза ключа (необязательно)';
 
   @override
-  String get credentialGeneratePassphraseHelper => 'Защищает сам ключ — в дополнение к шифрованию хранилища.';
+  String get credentialGeneratePassphraseHelper =>
+      'Защищает сам ключ — в дополнение к шифрованию хранилища.';
 
   @override
-  String get credentialGenerateRepeatPassphrase => 'Повторите парольную фразу ключа';
+  String get credentialGenerateRepeatPassphrase =>
+      'Повторите парольную фразу ключа';
 
   @override
-  String get credentialGeneratePassphraseMismatch => 'Парольные фразы не совпадают';
+  String get credentialGeneratePassphraseMismatch =>
+      'Парольные фразы не совпадают';
 
   @override
   String get credentialGenerateRememberSubtitle =>
@@ -1457,13 +1533,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get credentialGenerateDoneTitle => 'Ключ сгенерирован';
 
   @override
-  String get credentialGenerateDoneMessage => 'Добавьте этот открытый ключ в ~/.ssh/authorized_keys на ваших серверах:';
+  String get credentialGenerateDoneMessage =>
+      'Добавьте этот открытый ключ в ~/.ssh/authorized_keys на ваших серверах:';
 
   @override
   String get credentialImportTitle => 'Импорт ключа OpenSSH';
 
   @override
-  String get credentialImportTitleWithCertificate => 'Импорт ключа и сертификата';
+  String get credentialImportTitleWithCertificate =>
+      'Импорт ключа и сертификата';
 
   @override
   String get credentialImportAction => 'Импортировать';
@@ -1475,7 +1553,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get credentialImportUnknownAlgorithm => 'Ключ';
 
   @override
-  String get credentialImportEncryptedNotice => 'Защищён парольной фразой: в хранилище он остаётся зашифрованным.';
+  String get credentialImportEncryptedNotice =>
+      'Защищён парольной фразой: в хранилище он остаётся зашифрованным.';
 
   @override
   String get credentialImportInvalidKey => 'Некорректный ключ';
@@ -1498,7 +1577,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get approveDeviceStepCompare => '2. Сравните его с кодом, вычисленным здесь, — группу за группой:';
+  String get approveDeviceStepCompare =>
+      '2. Сравните его с кодом, вычисленным здесь, — группу за группой:';
 
   @override
   String approveDeviceCodesMatchCheckbox(String name) {
@@ -1551,7 +1631,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get devicesRenameTitle => 'Переименовать устройство';
 
   @override
-  String get devicesLocalTitle => 'Устройства есть только у синхронизируемых профилей';
+  String get devicesLocalTitle =>
+      'Устройства есть только у синхронизируемых профилей';
 
   @override
   String get devicesLocalMessage =>
@@ -1637,7 +1718,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get syncScreenTitle => 'Синхронизация';
 
   @override
-  String get syncScreenLocalSubtitle => 'У этого профиля нет сервера и аккаунта. Данные не покидают это устройство.';
+  String get syncScreenLocalSubtitle =>
+      'У этого профиля нет сервера и аккаунта. Данные не покидают это устройство.';
 
   @override
   String get syncScreenLocalBody =>
@@ -1695,7 +1777,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get syncScreenProblems => 'Проблемы';
 
   @override
-  String get syncScreenIssueRetryable => 'Сбой синхронизации — повтор будет выполнен автоматически';
+  String get syncScreenIssueRetryable =>
+      'Сбой синхронизации — повтор будет выполнен автоматически';
 
   @override
   String get syncScreenIssue => 'Сбой синхронизации';
@@ -1704,7 +1787,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get syncScreenDisconnectTitle => 'Отключение синхронизации';
 
   @override
-  String get syncScreenDisconnectBody => 'Прекратить синхронизацию этого профиля и сохранить его данные локально.';
+  String get syncScreenDisconnectBody =>
+      'Прекратить синхронизацию этого профиля и сохранить его данные локально.';
 
   @override
   String get syncScreenDisconnect => 'Отключить…';
@@ -1748,7 +1832,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get enableSyncDialogServerUrl => 'URL сервера';
 
   @override
-  String enableSyncDialogServerInfo(String serverVersion, String protocolVersion) {
+  String enableSyncDialogServerInfo(
+    String serverVersion,
+    String protocolVersion,
+  ) {
     return 'Сервер ConsoleCrypt $serverVersion · протокол $protocolVersion';
   }
 
@@ -1765,7 +1852,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get enableSyncDialogPassword => 'Пароль аккаунта';
 
   @override
-  String get enableSyncDialogPasswordHelper => 'Не менее 10 символов. Это не парольная фраза хранилища.';
+  String get enableSyncDialogPasswordHelper =>
+      'Не менее 10 символов. Это не парольная фраза хранилища.';
 
   @override
   String get enableSyncDialogDeviceName => 'Имя этого устройства';
@@ -1883,7 +1971,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get hostsNoMatches => 'Подходящих хостов нет';
 
   @override
-  String get hostsEmptyMessage => 'Добавьте первый SSH-хост, чтобы подключиться.';
+  String get hostsEmptyMessage =>
+      'Добавьте первый SSH-хост, чтобы подключиться.';
 
   @override
   String get hostsAddHost => 'Добавить хост';
@@ -2097,22 +2186,28 @@ class AppLocalizationsRu extends AppLocalizations {
   String get hostEditorSourceUnset => 'не задано';
 
   @override
-  String get hostEditorCredentialPrompt => 'Пароль — запрашивается при подключении';
+  String get hostEditorCredentialPrompt =>
+      'Пароль — запрашивается при подключении';
 
   @override
-  String get hostEditorProblemJumpHostDeleted => 'Один из jump-хостов цепочки был удалён';
+  String get hostEditorProblemJumpHostDeleted =>
+      'Один из jump-хостов цепочки был удалён';
 
   @override
-  String get hostEditorProblemSelfJump => 'Хост не может использовать себя как jump-хост';
+  String get hostEditorProblemSelfJump =>
+      'Хост не может использовать себя как jump-хост';
 
   @override
-  String get hostEditorProblemNoCredential => 'Нет учётных данных: пароль будет запрошен при подключении';
+  String get hostEditorProblemNoCredential =>
+      'Нет учётных данных: пароль будет запрошен при подключении';
 
   @override
-  String get hostEditorProblemCredentialMissing => 'Выбранные учётные данные больше не существуют';
+  String get hostEditorProblemCredentialMissing =>
+      'Выбранные учётные данные больше не существуют';
 
   @override
-  String get hostEditorProblemNoUsername => 'Не задано имя пользователя: укажите его на хосте или в группе';
+  String get hostEditorProblemNoUsername =>
+      'Не задано имя пользователя: укажите его на хосте или в группе';
 
   @override
   String get hostAuthModePassword => 'Пароль';
@@ -2156,7 +2251,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get hostAuthNewPasswordLabel => 'Новый пароль';
 
   @override
-  String get hostAuthPasswordHelper => 'Оставьте пустым, чтобы вводить пароль при подключении.';
+  String get hostAuthPasswordHelper =>
+      'Оставьте пустым, чтобы вводить пароль при подключении.';
 
   @override
   String get hostAuthSavePassword => 'Сохранить пароль в хранилище';
@@ -2166,7 +2262,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Хранится как отдельный секрет со сквозным шифрованием и больше никогда не показывается.';
 
   @override
-  String get hostAuthSavePasswordOff => 'Ничего не сохраняется — терминал запрашивает пароль при каждом подключении.';
+  String get hostAuthSavePasswordOff =>
+      'Ничего не сохраняется — терминал запрашивает пароль при каждом подключении.';
 
   @override
   String get hostAuthKeepSaved => 'Оставить сохранённый пароль';
@@ -2187,7 +2284,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get hostAuthForget => 'Забыть';
 
   @override
-  String get hostAuthPassphraseForgotten => 'Сохранённая парольная фраза удалена';
+  String get hostAuthPassphraseForgotten =>
+      'Сохранённая парольная фраза удалена';
 
   @override
   String get hostAuthKeyPassphraseLabel => 'Парольная фраза ключа';
@@ -2212,7 +2310,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get hostAuthAgentNote => 'Ключи остаются в агенте; ConsoleCrypt их не видит.';
+  String get hostAuthAgentNote =>
+      'Ключи остаются в агенте; ConsoleCrypt их не видит.';
 
   @override
   String get hostAuthInheritNoGroup =>
@@ -2229,13 +2328,15 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get hostAuthPreviewPasswordDeleted => 'Пароль · учётные данные удалены';
+  String get hostAuthPreviewPasswordDeleted =>
+      'Пароль · учётные данные удалены';
 
   @override
   String get hostAuthPreviewPasswordSaved => 'Пароль · сохранён в хранилище';
 
   @override
-  String get hostAuthPreviewPasswordPrompt => 'Пароль · запрашивается при подключении';
+  String get hostAuthPreviewPasswordPrompt =>
+      'Пароль · запрашивается при подключении';
 
   @override
   String hostAuthPreviewSshKey(String name) {
@@ -2248,10 +2349,12 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get hostAuthErrorKeyRequired => 'Выберите, сгенерируйте или импортируйте SSH-ключ';
+  String get hostAuthErrorKeyRequired =>
+      'Выберите, сгенерируйте или импортируйте SSH-ключ';
 
   @override
-  String get hostAuthErrorAgentPathRequired => 'Укажите путь к сокету агента или имя канала (pipe)';
+  String get hostAuthErrorAgentPathRequired =>
+      'Укажите путь к сокету агента или имя канала (pipe)';
 
   @override
   String get hostAuthPickerTitle => 'Выбор учётных данных';
@@ -2412,7 +2515,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get groupsEditJumpProfile => 'Редактирование профиля jump-хостов';
 
   @override
-  String get groupsJumpProfilesEmpty => 'Упорядоченные цепочки jump-хостов для повторного использования.';
+  String get groupsJumpProfilesEmpty =>
+      'Упорядоченные цепочки jump-хостов для повторного использования.';
 
   @override
   String get settingsTitle => 'Настройки';
@@ -2458,7 +2562,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsSyncTitle => 'Синхронизация';
 
   @override
-  String get settingsSyncLocalSubtitle => 'Только локально: без сервера и аккаунта.';
+  String get settingsSyncLocalSubtitle =>
+      'Только локально: без сервера и аккаунта.';
 
   @override
   String get settingsSyncLocalBody =>
@@ -2564,7 +2669,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsDefaultPrivacyLabel => 'Приватность по умолчанию';
 
   @override
-  String get settingsKeepAiConversations => 'Сохранять диалоги с ИИ в хранилище';
+  String get settingsKeepAiConversations =>
+      'Сохранять диалоги с ИИ в хранилище';
 
   @override
   String get settingsKeepAiConversationsHelp =>
@@ -2643,13 +2749,16 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get settingsRemoveKnownHostMessage => 'При следующем подключении вам снова нужно будет проверить ключ хоста.';
+  String get settingsRemoveKnownHostMessage =>
+      'При следующем подключении вам снова нужно будет проверить ключ хоста.';
 
   @override
-  String get settingsDialogPassphraseChanged => 'Парольная фраза хранилища изменена';
+  String get settingsDialogPassphraseChanged =>
+      'Парольная фраза хранилища изменена';
 
   @override
-  String get settingsDialogChangePassphraseTitle => 'Изменить парольную фразу хранилища';
+  String get settingsDialogChangePassphraseTitle =>
+      'Изменить парольную фразу хранилища';
 
   @override
   String get settingsDialogCurrentPassphrase => 'Текущая парольная фраза';
@@ -2658,13 +2767,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsDialogNewPassphrase => 'Новая парольная фраза';
 
   @override
-  String get settingsDialogRepeatPassphrase => 'Повторите новую парольную фразу';
+  String get settingsDialogRepeatPassphrase =>
+      'Повторите новую парольную фразу';
 
   @override
-  String get settingsDialogChangePassphraseConfirm => 'Изменить парольную фразу';
+  String get settingsDialogChangePassphraseConfirm =>
+      'Изменить парольную фразу';
 
   @override
-  String get settingsDialogNewKitTitle => 'Новый комплект восстановления (Recovery Kit)';
+  String get settingsDialogNewKitTitle =>
+      'Новый комплект восстановления (Recovery Kit)';
 
   @override
   String get settingsDialogNewKitWarning =>
@@ -2705,7 +2817,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get settingsDialogVaultPassphraseUnchanged => 'Парольная фраза хранилища при этом не меняется.';
+  String get settingsDialogVaultPassphraseUnchanged =>
+      'Парольная фраза хранилища при этом не меняется.';
 
   @override
   String get aiProviderDialogAddTitle => 'Добавить ИИ-провайдер';
@@ -2732,16 +2845,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aiProviderDialogChatModelLabel => 'Модель для чата';
 
   @override
-  String get aiProviderDialogEmbeddingModelLabel => 'Модель эмбеддингов (необязательно)';
+  String get aiProviderDialogEmbeddingModelLabel =>
+      'Модель эмбеддингов (необязательно)';
 
   @override
   String get aiProviderDialogApiKeyLabel => 'API-ключ';
 
   @override
-  String get aiProviderDialogApiKeyStoredHint => 'Ключ сохранён — введите новый, чтобы заменить его';
+  String get aiProviderDialogApiKeyStoredHint =>
+      'Ключ сохранён — введите новый, чтобы заменить его';
 
   @override
-  String get aiProviderDialogApiKeyOptionalHint => 'Необязателен для локальных провайдеров';
+  String get aiProviderDialogApiKeyOptionalHint =>
+      'Необязателен для локальных провайдеров';
 
   @override
   String get aiProviderDialogApiKeyHelp =>
@@ -2811,7 +2927,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get runFlowAckUnknown => 'Команда проверена мной; её действие неизвестно локальным правилам';
+  String get runFlowAckUnknown =>
+      'Команда проверена мной; её действие неизвестно локальным правилам';
 
   @override
   String get runFlowRun => 'Выполнить';
@@ -2873,7 +2990,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get snippetsNewButton => 'Новый сниппет';
 
   @override
-  String get snippetsSearchHint => 'Поиск по тексту или смыслу, например «место на диске»';
+  String get snippetsSearchHint =>
+      'Поиск по тексту или смыслу, например «место на диске»';
 
   @override
   String get snippetsAllTypes => 'Все типы';
@@ -2882,7 +3000,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get snippetsEmptyTitle => 'Сниппетов пока нет';
 
   @override
-  String get snippetsEmptyMessage => 'Сохраняйте часто используемые команды — или поручите ИИ подготовить их.';
+  String get snippetsEmptyMessage =>
+      'Сохраняйте часто используемые команды — или поручите ИИ подготовить их.';
 
   @override
   String get snippetsNothingFound => 'Ничего не найдено';
@@ -2910,7 +3029,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get snippetsDeleteMessage => 'Сниппет будет удалён из этого хранилища.';
+  String get snippetsDeleteMessage =>
+      'Сниппет будет удалён из этого хранилища.';
 
   @override
   String get aiChatSubtitle =>
@@ -2928,7 +3048,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get aiChatLocalModelNotice => 'Локальная модель · данные не покидают этот компьютер.';
+  String get aiChatLocalModelNotice =>
+      'Локальная модель · данные не покидают этот компьютер.';
 
   @override
   String get aiChatNoProviderBanner => 'ИИ-провайдер не настроен.';
@@ -2937,10 +3058,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aiChatEmptyTitle => 'Спросите что угодно о своих серверах';
 
   @override
-  String get aiChatEmptyMessage => 'например, «найди самые большие файлы в /var/log» или «безопасно перезапусти nginx»';
+  String get aiChatEmptyMessage =>
+      'например, «найди самые большие файлы в /var/log» или «безопасно перезапусти nginx»';
 
   @override
-  String get aiChatInputHint => 'Сообщение (Enter — отправить, Shift+Enter — новая строка)';
+  String get aiChatInputHint =>
+      'Сообщение (Enter — отправить, Shift+Enter — новая строка)';
 
   @override
   String get aiChatStop => 'Остановить';
@@ -2952,10 +3075,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aiChatIncludeSelection => 'Добавить выделенный текст терминала';
 
   @override
-  String get aiChatSelectToInclude => 'Выделите текст в терминале, чтобы добавить его';
+  String get aiChatSelectToInclude =>
+      'Выделите текст в терминале, чтобы добавить его';
 
   @override
-  String get aiChatErrorNoProvider => 'ИИ-провайдер не настроен. Добавьте его в разделе «Настройки → ИИ-провайдеры».';
+  String get aiChatErrorNoProvider =>
+      'ИИ-провайдер не настроен. Добавьте его в разделе «Настройки → ИИ-провайдеры».';
 
   @override
   String get aiChatErrorRequestFailed => 'Запрос к ИИ не выполнен.';
@@ -2969,7 +3094,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get paletteGenerateSubtitle => 'Спросить ИИ (никогда не выполняется автоматически)';
+  String get paletteGenerateSubtitle =>
+      'Спросить ИИ (никогда не выполняется автоматически)';
 
   @override
   String get paletteNewHost => 'Новый хост';
@@ -2981,10 +3107,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get paletteLockVault => 'Заблокировать хранилище';
 
   @override
-  String get paletteSearchHint => 'Найдите хост по имени или IP, сниппет, действие или опишите команду…';
+  String get paletteSearchHint =>
+      'Найдите хост по имени или IP, сниппет, действие или опишите команду…';
 
   @override
-  String get paletteAskSelectionHint => 'Спросите о выделенном выводе терминала…';
+  String get paletteAskSelectionHint =>
+      'Спросите о выделенном выводе терминала…';
 
   @override
   String get paletteAiSuggestion => 'Предложение ИИ';
@@ -3025,10 +3153,14 @@ class AppLocalizationsRu extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Перед отправкой с устройства применён профиль «$profile» · скрыто $count элемента',
-      many: 'Перед отправкой с устройства применён профиль «$profile» · скрыто $count элементов',
-      few: 'Перед отправкой с устройства применён профиль «$profile» · скрыто $count элемента',
-      one: 'Перед отправкой с устройства применён профиль «$profile» · скрыт $count элемент',
+      other:
+          'Перед отправкой с устройства применён профиль «$profile» · скрыто $count элемента',
+      many:
+          'Перед отправкой с устройства применён профиль «$profile» · скрыто $count элементов',
+      few:
+          'Перед отправкой с устройства применён профиль «$profile» · скрыто $count элемента',
+      one:
+          'Перед отправкой с устройства применён профиль «$profile» · скрыт $count элемент',
     );
     return '$_temp0';
   }
@@ -3053,7 +3185,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get terminalSplitViewLater => 'Разделение окна появится в одном из следующих выпусков';
+  String get terminalSplitViewLater =>
+      'Разделение окна появится в одном из следующих выпусков';
 
   @override
   String get terminalSnippets => 'Сниппеты';
@@ -3145,7 +3278,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sftpNotConnectedTitle => 'Нет подключения';
 
   @override
-  String get sftpNotConnectedMessage => 'Выберите хост, чтобы просматривать, передавать и редактировать его файлы.';
+  String get sftpNotConnectedMessage =>
+      'Выберите хост, чтобы просматривать, передавать и редактировать его файлы.';
 
   @override
   String get sftpLocalPaneTitle => 'Это устройство';
@@ -3165,7 +3299,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get sftpDeleteFolderMessage => 'Каталог и всё его содержимое будут удалены на сервере.';
+  String get sftpDeleteFolderMessage =>
+      'Каталог и всё его содержимое будут удалены на сервере.';
 
   @override
   String get sftpDeleteFileMessage => 'Файл будет удалён на сервере.';
@@ -3536,7 +3671,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get sftpDisconnectEditsTitle => 'Завершить редактирование и отключиться?';
+  String get sftpDisconnectEditsTitle =>
+      'Завершить редактирование и отключиться?';
 
   @override
   String sftpDisconnectEditsMessage(int count) {
@@ -3568,7 +3704,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sftpInfoLinkTarget => 'Указывает на';
 
   @override
-  String get sftpInfoSymlinkNote => 'Права символической ссылки применяются к объекту, на который она указывает.';
+  String get sftpInfoSymlinkNote =>
+      'Права символической ссылки применяются к объекту, на который она указывает.';
 
   @override
   String get sftpInfoOthers => 'Остальные';
@@ -3598,7 +3735,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sftpQuickLookFolder => 'У каталогов нет предпросмотра.';
 
   @override
-  String get sftpQuickLookNoPreview => 'Для файлов этого типа нет предпросмотра.';
+  String get sftpQuickLookNoPreview =>
+      'Для файлов этого типа нет предпросмотра.';
 
   @override
   String sftpQuickLookTooLarge(String size) {
@@ -3614,7 +3752,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get sftpQuickLookMemoryNote => 'Загружено только в память — на устройстве ничего не сохраняется.';
+  String get sftpQuickLookMemoryNote =>
+      'Загружено только в память — на устройстве ничего не сохраняется.';
 
   @override
   String get sftpQuickLookOpenInEditor => 'Открыть в редакторе';
@@ -3626,7 +3765,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sftpTransfersClear => 'Очистить завершённые';
 
   @override
-  String get sftpTransfersEmpty => 'Передач пока нет. Перетащите файлы в список или выберите «Загрузить сюда…».';
+  String get sftpTransfersEmpty =>
+      'Передач пока нет. Перетащите файлы в список или выберите «Загрузить сюда…».';
 
   @override
   String get sftpTransferDirectionUpload => 'Выгрузка';
@@ -3724,7 +3864,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get sftpEditNotAFile => 'Для редактирования можно открыть только обычный файл.';
+  String get sftpEditNotAFile =>
+      'Для редактирования можно открыть только обычный файл.';
 
   @override
   String get sftpEditHintTitle => 'Редактирование в другой программе';
@@ -3770,7 +3911,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sftpConflictRecreateTitle => 'Загрузить мою версию заново';
 
   @override
-  String get sftpConflictRecreateBody => 'Снова создать файл на сервере из вашей локальной копии.';
+  String get sftpConflictRecreateBody =>
+      'Снова создать файл на сервере из вашей локальной копии.';
 
   @override
   String get sftpConflictKeepTitle => 'Сохранить обе версии';
@@ -3784,7 +3926,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sftpConflictDiscardTitle => 'Отменить мои изменения';
 
   @override
-  String get sftpConflictDiscardBody => 'Заменить вашу локальную копию версией с сервера.';
+  String get sftpConflictDiscardBody =>
+      'Заменить вашу локальную копию версией с сервера.';
 
   @override
   String get sftpConflictLater => 'Решить позже';
@@ -3803,10 +3946,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sftpLeftoverUnchanged => 'Локальных изменений нет';
 
   @override
-  String get sftpLeftoverUnknownHost => 'Неизвестный хост — можно только удалить';
+  String get sftpLeftoverUnknownHost =>
+      'Неизвестный хост — можно только удалить';
 
   @override
-  String get sftpLeftoverUnreadable => 'Данные сеанса повреждены — можно только удалить';
+  String get sftpLeftoverUnreadable =>
+      'Данные сеанса повреждены — можно только удалить';
 
   @override
   String get sftpLeftoversRecover => 'Восстановить выбранные';
@@ -3852,7 +3997,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sftpDebugFailUpload => 'Сделать следующую выгрузку неудачной';
 
   @override
-  String get sftpDebugFailTransfer => 'Сделать следующую передачу неудачной (демо)';
+  String get sftpDebugFailTransfer =>
+      'Сделать следующую передачу неудачной (демо)';
 
   @override
   String get tunnelsTitle => 'Туннели';
@@ -3868,7 +4014,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get tunnelsEmptyTitle => 'Туннелей пока нет';
 
   @override
-  String get tunnelsEmptyMessage => 'Например, 127.0.0.1:15432 → db.internal:5432 через jump-хост.';
+  String get tunnelsEmptyMessage =>
+      'Например, 127.0.0.1:15432 → db.internal:5432 через jump-хост.';
 
   @override
   String get tunnelsDeletedHost => '(хост удалён)';
@@ -3934,16 +4081,19 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get tunnelsDeleteMessage => 'Туннель будет остановлен и удалён из хранилища.';
+  String get tunnelsDeleteMessage =>
+      'Туннель будет остановлен и удалён из хранилища.';
 
   @override
-  String get tunnelsErrorChooseHost => 'Выберите хост, через который пойдёт туннель';
+  String get tunnelsErrorChooseHost =>
+      'Выберите хост, через который пойдёт туннель';
 
   @override
   String get tunnelsEdit => 'Изменить туннель';
 
   @override
-  String get tunnelsHostLabel => 'Через хост (SSH-подключение, включая цепочку jump-хостов)';
+  String get tunnelsHostLabel =>
+      'Через хост (SSH-подключение, включая цепочку jump-хостов)';
 
   @override
   String get tunnelsBindAddressRemote => 'Адрес привязки на сервере';
@@ -3974,7 +4124,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get tunnelsPublicBindAck => 'Я понимаю, что этот туннель доступен из сети';
+  String get tunnelsPublicBindAck =>
+      'Я понимаю, что этот туннель доступен из сети';
 
   @override
   String get tunnelsAutoStart => 'Запускать автоматически после разблокировки';
@@ -3995,7 +4146,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get approvalWaitCodeLabel => 'Код проверки этого устройства';
 
   @override
-  String get approvalWaitWaiting => 'Ожидание подтверждения… Запрос действителен 24 часа.';
+  String get approvalWaitWaiting =>
+      'Ожидание подтверждения… Запрос действителен 24 часа.';
 
   @override
   String get approvalWaitMismatchWarning =>
@@ -4011,7 +4163,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get createVaultTitle => 'Создайте парольную фразу хранилища';
 
   @override
-  String get createVaultSubtitleLocal => 'Она шифрует все данные этого профиля на этом устройстве.';
+  String get createVaultSubtitleLocal =>
+      'Она шифрует все данные этого профиля на этом устройстве.';
 
   @override
   String get createVaultSubtitleSynced =>
@@ -4037,7 +4190,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get createVaultSubmit => 'Создать хранилище';
 
   @override
-  String get recoveryKitTitle => 'Сохраните комплект восстановления (Recovery Kit)';
+  String get recoveryKitTitle =>
+      'Сохраните комплект восстановления (Recovery Kit)';
 
   @override
   String get recoveryKitSubtitle =>
@@ -4051,7 +4205,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get recoveryKitGenerateNew => 'Создать новый комплект восстановления';
 
   @override
-  String get recoveryKitPrintUnavailable => 'Печать появится в M5. Пока перепишите слова от руки.';
+  String get recoveryKitPrintUnavailable =>
+      'Печать появится в M5. Пока перепишите слова от руки.';
 
   @override
   String get recoveryKitPrint => 'Печать / Сохранить как PDF';
@@ -4060,7 +4215,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get recoveryKitCopyWords => 'Скопировать слова';
 
   @override
-  String get recoveryKitSavedConfirmation => 'Комплект восстановления сохранён в надёжном месте';
+  String get recoveryKitSavedConfirmation =>
+      'Комплект восстановления сохранён в надёжном месте';
 
   @override
   String get recoveryKitRevealFirst => 'Сначала покажите комплект';
@@ -4076,13 +4232,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get recoveryKitServer => 'Сервер';
 
   @override
-  String get recoveryKitNoServerCopy => 'Локальный профиль — копии на сервере нет';
+  String get recoveryKitNoServerCopy =>
+      'Локальный профиль — копии на сервере нет';
 
   @override
   String get recoveryKitCreated => 'Создан';
 
   @override
-  String get recoveryKitPrivacyHint => 'Убедитесь, что никто не видит ваш экран.';
+  String get recoveryKitPrivacyHint =>
+      'Убедитесь, что никто не видит ваш экран.';
 
   @override
   String get recoveryKitShow => 'Показать комплект восстановления';
@@ -4091,7 +4249,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get verifyKitTitle => 'Подтвердите комплект восстановления';
 
   @override
-  String get verifyKitNoKit => 'Комплекта восстановления нет в памяти. Вернитесь назад, чтобы создать его.';
+  String get verifyKitNoKit =>
+      'Комплекта восстановления нет в памяти. Вернитесь назад, чтобы создать его.';
 
   @override
   String get verifyKitBackToRecoveryKit => 'Назад к комплекту восстановления';
@@ -4123,27 +4282,32 @@ class AppLocalizationsRu extends AppLocalizations {
       'Этот профиль хранится только на этом устройстве — ни на одном сервере его копии нет. Храните комплект восстановления и делайте резервные копии.';
 
   @override
-  String get onboardingLocalNoticeKitTitle => 'Храните комплект восстановления в надёжном месте';
+  String get onboardingLocalNoticeKitTitle =>
+      'Храните комплект восстановления в надёжном месте';
 
   @override
-  String get onboardingLocalNoticeKitBody => 'Он откроет хранилище, если вы забудете парольную фразу.';
+  String get onboardingLocalNoticeKitBody =>
+      'Он откроет хранилище, если вы забудете парольную фразу.';
 
   @override
-  String get onboardingLocalNoticeBackupsTitle => 'Делайте зашифрованные резервные копии';
+  String get onboardingLocalNoticeBackupsTitle =>
+      'Делайте зашифрованные резервные копии';
 
   @override
   String get onboardingLocalNoticeBackupsBody =>
       'Экспортируйте файл .ccbackup или включите автоматическое резервное копирование ConsoleCrypt в папку.';
 
   @override
-  String get onboardingLocalNoticeLossTitle => 'Потеря устройства без резервной копии = потеря данных';
+  String get onboardingLocalNoticeLossTitle =>
+      'Потеря устройства без резервной копии = потеря данных';
 
   @override
   String get onboardingLocalNoticeLossBody =>
       'Копии на сервере, из которой можно было бы восстановить данные, нет. Синхронизацию можно включить позже в настройках.';
 
   @override
-  String get onboardingLocalNoticeSetUpBackups => 'Настроить автоматическое резервное копирование';
+  String get onboardingLocalNoticeSetUpBackups =>
+      'Настроить автоматическое резервное копирование';
 
   @override
   String get onboardingLocalNoticeContinue => 'Понятно — продолжить';
@@ -4204,7 +4368,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Введите 24 слова из комплекта восстановления или вставьте текст его QR-кода.';
 
   @override
-  String get recoveryInputHint => 'word1 word2 … word24  или  consolecrypt-recovery:v1:…';
+  String get recoveryInputHint =>
+      'word1 word2 … word24  или  consolecrypt-recovery:v1:…';
 
   @override
   String get recoveryQrRecognised => 'Текст QR-кода распознан';
@@ -4230,13 +4395,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get recoveryNewPassphraseLabel => 'Новая парольная фраза хранилища';
 
   @override
-  String get recoveryRepeatNewPassphraseLabel => 'Повторите новую парольную фразу';
+  String get recoveryRepeatNewPassphraseLabel =>
+      'Повторите новую парольную фразу';
 
   @override
-  String get recoverySubmitTrustedDevice => 'Пройти аутентификацию и задать парольную фразу';
+  String get recoverySubmitTrustedDevice =>
+      'Пройти аутентификацию и задать парольную фразу';
 
   @override
-  String get recoverySubmitRecoveryKey => 'Восстановить и задать парольную фразу';
+  String get recoverySubmitRecoveryKey =>
+      'Восстановить и задать парольную фразу';
 
   @override
   String get recoveryLostEverythingTitle =>
@@ -4293,7 +4461,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aboutLicenseServer => 'Сервер синхронизации';
 
   @override
-  String get aboutOpenSource => 'ConsoleCrypt — программа с открытым исходным кодом. Ваши подключения в безопасности.';
+  String get aboutOpenSource =>
+      'ConsoleCrypt — программа с открытым исходным кодом. Ваши подключения в безопасности.';
 
   @override
   String get settingsAboutTitle => 'О программе';
@@ -4313,13 +4482,16 @@ class AppLocalizationsRu extends AppLocalizations {
       'Отображается непрозрачным: в настройках системы включено уменьшение прозрачности.';
 
   @override
-  String get settingsGlassSolidRemote => 'Отображается непрозрачным в сеансе удалённого рабочего стола.';
+  String get settingsGlassSolidRemote =>
+      'Отображается непрозрачным в сеансе удалённого рабочего стола.';
 
   @override
-  String get settingsGlassSolidBattery => 'Отображается непрозрачным для экономии заряда (режим энергосбережения).';
+  String get settingsGlassSolidBattery =>
+      'Отображается непрозрачным для экономии заряда (режим энергосбережения).';
 
   @override
-  String get settingsGlassSolidPerformance => 'Эффекты стекла упрощены ради производительности.';
+  String get settingsGlassSolidPerformance =>
+      'Эффекты стекла упрощены ради производительности.';
 
   @override
   String get settingsSidebarLabel => 'Боковая панель';
@@ -4331,10 +4503,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsSidebarEdgeToEdge => 'От края до края';
 
   @override
-  String get secretFieldCyrillicHint => 'В тексте есть кириллица — проверьте раскладку клавиатуры.';
+  String get secretFieldCyrillicHint =>
+      'В тексте есть кириллица — проверьте раскладку клавиатуры.';
 
   @override
-  String get secretFieldNonLatinHint => 'В тексте есть буквы не из латиницы A–Z — проверьте раскладку клавиатуры.';
+  String get secretFieldNonLatinHint =>
+      'В тексте есть буквы не из латиницы A–Z — проверьте раскладку клавиатуры.';
 
   @override
   String get passphraseLayoutNotice =>
@@ -4348,7 +4522,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Это хранилище есть только на этом устройстве. После удаления его можно вернуть только из файла резервной копии (.ccbackup), открыв его парольной фразой или ключом восстановления. Без такого файла все хосты, ключи и пароли из него будут потеряны навсегда.';
 
   @override
-  String get deleteProfileAcknowledge => 'Я понимаю, что это действие необратимо';
+  String get deleteProfileAcknowledge =>
+      'Я понимаю, что это действие необратимо';
 
   @override
   String runFlowConfirmTitleDestructive(String host) {
@@ -4385,7 +4560,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsColorHex => 'HEX-код цвета';
 
   @override
-  String get settingsColorInvalid => 'Введите шесть шестнадцатеричных цифр, например #4C8DFF.';
+  String get settingsColorInvalid =>
+      'Введите шесть шестнадцатеричных цифр, например #4C8DFF.';
 
   @override
   String get settingsResetUi => 'Сбросить размер текста и цвета';
@@ -4422,7 +4598,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsTerminalPreview => 'Предпросмотр терминала';
 
   @override
-  String get settingsAppearanceLocalHint => 'Сохраняется на этом устройстве. Перезапуск не требуется.';
+  String get settingsAppearanceLocalHint =>
+      'Сохраняется на этом устройстве. Перезапуск не требуется.';
 
   @override
   String get errorSecureStore =>
@@ -4432,7 +4609,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get welcomeResumeTitle => 'Открыть профиль';
 
   @override
-  String get welcomeResumeHelp => 'Ваши профили сохранены на этом устройстве. Выберите профиль, чтобы продолжить.';
+  String get welcomeResumeHelp =>
+      'Ваши профили сохранены на этом устройстве. Выберите профиль, чтобы продолжить.';
 
   @override
   String get welcomeKeychainHelp =>
@@ -4442,7 +4620,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get reopenLastProfile => 'Открывать последний профиль при запуске';
 
   @override
-  String get reopenLastProfileHelp => 'Может вызывать системный запрос доступа к связке ключей при запуске.';
+  String get reopenLastProfileHelp =>
+      'Может вызывать системный запрос доступа к связке ключей при запуске.';
 
   @override
   String get settingsTerminalThemeCustom => 'Своя схема';
@@ -4484,7 +4663,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Не удалось импортировать тему. Выберите корректный XML-файл iTerm или JSON ConsoleCrypt до 256 КБ. Сохранённая тема не изменилась.';
 
   @override
-  String get terminalThemeExportError => 'Не удалось сохранить тему. Выберите другую папку и повторите попытку.';
+  String get terminalThemeExportError =>
+      'Не удалось сохранить тему. Выберите другую папку и повторите попытку.';
 
   @override
   String get terminalColorBackground => 'Фон';
@@ -4532,10 +4712,12 @@ class AppLocalizationsRu extends AppLocalizations {
       'Только для этого хранилища на этом устройстве. Парольная фраза и ключ восстановления остаются доступны.';
 
   @override
-  String get deviceUnlockEnableReason => 'Разрешите разблокировку хранилища ConsoleCrypt на этом Mac';
+  String get deviceUnlockEnableReason =>
+      'Разрешите разблокировку хранилища ConsoleCrypt на этом Mac';
 
   @override
-  String get deviceUnlockNeedsTrust => 'Сначала разблокируйте хранилище парольной фразой на этом устройстве.';
+  String get deviceUnlockNeedsTrust =>
+      'Сначала разблокируйте хранилище парольной фразой на этом устройстве.';
 
   @override
   String get deviceUnlockNotEnrolled =>
@@ -4574,7 +4756,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get snippetPackage => 'Набор';
 
   @override
-  String get snippetPackageHint => 'Выберите существующее название или введите новое. Пустое поле — без набора.';
+  String get snippetPackageHint =>
+      'Выберите существующее название или введите новое. Пустое поле — без набора.';
 
   @override
   String get snippetAllPackages => 'Все сниппеты';
@@ -4633,20 +4816,23 @@ class AppLocalizationsRu extends AppLocalizations {
   String get snippetNoConnected => 'Сначала подключите терминал.';
 
   @override
-  String get snippetTargetsChanged => 'Профиль или выбранные терминалы изменились. Выберите цели ещё раз.';
+  String get snippetTargetsChanged =>
+      'Профиль или выбранные терминалы изменились. Выберите цели ещё раз.';
 
   @override
   String get snippetUnsafePaste =>
       'Терминал не поддерживает безопасную многострочную вставку. Нажмите «Запустить», чтобы проверить скрипт перед выполнением.';
 
   @override
-  String get snippetSyncHint => 'Сохраняются в хранилище · синхронизируются при включённой синхронизации';
+  String get snippetSyncHint =>
+      'Сохраняются в хранилище · синхронизируются при включённой синхронизации';
 
   @override
   String get snippetPackLinux => 'Диагностика Linux';
 
   @override
-  String get snippetPackLinuxDescription => 'Нагрузка, диски, память, порты и журналы служб. Для хостов Linux.';
+  String get snippetPackLinuxDescription =>
+      'Нагрузка, диски, память, порты и журналы служб. Для хостов Linux.';
 
   @override
   String get snippetPackDocker => 'Docker';
@@ -4749,13 +4935,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get inventoryGroupSettings => 'Настройки группы';
 
   @override
-  String get inventoryEffectiveDefaults => 'Сохранённые настройки и наследование';
+  String get inventoryEffectiveDefaults =>
+      'Сохранённые настройки и наследование';
 
   @override
-  String get inventoryIncludesSubgroups => 'Хосты этой группы и всех её подгрупп';
+  String get inventoryIncludesSubgroups =>
+      'Хосты этой группы и всех её подгрупп';
 
   @override
-  String get inventoryEmptyHelp => 'Добавьте хосты или группы, чтобы организовать серверы.';
+  String get inventoryEmptyHelp =>
+      'Добавьте хосты или группы, чтобы организовать серверы.';
 
   @override
   String get inventorySearchHelp => 'Измените запрос или сбросьте фильтры.';
@@ -4802,7 +4991,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get mobileDeviceAuth => 'Отпечаток или PIN';
 
   @override
-  String get mobileDeviceAuthHelp => 'Подтвердите личность отпечатком пальца или кодом блокировки телефона.';
+  String get mobileDeviceAuthHelp =>
+      'Подтвердите личность отпечатком пальца или кодом блокировки телефона.';
 
   @override
   String get mobileBackupsHelp =>
@@ -4834,7 +5024,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get terminalClearSelection => 'Снять выделение';
 
   @override
-  String get terminalPasteConfirmTitle => 'Вставить строки или управляющие символы?';
+  String get terminalPasteConfirmTitle =>
+      'Вставить строки или управляющие символы?';
 
   @override
   String get terminalPasteConfirmMessage =>
@@ -4923,7 +5114,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Разрешите ConsoleCrypt установку обновлений в открывшихся настройках Android, затем снова нажмите «Скачать и установить».';
 
   @override
-  String get updateInstallerOpened => 'Системный установщик открыт. Завершите установку в нём.';
+  String get updateInstallerOpened =>
+      'Системный установщик открыт. Завершите установку в нём.';
 
   @override
   String get updateFailed => 'Не удалось выполнить обновление.';
@@ -4947,13 +5139,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sharingTitle => 'Совместный доступ';
 
   @override
-  String get sharingSubtitle => 'Выбранные данные для проверенных устройств коллег на этом сервере.';
+  String get sharingSubtitle =>
+      'Выбранные данные для проверенных устройств коллег на этом сервере.';
 
   @override
-  String get sharingUnavailable => 'Совместный доступ недоступен на этом сервере.';
+  String get sharingUnavailable =>
+      'Совместный доступ недоступен на этом сервере.';
 
   @override
-  String get sharingLocal => 'Для совместного доступа подключите профиль к серверу.';
+  String get sharingLocal =>
+      'Для совместного доступа подключите профиль к серверу.';
 
   @override
   String get sharingReceived => 'Доступно мне';
@@ -4975,7 +5170,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Объекты, которыми с вами поделились коллеги. Проверьте владельца, прежде чем принять доступ.';
 
   @override
-  String get sharingOwnedHelp => 'Управляйте переданными объектами, правами получателей и отзывом доступа.';
+  String get sharingOwnedHelp =>
+      'Управляйте переданными объектами, правами получателей и отзывом доступа.';
 
   @override
   String get sharingReceivedEmpty => 'Вам пока ничего не передали';
@@ -5043,7 +5239,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sharingFind => 'Найти устройства';
 
   @override
-  String get sharingSelectDevice => 'Выберите и проверьте устройства получателя';
+  String get sharingSelectDevice =>
+      'Выберите и проверьте устройства получателя';
 
   @override
   String get sharingReader => 'Чтение';
@@ -5052,10 +5249,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sharingEditor => 'Редактирование';
 
   @override
-  String get sharingReaderHelp => 'Может читать и сохранять копии; не может менять общий объект.';
+  String get sharingReaderHelp =>
+      'Может читать и сохранять копии; не может менять общий объект.';
 
   @override
-  String get sharingEditorHelp => 'Может читать и менять содержимое; доступом управляет владелец.';
+  String get sharingEditorHelp =>
+      'Может читать и менять содержимое; доступом управляет владелец.';
 
   @override
   String get sharingPreview => 'Что будет передано';
@@ -5072,7 +5271,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Получатель сможет прочитать и сохранить секрет. Отзыв доступа не удалит уже прочитанные копии. Для SSH-доступа также нужна смена учётных данных на сервере.';
 
   @override
-  String get sharingSecretConfirmed => 'Я понимаю и разрешаю передать этот секрет выбранным устройствам';
+  String get sharingSecretConfirmed =>
+      'Я понимаю и разрешаю передать этот секрет выбранным устройствам';
 
   @override
   String get sharingHost => 'Хост';
@@ -5148,7 +5348,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sharingEdit => 'Изменить общий объект';
 
   @override
-  String get sharingChangeSaved => 'Изменение сохранено или поставлено в очередь отправки.';
+  String get sharingChangeSaved =>
+      'Изменение сохранено или поставлено в очередь отправки.';
 
   @override
   String get sharingName => 'Название';
@@ -5172,10 +5373,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sharingCommand => 'Команда';
 
   @override
-  String get sharingNoDevices => 'Доступных устройств не найдено. Проверьте адрес и подтверждение почты коллеги.';
+  String get sharingNoDevices =>
+      'Доступных устройств не найдено. Проверьте адрес и подтверждение почты коллеги.';
 
   @override
-  String get sharingNoAutoRun => 'Полученные команды никогда не выполняются автоматически.';
+  String get sharingNoAutoRun =>
+      'Полученные команды никогда не выполняются автоматически.';
 
   @override
   String get sharingOwnerDeviceOnly =>
@@ -5222,7 +5425,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Адрес или порт общего хоста изменился. Проверьте новые значения и подтвердите обновление перед подключением со своими учётными данными.';
 
   @override
-  String get sharingTunnelVerify => 'Для общего хоста сначала проверьте доступ и запустите туннель вручную.';
+  String get sharingTunnelVerify =>
+      'Для общего хоста сначала проверьте доступ и запустите туннель вручную.';
 
   @override
   String get sharingPromptPassword => 'Спрашивать пароль при подключении';
@@ -5246,10 +5450,12 @@ class AppLocalizationsRu extends AppLocalizations {
       'Выберите уже опубликованные элементы. Группа хранит только ссылки и не даёт доступ к их содержимому.';
 
   @override
-  String get sharingCollectionEmpty => 'Сначала поделитесь нужными элементами отдельно.';
+  String get sharingCollectionEmpty =>
+      'Сначала поделитесь нужными элементами отдельно.';
 
   @override
-  String get sharingCollectionUnavailable => 'Элемент недоступен: нужен отдельный доступ.';
+  String get sharingCollectionUnavailable =>
+      'Элемент недоступен: нужен отдельный доступ.';
 
   @override
   String get sharingCollectionChildren => 'Элементы группы';
@@ -5292,7 +5498,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get enrollmentThirtyDays => '30 дней';
 
   @override
-  String get enrollmentAutomatic => 'Принимать подтверждённые устройства автоматически';
+  String get enrollmentAutomatic =>
+      'Принимать подтверждённые устройства автоматически';
 
   @override
   String get enrollmentAutomaticHelp =>
@@ -5360,7 +5567,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get enrollmentAccept => 'Предоставить доступ';
 
   @override
-  String get enrollmentManualConfirmed => 'Подтверждаю добавление этого устройства с указанными правами';
+  String get enrollmentManualConfirmed =>
+      'Подтверждаю добавление этого устройства с указанными правами';
 
   @override
   String get enrollmentActive => 'Действует';
@@ -5427,7 +5635,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get rdpEmptyTitle => 'Рабочий стол во вкладке';
 
   @override
-  String get rdpEmptyHelp => 'Укажите сервер Windows и учётную запись. Сначала проверьте сертификат сервера.';
+  String get rdpEmptyHelp =>
+      'Укажите сервер Windows и учётную запись. Сначала проверьте сертификат сервера.';
 
   @override
   String get rdpLocked => 'Разблокируйте хранилище, чтобы открыть RDP.';
@@ -5439,10 +5648,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get rdpConnected => 'Подключено';
 
   @override
-  String get rdpDisconnected => 'Соединение закрыто. Для нового входа создайте подключение.';
+  String get rdpDisconnected =>
+      'Соединение закрыто. Для нового входа создайте подключение.';
 
   @override
-  String get rdpConnectionFailed => 'Не удалось подключиться. Проверьте адрес, учётную запись и сертификат.';
+  String get rdpConnectionFailed =>
+      'Не удалось подключиться. Проверьте адрес, учётную запись и сертификат.';
 
   @override
   String get rdpSecureAttention => 'Ctrl + Alt + Delete';
@@ -5476,7 +5687,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Пароль используется только для этого входа и не сохраняется. До подтверждения сертификата он не отправляется серверу.';
 
   @override
-  String get rdpInvalidForm => 'Введите адрес, порт от 1 до 65535, пользователя и пароль.';
+  String get rdpInvalidForm =>
+      'Введите адрес, порт от 1 до 65535, пользователя и пароль.';
 
   @override
   String get rdpCertificateTitle => 'Проверьте сертификат RDP';
@@ -5496,10 +5708,12 @@ class AppLocalizationsRu extends AppLocalizations {
       'Сертификат сервера изменился. Вход заблокирован; создайте новое подключение и сверьте отпечаток.';
 
   @override
-  String get rdpAuthenticationFailed => 'Windows отклонила вход. Проверьте пользователя, домен и пароль.';
+  String get rdpAuthenticationFailed =>
+      'Windows отклонила вход. Проверьте пользователя, домен и пароль.';
 
   @override
-  String get rdpResizeUnavailable => 'Сервер не поддерживает этот размер экрана. Продолжайте с исходным размером.';
+  String get rdpResizeUnavailable =>
+      'Сервер не поддерживает этот размер экрана. Продолжайте с исходным размером.';
 
   @override
   String get rdpWorkspaceHelp =>
@@ -5532,16 +5746,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String get rdpAllowFolderWrite => 'Разрешить запись в папку';
 
   @override
-  String get rdpFolderWriteHelp => 'Удалённый компьютер сможет создавать, изменять и удалять файлы в этой папке.';
+  String get rdpFolderWriteHelp =>
+      'Удалённый компьютер сможет создавать, изменять и удалять файлы в этой папке.';
 
   @override
-  String get rdpFolderUnsupported => 'Передача папки недоступна на этом устройстве.';
+  String get rdpFolderUnsupported =>
+      'Передача папки недоступна на этом устройстве.';
 
   @override
-  String get rdpPermissionsFailed => 'Не удалось применить разрешения. Попробуйте ещё раз.';
+  String get rdpPermissionsFailed =>
+      'Не удалось применить разрешения. Попробуйте ещё раз.';
 
   @override
-  String get rdpClipboardReceived => 'Текст получен. Буфер обмена очистится по настройкам безопасности.';
+  String get rdpClipboardReceived =>
+      'Текст получен. Буфер обмена очистится по настройкам безопасности.';
 
   @override
   String get rdpClipboardSent => 'Текст отправлен на удалённый компьютер.';
@@ -5556,7 +5774,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get rdpReceiveClipboard => 'Получить текст буфера обмена';
 
   @override
-  String get rdpSavedPasswordHelp => 'Пароль будет взят из зашифрованной учётной записи этого хоста.';
+  String get rdpSavedPasswordHelp =>
+      'Пароль будет взят из зашифрованной учётной записи этого хоста.';
 
   @override
   String get hostProtocolLabel => 'Тип подключения';
@@ -5566,7 +5785,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'RDP подключается напрямую. Порт и учётная запись задаются для этого хоста; настройки SSH-группы не применяются.';
 
   @override
-  String get hostRdpPasswordOnly => 'Для RDP выберите парольную учётную запись.';
+  String get hostRdpPasswordOnly =>
+      'Для RDP выберите парольную учётную запись.';
 
   @override
   String get hostRdpUsernameRequired => 'Введите имя пользователя Windows';
@@ -5575,7 +5795,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get rdpFolderPending => 'Windows подключает папку…';
 
   @override
-  String get rdpFolderReady => 'Папка подключена. Откройте её в Проводнике Windows.';
+  String get rdpFolderReady =>
+      'Папка подключена. Откройте её в Проводнике Windows.';
 
   @override
   String get rdpFolderDenied =>
@@ -5609,10 +5830,12 @@ class AppLocalizationsRu extends AppLocalizations {
       'Текстовый буфер обмена ещё не готов или запрещён сервером. Подождите и попробуйте снова; если ошибка повторится, проверьте настройки перенаправления с администратором.';
 
   @override
-  String get rdpClipboardLimit => 'Можно передать только текст размером до 64 КиБ.';
+  String get rdpClipboardLimit =>
+      'Можно передать только текст размером до 64 КиБ.';
 
   @override
-  String get rdpClipboardBusy => 'Предыдущий запрос буфера обмена ещё обрабатывается. Подождите и попробуйте снова.';
+  String get rdpClipboardBusy =>
+      'Предыдущий запрос буфера обмена ещё обрабатывается. Подождите и попробуйте снова.';
 
   @override
   String get rdpClipboardEmpty => 'В буфере обмена нет доступного текста.';
@@ -5636,7 +5859,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get rdpShowBar => 'Показать панель подключения (Ctrl+Alt+Home)';
 
   @override
-  String get rdpFullscreenFailed => 'Не удалось изменить полноэкранный режим. Используйте кнопки управления окном.';
+  String get rdpFullscreenFailed =>
+      'Не удалось изменить полноэкранный режим. Используйте кнопки управления окном.';
 
   @override
   String get rdpMobileTouchpad => 'Тачпад';
@@ -5700,7 +5924,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get localAiError => 'Ошибка локального ИИ';
 
   @override
-  String get localAiUnsupported => 'Доступно на поддерживаемых компьютерах с Windows и macOS.';
+  String get localAiUnsupported =>
+      'Доступно на поддерживаемых компьютерах с Windows и macOS.';
 
   @override
   String get localAiDefault => 'Использовать по умолчанию после установки';
@@ -5734,7 +5959,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Не удалось установить модель. Проверьте интернет и свободное место на диске, затем повторите попытку.';
 
   @override
-  String get localAiFilesChanged => 'Не удалось проверить установленные файлы. Удалите модель и установите её заново.';
+  String get localAiFilesChanged =>
+      'Не удалось проверить установленные файлы. Удалите модель и установите её заново.';
 
   @override
   String get localAiStartFailed =>
@@ -5757,7 +5983,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get localAiModelInstalled => 'Установлена';
 
   @override
-  String get localAiRuntimeMissing => 'Движок ИИ отсутствует. Восстановите его; скачанные модели сохранятся.';
+  String get localAiRuntimeMissing =>
+      'Движок ИИ отсутствует. Восстановите его; скачанные модели сохранятся.';
 
   @override
   String get localAiBundledRuntimeMissing =>
@@ -5785,7 +6012,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get localAiRecommended => 'Рекомендуется по объёму памяти этого компьютера';
+  String get localAiRecommended =>
+      'Рекомендуется по объёму памяти этого компьютера';
 
   @override
   String localAiDetectedMemory(String size) {
@@ -5824,13 +6052,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get terminalLocalUnavailable => 'Локальные оболочки недоступны.';
 
   @override
-  String get terminalLocalSandboxUnavailable => 'В этой сборке с песочницей локальные оболочки недоступны.';
+  String get terminalLocalSandboxUnavailable =>
+      'В этой сборке с песочницей локальные оболочки недоступны.';
 
   @override
   String get terminalLocalRefresh => 'Обновить список оболочек';
 
   @override
-  String get terminalLocalEmptyMessage => 'Откройте локальную оболочку или подключитесь к SSH-хосту в новой вкладке.';
+  String get terminalLocalEmptyMessage =>
+      'Откройте локальную оболочку или подключитесь к SSH-хосту в новой вкладке.';
 
   @override
   String get terminalLocalOpen => 'Открыть терминал';
@@ -5839,7 +6069,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get terminalLocalRestart => 'Перезапустить оболочку';
 
   @override
-  String get terminalLocalInsertOnly => 'Вставьте команду, проверьте её и нажмите Enter в локальном терминале.';
+  String get terminalLocalInsertOnly =>
+      'Вставьте команду, проверьте её и нажмите Enter в локальном терминале.';
 
   @override
   String get rdpMobileMenu => 'Управление сеансом';
@@ -5869,10 +6100,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get rdpMobileMinimize => 'Свернуть сеанс';
 
   @override
-  String get rdpMobileBackAgain => 'Нажмите «Назад» ещё раз, чтобы свернуть сеанс';
+  String get rdpMobileBackAgain =>
+      'Нажмите «Назад» ещё раз, чтобы свернуть сеанс';
 
   @override
-  String get rdpMobileDisconnectConfirm => 'Отключиться от удалённого рабочего стола?';
+  String get rdpMobileDisconnectConfirm =>
+      'Отключиться от удалённого рабочего стола?';
 
   @override
   String get rdpMobileClipboard => 'Буфер обмена';
@@ -5882,7 +6115,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Водите пальцем по экрану — это тачпад. Курсор остаётся на месте, когда вы переставляете палец.';
 
   @override
-  String get rdpMobileIntroZoom => 'Два пальца: касание — правый клик, движение — прокрутка, щипок — масштаб.';
+  String get rdpMobileIntroZoom =>
+      'Два пальца: касание — правый клик, движение — прокрутка, щипок — масштаб.';
 
   @override
   String get rdpMobileIntroMenu =>
@@ -5970,7 +6204,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeTitle => 'Kubernetes';
 
   @override
-  String get kubeSubtitle => 'Подключения к кластерам в зашифрованном хранилище.';
+  String get kubeSubtitle =>
+      'Подключения к кластерам в зашифрованном хранилище.';
 
   @override
   String get kubeImport => 'Импорт kubeconfig';
@@ -5995,7 +6230,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeChooseAgain => 'Выбрать другую конфигурацию';
 
   @override
-  String get kubeEmpty => 'Подключений Kubernetes пока нет. Импортируйте kubeconfig, чтобы добавить контексты.';
+  String get kubeEmpty =>
+      'Подключений Kubernetes пока нет. Импортируйте kubeconfig, чтобы добавить контексты.';
 
   @override
   String get kubeNamespace => 'Namespace';
@@ -6007,7 +6243,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeProduction => 'Production: защита от изменений';
 
   @override
-  String get kubeApproveFiles => 'Прочитать указанные файлы для выбранных контекстов';
+  String get kubeApproveFiles =>
+      'Прочитать указанные файлы для выбранных контекстов';
 
   @override
   String get kubeExecHelp =>
@@ -6022,10 +6259,12 @@ class AppLocalizationsRu extends AppLocalizations {
       'Не удалось импортировать конфигурацию. Проверьте выбранные контексты и файлы, затем повторите проверку.';
 
   @override
-  String get kubeFileFailed => 'Выберите обычный файл UTF-8 размером не более 4 МиБ.';
+  String get kubeFileFailed =>
+      'Выберите обычный файл UTF-8 размером не более 4 МиБ.';
 
   @override
-  String get kubeExpired => 'Время предварительного просмотра истекло. Проверьте конфигурацию снова.';
+  String get kubeExpired =>
+      'Время предварительного просмотра истекло. Проверьте конфигурацию снова.';
 
   @override
   String get kubeTlsRequired =>
@@ -6055,7 +6294,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeRefresh => 'Обновить подключения';
 
   @override
-  String get kubeContextLimit => 'Выберите не более 64 контекстов за один импорт.';
+  String get kubeContextLimit =>
+      'Выберите не более 64 контекстов за один импорт.';
 
   @override
   String get kubeAuthToken => 'Токен';
@@ -6079,7 +6319,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeConnecting => 'Подключение к кластеру…';
 
   @override
-  String get kubeConnectionFailed => 'Не удалось подключиться. Проверьте сеть, авторизацию и маршрут подключения.';
+  String get kubeConnectionFailed =>
+      'Не удалось подключиться. Проверьте сеть, авторизацию и маршрут подключения.';
 
   @override
   String get kubeRetry => 'Повторить';
@@ -6091,7 +6332,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeReadOnly => 'Прод · только чтение';
 
   @override
-  String get kubeReadOnlyHelp => 'Этот контекст защищён от изменений на уровне нативного клиента Kubernetes.';
+  String get kubeReadOnlyHelp =>
+      'Этот контекст защищён от изменений на уровне нативного клиента Kubernetes.';
 
   @override
   String get kubeResources => 'Ресурсы';
@@ -6116,7 +6358,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Доступные типы ресурсов не обнаружены. Проверьте права этой учётной записи в Kubernetes.';
 
   @override
-  String get kubeRequestFailed => 'Не удалось загрузить данные кластера. Проверьте соединение и права в Kubernetes.';
+  String get kubeRequestFailed =>
+      'Не удалось загрузить данные кластера. Проверьте соединение и права в Kubernetes.';
 
   @override
   String get kubeNamespacesFailed =>
@@ -6135,7 +6378,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeSnapshot => 'Снимок состояния';
 
   @override
-  String get kubeWatchFailed => 'Обновления остановлены. Нажмите «Обновить», чтобы подключиться снова.';
+  String get kubeWatchFailed =>
+      'Обновления остановлены. Нажмите «Обновить», чтобы подключиться снова.';
 
   @override
   String get kubeResourceLimit =>
@@ -6163,10 +6407,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeNoLogs => 'Нет строк журнала для отображения.';
 
   @override
-  String get kubeLogTailHelp => 'Последние 500 строк загружаются в память. Обновите, чтобы получить свежие записи.';
+  String get kubeLogTailHelp =>
+      'Последние 500 строк загружаются в память. Обновите, чтобы получить свежие записи.';
 
   @override
-  String get kubeSecretRedacted => 'Значения секрета скрыты. Здесь показаны только метаданные и имена ключей.';
+  String get kubeSecretRedacted =>
+      'Значения секрета скрыты. Здесь показаны только метаданные и имена ключей.';
 
   @override
   String get kubeStatus => 'Состояние';
@@ -6190,7 +6436,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeNotReported => 'Нет данных';
 
   @override
-  String get kubeSessionEnded => 'Соединение завершено. Подключитесь снова, чтобы загрузить данные кластера.';
+  String get kubeSessionEnded =>
+      'Соединение завершено. Подключитесь снова, чтобы загрузить данные кластера.';
 
   @override
   String kubeLoadedCount(int count) {
@@ -6236,7 +6483,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get kubeWriteWindowFailed => 'Не удалось изменить окно записи. Подключитесь заново и повторите попытку.';
+  String get kubeWriteWindowFailed =>
+      'Не удалось изменить окно записи. Подключитесь заново и повторите попытку.';
 
   @override
   String get kubeTypeName => 'Введите точное имя выше';
@@ -6262,7 +6510,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeDryRun => 'Проверить на сервере';
 
   @override
-  String get kubeDryRunRequired => 'Сначала проверьте YAML на сервере. Затем просмотрите изменения перед применением.';
+  String get kubeDryRunRequired =>
+      'Сначала проверьте YAML на сервере. Затем просмотрите изменения перед применением.';
 
   @override
   String get kubeDryRunHelp =>
@@ -6295,7 +6544,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeResumeLogs => 'Продолжить';
 
   @override
-  String get kubeLogBufferHelp => 'Живой журнал: до 20 000 строк и 2 МиБ, только в памяти.';
+  String get kubeLogBufferHelp =>
+      'Живой журнал: до 20 000 строк и 2 МиБ, только в памяти.';
 
   @override
   String get kubeLogOptions => 'Параметры журнала';
@@ -6329,13 +6579,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeDependencies => 'Зависимости';
 
   @override
-  String get kubeNoVisibleProblems => 'Среди проверенных ресурсов проблемы не обнаружены.';
+  String get kubeNoVisibleProblems =>
+      'Среди проверенных ресурсов проблемы не обнаружены.';
 
   @override
-  String get kubeNoProblems => 'В проверенных ресурсах известные проблемы не обнаружены.';
+  String get kubeNoProblems =>
+      'В проверенных ресурсах известные проблемы не обнаружены.';
 
   @override
-  String get kubeNoGitOpsResources => 'Ресурсов Flux или Argo CD с таким фильтром нет.';
+  String get kubeNoGitOpsResources =>
+      'Ресурсов Flux или Argo CD с таким фильтром нет.';
 
   @override
   String get kubeGitOpsActions => 'Действия контроллера';
@@ -6384,7 +6637,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeGitOpsReason => 'Причина (сохраняется в аннотации ресурса)';
 
   @override
-  String get kubeIssueCrashLoop => 'Контейнер постоянно перезапускается после сбоя';
+  String get kubeIssueCrashLoop =>
+      'Контейнер постоянно перезапускается после сбоя';
 
   @override
   String get kubeIssueImagePull => 'Не удаётся скачать образ контейнера';
@@ -6414,7 +6668,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeIssueCondition => 'Ресурс требует внимания';
 
   @override
-  String get kubeIssueRolloutDeadline => 'Развёртывание превысило допустимое время';
+  String get kubeIssueRolloutDeadline =>
+      'Развёртывание превысило допустимое время';
 
   @override
   String get kubeIssueReplicaFailure => 'Контроллер не смог создать реплики';
@@ -6438,7 +6693,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeIssueArgoOutOfSync => 'Приложение Argo CD не синхронизировано';
 
   @override
-  String get kubeIssueFluxPending => 'Flux ещё не обработал последнюю конфигурацию';
+  String get kubeIssueFluxPending =>
+      'Flux ещё не обработал последнюю конфигурацию';
 
   @override
   String get kubeIssueFluxNotReady => 'Ресурс Flux не готов';
@@ -6464,7 +6720,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeHelmHistory => 'История релиза';
 
   @override
-  String get kubeHelmSecretsMasked => 'Чувствительные значения скрыты. Значения и манифесты хранятся только в памяти.';
+  String get kubeHelmSecretsMasked =>
+      'Чувствительные значения скрыты. Значения и манифесты хранятся только в памяти.';
 
   @override
   String get kubeHelmValues => 'Пользовательские значения';
@@ -6482,7 +6739,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeHelmChooseRevision => 'Выберите ревизию';
 
   @override
-  String get kubeHelmDiffHelp => 'Удалённые строки помечены −, добавленные +. Сравнение не изменяет релиз.';
+  String get kubeHelmDiffHelp =>
+      'Удалённые строки помечены −, добавленные +. Сравнение не изменяет релиз.';
 
   @override
   String get kubeExecReviewTitle => 'Разрешить команду авторизации?';
@@ -6501,10 +6759,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeExecAllow => 'Разрешить эту команду';
 
   @override
-  String get kubeAuthFailed => 'Не удалось завершить авторизацию. Проверьте настройки подключения и попробуйте снова.';
+  String get kubeAuthFailed =>
+      'Не удалось завершить авторизацию. Проверьте настройки подключения и попробуйте снова.';
 
   @override
-  String get kubeAuthExpired => 'Срок запроса истёк. Начните авторизацию заново.';
+  String get kubeAuthExpired =>
+      'Срок запроса истёк. Начните авторизацию заново.';
 
   @override
   String get kubeOidcTitle => 'Войти в кластер';
@@ -6530,7 +6790,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubePodTerminal => 'Терминал Pod';
 
   @override
-  String get kubeExecProductionBlocked => 'Терминал запрещён настройками этого production-контекста.';
+  String get kubeExecProductionBlocked =>
+      'Терминал запрещён настройками этого production-контекста.';
 
   @override
   String get kubeAttach => 'Подключиться к процессу';
@@ -6572,7 +6833,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Порт доступен только на этом устройстве по адресу 127.0.0.1. Проброс остановится при отключении кластера или блокировке профиля.';
 
   @override
-  String get kubeForwardProductionBlocked => 'Проброс портов запрещён настройками этого production-контекста.';
+  String get kubeForwardProductionBlocked =>
+      'Проброс портов запрещён настройками этого production-контекста.';
 
   @override
   String get kubeRemotePort => 'TCP-порт контейнера';
@@ -6581,13 +6843,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeLocalPort => 'Локальный порт';
 
   @override
-  String get kubeLocalPortHelp => 'Укажите 0 для автоматического выбора свободного порта.';
+  String get kubeLocalPortHelp =>
+      'Укажите 0 для автоматического выбора свободного порта.';
 
   @override
   String get kubeStartForward => 'Начать проброс';
 
   @override
-  String get kubeForwardCreated => 'Проброс запущен. Управляйте им в разделе «Туннели» или в панели кластера.';
+  String get kubeForwardCreated =>
+      'Проброс запущен. Управляйте им в разделе «Туннели» или в панели кластера.';
 
   @override
   String get kubeForwardFailed =>
@@ -6676,10 +6940,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeDrainUnmanaged => 'Заблокировано: у Pod нет контроллера.';
 
   @override
-  String get kubeDrainLocalData => 'Заблокировано: Pod использует локальные данные emptyDir.';
+  String get kubeDrainLocalData =>
+      'Заблокировано: Pod использует локальные данные emptyDir.';
 
   @override
-  String get kubeDrainBlocked => 'Заблокировано: проверьте этот Pod перед освобождением узла.';
+  String get kubeDrainBlocked =>
+      'Заблокировано: проверьте этот Pod перед освобождением узла.';
 
   @override
   String get kubeMetrics => 'Потребление ресурсов';
@@ -6688,7 +6954,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeMeasuredAt => 'Время измерения';
 
   @override
-  String get kubeMetricsUnavailable => 'Метрики недоступны. Проверьте metrics-server и права доступа.';
+  String get kubeMetricsUnavailable =>
+      'Метрики недоступны. Проверьте metrics-server и права доступа.';
 
   @override
   String get kubeWorkloadPods => 'Pod рабочей нагрузки';
@@ -6738,7 +7005,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Официальная загрузка требует проверки SHA-256 и подписи Cosign. Команды пакетного менеджера откроются в терминале.';
 
   @override
-  String get kubeFluxCliFailed => 'Операция с CLI не выполнена или проверка недоступна.';
+  String get kubeFluxCliFailed =>
+      'Операция с CLI не выполнена или проверка недоступна.';
 
   @override
   String get kubeFluxCliOutput => 'Вывод CLI';
@@ -6834,13 +7102,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeAiProvider => 'Провайдер ИИ';
 
   @override
-  String get kubeAiDefaultProvider => 'Провайдер по умолчанию на этом устройстве';
+  String get kubeAiDefaultProvider =>
+      'Провайдер по умолчанию на этом устройстве';
 
   @override
-  String get kubeAiConfigMaps => 'Разрешить чтение значений ConfigMap для этого вопроса';
+  String get kubeAiConfigMaps =>
+      'Разрешить чтение значений ConfigMap для этого вопроса';
 
   @override
-  String get kubeAiUnresolved => 'Часть проверок не выполнена; проверьте ошибки инструментов перед выводами.';
+  String get kubeAiUnresolved =>
+      'Часть проверок не выполнена; проверьте ошибки инструментов перед выводами.';
 
   @override
   String get kubeAiReadTool => 'Инструмент чтения';
@@ -6849,10 +7120,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeAiTruncated => 'Результат сокращён.';
 
   @override
-  String get kubeAiToolFailed => 'Проверка не завершена. Данные могут отсутствовать или доступ ограничен.';
+  String get kubeAiToolFailed =>
+      'Проверка не завершена. Данные могут отсутствовать или доступ ограничен.';
 
   @override
-  String get kubeAiFailed => 'Помощник не смог завершить запрос. Проверьте провайдера ИИ и подключение к кластеру.';
+  String get kubeAiFailed =>
+      'Помощник не смог завершить запрос. Проверьте провайдера ИИ и подключение к кластеру.';
 
   @override
   String get kubeAiQuestion => 'Вопрос об этом кластере';
@@ -6861,7 +7134,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeAiAsk => 'Спросить помощника';
 
   @override
-  String get kubeAiExternalTitle => 'Передать контекст кластера этому провайдеру?';
+  String get kubeAiExternalTitle =>
+      'Передать контекст кластера этому провайдеру?';
 
   @override
   String get kubeAiExternalHelp =>
@@ -6897,7 +7171,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Получатели смогут подключаться к кластеру с этими данными. Передавайте их только проверенным устройствам, которым доверяете. Отзыв доступа к публикации не отменяет уже скопированные получателем данные входа.';
 
   @override
-  String get sharingKubeCredentialsIncluded => 'Данные для входа включены; значения скрыты.';
+  String get sharingKubeCredentialsIncluded =>
+      'Данные для входа включены; значения скрыты.';
 
   @override
   String get sharingKubeCredentialsExcluded => 'Данные для входа не включены.';
@@ -6907,14 +7182,16 @@ class AppLocalizationsRu extends AppLocalizations {
       'Сохраните личную копию подключения и выберите свой маршрут. Данные для входа импортируются только по вашему выбору; запускаемые плагины всё равно потребуют разрешения на этом устройстве.';
 
   @override
-  String get sharingKubeImportCredentials => 'Импортировать включённые данные для входа';
+  String get sharingKubeImportCredentials =>
+      'Импортировать включённые данные для входа';
 
   @override
   String get sharingKubeRouteRequired =>
       'Для подключения нужен маршрут. Выберите сохранённый SSH-хост или профиль переходов на этом устройстве.';
 
   @override
-  String get sharingKubeUnsupported => 'Этот сервер не поддерживает совместный доступ к контекстам Kubernetes.';
+  String get sharingKubeUnsupported =>
+      'Этот сервер не поддерживает совместный доступ к контекстам Kubernetes.';
 
   @override
   String get sharingKubeSnapshotChanged =>
@@ -6937,7 +7214,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeHistoryConnecting => 'Переподключение записи событий…';
 
   @override
-  String get kubeHistoryUnavailable => 'Запись событий недоступна; сохранённая история доступна для чтения.';
+  String get kubeHistoryUnavailable =>
+      'Запись событий недоступна; сохранённая история доступна для чтения.';
 
   @override
   String get kubeHistoryWarnings => 'Только предупреждения';
@@ -6960,7 +7238,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Значения доступны только в этом защищённом диалоге в течение 30 секунд. Скопированные значения очищаются из буфера в течение 30 секунд. Они не передаются ИИ и не сохраняются в истории ресурсов.';
 
   @override
-  String get kubeSecretExpired => 'Значения скрыты. При необходимости откройте их снова.';
+  String get kubeSecretExpired =>
+      'Значения скрыты. При необходимости откройте их снова.';
 
   @override
   String get kubeCreateResource => 'Создать ресурс';
@@ -7011,19 +7290,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeCompare => 'Сравнить';
 
   @override
-  String get kubeDiffTruncated => 'Различия показаны не полностью. Проверьте весь ресурс перед применением изменений.';
+  String get kubeDiffTruncated =>
+      'Различия показаны не полностью. Проверьте весь ресурс перед применением изменений.';
 
   @override
   String get kubeNoChanges => 'Изменений нет';
 
   @override
-  String get kubeDiffReview => 'Проверьте изменённые поля. Значения секретов скрыты.';
+  String get kubeDiffReview =>
+      'Проверьте изменённые поля. Значения секретов скрыты.';
 
   @override
   String get kubeFluxCliAdviceMissing => 'Flux CLI не найден. Установить?';
 
   @override
-  String get kubeFluxCliAdviceUpdate => 'Версия CLI старше версии Flux в кластере. Обновить?';
+  String get kubeFluxCliAdviceUpdate =>
+      'Версия CLI старше версии Flux в кластере. Обновить?';
 
   @override
   String get kubeFluxCliNeverSuggest => 'Больше не предлагать';
@@ -7084,7 +7366,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeIssueDependencyNotReady => 'Зависимость не готова';
 
   @override
-  String get kubeIssueDependencyMissing => 'Зависимость отсутствует или недоступна';
+  String get kubeIssueDependencyMissing =>
+      'Зависимость отсутствует или недоступна';
 
   @override
   String get kubeExitCode => 'Код завершения';
@@ -7135,7 +7418,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeLogRegex => 'Регулярное выражение';
 
   @override
-  String get kubeLogRegexInvalid => 'Некорректное или слишком сложное выражение.';
+  String get kubeLogRegexInvalid =>
+      'Некорректное или слишком сложное выражение.';
 
   @override
   String get kubeLogLevel => 'Уровень';
@@ -7160,7 +7444,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeLogMask => 'Скрыть распознанные секреты перед экспортом';
 
   @override
-  String get kubeLogTargetsTruncated => 'Показаны первые 8 подов. Выберите конкретный под для остальных.';
+  String get kubeLogTargetsTruncated =>
+      'Показаны первые 8 подов. Выберите конкретный под для остальных.';
 
   @override
   String get kubeLogSaved => 'Логи сохранены.';
@@ -7169,7 +7454,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeTags => 'Метки через запятую';
 
   @override
-  String get kubeTagsHelp => 'Метки и цвет кластера общие для его сохранённых контекстов.';
+  String get kubeTagsHelp =>
+      'Метки и цвет кластера общие для его сохранённых контекстов.';
 
   @override
   String get kubeColor => 'Цвет кластера';
@@ -7230,7 +7516,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeAllocatable => 'Доступно для размещения';
 
   @override
-  String get kubeResourceBudgetsUnavailable => 'Запросы ресурсов и лимиты недоступны.';
+  String get kubeResourceBudgetsUnavailable =>
+      'Запросы ресурсов и лимиты недоступны.';
 
   @override
   String get kubeBulkActions => 'Выбранные ресурсы';
@@ -7240,7 +7527,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Проверьте список и введите имя контекста. Операции выполняются по очереди; отмена остановит их после текущей операции. Не более 100 ресурсов.';
 
   @override
-  String get kubeBulkProductionBlocked => 'Массовые изменения недоступны в прод-контекстах.';
+  String get kubeBulkProductionBlocked =>
+      'Массовые изменения недоступны в прод-контекстах.';
 
   @override
   String get kubeBulkFailed =>
@@ -7327,7 +7615,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeGitOpsHistoryEmpty => 'История сверки пока недоступна.';
 
   @override
-  String get kubeGitOpsControllerUnavailable => 'Журнал контроллера недоступен. Проверьте доступ к ресурсам кластера.';
+  String get kubeGitOpsControllerUnavailable =>
+      'Журнал контроллера недоступен. Проверьте доступ к ресурсам кластера.';
 
   @override
   String get kubeGitOpsSignatureUnknown => 'Контроллер не сообщил результат';
@@ -7337,7 +7626,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Запросить новую сверку источника. Для продолжения введите его точное имя.';
 
   @override
-  String get kubeGitOpsMetadataOnly => 'Здесь показаны только ссылки на объекты. Значения секретов скрыты.';
+  String get kubeGitOpsMetadataOnly =>
+      'Здесь показаны только ссылки на объекты. Значения секретов скрыты.';
 
   @override
   String get kubeResourceConfiguration => 'Конфигурация нагрузки и узла';
@@ -7418,7 +7708,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeForwardNetwork => 'Разрешить доступ из локальной сети';
 
   @override
-  String get kubeForwardBindAddress => 'Локальный IP-адрес для приёма подключений';
+  String get kubeForwardBindAddress =>
+      'Локальный IP-адрес для приёма подключений';
 
   @override
   String get kubeForwardNetworkWarning =>
@@ -7465,7 +7756,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeAutoShell => 'Определить оболочку автоматически';
 
   @override
-  String get kubeGitOpsLocalAlerts => 'Уведомления и напоминания на этом устройстве';
+  String get kubeGitOpsLocalAlerts =>
+      'Уведомления и напоминания на этом устройстве';
 
   @override
   String get kubeGitOpsNotify => 'Сообщать о сбоях Flux';
@@ -7504,7 +7796,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get kubePreferencesFailed => 'Не удалось сохранить или загрузить настройки устройства. Попробуйте снова.';
+  String get kubePreferencesFailed =>
+      'Не удалось сохранить или загрузить настройки устройства. Попробуйте снова.';
 
   @override
   String get kubeContextWslHelp =>
@@ -7515,7 +7808,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'WSL не может подключиться к локальному прокси. Используйте WSL 1, зеркальный режим WSL 2 или PowerShell.';
 
   @override
-  String get kubeKubectlMissing => 'kubectl не найден. Он нужен только для локального терминала кластера.';
+  String get kubeKubectlMissing =>
+      'kubectl не найден. Он нужен только для локального терминала кластера.';
 
   @override
   String get kubeKubectlInstall => 'Установить kubectl';
@@ -7789,7 +8083,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsTerminalFontCustomTitle => 'Шрифт терминала';
 
   @override
-  String get settingsTerminalFontCustomHint => 'Имя установленного шрифта, например JetBrains Mono';
+  String get settingsTerminalFontCustomHint =>
+      'Имя установленного шрифта, например JetBrains Mono';
 
   @override
   String get terminalTabRename => 'Переименовать…';
@@ -7845,7 +8140,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Часть полей принадлежит другому контроллеру, или объект изменился. Включите «Передать владение конфликтующими полями» или обновите объект.';
 
   @override
-  String get kubeApplyForbidden => 'Кластер не разрешает вам изменять этот объект.';
+  String get kubeApplyForbidden =>
+      'Кластер не разрешает вам изменять этот объект.';
 
   @override
   String get kubeApplyInvalid =>
@@ -7916,7 +8212,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get sshConfigProxyCommand => 'ProxyCommand не поддерживается; хост импортируется без него';
+  String get sshConfigProxyCommand =>
+      'ProxyCommand не поддерживается; хост импортируется без него';
 
   @override
   String sshConfigKeyFailed(String path) {
@@ -7950,7 +8247,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get settingsShortcutCaptureHint => 'Нажмите сочетание с ⌘/Ctrl или Alt. Esc — отмена.';
+  String get settingsShortcutCaptureHint =>
+      'Нажмите сочетание с ⌘/Ctrl или Alt. Esc — отмена.';
 
   @override
   String settingsShortcutConflict(String command) {
@@ -7968,7 +8266,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsShortcutDisable => 'Выключить';
 
   @override
-  String get settingsShortcutReservedBadge => 'Пересекается с системой или терминалом';
+  String get settingsShortcutReservedBadge =>
+      'Пересекается с системой или терминалом';
 
   @override
   String get kubeMetricsInstall => 'Установить metrics-server';
@@ -7979,7 +8278,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get kubeMetricsInsecureTls => 'Kubelet с самоподписанными сертификатами (--kubelet-insecure-tls)';
+  String get kubeMetricsInsecureTls =>
+      'Kubelet с самоподписанными сертификатами (--kubelet-insecure-tls)';
 
   @override
   String get kubeMetricsInsecureTlsHelp =>
@@ -8017,16 +8317,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeForwardCopyAddress => 'Скопировать локальный адрес';
 
   @override
-  String get kubeForwardsEmptyHelp => 'Запустите проброс из пода или сервиса: «Проброс порта».';
+  String get kubeForwardsEmptyHelp =>
+      'Запустите проброс из пода или сервиса: «Проброс порта».';
 
   @override
   String get dbTitle => 'Базы данных';
 
   @override
-  String get dbSubtitle => 'Зашифрованные подключения; запросы идут напрямую с этого устройства.';
+  String get dbSubtitle =>
+      'Зашифрованные подключения; запросы идут напрямую с этого устройства.';
 
   @override
-  String get dbUnavailable => 'Работа с базами данных недоступна в этой сборке.';
+  String get dbUnavailable =>
+      'Работа с базами данных недоступна в этой сборке.';
 
   @override
   String get dbNewConnection => 'Новое подключение к БД';
@@ -8038,19 +8341,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbConnectionString => 'Строка подключения';
 
   @override
-  String get dbImportHelp => 'Пароль остаётся в зашифрованном хранилище. Проверьте адрес перед сохранением.';
+  String get dbImportHelp =>
+      'Пароль остаётся в зашифрованном хранилище. Проверьте адрес перед сохранением.';
 
   @override
   String get dbImportPgpass => 'Выбрать файл .pgpass';
 
   @override
-  String get dbImportExpired => 'Срок предварительного просмотра истёк. Повторите импорт.';
+  String get dbImportExpired =>
+      'Срок предварительного просмотра истёк. Повторите импорт.';
 
   @override
   String get dbEmpty => 'Подключений к базам данных пока нет.';
 
   @override
-  String get dbFailed => 'Не удалось выполнить операцию. Проверьте настройки подключения и права доступа.';
+  String get dbFailed =>
+      'Не удалось выполнить операцию. Проверьте настройки подключения и права доступа.';
 
   @override
   String get dbInvalid => 'Проверьте выделенные поля.';
@@ -8083,7 +8389,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbSavePassword => 'Сохранить пароль в зашифрованном хранилище';
 
   @override
-  String get dbSavedPassword => 'Сохранённый пароль останется прежним, если его не заменить или удалить.';
+  String get dbSavedPassword =>
+      'Сохранённый пароль останется прежним, если его не заменить или удалить.';
 
   @override
   String get dbClearPassword => 'Удалить сохранённый пароль';
@@ -8125,10 +8432,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbServerReadOnly => 'Серверная защита только для чтения включена.';
 
   @override
-  String get dbRoleReadOnly => 'Проверена роль учётной записи только для чтения.';
+  String get dbRoleReadOnly =>
+      'Проверена роль учётной записи только для чтения.';
 
   @override
-  String get dbGuardOnly => 'Защита запросов включена; серверные права только для чтения не подтверждены.';
+  String get dbGuardOnly =>
+      'Защита запросов включена; серверные права только для чтения не подтверждены.';
 
   @override
   String get dbTls => 'Защита TLS';
@@ -8183,7 +8492,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbProxy => 'Прокси';
 
   @override
-  String get dbRouteHelp => 'Через SSH-маршрут TLS также проверяет исходное имя сервера БД.';
+  String get dbRouteHelp =>
+      'Через SSH-маршрут TLS также проверяет исходное имя сервера БД.';
 
   @override
   String get dbGroup => 'Группа';
@@ -8237,7 +8547,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbMongoReadPreference => 'Предпочтение чтения';
 
   @override
-  String get dbMongoReadHelp => 'Предпочтение чтения выбирает реплику и не запрещает запись.';
+  String get dbMongoReadHelp =>
+      'Предпочтение чтения выбирает реплику и не запрещает запись.';
 
   @override
   String get dbTestConnection => 'Проверить подключение';
@@ -8252,10 +8563,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbRefresh => 'Обновить';
 
   @override
-  String get dbDeleteHelp => 'Удалить сохранённое подключение? Активные сессии будут закрыты.';
+  String get dbDeleteHelp =>
+      'Удалить сохранённое подключение? Активные сессии будут закрыты.';
 
   @override
-  String get dbLocked => 'Разблокируйте хранилище для доступа к подключениям БД.';
+  String get dbLocked =>
+      'Разблокируйте хранилище для доступа к подключениям БД.';
 
   @override
   String get dbTree => 'Структура';
@@ -8322,7 +8635,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbVariables => 'Переменные запроса';
 
   @override
-  String get dbVariablesHelp => 'Значения передаются параметрами драйвера и не склеиваются с текстом запроса.';
+  String get dbVariablesHelp =>
+      'Значения передаются параметрами драйвера и не склеиваются с текстом запроса.';
 
   @override
   String get dbValueType => 'Тип значения';
@@ -8342,7 +8656,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Этот запрос может изменить или удалить данные. Проверьте весь запрос и введите имя подключения.';
 
   @override
-  String get dbReviewExpired => 'Срок подтверждения истёк. Запустите запрос заново для повторной проверки.';
+  String get dbReviewExpired =>
+      'Срок подтверждения истёк. Запустите запрос заново для повторной проверки.';
 
   @override
   String get dbResults => 'Результаты';
@@ -8360,7 +8675,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbNull => 'NULL';
 
   @override
-  String get dbTruncated => 'Достигнут лимит результата. Для полной выгрузки используйте экспорт.';
+  String get dbTruncated =>
+      'Достигнут лимит результата. Для полной выгрузки используйте экспорт.';
 
   @override
   String get dbCancelled => 'Запрос отменён.';
@@ -8396,7 +8712,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbCopyResult => 'Скопировать загруженный результат';
 
   @override
-  String get dbSensitiveClipboard => 'Буфер обмена очищается автоматически согласно настройкам безопасности.';
+  String get dbSensitiveClipboard =>
+      'Буфер обмена очищается автоматически согласно настройкам безопасности.';
 
   @override
   String get dbExport => 'Экспорт результата';
@@ -8451,7 +8768,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbClearHistory => 'Очистить историю запросов';
 
   @override
-  String get dbClearHistoryHelp => 'Удалить сохранённую историю запросов этого подключения?';
+  String get dbClearHistoryHelp =>
+      'Удалить сохранённую историю запросов этого подключения?';
 
   @override
   String get dbSaveSnippet => 'Сохранить как сниппет';
@@ -8560,16 +8878,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbAiTools => 'Контекст, отправленный модели';
 
   @override
-  String get dbAiNoExecute => 'Принятие черновика не выполняет его. Проверьте запрос и нажмите «Выполнить».';
+  String get dbAiNoExecute =>
+      'Принятие черновика не выполняет его. Проверьте запрос и нажмите «Выполнить».';
 
   @override
-  String get dbAiProdDdl => 'Предложения DDL для прод-базы служат рекомендацией и не выполняются.';
+  String get dbAiProdDdl =>
+      'Предложения DDL для прод-базы служат рекомендацией и не выполняются.';
 
   @override
   String get dbAiRevoke => 'Отозвать согласие для ИИ';
 
   @override
-  String get dbBackgroundIos => 'На iOS выполняющийся запрос отменяется через 30 секунд в фоне.';
+  String get dbBackgroundIos =>
+      'На iOS выполняющийся запрос отменяется через 30 секунд в фоне.';
 
   @override
   String get dbCloseRunning => 'Закрыть запрос и отменить его выполнение?';
@@ -8597,14 +8918,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbAiHistoryMessages => 'Сообщений истории в запросе';
 
   @override
-  String get dbVerifiedReadOnly => 'Режим только чтения проверен на стороне сервера.';
+  String get dbVerifiedReadOnly =>
+      'Режим только чтения проверен на стороне сервера.';
 
   @override
   String get dbRoleCanWrite =>
       'У этой роли базы данных есть права записи. Используйте отдельную роль только для чтения в production.';
 
   @override
-  String get dbResultStale => 'Изменения применены. Выполните запрос снова для обновления результата.';
+  String get dbResultStale =>
+      'Изменения применены. Выполните запрос снова для обновления результата.';
 
   @override
   String get dbAllowWritesHelp =>
@@ -8636,10 +8959,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbOpenSuggestion => 'Открыть в новой вкладке';
 
   @override
-  String get dbPlanByTime => 'Полосы — доля времени выполнения, которую занял сам шаг.';
+  String get dbPlanByTime =>
+      'Полосы — доля времени выполнения, которую занял сам шаг.';
 
   @override
-  String get dbPlanByCost => 'Полосы — доля оценочной стоимости, которую занял сам шаг.';
+  String get dbPlanByCost =>
+      'Полосы — доля оценочной стоимости, которую занял сам шаг.';
 
   @override
   String dbPlanTime(String ms) {
@@ -8667,20 +8992,24 @@ class AppLocalizationsRu extends AppLocalizations {
       'Не удалось установить TLS: сервер не поддерживает TLS или сертификат не прошёл проверку. Для проброса порта или локальной базы выберите TLS «prefer» или «disable»; для удалённого сервера проверьте сертификат и имя сервера.';
 
   @override
-  String get dbErrorAuth => 'Сервер отклонил вход: проверьте пользователя, пароль и имя базы.';
+  String get dbErrorAuth =>
+      'Сервер отклонил вход: проверьте пользователя, пароль и имя базы.';
 
   @override
   String get dbErrorConnection =>
       'Не удаётся подключиться к серверу: проверьте адрес, порт и что проброс порта или туннель запущен.';
 
   @override
-  String get dbErrorTimeout => 'Сервер не ответил вовремя. Проверьте адрес и таймаут подключения.';
+  String get dbErrorTimeout =>
+      'Сервер не ответил вовремя. Проверьте адрес и таймаут подключения.';
 
   @override
-  String get dbErrorRoute => 'Выбранный маршрут недоступен: проверьте SSH-хост или jump-профиль.';
+  String get dbErrorRoute =>
+      'Выбранный маршрут недоступен: проверьте SSH-хост или jump-профиль.';
 
   @override
-  String get dbTlsLocalHint => 'Локальный адрес: TLS переключён на «prefer» (у проброса порта обычно нет TLS).';
+  String get dbTlsLocalHint =>
+      'Локальный адрес: TLS переключён на «prefer» (у проброса порта обычно нет TLS).';
 
   @override
   String get colorPickerCustom => 'Свой цвет';
@@ -8697,13 +9026,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerTitle => 'Docker';
 
   @override
-  String get dockerSubtitle => 'Контейнеры на этом компьютере или на сохранённом SSH-хосте.';
+  String get dockerSubtitle =>
+      'Контейнеры на этом компьютере или на сохранённом SSH-хосте.';
 
   @override
   String get dockerUnavailable => 'Docker недоступен';
 
   @override
-  String get dockerUnavailableHelp => 'Эта сборка приложения не умеет подключаться к Docker.';
+  String get dockerUnavailableHelp =>
+      'Эта сборка приложения не умеет подключаться к Docker.';
 
   @override
   String get dockerSearchHosts => 'Поиск хостов';
@@ -8718,7 +9049,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerNoHosts => 'Нет хостов';
 
   @override
-  String get dockerNoHostsHelp => 'Docker не найден на этом компьютере, и сохранённых SSH-хостов пока нет.';
+  String get dockerNoHostsHelp =>
+      'Docker не найден на этом компьютере, и сохранённых SSH-хостов пока нет.';
 
   @override
   String get dockerLocalHost => 'Этот компьютер';
@@ -8795,7 +9127,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerNoContainers => 'Нет контейнеров';
 
   @override
-  String get dockerNoContainersHelp => 'Здесь появятся контейнеры, запущенные на этом Docker.';
+  String get dockerNoContainersHelp =>
+      'Здесь появятся контейнеры, запущенные на этом Docker.';
 
   @override
   String get dockerNoMatches => 'Подходящих контейнеров нет';
@@ -8874,7 +9207,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get dockerKillHelp => 'Процессы контейнера будут остановлены сразу, без корректного завершения.';
+  String get dockerKillHelp =>
+      'Процессы контейнера будут остановлены сразу, без корректного завершения.';
 
   @override
   String dockerRemoveTitle(String name) {
@@ -8882,7 +9216,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get dockerRemoveHelp => 'Контейнер и его записываемый слой будут удалены. Именованные тома сохранятся.';
+  String get dockerRemoveHelp =>
+      'Контейнер и его записываемый слой будут удалены. Именованные тома сохранятся.';
 
   @override
   String get dockerLogs => 'Логи';
@@ -8989,7 +9324,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get dockerLogsPaused => 'Пауза: новые строки сохранятся до продолжения';
+  String get dockerLogsPaused =>
+      'Пауза: новые строки сохранятся до продолжения';
 
   @override
   String dockerLogsTrimmed(int limit) {
@@ -9006,10 +9342,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerNoLogs => 'Строк лога нет';
 
   @override
-  String get dockerForwardHelpSsh => 'Локальный порт пробрасывается на порт контейнера через SSH-подключение к хосту.';
+  String get dockerForwardHelpSsh =>
+      'Локальный порт пробрасывается на порт контейнера через SSH-подключение к хосту.';
 
   @override
-  String get dockerForwardHelpLocal => 'Локальный порт пробрасывается на порт контейнера на этом компьютере.';
+  String get dockerForwardHelpLocal =>
+      'Локальный порт пробрасывается на порт контейнера на этом компьютере.';
 
   @override
   String get dockerForwardContainerPort => 'Порт контейнера';
@@ -9024,7 +9362,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerForwardStart => 'Начать проброс';
 
   @override
-  String get dockerForwardCreated => 'Проброс работает. Он отображается на панели проброса портов.';
+  String get dockerForwardCreated =>
+      'Проброс работает. Он отображается на панели проброса портов.';
 
   @override
   String get dockerForwardCopyAddress => 'Скопировать адрес';
@@ -9050,7 +9389,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerNoForwards => 'Пробросов нет';
 
   @override
-  String get dockerNoForwardsHelp => 'Выберите «Пробросить порт» у работающего контейнера.';
+  String get dockerNoForwardsHelp =>
+      'Выберите «Пробросить порт» у работающего контейнера.';
 
   @override
   String get dockerTerminalTitle => 'Терминал контейнера';
@@ -9065,7 +9405,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerOpenShell => 'Открыть терминал';
 
   @override
-  String get dockerTerminalFailed => 'Не удалось открыть терминал в контейнере.';
+  String get dockerTerminalFailed =>
+      'Не удалось открыть терминал в контейнере.';
 
   @override
   String get dockerSocketForwardingDisabled =>
@@ -9262,14 +9603,16 @@ class AppLocalizationsRu extends AppLocalizations {
       'Pod для проброса порта не найден: проверьте namespace и имя объекта в маршруте подключения.';
 
   @override
-  String get dbErrorKubeDenied => 'Кластер запретил доступ к Pod или к пробросу его порта.';
+  String get dbErrorKubeDenied =>
+      'Кластер запретил доступ к Pod или к пробросу его порта.';
 
   @override
   String get dbErrorKubeForward =>
       'Не удалось запустить проброс порта: остановите ненужные пробросы и повторите попытку.';
 
   @override
-  String get dbRouteKubeHint => 'Проброс порта Kubernetes, восстанавливается при подключении';
+  String get dbRouteKubeHint =>
+      'Проброс порта Kubernetes, восстанавливается при подключении';
 
   @override
   String dbRouteTunnel(String name) {
@@ -9299,17 +9642,20 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get dbErrorTunnel => 'Не удалось запустить сохранённый туннель: проверьте его SSH-хост в разделе «Туннели».';
+  String get dbErrorTunnel =>
+      'Не удалось запустить сохранённый туннель: проверьте его SSH-хост в разделе «Туннели».';
 
   @override
-  String get dbErrorTunnelKind => 'Подключение к БД возможно только через туннель локального проброса порта.';
+  String get dbErrorTunnelKind =>
+      'Подключение к БД возможно только через туннель локального проброса порта.';
 
   @override
   String get dbErrorDockerUnreachable =>
       'Не удаётся подключиться к Docker, чтобы восстановить проброс порта: проверьте, что движок запущен, и SSH-хост.';
 
   @override
-  String get dbErrorDockerContainer => 'Контейнер не найден или не запущен: проверьте его имя в маршруте подключения.';
+  String get dbErrorDockerContainer =>
+      'Контейнер не найден или не запущен: проверьте его имя в маршруте подключения.';
 
   @override
   String get dbErrorDockerForward =>
@@ -9323,10 +9669,12 @@ class AppLocalizationsRu extends AppLocalizations {
       'Том хранится внутри виртуальной машины Docker, поэтому его папку нельзя открыть с этого компьютера.';
 
   @override
-  String get dbRouteTunnelHint => 'Сохранённый SSH-туннель, запускается при подключении';
+  String get dbRouteTunnelHint =>
+      'Сохранённый SSH-туннель, запускается при подключении';
 
   @override
-  String get dbRouteDockerHint => 'Проброс порта Docker, восстанавливается при подключении';
+  String get dbRouteDockerHint =>
+      'Проброс порта Docker, восстанавливается при подключении';
 
   @override
   String get dockerComposeActions => 'Действия с проектом';
@@ -9422,7 +9770,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerComposeValidating => 'Проверка конфигурации на хосте…';
 
   @override
-  String get dockerComposeInvalid => 'В конфигурации есть ошибки. Ничего не сохранено.';
+  String get dockerComposeInvalid =>
+      'В конфигурации есть ошибки. Ничего не сохранено.';
 
   @override
   String dockerComposeConflict(String path) {
@@ -9462,7 +9811,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get dockerComposeSavedNotApplied => 'Запущенные контейнеры пока используют прежнюю конфигурацию.';
+  String get dockerComposeSavedNotApplied =>
+      'Запущенные контейнеры пока используют прежнюю конфигурацию.';
 
   @override
   String get dockerComposeApplying => 'Применение изменений…';
@@ -9517,7 +9867,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sharingDbConnection => 'Подключение к базе данных';
 
   @override
-  String get sharingDbUnsupported => 'Этот сервер не поддерживает общий доступ к подключениям баз данных.';
+  String get sharingDbUnsupported =>
+      'Этот сервер не поддерживает общий доступ к подключениям баз данных.';
 
   @override
   String get sharingDbSnapshotChanged =>
@@ -9528,17 +9879,20 @@ class AppLocalizationsRu extends AppLocalizations {
       'По умолчанию передаются только параметры подключения. Пароль, ключ клиента, группа, история запросов и настройки ИИ остаются на этом устройстве.';
 
   @override
-  String get sharingDbIncludeCredentials => 'Передать сохранённый пароль и ключ клиента';
+  String get sharingDbIncludeCredentials =>
+      'Передать сохранённый пароль и ключ клиента';
 
   @override
   String get sharingDbCredentialWarning =>
       'Получатели смогут использовать эти учётные данные для доступа к базе данных. Передавайте их только проверенным устройствам, которым доверяете. Отзыв доступа не отменяет уже скопированные учётные данные: смените пароль на сервере базы данных.';
 
   @override
-  String get sharingDbCredentialsIncluded => 'Пароль или ключ клиента переданы; значения скрыты.';
+  String get sharingDbCredentialsIncluded =>
+      'Пароль или ключ клиента переданы; значения скрыты.';
 
   @override
-  String get sharingDbCredentialsExcluded => 'Пароль и ключ клиента не переданы.';
+  String get sharingDbCredentialsExcluded =>
+      'Пароль и ключ клиента не переданы.';
 
   @override
   String get sharingDbRouteRelay =>
@@ -9561,16 +9915,19 @@ class AppLocalizationsRu extends AppLocalizations {
       'Это подключение недоступно напрямую. Выберите совместимый маршрут, сохранённый на этом устройстве.';
 
   @override
-  String get sharingDbNoRoute => 'На этом устройстве нет совместимого маршрута. Сначала добавьте его.';
+  String get sharingDbNoRoute =>
+      'На этом устройстве нет совместимого маршрута. Сначала добавьте его.';
 
   @override
-  String get sharingDbImportCredentials => 'Импортировать переданные пароль и ключ клиента';
+  String get sharingDbImportCredentials =>
+      'Импортировать переданные пароль и ключ клиента';
 
   @override
   String get sharingDbRouteKind => 'Маршрут';
 
   @override
-  String get sharingDbRouteKindRelay => 'SSH, профиль переходов, прокси или туннель';
+  String get sharingDbRouteKindRelay =>
+      'SSH, профиль переходов, прокси или туннель';
 
   @override
   String get sharingDbWorkload => 'Рабочая нагрузка';
@@ -9602,4 +9959,89 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String shellNewDeviceTitle(String device, String platform) {
+    return 'Новое устройство вошло в аккаунт: $device, $platform';
+  }
+
+  @override
+  String shellNewDeviceMessage(String ago) {
+    return 'Вход $ago. Если это не вы, отзовите его и смените пароль аккаунта. Первые дни оно не может отзывать ваши доверенные устройства.';
+  }
+
+  @override
+  String get shellNewDeviceItsMe => 'Это я';
+
+  @override
+  String get shellNewDeviceRevoke => 'Отозвать…';
+
+  @override
+  String shellNewDeviceRevoked(String device) {
+    return '«$device» отозвано. Смените пароль аккаунта: тот, кто вошёл, его знает.';
+  }
+
+  @override
+  String get devicesStatusUnconfirmed => 'Не подтверждено';
+
+  @override
+  String devicesQuarantineBadge(String date) {
+    return 'Новое, ограничения до $date';
+  }
+
+  @override
+  String get errorDeviceInQuarantine =>
+      'Это устройство вошло недавно и пока не может отзывать доверенные устройства или завершать их сеансы. Сделайте это на доверенном устройстве.';
+
+  @override
+  String errorDeviceInQuarantineUntil(String date) {
+    return 'Это устройство вошло недавно и до $date не может отзывать доверенные устройства или завершать их сеансы. Сделайте это на доверенном устройстве.';
+  }
+
+  @override
+  String get errorEnvelopeRateLimited =>
+      'Слишком много попыток открыть хранилище с новых устройств. Повторите позже.';
+
+  @override
+  String errorEnvelopeRateLimitedUntil(String time) {
+    return 'Слишком много попыток открыть хранилище с новых устройств. Повторите после $time.';
+  }
+
+  @override
+  String get settingsSignOutEverywhere => 'Выйти на всех устройствах…';
+
+  @override
+  String get settingsSignOutEverywhereTitle => 'Выйти на всех устройствах?';
+
+  @override
+  String get settingsSignOutEverywhereMessage =>
+      'Все сеансы аккаунта будут завершены, включая этот. Устройства снова войдут с паролем аккаунта; их локальные данные сохранятся.';
+
+  @override
+  String get settingsSignOutEverywhereConfirm => 'Выйти везде';
+
+  @override
+  String get settingsSignOutEverywhereDone =>
+      'Выполнен выход на всех устройствах.';
+
+  @override
+  String settingsSignOutEverywhereKept(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Это устройство новое, поэтому $count доверенного устройства не затронуты (до $date). Сеансы новых устройств завершены.',
+      many:
+          'Это устройство новое, поэтому $count доверенных устройств не затронуты (до $date). Сеансы новых устройств завершены.',
+      few:
+          'Это устройство новое, поэтому $count доверенных устройства не затронуты (до $date). Сеансы новых устройств завершены.',
+      one:
+          'Это устройство новое, поэтому $count доверенное устройство не затронуто (до $date). Сеансы новых устройств завершены.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get settingsDialogAccountPasswordChangedNewDevice =>
+      'Пароль аккаунта изменён. Это устройство новое, поэтому доверенные устройства остались в аккаунте.';
 }

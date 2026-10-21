@@ -184,6 +184,14 @@ AppException mapBridgeError(BridgeError e) {
       code = AppErrorCode.rateLimited;
       final retry = d['retry_after_seconds'];
       if (retry != null) args = {'retry_after_seconds': retry};
+    case 'envelope_rate_limited':
+      code = AppErrorCode.envelopeRateLimited;
+      final retry = d['retry_after_seconds'];
+      if (retry != null) args = {'retry_after_seconds': retry};
+    case 'device_in_quarantine':
+      code = AppErrorCode.deviceInQuarantine;
+      final until = d['until_ms'];
+      if (until != null) args = {'until_ms': until};
     case 'server':
       code = _serverCode(d['protocol_code']);
     case 'approval':
@@ -249,6 +257,8 @@ AppErrorCode _serverCode(String? protocolCode) => switch (protocolCode) {
   'sharing_reconciliation_required' => AppErrorCode.sharingReconciliationRequired,
   'upgrade_required' => AppErrorCode.incompatibleServer,
   'rate_limited' => AppErrorCode.rateLimited,
+  'envelope_rate_limited' => AppErrorCode.envelopeRateLimited,
+  'device_in_quarantine' => AppErrorCode.deviceInQuarantine,
   'unavailable' => AppErrorCode.serverUnavailable,
   _ => AppErrorCode.internal,
 };
@@ -628,6 +638,8 @@ DevicesSnapshot devicesFromJson(Json j, {VaultId? vaultId}) {
         lastSeenAt: fromMsOrNull(d['last_seen_at_ms']),
         revokedAt: fromMsOrNull(d['revoked_at_ms']),
         isCurrent: d['is_current'] == true,
+        trusted: d['trusted'] as bool?,
+        quarantineUntil: fromMsOrNull(d['quarantine_until_ms']),
       ),
   ];
   final requests = [
@@ -648,8 +660,26 @@ DevicesSnapshot devicesFromJson(Json j, {VaultId? vaultId}) {
         expiresAt: fromMs(r['expires_at_ms']),
       ),
   ];
-  return DevicesSnapshot(devices: devices, pendingRequests: requests);
+  return DevicesSnapshot(devices: devices, pendingRequests: requests, deviceProtection: j['device_protection'] == true);
 }
+
+/// `device_registered` app event → [NewDeviceNotice] (`null` if malformed).
+NewDeviceNotice? newDeviceNoticeFromJson(Json j) {
+  final id = j['device_id'], name = j['name'];
+  if (id is! String || name is! String) return null;
+  return NewDeviceNotice(
+    deviceId: DeviceId(id),
+    name: name,
+    platform: _platform(j['platform']),
+    createdAt: fromMsOrNull(j['created_at_ms']) ?? DateTime.now(),
+  );
+}
+
+/// `LogoutAllDto` → [LogoutAllResult].
+LogoutAllResult logoutAllFromJson(Json j) => LogoutAllResult(
+  trustedDevicesKept: (j['trusted_devices_kept'] as num?)?.toInt() ?? 0,
+  quarantineUntil: fromMsOrNull(j['quarantine_until_ms']),
+);
 
 /// "12345 67890 …" → [VerificationCode].
 VerificationCode verificationCodeFrom(String text) =>

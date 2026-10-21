@@ -62,7 +62,8 @@ import 'app_localizations_ru.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -70,7 +71,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -82,15 +84,19 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('ru'),
+  ];
 
   /// Button: dismiss a dialog without changes.
   ///
@@ -1752,13 +1758,19 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · registration open'**
-  String loginServerInfoRegistrationOpen(String serverVersion, String protocolVersion);
+  String loginServerInfoRegistrationOpen(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Login screen: result of a successful server check when registration is invite-only.
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · invite only'**
-  String loginServerInfoInviteOnly(String serverVersion, String protocolVersion);
+  String loginServerInfoInviteOnly(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Login screen: segmented button option to sign in to an existing account.
   ///
@@ -3054,7 +3066,10 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion}'**
-  String enableSyncDialogServerInfo(String serverVersion, String protocolVersion);
+  String enableSyncDialogServerInfo(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Enable-sync wizard segment: register a new account.
   ///
@@ -16849,9 +16864,118 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, one{{count} shared connection} other{{count} shared connections}}'**
   String dbSharedCount(int count);
+
+  /// Banner title on a trusted device when a new device signed in to the account (protocol 1.7 device protection).
+  ///
+  /// In en, this message translates to:
+  /// **'New device signed in: {device}, {platform}'**
+  String shellNewDeviceTitle(String device, String platform);
+
+  /// Banner text under the new-device title; {ago} is a relative time such as "5 min ago".
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in {ago}. If this wasn\'t you, revoke it and change your account password. For its first days it cannot revoke your trusted devices.'**
+  String shellNewDeviceMessage(String ago);
+
+  /// Banner button: the new device belongs to the user; dismisses the notice.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s me'**
+  String get shellNewDeviceItsMe;
+
+  /// Banner button: revoke the new device (asks for confirmation).
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke…'**
+  String get shellNewDeviceRevoke;
+
+  /// Toast after revoking a device from the new-device banner.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{device}\" was revoked. Change your account password: whoever signed in knows it.'**
+  String shellNewDeviceRevoked(String device);
+
+  /// Device status badge (servers with device protection): the device has not unlocked any vault and was not approved.
+  ///
+  /// In en, this message translates to:
+  /// **'Not confirmed'**
+  String get devicesStatusUnconfirmed;
+
+  /// Device badge while a new device is in quarantine: it cannot revoke or sign out trusted devices until {date} (formatted date).
+  ///
+  /// In en, this message translates to:
+  /// **'New, restricted until {date}'**
+  String devicesQuarantineBadge(String date);
+
+  /// Error: a new device (quarantine) tried to act on a trusted device.
+  ///
+  /// In en, this message translates to:
+  /// **'This device signed in recently and cannot revoke or sign out trusted devices yet. Do it on a trusted device.'**
+  String get errorDeviceInQuarantine;
+
+  /// Error with the end of the new-device quarantine; {date} is a formatted date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'This device signed in recently and cannot revoke or sign out trusted devices until {date}. Do it on a trusted device.'**
+  String errorDeviceInQuarantineUntil(String date);
+
+  /// Error: the server limited vault unlock attempts from devices that are not trusted yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts to open the vault from new devices. Try again later.'**
+  String get errorEnvelopeRateLimited;
+
+  /// Error with the time when unlocking can be retried; {time} is a formatted date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts to open the vault from new devices. Try again after {time}.'**
+  String errorEnvelopeRateLimitedUntil(String time);
+
+  /// Settings button: end every session of the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out on all devices…'**
+  String get settingsSignOutEverywhere;
+
+  /// Confirmation dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out on all devices?'**
+  String get settingsSignOutEverywhereTitle;
+
+  /// Confirmation dialog text for signing out on all devices.
+  ///
+  /// In en, this message translates to:
+  /// **'Every session of this account ends, including this one. Devices sign in again with the account password; their local data stays.'**
+  String get settingsSignOutEverywhereMessage;
+
+  /// Confirmation button.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out everywhere'**
+  String get settingsSignOutEverywhereConfirm;
+
+  /// Toast after signing out everywhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed out on all devices.'**
+  String get settingsSignOutEverywhereDone;
+
+  /// Result of signing out everywhere from a new device (quarantine): trusted devices kept their sessions; {date} is when the restriction ends.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{This device is new, so your trusted device stayed signed in (until {date}). Sessions of new devices ended.} other{This device is new, so your {count} trusted devices stayed signed in (until {date}). Sessions of new devices ended.}}'**
+  String settingsSignOutEverywhereKept(int count, String date);
+
+  /// Toast after changing the account password from a device in quarantine.
+  ///
+  /// In en, this message translates to:
+  /// **'Account password changed. This device is new, so your trusted devices stay signed in.'**
+  String get settingsDialogAccountPasswordChangedNewDevice;
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -16860,7 +16984,8 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'ru'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'ru'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

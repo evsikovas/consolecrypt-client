@@ -141,6 +141,8 @@ struct Environment {
     transport: Option<SharingApi>,
 }
 
+/// A protocol 1.6 database-connection share reached a build without that
+/// kind (never requested by it).
 impl Environment {
     fn supports(&self, kind: SharedItemKind) -> bool {
         match kind {

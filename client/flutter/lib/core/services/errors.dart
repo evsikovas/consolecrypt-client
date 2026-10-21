@@ -51,6 +51,14 @@ enum AppErrorCode {
 
   /// Server `Unavailable` (503) — reachable but temporarily not serving.
   serverUnavailable,
+
+  /// Server `DeviceInQuarantine` (protocol 1.7): this device is new and may
+  /// not act on trusted devices yet (`args['until_ms']` when known).
+  deviceInQuarantine,
+
+  /// Server `EnvelopeRateLimited` (protocol 1.7): too many vault unlock
+  /// attempts from new devices (`args['retry_after_seconds']`).
+  envelopeRateLimited,
   sharingReconciliationRequired,
 }
 

@@ -22,6 +22,17 @@
   children (as for `kube_context`, a pre-1.6 client cannot decode such a
   collection). Personal vault objects, encryption format and the `DbRoute`
   model are unchanged.
+- Client (2026-10-21, protocol 1.7 consumer, server 0.1.16): `cc-protocol`
+  pinned to the server commit with new-device protection. Gated on
+  `/v1/meta` `capabilities.device_protection`: `device_registered` events
+  become a "new device signed in" banner on trusted devices ("It's me" /
+  "Revoke…"), the device list shows "Not confirmed" and "New, restricted
+  until <date>", `device_in_quarantine` / `envelope_rate_limited` get their
+  own messages with the date or time to retry, and "Sign out on all devices"
+  reports trusted devices kept by the server's quarantine
+  (`200 LogoutResponse`). Without the capability the UI is unchanged; servers
+  before 1.7 omit `DeviceInfo.trusted`, so trust is derived from
+  `trusted_vaults`. No encrypted payload changes.
 
 - Client Dev (2026-10-21, client-only encrypted payloads): add three
   restorable variants to the `db_connection.route` tagged union:

@@ -127,6 +127,9 @@ fn server_info(s: &Shared, upgrade_required: bool) -> ServerInfo {
         registration_open: st.cfg.registration_open,
         email_verification_required: st.cfg.email_verification_required,
         source_code_url: None,
+        capabilities: cc_protocol::meta::ServerCapabilities {
+            device_protection: st.cfg.device_protection,
+        },
     }
 }
 
@@ -286,8 +289,10 @@ async fn logout(State(s): S, headers: HeaderMap, body: Bytes) -> MResult<Respons
     } else {
         parse(&body)?
     };
-    s.lock().logout(p, req);
-    Ok(no_content())
+    Ok(match s.lock().logout(p, req) {
+        Some(kept) => json(StatusCode::OK, kept),
+        None => no_content(),
+    })
 }
 
 async fn me(State(s): S, headers: HeaderMap) -> MResult<Response> {

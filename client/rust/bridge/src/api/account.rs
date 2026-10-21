@@ -2,13 +2,20 @@
 //! action (ADR-0107 "Account").
 
 use crate::api::error::BridgeError;
-use crate::state::{run, secret_string, with_core};
+use crate::state::{run, secret_string, to_json, with_core};
 
 /// Sign out of the open synced profile's account: revoke the session on the
 /// server (best effort offline), forget the tokens, stop sync. Local data
 /// stays; `sync_reauthenticate` signs in again. Emits `signed_out`.
 pub async fn account_logout() -> Result<(), BridgeError> {
     with_core(move |c| async move { Ok(c.logout().await?) }).await
+}
+
+/// "Sign out on all devices" → `LogoutAllDto` JSON. From a new device
+/// (protocol 1.7 quarantine) trusted devices stay signed in and
+/// `trusted_devices_kept` says how many. Emits `signed_out`.
+pub async fn account_logout_all() -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.logout_all_sessions().await?) }).await
 }
 
 /// Ask the server to send an account password-reset e-mail (always

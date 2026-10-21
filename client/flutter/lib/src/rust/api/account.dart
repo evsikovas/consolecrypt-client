@@ -13,6 +13,11 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 /// stays; `sync_reauthenticate` signs in again. Emits `signed_out`.
 Future<void> accountLogout() => RustLib.instance.api.crateApiAccountAccountLogout();
 
+/// "Sign out on all devices" → `LogoutAllDto` JSON. From a new device
+/// (protocol 1.7 quarantine) trusted devices stay signed in and
+/// `trusted_devices_kept` says how many. Emits `signed_out`.
+Future<String> accountLogoutAll() => RustLib.instance.api.crateApiAccountAccountLogoutAll();
+
 /// Ask the server to send an account password-reset e-mail (always
 /// accepted). No profile needed; does not grant vault access.
 Future<void> accountRequestPasswordReset({required String serverUrl, required String email}) =>

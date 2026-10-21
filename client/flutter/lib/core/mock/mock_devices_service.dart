@@ -22,6 +22,8 @@ final class MockDevicesService implements DevicesService {
   final MockCloud _cloud;
   final Random _rng = Random.secure();
   final ValueStreamController<DevicesSnapshot> _snapshot = ValueStreamController(DevicesSnapshot.empty);
+  final ValueStreamController<List<NewDeviceNotice>> _newDevices = ValueStreamController(const []);
+  bool _deviceProtection = false;
   final Map<String, _AccountDevices> _byAccount = {};
   final Map<DeviceRequestId, VerificationCode> _codes = {};
   final Map<DeviceId, VerificationCode> _ownCodes = {};
@@ -113,6 +115,7 @@ final class MockDevicesService implements DevicesService {
     _snapshot.value = DevicesSnapshot(
       devices: [current, ...acc.devices.where((d) => d.deviceId != current.deviceId)],
       pendingRequests: List.unmodifiable(acc.pending),
+      deviceProtection: _deviceProtection,
     );
   }
 
@@ -253,6 +256,7 @@ final class MockDevicesService implements DevicesService {
       revokedAt: DateTime.now().toUtc(),
     );
     acc.pending.removeWhere((p) => p.device.deviceId == deviceId);
+    dismissNewDevice(deviceId);
     _changed();
   }
 
@@ -286,8 +290,46 @@ final class MockDevicesService implements DevicesService {
     _changed();
   }
 
+  @override
+  Stream<List<NewDeviceNotice>> watchNewDevices() => _newDevices.stream;
+
+  @override
+  void dismissNewDevice(DeviceId deviceId) =>
+      _newDevices.value = [..._newDevices.value.where((n) => n.deviceId != deviceId)];
+
+  /// Mock-only: a server with new-device protection (protocol 1.7).
+  void debugSetDeviceProtection(bool on) {
+    _deviceProtection = on;
+    _changed();
+  }
+
+  /// Mock-only: a new device signs in to the account (`device_registered`):
+  /// listed as unconfirmed and in quarantine, and announced.
+  NewDeviceNotice debugAnnounceNewDevice(String name, {DevicePlatform platform = DevicePlatform.linux}) {
+    final acc = _requireAccount();
+    final now = DateTime.now().toUtc();
+    final device = DeviceInfo(
+      deviceId: DeviceId.generate(),
+      name: name,
+      platform: platform,
+      status: DeviceStatus.active,
+      trustedVaults: const [],
+      createdAt: now,
+      lastSeenAt: now,
+      trusted: false,
+      quarantineUntil: now.add(const Duration(days: 14)),
+    );
+    acc.devices.add(device);
+    _deviceProtection = true;
+    final notice = NewDeviceNotice(deviceId: device.deviceId, name: name, platform: platform, createdAt: now);
+    _newDevices.value = [..._newDevices.value, notice];
+    _changed();
+    return notice;
+  }
+
   Future<void> dispose() async {
     await _sub.cancel();
     await _snapshot.close();
+    await _newDevices.close();
   }
 }

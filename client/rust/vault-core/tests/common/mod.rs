@@ -53,6 +53,8 @@ pub fn device_info(reg: &DeviceRegistration) -> DeviceInfo {
         last_seen_at: None,
         revoked_at: None,
         is_current: false,
+        trusted: false,
+        quarantine_until: None,
     }
 }
 

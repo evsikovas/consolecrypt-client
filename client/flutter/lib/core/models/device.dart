@@ -31,6 +31,8 @@ final class DeviceInfo {
     this.lastSeenAt,
     this.revokedAt,
     this.isCurrent = false,
+    this.trusted,
+    this.quarantineUntil,
   });
 
   final DeviceId deviceId;
@@ -45,7 +47,17 @@ final class DeviceInfo {
   final DateTime? revokedAt;
   final bool isCurrent;
 
+  /// Holds a device envelope for any vault of the account (account-level
+  /// trust, protocol 1.7). `null` when unknown.
+  final bool? trusted;
+
+  /// End of the new-device quarantine while it runs (protocol 1.7): until
+  /// then the device cannot revoke or sign out trusted devices.
+  final DateTime? quarantineUntil;
+
   bool get isRevoked => status == DeviceStatus.revoked;
+
+  bool get inQuarantine => !isRevoked && quarantineUntil != null && quarantineUntil!.isAfter(DateTime.now());
 
   bool isTrustedFor(VaultId? vault) => !isRevoked && vault != null && trustedVaults.contains(vault);
 }
@@ -78,12 +90,43 @@ final class DeviceTrustRequest {
 
 /// `GET /v1/devices` snapshot.
 final class DevicesSnapshot {
-  const DevicesSnapshot({required this.devices, required this.pendingRequests});
+  const DevicesSnapshot({required this.devices, required this.pendingRequests, this.deviceProtection = false});
 
   static const empty = DevicesSnapshot(devices: [], pendingRequests: []);
 
   final List<DeviceInfo> devices;
   final List<DeviceTrustRequest> pendingRequests;
+
+  /// The server advertises new-device protection (protocol 1.7). Without it
+  /// the UI behaves as before: no "unconfirmed"/quarantine marks.
+  final bool deviceProtection;
+
+  DeviceInfo? get current => devices.where((d) => d.isCurrent).firstOrNull;
+}
+
+/// "A new device signed in to the account" (protocol 1.7 `device_registered`),
+/// shown on trusted devices until answered with "Revoke" or "It's me".
+final class NewDeviceNotice {
+  const NewDeviceNotice({
+    required this.deviceId,
+    required this.name,
+    required this.platform,
+    required this.createdAt,
+  });
+
+  final DeviceId deviceId;
+  final String name;
+  final DevicePlatform platform;
+  final DateTime createdAt;
+}
+
+/// Result of "sign out on all devices".
+final class LogoutAllResult {
+  const LogoutAllResult({this.trustedDevicesKept = 0, this.quarantineUntil});
+
+  /// Trusted devices that stayed signed in because this device is new.
+  final int trustedDevicesKept;
+  final DateTime? quarantineUntil;
 }
 
 /// Device verification code (ADR-0004): `h = SHA-256(device_fingerprint_input)`

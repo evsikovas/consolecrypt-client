@@ -188,7 +188,7 @@ pub async fn disconnect(
             )
             .await
         } else {
-            api.logout(&LogoutRequest::default()).await
+            api.logout(&LogoutRequest::default()).await.map(|_| ())
         };
         if let Err(e) = r {
             tracing::warn!(error = %e, "server call during disconnect failed");

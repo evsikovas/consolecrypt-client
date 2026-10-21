@@ -102,6 +102,7 @@ class DevicesScreen extends ConsumerWidget {
                     _DeviceTile(
                       device: d,
                       vaultId: vaultId,
+                      protection: snapshot.deviceProtection,
                       pending: snapshot.pendingRequests.any((r) => r.device.deviceId == d.deviceId),
                       onRevoke: () => _revoke(context, ref, d),
                       onRename: () => _rename(context, ref, d),
@@ -192,6 +193,7 @@ class _DeviceTile extends StatelessWidget {
     required this.device,
     required this.vaultId,
     required this.pending,
+    this.protection = false,
     required this.onRevoke,
     required this.onRename,
   });
@@ -199,6 +201,9 @@ class _DeviceTile extends StatelessWidget {
   final DeviceInfo device;
   final VaultId? vaultId;
   final bool pending;
+
+  /// The server reports account trust and quarantine (protocol 1.7).
+  final bool protection;
   final VoidCallback onRevoke;
   final VoidCallback onRename;
 
@@ -212,10 +217,15 @@ class _DeviceTile extends StatelessWidget {
         : device.isTrustedFor(vaultId)
         ? (l10n.devicesStatusTrusted, GlassTone.success, Icons.verified_rounded)
         : (
-            pending ? l10n.devicesStatusAwaitingApproval : l10n.devicesStatusNotTrusted,
+            pending
+                ? l10n.devicesStatusAwaitingApproval
+                : protection && device.trusted == false
+                ? l10n.devicesStatusUnconfirmed
+                : l10n.devicesStatusNotTrusted,
             GlassTone.warning,
             Icons.hourglass_top_rounded,
           );
+    final quarantine = protection && device.inQuarantine ? device.quarantineUntil : null;
     return ListTile(
       key: ValueKey('device-${device.name}'),
       leading: Icon(platformIcon(device.platform)),
@@ -231,6 +241,16 @@ class _DeviceTile extends StatelessWidget {
           if (device.isCurrent) ...[
             const SizedBox(width: GlassSpacing.s8),
             GlassBadge(label: l10n.devicesThisDevice, tone: GlassTone.accent, dense: true),
+          ],
+          if (quarantine != null) ...[
+            const SizedBox(width: GlassSpacing.s8),
+            GlassBadge(
+              key: ValueKey('quarantine-${device.name}'),
+              label: l10n.devicesQuarantineBadge(formatDate(l10n, quarantine)),
+              tone: GlassTone.warning,
+              icon: Icons.schedule_rounded,
+              dense: true,
+            ),
           ],
         ],
       ),

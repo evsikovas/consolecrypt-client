@@ -12861,5 +12861,118 @@
         "type": "int"
       }
     }
+  },
+  "shellNewDeviceTitle": "New device signed in: {device}, {platform}",
+  "@shellNewDeviceTitle": {
+    "description": "Banner title on a trusted device when a new device signed in to the account (protocol 1.7 device protection).",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      },
+      "platform": {
+        "type": "String"
+      }
+    }
+  },
+  "shellNewDeviceMessage": "Signed in {ago}. If this wasn't you, revoke it and change your account password. For its first days it cannot revoke your trusted devices.",
+  "@shellNewDeviceMessage": {
+    "description": "Banner text under the new-device title; {ago} is a relative time such as \"5 min ago\".",
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "shellNewDeviceItsMe": "It's me",
+  "@shellNewDeviceItsMe": {
+    "description": "Banner button: the new device belongs to the user; dismisses the notice."
+  },
+  "shellNewDeviceRevoke": "Revoke…",
+  "@shellNewDeviceRevoke": {
+    "description": "Banner button: revoke the new device (asks for confirmation)."
+  },
+  "shellNewDeviceRevoked": "\"{device}\" was revoked. Change your account password: whoever signed in knows it.",
+  "@shellNewDeviceRevoked": {
+    "description": "Toast after revoking a device from the new-device banner.",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "devicesStatusUnconfirmed": "Not confirmed",
+  "@devicesStatusUnconfirmed": {
+    "description": "Device status badge (servers with device protection): the device has not unlocked any vault and was not approved."
+  },
+  "devicesQuarantineBadge": "New, restricted until {date}",
+  "@devicesQuarantineBadge": {
+    "description": "Device badge while a new device is in quarantine: it cannot revoke or sign out trusted devices until {date} (formatted date).",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "errorDeviceInQuarantine": "This device signed in recently and cannot revoke or sign out trusted devices yet. Do it on a trusted device.",
+  "@errorDeviceInQuarantine": {
+    "description": "Error: a new device (quarantine) tried to act on a trusted device."
+  },
+  "errorDeviceInQuarantineUntil": "This device signed in recently and cannot revoke or sign out trusted devices until {date}. Do it on a trusted device.",
+  "@errorDeviceInQuarantineUntil": {
+    "description": "Error with the end of the new-device quarantine; {date} is a formatted date and time.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "errorEnvelopeRateLimited": "Too many attempts to open the vault from new devices. Try again later.",
+  "@errorEnvelopeRateLimited": {
+    "description": "Error: the server limited vault unlock attempts from devices that are not trusted yet."
+  },
+  "errorEnvelopeRateLimitedUntil": "Too many attempts to open the vault from new devices. Try again after {time}.",
+  "@errorEnvelopeRateLimitedUntil": {
+    "description": "Error with the time when unlocking can be retried; {time} is a formatted date and time.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSignOutEverywhere": "Sign out on all devices…",
+  "@settingsSignOutEverywhere": {
+    "description": "Settings button: end every session of the account."
+  },
+  "settingsSignOutEverywhereTitle": "Sign out on all devices?",
+  "@settingsSignOutEverywhereTitle": {
+    "description": "Confirmation dialog title."
+  },
+  "settingsSignOutEverywhereMessage": "Every session of this account ends, including this one. Devices sign in again with the account password; their local data stays.",
+  "@settingsSignOutEverywhereMessage": {
+    "description": "Confirmation dialog text for signing out on all devices."
+  },
+  "settingsSignOutEverywhereConfirm": "Sign out everywhere",
+  "@settingsSignOutEverywhereConfirm": {
+    "description": "Confirmation button."
+  },
+  "settingsSignOutEverywhereDone": "Signed out on all devices.",
+  "@settingsSignOutEverywhereDone": {
+    "description": "Toast after signing out everywhere."
+  },
+  "settingsSignOutEverywhereKept": "{count, plural, =1{This device is new, so your trusted device stayed signed in (until {date}). Sessions of new devices ended.} other{This device is new, so your {count} trusted devices stayed signed in (until {date}). Sessions of new devices ended.}}",
+  "@settingsSignOutEverywhereKept": {
+    "description": "Result of signing out everywhere from a new device (quarantine): trusted devices kept their sessions; {date} is when the restriction ends.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsDialogAccountPasswordChangedNewDevice": "Account password changed. This device is new, so your trusted devices stay signed in.",
+  "@settingsDialogAccountPasswordChangedNewDevice": {
+    "description": "Toast after changing the account password from a device in quarantine."
   }
 }
