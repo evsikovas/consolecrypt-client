@@ -55,15 +55,49 @@ docker CLI. Если Docker не запущен, приложение так и 
   строки до продолжения, отметки времени включаются отдельно, поиск
   показывает число совпадений. Показанные строки можно скопировать или
   очистить с экрана; хранятся только последние строки.
-- **JSON**: полный ответ inspect с кнопкой копирования.
-
-Пароли и токены в переменных окружения скрыты. «Показать секреты» запрашивает
-пароль хранилища; скопированные значения автоматически удаляются из буфера
-обмена, «Скрыть секреты» прячет их снова.
+- **JSON**: ответ inspect со скрытыми секретами и кнопкой копирования.
 
 «Терминал» открывает оболочку внутри контейнера во вкладке терминала.
 Автоматический выбор пробует `bash`, `ash` и `sh`; оболочку можно указать
 явно.
+
+### Секреты
+
+Без пароля хранилища раздел Docker не показывает и не копирует значения,
+похожие на секреты. Вместо них — `••••••` (длина значения не раскрывается):
+
+- значения переменных и меток, имя которых похоже на секрет: `PASSWORD`,
+  `TOKEN`, `SECRET`, `KEY`, `DSN`, `CERT`, `SESSION`, `COOKIE`, `SALT`,
+  `SIGNATURE` и т. п. (`*_FILE`, `*_PATH` — это пути, они видны);
+- пароль в адресе вида `схема://пользователь:пароль@хост` — пользователь, хост
+  и путь остаются;
+- значения флагов командной строки: `--password`, `--token`, `--secret`,
+  `--requirepass`, `--api-key`, `--key`, у MySQL и MariaDB — `-p<пароль>`,
+  у `redis-cli` — `-a`;
+- закрытые ключи PEM целиком и токены известных форматов (GitHub, GitLab,
+  Slack, `sk-…`, ключи доступа AWS, JWT).
+
+Ссылки на переменные (`${POSTGRES_PASSWORD}`) не скрываются: это не сам
+секрет.
+
+Где действует: сведения о контейнере (команда, аргументы, метки, переменные),
+вкладка JSON и просмотр compose-файлов. В переменных окружения «Показать
+секреты» открывает значения; на вкладке JSON «Показать полностью» открывает
+весь inspect. Обе кнопки запрашивают пароль хранилища; полный JSON копируется
+как секрет и автоматически удаляется из буфера обмена. Раскрытые данные
+забываются при закрытии карточки, обновлении, блокировке хранилища и смене
+профиля.
+
+Логи показываются как есть: это данные приложения. Если в копируемых строках
+(кнопкой или выделением) есть секрет, текст копируется как секрет и
+автоматически удаляется из буфера обмена.
+
+Терминал контейнера даёт полный доступ, в том числе к переменным окружения
+(`env`). При первом открытии терминала в профиле об этом напоминает подсказка.
+
+Пароль хранилища защищает от случайного показа секретов на экране и от
+подглядывания. От человека за незаблокированным компьютером он не защищает:
+для этого включите автоблокировку хранилища в настройках.
 
 ### Тома и файлы
 
@@ -112,12 +146,15 @@ ClickHouse, Redis, MongoDB) есть кнопка «Подключиться к 
 - **Остановить все** и **Перезапустить все** показывают, сколько контейнеров
   затронет действие, и ждут подтверждения.
 - **Показать YAML** открывает файлы проекта вкладками с номерами строк и
-  подсветкой; вверху — папка проекта и файлы окружения. Файл, который
+  подсветкой; вверху — папка проекта и файлы окружения. Секреты в
+  `environment`, `labels`, `command`, `entrypoint`, `healthcheck.test`,
+  пароли в адресах и ключи скрыты, номера строк сохраняются. «Показать
+  полностью» после пароля хранилища показывает исходный текст. Файл, который
   пользователь не может прочитать, помечен с объяснением. Копирование идёт
   через буфер обмена с автоочисткой.
 - **Изменить YAML** требует пароль хранилища: compose-файлы могут содержать
-  пароли и определяют, что запущено на хосте. Разрешение на правку действует
-  ограниченное время.
+  пароли и определяют, что запущено на хосте. В режиме правки виден исходный
+  текст. Разрешение на правку действует ограниченное время.
 
 «Сохранить и применить» сначала проверяет конфигурацию на хосте командой
 `docker compose config` (или `docker-compose config`, если стоит отдельная
@@ -130,6 +167,16 @@ ClickHouse, Redis, MongoDB) есть кнопка «Подключиться к 
 отменяется: скопируйте свои правки и откройте файл заново. Без прав на запись
 файл не меняется. Если на хосте нет утилиты compose, изменения не
 сохраняются, потому что их нельзя проверить.
+
+Сохранение не доверяет именам файлов. Временный файл (со случайным именем) и
+резервная копия создаются эксклюзивно, без перехода по символическим ссылкам,
+и записываются через один открытый файл — права тоже выставляются через него.
+Перед проверкой, после неё и вокруг переименования приложение сверяет, что это
+всё ещё записанный им файл (на этом компьютере — по inode, по SSH — по
+SHA-256 содержимого). Если файл подменили, сохранение прерывается, а
+подменённый оригинал восстанавливается из резервной копии. Если каталог
+проекта доступен на запись другим пользователям, перед сохранением появится
+предупреждение, и сохранение продолжится только после подтверждения.
 
 Просмотр и правка YAML работают для проектов, контейнеры которых хранят метки
 compose с путями к файлам. Старые версии compose и другие инструменты таких
@@ -187,14 +234,49 @@ phones).
 - **Logs**: a live stream with stderr in its own colour. Pause keeps new lines
   until you resume, timestamps are optional and search shows the match count.
   Copy or clear the shown lines; only the most recent lines are kept.
-- **JSON**: the full inspect output with a copy button.
-
-Passwords and tokens in environment variables are masked. “Show secrets” asks
-for the vault passphrase; copied values clear from the clipboard
-automatically, and “Hide secrets” masks them again.
+- **JSON**: the inspect output with secrets hidden, with a copy button.
 
 Terminal opens a shell inside the container in a terminal tab. Automatic
 detection tries `bash`, `ash` and `sh`, or choose the shell explicitly.
+
+### Secrets
+
+Without the vault passphrase the Docker section neither shows nor copies
+values that look secret. They read `••••••` (the length is not revealed):
+
+- values of variables and labels whose name looks secret: `PASSWORD`,
+  `TOKEN`, `SECRET`, `KEY`, `DSN`, `CERT`, `SESSION`, `COOKIE`, `SALT`,
+  `SIGNATURE` and the like (`*_FILE` and `*_PATH` are paths and stay
+  visible);
+- the password of an address like `scheme://user:password@host` — user, host
+  and path stay;
+- values of command-line flags: `--password`, `--token`, `--secret`,
+  `--requirepass`, `--api-key`, `--key`, MySQL's and MariaDB's
+  `-p<password>`, `redis-cli`'s `-a`;
+- PEM private keys as a whole and tokens of known formats (GitHub, GitLab,
+  Slack, `sk-…`, AWS access keys, JWTs).
+
+Variable references (`${POSTGRES_PASSWORD}`) are not hidden: they are not the
+secret itself.
+
+This applies to container details (command, arguments, labels, environment),
+the JSON tab and the compose file view. In the environment, “Show secrets”
+reveals the values; on the JSON tab, “Show in full” reveals the whole
+inspect. Both ask for the vault passphrase; the full JSON is copied as a
+secret and clears from the clipboard automatically. Revealed data is
+forgotten when the details close or reload, when the vault locks and when the
+profile changes.
+
+Logs are shown as they are: they are the application's data. When copied
+lines (with the button or a selection) contain a secret, the text is copied as
+a secret and clears from the clipboard automatically.
+
+A container terminal gives full access, environment variables (`env`)
+included. The first terminal opened in a profile says so once.
+
+The vault passphrase protects secrets from being shown by accident and from
+shoulder surfing. It does not protect against someone at an unlocked
+computer: turn on the vault's auto-lock in Settings for that.
 
 ### Volumes and files
 
@@ -240,12 +322,15 @@ Choose “…” on a compose group header or right-click it:
 - **Stop all** and **Restart all** say how many containers are affected and
   wait for confirmation.
 - **View YAML** opens the project files as tabs with line numbers and
-  highlighting, with the project folder and environment files at the top. A
-  file the user cannot read is marked with an explanation. Copying goes
-  through the self-clearing clipboard.
+  highlighting, with the project folder and environment files at the top.
+  Secrets in `environment`, `labels`, `command`, `entrypoint`,
+  `healthcheck.test`, passwords in addresses and keys are hidden; line numbers
+  stay the same. “Show in full” shows the original text after the vault
+  passphrase. A file the user cannot read is marked with an explanation.
+  Copying goes through the self-clearing clipboard.
 - **Edit YAML** needs the vault passphrase: compose files can contain
-  passwords and decide what runs on the host. Editing permission lasts a
-  limited time.
+  passwords and decide what runs on the host. The editor shows the original
+  text. Editing permission lasts a limited time.
 
 “Save and apply” first validates the configuration on the host with
 `docker compose config` (or `docker-compose config` when only the standalone
@@ -257,6 +342,15 @@ containers on the previous configuration. If a file changed on the host after
 it was opened, saving is refused: copy your edits and open the file again.
 Without write permission the file stays unchanged. Without a compose tool on
 the host nothing is saved, because the change cannot be validated.
+
+Saving never trusts a file name. The temporary file (with a random name) and
+the backup are created exclusively without following symbolic links and are
+written through one open file, permissions included. Before and after the
+validation and around the rename the app checks that it is still the file it
+wrote (by inode on this computer, by the SHA-256 of the content over SSH). If
+a file was swapped, the save stops and a replaced original is restored from
+the backup. If the project directory is writable by other users, a warning
+appears first and the save continues only after you confirm.
 
 Viewing and editing YAML needs containers that carry the compose labels with
 file paths; older compose versions and other tools do not set them.

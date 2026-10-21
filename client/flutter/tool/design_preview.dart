@@ -773,6 +773,12 @@ Future<void> _dockerScreen(WidgetTester tester, String screen, AppLocalizations 
       await tapKey(tester, 'docker-container-${_dockerId(tester, 'shop-postgres-1')}');
       await Scrollable.ensureVisible(tester.element(find.byKey(const ValueKey('docker-mounts'))), alignment: .3);
       await settle(tester);
+    case 'docker-json':
+      // Masked inspect: the redis password in the command line is hidden.
+      await tapKey(tester, 'docker-container-${_dockerId(tester, 'shop-redis-1')}');
+      await tapKey(tester, 'docker-tab-json');
+      await tester.tap(find.byTooltip(l10n.dbShowValue));
+      await settle(tester);
     case 'docker-volumes':
       await tapKey(tester, 'docker-view-volumes');
     case 'docker-compose-menu':
@@ -901,13 +907,19 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(find.byKey(const ValueKey('docker-group-shop')), findsOneWidget);
     case 'docker-details':
       expect(find.byKey(const ValueKey('docker-mounts')), findsOneWidget);
-      expect(texts, isNot(contains('demo-secret-value')));
+      expect(texts, isNot(contains('demo-')));
+    case 'docker-json':
+      expect(find.byKey(const ValueKey('docker-json-reveal')), findsOneWidget);
+      expect(texts, contains('••••••'));
+      expect(texts, isNot(contains('demo-redis-pass')));
     case 'docker-volumes':
       expect(texts, contains('shop_data'));
     case 'docker-compose-menu':
       expect(find.byKey(const ValueKey('docker-compose-menu-viewYaml')), findsOneWidget);
     case 'docker-compose-yaml':
       expect(find.byKey(const ValueKey('docker-compose-text')), findsOneWidget);
+      expect(find.byKey(const ValueKey('docker-compose-reveal')), findsOneWidget);
+      expect(texts, isNot(contains('demo-')));
     case 'docker-database':
       expect(find.byKey(const ValueKey('db-field-dockerContainer')), findsOneWidget);
     case 'docker-forwards':
