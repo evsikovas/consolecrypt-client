@@ -17,7 +17,11 @@
    ```
 
 4. **Actions → Client tag release** проверит совпадение версии и происхождение
-   коммита из `main`, затем соберёт macOS, Windows, Linux, Android и iOS Simulator.
+   коммита из `main` и проверку зависимостей (`cargo deny`, `osv-scanner`; см.
+   [BUILDING.md](BUILDING.md#проверка-зависимостей)), затем соберёт macOS,
+   Windows, Linux, Android и iOS Simulator. Перед тегом закройте открытый issue
+   «Уязвимые зависимости»: обновите пакет или оформите исключение с датой
+   пересмотра. Локально: `python3 client/scripts/dependency-audit.py check`.
    Номера сборок выдаются отдельно каждой платформе; все сохраняют одну `X.Y.Z`.
 5. После успеха всех платформ publisher проверит `ConsoleCrypt.version`, соберёт
    семь установочных файлов и `SHA256SUMS-X.Y.Z.txt`, загрузит их в draft и
@@ -48,7 +52,8 @@
 
 Keep the tested baseline on `main`. Update the source version and release notes,
 push the commit, then push its matching stable `vX.Y.Z` tag. Only the tag builds
-native packages. The workflow publishes a complete GitHub Release after all five
+native packages, and only after the hosted dependency audit (`cargo deny`,
+`osv-scanner`) passes; fix or document any open "Уязвимые зависимости" issue first. The workflow publishes a complete GitHub Release after all five
 platforms pass and dispatches signed update metadata on trusted `main`. Website
 and server deployment are independent tag releases. Preserve signing identities,
 app IDs and the Ed25519 update trust anchor. Old clients still require installer

@@ -1,6 +1,21 @@
-# cargo-deny policy (ADR-0005). Run: cargo deny check  (in client/rust)
+# cargo-deny policy (ADR-0005). Run from the repository root:
+#   cargo deny --manifest-path client/rust/Cargo.toml --locked check advisories bans sources licenses
+# or everything at once: python3 client/scripts/dependency_audit.py check
+# CI runs the same command in client.yml (validate) and dependency-audit.yml.
 [graph]
 all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+# Unmaintained crates fail only when a ConsoleCrypt crate depends on them directly.
+unmaintained = "workspace"
+# Every ignore needs a reason and a review date (docs/public/BUILDING.md).
+# Owner of all exceptions: Alexander Evsikov (@evsikovas).
+ignore = [
+    { id = "RUSTSEC-2023-0071", reason = "rsa (Marvin): only SSH user-key and RDP NTLM/CredSSP private-key operations, a few per connection; Ed25519 is the default SSH key; no fixed version; review 2027-01-21" },
+    { id = "RUSTSEC-2025-0134", reason = "rustls-pemfile unmaintained (no vulnerability): db-core PEM parsing; move to rustls-pki-types PemObject; review 2027-01-21" },
+]
 
 [licenses]
 confidence-threshold = 0.9
@@ -22,27 +37,17 @@ allow = [
     "CDLA-Permissive-2.0",
     "BSL-1.0",
 ]
+# The ADR-0005 list is shared by all client workspaces; not every entry is used here.
+unused-allowed-license = "allow"
 
-# ConsoleCrypt code is AGPL; third-party policy remains unchanged.
-exceptions = [
-    { name = "cc-ai-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-app-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-bridge", allow = ["AGPL-3.0-only"] },
-    { name = "cc-cli", allow = ["AGPL-3.0-only"] },
-    { name = "cc-crypto-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-platform-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-search-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-sftp-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-ssh-agent-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-ssh-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-storage-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-sync-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-terminal-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-tunnel-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-vault-core", allow = ["AGPL-3.0-only"] },
-    { name = "cc-models", allow = ["AGPL-3.0-only"] },
-    { name = "cc-protocol", allow = ["AGPL-3.0-only"] },
-]
+# ConsoleCrypt code is AGPL-3.0-only; third-party policy remains unchanged.
+# Own crates (cc-*) are unpublished (publish = false) or come from the server
+# repository, so cargo-deny skips them here. dependency_audit.py checks the
+# namespace rule instead: every skipped crate is cc-* and AGPL-3.0-only, so a
+# new cc-* crate needs no exception entry.
+[licenses.private]
+ignore = true
+ignore-sources = ["https://github.com/evsikovas/consolecrypt-server"]
 
 # allo-isolate (flutter_rust_bridge's Dart isolate glue) ships only a
 # LICENSE file with the Apache-2.0 text and no `license` field.
@@ -55,10 +60,15 @@ license-files = []
 multiple-versions = "warn"
 wildcards = "deny"
 allow-wildcard-paths = true
-
-[advisories]
-yanked = "deny"
+# TLS is rustls-only. OpenSSL is linked solely as SQLCipher's crypto backend.
+deny = [
+    { crate = "native-tls", reason = "TLS uses rustls" },
+    { crate = "openssl", reason = "TLS uses rustls" },
+    { crate = "openssl-sys", wrappers = ["libsqlite3-sys"], reason = "only SQLCipher (bundled-sqlcipher-vendored-openssl) may link OpenSSL" },
+]
 
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
+# cc-protocol is pinned by revision to the public server repository.
+allow-git = ["https://github.com/evsikovas/consolecrypt-server"]

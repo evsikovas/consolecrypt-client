@@ -21,7 +21,7 @@ jobs:
   validate:
     if: github.repository == 'evsikovas/consolecrypt-client'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     outputs:
       version: ${{ steps.tag.outputs.version }}
     steps:
@@ -39,7 +39,14 @@ jobs:
           python3 -m unittest discover -s client/scripts -p 'test_ci_cleanup.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_cleanup_policy.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_linux_cleanup.py' -v
+          python3 -m unittest discover -s client/scripts -p 'test_dependency_audit.py' -v
           python3 -m unittest discover -s client/scripts/tests -p 'test_kubernetes_ci.py' -v
+      # Hosted runner only: a vulnerable, yanked, banned or unlicensed dependency
+      # stops the release before any self-hosted packaging job starts.
+      - name: Dependency audit (cargo-deny, osv-scanner)
+        run: |
+          python3 client/scripts/dependency-audit.py install "$RUNNER_TEMP/audit-tools" cargo-deny osv-scanner
+          PATH="$RUNNER_TEMP/audit-tools:$PATH" python3 client/scripts/dependency-audit.py check
 
   macos:
     needs: validate
