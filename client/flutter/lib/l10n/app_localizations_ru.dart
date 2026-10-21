@@ -9069,4 +9069,8 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dockerTerminalFailed => 'Не удалось открыть терминал в контейнере.';
+
+  @override
+  String get dockerSocketForwardingDisabled =>
+      'SSH-сервер не разрешает проброс сокета Docker, а Docker CLI на нём нет. Включите «AllowStreamLocalForwarding yes» в sshd_config или установите docker CLI на хосте.';
 }

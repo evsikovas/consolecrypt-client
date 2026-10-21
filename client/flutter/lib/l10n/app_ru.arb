@@ -5122,5 +5122,6 @@
   "dockerShell": "Оболочка",
   "dockerAutoShell": "Определить автоматически (bash, ash или sh)",
   "dockerOpenShell": "Открыть терминал",
-  "dockerTerminalFailed": "Не удалось открыть терминал в контейнере."
+  "dockerTerminalFailed": "Не удалось открыть терминал в контейнере.",
+  "dockerSocketForwardingDisabled": "SSH-сервер не разрешает проброс сокета Docker, а Docker CLI на нём нет. Включите «AllowStreamLocalForwarding yes» в sshd_config или установите docker CLI на хосте."
 }

@@ -16033,6 +16033,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not open a terminal in the container.'**
   String get dockerTerminalFailed;
+
+  /// Docker connection failure: the SSH server refuses Unix socket forwarding.
+  ///
+  /// In en, this message translates to:
+  /// **'The SSH server does not allow forwarding the Docker socket and has no Docker CLI. Set \"AllowStreamLocalForwarding yes\" in sshd_config or install the docker CLI on the host.'**
+  String get dockerSocketForwardingDisabled;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

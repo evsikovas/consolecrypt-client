@@ -8864,4 +8864,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerTerminalFailed => 'Could not open a terminal in the container.';
+
+  @override
+  String get dockerSocketForwardingDisabled =>
+      'The SSH server does not allow forwarding the Docker socket and has no Docker CLI. Set \"AllowStreamLocalForwarding yes\" in sshd_config or install the docker CLI on the host.';
 }

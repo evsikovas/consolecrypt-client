@@ -12162,5 +12162,9 @@
   "dockerTerminalFailed": "Could not open a terminal in the container.",
   "@dockerTerminalFailed": {
     "description": "Docker terminal dialog: error"
+  },
+  "dockerSocketForwardingDisabled": "The SSH server does not allow forwarding the Docker socket and has no Docker CLI. Set \"AllowStreamLocalForwarding yes\" in sshd_config or install the docker CLI on the host.",
+  "@dockerSocketForwardingDisabled": {
+    "description": "Docker connection failure: the SSH server refuses Unix socket forwarding."
   }
 }

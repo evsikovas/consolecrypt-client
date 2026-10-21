@@ -365,7 +365,14 @@ class DockerConnectError extends ConsumerWidget {
           key: const ValueKey('docker-error-connection'),
           tone: BannerTone.danger,
           title: failure == DockerFailure.connectionFailed ? l.dockerConnectionFailedTitle : l.dockerRequestFailed,
-          message: [l.dockerConnectionFailed(name), if (detail.isNotEmpty) detail].join('\n'),
+          message: [
+            l.dockerConnectionFailed(name),
+            if (detail == 'socket_forwarding_disabled')
+              l
+                  .dockerSocketForwardingDisabled // l10n-ignore: wire code
+            else if (detail.isNotEmpty)
+              detail,
+          ].join('\n'),
           action: retry,
         );
     }
