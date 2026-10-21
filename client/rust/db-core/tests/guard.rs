@@ -233,6 +233,49 @@ fn redis_binary_binding_does_not_inject_commands_and_control_commands_are_denied
     }
 }
 #[test]
+fn redis_keys_is_always_refused_with_an_equivalent_scan_hint() {
+    for (production, mobile) in [(true, false), (false, false), (false, true)] {
+        let g = guard(DbEngine::Redis, production, mobile);
+        if !production && mobile {
+            g.allow_session_write().unwrap();
+        }
+        for text in ["KEYS *", "keys user:*", "GET a\nKEYS b*"] {
+            assert!(matches!(
+                g.prepare(&request(text)),
+                Err(DbError::PolicyDenied)
+            ));
+            assert!(g.review(&request(text)).is_err());
+            assert_eq!(
+                g.refusal_hint(&request(text)).unwrap().code,
+                "redis_keys_use_scan"
+            );
+        }
+    }
+    let g = guard(DbEngine::Redis, true, false);
+    // The suggestion is a runnable, guard-approved SCAN over the same pattern,
+    // including patterns that need quoting and escapes.
+    for (text, pattern) in [
+        ("KEYS", b"*".to_vec()),
+        ("KEYS user:*", b"user:*".to_vec()),
+        ("KEYS \"a b\\\"c\\\\\"", b"a b\"c\\".to_vec()),
+        ("KEYS \"\\xff\\x00#\"", vec![0xff, 0x00, b'#']),
+    ] {
+        let hint = g.refusal_hint(&request(text)).unwrap();
+        assert!(!format!("{hint:?}").contains("SCAN"));
+        let permits = g.prepare(&request(&hint.suggestion)).unwrap();
+        assert!(permits[0].is_read_only());
+        let ParsedStatement::Redis { argv } = permits[0].parsed() else {
+            panic!()
+        };
+        assert_eq!(argv[0], b"SCAN");
+        assert_eq!(argv[3], pattern, "{text}");
+    }
+    assert!(g.refusal_hint(&request("GET keys")).is_none());
+    assert!(guard(DbEngine::Postgresql, true, false)
+        .refusal_hint(&request("KEYS *"))
+        .is_none());
+}
+#[test]
 fn mongo_recursive_code_writes_and_wire_controls_are_denied() {
     let g = guard(DbEngine::Mongodb, true, false);
     for query in [

@@ -90,6 +90,32 @@ fn wipe_json(value: &mut serde_json::Value) {
     }
 }
 
+/// A safe replacement for a refused command (Redis `KEYS` → `SCAN`). The
+/// suggestion contains editor text, so Debug never prints it.
+#[derive(Clone, PartialEq, Eq, serde::Serialize)]
+pub struct RefusalHint {
+    pub code: &'static str,
+    pub suggestion: String,
+}
+
+impl std::fmt::Debug for RefusalHint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RefusalHint")
+            .field("code", &self.code)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Hint for a request the parser refuses; None when no replacement exists.
+pub(crate) fn refusal_hint(engine: DbEngine, request: &DbQueryRequest) -> Option<RefusalHint> {
+    match engine {
+        DbEngine::Redis if request.text.len() <= MAX_QUERY_BYTES => {
+            redis::refusal_hint(&request.text)
+        }
+        _ => None,
+    }
+}
+
 pub(crate) struct ClassifiedStatement {
     pub parsed: ParsedStatement,
     pub risk: QueryRisk,

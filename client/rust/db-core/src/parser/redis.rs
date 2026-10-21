@@ -1,4 +1,4 @@
-use super::{ClassifiedStatement, ParsedStatement, MAX_STATEMENTS};
+use super::{ClassifiedStatement, ParsedStatement, RefusalHint, MAX_STATEMENTS};
 use crate::guard::QueryRisk;
 use crate::types::{DbCell, DbError, DbQueryRequest};
 use base64::Engine;
@@ -244,6 +244,46 @@ fn classify(argv: &[Vec<u8>]) -> Result<(QueryRisk, &'static str), DbError> {
         _ => return Err(DbError::PolicyDenied),
     }
     Ok((QueryRisk::ReadOnly, "redis_read"))
+}
+
+/// `KEYS` is always refused (it walks the whole keyspace in one blocking
+/// call); the editor offers the equivalent incremental `SCAN` instead.
+pub(super) fn refusal_hint(text: &str) -> Option<RefusalHint> {
+    let lines = tokenize(text).ok()?;
+    let argv = lines.iter().find(|argv| {
+        argv.first()
+            .is_some_and(|name| name.eq_ignore_ascii_case(b"KEYS"))
+    })?;
+    let pattern = argv.get(1).map(Vec::as_slice).unwrap_or(b"*");
+    Some(RefusalHint {
+        code: "redis_keys_use_scan",
+        suggestion: format!("SCAN 0 MATCH {} COUNT 100", quote(pattern)),
+    })
+}
+
+/// Editor spelling of one argument that tokenizes back to the same bytes.
+fn quote(value: &[u8]) -> String {
+    if !value.is_empty()
+        && value
+            .iter()
+            .all(|byte| byte.is_ascii_graphic() && !matches!(byte, b'"' | b'\'' | b'\\' | b'#'))
+    {
+        return String::from_utf8_lossy(value).into_owned();
+    }
+    let mut quoted = String::from("\"");
+    for byte in value {
+        match byte {
+            b'"' => quoted.push_str("\\\""),
+            b'\\' => quoted.push_str("\\\\"),
+            b'\n' => quoted.push_str("\\n"),
+            b'\r' => quoted.push_str("\\r"),
+            b'\t' => quoted.push_str("\\t"),
+            byte if byte.is_ascii_graphic() || *byte == b' ' => quoted.push(char::from(*byte)),
+            byte => quoted.push_str(&format!("\\x{byte:02x}")),
+        }
+    }
+    quoted.push('"');
+    quoted
 }
 
 fn bounded_integer(value: &[u8], minimum: u64, maximum: u64) -> Result<(), DbError> {

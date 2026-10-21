@@ -6,6 +6,7 @@ use crate::{
     mysql::Mysql,
     parser::ParsedStatement,
     postgres::Postgres,
+    redis_driver::Redis,
     streaming::{DbQueryStream, QuerySink, RowConsumer},
     transport::{DbConnector, DbCredentials},
     DbCell, DbColumn, DbError, DbObjectKind, DbObjectRef, DbParameter, DbQueryRequest,
@@ -23,6 +24,7 @@ use tokio_util::sync::CancellationToken;
 pub(crate) enum Driver {
     Postgres(Postgres),
     Mysql(Mysql),
+    Redis(Redis),
 }
 
 impl Driver {
@@ -30,6 +32,7 @@ impl Driver {
         match self {
             Self::Postgres(driver) => &driver.version,
             Self::Mysql(driver) => &driver.version,
+            Self::Redis(driver) => &driver.version,
         }
     }
 
@@ -45,6 +48,10 @@ impl Driver {
             ParsedStatement::Sql { text, parameters } => {
                 self.query(text, parameters, read_only, sink, cancel)
             }
+            ParsedStatement::Redis { argv } => match self {
+                Self::Redis(driver) => driver.command(argv, sink, cancel),
+                _ => Box::pin(async { Err(DbError::InvalidRequest) }),
+            },
             _ => Box::pin(async { Err(DbError::InvalidRequest) }),
         }
     }
@@ -53,9 +60,12 @@ impl Driver {
     /// continues a paged listing (Redis SCAN).
     fn browse<'a>(
         &'a mut self,
-        _parent: Option<&'a DbObjectRef>,
-        _cursor: Option<&'a str>,
+        parent: Option<&'a DbObjectRef>,
+        cursor: Option<&'a str>,
     ) -> BoxFuture<'a, Result<DbTreePage, DbError>> {
+        if let Self::Redis(driver) = self {
+            return driver.browse(parent, cursor);
+        }
         Box::pin(async {
             Ok(DbTreePage {
                 nodes: Vec::new(),
@@ -79,6 +89,7 @@ impl Driver {
                     driver.query(sql, bindings, read_only, sink, cancel).await
                 }
                 Self::Mysql(driver) => driver.query(sql, bindings, read_only, sink, cancel).await,
+                Self::Redis(_) => Err(DbError::InvalidRequest),
             }
         })
     }
@@ -106,7 +117,7 @@ impl fmt::Debug for DbSession {
 }
 
 impl DbSession {
-    /// Opens PostgreSQL or MySQL/MariaDB. Other engines are not available yet.
+    /// Opens PostgreSQL, MySQL/MariaDB or Redis. Other engines are not available yet.
     pub async fn open(
         id: String,
         connection: &DbConnection,
@@ -121,6 +132,9 @@ impl DbSession {
             ),
             DbEngine::Mysql | DbEngine::Mariadb => Driver::Mysql(
                 Mysql::connect(connection, credentials, connector, scope.clone()).await?,
+            ),
+            DbEngine::Redis => Driver::Redis(
+                Redis::connect(connection, credentials, connector, scope.clone()).await?,
             ),
             _ => return Err(DbError::InvalidRequest),
         };
@@ -154,8 +168,9 @@ impl DbSession {
                 server_version,
                 production: connection.production,
                 read_only,
-                // Both drivers open every guarded read in a server read-only transaction.
-                server_read_only: if read_only {
+                // SQL drivers open every guarded read in a server read-only
+                // transaction. Redis has no server switch (use a read-only ACL user).
+                server_read_only: if read_only && connection.engine != DbEngine::Redis {
                     DbServerReadOnly::Enforced
                 } else {
                     DbServerReadOnly::Unverified

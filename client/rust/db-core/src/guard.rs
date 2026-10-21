@@ -1,7 +1,7 @@
 //! Native, session-bound authorization for database requests. Neither policy nor
 //! execution permits are deserializable; synchronized inventory cannot grant
 //! an execution approval.
-use crate::parser::{self, ParsedStatement};
+use crate::parser::{self, ParsedStatement, RefusalHint};
 use crate::types::{DbError, DbQueryRequest};
 use cc_models::{database::DbEngine, ObjectId};
 use serde::Serialize;
@@ -302,6 +302,12 @@ impl DbGuard {
                 consumed: AtomicBool::new(false),
             })
             .collect())
+    }
+
+    /// A safe replacement to offer when `prepare`/`review` refuse the request
+    /// (Redis `KEYS` → an equivalent `SCAN`). It never grants a permit.
+    pub fn refusal_hint(&self, request: &DbQueryRequest) -> Option<RefusalHint> {
+        parser::refusal_hint(self.policy.engine, request)
     }
 
     pub fn validate_permit(&self, statement: &GuardedStatement) -> Result<(), DbError> {
