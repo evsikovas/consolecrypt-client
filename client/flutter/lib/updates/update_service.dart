@@ -60,13 +60,15 @@ List<int> _version(String value) {
   return value.split('.').map(int.parse).toList();
 }
 
-bool newerVersion(String candidate, String current) {
+/// Whether `candidate+candidateBuild` is newer than the running build. The
+/// same version with a higher build (a rebuilt release) is an update too.
+bool newerVersion(String candidate, String current, {int candidateBuild = 0, int currentBuild = 0}) {
   final a = _version(candidate);
   final b = _version(current);
   for (var i = 0; i < 3; i++) {
     if (a[i] != b[i]) return a[i] > b[i];
   }
-  return false;
+  return candidateBuild > currentBuild;
 }
 
 bool safeUpdateUrl(Uri url) {
@@ -92,6 +94,7 @@ Future<UpdateRelease?> verifyUpdateFeed(
   List<int> envelope, {
   required String platform,
   String currentVersion = kAppVersion,
+  int currentBuild = kAppBuildNumber,
   String publicKey = updateVerificationKey,
   DateTime? now,
 }) async {
@@ -132,7 +135,7 @@ Future<UpdateRelease?> verifyUpdateFeed(
     if (!safeUpdateUrl(url) || size < 1 || size > 524288000 || build < 1 || !RegExp(r'^[a-f0-9]{64}$').hasMatch(hash)) {
       throw const UpdateException('asset');
     }
-    if (!newerVersion(version, currentVersion)) return null;
+    if (!newerVersion(version, currentVersion, candidateBuild: build, currentBuild: currentBuild)) return null;
     final notes = data['notes'] as Map<String, dynamic>? ?? {};
     return UpdateRelease(
       version: version,

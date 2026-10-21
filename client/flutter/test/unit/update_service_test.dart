@@ -133,6 +133,24 @@ void main() {
       isNull,
     );
   });
+  test('the same version with a newer build is offered, an older or equal build is not', () async {
+    payload['version'] = '0.6.4';
+    final asset = (payload['platforms']! as Map<String, Object?>)['windows-x64']! as Map<String, Object?>;
+    asset['build'] = 29011;
+    Future<UpdateRelease?> check(int build) async => verifyUpdateFeed(
+      await envelope(),
+      platform: 'windows-x64',
+      currentVersion: '0.6.4',
+      currentBuild: build,
+      publicKey: publicKey,
+      now: clock,
+    );
+    expect((await check(21029))?.build, 29011);
+    expect(await check(29011), isNull);
+    expect(await check(29012), isNull);
+    expect(newerVersion('0.6.4', '0.7.2', candidateBuild: 99999, currentBuild: 1), isFalse);
+    expect(newerVersion('0.6.5', '0.6.4', candidateBuild: 1, currentBuild: 99999), isTrue);
+  });
   test('automatic check choice survives serialization, restart and unrelated settings changes', () {
     expect(localSettingsFromJson({}).checkUpdatesAutomatically, isTrue);
     final disabled = const LocalSettings().copyWith(checkUpdatesAutomatically: false);
