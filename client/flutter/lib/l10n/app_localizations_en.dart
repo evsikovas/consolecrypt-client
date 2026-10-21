@@ -8943,4 +8943,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get workspaceForwardsEmptyHelp =>
       'Forward a port from a Kubernetes pod or a Docker container; running forwards show here.';
+
+  @override
+  String shellAiDeviceIdle(String model) {
+    return 'AI: built-in model not running (starts on request) · $model';
+  }
+
+  @override
+  String shellAiDeviceStarting(String model) {
+    return 'AI: built-in model starting · $model';
+  }
+
+  @override
+  String shellAiDeviceError(String model) {
+    return 'AI: built-in model failed to start · $model';
+  }
 }

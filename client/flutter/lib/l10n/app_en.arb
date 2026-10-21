@@ -12275,5 +12275,32 @@
   "workspaceForwardsEmptyHelp": "Forward a port from a Kubernetes pod or a Docker container; running forwards show here.",
   "@workspaceForwardsEmptyHelp": {
     "description": "Empty shared port-forwards panel."
+  },
+  "shellAiDeviceIdle": "AI: built-in model not running (starts on request) · {model}",
+  "@shellAiDeviceIdle": {
+    "description": "Sidebar AI indicator tooltip for the built-in model state.",
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "shellAiDeviceStarting": "AI: built-in model starting · {model}",
+  "@shellAiDeviceStarting": {
+    "description": "Sidebar AI indicator tooltip for the built-in model state.",
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "shellAiDeviceError": "AI: built-in model failed to start · {model}",
+  "@shellAiDeviceError": {
+    "description": "Sidebar AI indicator tooltip for the built-in model state.",
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
   }
 }

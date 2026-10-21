@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:consolecrypt/account/profile_switcher.dart';
+import 'package:consolecrypt/ai/local/local_ai_runtime.dart';
+import 'package:consolecrypt/ai/local_ai_providers.dart';
 import 'package:consolecrypt/app/about.dart';
 import 'package:consolecrypt/app/app_info.dart';
 import 'package:consolecrypt/app/brand.dart';
@@ -481,11 +483,15 @@ class _AiIndicator extends ConsumerWidget {
     final model = provider == null ? '' : (provider.chatModel.isEmpty ? provider.name : provider.chatModel);
     final (IconData icon, Color color, String tooltip) = switch (provider) {
       null => (Icons.auto_awesome_outlined, tokens.palette.tertiary, l10n.shellAiNone),
-      final p when p.id == deviceLocalAiProviderId => (
-        Icons.memory_rounded,
-        tokens.palette.success,
-        l10n.shellAiDevice(model),
-      ),
+      // The built-in model is green only while it actually runs.
+      final p when p.id == deviceLocalAiProviderId => switch (ref.watch(localAiStatusProvider).value?.phase) {
+        LocalAiPhase.ready => (Icons.memory_rounded, tokens.palette.success, l10n.shellAiDevice(model)),
+        LocalAiPhase.starting ||
+        LocalAiPhase.stopping ||
+        LocalAiPhase.installing => (Icons.memory_rounded, tokens.palette.accent, l10n.shellAiDeviceStarting(model)),
+        LocalAiPhase.error => (Icons.memory_rounded, tokens.palette.danger, l10n.shellAiDeviceError(model)),
+        _ => (Icons.memory_rounded, tokens.palette.tertiary, l10n.shellAiDeviceIdle(model)),
+      },
       final p when !p.isRemote => (Icons.dns_rounded, tokens.palette.success, l10n.shellAiLocal(p.name, model)),
       final p => (Icons.public_rounded, tokens.palette.accent, l10n.shellAiApi(p.name, model)),
     };

@@ -5144,5 +5144,8 @@
   "dockerVolumeCount": "{count, plural, one{{count} том} few{{count} тома} many{{count} томов} other{{count} тома}}",
   "dockerVolumeUnused": "не используется",
   "dockerNoVolumes": "Томов на этом движке нет.",
-  "workspaceForwardsEmptyHelp": "Пробросьте порт пода Kubernetes или контейнера Docker — активные пробросы появятся здесь."
+  "workspaceForwardsEmptyHelp": "Пробросьте порт пода Kubernetes или контейнера Docker — активные пробросы появятся здесь.",
+  "shellAiDeviceIdle": "ИИ: встроенная модель не запущена (запустится при запросе) · {model}",
+  "shellAiDeviceStarting": "ИИ: встроенная модель запускается · {model}",
+  "shellAiDeviceError": "ИИ: встроенная модель не запустилась · {model}"
 }

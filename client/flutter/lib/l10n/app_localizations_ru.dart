@@ -9155,4 +9155,19 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get workspaceForwardsEmptyHelp =>
       'Пробросьте порт пода Kubernetes или контейнера Docker — активные пробросы появятся здесь.';
+
+  @override
+  String shellAiDeviceIdle(String model) {
+    return 'ИИ: встроенная модель не запущена (запустится при запросе) · $model';
+  }
+
+  @override
+  String shellAiDeviceStarting(String model) {
+    return 'ИИ: встроенная модель запускается · $model';
+  }
+
+  @override
+  String shellAiDeviceError(String model) {
+    return 'ИИ: встроенная модель не запустилась · $model';
+  }
 }

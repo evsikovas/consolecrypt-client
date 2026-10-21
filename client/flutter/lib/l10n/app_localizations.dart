@@ -16165,6 +16165,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Forward a port from a Kubernetes pod or a Docker container; running forwards show here.'**
   String get workspaceForwardsEmptyHelp;
+
+  /// Sidebar AI indicator tooltip for the built-in model state.
+  ///
+  /// In en, this message translates to:
+  /// **'AI: built-in model not running (starts on request) · {model}'**
+  String shellAiDeviceIdle(String model);
+
+  /// Sidebar AI indicator tooltip for the built-in model state.
+  ///
+  /// In en, this message translates to:
+  /// **'AI: built-in model starting · {model}'**
+  String shellAiDeviceStarting(String model);
+
+  /// Sidebar AI indicator tooltip for the built-in model state.
+  ///
+  /// In en, this message translates to:
+  /// **'AI: built-in model failed to start · {model}'**
+  String shellAiDeviceError(String model);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
