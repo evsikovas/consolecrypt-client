@@ -4313,13 +4313,13 @@
   "@dbClearPassword": {
     "description": "Database interface: Remove saved password"
   },
-  "dbProduction": "Прод — всегда только чтение",
+  "dbProduction": "Прод — только чтение, запись лишь во временном окне",
   "@dbProduction": {
-    "description": "Database interface: Production — always read only"
+    "description": "Database interface: production marker in the connection form"
   },
-  "dbProductionHelp": "Для прод-подключений нет временного разрешения записи. Используйте учётную запись БД с правами только на чтение.",
+  "dbProductionHelp": "Прод-подключение открывается только на чтение. Кнопка «Разблокировать прод» в рабочей области разрешает запись на 5–30 минут после пароля хранилища и имени подключения; каждое изменение по-прежнему проверяется. Для повседневной работы лучше учётная запись БД с правами только на чтение.",
   "@dbProductionHelp": {
-    "description": "Database interface: Production connections never have a write window. Use a database account with read-only privileges."
+    "description": "Database interface: help under the production marker in the connection form"
   },
   "dbProd": "ПРОД",
   "@dbProd": {
@@ -5490,5 +5490,26 @@
   "dockerTerminalHint": "Терминал даёт полный доступ к контейнеру, включая переменные окружения.",
   "@dockerTerminalHint": {
     "description": "Container terminal dialog: one-time note shown the first time in a profile."
-  }
+  },
+  "copyWhatDdl": "DDL",
+  "copyWhatValue": "значение",
+  "dbOpenInEditor": "Открыть в редакторе",
+  "dbUnlockProduction": "Разблокировать прод",
+  "dbUnlockProductionTitle": "Разблокировать прод для изменений",
+  "dbUnlockProductionWarning": "Изменения пойдут прямо в прод-базу «{name}». Каждый изменяющий запрос по-прежнему показывается на проверку с именем подключения. Запись снова блокируется, когда истечёт время, по кнопке «Заблокировать», при отключении или блокировке хранилища.",
+  "dbVaultPassphrase": "Пароль хранилища",
+  "dbTypeConnectionName": "Введите имя подключения: {name}",
+  "dbUnlockFor": "Разрешить запись на",
+  "dbMinutes": "{count, plural, one{{count} минуту} few{{count} минуты} many{{count} минут} other{{count} минуты}}",
+  "dbWrongPassphrase": "Неверный пароль хранилища.",
+  "dbProdWriteUntil": "Запись в прод до {time}",
+  "dbProdWriteLeft": "Осталось {time}",
+  "dbLockProduction": "Заблокировать",
+  "dbProdWriteLocked": "Запись в прод снова заблокирована.",
+  "dbProdRoleReadOnly": "Роль этого подключения в базе не может изменять данные, поэтому сервер отклонит запись даже при разблокированном проде.",
+  "dbHistoryProdWrite": "Изменение в проде",
+  "dbSetNull": "Установить NULL",
+  "dbCellEditHint": "Enter — сохранить, Esc — отменить, Tab — следующая ячейка",
+  "dbPendingEdit": "Изменено, ещё не применено",
+  "dbSelectedRows": "{count, plural, one{Выбрано строк: {count}} few{Выбрано строк: {count}} many{Выбрано строк: {count}} other{Выбрано строк: {count}}}"
 }

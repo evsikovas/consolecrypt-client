@@ -14270,16 +14270,16 @@ abstract class AppLocalizations {
   /// **'Remove saved password'**
   String get dbClearPassword;
 
-  /// Database interface: Production — always read only
+  /// Database interface: production marker in the connection form
   ///
   /// In en, this message translates to:
-  /// **'Production — always read only'**
+  /// **'Production — read only, writes only in a temporary window'**
   String get dbProduction;
 
-  /// Database interface: Production connections never have a write window. Use a database account with read-only privileges.
+  /// Database interface: help under the production marker in the connection form
   ///
   /// In en, this message translates to:
-  /// **'Production connections never have a write window. Use a database account with read-only privileges.'**
+  /// **'Production connections open read-only. “Unlock production” in the workspace allows writes for 5–30 minutes after the vault passphrase and the connection name; every change is still reviewed. Prefer a database account with read-only privileges for everyday work.'**
   String get dbProductionHelp;
 
   /// Database interface: PROD
@@ -17167,6 +17167,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The terminal gives full access to the container, including its environment variables.'**
   String get dockerTerminalHint;
+
+  /// Noun for the copied notice: a database object's creation statement.
+  ///
+  /// In en, this message translates to:
+  /// **'DDL'**
+  String get copyWhatDdl;
+
+  /// Noun for the copied notice: one result cell value.
+  ///
+  /// In en, this message translates to:
+  /// **'value'**
+  String get copyWhatValue;
+
+  /// DDL dialog: put the statements into a new query tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in editor'**
+  String get dbOpenInEditor;
+
+  /// Database workspace header button: open a temporary write window on a production connection.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock production'**
+  String get dbUnlockProduction;
+
+  /// Title of the dialog that opens a temporary production write window.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock production for changes'**
+  String get dbUnlockProductionTitle;
+
+  /// Warning in the production unlock dialog; name is the connection name.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes will go straight to the production database “{name}”. Every changing statement is still shown for review with the connection name. Writes lock again when the time runs out, when you lock them, disconnect or lock the vault.'**
+  String dbUnlockProductionWarning(String name);
+
+  /// Production unlock dialog: vault passphrase field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault passphrase'**
+  String get dbVaultPassphrase;
+
+  /// Production unlock dialog: label of the field where the connection name is typed to confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Type the connection name: {name}'**
+  String dbTypeConnectionName(String name);
+
+  /// Production unlock dialog: label above the 5/15/30 minute choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow writes for'**
+  String get dbUnlockFor;
+
+  /// Production unlock dialog: length of the write window in minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} minute} other{{count} minutes}}'**
+  String dbMinutes(int count);
+
+  /// Production unlock dialog: the vault passphrase did not match.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong vault passphrase.'**
+  String get dbWrongPassphrase;
+
+  /// Database workspace header badge while a production write window is open; time is the local end time (HH:MM).
+  ///
+  /// In en, this message translates to:
+  /// **'Production writes until {time}'**
+  String dbProdWriteUntil(String time);
+
+  /// Database workspace header: countdown of the production write window (mm:ss).
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left'**
+  String dbProdWriteLeft(String time);
+
+  /// Database workspace header button: end the production write window now.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock'**
+  String get dbLockProduction;
+
+  /// Notice when the production write window ends.
+  ///
+  /// In en, this message translates to:
+  /// **'Production writes are locked again.'**
+  String get dbProdWriteLocked;
+
+  /// Banner when the production write window is open but the privilege check shows the role cannot write.
+  ///
+  /// In en, this message translates to:
+  /// **'This connection\'s database role cannot change data, so the server refuses writes even while production is unlocked.'**
+  String get dbProdRoleReadOnly;
+
+  /// Query history badge: the query changed data in a production write window.
+  ///
+  /// In en, this message translates to:
+  /// **'Production change'**
+  String get dbHistoryProdWrite;
+
+  /// Inline cell editor: toggle that stores NULL instead of the typed value.
+  ///
+  /// In en, this message translates to:
+  /// **'Set to NULL'**
+  String get dbSetNull;
+
+  /// Inline cell editor tooltip with its keys.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter saves, Esc cancels, Tab moves to the next cell'**
+  String get dbCellEditHint;
+
+  /// Tooltip of a result cell with a pending edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed, not applied yet'**
+  String get dbPendingEdit;
+
+  /// Result status line: number of selected rows.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Selected: {count} row} other{Selected: {count} rows}}'**
+  String dbSelectedRows(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
