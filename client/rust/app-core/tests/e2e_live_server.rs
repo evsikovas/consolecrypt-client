@@ -458,7 +458,8 @@ async fn vertical_slice_against_live_server() {
         plan.describe()
     );
 
-    // Device B can now also unlock with its own device envelope.
+    // Device B's own server envelope is a trust marker (S5): its device key
+    // opens it, but it holds no VRK.
     let envs: ListEnvelopesResponse = ok(
         api_b
             .get(&paths::fill(
@@ -476,7 +477,8 @@ async fn vertical_slice_against_live_server() {
                 && e.recipient_id == Some(*id_b.device_id().as_uuid())
         })
         .expect("own device envelope");
-    unlock_with_device(vault_id, own, &id_b).expect("device unlock");
+    let marker = unlock_with_device(vault_id, own, &id_b).expect("trust marker");
+    assert_ne!(marker.vault_access_key(), vault_b.vault_access_key());
 
     // ── Conflict: B updates target, A pushes a stale revision → 409 ─────
     let mut t2 = target.clone();

@@ -52,6 +52,7 @@ pub use docker_compose::{
 pub use docker_runtime::{
     docker_contains_secret, DockerConnectOutcome, DockerForwardDto, DockerHostDto, DockerSessionDto,
 };
+mod device_unlock;
 mod devices;
 pub mod dto;
 mod edit;
@@ -60,6 +61,7 @@ mod enrollment_highwater;
 pub mod error;
 mod host_auth;
 mod inventory;
+mod keyfile;
 mod kubernetes;
 pub mod kubernetes_ai;
 pub mod kubernetes_auth;
@@ -147,13 +149,14 @@ pub use transfers::{
 pub use cc_protocol::version::Platform;
 
 /// Rust-only integration points (not part of the FRB surface): custom
-/// secure stores and OS authenticators for [`AppCore::with_platform`].
+/// secure stores and device unlock protectors for [`AppCore::with_platform`].
 pub mod platform {
     pub use cc_platform_core::open::{LaunchOutput, LaunchSpec};
     pub use cc_platform_core::{
-        AppRef, ExternalOsAuthenticator, FileOpener, InMemorySecureStore, Launcher, OpenError,
-        OsAuthAvailability, OsAuthError, OsAuthKind, OsAuthenticator, OsFamily, SecureStore,
-        SecureStoreError, UnsupportedOsAuthenticator,
+        platform_device_keys, AppRef, DeviceKeyProtector, DeviceKeyStatus, ExternalDeviceKeys,
+        FakePrompt, FileOpener, InMemoryDeviceKeys, InMemorySecureStore, Launcher, OpenError,
+        OsAuthError, OsAuthKind, OsFamily, SecureStore, SecureStoreError, StoreBackedDeviceKeys,
+        UnlockProtection, UnsupportedDeviceKeys,
     };
 }
 

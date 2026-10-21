@@ -38,17 +38,36 @@ void main() {
     }
   });
 
-  test('device unlock requires explicit opt-in, known capability and an envelope', () {
-    final dto = <String, Object?>{'kind': 'touch_id', 'has_device_envelope': true, 'available': true};
+  test('device unlock requires explicit opt-in, known capability and a vault', () {
+    final dto = <String, Object?>{'kind': 'touch_id', 'has_vault': true, 'available': true, 'protection': 'system'};
     expect(deviceUnlockFromJson(dto).available, isFalse, reason: 'older DTOs cannot silently opt in');
     dto['enabled'] = true;
     expect(deviceUnlockFromJson(dto).available, isTrue);
+    expect(deviceUnlockFromJson(dto).protection, DeviceUnlockProtection.system);
     dto['kind'] = 'unknown';
     expect(deviceUnlockFromJson(dto).available, isFalse);
     dto['kind'] = 'device_credential';
     expect(deviceUnlockFromJson(dto).kind, DeviceAuthKind.deviceCredential);
-    dto['has_device_envelope'] = false;
+    dto['has_vault'] = false;
     expect(deviceUnlockFromJson(dto).available, isFalse);
+  });
+
+  test('device unlock protection, platform kinds and re-offer', () {
+    final linux = deviceUnlockFromJson({'kind': 'keyring', 'has_vault': true, 'protection': 'convenience'});
+    expect(linux.kind, DeviceAuthKind.keyring);
+    expect(linux.protection, DeviceUnlockProtection.convenience);
+    expect(
+      deviceUnlockFromJson({'protection': 'something-new'}).protection,
+      DeviceUnlockProtection.convenience,
+      reason: 'unknown protection shows the warning',
+    );
+    final android = deviceUnlockFromJson({'kind': 'fingerprint', 'external': true, 'reoffer': 'invalidated'});
+    expect(android.kind, DeviceAuthKind.fingerprint);
+    expect(android.external, isTrue);
+    expect(android.reoffer, DeviceUnlockReoffer.invalidated);
+    expect(deviceUnlockFromJson({'reoffer': 'migrated'}).reoffer, DeviceUnlockReoffer.migrated);
+    expect(deviceUnlockFromJson({'reoffer': 'other'}).reoffer, isNull);
+    expect(deviceUnlockFromJson({'kind': 'windows_hello'}).kind, DeviceAuthKind.windowsHello);
   });
 
   group('mapBridgeError', () {
@@ -70,6 +89,8 @@ void main() {
         'unsupported': AppErrorCode.unsupported,
         'storage': AppErrorCode.internal,
         'secure_store': AppErrorCode.secureStore,
+        'os_auth_failed': AppErrorCode.osAuthFailed,
+        'os_auth_invalidated': AppErrorCode.osAuthInvalidated,
         'something_new': AppErrorCode.internal,
       };
       for (final MapEntry(:key, :value) in cases.entries) {

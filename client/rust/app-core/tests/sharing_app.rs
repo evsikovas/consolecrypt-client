@@ -13,7 +13,7 @@ use cc_app_core::enrollment_dto::{
     EnrollmentRequestStatusDto,
 };
 use cc_app_core::platform::{
-    InMemorySecureStore, SecureStore, SecureStoreError, UnsupportedOsAuthenticator,
+    InMemorySecureStore, SecureStore, SecureStoreError, UnsupportedDeviceKeys,
 };
 use cc_app_core::sharing_projection::{
     SharedGroupProjection, SharedHostProjection, SharedProjection, SharedSnippetProjection,
@@ -690,7 +690,7 @@ async fn reopened(account: &Account) -> AppCore {
     let core = AppCore::with_platform(
         config,
         account.store.clone(),
-        Arc::new(UnsupportedOsAuthenticator),
+        Arc::new(UnsupportedDeviceKeys),
     )
     .unwrap();
     core.open_profile(account.profile.clone()).await.unwrap();
@@ -703,8 +703,8 @@ async fn reopened(account: &Account) -> AppCore {
 async fn account(url: &str, directory: &Path, store: Arc<dyn SecureStore>) -> Account {
     let mut config = AppConfig::for_tests(directory.to_string_lossy().to_string());
     config.background_sync = false;
-    let app = AppCore::with_platform(config, store.clone(), Arc::new(UnsupportedOsAuthenticator))
-        .unwrap();
+    let app =
+        AppCore::with_platform(config, store.clone(), Arc::new(UnsupportedDeviceKeys)).unwrap();
     let email = format!("sharing-{}@example.invalid", Uuid::new_v4().simple());
     let password = Zeroizing::new(format!("Cc-{}-{}!", Uuid::new_v4(), Uuid::new_v4()));
     let profile = app
@@ -752,19 +752,28 @@ fn grant(identity: SharingIdentityDto, role: SharingRoleDto) -> SharingGrantDto 
     }
 }
 
+/// A second connection to the profile database. Its key is sealed under
+/// the vault key in `vault-keys.json` (S5): unwrap it with the passphrase.
 async fn local_storage(account: &Account) -> Storage {
-    let name = format!("profiles/{}/db-key", account.profile);
-    let bytes = account.store.get(&name).unwrap().unwrap();
-    Storage::open(
-        account
-            .directory
-            .join("profiles")
-            .join(&account.profile)
-            .join("vault.db"),
-        DatabaseKey::from_slice(bytes.expose_secret()).unwrap(),
+    let dir = account.directory.join("profiles").join(&account.profile);
+    let kf: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(dir.join("vault-keys.json")).unwrap()).unwrap();
+    let vault_id: cc_protocol::VaultId = serde_json::from_value(kf["vault_id"].clone()).unwrap();
+    let envelope: cc_protocol::envelopes::KeyEnvelope =
+        serde_json::from_value(kf["password_envelope"].clone()).unwrap();
+    let sealed: cc_vault_core::LocalSealed = serde_json::from_value(kf["db_key"].clone()).unwrap();
+    let vault = cc_vault_core::unlock_with_passphrase(
+        vault_id,
+        &envelope,
+        &cc_vault_core::SecretString::from(account.passphrase.clone()),
     )
-    .await
-    .unwrap()
+    .unwrap();
+    let key = vault
+        .open_local_secret(format!("db-key:{}", account.profile).as_bytes(), &sealed)
+        .unwrap();
+    Storage::open(dir.join("vault.db"), DatabaseKey::from_slice(&key).unwrap())
+        .await
+        .unwrap()
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -995,7 +1004,7 @@ async fn lock_cancels_inflight_metadata_and_secure_instance_pin_survives_restart
     let restarted = AppCore::with_platform(
         config,
         account.store.clone(),
-        Arc::new(UnsupportedOsAuthenticator),
+        Arc::new(UnsupportedDeviceKeys),
     )
     .unwrap();
     restarted
@@ -1968,8 +1977,8 @@ async fn live_approved_own_device(server: &str, directory: &Path, anchor: &Accou
     let store: Arc<dyn SecureStore> = Arc::new(InMemorySecureStore::new());
     let mut config = AppConfig::for_tests(directory.to_string_lossy().to_string());
     config.background_sync = false;
-    let app = AppCore::with_platform(config, store.clone(), Arc::new(UnsupportedOsAuthenticator))
-        .unwrap();
+    let app =
+        AppCore::with_platform(config, store.clone(), Arc::new(UnsupportedDeviceKeys)).unwrap();
     let signed_in = app
         .create_synced_profile(
             "Normal second installation".into(),

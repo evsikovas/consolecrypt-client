@@ -1721,6 +1721,24 @@ impl State {
         self.emails.get(&email.trim().to_lowercase()).copied()
     }
 
+    pub(crate) fn device_envelope(
+        &self,
+        device_id: DeviceId,
+        vault_id: VaultId,
+    ) -> Option<KeyEnvelope> {
+        self.vaults
+            .get(&vault_id)?
+            .envelopes
+            .iter()
+            .rev()
+            .find(|e| {
+                e.recipient_type == RecipientType::Device
+                    && e.revoked_at.is_none()
+                    && e.recipient_id == Some(device_id.0)
+            })
+            .cloned()
+    }
+
     pub(crate) fn device_trusted(&self, device_id: DeviceId, vault_id: VaultId) -> bool {
         self.vaults
             .get(&vault_id)

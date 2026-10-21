@@ -263,7 +263,7 @@ impl AppCore {
         let history = if let Some(id) = &question.conversation_id {
             let id = crate::dto::parse_id("conversation_id", id)?;
             let local: Vec<KubeAiConversation> = owner
-                .storage
+                .storage()?
                 .setting_get(HISTORY_KEY)
                 .await?
                 .unwrap_or_default();
@@ -405,7 +405,7 @@ impl AppCore {
             return Err(fail("provider_changed"));
         }
         let event_history = if live.history.is_some() {
-            super::kubernetes_history::ai_snapshot(&owner.storage, &live.info.context_id).await?
+            super::kubernetes_history::ai_snapshot(&owner.storage()?, &live.info.context_id).await?
         } else {
             Vec::new()
         };
@@ -438,7 +438,7 @@ impl AppCore {
         let id = uuid::Uuid::new_v4().to_string();
         let task_tools = tools.clone();
         let task_cancel = cancel.clone();
-        let storage = owner.storage.clone();
+        let storage = owner.storage()?.clone();
         let writer = unlocked.writer.clone();
         let context_id = live.info.context_id.clone();
         let provider_id = unlocked.working().ai_provider(current.id).map(|p| p.id);
@@ -722,7 +722,7 @@ impl AppCore {
             return Err(fail("context_unavailable"));
         }
         let local: Vec<KubeAiConversation> = owner
-            .storage
+            .storage()?
             .setting_get(HISTORY_KEY)
             .await?
             .unwrap_or_default();
@@ -754,7 +754,7 @@ impl AppCore {
                 });
         }
         let local: Vec<KubeAiConversation> = owner
-            .storage
+            .storage()?
             .setting_get(HISTORY_KEY)
             .await?
             .unwrap_or_default();
@@ -767,7 +767,7 @@ impl AppCore {
             unlocked.writer.delete(id).await?;
         }
         owner
-            .storage
+            .storage()?
             .write(move |tx| {
                 let mut history: Vec<KubeAiConversation> =
                     tx.setting_get(HISTORY_KEY)?.unwrap_or_default();

@@ -133,7 +133,7 @@ impl AppCore {
     ) -> AppResult<FluxPreferencesView> {
         let (owner, unlocked) = self.unlocked().await?;
         let preferences: FluxPreferences =
-            owner.storage.setting_get(KEY).await?.unwrap_or_default();
+            owner.storage()?.setting_get(KEY).await?.unwrap_or_default();
         validate(&preferences)?;
         let controller_version =
             if let Some(session_id) = session_id {
@@ -170,7 +170,7 @@ impl AppCore {
         let (owner, unlocked) = self.unlocked().await?;
         let _profile = self.hold_session(&owner).await?;
         let _generation = owner.hold_unlocked(&unlocked).await?;
-        owner.storage.setting_set(KEY, preferences).await?;
+        owner.storage()?.setting_set(KEY, preferences).await?;
         Ok(())
     }
     /// The directory is fixed by the native installer. UI cannot supply an

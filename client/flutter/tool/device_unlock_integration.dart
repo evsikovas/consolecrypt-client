@@ -1,6 +1,15 @@
-// Real Rust core + simulated native authentication, isolated ephemeral keys.
-// No user keychain or real Touch ID prompt is accessed by this test.
-// flutter test tool/device_unlock_integration.dart --dart-define=CC_TEST_RUST_LIB=/absolute/path/libcc_bridge.dylib
+// Real Rust core through the FFI bridge (S5: device unlock released only by
+// the OS).
+//
+// Default: in-memory secure store, no OS protector — the UI cannot grant
+// anything; enabling and unlocking refuse. No keychain, no prompt.
+//   flutter test tool/device_unlock_integration.dart \
+//     --dart-define=CC_TEST_RUST_LIB=/absolute/path/libcc_bridge.dylib
+//
+// Manual, macOS with Touch ID (or the login password): the real Secure
+// Enclave protector with an isolated keychain service. Shows the system
+// prompt three times: enable (approve), unlock (cancel), unlock (approve).
+//   ... --dart-define=CC_TEST_REAL_DEVICE_UNLOCK=true
 import 'dart:io';
 import 'dart:math';
 
@@ -11,34 +20,27 @@ import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as api;
 import 'package:consolecrypt/src/rust/api/profiles.dart' as profiles;
 import 'package:consolecrypt/src/rust/frb_generated.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+const _real = bool.fromEnvironment('CC_TEST_REAL_DEVICE_UNLOCK');
+
+Matcher _code(AppErrorCode code) => throwsA(isA<AppException>().having((e) => e.code, 'code', code));
+
 void main() {
-  final binding = TestWidgetsFlutterBinding.ensureInitialized();
-  test('native cancellation, enrollment, persisted opt-in and disabled FFI paths', () async {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  test('device unlock is released by the OS only', () async {
     const library = String.fromEnvironment('CC_TEST_RUST_LIB');
     if (library.isEmpty) throw StateError('CC_TEST_RUST_LIB must point to the built bridge library');
     await RustLib.init(externalLibrary: ExternalLibrary.open(library));
-    final root = await Directory.systemTemp.createTemp('cc-touchid-it-');
-    var authenticated = false;
-    var prompts = 0;
-    const channel = MethodChannel('consolecrypt/local_auth');
-    binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
-      if (call.method == 'availability') return {'kind': 'touch_id', 'not_enrolled': false};
-      if (call.method == 'authenticate') {
-        prompts++;
-        return authenticated;
-      }
-      throw MissingPluginException();
-    });
+    final root = await Directory.systemTemp.createTemp('cc-device-unlock-it-');
     RustBackend? hub;
     try {
       final info = await api.coreInit(
         config: api.CoreConfig(
           dataDir: root.path,
-          secureStore: api.SecureStoreChoice.memory,
+          secureStore: _real ? api.SecureStoreChoice.os : api.SecureStoreChoice.memory,
+          keychainService: _real ? 'io.consolecrypt.ConsoleCrypt.DeviceUnlockTest' : null,
           kdf: api.KdfChoice.floor,
           clientVersion: '0.1.0',
           backgroundSync: false,
@@ -49,39 +51,40 @@ void main() {
       await hub.start();
       final random = Random.secure();
       final pass = List<int>.generate(48, (_) => 33 + random.nextInt(90));
-      await profiles.profilesCreateLocal(displayName: 'Device unlock test', passphrase: pass);
-      pass.fillRange(0, pass.length, 0);
+      await profiles.profilesCreateLocal(displayName: 'Device unlock test', passphrase: List.of(pass));
       await hub.refreshState();
       final service = RustVaultService(hub);
-      expect(service.currentStatus.deviceUnlock.enabled, isFalse);
-      await expectLater(
-        service.setDeviceUnlockEnabled(true, reason: 'Test'),
-        throwsA(isA<AppException>().having((e) => e.code, 'code', AppErrorCode.osAuthFailed)),
-      );
-      expect(decodeObject(await profiles.vaultDeviceUnlockInfo())['enabled'], isFalse);
-      authenticated = true;
-      await service.setDeviceUnlockEnabled(true, reason: 'Test');
-      expect(service.currentStatus.deviceUnlockAvailable, isTrue);
+      expect(service.currentStatus.deviceUnlock.enabled, isFalse, reason: 'off by default');
+      if (!_real) {
+        await expectLater(service.setDeviceUnlockEnabled(true, reason: 'test'), _code(AppErrorCode.osAuthFailed));
+        expect(decodeObject(await profiles.vaultDeviceUnlockInfo())['enabled'], isFalse);
+        await service.lock();
+        await expectLater(service.unlockWithDevice(reason: 'test'), _code(AppErrorCode.unsupported));
+        expect(service.currentStatus.isUnlocked, isFalse);
+        return;
+      }
+      // Approve the system prompt.
+      await service.setDeviceUnlockEnabled(true, reason: 'enable the ConsoleCrypt test (approve)');
+      expect(service.currentStatus.deviceUnlock.enabled, isTrue);
       final id = await profiles.profilesLastActiveId();
       await profiles.profilesClose();
       await profiles.profilesOpen(profileId: id!);
       await hub.refreshState();
-      expect(service.currentStatus.deviceUnlock.enabled, isTrue);
-      await service.unlockWithDevice(reason: 'Test');
-      expect(service.currentStatus.isUnlocked, isTrue);
-      final beforeDisable = prompts;
-      await service.setDeviceUnlockEnabled(false, reason: 'Test');
-      expect(prompts, beforeDisable, reason: 'disabling does not authenticate');
-      await service.lock();
+      expect(service.currentStatus.isUnlocked, isFalse);
+      // Cancel the system prompt: the vault stays locked.
       await expectLater(
-        guard(profiles.vaultUnlockWithDeviceAttested),
-        throwsA(isA<AppException>().having((e) => e.code, 'code', AppErrorCode.unsupported)),
+        service.unlockWithDevice(reason: 'test cancelling (press Cancel)'),
+        _code(AppErrorCode.osAuthFailed),
       );
       expect(service.currentStatus.isUnlocked, isFalse);
+      // Approve the system prompt.
+      await service.unlockWithDevice(reason: 'unlock the ConsoleCrypt test (approve)');
+      expect(service.currentStatus.isUnlocked, isTrue);
+      await service.setDeviceUnlockEnabled(false, reason: 'test');
+      await profiles.profilesRemove(profileId: id);
     } finally {
       await hub?.shutdown();
       await hub?.dispose();
-      binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
       await root.delete(recursive: true);
     }
   });

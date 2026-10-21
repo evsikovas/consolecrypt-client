@@ -75,9 +75,14 @@ pub enum AppError {
     /// This installation's device key cannot open the vault.
     #[error("this device is not authorized to open the vault with its device key")]
     DeviceNotAuthorized,
-    /// OS / biometric authentication failed or is unavailable.
+    /// OS / biometric authentication failed, was cancelled or is
+    /// unavailable: the OS did not release the device unlock key.
     #[error("OS authentication: {0}")]
     OsAuth(String),
+    /// The device unlock key is no longer valid (fingerprints changed,
+    /// Windows Hello reset): unlock with the passphrase and enable again.
+    #[error("device unlock must be enabled again")]
+    OsAuthInvalidated,
     /// The operation needs a synced profile.
     #[error("this operation needs a synced profile")]
     LocalProfile,
@@ -259,6 +264,7 @@ impl AppError {
             AppError::WeakPassphrase(_) => "weak_passphrase",
             AppError::DeviceNotAuthorized => "device_not_authorized",
             AppError::OsAuth(_) => "os_auth_failed",
+            AppError::OsAuthInvalidated => "os_auth_invalidated",
             AppError::LocalProfile => "local_profile",
             AppError::AlreadySynced => "already_synced",
             AppError::Offline(_) => "offline",
@@ -538,7 +544,8 @@ impl From<CryptoError> for AppError {
 impl From<OsAuthError> for AppError {
     fn from(e: OsAuthError) -> Self {
         match e {
-            OsAuthError::Cancelled => AppError::Cancelled,
+            // Cancelled or failed: no key, the vault stays locked (S5 TR-3).
+            OsAuthError::Invalidated => AppError::OsAuthInvalidated,
             other => AppError::OsAuth(other.to_string()),
         }
     }

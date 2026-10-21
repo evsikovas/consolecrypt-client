@@ -227,14 +227,27 @@ pub struct SyncedAccountDto {
 pub struct DeviceUnlockDto {
     /// User opted in on this installation for this profile. Never synced.
     pub enabled: bool,
-    /// Offer "Unlock with Touch ID / Windows Hello".
+    /// Offer "Unlock with Touch ID / Windows Hello" on the lock screen.
     pub available: bool,
-    /// `touch_id` | `face_id` | `windows_hello` | `device_credential`.
+    /// `touch_id` | `face_id` | `fingerprint` | `windows_hello` |
+    /// `device_credential` | `keyring`.
     pub kind: Option<String>,
-    /// This installation holds a device envelope for the vault.
-    pub has_device_envelope: bool,
+    /// The profile has a vault (device unlock can be switched on once the
+    /// vault is unlocked).
+    pub has_vault: bool,
     /// Hardware present but nothing enrolled.
     pub not_enrolled: bool,
+    /// `system`: the OS releases the key only after biometrics / the device
+    /// password. `convenience` (Linux): any program of the same OS user can
+    /// read it — show the warning and ask before enabling.
+    pub protection: String,
+    /// The app performs the OS step (Android `BiometricPrompt`) and passes
+    /// the key material to the core.
+    pub external: bool,
+    /// Offer to switch it on again after a passphrase unlock: `migrated`
+    /// (was on before OS-protected device unlock) or `invalidated`
+    /// (fingerprints changed / Windows Hello reset).
+    pub reoffer: Option<String>,
 }
 
 /// Result of [`crate::AppCore::reauthenticate`].

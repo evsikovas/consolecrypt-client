@@ -7,7 +7,7 @@
 
 mod common;
 
-use cc_app_core::platform::{ExternalOsAuthenticator, OsAuthAvailability, OsAuthKind};
+use cc_app_core::platform::{FakePrompt, InMemoryDeviceKeys};
 use cc_app_core::*;
 use cc_sync_core::mock::MockServer;
 use common::*;
@@ -270,8 +270,8 @@ async fn recovery_flag_hints_enable_sync_progress_and_device_unlock() {
     let tmp = tempfile::tempdir().unwrap();
     let store = memory_store();
     let dir = tmp.path().join("a");
-    let auth = Arc::new(ExternalOsAuthenticator::new());
-    let app = AppCore::with_platform(config(&dir), store.clone(), auth.clone()).unwrap();
+    let keys = Arc::new(InMemoryDeviceKeys::new());
+    let app = app_with_keys(&dir, store.clone(), keys.clone());
 
     // Recovery Kit flag survives a restart; acknowledge clears it.
     let created = app
@@ -280,12 +280,11 @@ async fn recovery_flag_hints_enable_sync_progress_and_device_unlock() {
         .unwrap();
     assert!(created.profile.recovery_kit_pending);
     let pid = created.profile.id.clone();
-    auth.set_availability(OsAuthAvailability::Available(OsAuthKind::TouchId));
-    auth.grant_once();
-    app.set_device_unlock_enabled(true).await.unwrap();
-    auth.set_availability(OsAuthAvailability::Unsupported);
+    app.set_device_unlock_enabled(true, "test".into(), false)
+        .await
+        .unwrap();
     app.shutdown().await.unwrap();
-    let app = AppCore::with_platform(config(&dir), store.clone(), auth.clone()).unwrap();
+    let app = app_with_keys(&dir, store.clone(), keys.clone());
     let info = app.open_profile(pid.clone()).await.unwrap();
     assert!(info.recovery_kit_pending, "persisted");
     assert!(app.recovery_kit_check_pending().await.unwrap());
@@ -302,23 +301,21 @@ async fn recovery_flag_hints_enable_sync_progress_and_device_unlock() {
             .recovery_kit_pending
     );
 
-    // Device unlock: needs availability + a fresh single-use grant.
+    // Device unlock: the OS must release the key.
     let d = app.device_unlock_info().await.unwrap();
-    assert!(d.has_device_envelope && !d.available);
-    assert_eq!(
-        app.unlock_with_device().await.unwrap_err().code(),
-        "os_auth_failed"
-    );
-    auth.set_availability(OsAuthAvailability::Available(OsAuthKind::TouchId));
-    let d = app.device_unlock_info().await.unwrap();
-    assert!(d.available);
+    assert!(d.has_vault && d.enabled && d.available);
     assert_eq!(d.kind.as_deref(), Some("touch_id"));
+    keys.set_next(FakePrompt::Cancel);
     assert_eq!(
-        app.unlock_with_device().await.unwrap_err().code(),
+        app.unlock_with_device("test".into())
+            .await
+            .unwrap_err()
+            .code(),
         "os_auth_failed"
     );
-    auth.grant_once();
-    app.unlock_with_device().await.unwrap();
+    assert!(!app.is_unlocked().await);
+    keys.set_next(FakePrompt::Succeed);
+    app.unlock_with_device("test".into()).await.unwrap();
     assert!(app.is_unlocked().await);
 
     // Enable sync: progress events, then the closed profile keeps its hint.

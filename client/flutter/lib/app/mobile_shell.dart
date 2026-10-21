@@ -15,6 +15,12 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
   bool _more = false;
   static const _primary = [ShellBranch.hosts, ShellBranch.terminal, ShellBranch.sftp];
 
+  @override
+  void initState() {
+    super.initState();
+    _listenDeviceUnlockOffer(this);
+  }
+
   void _go(ShellBranch branch) {
     FocusManager.instance.primaryFocus?.unfocus();
     ref.read(workspaceToolsProvider.notifier).close();

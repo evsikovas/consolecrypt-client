@@ -6,7 +6,6 @@ use crate::app::{authenticate, pick_envelopes, sign_in, AppCore};
 use crate::dto::*;
 use crate::error::{AppError, AppResult};
 use crate::secrets;
-use crate::session::NEEDS_ATTEST_SETTING;
 use cc_protocol::devices::RevokeDeviceRequest;
 use cc_storage_core::{Profile, ProfileKind};
 use cc_sync_core::EnableSync;
@@ -85,7 +84,7 @@ impl AppCore {
         s.set_identity(identity.clone());
         let vault = u.vault()?;
         let rec = s
-            .storage
+            .storage()?
             .get_vault(u.vault_id)
             .await?
             .ok_or(AppError::NoVault)?;
@@ -207,11 +206,11 @@ impl AppCore {
         match s.vault_id() {
             Some(vault_id) => {
                 let p = local.clone();
-                s.storage
+                s.storage()?
                     .write(move |tx| tx.detach_to_local(vault_id, &p))
                     .await?;
             }
-            None => s.storage.put_profile(local).await?,
+            None => s.storage()?.put_profile(local).await?,
         }
         s.set_api(None);
         self.set_index_kind(s.profile_id, ProfileKind::Local)
@@ -259,7 +258,7 @@ impl AppCore {
                 );
                 s.set_identity(fresh.clone());
                 new_identity = true;
-                s.storage.setting_set(NEEDS_ATTEST_SETTING, true).await?;
+                s.set_needs_attest(true).await?;
                 authenticate(self, &api, &fresh, &email, &password, AccountMode::Login).await?
             }
             Err(e) => return Err(e),
@@ -267,7 +266,7 @@ impl AppCore {
         profile.device_id = s.device_id();
         profile.user_id = Some(auth.user_id);
         profile.updated_at = chrono::Utc::now();
-        s.storage.put_profile(profile).await?;
+        s.put_profile(profile).await?;
         let mut trusted = false;
         if let Some(vault_id) = s.vault_id() {
             let info = api.get_vault(vault_id).await.ok();
@@ -278,7 +277,7 @@ impl AppCore {
                     let req = vault.attest_device_request(&s.identity())?;
                     let env = api.attest_device(s.device_id(), &req).await?;
                     s.cache_envelopes(vault_id, None, None, Some(env)).await?;
-                    s.storage.setting_set(NEEDS_ATTEST_SETTING, false).await?;
+                    s.set_needs_attest(false).await?;
                     trusted = true;
                 }
                 u.stop_engine().await;
@@ -288,7 +287,7 @@ impl AppCore {
                     u.observe_vault_info(std::slice::from_ref(info)).await;
                 }
             } else if !trusted {
-                s.storage.setting_set(NEEDS_ATTEST_SETTING, true).await?;
+                s.set_needs_attest(true).await?;
             }
         }
         Ok(AuthStateDto {

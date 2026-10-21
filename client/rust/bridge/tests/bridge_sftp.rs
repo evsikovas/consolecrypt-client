@@ -1,8 +1,8 @@
 //! The core-gaps surface through the bridge functions (JSON wire format,
 //! `BridgeError` code / reason / details): SFTP browser and edit sessions
 //! against sftp-core's in-process server, account / reveal errors, planner
-//! preview, snippet search / render, backup schedule and the attested OS
-//! authenticator.
+//! preview, snippet search / render, backup schedule and device unlock
+//! without an OS protector.
 //!
 //! One test per binary: the bridge holds one global core.
 
@@ -269,26 +269,25 @@ async fn bridge_sftp_edit_account_plan_snippets_backup() {
         info["path"]
     );
 
-    // ── OS authenticator: report + attested unlock ──────────────────────
-    // OS unlock is opt-in; enable it while unlocked with a fresh UI grant.
-    app::os_auth_report(Some(OsAuthKindChoice::TouchId), false);
-    profiles::vault_set_device_unlock_enabled_attested(true)
-        .await
-        .unwrap();
-    app::os_auth_report(None, false);
-    profiles::vault_lock().await.unwrap();
-    let d = parse(&profiles::vault_device_unlock_info().await.unwrap());
-    assert_eq!(d["available"], false);
+    // ── Device unlock (S5): no UI grant exists; the in-memory store has no
+    // OS protector, so nothing can enable or use it.
     app::os_auth_report(Some(OsAuthKindChoice::TouchId), false);
     let d = parse(&profiles::vault_device_unlock_info().await.unwrap());
     assert_eq!(
-        (d["available"].clone(), d["kind"].clone()),
-        (json!(true), json!("touch_id"))
+        (d["enabled"].clone(), d["available"].clone()),
+        (json!(false), json!(false))
     );
-    let e = profiles::vault_unlock_with_device().await.unwrap_err();
-    assert_eq!(e.code, "os_auth_failed", "no grant without the UI prompt");
-    profiles::vault_unlock_with_device_attested().await.unwrap();
-    assert!(profiles::vault_is_unlocked().await.unwrap());
+    assert_eq!(d["has_vault"], true);
+    let e = profiles::vault_set_device_unlock_enabled(true, "test".into(), false)
+        .await
+        .unwrap_err();
+    assert_eq!(e.code, "os_auth_failed");
+    profiles::vault_lock().await.unwrap();
+    let e = profiles::vault_unlock_with_device("test".into())
+        .await
+        .unwrap_err();
+    assert_eq!(e.code, "unsupported");
+    assert!(!profiles::vault_is_unlocked().await.unwrap());
     app::os_auth_report(None, false);
 
     app::core_shutdown().await.unwrap();

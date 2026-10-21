@@ -14,7 +14,10 @@
 //! * device keys — X25519 + Ed25519 ([`DeviceSecretKeys`]), approval
 //!   signatures and the [`VerificationCode`] of ADR-0004;
 //! * the encrypted backup container [`VaultBackup`] (`.ccbackup`, ADR-0106)
-//!   with its manifest MAC.
+//!   with its manifest MAC;
+//! * client-local wrapping ([`seal_local_secret`], [`seal_unlock_envelope`]):
+//!   the local database key under the VRK and the VRK under an OS-protected
+//!   device [`UnlockKey`] (never sent to a server).
 //!
 //! Pure: no I/O, no clocks, no global state. Byte layouts (labels, AAD,
 //! signed messages) come exclusively from [`cc_protocol::canonical`].
@@ -30,6 +33,7 @@ mod envelope;
 mod error;
 mod kdf;
 mod keys;
+mod local;
 mod object;
 mod recovery;
 mod rng;
@@ -56,6 +60,12 @@ pub use envelope::{
 pub use error::{CryptoError, MnemonicError, Result};
 pub use kdf::{normalize_passphrase, Argon2Params};
 pub use keys::{generate_vrk, vault_access_key_verifier, Dek, Kek, KeyHierarchy, Vak, Vrk};
+pub use local::{
+    derive_local_subkey, open_local_secret, open_unlock_envelope, seal_local_secret,
+    seal_unlock_envelope, LocalSealed, UnlockKey, AAD_LOCAL, LOCAL_DEVICE_UNLOCK_LABEL,
+    LOCAL_STORAGE_WRAP_LABEL, LOCAL_SUBKEY_LABEL, LOCAL_UNLOCK_MATERIAL_LABEL,
+    MAX_LOCAL_CONTEXT_LEN, MAX_LOCAL_SECRET_LEN, MIN_UNLOCK_MATERIAL_LEN,
+};
 pub use object::{
     decrypt_object, encrypt_object, padded_len, KEK_TRIAL_ORDER, MAX_PADDED_PLAINTEXT, PAD_LARGE,
     PAD_LARGE_THRESHOLD, PAD_SMALL,

@@ -24,6 +24,17 @@ final class MockVaultService implements VaultService {
   DeviceAuthKind? deviceAuthKind = DeviceAuthKind.touchId;
   bool deviceAuthNotEnrolled = false;
   bool deviceAuthSucceeds = true;
+  DeviceUnlockProtection deviceProtection = DeviceUnlockProtection.system;
+
+  /// Simulates a new fingerprint: the OS key of the active profile is gone.
+  void simulateBiometricChange() {
+    final r = _cloud.activeRecord;
+    if (r == null || !r.deviceUnlockEnabled) return;
+    r
+      ..deviceUnlockEnabled = false
+      ..deviceUnlockReoffer = DeviceUnlockReoffer.invalidated;
+    _cloud.notifyChanged();
+  }
 
   void _recompute() {
     final r = _cloud.activeRecord;
@@ -35,8 +46,10 @@ final class MockVaultService implements VaultService {
       r?.recoveryKitConfirmed,
       r?.deviceTrusted,
       r?.deviceUnlockEnabled,
+      r?.deviceUnlockReoffer,
       deviceAuthKind,
       deviceAuthNotEnrolled,
+      deviceProtection,
     );
     if (signature == _signature) return;
     _signature = signature;
@@ -53,8 +66,10 @@ final class MockVaultService implements VaultService {
       deviceUnlock: DeviceUnlockInfo(
         enabled: r.deviceUnlockEnabled,
         kind: deviceAuthKind,
-        hasDeviceEnvelope: r.deviceTrusted,
+        hasVault: r.vault != null && r.deviceTrusted,
         notEnrolled: deviceAuthNotEnrolled,
+        protection: deviceProtection,
+        reoffer: r.deviceUnlockReoffer,
       ),
     );
   }
@@ -189,7 +204,7 @@ final class MockVaultService implements VaultService {
   Future<void> refreshDeviceUnlockAvailability() async => _recompute();
 
   @override
-  Future<void> setDeviceUnlockEnabled(bool enabled, {required String reason}) async {
+  Future<void> setDeviceUnlockEnabled(bool enabled, {required String reason, bool allowUnprotected = false}) async {
     final r = _active();
     if (r.phase != VaultPhase.unlocked) {
       throw const AppException(AppErrorCode.notFound, 'Unlock the vault first', reason: AppErrorReason.vaultLocked);
@@ -197,7 +212,17 @@ final class MockVaultService implements VaultService {
     if (enabled && (!currentStatus.deviceUnlock.canEnable || !deviceAuthSucceeds)) {
       throw const AppException(AppErrorCode.osAuthFailed, 'OS authentication unavailable or cancelled');
     }
+    if (enabled && deviceProtection == DeviceUnlockProtection.convenience && !allowUnprotected) {
+      throw const AppException(AppErrorCode.validation, 'Confirm unlock without OS protection first');
+    }
     r.deviceUnlockEnabled = enabled;
+    r.deviceUnlockReoffer = null;
+    _cloud.notifyChanged();
+  }
+
+  @override
+  Future<void> dismissDeviceUnlockOffer() async {
+    _active().deviceUnlockReoffer = null;
     _cloud.notifyChanged();
   }
 
@@ -268,7 +293,7 @@ final class MockVaultService implements VaultService {
   }
 
   @override
-  Future<void> resetPassphraseWithTrustedDevice({required SecretText newPassphrase}) async {
+  Future<void> resetPassphraseWithTrustedDevice({required SecretText newPassphrase, required String reason}) async {
     final r = _active();
     final keys = _keys(r);
     if (!r.deviceTrusted) {

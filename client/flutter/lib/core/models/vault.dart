@@ -2,17 +2,51 @@ import 'dart:convert';
 
 import 'package:consolecrypt/core/models/ids.dart';
 
-enum DeviceAuthKind { touchId, faceId, windowsHello, deviceCredential }
+enum DeviceAuthKind { touchId, faceId, fingerprint, windowsHello, deviceCredential, keyring }
+
+/// How strongly the platform protects the device unlock key.
+enum DeviceUnlockProtection {
+  /// The OS releases the key only after biometrics / the device password.
+  system,
+
+  /// Linux keyring: any program of the same OS user can read it.
+  convenience,
+}
+
+/// Why device unlock should be offered again after a passphrase unlock.
+enum DeviceUnlockReoffer {
+  /// It was on before the update to OS-protected device unlock.
+  migrated,
+
+  /// Biometrics changed (fingerprint added, Windows Hello reset).
+  invalidated,
+}
 
 /// Capability and explicit opt-in for this profile on this installation.
 final class DeviceUnlockInfo {
-  const DeviceUnlockInfo({this.enabled = false, this.kind, this.hasDeviceEnvelope = false, this.notEnrolled = false});
+  const DeviceUnlockInfo({
+    this.enabled = false,
+    this.kind,
+    this.hasVault = false,
+    this.notEnrolled = false,
+    this.protection = DeviceUnlockProtection.system,
+    this.external = false,
+    this.reoffer,
+  });
 
   final bool enabled;
   final DeviceAuthKind? kind;
-  final bool hasDeviceEnvelope;
+
+  /// The profile has a vault (device unlock can be switched on once it is
+  /// unlocked).
+  final bool hasVault;
   final bool notEnrolled;
-  bool get canEnable => kind != null && hasDeviceEnvelope;
+  final DeviceUnlockProtection protection;
+
+  /// The app performs the OS step (Android `BiometricPrompt`).
+  final bool external;
+  final DeviceUnlockReoffer? reoffer;
+  bool get canEnable => kind != null && hasVault;
   bool get available => enabled && canEnable;
 }
 
@@ -54,8 +88,8 @@ final class VaultStatus {
   /// This device holds a device envelope for the vault (T(V), ADR-0004).
   final bool deviceTrusted;
 
-  /// OS authentication (Touch ID / Windows Hello) can unlock via the device
-  /// envelope on this device.
+  /// The OS (Touch ID / Windows Hello / fingerprint) can release this
+  /// device's unlock key.
   bool get deviceUnlockAvailable => deviceUnlock.available;
   final DeviceUnlockInfo deviceUnlock;
 

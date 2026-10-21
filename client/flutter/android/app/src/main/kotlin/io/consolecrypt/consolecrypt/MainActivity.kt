@@ -1,6 +1,5 @@
 package io.consolecrypt.consolecrypt
 
-import android.app.KeyguardManager
 import android.app.Activity
 import android.content.Intent
 import android.content.ClipData
@@ -9,9 +8,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
-import android.hardware.biometrics.BiometricManager
-import android.hardware.biometrics.BiometricPrompt
-import android.os.CancellationSignal
 import android.os.Bundle
 import android.os.PersistableBundle
 import android.view.WindowManager
@@ -26,10 +22,8 @@ import java.io.File
 class MainActivity : FlutterActivity() {
     private val kubeAuthBrowser by lazy { KubeAuthBrowser(this) }
     private external fun nativeInitialize(context: android.content.Context)
-    private var authCancellation: CancellationSignal? = null
     private var exportResult: MethodChannel.Result? = null
     private var exportSource: File? = null
-    private var authResult: MethodChannel.Result? = null
     private var forwardPermissionResult: MethodChannel.Result? = null
     private var rdpFullscreen = false
     private var rdpStatusVisible = true
@@ -275,29 +269,26 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        // Device unlock (S5): Keystore key + BiometricPrompt CryptoObject.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/local_auth").setMethodCallHandler { call, result ->
-            when (call.method) {
-                "availability" -> {
-                    val manager = getSystemService(BiometricManager::class.java)
-                    val enrolled = manager.canAuthenticate(authenticators) == BiometricManager.BIOMETRIC_SUCCESS
-                    result.success(mapOf("kind" to if (enrolled) "device_credential" else null,
-                        "not_enrolled" to !getSystemService(KeyguardManager::class.java).isDeviceSecure))
+            val reply = { outcome: DeviceUnlockKeys.Outcome ->
+                when (outcome) {
+                    is DeviceUnlockKeys.Outcome.Created ->
+                        result.success(mapOf("material" to outcome.material, "handle" to outcome.handle))
+                    is DeviceUnlockKeys.Outcome.Released -> result.success(outcome.material)
+                    DeviceUnlockKeys.Outcome.Cancelled -> result.error("cancelled", "Authentication cancelled", null)
+                    DeviceUnlockKeys.Outcome.Invalidated -> result.error("invalidated", "Key invalidated", null)
+                    is DeviceUnlockKeys.Outcome.Failed -> result.error("failed", outcome.reason, null)
                 }
-                "authenticate" -> {
-                    if (authResult != null) { result.success(false); return@setMethodCallHandler }
-                    authResult = result
-                    val signal = CancellationSignal()
-                    authCancellation = signal
-                    try {
-                        BiometricPrompt.Builder(this)
-                            .setTitle("ConsoleCrypt")
-                            .setSubtitle(call.argument<String>("reason") ?: "Unlock vault")
-                            .setAllowedAuthenticators(authenticators)
-                            .build().authenticate(signal, mainExecutor, object : BiometricPrompt.AuthenticationCallback() {
-                                override fun onAuthenticationSucceeded(value: BiometricPrompt.AuthenticationResult) = finishAuth(true)
-                                override fun onAuthenticationError(code: Int, message: CharSequence) = finishAuth(false)
-                            })
-                    } catch (_: Exception) { finishAuth(false) }
+            }
+            val reason = call.argument<String>("reason") ?: "unlock your ConsoleCrypt vault"
+            when (call.method) {
+                "availability" -> result.success(deviceUnlockKeys.availability())
+                "createKey" -> deviceUnlockKeys.create(call.argument<String>("alias") ?: "", reason, reply)
+                "releaseKey" -> deviceUnlockKeys.release(call.argument<ByteArray>("handle") ?: ByteArray(0), reason, reply)
+                "deleteKey" -> {
+                    deviceUnlockKeys.delete(call.argument<String>("alias") ?: "")
+                    result.success(null)
                 }
                 else -> result.notImplemented()
             }
@@ -325,21 +316,13 @@ class MainActivity : FlutterActivity() {
         }.start()
     }
 
-    private fun finishAuth(success: Boolean) {
-        val result = authResult
-        authResult = null
-        authCancellation = null
-        result?.success(success)
-    }
-
     override fun onDestroy() {
         kubeAuthBrowser.cancel()
         forwardPermissionResult?.error("cancelled", "Notification request was cancelled", null)
         forwardPermissionResult = null
         exportResult?.success(false)
         exportResult = null; exportSource = null
-        authCancellation?.cancel()
-        finishAuth(false)
+        deviceUnlockKeys.cancel()
         super.onDestroy()
     }
 
@@ -361,6 +344,5 @@ class MainActivity : FlutterActivity() {
         kubeAuthBrowser.onResume()
     }
 
-    private val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
-        BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    private val deviceUnlockKeys by lazy { DeviceUnlockKeys(this) }
 }

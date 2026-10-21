@@ -8,7 +8,6 @@ use crate::unlocked::UnlockedVault;
 use cc_crypto_core::{
     open_device_envelope, open_password_envelope, open_recovery_envelope, CryptoError, RecoveryKey,
 };
-use cc_platform_core::{OsAuthenticator, SecureStore};
 use cc_protocol::envelopes::{KeyEnvelope, NewEnvelope};
 use cc_protocol::VaultId;
 use secrecy::{ExposeSecret, SecretString};
@@ -70,8 +69,10 @@ pub fn unlock_with_passphrase(
     Ok(UnlockedVault::from_vrk(vault_id, vrk))
 }
 
-/// Unlock with this installation's device envelope (trusted-device / OS
-/// biometric unlock). The caller performs any OS authentication first.
+/// Open a device envelope sealed to `identity` — the one-time step of a
+/// newly approved device (ADR-0004). Device unlock of an installation uses
+/// [`crate::unlock_with_unlock_key`] instead; its own server envelope is a
+/// trust marker without the VRK.
 pub fn unlock_with_device(
     vault_id: VaultId,
     device_envelope: &(impl EnvelopeSource + ?Sized),
@@ -86,25 +87,6 @@ pub fn unlock_with_device(
             other => VaultError::Crypto(other),
         })?;
     Ok(UnlockedVault::from_vrk(vault_id, vrk))
-}
-
-/// OS / biometric unlock of this installation (ADR-0004 "forgot passphrase,
-/// have a trusted device"; ADR-0106 local profiles): ask `authenticator`
-/// with `reason`, then load the profile's device identity from `store` and
-/// open the device envelope. With the default
-/// `UnsupportedOsAuthenticator` this fails with [`VaultError::OsAuth`] and
-/// the UI falls back to the passphrase.
-pub fn unlock_with_os_auth(
-    vault_id: VaultId,
-    device_envelope: &(impl EnvelopeSource + ?Sized),
-    store: &dyn SecureStore,
-    profile_id: &str,
-    authenticator: &dyn OsAuthenticator,
-    reason: &str,
-) -> Result<UnlockedVault> {
-    authenticator.authenticate(reason)?;
-    let identity = DeviceIdentity::load(store, profile_id)?.ok_or(VaultError::NoDeviceIdentity)?;
-    unlock_with_device(vault_id, device_envelope, &identity)
 }
 
 /// Unlock with a Recovery Key.

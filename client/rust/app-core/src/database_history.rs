@@ -64,7 +64,7 @@ impl AppCore {
             return Err(invalid("connection_unavailable"));
         }
         let policies: Policies = owner
-            .storage
+            .storage()?
             .setting_get(POLICIES)
             .await?
             .unwrap_or_default();
@@ -85,7 +85,7 @@ impl AppCore {
         let _profile = self.hold_session(&owner).await?;
         let _generation = owner.hold_unlocked(&unlocked).await?;
         owner
-            .storage
+            .storage()?
             .write(move |tx| {
                 let mut policies: Policies = tx.setting_get(POLICIES)?.unwrap_or_default();
                 policies.insert(id.to_string(), policy);
@@ -117,7 +117,7 @@ impl AppCore {
             return Ok(());
         }
         let policies: Policies = owner
-            .storage
+            .storage()?
             .setting_get(POLICIES)
             .await?
             .unwrap_or_default();
@@ -135,7 +135,7 @@ impl AppCore {
             }
             DbHistoryPolicy::Local => {
                 owner
-                    .storage
+                    .storage()?
                     .write(move |tx| {
                         let mut rows: Vec<DbHistoryEntry> =
                             tx.setting_get(RECORDS)?.unwrap_or_default();
@@ -166,7 +166,7 @@ impl AppCore {
         let _profile = self.hold_session(&owner).await?;
         let _generation = owner.hold_unlocked(&unlocked).await?;
         let mut rows: Vec<DbHistoryEntry> = owner
-            .storage
+            .storage()?
             .setting_get(RECORDS)
             .await?
             .unwrap_or_default();
@@ -214,7 +214,7 @@ impl AppCore {
                 .await?;
         } else {
             let found = owner
-                .storage
+                .storage()?
                 .write(move |tx| {
                     let mut rows: Vec<DbHistoryEntry> =
                         tx.setting_get(RECORDS)?.unwrap_or_default();
@@ -254,7 +254,7 @@ impl AppCore {
             Some(row) => row,
             None => {
                 let rows: Vec<DbHistoryEntry> = owner
-                    .storage
+                    .storage()?
                     .setting_get(RECORDS)
                     .await?
                     .unwrap_or_default();
@@ -319,7 +319,7 @@ impl AppCore {
             }
         }
         owner
-            .storage
+            .storage()?
             .write(move |tx| {
                 let mut rows: Vec<DbHistoryEntry> = tx.setting_get(RECORDS)?.unwrap_or_default();
                 rows.retain(|row| row.connection_id != id);

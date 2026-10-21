@@ -636,7 +636,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorDeviceNotTrusted => 'This device is not trusted for the vault yet.';
 
   @override
-  String get errorOsAuthFailed => 'System authentication failed or was cancelled.';
+  String get errorOsAuthFailed => 'System authentication failed or was cancelled. Unlock with the vault passphrase.';
 
   @override
   String get errorVerificationMismatch => 'Verification codes do not match — approval refused.';
@@ -3981,7 +3981,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unlockSubmit => 'Unlock';
 
   @override
-  String get unlockOsAuthReason => 'Unlock your ConsoleCrypt vault';
+  String get unlockOsAuthReason => 'unlock your ConsoleCrypt vault';
 
   @override
   String unlockWithOsAuth(String method) {
@@ -4035,7 +4035,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String recoveryTrustedDeviceInfo(String method) {
-    return 'Uses this device\'s key, protected by $method, to open the vault. Then set a new passphrase; other devices keep working.';
+    return '$method releases this device\'s unlock key to open the vault. Then set a new passphrase; other devices keep working.';
   }
 
   @override
@@ -4338,14 +4338,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deviceUnlockTitle => 'Fingerprint unlock';
 
   @override
-  String get deviceUnlockHelp => 'Confirm access with your fingerprint. macOS may also offer your account password.';
+  String get deviceUnlockHelp =>
+      'The system releases the vault key only after your fingerprint, face or device password.';
 
   @override
   String get deviceUnlockLocalOnly =>
       'Only for this vault on this device. Your passphrase and Recovery Key remain available.';
 
   @override
-  String get deviceUnlockEnableReason => 'Allow unlocking your ConsoleCrypt vault on this Mac';
+  String get deviceUnlockEnableReason => 'allow unlocking your ConsoleCrypt vault on this device';
 
   @override
   String get deviceUnlockNeedsTrust => 'First unlock the vault with its passphrase on this device.';
@@ -4360,7 +4361,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deviceUnlockMacPassword =>
-      'macOS currently offers its account password. Fingerprint unlock needs available Touch ID with an enrolled fingerprint: System Settings → Touch ID & Password.';
+      'macOS currently offers its account password. Touch ID needs an enrolled fingerprint: System Settings → Touch ID & Password.';
 
   @override
   String get deviceUnlockRecoveryUnavailable =>
@@ -4376,6 +4377,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deviceUnlockMacPasswordName => 'macOS password';
+
+  @override
+  String get errorOsAuthInvalidated =>
+      'Fingerprints or the device sign-in changed. Unlock with the vault passphrase and turn device unlock on again in Settings → Vault.';
+
+  @override
+  String deviceUnlockProtectedBySystem(String method) {
+    return 'Protected by the system: the key is released only after $method.';
+  }
+
+  @override
+  String get deviceUnlockConvenienceWarning =>
+      'Unlocking without a passphrase is available to any program running under your user account. This is a convenience, not protection.';
+
+  @override
+  String get deviceUnlockConvenienceConfirmTitle => 'Unlock without a passphrase?';
+
+  @override
+  String get deviceUnlockConvenienceConfirmAction => 'Turn on anyway';
+
+  @override
+  String get deviceUnlockKeyringName => 'system keyring';
+
+  @override
+  String deviceUnlockReofferMigratedTitle(String method) {
+    return 'Turn $method back on?';
+  }
+
+  @override
+  String get deviceUnlockReofferMigratedMessage =>
+      'Unlocking with this device is now protected by the system. It was switched off during the update; turn it on again with one confirmation.';
+
+  @override
+  String get deviceUnlockReofferInvalidatedTitle => 'Fingerprints changed';
+
+  @override
+  String deviceUnlockReofferInvalidatedMessage(String method) {
+    return 'The $method key is no longer valid because the device sign-in changed. Turn unlocking with this device on again?';
+  }
+
+  @override
+  String get deviceUnlockReofferEnable => 'Turn on';
+
+  @override
+  String get deviceUnlockReofferLater => 'Not now';
+
+  @override
+  String get recoveryDeviceResetReason => 'reset the ConsoleCrypt vault passphrase';
 
   @override
   String get workspaceToolsClose => 'Close right panel';

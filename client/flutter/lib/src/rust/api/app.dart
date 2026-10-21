@@ -8,11 +8,12 @@ import 'error.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `app_config`, `info`, `initialize_blocking`, `os_auth`, `read_store`, `ui_store_path`, `write_store`
+// These functions are ignored because they are not marked as `pub`: `app_config`, `external_device_keys`, `info`, `initialize_blocking`, `read_store`, `ui_store_path`, `write_store`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
-/// Report what the OS can do for user-presence checks (`None` = nothing;
-/// `not_enrolled` = hardware without enrolled biometrics / passcode).
+/// Android only: report what `BiometricManager` offers (`None` = nothing;
+/// `not_enrolled` = no biometrics / screen lock). Affects only what the UI
+/// offers — the core never trusts it for unlocking. No effect elsewhere.
 void osAuthReport({OsAuthKindChoice? kind, required bool notEnrolled}) =>
     RustLib.instance.api.crateApiAppOsAuthReport(kind: kind, notEnrolled: notEnrolled);
 
@@ -171,11 +172,14 @@ enum KdfChoice {
   floor,
 }
 
-/// What the OS offers for user-presence checks (reported by the UI after
-/// querying LocalAuthentication / Windows Hello).
+/// What the OS offers for user-presence checks (reported by the Android
+/// app after querying `BiometricManager`).
 enum OsAuthKindChoice {
   touchId,
   faceId,
+
+  /// Android fingerprint / class-3 biometrics.
+  fingerprint,
   windowsHello,
 
   /// OS account password / PIN.

@@ -5,14 +5,12 @@ use crate::dto::*;
 use crate::error::{AppError, AppResult};
 use crate::prompts::PromptBroker;
 use crate::secrets::{self, blocking};
-use crate::session::{
-    AppCtx, PendingKit, Session, Unlocked, DEVICE_UNLOCK_SETTING, VAULT_ID_SETTING,
-};
+use crate::session::{AppCtx, PendingKit, Session, Unlocked, VAULT_ID_SETTING};
 use crate::{AppConfig, SecureStoreKind};
 use cc_models::settings::VaultSettings;
 use cc_models::{ObjectId, VaultObject};
 use cc_platform_core::{
-    AppDirs, InMemorySecureStore, OsAuthenticator, SecureStore, UnsupportedOsAuthenticator,
+    AppDirs, DeviceKeyProtector, InMemorySecureStore, SecureStore, UnsupportedDeviceKeys,
 };
 use cc_protocol::auth::{LoginRequest, RegisterRequest};
 use cc_protocol::envelopes::{KeyEnvelope, RecipientType};
@@ -25,8 +23,8 @@ use cc_storage_core::{
 };
 use cc_sync_core::ApiClient;
 use cc_vault_core::{
-    create_vault, unlock_with_device, unlock_with_passphrase, unlock_with_recovery_input,
-    DeviceIdentity, SecretString, UnlockedVault,
+    create_vault, unlock_with_passphrase, unlock_with_recovery_input, DeviceIdentity, SecretString,
+    UnlockedVault,
 };
 use std::str::FromStr;
 use std::sync::Arc;
@@ -102,17 +100,18 @@ pub(crate) fn pick_envelopes(
 
 impl AppCore {
     /// Build the facade from `config` (secure store per
-    /// [`AppConfig::secure_store`], OS authentication unsupported).
+    /// [`AppConfig::secure_store`]; device unlock through the platform's
+    /// OS protector with the OS store, unsupported otherwise).
     pub fn new(config: AppConfig) -> AppResult<Self> {
-        Self::with_os_authenticator(config, Arc::new(UnsupportedOsAuthenticator))
+        Self::with_device_keys(config, None)
     }
 
-    /// Like [`AppCore::new`] (secure store per [`AppConfig::secure_store`])
-    /// with an OS authenticator — e.g. platform-core's
-    /// `ExternalOsAuthenticator` fed by the UI's Touch ID prompt. Rust-only.
-    pub fn with_os_authenticator(
+    /// Like [`AppCore::new`] with an explicit device unlock protector —
+    /// e.g. the Android app's `ExternalDeviceKeys`. `None` = platform
+    /// default. Rust-only.
+    pub fn with_device_keys(
         config: AppConfig,
-        os_auth: Arc<dyn OsAuthenticator>,
+        device_keys: Option<Arc<dyn DeviceKeyProtector>>,
     ) -> AppResult<Self> {
         let dirs = match &config.data_dir {
             Some(d) => AppDirs::with_root(d),
@@ -123,16 +122,20 @@ impl AppCore {
             SecureStoreKind::Os => os_store(&config)?,
             SecureStoreKind::InsecureFile => file_store(&dirs)?,
         };
-        Self::with_platform(config, secure, os_auth)
+        let device_keys = device_keys.unwrap_or_else(|| match config.secure_store {
+            SecureStoreKind::Os => cc_platform_core::platform_device_keys(secure.clone()),
+            _ => Arc::new(UnsupportedDeviceKeys),
+        });
+        Self::with_platform(config, secure, device_keys)
     }
 
     /// Rust-only constructor with explicit platform services (tests,
-    /// embedders providing a biometric authenticator). Not part of the FRB
+    /// embedders providing a device unlock protector). Not part of the FRB
     /// surface.
     pub fn with_platform(
         config: AppConfig,
         secure: Arc<dyn SecureStore>,
-        os_auth: Arc<dyn OsAuthenticator>,
+        device_keys: Arc<dyn DeviceKeyProtector>,
     ) -> AppResult<Self> {
         let dirs = match &config.data_dir {
             Some(d) => AppDirs::with_root(d),
@@ -146,7 +149,7 @@ impl AppCore {
             config,
             dirs: dirs.clone(),
             secure,
-            os_auth,
+            device_keys,
             events: broadcast::channel(1024).0,
             prompts,
             file_opener: std::sync::RwLock::new(cc_platform_core::FileOpener::system()),
@@ -452,8 +455,7 @@ impl AppCore {
         if let Some(s) = active.as_ref().filter(|s| s.profile_id == pid) {
             let mut p = s.profile().await?;
             p.display_name = Some(name);
-            p.updated_at = chrono::Utc::now();
-            s.storage.put_profile(p).await?;
+            s.put_profile(p).await?;
         }
         self.inner.ctx.emit(AppEvent::ProfilesChanged);
         self.profile_info_for(&entry, active.as_ref()).await
@@ -475,6 +477,14 @@ impl AppCore {
         if let Some(s) = active {
             s.close().await;
             drop(s);
+        }
+        // An OS device unlock key outlives the files (Windows Hello).
+        let dir = self.inner.profiles.profile_dir(pid);
+        if let Ok(Some(kf)) = blocking(move || crate::keyfile::load(&dir)).await {
+            if let Some(record) = kf.device_unlock.filter(|r| !r.external) {
+                let keys = self.inner.ctx.device_keys.clone();
+                let _ = blocking(move || Ok(keys.destroy(&record.handle.0)?)).await;
+            }
         }
         let profiles = self.inner.profiles.clone();
         blocking(move || profiles.remove(pid).map(|_| ()).map_err(Into::into)).await?;
@@ -566,15 +576,14 @@ impl AppCore {
                         Some(local_key_envelope(vault_id, envs.password, Some(device_id)));
                     rec.recovery_envelope =
                         Some(local_key_envelope(vault_id, envs.recovery, Some(device_id)));
-                    rec.device_envelope = envs
-                        .device
-                        .map(|d| local_key_envelope(vault_id, d, Some(device_id)));
                     tx.put_vault(&rec)?;
                     tx.setting_set(VAULT_ID_SETTING, &vault_id)
                 })
                 .await?;
             let session =
                 Session::with_storage(self.inner.ctx.clone(), pid, storage.clone()).await?;
+            // The database key moves under the vault key (S5).
+            session.seal_storage(&created.unlocked).await?;
             let unlocked = session.install_unlocked(created.unlocked).await?;
             seed_vault_settings(&unlocked, display_name.trim()).await?;
             let kit = RecoveryKitDto::from_kit(&created.recovery_kit);
@@ -707,7 +716,7 @@ impl AppCore {
         .await?;
         let vault_id = created.create_request.vault_id;
         let info = api.create_vault(&created.create_request).await?;
-        s.storage.upsert_vault_info(info).await?;
+        s.storage()?.upsert_vault_info(info).await?;
         let (pw, rec, dev) = match api.list_envelopes(vault_id).await {
             Ok(l) => pick_envelopes(&l.envelopes, s.device_id()),
             Err(_) => (None, None, None),
@@ -718,14 +727,11 @@ impl AppCore {
             vault_id,
             Some(pw.unwrap_or_else(|| local_key_envelope(vault_id, envs.password.clone(), did))),
             Some(rec.unwrap_or_else(|| local_key_envelope(vault_id, envs.recovery.clone(), did))),
-            dev.or_else(|| {
-                envs.device
-                    .clone()
-                    .map(|d| local_key_envelope(vault_id, d, did))
-            }),
+            dev,
         )
         .await?;
         s.set_vault_id(vault_id).await?;
+        s.seal_storage(&created.unlocked).await?;
         let unlocked = s.install_unlocked(created.unlocked).await?;
         let name = profile.display_name.unwrap_or_else(|| "Vault".into());
         seed_vault_settings(&unlocked, &name).await?;
@@ -803,7 +809,7 @@ impl AppCore {
         let attest = vault.attest_device_request(&identity)?;
         let device_env = api.attest_device(identity.device_id(), &attest).await?;
         let info = api.get_vault(vault_id).await?;
-        s.storage.upsert_vault_info(info.clone()).await?;
+        s.storage()?.upsert_vault_info(info.clone()).await?;
         s.cache_envelopes(
             vault_id,
             material.password_envelope,
@@ -812,6 +818,7 @@ impl AppCore {
         )
         .await?;
         s.set_vault_id(vault_id).await?;
+        s.seal_storage(&vault).await?;
         tracing::info!(vault_id = %vault_id, "device attested for vault");
         let u = s.install_unlocked(vault).await?;
         u.observe_vault_info(std::slice::from_ref(&info)).await;
@@ -820,14 +827,30 @@ impl AppCore {
 
     // ---- unlock / lock -------------------------------------------------------
 
-    async fn vault_record(&self, s: &Session) -> AppResult<(VaultId, VaultRecord)> {
-        let vault_id = s.require_vault_id()?;
-        let rec = s
-            .storage
-            .get_vault(vault_id)
-            .await?
-            .ok_or(AppError::NoVault)?;
-        Ok((vault_id, rec))
+    /// Open the database for `vault` and install it: a sealed profile
+    /// unwraps its database key; a ≤ 0.8.x profile is sealed now (S5
+    /// migration: re-key under the vault key, OS-stored key deleted, device
+    /// unlock off until switched on again, server envelope replaced by the
+    /// trust marker on the next attestation).
+    pub(crate) async fn finish_unlock(
+        &self,
+        s: &Arc<Session>,
+        vault: UnlockedVault,
+    ) -> AppResult<()> {
+        if s.unlocked_opt().await.is_some() {
+            return Ok(());
+        }
+        if s.has_keyfile() {
+            s.open_sealed_storage(&vault).await?;
+            s.reconcile_header().await?;
+        } else if s.vault_id().is_some() {
+            s.seal_storage(&vault).await?;
+            if s.kind().await? == ProfileKind::Synced {
+                s.set_needs_attest(true).await?;
+            }
+        }
+        s.install_unlocked(vault).await?;
+        Ok(())
     }
 
     /// Unlock with the vault passphrase (works offline from the cached
@@ -838,131 +861,38 @@ impl AppCore {
         if s.unlocked_opt().await.is_some() {
             return Ok(());
         }
-        let (vault_id, rec) = self.vault_record(&s).await?;
-        let env = rec
-            .password_envelope
+        let (vault_id, cached, _) = s.unlock_envelopes().await?;
+        let env = cached
             .clone()
             .ok_or_else(|| AppError::Storage("no password envelope stored".into()))?;
         let pass = Arc::new(secret(passphrase));
         let p = pass.clone();
         let first = blocking(move || Ok(unlock_with_passphrase(vault_id, &env, &p)?)).await;
-        let vault = match first {
-            Ok(v) => v,
+        let (vault, fresh_env) = match first {
+            Ok(v) => (v, None),
             Err(AppError::WrongPassphrase) if s.api_opt().is_some() => {
                 let fresh = match s.api()?.recovery_vault_envelope(vault_id).await {
                     Ok(m) => m.password_envelope,
                     Err(_) => None,
                 };
                 match fresh {
-                    Some(env) if Some(&env) != rec.password_envelope.as_ref() => {
+                    Some(env) if Some(&env) != cached.as_ref() => {
                         let e2 = env.clone();
                         let v = blocking(move || Ok(unlock_with_passphrase(vault_id, &e2, &pass)?))
                             .await?;
-                        s.cache_envelopes(vault_id, Some(env), None, None).await?;
-                        v
+                        (v, Some(env))
                     }
                     _ => return Err(AppError::WrongPassphrase),
                 }
             }
             Err(e) => return Err(e),
         };
-        s.install_unlocked(vault).await?;
-        Ok(())
-    }
-
-    /// OS / biometric unlock through this installation's device envelope
-    /// (requires a platform authenticator; the default one is unsupported).
-    pub async fn unlock_with_device(&self) -> AppResult<()> {
-        let s = self.session().await?;
-        if s.unlocked_opt().await.is_some() {
-            return Ok(());
+        // Before the database opens only the key file can take it.
+        if let Some(env) = &fresh_env {
+            s.cache_envelopes(vault_id, Some(env.clone()), None, None)
+                .await?;
         }
-        let vault = self.device_unlock(&s).await?;
-        s.install_unlocked(vault).await?;
-        Ok(())
-    }
-
-    /// Whether OS / biometric unlock can be offered for the open profile:
-    /// the platform authenticator is available and this installation holds
-    /// a device envelope for the vault.
-    pub async fn device_unlock_info(&self) -> AppResult<DeviceUnlockDto> {
-        let s = self.session().await?;
-        let availability = self.inner.ctx.os_auth.availability();
-        let kind = match availability {
-            cc_platform_core::OsAuthAvailability::Available(k) => Some(
-                match k {
-                    cc_platform_core::OsAuthKind::TouchId => "touch_id",
-                    cc_platform_core::OsAuthKind::FaceId => "face_id",
-                    cc_platform_core::OsAuthKind::WindowsHello => "windows_hello",
-                    cc_platform_core::OsAuthKind::DeviceCredential => "device_credential",
-                }
-                .to_owned(),
-            ),
-            _ => None,
-        };
-        let has_device_envelope = match s.vault_id() {
-            Some(v) => s
-                .storage
-                .get_vault(v)
-                .await?
-                .is_some_and(|r| r.device_envelope.is_some()),
-            None => false,
-        };
-        let enabled = s
-            .storage
-            .setting_get::<bool>(DEVICE_UNLOCK_SETTING)
-            .await?
-            .unwrap_or(false);
-        Ok(DeviceUnlockDto {
-            enabled,
-            available: enabled && kind.is_some() && has_device_envelope,
-            kind,
-            has_device_envelope,
-            not_enrolled: availability == cc_platform_core::OsAuthAvailability::NotEnrolled,
-        })
-    }
-
-    pub(crate) async fn device_unlock(&self, s: &Session) -> AppResult<UnlockedVault> {
-        if !s
-            .storage
-            .setting_get::<bool>(DEVICE_UNLOCK_SETTING)
-            .await?
-            .unwrap_or(false)
-        {
-            return Err(AppError::Unsupported(
-                "Device unlock is disabled for this profile".into(),
-            ));
-        }
-        self.authenticated_device_unlock(s).await
-    }
-
-    /// Opt in only from an unlocked vault after a fresh OS authentication.
-    /// The preference is kept in the profile's local encrypted DB, outside
-    /// synced objects and backup exports. Disabling preserves device trust.
-    pub async fn set_device_unlock_enabled(&self, enabled: bool) -> AppResult<()> {
-        let s = self.session().await?;
-        let _unlocked = s.unlocked().await?;
-        if enabled {
-            // Also prove that the existing envelope can actually be opened.
-            // Do not retain another copy of the VRK or write any key to disk.
-            let _verified = self.authenticated_device_unlock(&s).await?;
-        }
-        s.storage
-            .setting_set(DEVICE_UNLOCK_SETTING, enabled)
-            .await?;
-        Ok(())
-    }
-
-    async fn authenticated_device_unlock(&self, s: &Session) -> AppResult<UnlockedVault> {
-        let (vault_id, rec) = self.vault_record(s).await?;
-        let env = rec.device_envelope.ok_or(AppError::DeviceNotAuthorized)?;
-        let os_auth = self.inner.ctx.os_auth.clone();
-        let identity = s.identity();
-        blocking(move || {
-            os_auth.authenticate("Unlock your ConsoleCrypt vault")?;
-            Ok(unlock_with_device(vault_id, &env, &identity)?)
-        })
-        .await
+        self.finish_unlock(&s, vault).await
     }
 
     /// Unlock with the Recovery Key against the stored recovery envelope.
@@ -972,8 +902,7 @@ impl AppCore {
             return Ok(());
         }
         let vault = self.recovery_unlock(&s, recovery_input).await?;
-        s.install_unlocked(vault).await?;
-        Ok(())
+        self.finish_unlock(&s, vault).await
     }
 
     pub(crate) async fn recovery_unlock(
@@ -981,8 +910,8 @@ impl AppCore {
         s: &Session,
         recovery_input: String,
     ) -> AppResult<UnlockedVault> {
-        let (vault_id, rec) = self.vault_record(s).await?;
-        let env = match rec.recovery_envelope {
+        let (vault_id, _, cached) = s.unlock_envelopes().await?;
+        let env = match cached {
             Some(e) => e,
             None => s
                 .api()?
@@ -998,10 +927,8 @@ impl AppCore {
     /// Check a passphrase against the stored envelope without unlocking.
     pub async fn verify_passphrase(&self, passphrase: String) -> AppResult<bool> {
         let s = self.session().await?;
-        let (vault_id, rec) = self.vault_record(&s).await?;
-        let env = rec
-            .password_envelope
-            .ok_or_else(|| AppError::Storage("no password envelope stored".into()))?;
+        let (vault_id, env, _) = s.unlock_envelopes().await?;
+        let env = env.ok_or_else(|| AppError::Storage("no password envelope stored".into()))?;
         let pass = secret(passphrase);
         match blocking(move || Ok(unlock_with_passphrase(vault_id, &env, &pass)?)).await {
             Ok(v) => {

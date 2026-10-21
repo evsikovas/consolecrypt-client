@@ -343,7 +343,7 @@ impl AppCore {
             return Err(AppError::not_found("kube_context", id));
         }
         let old: Vec<KubeHistoricalEvent> =
-            owner.storage.setting_get(KEY).await?.unwrap_or_default();
+            owner.storage()?.setting_get(KEY).await?.unwrap_or_default();
         let now = chrono::Utc::now().timestamp_millis();
         let mut events = merge(old, Vec::new(), now);
         events.retain(|event| {
@@ -365,7 +365,7 @@ impl AppCore {
         let (owner, _) = self.unlocked().await?;
         crate::dto::parse_id("context_id", &context_id)?;
         owner
-            .storage
+            .storage()?
             .write(move |tx| {
                 let mut events: Vec<KubeHistoricalEvent> = tx.setting_get(KEY)?.unwrap_or_default();
                 events.retain(|event| event.context_id != context_id);

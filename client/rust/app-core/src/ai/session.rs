@@ -34,6 +34,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 use tokio::sync::{broadcast, Notify};
 use tokio::task::JoinHandle;
+use zeroize::Zeroizing;
 
 /// How long an approval token stays valid.
 pub(crate) const APPROVAL_TTL: Duration = Duration::from_secs(300);
@@ -161,6 +162,9 @@ pub(crate) struct AiSession {
     ctx: Arc<AppCtx>,
     profile_id: ProfileId,
     search_path: Option<PathBuf>,
+    /// Index key derived from the sealed database key (`None` = legacy
+    /// OS-store key).
+    index_key: Option<Zeroizing<[u8; 32]>>,
     pub(crate) writer: VaultWriter,
     backend: RwLock<Arc<dyn ExecBackend>>,
     index: Mutex<Option<Arc<SearchIndex>>>,
@@ -197,6 +201,7 @@ impl AiSession {
         ctx: Arc<AppCtx>,
         profile_id: ProfileId,
         search_path: Option<PathBuf>,
+        index_key: Option<Zeroizing<[u8; 32]>>,
         writer: VaultWriter,
         ssh: Arc<SshRuntime>,
     ) -> Arc<Self> {
@@ -205,6 +210,7 @@ impl AiSession {
             ctx,
             profile_id,
             search_path,
+            index_key,
             writer,
             backend: RwLock::new(Arc::new(SshExecBackend { ssh })),
             index: Mutex::new(None),
@@ -322,6 +328,7 @@ impl AiSession {
             self.ctx.secure.clone(),
             self.profile_id,
             self.search_path.clone(),
+            self.index_key.clone(),
         )
         .await;
         let idx = match opened {

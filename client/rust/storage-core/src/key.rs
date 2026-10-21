@@ -30,9 +30,20 @@ impl DatabaseKey {
 
     /// `PRAGMA key = "x'<hex>'";` statement (zeroized after use).
     pub(crate) fn pragma_statement(&self) -> Zeroizing<String> {
+        self.pragma("key")
+    }
+
+    /// `PRAGMA rekey = "x'<hex>'";` statement (zeroized after use).
+    pub(crate) fn rekey_statement(&self) -> Zeroizing<String> {
+        self.pragma("rekey")
+    }
+
+    fn pragma(&self, name: &str) -> Zeroizing<String> {
         const HEX: &[u8; 16] = b"0123456789ABCDEF";
-        let mut s = Zeroizing::new(String::with_capacity(90));
-        s.push_str("PRAGMA key = \"x'");
+        let mut s = Zeroizing::new(String::with_capacity(92));
+        s.push_str("PRAGMA ");
+        s.push_str(name);
+        s.push_str(" = \"x'");
         for b in self.0.iter() {
             s.push(HEX[(b >> 4) as usize] as char);
             s.push(HEX[(b & 0x0f) as usize] as char);
@@ -61,5 +72,6 @@ mod tests {
         assert!(p.ends_with("'\";"));
         assert_eq!(p.len(), "PRAGMA key = \"x'".len() + 64 + 3);
         assert!(DatabaseKey::from_slice(&[0; 31]).is_none());
+        assert!(k.rekey_statement().starts_with("PRAGMA rekey = \"x'ABAB"));
     }
 }

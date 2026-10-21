@@ -163,12 +163,6 @@ impl UnlockedVault {
         )?)
     }
 
-    /// Device envelope for this installation (`identity`) — stored locally
-    /// for OS/biometric unlock or uploaded with create/attest.
-    pub fn device_envelope_for(&self, identity: &DeviceIdentity) -> Result<NewEnvelope> {
-        self.device_envelope(identity.device_id(), &identity.public_keys().encryption)
-    }
-
     /// Change the vault passphrase → request for
     /// `POST /v1/recovery/vault/password-envelope/replace`. Local-only
     /// profiles persist `request.envelope` instead of sending it.
@@ -206,20 +200,21 @@ impl UnlockedVault {
     }
 
     /// Self-trust after unlocking with passphrase / Recovery Key →
-    /// `POST /v1/devices/{self}/attest` (ADR-0004 §Attestation).
+    /// `POST /v1/devices/{self}/attest` (ADR-0004 §Attestation). Uploads the
+    /// trust envelope (no VRK; [`UnlockedVault::trust_envelope_for`]).
     pub fn attest_device_request(&self, identity: &DeviceIdentity) -> Result<AttestDeviceRequest> {
         Ok(AttestDeviceRequest {
             vault_id: self.vault_id,
             vault_access_key: self.vault_access_key(),
-            envelope: self.device_envelope_for(identity)?,
+            envelope: self.trust_envelope_for(identity)?,
         })
     }
 
     /// Enable sync for an existing local vault (ADR-0106 §Enable sync):
     /// `POST /v1/vaults` with the same `vault_id`, the VAK of the existing
     /// VRK, the existing password and recovery envelopes (still valid — they
-    /// are bound only to `vault_id`) and a fresh device envelope for the
-    /// device registered with the server.
+    /// are bound only to `vault_id`) and the trust envelope of the device
+    /// registered with the server.
     pub fn enable_sync_request(
         &self,
         password_envelope: &(impl EnvelopeSource + ?Sized),
@@ -233,7 +228,7 @@ impl UnlockedVault {
             vault_access_key: self.vault_access_key(),
             password_envelope: password,
             recovery_envelope: recovery,
-            device_envelope: self.device_envelope_for(registered_device)?,
+            device_envelope: self.trust_envelope_for(registered_device)?,
         })
     }
 

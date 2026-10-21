@@ -691,7 +691,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errorDeviceNotTrusted => 'Это устройство ещё не является доверенным для хранилища.';
 
   @override
-  String get errorOsAuthFailed => 'Системная аутентификация не пройдена или отменена.';
+  String get errorOsAuthFailed =>
+      'Системная аутентификация не пройдена или отменена. Разблокируйте хранилище парольной фразой.';
 
   @override
   String get errorVerificationMismatch => 'Коды проверки не совпадают — подтверждение отклонено.';
@@ -4163,7 +4164,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get unlockSubmit => 'Разблокировать';
 
   @override
-  String get unlockOsAuthReason => 'Разблокировать хранилище ConsoleCrypt';
+  String get unlockOsAuthReason => 'разблокировать хранилище ConsoleCrypt';
 
   @override
   String unlockWithOsAuth(String method) {
@@ -4219,7 +4220,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String recoveryTrustedDeviceInfo(String method) {
-    return 'Хранилище откроется ключом этого устройства (защита: $method). Затем задайте новую парольную фразу; другие устройства продолжат работать.';
+    return '$method выдаёт ключ разблокировки этого устройства, чтобы открыть хранилище. Затем задайте новую парольную фразу; другие устройства продолжат работать.';
   }
 
   @override
@@ -4525,14 +4526,14 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get deviceUnlockHelp =>
-      'Подтверждайте вход отпечатком пальца. macOS также может предложить пароль учётной записи.';
+      'Система выдаёт ключ хранилища только после отпечатка пальца, лица или пароля устройства.';
 
   @override
   String get deviceUnlockLocalOnly =>
       'Только для этого хранилища на этом устройстве. Парольная фраза и ключ восстановления остаются доступны.';
 
   @override
-  String get deviceUnlockEnableReason => 'Разрешите разблокировку хранилища ConsoleCrypt на этом Mac';
+  String get deviceUnlockEnableReason => 'разрешить разблокировку хранилища ConsoleCrypt на этом устройстве';
 
   @override
   String get deviceUnlockNeedsTrust => 'Сначала разблокируйте хранилище парольной фразой на этом устройстве.';
@@ -4547,7 +4548,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get deviceUnlockMacPassword =>
-      'Сейчас macOS предлагает вход своим паролем. Для отпечатка нужен доступный Touch ID с настроенным отпечатком: Системные настройки → Touch ID и пароль.';
+      'Сейчас macOS предлагает вход своим паролем. Для Touch ID нужен настроенный отпечаток: Системные настройки → Touch ID и пароль.';
 
   @override
   String get deviceUnlockRecoveryUnavailable =>
@@ -4563,6 +4564,54 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get deviceUnlockMacPasswordName => 'пароль macOS';
+
+  @override
+  String get errorOsAuthInvalidated =>
+      'Отпечатки или вход в систему изменились. Разблокируйте хранилище парольной фразой и снова включите разблокировку устройством: Настройки → Хранилище.';
+
+  @override
+  String deviceUnlockProtectedBySystem(String method) {
+    return 'Защищено системой: ключ выдаётся только после проверки ($method).';
+  }
+
+  @override
+  String get deviceUnlockConvenienceWarning =>
+      'Разблокировка без пароля доступна любой программе вашего пользователя. Это удобство, а не защита.';
+
+  @override
+  String get deviceUnlockConvenienceConfirmTitle => 'Разблокировать без парольной фразы?';
+
+  @override
+  String get deviceUnlockConvenienceConfirmAction => 'Всё равно включить';
+
+  @override
+  String get deviceUnlockKeyringName => 'системная связка ключей';
+
+  @override
+  String deviceUnlockReofferMigratedTitle(String method) {
+    return 'Снова включить $method?';
+  }
+
+  @override
+  String get deviceUnlockReofferMigratedMessage =>
+      'Разблокировка этим устройством теперь защищена системой. При обновлении она была выключена — включите её снова одним подтверждением.';
+
+  @override
+  String get deviceUnlockReofferInvalidatedTitle => 'Отпечатки изменились';
+
+  @override
+  String deviceUnlockReofferInvalidatedMessage(String method) {
+    return 'Ключ $method больше не действует: изменился вход в систему. Снова включить разблокировку этим устройством?';
+  }
+
+  @override
+  String get deviceUnlockReofferEnable => 'Включить';
+
+  @override
+  String get deviceUnlockReofferLater => 'Не сейчас';
+
+  @override
+  String get recoveryDeviceResetReason => 'сбросить парольную фразу хранилища ConsoleCrypt';
 
   @override
   String get workspaceToolsClose => 'Закрыть правую панель';

@@ -120,6 +120,11 @@ impl Storage {
         }
     }
 
+    /// See [`Database::rekey`]. Waits for queued operations first.
+    pub async fn rekey(&self, new_key: DatabaseKey) -> Result<()> {
+        self.call(move |db| db.rekey(&new_key)).await
+    }
+
     /// Run `f` with exclusive access to the database on the storage thread.
     pub async fn call<T, E, F>(&self, f: F) -> Result<T, E>
     where

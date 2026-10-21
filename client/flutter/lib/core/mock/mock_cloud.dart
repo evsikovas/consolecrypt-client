@@ -147,6 +147,9 @@ final class MockProfileRecord {
   VaultPhase phase = VaultPhase.none;
   bool deviceTrusted = false;
   bool deviceUnlockEnabled = false;
+
+  /// Offer to switch device unlock on again after the next passphrase unlock.
+  DeviceUnlockReoffer? deviceUnlockReoffer;
   bool recoveryKitConfirmed = true;
   bool sessionActive = false;
   String deviceName = 'This device';

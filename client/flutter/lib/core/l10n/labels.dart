@@ -14,7 +14,9 @@ extension DeviceUnlockInfoL10n on DeviceUnlockInfo {
   String authName(AppLocalizations l) => switch (kind) {
     DeviceAuthKind.touchId => 'Touch ID',
     DeviceAuthKind.faceId => 'Face ID', // l10n-ignore: Apple product name
+    DeviceAuthKind.fingerprint => l.mobileDeviceAuth,
     DeviceAuthKind.windowsHello => 'Windows Hello',
+    DeviceAuthKind.keyring => l.deviceUnlockKeyringName,
     DeviceAuthKind.deviceCredential => AppPlatform.isMobile ? l.mobileDeviceAuth : l.deviceUnlockMacPasswordName,
     null => l.platformSystemAuthentication,
   };

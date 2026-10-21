@@ -361,15 +361,48 @@ final class RustVaultService implements VaultService {
     await _hub.reloadAll();
   }
 
+  /// Android: the app runs `BiometricPrompt` itself (see [LocalAuthChannel]).
+  bool get _externalDeviceUnlock => _hub.deviceUnlock.external;
+
+  String? get _activeProfileId => _hub.activeInfo?['id'] as String?;
+
+  /// Android: key material released by `BiometricPrompt` for the profile's
+  /// unlock key. A permanently invalidated key is reported to the core.
+  Future<Uint8List> _releaseExternal(String reason) async {
+    final handle = await guard(rs_prof.vaultDeviceUnlockHandle);
+    if (handle == null) {
+      throw const AppException(AppErrorCode.unsupported, 'Device unlock is off'); // l10n-ignore: diagnostic
+    }
+    try {
+      return await LocalAuthChannel.instance.releaseKey(handle, reason);
+    } on LocalAuthInvalidated {
+      await guard(rs_prof.vaultDeviceUnlockInvalidated);
+      await _hub.refreshState();
+      throw const AppException(AppErrorCode.osAuthInvalidated, 'Biometrics changed'); // l10n-ignore: diagnostic
+    } on LocalAuthCancelled {
+      throw const AppException(AppErrorCode.osAuthFailed, 'OS authentication failed or was cancelled'); // l10n-ignore: diagnostic
+    }
+  }
+
   @override
   Future<void> unlockWithDevice({required String reason}) async {
-    // The OS prompt runs in the UI process (LocalAuthentication via the
-    // `consolecrypt/local_auth` channel); on success the core gets a
-    // single-use grant and opens the device envelope itself.
-    if (!await LocalAuthChannel.instance.authenticate(reason)) {
-      throw const AppException(AppErrorCode.osAuthFailed, 'OS authentication failed or was cancelled');
+    try {
+      if (_externalDeviceUnlock) {
+        final material = await _releaseExternal(reason);
+        try {
+          await guard(() => rs_prof.vaultUnlockWithDeviceMaterial(material: material));
+        } finally {
+          material.fillRange(0, material.length, 0);
+        }
+      } else {
+        // The core asks the OS (Touch ID / Windows Hello) to release the key.
+        await guard(() => rs_prof.vaultUnlockWithDevice(reason: reason));
+      }
+    } on AppException catch (e) {
+      // A dropped key changes what the lock screen offers.
+      if (e.code == AppErrorCode.osAuthInvalidated) await _hub.refreshState();
+      rethrow;
     }
-    await guard(rs_prof.vaultUnlockWithDeviceAttested);
     await _afterUnlock();
   }
 
@@ -380,18 +413,48 @@ final class RustVaultService implements VaultService {
   }
 
   @override
-  Future<void> setDeviceUnlockEnabled(bool enabled, {required String reason}) async {
-    final profileId = _hub.activeProfile?.id;
-    if (enabled) {
-      await LocalAuthChannel.instance.reportToCore();
-      if (!await LocalAuthChannel.instance.authenticate(reason)) {
-        throw const AppException(AppErrorCode.osAuthFailed, 'OS authentication failed or was cancelled');
+  Future<void> setDeviceUnlockEnabled(bool enabled, {required String reason, bool allowUnprotected = false}) async {
+    final profileId = _activeProfileId;
+    if (_externalDeviceUnlock && profileId != null) {
+      final alias = LocalAuthChannel.aliasFor(profileId);
+      if (enabled) {
+        await LocalAuthChannel.instance.reportToCore();
+        final LocalAuthKey key;
+        try {
+          key = await LocalAuthChannel.instance.createKey(alias, reason);
+        } on Exception {
+          throw const AppException(AppErrorCode.osAuthFailed, 'OS authentication failed or was cancelled'); // l10n-ignore: diagnostic
+        }
+        try {
+          if (profileId != _activeProfileId) {
+            throw const AppException(AppErrorCode.cancelled, 'Profile changed during authentication'); // l10n-ignore: diagnostic
+          }
+          final kind = switch (_hub.deviceUnlock.kind) {
+            DeviceAuthKind.faceId => 'face_id',
+            DeviceAuthKind.deviceCredential => 'device_credential',
+            _ => 'fingerprint',
+          };
+          await guard(
+            () => rs_prof.vaultEnableDeviceUnlockWithMaterial(material: key.material, handle: key.handle, kind: kind),
+          );
+        } finally {
+          key.material.fillRange(0, key.material.length, 0);
+        }
+      } else {
+        await guard(() => rs_prof.vaultSetDeviceUnlockEnabled(enabled: false, reason: reason, allowUnprotected: false));
+        await LocalAuthChannel.instance.deleteKey(alias);
       }
+    } else {
+      await guard(
+        () => rs_prof.vaultSetDeviceUnlockEnabled(enabled: enabled, reason: reason, allowUnprotected: allowUnprotected),
+      );
     }
-    if (profileId != _hub.activeProfile?.id) {
-      throw const AppException(AppErrorCode.cancelled, 'Profile changed during authentication');
-    }
-    await guard(() => rs_prof.vaultSetDeviceUnlockEnabledAttested(enabled: enabled));
+    await _hub.refreshState();
+  }
+
+  @override
+  Future<void> dismissDeviceUnlockOffer() async {
+    await guard(rs_prof.vaultDismissDeviceUnlockOffer);
     await _hub.refreshState();
   }
 
@@ -456,16 +519,27 @@ final class RustVaultService implements VaultService {
   }
 
   @override
-  Future<void> resetPassphraseWithTrustedDevice({required SecretText newPassphrase}) async {
+  Future<void> resetPassphraseWithTrustedDevice({required SecretText newPassphrase, required String reason}) async {
     _checkNewPassphrase(newPassphrase);
-    // TODO(l10n): the OS prompt reason is English — VaultService has no
-    // `reason` parameter here; next: add one (like unlockWithDevice).
-    const reason = 'Reset the ConsoleCrypt vault passphrase'; // l10n-ignore: OS prompt reason
-    if (!await LocalAuthChannel.instance.authenticate(reason)) {
-      newPassphrase.wipe();
-      throw const AppException(AppErrorCode.osAuthFailed, 'OS authentication failed or was cancelled');
+    if (_externalDeviceUnlock) {
+      final Uint8List material;
+      try {
+        material = await _releaseExternal(reason);
+      } on AppException {
+        newPassphrase.wipe();
+        rethrow;
+      }
+      try {
+        await withSecret(
+          newPassphrase,
+          (p) => guard(() => rs_prof.vaultResetPassphraseWithDeviceMaterial(material: material, next: p)),
+        );
+      } finally {
+        material.fillRange(0, material.length, 0);
+      }
+    } else {
+      await withSecret(newPassphrase, (p) => guard(() => rs_prof.vaultResetPassphraseWithDevice(next: p, reason: reason)));
     }
-    await withSecret(newPassphrase, (p) => guard(() => rs_prof.vaultResetPassphraseWithDeviceAttested(next: p)));
     await _afterUnlock();
   }
 

@@ -36,7 +36,8 @@ async fn synced_kubernetes_chat_is_context_scoped_and_remote_changes_revoke_cons
         .await
         .unwrap();
     let local: Option<Value> = owner
-        .storage
+        .storage()
+        .unwrap()
         .setting_get("kubernetes.ai.history.v1")
         .await
         .unwrap();

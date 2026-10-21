@@ -15,10 +15,16 @@ import 'package:flutter/services.dart';
 /// schedule, the scheduler (runs in the core every 30 s while unlocked —
 /// also with the window hidden) and the recent-backups list live in the
 /// core (profile database); this service mirrors them and reloads on the
-/// `backup_*` core events.
+/// `backup_*` core events. A locked profile's database is sealed (S5), so
+/// the mirror is (re)loaded when the vault unlocks.
 final class RustBackupService implements BackupService {
   RustBackupService(this._hub) {
     _profilesSub = _hub.profiles.stream.listen((_) => unawaited(_loadForActive()));
+    _vaultSub = _hub.vaultStatus.stream.listen((status) {
+      final unlocked = status.isUnlocked;
+      if (unlocked && !_wasUnlocked) unawaited(_loadUnlocked());
+      _wasUnlocked = unlocked;
+    });
     _hub.eventListeners.add(_onEvent);
   }
 
@@ -26,6 +32,8 @@ final class RustBackupService implements BackupService {
   final _schedule = ValueStreamController<BackupSchedule>(const BackupSchedule());
   final _recent = ValueStreamController<List<BackupInfo>>(const []);
   late final StreamSubscription<ProfilesState> _profilesSub;
+  late final StreamSubscription<VaultStatus> _vaultSub;
+  bool _wasUnlocked = false;
   String? _loadedFor;
 
   String? get _profileId => _hub.activeInfo?['id'] as String?;
@@ -46,6 +54,15 @@ final class RustBackupService implements BackupService {
       _recent.value = const [];
       return;
     }
+    await _migrateLegacy(id);
+    await _reload();
+  }
+
+  /// The database became readable: migrate legacy UI-store values once and
+  /// mirror the schedule and recent list.
+  Future<void> _loadUnlocked() async {
+    final id = _profileId;
+    if (id == null) return;
     await _migrateLegacy(id);
     await _reload();
   }
@@ -184,6 +201,7 @@ final class RustBackupService implements BackupService {
   Future<void> dispose() async {
     _hub.eventListeners.remove(_onEvent);
     await _profilesSub.cancel();
+    await _vaultSub.cancel();
     await _schedule.close();
     await _recent.close();
   }

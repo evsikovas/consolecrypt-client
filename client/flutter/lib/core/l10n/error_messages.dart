@@ -53,6 +53,7 @@ String errorCodeMessage(AppLocalizations l, AppErrorCode code, {Map<String, Stri
   AppErrorCode.deviceNotTrusted => l.errorDeviceNotTrusted,
   AppErrorCode.secureStore => l.errorSecureStore,
   AppErrorCode.osAuthFailed => l.errorOsAuthFailed,
+  AppErrorCode.osAuthInvalidated => l.errorOsAuthInvalidated,
   AppErrorCode.verificationMismatch => l.errorVerificationMismatch,
   AppErrorCode.requestExpired => l.errorRequestExpired,
   AppErrorCode.validation => l.errorValidation,

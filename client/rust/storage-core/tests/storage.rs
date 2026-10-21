@@ -90,6 +90,47 @@ fn database_file_is_unreadable_without_the_key() {
 }
 
 #[test]
+fn rekey_moves_the_file_to_the_new_key() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("vault.db");
+    let new_key = DatabaseKey::from_bytes([0x77; 32]);
+    {
+        let mut db = Database::open(&path, &key()).unwrap();
+        db.write(|tx| tx.setting_set("marker", "before")).unwrap();
+        db.rekey(&new_key).unwrap();
+        // The open connection keeps working, in WAL mode again.
+        db.write(|tx| tx.setting_set("after", "yes")).unwrap();
+        let mode: String = db
+            .read(|tx| tx.setting_get::<String>("marker").map(|v| v.unwrap()))
+            .unwrap();
+        assert_eq!(mode, "before");
+    }
+    assert!(matches!(
+        Database::open(&path, &key()).unwrap_err(),
+        StorageError::WrongKeyOrNotADatabase
+    ));
+    let mut db = Database::open(&path, &new_key).unwrap();
+    let after: Option<String> = db.read(|tx| tx.setting_get("after")).unwrap();
+    assert_eq!(after.as_deref(), Some("yes"));
+}
+
+#[tokio::test]
+async fn async_rekey_and_reopen() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("vault.db");
+    let new_key = DatabaseKey::from_bytes([0x42; 32]);
+    let s = Storage::open(&path, key()).await.unwrap();
+    s.setting_set("k", 1i64).await.unwrap();
+    s.rekey(new_key.clone()).await.unwrap();
+    s.setting_set("k2", 2i64).await.unwrap();
+    s.close().await;
+    assert!(Storage::open(&path, key()).await.is_err());
+    let s = Storage::open(&path, new_key).await.unwrap();
+    assert_eq!(s.setting_get::<i64>("k2").await.unwrap(), Some(2));
+    s.close().await;
+}
+
+#[test]
 fn migrations_are_idempotent_and_downgrade_is_refused() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("v.db");

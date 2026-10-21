@@ -27,6 +27,7 @@ import 'package:consolecrypt/hosts/connection_picker.dart';
 import 'package:consolecrypt/kubernetes/kube_gitops_monitor.dart';
 import 'package:consolecrypt/sftp/edit_flows.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
+import 'package:consolecrypt/vault/device_unlock_offer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -179,6 +180,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   void initState() {
     super.initState();
     _openRequestedTool();
+    if (!AppPlatform.isMobile) _listenDeviceUnlockOffer(this);
   }
 
   @override
@@ -202,6 +204,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     if (AppPlatform.isMobile) {
       return _MobileShell(navigationShell: widget.navigationShell, location: widget.location);
     }
+
     final navigationShell = widget.navigationShell;
     final location = widget.location;
 
@@ -879,6 +882,19 @@ class _OverflowMenu extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// After a passphrase unlock, offer to switch device unlock on again when the
+/// core asks (update to OS protection, changed biometrics). Call from
+/// `initState`; the subscription ends with the widget.
+void _listenDeviceUnlockOffer(ConsumerState<ConsumerStatefulWidget> state) {
+  state.ref.listenManual<AsyncValue<VaultStatus>>(vaultStatusProvider, (_, next) {
+    final status = next.value;
+    if (status == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (state.mounted) maybeOfferDeviceUnlock(state.context, state.ref, status).ignore();
+    });
+  }, fireImmediately: true);
 }
 
 /// Content-layer banners under the toolbar (§4.1), e.g. a pending device
