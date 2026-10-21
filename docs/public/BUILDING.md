@@ -116,6 +116,52 @@ python3 -m unittest discover -s client/scripts -p 'test_*.py'
 сгенерированные файлы. Bridge уже сгенерирован и включён в исходники;
 обычная сборка не требует установки flutter_rust_bridge_codegen.
 
+## Проверка зависимостей
+
+`client/scripts/dependency-audit.py check` запускает `cargo deny check advisories
+bans sources licenses` для `client/rust` и `crates`, проверяет правило собственных
+crates и сканирует `pubspec.lock` (и npm lockfile, если он появится) через
+`osv-scanner`. Локально нужны те же версии, что и в CI:
+
+```sh
+cargo install --locked cargo-deny@0.20.2
+go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.6.0
+python3 client/scripts/dependency-audit.py check
+```
+
+Одна проверка: `cargo deny --manifest-path client/rust/Cargo.toml --locked check
+advisories bans sources licenses`.
+
+В CI шаг выполняется только на GitHub-hosted `ubuntu-24.04`: в `validate` тегового
+выпуска (провал останавливает сборку пакетов) и в еженедельном
+`dependency-audit.yml`, который также проверяет pull request с изменёнными
+зависимостями. Еженедельный прогон открывает или обновляет issue «Уязвимые
+зависимости» и закрывает его после чистого прогона. Инструменты скачиваются из
+GitHub Releases с проверкой SHA-256, закреплённого в скрипте.
+
+Политика (`deny.toml`):
+
+- уязвимости и yanked-версии запрещены; unmaintained — только для прямых
+  зависимостей наших crates;
+- TLS только rustls: `native-tls` и `openssl` запрещены, `openssl-sys` разрешён
+  лишь как бэкенд SQLCipher (`libsqlite3-sys`);
+- git-источник разрешён только `github.com/evsikovas/consolecrypt-server`
+  (`cc-protocol` по ревизии);
+- собственные crates — `cc-*`, `publish = false`, `AGPL-3.0-only`: новый модуль
+  не требует правки исключений лицензий, а скрипт отклоняет любой другой
+  неопубликованный crate.
+
+Исключение оформляется только осознанно: в `ignore` файла `deny.toml` (или
+`[[IgnoredVulns]]` в `osv-scanner.toml`) с идентификатором совета, причиной,
+владельцем и датой пересмотра; срок — не более трёх месяцев. Сейчас принято:
+
+- `RUSTSEC-2023-0071` (rsa, Marvin): исправленной версии нет; закрытый RSA-ключ
+  используется только для входа по SSH и в NTLM/CredSSP для RDP, единицы операций
+  на подключение. SSH-ключи по умолчанию генерируются Ed25519, рекомендуется
+  именно он. Пересмотр 2027-01-21.
+- `RUSTSEC-2025-0134` (rustls-pemfile больше не поддерживается, уязвимости нет):
+  перейти на `rustls-pki-types` `PemObject` в `db-core`. Пересмотр 2027-01-21.
+
 ## Свой сервер
 
 Локальный профиль работает без сервера. Для синхронизации используйте

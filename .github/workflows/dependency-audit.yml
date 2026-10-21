@@ -1,0 +1,81 @@
+name: Dependency audit
+
+# GitHub-hosted runners only. Pull requests (including Dependabot) run the
+# read-only audit; persistent self-hosted runners are never scheduled here.
+on:
+  schedule:
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+      - '**/deny.toml'
+      - '**/pubspec.yaml'
+      - '**/pubspec.lock'
+      - '**/package.json'
+      - '**/package-lock.json'
+      - osv-scanner.toml
+      - client/scripts/dependency-audit.py
+      - .github/workflows/dependency-audit.yml
+
+permissions: {}
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  audit:
+    if: github.repository == 'evsikovas/consolecrypt-client'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      outcome: ${{ steps.check.outcome }}
+      summary: ${{ steps.check.outputs.summary }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Test the audit script
+        run: python3 -m unittest discover -s client/scripts -p 'test_dependency_audit.py' -v
+      - name: Install pinned cargo-deny and osv-scanner
+        run: |
+          python3 client/scripts/dependency-audit.py install "$RUNNER_TEMP/audit-tools" cargo-deny osv-scanner
+          echo "$RUNNER_TEMP/audit-tools" >> "$GITHUB_PATH"
+      - name: cargo-deny and osv-scanner
+        id: check
+        continue-on-error: true
+        run: python3 client/scripts/dependency-audit.py check
+      - name: Fail on findings
+        if: steps.check.outcome != 'success'
+        run: exit 1
+
+  # Separate job so pull request code never runs with issues: write.
+  issue:
+    needs: audit
+    if: >-
+      always() && github.event_name != 'pull_request' &&
+      (needs.audit.outputs.outcome == 'success' || needs.audit.outputs.outcome == 'failure')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Open, update or close the dependency issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          AUDIT_SUMMARY: ${{ needs.audit.outputs.summary }}
+          OUTCOME: ${{ needs.audit.outputs.outcome }}
+        run: python3 client/scripts/dependency-audit.py issue --outcome "$OUTCOME"
