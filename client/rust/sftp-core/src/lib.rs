@@ -735,6 +735,68 @@ impl SftpClient {
         }
     }
 
+    /// Creates `path` exclusively and writes `data` through the one handle
+    /// the create returned, so nothing after the open goes by name:
+    /// `CREATE | EXCLUDE | WRITE` never follows a symlink (a taken name, a
+    /// link included, is [`SftpError::AlreadyExists`]); the data, the final
+    /// permission bits (`fsetstat`, `mode & 0o7777`) and `fsync@openssh.com`
+    /// (when the server has it) all use the handle. The file is owner-only
+    /// until then. On error the entry is removed by name, which never
+    /// follows a link.
+    pub async fn create_exclusive_with(
+        &self,
+        path: &str,
+        mode: u32,
+        data: &[u8],
+    ) -> Result<(), SftpError> {
+        let attrs = FileAttributes {
+            permissions: Some(0o600),
+            ..FileAttributes::empty()
+        };
+        let mut file = match self
+            .inner
+            .open_with_flags_and_attributes(
+                path,
+                OpenFlags::CREATE | OpenFlags::EXCLUDE | OpenFlags::WRITE,
+                attrs,
+            )
+            .await
+        {
+            Ok(file) => file,
+            Err(e) => {
+                let err = map_err(path, e);
+                if !matches!(err, SftpError::PermissionDenied(_)) && self.lstat(path).await.is_ok()
+                {
+                    return Err(SftpError::AlreadyExists(path.to_string()));
+                }
+                return Err(err);
+            }
+        };
+        let written = async {
+            file.write_all(data)
+                .await
+                .map_err(|e| io_to_sftp(path, e))?;
+            // Every write acknowledged before the mode changes.
+            file.flush().await.map_err(|e| io_to_sftp(path, e))?;
+            let attrs = FileAttributes {
+                permissions: Some(mode & 0o7777),
+                ..FileAttributes::empty()
+            };
+            file.set_metadata(attrs)
+                .await
+                .map_err(|e| map_err(path, e))?;
+            file.sync_all().await.map_err(|e| map_err(path, e))?;
+            file.shutdown().await.map_err(|e| io_to_sftp(path, e))
+        }
+        .await;
+        if let Err(error) = written {
+            let _ = file.shutdown().await;
+            let _ = self.inner.remove_file(path).await;
+            return Err(error);
+        }
+        Ok(())
+    }
+
     /// Read at most `max_bytes` from the start of a remote file into memory
     /// (previews). Returns the bytes and the whole file's size.
     pub async fn read_head(&self, path: &str, max_bytes: u64) -> Result<(Vec<u8>, u64), SftpError> {

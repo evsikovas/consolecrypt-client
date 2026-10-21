@@ -301,3 +301,91 @@ async fn detailed_listing_links_create_head_and_copy() {
     ));
     assert!(!c.exists("/d/c.txt").await.unwrap(), "partial copy removed");
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn create_exclusive_with_writes_through_one_handle() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let c = client(dir.path()).await;
+    c.create_exclusive_with("/new.yml", 0o640, b"a: 1\n")
+        .await
+        .unwrap();
+    let local = dir.path().join("new.yml");
+    assert_eq!(std::fs::read(&local).unwrap(), b"a: 1\n");
+    assert_eq!(
+        std::fs::metadata(&local).unwrap().permissions().mode() & 0o7777,
+        0o640,
+        "exact mode via fsetstat, whatever the umask"
+    );
+    assert!(matches!(
+        c.create_exclusive_with("/new.yml", 0o600, b"x").await,
+        Err(SftpError::AlreadyExists(_))
+    ));
+    assert_eq!(std::fs::read(&local).unwrap(), b"a: 1\n");
+
+    // A link in place of the name is a taken name: never followed.
+    let victim = dir.path().join("authorized_keys");
+    std::fs::write(&victim, b"ssh-ed25519 AAAA\n").unwrap();
+    std::fs::set_permissions(&victim, std::fs::Permissions::from_mode(0o600)).unwrap();
+    std::os::unix::fs::symlink(&victim, dir.path().join("link.yml")).unwrap();
+    assert!(matches!(
+        c.create_exclusive_with("/link.yml", 0o644, b"pwned").await,
+        Err(SftpError::AlreadyExists(_))
+    ));
+    assert_eq!(std::fs::read(&victim).unwrap(), b"ssh-ed25519 AAAA\n");
+    assert_eq!(
+        std::fs::metadata(&victim).unwrap().permissions().mode() & 0o7777,
+        0o600
+    );
+}
+
+/// Another user swaps the freshly created file for a link to the session
+/// owner's file between the create and the write: the data and the mode
+/// still go to the created file, the link target is untouched.
+#[cfg(unix)]
+#[tokio::test]
+async fn swapping_the_created_file_for_a_link_redirects_nothing() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let victim = dir.path().join("authorized_keys");
+    std::fs::write(&victim, b"ssh-ed25519 AAAA\n").unwrap();
+    std::fs::set_permissions(&victim, std::fs::Permissions::from_mode(0o600)).unwrap();
+    let moved = dir.path().join("moved-away");
+    let hook = {
+        let victim = victim.clone();
+        let moved = moved.clone();
+        std::sync::Arc::new(move |path: &Path| {
+            if path.file_name().is_some_and(|n| n == "candidate.yml") {
+                std::fs::rename(path, &moved).unwrap();
+                std::os::unix::fs::symlink(&victim, path).unwrap();
+            }
+        })
+    };
+    let (a, b) = tokio::io::duplex(1 << 20);
+    tokio::spawn(russh_sftp::server::run(
+        b,
+        LocalFsServer::new(dir.path().to_path_buf()).on_open(hook),
+    ));
+    let c = SftpClient::from_stream(a).await.unwrap();
+    c.create_exclusive_with("/candidate.yml", 0o644, b"services: {}\n")
+        .await
+        .unwrap();
+    assert_eq!(std::fs::read(&victim).unwrap(), b"ssh-ed25519 AAAA\n");
+    assert_eq!(
+        std::fs::metadata(&victim).unwrap().permissions().mode() & 0o7777,
+        0o600,
+        "the link target's mode is unchanged"
+    );
+    assert_eq!(std::fs::read(&moved).unwrap(), b"services: {}\n");
+    assert_eq!(
+        std::fs::metadata(&moved).unwrap().permissions().mode() & 0o7777,
+        0o644
+    );
+    // What the name now points at is the attacker's link, which callers
+    // detect with lstat before trusting it.
+    assert_eq!(
+        c.lstat("/candidate.yml").await.unwrap().kind,
+        EntryKind::Symlink
+    );
+}

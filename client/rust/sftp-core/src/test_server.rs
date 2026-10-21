@@ -16,6 +16,11 @@ use russh_sftp::server::{Handler, StatusReply};
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Component, Path, PathBuf};
+use std::sync::Arc;
+
+/// Called with the local path of every file the server opened, right after
+/// the open (tests swap files there).
+pub type OpenHook = Arc<dyn Fn(&Path) + Send + Sync>;
 
 enum Open {
     File(std::fs::File),
@@ -25,8 +30,13 @@ enum Open {
 /// An in-process SFTP server over `root` and a client connected to it
 /// through an in-memory pipe (no SSH involved).
 pub async fn connect_local(root: PathBuf) -> Result<crate::SftpClient, crate::SftpError> {
+    connect(LocalFsServer::new(root)).await
+}
+
+/// Runs `server` in process and returns a client connected to it.
+pub async fn connect(server: LocalFsServer) -> Result<crate::SftpClient, crate::SftpError> {
     let (a, b) = tokio::io::duplex(1 << 20);
-    tokio::spawn(russh_sftp::server::run(b, LocalFsServer::new(root)));
+    tokio::spawn(russh_sftp::server::run(b, server));
     crate::SftpClient::from_stream(a).await
 }
 
@@ -37,6 +47,7 @@ pub struct LocalFsServer {
     handles: HashMap<String, Open>,
     next: u64,
     posix_rename: bool,
+    on_open: Option<OpenHook>,
 }
 
 impl LocalFsServer {
@@ -47,7 +58,14 @@ impl LocalFsServer {
             handles: HashMap::new(),
             next: 0,
             posix_rename: true,
+            on_open: None,
         }
+    }
+
+    /// Runs `hook` after every successful file open.
+    pub fn on_open(mut self, hook: OpenHook) -> Self {
+        self.on_open = Some(hook);
+        self
     }
 
     /// Do not announce / implement `posix-rename@openssh.com`.
@@ -110,6 +128,7 @@ impl Handler for LocalFsServer {
 
     async fn init(&mut self, _v: u32, _e: HashMap<String, String>) -> Result<Version, Self::Error> {
         let mut v = Version::new();
+        v.extensions.insert("fsync@openssh.com".into(), "1".into());
         if self.posix_rename {
             v.extensions
                 .insert("posix-rename@openssh.com".into(), "1".into());
@@ -123,9 +142,6 @@ impl Handler for LocalFsServer {
         request: String,
         data: Vec<u8>,
     ) -> Result<Packet, Self::Error> {
-        if request != "posix-rename@openssh.com" || !self.posix_rename {
-            return Err(StatusCode::OpUnsupported.into());
-        }
         fn take(d: &mut &[u8]) -> Option<String> {
             let n = u32::from_be_bytes(d.get(..4)?.try_into().ok()?) as usize;
             let s = String::from_utf8(d.get(4..4 + n)?.to_vec()).ok()?;
@@ -133,6 +149,17 @@ impl Handler for LocalFsServer {
             Some(s)
         }
         let mut d = data.as_slice();
+        if request == "fsync@openssh.com" {
+            let handle = take(&mut d).ok_or(StatusCode::BadMessage)?;
+            let Some(Open::File(f)) = self.handles.get(&handle) else {
+                return Err(StatusCode::Failure.into());
+            };
+            f.sync_all().map_err(io_code)?;
+            return Ok(Packet::Status(ok(id)));
+        }
+        if request != "posix-rename@openssh.com" || !self.posix_rename {
+            return Err(StatusCode::OpUnsupported.into());
+        }
         let (Some(from), Some(to)) = (take(&mut d), take(&mut d)) else {
             return Err(StatusCode::BadMessage.into());
         };
@@ -145,12 +172,20 @@ impl Handler for LocalFsServer {
         id: u32,
         filename: String,
         pflags: OpenFlags,
-        _a: FileAttributes,
+        attrs: FileAttributes,
     ) -> Result<Handle, Self::Error> {
         let path = self.resolve(&filename)?;
-        let f = std::fs::OpenOptions::from(pflags)
-            .open(&path)
-            .map_err(io_code)?;
+        let mut options = std::fs::OpenOptions::from(pflags);
+        #[cfg(unix)]
+        if let Some(mode) = attrs.permissions {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(mode & 0o7777);
+        }
+        let _ = &attrs;
+        let f = options.open(&path).map_err(io_code)?;
+        if let Some(hook) = &self.on_open {
+            hook(&path);
+        }
         let handle = self.handle(Open::File(f));
         Ok(Handle { id, handle })
     }
@@ -238,6 +273,25 @@ impl Handler for LocalFsServer {
                 .map_err(io_code)?;
         }
         let _ = (&p, &attrs);
+        Ok(ok(id))
+    }
+
+    async fn fsetstat(
+        &mut self,
+        id: u32,
+        handle: String,
+        attrs: FileAttributes,
+    ) -> Result<Status, Self::Error> {
+        let Some(Open::File(f)) = self.handles.get(&handle) else {
+            return Err(StatusCode::Failure.into());
+        };
+        #[cfg(unix)]
+        if let Some(mode) = attrs.permissions {
+            use std::os::unix::fs::PermissionsExt;
+            f.set_permissions(std::fs::Permissions::from_mode(mode & 0o7777))
+                .map_err(io_code)?;
+        }
+        let _ = (f, &attrs);
         Ok(ok(id))
     }
 
