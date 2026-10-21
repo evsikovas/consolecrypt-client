@@ -96,6 +96,53 @@ async fn docker_over_ssh_reports_missing_rights_then_lists_logs_and_forwards() {
         "{lines:?}"
     );
 
+    // A shell inside the container as a terminal tab (auto-detected shell).
+    let term = app
+        .docker_terminal_open(
+            session.id.clone(),
+            me.id.clone(),
+            me.name.clone(),
+            vec!["/__consolecrypt_auto_shell__".into()],
+            100,
+            30,
+        )
+        .await
+        .unwrap();
+    let mut output = app.attach_terminal(term.id.clone()).await.unwrap().output;
+    app.terminal_write(term.id.clone(), b"echo ctr-$((40+2))-ok\n".to_vec())
+        .await
+        .unwrap();
+    let mut seen = Vec::new();
+    let found = tokio::time::timeout(Duration::from_secs(15), async {
+        while let Some(chunk) = output.recv().await {
+            if let TerminalChunk::Data(d) = chunk {
+                seen.extend_from_slice(&d);
+                if String::from_utf8_lossy(&seen).contains("ctr-42-ok") {
+                    return true;
+                }
+            }
+        }
+        false
+    })
+    .await
+    .unwrap_or(false);
+    assert!(
+        found,
+        "container terminal: {}",
+        String::from_utf8_lossy(&seen)
+    );
+    app.terminal_resize(term.id.clone(), 120, 40).await.unwrap();
+    app.terminal_write(term.id.clone(), b"exit\n".to_vec())
+        .await
+        .unwrap();
+    tokio::time::timeout(
+        Duration::from_secs(15),
+        app.terminal_wait_closed(term.id.clone()),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+
     // Port 8080 of the container through the SSH host.
     let forward = app
         .docker_forward_start(session.id.clone(), me.id.clone(), 8080, 0)
