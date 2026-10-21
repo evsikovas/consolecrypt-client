@@ -290,9 +290,6 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
                         SharedItemKind::Secret => query
                             .get("include_secrets")
                             .is_some_and(|value| value == "true"),
-                        SharedItemKind::DbConnection => query
-                            .get("include_db_connections")
-                            .is_some_and(|v| v == "true"),
                     }
                     && history
                         .state
