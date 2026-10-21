@@ -54,6 +54,31 @@ Future<String> sharingCopyKubeContext({
   includeCredentials: includeCredentials,
 );
 
+Future<String> sharingPreviewDbConnection({required String id, required bool includeCredentials}) =>
+    RustLib.instance.api.crateApiSharingSharingPreviewDbConnection(id: id, includeCredentials: includeCredentials);
+
+Future<String> sharingPublishDbConnection({
+  required String connectionId,
+  required bool includeCredentials,
+  required String expectedStamp,
+  required String grantsJson,
+}) => RustLib.instance.api.crateApiSharingSharingPublishDbConnection(
+  connectionId: connectionId,
+  includeCredentials: includeCredentials,
+  expectedStamp: expectedStamp,
+  grantsJson: grantsJson,
+);
+
+Future<String> sharingCopyDbConnection({
+  required String shareId,
+  required String routeJson,
+  required bool includeCredentials,
+}) => RustLib.instance.api.crateApiSharingSharingCopyDbConnection(
+  shareId: shareId,
+  routeJson: routeJson,
+  includeCredentials: includeCredentials,
+);
+
 Future<String> sharingPublish({required String projectionJson, required String grantsJson}) =>
     RustLib.instance.api.crateApiSharingSharingPublish(projectionJson: projectionJson, grantsJson: grantsJson);
 

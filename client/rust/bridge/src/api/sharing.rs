@@ -80,6 +80,52 @@ pub async fn sharing_copy_kube_context(
     })
     .await
 }
+pub async fn sharing_preview_db_connection(
+    id: String,
+    include_credentials: bool,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move {
+        to_json(
+            &c.sharing_preview_db_connection(id, include_credentials)
+                .await?,
+        )
+    })
+    .await
+}
+pub async fn sharing_publish_db_connection(
+    connection_id: String,
+    include_credentials: bool,
+    expected_stamp: String,
+    grants_json: String,
+) -> Result<String, BridgeError> {
+    let grants = from_json("sharing_grants", &grants_json)?;
+    with_core(move |c| async move {
+        to_json(
+            &c.sharing_publish_db_connection(
+                connection_id,
+                include_credentials,
+                expected_stamp,
+                grants,
+            )
+            .await?,
+        )
+    })
+    .await
+}
+pub async fn sharing_copy_db_connection(
+    share_id: String,
+    route_json: String,
+    include_credentials: bool,
+) -> Result<String, BridgeError> {
+    let route: cc_models::database::DbRoute = from_json("db_route", &route_json)?;
+    with_core(move |c| async move {
+        to_json(
+            &c.sharing_copy_db_connection(share_id, route, include_credentials)
+                .await?,
+        )
+    })
+    .await
+}
 pub async fn sharing_publish(
     projection_json: String,
     grants_json: String,

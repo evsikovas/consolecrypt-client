@@ -11,6 +11,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/sharing/enrollment_owner.dart';
 import 'package:consolecrypt/sharing/enrollment_pairing.dart';
 import 'package:consolecrypt/sharing/sharing_collections.dart';
+import 'package:consolecrypt/sharing/sharing_database.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_kubernetes.dart';
 import 'package:consolecrypt/sharing/sharing_management.dart';
@@ -366,6 +367,39 @@ class _SharingDeviceActionsState extends State<_SharingDeviceActions> {
   }
 }
 
+/// Sharing details of one item (save a copy, members, revoke, stop sharing)
+/// opened from another section, e.g. a shared connection in Databases.
+Future<void> showSharingItemDetails(BuildContext context, WidgetRef ref, SharingItem item) {
+  final profile = ref.read(sharingSessionScopeProvider);
+  return showAppDialog<void>(
+    context,
+    secure: true,
+    builder: (context) => SharingDialogGuard(profile: profile, child: _SharingItemDetails(item)),
+  );
+}
+
+class _SharingItemDetails extends ConsumerWidget {
+  const _SharingItemDetails(this.item);
+  final SharingItem item;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final status = ref.watch(sharingStatusProvider).value ?? const SharingStatus();
+    final current = ref.watch(sharingItemsProvider).value?.where((i) => i.id == item.id).firstOrNull ?? item;
+    return GlassDialog(
+      title: current.name ?? l.sharingInvitation,
+      content: SizedBox(
+        width: 600,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .65),
+          child: SingleChildScrollView(child: _SharingTile(current, status)),
+        ),
+      ),
+      primaryAction: GlassButton(label: l.commonClose, onPressed: () => closeDialog<void>(context)),
+    );
+  }
+}
+
 class _SharingTile extends ConsumerWidget {
   const _SharingTile(this.item, this.status, {this.visited = const {}});
   final SharingItem item;
@@ -375,6 +409,10 @@ class _SharingTile extends ConsumerWidget {
   Future<void> _copy(BuildContext context, WidgetRef ref) async {
     if (item.kind == SharingKind.kubeContext) {
       await showSharingCopyKubeContext(context, item);
+      return;
+    }
+    if (item.kind == SharingKind.dbConnection) {
+      await showSharingCopyDbConnection(context, item);
       return;
     }
     if (item.kind == SharingKind.host) {
@@ -454,6 +492,7 @@ class _SharingTile extends ConsumerWidget {
       SharingKind.group => l.sharingGroup,
       SharingKind.secret => l.sharingSecret,
       SharingKind.kubeContext => l.sharingKubeContext,
+      SharingKind.dbConnection => l.sharingDbConnection,
     };
     return ContentSurface(
       child: Column(
@@ -467,6 +506,7 @@ class _SharingTile extends ConsumerWidget {
               SharingKind.group => Icons.folder_shared_outlined,
               SharingKind.secret => Icons.key_outlined,
               SharingKind.kubeContext => Icons.hub_outlined,
+              SharingKind.dbConnection => Icons.storage_rounded,
             }),
             title: Text(item.name ?? l.sharingInvitation),
             subtitle: Text(
@@ -528,7 +568,8 @@ class _SharingTile extends ConsumerWidget {
               children: [
                 if (item.kind == SharingKind.host ||
                     item.kind == SharingKind.snippet ||
-                    item.kind == SharingKind.kubeContext)
+                    item.kind == SharingKind.kubeContext ||
+                    item.kind == SharingKind.dbConnection)
                   GlassButton(
                     label: l.sharingCopyPersonal,
                     icon: Icons.copy_outlined,

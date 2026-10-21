@@ -62,6 +62,14 @@
 Парольная фраза SSH-ключа передаётся отдельно; она не прикрепляется к ключу
 автоматически. Секреты не попадают в ИИ или в общий просмотр метаданных.
 
+## Подключения Kubernetes и баз данных
+
+Контексты Kubernetes и подключения к базам данных передаются только при
+поддержке сервера; старый сервер скрывает эти действия. Учётные данные по
+умолчанию не передаются, а маршрут через личный SSH-хост, профиль переходов,
+прокси, туннель или контекст получатель выбирает свой при сохранении копии.
+Подробности — в разделах Kubernetes и «Базы данных».
+
 ## Несколько устройств коллеги
 
 Личное рабочее место синхронизируется обычным подтверждением устройств. Доступ
@@ -130,6 +138,11 @@ independent channel before approving it. Reader is the default; editors may
 change the item. Receiving a snippet never executes it. Your personal vault key
 is never shared. Hosts exclude passwords, private keys and personal credential
 references; recipients use their own credentials.
+
+Kubernetes contexts and database connections are offered only when the server
+supports them; an older server keeps these actions hidden. Credentials are
+excluded by default, and a route through a personal SSH host, jump profile,
+proxy, tunnel or context is chosen by the recipient when saving a copy.
 
 Collections reference independently shared items and do not grant inherited
 access. Secret sharing requires a separate explicit confirmation. Values remain

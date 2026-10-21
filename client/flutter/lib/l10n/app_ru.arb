@@ -5234,5 +5234,106 @@
   "dockerComposeFileNotText": "Файл не является текстом в UTF-8.",
   "dockerComposeFileReadFailed": "Не удалось прочитать файл.",
   "dockerComposeProjectGone": "У проекта больше нет контейнеров.",
-  "dockerComposeFilesUnknown": "Контейнеры проекта не хранят сведений о том, из каких файлов compose они созданы."
+  "dockerComposeFilesUnknown": "Контейнеры проекта не хранят сведений о том, из каких файлов compose они созданы.",
+  "sharingDbConnection": "Подключение к базе данных",
+  "@sharingDbConnection": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbUnsupported": "Этот сервер не поддерживает общий доступ к подключениям баз данных.",
+  "@sharingDbUnsupported": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbSnapshotChanged": "Проверьте подключение ещё раз, если его параметры или учётные данные изменились.",
+  "@sharingDbSnapshotChanged": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbExclude": "По умолчанию передаются только параметры подключения. Пароль, ключ клиента, группа, история запросов и настройки ИИ остаются на этом устройстве.",
+  "@sharingDbExclude": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbIncludeCredentials": "Передать сохранённый пароль и ключ клиента",
+  "@sharingDbIncludeCredentials": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbCredentialWarning": "Получатели смогут использовать эти учётные данные для доступа к базе данных. Передавайте их только проверенным устройствам, которым доверяете. Отзыв доступа не отменяет уже скопированные учётные данные: смените пароль на сервере базы данных.",
+  "@sharingDbCredentialWarning": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbCredentialsIncluded": "Пароль или ключ клиента переданы; значения скрыты.",
+  "@sharingDbCredentialsIncluded": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbCredentialsExcluded": "Пароль и ключ клиента не переданы.",
+  "@sharingDbCredentialsExcluded": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbRouteRelay": "Подключение идёт через SSH-хост, профиль переходов, прокси или туннель, которые не передаются. Получатели выбирают свой маршрут.",
+  "@sharingDbRouteRelay": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbRouteKubernetes": "Подключение пробрасывается из рабочей нагрузки Kubernetes. Получатели выбирают свой контекст Kubernetes; пространство имён и нагрузка сохраняются.",
+  "@sharingDbRouteKubernetes": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbRouteDocker": "Подключение пробрасывается из контейнера Docker. Получатели выбирают свой движок Docker; имя контейнера сохраняется.",
+  "@sharingDbRouteDocker": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbCopyHelp": "Сохраните личную копию подключения в разделе «Базы данных». Выберите свой маршрут. Пароль и ключ клиента импортируются только по вашему явному выбору.",
+  "@sharingDbCopyHelp": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbRouteRequired": "Это подключение недоступно напрямую. Выберите совместимый маршрут, сохранённый на этом устройстве.",
+  "@sharingDbRouteRequired": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbNoRoute": "На этом устройстве нет совместимого маршрута. Сначала добавьте его.",
+  "@sharingDbNoRoute": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbImportCredentials": "Импортировать переданные пароль и ключ клиента",
+  "@sharingDbImportCredentials": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbRouteKind": "Маршрут",
+  "@sharingDbRouteKind": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbRouteKindRelay": "SSH, профиль переходов, прокси или туннель",
+  "@sharingDbRouteKindRelay": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbWorkload": "Рабочая нагрузка",
+  "@sharingDbWorkload": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbContainer": "Контейнер",
+  "@sharingDbContainer": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "dbSharedTitle": "Общие подключения",
+  "@dbSharedTitle": {
+    "description": "Databases screen: section with database connections shared with or by this device."
+  },
+  "dbSharedBadge": "Общее",
+  "@dbSharedBadge": {
+    "description": "Databases screen: badge on a connection that came from selective sharing."
+  },
+  "dbSharedOwned": "Вы поделились",
+  "@dbSharedOwned": {
+    "description": "Databases screen: badge on a shared connection published by this device."
+  },
+  "dbSharedOpen": "Подробнее",
+  "@dbSharedOpen": {
+    "description": "Databases screen: opens sharing details (save a copy, members, revoke) for a shared connection."
+  },
+  "dbSharedCount": "{count, plural, one{{count} общее подключение} few{{count} общих подключения} many{{count} общих подключений} other{{count} общего подключения}}",
+  "@dbSharedCount": {
+    "description": "Databases screen: number of shared database connections in the section header.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

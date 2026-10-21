@@ -18,6 +18,7 @@ use cc_protocol::devices::RequestProof;
 use cc_protocol::sharing::*;
 use cc_protocol::version::{Platform, HEADER_DEVICE_PROOF};
 use cc_protocol::{Bytes, DeviceId, ErrorCode, MutationId, ObjectId, SessionId, ShareId, UserId};
+use cc_sync_core::api::ShareKinds;
 use cc_sync_core::{ApiClient, ApiConfig, ApiError, MemoryTokenStore, RequestSigner, SignerError};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
@@ -181,6 +182,7 @@ async fn handler(State(state): State<Arc<Mock>>, request: Request) -> Response {
                 supports_groups: false,
                 supports_secrets: false,
                 supports_kube_contexts: false,
+                supports_db_connections: false,
                 supports_owner_online_enrollment_v1: false,
             })
             .unwrap(),
@@ -665,4 +667,49 @@ async fn unadvertised_kind_request_never_sends_http_and_unsolicited_kind_is_reje
         .list_shares_with_kinds(None, 10, true, false)
         .await
         .is_ok());
+}
+
+#[tokio::test]
+async fn database_kind_is_requested_only_when_advertised_and_never_unsolicited() {
+    let f = Fixture::new(false).await;
+    let baseline = f.api.sharing(f.mock.server_instance).await.unwrap();
+    let count = f.mock.requests.lock().unwrap().len();
+    let db = ShareKinds {
+        db_connections: true,
+        ..ShareKinds::default()
+    };
+    assert!(baseline.list_shares_including(None, 10, db).await.is_err());
+    assert_eq!(f.mock.requests.lock().unwrap().len(), count);
+    f.override_response("/v1/shares/capabilities", json!({"enabled":true,
+        "server_instance_id":f.mock.server_instance,"format":1,"max_members":64,"max_ciphertext_bytes":1048592,
+        "supports_db_connections":true}));
+    let upgraded = f.api.sharing(f.mock.server_instance).await.unwrap();
+    assert!(upgraded.capabilities().supports_db_connections);
+    assert!(!upgraded.capabilities().supports_kube_contexts);
+    let mut state = f.mock.current.lock().unwrap().clone();
+    state.access.manifest.kind = SharedItemKind::DbConnection;
+    state.revision.signed.mutation.context.kind = SharedItemKind::DbConnection;
+    f.override_response(
+        "/v1/shares",
+        serde_json::to_value(ShareListPage {
+            items: vec![state],
+            next_after: None,
+            has_more: false,
+        })
+        .unwrap(),
+    );
+    assert!(
+        upgraded.list_shares(None, 10).await.is_err(),
+        "an unrequested database item is rejected"
+    );
+    assert!(upgraded
+        .list_shares_with_extensions(None, 10, false, false, true)
+        .await
+        .is_err());
+    assert!(upgraded.list_shares_including(None, 10, db).await.is_ok());
+    let requests = f.mock.requests.lock().unwrap();
+    assert_eq!(
+        requests.last().unwrap().1,
+        "/v1/shares?limit=10&include_db_connections=true"
+    );
 }

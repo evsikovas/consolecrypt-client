@@ -2,6 +2,10 @@ import 'package:consolecrypt/db/db_connections_screen.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_workspace.dart';
+import 'package:consolecrypt/sharing/sharing_database.dart';
+import 'package:consolecrypt/sharing/sharing_models.dart';
+import 'package:consolecrypt/sharing/sharing_providers.dart';
+import 'package:consolecrypt/sharing/sharing_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -35,7 +39,23 @@ class _DatabasesScreenState extends ConsumerState<DatabasesScreen> {
   Widget build(BuildContext context) {
     ref.listen(dbOpenRequestProvider, (_, id) => _openRequested(id));
     final open = _open;
-    if (open == null) return DbConnectionsScreen(onOpen: (connection) => setState(() => _open = connection));
+    if (open == null) {
+      // Offered only when the server advertises database connection sharing;
+      // older servers keep both the action and the section hidden.
+      final status = ref.watch(sharingStatusProvider).value;
+      final sharing = status != null && status.enabled && !status.locked && status.supportsDbConnections;
+      final shared = sharing
+          ? (ref.watch(sharingItemsProvider).value ?? const <SharingItem>[])
+                .where((item) => item.kind == SharingKind.dbConnection && item.trust != SharingTrust.deleted)
+                .toList(growable: false)
+          : const <SharingItem>[];
+      return DbConnectionsScreen(
+        onOpen: (connection) => setState(() => _open = connection),
+        onShare: sharing ? (connection) => showSharingDbConnection(context, connectionId: connection.id) : null,
+        shared: shared,
+        onOpenShared: (item) => showSharingItemDetails(context, ref, item),
+      );
+    }
     return DbWorkspace(key: ValueKey(open.id), connection: open, onClose: () => setState(() => _open = null));
   }
 }

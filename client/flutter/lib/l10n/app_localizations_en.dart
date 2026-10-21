@@ -9291,4 +9291,91 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerComposeFilesUnknown => 'The project\'s containers do not record which compose files created them.';
+
+  @override
+  String get sharingDbConnection => 'Database connection';
+
+  @override
+  String get sharingDbUnsupported => 'This server does not support sharing database connections.';
+
+  @override
+  String get sharingDbSnapshotChanged => 'Review this connection again if its settings or credentials have changed.';
+
+  @override
+  String get sharingDbExclude =>
+      'Only the connection settings are shared by default. The password, client key, group, query history and AI settings remain on this device.';
+
+  @override
+  String get sharingDbIncludeCredentials => 'Include the saved password and client key';
+
+  @override
+  String get sharingDbCredentialWarning =>
+      'Recipients can use these credentials to access the database. Share them only with verified devices you trust. Revoking the share does not revoke credentials already copied by a recipient: change the password on the database server.';
+
+  @override
+  String get sharingDbCredentialsIncluded => 'The password or client key is included; values stay hidden.';
+
+  @override
+  String get sharingDbCredentialsExcluded => 'The password and client key are not included.';
+
+  @override
+  String get sharingDbRouteRelay =>
+      'This connection goes through an SSH host, jump profile, proxy or tunnel that is not shared. Recipients select their own route.';
+
+  @override
+  String get sharingDbRouteKubernetes =>
+      'This connection is forwarded from a Kubernetes workload. Recipients select their own Kubernetes context; the namespace and workload are kept.';
+
+  @override
+  String get sharingDbRouteDocker =>
+      'This connection is forwarded from a Docker container. Recipients select their own Docker engine; the container name is kept.';
+
+  @override
+  String get sharingDbCopyHelp =>
+      'Save a personal copy of this connection to Databases. Choose your own route. The password and client key are imported only with your explicit selection.';
+
+  @override
+  String get sharingDbRouteRequired =>
+      'This connection is not reachable directly. Select a compatible route saved on this device.';
+
+  @override
+  String get sharingDbNoRoute => 'No compatible route is saved on this device. Add one first.';
+
+  @override
+  String get sharingDbImportCredentials => 'Import the included password and client key';
+
+  @override
+  String get sharingDbRouteKind => 'Route';
+
+  @override
+  String get sharingDbRouteKindRelay => 'SSH, jump profile, proxy or tunnel';
+
+  @override
+  String get sharingDbWorkload => 'Workload';
+
+  @override
+  String get sharingDbContainer => 'Container';
+
+  @override
+  String get dbSharedTitle => 'Shared connections';
+
+  @override
+  String get dbSharedBadge => 'Shared';
+
+  @override
+  String get dbSharedOwned => 'Shared by you';
+
+  @override
+  String get dbSharedOpen => 'Details';
+
+  @override
+  String dbSharedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count shared connections',
+      one: '$count shared connection',
+    );
+    return '$_temp0';
+  }
 }

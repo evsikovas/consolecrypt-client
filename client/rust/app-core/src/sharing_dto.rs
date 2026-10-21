@@ -10,6 +10,7 @@ pub enum SharingKindDto {
     Group,
     Secret,
     KubeContext,
+    DbConnection,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,6 +70,7 @@ pub struct SharingStatusDto {
     pub supports_groups: bool,
     pub supports_secrets: bool,
     pub supports_kube_contexts: bool,
+    pub supports_db_connections: bool,
     pub supports_owner_online_enrollment_v1: bool,
 }
 

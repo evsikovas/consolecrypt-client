@@ -16705,6 +16705,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The project\'s containers do not record which compose files created them.'**
   String get dockerComposeFilesUnknown;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Database connection'**
+  String get sharingDbConnection;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'This server does not support sharing database connections.'**
+  String get sharingDbUnsupported;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Review this connection again if its settings or credentials have changed.'**
+  String get sharingDbSnapshotChanged;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the connection settings are shared by default. The password, client key, group, query history and AI settings remain on this device.'**
+  String get sharingDbExclude;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Include the saved password and client key'**
+  String get sharingDbIncludeCredentials;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipients can use these credentials to access the database. Share them only with verified devices you trust. Revoking the share does not revoke credentials already copied by a recipient: change the password on the database server.'**
+  String get sharingDbCredentialWarning;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'The password or client key is included; values stay hidden.'**
+  String get sharingDbCredentialsIncluded;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'The password and client key are not included.'**
+  String get sharingDbCredentialsExcluded;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'This connection goes through an SSH host, jump profile, proxy or tunnel that is not shared. Recipients select their own route.'**
+  String get sharingDbRouteRelay;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'This connection is forwarded from a Kubernetes workload. Recipients select their own Kubernetes context; the namespace and workload are kept.'**
+  String get sharingDbRouteKubernetes;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'This connection is forwarded from a Docker container. Recipients select their own Docker engine; the container name is kept.'**
+  String get sharingDbRouteDocker;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a personal copy of this connection to Databases. Choose your own route. The password and client key are imported only with your explicit selection.'**
+  String get sharingDbCopyHelp;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'This connection is not reachable directly. Select a compatible route saved on this device.'**
+  String get sharingDbRouteRequired;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'No compatible route is saved on this device. Add one first.'**
+  String get sharingDbNoRoute;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Import the included password and client key'**
+  String get sharingDbImportCredentials;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Route'**
+  String get sharingDbRouteKind;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH, jump profile, proxy or tunnel'**
+  String get sharingDbRouteKindRelay;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Workload'**
+  String get sharingDbWorkload;
+
+  /// Database connection sharing; credentials remain hidden in previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Container'**
+  String get sharingDbContainer;
+
+  /// Databases screen: section with database connections shared with or by this device.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared connections'**
+  String get dbSharedTitle;
+
+  /// Databases screen: badge on a connection that came from selective sharing.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared'**
+  String get dbSharedBadge;
+
+  /// Databases screen: badge on a shared connection published by this device.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared by you'**
+  String get dbSharedOwned;
+
+  /// Databases screen: opens sharing details (save a copy, members, revoke) for a shared connection.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get dbSharedOpen;
+
+  /// Databases screen: number of shared database connections in the section header.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} shared connection} other{{count} shared connections}}'**
+  String dbSharedCount(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

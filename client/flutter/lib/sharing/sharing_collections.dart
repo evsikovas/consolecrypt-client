@@ -66,6 +66,7 @@ class _SharingGroupPublishDialogState extends ConsumerState<SharingGroupPublishD
                 item.previewJson != null &&
                 item.kind != SharingKind.group &&
                 (item.kind != SharingKind.kubeContext || status.supportsKubeContexts) &&
+                (item.kind != SharingKind.dbConnection || status.supportsDbConnections) &&
                 (item.kind != SharingKind.secret || status.supportsSecrets),
           )
           .toList(growable: false);
@@ -84,7 +85,7 @@ class _SharingGroupPublishDialogState extends ConsumerState<SharingGroupPublishD
           final kind = r['kind'] as String;
           // Nested groups need a separate bounded navigation/edit contract.
           // Fail closed instead of silently dropping unsupported references.
-          if (!const ['host', 'snippet', 'secret', 'kube_context'].contains(kind) || !seen.add(id)) {
+          if (!const ['host', 'snippet', 'secret', 'kube_context', 'db_connection'].contains(kind) || !seen.add(id)) {
             throw StateError('unavailable');
           }
           refs.add({'share_id': id, 'item_id': object, 'kind': kind});
@@ -330,4 +331,5 @@ String _kindLabel(BuildContext context, SharingKind kind) => switch (kind) {
   SharingKind.group => context.l10n.sharingGroup,
   SharingKind.secret => context.l10n.sharingSecret,
   SharingKind.kubeContext => context.l10n.sharingKubeContext,
+  SharingKind.dbConnection => context.l10n.sharingDbConnection,
 };

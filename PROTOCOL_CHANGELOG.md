@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- Protocol 1.6 (2026-10-21, server 0.1.15, additive): selective sharing of
+  database connections. New `SharedItemKind::DbConnection` (`db_connection`,
+  signed domain byte 6), advertised as `supports_db_connections` and listed
+  only with an explicit `include_db_connections=true`; 1.5 clients never
+  receive it and the client never requests or publishes it unless advertised.
+  The encrypted projection (`{"kind":"db_connection","data":{…}}`) carries
+  name, engine, host, port, database, username, TLS, auth mechanism, public
+  client certificate, production flag, limits, typed driver options, tags and
+  colour, plus a route shape without personal IDs:
+  `{"kind":"direct"}`, `{"kind":"relay"}` (SSH host, jump profile, proxy or
+  tunnel of the owner), `{"kind":"kubernetes","namespace":…,"target_kind":…,
+  "target_name":…}` or `{"kind":"docker","container":…}`. The receiver saves
+  a personal copy with their own compatible route; a non-direct route never
+  becomes direct. `authentication` (`password`, `client_key`) is present only
+  after explicit consent and additionally requires `supports_secrets` both at
+  publication and when importing. Groups, history, session permissions and AI
+  consents are never part of it. Collections may reference `db_connection`
+  children (as for `kube_context`, a pre-1.6 client cannot decode such a
+  collection). Personal vault objects, encryption format and the `DbRoute`
+  model are unchanged.
+
 - Client Dev (2026-10-21, client-only encrypted payloads): add three
   restorable variants to the `db_connection.route` tagged union:
   `{"kind":"kubernetes","context_id":…,"namespace":…,"target_kind":

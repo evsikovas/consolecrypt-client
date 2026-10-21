@@ -96,6 +96,7 @@ pub enum SharedProjection {
     Group(SharedGroupProjection),
     Secret(SharedSecretProjection),
     KubeContext(crate::sharing_kubernetes::SharedKubeProjection),
+    DbConnection(crate::sharing_database::SharedDbProjection),
 }
 
 macro_rules! opaque_debug {
@@ -134,6 +135,17 @@ impl SharedProjection {
             Self::Group(_) => SharedItemKind::Group,
             Self::Secret(_) => SharedItemKind::Secret,
             Self::KubeContext(_) => SharedItemKind::KubeContext,
+            Self::DbConnection(_) => SharedItemKind::DbConnection,
+        }
+    }
+
+    /// Kinds other than Secret that embed credentials still require the
+    /// independently negotiated secret-sharing capability.
+    pub fn carries_secrets(&self) -> bool {
+        match self {
+            Self::KubeContext(k) => k.authentication.is_some(),
+            Self::DbConnection(d) => d.authentication.is_some(),
+            _ => false,
         }
     }
 
@@ -172,6 +184,7 @@ impl SharedProjection {
             }
             Self::Group(g) => validate_group(g)?,
             Self::KubeContext(k) => k.validate()?,
+            Self::DbConnection(d) => d.validate()?,
             Self::Secret(s) if s.name.trim().is_empty() || s.value.is_empty() => {
                 return Err(AppError::invalid("shared_projection", "empty secret"));
             }

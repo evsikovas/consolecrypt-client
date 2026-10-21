@@ -90,6 +90,7 @@ mod session;
 mod sftp_browser;
 mod sharing_api;
 mod sharing_bindings;
+pub mod sharing_database;
 pub mod sharing_dto;
 pub mod sharing_highwater;
 pub mod sharing_kubernetes;
