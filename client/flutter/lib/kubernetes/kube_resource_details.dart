@@ -928,6 +928,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
           GlassButton(
             key: ValueKey('kube-gitops-detail-$action'),
             label: kubeGitOpsActionLabel(l, action),
+            tooltip: resource.isFlux ? kubeGitOpsActionHelp(l, action) : null,
             onPressed: canWrite && !_mutating ? () => _gitOpsAction(action) : null,
           ),
         GlassButton(

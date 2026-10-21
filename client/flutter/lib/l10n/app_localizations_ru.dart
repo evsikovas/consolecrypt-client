@@ -6402,10 +6402,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeDependencyWaiting => 'Ожидает зависимость';
 
   @override
-  String get kubeGitOpsSuspend => 'Приостановить согласование';
+  String get kubeGitOpsSuspend => 'Приостановить синхронизацию';
 
   @override
-  String get kubeGitOpsResume => 'Возобновить согласование';
+  String get kubeGitOpsResume => 'Возобновить синхронизацию';
 
   @override
   String get kubeGitOpsReset => 'Сбросить счётчик ошибок';
@@ -6414,7 +6414,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeGitOpsForce => 'Принудительно обновить Helm';
 
   @override
-  String get kubeGitOpsReconcile => 'Согласовать сейчас';
+  String get kubeGitOpsReconcile => 'Синхронизировать сейчас';
 
   @override
   String get kubeArgoSync => 'Синхронизировать приложение';
@@ -6493,10 +6493,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeIssueFluxNotReady => 'Ресурс Flux не готов';
 
   @override
-  String get kubeIssueFluxStalled => 'Согласование Flux остановилось с ошибкой';
+  String get kubeIssueFluxStalled => 'Синхронизация Flux остановилась с ошибкой';
 
   @override
-  String get kubeIssueFluxSuspended => 'Согласование Flux приостановлено';
+  String get kubeIssueFluxSuspended => 'Синхронизация Flux приостановлена';
 
   @override
   String get kubeHelmAllRevisions => 'Показать все ревизии';
@@ -7121,7 +7121,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeIssuePendingVolume => 'Pod ожидает том';
 
   @override
-  String get kubeIssueSuspendedLong => 'Сверка приостановлена более 24 часов';
+  String get kubeIssueSuspendedLong => 'Синхронизация приостановлена более 24 часов';
 
   @override
   String get kubeIssueSourceStale => 'Артефакт источника устарел';
@@ -7457,11 +7457,11 @@ class AppLocalizationsRu extends AppLocalizations {
       'Не все перенаправления портов восстановлены. Проверьте под и локальный порт, затем запустите их снова.';
 
   @override
-  String get kubeGitOpsReconcileWithSource => 'Обновить вместе с источником';
+  String get kubeGitOpsReconcileWithSource => 'Синхронизировать вместе с источником';
 
   @override
   String get kubeGitOpsReconcileWithSourceHelp =>
-      'Запросить обновление цепочки источников, затем этого ресурса. Готовность контроллеров отображается в живом статусе. Подтвердите точное имя ресурса.';
+      'Запросить обновление цепочки источников, затем синхронизацию этого ресурса. Готовность контроллеров отображается в живом статусе. Подтвердите точное имя ресурса.';
 
   @override
   String get kubeForwardNetwork => 'Разрешить доступ из локальной сети';
@@ -9857,4 +9857,28 @@ class AppLocalizationsRu extends AppLocalizations {
   String updateErrorBrowser(String url) {
     return 'Не удалось открыть браузер. Страница загрузки: $url';
   }
+
+  @override
+  String get kubeGitOpsReconcileTooltip =>
+      'Flux немедленно сверит выбранные ресурсы с Git и применит изменения (flux reconcile)';
+
+  @override
+  String get kubeGitOpsReconcileWithSourceTooltip =>
+      'Flux сначала получит свежую версию источника (Git-репозитория или чарта), затем синхронизирует выбранный ресурс (flux reconcile --with-source)';
+
+  @override
+  String get kubeGitOpsSuspendTooltip =>
+      'Flux перестанет применять изменения из Git к выбранным ресурсам, пока синхронизацию не возобновят (flux suspend)';
+
+  @override
+  String get kubeGitOpsResumeTooltip =>
+      'Flux снова начнёт применять изменения из Git к выбранным ресурсам и сразу синхронизирует их (flux resume)';
+
+  @override
+  String get kubeGitOpsResetTooltip =>
+      'Обнулит счётчик неудачных установок и обновлений HelmRelease, чтобы Flux попробовал снова (flux reconcile helmrelease --reset)';
+
+  @override
+  String get kubeGitOpsForceTooltip =>
+      'Flux однократно выполнит установку или обновление Helm, даже если ничего не изменилось (flux reconcile helmrelease --force)';
 }

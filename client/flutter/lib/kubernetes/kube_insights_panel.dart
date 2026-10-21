@@ -332,6 +332,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
                                 GlassButton(
                                   key: ValueKey('kube-gitops-bulk-$action'),
                                   label: kubeGitOpsActionLabel(l, action),
+                                  tooltip: kubeGitOpsActionHelp(l, action),
                                   onPressed:
                                       canWrite &&
                                           !widget.session.production &&
@@ -667,6 +668,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
                       GlassButton(
                         key: ValueKey('kube-gitops-bulk-$action'),
                         label: kubeGitOpsActionLabel(l, action),
+                        tooltip: kubeGitOpsActionHelp(l, action),
                         onPressed:
                             canWrite &&
                                 !widget.session.production &&

@@ -11042,16 +11042,16 @@ abstract class AppLocalizations {
   /// **'Waiting for dependency'**
   String get kubeDependencyWaiting;
 
-  /// Kubernetes cluster interface: Suspend reconciliation
+  /// Flux action button (flux suspend): stop applying changes from Git
   ///
   /// In en, this message translates to:
-  /// **'Suspend reconciliation'**
+  /// **'Pause sync'**
   String get kubeGitOpsSuspend;
 
-  /// Kubernetes cluster interface: Resume reconciliation
+  /// Flux action button (flux resume): apply changes from Git again
   ///
   /// In en, this message translates to:
-  /// **'Resume reconciliation'**
+  /// **'Resume sync'**
   String get kubeGitOpsResume;
 
   /// Kubernetes cluster interface: Reset failure counter
@@ -11066,10 +11066,10 @@ abstract class AppLocalizations {
   /// **'Force Helm upgrade'**
   String get kubeGitOpsForce;
 
-  /// Kubernetes cluster interface: Reconcile now
+  /// Flux action button (flux reconcile): apply the state from Git now
   ///
   /// In en, this message translates to:
-  /// **'Reconcile now'**
+  /// **'Sync now'**
   String get kubeGitOpsReconcile;
 
   /// Kubernetes cluster interface: Sync application
@@ -11222,16 +11222,16 @@ abstract class AppLocalizations {
   /// **'Flux resource is not ready'**
   String get kubeIssueFluxNotReady;
 
-  /// Kubernetes cluster interface: Flux reconciliation has stalled
+  /// Kubernetes diagnostics: a Flux resource reports Stalled
   ///
   /// In en, this message translates to:
-  /// **'Flux reconciliation has stalled'**
+  /// **'Flux sync has stalled with an error'**
   String get kubeIssueFluxStalled;
 
-  /// Kubernetes cluster interface: Flux reconciliation is suspended
+  /// Kubernetes diagnostics: a Flux resource is suspended
   ///
   /// In en, this message translates to:
-  /// **'Flux reconciliation is suspended'**
+  /// **'Flux sync is paused'**
   String get kubeIssueFluxSuspended;
 
   /// Kubernetes cluster interface: Show all revisions
@@ -12392,10 +12392,10 @@ abstract class AppLocalizations {
   /// **'Pod is waiting for a volume'**
   String get kubeIssuePendingVolume;
 
-  /// Kubernetes diagnostics and command navigation
+  /// Kubernetes diagnostics: a Flux resource has been suspended for more than a day
   ///
   /// In en, this message translates to:
-  /// **'Reconciliation suspended for over 24 hours'**
+  /// **'Sync paused for over 24 hours'**
   String get kubeIssueSuspendedLong;
 
   /// Kubernetes diagnostics and command navigation
@@ -13046,16 +13046,16 @@ abstract class AppLocalizations {
   /// **'Some port forwards could not be restored. Check the pod and local port, then start them again.'**
   String get kubeForwardRestoreFailed;
 
-  /// Kubernetes guarded GitOps operation.
+  /// Flux action button (flux reconcile --with-source): refresh the source, then sync the resource
   ///
   /// In en, this message translates to:
-  /// **'Reconcile with source'**
+  /// **'Sync with source'**
   String get kubeGitOpsReconcileWithSource;
 
-  /// Kubernetes guarded GitOps operation.
+  /// Confirmation text for the Flux sync-with-source action
   ///
   /// In en, this message translates to:
-  /// **'Queue reconciliation of the source chain, then this resource. Controller readiness is shown by the live status. Confirm the exact resource name.'**
+  /// **'Queue a sync of the source chain, then of this resource. Controller readiness is shown by the live status. Confirm the exact resource name.'**
   String get kubeGitOpsReconcileWithSourceHelp;
 
   /// Kubernetes explicit operation help.
@@ -17227,6 +17227,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The browser could not be opened. Download page: {url}'**
   String updateErrorBrowser(String url);
+
+  /// Tooltip of the Flux Sync now action
+  ///
+  /// In en, this message translates to:
+  /// **'Flux immediately compares the selected resources with Git and applies the changes (flux reconcile)'**
+  String get kubeGitOpsReconcileTooltip;
+
+  /// Tooltip of the Flux Sync with source action
+  ///
+  /// In en, this message translates to:
+  /// **'Flux first fetches the latest source (Git repository or chart), then syncs the selected resource (flux reconcile --with-source)'**
+  String get kubeGitOpsReconcileWithSourceTooltip;
+
+  /// Tooltip of the Flux Pause sync action
+  ///
+  /// In en, this message translates to:
+  /// **'Flux stops applying changes from Git to the selected resources until sync is resumed (flux suspend)'**
+  String get kubeGitOpsSuspendTooltip;
+
+  /// Tooltip of the Flux Resume sync action
+  ///
+  /// In en, this message translates to:
+  /// **'Flux applies changes from Git to the selected resources again and syncs them right away (flux resume)'**
+  String get kubeGitOpsResumeTooltip;
+
+  /// Tooltip of the Flux HelmRelease reset failure counter action
+  ///
+  /// In en, this message translates to:
+  /// **'Clears the failed install and upgrade count of the HelmRelease so Flux tries again (flux reconcile helmrelease --reset)'**
+  String get kubeGitOpsResetTooltip;
+
+  /// Tooltip of the Flux HelmRelease force upgrade action
+  ///
+  /// In en, this message translates to:
+  /// **'Flux performs a one-off Helm install or upgrade even if nothing changed (flux reconcile helmrelease --force)'**
+  String get kubeGitOpsForceTooltip;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

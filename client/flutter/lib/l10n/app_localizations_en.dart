@@ -6204,10 +6204,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeDependencyWaiting => 'Waiting for dependency';
 
   @override
-  String get kubeGitOpsSuspend => 'Suspend reconciliation';
+  String get kubeGitOpsSuspend => 'Pause sync';
 
   @override
-  String get kubeGitOpsResume => 'Resume reconciliation';
+  String get kubeGitOpsResume => 'Resume sync';
 
   @override
   String get kubeGitOpsReset => 'Reset failure counter';
@@ -6216,7 +6216,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeGitOpsForce => 'Force Helm upgrade';
 
   @override
-  String get kubeGitOpsReconcile => 'Reconcile now';
+  String get kubeGitOpsReconcile => 'Sync now';
 
   @override
   String get kubeArgoSync => 'Sync application';
@@ -6295,10 +6295,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeIssueFluxNotReady => 'Flux resource is not ready';
 
   @override
-  String get kubeIssueFluxStalled => 'Flux reconciliation has stalled';
+  String get kubeIssueFluxStalled => 'Flux sync has stalled with an error';
 
   @override
-  String get kubeIssueFluxSuspended => 'Flux reconciliation is suspended';
+  String get kubeIssueFluxSuspended => 'Flux sync is paused';
 
   @override
   String get kubeHelmAllRevisions => 'Show all revisions';
@@ -6921,7 +6921,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeIssuePendingVolume => 'Pod is waiting for a volume';
 
   @override
-  String get kubeIssueSuspendedLong => 'Reconciliation suspended for over 24 hours';
+  String get kubeIssueSuspendedLong => 'Sync paused for over 24 hours';
 
   @override
   String get kubeIssueSourceStale => 'Source artifact is out of date';
@@ -7258,11 +7258,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Some port forwards could not be restored. Check the pod and local port, then start them again.';
 
   @override
-  String get kubeGitOpsReconcileWithSource => 'Reconcile with source';
+  String get kubeGitOpsReconcileWithSource => 'Sync with source';
 
   @override
   String get kubeGitOpsReconcileWithSourceHelp =>
-      'Queue reconciliation of the source chain, then this resource. Controller readiness is shown by the live status. Confirm the exact resource name.';
+      'Queue a sync of the source chain, then of this resource. Controller readiness is shown by the live status. Confirm the exact resource name.';
 
   @override
   String get kubeForwardNetwork => 'Allow access from the local network';
@@ -9629,4 +9629,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String updateErrorBrowser(String url) {
     return 'The browser could not be opened. Download page: $url';
   }
+
+  @override
+  String get kubeGitOpsReconcileTooltip =>
+      'Flux immediately compares the selected resources with Git and applies the changes (flux reconcile)';
+
+  @override
+  String get kubeGitOpsReconcileWithSourceTooltip =>
+      'Flux first fetches the latest source (Git repository or chart), then syncs the selected resource (flux reconcile --with-source)';
+
+  @override
+  String get kubeGitOpsSuspendTooltip =>
+      'Flux stops applying changes from Git to the selected resources until sync is resumed (flux suspend)';
+
+  @override
+  String get kubeGitOpsResumeTooltip =>
+      'Flux applies changes from Git to the selected resources again and syncs them right away (flux resume)';
+
+  @override
+  String get kubeGitOpsResetTooltip =>
+      'Clears the failed install and upgrade count of the HelmRelease so Flux tries again (flux reconcile helmrelease --reset)';
+
+  @override
+  String get kubeGitOpsForceTooltip =>
+      'Flux performs a one-off Helm install or upgrade even if nothing changed (flux reconcile helmrelease --force)';
 }
