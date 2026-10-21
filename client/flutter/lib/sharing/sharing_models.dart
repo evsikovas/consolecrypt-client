@@ -1,9 +1,13 @@
 import 'dart:convert';
 
-enum SharingKind { host, snippet, group, secret, kubeContext }
+enum SharingKind { host, snippet, group, secret, kubeContext, dbConnection }
 
 extension SharingKindWire on SharingKind {
-  String get wireName => this == SharingKind.kubeContext ? 'kube_context' : name;
+  String get wireName => switch (this) {
+    SharingKind.kubeContext => 'kube_context',
+    SharingKind.dbConnection => 'db_connection',
+    _ => name,
+  };
 }
 
 enum SharingRole { reader, editor }
@@ -65,8 +69,15 @@ final class SharingStatus {
     this.supportsSecrets = false,
     this.supportsOwnerOnlineEnrollment = false,
     this.supportsKubeContexts = false,
+    this.supportsDbConnections = false,
   });
-  final bool enabled, locked, supportsGroups, supportsSecrets, supportsOwnerOnlineEnrollment, supportsKubeContexts;
+  final bool enabled,
+      locked,
+      supportsGroups,
+      supportsSecrets,
+      supportsOwnerOnlineEnrollment,
+      supportsKubeContexts,
+      supportsDbConnections;
   final String? instance;
   final SharingIdentity? identity;
   final int pending, blocked;
@@ -75,6 +86,7 @@ final class SharingStatus {
     supportsGroups: j['supports_groups'] == true,
     supportsSecrets: j['supports_secrets'] == true,
     supportsKubeContexts: j['supports_kube_contexts'] == true,
+    supportsDbConnections: j['supports_db_connections'] == true,
     supportsOwnerOnlineEnrollment: j['supports_owner_online_enrollment_v1'] == true,
     locked: j['locked'] == true,
     instance: j['server_instance_id'] as String?,

@@ -10,13 +10,18 @@ import 'package:consolecrypt/db/db_connection_dialog.dart';
 import 'package:consolecrypt/db/db_import_dialog.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
+import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 class DbConnectionsScreen extends ConsumerStatefulWidget {
-  const DbConnectionsScreen({required this.onOpen, this.onShare, super.key});
+  const DbConnectionsScreen({required this.onOpen, this.onShare, this.shared = const [], this.onOpenShared, super.key});
   final ValueChanged<DbConnection> onOpen;
   final ValueChanged<DbConnection>? onShare;
+
+  /// Selectively shared connections (incoming and published by this device).
+  final List<SharingItem> shared;
+  final ValueChanged<SharingItem>? onOpenShared;
   @override
   ConsumerState<DbConnectionsScreen> createState() => _DbConnectionsScreenState();
 }
@@ -160,6 +165,16 @@ class _DbConnectionsScreenState extends ConsumerState<DbConnectionsScreen> {
                         )
                         .toList()
                       ..sort((a, b) => a.name.compareTo(b.name));
+                final sharedShown = widget.shared
+                    .where(
+                      (item) => [
+                        item.name ?? '',
+                        item.data?['host'] as String? ?? '',
+                        item.data?['database'] as String? ?? '',
+                      ].any((s) => s.toLowerCase().contains(_search)),
+                    )
+                    .toList(growable: false);
+                final sharedRows = sharedShown.isEmpty ? 0 : sharedShown.length + 1;
                 Widget entry(DbConnection c) => _DbConnectionEntry(
                   connection: c,
                   cards: cards,
@@ -199,7 +214,7 @@ class _DbConnectionsScreenState extends ConsumerState<DbConnectionsScreen> {
                           ),
                         ),
                       ),
-                    if (connections.isEmpty) Text(l.dbEmpty),
+                    if (connections.isEmpty && sharedShown.isEmpty) Text(l.dbEmpty),
                     Expanded(
                       child: LayoutBuilder(
                         builder: (context, box) {
@@ -207,25 +222,45 @@ class _DbConnectionsScreenState extends ConsumerState<DbConnectionsScreen> {
                           final columns = cards ? (box.maxWidth / (290 * scale.clamp(1, 1.4))).floor().clamp(1, 4) : 1;
                           return ListView.builder(
                             key: const ValueKey('db-connections-list'),
-                            itemCount: (shown.length / columns).ceil(),
-                            itemBuilder: (context, index) => Padding(
-                              padding: EdgeInsets.only(bottom: cards ? 12 : 6),
-                              child: columns == 1
-                                  ? entry(shown[index])
-                                  : Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        for (var col = 0; col < columns; col++) ...[
-                                          if (col > 0) const SizedBox(width: 12),
-                                          Expanded(
-                                            child: index * columns + col < shown.length
-                                                ? entry(shown[index * columns + col])
-                                                : const SizedBox.shrink(),
-                                          ),
+                            itemCount: sharedRows + (shown.length / columns).ceil(),
+                            itemBuilder: (context, row) {
+                              if (row == 0 && sharedRows > 0) {
+                                return Padding(
+                                  key: const ValueKey('db-shared-header'),
+                                  padding: const EdgeInsets.only(bottom: 6),
+                                  child: Text(
+                                    '${l.dbSharedTitle} · ${l.dbSharedCount(sharedShown.length)}', // l10n-ignore: localized parts.
+                                    style: Theme.of(context).textTheme.titleSmall,
+                                  ),
+                                );
+                              }
+                              if (row < sharedRows) {
+                                final item = sharedShown[row - 1];
+                                return Padding(
+                                  padding: EdgeInsets.only(bottom: row == sharedRows - 1 ? 16 : 6),
+                                  child: _DbSharedEntry(item: item, onOpen: () => widget.onOpenShared?.call(item)),
+                                );
+                              }
+                              final index = row - sharedRows;
+                              return Padding(
+                                padding: EdgeInsets.only(bottom: cards ? 12 : 6),
+                                child: columns == 1
+                                    ? entry(shown[index])
+                                    : Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          for (var col = 0; col < columns; col++) ...[
+                                            if (col > 0) const SizedBox(width: 12),
+                                            Expanded(
+                                              child: index * columns + col < shown.length
+                                                  ? entry(shown[index * columns + col])
+                                                  : const SizedBox.shrink(),
+                                            ),
+                                          ],
                                         ],
-                                      ],
-                                    ),
-                            ),
+                                      ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -397,6 +432,87 @@ class _DbConnectionEntry extends StatelessWidget {
                     menu,
                   ],
                 ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A selectively shared connection: opens its sharing details, where the
+/// receiver saves a personal copy and the owner manages members or revokes.
+class _DbSharedEntry extends StatelessWidget {
+  const _DbSharedEntry({required this.item, required this.onOpen});
+  final SharingItem item;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final t = tokens.typography;
+    final d = item.data;
+    final engine = DbEngine.values.where((e) => e.wireName == d?['engine']).firstOrNull;
+    final caption = [
+      if (engine != null) engine.label,
+      if (d?['host'] case final String host) '$host:${d?['port']}', // l10n-ignore: Shared endpoint metadata.
+      if (d?['database'] case final String database when database.isNotEmpty) database,
+      if (item.role case final role?) role == SharingRole.editor ? l.sharingEditor : l.sharingReader,
+    ].join(' · ');
+    return GlassInteractive(
+      key: ValueKey('db-shared-${item.id}'),
+      semanticLabel: '${item.name ?? l.sharingInvitation}, ${l.dbSharedBadge}',
+      onPressed: onOpen,
+      builder: (context, state) => GlassFocusRing(
+        visible: state.focusVisible,
+        shape: GlassRadii.shape(tokens.radii.card),
+        child: ContentSurface(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          color: state.hovered ? Color.alphaBlend(tokens.surfaces.fillHover, tokens.surfaces.content) : null,
+          child: Row(
+            children: [
+              Icon(
+                engine == null ? Icons.storage_rounded : _engineIcon(engine),
+                size: 18,
+                color: tokens.secondaryLabel,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  item.name ?? l.sharingInvitation,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyEmph.copyWith(color: tokens.palette.label),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.callout.copyWith(color: tokens.secondaryLabel),
+                ),
+              ),
+              if (d?['production'] == true) ...[
+                GlassBadge(label: l.dbProd, tone: GlassTone.danger, dense: true),
+                const SizedBox(width: 6),
+              ],
+              GlassBadge(
+                key: ValueKey('db-shared-badge-${item.id}'),
+                label: item.owned ? l.dbSharedOwned : l.dbSharedBadge,
+                tone: GlassTone.accent,
+                icon: item.owned ? Icons.share_outlined : Icons.people_outline_rounded,
+                dense: true,
+              ),
+              const SizedBox(width: 8),
+              GlassButton(
+                label: item.trust == SharingTrust.unverified ? l.sharingAccept : l.dbSharedOpen,
+                onPressed: onOpen,
+              ),
+            ],
+          ),
         ),
       ),
     );

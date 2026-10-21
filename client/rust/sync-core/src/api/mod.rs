@@ -21,7 +21,7 @@ pub(crate) mod signer;
 mod tokens;
 
 pub use error::ApiError;
-pub use sharing::SharingApi;
+pub use sharing::{ShareKinds, SharingApi};
 pub use sharing_enrollment::OwnDeviceEnrollmentApi;
 pub use signer::{ProofRejection, RequestSigner, SignerError};
 pub use tokens::{MemoryTokenStore, TokenStore, TokenStoreError};

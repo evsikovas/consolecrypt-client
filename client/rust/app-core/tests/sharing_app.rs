@@ -58,6 +58,7 @@ struct HttpState {
     supports_groups: AtomicBool,
     supports_secrets: AtomicBool,
     supports_kube_contexts: AtomicBool,
+    supports_db_connections: AtomicBool,
     users: Mutex<HashMap<DeviceId, (UserId, String, DeviceRegistration)>>,
     tokens: Mutex<HashMap<String, (UserId, DeviceId)>>,
     nonces: Mutex<HashSet<(DeviceId, [u8; 32])>>,
@@ -98,6 +99,7 @@ impl Harness {
             supports_groups: AtomicBool::new(false),
             supports_secrets: AtomicBool::new(false),
             supports_kube_contexts: AtomicBool::new(false),
+            supports_db_connections: AtomicBool::new(false),
             users: Mutex::new(HashMap::new()),
             tokens: Mutex::new(HashMap::new()),
             nonces: Mutex::new(HashSet::new()),
@@ -232,6 +234,7 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
                 supports_groups: state.supports_groups.load(Ordering::SeqCst),
                 supports_secrets: state.supports_secrets.load(Ordering::SeqCst),
                 supports_kube_contexts: state.supports_kube_contexts.load(Ordering::SeqCst),
+                supports_db_connections: state.supports_db_connections.load(Ordering::SeqCst),
                 supports_owner_online_enrollment_v1: false,
             },
         );
@@ -280,6 +283,9 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
                             .is_some_and(|value| value == "true"),
                         SharedItemKind::KubeContext => query
                             .get("include_kube_contexts")
+                            .is_some_and(|v| v == "true"),
+                        SharedItemKind::DbConnection => query
+                            .get("include_db_connections")
                             .is_some_and(|v| v == "true"),
                         SharedItemKind::Secret => query
                             .get("include_secrets")
@@ -1519,6 +1525,260 @@ async fn kubernetes_sharing_requires_capability_trust_and_explicit_credentials()
     recipient.app.shutdown().await.unwrap();
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn database_sharing_requires_capability_trust_route_and_explicit_credentials() {
+    use cc_models::database::{DbConnection, DbEngine, DbRoute};
+    use cc_models::secret::SecretValue;
+    use cc_models::ObjectId;
+
+    let server = Harness::new().await;
+    let directory = tempfile::tempdir().unwrap();
+    let owner = account(
+        &server.url,
+        &directory.path().join("owner"),
+        Arc::new(InMemorySecureStore::new()),
+    )
+    .await;
+    let recipient = account(
+        &server.url,
+        &directory.path().join("recipient"),
+        Arc::new(InMemorySecureStore::new()),
+    )
+    .await;
+    let password = Zeroizing::new(format!("db-fixture-{}", Uuid::new_v4()));
+    let mut draft = DbConnection::new("Orders", "orders.db.example.test", DbEngine::Postgresql);
+    draft.id = ObjectId::NIL;
+    draft.username = "reporting".into();
+    draft.database = "orders".into();
+    draft.route = DbRoute::Docker {
+        host_id: None,
+        container: "orders-db".into(),
+    };
+    let connection = owner
+        .app
+        .db_save_connection(draft, Some(SecretValue::new(password.to_string())), None)
+        .await
+        .unwrap();
+    let original_secret = connection.auth.password_secret_id.unwrap();
+    let preview = owner
+        .app
+        .sharing_preview_db_connection(connection.id.to_string(), false)
+        .await
+        .unwrap();
+    assert!(!preview.preview_json.contains(password.as_str()));
+    assert!(preview.preview_json.contains("\"requires_route\":true"));
+    assert_eq!(
+        owner
+            .app
+            .sharing_publish_db_connection(
+                connection.id.to_string(),
+                false,
+                preview.snapshot_stamp.clone(),
+                vec![],
+            )
+            .await
+            .unwrap_err()
+            .code(),
+        "unsupported",
+        "a server without the database capability keeps the kind hidden",
+    );
+    assert!(owner.app.sharing_outbox().await.unwrap().entries.is_empty());
+    server
+        .state
+        .supports_db_connections
+        .store(true, Ordering::SeqCst);
+    let status = owner.app.sharing_status().await.unwrap();
+    assert!(status.supports_db_connections && !status.supports_kube_contexts);
+    let owner_identity = owner.app.sharing_identity().await.unwrap();
+    let recipient_identity = recipient.app.sharing_identity().await.unwrap();
+    let grant = grant(recipient_identity, SharingRoleDto::Reader);
+    let metadata_share = owner
+        .app
+        .sharing_publish_db_connection(
+            connection.id.to_string(),
+            false,
+            preview.snapshot_stamp,
+            vec![grant.clone()],
+        )
+        .await
+        .unwrap();
+    owner.app.sharing_flush().await.unwrap();
+    let invitations = recipient.app.sharing_list(true).await.unwrap();
+    assert_eq!(invitations.len(), 1);
+    assert_eq!(invitations[0].kind, SharingKindDto::DbConnection);
+    assert!(invitations[0].preview_json.is_none());
+    let docker = DbRoute::Docker {
+        host_id: None,
+        container: "ignored".into(),
+    };
+    assert!(
+        recipient
+            .app
+            .sharing_copy_db_connection(metadata_share.share_id.clone(), docker.clone(), true)
+            .await
+            .is_err(),
+        "unverified owner keys cannot import a connection"
+    );
+    recipient
+        .app
+        .sharing_accept(
+            metadata_share.share_id.clone(),
+            owner_identity.verification_code.clone(),
+        )
+        .await
+        .unwrap();
+    assert!(
+        recipient
+            .app
+            .sharing_copy_db_connection(metadata_share.share_id.clone(), DbRoute::Direct, false)
+            .await
+            .is_err(),
+        "a forwarded connection never silently becomes direct"
+    );
+    let copied = recipient
+        .app
+        .sharing_copy_db_connection(metadata_share.share_id.clone(), docker.clone(), true)
+        .await
+        .unwrap();
+    assert_eq!(copied.auth.password_secret_id, None);
+    assert_ne!(copied.id, connection.id);
+    assert!(copied.production);
+    assert_eq!(
+        copied.route,
+        DbRoute::Docker {
+            host_id: None,
+            container: "orders-db".into(),
+        }
+    );
+    assert!(recipient
+        .app
+        .db_connections()
+        .await
+        .unwrap()
+        .iter()
+        .any(|c| c.id == copied.id));
+
+    let credentials = owner
+        .app
+        .sharing_preview_db_connection(connection.id.to_string(), true)
+        .await
+        .unwrap();
+    assert_eq!(
+        owner
+            .app
+            .sharing_publish_db_connection(
+                connection.id.to_string(),
+                true,
+                credentials.snapshot_stamp.clone(),
+                vec![grant.clone()],
+            )
+            .await
+            .unwrap_err()
+            .code(),
+        "unsupported",
+        "credential transfer also requires the server's secret capability",
+    );
+    server.state.supports_secrets.store(true, Ordering::SeqCst);
+    owner.app.sharing_status().await.unwrap();
+    let mut edited = connection.clone();
+    edited.database = "changed-after-preview".into();
+    owner
+        .app
+        .db_save_connection(edited, None, None)
+        .await
+        .unwrap();
+    assert!(
+        owner
+            .app
+            .sharing_publish_db_connection(
+                connection.id.to_string(),
+                true,
+                credentials.snapshot_stamp,
+                vec![grant.clone()],
+            )
+            .await
+            .is_err(),
+        "a stale confirmation cannot publish a changed connection"
+    );
+    let current = owner
+        .app
+        .sharing_preview_db_connection(connection.id.to_string(), true)
+        .await
+        .unwrap();
+    let shared = owner
+        .app
+        .sharing_publish_db_connection(
+            connection.id.to_string(),
+            true,
+            current.snapshot_stamp,
+            vec![grant],
+        )
+        .await
+        .unwrap();
+    assert!(!shared
+        .preview_json
+        .as_ref()
+        .unwrap()
+        .contains(password.as_str()));
+    owner.app.sharing_flush().await.unwrap();
+    for history in server.state.shares.lock().unwrap().values() {
+        let wire = serde_json::to_string(&history.state).unwrap();
+        assert!(!wire.contains(password.as_str()));
+        assert!(!wire.contains("orders.db.example.test"));
+        assert!(!wire.contains("changed-after-preview"));
+    }
+    recipient
+        .app
+        .sharing_accept(shared.share_id.clone(), owner_identity.verification_code)
+        .await
+        .unwrap();
+    let with_auth = recipient
+        .app
+        .sharing_copy_db_connection(shared.share_id.clone(), docker.clone(), true)
+        .await
+        .unwrap();
+    let secret_id = with_auth.auth.password_secret_id.unwrap();
+    assert_ne!(secret_id, original_secret);
+    assert_eq!(with_auth.database, "changed-after-preview");
+    server.state.supports_secrets.store(false, Ordering::SeqCst);
+    assert_eq!(
+        recipient
+            .app
+            .sharing_copy_db_connection(shared.share_id.clone(), docker.clone(), true)
+            .await
+            .unwrap_err()
+            .code(),
+        "unsupported",
+        "current server capabilities are checked again before importing credentials",
+    );
+    server.state.supports_secrets.store(true, Ordering::SeqCst);
+    owner
+        .app
+        .sharing_delete(shared.share_id.clone())
+        .await
+        .unwrap();
+    owner.app.sharing_flush().await.unwrap();
+    assert!(
+        recipient
+            .app
+            .sharing_copy_db_connection(shared.share_id.clone(), docker, true)
+            .await
+            .is_err(),
+        "revoked sharing cannot create another local copy"
+    );
+    server
+        .state
+        .supports_db_connections
+        .store(false, Ordering::SeqCst);
+    let hidden = recipient.app.sharing_list(true).await.unwrap();
+    assert!(hidden
+        .iter()
+        .filter(|item| item.kind == SharingKindDto::DbConnection)
+        .all(|item| item.blocked_reason.as_deref() == Some("unsupported_sharing_kind")));
+    owner.app.shutdown().await.unwrap();
+    recipient.app.shutdown().await.unwrap();
+}
+
 /// Decode only the disposable FileMailer's bounded, single-part messages.
 /// Errors are static: neither MIME bytes nor account tokens enter test output.
 fn verification_mail_token(
@@ -1780,6 +2040,7 @@ async fn live_snapshot(
                 SharingKindDto::Group => SharedItemKind::Group,
                 SharingKindDto::Secret => SharedItemKind::Secret,
                 SharingKindDto::KubeContext => SharedItemKind::KubeContext,
+                SharingKindDto::DbConnection => SharedItemKind::DbConnection,
             },
         })
         .await

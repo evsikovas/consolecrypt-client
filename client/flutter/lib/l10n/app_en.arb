@@ -12760,5 +12760,106 @@
   "dockerComposeFilesUnknown": "The project's containers do not record which compose files created them.",
   "@dockerComposeFilesUnknown": {
     "description": "Compose files dialog: labels lack the config file paths."
+  },
+  "sharingDbConnection": "Database connection",
+  "@sharingDbConnection": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbUnsupported": "This server does not support sharing database connections.",
+  "@sharingDbUnsupported": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbSnapshotChanged": "Review this connection again if its settings or credentials have changed.",
+  "@sharingDbSnapshotChanged": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbExclude": "Only the connection settings are shared by default. The password, client key, group, query history and AI settings remain on this device.",
+  "@sharingDbExclude": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbIncludeCredentials": "Include the saved password and client key",
+  "@sharingDbIncludeCredentials": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbCredentialWarning": "Recipients can use these credentials to access the database. Share them only with verified devices you trust. Revoking the share does not revoke credentials already copied by a recipient: change the password on the database server.",
+  "@sharingDbCredentialWarning": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbCredentialsIncluded": "The password or client key is included; values stay hidden.",
+  "@sharingDbCredentialsIncluded": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbCredentialsExcluded": "The password and client key are not included.",
+  "@sharingDbCredentialsExcluded": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbRouteRelay": "This connection goes through an SSH host, jump profile, proxy or tunnel that is not shared. Recipients select their own route.",
+  "@sharingDbRouteRelay": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbRouteKubernetes": "This connection is forwarded from a Kubernetes workload. Recipients select their own Kubernetes context; the namespace and workload are kept.",
+  "@sharingDbRouteKubernetes": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbRouteDocker": "This connection is forwarded from a Docker container. Recipients select their own Docker engine; the container name is kept.",
+  "@sharingDbRouteDocker": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbCopyHelp": "Save a personal copy of this connection to Databases. Choose your own route. The password and client key are imported only with your explicit selection.",
+  "@sharingDbCopyHelp": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbRouteRequired": "This connection is not reachable directly. Select a compatible route saved on this device.",
+  "@sharingDbRouteRequired": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbNoRoute": "No compatible route is saved on this device. Add one first.",
+  "@sharingDbNoRoute": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbImportCredentials": "Import the included password and client key",
+  "@sharingDbImportCredentials": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbRouteKind": "Route",
+  "@sharingDbRouteKind": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbRouteKindRelay": "SSH, jump profile, proxy or tunnel",
+  "@sharingDbRouteKindRelay": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbWorkload": "Workload",
+  "@sharingDbWorkload": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "sharingDbContainer": "Container",
+  "@sharingDbContainer": {
+    "description": "Database connection sharing; credentials remain hidden in previews."
+  },
+  "dbSharedTitle": "Shared connections",
+  "@dbSharedTitle": {
+    "description": "Databases screen: section with database connections shared with or by this device."
+  },
+  "dbSharedBadge": "Shared",
+  "@dbSharedBadge": {
+    "description": "Databases screen: badge on a connection that came from selective sharing."
+  },
+  "dbSharedOwned": "Shared by you",
+  "@dbSharedOwned": {
+    "description": "Databases screen: badge on a shared connection published by this device."
+  },
+  "dbSharedOpen": "Details",
+  "@dbSharedOpen": {
+    "description": "Databases screen: opens sharing details (save a copy, members, revoke) for a shared connection."
+  },
+  "dbSharedCount": "{count, plural, one{{count} shared connection} other{{count} shared connections}}",
+  "@dbSharedCount": {
+    "description": "Databases screen: number of shared database connections in the section header.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

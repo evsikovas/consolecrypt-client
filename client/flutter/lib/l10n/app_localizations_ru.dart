@@ -9512,4 +9512,94 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get dockerComposeFilesUnknown =>
       'Контейнеры проекта не хранят сведений о том, из каких файлов compose они созданы.';
+
+  @override
+  String get sharingDbConnection => 'Подключение к базе данных';
+
+  @override
+  String get sharingDbUnsupported => 'Этот сервер не поддерживает общий доступ к подключениям баз данных.';
+
+  @override
+  String get sharingDbSnapshotChanged =>
+      'Проверьте подключение ещё раз, если его параметры или учётные данные изменились.';
+
+  @override
+  String get sharingDbExclude =>
+      'По умолчанию передаются только параметры подключения. Пароль, ключ клиента, группа, история запросов и настройки ИИ остаются на этом устройстве.';
+
+  @override
+  String get sharingDbIncludeCredentials => 'Передать сохранённый пароль и ключ клиента';
+
+  @override
+  String get sharingDbCredentialWarning =>
+      'Получатели смогут использовать эти учётные данные для доступа к базе данных. Передавайте их только проверенным устройствам, которым доверяете. Отзыв доступа не отменяет уже скопированные учётные данные: смените пароль на сервере базы данных.';
+
+  @override
+  String get sharingDbCredentialsIncluded => 'Пароль или ключ клиента переданы; значения скрыты.';
+
+  @override
+  String get sharingDbCredentialsExcluded => 'Пароль и ключ клиента не переданы.';
+
+  @override
+  String get sharingDbRouteRelay =>
+      'Подключение идёт через SSH-хост, профиль переходов, прокси или туннель, которые не передаются. Получатели выбирают свой маршрут.';
+
+  @override
+  String get sharingDbRouteKubernetes =>
+      'Подключение пробрасывается из рабочей нагрузки Kubernetes. Получатели выбирают свой контекст Kubernetes; пространство имён и нагрузка сохраняются.';
+
+  @override
+  String get sharingDbRouteDocker =>
+      'Подключение пробрасывается из контейнера Docker. Получатели выбирают свой движок Docker; имя контейнера сохраняется.';
+
+  @override
+  String get sharingDbCopyHelp =>
+      'Сохраните личную копию подключения в разделе «Базы данных». Выберите свой маршрут. Пароль и ключ клиента импортируются только по вашему явному выбору.';
+
+  @override
+  String get sharingDbRouteRequired =>
+      'Это подключение недоступно напрямую. Выберите совместимый маршрут, сохранённый на этом устройстве.';
+
+  @override
+  String get sharingDbNoRoute => 'На этом устройстве нет совместимого маршрута. Сначала добавьте его.';
+
+  @override
+  String get sharingDbImportCredentials => 'Импортировать переданные пароль и ключ клиента';
+
+  @override
+  String get sharingDbRouteKind => 'Маршрут';
+
+  @override
+  String get sharingDbRouteKindRelay => 'SSH, профиль переходов, прокси или туннель';
+
+  @override
+  String get sharingDbWorkload => 'Рабочая нагрузка';
+
+  @override
+  String get sharingDbContainer => 'Контейнер';
+
+  @override
+  String get dbSharedTitle => 'Общие подключения';
+
+  @override
+  String get dbSharedBadge => 'Общее';
+
+  @override
+  String get dbSharedOwned => 'Вы поделились';
+
+  @override
+  String get dbSharedOpen => 'Подробнее';
+
+  @override
+  String dbSharedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count общего подключения',
+      many: '$count общих подключений',
+      few: '$count общих подключения',
+      one: '$count общее подключение',
+    );
+    return '$_temp0';
+  }
 }

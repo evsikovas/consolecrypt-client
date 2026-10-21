@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/db/db_models.dart';
+import 'package:consolecrypt/sharing/sharing_database.dart';
 import 'package:consolecrypt/sharing/sharing_kubernetes.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
@@ -62,6 +64,20 @@ class SharingProjectionView extends StatelessWidget {
         l.sharingAddress: d['server'],
         l.kubeNamespace: d['namespace'],
       },
+      if (j['kind'] == 'db_connection') ...{
+        l.dbEngine: DbEngine.values.where((e) => e.wireName == d['engine']).firstOrNull?.label ?? d['engine'],
+        l.sharingAddress: d['host'],
+        l.dbDatabase: d['database'],
+        l.sharingDbRouteKind: switch (d['route_kind']) {
+          'relay' => l.sharingDbRouteKindRelay,
+          'kubernetes' => 'Kubernetes', // l10n-ignore: product name
+          'docker' => 'Docker', // l10n-ignore: product name
+          _ => l.dbDirect,
+        },
+        l.kubeNamespace: d['route_namespace'],
+        l.sharingDbWorkload: d['route_target_name'],
+        l.sharingDbContainer: d['route_container'],
+      },
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,6 +99,10 @@ class SharingProjectionView extends StatelessWidget {
         if (j['kind'] == 'kube_context') ...[
           if (d['production'] == true) Text(l.kubeProduction),
           Text(d['includes_credentials'] == true ? l.sharingKubeCredentialsIncluded : l.sharingKubeCredentialsExcluded),
+        ],
+        if (j['kind'] == 'db_connection') ...[
+          if (d['production'] == true) Text(l.dbProduction, key: const ValueKey('sharing-db-production')),
+          Text(d['includes_credentials'] == true ? l.sharingDbCredentialsIncluded : l.sharingDbCredentialsExcluded),
         ],
       ],
     );
@@ -231,13 +251,15 @@ class _SharingRecipientsState extends ConsumerState<SharingRecipients> {
 }
 
 Future<void> showSharingPublish(BuildContext context, {required SharingKind kind, required String objectId}) =>
-    kind == SharingKind.kubeContext
-    ? showSharingKubeContext(context, contextId: objectId)
-    : showAppDialog<void>(
+    switch (kind) {
+      SharingKind.kubeContext => showSharingKubeContext(context, contextId: objectId),
+      SharingKind.dbConnection => showSharingDbConnection(context, connectionId: objectId),
+      _ => showAppDialog<void>(
         context,
         secure: true,
         builder: (_) => SharingPublishDialog(kind: kind, objectId: objectId),
-      );
+      ),
+    };
 
 class SharingPublishDialog extends ConsumerStatefulWidget {
   const SharingPublishDialog({required this.kind, required this.objectId, super.key});

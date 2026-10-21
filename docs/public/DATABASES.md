@@ -95,6 +95,29 @@ ClickHouse — профиль `readonly=1`, в Redis — ACL `+@read -@write`, �
 выполняется никогда: вместо неё предлагается такой же `SCAN`, который можно
 открыть в новой вкладке.
 
+### Общий доступ
+
+Если сервер синхронизации поддерживает общий доступ к подключениям баз данных
+(сервер 0.1.15 и новее с включённой функцией), в меню подключения появляется
+**Поделиться**. Перед отправкой показывается, какие поля уйдут коллеге:
+движок, адрес, порт, база, пользователь, TLS, лимиты и режим «Прод». Группа,
+история запросов, настройки ИИ и разрешения сеанса не передаются. Пароль и ключ
+клиента передаются только при явной отметке и только если сервер поддерживает
+общие секреты.
+
+Маршрут через SSH-хост, профиль переходов, прокси или туннель не передаётся:
+получатель выбирает свой. Для проброса Kubernetes сохраняются пространство
+имён и нагрузка, а контекст получатель выбирает свой; для Docker сохраняется
+имя контейнера, а движок выбирает получатель. Подключение с таким маршрутом
+нельзя сохранить как прямое.
+
+Полученные подключения показываются в разделе с меткой **Общее**, свои
+опубликованные — с меткой **Вы поделились**. **Подробнее** открывает принятие,
+сохранение личной копии, участников, отзыв доступа и прекращение общего
+доступа. Копия прод-подключения остаётся прод-подключением только для чтения.
+Отзыв доступа не отменяет уже скопированный пароль — смените его на сервере
+базы данных.
+
 ### Рабочая область
 
 Нажмите на подключение: слева откроется структура, справа — вкладки
@@ -288,6 +311,28 @@ until the connection closes. Changing statements are shown for review with
 the connection name, and dangerous ones (`DROP`, `TRUNCATE`, `UPDATE` or
 `DELETE` without `WHERE`, `FLUSHALL`, dropping a collection) require typing
 it. Redis `KEYS` never runs; the equivalent `SCAN` is offered in a new tab.
+
+### Sharing
+
+When the sync server supports database connection sharing (server 0.1.15 or
+later with the feature enabled), the connection menu offers **Share**. The
+preview lists exactly what a colleague receives: engine, address, port,
+database, user, TLS, limits and the production marker. Groups, query history,
+AI settings and session permissions are never shared. The password and client
+key are included only when explicitly selected and only if the server also
+supports shared secrets.
+
+A route through an SSH host, jump profile, proxy or tunnel is not shared: the
+recipient selects their own. A Kubernetes forward keeps its namespace and
+workload while the recipient selects their own context; a Docker forward keeps
+the container name while the recipient selects the engine. Such a connection
+cannot be saved as direct.
+
+Received connections are listed with a **Shared** badge and your published
+ones with **Shared by you**. **Details** opens acceptance, saving a personal
+copy, members, revoking access and stopping sharing. A copy of a production
+connection stays read-only production. Revoking access does not invalidate an
+already copied password; change it on the database server.
 
 ### Workspace
 

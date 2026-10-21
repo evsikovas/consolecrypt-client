@@ -5,12 +5,13 @@ import 'package:consolecrypt/core/bridge/rust_account.dart';
 import 'package:consolecrypt/core/bridge/rust_backend.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/services/database_sharing_service.dart';
 import 'package:consolecrypt/core/services/kubernetes_sharing_service.dart';
 import 'package:consolecrypt/core/services/sharing_service.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/src/rust/api/sharing.dart' as rs;
 
-final class RustSharingService implements SharingService, KubernetesSharingService {
+final class RustSharingService implements SharingService, KubernetesSharingService, DatabaseSharingService {
   RustSharingService(this._hub);
   final RustBackend _hub;
   @override
@@ -38,6 +39,7 @@ final class RustSharingService implements SharingService, KubernetesSharingServi
     SharingKind.host => guard(() => rs.sharingPreviewHost(id: objectId, includeNotes: includeNotes)),
     SharingKind.snippet => guard(() => rs.sharingPreviewSnippet(id: objectId)),
     SharingKind.kubeContext => previewKubeContext(objectId).then((preview) => preview.previewJson),
+    SharingKind.dbConnection => previewDbConnection(objectId).then((preview) => preview.previewJson),
     SharingKind.group ||
     SharingKind.secret => throw UnsupportedError('Sharing kind not enabled'), // l10n-ignore: diagnostic
   };
@@ -74,6 +76,47 @@ final class RustSharingService implements SharingService, KubernetesSharingServi
   }) async {
     await guard(
       () => rs.sharingCopyKubeContext(
+        shareId: shareId,
+        routeJson: jsonEncode(route),
+        includeCredentials: includeCredentials,
+      ),
+    );
+    await _hub.reload({'credential', 'secret'});
+  }
+
+  @override
+  Future<DbSharingPreview> previewDbConnection(String connectionId, {bool includeCredentials = false}) async =>
+      DbSharingPreview.fromJson(
+        decodeObject(
+          await guard(() => rs.sharingPreviewDbConnection(id: connectionId, includeCredentials: includeCredentials)),
+        ),
+      );
+  @override
+  Future<SharingItem> publishDbConnection(
+    String connectionId,
+    List<SharingGrant> grants, {
+    required String expectedStamp,
+    bool includeCredentials = false,
+  }) async => SharingItem.fromJson(
+    decodeObject(
+      await guard(
+        () => rs.sharingPublishDbConnection(
+          connectionId: connectionId,
+          includeCredentials: includeCredentials,
+          expectedStamp: expectedStamp,
+          grantsJson: jsonEncode(grants.map((grant) => grant.toJson()).toList()),
+        ),
+      ),
+    ),
+  );
+  @override
+  Future<void> copyDbConnection(
+    String shareId, {
+    required Map<String, dynamic> route,
+    bool includeCredentials = false,
+  }) async {
+    await guard(
+      () => rs.sharingCopyDbConnection(
         shareId: shareId,
         routeJson: jsonEncode(route),
         includeCredentials: includeCredentials,

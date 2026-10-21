@@ -18,6 +18,16 @@ use uuid::Uuid;
 /// A sharing transport bound to a validated, pinned server instance. Its
 /// constructor is private: absence of support never falls back to personal
 /// vault endpoints or an unsigned request.
+/// Extension kinds requested from `GET /v1/shares`; Host and Snippet are
+/// always listed.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ShareKinds {
+    pub groups: bool,
+    pub secrets: bool,
+    pub kube_contexts: bool,
+    pub db_connections: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct SharingApi {
     client: ApiClient,
@@ -62,6 +72,7 @@ impl SharingApi {
         if current.supports_groups != self.capabilities.supports_groups
             || current.supports_secrets != self.capabilities.supports_secrets
             || current.supports_kube_contexts != self.capabilities.supports_kube_contexts
+            || current.supports_db_connections != self.capabilities.supports_db_connections
             || current.supports_owner_online_enrollment_v1
                 != self.capabilities.supports_owner_online_enrollment_v1
         {
@@ -101,10 +112,38 @@ impl SharingApi {
         include_secrets: bool,
         include_kube_contexts: bool,
     ) -> Result<ShareListPage, ApiError> {
+        self.list_shares_including(
+            after,
+            limit,
+            ShareKinds {
+                groups: include_groups,
+                secrets: include_secrets,
+                kube_contexts: include_kube_contexts,
+                db_connections: false,
+            },
+        )
+        .await
+    }
+
+    /// Every extension kind is requested explicitly and only when advertised;
+    /// the server must not return an unrequested kind.
+    pub async fn list_shares_including(
+        &self,
+        after: Option<ShareId>,
+        limit: u32,
+        kinds: ShareKinds,
+    ) -> Result<ShareListPage, ApiError> {
+        let ShareKinds {
+            groups: include_groups,
+            secrets: include_secrets,
+            kube_contexts: include_kube_contexts,
+            db_connections: include_db_connections,
+        } = kinds;
         self.ready()?;
         if (include_groups && !self.capabilities.supports_groups)
             || (include_secrets && !self.capabilities.supports_secrets)
             || (include_kube_contexts && !self.capabilities.supports_kube_contexts)
+            || (include_db_connections && !self.capabilities.supports_db_connections)
         {
             return Err(config_error("requested sharing kind is unavailable"));
         }
@@ -125,6 +164,9 @@ impl SharingApi {
             if include_kube_contexts {
                 query.append_pair("include_kube_contexts", "true");
             }
+            if include_db_connections {
+                query.append_pair("include_db_connections", "true");
+            }
             if include_secrets {
                 query.append_pair("include_secrets", "true");
             }
@@ -140,6 +182,8 @@ impl SharingApi {
                 || (item.access.manifest.kind == SharedItemKind::Secret && !include_secrets)
                 || (item.access.manifest.kind == SharedItemKind::KubeContext
                     && !include_kube_contexts)
+                || (item.access.manifest.kind == SharedItemKind::DbConnection
+                    && !include_db_connections)
             {
                 return Err(response_error("unrequested sharing kind"));
             }
@@ -368,6 +412,9 @@ impl SharingApi {
             }
             SharedItemKind::KubeContext if !self.capabilities.supports_kube_contexts => {
                 Err(config_error("Kubernetes sharing is not enabled"))
+            }
+            SharedItemKind::DbConnection if !self.capabilities.supports_db_connections => {
+                Err(config_error("database connection sharing is not enabled"))
             }
             SharedItemKind::Secret if !self.capabilities.supports_secrets => {
                 Err(config_error("secret sharing is not enabled"))

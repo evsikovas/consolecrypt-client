@@ -21,7 +21,7 @@ use cc_protocol::sharing::{
 };
 use cc_protocol::{Bytes, DeviceId, MutationId, ObjectId, ShareId, UserId};
 use cc_storage_core::ProfileKind;
-use cc_sync_core::api::SharingApi;
+use cc_sync_core::api::{ShareKinds, SharingApi};
 use cc_sync_core::ApiError;
 use cc_vault_core::DeviceIdentity;
 use serde::{Deserialize, Serialize};
@@ -87,6 +87,8 @@ struct InstancePin {
     #[serde(default)]
     supports_kube_contexts: bool,
     #[serde(default)]
+    supports_db_connections: bool,
+    #[serde(default)]
     supports_owner_online_enrollment_v1: bool,
 }
 
@@ -146,6 +148,7 @@ impl Environment {
             SharedItemKind::Group => self.pin.supports_groups,
             SharedItemKind::Secret => self.pin.supports_secrets,
             SharedItemKind::KubeContext => self.pin.supports_kube_contexts,
+            SharedItemKind::DbConnection => self.pin.supports_db_connections,
         }
     }
 
@@ -431,6 +434,7 @@ fn item_dto(
             SharedItemKind::Group => SharingKindDto::Group,
             SharedItemKind::Secret => SharingKindDto::Secret,
             SharedItemKind::KubeContext => SharingKindDto::KubeContext,
+            SharedItemKind::DbConnection => SharingKindDto::DbConnection,
         },
         owner_user_id: access.owner_user_id.to_string(),
         owner_device_id: access.owner_device_id.to_string(),
@@ -478,6 +482,9 @@ fn item_dto(
 fn projection_preview_json(projection: &SharedProjection) -> AppResult<String> {
     if let SharedProjection::KubeContext(context) = projection {
         return context.preview_json();
+    }
+    if let SharedProjection::DbConnection(connection) = projection {
+        return connection.preview_json();
     }
     if let SharedProjection::Secret(secret) = projection {
         #[derive(Serialize)]
@@ -616,6 +623,7 @@ impl AppCore {
                 SharedItemKind::Group => SharingKindDto::Group,
                 SharedItemKind::Secret => SharingKindDto::Secret,
                 SharedItemKind::KubeContext => SharingKindDto::KubeContext,
+                SharedItemKind::DbConnection => SharingKindDto::DbConnection,
             },
             owner_user_id: String::new(),
             owner_device_id: String::new(),
@@ -739,12 +747,15 @@ impl AppCore {
             let mut complete = false;
             for _ in 0..100 {
                 let page = env
-                    .wait(env.transport()?.list_shares_with_extensions(
+                    .wait(env.transport()?.list_shares_including(
                         after,
                         100,
-                        env.pin.supports_groups,
-                        env.pin.supports_secrets,
-                        env.pin.supports_kube_contexts,
+                        ShareKinds {
+                            groups: env.pin.supports_groups,
+                            secrets: env.pin.supports_secrets,
+                            kube_contexts: env.pin.supports_kube_contexts,
+                            db_connections: env.pin.supports_db_connections,
+                        },
                     ))
                     .await?;
                 self.sharing_check(&env).await?;
@@ -1219,6 +1230,7 @@ impl AppCore {
             supports_groups: false,
             supports_secrets: false,
             supports_kube_contexts: false,
+            supports_db_connections: false,
             supports_owner_online_enrollment_v1: false,
         });
         if pin.format != 1
@@ -1279,6 +1291,7 @@ impl AppCore {
             pin.supports_groups = caps.supports_groups;
             pin.supports_secrets = caps.supports_secrets;
             pin.supports_kube_contexts = caps.supports_kube_contexts;
+            pin.supports_db_connections = caps.supports_db_connections;
             pin.supports_owner_online_enrollment_v1 = caps.supports_owner_online_enrollment_v1;
             env.pin = pin.clone();
             env.workspace.instance = pin.instance;
@@ -1365,6 +1378,7 @@ impl AppCore {
                 supports_groups: false,
                 supports_secrets: false,
                 supports_kube_contexts: false,
+                supports_db_connections: false,
                 supports_owner_online_enrollment_v1: false,
             });
         }
@@ -1379,6 +1393,7 @@ impl AppCore {
                 supports_groups: false,
                 supports_secrets: false,
                 supports_kube_contexts: false,
+                supports_db_connections: false,
                 supports_owner_online_enrollment_v1: false,
             });
         }
@@ -1405,6 +1420,7 @@ impl AppCore {
             supports_groups: env.pin.supports_groups,
             supports_secrets: env.pin.supports_secrets,
             supports_kube_contexts: env.pin.supports_kube_contexts,
+            supports_db_connections: env.pin.supports_db_connections,
             supports_owner_online_enrollment_v1: env.pin.supports_owner_online_enrollment_v1,
         })
     }
@@ -1720,6 +1736,43 @@ impl AppCore {
         .await
     }
 
+    /// Reads selected credentials only inside the captured unlocked profile.
+    pub async fn sharing_publish_db_connection(
+        &self,
+        connection_id: String,
+        include_credentials: bool,
+        expected_stamp: String,
+        recipients: Vec<SharingGrantDto>,
+    ) -> AppResult<SharingItemDto> {
+        let session = self.session().await?;
+        let _gate = self.sharing_gate(&session).await?;
+        let mut env = self.sharing_environment(session.clone(), false).await?;
+        env.require_kind(SharedItemKind::DbConnection)?;
+        if include_credentials {
+            env.require_kind(SharedItemKind::Secret)?;
+        }
+        let id = connection_id
+            .parse()
+            .map_err(|_| invalid("invalid connection id"))?;
+        let (projection, stamp) = env
+            .wait(crate::sharing_database::prepare(
+                &env.unlocked,
+                id,
+                include_credentials,
+            ))
+            .await?;
+        if stamp != expected_stamp {
+            return Err(invalid("connection changed; review it again"));
+        }
+        self.sharing_check(&env).await?;
+        self.sharing_publish_prepared(
+            &mut env,
+            SharedProjection::DbConnection(projection),
+            recipients,
+        )
+        .await
+    }
+
     /// Explicit Reveal/Copy only. Revalidate access and the complete signed
     /// history before opening the current ciphertext; do not retain a cache.
     pub async fn sharing_reveal_secret(
@@ -1790,7 +1843,7 @@ impl AppCore {
         let Some(projection) = projection else {
             return Err(invalid("the shared item is deleted"));
         };
-        if matches!(&projection, SharedProjection::KubeContext(k) if k.authentication.is_some()) {
+        if projection.carries_secrets() {
             env.require_kind(SharedItemKind::Secret)?;
         }
         let result = env
@@ -1807,7 +1860,7 @@ impl AppCore {
         recipients: Vec<SharingGrantDto>,
     ) -> AppResult<SharingItemDto> {
         env.require_kind(projection.kind())?;
-        if matches!(&projection, SharedProjection::KubeContext(k) if k.authentication.is_some()) {
+        if projection.carries_secrets() {
             env.require_kind(SharedItemKind::Secret)?;
         }
         let encoded = projection.encode()?;
@@ -1886,7 +1939,7 @@ impl AppCore {
         env.ensure_not_pending(id)?;
         let binding = env.binding(id)?;
         env.require_kind(binding.kind)?;
-        if matches!(&projection, SharedProjection::KubeContext(k) if k.authentication.is_some()) {
+        if projection.carries_secrets() {
             env.require_kind(SharedItemKind::Secret)?;
         }
         if binding.kind != projection.kind() {
