@@ -232,7 +232,6 @@ impl Redis {
 
     /// Human-readable summary of one key: type, encoding, length, TTL, memory.
     // Exposed through the session's describe action (wired separately).
-    #[cfg_attr(not(test), allow(dead_code))]
     pub fn describe<'a>(
         &'a mut self,
         object: &'a DbObjectRef,
@@ -720,7 +719,6 @@ fn duration_text(milliseconds: i64) -> String {
     parts.join(" ")
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
 fn length_command(kind: &str) -> Option<(&'static str, &'static str)> {
     Some(match kind {
         "string" => ("STRLEN", "bytes"),
@@ -733,7 +731,6 @@ fn length_command(kind: &str) -> Option<(&'static str, &'static str)> {
     })
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
 fn describe_text(
     key: &str,
     db: i64,

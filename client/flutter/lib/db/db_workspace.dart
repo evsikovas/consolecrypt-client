@@ -254,7 +254,21 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
       if (!_tabCurrent(tab)) return;
       if (review.risk == DbQueryRisk.blocked ||
           ((session.production || session.readOnly) && review.risk != DbQueryRisk.read)) {
-        if (mounted) showSnack(context, context.l10n.dbQueryBlocked, error: true);
+        final suggestion = review.suggestion;
+        if (suggestion != null && mounted) {
+          final l = context.l10n;
+          final open = await showConfirmDialog(
+            context,
+            title: l.dbQueryBlockedTitle,
+            message: l.dbScanInsteadOfKeys,
+            confirmLabel: l.dbOpenSuggestion,
+            secure: true,
+            extra: SelectableText(suggestion, style: const TextStyle(fontFamily: 'monospace')),
+          );
+          if (open && _tabCurrent(tab)) setState(() => _addTab(suggestion));
+        } else if (mounted) {
+          showSnack(context, context.l10n.dbQueryBlocked, error: true);
+        }
         return;
       }
       if (review.risk != DbQueryRisk.read) {

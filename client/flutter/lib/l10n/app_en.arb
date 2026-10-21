@@ -11536,5 +11536,17 @@
         "type": "int"
       }
     }
+  },
+  "dbQueryBlockedTitle": "Query blocked",
+  "@dbQueryBlockedTitle": {
+    "description": "Title of the dialog for a query refused by policy."
+  },
+  "dbScanInsteadOfKeys": "KEYS scans every key at once and can stall the server. Use SCAN to read keys page by page.",
+  "@dbScanInsteadOfKeys": {
+    "description": "Explains why Redis KEYS is refused and suggests SCAN."
+  },
+  "dbOpenSuggestion": "Open in a new tab",
+  "@dbOpenSuggestion": {
+    "description": "Opens the suggested safe query in a new editor tab."
   }
 }

@@ -4988,5 +4988,8 @@
   "@dbUnverifiedReadOnly": {
     "description": "Database workspace interface."
   },
-  "dbElapsed": "{ms} мс"
+  "dbElapsed": "{ms} мс",
+  "dbQueryBlockedTitle": "Запрос заблокирован",
+  "dbScanInsteadOfKeys": "KEYS перебирает все ключи разом и может остановить сервер. Используйте SCAN — он читает ключи порциями.",
+  "dbOpenSuggestion": "Открыть в новой вкладке"
 }

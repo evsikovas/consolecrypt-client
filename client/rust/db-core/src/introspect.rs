@@ -3,7 +3,7 @@
 //! statements that cannot take parameters (MySQL `SHOW CREATE`) use identifiers
 //! quoted by [`quote_identifier`].
 use crate::{
-    session::{Collect, DbSession},
+    session::{Collect, DbSession, Driver},
     DbCell, DbError, DbObjectKind, DbObjectRef, DbParameter, DbQueryEvent, DbQueryRequest,
 };
 use cc_models::database::DbEngine;
@@ -105,6 +105,10 @@ impl DbSession {
                     .ok_or(DbError::QueryFailed)?;
                 Ok(format!("{ddl};"))
             }
+            DbEngine::Redis => match &mut *self.driver.lock().await {
+                Driver::Redis(driver) => driver.describe(object).await,
+                _ => Err(DbError::InvalidRequest),
+            },
             _ => Err(DbError::InvalidRequest),
         }
     }
@@ -444,10 +448,78 @@ impl DbSession {
         })
     }
 
+    /// Editor text that shows the first `limit` rows, entries or keys of an
+    /// object picked in the structure tree.
+    pub async fn object_query(&self, object: &DbObjectRef, limit: u32) -> Result<String, DbError> {
+        let limit = limit.clamp(1, 10_000);
+        match (self.info.engine, object.kind) {
+            (
+                DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Clickhouse,
+                DbObjectKind::Table | DbObjectKind::View | DbObjectKind::MaterializedView,
+            ) => Ok(format!(
+                "SELECT * FROM {} LIMIT {limit}",
+                quote_identifier(self.info.engine, object)
+            )),
+            (DbEngine::Redis, DbObjectKind::RedisKey) => {
+                let key = crate::parser::redis_quote(object.name.as_bytes());
+                let mut kind = Collect::default();
+                if let Driver::Redis(driver) = &mut *self.driver.lock().await {
+                    driver
+                        .command(
+                            &[b"TYPE".to_vec(), object.name.as_bytes().to_vec()],
+                            &mut kind,
+                            self.scope.child_token(),
+                        )
+                        .await?;
+                }
+                let kind = kind
+                    .rows
+                    .first()
+                    .and_then(|row| row.first())
+                    .cloned()
+                    .unwrap_or_default();
+                let last = limit - 1;
+                Ok(match kind.as_str() {
+                    "hash" => format!("HSCAN {key} 0 COUNT {limit}"),
+                    "list" => format!("LRANGE {key} 0 {last}"),
+                    "set" => format!("SSCAN {key} 0 COUNT {limit}"),
+                    "zset" => format!("ZRANGE {key} 0 {last} WITHSCORES"),
+                    "stream" => format!("XRANGE {key} - + COUNT {limit}"),
+                    _ => format!("GET {key}"),
+                })
+            }
+            (DbEngine::Redis, DbObjectKind::RedisDatabase) => {
+                // A folder is its prefix; a database lists everything.
+                let pattern = if object.parent_name.is_some() {
+                    format!("{}*", glob_escape(&object.name))
+                } else {
+                    "*".into()
+                };
+                Ok(format!(
+                    "SCAN 0 MATCH {} COUNT {limit}",
+                    crate::parser::redis_quote(pattern.as_bytes())
+                ))
+            }
+            _ => Err(DbError::InvalidRequest),
+        }
+    }
+
     /// Forgets cached completion names (after DDL or an explicit refresh).
     pub async fn refresh_completion(&self) {
         *self.completion.lock().await = None;
     }
+}
+
+/// Escapes Redis glob characters in a literal key prefix.
+fn glob_escape(prefix: &str) -> String {
+    let mut out = String::with_capacity(prefix.len());
+    for c in prefix.chars() {
+        if matches!(c, '*' | '?' | '[' | ']' | '\\') {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out
 }
 
 fn postgres_table_ddl(

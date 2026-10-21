@@ -15229,6 +15229,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{ms} ms'**
   String dbElapsed(int ms);
+
+  /// Title of the dialog for a query refused by policy.
+  ///
+  /// In en, this message translates to:
+  /// **'Query blocked'**
+  String get dbQueryBlockedTitle;
+
+  /// Explains why Redis KEYS is refused and suggests SCAN.
+  ///
+  /// In en, this message translates to:
+  /// **'KEYS scans every key at once and can stall the server. Use SCAN to read keys page by page.'**
+  String get dbScanInsteadOfKeys;
+
+  /// Opens the suggested safe query in a new editor tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in a new tab'**
+  String get dbOpenSuggestion;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

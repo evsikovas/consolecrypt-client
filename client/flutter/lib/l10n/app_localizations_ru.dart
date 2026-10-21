@@ -8624,4 +8624,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String dbElapsed(int ms) {
     return '$ms мс';
   }
+
+  @override
+  String get dbQueryBlockedTitle => 'Запрос заблокирован';
+
+  @override
+  String get dbScanInsteadOfKeys =>
+      'KEYS перебирает все ключи разом и может остановить сервер. Используйте SCAN — он читает ключи порциями.';
+
+  @override
+  String get dbOpenSuggestion => 'Открыть в новой вкладке';
 }

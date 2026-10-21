@@ -15,11 +15,20 @@ final class DbPrivilegeReport {
 }
 
 final class DbQueryReview {
-  const DbQueryReview({required this.ticket, required this.risk, required this.expiresAt, this.reasonCodes = const []});
+  const DbQueryReview({
+    required this.ticket,
+    required this.risk,
+    required this.expiresAt,
+    this.reasonCodes = const [],
+    this.suggestion,
+  });
   final String ticket;
   final DbQueryRisk risk;
   final DateTime expiresAt;
   final List<String> reasonCodes;
+
+  /// A runnable read-only alternative to a blocked query (Redis KEYS → SCAN).
+  final String? suggestion;
 }
 
 final class DbPreparedQuery {

@@ -262,7 +262,7 @@ pub(super) fn refusal_hint(text: &str) -> Option<RefusalHint> {
 }
 
 /// Editor spelling of one argument that tokenizes back to the same bytes.
-fn quote(value: &[u8]) -> String {
+pub(crate) fn quote(value: &[u8]) -> String {
     if !value.is_empty()
         && value
             .iter()

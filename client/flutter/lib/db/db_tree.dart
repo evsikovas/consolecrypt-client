@@ -11,6 +11,37 @@ import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+IconData _kindIcon(DbTreeNode node) => switch (node.reference.kind) {
+  DbObjectKind.database => Icons.storage_rounded,
+  DbObjectKind.redisDatabase => node.reference.parentName == null ? Icons.storage_rounded : Icons.folder_outlined,
+  DbObjectKind.schema => Icons.account_tree_outlined,
+  DbObjectKind.table || DbObjectKind.collection => Icons.table_chart_outlined,
+  DbObjectKind.view || DbObjectKind.materializedView => Icons.view_quilt_outlined,
+  DbObjectKind.sequence => Icons.format_list_numbered,
+  DbObjectKind.function || DbObjectKind.procedure => Icons.functions,
+  DbObjectKind.column =>
+    node.primaryKey ? Icons.key : (node.foreignKey != null ? Icons.link : Icons.view_column_outlined),
+  DbObjectKind.indexObject => Icons.bolt_outlined,
+  DbObjectKind.constraint => Icons.rule,
+  DbObjectKind.trigger => Icons.flash_on_outlined,
+  DbObjectKind.dictionary => Icons.menu_book_outlined,
+  DbObjectKind.projection => Icons.layers_outlined,
+  DbObjectKind.redisKey => Icons.vpn_key_outlined,
+};
+
+/// Objects whose creation statement or description can be shown.
+const _describable = {
+  DbObjectKind.table,
+  DbObjectKind.view,
+  DbObjectKind.materializedView,
+  DbObjectKind.sequence,
+  DbObjectKind.function,
+  DbObjectKind.procedure,
+  DbObjectKind.dictionary,
+  DbObjectKind.collection,
+  DbObjectKind.redisKey,
+};
+
 final class _Branch {
   final nodes = <DbTreeNode>[];
   final cursors = <String>{};
@@ -230,8 +261,13 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
                             if (!expanded) _load(object);
                           },
                         )
-                      : Icon(node.primaryKey ? Icons.key : Icons.table_rows, size: 20),
-                  title: Text(object.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      : Icon(_kindIcon(node), size: 20),
+                  title: Row(
+                    children: [
+                      if (node.hasChildren) ...[Icon(_kindIcon(node), size: 16), const SizedBox(width: 6)],
+                      Expanded(child: Text(object.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    ],
+                  ),
                   subtitle: node.detail == null
                       ? null
                       : Text(node.detail!, maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -246,9 +282,10 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
                         DbObjectKind.materializedView,
                         DbObjectKind.collection,
                         DbObjectKind.redisKey,
+                        DbObjectKind.redisDatabase,
                       ].contains(object.kind))
                         PopupMenuItem(value: 'query', child: Text(l.dbFirstRows)),
-                      if (widget.session.engine.sql) PopupMenuItem(value: 'ddl', child: Text(l.dbDdl)),
+                      if (_describable.contains(object.kind)) PopupMenuItem(value: 'ddl', child: Text(l.dbDdl)),
                       if (widget.service is DbObjectInspectService) ...[
                         PopupMenuItem(value: 'inspect', child: Text(l.dbInspect)),
                         if (object.kind == DbObjectKind.collection)

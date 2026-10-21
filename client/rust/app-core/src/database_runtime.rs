@@ -7,8 +7,8 @@ use cc_db_core::{
     parser::editor::{self, QueryScope},
     streaming::DbQueryStream,
     transport::DbCredentials,
-    DbCell, DbColumn, DbError, DbObjectKind, DbObjectRef, DbQueryEvent, DbQueryRequest, DbSession,
-    DbSessionInfo, DbTreePage,
+    DbCell, DbColumn, DbError, DbObjectRef, DbQueryEvent, DbQueryRequest, DbSession, DbSessionInfo,
+    DbTreePage,
 };
 use cc_models::database::{DbConnection, DbEngine};
 use secrecy::SecretString;
@@ -220,6 +220,8 @@ pub struct DbQueryReviewDto {
     pub reason_codes: Vec<&'static str>,
     pub statement_count: usize,
     pub expires_in_seconds: u64,
+    /// A runnable read-only alternative to a refused query.
+    pub suggestion: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -418,18 +420,8 @@ impl AppCore {
         limit: u32,
     ) -> AppResult<String> {
         let (_, unlocked) = self.unlocked().await?;
-        let engine = unlocked.db.session(&session_id)?.info().engine;
-        if !matches!(
-            object.kind,
-            DbObjectKind::Table | DbObjectKind::View | DbObjectKind::MaterializedView
-        ) {
-            return Err(invalid("invalid_request"));
-        }
-        Ok(format!(
-            "SELECT * FROM {} LIMIT {}",
-            quote_identifier(engine, &object),
-            limit.clamp(1, 10_000)
-        ))
+        let session = unlocked.db.session(&session_id)?;
+        session.object_query(&object, limit).await.map_err(db_error)
     }
 
     /// Creation statement (SQL engines) or description (Redis keys, Mongo
@@ -509,7 +501,26 @@ impl AppCore {
     ) -> AppResult<DbQueryReviewDto> {
         let (_, unlocked) = self.unlocked().await?;
         let session = unlocked.db.session(&session_id)?;
-        let review = session.guard().review(&request).map_err(db_error)?;
+        let review = match session.guard().review(&request) {
+            Ok(review) => review,
+            // Refused by policy: report it as blocked with a safe alternative
+            // when one exists (Redis KEYS → SCAN), not as a failure.
+            Err(DbError::PolicyDenied) => {
+                let hint = session.guard().refusal_hint(&request);
+                return Ok(DbQueryReviewDto {
+                    ticket: String::new(),
+                    risk: "blocked".into(),
+                    reason_codes: hint
+                        .as_ref()
+                        .map(|hint| vec![hint.code])
+                        .unwrap_or_default(),
+                    statement_count: 0,
+                    expires_in_seconds: 0,
+                    suggestion: hint.map(|hint| hint.suggestion),
+                });
+            }
+            Err(error) => return Err(db_error(error)),
+        };
         Ok(DbQueryReviewDto {
             ticket: review.ticket.clone(),
             risk: serde_json::to_value(review.risk)
@@ -519,6 +530,7 @@ impl AppCore {
             reason_codes: review.reason_codes.clone(),
             statement_count: review.statement_count,
             expires_in_seconds: review.expires_in_seconds,
+            suggestion: None,
         })
     }
 

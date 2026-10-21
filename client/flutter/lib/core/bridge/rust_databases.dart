@@ -311,8 +311,10 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
       risk: switch (json['risk']) {
         'read_only' => DbQueryRisk.read,
         'write' => DbQueryRisk.write,
+        'blocked' => DbQueryRisk.blocked,
         _ => DbQueryRisk.dangerous,
       },
+      suggestion: json['suggestion'] as String?,
       expiresAt: DateTime.now().add(Duration(seconds: json['expires_in_seconds'] as int? ?? 60)),
       reasonCodes: (json['reason_codes'] as List? ?? const []).cast<String>(),
     );

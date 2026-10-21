@@ -8420,4 +8420,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String dbElapsed(int ms) {
     return '$ms ms';
   }
+
+  @override
+  String get dbQueryBlockedTitle => 'Query blocked';
+
+  @override
+  String get dbScanInsteadOfKeys =>
+      'KEYS scans every key at once and can stall the server. Use SCAN to read keys page by page.';
+
+  @override
+  String get dbOpenSuggestion => 'Open in a new tab';
 }

@@ -11,6 +11,7 @@ use zeroize::{Zeroize, Zeroizing};
 pub mod editor;
 mod mongo;
 mod redis;
+pub(crate) use redis::quote as redis_quote;
 mod sql;
 mod template;
 

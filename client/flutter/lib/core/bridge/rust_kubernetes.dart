@@ -72,9 +72,13 @@ final class RustKubeService
 
   @override
   Future<KubeHelmComparison> compareHelmLive(String sessionId, String namespace, String secretName) async =>
-      KubeHelmComparison.fromJson(decodeObject(await guard(() => native.kubeHelmCompareLive(
-        sessionId: sessionId, namespace: namespace, secretName: secretName,
-      ))));
+      KubeHelmComparison.fromJson(
+        decodeObject(
+          await guard(
+            () => native.kubeHelmCompareLive(sessionId: sessionId, namespace: namespace, secretName: secretName),
+          ),
+        ),
+      );
 
   @override
   Future<KubectlDiscovery> discoverKubectl() async =>
