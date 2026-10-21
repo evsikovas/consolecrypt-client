@@ -605,6 +605,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
                     onRun: _run,
                     onCancel: tab.result.cancel,
                     onExplain: _explain,
+                    onHistory: _backend is DbHistoryService ? () => setState(() => _view = 'history') : null,
                     onAi: _backend is DbAiService
                         ? () => setState(() {
                             _aiOpen = true;

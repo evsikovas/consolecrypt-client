@@ -64,6 +64,7 @@ class DbQueryEditor extends StatefulWidget {
     this.onCancel,
     this.onAi,
     this.onExplain,
+    this.onHistory,
     super.key,
   });
   final DbEditorController controller;
@@ -72,7 +73,7 @@ class DbQueryEditor extends StatefulWidget {
   final ValueChanged<DbRunMode> onRun;
   final bool Function() isCurrent;
   final bool running;
-  final VoidCallback? onCancel, onAi;
+  final VoidCallback? onCancel, onAi, onHistory;
   final ValueChanged<bool>? onExplain;
   @override
   State<DbQueryEditor> createState() => _DbQueryEditorState();
@@ -211,6 +212,15 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
               setState(() => _findOpen = !_findOpen),
           SingleActivator(LogicalKeyboardKey.slash, control: !meta, meta: meta): _comments,
           if (widget.onAi != null) SingleActivator(LogicalKeyboardKey.keyI, control: !meta, meta: meta): widget.onAi!,
+          SingleActivator(LogicalKeyboardKey.keyF, control: !meta, meta: meta, shift: true): () {
+            if (!_busy) unawaited(_format());
+          },
+          if (widget.onCancel != null)
+            SingleActivator(LogicalKeyboardKey.period, control: !meta, meta: meta): widget.onCancel!,
+          if (widget.onExplain != null)
+            SingleActivator(LogicalKeyboardKey.keyE, control: !meta, meta: meta): () => widget.onExplain!(false),
+          if (widget.onHistory != null)
+            SingleActivator(LogicalKeyboardKey.keyH, control: !meta, meta: meta): widget.onHistory!,
         },
       },
       child: Column(
