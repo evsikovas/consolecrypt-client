@@ -8792,9 +8792,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerFilterContainers => 'Фильтр по имени или образу';
 
   @override
-  String get dockerShowStopped => 'Показывать остановленные';
-
-  @override
   String get dockerNoContainers => 'Нет контейнеров';
 
   @override
@@ -8807,7 +8804,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerContainerGone => 'Контейнер больше не существует';
 
   @override
-  String get dockerStandalone => 'Отдельные контейнеры';
+  String get dockerStandalone => 'Контейнеры';
 
   @override
   String get dockerCompose => 'compose';
@@ -9073,4 +9070,22 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get dockerSocketForwardingDisabled =>
       'SSH-сервер не разрешает проброс сокета Docker, а Docker CLI на нём нет. Включите «AllowStreamLocalForwarding yes» в sshd_config или установите docker CLI на хосте.';
+
+  @override
+  String get dockerStateFilter => 'Состояние контейнеров';
+
+  @override
+  String dockerFilterAll(int count) {
+    return 'Все $count';
+  }
+
+  @override
+  String dockerFilterRunning(int count) {
+    return 'Запущенные $count';
+  }
+
+  @override
+  String dockerFilterStopped(int count) {
+    return 'Остановленные $count';
+  }
 }

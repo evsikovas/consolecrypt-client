@@ -47,7 +47,8 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   final _collapsed = <String>{};
   final _busy = <String>{};
   Timer? _timer;
-  bool _foreground = true, _loading = false, _loaded = false, _showStopped = true, _forwardsOpen = false;
+  bool _foreground = true, _loading = false, _loaded = false, _forwardsOpen = false;
+  DockerStateFilter _filter = DockerStateFilter.all;
   Object? _error;
   String _query = '';
   String? _selected;
@@ -207,7 +208,8 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   Widget build(BuildContext context) {
     final l = context.l10n;
     final containers = _containers.value;
-    final groups = groupDockerContainers(containers, query: _query, showStopped: _showStopped);
+    final groups = groupDockerContainers(containers, query: _query, filter: _filter);
+    final active = containers.where((c) => dockerIsActive(c.state)).length;
     final selected = containers.where((c) => c.id == _selected).firstOrNull;
     final forwards = ref.watch(dockerForwardsProvider).value?.where((f) => f.state == DockerForwardState.running);
     final pad = pagePadding(context);
@@ -279,11 +281,29 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                         onChanged: (value) => setState(() => _query = value),
                       ),
                     ),
-                    GlassButton.plain(
-                      key: const ValueKey('docker-show-stopped'),
-                      label: l.dockerShowStopped,
-                      icon: _showStopped ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
-                      onPressed: () => setState(() => _showStopped = !_showStopped),
+                    GlassSegmented<DockerStateFilter>(
+                      key: const ValueKey('docker-state-filter'),
+                      inChrome: false,
+                      semanticLabel: l.dockerStateFilter,
+                      selected: _filter,
+                      onChanged: (value) => setState(() => _filter = value),
+                      segments: [
+                        GlassSegment(
+                          key: const ValueKey('docker-filter-all'),
+                          value: DockerStateFilter.all,
+                          label: l.dockerFilterAll(containers.length),
+                        ),
+                        GlassSegment(
+                          key: const ValueKey('docker-filter-running'),
+                          value: DockerStateFilter.running,
+                          label: l.dockerFilterRunning(active),
+                        ),
+                        GlassSegment(
+                          key: const ValueKey('docker-filter-stopped'),
+                          value: DockerStateFilter.stopped,
+                          label: l.dockerFilterStopped(containers.length - active),
+                        ),
+                      ],
                     ),
                   ],
                 ),

@@ -123,36 +123,55 @@ class DockerContainerList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = <Object>[
-      for (final group in groups) ...[group, if (!collapsed.contains(group.key)) ...group.containers],
-    ];
-    return ContentSurface(
-      padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s4),
-      child: RepaintBoundary(
-        child: ScrollEdgeEffect(
-          bottom: true,
-          extent: 12,
-          child: LayoutBuilder(
-            builder: (context, constraints) => ListView.builder(
-              key: const ValueKey('docker-containers'),
-              padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s4),
-              itemCount: rows.length,
-              itemBuilder: (context, index) => switch (rows[index]) {
-                final DockerContainerGroup group => _GroupHeader(
-                  group: group,
-                  collapsed: collapsed.contains(group.key),
-                  onToggle: () => onToggleGroup(group.key),
+    final tokens = GlassTokens.of(context);
+    // Each compose project (and the loose containers) is its own block.
+    return RepaintBoundary(
+      child: ScrollEdgeEffect(
+        bottom: true,
+        extent: 12,
+        child: LayoutBuilder(
+          builder: (context, constraints) => ListView.builder(
+            key: const ValueKey('docker-containers'),
+            padding: const EdgeInsets.only(bottom: GlassSpacing.s12),
+            itemCount: groups.length,
+            itemBuilder: (context, index) {
+              final group = groups[index];
+              final open = !collapsed.contains(group.key);
+              final active = group.running > 0;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: GlassSpacing.s8),
+                child: DecoratedBox(
+                  key: ValueKey('docker-block-${group.key}'),
+                  decoration: ShapeDecoration(
+                    color: tokens.surfaces.fillField,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(tokens.radii.card),
+                      side: BorderSide(
+                        color: active ? tokens.palette.success.withValues(alpha: .35) : tokens.surfaces.hairlineCard,
+                      ),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(GlassSpacing.s4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _GroupHeader(group: group, collapsed: !open, onToggle: () => onToggleGroup(group.key)),
+                        if (open)
+                          for (final container in group.containers)
+                            DockerContainerRow(
+                              container: container,
+                              compact: constraints.maxWidth < 560,
+                              selected: container.id == selectedId,
+                              busy: actions.busy(container),
+                              actions: actions,
+                            ),
+                      ],
+                    ),
+                  ),
                 ),
-                final DockerContainer container => DockerContainerRow(
-                  container: container,
-                  compact: constraints.maxWidth < 560,
-                  selected: container.id == selectedId,
-                  busy: actions.busy(container),
-                  actions: actions,
-                ),
-                _ => const SizedBox.shrink(),
-              },
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -260,6 +279,7 @@ class DockerContainerRow extends StatelessWidget {
     final tokens = GlassTokens.of(context);
     final p = tokens.palette;
     final running = container.state == DockerContainerState.running;
+    final active = dockerIsActive(container.state);
     final health = dockerHealth(l, container.health);
     final ports = formatDockerPorts(container.ports);
     final caption = tokens.typography.caption.copyWith(color: tokens.secondaryLabel);
@@ -284,143 +304,156 @@ class DockerContainerRow extends StatelessWidget {
               ? p.accent.withValues(alpha: .12)
               : state.hovered
               ? tokens.surfaces.fillHover
+              : active
+              ? p.success.withValues(alpha: .07)
               : Colors.transparent,
           shape: GlassRadii.shape(tokens.radii.row),
         ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(compact ? 10 : 30, 8, 6, 8),
-          child: Row(
-            children: [
-              StatusDot(color: p.tone(dockerStateTone(container.state)), size: 9),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          flex: 3,
-                          child: Text(
-                            container.name,
-                            key: ValueKey('docker-name-${container.id}'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: tokens.typography.bodyEmph.copyWith(color: p.label),
-                          ),
-                        ),
-                        if (container.composeService case final service?) ...[
-                          const SizedBox(width: 6),
+        // Stopped containers recede; running ones stay at full strength.
+        child: Opacity(
+          opacity: active || selected || state.hovered ? 1 : .55,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(compact ? 10 : 30, 8, 6, 8),
+            child: Row(
+              children: [
+                StatusDot(color: p.tone(dockerStateTone(container.state)), size: 9),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
                           Flexible(
-                            child: Text('($service)', maxLines: 1, overflow: TextOverflow.ellipsis, style: caption),
+                            flex: 3,
+                            child: Text(
+                              container.name,
+                              key: ValueKey('docker-name-${container.id}'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tokens.typography.bodyEmph.copyWith(
+                                color: active ? p.label : tokens.secondaryLabel,
+                              ),
+                            ),
                           ),
+                          if (container.composeService case final service?) ...[
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text('($service)', maxLines: 1, overflow: TextOverflow.ellipsis, style: caption),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      compact ? container.image : '${container.image} · ${container.shortId}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tokens.typography.mono.copyWith(fontSize: 12, color: tokens.secondaryLabel),
-                    ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        GlassBadge(
-                          key: ValueKey('docker-state-${container.id}'),
-                          label: dockerStateLabel(l, container.state),
-                          tone: dockerStateTone(container.state),
-                          dense: true,
-                        ),
-                        if (health != null)
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        compact ? container.image : '${container.image} · ${container.shortId}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tokens.typography.mono.copyWith(fontSize: 12, color: tokens.secondaryLabel),
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
                           GlassBadge(
-                            key: ValueKey('docker-health-${container.id}'),
-                            label: health.$1,
-                            tone: health.$2,
-                            icon: Icons.monitor_heart_outlined,
+                            key: ValueKey('docker-state-${container.id}'),
+                            label: dockerStateLabel(l, container.state),
+                            tone: dockerStateTone(container.state),
                             dense: true,
                           ),
-                        if (container.status.isNotEmpty)
-                          ConstrainedBox(
-                            constraints: BoxConstraints(maxWidth: compact ? 180 : 260),
-                            child: Text(container.status, maxLines: 1, overflow: TextOverflow.ellipsis, style: caption),
-                          ),
-                        for (final port in ports)
-                          Text(
-                            port,
-                            key: ValueKey('docker-port-${container.id}-$port'),
-                            style: tokens.typography.mono.copyWith(fontSize: 11, color: p.accent),
-                          ),
-                      ],
+                          if (health != null)
+                            GlassBadge(
+                              key: ValueKey('docker-health-${container.id}'),
+                              label: health.$1,
+                              tone: health.$2,
+                              icon: Icons.monitor_heart_outlined,
+                              dense: true,
+                            ),
+                          if (container.status.isNotEmpty)
+                            ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: compact ? 180 : 260),
+                              child: Text(
+                                container.status,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: caption,
+                              ),
+                            ),
+                          for (final port in ports)
+                            Text(
+                              port,
+                              key: ValueKey('docker-port-${container.id}-$port'),
+                              style: tokens.typography.mono.copyWith(fontSize: 11, color: p.accent),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (busy)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                if (!compact) ...[
+                  if (dockerActionAllowed(DockerAction.start, container.state))
+                    quick(
+                      'start',
+                      Icons.play_arrow_rounded,
+                      l.dockerActionStart,
+                      () => unawaited(actions.run(container, DockerAction.start)),
+                      color: p.success,
+                    )
+                  else if (container.state == DockerContainerState.paused)
+                    quick(
+                      'unpause',
+                      Icons.play_circle_outline_rounded,
+                      l.dockerActionUnpause,
+                      () => unawaited(actions.run(container, DockerAction.unpause)),
+                    )
+                  else
+                    quick(
+                      'stop',
+                      Icons.stop_rounded,
+                      l.dockerActionStop,
+                      dockerActionAllowed(DockerAction.stop, container.state)
+                          ? () => unawaited(actions.run(container, DockerAction.stop))
+                          : null,
                     ),
-                  ],
-                ),
-              ),
-              if (busy)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-                ),
-              if (!compact) ...[
-                if (dockerActionAllowed(DockerAction.start, container.state))
                   quick(
-                    'start',
-                    Icons.play_arrow_rounded,
-                    l.dockerActionStart,
-                    () => unawaited(actions.run(container, DockerAction.start)),
-                    color: p.success,
-                  )
-                else if (container.state == DockerContainerState.paused)
-                  quick(
-                    'unpause',
-                    Icons.play_circle_outline_rounded,
-                    l.dockerActionUnpause,
-                    () => unawaited(actions.run(container, DockerAction.unpause)),
-                  )
-                else
-                  quick(
-                    'stop',
-                    Icons.stop_rounded,
-                    l.dockerActionStop,
-                    dockerActionAllowed(DockerAction.stop, container.state)
-                        ? () => unawaited(actions.run(container, DockerAction.stop))
+                    'restart',
+                    Icons.restart_alt_rounded,
+                    l.dockerActionRestart,
+                    dockerActionAllowed(DockerAction.restart, container.state)
+                        ? () => unawaited(actions.run(container, DockerAction.restart))
                         : null,
                   ),
-                quick(
-                  'restart',
-                  Icons.restart_alt_rounded,
-                  l.dockerActionRestart,
-                  dockerActionAllowed(DockerAction.restart, container.state)
-                      ? () => unawaited(actions.run(container, DockerAction.restart))
-                      : null,
-                ),
-                quick('logs', Icons.article_outlined, l.dockerLogs, () => actions.logs(container)),
-                quick(
-                  'terminal',
-                  Icons.terminal_rounded,
-                  l.dockerTerminal,
-                  running ? () => unawaited(actions.terminal(container)) : null,
+                  quick('logs', Icons.article_outlined, l.dockerLogs, () => actions.logs(container)),
+                  quick(
+                    'terminal',
+                    Icons.terminal_rounded,
+                    l.dockerTerminal,
+                    running ? () => unawaited(actions.terminal(container)) : null,
+                  ),
+                ],
+                GlassMenuButton<Object>(
+                  key: ValueKey('docker-menu-${container.id}'),
+                  entries: dockerContainerMenu(l, container),
+                  onSelected: (value) => runDockerMenuValue(actions, container, value),
+                  builder: (context, open) => GlassIconButton(
+                    key: ValueKey('docker-menu-button-${container.id}'),
+                    icon: Icons.more_horiz_rounded,
+                    tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+                    size: 28,
+                    iconSize: 16,
+                    style: GlassIconButtonStyle.plain,
+                    onPressed: open,
+                  ),
                 ),
               ],
-              GlassMenuButton<Object>(
-                key: ValueKey('docker-menu-${container.id}'),
-                entries: dockerContainerMenu(l, container),
-                onSelected: (value) => runDockerMenuValue(actions, container, value),
-                builder: (context, open) => GlassIconButton(
-                  key: ValueKey('docker-menu-button-${container.id}'),
-                  icon: Icons.more_horiz_rounded,
-                  tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
-                  size: 28,
-                  iconSize: 16,
-                  style: GlassIconButtonStyle.plain,
-                  onPressed: open,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

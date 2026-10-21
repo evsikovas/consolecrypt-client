@@ -8588,9 +8588,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dockerFilterContainers => 'Filter by name or image';
 
   @override
-  String get dockerShowStopped => 'Show stopped';
-
-  @override
   String get dockerNoContainers => 'No containers';
 
   @override
@@ -8603,7 +8600,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dockerContainerGone => 'The container no longer exists';
 
   @override
-  String get dockerStandalone => 'Standalone containers';
+  String get dockerStandalone => 'Containers';
 
   @override
   String get dockerCompose => 'compose';
@@ -8868,4 +8865,22 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get dockerSocketForwardingDisabled =>
       'The SSH server does not allow forwarding the Docker socket and has no Docker CLI. Set \"AllowStreamLocalForwarding yes\" in sshd_config or install the docker CLI on the host.';
+
+  @override
+  String get dockerStateFilter => 'Container state';
+
+  @override
+  String dockerFilterAll(int count) {
+    return 'All $count';
+  }
+
+  @override
+  String dockerFilterRunning(int count) {
+    return 'Running $count';
+  }
+
+  @override
+  String dockerFilterStopped(int count) {
+    return 'Stopped $count';
+  }
 }

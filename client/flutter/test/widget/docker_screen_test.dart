@@ -141,13 +141,13 @@ void main() {
     expect(find.textContaining('linux/arm64'), findsOneWidget);
     expect(find.textContaining('5 of 8 running'), findsOneWidget);
 
-    // Compose projects alphabetically, standalone containers last.
+    // Running compose projects alphabetically, loose containers after them.
     final monitoring = tester.getTopLeft(find.byKey(const ValueKey('docker-group-monitoring')));
     final shop = tester.getTopLeft(find.byKey(const ValueKey('docker-group-shop')));
     final standalone = tester.getTopLeft(find.byKey(const ValueKey('docker-group-')));
     expect(monitoring.dy, lessThan(shop.dy));
     expect(shop.dy, lessThan(standalone.dy));
-    expect(find.text('Standalone containers'), findsOneWidget);
+    expect(find.text('Containers'), findsOneWidget);
     expect(tester.widget<Text>(find.byKey(const ValueKey('docker-group-count-shop'))).data, '4/4 running');
     expect(tester.widget<Text>(find.byKey(const ValueKey('docker-group-count-monitoring'))).data, '1/2 running');
     expect(find.text('(web)'), findsOneWidget);
@@ -167,7 +167,7 @@ void main() {
 
     // Hide stopped containers and filter by image.
     expect(find.text('monitoring-grafana-1'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('docker-show-stopped')));
+    await tester.tap(find.byKey(const ValueKey('docker-filter-running')));
     await settle(tester);
     expect(find.text('monitoring-grafana-1'), findsNothing);
     expect(find.text('backup-once'), findsNothing);
@@ -440,8 +440,28 @@ void main() {
       expect((groups.first.running, groups.first.total), (1, 2));
       final running = groupDockerContainers([
         c('a1', project: 'alpha', state: DockerContainerState.exited),
-      ], showStopped: false);
+      ], filter: DockerStateFilter.running);
       expect(running, isEmpty);
+    });
+
+    test('running groups and containers come first, stopped ones last', () {
+      DockerContainer c(String name, {String? project, DockerContainerState state = DockerContainerState.running}) =>
+          DockerContainer(id: name, name: name, image: 'img', state: state, composeProject: project);
+      final groups = groupDockerContainers([
+        c('z-old', project: 'archive', state: DockerContainerState.exited),
+        c('solo-stopped', state: DockerContainerState.exited),
+        c('solo-up'),
+        c('b-stopped', project: 'shop', state: DockerContainerState.exited),
+        c('a-up', project: 'shop'),
+      ]);
+      expect(groups.map((g) => g.project), ['shop', null, 'archive']);
+      expect(groups.first.containers.map((c) => c.name), ['a-up', 'b-stopped']);
+      expect(groups[1].containers.map((c) => c.name), ['solo-up', 'solo-stopped']);
+      final stopped = groupDockerContainers([
+        c('up', project: 'shop'),
+        c('down', project: 'shop', state: DockerContainerState.exited),
+      ], filter: DockerStateFilter.stopped);
+      expect(stopped.single.containers.map((c) => c.name), ['down']);
     });
   });
 }

@@ -11780,10 +11780,6 @@
   "@dockerFilterContainers": {
     "description": "Docker container list: filter field placeholder"
   },
-  "dockerShowStopped": "Show stopped",
-  "@dockerShowStopped": {
-    "description": "Docker container list: toggle to show stopped containers"
-  },
   "dockerNoContainers": "No containers",
   "@dockerNoContainers": {
     "description": "Docker container list: empty engine title"
@@ -11800,7 +11796,7 @@
   "@dockerContainerGone": {
     "description": "Docker details page: the container was removed"
   },
-  "dockerStandalone": "Standalone containers",
+  "dockerStandalone": "Containers",
   "@dockerStandalone": {
     "description": "Docker container list: group of containers not started by compose"
   },
@@ -12166,5 +12162,36 @@
   "dockerSocketForwardingDisabled": "The SSH server does not allow forwarding the Docker socket and has no Docker CLI. Set \"AllowStreamLocalForwarding yes\" in sshd_config or install the docker CLI on the host.",
   "@dockerSocketForwardingDisabled": {
     "description": "Docker connection failure: the SSH server refuses Unix socket forwarding."
+  },
+  "dockerStateFilter": "Container state",
+  "@dockerStateFilter": {
+    "description": "Label of the container state filter."
+  },
+  "dockerFilterAll": "All {count}",
+  "@dockerFilterAll": {
+    "description": "Container filter: all.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dockerFilterRunning": "Running {count}",
+  "@dockerFilterRunning": {
+    "description": "Container filter: running.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dockerFilterStopped": "Stopped {count}",
+  "@dockerFilterStopped": {
+    "description": "Container filter: stopped.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

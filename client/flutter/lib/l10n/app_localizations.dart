@@ -15518,12 +15518,6 @@ abstract class AppLocalizations {
   /// **'Filter by name or image'**
   String get dockerFilterContainers;
 
-  /// Docker container list: toggle to show stopped containers
-  ///
-  /// In en, this message translates to:
-  /// **'Show stopped'**
-  String get dockerShowStopped;
-
   /// Docker container list: empty engine title
   ///
   /// In en, this message translates to:
@@ -15551,7 +15545,7 @@ abstract class AppLocalizations {
   /// Docker container list: group of containers not started by compose
   ///
   /// In en, this message translates to:
-  /// **'Standalone containers'**
+  /// **'Containers'**
   String get dockerStandalone;
 
   /// Docker container list: marker next to a compose project name (technical term)
@@ -16039,6 +16033,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The SSH server does not allow forwarding the Docker socket and has no Docker CLI. Set \"AllowStreamLocalForwarding yes\" in sshd_config or install the docker CLI on the host.'**
   String get dockerSocketForwardingDisabled;
+
+  /// Label of the container state filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Container state'**
+  String get dockerStateFilter;
+
+  /// Container filter: all.
+  ///
+  /// In en, this message translates to:
+  /// **'All {count}'**
+  String dockerFilterAll(int count);
+
+  /// Container filter: running.
+  ///
+  /// In en, this message translates to:
+  /// **'Running {count}'**
+  String dockerFilterRunning(int count);
+
+  /// Container filter: stopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped {count}'**
+  String dockerFilterStopped(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

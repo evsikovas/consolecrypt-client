@@ -27,35 +27,45 @@ bool dockerIsActive(DockerContainerState state) =>
     state == DockerContainerState.paused ||
     state == DockerContainerState.restarting;
 
-/// Groups by `composeProject` (alphabetically), standalone containers last.
-/// [query] matches name, compose service and image; stopped containers are
-/// hidden unless [showStopped].
+/// Which containers the list shows.
+enum DockerStateFilter { all, running, stopped }
+
+bool dockerFilterMatches(DockerStateFilter filter, DockerContainerState state) => switch (filter) {
+  DockerStateFilter.all => true,
+  DockerStateFilter.running => dockerIsActive(state),
+  DockerStateFilter.stopped => !dockerIsActive(state),
+};
+
+/// Groups by `composeProject`. Groups with running containers come first,
+/// fully stopped ones below; inside a group running containers lead. [query]
+/// matches name, compose service and image.
 List<DockerContainerGroup> groupDockerContainers(
   List<DockerContainer> containers, {
   String query = '',
-  bool showStopped = true,
+  DockerStateFilter filter = DockerStateFilter.all,
 }) {
   final needle = query.trim().toLowerCase();
   final byProject = <String?, List<DockerContainer>>{};
   for (final container in containers) {
     byProject.putIfAbsent(container.composeProject, () => []).add(container);
   }
-  final projects = byProject.keys.whereType<String>().toList()..sort();
   final groups = <DockerContainerGroup>[];
-  for (final project in [...projects, if (byProject.containsKey(null)) null]) {
-    final all = byProject[project]!;
+  for (final MapEntry(key: project, value: all) in byProject.entries) {
     final visible =
         all
-            .where((c) => showStopped || dockerIsActive(c.state))
+            .where((c) => dockerFilterMatches(filter, c.state))
             .where(
               (c) =>
                   needle.isEmpty ||
                   c.name.toLowerCase().contains(needle) ||
                   c.image.toLowerCase().contains(needle) ||
-                  (c.composeService?.toLowerCase().contains(needle) ?? false),
+                  (c.composeService?.toLowerCase().contains(needle) ?? false) ||
+                  (project?.toLowerCase().contains(needle) ?? false),
             )
             .toList()
           ..sort((a, b) {
+            final active = (dockerIsActive(a.state) ? 0 : 1).compareTo(dockerIsActive(b.state) ? 0 : 1);
+            if (active != 0) return active;
             final service = (a.composeService ?? a.name).compareTo(b.composeService ?? b.name);
             return service == 0 ? a.name.compareTo(b.name) : service;
           });
@@ -64,11 +74,18 @@ List<DockerContainerGroup> groupDockerContainers(
       DockerContainerGroup(
         project: project,
         containers: visible,
-        running: all.where((c) => c.state == DockerContainerState.running).length,
+        running: all.where((c) => dockerIsActive(c.state)).length,
         total: all.length,
       ),
     );
   }
+  // Running groups first, then by name; loose containers end their tier.
+  groups.sort((a, b) {
+    final active = (a.running > 0 ? 0 : 1).compareTo(b.running > 0 ? 0 : 1);
+    if (active != 0) return active;
+    if ((a.project == null) != (b.project == null)) return a.project == null ? 1 : -1;
+    return (a.project ?? '').toLowerCase().compareTo((b.project ?? '').toLowerCase());
+  });
   return groups;
 }
 
