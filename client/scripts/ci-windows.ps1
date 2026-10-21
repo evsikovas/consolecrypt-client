@@ -82,6 +82,14 @@ function Invoke-Checked {
     if ($LASTEXITCODE -ne 0) { throw "$Command failed (exit $LASTEXITCODE)" }
 }
 Invoke-Checked python @('-m', 'unittest', 'discover', '-s', (Join-Path $Repo 'client\scripts'), '-p', 'test_ci_cleanup.py', '-v')
+# rustc and the MSVC linker need ~3 GB each for the larger test binaries;
+# one job per logical CPU exhausted the commit limit (page file) on the
+# 24-thread runner. Bound the parallelism by memory unless set explicitly.
+if (-not $env:CARGO_BUILD_JOBS) {
+    $memoryGb = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB
+    $env:CARGO_BUILD_JOBS = [string][math]::Max(2, [math]::Min([Environment]::ProcessorCount, [math]::Floor($memoryGb / 3)))
+    Write-Host "Cargo jobs: $env:CARGO_BUILD_JOBS"
+}
 # Resolve Python/toolchain paths before reserving a GitHub build number.
 if ($env:GITHUB_RUN_NUMBER -and -not $NativeOnly) {
     $githubBuild = & python (Join-Path $PSScriptRoot 'github-build-number.py') windows --print-only
