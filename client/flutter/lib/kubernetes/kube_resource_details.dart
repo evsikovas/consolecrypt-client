@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
+import 'package:consolecrypt/kubernetes/kube_database_connect.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_service.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_targets_dialog.dart';
@@ -814,6 +816,30 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
                   : null,
               tooltip: widget.session.canPortForward ? l.kubePortForward : l.kubeForwardProductionBlocked,
             ),
+          if (pod && databasesEnabled && widget.service is KubeForwardService)
+            if (kubeDatabaseTarget(detail.object) case final target?)
+              action(
+                'kube-pod-database',
+                l.kubeConnectDatabase,
+                Icons.storage_rounded,
+                widget.session.canPortForward
+                    ? () => runWithFeedback(
+                        context,
+                        () => connectKubeDatabase(
+                          context,
+                          ref,
+                          session: widget.session,
+                          namespace: widget.resource.namespace!,
+                          pod: widget.resource.name,
+                          service: widget.service as KubeForwardService,
+                          target: target,
+                        ),
+                      )
+                    : null,
+                tooltip: widget.session.canPortForward
+                    ? l.kubeConnectDatabaseHelp(target.engine.label)
+                    : l.kubeForwardProductionBlocked,
+              ),
           if (forwardable)
             action(
               'kube-resource-forward',

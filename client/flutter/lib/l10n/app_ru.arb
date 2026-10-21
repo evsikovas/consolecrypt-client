@@ -5005,5 +5005,7 @@
   "dbErrorTimeout": "Сервер не ответил вовремя. Проверьте адрес и таймаут подключения.",
   "dbErrorRoute": "Выбранный маршрут недоступен: проверьте SSH-хост или jump-профиль.",
   "dbTlsLocalHint": "Локальный адрес: TLS переключён на «prefer» (у проброса порта обычно нет TLS).",
-  "colorPickerCustom": "Свой цвет"
+  "colorPickerCustom": "Свой цвет",
+  "kubeConnectDatabase": "Подключиться к БД",
+  "kubeConnectDatabaseHelp": "Пробросить порт {engine} на localhost и открыть в разделе «Базы данных»"
 }

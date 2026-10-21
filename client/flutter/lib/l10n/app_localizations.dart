@@ -15331,6 +15331,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Custom colour'**
   String get colorPickerCustom;
+
+  /// Pod action: forward the database port and open it in Databases.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to database'**
+  String get kubeConnectDatabase;
+
+  /// Tooltip of the connect-to-database pod action.
+  ///
+  /// In en, this message translates to:
+  /// **'Forward the {engine} port to localhost and open it in Databases'**
+  String kubeConnectDatabaseHelp(String engine);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

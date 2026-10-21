@@ -8684,4 +8684,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get colorPickerCustom => 'Свой цвет';
+
+  @override
+  String get kubeConnectDatabase => 'Подключиться к БД';
+
+  @override
+  String kubeConnectDatabaseHelp(String engine) {
+    return 'Пробросить порт $engine на localhost и открыть в разделе «Базы данных»';
+  }
 }

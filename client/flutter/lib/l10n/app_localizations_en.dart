@@ -8480,4 +8480,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get colorPickerCustom => 'Custom colour';
+
+  @override
+  String get kubeConnectDatabase => 'Connect to database';
+
+  @override
+  String kubeConnectDatabaseHelp(String engine) {
+    return 'Forward the $engine port to localhost and open it in Databases';
+  }
 }

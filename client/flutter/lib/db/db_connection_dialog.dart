@@ -15,8 +15,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 class DbConnectionDialog extends ConsumerStatefulWidget {
-  const DbConnectionDialog({this.connection, super.key});
+  const DbConnectionDialog({this.connection, this.template, super.key});
+
+  /// The saved connection being edited; null creates a new one.
   final DbConnection? connection;
+
+  /// Prefilled values for a new connection (e.g. from a Kubernetes pod).
+  final DbConnection? template;
   @override
   ConsumerState<DbConnectionDialog> createState() => _DbConnectionDialogState();
 }
@@ -50,7 +55,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
     WidgetsBinding.instance.addObserver(this);
     _scope = ref.read(dbScopeProvider);
     _service = ref.read(dbServiceProvider);
-    final c = widget.connection;
+    final c = widget.connection ?? widget.template;
     _engine = c?.engine ?? DbEngine.postgresql;
     _tls = c?.tls.mode ?? DbTlsMode.verify;
     _mechanism = c?.auth.mechanism ?? DbAuthMechanism.defaultAuth;

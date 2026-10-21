@@ -26,3 +26,13 @@ final dbConnectionsProvider = FutureProvider.autoDispose.family<List<DbConnectio
   ref.watch(_changes);
   return ref.watch(dbServiceProvider)?.connections() ?? const [];
 });
+
+/// Asked to open in the Databases section once it is shown.
+final dbOpenRequestProvider = NotifierProvider<DbOpenRequest, String?>(DbOpenRequest.new);
+
+class DbOpenRequest extends Notifier<String?> {
+  @override
+  String? build() => null;
+  void open(String connectionId) => state = connectionId;
+  void clear() => state = null;
+}

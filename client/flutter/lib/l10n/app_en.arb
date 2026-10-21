@@ -11619,5 +11619,18 @@
   "colorPickerCustom": "Custom colour",
   "@colorPickerCustom": {
     "description": "Opens the custom colour picker for a label colour."
+  },
+  "kubeConnectDatabase": "Connect to database",
+  "@kubeConnectDatabase": {
+    "description": "Pod action: forward the database port and open it in Databases."
+  },
+  "kubeConnectDatabaseHelp": "Forward the {engine} port to localhost and open it in Databases",
+  "@kubeConnectDatabaseHelp": {
+    "description": "Tooltip of the connect-to-database pod action.",
+    "placeholders": {
+      "engine": {
+        "type": "String"
+      }
+    }
   }
 }
