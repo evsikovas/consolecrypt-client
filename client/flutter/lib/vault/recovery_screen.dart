@@ -71,7 +71,10 @@ class _RecoveryScreenState extends ConsumerState<RecoveryScreen> {
       if (_method == RecoveryMethod.recoveryKey) {
         await vault.recoverWithRecoveryKey(recoveryInput: recovery, newPassphrase: newPass);
       } else {
-        await vault.resetPassphraseWithTrustedDevice(newPassphrase: newPass);
+        await vault.resetPassphraseWithTrustedDevice(
+          newPassphrase: newPass,
+          reason: context.l10n.recoveryDeviceResetReason,
+        );
       }
       _recovery.clear();
       _passphrase.clear();

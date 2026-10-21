@@ -24,12 +24,22 @@ DeviceUnlockInfo deviceUnlockFromJson(Json json) => DeviceUnlockInfo(
   kind: switch (json['kind']) {
     'touch_id' => DeviceAuthKind.touchId,
     'face_id' => DeviceAuthKind.faceId,
+    'fingerprint' => DeviceAuthKind.fingerprint,
     'windows_hello' => DeviceAuthKind.windowsHello,
     'device_credential' => DeviceAuthKind.deviceCredential,
+    'keyring' => DeviceAuthKind.keyring,
     _ => null,
   },
-  hasDeviceEnvelope: json['has_device_envelope'] == true,
+  hasVault: json['has_vault'] == true,
   notEnrolled: json['not_enrolled'] == true,
+  // Unknown values fail safe: show the warning.
+  protection: json['protection'] == 'system' ? DeviceUnlockProtection.system : DeviceUnlockProtection.convenience,
+  external: json['external'] == true,
+  reoffer: switch (json['reoffer']) {
+    'migrated' => DeviceUnlockReoffer.migrated,
+    'invalidated' => DeviceUnlockReoffer.invalidated,
+    _ => null,
+  },
 );
 
 // ---- JSON helpers ------------------------------------------------------------------
@@ -154,6 +164,8 @@ AppException mapBridgeError(BridgeError e) {
       code = AppErrorCode.secureStore;
     case 'os_auth_failed':
       code = AppErrorCode.osAuthFailed;
+    case 'os_auth_invalidated':
+      code = AppErrorCode.osAuthInvalidated;
     case 'local_profile':
       code = AppErrorCode.unsupported;
       reason = AppErrorReason.syncedProfileRequired;

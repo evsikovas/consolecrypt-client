@@ -1,16 +1,15 @@
 import Flutter
 import Foundation
 import CoreFoundation
-import LocalAuthentication
 import UIKit
 
-/// Keeps all key material in the Rust core/iOS Keychain. The channels expose
-/// only user presence, a private container path, explicit file export and
-/// user-requested secret copying with native pasteboard privacy options.
+/// Keeps all key material in the Rust core/iOS Keychain; device unlock (S5)
+/// is a Secure Enclave key the core asks iOS to use (Face ID / Touch ID /
+/// passcode). The channels expose only a private container path, explicit
+/// file export and user-requested secret copying with native pasteboard
+/// privacy options.
 public final class CcBridgePlugin: NSObject, FlutterPlugin {
   private weak var registrar: FlutterPluginRegistrar?
-  private var authentication: LAContext?
-  private var authenticationResult: FlutterResult?
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     let instance = CcBridgePlugin()
@@ -18,7 +17,7 @@ public final class CcBridgePlugin: NSObject, FlutterPlugin {
     let kubeBrowser = KubeAuthBrowser(registrar: registrar)
     let kubeChannel = FlutterMethodChannel(name: "consolecrypt/kube_auth", binaryMessenger: registrar.messenger())
     kubeChannel.setMethodCallHandler { call, result in kubeBrowser.handle(call, result: result) }
-    for name in ["consolecrypt/local_auth", "consolecrypt/ios", "consolecrypt/accessibility", "consolecrypt/clipboard"] {
+    for name in ["consolecrypt/ios", "consolecrypt/accessibility", "consolecrypt/clipboard"] {
       let channel = FlutterMethodChannel(name: name, binaryMessenger: registrar.messenger())
       if name == "consolecrypt/accessibility" {
         channel.setMethodCallHandler { call, result in
@@ -33,12 +32,6 @@ public final class CcBridgePlugin: NSObject, FlutterPlugin {
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
-    case "availability":
-      result(availability())
-    case "authenticate":
-      let arguments = call.arguments as? [String: Any]
-      let supplied = arguments?["reason"] as? String
-      authenticate(reason: supplied?.isEmpty == false ? supplied! : "Unlock your ConsoleCrypt vault", result: result)
     case "dataDirectory":
       do { result(try privateDataDirectory().path) }
       catch { result(FlutterError(code: "storage", message: "Private app storage unavailable", details: nil)) }
@@ -68,42 +61,6 @@ public final class CcBridgePlugin: NSObject, FlutterPlugin {
       .expirationDate: Date().addingTimeInterval(milliseconds.doubleValue / 1_000),
     ])
     result(nil)
-  }
-
-  private func availability() -> [String: Any] {
-    let context = LAContext()
-    var error: NSError?
-    if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
-      return ["kind": context.biometryType == .faceID ? "face_id" : "touch_id", "not_enrolled": false]
-    }
-    let notEnrolled = (error as? LAError)?.code == .biometryNotEnrolled
-    if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil) {
-      return ["kind": "device_credential", "not_enrolled": notEnrolled]
-    }
-    return ["kind": NSNull(), "not_enrolled": notEnrolled]
-  }
-
-  private func authenticate(reason: String, result: @escaping FlutterResult) {
-    guard authentication == nil else { result(false); return }
-    let context = LAContext()
-    guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil) else {
-      result(false)
-      return
-    }
-    // Every call uses a new context; no biometric reuse window or cached grant.
-    context.touchIDAuthenticationAllowableReuseDuration = 0
-    authentication = context
-    authenticationResult = result
-    context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { [weak self] success, _ in
-      DispatchQueue.main.async {
-        guard let self = self, self.authentication === context else { return }
-        let completion = self.authenticationResult
-        self.authenticationResult = nil
-        self.authentication = nil
-        context.invalidate()
-        completion?(success)
-      }
-    }
   }
 
   private func privateDataDirectory() throws -> URL {

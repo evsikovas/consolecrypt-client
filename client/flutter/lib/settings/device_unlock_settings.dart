@@ -6,11 +6,15 @@ import 'package:consolecrypt/core/l10n/labels.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/errors.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// This preference belongs to the active profile on this device, not to
-/// synced vault settings. The core enforces it for unlock and recovery.
+/// synced vault settings. Switching it on makes the OS create a key it
+/// releases only after its own check (S5); the core enforces it for unlock
+/// and recovery. On Linux it is a convenience: the warning is shown and
+/// confirmed before enabling.
 class DeviceUnlockSettings extends ConsumerStatefulWidget {
   const DeviceUnlockSettings({super.key});
 
@@ -59,18 +63,41 @@ class _DeviceUnlockSettingsState extends ConsumerState<DeviceUnlockSettings> wit
 
   Future<void> _refresh() => _run(() => ref.read(vaultServiceProvider).refreshDeviceUnlockAvailability());
 
+  Future<void> _toggle(DeviceUnlockInfo info, bool enabled) async {
+    final l = context.l10n;
+    final convenience = info.protection == DeviceUnlockProtection.convenience;
+    if (enabled && convenience) {
+      final ok = await showConfirmDialog(
+        context,
+        title: l.deviceUnlockConvenienceConfirmTitle,
+        message: l.deviceUnlockConvenienceWarning,
+        confirmLabel: l.deviceUnlockConvenienceConfirmAction,
+        destructive: true,
+      );
+      if (!ok || !mounted) return;
+    }
+    await _run(
+      () => ref
+          .read(vaultServiceProvider)
+          .setDeviceUnlockEnabled(enabled, reason: l.deviceUnlockEnableReason, allowUnprotected: convenience),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = ref.watch(vaultStatusProvider).value;
     final info = status?.deviceUnlock ?? const DeviceUnlockInfo();
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
-    final help = !info.hasDeviceEnvelope
+    final convenience = info.protection == DeviceUnlockProtection.convenience;
+    final help = !info.hasVault
         ? l.deviceUnlockNeedsTrust
         : info.notEnrolled
         ? l.deviceUnlockNotEnrolled
         : info.kind == null
         ? l.deviceUnlockUnsupported
+        : convenience
+        ? l.deviceUnlockConvenienceWarning
         : info.kind == DeviceAuthKind.deviceCredential
         ? (AppPlatform.isMobile ? l.mobileDeviceAuthHelp : l.deviceUnlockMacPassword)
         : l.deviceUnlockHelp;
@@ -86,13 +113,30 @@ class _DeviceUnlockSettingsState extends ConsumerState<DeviceUnlockSettings> wit
           subtitle: Text(help),
           value: info.enabled,
           onChanged: !_busy && (status?.isUnlocked ?? false) && (info.canEnable || info.enabled)
-              ? (enabled) => _run(
-                  () => ref
-                      .read(vaultServiceProvider)
-                      .setDeviceUnlockEnabled(enabled, reason: l.deviceUnlockEnableReason),
-                )
+              ? (enabled) => _toggle(info, enabled)
               : null,
         ),
+        if (info.kind != null && info.hasVault)
+          Row(
+            key: ValueKey(convenience ? 'device-unlock-convenience' : 'device-unlock-protected'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                convenience ? Icons.warning_amber_rounded : Icons.verified_user_rounded,
+                size: 16,
+                color: convenience ? tokens.palette.warning : tokens.palette.success,
+              ),
+              const SizedBox(width: GlassSpacing.s4),
+              Expanded(
+                child: Text(
+                  convenience ? l.deviceUnlockConvenienceWarning : l.deviceUnlockProtectedBySystem(info.authName(l)),
+                  style: tokens.typography.callout.copyWith(
+                    color: convenience ? tokens.palette.warning : tokens.secondaryLabel,
+                  ),
+                ),
+              ),
+            ],
+          ),
         Text(l.deviceUnlockLocalOnly, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
         if (_busy) const Padding(padding: EdgeInsets.only(top: 8), child: LinearProgressIndicator()),
         if (_error != null)

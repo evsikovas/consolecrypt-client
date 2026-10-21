@@ -14,6 +14,10 @@ enum AppErrorCode {
   invalidRecoveryKey,
   deviceNotTrusted,
   osAuthFailed,
+
+  /// The device unlock key became invalid (biometrics changed): unlock with
+  /// the passphrase and switch device unlock on again.
+  osAuthInvalidated,
   secureStore,
   verificationMismatch,
   requestExpired,

@@ -62,7 +62,8 @@ import 'app_localizations_ru.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -70,7 +71,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -82,15 +84,19 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('ru'),
+  ];
 
   /// Button: dismiss a dialog without changes.
   ///
@@ -1211,7 +1217,7 @@ abstract class AppLocalizations {
   /// Error.
   ///
   /// In en, this message translates to:
-  /// **'System authentication failed or was cancelled.'**
+  /// **'System authentication failed or was cancelled. Unlock with the vault passphrase.'**
   String get errorOsAuthFailed;
 
   /// Error: device approval code mismatch (security-critical).
@@ -1752,13 +1758,19 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · registration open'**
-  String loginServerInfoRegistrationOpen(String serverVersion, String protocolVersion);
+  String loginServerInfoRegistrationOpen(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Login screen: result of a successful server check when registration is invite-only.
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · invite only'**
-  String loginServerInfoInviteOnly(String serverVersion, String protocolVersion);
+  String loginServerInfoInviteOnly(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Login screen: segmented button option to sign in to an existing account.
   ///
@@ -3054,7 +3066,10 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion}'**
-  String enableSyncDialogServerInfo(String serverVersion, String protocolVersion);
+  String enableSyncDialogServerInfo(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Enable-sync wizard segment: register a new account.
   ///
@@ -6971,7 +6986,7 @@ abstract class AppLocalizations {
   /// Reason shown in the OS authentication prompt (Touch ID / Windows Hello).
   ///
   /// In en, this message translates to:
-  /// **'Unlock your ConsoleCrypt vault'**
+  /// **'unlock your ConsoleCrypt vault'**
   String get unlockOsAuthReason;
 
   /// Button: unlock with OS authentication.
@@ -7067,7 +7082,7 @@ abstract class AppLocalizations {
   /// Info banner for recovery via this trusted device.
   ///
   /// In en, this message translates to:
-  /// **'Uses this device\'s key, protected by {method}, to open the vault. Then set a new passphrase; other devices keep working.'**
+  /// **'{method} releases this device\'s unlock key to open the vault. Then set a new passphrase; other devices keep working.'**
   String recoveryTrustedDeviceInfo(String method);
 
   /// Warning when trusted-device recovery is selected on an untrusted device.
@@ -7619,7 +7634,7 @@ abstract class AppLocalizations {
   /// Vault settings: deviceUnlockHelp
   ///
   /// In en, this message translates to:
-  /// **'Confirm access with your fingerprint. macOS may also offer your account password.'**
+  /// **'The system releases the vault key only after your fingerprint, face or device password.'**
   String get deviceUnlockHelp;
 
   /// Vault settings: deviceUnlockLocalOnly
@@ -7631,7 +7646,7 @@ abstract class AppLocalizations {
   /// Vault settings: deviceUnlockEnableReason
   ///
   /// In en, this message translates to:
-  /// **'Allow unlocking your ConsoleCrypt vault on this Mac'**
+  /// **'allow unlocking your ConsoleCrypt vault on this device'**
   String get deviceUnlockEnableReason;
 
   /// Vault settings: deviceUnlockNeedsTrust
@@ -7655,7 +7670,7 @@ abstract class AppLocalizations {
   /// Vault settings: deviceUnlockMacPassword
   ///
   /// In en, this message translates to:
-  /// **'macOS currently offers its account password. Fingerprint unlock needs available Touch ID with an enrolled fingerprint: System Settings → Touch ID & Password.'**
+  /// **'macOS currently offers its account password. Touch ID needs an enrolled fingerprint: System Settings → Touch ID & Password.'**
   String get deviceUnlockMacPassword;
 
   /// Vault settings: deviceUnlockRecoveryUnavailable
@@ -7681,6 +7696,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'macOS password'**
   String get deviceUnlockMacPasswordName;
+
+  /// Error: the OS-protected device unlock key became invalid (new fingerprint, Windows Hello reset); the user must unlock with the passphrase and enable it again.
+  ///
+  /// In en, this message translates to:
+  /// **'Fingerprints or the device sign-in changed. Unlock with the vault passphrase and turn device unlock on again in Settings → Vault.'**
+  String get errorOsAuthInvalidated;
+
+  /// Vault settings status line when the OS (Secure Enclave, Windows Hello, Android Keystore) guards the device unlock key. {method} is e.g. 'Touch ID' or 'Windows Hello'.
+  ///
+  /// In en, this message translates to:
+  /// **'Protected by the system: the key is released only after {method}.'**
+  String deviceUnlockProtectedBySystem(String method);
+
+  /// Vault settings warning on Linux: the device unlock key sits in the desktop keyring without a presence check.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocking without a passphrase is available to any program running under your user account. This is a convenience, not protection.'**
+  String get deviceUnlockConvenienceWarning;
+
+  /// Title of the confirmation dialog before enabling device unlock on Linux (no OS protection).
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock without a passphrase?'**
+  String get deviceUnlockConvenienceConfirmTitle;
+
+  /// Confirm button of the Linux device unlock warning dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on anyway'**
+  String get deviceUnlockConvenienceConfirmAction;
+
+  /// Name of the Linux desktop keyring used as the device unlock method (lowercase, used inside sentences).
+  ///
+  /// In en, this message translates to:
+  /// **'system keyring'**
+  String get deviceUnlockKeyringName;
+
+  /// Dialog after the first passphrase unlock following the update: device unlock was switched off during the migration to OS protection.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn {method} back on?'**
+  String deviceUnlockReofferMigratedTitle(String method);
+
+  /// Body of the re-enable dialog after the update.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocking with this device is now protected by the system. It was switched off during the update; turn it on again with one confirmation.'**
+  String get deviceUnlockReofferMigratedMessage;
+
+  /// Dialog after a passphrase unlock when the OS invalidated the device unlock key (new fingerprint, Windows Hello reset).
+  ///
+  /// In en, this message translates to:
+  /// **'Fingerprints changed'**
+  String get deviceUnlockReofferInvalidatedTitle;
+
+  /// Body of the re-enable dialog after the device unlock key was invalidated.
+  ///
+  /// In en, this message translates to:
+  /// **'The {method} key is no longer valid because the device sign-in changed. Turn unlocking with this device on again?'**
+  String deviceUnlockReofferInvalidatedMessage(String method);
+
+  /// Button: switch device unlock on again (one OS confirmation).
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get deviceUnlockReofferEnable;
+
+  /// Button: dismiss the offer to switch device unlock on again.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get deviceUnlockReofferLater;
+
+  /// Reason shown in the OS authentication dialog (Touch ID / Windows Hello) when resetting a forgotten passphrase with device unlock. Lowercase phrase: macOS prefixes it with the app name.
+  ///
+  /// In en, this message translates to:
+  /// **'reset the ConsoleCrypt vault passphrase'**
+  String get recoveryDeviceResetReason;
 
   /// Workspace tool panel: workspaceToolsClose
   ///
@@ -16707,7 +16800,8 @@ abstract class AppLocalizations {
   String get dockerComposeFilesUnknown;
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -16716,7 +16810,8 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'ru'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'ru'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

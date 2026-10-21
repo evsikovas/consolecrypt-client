@@ -880,7 +880,7 @@
   "@errorDeviceNotTrusted": {
     "description": "Error."
   },
-  "errorOsAuthFailed": "System authentication failed or was cancelled.",
+  "errorOsAuthFailed": "System authentication failed or was cancelled. Unlock with the vault passphrase.",
   "@errorOsAuthFailed": {
     "description": "Error."
   },
@@ -5683,7 +5683,7 @@
   "@unlockSubmit": {
     "description": "Button: unlock the vault with the passphrase."
   },
-  "unlockOsAuthReason": "Unlock your ConsoleCrypt vault",
+  "unlockOsAuthReason": "unlock your ConsoleCrypt vault",
   "@unlockOsAuthReason": {
     "description": "Reason shown in the OS authentication prompt (Touch ID / Windows Hello)."
   },
@@ -5763,7 +5763,7 @@
       }
     }
   },
-  "recoveryTrustedDeviceInfo": "Uses this device's key, protected by {method}, to open the vault. Then set a new passphrase; other devices keep working.",
+  "recoveryTrustedDeviceInfo": "{method} releases this device's unlock key to open the vault. Then set a new passphrase; other devices keep working.",
   "@recoveryTrustedDeviceInfo": {
     "description": "Info banner for recovery via this trusted device.",
     "placeholders": {
@@ -6168,13 +6168,13 @@
     "description": "Retries glass rendering after automatic performance reduction. OS accessibility restrictions remain in effect."
   },
   "deviceUnlockTitle": "Fingerprint unlock",
-  "deviceUnlockHelp": "Confirm access with your fingerprint. macOS may also offer your account password.",
+  "deviceUnlockHelp": "The system releases the vault key only after your fingerprint, face or device password.",
   "deviceUnlockLocalOnly": "Only for this vault on this device. Your passphrase and Recovery Key remain available.",
-  "deviceUnlockEnableReason": "Allow unlocking your ConsoleCrypt vault on this Mac",
+  "deviceUnlockEnableReason": "allow unlocking your ConsoleCrypt vault on this device",
   "deviceUnlockNeedsTrust": "First unlock the vault with its passphrase on this device.",
   "deviceUnlockNotEnrolled": "No biometrics are enrolled. Set up fingerprint or face recognition in your device’s system settings, then check availability again.",
   "deviceUnlockUnsupported": "Biometric unlock is currently unavailable on this device. Check biometric support and setup in the system settings.",
-  "deviceUnlockMacPassword": "macOS currently offers its account password. Fingerprint unlock needs available Touch ID with an enrolled fingerprint: System Settings → Touch ID & Password.",
+  "deviceUnlockMacPassword": "macOS currently offers its account password. Touch ID needs an enrolled fingerprint: System Settings → Touch ID & Password.",
   "deviceUnlockRecoveryUnavailable": "Unlock with this device is disabled or currently unavailable. Use your Recovery Key. You can enable it after signing in: Settings → Vault.",
   "deviceUnlockRefresh": "Check availability again",
   "@deviceUnlockTitle": {
@@ -6219,6 +6219,76 @@
   },
   "@deviceUnlockMacPasswordName": {
     "description": "macOS account password authentication method"
+  },
+  "errorOsAuthInvalidated": "Fingerprints or the device sign-in changed. Unlock with the vault passphrase and turn device unlock on again in Settings → Vault.",
+  "@errorOsAuthInvalidated": {
+    "description": "Error: the OS-protected device unlock key became invalid (new fingerprint, Windows Hello reset); the user must unlock with the passphrase and enable it again."
+  },
+  "deviceUnlockProtectedBySystem": "Protected by the system: the key is released only after {method}.",
+  "@deviceUnlockProtectedBySystem": {
+    "description": "Vault settings status line when the OS (Secure Enclave, Windows Hello, Android Keystore) guards the device unlock key. {method} is e.g. 'Touch ID' or 'Windows Hello'.",
+    "placeholders": {
+      "method": {
+        "type": "String",
+        "example": "Touch ID"
+      }
+    }
+  },
+  "deviceUnlockConvenienceWarning": "Unlocking without a passphrase is available to any program running under your user account. This is a convenience, not protection.",
+  "@deviceUnlockConvenienceWarning": {
+    "description": "Vault settings warning on Linux: the device unlock key sits in the desktop keyring without a presence check."
+  },
+  "deviceUnlockConvenienceConfirmTitle": "Unlock without a passphrase?",
+  "@deviceUnlockConvenienceConfirmTitle": {
+    "description": "Title of the confirmation dialog before enabling device unlock on Linux (no OS protection)."
+  },
+  "deviceUnlockConvenienceConfirmAction": "Turn on anyway",
+  "@deviceUnlockConvenienceConfirmAction": {
+    "description": "Confirm button of the Linux device unlock warning dialog."
+  },
+  "deviceUnlockKeyringName": "system keyring",
+  "@deviceUnlockKeyringName": {
+    "description": "Name of the Linux desktop keyring used as the device unlock method (lowercase, used inside sentences)."
+  },
+  "deviceUnlockReofferMigratedTitle": "Turn {method} back on?",
+  "@deviceUnlockReofferMigratedTitle": {
+    "description": "Dialog after the first passphrase unlock following the update: device unlock was switched off during the migration to OS protection.",
+    "placeholders": {
+      "method": {
+        "type": "String",
+        "example": "Touch ID"
+      }
+    }
+  },
+  "deviceUnlockReofferMigratedMessage": "Unlocking with this device is now protected by the system. It was switched off during the update; turn it on again with one confirmation.",
+  "@deviceUnlockReofferMigratedMessage": {
+    "description": "Body of the re-enable dialog after the update."
+  },
+  "deviceUnlockReofferInvalidatedTitle": "Fingerprints changed",
+  "@deviceUnlockReofferInvalidatedTitle": {
+    "description": "Dialog after a passphrase unlock when the OS invalidated the device unlock key (new fingerprint, Windows Hello reset)."
+  },
+  "deviceUnlockReofferInvalidatedMessage": "The {method} key is no longer valid because the device sign-in changed. Turn unlocking with this device on again?",
+  "@deviceUnlockReofferInvalidatedMessage": {
+    "description": "Body of the re-enable dialog after the device unlock key was invalidated.",
+    "placeholders": {
+      "method": {
+        "type": "String",
+        "example": "Touch ID"
+      }
+    }
+  },
+  "deviceUnlockReofferEnable": "Turn on",
+  "@deviceUnlockReofferEnable": {
+    "description": "Button: switch device unlock on again (one OS confirmation)."
+  },
+  "deviceUnlockReofferLater": "Not now",
+  "@deviceUnlockReofferLater": {
+    "description": "Button: dismiss the offer to switch device unlock on again."
+  },
+  "recoveryDeviceResetReason": "reset the ConsoleCrypt vault passphrase",
+  "@recoveryDeviceResetReason": {
+    "description": "Reason shown in the OS authentication dialog (Touch ID / Windows Hello) when resetting a forgotten passphrase with device unlock. Lowercase phrase: macOS prefixes it with the app name."
   },
   "workspaceToolsClose": "Close right panel",
   "@workspaceToolsClose": {
