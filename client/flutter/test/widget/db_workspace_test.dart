@@ -189,6 +189,91 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiS
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
+/// A production backend with the temporary write window and cell edits.
+class _ProdService extends _Service implements DbProductionWriteService, DbCellEditService {
+  _ProdService() : super(production: true, readOnly: true);
+  DateTime? until;
+  final unlocks = <(String, int)>[], locks = <String>[], commits = <String>[];
+  List<DbCellEdit> reviewed = const [];
+  bool roleCanWrite = false;
+
+  DbSessionInfo _live() => DbSessionInfo(
+    id: 'session',
+    connectionId: 'connection',
+    engine: DbEngine.postgresql,
+    serverVersion: '17.0',
+    production: true,
+    readOnly: until == null,
+    serverReadOnly: DbServerReadOnly.enforced,
+    transportSecurity: DbTransportSecurity.unverified,
+    canUnlockProduction: true,
+    productionWriteUntil: until,
+  );
+  @override
+  Future<DbSessionInfo> connect(String connectionId, {SecretText? temporaryPassword}) async => _live();
+  @override
+  Future<DbSessionInfo> sessionState(String sessionId) async => _live();
+  @override
+  Future<DbSessionInfo> unlockProduction(
+    String sessionId, {
+    required String typedConnectionName,
+    required SecretText passphrase,
+    required int minutes,
+  }) async {
+    if (passphrase.expose() != 'vault-pass') throw const DbWrongPassphrase();
+    unlocks.add((typedConnectionName, minutes));
+    until = DateTime.now().add(Duration(minutes: minutes));
+    return _live();
+  }
+
+  @override
+  Future<DbSessionInfo> lockProduction(String sessionId) async {
+    locks.add(sessionId);
+    until = null;
+    return _live();
+  }
+
+  @override
+  Future<DbPrivilegeReport> checkPrivileges(String sessionId) async =>
+      DbPrivilegeReport(serverReadOnly: DbServerReadOnly.enforced, hasWritePrivileges: roleCanWrite);
+
+  @override
+  Stream<DbQueryEvent> watchQuery(String sessionId, String queryId) => Stream.fromIterable(const [
+    DbQueryEvent(
+      kind: DbQueryEventKind.started,
+      columns: [
+        DbColumn(name: 'id', typeName: 'int4', nullable: false, primaryKey: true),
+        DbColumn(name: 'name', typeName: 'text'),
+      ],
+      editableTable: DbObjectRef(database: '', schema: 'public', kind: DbObjectKind.table, name: 'items'),
+    ),
+    DbQueryEvent(
+      kind: DbQueryEventKind.rows,
+      rows: [
+        [DbCell(DbCellKind.intValue, '1'), DbCell(DbCellKind.text, 'alpha')],
+        [DbCell(DbCellKind.intValue, '2'), DbCell(DbCellKind.text, 'beta')],
+      ],
+    ),
+    DbQueryEvent(kind: DbQueryEventKind.done),
+  ]);
+
+  @override
+  Future<DbCellEditReview> reviewCellEdits(String sessionId, DbObjectRef table, List<DbCellEdit> edits) async {
+    reviewed = edits;
+    return DbCellEditReview(
+      ticket: 'edits',
+      sql: SecretText('UPDATE "public"."items" SET "name" = {{p0}} WHERE "id" = {{p1}};'),
+      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      rows: edits.length,
+    );
+  }
+
+  @override
+  Future<void> commitCellEdits(String sessionId, String ticket) async => commits.add(ticket);
+  @override
+  Future<void> discardCellEdits(String sessionId, String ticket) async {}
+}
+
 Future<ProviderContainer> _pump(
   WidgetTester tester,
   _Service service, {
@@ -397,6 +482,115 @@ void main() {
     expect(service.executed, isEmpty);
     expect(tester.widget<TextField>(find.byKey(const ValueKey('db-query-editor'))).controller!.text, 'SELECT 42');
   });
+  testWidgets('production unlock needs the passphrase and the name, then writes go through review', (tester) async {
+    final service = _ProdService()..risk = DbQueryRisk.write;
+    await _pump(tester, service);
+    // Locked: changing statements are blocked before any review dialog.
+    await _type(tester, 'UPDATE items SET name = 1');
+    await tester.tap(find.byKey(const ValueKey('db-run')));
+    await settle(tester);
+    expect(service.executed, isEmpty);
+    expect(find.byKey(const ValueKey('db-query-confirmation')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock')));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-prod-unlock-dialog')), findsOneWidget);
+    final submit = find.byKey(const ValueKey('db-prod-unlock-submit'));
+    await tester.enterText(find.byKey(const ValueKey('db-prod-passphrase')).first, 'wrong-pass');
+    await tester.enterText(find.byKey(const ValueKey('db-prod-name')), 'fixture');
+    await tester.pump();
+    await tester.tap(submit);
+    await settle(tester);
+    expect(service.unlocks, isEmpty, reason: 'the name must match exactly');
+    await tester.enterText(find.byKey(const ValueKey('db-prod-name')), 'fixture-db');
+    await tester.pump();
+    await tester.tap(submit);
+    await settle(tester);
+    expect(find.text('Wrong vault passphrase.'), findsOneWidget);
+    expect(service.unlocks, isEmpty);
+    await tester.enterText(find.byKey(const ValueKey('db-prod-passphrase')).first, 'vault-pass');
+    await tester.tap(find.text('5 minutes'));
+    await tester.pump();
+    await tester.tap(submit);
+    await settle(tester);
+    expect(service.unlocks, [('fixture-db', 5)]);
+    expect(find.byKey(const ValueKey('db-prod-unlock-dialog')), findsNothing);
+    expect(find.byKey(const ValueKey('db-prod-write-badge')), findsOneWidget);
+    expect(find.textContaining('Production writes until'), findsWidgets);
+    expect(find.byKey(const ValueKey('db-prod-write-countdown')), findsOneWidget);
+    // The role cannot write: the privilege check says so.
+    expect(find.byKey(const ValueKey('db-prod-role-read-only')), findsOneWidget);
+
+    // A change still needs the review with the connection name typed.
+    await tester.tap(find.byKey(const ValueKey('db-run')));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-query-confirmation')), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('db-query-confirmation')), 'fixture-db');
+    await tester.pump();
+    await tester.tap(find.text('Run').last);
+    await settle(tester);
+    expect(service.executed, hasLength(1));
+
+    await tester.tap(find.byKey(const ValueKey('db-prod-lock')));
+    await settle(tester);
+    expect(service.locks, ['session']);
+    expect(find.byKey(const ValueKey('db-prod-write-badge')), findsNothing);
+    expect(find.byKey(const ValueKey('db-prod-unlock')), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('cells of a production result are edited in place only while unlocked', (tester) async {
+    final service = _ProdService()..roleCanWrite = true;
+    await _pump(tester, service);
+    await _type(tester, 'SELECT * FROM items');
+    await tester.tap(find.byKey(const ValueKey('db-run')));
+    await settle(tester);
+    final cell = find.byKey(const ValueKey('db-cell-1-1'));
+    Future<void> doubleClick() async {
+      await tester.tap(cell);
+      await tester.pump(const Duration(milliseconds: 60));
+      await tester.tap(cell);
+      await settle(tester, steps: 4);
+    }
+
+    await doubleClick();
+    expect(find.byKey(const ValueKey('db-cell-editor')), findsNothing, reason: 'locked production opens the viewer');
+    Navigator.of(tester.element(find.byType(DbWorkspace))).pop();
+    await settle(tester);
+
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock')));
+    await settle(tester);
+    await tester.enterText(find.byKey(const ValueKey('db-prod-passphrase')).first, 'vault-pass');
+    await tester.enterText(find.byKey(const ValueKey('db-prod-name')), 'fixture-db');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock-submit')));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-prod-role-read-only')), findsNothing);
+
+    // Row numbers select; the status line counts the selection.
+    await tester.tap(find.byKey(const ValueKey('db-row-number-0')));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.textContaining('Selected: 1 row'), findsOneWidget);
+
+    await doubleClick();
+    final editor = find.byKey(const ValueKey('db-cell-editor'));
+    expect(editor, findsOneWidget);
+    await tester.enterText(editor, 'bravo');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('db-apply-edits')));
+    await settle(tester);
+    expect(service.reviewed.single.column, 'name');
+    expect(service.reviewed.single.value.text, 'bravo');
+    expect(service.reviewed.single.originalPrimaryKey['id']!.text, '2');
+    expect(service.commits, isEmpty);
+    await tester.enterText(find.byKey(const ValueKey('db-query-confirmation')), 'fixture-db');
+    await tester.pump();
+    await tester.tap(find.text('Run').last);
+    await settle(tester);
+    expect(service.commits, ['edits']);
+    expect(find.byKey(const ValueKey('db-apply-edits')), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   for (final language in ['en', 'ru']) {
     testWidgets('phone workspace query/results at 150% remains usable in $language', (tester) async {
       final service = _Service();
