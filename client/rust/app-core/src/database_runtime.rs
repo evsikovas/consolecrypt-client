@@ -2,6 +2,7 @@
 //! dropped on lock; credentials are read from the vault only while connecting.
 use crate::{AppCore, AppError, AppResult};
 use cc_db_core::{
+    introspect::{quote_identifier, DbCompletion},
     parser::editor::{self, QueryScope},
     streaming::DbQueryStream,
     transport::DbCredentials,
@@ -286,6 +287,10 @@ impl AppCore {
         if cursor.as_ref().is_some_and(|cursor| cursor.len() > 256) {
             return Err(invalid("invalid_cursor"));
         }
+        if parent.is_none() && cursor.is_none() {
+            // A reload from the top also refreshes the names the editor completes.
+            session.refresh_completion().await;
+        }
         session
             .tree(parent.as_ref(), cursor.as_deref())
             .await
@@ -300,7 +305,7 @@ impl AppCore {
     ) -> AppResult<String> {
         let (_, unlocked) = self.unlocked().await?;
         let engine = unlocked.db.session(&session_id)?.info().engine;
-        Ok(identifier(engine, &object))
+        Ok(quote_identifier(engine, &object))
     }
 
     pub async fn db_object_query(
@@ -319,9 +324,43 @@ impl AppCore {
         }
         Ok(format!(
             "SELECT * FROM {} LIMIT {}",
-            identifier(engine, &object),
+            quote_identifier(engine, &object),
             limit.clamp(1, 10_000)
         ))
+    }
+
+    /// Creation statement (SQL engines) or description (Redis keys, Mongo
+    /// collections) of one object.
+    pub async fn db_ddl(&self, session_id: String, object: DbObjectRef) -> AppResult<String> {
+        let (_, unlocked) = self.unlocked().await?;
+        let session = unlocked.db.session(&session_id)?;
+        session.ddl(&object).await.map_err(db_error)
+    }
+
+    /// Plan of one prepared statement; `analyze` runs it after the native review.
+    pub async fn db_explain(
+        &self,
+        session_id: String,
+        request: DbQueryRequest,
+        analyze: bool,
+    ) -> AppResult<serde_json::Value> {
+        let (_, unlocked) = self.unlocked().await?;
+        let session = unlocked.db.session(&session_id)?;
+        session.explain(&request, analyze).await.map_err(db_error)
+    }
+
+    pub async fn db_complete(
+        &self,
+        session_id: String,
+        text: String,
+        cursor: usize,
+    ) -> AppResult<Vec<DbCompletion>> {
+        let (_, unlocked) = self.unlocked().await?;
+        let session = unlocked.db.session(&session_id)?;
+        if text.len() > cc_db_core::MAX_QUERY_BYTES || cursor > text.len() {
+            return Err(invalid("invalid_request"));
+        }
+        session.complete(&text, cursor).await.map_err(db_error)
     }
 
     pub async fn db_prepare_query(
@@ -519,42 +558,5 @@ impl AppCore {
             }
         }
         Ok(())
-    }
-}
-
-fn identifier(engine: DbEngine, object: &DbObjectRef) -> String {
-    let quote = |name: &str| match engine {
-        DbEngine::Mysql | DbEngine::Mariadb => format!("`{}`", name.replace('`', "``")),
-        _ => format!("\"{}\"", name.replace('"', "\"\"")),
-    };
-    match engine {
-        DbEngine::Mysql | DbEngine::Mariadb if !object.database.is_empty() => {
-            format!("{}.{}", quote(&object.database), quote(&object.name))
-        }
-        _ => match &object.schema {
-            Some(schema) => format!("{}.{}", quote(schema), quote(&object.name)),
-            None => quote(&object.name),
-        },
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn identifiers_are_quoted_per_engine() {
-        let table = DbObjectRef {
-            database: "shop".into(),
-            schema: Some("sales".into()),
-            kind: DbObjectKind::Table,
-            name: "or\"de`rs".into(),
-            parent_name: None,
-        };
-        assert_eq!(
-            identifier(DbEngine::Postgresql, &table),
-            "\"sales\".\"or\"\"de`rs\""
-        );
-        assert_eq!(identifier(DbEngine::Mysql, &table), "`shop`.`or\"de``rs`");
     }
 }

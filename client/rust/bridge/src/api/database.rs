@@ -87,6 +87,32 @@ pub async fn db_object_query(
     with_core(move |c| async move { Ok(c.db_object_query(session_id, object, limit).await?) }).await
 }
 
+pub async fn db_ddl(session_id: String, object_json: String) -> Result<String, BridgeError> {
+    let object: DbObjectRef = from_json("object", &object_json)?;
+    with_core(move |c| async move { Ok(c.db_ddl(session_id, object).await?) }).await
+}
+
+pub async fn db_explain(
+    session_id: String,
+    request_json: String,
+    analyze: bool,
+) -> Result<String, BridgeError> {
+    let request: DbQueryRequest = from_json("request", &request_json)?;
+    with_core(move |c| async move { to_json(&c.db_explain(session_id, request, analyze).await?) })
+        .await
+}
+
+pub async fn db_complete(
+    session_id: String,
+    text: String,
+    cursor: u32,
+) -> Result<String, BridgeError> {
+    with_core(
+        move |c| async move { to_json(&c.db_complete(session_id, text, cursor as usize).await?) },
+    )
+    .await
+}
+
 pub async fn db_prepare_query(
     session_id: String,
     text: String,

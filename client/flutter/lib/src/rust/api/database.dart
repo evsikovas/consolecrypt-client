@@ -39,6 +39,15 @@ Future<String> dbIdentifier({required String sessionId, required String objectJs
 Future<String> dbObjectQuery({required String sessionId, required String objectJson, required int limit}) =>
     RustLib.instance.api.crateApiDatabaseDbObjectQuery(sessionId: sessionId, objectJson: objectJson, limit: limit);
 
+Future<String> dbDdl({required String sessionId, required String objectJson}) =>
+    RustLib.instance.api.crateApiDatabaseDbDdl(sessionId: sessionId, objectJson: objectJson);
+
+Future<String> dbExplain({required String sessionId, required String requestJson, required bool analyze}) =>
+    RustLib.instance.api.crateApiDatabaseDbExplain(sessionId: sessionId, requestJson: requestJson, analyze: analyze);
+
+Future<String> dbComplete({required String sessionId, required String text, required int cursor}) =>
+    RustLib.instance.api.crateApiDatabaseDbComplete(sessionId: sessionId, text: text, cursor: cursor);
+
 Future<String> dbPrepareQuery({
   required String sessionId,
   required String text,

@@ -5,6 +5,7 @@ pub mod types;
 pub use types::*;
 pub mod guard;
 pub mod import;
+pub mod introspect;
 mod mysql;
 pub mod parser;
 mod postgres;

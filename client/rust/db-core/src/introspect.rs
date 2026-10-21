@@ -1,0 +1,727 @@
+//! Read-only introspection beyond the structure tree: object DDL, query plans
+//! and editor completion. Catalogue lookups bind names as parameters; the few
+//! statements that cannot take parameters (MySQL `SHOW CREATE`) use identifiers
+//! quoted by [`quote_identifier`].
+use crate::{
+    session::{Collect, DbSession},
+    DbCell, DbError, DbObjectKind, DbObjectRef, DbParameter, DbQueryEvent, DbQueryRequest,
+};
+use cc_models::database::DbEngine;
+use serde::Serialize;
+use std::{collections::BTreeSet, sync::Arc};
+
+/// Most completion candidates kept per session (tables plus columns).
+const MAX_COMPLETION_OBJECTS: usize = 20_000;
+/// Most completions returned for one request.
+const MAX_COMPLETIONS: usize = 200;
+
+/// Quoted, qualified identifier: PostgreSQL/ClickHouse `"schema"."name"`
+/// (ClickHouse uses the database), MySQL `` `db`.`name` ``.
+pub fn quote_identifier(engine: DbEngine, object: &DbObjectRef) -> String {
+    let quote = |name: &str| match engine {
+        DbEngine::Mysql | DbEngine::Mariadb => format!("`{}`", name.replace('`', "``")),
+        DbEngine::Clickhouse => format!("`{}`", name.replace('\\', "\\\\").replace('`', "\\`")),
+        _ => format!("\"{}\"", name.replace('"', "\"\"")),
+    };
+    let qualifier = match engine {
+        DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Clickhouse => {
+            (!object.database.is_empty()).then_some(object.database.as_str())
+        }
+        _ => object.schema.as_deref(),
+    };
+    match qualifier {
+        Some(qualifier) => format!("{}.{}", quote(qualifier), quote(&object.name)),
+        None => quote(&object.name),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DbCompletion {
+    /// Text inserted at the cursor (the part after what was already typed).
+    pub insert_text: String,
+    pub label: String,
+    pub detail: String,
+}
+
+/// Names the editor completes from, loaded once per session.
+#[derive(Debug, Default)]
+pub(crate) struct CompletionCache {
+    /// (container, name, detail): tables have the schema/database as container,
+    /// columns their table.
+    tables: Vec<(String, String, String)>,
+    columns: Vec<(String, String, String)>,
+}
+
+fn text(value: &str) -> DbParameter {
+    DbParameter {
+        name: String::new(),
+        value: DbCell::Text(value.into()),
+        type_hint: None,
+    }
+}
+
+impl DbSession {
+    async fn catalogue(
+        &self,
+        sql: &str,
+        bindings: &[DbParameter],
+    ) -> Result<Vec<Vec<String>>, DbError> {
+        let mut rows = Collect::default();
+        self.driver
+            .lock()
+            .await
+            .query(sql, bindings, true, &mut rows, self.scope.child_token())
+            .await?;
+        Ok(rows.rows)
+    }
+
+    /// Creation statement of a table, view, sequence, function or procedure.
+    pub async fn ddl(&self, object: &DbObjectRef) -> Result<String, DbError> {
+        match self.info.engine {
+            DbEngine::Postgresql => self.postgres_ddl(object).await,
+            DbEngine::Mysql | DbEngine::Mariadb => {
+                let (statement, column) = match object.kind {
+                    DbObjectKind::Table => ("SHOW CREATE TABLE", 1),
+                    DbObjectKind::View => ("SHOW CREATE VIEW", 1),
+                    DbObjectKind::Procedure => ("SHOW CREATE PROCEDURE", 2),
+                    DbObjectKind::Function => ("SHOW CREATE FUNCTION", 2),
+                    DbObjectKind::Trigger => ("SHOW CREATE TRIGGER", 2),
+                    _ => return Err(DbError::InvalidRequest),
+                };
+                let sql = format!("{statement} {}", quote_identifier(self.info.engine, object));
+                let rows = self.catalogue(&sql, &[]).await?;
+                let ddl = rows
+                    .first()
+                    .and_then(|row| row.get(column))
+                    .cloned()
+                    .ok_or(DbError::QueryFailed)?;
+                Ok(format!("{ddl};"))
+            }
+            _ => Err(DbError::InvalidRequest),
+        }
+    }
+
+    async fn postgres_ddl(&self, object: &DbObjectRef) -> Result<String, DbError> {
+        let schema = object.schema.as_deref().unwrap_or("public");
+        let first = |rows: Vec<Vec<String>>| {
+            rows.into_iter()
+                .next()
+                .and_then(|row| row.into_iter().next())
+                .filter(|value| !value.is_empty())
+                .ok_or(DbError::QueryFailed)
+        };
+        match object.kind {
+            DbObjectKind::View | DbObjectKind::MaterializedView => first(
+                self.catalogue(
+                    "SELECT 'CREATE ' || CASE c.relkind WHEN 'm' THEN 'MATERIALIZED ' ELSE '' END \
+                     || 'VIEW ' || pg_catalog.format('%I.%I', n.nspname, c.relname) || ' AS' || chr(10) \
+                     || pg_catalog.pg_get_viewdef(c.oid, true) \
+                     FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
+                     WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind IN ('v', 'm')",
+                    &[text(schema), text(&object.name)],
+                )
+                .await?,
+            ),
+            DbObjectKind::Sequence => first(
+                self.catalogue(
+                    "SELECT 'CREATE SEQUENCE ' || pg_catalog.format('%I.%I', schemaname, sequencename) \
+                     || ' AS ' || data_type::text || ' INCREMENT BY ' || increment_by \
+                     || ' MINVALUE ' || min_value || ' MAXVALUE ' || max_value \
+                     || ' START WITH ' || start_value || ' CACHE ' || cache_size \
+                     || CASE WHEN cycle THEN ' CYCLE' ELSE ' NO CYCLE' END || ';' \
+                     FROM pg_catalog.pg_sequences WHERE schemaname = $1 AND sequencename = $2",
+                    &[text(schema), text(&object.name)],
+                )
+                .await?,
+            ),
+            DbObjectKind::Function | DbObjectKind::Procedure => {
+                let rows = self
+                    .catalogue(
+                        "SELECT pg_catalog.pg_get_functiondef(p.oid) FROM pg_catalog.pg_proc p \
+                         JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace \
+                         WHERE n.nspname = $1 AND p.proname = $2 AND p.prokind IN ('f', 'p') \
+                         ORDER BY p.oid",
+                        &[text(schema), text(&object.name)],
+                    )
+                    .await?;
+                let bodies: Vec<String> = rows
+                    .into_iter()
+                    .filter_map(|row| row.into_iter().next())
+                    .map(|body| format!("{};", body.trim_end()))
+                    .collect();
+                if bodies.is_empty() {
+                    return Err(DbError::QueryFailed);
+                }
+                Ok(bodies.join("\n\n"))
+            }
+            DbObjectKind::Table => {
+                let bindings = [text(schema), text(&object.name)];
+                let columns = self
+                    .catalogue(
+                        "SELECT pg_catalog.format('%I', a.attname), pg_catalog.format_type(a.atttypid, a.atttypmod), \
+                         a.attnotnull::text, COALESCE(pg_catalog.pg_get_expr(d.adbin, d.adrelid), ''), \
+                         a.attidentity::text, a.attgenerated::text \
+                         FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_class c ON c.oid = a.attrelid \
+                         JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
+                         LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum \
+                         WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind IN ('r', 'p', 'f') \
+                         AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum",
+                        &bindings,
+                    )
+                    .await?;
+                if columns.is_empty() {
+                    return Err(DbError::QueryFailed);
+                }
+                let constraints = self
+                    .catalogue(
+                        "SELECT pg_catalog.format('%I', con.conname), pg_catalog.pg_get_constraintdef(con.oid, true) \
+                         FROM pg_catalog.pg_constraint con JOIN pg_catalog.pg_class c ON c.oid = con.conrelid \
+                         JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
+                         WHERE n.nspname = $1 AND c.relname = $2 \
+                         ORDER BY CASE con.contype WHEN 'p' THEN 0 WHEN 'u' THEN 1 WHEN 'f' THEN 2 ELSE 3 END, con.conname",
+                        &bindings,
+                    )
+                    .await?;
+                let extras = self
+                    .catalogue(
+                        "SELECT pg_catalog.pg_get_indexdef(i.indexrelid) || ';' FROM pg_catalog.pg_index i \
+                         JOIN pg_catalog.pg_class c ON c.oid = i.indrelid \
+                         JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
+                         WHERE n.nspname = $1 AND c.relname = $2 AND NOT EXISTS \
+                         (SELECT 1 FROM pg_catalog.pg_constraint con WHERE con.conindid = i.indexrelid) \
+                         UNION ALL \
+                         SELECT pg_catalog.pg_get_triggerdef(t.oid, true) || ';' FROM pg_catalog.pg_trigger t \
+                         JOIN pg_catalog.pg_class c ON c.oid = t.tgrelid \
+                         JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
+                         WHERE n.nspname = $1 AND c.relname = $2 AND NOT t.tgisinternal \
+                         UNION ALL \
+                         SELECT 'COMMENT ON TABLE ' || pg_catalog.format('%I.%I', n.nspname, c.relname) \
+                         || ' IS ' || pg_catalog.quote_literal(d.description) || ';' \
+                         FROM pg_catalog.pg_description d JOIN pg_catalog.pg_class c ON c.oid = d.objoid \
+                         JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
+                         WHERE n.nspname = $1 AND c.relname = $2 AND d.objsubid = 0 \
+                         AND d.classoid = 'pg_catalog.pg_class'::pg_catalog.regclass",
+                        &bindings,
+                    )
+                    .await?;
+                Ok(postgres_table_ddl(
+                    &quote_identifier(DbEngine::Postgresql, object),
+                    &columns,
+                    &constraints,
+                    &extras,
+                ))
+            }
+            _ => Err(DbError::InvalidRequest),
+        }
+    }
+
+    /// Plan of one statement. `analyze` executes it and therefore goes through
+    /// the same review and approval as a write; production refuses it.
+    pub async fn explain(
+        self: &Arc<Self>,
+        request: &DbQueryRequest,
+        analyze: bool,
+    ) -> Result<serde_json::Value, DbError> {
+        let statement = request.text.trim().trim_end_matches(';').trim_end();
+        if statement.is_empty() {
+            return Err(DbError::InvalidRequest);
+        }
+        let (text, json) = match (self.info.engine, analyze) {
+            (DbEngine::Postgresql, false) => (format!("EXPLAIN (FORMAT JSON) {statement}"), true),
+            (DbEngine::Postgresql, true) => {
+                (format!("EXPLAIN (ANALYZE, FORMAT JSON) {statement}"), true)
+            }
+            (DbEngine::Mysql | DbEngine::Mariadb, false) => {
+                (format!("EXPLAIN FORMAT=JSON {statement}"), true)
+            }
+            (DbEngine::Mysql | DbEngine::Mariadb, true) => {
+                (format!("EXPLAIN ANALYZE {statement}"), false)
+            }
+            (DbEngine::Clickhouse, false) => (
+                format!("EXPLAIN PLAN json = 1, indexes = 1, actions = 1 {statement}"),
+                true,
+            ),
+            _ => return Err(DbError::InvalidRequest),
+        };
+        let mut explain = DbQueryRequest {
+            text,
+            parameters: request.parameters.clone(),
+            approval_ticket: None,
+        };
+        if analyze {
+            let review = self.guard.review(&explain)?;
+            self.guard.approve(&review.ticket)?;
+            explain.approval_ticket = Some(review.ticket.clone());
+        }
+        let mut stream = self.execute(&explain)?;
+        let mut output = String::new();
+        while let Some(event) = stream.events.recv().await {
+            match event {
+                DbQueryEvent::Rows { rows, .. } => {
+                    for row in rows {
+                        for cell in row {
+                            match &cell {
+                                DbCell::Json(value) | DbCell::Text(value) => {
+                                    if !output.is_empty() {
+                                        output.push('\n');
+                                    }
+                                    output.push_str(value);
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                DbQueryEvent::Error { code, .. } => {
+                    return Err(match code.as_str() {
+                        "policy_denied" => DbError::PolicyDenied,
+                        "cancelled" => DbError::Cancelled,
+                        _ => DbError::QueryFailed,
+                    })
+                }
+                DbQueryEvent::Cancelled => return Err(DbError::Cancelled),
+                DbQueryEvent::Done => break,
+                _ => {}
+            }
+        }
+        let plan = if json {
+            serde_json::from_str(&output).map_err(|_| DbError::QueryFailed)?
+        } else {
+            serde_json::Value::String(output)
+        };
+        Ok(serde_json::json!({
+            "engine": self.info.engine,
+            "analyzed": analyze,
+            "plan": plan,
+        }))
+    }
+
+    /// Keywords, tables and columns that continue the word before `cursor`.
+    pub async fn complete(&self, text: &str, cursor: usize) -> Result<Vec<DbCompletion>, DbError> {
+        if !matches!(
+            self.info.engine,
+            DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Clickhouse
+        ) {
+            return Ok(Vec::new());
+        }
+        let before = text
+            .get(..cursor.min(text.len()))
+            .ok_or(DbError::InvalidRequest)?;
+        let (qualifier, prefix) = completion_word(before);
+        let mut cache = self.completion.lock().await;
+        if cache.is_none() {
+            *cache = Some(self.load_completion().await?);
+        }
+        let cache = cache.as_ref().expect("loaded above");
+        Ok(complete_from(cache, text, qualifier.as_deref(), &prefix))
+    }
+
+    async fn load_completion(&self) -> Result<CompletionCache, DbError> {
+        let (tables, columns) = match self.info.engine {
+            DbEngine::Postgresql => (
+                "SELECT n.nspname, c.relname, CASE c.relkind WHEN 'v' THEN 'view' WHEN 'm' THEN 'materialized view' ELSE 'table' END \
+                 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
+                 WHERE c.relkind IN ('r', 'p', 'v', 'm', 'f') AND n.nspname NOT LIKE 'pg\\_%' \
+                 AND n.nspname <> 'information_schema' ORDER BY 1, 2 LIMIT 5000",
+                "SELECT c.relname, a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod) \
+                 FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_class c ON c.oid = a.attrelid \
+                 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
+                 WHERE c.relkind IN ('r', 'p', 'v', 'm', 'f') AND a.attnum > 0 AND NOT a.attisdropped \
+                 AND n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema' \
+                 ORDER BY 1, a.attnum LIMIT 15000",
+            ),
+            DbEngine::Mysql | DbEngine::Mariadb => (
+                "SELECT table_schema, table_name, LOWER(table_type) FROM information_schema.tables \
+                 WHERE table_schema NOT IN ('mysql', 'sys', 'performance_schema', 'information_schema') \
+                 ORDER BY 1, 2 LIMIT 5000",
+                "SELECT table_name, column_name, column_type FROM information_schema.columns \
+                 WHERE table_schema NOT IN ('mysql', 'sys', 'performance_schema', 'information_schema') \
+                 ORDER BY table_schema, table_name, ordinal_position LIMIT 15000",
+            ),
+            DbEngine::Clickhouse => (
+                "SELECT database, name, engine FROM system.tables \
+                 WHERE database NOT IN ('system', 'INFORMATION_SCHEMA', 'information_schema') \
+                 ORDER BY 1, 2 LIMIT 5000",
+                "SELECT table, name, type FROM system.columns \
+                 WHERE database NOT IN ('system', 'INFORMATION_SCHEMA', 'information_schema') \
+                 ORDER BY database, table, position LIMIT 15000",
+            ),
+            _ => return Ok(CompletionCache::default()),
+        };
+        let triple = |rows: Vec<Vec<String>>| {
+            rows.into_iter()
+                .filter_map(|row| match row.as_slice() {
+                    [a, b, c, ..] => Some((a.clone(), b.clone(), c.clone())),
+                    _ => None,
+                })
+                .take(MAX_COMPLETION_OBJECTS)
+                .collect::<Vec<_>>()
+        };
+        Ok(CompletionCache {
+            tables: triple(self.catalogue(tables, &[]).await?),
+            columns: triple(self.catalogue(columns, &[]).await?),
+        })
+    }
+
+    /// Forgets cached completion names (after DDL or an explicit refresh).
+    pub async fn refresh_completion(&self) {
+        *self.completion.lock().await = None;
+    }
+}
+
+fn postgres_table_ddl(
+    name: &str,
+    columns: &[Vec<String>],
+    constraints: &[Vec<String>],
+    extras: &[Vec<String>],
+) -> String {
+    let mut lines: Vec<String> = columns
+        .iter()
+        .map(|row| {
+            let mut line = format!("    {} {}", row[0], row[1]);
+            match row.get(5).map(String::as_str) {
+                Some("s") => line.push_str(&format!(" GENERATED ALWAYS AS ({}) STORED", row[3])),
+                _ => match row.get(4).map(String::as_str) {
+                    Some("a") => line.push_str(" GENERATED ALWAYS AS IDENTITY"),
+                    Some("d") => line.push_str(" GENERATED BY DEFAULT AS IDENTITY"),
+                    _ if !row[3].is_empty() => line.push_str(&format!(" DEFAULT {}", row[3])),
+                    _ => {}
+                },
+            }
+            if row[2] == "true" {
+                line.push_str(" NOT NULL");
+            }
+            line
+        })
+        .collect();
+    lines.extend(
+        constraints
+            .iter()
+            .map(|row| format!("    CONSTRAINT {} {}", row[0], row[1])),
+    );
+    let mut ddl = format!("CREATE TABLE {name} (\n{}\n);", lines.join(",\n"));
+    for row in extras {
+        if let Some(statement) = row.first().filter(|value| !value.is_empty()) {
+            ddl.push('\n');
+            ddl.push_str(statement);
+        }
+    }
+    ddl
+}
+
+/// The word being typed before the cursor and its `qualifier.` if any.
+fn completion_word(before: &str) -> (Option<String>, String) {
+    let is_word = |c: char| c.is_alphanumeric() || c == '_' || c == '$';
+    let start = before
+        .char_indices()
+        .rev()
+        .find(|(_, c)| !is_word(*c))
+        .map_or(0, |(index, c)| index + c.len_utf8());
+    let prefix = before[start..].to_owned();
+    let qualifier = before[..start].strip_suffix('.').map(|head| {
+        let begin = head
+            .char_indices()
+            .rev()
+            .find(|(_, c)| !(is_word(*c) || *c == '"' || *c == '`'))
+            .map_or(0, |(index, c)| index + c.len_utf8());
+        head[begin..]
+            .trim_matches(|c| c == '"' || c == '`')
+            .to_owned()
+    });
+    (qualifier, prefix)
+}
+
+const KEYWORDS: &[&str] = &[
+    "SELECT",
+    "FROM",
+    "WHERE",
+    "GROUP BY",
+    "ORDER BY",
+    "HAVING",
+    "LIMIT",
+    "OFFSET",
+    "JOIN",
+    "LEFT JOIN",
+    "INNER JOIN",
+    "ON",
+    "AND",
+    "OR",
+    "NOT",
+    "IN",
+    "EXISTS",
+    "BETWEEN",
+    "LIKE",
+    "ILIKE",
+    "IS NULL",
+    "IS NOT NULL",
+    "AS",
+    "DISTINCT",
+    "COUNT",
+    "SUM",
+    "AVG",
+    "MIN",
+    "MAX",
+    "CASE",
+    "WHEN",
+    "THEN",
+    "ELSE",
+    "END",
+    "UNION",
+    "UNION ALL",
+    "WITH",
+    "INSERT INTO",
+    "VALUES",
+    "UPDATE",
+    "SET",
+    "DELETE FROM",
+    "EXPLAIN",
+    "DESC",
+    "ASC",
+    "COALESCE",
+    "CAST",
+    "NULL",
+    "TRUE",
+    "FALSE",
+];
+
+/// Table of an alias declared anywhere in the statement (`table alias`,
+/// `table AS alias`).
+fn alias_table(before: &str, alias: &str) -> Option<String> {
+    let words: Vec<&str> = before
+        .split(|c: char| c.is_whitespace() || c == ',' || c == '(' || c == ')')
+        .filter(|word| !word.is_empty())
+        .collect();
+    words
+        .windows(2)
+        .rev()
+        .find_map(|pair| {
+            let (table, name) = (pair[0], pair[1]);
+            (name
+                .trim_matches(|c| c == '"' || c == '`')
+                .eq_ignore_ascii_case(alias)
+                && !table.eq_ignore_ascii_case("as"))
+            .then(|| {
+                table
+                    .rsplit('.')
+                    .next()
+                    .unwrap_or(table)
+                    .trim_matches(|c| c == '"' || c == '`')
+                    .to_owned()
+            })
+        })
+        .or_else(|| {
+            words.windows(3).rev().find_map(|triple| {
+                (triple[1].eq_ignore_ascii_case("as")
+                    && triple[2]
+                        .trim_matches(|c| c == '"' || c == '`')
+                        .eq_ignore_ascii_case(alias))
+                .then(|| {
+                    triple[0]
+                        .rsplit('.')
+                        .next()
+                        .unwrap_or(triple[0])
+                        .trim_matches(|c| c == '"' || c == '`')
+                        .to_owned()
+                })
+            })
+        })
+}
+
+fn complete_from(
+    cache: &CompletionCache,
+    statement: &str,
+    qualifier: Option<&str>,
+    prefix: &str,
+) -> Vec<DbCompletion> {
+    let lower = prefix.to_lowercase();
+    let matches = |name: &str| {
+        name.to_lowercase().starts_with(&lower) && name.len() > prefix.len() || prefix.is_empty()
+    };
+    let completion = |name: &str, detail: String| DbCompletion {
+        insert_text: name.chars().skip(prefix.chars().count()).collect(),
+        label: name.to_owned(),
+        detail,
+    };
+    let mut seen = BTreeSet::new();
+    let mut out = Vec::new();
+    if let Some(qualifier) = qualifier {
+        // `schema.` lists its tables; `table.` or `alias.` lists the columns.
+        for (schema, table, kind) in &cache.tables {
+            if schema.eq_ignore_ascii_case(qualifier)
+                && matches(table)
+                && seen.insert(table.clone())
+            {
+                out.push(completion(table, kind.clone()));
+            }
+        }
+        let table = cache
+            .tables
+            .iter()
+            .any(|(_, table, _)| table.eq_ignore_ascii_case(qualifier))
+            .then(|| qualifier.to_owned())
+            .or_else(|| alias_table(statement, qualifier));
+        if let Some(table) = table {
+            for (owner, column, kind) in &cache.columns {
+                if owner.eq_ignore_ascii_case(&table)
+                    && matches(column)
+                    && seen.insert(column.clone())
+                {
+                    out.push(completion(column, kind.clone()));
+                }
+            }
+        }
+        out.truncate(MAX_COMPLETIONS);
+        return out;
+    }
+    if prefix.is_empty() {
+        return out;
+    }
+    for keyword in KEYWORDS {
+        if keyword.to_lowercase().starts_with(&lower) && keyword.len() > prefix.len() {
+            let keyword = if prefix.chars().all(|c| !c.is_uppercase()) {
+                keyword.to_lowercase()
+            } else {
+                (*keyword).to_owned()
+            };
+            if seen.insert(keyword.clone()) {
+                out.push(completion(&keyword, String::new()));
+            }
+        }
+    }
+    for (schema, table, kind) in &cache.tables {
+        if matches(table) && seen.insert(table.clone()) {
+            out.push(completion(table, format!("{kind} · {schema}")));
+        }
+    }
+    for (table, column, kind) in &cache.columns {
+        if matches(column) && seen.insert(column.clone()) {
+            out.push(completion(column, format!("{kind} · {table}")));
+        }
+    }
+    out.truncate(MAX_COMPLETIONS);
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cache() -> CompletionCache {
+        CompletionCache {
+            tables: vec![
+                ("public".into(), "orders".into(), "table".into()),
+                ("public".into(), "order_items".into(), "table".into()),
+                ("sales".into(), "customers".into(), "table".into()),
+            ],
+            columns: vec![
+                ("orders".into(), "id".into(), "integer".into()),
+                ("orders".into(), "ordered_at".into(), "timestamp".into()),
+                ("customers".into(), "name".into(), "text".into()),
+            ],
+        }
+    }
+
+    #[test]
+    fn words_and_qualifiers_are_split_at_the_cursor() {
+        assert_eq!(completion_word("SELECT * FROM ord"), (None, "ord".into()));
+        assert_eq!(
+            completion_word("SELECT o.ord"),
+            (Some("o".into()), "ord".into())
+        );
+        assert_eq!(
+            completion_word("SELECT \"sales\"."),
+            (Some("sales".into()), String::new())
+        );
+    }
+
+    #[test]
+    fn completes_keywords_tables_and_columns() {
+        let labels =
+            |items: Vec<DbCompletion>| items.into_iter().map(|c| c.label).collect::<Vec<_>>();
+        let found = complete_from(&cache(), "SELECT * FROM ord", None, "ord");
+        assert_eq!(
+            labels(found.clone()),
+            ["order by", "orders", "order_items", "ordered_at"]
+        );
+        assert_eq!(found[1].insert_text, "ers");
+        assert_eq!(
+            labels(complete_from(
+                &cache(),
+                "SELECT * FROM sales.",
+                Some("sales"),
+                ""
+            )),
+            ["customers"]
+        );
+        let before = "SELECT o. FROM orders o";
+        assert_eq!(
+            labels(complete_from(&cache(), before, Some("o"), "")),
+            ["id", "ordered_at"]
+        );
+        assert_eq!(
+            labels(complete_from(
+                &cache(),
+                "SELECT c.n FROM customers AS c",
+                Some("c"),
+                "n"
+            )),
+            ["name"]
+        );
+    }
+
+    #[test]
+    fn identifiers_are_quoted_per_engine() {
+        let table = DbObjectRef {
+            database: "shop".into(),
+            schema: Some("sales".into()),
+            kind: DbObjectKind::Table,
+            name: "or\"de`rs".into(),
+            parent_name: None,
+        };
+        assert_eq!(
+            quote_identifier(DbEngine::Postgresql, &table),
+            "\"sales\".\"or\"\"de`rs\""
+        );
+        assert_eq!(
+            quote_identifier(DbEngine::Mysql, &table),
+            "`shop`.`or\"de``rs`"
+        );
+        assert_eq!(
+            quote_identifier(DbEngine::Clickhouse, &table),
+            "`shop`.`or\"de\\`rs`"
+        );
+    }
+
+    #[test]
+    fn postgres_table_ddl_is_assembled_in_order() {
+        let ddl = postgres_table_ddl(
+            "\"public\".\"t\"",
+            &[
+                vec![
+                    "id".into(),
+                    "integer".into(),
+                    "true".into(),
+                    String::new(),
+                    "a".into(),
+                    String::new(),
+                ],
+                vec![
+                    "name".into(),
+                    "text".into(),
+                    "false".into(),
+                    "'x'::text".into(),
+                    String::new(),
+                    String::new(),
+                ],
+            ],
+            &[vec!["t_pkey".into(), "PRIMARY KEY (id)".into()]],
+            &[vec![
+                "CREATE INDEX t_name ON public.t USING btree (name);".into()
+            ]],
+        );
+        assert_eq!(
+            ddl,
+            "CREATE TABLE \"public\".\"t\" (\n    id integer GENERATED ALWAYS AS IDENTITY NOT NULL,\n    name text DEFAULT 'x'::text,\n    CONSTRAINT t_pkey PRIMARY KEY (id)\n);\nCREATE INDEX t_name ON public.t USING btree (name);"
+        );
+    }
+}

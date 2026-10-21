@@ -116,6 +116,8 @@ async fn exercise(variable: &str, engine: DbEngine) {
         session.execute(&request("CREATE TABLE cc_probe (id int)")),
         Err(DbError::PolicyDenied | DbError::ApprovalRequired | DbError::InvalidRequest)
     ));
+    assert!(session.explain(&request("SELECT 1"), false).await.is_ok());
+    assert!(session.explain(&request("SELECT 1"), true).await.is_err());
     let roots = session.tree(None, None).await.unwrap();
     assert!(!roots.nodes.is_empty());
     session.close();
@@ -136,6 +138,9 @@ async fn exercise(variable: &str, engine: DbEngine) {
     assert!(!dev.info().read_only);
     write(&dev, "DROP TABLE IF EXISTS cc_items").await.ok();
     write(&dev, "CREATE TABLE cc_items (id int primary key, name varchar(40) not null, secret_token varchar(40))").await.unwrap();
+    write(&dev, "CREATE INDEX cc_items_name ON cc_items (name)")
+        .await
+        .unwrap();
     write(&dev, "INSERT INTO cc_items (id, name, secret_token) VALUES (1, 'alpha', 't1'), (2, 'beta', 't2')").await.unwrap();
     assert_eq!(
         run(&dev, "SELECT name FROM cc_items ORDER BY id")
@@ -181,6 +186,51 @@ async fn exercise(variable: &str, engine: DbEngine) {
         .nodes
         .iter()
         .any(|node| node.reference.name == "id" && node.primary_key));
+    assert!(columns
+        .nodes
+        .iter()
+        .any(|node| node.reference.name == "cc_items_name"
+            && node.reference.kind == DbObjectKind::Index));
+    let id = columns
+        .nodes
+        .iter()
+        .position(|node| node.reference.name == "id")
+        .unwrap();
+    let index = columns
+        .nodes
+        .iter()
+        .position(|node| node.reference.kind == DbObjectKind::Index)
+        .unwrap();
+    assert!(id < index, "columns come first");
+    // DDL, plans and completion read the same objects.
+    let ddl = dev.ddl(&table).await.unwrap();
+    assert!(
+        ddl.contains("CREATE TABLE") && ddl.contains("cc_items") && ddl.contains("secret_token"),
+        "{ddl}"
+    );
+    let plan = dev
+        .explain(&request("SELECT name FROM cc_items WHERE id = 1"), false)
+        .await
+        .unwrap();
+    assert_eq!(plan["analyzed"], false);
+    assert!(!plan["plan"].is_null());
+    let analyzed = dev
+        .explain(&request("SELECT count(*) FROM cc_items"), true)
+        .await
+        .unwrap();
+    assert_eq!(analyzed["analyzed"], true);
+    let completions = dev.complete("SELECT * FROM cc_it", 19).await.unwrap();
+    assert!(completions
+        .iter()
+        .any(|c| c.label == "cc_items" && c.insert_text == "ems"));
+    let columns = dev
+        .complete("SELECT i.secr FROM cc_items i", 13)
+        .await
+        .unwrap();
+    assert!(
+        columns.iter().any(|c| c.label == "secret_token"),
+        "{columns:?}"
+    );
     write(&dev, "DROP TABLE cc_items").await.unwrap();
     dev.close();
 }

@@ -20,7 +20,7 @@ use tokio_util::sync::CancellationToken;
 
 /// One native driver per engine. SQL engines share the catalogue queries in
 /// [`DbSession::tree`]; other engines browse and describe through the driver.
-enum Driver {
+pub(crate) enum Driver {
     Postgres(Postgres),
     Mysql(Mysql),
 }
@@ -65,7 +65,7 @@ impl Driver {
     }
 
     /// Plain SQL with bound parameters (catalogue and DDL lookups).
-    fn query<'a>(
+    pub(crate) fn query<'a>(
         &'a mut self,
         sql: &'a str,
         bindings: &'a [DbParameter],
@@ -88,10 +88,11 @@ impl Driver {
 type NodeBuilder = fn(&[String], Option<&DbObjectRef>) -> DbTreeNode;
 
 pub struct DbSession {
-    info: DbSessionInfo,
-    guard: DbGuard,
-    driver: Mutex<Driver>,
-    scope: CancellationToken,
+    pub(crate) info: DbSessionInfo,
+    pub(crate) guard: DbGuard,
+    pub(crate) driver: Mutex<Driver>,
+    pub(crate) scope: CancellationToken,
+    pub(crate) completion: Mutex<Option<crate::introspect::CompletionCache>>,
     max_rows: u32,
     result_bytes: usize,
 }
@@ -163,6 +164,7 @@ impl DbSession {
             guard,
             driver: Mutex::new(driver),
             scope,
+            completion: Mutex::new(None),
             max_rows: connection.limits.max_rows.clamp(1, 100_000),
             result_bytes: (connection.limits.result_memory_bytes as usize)
                 .clamp(1 << 20, DEFAULT_RESULT_BYTES),
@@ -236,30 +238,52 @@ impl DbSession {
                 (DbEngine::Postgresql, Some(DbObjectKind::Schema)) => (
                     "SELECT c.relname, c.relkind::text FROM pg_catalog.pg_class c \
                      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
-                     WHERE n.nspname = $1 AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S') ORDER BY 2, 1",
+                     WHERE n.nspname = $1 AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S') \
+                     UNION SELECT p.proname, CASE p.prokind WHEN 'p' THEN 'P' ELSE 'F' END \
+                     FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace \
+                     WHERE n.nspname = $1 AND p.prokind IN ('f', 'p') ORDER BY 2, 1",
                     vec![text(&parent.unwrap().name)],
                     |row, parent| {
                         let kind = match row[1].as_str() {
                             "v" => DbObjectKind::View,
                             "m" => DbObjectKind::MaterializedView,
                             "S" => DbObjectKind::Sequence,
+                            "F" => DbObjectKind::Function,
+                            "P" => DbObjectKind::Procedure,
                             _ => DbObjectKind::Table,
                         };
                         let schema = parent.map(|p| p.name.clone());
-                        node(DbObjectRef::new("", schema, kind, &row[0], None), kind != DbObjectKind::Sequence, None)
+                        let children = matches!(kind, DbObjectKind::Table | DbObjectKind::View | DbObjectKind::MaterializedView);
+                        node(DbObjectRef::new("", schema, kind, &row[0], None), children, None)
                     },
                 ),
                 (DbEngine::Postgresql, Some(DbObjectKind::Table | DbObjectKind::View | DbObjectKind::MaterializedView)) => (
-                    "SELECT a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod), (NOT a.attnotnull)::text, \
+                    "SELECT * FROM (SELECT a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod), (NOT a.attnotnull)::text, \
                      COALESCE(pg_catalog.pg_get_expr(d.adbin, d.adrelid), ''), \
                      (EXISTS (SELECT 1 FROM pg_catalog.pg_index i WHERE i.indrelid = c.oid AND i.indisprimary \
-                       AND a.attnum = ANY (i.indkey)))::text \
+                       AND a.attnum = ANY (i.indkey)))::text, 'column', \
+                     COALESCE((SELECT fn.nspname || '.' || fc.relname FROM pg_catalog.pg_constraint fk \
+                       JOIN pg_catalog.pg_class fc ON fc.oid = fk.confrelid \
+                       JOIN pg_catalog.pg_namespace fn ON fn.oid = fc.relnamespace \
+                       WHERE fk.conrelid = c.oid AND fk.contype = 'f' AND a.attnum = ANY (fk.conkey) LIMIT 1), ''), \
+                     0 AS grp, a.attnum::int AS ord \
                      FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_class c ON c.oid = a.attrelid \
                      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
                      LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum \
-                     WHERE n.nspname = $1 AND c.relname = $2 AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum",
+                     WHERE n.nspname = $1 AND c.relname = $2 AND a.attnum > 0 AND NOT a.attisdropped \
+                     UNION ALL SELECT ic.relname, pg_catalog.pg_get_indexdef(i.indexrelid), '', '', i.indisprimary::text, 'index', '', 1, 0 \
+                     FROM pg_catalog.pg_index i JOIN pg_catalog.pg_class ic ON ic.oid = i.indexrelid \
+                     JOIN pg_catalog.pg_class c ON c.oid = i.indrelid JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
+                     WHERE n.nspname = $1 AND c.relname = $2 \
+                     UNION ALL SELECT con.conname, pg_catalog.pg_get_constraintdef(con.oid, true), '', '', '', 'constraint', '', 2, 0 \
+                     FROM pg_catalog.pg_constraint con JOIN pg_catalog.pg_class c ON c.oid = con.conrelid \
+                     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = $1 AND c.relname = $2 \
+                     UNION ALL SELECT t.tgname, pg_catalog.pg_get_triggerdef(t.oid, true), '', '', '', 'trigger', '', 3, 0 \
+                     FROM pg_catalog.pg_trigger t JOIN pg_catalog.pg_class c ON c.oid = t.tgrelid \
+                     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
+                     WHERE n.nspname = $1 AND c.relname = $2 AND NOT t.tgisinternal) children ORDER BY grp, ord, 1",
                     vec![text(parent.unwrap().schema.as_deref().unwrap_or("public")), text(&parent.unwrap().name)],
-                    column_node,
+                    table_child,
                 ),
                 (DbEngine::Mysql | DbEngine::Mariadb, None) => (
                     "SELECT schema_name FROM information_schema.schemata ORDER BY 1",
@@ -267,20 +291,46 @@ impl DbSession {
                     |row, _| node(DbObjectRef::new(&row[0], None, DbObjectKind::Database, &row[0], None), true, None),
                 ),
                 (DbEngine::Mysql | DbEngine::Mariadb, Some(DbObjectKind::Database)) => (
-                    "SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = ? ORDER BY 2, 1",
-                    vec![text(&parent.unwrap().name)],
+                    "SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = ? \
+                     UNION ALL SELECT routine_name, routine_type FROM information_schema.routines WHERE routine_schema = ? \
+                     ORDER BY 2, 1",
+                    vec![text(&parent.unwrap().name), text(&parent.unwrap().name)],
                     |row, parent| {
-                        let kind = if row[1].contains("VIEW") { DbObjectKind::View } else { DbObjectKind::Table };
+                        let kind = match row[1].as_str() {
+                            "PROCEDURE" => DbObjectKind::Procedure,
+                            "FUNCTION" => DbObjectKind::Function,
+                            kind if kind.contains("VIEW") => DbObjectKind::View,
+                            _ => DbObjectKind::Table,
+                        };
                         let database = parent.map(|p| p.name.clone()).unwrap_or_default();
-                        node(DbObjectRef::new(&database, None, kind, &row[0], None), true, None)
+                        let children = matches!(kind, DbObjectKind::Table | DbObjectKind::View);
+                        node(DbObjectRef::new(&database, None, kind, &row[0], None), children, None)
                     },
                 ),
                 (DbEngine::Mysql | DbEngine::Mariadb, Some(DbObjectKind::Table | DbObjectKind::View)) => (
-                    "SELECT column_name, column_type, IF(is_nullable = 'YES', 'true', 'false'), \
-                     COALESCE(column_default, ''), IF(column_key = 'PRI', 'true', 'false') \
-                     FROM information_schema.columns WHERE table_schema = ? AND table_name = ? ORDER BY ordinal_position",
-                    vec![text(&parent.unwrap().database), text(&parent.unwrap().name)],
-                    column_node,
+                    "SELECT * FROM (SELECT c.column_name AS name, c.column_type AS detail, IF(c.is_nullable = 'YES', 'true', 'false'), \
+                     COALESCE(c.column_default, ''), IF(c.column_key = 'PRI', 'true', 'false'), 'column', \
+                     COALESCE((SELECT CONCAT(k.referenced_table_schema, '.', k.referenced_table_name) \
+                       FROM information_schema.key_column_usage k WHERE k.table_schema = c.table_schema \
+                       AND k.table_name = c.table_name AND k.column_name = c.column_name \
+                       AND k.referenced_table_name IS NOT NULL LIMIT 1), ''), 0 AS grp, c.ordinal_position AS ord \
+                     FROM information_schema.columns c WHERE c.table_schema = ? AND c.table_name = ? \
+                     UNION ALL SELECT s.index_name, CONCAT(IF(MAX(s.non_unique) = 0, 'UNIQUE ', ''), s.index_type, ' (', \
+                       GROUP_CONCAT(s.column_name ORDER BY s.seq_in_index SEPARATOR ', '), ')'), '', '', \
+                       IF(s.index_name = 'PRIMARY', 'true', 'false'), 'index', '', 1, 0 \
+                     FROM information_schema.statistics s WHERE s.table_schema = ? AND s.table_name = ? GROUP BY s.index_name, s.index_type \
+                     UNION ALL SELECT t.trigger_name, CONCAT(t.action_timing, ' ', t.event_manipulation), '', '', 'false', 'trigger', '', 3, 0 \
+                     FROM information_schema.triggers t WHERE t.event_object_schema = ? AND t.event_object_table = ?) children \
+                     ORDER BY grp, ord, 1",
+                    vec![
+                        text(&parent.unwrap().database),
+                        text(&parent.unwrap().name),
+                        text(&parent.unwrap().database),
+                        text(&parent.unwrap().name),
+                        text(&parent.unwrap().database),
+                        text(&parent.unwrap().name),
+                    ],
+                    table_child,
                 ),
                 (DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb, _) => {
                     return Ok(DbTreePage { nodes: Vec::new(), next_cursor: None })
@@ -324,24 +374,43 @@ fn node(reference: DbObjectRef, has_children: bool, detail: Option<String>) -> D
     }
 }
 
-fn column_node(row: &[String], parent: Option<&DbObjectRef>) -> DbTreeNode {
+/// A column, index, constraint or trigger of a table: name, detail, nullable,
+/// default, primary key, kind and the referenced `schema.table` of a foreign key.
+fn table_child(row: &[String], parent: Option<&DbObjectRef>) -> DbTreeNode {
     let parent = parent
         .cloned()
         .unwrap_or_else(|| DbObjectRef::new("", None, DbObjectKind::Table, "", None));
+    let kind = match row[5].as_str() {
+        "index" => DbObjectKind::Index,
+        "constraint" => DbObjectKind::Constraint,
+        "trigger" => DbObjectKind::Trigger,
+        _ => DbObjectKind::Column,
+    };
+    let foreign_key = row[6].split_once('.').map(|(schema, table)| DbObjectRef {
+        database: if parent.schema.is_none() {
+            schema.to_owned()
+        } else {
+            parent.database.clone()
+        },
+        schema: parent.schema.as_ref().map(|_| schema.to_owned()),
+        kind: DbObjectKind::Table,
+        name: table.to_owned(),
+        parent_name: None,
+    });
     DbTreeNode {
         reference: DbObjectRef::new(
             &parent.database,
             parent.schema.clone(),
-            DbObjectKind::Column,
+            kind,
             &row[0],
             Some(parent.name),
         ),
         has_children: false,
         detail: Some(row[1].clone()),
-        nullable: Some(row[2] == "true"),
+        nullable: (kind == DbObjectKind::Column).then(|| row[2] == "true"),
         default_value: (!row[3].is_empty()).then(|| row[3].clone()),
         primary_key: row[4] == "true",
-        foreign_key: None,
+        foreign_key,
     }
 }
 
@@ -365,8 +434,8 @@ impl DbObjectRef {
 
 /// Collects a small catalogue result as text.
 #[derive(Default)]
-struct Collect {
-    rows: Vec<Vec<String>>,
+pub(crate) struct Collect {
+    pub rows: Vec<Vec<String>>,
 }
 
 #[async_trait]

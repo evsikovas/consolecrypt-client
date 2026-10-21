@@ -82,7 +82,9 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
             label: jump['name'] as String? ?? '',
           ),
       ],
-      groups: [for (final group in groups) DbGroupChoice(id: group['id'] as String, label: group['name'] as String? ?? '')],
+      groups: [
+        for (final group in groups) DbGroupChoice(id: group['id'] as String, label: group['name'] as String? ?? ''),
+      ],
     );
   }
 
@@ -152,10 +154,7 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
 
   @override
   Future<DbSessionInfo> connect(String connectionId, {SecretText? temporaryPassword}) async => _session(
-    await _secret(
-      temporaryPassword,
-      (pw) => guard(() => native.dbConnect(connectionId: connectionId, password: pw)),
-    ),
+    await _secret(temporaryPassword, (pw) => guard(() => native.dbConnect(connectionId: connectionId, password: pw))),
   );
 
   @override
@@ -180,19 +179,19 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
   Future<DbTreePage> tree(String sessionId, {DbObjectRef? parent, String? cursor, bool refresh = false}) async =>
       DbTreePage.fromJson(
         jsonDecode(
-              await guard(
-                () => native.dbTree(
-                  sessionId: sessionId,
-                  parentJson: parent == null ? null : jsonEncode(parent.toJson()),
-                  cursor: cursor,
-                ),
-              ),
-            )
-            as DbJson,
+          await guard(
+            () => native.dbTree(
+              sessionId: sessionId,
+              parentJson: parent == null ? null : jsonEncode(parent.toJson()),
+              cursor: cursor,
+            ),
+          ),
+        ) as DbJson,
       );
 
   @override
-  Future<SecretText> ddl(String sessionId, DbObjectRef object) => _unsupported();
+  Future<SecretText> ddl(String sessionId, DbObjectRef object) async =>
+      SecretText(await guard(() => native.dbDdl(sessionId: sessionId, objectJson: jsonEncode(object.toJson()))));
 
   @override
   Future<String> identifier(String sessionId, DbObjectRef object) =>
@@ -210,19 +209,17 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
     required int selectionStart,
     required int selectionEnd,
   }) async {
-    final json =
-        jsonDecode(
-              await guard(
-                () => native.dbPrepareQuery(
-                  sessionId: sessionId,
-                  text: text,
-                  mode: mode.name,
-                  selectionStart: selectionStart,
-                  selectionEnd: selectionEnd,
-                ),
-              ),
-            )
-            as DbJson;
+    final json = jsonDecode(
+      await guard(
+        () => native.dbPrepareQuery(
+          sessionId: sessionId,
+          text: text,
+          mode: mode.name,
+          selectionStart: selectionStart,
+          selectionEnd: selectionEnd,
+        ),
+      ),
+    ) as DbJson;
     return DbPreparedQuery(
       text: json['text'] as String,
       parameterNames: (json['parameter_names'] as List).cast<String>(),
@@ -234,13 +231,26 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
       guard(() => native.dbFormatQuery(engine: engine.wireName, text: text));
 
   @override
-  Future<List<DbCompletion>> completeQuery(String sessionId, String text, int cursor) async => const [];
+  Future<List<DbCompletion>> completeQuery(String sessionId, String text, int cursor) async {
+    // The core counts UTF-8 bytes; the editor counts UTF-16 code units.
+    final offset = utf8.encode(text.substring(0, cursor.clamp(0, text.length))).length;
+    final list =
+        jsonDecode(await guard(() => native.dbComplete(sessionId: sessionId, text: text, cursor: offset))) as List;
+    return [
+      for (final item in list.cast<DbJson>())
+        DbCompletion(
+          insertText: item['insert_text'] as String,
+          label: item['label'] as String,
+          detail: item['detail'] as String? ?? '',
+        ),
+    ];
+  }
 
   @override
   Future<DbQueryReview> reviewQuery(String sessionId, DbQueryRequest request) async {
-    final json =
-        jsonDecode(await guard(() => native.dbReview(sessionId: sessionId, requestJson: jsonEncode(request.toJson()))))
-            as DbJson;
+    final json = jsonDecode(
+      await guard(() => native.dbReview(sessionId: sessionId, requestJson: jsonEncode(request.toJson()))),
+    ) as DbJson;
     return DbQueryReview(
       ticket: json['ticket'] as String,
       risk: switch (json['risk']) {
@@ -289,7 +299,19 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
   Future<void> releaseQuery(String sessionId, String queryId) => guard(() => native.dbRelease(queryId: queryId));
 
   @override
-  Future<DbExplainPlan> explain(String sessionId, DbQueryRequest request, {bool analyze = false}) => _unsupported();
+  Future<DbExplainPlan> explain(String sessionId, DbQueryRequest request, {bool analyze = false}) async {
+    final json = jsonDecode(
+      await guard(
+        () => native.dbExplain(sessionId: sessionId, requestJson: jsonEncode(request.toJson()), analyze: analyze),
+      ),
+    ) as DbJson;
+    final plan = json['plan'];
+    return DbExplainPlan(
+      engine: DbEngine.parse(json['engine'] as String),
+      document: plan is Map ? plan.cast<String, Object?>() : {'plan': plan},
+      analyzed: json['analyzed'] as bool? ?? analyze,
+    );
+  }
 
   // History.
 
@@ -308,20 +330,18 @@ final class RustDbService implements DbService, DbQueryService, DbHistoryService
     String? cursor,
     int limit = 100,
   }) async {
-    final json =
-        jsonDecode(
-              await guard(
-                () => native.dbHistory(
-                  connectionId: connectionId,
-                  query: query,
-                  succeeded: succeeded,
-                  favoritesOnly: favoritesOnly,
-                  cursor: cursor,
-                  limit: limit,
-                ),
-              ),
-            )
-            as DbJson;
+    final json = jsonDecode(
+      await guard(
+        () => native.dbHistory(
+          connectionId: connectionId,
+          query: query,
+          succeeded: succeeded,
+          favoritesOnly: favoritesOnly,
+          cursor: cursor,
+          limit: limit,
+        ),
+      ),
+    ) as DbJson;
     return DbHistoryPage(
       entries: [
         for (final entry in (json['entries'] as List).cast<DbJson>())
