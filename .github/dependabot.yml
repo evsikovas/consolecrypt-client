@@ -1,0 +1,49 @@
+# Weekly dependency updates. Patch releases arrive as one grouped PR per
+# ecosystem; major releases only come as security updates (and the weekly
+# dependency-audit.yml issue). Dependabot PRs run only the hosted
+# dependency-audit.yml checks: no workflow here schedules self-hosted
+# runners on pull_request.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directories:
+      - /client/rust
+      - /crates
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      cargo-patch:
+        update-types: [patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+      # Pinned by revision to a released server commit; bumped by hand with the protocol.
+      - dependency-name: cc-protocol
+
+  - package-ecosystem: pub
+    directory: /client/flutter
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      pub-patch:
+        update-types: [patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      actions-patch:
+        update-types: [patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']

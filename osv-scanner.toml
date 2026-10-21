@@ -1,0 +1,9 @@
+# osv-scanner exceptions for non-Cargo lockfiles (pubspec.lock, npm lockfiles).
+# Used by client/scripts/dependency-audit.py; Cargo.lock is covered by deny.toml.
+# Every entry needs a reason with the owner and an ignoreUntil review date
+# (docs/public/BUILDING.md). Example:
+#
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# ignoreUntil = 2027-01-21
+# reason = "Not reachable: <why>. Owner @evsikovas."

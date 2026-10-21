@@ -29,6 +29,15 @@ files, and publishes it. Only that job gets `contents: write` and `actions: writ
 It then dispatches `update-feeds.yml` on trusted `main` to refresh signed metadata.
 Website and sync-server deployment use their own tag workflows.
 
+Dependency checks run only on GitHub-hosted `ubuntu-24.04`. The release
+`validate` job runs `client/scripts/dependency-audit.py` (pinned `cargo-deny`
+and `osv-scanner`, SHA-256 verified) before any native job starts.
+`dependency-audit.yml` repeats it weekly, on manual dispatch and on pull requests
+that touch manifests or lockfiles, including Dependabot's. Its audit job has
+`contents: read`; a separate job with `issues: write` (never on pull requests)
+opens, updates or closes the "Уязвимые зависимости" issue. Policy and exceptions:
+[BUILDING.md](BUILDING.md#проверка-зависимостей).
+
 On Windows, enable Developer Mode so Flutter can create plugin symlinks, and
 choose a short work directory when registering the runner:
 
