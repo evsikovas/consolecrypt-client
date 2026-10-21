@@ -39,6 +39,29 @@ final class LocalTerminalTarget extends TerminalTarget {
   SnippetType get shellType => terminalShellType(profile.shell) ?? SnippetType.shell;
 }
 
+/// A shell inside a Docker container, on this computer or a saved SSH host.
+final class DockerTerminalTarget extends TerminalTarget {
+  const DockerTerminalTarget({
+    required this.sessionId,
+    required this.hostName,
+    required this.containerId,
+    required this.containerName,
+    this.command = const ['/bin/sh'],
+  });
+  final String sessionId, hostName, containerId, containerName;
+
+  /// The shell to run; the auto-detect marker picks bash, ash or sh.
+  final List<String> command;
+  @override
+  String get label => containerName;
+  @override
+  String get detail => hostName;
+  @override
+  Host? get sshHost => null;
+  @override
+  SnippetType get shellType => terminalShellType(command.firstOrNull) ?? SnippetType.shell;
+}
+
 final class KubernetesTerminalTarget extends TerminalTarget {
   const KubernetesTerminalTarget({
     required this.sessionId,

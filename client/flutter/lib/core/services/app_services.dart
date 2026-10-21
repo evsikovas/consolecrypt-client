@@ -17,6 +17,7 @@ import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/core/services/tunnel_service.dart';
 import 'package:consolecrypt/core/services/vault_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
+import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
 
 export 'package:consolecrypt/core/services/ai_service.dart';
@@ -77,6 +78,7 @@ final class AppServices {
     this.enrollment,
     this.kubernetes,
     this.databases,
+    this.docker,
     this.developer,
     this.onDispose,
   });
@@ -110,6 +112,9 @@ final class AppServices {
 
   /// Database connections and sessions (native backend only).
   final DbService? databases;
+
+  /// Docker on this computer or saved SSH hosts (desktop).
+  final DockerService? docker;
   final DeveloperControls? developer;
   final Future<void> Function()? onDispose;
 

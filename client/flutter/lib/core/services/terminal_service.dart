@@ -39,6 +39,10 @@ abstract interface class LocalTerminalService {
   Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size});
 }
 
+abstract interface class DockerTerminalService {
+  Future<TerminalSessionHandle> openDocker({required DockerTerminalTarget target, required TerminalSize size});
+}
+
 abstract interface class KubernetesTerminalService {
   Future<TerminalSessionHandle> openKubernetes({required KubernetesTerminalTarget target, required TerminalSize size});
 }
@@ -69,6 +73,10 @@ extension LocalTerminalCapability on TerminalService {
           (this as LocalTerminalService).openLocal(profileId: profile.id, size: size),
         KubernetesTerminalTarget() when this is KubernetesTerminalService =>
           (this as KubernetesTerminalService).openKubernetes(target: target, size: size),
+        DockerTerminalTarget() when this is DockerTerminalService => (this as DockerTerminalService).openDocker(
+          target: target,
+          size: size,
+        ),
         _ => Future.error(UnsupportedError('Local terminals are unavailable')),
       };
 }

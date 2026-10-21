@@ -232,6 +232,8 @@ final class RustTerminalService
                 cols: s.size.columns,
                 rows: s.size.rows,
               ),
+            // Wired to the native Docker runtime with the bridge.
+            DockerTerminalTarget() => Future<String>.error(UnsupportedError('docker_terminal_unavailable')),
           },
         ),
       );

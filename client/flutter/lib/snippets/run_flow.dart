@@ -244,7 +244,7 @@ class _RunConfirmationDialogState extends State<RunConfirmationDialog> {
 String _hostLabel(Host host) => '${host.name} (${host.address})';
 String _targetLabel(TerminalTab tab) => switch (tab.target) {
   SshTerminalTarget(:final host) => _hostLabel(host),
-  LocalTerminalTarget() || KubernetesTerminalTarget() => tab.target.label,
+  LocalTerminalTarget() || KubernetesTerminalTarget() || DockerTerminalTarget() => tab.target.label,
 };
 
 /// Picks the target (active terminal tab or a host), asks for confirmation
