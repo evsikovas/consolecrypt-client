@@ -6,6 +6,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/view_mode_toggle.dart';
 import 'package:consolecrypt/groups/group_dialogs.dart';
 import 'package:consolecrypt/groups/group_tree.dart';
 import 'package:consolecrypt/hosts/inventory_navigation.dart';
@@ -232,21 +233,10 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  GlassIconButton(
-                    key: const ValueKey('inventory-view-cards'),
-                    tooltip: l.inventoryCards,
-                    selected: _cards,
-                    style: GlassIconButtonStyle.plain,
-                    icon: Icons.grid_view_rounded,
-                    onPressed: () => setState(() => _cards = true),
-                  ),
-                  GlassIconButton(
-                    key: const ValueKey('inventory-view-list'),
-                    tooltip: l.inventoryList,
-                    selected: !_cards,
-                    style: GlassIconButtonStyle.plain,
-                    icon: Icons.view_list_rounded,
-                    onPressed: () => setState(() => _cards = false),
+                  ViewModeToggle(
+                    keyPrefix: 'inventory-view',
+                    cards: _cards,
+                    onChanged: (cards) => setState(() => _cards = cards),
                   ),
                 ],
               ),

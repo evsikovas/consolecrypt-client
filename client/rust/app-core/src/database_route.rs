@@ -1,4 +1,5 @@
-//! Every database socket uses one frozen native SSH/jump/proxy route.
+//! Every database socket uses one frozen native SSH/jump/proxy route, or the
+//! loopback address of a restored Kubernetes port-forward.
 //! The driver supplies the original destination and keeps TLS identity separate.
 use crate::session::{Session, Unlocked};
 use crate::{AppCore, AppError, AppResult};
@@ -17,6 +18,8 @@ enum Transport {
     Direct,
     Ssh(Arc<cc_ssh_core::SshSession>),
     Proxy(Proxy, Option<SecretString>),
+    /// A Kubernetes port-forward: every socket dials its loopback listener.
+    Loopback(std::net::SocketAddr),
 }
 
 struct NativeConnector {
@@ -61,6 +64,10 @@ impl DbConnector for NativeConnector {
                 .await
                 .map(|stream| Box::new(stream) as DbIo)
                 .map_err(|_| DbError::ConnectionFailed),
+                Transport::Loopback(address) => {
+                    let forward = DbDestination::new(address.ip().to_string(), address.port())?;
+                    DirectConnector.connect(&forward, cancel.clone()).await
+                }
             }
         };
         let mut remote = tokio::select! {
@@ -93,6 +100,7 @@ impl AppCore {
         owner: &Arc<Session>,
         unlocked: &Arc<Unlocked>,
         route: &DbRoute,
+        port: u16,
         cancel: &CancellationToken,
     ) -> AppResult<Arc<dyn DbConnector>> {
         // Establish dependency guards before resolving credentials or prompting.
@@ -169,6 +177,45 @@ impl AppCore {
                     None => None,
                 };
                 Transport::Proxy(proxy, password)
+            }
+            DbRoute::Kubernetes {
+                context_id,
+                namespace,
+                target_kind,
+                target_name,
+            } => {
+                let forward = self.db_kube_forward(
+                    unlocked,
+                    *context_id,
+                    namespace,
+                    *target_kind,
+                    target_name,
+                    port,
+                );
+                let address = tokio::select! {
+                    biased;
+                    _ = cancel.cancelled() => return Err(AppError::VaultLocked),
+                    result = forward => result?,
+                };
+                Transport::Loopback(address)
+            }
+            DbRoute::Tunnel { tunnel_id } => {
+                let forward = self.db_tunnel_forward(unlocked, *tunnel_id);
+                let address = tokio::select! {
+                    biased;
+                    _ = cancel.cancelled() => return Err(AppError::VaultLocked),
+                    result = forward => result?,
+                };
+                Transport::Loopback(address)
+            }
+            DbRoute::Docker { host_id, container } => {
+                let forward = self.db_docker_forward(unlocked, *host_id, container, port);
+                let address = tokio::select! {
+                    biased;
+                    _ = cancel.cancelled() => return Err(AppError::VaultLocked),
+                    result = forward => result?,
+                };
+                Transport::Loopback(address)
             }
         };
         // Trust changes (including a host key replaced after a prompt) revoke

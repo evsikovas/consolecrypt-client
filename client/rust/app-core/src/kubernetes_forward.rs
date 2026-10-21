@@ -62,6 +62,39 @@ impl Default for ForwardRuntime {
     }
 }
 
+impl ForwardRuntime {
+    /// A running loopback forward to `pod:remote_port`, if any.
+    pub(crate) fn running(
+        &self,
+        namespace: &str,
+        pod: &str,
+        remote_port: u16,
+    ) -> Option<KubeForwardInfo> {
+        self.handles
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .values()
+            .filter(|handle| !handle.stop.is_cancelled())
+            .map(|handle| {
+                handle
+                    .info
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .clone()
+            })
+            .find(|info| {
+                info.state == "running"
+                    && info.namespace == namespace
+                    && info.pod == pod
+                    && info.remote_port == remote_port
+                    && info
+                        .address
+                        .parse::<std::net::SocketAddr>()
+                        .is_ok_and(|address| address.ip().is_loopback())
+            })
+    }
+}
+
 #[cfg(target_os = "android")]
 fn mobile_forwards() -> &'static Mutex<Vec<std::sync::Weak<ForwardRuntime>>> {
     static REGISTRY: std::sync::OnceLock<Mutex<Vec<std::sync::Weak<ForwardRuntime>>>> =

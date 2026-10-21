@@ -1,10 +1,11 @@
 import 'dart:async';
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
-import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -82,12 +83,94 @@ class DbQueryEditor extends StatefulWidget {
 class _DbQueryEditorState extends State<DbQueryEditor> {
   final _focus = FocusNode();
   final _find = TextEditingController(), _replace = TextEditingController();
-  bool _findOpen = false, _busy = false;
+  final _scroll = ScrollController();
+  final _codeKey = GlobalKey();
+  bool _findOpen = false, _busy = false, _measureQueued = false;
   int _generation = 0;
+
+  /// Visible line numbers (number, top, height) and the caret line, both in
+  /// the code area's coordinates; measured from the laid-out text so wrapped
+  /// lines keep their numbers aligned.
+  List<(int, double, double)> _lines = const [];
+  (double, double)? _caretLine;
   bool get _current => mounted && widget.isCurrent();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_queueMeasure);
+    _scroll.addListener(_queueMeasure);
+    _focus.addListener(_queueMeasure);
+  }
+
+  @override
+  void didUpdateWidget(DbQueryEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_queueMeasure);
+      widget.controller.addListener(_queueMeasure);
+    }
+  }
+
+  void _queueMeasure() {
+    if (_measureQueued || !mounted) return;
+    _measureQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _measureQueued = false;
+      _measure();
+    });
+  }
+
+  EditableTextState? _editable() {
+    EditableTextState? found;
+    void visit(Element element) {
+      if (found != null) return;
+      if (element is StatefulElement && element.state is EditableTextState) {
+        found = element.state as EditableTextState;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    _codeKey.currentContext?.visitChildElements(visit);
+    return found;
+  }
+
+  void _measure() {
+    final box = _codeKey.currentContext?.findRenderObject() as RenderBox?;
+    final render = _editable()?.renderEditable;
+    if (!mounted || box == null || render == null || !box.hasSize || !render.hasSize || !render.attached) return;
+    double top(int offset) =>
+        box.globalToLocal(render.localToGlobal(render.getLocalRectForCaret(TextPosition(offset: offset)).topLeft)).dy;
+    final text = widget.controller.text, lineHeight = render.preferredLineHeight;
+    final lines = <(int, double, double)>[];
+    var start = 0, number = 1;
+    while (number <= 20000) {
+      final y = top(start);
+      if (y > box.size.height) break;
+      if (y + lineHeight >= 0) lines.add((number, y, lineHeight));
+      final next = text.indexOf('\n', start);
+      if (next < 0) break;
+      start = next + 1;
+      number++;
+    }
+    final selection = widget.controller.selection;
+    final caret = selection.isValid && _focus.hasFocus
+        ? (top(selection.extentOffset.clamp(0, text.length)), lineHeight)
+        : null;
+    if (!listEquals(lines, _lines) || caret != _caretLine) {
+      setState(() {
+        _lines = lines;
+        _caretLine = caret;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _generation++;
+    widget.controller.removeListener(_queueMeasure);
+    _scroll.dispose();
     _focus.dispose();
     _find.clear();
     _find.dispose();
@@ -162,26 +245,27 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
         selection.isValid ? selection.extentOffset : text.length,
       );
       if (!mounted || !_current || generation != _generation || widget.controller.text != text) return;
-      final completion = await showAppDialog<DbCompletion>(
-        context,
-        secure: true,
-        builder: (context) => GlassDialog(
-          title: context.l10n.dbComplete,
-          content: SizedBox(
-            width: 520,
-            height: 360,
-            child: ListView.builder(
-              itemCount: completions.length.clamp(0, 100),
-              itemBuilder: (_, i) => ListTile(
-                title: Text(completions[i].label),
-                subtitle: Text(completions[i].detail),
-                onTap: () => closeDialog(context, completions[i]),
+      if (completions.isEmpty) return;
+      // Pop the list up at the caret, like the classic SQL editors.
+      final render = _editable()?.renderEditable;
+      final caret = render == null
+          ? glassAnchorRect(context)
+          : MatrixUtils.transformRect(
+              render.getTransformTo(null),
+              render.getLocalRectForCaret(
+                TextPosition(offset: (selection.isValid ? selection.extentOffset : text.length).clamp(0, text.length)),
               ),
-            ),
-          ),
-          secondaryActions: [GlassButton(label: context.l10n.commonClose, onPressed: () => closeDialog<void>(context))],
-        ),
+            );
+      final completion = await showGlassMenu<DbCompletion>(
+        context: context,
+        anchor: caret,
+        minWidth: 280,
+        entries: [
+          for (final item in completions.take(80))
+            GlassMenuItem(value: item, label: item.label, subtitle: item.detail.isEmpty ? null : item.detail),
+        ],
       );
+      _focus.requestFocus();
       if (_current &&
           generation == _generation &&
           widget.controller.text == text &&
@@ -194,6 +278,16 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
     } finally {
       if (_current && generation == _generation) setState(() => _busy = false);
     }
+  }
+
+  static String get _runKeys => AppPlatform.isMacOS ? '⌘↵' : 'Ctrl+Enter'; // l10n-ignore: key names
+  static String get _scriptKeys => AppPlatform.isMacOS ? '⌥X' : 'Alt+X'; // l10n-ignore: key names
+
+  /// Like the classic SQL clients: the selection if there is one, otherwise
+  /// the statement under the cursor.
+  void _runStatement() {
+    final selection = widget.controller.selection;
+    widget.onRun(selection.isValid && !selection.isCollapsed ? DbRunMode.selection : DbRunMode.current);
   }
 
   /// One row: run (with its modes), cancel, then editing and plan tools.
@@ -227,20 +321,42 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
               icon: Icons.play_arrow_rounded,
               style: GlassButtonStyle.prominent,
               size: GlassControlSize.sm,
-              tooltip: '${l.dbRunCurrent} (⌘↵)', // l10n-ignore: shortcut glyphs
-              onPressed: widget.running ? null : () => widget.onRun(DbRunMode.current),
+              tooltip: l.dbRunStatementHelp(_runKeys),
+              onPressed: widget.running ? null : _runStatement,
+            ),
+            const SizedBox(width: GlassSpacing.s4),
+            tool(
+              'db-run-script',
+              Icons.playlist_play_rounded,
+              l.dbRunScriptHelp(_scriptKeys),
+              widget.running ? null : () => widget.onRun(DbRunMode.script),
             ),
             GlassMenuButton<DbRunMode>(
               key: const ValueKey('db-run-modes'),
               entries: [
-                GlassMenuItem(value: DbRunMode.current, label: l.dbRunCurrent, icon: Icons.play_arrow_rounded),
-                GlassMenuItem(value: DbRunMode.selection, label: l.dbRunSelection, icon: Icons.highlight_alt_rounded),
-                GlassMenuItem(value: DbRunMode.script, label: l.dbRunScript, icon: Icons.playlist_play_rounded),
+                GlassMenuItem(
+                  value: DbRunMode.current,
+                  label: l.dbRunCurrent,
+                  icon: Icons.play_arrow_rounded,
+                  shortcut: _runKeys,
+                ),
+                GlassMenuItem(
+                  value: DbRunMode.selection,
+                  label: l.dbRunSelection,
+                  icon: Icons.highlight_alt_rounded,
+                  shortcut: _runKeys,
+                ),
+                GlassMenuItem(
+                  value: DbRunMode.script,
+                  label: l.dbRunScript,
+                  icon: Icons.playlist_play_rounded,
+                  shortcut: _scriptKeys,
+                ),
               ],
               onSelected: (mode) {
                 if (!widget.running) widget.onRun(mode);
               },
-              builder: (context, open) => tool('db-run-menu', Icons.expand_more_rounded, l.dbRunScript, open),
+              builder: (context, open) => tool('db-run-menu', Icons.expand_more_rounded, l.dbRun, open),
             ),
             tool('db-cancel', Icons.stop_rounded, l.dbCancelQuery, widget.running ? widget.onCancel : null),
             divider(),
@@ -266,17 +382,109 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
     );
   }
 
+  /// Gutter with line numbers, current-line band and the text itself.
+  Widget _codeArea(BuildContext context) {
+    final l = context.l10n, tokens = GlassTokens.of(context);
+    final mono = tokens.typography.mono.copyWith(height: 1.5, color: tokens.palette.label);
+    final digits = '${_lines.isEmpty ? 1 : _lines.last.$1}'.length.clamp(2, 6);
+    final gutter = (mono.fontSize ?? 13) * .62 * digits + GlassSpacing.s16;
+    final caret = _caretLine;
+    return LayoutBuilder(
+      builder: (context, bounds) {
+        if (!_measureQueued) _queueMeasure();
+        return Stack(
+          key: _codeKey,
+          children: [
+            if (caret != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: caret.$1,
+                height: caret.$2,
+                child: ColoredBox(color: tokens.surfaces.fillHover),
+              ),
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: gutter,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(right: BorderSide(color: tokens.surfaces.separator)),
+                ),
+                child: ClipRect(
+                  child: Stack(
+                    children: [
+                      for (final (number, top, height) in _lines)
+                        Positioned(
+                          right: GlassSpacing.s8,
+                          top: top,
+                          height: height,
+                          child: Center(
+                            child: Text(
+                              '$number',
+                              style: mono.copyWith(
+                                color: caret != null && (caret.$1 - top).abs() < 1
+                                    ? tokens.palette.label
+                                    : tokens.palette.tertiary,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(gutter + GlassSpacing.s8, GlassSpacing.s6, GlassSpacing.s8, 0),
+              child: TextField(
+                key: const ValueKey('db-query-editor'),
+                controller: widget.controller,
+                focusNode: _focus,
+                scrollController: _scroll,
+                expands: true,
+                maxLines: null,
+                minLines: null,
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: l.dbEditorHint,
+                  hintStyle: mono.copyWith(color: tokens.palette.tertiary),
+                ),
+                style: mono,
+                strutStyle: StrutStyle.fromTextStyle(mono, forceStrutHeight: true),
+                cursorColor: tokens.palette.accent,
+                cursorWidth: 2,
+                cursorRadius: const Radius.circular(1),
+                textAlignVertical: TextAlignVertical.top,
+                autocorrect: false,
+                enableSuggestions: false,
+                smartDashesType: SmartDashesType.disabled,
+                smartQuotesType: SmartQuotesType.disabled,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     return CallbackShortcuts(
       bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyX, alt: true): () => widget.onRun(DbRunMode.script),
         for (final meta in [false, true]) ...{
-          SingleActivator(LogicalKeyboardKey.enter, control: !meta, meta: meta): () => widget.onRun(
-            widget.controller.selection.isValid && !widget.controller.selection.isCollapsed
-                ? DbRunMode.selection
-                : DbRunMode.current,
-          ),
+          SingleActivator(LogicalKeyboardKey.enter, control: !meta, meta: meta): _runStatement,
+          SingleActivator(LogicalKeyboardKey.enter, control: !meta, meta: meta, shift: true): () =>
+              widget.onRun(DbRunMode.script),
           SingleActivator(LogicalKeyboardKey.space, control: !meta, meta: meta): () => unawaited(_complete()),
           SingleActivator(LogicalKeyboardKey.keyF, control: !meta, meta: meta): () =>
               setState(() => _findOpen = !_findOpen),
@@ -294,53 +502,33 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
         },
       },
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _toolbar(context),
+          Align(alignment: Alignment.centerLeft, child: _toolbar(context)),
           Container(height: 1, color: GlassTokens.of(context).surfaces.separator),
           if (_busy) const LinearProgressIndicator(),
           if (_findOpen)
             Padding(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.fromLTRB(GlassSpacing.s8, GlassSpacing.s6, GlassSpacing.s8, 0),
               child: Wrap(
-                spacing: 6,
+                spacing: GlassSpacing.s6,
+                runSpacing: GlassSpacing.s6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   SizedBox(
-                    width: 180,
+                    width: 200,
                     child: GlassField(controller: _find, search: true, placeholder: l.commonSearch),
                   ),
                   SizedBox(
-                    width: 180,
+                    width: 200,
                     child: GlassField(controller: _replace, placeholder: l.dbReplace),
                   ),
-                  IconButton(
-                    tooltip: l.dbReplace,
-                    onPressed: () => _replaceText(false),
-                    icon: const Icon(Icons.find_replace),
-                  ),
-                  TextButton(onPressed: () => _replaceText(true), child: Text(l.dbReplaceAll)),
+                  GlassButton(label: l.dbReplace, size: GlassControlSize.sm, onPressed: () => _replaceText(false)),
+                  GlassButton(label: l.dbReplaceAll, size: GlassControlSize.sm, onPressed: () => _replaceText(true)),
                 ],
               ),
             ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(GlassSpacing.s12, GlassSpacing.s8, GlassSpacing.s12, GlassSpacing.s8),
-              child: TextField(
-                key: const ValueKey('db-query-editor'),
-                controller: widget.controller,
-                focusNode: _focus,
-                expands: true,
-                maxLines: null,
-                minLines: null,
-                decoration: InputDecoration.collapsed(hintText: l.dbEditorHint),
-                style: GlassTokens.of(context).typography.mono.copyWith(fontSize: 13.5, height: 1.45),
-                textAlignVertical: TextAlignVertical.top,
-                autocorrect: false,
-                enableSuggestions: false,
-                smartDashesType: SmartDashesType.disabled,
-                smartQuotesType: SmartQuotesType.disabled,
-              ),
-            ),
-          ),
+          Expanded(child: _codeArea(context)),
         ],
       ),
     );

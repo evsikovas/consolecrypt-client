@@ -1,13 +1,16 @@
 import 'dart:async';
 
+import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/docker/docker_container_details.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
+import 'package:consolecrypt/docker/docker_database_connect.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
 import 'package:consolecrypt/docker/docker_forwards.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
@@ -172,6 +175,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
     forward: _forward,
     copyId: (c) => copyPlainWithNotice(context, ref, c.id, what: context.l10n.dockerContainerId),
     busy: (c) => _busy.contains(c.id),
+    database: databasesEnabled && ref.read(dbServiceProvider) != null ? _database : null,
   );
 
   Future<void> _act(DockerContainer container, DockerAction action) async {
@@ -212,6 +216,21 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
     );
     if (created == true && mounted && !AppPlatform.isMobile && _wide) {
       ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.forwards);
+    }
+  }
+
+  Future<void> _database(DockerContainer container, DockerDbTarget target) async {
+    try {
+      await connectDockerDatabase(
+        context,
+        ref,
+        service: widget.service,
+        session: widget.session,
+        container: container,
+        target: target,
+      );
+    } catch (error) {
+      if (mounted) showSnack(context, dockerErrorText(context.l10n, error), error: true);
     }
   }
 

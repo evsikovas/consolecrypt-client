@@ -5,17 +5,21 @@ import 'package:consolecrypt/app/workspace_forwards.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/mock/mock_docker.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
+import 'package:consolecrypt/docker/docker_host_path.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_screen.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/docker/docker_terminal.dart';
+import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -34,6 +38,29 @@ class _Docker extends MockDockerService {
   }) {
     forwardsStarted.add((containerId: containerId, remotePort: remotePort, localPort: localPort));
     return super.startForward(sessionId, containerId, remotePort: remotePort, localPort: localPort);
+  }
+}
+
+/// Docker over SSH on the demo inventory host [hostId] (the engine data is
+/// the mock's `ssh-web` host).
+class _SshDocker extends _Docker {
+  _SshDocker(this.hostId);
+  final String hostId;
+
+  @override
+  Future<List<DockerHost>> hosts() async => [DockerHost(id: hostId, name: 'prod-web-1', kind: DockerHostKind.ssh)];
+
+  @override
+  Future<DockerSessionInfo> connect(String hostId) async {
+    final info = await super.connect('ssh-web');
+    return DockerSessionInfo(
+      id: info.id,
+      hostId: this.hostId,
+      hostName: info.hostName,
+      engineVersion: info.engineVersion,
+      os: info.os,
+      arch: info.arch,
+    );
   }
 }
 
@@ -72,10 +99,12 @@ Future<void> _pump(
   bool available = true,
   Size size = const Size(1400, 900),
   TerminalService? terminal,
+  MockBackend? signedIn,
 }) async {
-  final backend = testBackend();
+  final backend = signedIn ?? testBackend();
   addTearDown(backend.dispose);
   if (terminal != null) await backend.debugSignInDemoAndUnlock();
+  final unlocked = terminal != null || signedIn != null;
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -85,10 +114,8 @@ Future<void> _pump(
         appServicesProvider.overrideWithValue(backend.services),
         dockerServiceProvider.overrideWithValue(available ? service ?? _Docker() : null),
         dockerScopeProvider.overrideWithValue(const DockerScope('profile', true)),
-        if (terminal != null) ...[
-          terminalServiceProvider.overrideWithValue(terminal),
-          activeProfileProvider.overrideWithValue(backend.profiles.currentProfiles.active),
-        ],
+        if (terminal != null) terminalServiceProvider.overrideWithValue(terminal),
+        if (unlocked) activeProfileProvider.overrideWithValue(backend.profiles.currentProfiles.active),
       ],
       child: const MaterialApp(
         locale: Locale('en'),
@@ -99,7 +126,7 @@ Future<void> _pump(
     ),
   );
   await settle(tester);
-  if (terminal != null) {
+  if (unlocked) {
     final container = ProviderScope.containerOf(tester.element(find.byType(DockerScreen)));
     container.read(activeProfileProvider);
     container.read(vaultStatusProvider);
@@ -429,6 +456,90 @@ void main() {
     await tester.drag(find.byKey(const ValueKey('docker-containers')), const Offset(0, -2000));
     await settle(tester);
     expect(tester.takeException(), isNull);
+  });
+
+  group('host paths open the folder', () {
+    const nginx = '/srv/shop/nginx.conf';
+    const shopVolume = '/var/lib/docker/volumes/shop_data/_data';
+
+    Future<void> openWebDetails(WidgetTester tester) async {
+      await tester.ensureVisible(find.text('shop-web-1'));
+      await tester.tap(find.text('shop-web-1'));
+      await settle(tester);
+      await tester.dragUntilVisible(
+        find.byKey(const ValueKey('docker-mounts')),
+        find.byKey(const ValueKey('docker-overview')),
+        const Offset(0, -150),
+      );
+      await settle(tester);
+    }
+
+    SftpState sftp(WidgetTester tester) =>
+        ProviderScope.containerOf(tester.element(find.byType(DockerScreen))).read(sftpControllerProvider);
+
+    testWidgets('SSH: a bind file opens its folder in SFTP of that host with the file selected; a volume its '
+        'mount point, unreadable folders say permission denied', (tester) async {
+      final backend = testBackend();
+      await backend.debugSignInDemoAndUnlock();
+      final host = backend.inventory.currentHosts.firstWhere((h) => h.name == 'prod-web-1');
+      await _pump(tester, service: _SshDocker(host.id.value), signedIn: backend);
+      await tapKey(tester, 'docker-connect-${host.id.value}');
+      await openWebDetails(tester);
+
+      final link = find.byKey(const ValueKey('docker-path-$nginx'));
+      expect(link, findsOneWidget);
+      expect(find.byTooltip('Open in SFTP'), findsWidgets);
+      await tester.tap(link);
+      await settle(tester);
+      var state = sftp(tester);
+      expect(state.host?.id, host.id);
+      expect(state.remotePath, '/srv/shop', reason: 'a file opens its parent folder');
+      expect(state.selection, {nginx});
+
+      // Volumes view: the mount point, in the same SFTP session.
+      final session = state.session;
+      await tapKey(tester, 'docker-view-volumes');
+      await tapKey(tester, 'docker-path-$shopVolume');
+      state = sftp(tester);
+      expect(state.session, session);
+      expect(state.remotePath, shopVolume);
+      expect(state.currentFailure?.code, AppErrorCode.forbidden, reason: '/var/lib/docker is root-only (710)');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('local Docker Desktop: volumes are not clickable and say why; binds reveal in Finder', (tester) async {
+      await _pump(tester);
+      await _connectLocal(tester);
+      await openWebDetails(tester);
+      expect(find.byKey(const ValueKey('docker-path-$nginx')), findsOneWidget);
+      expect(find.byTooltip('Show in Finder'), findsWidgets);
+      await tester.tap(find.byKey(const ValueKey('docker-details-close')));
+      await settle(tester);
+
+      await tapKey(tester, 'docker-view-volumes');
+      expect(find.byKey(const ValueKey('docker-path-$shopVolume')), findsNothing);
+      final disabled = find.byKey(const ValueKey('docker-path-disabled-$shopVolume'));
+      expect(disabled, findsOneWidget);
+      final tooltip = tester.widget<Tooltip>(find.ancestor(of: disabled, matching: find.byType(Tooltip)).first);
+      expect(tooltip.message, contains('Docker virtual machine'));
+      await tester.tap(disabled);
+      await settle(tester);
+      expect(sftp(tester).host, isNull, reason: 'nothing is opened');
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+    testWidgets('local Docker on Linux: volume mount points are real local folders', (tester) async {
+      await _pump(tester);
+      await _connectLocal(tester);
+      await tapKey(tester, 'docker-view-volumes');
+      expect(find.byKey(const ValueKey('docker-path-$shopVolume')), findsOneWidget);
+      expect(find.byKey(const ValueKey('docker-path-disabled-$shopVolume')), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
+    test('Docker Desktop bind sources map to paths on this computer', () {
+      expect(dockerLocalPath('/host_mnt/Users/me/app'), '/Users/me/app');
+      expect(dockerLocalPath('/run/desktop/mnt/host/c/Users/me/app', windows: true), r'C:\Users\me\app');
+      expect(dockerLocalPath('/opt/x/postgres-init.sql', windows: false), '/opt/x/postgres-init.sql');
+    });
   });
 
   testWidgets('disconnecting returns to the host picker', (tester) async {

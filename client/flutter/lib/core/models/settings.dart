@@ -60,6 +60,9 @@ enum AppThemeMode { system, light, dark }
 /// Presentation of the device-local workspace tools on the right.
 enum WorkspacePanelStyle { floating, expanded }
 
+/// Collection screens (databases): cards grid or compact list rows.
+enum CollectionView { cards, list }
+
 /// Terminal tab second line: the host's list name ("This computer" for the
 /// local shell), its network address (computer name locally), or nothing.
 enum TerminalTabSubtitle { name, address, off }
@@ -110,6 +113,7 @@ final class LocalSettings {
     this.checkUpdatesAutomatically = true,
     this.preferDeviceLocalAi = true,
     this.rdpMobile = const RdpMobileSettings(),
+    this.databasesView = CollectionView.cards,
   });
 
   final AppThemeMode themeMode;
@@ -173,6 +177,9 @@ final class LocalSettings {
   final bool preferDeviceLocalAi;
   final RdpMobileSettings rdpMobile;
 
+  /// Databases screen layout: cards grid or compact list.
+  final CollectionView databasesView;
+
   LocalSettings copyWith({
     AppThemeMode? themeMode,
     double? uiFontScale,
@@ -199,6 +206,7 @@ final class LocalSettings {
     bool? checkUpdatesAutomatically,
     bool? preferDeviceLocalAi,
     RdpMobileSettings? rdpMobile,
+    CollectionView? databasesView,
   }) => LocalSettings(
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
@@ -222,5 +230,6 @@ final class LocalSettings {
     checkUpdatesAutomatically: checkUpdatesAutomatically ?? this.checkUpdatesAutomatically,
     preferDeviceLocalAi: preferDeviceLocalAi ?? this.preferDeviceLocalAi,
     rdpMobile: rdpMobile ?? this.rdpMobile,
+    databasesView: databasesView ?? this.databasesView,
   );
 }

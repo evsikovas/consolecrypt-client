@@ -9186,4 +9186,145 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbStatusReady => 'Готово';
+
+  @override
+  String dbRunStatementHelp(String shortcut) {
+    return 'Выполнить выделенное или оператор под курсором ($shortcut)';
+  }
+
+  @override
+  String dbRunScriptHelp(String shortcut) {
+    return 'Выполнить весь скрипт по очереди ($shortcut)';
+  }
+
+  @override
+  String get dbFolderTables => 'Таблицы';
+
+  @override
+  String get dbFolderViews => 'Представления';
+
+  @override
+  String get dbFolderFunctions => 'Функции';
+
+  @override
+  String get dbFolderSequences => 'Последовательности';
+
+  @override
+  String get dbFolderDictionaries => 'Словари';
+
+  @override
+  String get dbFolderColumns => 'Колонки';
+
+  @override
+  String get dbFolderIndexes => 'Индексы';
+
+  @override
+  String get dbFolderConstraints => 'Ограничения';
+
+  @override
+  String get dbFolderTriggers => 'Триггеры';
+
+  @override
+  String get dbFolderProjections => 'Проекции';
+
+  @override
+  String get dbCollapseAll => 'Свернуть всё';
+
+  @override
+  String dockerConnectDatabaseHelp(String engine) {
+    return 'Открыть базу $engine этого контейнера в разделе «Базы данных»';
+  }
+
+  @override
+  String dbRouteKubernetes(String name) {
+    return 'Через Kubernetes: $name';
+  }
+
+  @override
+  String get dbContainerPort => 'Порт контейнера';
+
+  @override
+  String get dbKubeTarget => 'Куда пробрасывать';
+
+  @override
+  String get dbKubeTargetName => 'Имя объекта';
+
+  @override
+  String get dbKubeRouteHelp =>
+      'Проброс порта восстанавливается при каждом подключении, а уже запущенный используется повторно. Для Service и Deployment выбирается готовый Pod, поэтому подключение переживает перезапуск подов.';
+
+  @override
+  String get dbErrorKubeUnreachable =>
+      'Не удаётся подключиться к кластеру Kubernetes, чтобы восстановить проброс порта: проверьте контекст, сеть и вход в кластер.';
+
+  @override
+  String get dbErrorKubeTarget =>
+      'Pod для проброса порта не найден: проверьте namespace и имя объекта в маршруте подключения.';
+
+  @override
+  String get dbErrorKubeDenied => 'Кластер запретил доступ к Pod или к пробросу его порта.';
+
+  @override
+  String get dbErrorKubeForward =>
+      'Не удалось запустить проброс порта: остановите ненужные пробросы и повторите попытку.';
+
+  @override
+  String get dbRouteKubeHint => 'Проброс порта Kubernetes, восстанавливается при подключении';
+
+  @override
+  String dbRouteTunnel(String name) {
+    return 'Туннель: $name';
+  }
+
+  @override
+  String get dbRouteDocker => 'Контейнер Docker';
+
+  @override
+  String get dbDockerEngine => 'Движок Docker';
+
+  @override
+  String get dbDockerContainer => 'Имя контейнера';
+
+  @override
+  String get dbDockerRouteHelp =>
+      'Проброс порта в контейнер восстанавливается при каждом подключении, а уже запущенный используется повторно. Контейнер ищется по имени, поэтому пересозданный контейнер тоже подойдёт.';
+
+  @override
+  String get dbTunnelRouteHelp =>
+      'Сохранённый туннель запускается при подключении, если он не запущен. Адрес и порт берутся из цели туннеля.';
+
+  @override
+  String dbUseTunnel(String name) {
+    return 'Использовать сохранённый туннель «$name»';
+  }
+
+  @override
+  String get dbErrorTunnel => 'Не удалось запустить сохранённый туннель: проверьте его SSH-хост в разделе «Туннели».';
+
+  @override
+  String get dbErrorTunnelKind => 'Подключение к БД возможно только через туннель локального проброса порта.';
+
+  @override
+  String get dbErrorDockerUnreachable =>
+      'Не удаётся подключиться к Docker, чтобы восстановить проброс порта: проверьте, что движок запущен, и SSH-хост.';
+
+  @override
+  String get dbErrorDockerContainer => 'Контейнер не найден или не запущен: проверьте его имя в маршруте подключения.';
+
+  @override
+  String get dbErrorDockerForward =>
+      'Не удалось запустить проброс порта Docker: остановите ненужные пробросы и повторите попытку.';
+
+  @override
+  String get dockerOpenInSftp => 'Открыть в SFTP';
+
+  @override
+  String get dockerVolumeInVm =>
+      'Том хранится внутри виртуальной машины Docker, поэтому его папку нельзя открыть с этого компьютера.';
+
+  @override
+  String get dbRouteTunnelHint => 'Сохранённый SSH-туннель, запускается при подключении';
+
+  @override
+  String get dbRouteDockerHint => 'Проброс порта Docker, восстанавливается при подключении';
 }

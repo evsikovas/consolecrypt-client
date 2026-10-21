@@ -311,7 +311,13 @@ impl AppCore {
         let cancel = unlocked.db.shutdown.child_token();
         // Boxed: keeps bridge futures Send for every lifetime (rust-lang/rust#102211).
         let resolve: futures::future::BoxFuture<'_, AppResult<_>> =
-            Box::pin(self.db_resolve_route(&owner, &unlocked, &connection.route, &cancel));
+            Box::pin(self.db_resolve_route(
+                &owner,
+                &unlocked,
+                &connection.route,
+                connection.port,
+                &cancel,
+            ));
         let connector = resolve.await?;
         let mobile = cfg!(any(target_os = "android", target_os = "ios"));
         let timeout = Duration::from_secs(u64::from(

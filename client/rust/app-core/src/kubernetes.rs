@@ -128,6 +128,8 @@ impl AppCore {
 
     pub async fn delete_kube_context(&self, id: String) -> AppResult<()> {
         let (id, u) = self.delete_object(&id, ObjectKind::KubeContext).await?;
+        // Database connections may forward through this context.
+        ensure_unreferenced(u.working(), id, "Kubernetes context")?;
         u.writer.delete(id).await
     }
 

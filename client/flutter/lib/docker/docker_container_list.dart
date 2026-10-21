@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
+import 'package:consolecrypt/docker/docker_database_connect.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:material_ui/material_ui.dart';
@@ -18,19 +19,32 @@ final class DockerContainerActions {
     required this.forward,
     required this.copyId,
     required this.busy,
+    this.database,
   });
   final Future<void> Function(DockerContainer container, DockerAction action) run;
   final void Function(DockerContainer container) logs, details;
   final Future<void> Function(DockerContainer container) terminal, forward, copyId;
   final bool Function(DockerContainer container) busy;
+
+  /// Opens the container's database in the Databases section; null when the
+  /// Databases section is unavailable.
+  final Future<void> Function(DockerContainer container, DockerDbTarget target)? database;
+
+  /// The database [container] runs when it can be opened from here.
+  DockerDbTarget? databaseTarget(DockerContainer container, [DockerJson? inspect]) =>
+      database == null ? null : dockerDatabaseTarget(container, inspect);
 }
 
 /// Menu values beyond the engine actions.
-enum DockerMenuCommand { details, logs, terminal, forward, copyId }
+enum DockerMenuCommand { details, logs, terminal, forward, database, copyId }
 
 /// Every action of one container, for the row menu, the context menu and
-/// the drawer.
-List<GlassMenuEntry<Object>> dockerContainerMenu(AppLocalizations l, DockerContainer container) {
+/// the drawer. [database] adds "Connect to database".
+List<GlassMenuEntry<Object>> dockerContainerMenu(
+  AppLocalizations l,
+  DockerContainer container, {
+  DockerDbTarget? database,
+}) {
   final running = container.state == DockerContainerState.running;
   GlassMenuItem<Object> engine(DockerAction action, IconData icon, {bool destructive = false}) => GlassMenuItem<Object>(
     key: ValueKey('docker-menu-${action.name}'),
@@ -61,6 +75,14 @@ List<GlassMenuEntry<Object>> dockerContainerMenu(AppLocalizations l, DockerConta
       icon: Icons.swap_horiz_rounded,
       enabled: running,
     ),
+    if (database != null)
+      GlassMenuItem<Object>(
+        key: const ValueKey('docker-menu-database'),
+        value: DockerMenuCommand.database,
+        label: l.kubeConnectDatabase,
+        icon: Icons.storage_rounded,
+        enabled: running,
+      ),
     GlassMenuItem<Object>(
       key: const ValueKey('docker-menu-details'),
       value: DockerMenuCommand.details,
@@ -88,7 +110,12 @@ List<GlassMenuEntry<Object>> dockerContainerMenu(AppLocalizations l, DockerConta
 }
 
 /// Runs a value picked from [dockerContainerMenu].
-void runDockerMenuValue(DockerContainerActions actions, DockerContainer container, Object value) {
+void runDockerMenuValue(
+  DockerContainerActions actions,
+  DockerContainer container,
+  Object value, {
+  DockerDbTarget? database,
+}) {
   switch (value) {
     case final DockerAction action:
       unawaited(actions.run(container, action));
@@ -100,6 +127,9 @@ void runDockerMenuValue(DockerContainerActions actions, DockerContainer containe
       unawaited(actions.terminal(container));
     case DockerMenuCommand.forward:
       unawaited(actions.forward(container));
+    case DockerMenuCommand.database:
+      final target = database ?? actions.databaseTarget(container);
+      if (target != null) unawaited(actions.database?.call(container, target));
     case DockerMenuCommand.copyId:
       unawaited(actions.copyId(container));
   }
@@ -268,7 +298,7 @@ class DockerContainerRow extends StatelessWidget {
     final value = await showGlassMenu<Object>(
       context: context,
       anchor: Rect.fromLTWH(position.dx, position.dy, 1, 1),
-      entries: dockerContainerMenu(context.l10n, container),
+      entries: dockerContainerMenu(context.l10n, container, database: actions.databaseTarget(container)),
     );
     if (value != null && context.mounted) runDockerMenuValue(actions, container, value);
   }
@@ -282,6 +312,7 @@ class DockerContainerRow extends StatelessWidget {
     final active = dockerIsActive(container.state);
     final health = dockerHealth(l, container.health);
     final ports = formatDockerPorts(container.ports);
+    final database = actions.databaseTarget(container);
     final caption = tokens.typography.caption.copyWith(color: tokens.secondaryLabel);
     Widget quick(String key, IconData icon, String tooltip, VoidCallback? onPressed, {Color? color}) => GlassIconButton(
       key: ValueKey('docker-$key-${container.id}'),
@@ -437,11 +468,18 @@ class DockerContainerRow extends StatelessWidget {
                     l.dockerTerminal,
                     running ? () => unawaited(actions.terminal(container)) : null,
                   ),
+                  if (database != null)
+                    quick(
+                      'database',
+                      Icons.storage_rounded,
+                      l.kubeConnectDatabase,
+                      running ? () => unawaited(actions.database!(container, database)) : null,
+                    ),
                 ],
                 GlassMenuButton<Object>(
                   key: ValueKey('docker-menu-${container.id}'),
-                  entries: dockerContainerMenu(l, container),
-                  onSelected: (value) => runDockerMenuValue(actions, container, value),
+                  entries: dockerContainerMenu(l, container, database: database),
+                  onSelected: (value) => runDockerMenuValue(actions, container, value, database: database),
                   builder: (context, open) => GlassIconButton(
                     key: ValueKey('docker-menu-button-${container.id}'),
                     icon: Icons.more_horiz_rounded,

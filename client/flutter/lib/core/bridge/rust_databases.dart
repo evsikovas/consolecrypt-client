@@ -14,6 +14,7 @@ import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/src/rust/api/database.dart' as native;
 import 'package:consolecrypt/src/rust/api/inventory.dart' as rs_inv;
+import 'package:consolecrypt/src/rust/api/kubernetes.dart' as rs_kube;
 import 'package:file_selector/file_selector.dart';
 
 /// Native databases: connections live in the vault, sessions and query streams
@@ -77,6 +78,14 @@ final class RustDbService
     final hosts = (jsonDecode(await guard(rs_inv.hostsList)) as List).cast<Json>();
     final jumps = (jsonDecode(await guard(rs_inv.jumpProfilesList)) as List).cast<Json>();
     final groups = (jsonDecode(await guard(rs_inv.groupsList)) as List).cast<Json>();
+    final tunnels = (jsonDecode(await guard(rs_inv.tunnelsList)) as List).cast<Json>();
+    // Kubernetes contexts are optional: a failed listing hides only that route.
+    var contexts = const <Json>[];
+    try {
+      contexts = (jsonDecode(await guard(rs_kube.kubeContextsList)) as List).cast<Json>();
+    } on AppException {
+      contexts = const [];
+    }
     return DbConnectionChoices(
       routes: [
         for (final host in hosts)
@@ -90,6 +99,21 @@ final class RustDbService
             route: DbRoute(kind: DbRouteKind.jump, reference: jump['id'] as String),
             label: jump['name'] as String? ?? '',
           ),
+        for (final context in contexts)
+          DbRouteChoice(
+            route: DbRoute(kind: DbRouteKind.kubernetes, reference: context['id'] as String),
+            label: context['name'] as String? ?? '',
+          ),
+        // Only local forwards carry a database connection.
+        for (final tunnel in tunnels)
+          if (tunnel['kind'] == 'local' && tunnel['target_host'] is String && tunnel['target_port'] is int)
+            DbRouteChoice(
+              route: DbRoute(kind: DbRouteKind.tunnel, reference: tunnel['id'] as String),
+              label: tunnel['name'] as String? ?? '',
+              host: tunnel['target_host'] as String,
+              port: tunnel['target_port'] as int,
+              localPort: tunnel['bind_port'] as int?,
+            ),
       ],
       groups: [
         for (final group in groups) DbGroupChoice(id: group['id'] as String, label: group['name'] as String? ?? ''),

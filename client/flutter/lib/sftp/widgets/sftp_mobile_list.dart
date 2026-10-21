@@ -3,6 +3,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/sftp/sftp_actions.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
+import 'package:consolecrypt/sftp/widgets/sftp_folder_failure.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -18,6 +19,8 @@ class SftpMobileList extends ConsumerWidget {
     final controller = ref.read(sftpControllerProvider.notifier);
     final actions = SftpActions(context, ref);
     if (state.isLoadingCurrent) return const Center(child: CircularProgressIndicator());
+    final failure = state.currentFailure;
+    if (failure != null && rows.isEmpty) return SftpFolderFailure(error: failure, path: state.remotePath);
     if (rows.isEmpty) return Center(child: Text(context.l10n.sftpEmptyFolder));
     return RefreshIndicator(
       onRefresh: controller.refresh,

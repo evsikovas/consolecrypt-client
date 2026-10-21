@@ -14,6 +14,7 @@ import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/sftp/sftp_rows.dart';
 import 'package:consolecrypt/sftp/widgets/sftp_drag.dart';
 import 'package:consolecrypt/sftp/widgets/sftp_drop_target.dart';
+import 'package:consolecrypt/sftp/widgets/sftp_folder_failure.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -274,8 +275,11 @@ class _SftpFileListState extends ConsumerState<SftpFileList> {
       builder: (context, constraints) {
         final columns = fitColumns(state.prefs, constraints.maxWidth - 16);
         Widget body;
+        final failure = state.currentFailure;
         if (state.isLoadingCurrent) {
           body = const Center(child: CircularProgressIndicator());
+        } else if (failure != null && rows.isEmpty) {
+          body = SftpFolderFailure(error: failure, path: state.remotePath);
         } else if (rows.isEmpty) {
           body = Center(
             child: Text(

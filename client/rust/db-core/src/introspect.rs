@@ -491,7 +491,7 @@ impl DbSession {
                 DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Clickhouse,
                 DbObjectKind::Table | DbObjectKind::View | DbObjectKind::MaterializedView,
             ) => Ok(format!(
-                "SELECT * FROM {} LIMIT {limit}",
+                "SELECT * FROM {} LIMIT {limit};",
                 quote_identifier(self.info.engine, object)
             )),
             (DbEngine::Redis, DbObjectKind::RedisKey) => {

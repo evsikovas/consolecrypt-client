@@ -655,7 +655,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     final style = tokens.typography.caption.copyWith(color: tokens.secondaryLabel);
     final facts = [
       if (result != null) l.dbRowCount('${result.rows.length}${result.hasMore ? '+' : ''}'),
-      if (result?.affectedRows != null) l.dbRowsAffected(result!.affectedRows!),
+      if (result?.affectedRows != null && result!.columns.isEmpty) l.dbRowsAffected(result.affectedRows!),
       if (result != null) l.dbElapsed(result.elapsedMs),
     ];
     return Container(
@@ -710,47 +710,53 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   Widget _results(_QueryTab tab, DbSessionInfo session) {
     final l = context.l10n, tokens = GlassTokens.of(context), results = tab.result.results;
     final result = results.where((r) => r.index == tab.resultIndex).firstOrNull ?? results.firstOrNull;
+    final title = [
+      Icon(Icons.table_rows_outlined, size: 15, color: tokens.secondaryLabel),
+      const SizedBox(width: GlassSpacing.s6),
+      Text(
+        l.dbResults,
+        style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel, fontWeight: FontWeight.w600),
+      ),
+      if (results.length > 1) ...[
+        const SizedBox(width: GlassSpacing.s8),
+        GlassSegmented<int>(
+          key: const ValueKey('db-result-sets'),
+          inChrome: false,
+          segments: [for (final item in results) GlassSegment(value: item.index, label: '${item.index + 1}')],
+          selected: result?.index ?? 0,
+          onChanged: (index) => setState(() {
+            tab.resultIndex = index;
+            tab.selectedRows.clear();
+            tab.edits.clear();
+          }),
+        ),
+      ],
+      const SizedBox(width: GlassSpacing.s8),
+    ];
+    final actions = [
+      if (result != null && _backend is DbExportService)
+        _tool('db-export', Icons.file_download_outlined, l.dbExport, () => _export(tab, result)),
+      if (tab.result.notices.isNotEmpty)
+        _tool('db-messages', Icons.chat_bubble_outline_rounded, l.dbMessages, () async {
+          final value = SecretText(tab.result.notices.join('\n'));
+          try {
+            await showAppDialog<void>(
+              context,
+              secure: true,
+              builder: (_) => DbProtectedTextDialog(title: l.dbMessages, value: value),
+            );
+          } finally {
+            value.wipe();
+          }
+        }),
+    ];
     return _panel(
       const ValueKey('db-results'),
       solid: true,
       Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _panelHeader(Icons.table_rows_outlined, l.dbResults, [
-            if (results.length > 1)
-              Flexible(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: GlassSegmented<int>(
-                    key: const ValueKey('db-result-sets'),
-                    inChrome: false,
-                    segments: [for (final item in results) GlassSegment(value: item.index, label: '${item.index + 1}')],
-                    selected: result?.index ?? 0,
-                    onChanged: (index) => setState(() {
-                      tab.resultIndex = index;
-                      tab.selectedRows.clear();
-                      tab.edits.clear();
-                    }),
-                  ),
-                ),
-              ),
-            if (result != null && _backend is DbExportService)
-              _tool('db-export', Icons.file_download_outlined, l.dbExport, () => _export(tab, result)),
-            if (tab.result.notices.isNotEmpty)
-              _tool('db-messages', Icons.chat_bubble_outline_rounded, l.dbMessages, () async {
-                final value = SecretText(tab.result.notices.join('\n'));
-                try {
-                  await showAppDialog<void>(
-                    context,
-                    secure: true,
-                    builder: (_) => DbProtectedTextDialog(title: l.dbMessages, value: value),
-                  );
-                } finally {
-                  value.wipe();
-                }
-              }),
-          ]),
-          _separator(),
+          if (result == null) ...[_panelHeader(Icons.table_rows_outlined, l.dbResults, actions), _separator()],
           SizedBox(height: 2, child: tab.preparing || tab.result.running ? const LinearProgressIndicator() : null),
           if (tab.result.errorCode != null || tab.stale)
             Padding(
@@ -792,6 +798,8 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
                 : DbResultGrid(
                     key: ValueKey('${tab.id}:${result.index}'),
                     result: result,
+                    leading: title,
+                    trailing: actions,
                     production: session.production,
                     onCopy: _backend is DbExportService ? (selection) => _export(tab, result, selection) : null,
                     onEdit:

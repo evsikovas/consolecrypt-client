@@ -305,6 +305,7 @@ pub(crate) fn dependencies(
                     pending.extend(v.passphrase_secret_id);
                 }
                 VaultObject::Proxy(v) => pending.extend(v.password_secret_id),
+                VaultObject::Tunnel(v) => pending.push(v.host_id),
                 _ => {}
             }
         }

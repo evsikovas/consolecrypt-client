@@ -19,7 +19,19 @@ enum DbEngine {
 
 enum DbTlsMode { disable, prefer, require, verify }
 
-enum DbRouteKind { direct, ssh, jump, proxy }
+enum DbRouteKind { direct, ssh, jump, proxy, kubernetes, tunnel, docker }
+
+/// What a Kubernetes route forwards to (the kind names are API identifiers).
+enum DbKubeTargetKind {
+  pod('pod', 'Pod'), // l10n-ignore: Kubernetes kind
+  service('service', 'Service'), // l10n-ignore: Kubernetes kind
+  deployment('deployment', 'Deployment'), // l10n-ignore: Kubernetes kind
+  statefulSet('stateful_set', 'StatefulSet'); // l10n-ignore: Kubernetes kind
+
+  const DbKubeTargetKind(this.wireName, this.label);
+  final String wireName, label;
+  static DbKubeTargetKind parse(String? value) => values.firstWhere((e) => e.wireName == value, orElse: () => pod);
+}
 
 enum DbAuthMechanism {
   defaultAuth('default'),
@@ -58,34 +70,67 @@ final class DbTls {
   };
 }
 
+/// How the database socket is reached. [reference] is the SSH host, jump
+/// profile, proxy, Kubernetes context or saved tunnel id, or the SSH host of a
+/// Docker engine (null: this computer). Kubernetes and Docker routes also name
+/// the forwarded workload or container; the connection port is its container
+/// port. These forwards are restored by the core on connect.
 final class DbRoute {
-  const DbRoute({this.kind = DbRouteKind.direct, this.reference});
+  const DbRoute({
+    this.kind = DbRouteKind.direct,
+    this.reference,
+    this.namespace = '',
+    this.targetKind = DbKubeTargetKind.pod,
+    this.targetName = '',
+    this.container = '',
+  });
   final DbRouteKind kind;
   final String? reference;
+  final String namespace, targetName, container;
+  final DbKubeTargetKind targetKind;
+
+  static String _referenceKey(DbRouteKind kind) => switch (kind) {
+    DbRouteKind.direct => '',
+    DbRouteKind.ssh => 'host_id',
+    DbRouteKind.jump => 'jump_profile_id',
+    DbRouteKind.proxy => 'proxy_id',
+    DbRouteKind.kubernetes => 'context_id',
+    DbRouteKind.tunnel => 'tunnel_id',
+    DbRouteKind.docker => 'host_id',
+  };
+
   factory DbRoute.fromJson(DbJson json) {
     final kind = DbRouteKind.values.byName(json['kind'] as String? ?? 'direct');
     return DbRoute(
       kind: kind,
-      reference:
-          json[switch (kind) {
-                DbRouteKind.direct => '',
-                DbRouteKind.ssh => 'host_id',
-                DbRouteKind.jump => 'jump_profile_id',
-                DbRouteKind.proxy => 'proxy_id',
-              }]
-              as String?,
+      reference: json[_referenceKey(kind)] as String?,
+      namespace: json['namespace'] as String? ?? '',
+      targetKind: DbKubeTargetKind.parse(json['target_kind'] as String?),
+      targetName: json['target_name'] as String? ?? '',
+      container: json['container'] as String? ?? '',
     );
   }
   DbJson toJson() => {
     'kind': kind.name,
-    if (kind != DbRouteKind.direct)
-      switch (kind) {
-        DbRouteKind.ssh => 'host_id',
-        DbRouteKind.jump => 'jump_profile_id',
-        DbRouteKind.proxy => 'proxy_id',
-        DbRouteKind.direct => throw StateError('Unreachable route'),
-      }: reference,
+    if (kind != DbRouteKind.direct) _referenceKey(kind): reference,
+    if (kind == DbRouteKind.kubernetes) ...{
+      'namespace': namespace,
+      'target_kind': targetKind.wireName,
+      'target_name': targetName,
+    },
+    if (kind == DbRouteKind.docker) 'container': container,
   };
+
+  /// A forward the core restores on connect (no fixed local port is saved).
+  bool get restorable => const {DbRouteKind.kubernetes, DbRouteKind.tunnel, DbRouteKind.docker}.contains(kind);
+
+  /// Same route and, for Kubernetes, the same forwarded workload.
+  bool sameAs(DbRoute other) =>
+      kind == other.kind &&
+      (kind == DbRouteKind.direct || reference == other.reference) &&
+      (kind != DbRouteKind.kubernetes ||
+          (namespace == other.namespace && targetKind == other.targetKind && targetName == other.targetName)) &&
+      (kind != DbRouteKind.docker || container == other.container);
 }
 
 final class DbAuth {

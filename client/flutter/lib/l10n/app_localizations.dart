@@ -16207,6 +16207,246 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ready'**
   String get dbStatusReady;
+
+  /// Database editor: tooltip of the Run button.
+  ///
+  /// In en, this message translates to:
+  /// **'Run the selection, or the statement under the cursor ({shortcut})'**
+  String dbRunStatementHelp(String shortcut);
+
+  /// Database editor: tooltip of the Run script button.
+  ///
+  /// In en, this message translates to:
+  /// **'Run the whole script statement by statement ({shortcut})'**
+  String dbRunScriptHelp(String shortcut);
+
+  /// Database structure tree: group of tables and collections.
+  ///
+  /// In en, this message translates to:
+  /// **'Tables'**
+  String get dbFolderTables;
+
+  /// Database structure tree: group of views and materialized views.
+  ///
+  /// In en, this message translates to:
+  /// **'Views'**
+  String get dbFolderViews;
+
+  /// Database structure tree: group of functions and procedures.
+  ///
+  /// In en, this message translates to:
+  /// **'Functions'**
+  String get dbFolderFunctions;
+
+  /// Database structure tree: group of sequences.
+  ///
+  /// In en, this message translates to:
+  /// **'Sequences'**
+  String get dbFolderSequences;
+
+  /// Database structure tree: group of ClickHouse dictionaries.
+  ///
+  /// In en, this message translates to:
+  /// **'Dictionaries'**
+  String get dbFolderDictionaries;
+
+  /// Database structure tree: group of table columns.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get dbFolderColumns;
+
+  /// Database structure tree: group of table indexes.
+  ///
+  /// In en, this message translates to:
+  /// **'Indexes'**
+  String get dbFolderIndexes;
+
+  /// Database structure tree: group of table constraints.
+  ///
+  /// In en, this message translates to:
+  /// **'Constraints'**
+  String get dbFolderConstraints;
+
+  /// Database structure tree: group of table triggers.
+  ///
+  /// In en, this message translates to:
+  /// **'Triggers'**
+  String get dbFolderTriggers;
+
+  /// Database structure tree: group of ClickHouse projections.
+  ///
+  /// In en, this message translates to:
+  /// **'Projections'**
+  String get dbFolderProjections;
+
+  /// Database structure tree: collapse every expanded node.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse all'**
+  String get dbCollapseAll;
+
+  /// Docker: tooltip of the Connect to database action.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the {engine} database of this container in Databases'**
+  String dockerConnectDatabaseHelp(String engine);
+
+  /// Connection route option: port-forward through the named Kubernetes context.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes: {name}'**
+  String dbRouteKubernetes(String name);
+
+  /// Port field label when the database is reached through a Kubernetes port-forward.
+  ///
+  /// In en, this message translates to:
+  /// **'Container port'**
+  String get dbContainerPort;
+
+  /// Kind of Kubernetes object (Pod, Service, Deployment, StatefulSet) the database port-forward targets.
+  ///
+  /// In en, this message translates to:
+  /// **'Forward to'**
+  String get dbKubeTarget;
+
+  /// Name of the Kubernetes Pod, Service, Deployment or StatefulSet the database port-forward targets.
+  ///
+  /// In en, this message translates to:
+  /// **'Object name'**
+  String get dbKubeTargetName;
+
+  /// Help under the Kubernetes route fields of a database connection.
+  ///
+  /// In en, this message translates to:
+  /// **'The port-forward is restored on every connect, or a running one is reused. Services and Deployments use a ready pod, so the connection survives pod restarts.'**
+  String get dbKubeRouteHelp;
+
+  /// Database connect error: the Kubernetes cluster of the connection route is unreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot reach the Kubernetes cluster to restore the port-forward: check the context, the network and your sign-in.'**
+  String get dbErrorKubeUnreachable;
+
+  /// Database connect error: the Kubernetes pod/service/workload of the route does not exist or has no pods.
+  ///
+  /// In en, this message translates to:
+  /// **'The pod for the port-forward was not found: check the namespace and the object name in the connection route.'**
+  String get dbErrorKubeTarget;
+
+  /// Database connect error: Kubernetes RBAC denied reading the target or port-forwarding.
+  ///
+  /// In en, this message translates to:
+  /// **'The cluster denied access to the pod or its port-forward.'**
+  String get dbErrorKubeDenied;
+
+  /// Database connect error: the local Kubernetes port-forward could not be started.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the port-forward: stop unused forwards and try again.'**
+  String get dbErrorKubeForward;
+
+  /// Tooltip on a saved database connection reached through a Kubernetes port-forward.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes port-forward, restored on connect'**
+  String get dbRouteKubeHint;
+
+  /// Connection route option: the named saved SSH local-forward tunnel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tunnel: {name}'**
+  String dbRouteTunnel(String name);
+
+  /// Connection route option: a port-forward to a Docker container, restored on connect.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker container'**
+  String get dbRouteDocker;
+
+  /// Label of the selector of the Docker engine (this computer or an SSH host) for a database route.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker engine'**
+  String get dbDockerEngine;
+
+  /// Label of the Docker container name field of a database route.
+  ///
+  /// In en, this message translates to:
+  /// **'Container name'**
+  String get dbDockerContainer;
+
+  /// Help under the Docker route fields of a database connection.
+  ///
+  /// In en, this message translates to:
+  /// **'The port-forward to the container is restored on every connect, or a running one is reused. The container is found by name, so a re-created container still works.'**
+  String get dbDockerRouteHelp;
+
+  /// Help under the route selector when a saved SSH tunnel is chosen for a database connection.
+  ///
+  /// In en, this message translates to:
+  /// **'The saved tunnel is started on connect when it is not running. The address and port are the tunnel target.'**
+  String get dbTunnelRouteHelp;
+
+  /// Button offered when a direct loopback address matches the local port of a saved tunnel.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the saved tunnel “{name}”'**
+  String dbUseTunnel(String name);
+
+  /// Database connect error: the saved SSH tunnel of the route failed to start.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the saved tunnel: check its SSH host in Tunnels.'**
+  String get dbErrorTunnel;
+
+  /// Database connect error: the route's saved tunnel is not a local forward.
+  ///
+  /// In en, this message translates to:
+  /// **'Only a local port-forward tunnel can carry a database connection.'**
+  String get dbErrorTunnelKind;
+
+  /// Database connect error: the Docker engine of the route is unreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot reach the Docker engine to restore the port-forward: check that it is running and the SSH host.'**
+  String get dbErrorDockerUnreachable;
+
+  /// Database connect error: the Docker container of the route does not exist or has no reachable port.
+  ///
+  /// In en, this message translates to:
+  /// **'The container was not found or is not running: check its name in the connection route.'**
+  String get dbErrorDockerContainer;
+
+  /// Database connect error: the local Docker port-forward could not be started.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the Docker port-forward: stop unused forwards and try again.'**
+  String get dbErrorDockerForward;
+
+  /// Docker mounts and volumes: tooltip of a host path that opens the SFTP browser of the same SSH host at that folder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in SFTP'**
+  String get dockerOpenInSftp;
+
+  /// Docker: tooltip of a named volume that lives inside the Docker VM on macOS/Windows.
+  ///
+  /// In en, this message translates to:
+  /// **'This volume is stored inside the Docker virtual machine, so its folder can\'t be opened from this computer.'**
+  String get dockerVolumeInVm;
+
+  /// Databases list: tooltip of a connection that goes through a saved tunnel.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved SSH tunnel, started on connect'**
+  String get dbRouteTunnelHint;
+
+  /// Databases list: tooltip of a connection that goes through a Docker container forward.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker port forward, restored on connect'**
+  String get dbRouteDockerHint;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

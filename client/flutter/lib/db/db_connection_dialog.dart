@@ -38,9 +38,10 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
   late DbAuthMechanism _mechanism;
   late DbMongoReadPreference _readPreference;
   late bool _production, _resp3, _srv;
-  bool _savePassword = true, _clearPassword = false, _busy = false, _failed = false;
+  bool _savePassword = true, _clearPassword = false, _busy = false, _failed = false, _disposing = false;
   String? _group;
   DbRoute _route = const DbRoute();
+  DbKubeTargetKind _kubeKind = DbKubeTargetKind.pod;
   DbConnectionChoices? _choices;
   DbConnectionCheck? _check;
   DbConnectionDraft? _pendingDraft;
@@ -48,6 +49,38 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(dbScopeProvider));
   TextEditingController _field(String key) => _fields[key]!;
   String _value(String key) => _field(key).text.trim();
+  bool get _kube => _route.kind == DbRouteKind.kubernetes;
+  bool get _docker => _route.kind == DbRouteKind.docker;
+  bool get _tunnel => _route.kind == DbRouteKind.tunnel;
+
+  /// Kubernetes and Docker forwards listen on loopback; the port is the
+  /// container port.
+  bool get _forwarded => _kube || _docker;
+
+  /// The selected route; Kubernetes and Docker routes take their workload or
+  /// container from the form.
+  DbRoute get _routeValue => switch (_route.kind) {
+    DbRouteKind.kubernetes => DbRoute(
+      kind: DbRouteKind.kubernetes,
+      reference: _route.reference,
+      namespace: _value('kubeNamespace'),
+      targetKind: _kubeKind,
+      targetName: _value('kubeTarget'),
+    ),
+    DbRouteKind.docker => DbRoute(
+      kind: DbRouteKind.docker,
+      reference: _route.reference,
+      container: _value('dockerContainer'),
+    ),
+    _ => _route,
+  };
+
+  /// A saved tunnel listening on the direct loopback address in the form.
+  DbRouteChoice? get _matchingTunnel {
+    if (_route.kind != DbRouteKind.direct || !dbLoopbackHost(_value('host'))) return null;
+    final port = int.tryParse(_value('port'));
+    return _choices?.routes.where((r) => r.route.kind == DbRouteKind.tunnel && r.localPort == port).firstOrNull;
+  }
 
   @override
   void initState() {
@@ -64,6 +97,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
     _srv = c?.options.srv ?? false;
     _readPreference = c?.options.readPreference ?? DbMongoReadPreference.secondaryPreferred;
     _route = c?.route ?? const DbRoute();
+    _kubeKind = _route.targetKind;
     _tlsChosen = c != null;
     _group = c?.groupId;
     final values = {
@@ -88,6 +122,9 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
       'charset': c?.options.charset ?? 'utf8mb4',
       'authSource': c?.options.authSource ?? '',
       'replicaSet': c?.options.replicaSet ?? '',
+      'kubeNamespace': _route.namespace,
+      'kubeTarget': _route.targetName,
+      'dockerContainer': _route.container,
       for (final key in const ['max_threads', 'max_memory_usage', 'max_bytes_to_read', 'max_rows_to_read'])
         key: c?.options.settings[key]?.toString() ?? '',
     };
@@ -97,7 +134,8 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
     // A port-forward or local database usually has no TLS: unless the user
     // picked a mode, loopback hosts start with "prefer".
     _field('host').addListener(() {
-      if (_tlsChosen || !mounted) return;
+      // Kubernetes and Docker forwards always listen on loopback.
+      if (_tlsChosen || !mounted || _disposing || _forwarded) return;
       final local = dbLoopbackHost(_value('host'));
       final wanted = local ? DbTlsMode.prefer : DbTlsMode.verify;
       if (wanted != _tls || local != _tlsAuto) {
@@ -133,6 +171,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _disposing = true;
     _wipeFields();
     for (final controller in _fields.values) {
       controller.clear();
@@ -152,7 +191,8 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
         id: old?.id ?? '',
         name: _value('name'),
         engine: _engine,
-        host: _value('host'),
+        // A Kubernetes forward always listens on loopback.
+        host: _forwarded ? '127.0.0.1' : _value('host'),
         port: number('port'),
         database: _value('database'),
         username: _value('username'),
@@ -164,7 +204,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
           mechanism: _mechanism,
         ),
         tls: DbTls(mode: _tls, certificateAuthorityPem: nullable('ca'), serverName: nullable('serverName')),
-        route: _route,
+        route: _routeValue,
         groupId: _group,
         tags: _value('tags').split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toSet().toList(),
         color: nullable('color'),
@@ -256,6 +296,12 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
               (value.contains(':') && InternetAddress.tryParse(value) == null))) {
         return l.dbInvalid;
       }
+      if (key == 'kubeNamespace' && !_kubeName(value, 63, dots: false)) return l.dbInvalid;
+      if (key == 'kubeTarget' && !_kubeName(value, 253, dots: true)) return l.dbInvalid;
+      if (key == 'dockerContainer' &&
+          (value.length > 255 || !RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]*$').hasMatch(value))) {
+        return l.dbInvalid;
+      }
       if (value.isNotEmpty && key == 'color' && !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(value)) return l.dbInvalid;
       if (_engine == DbEngine.redis && key == 'database' && int.tryParse(value) == null) return l.dbInvalid;
       if (key == 'certificate' &&
@@ -294,6 +340,27 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
             ),
     );
   }
+
+  /// RFC 1123 label (namespace) or subdomain (object name).
+  static bool _kubeName(String value, int max, {required bool dots}) {
+    const label = '[a-z0-9]([-a-z0-9]*[a-z0-9])?';
+    final pattern = dots ? RegExp('^$label(\\.$label)*\$') : RegExp('^$label\$');
+    return value.length <= max && pattern.hasMatch(value);
+  }
+
+  void _selectRoute(DbRouteChoice? choice) => setState(() {
+    _route = choice?.route ?? const DbRoute();
+    // A tunnel's target is the database address (and its TLS identity).
+    if (choice != null && _tunnel) {
+      _field('host').text = choice.host ?? _value('host');
+      _field('port').text = '${choice.port ?? _value('port')}';
+    }
+    // Port-forwards listen on loopback, which usually has no TLS.
+    if (_forwarded && !_tlsChosen) {
+      _tls = DbTlsMode.prefer;
+      _tlsAuto = true;
+    }
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -344,8 +411,23 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                         },
                 ),
                 const SizedBox(height: 12),
-                _input('host', l.dbHost, required: true),
-                _input('port', l.dbPort, min: 1, max: 65535),
+                if (!_forwarded && !_tunnel) _input('host', l.dbHost, required: true),
+                if (!_tunnel) _input('port', _forwarded ? l.dbContainerPort : l.dbPort, min: 1, max: 65535),
+                ListenableBuilder(
+                  listenable: Listenable.merge([_field('host'), _field('port')]),
+                  builder: (context, _) => switch (_matchingTunnel) {
+                    final tunnel? => Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TextButton.icon(
+                        key: const ValueKey('db-use-tunnel'),
+                        icon: const Icon(Icons.swap_horiz_rounded),
+                        label: Text(l.dbUseTunnel(tunnel.label)),
+                        onPressed: _busy ? null : () => _selectRoute(tunnel),
+                      ),
+                    ),
+                    null => const SizedBox.shrink(),
+                  },
+                ),
                 _input('database', l.dbDatabase, required: _engine == DbEngine.redis),
                 _input('username', l.dbUsername),
                 _input('password', l.dbPassword, secret: true),
@@ -419,25 +501,37 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                 ),
                 ExpansionTile(
                   title: Text(l.dbRoute),
+                  initiallyExpanded: _route.restorable,
                   children: [
                     if (choices == null)
                       const LinearProgressIndicator()
                     else
                       GlassDropdownField<int>(
                         key: const ValueKey('db-route'),
-                        value: _route.kind == DbRouteKind.direct
-                            ? -1
-                            : choices.routes.indexWhere(
-                                (r) => r.route.kind == _route.kind && r.route.reference == _route.reference,
-                              ),
+                        // -1: direct, -2: a Docker container (engine chosen below).
+                        value: switch (_route.kind) {
+                          DbRouteKind.direct => -1,
+                          DbRouteKind.docker => -2,
+                          _ => choices.routes.indexWhere(
+                            (r) => r.route.kind == _route.kind && r.route.reference == _route.reference,
+                          ),
+                        },
                         label: l.dbRoute,
                         items: [
                           GlassSelectItem(value: -1, label: l.dbDirect),
                           for (var i = 0; i < choices.routes.length; i++)
-                            GlassSelectItem(value: i, label: choices.routes[i].label),
+                            GlassSelectItem(
+                              value: i,
+                              label: switch (choices.routes[i].route.kind) {
+                                DbRouteKind.kubernetes => l.dbRouteKubernetes(choices.routes[i].label),
+                                DbRouteKind.tunnel => l.dbRouteTunnel(choices.routes[i].label),
+                                _ => choices.routes[i].label,
+                              },
+                            ),
+                          GlassSelectItem(value: -2, label: l.dbRouteDocker),
                         ],
                         validator: (_) =>
-                            _route.kind != DbRouteKind.direct &&
+                            !const {DbRouteKind.direct, DbRouteKind.docker}.contains(_route.kind) &&
                                 !choices.routes.any(
                                   (r) => r.route.kind == _route.kind && r.route.reference == _route.reference,
                                 )
@@ -445,9 +539,65 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                             : null,
                         onChanged: _busy
                             ? null
-                            : (i) => setState(() => _route = i == -1 ? const DbRoute() : choices.routes[i].route),
+                            : (i) => _selectRoute(switch (i) {
+                                -1 => null,
+                                -2 => DbRouteChoice(
+                                  route: DbRoute(
+                                    kind: DbRouteKind.docker,
+                                    reference: _docker ? _route.reference : null,
+                                  ),
+                                  label: '',
+                                ),
+                                _ => choices.routes[i],
+                              }),
                       ),
-                    Text(l.dbRouteHelp),
+                    if (_kube) ...[
+                      const SizedBox(height: 12),
+                      _input('kubeNamespace', l.kubeNamespace, required: true),
+                      GlassDropdownField<DbKubeTargetKind>(
+                        key: const ValueKey('db-kube-kind'),
+                        value: _kubeKind,
+                        label: l.dbKubeTarget,
+                        items: [
+                          for (final kind in DbKubeTargetKind.values) GlassSelectItem(value: kind, label: kind.label),
+                        ],
+                        onChanged: _busy ? null : (v) => setState(() => _kubeKind = v),
+                      ),
+                      const SizedBox(height: 12),
+                      _input('kubeTarget', l.dbKubeTargetName, required: true),
+                      Text(l.dbKubeRouteHelp),
+                    ] else if (_docker && choices != null) ...[
+                      const SizedBox(height: 12),
+                      GlassDropdownField<String>(
+                        key: const ValueKey('db-docker-engine'),
+                        value: _route.reference ?? '',
+                        label: l.dbDockerEngine,
+                        items: [
+                          GlassSelectItem(value: '', label: l.dockerLocalHost),
+                          for (final r in choices.routes)
+                            if (r.route.kind == DbRouteKind.ssh)
+                              GlassSelectItem(value: r.route.reference!, label: r.label),
+                        ],
+                        validator: (_) =>
+                            _route.reference != null &&
+                                !choices.routes.any(
+                                  (r) => r.route.kind == DbRouteKind.ssh && r.route.reference == _route.reference,
+                                )
+                            ? l.dbInvalid
+                            : null,
+                        onChanged: _busy
+                            ? null
+                            : (v) => setState(
+                                () => _route = DbRoute(kind: DbRouteKind.docker, reference: v.isEmpty ? null : v),
+                              ),
+                      ),
+                      const SizedBox(height: 12),
+                      _input('dockerContainer', l.dbDockerContainer, required: true),
+                      Text(l.dbDockerRouteHelp),
+                    ] else if (_tunnel)
+                      Text(l.dbTunnelRouteHelp)
+                    else
+                      Text(l.dbRouteHelp),
                   ],
                 ),
                 ExpansionTile(

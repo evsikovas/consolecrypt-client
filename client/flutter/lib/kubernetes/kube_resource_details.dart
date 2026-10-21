@@ -829,9 +829,11 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
                           context,
                           ref,
                           session: widget.session,
-                          namespace: widget.resource.namespace!,
-                          pod: widget.resource.name,
-                          service: widget.service as KubeForwardService,
+                          resource: widget.resource,
+                          object: detail.object,
+                          relations: widget.service is KubeRelationsService
+                              ? widget.service as KubeRelationsService
+                              : null,
                           target: target,
                         ),
                       )

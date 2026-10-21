@@ -701,6 +701,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'glass_mode': s.glassMode.wireName,
   'sidebar_style': s.sidebarStyle.wireName,
   'workspace_panel_style': s.workspacePanelStyle.name,
+  'databases_view': s.databasesView.name,
   'sftp_default_editor': s.sftpDefaultEditor == null
       ? null
       : {'kind': s.sftpDefaultEditor!.kind.wireName, 'value': s.sftpDefaultEditor!.value},
@@ -760,6 +761,7 @@ LocalSettings localSettingsFromJson(Json j) {
       j['workspace_panel_style'],
       d.workspacePanelStyle,
     ),
+    databasesView: _byWire(CollectionView.values, (view) => view.name, j['databases_view'], d.databasesView),
   );
 }
 

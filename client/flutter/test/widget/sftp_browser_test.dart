@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/services/sftp_browser_service.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
+import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/sftp/sftp_providers.dart';
+import 'package:consolecrypt/sftp/sftp_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -205,6 +209,47 @@ void main() {
     // Folders first, sorted by name.
     expect(_y(tester, '$_home/app'), lessThan(_y(tester, '$_home/logs')));
     expect(_y(tester, '$_home/logs'), lessThan(_y(tester, '$_home/deploy.sh')));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('opening a host path: a file opens its folder with it selected; an unreadable folder says so', (
+    tester,
+  ) async {
+    await _openBrowser(tester);
+    final container = ProviderScope.containerOf(tester.element(find.byType(SftpScreen)));
+    final controller = container.read(sftpControllerProvider.notifier);
+    final host = container.read(sftpControllerProvider).host!;
+
+    // A new connection that starts at a file path.
+    await controller.disconnect();
+    await settle(tester);
+    unawaited(controller.connect(host, path: '/etc/nginx/nginx.conf'));
+    await settle(tester);
+    expect(container.read(sftpControllerProvider).remotePath, '/etc/nginx');
+    expect(_row('/etc/nginx/nginx.conf'), findsOneWidget);
+    expect(_summary(tester), startsWith('1 of'), reason: 'the file is selected');
+
+    // Same host again: reuses the session; a folder opens as is.
+    final session = container.read(sftpControllerProvider).session;
+    unawaited(controller.openHostPath(host, '/var/www/html'));
+    await settle(tester);
+    expect(container.read(sftpControllerProvider).session, session);
+    expect(_row('/var/www/html/index.php'), findsOneWidget);
+
+    // /var/lib/docker is 710 root: a clear permission-denied state, not an empty folder.
+    unawaited(controller.openHostPath(host, '/var/lib/docker/volumes/shop_data/_data'));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('sftp-list-forbidden')), findsOneWidget);
+    expect(find.text('You do not have access to this.'), findsOneWidget);
+    expect(find.text('/var/lib/docker/volumes/shop_data/_data'), findsWidgets);
+    expect(find.byKey(const ValueKey('sftp-list-empty')), findsNothing);
+    await tapKey(tester, 'sftp-list-retry');
+    expect(find.byKey(const ValueKey('sftp-list-forbidden')), findsOneWidget);
+
+    // Leaving the folder clears the state.
+    await tapKey(tester, 'sftp-crumb-host');
+    expect(find.byKey(const ValueKey('sftp-list-forbidden')), findsNothing);
+    expect(_row('$_home/app'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets('status bar counts the view and summarises the selection', (tester) async {

@@ -73,6 +73,39 @@ pub enum DbRoute {
     Proxy {
         proxy_id: ObjectId,
     },
+    /// A port-forward through a saved Kubernetes context. The connection
+    /// `port` is the container port; `host` is unused (loopback). The forward
+    /// is device-local and restored on connect.
+    Kubernetes {
+        context_id: ObjectId,
+        namespace: String,
+        target_kind: DbKubeTargetKind,
+        target_name: String,
+    },
+    /// A saved local-forward SSH tunnel, started on connect when it is not
+    /// running. `host`/`port` keep the tunnel target (the TLS identity).
+    Tunnel {
+        tunnel_id: ObjectId,
+    },
+    /// A Docker port-forward to a container, by name so it survives
+    /// re-creation. `host_id` is the SSH host of the engine (None: this
+    /// computer). The connection `port` is the container port.
+    Docker {
+        #[serde(default)]
+        host_id: Option<ObjectId>,
+        container: String,
+    },
+}
+
+/// What a Kubernetes route forwards to. Pod names of a StatefulSet are
+/// stable; Services and Deployments pick a ready Pod on each connect.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DbKubeTargetKind {
+    Pod,
+    Service,
+    Deployment,
+    StatefulSet,
 }
 
 impl DbRoute {
@@ -82,7 +115,53 @@ impl DbRoute {
             Self::Ssh { host_id } => Some(*host_id),
             Self::Jump { jump_profile_id } => Some(*jump_profile_id),
             Self::Proxy { proxy_id } => Some(*proxy_id),
+            Self::Kubernetes { context_id, .. } => Some(*context_id),
+            Self::Tunnel { tunnel_id } => Some(*tunnel_id),
+            Self::Docker { host_id, .. } => *host_id,
         }
+    }
+
+    fn validate(&self) -> Result<(), ValidationError> {
+        if let Self::Docker { container, .. } = self {
+            // Docker container names: [a-zA-Z0-9][a-zA-Z0-9_.-]*
+            if container.is_empty()
+                || container.len() > 255
+                || !container.starts_with(|c: char| c.is_ascii_alphanumeric())
+                || !container
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'.' | b'-'))
+            {
+                return Err(invalid("route", "invalid Docker container name"));
+            }
+        }
+        if let Self::Kubernetes {
+            namespace,
+            target_name,
+            ..
+        } = self
+        {
+            // RFC 1123 label (namespace) and subdomain (object name).
+            let valid = |value: &str, maximum: usize, dots: bool| {
+                !value.is_empty()
+                    && value.len() <= maximum
+                    && value.bytes().all(|b| {
+                        b.is_ascii_lowercase()
+                            || b.is_ascii_digit()
+                            || b == b'-'
+                            || (dots && b == b'.')
+                    })
+                    && value.split('.').all(|part| {
+                        !part.is_empty() && !part.starts_with('-') && !part.ends_with('-')
+                    })
+            };
+            if !valid(namespace, 63, false) {
+                return Err(invalid("route", "invalid Kubernetes namespace"));
+            }
+            if !valid(target_name, 253, true) {
+                return Err(invalid("route", "invalid Kubernetes object name"));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -312,6 +391,7 @@ impl DbConnection {
         {
             return Err(invalid("reference", "invalid object reference"));
         }
+        self.route.validate()?;
         text(&self.name, 256, false, "name")?;
         host(&self.host, "host")?;
         if self.port == 0 {
@@ -526,6 +606,127 @@ mod tests {
         value.production = false;
         assert!(value.validate().is_ok());
         value.options = DbOptions::Redis { resp3: true };
+        assert!(value.validate().is_err());
+    }
+
+    #[test]
+    fn kubernetes_route_roundtrips_validates_and_is_rejected_by_older_shapes() {
+        let mut value = DbConnection::new("fixture", "127.0.0.1", DbEngine::Postgresql);
+        let context_id = ObjectId::new();
+        value.port = 5432;
+        value.route = DbRoute::Kubernetes {
+            context_id,
+            namespace: "data".into(),
+            target_kind: DbKubeTargetKind::StatefulSet,
+            target_name: "pg-main".into(),
+        };
+        value.validate().unwrap();
+        assert_eq!(value.route.reference(), Some(context_id));
+        let json = serde_json::to_value(&value).unwrap();
+        assert_eq!(
+            json["route"],
+            serde_json::json!({"kind": "kubernetes", "context_id": context_id.to_string(),
+                "namespace": "data", "target_kind": "stateful_set", "target_name": "pg-main"})
+        );
+        let restored: DbConnection = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(restored, value);
+        // Existing routes keep their exact wire shape.
+        let ssh = serde_json::to_value(DbRoute::Ssh {
+            host_id: context_id,
+        })
+        .unwrap();
+        assert_eq!(
+            ssh,
+            serde_json::json!({"kind": "ssh", "host_id": context_id.to_string()})
+        );
+        assert_eq!(
+            serde_json::to_value(DbRoute::Direct).unwrap(),
+            serde_json::json!({"kind": "direct"})
+        );
+        // Unknown fields and target kinds stay rejected (no silent downgrade).
+        let mut extra = json.clone();
+        extra["route"]["local_port"] = serde_json::json!(10432);
+        assert!(serde_json::from_value::<DbConnection>(extra).is_err());
+        let mut kind = json.clone();
+        kind["route"]["target_kind"] = serde_json::json!("cron_job");
+        assert!(serde_json::from_value::<DbConnection>(kind).is_err());
+        for (namespace, name) in [
+            ("", "pg"),
+            ("Data", "pg"),
+            ("data", "pg/0"),
+            ("data", "-pg"),
+            ("data", "pg..0"),
+            ("a.b", "pg"),
+            ("data", ""),
+        ] {
+            let mut invalid = value.clone();
+            invalid.route = DbRoute::Kubernetes {
+                context_id,
+                namespace: namespace.into(),
+                target_kind: DbKubeTargetKind::Pod,
+                target_name: name.into(),
+            };
+            assert!(invalid.validate().is_err(), "{namespace}/{name}");
+        }
+        let mut nil = value.clone();
+        nil.route = DbRoute::Kubernetes {
+            context_id: ObjectId::NIL,
+            namespace: "data".into(),
+            target_kind: DbKubeTargetKind::Service,
+            target_name: "pg".into(),
+        };
+        assert!(nil.validate().is_err());
+    }
+
+    #[test]
+    fn tunnel_and_docker_routes_roundtrip_and_validate() {
+        let mut value = DbConnection::new("fixture", "db.internal", DbEngine::Mysql);
+        let tunnel_id = ObjectId::new();
+        value.route = DbRoute::Tunnel { tunnel_id };
+        value.validate().unwrap();
+        assert_eq!(value.route.reference(), Some(tunnel_id));
+        assert_eq!(
+            serde_json::to_value(&value.route).unwrap(),
+            serde_json::json!({"kind": "tunnel", "tunnel_id": tunnel_id.to_string()})
+        );
+        let host_id = ObjectId::new();
+        for host in [None, Some(host_id)] {
+            value.route = DbRoute::Docker {
+                host_id: host,
+                container: "shop-postgres-1".into(),
+            };
+            value.validate().unwrap();
+            assert_eq!(value.route.reference(), host);
+            let json = serde_json::to_value(&value).unwrap();
+            assert_eq!(json["route"]["kind"], "docker");
+            assert_eq!(serde_json::from_value::<DbConnection>(json).unwrap(), value);
+        }
+        // A local engine may omit the host.
+        let local: DbRoute =
+            serde_json::from_value(serde_json::json!({"kind": "docker", "container": "pg"}))
+                .unwrap();
+        assert_eq!(
+            local,
+            DbRoute::Docker {
+                host_id: None,
+                container: "pg".into()
+            }
+        );
+        for name in ["", "/pg", "-pg", "pg db", "pg/1"] {
+            value.route = DbRoute::Docker {
+                host_id: None,
+                container: name.into(),
+            };
+            assert!(value.validate().is_err(), "{name}");
+        }
+        value.route = DbRoute::Docker {
+            host_id: Some(ObjectId::NIL),
+            container: "pg".into(),
+        };
+        assert!(value.validate().is_err());
+        value.route = DbRoute::Tunnel {
+            tunnel_id: ObjectId::NIL,
+        };
         assert!(value.validate().is_err());
     }
 

@@ -10,6 +10,7 @@ import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/db/db_document_view.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
+import 'package:consolecrypt/docker/docker_host_path.dart';
 import 'package:consolecrypt/docker/docker_logs_view.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
@@ -99,10 +100,12 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
     final container = widget.container;
     final running = container.state == DockerContainerState.running;
     final busy = widget.actions.busy(container);
-    Widget action(String key, String label, IconData icon, VoidCallback? onPressed) => GlassButton(
+    final database = widget.actions.databaseTarget(container, _detail?.inspect);
+    Widget action(String key, String label, IconData icon, VoidCallback? onPressed, {String? tooltip}) => GlassButton(
       key: ValueKey('docker-details-$key'),
       label: label,
       icon: icon,
+      tooltip: tooltip,
       size: GlassControlSize.sm,
       onPressed: busy ? null : onPressed,
     );
@@ -160,8 +163,8 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                 ),
                 GlassMenuButton<Object>(
                   key: const ValueKey('docker-details-menu'),
-                  entries: dockerContainerMenu(l, container),
-                  onSelected: (value) => runDockerMenuValue(widget.actions, container, value),
+                  entries: dockerContainerMenu(l, container, database: database),
+                  onSelected: (value) => runDockerMenuValue(widget.actions, container, value, database: database),
                   builder: (context, open) => GlassIconButton(
                     icon: Icons.more_horiz_rounded,
                     tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
@@ -221,6 +224,14 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                   Icons.swap_horiz_rounded,
                   running ? () => unawaited(widget.actions.forward(container)) : null,
                 ),
+                if (database != null)
+                  action(
+                    'database',
+                    l.kubeConnectDatabase,
+                    Icons.storage_rounded,
+                    running ? () => unawaited(widget.actions.database!(container, database)) : null,
+                    tooltip: l.dockerConnectDatabaseHelp(database.engine.label),
+                  ),
               ],
             ),
           ),
@@ -395,7 +406,7 @@ class _DockerOverview extends StatelessWidget {
         if (mounts.isNotEmpty)
           _Section(
             title: l.dockerMounts,
-            child: _MountsTable(mounts: mounts, text: text),
+            child: _MountsTable(mounts: mounts, text: text, session: session),
           ),
         if (labels.isNotEmpty)
           _Section(
@@ -419,11 +430,31 @@ class _DockerOverview extends StatelessWidget {
 }
 
 /// Volumes and bind mounts: type, source (volume name or host path),
-/// destination and read-only flag.
+/// destination and read-only flag. Sources open the host folder (SFTP over
+/// SSH, the file manager for local Docker).
 class _MountsTable extends StatelessWidget {
-  const _MountsTable({required this.mounts, required this.text});
+  const _MountsTable({required this.mounts, required this.text, required this.session});
   final List<Map<Object?, Object?>> mounts;
   final String Function(Object?) text;
+  final DockerSessionInfo session;
+
+  /// Volume name or host path; volumes and binds link to the host folder.
+  Widget _mountSource(Map<Object?, Object?> mount, TextStyle mono) {
+    final type = text(mount['Type']);
+    final source = text(mount['Source']);
+    final name = text(mount['Name']);
+    final volume = type == 'volume'; // l10n-ignore: mount type
+    if (volume || type == 'bind') {
+      return DockerHostPathLink(
+        session: session,
+        path: source,
+        volume: volume,
+        label: volume && name.isNotEmpty ? name : null,
+        style: mono,
+      );
+    }
+    return SelectableText(name.isNotEmpty ? name : source, style: mono);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -465,14 +496,7 @@ class _MountsTable extends StatelessWidget {
             for (final mount in mounts)
               row([
                 Text(text(mount['Type']), style: mono.copyWith(color: tokens.secondaryLabel)),
-                SelectableText(
-                  text(mount['Type']) == 'volume' &&
-                          text(mount['Name'])
-                              .isNotEmpty // l10n-ignore: mount type
-                      ? text(mount['Name'])
-                      : text(mount['Source']),
-                  style: mono.copyWith(color: tokens.palette.accent),
-                ),
+                _mountSource(mount, mono),
                 SelectableText(text(mount['Destination']), style: mono),
                 Text(mount['RW'] == false ? l.dockerMountReadOnly : l.dockerMountReadWrite, style: mono),
               ]),

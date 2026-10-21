@@ -35,6 +35,7 @@ jobs:
       - name: Test release boundaries
         run: |
           python3 -m unittest discover -s client/scripts -p 'test_github_release.py' -v
+          python3 -m unittest discover -s client/scripts -p 'test_announce_telegram.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_ci_cleanup.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_cleanup_policy.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_linux_cleanup.py' -v
@@ -228,6 +229,29 @@ jobs:
           echo "published=true" >> "$GITHUB_OUTPUT"
       - name: Request signed update metadata from trusted main
         run: gh workflow run update-feeds.yml --ref main
+
+  # Post the published release to the Telegram channel. Optional: skipped
+  # without the secrets, and a failure never marks the release as failed.
+  announce:
+    needs: publish
+    if: needs.publish.outputs.published == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      TELEGRAM_PROXY: ${{ secrets.TELEGRAM_PROXY }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Announce the release in Telegram
+        if: env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        run: python3 client/scripts/announce-telegram.py --tag "$GITHUB_REF_NAME"
 
   # No checkout here: validate the immutable owner/HEAD of the released build.
   # The workflow concurrency lock remains held until this job finishes.

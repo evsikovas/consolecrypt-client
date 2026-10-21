@@ -9,6 +9,7 @@ use tokio_rustls::TlsAcceptor;
 
 mod ai_revocation;
 mod ai_synced_history;
+mod db_route;
 mod insights_watch;
 mod response_revocation;
 mod view_preferences;

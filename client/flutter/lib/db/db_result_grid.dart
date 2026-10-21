@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -51,9 +52,15 @@ class DbResultGrid extends StatefulWidget {
     this.onSelection,
     this.onMore,
     this.loadingMore = false,
+    this.leading = const [],
+    this.trailing = const [],
     super.key,
   });
   final DbResultSet result;
+
+  /// Toolbar slots shared with the surrounding panel (title, result sets,
+  /// export): the grid keeps a single compact header row.
+  final List<Widget> leading, trailing;
   final bool production, loadingMore;
   final void Function(DbResultSelection selection)? onCopy;
   final void Function(int row, int column)? onEdit;
@@ -67,6 +74,7 @@ class _DbResultGridState extends State<DbResultGrid> {
   final _horizontal = ScrollController(), _vertical = ScrollController();
   final _selected = <int>{}, _pinned = <int>{}, _hidden = <int>{};
   final _widths = <int, double>{};
+  final _auto = <int, (double, int)>{};
   final _recordColumns = <int, int>{};
   String _filter = '';
   int? _sort;
@@ -94,6 +102,7 @@ class _DbResultGridState extends State<DbResultGrid> {
       _pinned.clear();
       _hidden.clear();
       _widths.clear();
+      _auto.clear();
       _order = null;
       _sort = null;
     }
@@ -168,113 +177,237 @@ class _DbResultGridState extends State<DbResultGrid> {
     return text.length > 300 ? '${text.substring(0, 300)}…' : text;
   }
 
+  static double get _rowHeight => AppPlatform.isMobile ? 34 : 26;
+  static const _headerHeight = 30.0;
+
+  /// Column width from its header and the first rows, like the classic SQL
+  /// clients; dragging the header edge overrides it.
+  double _autoWidth(int column) {
+    final rows = widget.result.rows, sample = math.min(rows.length, 50);
+    final cached = _auto[column];
+    if (cached != null && cached.$2 >= sample) return cached.$1;
+    final info = widget.result.columns[column];
+    final char = (GlassTokens.of(context).typography.callout.fontSize ?? 12) * .62;
+    // Header: bold name, caption type, key icon and the menu arrow.
+    var header = (info.name.length * 1.1 + info.typeName.length * .9) * char + (info.primaryKey ? 16 : 0) + 42;
+    var cells = 0.0;
+    for (var i = 0; i < sample; i++) {
+      cells = math.max(cells, math.min(_text(rows[i][column], info).length, 44).toDouble());
+    }
+    header = math.min(header, 300);
+    final width = math.max(header, cells * char + 20).clamp(64.0, 360.0);
+    _auto[column] = (width, sample);
+    return width;
+  }
+
+  Future<void> _cellMenu(int row, int column, Offset position) async {
+    final l = context.l10n;
+    final action = await showGlassMenu<String>(
+      context: context,
+      anchor: Rect.fromLTWH(position.dx, position.dy, 1, 1),
+      entries: [
+        GlassMenuItem(value: 'value', label: l.dbShowValue, icon: Icons.visibility_outlined),
+        if (widget.onCopy != null) ...[
+          GlassMenuItem(value: 'cell', label: l.dbCopyCell, icon: Icons.content_copy_rounded),
+          GlassMenuItem(value: 'row', label: l.dbCopyRow, icon: Icons.table_rows_outlined),
+        ],
+        if (!widget.production && widget.onEdit != null)
+          GlassMenuItem(value: 'edit', label: l.dbEditCell, icon: Icons.edit_outlined),
+      ],
+    );
+    if (!mounted) return;
+    switch (action) {
+      case 'value':
+        _show(row, column);
+      case 'cell':
+        widget.onCopy?.call(DbResultSelection(rows: [row], columns: [column]));
+      case 'row':
+        widget.onCopy?.call(DbResultSelection(rows: [row]));
+      case 'edit':
+        widget.onEdit?.call(row, column);
+    }
+  }
+
+  BorderSide get _line => BorderSide(color: GlassTokens.of(context).surfaces.separator);
+
   Widget _cell(int row, int column, {double? width}) {
+    final tokens = GlassTokens.of(context);
     final cell = widget.result.rows[row][column], info = widget.result.columns[column];
-    return SizedBox(
-      width: width,
-      height: 40,
-      child: InkWell(
-        key: ValueKey('db-cell-$row-$column'),
-        onDoubleTap: () => _show(row, column),
-        onLongPress: () => _show(row, column),
-        onTap: () => _select(row),
-        onSecondaryTapDown: (position) async {
-          final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
-          final l = context.l10n;
-          final action = await showMenu<String>(
-            context: context,
-            position: RelativeRect.fromRect(
-              Rect.fromLTWH(position.globalPosition.dx, position.globalPosition.dy, 1, 1),
-              Offset.zero & overlay.size,
-            ),
-            items: [
-              PopupMenuItem(value: 'value', child: Text(l.dbShowValue)),
-              if (widget.onCopy != null) ...[
-                PopupMenuItem(value: 'cell', child: Text(l.dbCopyCell)),
-                PopupMenuItem(value: 'row', child: Text(l.dbCopyRow)),
-              ],
-              if (!widget.production && widget.onEdit != null) PopupMenuItem(value: 'edit', child: Text(l.dbEditCell)),
-            ],
-          );
-          if (!mounted) return;
-          switch (action) {
-            case 'value':
-              _show(row, column);
-            case 'cell':
-              widget.onCopy?.call(DbResultSelection(rows: [row], columns: [column]));
-            case 'row':
-              widget.onCopy?.call(DbResultSelection(rows: [row]));
-            case 'edit':
-              widget.onEdit?.call(row, column);
-          }
-        },
-        child: Container(
-          alignment: cell.numeric ? Alignment.centerRight : Alignment.centerLeft,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            border: Border(right: BorderSide(color: Theme.of(context).dividerColor)),
-          ),
-          child: Text(
-            _text(cell, info),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontStyle: cell.kind == DbCellKind.nullValue ? FontStyle.italic : FontStyle.normal),
+    final empty = cell.kind == DbCellKind.nullValue;
+    return GestureDetector(
+      key: ValueKey('db-cell-$row-$column'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _select(row),
+      onDoubleTap: () => _show(row, column),
+      onLongPress: () => _show(row, column),
+      onSecondaryTapUp: (details) => unawaited(_cellMenu(row, column, details.globalPosition)),
+      child: Container(
+        width: width,
+        height: _rowHeight,
+        alignment: cell.numeric ? Alignment.centerRight : Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s8),
+        decoration: BoxDecoration(
+          border: Border(right: _line, bottom: _line),
+        ),
+        child: Text(
+          _text(cell, info),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: tokens.typography.callout.copyWith(
+            color: empty ? tokens.palette.tertiary : tokens.palette.label,
+            fontStyle: empty ? FontStyle.italic : FontStyle.normal,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
       ),
     );
   }
 
-  Widget _header(int column, double width) {
+  /// Row-number gutter: click selects the row, like the cell itself.
+  Widget _number(int row, double width) {
+    final tokens = GlassTokens.of(context);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _select(row),
+      child: Container(
+        width: width,
+        height: _rowHeight,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s6),
+        decoration: BoxDecoration(
+          color: tokens.surfaces.fillField,
+          border: Border(right: _line, bottom: _line),
+        ),
+        child: Text(
+          '${row + 1}', // l10n-ignore: Result row number.
+          style: tokens.typography.caption.copyWith(
+            color: _selected.contains(row) ? tokens.palette.accent : tokens.palette.tertiary,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<GlassMenuEntry<String>> _columnMenu(int column) {
     final l = context.l10n;
-    return SizedBox(
+    return [
+      GlassMenuItem(value: 'asc', label: '↑ ${widget.result.columns[column].name}', icon: Icons.arrow_upward_rounded),
+      GlassMenuItem(
+        value: 'desc',
+        label: '↓ ${widget.result.columns[column].name}',
+        icon: Icons.arrow_downward_rounded,
+      ),
+      if (_pinned.contains(column) || _pinned.length < 3)
+        GlassMenuItem(
+          value: 'pin',
+          label: _pinned.contains(column) ? l.dbUnpinColumn : l.dbPinColumn,
+          icon: Icons.push_pin_outlined,
+        ),
+      GlassMenuItem(value: 'hide', label: l.commonHide, icon: Icons.visibility_off_outlined),
+    ];
+  }
+
+  void _columnAction(int column, String value) {
+    if (value == 'asc' || value == 'desc') {
+      _sort = column;
+      _ascending = value == 'asc';
+      _applyFilter();
+      return;
+    }
+    setState(() {
+      if (value == 'pin' && !_pinned.add(column)) _pinned.remove(column);
+      if (value == 'hide') {
+        _hidden.add(column);
+        _pinned.remove(column);
+      }
+    });
+  }
+
+  Widget _header(int column, double width) {
+    final tokens = GlassTokens.of(context), info = widget.result.columns[column];
+    return Container(
       width: width,
-      height: 44,
+      height: _headerHeight,
+      decoration: BoxDecoration(
+        color: tokens.surfaces.fillField,
+        border: Border(right: _line, bottom: _line),
+      ),
       child: Stack(
         children: [
           Positioned.fill(
-            child: Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      if (_sort == column) {
-                        _ascending = !_ascending;
-                      } else {
-                        _sort = column;
-                        _ascending = true;
-                      }
-                      _applyFilter();
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text(widget.result.columns[column].name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ),
-                  ),
-                ),
-                if (_sort == column) Icon(_ascending ? Icons.arrow_upward : Icons.arrow_downward, size: 14),
-                PopupMenuButton<String>(
-                  iconSize: 16,
-                  tooltip: l.dbColumns,
-                  itemBuilder: (_) => [
-                    if (_pinned.contains(column) || _pinned.length < 3)
-                      PopupMenuItem(
-                        value: 'pin',
-                        child: Text(_pinned.contains(column) ? l.dbUnpinColumn : l.dbPinColumn),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (_sort == column) {
+                  _ascending = !_ascending;
+                } else {
+                  _sort = column;
+                  _ascending = true;
+                }
+                _applyFilter();
+              },
+              onSecondaryTapUp: (details) async {
+                final value = await showGlassMenu<String>(
+                  context: context,
+                  anchor: Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1),
+                  entries: _columnMenu(column),
+                );
+                if (value != null && mounted) _columnAction(column, value);
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(left: GlassSpacing.s8, right: 2),
+                child: Row(
+                  children: [
+                    if (info.primaryKey) ...[
+                      Icon(Icons.key_rounded, size: 12, color: tokens.palette.warning),
+                      const SizedBox(width: 4),
+                    ],
+                    Flexible(
+                      flex: 4,
+                      child: Text(
+                        info.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tokens.typography.callout.copyWith(
+                          color: tokens.palette.label,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    PopupMenuItem(value: 'hide', child: Text(l.commonHide)),
+                    ),
+                    if (info.typeName.isNotEmpty) ...[
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          info.typeName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: tokens.typography.caption.copyWith(color: tokens.palette.tertiary),
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    if (_sort == column)
+                      Icon(
+                        _ascending ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                        size: 12,
+                        color: tokens.palette.accent,
+                      ),
+                    GlassMenuButton<String>(
+                      entries: _columnMenu(column),
+                      onSelected: (value) => _columnAction(column, value),
+                      builder: (context, open) => GlassIconButton(
+                        icon: Icons.arrow_drop_down_rounded,
+                        tooltip: context.l10n.dbColumns,
+                        size: 20,
+                        iconSize: 15,
+                        style: GlassIconButtonStyle.plain,
+                        onPressed: open,
+                      ),
+                    ),
                   ],
-                  onSelected: (value) => setState(() {
-                    if (value == 'pin') {
-                      if (!_pinned.add(column)) _pinned.remove(column);
-                    }
-                    if (value == 'hide') {
-                      _hidden.add(column);
-                      _pinned.remove(column);
-                    }
-                  }),
                 ),
-              ],
+              ),
             ),
           ),
           Positioned(
@@ -286,7 +419,7 @@ class _DbResultGridState extends State<DbResultGrid> {
               cursor: SystemMouseCursors.resizeColumn,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onHorizontalDragUpdate: (d) => setState(() => _widths[column] = (width + d.delta.dx).clamp(80, 600)),
+                onHorizontalDragUpdate: (d) => setState(() => _widths[column] = (width + d.delta.dx).clamp(56, 800)),
               ),
             ),
           ),
@@ -295,9 +428,155 @@ class _DbResultGridState extends State<DbResultGrid> {
     );
   }
 
+  Widget _toolbar(bool records, double maxWidth) {
+    final l = context.l10n;
+    Widget tool(IconData icon, String tooltip, VoidCallback? onPressed, {Key? key}) => GlassIconButton(
+      key: key,
+      icon: icon,
+      tooltip: tooltip,
+      size: 28,
+      iconSize: 16,
+      style: GlassIconButtonStyle.plain,
+      onPressed: onPressed,
+    );
+    return SizedBox(
+      height: 38,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s6),
+        child: Row(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(children: widget.leading),
+              ),
+            ),
+            Flexible(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxWidth < 500 ? 160 : 220),
+                child: GlassField(
+                  key: const ValueKey('db-result-filter'),
+                  search: true,
+                  placeholder: l.commonSearch,
+                  onChanged: (v) {
+                    _filter = v.toLowerCase();
+                    _scheduleFilter();
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(width: GlassSpacing.s4),
+            tool(
+              records ? Icons.grid_on_rounded : Icons.view_agenda_outlined,
+              records ? l.dbGrid : l.dbRecords,
+              () => setState(() => _records = !records),
+              key: const ValueKey('db-result-mode'),
+            ),
+            GlassMenuButton<int>(
+              entries: [
+                for (var i = 0; i < math.min(widget.result.columns.length, 300); i++)
+                  GlassMenuItem(value: i, label: widget.result.columns[i].name, checked: !_hidden.contains(i)),
+              ],
+              onSelected: (i) => setState(() {
+                if (!_hidden.remove(i)) _hidden.add(i);
+              }),
+              builder: (context, open) => tool(Icons.view_column_outlined, l.dbColumns, open),
+            ),
+            if (widget.onCopy != null)
+              tool(
+                Icons.content_copy_rounded,
+                _selected.isEmpty ? l.dbCopyResult : l.dbCopySelection,
+                () => widget.onCopy!(DbResultSelection(rows: _selected.isEmpty ? null : (_selected.toList()..sort()))),
+              ),
+            ...widget.trailing,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _record(int row, List<int> columns) {
+    final l = context.l10n, tokens = GlassTokens.of(context);
+    final selected = _selected.contains(row);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: GlassSpacing.s8),
+      child: ContentSurface(
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            GlassInteractive(
+              selected: selected,
+              onPressed: () => _select(row),
+              builder: (context, state) => Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  GlassSpacing.s12,
+                  GlassSpacing.s8,
+                  GlassSpacing.s12,
+                  GlassSpacing.s8,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      selected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                      size: 18,
+                      color: selected ? tokens.palette.accent : tokens.secondaryLabel,
+                    ),
+                    const SizedBox(width: GlassSpacing.s8),
+                    Text(
+                      '#${row + 1}', // l10n-ignore: Result row number.
+                      style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(height: 1, color: tokens.surfaces.separator),
+            for (final column in columns.take(_recordColumns[row] ?? 16))
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _show(row, column),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    GlassSpacing.s12,
+                    GlassSpacing.s6,
+                    GlassSpacing.s12,
+                    GlassSpacing.s6,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.result.columns[column].name,
+                        style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel),
+                      ),
+                      Text(
+                        _text(widget.result.rows[row][column], widget.result.columns[column]),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: tokens.typography.body.copyWith(color: tokens.palette.label),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            if (columns.length > (_recordColumns[row] ?? 16))
+              Align(
+                alignment: Alignment.centerLeft,
+                child: GlassButton.plain(
+                  label: l.dbLoadMore,
+                  onPressed: () => setState(() => _recordColumns[row] = (_recordColumns[row] ?? 16) + 16),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final l = context.l10n;
+    final l = context.l10n, tokens = GlassTokens.of(context);
     return LayoutBuilder(
       builder: (context, bounds) {
         final records =
@@ -308,10 +587,11 @@ class _DbResultGridState extends State<DbResultGrid> {
         ).where((i) => !_hidden.contains(i)).toList();
         final pinned = columns.where(_pinned.contains).toList();
         final scrolling = columns.where((i) => !_pinned.contains(i)).toList();
-        double width(int column) => _widths[column] ?? 180;
+        double width(int column) => _widths[column] ?? _autoWidth(column);
         double pinWidth(int column) =>
-            width(column).clamp(80, math.max(80, bounds.maxWidth * .4 / (pinned.isEmpty ? 1 : pinned.length)));
-        final pinnedTotal = pinned.fold<double>(0, (sum, i) => sum + pinWidth(i));
+            width(column).clamp(56, math.max(56, bounds.maxWidth * .4 / (pinned.isEmpty ? 1 : pinned.length)));
+        final numberWidth = (math.max(_count, 1).toString().length * 7.5 + 14).clamp(34.0, 90.0);
+        final pinnedTotal = numberWidth + pinned.fold<double>(0, (sum, i) => sum + pinWidth(i));
         final available = (bounds.maxWidth - pinnedTotal).clamp(1, double.infinity);
         final offsets = <int, double>{};
         var total = 0.0;
@@ -323,118 +603,119 @@ class _DbResultGridState extends State<DbResultGrid> {
         final visible = scrolling
             .where((i) => offsets[i]! + width(i) >= offset && offsets[i]! <= offset + available)
             .toList();
-        return ContentSurface(
-          kind: ContentSurfaceKind.solid,
-          padding: EdgeInsets.zero,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    if (widget.production) Text(l.dbProd, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                    SizedBox(
-                      width: bounds.maxWidth < 500 ? bounds.maxWidth - 32 : 240,
-                      child: TextField(
-                        key: const ValueKey('db-result-filter'),
-                        decoration: InputDecoration(labelText: l.commonSearch),
-                        onChanged: (v) {
-                          _filter = v.toLowerCase();
-                          _scheduleFilter();
-                        },
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: records ? l.dbGrid : l.dbRecords,
-                      icon: Icon(records ? Icons.table_chart : Icons.view_agenda),
-                      onPressed: () => setState(() => _records = !records),
-                    ),
-                    PopupMenuButton<int>(
-                      tooltip: l.dbColumns,
-                      icon: const Icon(Icons.view_column),
-                      itemBuilder: (_) => [
-                        for (var i = 0; i < widget.result.columns.length; i++)
-                          CheckedPopupMenuItem(
-                            value: i,
-                            checked: !_hidden.contains(i),
-                            child: Text(widget.result.columns[i].name),
-                          ),
-                      ],
-                      onSelected: (i) => setState(() {
-                        if (!_hidden.remove(i)) _hidden.add(i);
-                      }),
-                    ),
-                    if (widget.onCopy != null)
-                      IconButton(
-                        tooltip: _selected.isEmpty ? l.dbCopyResult : l.dbCopySelection,
-                        icon: const Icon(Icons.copy),
-                        onPressed: () => widget.onCopy!(
-                          DbResultSelection(rows: _selected.isEmpty ? null : (_selected.toList()..sort())),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (widget.result.truncated) Text(l.dbTruncated),
-              Expanded(
-                child: records
-                    ? ListView.builder(
-                        key: const ValueKey('db-result-records'),
-                        controller: _vertical,
-                        itemCount: _count,
-                        itemBuilder: (context, index) {
-                          final row = _row(index);
-                          return Card(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                CheckboxListTile(
-                                  title: Text('${row + 1}'),
-                                  value: _selected.contains(row),
-                                  onChanged: (_) => _select(row),
-                                ), // l10n-ignore: Result row number.
-                                for (final column in columns.take(_recordColumns[row] ?? 16))
-                                  ListTile(
-                                    title: Text(widget.result.columns[column].name),
-                                    subtitle: Text(
-                                      _text(widget.result.rows[row][column], widget.result.columns[column]),
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
+        Color rowColor(int row, int index) => _selected.contains(row)
+            ? tokens.palette.accent.withValues(alpha: .16)
+            : index.isOdd
+            ? tokens.surfaces.fillField.withValues(alpha: tokens.surfaces.fillField.a * .55)
+            : Colors.transparent;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _toolbar(records, bounds.maxWidth),
+            Container(height: 1, color: tokens.surfaces.separator),
+            Expanded(
+              child: records
+                  ? ListView.builder(
+                      key: const ValueKey('db-result-records'),
+                      controller: _vertical,
+                      padding: const EdgeInsets.all(GlassSpacing.s8),
+                      itemCount: _count,
+                      itemBuilder: (context, index) => _record(_row(index), columns),
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          width: pinnedTotal,
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: numberWidth,
+                                    height: _headerHeight,
+                                    decoration: BoxDecoration(
+                                      color: tokens.surfaces.fillField,
+                                      border: Border(right: _line, bottom: _line),
                                     ),
-                                    onTap: () => _show(row, column),
                                   ),
-                                if (columns.length > (_recordColumns[row] ?? 16))
-                                  TextButton(
-                                    onPressed: () =>
-                                        setState(() => _recordColumns[row] = (_recordColumns[row] ?? 16) + 16),
-                                    child: Text(l.dbLoadMore),
-                                  ),
-                              ],
-                            ),
-                          );
-                        },
-                      )
-                    : Row(
-                        children: [
-                          if (pinned.isNotEmpty)
-                            SizedBox(
-                              width: pinnedTotal,
+                                  for (final column in pinned) _header(column, pinWidth(column)),
+                                ],
+                              ),
+                              Expanded(
+                                child: _PinnedRows(
+                                  controller: _vertical,
+                                  rowCount: _count,
+                                  extent: _rowHeight,
+                                  builder: (index) {
+                                    final row = _row(index);
+                                    return ColoredBox(
+                                      color: rowColor(row, index),
+                                      child: Row(
+                                        children: [
+                                          _number(row, numberWidth),
+                                          for (final column in pinned) _cell(row, column, width: pinWidth(column)),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            key: const ValueKey('db-result-horizontal'),
+                            controller: _horizontal,
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: (total < available ? available : total).toDouble(),
                               child: Column(
                                 children: [
-                                  Row(children: [for (final column in pinned) _header(column, pinWidth(column))]),
+                                  SizedBox(
+                                    height: _headerHeight,
+                                    child: Stack(
+                                      children: [
+                                        Positioned.fill(
+                                          child: DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              color: tokens.surfaces.fillField,
+                                              border: Border(bottom: _line),
+                                            ),
+                                          ),
+                                        ),
+                                        for (final column in visible)
+                                          Positioned(
+                                            left: offsets[column],
+                                            top: 0,
+                                            width: width(column),
+                                            child: _header(column, width(column)),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                                   Expanded(
-                                    child: _PinnedRows(
+                                    child: ListView.builder(
+                                      key: const ValueKey('db-result-grid'),
                                       controller: _vertical,
-                                      rowCount: _count,
-                                      builder: (index) {
+                                      itemExtent: _rowHeight,
+                                      itemCount: _count,
+                                      itemBuilder: (context, index) {
                                         final row = _row(index);
-                                        return Row(
-                                          children: [
-                                            for (final column in pinned) _cell(row, column, width: pinWidth(column)),
-                                          ],
+                                        return ColoredBox(
+                                          color: rowColor(row, index),
+                                          child: Stack(
+                                            children: [
+                                              for (final column in visible)
+                                                Positioned(
+                                                  left: offsets[column],
+                                                  width: width(column),
+                                                  top: 0,
+                                                  child: _cell(row, column),
+                                                ),
+                                            ],
+                                          ),
                                         );
                                       },
                                     ),
@@ -442,72 +723,21 @@ class _DbResultGridState extends State<DbResultGrid> {
                                 ],
                               ),
                             ),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              key: const ValueKey('db-result-horizontal'),
-                              controller: _horizontal,
-                              scrollDirection: Axis.horizontal,
-                              child: SizedBox(
-                                width: (total < available ? available : total).toDouble(),
-                                child: Column(
-                                  children: [
-                                    SizedBox(
-                                      height: 44,
-                                      child: Stack(
-                                        children: [
-                                          for (final column in visible)
-                                            Positioned(
-                                              left: offsets[column],
-                                              top: 0,
-                                              width: width(column),
-                                              child: _header(column, width(column)),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: ListView.builder(
-                                        key: const ValueKey('db-result-grid'),
-                                        controller: _vertical,
-                                        itemExtent: 40,
-                                        itemCount: _count,
-                                        itemBuilder: (context, index) {
-                                          final row = _row(index);
-                                          return ColoredBox(
-                                            color: _selected.contains(row)
-                                                ? Theme.of(context).colorScheme.primary.withValues(alpha: .15)
-                                                : Colors.transparent,
-                                            child: Stack(
-                                              children: [
-                                                for (final column in visible)
-                                                  Positioned(
-                                                    left: offsets[column],
-                                                    width: width(column),
-                                                    top: 0,
-                                                    child: _cell(row, column),
-                                                  ),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
                           ),
-                        ],
-                      ),
-              ),
-              if (widget.result.hasMore)
-                TextButton(
+                        ),
+                      ],
+                    ),
+            ),
+            if (widget.result.hasMore)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: GlassButton.plain(
                   key: const ValueKey('db-result-more'),
+                  label: l.dbLoadMore,
                   onPressed: widget.loadingMore ? null : widget.onMore,
-                  child: Text(l.dbLoadMore),
                 ),
-            ],
-          ),
+              ),
+          ],
         );
       },
     );
@@ -517,9 +747,10 @@ class _DbResultGridState extends State<DbResultGrid> {
 /// Pinned cells follow the one authoritative vertical viewport without sharing
 /// a ScrollPosition (which would break offset reads and wheel/drag scrolling).
 class _PinnedRows extends StatefulWidget {
-  const _PinnedRows({required this.controller, required this.rowCount, required this.builder});
+  const _PinnedRows({required this.controller, required this.rowCount, required this.extent, required this.builder});
   final ScrollController controller;
   final int rowCount;
+  final double extent;
   final Widget Function(int) builder;
   @override
   State<_PinnedRows> createState() => _PinnedRowsState();
@@ -558,7 +789,7 @@ class _PinnedRowsState extends State<_PinnedRows> {
     });
     return ListView.builder(
       controller: _controller,
-      itemExtent: 40,
+      itemExtent: widget.extent,
       itemCount: widget.rowCount,
       itemBuilder: (_, i) => widget.builder(i),
     );

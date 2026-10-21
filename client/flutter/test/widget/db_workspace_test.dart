@@ -60,9 +60,46 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiS
       _session(production: production, readOnly: readOnly);
   @override
   Future<void> disconnect(String sessionId) async => disconnected.add(sessionId);
+  bool mixedTree = false;
   @override
   Future<DbTreePage> tree(String sessionId, {DbObjectRef? parent, String? cursor, bool refresh = false}) async {
     treeParents.add(parent);
+    if (mixedTree) {
+      return DbTreePage(
+        nodes: parent == null
+            ? const [
+                DbTreeNode(
+                  reference: DbObjectRef(database: 'fixture', kind: DbObjectKind.table, name: 'items'),
+                  hasChildren: true,
+                ),
+                DbTreeNode(
+                  reference: DbObjectRef(database: 'fixture', kind: DbObjectKind.view, name: 'orders_view'),
+                  hasChildren: false,
+                ),
+              ]
+            : [
+                DbTreeNode(
+                  reference: DbObjectRef(
+                    database: 'fixture',
+                    kind: DbObjectKind.column,
+                    name: 'id',
+                    parentName: parent.name,
+                  ),
+                  hasChildren: false,
+                  primaryKey: true,
+                ),
+                DbTreeNode(
+                  reference: DbObjectRef(
+                    database: 'fixture',
+                    kind: DbObjectKind.indexObject,
+                    name: 'items_pkey',
+                    parentName: parent.name,
+                  ),
+                  hasChildren: false,
+                ),
+              ],
+      );
+    }
     return pendingTree?.future ??
         const DbTreePage(
           nodes: [
@@ -205,6 +242,63 @@ void main() {
     expect(find.text('42'), findsOneWidget);
     expect(service.discarded, ['review']);
   });
+  testWidgets('run button and shortcut take the selection; Alt+X and the script button run everything', (tester) async {
+    final service = _Service();
+    // Releasing the previous query's stream finishes a few frames later.
+    Future<void> finish() async {
+      for (var i = 0; i < 5; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      await settle(tester);
+    }
+
+    await _pump(tester, service);
+    await _type(tester, 'SELECT 1;\nSELECT 2;');
+    final field = tester.widget<TextField>(find.byKey(const ValueKey('db-query-editor')));
+    field.controller!.selection = const TextSelection(baseOffset: 10, extentOffset: 19);
+    await tester.tap(find.byKey(const ValueKey('db-run')));
+    await finish();
+    expect(service.preparations.last.$2, DbRunMode.selection);
+    expect((service.preparations.last.$3, service.preparations.last.$4), (10, 19));
+
+    field.controller!.selection = const TextSelection.collapsed(offset: 3);
+    await tester.tap(find.byKey(const ValueKey('db-query-editor')));
+    await tester.pump();
+    field.controller!.selection = const TextSelection.collapsed(offset: 3);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.alt);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyX);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.alt);
+    await finish();
+    expect(service.preparations.last.$2, DbRunMode.script);
+
+    await tester.tap(find.byKey(const ValueKey('db-run-script')));
+    await finish();
+    expect(service.preparations.last.$2, DbRunMode.script);
+    expect(service.executed, hasLength(3));
+  });
+
+  testWidgets('structure groups mixed children into folders and frames an expanded table', (tester) async {
+    final service = _Service()..mixedTree = true;
+    await _pump(tester, service);
+    expect(find.text('Tables'), findsOneWidget);
+    expect(find.text('Views'), findsOneWidget);
+    expect(find.text('orders_view'), findsNothing, reason: 'only the tables folder starts open');
+    await tester.tap(find.text('Views'));
+    await settle(tester);
+    expect(find.text('orders_view'), findsOneWidget);
+    await tester.tap(find.text('items'));
+    await settle(tester);
+    expect(find.text('Columns'), findsOneWidget);
+    expect(find.text('Indexes'), findsOneWidget);
+    expect(find.text('id'), findsOneWidget);
+    expect(find.text('items_pkey'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('db-tree-collapse')));
+    await settle(tester);
+    expect(find.text('id'), findsNothing);
+    expect(find.text('orders_view'), findsNothing);
+  });
+
   testWidgets('production blocks write review even if a backend mistakenly offers a ticket', (tester) async {
     final service = _Service()..risk = DbQueryRisk.write;
     await _pump(tester, service);

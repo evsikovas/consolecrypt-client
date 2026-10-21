@@ -23,6 +23,7 @@ final class SftpState {
     this.dirs = const {},
     this.expanded = const {},
     this.loading = const {},
+    this.failed = const {},
     this.selection = const {},
     this.anchor,
     this.cursor,
@@ -52,6 +53,10 @@ final class SftpState {
   /// Folders being listed.
   final Set<String> loading;
 
+  /// Folders whose last listing failed (e.g. `forbidden` for a folder the
+  /// SSH user may not read); cleared when a listing succeeds.
+  final Map<String, AppException> failed;
+
   /// Selected remote paths.
   final Set<String> selection;
 
@@ -77,6 +82,9 @@ final class SftpState {
 
   bool get isLoadingCurrent => loading.contains(remotePath) && !dirs.containsKey(remotePath);
 
+  /// Why the current folder could not be listed (shown instead of the list).
+  AppException? get currentFailure => loading.contains(remotePath) ? null : failed[remotePath];
+
   /// Every loaded entry by path (current folder + expanded subfolders).
   Map<String, RemoteFileInfo> get entriesByPath => {
     for (final list in dirs.values)
@@ -98,6 +106,7 @@ final class SftpState {
     Map<String, List<RemoteFileInfo>>? dirs,
     Set<String>? expanded,
     Set<String>? loading,
+    Map<String, AppException>? failed,
     Set<String>? selection,
     Object? anchor = _keep,
     Object? cursor = _keep,
@@ -117,6 +126,7 @@ final class SftpState {
     dirs: dirs ?? this.dirs,
     expanded: expanded ?? this.expanded,
     loading: loading ?? this.loading,
+    failed: failed ?? this.failed,
     selection: selection ?? this.selection,
     anchor: identical(anchor, _keep) ? this.anchor : anchor as String?,
     cursor: identical(cursor, _keep) ? this.cursor : cursor as String?,
@@ -192,7 +202,9 @@ class SftpController extends Notifier<SftpState> {
 
   // Connection -------------------------------------------------------------------
 
-  Future<void> connect(Host host) async {
+  /// Opens [host]; with [path] the browser starts there instead of the home
+  /// folder (see [reveal]).
+  Future<void> connect(Host host, {String? path}) async {
     await disconnect();
     final generation = ++_generation;
     state = SftpState(host: host, connecting: true, prefs: state.prefs);
@@ -209,14 +221,45 @@ class SftpController extends Notifier<SftpState> {
       state = state.copyWith(
         session: session,
         home: home,
-        remotePath: home,
+        remotePath: path ?? home,
+        // Shown as loading while [reveal] checks whether [path] is a file.
+        loading: {?path},
         localPath: localHome,
         prefs: prefs,
         connecting: false,
       );
-      await Future.wait([_load(home), refreshLocal()]);
+      await Future.wait([if (path == null) _load(home) else reveal(path), refreshLocal()]);
     } on AppException catch (e) {
       if (generation == _generation) state = state.copyWith(connecting: false, error: e);
+    }
+  }
+
+  /// Shows [path] of [host]: in the open session when the browser is
+  /// already connected to that host, otherwise through a new connection.
+  Future<void> openHostPath(Host host, String path) async {
+    if (state.isConnected && state.host?.id == host.id) return reveal(path);
+    return connect(host, path: path);
+  }
+
+  /// Opens folder [path], or for a file its parent folder with the file
+  /// selected. A path that cannot be checked is opened as a folder, so the
+  /// list shows why it cannot be read (e.g. permission denied).
+  Future<void> reveal(String path) async {
+    final session = state.session;
+    if (session == null) return;
+    final generation = _generation;
+    RemoteFileInfo? info;
+    try {
+      info = await _browser.stat(session, path);
+    } on AppException {
+      info = null;
+    }
+    if (generation != _generation) return;
+    if (state.loading.contains(path)) state = state.copyWith(loading: {...state.loading}..remove(path));
+    if (info != null && !info.isDirectory && path != '/') {
+      await navigateTo(parentRemotePath(path), select: path);
+    } else {
+      await navigateTo(path);
     }
   }
 
@@ -242,6 +285,7 @@ class SftpController extends Notifier<SftpState> {
       state = state.copyWith(
         dirs: {...state.dirs, path: entries},
         loading: {...state.loading}..remove(path),
+        failed: state.failed.containsKey(path) ? ({...state.failed}..remove(path)) : null,
         error: path == state.remotePath ? null : state.error,
       );
     } on AppException catch (e) {
@@ -250,6 +294,7 @@ class SftpController extends Notifier<SftpState> {
         dirs: {...state.dirs}..remove(path),
         loading: {...state.loading}..remove(path),
         expanded: {...state.expanded}..remove(path),
+        failed: {...state.failed, path: e},
         error: e,
       );
     }

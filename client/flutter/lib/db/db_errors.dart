@@ -14,6 +14,16 @@ String dbFailureText(Object error, AppLocalizations l) => switch (dbFailureCode(
   'timeout' => l.dbErrorTimeout,
   'policy_denied' => l.dbQueryBlocked,
   'route_unavailable' || 'connection_unavailable' => l.dbErrorRoute,
+  'kube_unreachable' => l.dbErrorKubeUnreachable,
+  'kube_target_missing' => l.dbErrorKubeTarget,
+  'kube_access_denied' => l.dbErrorKubeDenied,
+  'kube_forward_blocked' => l.kubeForwardProductionBlocked,
+  'kube_forward_failed' => l.dbErrorKubeForward,
+  'tunnel_failed' => l.dbErrorTunnel,
+  'tunnel_unsupported' => l.dbErrorTunnelKind,
+  'docker_unreachable' => l.dbErrorDockerUnreachable,
+  'docker_container_missing' => l.dbErrorDockerContainer,
+  'docker_forward_failed' => l.dbErrorDockerForward,
   _ => l.dbFailed,
 };
 

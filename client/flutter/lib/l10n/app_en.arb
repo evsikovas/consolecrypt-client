@@ -12328,5 +12328,195 @@
   "dbStatusReady": "Ready",
   "@dbStatusReady": {
     "description": "Database status bar: idle state."
+  },
+  "dbRunStatementHelp": "Run the selection, or the statement under the cursor ({shortcut})",
+  "@dbRunStatementHelp": {
+    "description": "Database editor: tooltip of the Run button.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
+  "dbRunScriptHelp": "Run the whole script statement by statement ({shortcut})",
+  "@dbRunScriptHelp": {
+    "description": "Database editor: tooltip of the Run script button.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
+  "dbFolderTables": "Tables",
+  "@dbFolderTables": {
+    "description": "Database structure tree: group of tables and collections."
+  },
+  "dbFolderViews": "Views",
+  "@dbFolderViews": {
+    "description": "Database structure tree: group of views and materialized views."
+  },
+  "dbFolderFunctions": "Functions",
+  "@dbFolderFunctions": {
+    "description": "Database structure tree: group of functions and procedures."
+  },
+  "dbFolderSequences": "Sequences",
+  "@dbFolderSequences": {
+    "description": "Database structure tree: group of sequences."
+  },
+  "dbFolderDictionaries": "Dictionaries",
+  "@dbFolderDictionaries": {
+    "description": "Database structure tree: group of ClickHouse dictionaries."
+  },
+  "dbFolderColumns": "Columns",
+  "@dbFolderColumns": {
+    "description": "Database structure tree: group of table columns."
+  },
+  "dbFolderIndexes": "Indexes",
+  "@dbFolderIndexes": {
+    "description": "Database structure tree: group of table indexes."
+  },
+  "dbFolderConstraints": "Constraints",
+  "@dbFolderConstraints": {
+    "description": "Database structure tree: group of table constraints."
+  },
+  "dbFolderTriggers": "Triggers",
+  "@dbFolderTriggers": {
+    "description": "Database structure tree: group of table triggers."
+  },
+  "dbFolderProjections": "Projections",
+  "@dbFolderProjections": {
+    "description": "Database structure tree: group of ClickHouse projections."
+  },
+  "dbCollapseAll": "Collapse all",
+  "@dbCollapseAll": {
+    "description": "Database structure tree: collapse every expanded node."
+  },
+  "dockerConnectDatabaseHelp": "Open the {engine} database of this container in Databases",
+  "@dockerConnectDatabaseHelp": {
+    "description": "Docker: tooltip of the Connect to database action.",
+    "placeholders": {
+      "engine": {
+        "type": "String"
+      }
+    }
+  },
+  "dbRouteKubernetes": "Kubernetes: {name}",
+  "@dbRouteKubernetes": {
+    "description": "Connection route option: port-forward through the named Kubernetes context.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbContainerPort": "Container port",
+  "@dbContainerPort": {
+    "description": "Port field label when the database is reached through a Kubernetes port-forward."
+  },
+  "dbKubeTarget": "Forward to",
+  "@dbKubeTarget": {
+    "description": "Kind of Kubernetes object (Pod, Service, Deployment, StatefulSet) the database port-forward targets."
+  },
+  "dbKubeTargetName": "Object name",
+  "@dbKubeTargetName": {
+    "description": "Name of the Kubernetes Pod, Service, Deployment or StatefulSet the database port-forward targets."
+  },
+  "dbKubeRouteHelp": "The port-forward is restored on every connect, or a running one is reused. Services and Deployments use a ready pod, so the connection survives pod restarts.",
+  "@dbKubeRouteHelp": {
+    "description": "Help under the Kubernetes route fields of a database connection."
+  },
+  "dbErrorKubeUnreachable": "Cannot reach the Kubernetes cluster to restore the port-forward: check the context, the network and your sign-in.",
+  "@dbErrorKubeUnreachable": {
+    "description": "Database connect error: the Kubernetes cluster of the connection route is unreachable."
+  },
+  "dbErrorKubeTarget": "The pod for the port-forward was not found: check the namespace and the object name in the connection route.",
+  "@dbErrorKubeTarget": {
+    "description": "Database connect error: the Kubernetes pod/service/workload of the route does not exist or has no pods."
+  },
+  "dbErrorKubeDenied": "The cluster denied access to the pod or its port-forward.",
+  "@dbErrorKubeDenied": {
+    "description": "Database connect error: Kubernetes RBAC denied reading the target or port-forwarding."
+  },
+  "dbErrorKubeForward": "Could not start the port-forward: stop unused forwards and try again.",
+  "@dbErrorKubeForward": {
+    "description": "Database connect error: the local Kubernetes port-forward could not be started."
+  },
+  "dbRouteKubeHint": "Kubernetes port-forward, restored on connect",
+  "@dbRouteKubeHint": {
+    "description": "Tooltip on a saved database connection reached through a Kubernetes port-forward."
+  },
+  "dbRouteTunnel": "Tunnel: {name}",
+  "@dbRouteTunnel": {
+    "description": "Connection route option: the named saved SSH local-forward tunnel.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbRouteDocker": "Docker container",
+  "@dbRouteDocker": {
+    "description": "Connection route option: a port-forward to a Docker container, restored on connect."
+  },
+  "dbDockerEngine": "Docker engine",
+  "@dbDockerEngine": {
+    "description": "Label of the selector of the Docker engine (this computer or an SSH host) for a database route."
+  },
+  "dbDockerContainer": "Container name",
+  "@dbDockerContainer": {
+    "description": "Label of the Docker container name field of a database route."
+  },
+  "dbDockerRouteHelp": "The port-forward to the container is restored on every connect, or a running one is reused. The container is found by name, so a re-created container still works.",
+  "@dbDockerRouteHelp": {
+    "description": "Help under the Docker route fields of a database connection."
+  },
+  "dbTunnelRouteHelp": "The saved tunnel is started on connect when it is not running. The address and port are the tunnel target.",
+  "@dbTunnelRouteHelp": {
+    "description": "Help under the route selector when a saved SSH tunnel is chosen for a database connection."
+  },
+  "dbUseTunnel": "Use the saved tunnel “{name}”",
+  "@dbUseTunnel": {
+    "description": "Button offered when a direct loopback address matches the local port of a saved tunnel.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbErrorTunnel": "Could not start the saved tunnel: check its SSH host in Tunnels.",
+  "@dbErrorTunnel": {
+    "description": "Database connect error: the saved SSH tunnel of the route failed to start."
+  },
+  "dbErrorTunnelKind": "Only a local port-forward tunnel can carry a database connection.",
+  "@dbErrorTunnelKind": {
+    "description": "Database connect error: the route's saved tunnel is not a local forward."
+  },
+  "dbErrorDockerUnreachable": "Cannot reach the Docker engine to restore the port-forward: check that it is running and the SSH host.",
+  "@dbErrorDockerUnreachable": {
+    "description": "Database connect error: the Docker engine of the route is unreachable."
+  },
+  "dbErrorDockerContainer": "The container was not found or is not running: check its name in the connection route.",
+  "@dbErrorDockerContainer": {
+    "description": "Database connect error: the Docker container of the route does not exist or has no reachable port."
+  },
+  "dbErrorDockerForward": "Could not start the Docker port-forward: stop unused forwards and try again.",
+  "@dbErrorDockerForward": {
+    "description": "Database connect error: the local Docker port-forward could not be started."
+  },
+  "dockerOpenInSftp": "Open in SFTP",
+  "@dockerOpenInSftp": {
+    "description": "Docker mounts and volumes: tooltip of a host path that opens the SFTP browser of the same SSH host at that folder."
+  },
+  "dockerVolumeInVm": "This volume is stored inside the Docker virtual machine, so its folder can't be opened from this computer.",
+  "@dockerVolumeInVm": {
+    "description": "Docker: tooltip of a named volume that lives inside the Docker VM on macOS/Windows."
+  },
+  "dbRouteTunnelHint": "Saved SSH tunnel, started on connect",
+  "@dbRouteTunnelHint": {
+    "description": "Databases list: tooltip of a connection that goes through a saved tunnel."
+  },
+  "dbRouteDockerHint": "Docker port forward, restored on connect",
+  "@dbRouteDockerHint": {
+    "description": "Databases list: tooltip of a connection that goes through a Docker container forward."
   }
 }

@@ -38,6 +38,21 @@ pub(crate) fn validate_refs(ws: &WorkingSet, obj: &VaultObject) -> AppResult<()>
                     exists(ws, *jump_profile_id, ObjectKind::JumpProfile, "route")?
                 }
                 DbRoute::Proxy { proxy_id } => exists(ws, *proxy_id, ObjectKind::Proxy, "route")?,
+                DbRoute::Kubernetes { context_id, .. } => {
+                    exists(ws, *context_id, ObjectKind::KubeContext, "route")?
+                }
+                DbRoute::Tunnel { tunnel_id } => match ws.tunnel(*tunnel_id) {
+                    Some(tunnel) if tunnel.kind == cc_models::tunnel::TunnelKind::Local => {}
+                    Some(_) => {
+                        return Err(AppError::invalid("route", "tunnel must be a local forward"))
+                    }
+                    None => exists(ws, *tunnel_id, ObjectKind::Tunnel, "route")?,
+                },
+                DbRoute::Docker { host_id, .. } => {
+                    if let Some(id) = host_id {
+                        exists(ws, *id, ObjectKind::Host, "route")?
+                    }
+                }
             }
             if let Some(id) = connection.group_id {
                 exists(ws, id, ObjectKind::Group, "group_id")?;
@@ -490,6 +505,8 @@ impl AppCore {
 
     pub async fn delete_tunnel(&self, id: String) -> AppResult<()> {
         let (id, u) = self.delete_object(&id, ObjectKind::Tunnel).await?;
+        // Database connections may be routed through this tunnel.
+        ensure_unreferenced(u.working(), id, "tunnel")?;
         let _ = u.ssh.tunnels.stop(id).await;
         u.writer.delete(id).await
     }

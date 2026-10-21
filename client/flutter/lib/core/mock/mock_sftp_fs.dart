@@ -391,6 +391,13 @@ MockFsNode mockRemoteTree(String user) {
         ],
       ),
       MockFsNode.dir('home', children: [home]),
+      // Bind-mounted into the demo Docker `web` container (mock_docker.dart).
+      MockFsNode.dir(
+        'srv',
+        children: [
+          MockFsNode.dir('shop', children: [MockFsNode.file('nginx.conf', text: _nginxConf, ageHours: 300)]),
+        ],
+      ),
       MockFsNode.dir('tmp', mode: '1777', ageHours: 0),
       MockFsNode.dir(
         'usr',
@@ -424,6 +431,29 @@ MockFsNode mockRemoteTree(String user) {
             ],
           ),
           MockFsNode.dir('www', children: [html]),
+          // Docker data: only root may enter (volumes opened from the Docker section).
+          MockFsNode.dir(
+            'lib',
+            children: [
+              MockFsNode.dir(
+                'docker',
+                mode: '710',
+                children: [
+                  MockFsNode.dir(
+                    'volumes',
+                    children: [
+                      MockFsNode.dir(
+                        'shop_data',
+                        children: [
+                          MockFsNode.dir('_data', children: [MockFsNode.file('PG_VERSION', text: '16\n')]),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
         ],
       ),
     ],

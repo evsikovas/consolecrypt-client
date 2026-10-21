@@ -453,7 +453,10 @@ async fn clickhouse_introspection_explain_and_completion() {
     assert!(dev.ddl(&table).await.unwrap().contains("CREATE TABLE"));
     assert_eq!(
         dev.object_query(&table, 5).await.unwrap(),
-        format!("SELECT * FROM `{}`.`cc_intro` LIMIT 5", connection.database)
+        format!(
+            "SELECT * FROM `{}`.`cc_intro` LIMIT 5;",
+            connection.database
+        )
     );
     let plan = dev
         .explain(&request("SELECT title FROM cc_intro WHERE id = 1"), false)

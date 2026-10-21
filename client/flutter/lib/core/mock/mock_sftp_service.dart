@@ -8,11 +8,15 @@ import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 
 final class MockSftpConnection {
-  MockSftpConnection(this.hostId, this.root, this.home);
+  MockSftpConnection(this.hostId, this.root, this.home, {this.user = 'root'});
 
   final ObjectId hostId;
   final MockFsNode root;
   final String home;
+
+  /// The SSH user; anyone but `root` gets the "other" permission bits of
+  /// folders owned by someone else.
+  final String user;
 }
 
 final class _TransferSpec {
@@ -91,7 +95,7 @@ final class MockSftpService implements SftpService {
     final user = effective.username.value ?? 'root';
     final root = _remoteByHost.putIfAbsent(hostId, () => mockRemoteTree(user));
     final id = SftpSessionId.generate();
-    _sessions[id] = MockSftpConnection(hostId, root, '/home/$user');
+    _sessions[id] = MockSftpConnection(hostId, root, '/home/$user', user: user);
     return id;
   }
 

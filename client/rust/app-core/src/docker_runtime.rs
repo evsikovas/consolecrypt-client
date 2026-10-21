@@ -177,6 +177,40 @@ impl DockerRuntime {
         }
     }
 
+    /// Live sessions to an engine (None: this computer).
+    pub(crate) fn session_ids(&self, host: Option<ObjectId>) -> Vec<String> {
+        self.sessions
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .filter(|(_, live)| live.host_id == host && !live.cancel.is_cancelled())
+            .map(|(id, _)| id.clone())
+            .collect()
+    }
+
+    /// The address of a running forward of one of `sessions` to a port of
+    /// the named container.
+    pub(crate) fn running_forward(
+        &self,
+        sessions: &[String],
+        container: &str,
+        remote_port: u16,
+    ) -> Option<String> {
+        self.forwards
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .values()
+            .filter(|forward| !forward.cancel.is_cancelled())
+            .map(|forward| forward.snapshot())
+            .find(|info| {
+                info.state == "running"
+                    && sessions.contains(&info.session_id)
+                    && info.container_name == container
+                    && info.remote_port == remote_port
+            })
+            .map(|info| info.address)
+    }
+
     fn session(&self, id: &str) -> AppResult<Arc<LiveDocker>> {
         self.sessions
             .lock()

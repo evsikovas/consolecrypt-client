@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
+import 'package:consolecrypt/docker/docker_host_path.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -141,7 +142,19 @@ class DockerVolumeListState extends ConsumerState<DockerVolumeList> {
                                 style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
                               ),
                               const SizedBox(height: 2),
-                              SelectableText('${volume.driver} · ${volume.mountpoint}', style: mono),
+                              Row(
+                                children: [
+                                  if (volume.driver.isNotEmpty) Text('${volume.driver} · ', style: mono),
+                                  Flexible(
+                                    child: DockerHostPathLink(
+                                      session: widget.session,
+                                      path: volume.mountpoint,
+                                      volume: true,
+                                      style: mono,
+                                    ),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 4),
                               Wrap(
                                 spacing: 6,

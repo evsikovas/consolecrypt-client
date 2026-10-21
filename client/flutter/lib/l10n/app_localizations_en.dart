@@ -8974,4 +8974,144 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbStatusReady => 'Ready';
+
+  @override
+  String dbRunStatementHelp(String shortcut) {
+    return 'Run the selection, or the statement under the cursor ($shortcut)';
+  }
+
+  @override
+  String dbRunScriptHelp(String shortcut) {
+    return 'Run the whole script statement by statement ($shortcut)';
+  }
+
+  @override
+  String get dbFolderTables => 'Tables';
+
+  @override
+  String get dbFolderViews => 'Views';
+
+  @override
+  String get dbFolderFunctions => 'Functions';
+
+  @override
+  String get dbFolderSequences => 'Sequences';
+
+  @override
+  String get dbFolderDictionaries => 'Dictionaries';
+
+  @override
+  String get dbFolderColumns => 'Columns';
+
+  @override
+  String get dbFolderIndexes => 'Indexes';
+
+  @override
+  String get dbFolderConstraints => 'Constraints';
+
+  @override
+  String get dbFolderTriggers => 'Triggers';
+
+  @override
+  String get dbFolderProjections => 'Projections';
+
+  @override
+  String get dbCollapseAll => 'Collapse all';
+
+  @override
+  String dockerConnectDatabaseHelp(String engine) {
+    return 'Open the $engine database of this container in Databases';
+  }
+
+  @override
+  String dbRouteKubernetes(String name) {
+    return 'Kubernetes: $name';
+  }
+
+  @override
+  String get dbContainerPort => 'Container port';
+
+  @override
+  String get dbKubeTarget => 'Forward to';
+
+  @override
+  String get dbKubeTargetName => 'Object name';
+
+  @override
+  String get dbKubeRouteHelp =>
+      'The port-forward is restored on every connect, or a running one is reused. Services and Deployments use a ready pod, so the connection survives pod restarts.';
+
+  @override
+  String get dbErrorKubeUnreachable =>
+      'Cannot reach the Kubernetes cluster to restore the port-forward: check the context, the network and your sign-in.';
+
+  @override
+  String get dbErrorKubeTarget =>
+      'The pod for the port-forward was not found: check the namespace and the object name in the connection route.';
+
+  @override
+  String get dbErrorKubeDenied => 'The cluster denied access to the pod or its port-forward.';
+
+  @override
+  String get dbErrorKubeForward => 'Could not start the port-forward: stop unused forwards and try again.';
+
+  @override
+  String get dbRouteKubeHint => 'Kubernetes port-forward, restored on connect';
+
+  @override
+  String dbRouteTunnel(String name) {
+    return 'Tunnel: $name';
+  }
+
+  @override
+  String get dbRouteDocker => 'Docker container';
+
+  @override
+  String get dbDockerEngine => 'Docker engine';
+
+  @override
+  String get dbDockerContainer => 'Container name';
+
+  @override
+  String get dbDockerRouteHelp =>
+      'The port-forward to the container is restored on every connect, or a running one is reused. The container is found by name, so a re-created container still works.';
+
+  @override
+  String get dbTunnelRouteHelp =>
+      'The saved tunnel is started on connect when it is not running. The address and port are the tunnel target.';
+
+  @override
+  String dbUseTunnel(String name) {
+    return 'Use the saved tunnel “$name”';
+  }
+
+  @override
+  String get dbErrorTunnel => 'Could not start the saved tunnel: check its SSH host in Tunnels.';
+
+  @override
+  String get dbErrorTunnelKind => 'Only a local port-forward tunnel can carry a database connection.';
+
+  @override
+  String get dbErrorDockerUnreachable =>
+      'Cannot reach the Docker engine to restore the port-forward: check that it is running and the SSH host.';
+
+  @override
+  String get dbErrorDockerContainer =>
+      'The container was not found or is not running: check its name in the connection route.';
+
+  @override
+  String get dbErrorDockerForward => 'Could not start the Docker port-forward: stop unused forwards and try again.';
+
+  @override
+  String get dockerOpenInSftp => 'Open in SFTP';
+
+  @override
+  String get dockerVolumeInVm =>
+      'This volume is stored inside the Docker virtual machine, so its folder can\'t be opened from this computer.';
+
+  @override
+  String get dbRouteTunnelHint => 'Saved SSH tunnel, started on connect';
+
+  @override
+  String get dbRouteDockerHint => 'Docker port forward, restored on connect';
 }

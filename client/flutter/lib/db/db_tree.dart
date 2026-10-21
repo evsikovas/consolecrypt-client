@@ -51,6 +51,68 @@ final class _Branch {
   int generation = 0;
 }
 
+/// Client-side groups of a node's children, like the folders of the classic
+/// SQL clients' navigators. Only shown when a node has several kinds.
+enum _Folder { tables, views, functions, sequences, dictionaries, columns, indexes, constraints, triggers, projections }
+
+_Folder? _folderOf(DbObjectKind kind) => switch (kind) {
+  DbObjectKind.table || DbObjectKind.collection => _Folder.tables,
+  DbObjectKind.view || DbObjectKind.materializedView => _Folder.views,
+  DbObjectKind.function || DbObjectKind.procedure => _Folder.functions,
+  DbObjectKind.sequence => _Folder.sequences,
+  DbObjectKind.dictionary => _Folder.dictionaries,
+  DbObjectKind.column => _Folder.columns,
+  DbObjectKind.indexObject => _Folder.indexes,
+  DbObjectKind.constraint => _Folder.constraints,
+  DbObjectKind.trigger => _Folder.triggers,
+  DbObjectKind.projection => _Folder.projections,
+  _ => null,
+};
+
+String _folderLabel(AppLocalizations l, _Folder folder) => switch (folder) {
+  _Folder.tables => l.dbFolderTables,
+  _Folder.views => l.dbFolderViews,
+  _Folder.functions => l.dbFolderFunctions,
+  _Folder.sequences => l.dbFolderSequences,
+  _Folder.dictionaries => l.dbFolderDictionaries,
+  _Folder.columns => l.dbFolderColumns,
+  _Folder.indexes => l.dbFolderIndexes,
+  _Folder.constraints => l.dbFolderConstraints,
+  _Folder.triggers => l.dbFolderTriggers,
+  _Folder.projections => l.dbFolderProjections,
+};
+
+/// Folders that start open: the ones people reach for first.
+const _openByDefault = {_Folder.tables, _Folder.columns};
+
+/// Expanded objects whose contents are framed as one highlighted block.
+const _blockKinds = {
+  DbObjectKind.table,
+  DbObjectKind.view,
+  DbObjectKind.materializedView,
+  DbObjectKind.collection,
+  DbObjectKind.dictionary,
+};
+
+const _rowHeight = 26.0, _indentStep = 14.0;
+double _indent(int depth) => 6.0 + depth * _indentStep;
+
+/// One visible line: an object, a folder or a "load more"/progress line.
+final class _Row {
+  _Row({required this.depth, required this.parent, this.node, this.folder, this.folderId, this.count = 0});
+  final int depth;
+  final DbObjectRef? parent;
+  final DbTreeNode? node;
+  final _Folder? folder;
+  final String? folderId;
+  final int count;
+
+  /// The expanded object block this line belongs to (id and depth).
+  String? block;
+  int blockDepth = 0;
+  bool blockStart = false, blockEnd = false;
+}
+
 class DbObjectTree extends ConsumerStatefulWidget {
   const DbObjectTree({
     required this.session,
@@ -71,6 +133,7 @@ class DbObjectTree extends ConsumerStatefulWidget {
 class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
   late final DbScope _scope = ref.read(dbScopeProvider);
   final _branches = <String, _Branch>{}, _expanded = <String>{};
+  final _folders = <String, bool>{};
   String _filter = '';
   String? _selected;
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(dbScopeProvider));
@@ -183,21 +246,73 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
     }
   }
 
-  List<(DbTreeNode?, DbObjectRef?, int)> _visible() {
-    final rows = <(DbTreeNode?, DbObjectRef?, int)>[];
-    void walk(DbObjectRef? parent, int depth) {
+  List<_Row> _visible() {
+    final rows = <_Row>[];
+    bool matches(DbTreeNode node) => _filter.isEmpty || node.reference.name.toLowerCase().contains(_filter);
+    void walk(DbObjectRef? parent, int depth, String? block, int blockDepth) {
       final branch = _branches[parent?.id ?? ''];
-      if (branch == null || depth > 12) return;
-      for (final node in branch.nodes) {
-        final matches = _filter.isEmpty || node.reference.name.toLowerCase().contains(_filter);
-        // Keep expanded ancestors visible so search never hides navigation.
-        if (matches || _expanded.contains(node.reference.id)) rows.add((node, parent, depth));
-        if (_expanded.contains(node.reference.id)) walk(node.reference, depth + 1);
+      if (branch == null || depth > 16) return;
+      _Row add(_Row row) {
+        row
+          ..block = block
+          ..blockDepth = blockDepth;
+        rows.add(row);
+        return row;
       }
-      if (branch.loading || branch.failed || branch.cursor != null) rows.add((null, parent, depth));
+
+      void emit(DbTreeNode node, int at) {
+        final object = node.reference, open = _expanded.contains(object.id);
+        // Keep expanded ancestors visible so search never hides navigation.
+        if (!matches(node) && !open) return;
+        final row = add(_Row(depth: at, parent: parent, node: node));
+        if (!open) return;
+        if (_blockKinds.contains(object.kind)) {
+          row
+            ..block = object.id
+            ..blockDepth = at;
+          walk(object, at + 1, object.id, at);
+        } else {
+          walk(object, at + 1, block, blockDepth);
+        }
+      }
+
+      final groups = <_Folder?, List<DbTreeNode>>{};
+      for (final node in branch.nodes) {
+        groups.putIfAbsent(_folderOf(node.reference.kind), () => []).add(node);
+      }
+      final folders = groups.keys.whereType<_Folder>().toList()..sort((a, b) => a.index.compareTo(b.index));
+      for (final node in groups[null] ?? const <DbTreeNode>[]) {
+        emit(node, depth);
+      }
+      if (folders.length < 2) {
+        for (final folder in folders) {
+          for (final node in groups[folder]!) {
+            emit(node, depth);
+          }
+        }
+      } else {
+        for (final folder in folders) {
+          final children = groups[folder]!, id = '${parent?.id ?? ''}#${folder.name}';
+          if (_filter.isNotEmpty && !children.any((n) => matches(n) || _expanded.contains(n.reference.id))) continue;
+          add(_Row(depth: depth, parent: parent, folder: folder, folderId: id, count: children.length));
+          if (_filter.isNotEmpty || (_folders[id] ?? _openByDefault.contains(folder))) {
+            for (final node in children) {
+              emit(node, depth + 1);
+            }
+          }
+        }
+      }
+      if (branch.loading || branch.failed || branch.cursor != null) add(_Row(depth: depth, parent: parent));
     }
 
-    walk(null, 0);
+    walk(null, 0, null, 0);
+    for (var i = 0; i < rows.length; i++) {
+      final block = rows[i].block;
+      if (block == null) continue;
+      rows[i]
+        ..blockStart = i == 0 || rows[i - 1].block != block
+        ..blockEnd = i == rows.length - 1 || rows[i + 1].block != block;
+    }
     return rows;
   }
 
@@ -232,11 +347,176 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
     if (!expanded) unawaited(_load(object));
   }
 
+  Widget _line(BuildContext context, _Row row) {
+    final l = context.l10n, tokens = GlassTokens.of(context), p = tokens.palette;
+    final node = row.node, indent = _indent(row.depth);
+    Widget chevron(bool open) => SizedBox(
+      width: 16,
+      child: Icon(
+        open ? Icons.expand_more_rounded : Icons.chevron_right_rounded,
+        size: 16,
+        color: tokens.secondaryLabel,
+      ),
+    );
+    Widget decorated(Widget child) => CustomPaint(
+      painter: _RowDecor(
+        row: row,
+        guide: tokens.surfaces.separator,
+        block: tokens.surfaces.fillField,
+        accent: p.accent.withValues(alpha: .55),
+      ),
+      child: child,
+    );
+    if (row.folder case final folder?) {
+      final id = row.folderId!, open = _filter.isNotEmpty || (_folders[id] ?? _openByDefault.contains(folder));
+      return decorated(
+        GlassInteractive(
+          key: ValueKey('db-folder-$id'),
+          semanticLabel: _folderLabel(l, folder),
+          onPressed: () => setState(() => _folders[id] = !open),
+          builder: (context, state) => DecoratedBox(
+            decoration: ShapeDecoration(
+              color: state.hovered ? tokens.surfaces.fillHover : Colors.transparent,
+              shape: GlassRadii.shape(tokens.radii.row),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(left: indent, right: GlassSpacing.s6),
+              child: Row(
+                children: [
+                  chevron(open),
+                  const SizedBox(width: 4),
+                  Icon(
+                    open ? Icons.folder_open_outlined : Icons.folder_outlined,
+                    size: 15,
+                    color: tokens.secondaryLabel,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _folderLabel(l, folder),
+                    style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                  ),
+                  const SizedBox(width: 6),
+                  Text('${row.count}', style: tokens.typography.caption.copyWith(color: p.tertiary)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    if (node == null) {
+      final branch = _branches[row.parent?.id ?? '']!;
+      return decorated(
+        Padding(
+          padding: EdgeInsets.only(left: indent + 20),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: branch.loading
+                ? const SizedBox(width: 80, child: LinearProgressIndicator(minHeight: 2))
+                : GlassButton.plain(
+                    label: branch.failed ? l.commonRetry : l.dbLoadMore,
+                    onPressed: () => _load(row.parent, more: branch.cursor != null, refresh: branch.failed),
+                  ),
+          ),
+        ),
+      );
+    }
+    final object = node.reference, expanded = _expanded.contains(object.id), selected = _selected == object.id;
+    return decorated(
+      GestureDetector(
+        onSecondaryTapUp: (details) =>
+            unawaited(_menuAt(object, Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1))),
+        onLongPressStart: (details) =>
+            unawaited(_menuAt(object, Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1))),
+        onDoubleTap: node.hasChildren ? () => _toggle(object) : () => unawaited(_action('insert', object)),
+        child: GlassInteractive(
+          key: ValueKey('db-object-${object.id}'),
+          selected: selected,
+          semanticLabel: object.name,
+          onPressed: () {
+            setState(() => _selected = object.id);
+            widget.onSelect?.call(object);
+            if (node.hasChildren) _toggle(object);
+          },
+          builder: (context, state) => DecoratedBox(
+            decoration: ShapeDecoration(
+              color: selected
+                  ? tokens.sidebarSelection
+                  : state.hovered
+                  ? tokens.surfaces.fillHover
+                  : Colors.transparent,
+              shape: GlassRadii.shape(tokens.radii.row),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(left: indent, right: 2),
+              child: Row(
+                children: [
+                  if (node.hasChildren) chevron(expanded) else const SizedBox(width: 16),
+                  const SizedBox(width: 4),
+                  Icon(
+                    _kindIcon(node),
+                    size: 15,
+                    color: node.primaryKey
+                        ? p.warning
+                        : node.foreignKey != null
+                        ? p.accent
+                        : expanded && _blockKinds.contains(object.kind)
+                        ? p.accent
+                        : tokens.secondaryLabel,
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      object.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          (selected || (expanded && _blockKinds.contains(object.kind))
+                                  ? tokens.typography.bodyEmph
+                                  : tokens.typography.body)
+                              .copyWith(color: selected ? p.accent : p.label),
+                    ),
+                  ),
+                  if (node.detail case final detail? when detail.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        detail,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tokens.typography.caption.copyWith(color: p.tertiary),
+                      ),
+                    ),
+                  ] else
+                    const Spacer(),
+                  if (state.hovered || selected)
+                    GlassMenuButton<String>(
+                      key: ValueKey('db-object-menu-${object.id}'),
+                      entries: _menu(l, object),
+                      onSelected: (value) => unawaited(_action(value, object)),
+                      builder: (context, open) => GlassIconButton(
+                        icon: Icons.more_horiz_rounded,
+                        tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+                        size: 22,
+                        iconSize: 14,
+                        style: GlassIconButtonStyle.plain,
+                        onPressed: open,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.watch(dbScopeProvider);
     if (!_current) return const SizedBox.shrink();
-    final l = context.l10n, tokens = GlassTokens.of(context), p = tokens.palette, rows = _visible();
+    final l = context.l10n, rows = _visible();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -253,9 +533,23 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
                 ),
               ),
               GlassIconButton(
+                key: const ValueKey('db-tree-collapse'),
+                icon: Icons.unfold_less_rounded,
+                tooltip: l.dbCollapseAll,
+                size: 28,
+                iconSize: 16,
+                style: GlassIconButtonStyle.plain,
+                onPressed: () => setState(() {
+                  _expanded.clear();
+                  _folders.clear();
+                }),
+              ),
+              GlassIconButton(
                 key: const ValueKey('db-tree-refresh'),
                 icon: Icons.refresh_rounded,
-                tooltip: l.commonRetry,
+                tooltip: l.dbRefresh,
+                size: 28,
+                iconSize: 16,
                 style: GlassIconButtonStyle.plain,
                 onPressed: () {
                   _expanded.clear();
@@ -273,127 +567,72 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(GlassSpacing.s4, 0, GlassSpacing.s4, GlassSpacing.s8),
               itemCount: rows.length,
-              itemExtent: 28,
-              itemBuilder: (context, index) {
-                final (node, parent, depth) = rows[index];
-                final indent = 8.0 + depth * 14.0;
-                if (node == null) {
-                  final branch = _branches[parent?.id ?? '']!;
-                  return Padding(
-                    padding: EdgeInsets.only(left: indent + 18),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: branch.loading
-                          ? const SizedBox(width: 80, child: LinearProgressIndicator(minHeight: 2))
-                          : GlassButton.plain(
-                              label: branch.failed ? l.commonRetry : l.dbLoadMore,
-                              onPressed: () => _load(parent, more: branch.cursor != null, refresh: branch.failed),
-                            ),
-                    ),
-                  );
-                }
-                final object = node.reference, expanded = _expanded.contains(object.id);
-                final selected = _selected == object.id;
-                return GestureDetector(
-                  onSecondaryTapUp: (details) => unawaited(
-                    _menuAt(object, Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1)),
-                  ),
-                  onLongPressStart: (details) => unawaited(
-                    _menuAt(object, Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1)),
-                  ),
-                  onDoubleTap: node.hasChildren ? () => _toggle(object) : () => unawaited(_action('insert', object)),
-                  child: GlassInteractive(
-                    key: ValueKey('db-object-${object.id}'),
-                    selected: selected,
-                    semanticLabel: object.name,
-                    onPressed: () {
-                      setState(() => _selected = object.id);
-                      widget.onSelect?.call(object);
-                      if (node.hasChildren) _toggle(object);
-                    },
-                    builder: (context, state) => DecoratedBox(
-                      decoration: ShapeDecoration(
-                        color: selected
-                            ? tokens.sidebarSelection
-                            : state.hovered
-                            ? tokens.surfaces.fillHover
-                            : Colors.transparent,
-                        shape: GlassRadii.shape(tokens.radii.row),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.only(left: indent, right: 2),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 16,
-                              child: node.hasChildren
-                                  ? Icon(
-                                      expanded ? Icons.expand_more_rounded : Icons.chevron_right_rounded,
-                                      size: 16,
-                                      color: tokens.secondaryLabel,
-                                    )
-                                  : null,
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              _kindIcon(node),
-                              size: 15,
-                              color: node.primaryKey
-                                  ? p.warning
-                                  : node.foreignKey != null
-                                  ? p.accent
-                                  : tokens.secondaryLabel,
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                object.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: (selected ? tokens.typography.bodyEmph : tokens.typography.body).copyWith(
-                                  color: selected ? p.accent : p.label,
-                                ),
-                              ),
-                            ),
-                            if (node.detail case final detail? when detail.isNotEmpty) ...[
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  detail,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: tokens.typography.caption.copyWith(color: p.tertiary),
-                                ),
-                              ),
-                            ] else
-                              const Spacer(),
-                            if (state.hovered || selected)
-                              GlassMenuButton<String>(
-                                key: ValueKey('db-object-menu-${object.id}'),
-                                entries: _menu(l, object),
-                                onSelected: (value) => unawaited(_action(value, object)),
-                                builder: (context, open) => GlassIconButton(
-                                  icon: Icons.more_horiz_rounded,
-                                  tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
-                                  size: 22,
-                                  iconSize: 14,
-                                  style: GlassIconButtonStyle.plain,
-                                  onPressed: open,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
+              itemExtent: _rowHeight,
+              itemBuilder: (context, index) => _line(context, rows[index]),
             ),
           ),
         ),
       ],
     );
   }
+}
+
+/// Indent guides, and the frame of an expanded table: a tinted band from its
+/// header to its last child with an accent rule along the children.
+class _RowDecor extends CustomPainter {
+  _RowDecor({required this.row, required this.guide, required this.block, required this.accent});
+  final _Row row;
+  final Color guide, block, accent;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final line = Paint()
+      ..color = guide
+      ..strokeWidth = 1;
+    final inBlock = row.block != null;
+    if (inBlock) {
+      final left = _indent(row.blockDepth) - 3;
+      final radius = Radius.circular(row.blockStart || row.blockEnd ? 7 : 0);
+      canvas.drawRRect(
+        RRect.fromLTRBAndCorners(
+          left,
+          0,
+          size.width,
+          size.height,
+          topLeft: row.blockStart ? radius : Radius.zero,
+          topRight: row.blockStart ? radius : Radius.zero,
+          bottomLeft: row.blockEnd ? radius : Radius.zero,
+          bottomRight: row.blockEnd ? radius : Radius.zero,
+        ),
+        Paint()..color = block,
+      );
+      if (!row.blockStart) {
+        final x = _indent(row.blockDepth) + 8;
+        canvas.drawLine(
+          Offset(x, 0),
+          Offset(x, row.blockEnd ? size.height - 6 : size.height),
+          Paint()
+            ..color = accent
+            ..strokeWidth = 1.5,
+        );
+      }
+    }
+    for (var level = 0; level < row.depth; level++) {
+      if (inBlock && level == row.blockDepth) continue;
+      final x = _indent(level) + 8;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), line);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RowDecor old) =>
+      old.row.depth != row.depth ||
+      old.row.block != row.block ||
+      old.row.blockStart != row.blockStart ||
+      old.row.blockEnd != row.blockEnd ||
+      old.guide != guide ||
+      old.block != block ||
+      old.accent != accent;
 }
 
 class DbProtectedTextDialog extends ConsumerStatefulWidget {

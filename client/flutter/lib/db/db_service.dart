@@ -2,9 +2,13 @@ import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/db/db_models.dart';
 
 final class DbRouteChoice {
-  const DbRouteChoice({required this.route, required this.label});
+  const DbRouteChoice({required this.route, required this.label, this.host, this.port, this.localPort});
   final DbRoute route;
   final String label;
+
+  /// A saved tunnel's target (the database address) and its local port.
+  final String? host;
+  final int? port, localPort;
 }
 
 final class DbGroupChoice {

@@ -182,7 +182,8 @@ class _SftpScreenState extends ConsumerState<SftpScreen> {
               onSearchEscape: _onSearchEscape,
             ),
             const Divider(height: 1),
-            if (state.error != null)
+            // A folder that cannot be listed says so in the list itself.
+            if (state.error != null && !identical(state.error, state.currentFailure))
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                 child: InfoBanner(

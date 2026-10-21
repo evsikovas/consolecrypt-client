@@ -52,9 +52,28 @@ final class MockSftpBrowserService implements SftpBrowserService, SftpBrowserDeb
 
   static AppException _notFound(String path) => AppException(AppErrorCode.notFound, 'No such file: $path');
 
+  /// Simulates `permission_denied`: every folder on the way needs the
+  /// search (x) bit, the listed folder itself the read bit, for users other
+  /// than its owner (groups are not modelled).
+  void _checkAccess(SftpSessionId session, String path, {required bool list}) {
+    final connection = _sftp.connection(session);
+    if (connection.user == 'root') return;
+    final parts = path.split('/').where((p) => p.isNotEmpty).toList();
+    for (var i = 0; i <= parts.length; i++) {
+      final last = i == parts.length;
+      if (last && !list) return;
+      final node = mockResolve(connection.root, '/${parts.take(i).join('/')}');
+      if (node == null || !node.isDir || node.owner == connection.user) continue;
+      if (node.mode & (last ? octal('4') : octal('1')) == 0) {
+        throw AppException(AppErrorCode.forbidden, 'Permission denied: $path', args: {'path': path});
+      }
+    }
+  }
+
   @override
   Future<List<RemoteFileInfo>> listDirectory(SftpSessionId session, String path) async {
     await mockDelay(_config.latency);
+    _checkAccess(session, path, list: true);
     final root = _root(session);
     final dir = mockResolve(root, path);
     if (dir == null || !dir.isDir) {
@@ -71,6 +90,7 @@ final class MockSftpBrowserService implements SftpBrowserService, SftpBrowserDeb
   @override
   Future<RemoteFileInfo> stat(SftpSessionId session, String path) async {
     await mockDelay(_config.latency);
+    _checkAccess(session, path, list: false);
     final root = _root(session);
     final node = mockResolve(root, path, followLast: false);
     if (node == null) throw _notFound(path);
