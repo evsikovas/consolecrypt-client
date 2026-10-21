@@ -133,7 +133,9 @@ def main():
         checked(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)])
         # Run only the isolated fixture. It never loads the real app/core,
         # accesses Keychain, or reads the user's shell startup files.
-        result = subprocess.run([str(macos / "LocalAiSmoke")], timeout=180,
+        # stdin is pinned: an inherited closed descriptor would be reused by
+        # the fixture's first open() and break the PTY probe.
+        result = subprocess.run([str(macos / "LocalAiSmoke")], timeout=180, stdin=subprocess.DEVNULL,
                                 env={"HOME": str(home), "TMPDIR": str(home / "tmp"), "PATH": "/usr/bin:/bin"})
         report = (home / "local-ai-smoke.txt").read_text()
         print(report, end="")

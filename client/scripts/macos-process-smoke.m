@@ -40,6 +40,9 @@ static NSTask *launch(NSString *executable, NSArray *arguments, NSString *token,
     [NSFileManager.defaultManager createFileAtPath:log contents:nil attributes:nil];
     task.standardOutput = [NSFileHandle fileHandleForWritingAtPath:log];
     task.standardError = task.standardOutput;
+    // A fixed empty stdin: an inherited one (a CI step or a detached shell)
+    // makes script(1) end the probe shell before it runs.
+    task.standardInput = [NSFileHandle fileHandleWithNullDevice];
     NSError *error = nil;
     if (![task launchAndReturnError:&error]) {
         record([@"LAUNCH_FAIL " stringByAppendingString:error.description]);
