@@ -18,7 +18,14 @@ import 'package:file_selector/file_selector.dart';
 /// Native databases: connections live in the vault, sessions and query streams
 /// in the core. Passwords cross the bridge only as wiped byte buffers.
 final class RustDbService
-    implements DbService, DbQueryService, DbHistoryService, DbPgpassFileService, DbExportService, DbCellEditService {
+    implements
+        DbService,
+        DbQueryService,
+        DbHistoryService,
+        DbPgpassFileService,
+        DbExportService,
+        DbCellEditService,
+        DbObjectInspectService {
   RustDbService(this._hub);
   final RustBackend _hub;
   final _sessions = <String, DbSessionInfo>{};
