@@ -140,11 +140,17 @@ flutter test
 SSH/RDP-сервер, имеют дополнительные условия. Не запускайте Flutter-тесты
 параллельно с нативной сборкой в одной рабочей папке.
 
+## Релиз 0.8.5
+
+Новые разделы «Базы данных» и Docker. Базы данных: PostgreSQL, MySQL и MariaDB, ClickHouse, Redis и MongoDB; подключения хранятся в зашифрованном хранилище и идут к базе напрямую или через SSH-хост, jump-профиль, прокси, сохранённый туннель, проброс пода Kubernetes или контейнер Docker; прод-подключения работают только на чтение. В рабочей области дерево структуры, редактор с автодополнением, дерево плана EXPLAIN, правка ячеек с просмотром SQL, история, сниппеты и ИИ-помощник запросов, которому схема и строки передаются только с согласия. Docker работает с локальным движком или движком на сохранённом SSH-хосте: compose-проекты, логи, терминал в контейнере, тома, пробросы портов и правка compose после ввода пароля хранилища. У подов Kubernetes со стандартными портами баз данных появилась кнопка «Подключиться к БД». Подробнее: [заметки 0.8.5](docs/public/RELEASE_0_8_5.md).
+
+[Релиз 0.8.5](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.8.5) содержит шесть пакетов для macOS, Windows, Linux и Android; выпуск для iOS отложен. Сверяйте загрузки с [манифестом SHA-256](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.8.5/SHA256SUMS-0.8.5.txt).
+
 ## Релиз 0.6.4
 
 Kubernetes на компьютере переработан: навигатор со сворачиваемыми группами ресурсов, живой обзор кластера с установкой базового metrics-server, карточка объекта поверх таблицы, ИИ кластера и пробросы портов в правой панели, понятные причины отказа YAML. У вкладок терминала появились меню, подсветка активности и выбор шрифта; хосты импортируются из ~/.ssh/config, горячие клавиши переназначаются, ответы ИИ отображают Markdown. Подробнее: [заметки 0.6.4](docs/public/RELEASE_0_6_4.md).
 
-[Релиз 0.6.4](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.6.4) содержит шесть пакетов для macOS, Windows, Linux и Android; выпуск для iOS отложен. Сверяйте загрузки с [манифестом SHA-256](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.6.4/SHA256SUMS-0.6.4.txt).
+[Релиз 0.6.4](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.6.4) содержал шесть пакетов для macOS, Windows, Linux и Android; выпуск для iOS отложен. Сверяйте загрузки с [манифестом SHA-256](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.6.4/SHA256SUMS-0.6.4.txt).
 
 ## Релиз 0.6.3
 

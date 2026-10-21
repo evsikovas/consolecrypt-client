@@ -143,11 +143,17 @@ Tests that need a native library, a system keyring, or a real SSH/RDP server hav
 additional prerequisites. Do not run Flutter tests alongside a native build
 in the same working directory.
 
+## Release 0.8.5
+
+Databases and Docker are new sections. Databases cover PostgreSQL, MySQL and MariaDB, ClickHouse, Redis and MongoDB: connections live in the encrypted vault and reach the database directly or through an SSH host, jump profile, proxy, saved tunnel, Kubernetes pod forward or Docker container; production connections are read-only. The workspace has a structure tree, an editor with completion, EXPLAIN plan trees, cell editing with an SQL preview, history, snippets and a query assistant that sees schema and rows only with consent. Docker works with the local engine or one on a saved SSH host: compose projects, logs, a container terminal, volumes, port forwards and compose editing behind the vault passphrase. Kubernetes pods with standard database ports get a "Connect to database" button. See the [0.8.5 notes](docs/public/RELEASE_0_8_5.md).
+
+[Release 0.8.5](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.8.5) provides six packages for macOS, Windows, Linux and Android; iOS is deferred. Verify downloads against [the SHA-256 manifest](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.8.5/SHA256SUMS-0.8.5.txt).
+
 ## Release 0.6.4
 
 Kubernetes on desktop is redesigned: a navigator with collapsible resource groups, a live cluster overview with an optional basic metrics-server, object details over the table, the cluster AI and port forwards in the right panel, and clearer YAML refusals. Terminal tabs gain a context menu, activity highlighting and font choice; hosts can be imported from ~/.ssh/config, shortcuts can be remapped and AI answers render Markdown. See the [0.6.4 notes](docs/public/RELEASE_0_6_4.md).
 
-[Release 0.6.4](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.6.4) provides six packages for macOS, Windows, Linux and Android; iOS is deferred. Verify downloads against [the SHA-256 manifest](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.6.4/SHA256SUMS-0.6.4.txt).
+[Release 0.6.4](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.6.4) provided six packages for macOS, Windows, Linux and Android; iOS is deferred. Verify downloads against [the SHA-256 manifest](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.6.4/SHA256SUMS-0.6.4.txt).
 
 ## Release 0.6.3
 
