@@ -8,8 +8,8 @@ Secrets never live in the repository. They come from the environment
 (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, optional TELEGRAM_PROXY) or, for local
 runs, from ~/.config/consolecrypt/telegram.env (KEY=VALUE lines, mode 600).
 
-    announce-telegram.py --tag v0.8.4 --dry-run   # print the message only
-    announce-telegram.py --tag v0.8.4             # post it
+    announce-telegram.py --tag v0.8.5 --dry-run   # print the message only
+    announce-telegram.py --tag v0.8.5             # post it
     announce-telegram.py --check                  # verify bot, proxy, channel
 """
 
