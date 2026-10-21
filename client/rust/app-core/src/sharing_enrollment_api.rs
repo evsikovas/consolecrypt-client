@@ -687,7 +687,7 @@ impl AppCore {
         let key = record_key(id);
         let instance = env.pin.instance;
         let result = env
-            .wait(env.session.storage.call(move |db| -> AppResult<_> {
+            .wait(env.session.storage()?.call(move |db| -> AppResult<_> {
                 let _lock = marks.lock().map_err(mark_error)?;
                 db.read(|tx| -> AppResult<_> {
                     let serialized: Option<String> = tx.setting_get(&key)?;
@@ -725,7 +725,7 @@ impl AppCore {
         let marks = highwater(env);
         let key = record_key(value.scope.share_id);
         let shutdown = env.unlocked.sharing_shutdown.subscribe();
-        env.wait(env.session.storage.call(move |db| -> AppResult<()> {
+        env.wait(env.session.storage()?.call(move |db| -> AppResult<()> {
             let _lock = marks.lock().map_err(mark_error)?;
             db.write(|tx| -> AppResult<()> {
                 if *shutdown.borrow() {
@@ -1281,7 +1281,7 @@ impl AppCore {
         let current = replacement.grants[index].mark.clone();
         let shutdown = env.unlocked.sharing_shutdown.subscribe();
         let (frozen, next) = env
-            .wait(env.session.storage.call(move |db| -> AppResult<_> {
+            .wait(env.session.storage()?.call(move |db| -> AppResult<_> {
                 let _lock = marks.lock().map_err(mark_error)?;
                 db.write(|tx| -> AppResult<_> {
                     if *shutdown.borrow() {
@@ -1900,7 +1900,7 @@ impl AppCore {
                     let grant_id = cached.state.grant_id;
                     let shutdown = env.unlocked.sharing_shutdown.subscribe();
                     let dispatch_lock = env
-                        .wait(env.session.storage.call(move |db| -> AppResult<_> {
+                        .wait(env.session.storage()?.call(move |db| -> AppResult<_> {
                             let guard = marks.lock().map_err(mark_error)?;
                             db.read(|tx| -> AppResult<()> {
                                 let actual: Option<String> = tx.setting_get(&key)?;
@@ -2574,7 +2574,7 @@ impl AppCore {
                 let request = request.clone();
                 let endorsement = endorsement.clone();
                 let shutdown = env.unlocked.sharing_shutdown.subscribe();
-                env.wait(env.session.storage.call(move |db| -> AppResult<_> {
+                env.wait(env.session.storage()?.call(move |db| -> AppResult<_> {
                     let _lock = marks.lock().map_err(mark_error)?;
                     db.read(|tx| -> AppResult<_> {
                         let actual: Option<String> = tx.setting_get(&key)?;
@@ -2633,7 +2633,7 @@ impl AppCore {
         let key = record_key(id);
         let shutdown = env.unlocked.sharing_shutdown.subscribe();
         let dispatch_lock = env
-            .wait(env.session.storage.call(move |db| -> AppResult<_> {
+            .wait(env.session.storage()?.call(move |db| -> AppResult<_> {
                 let guard = marks.lock().map_err(mark_error)?;
                 db.read(|tx| -> AppResult<()> {
                     let actual: Option<String> = tx.setting_get(&key)?;
@@ -2667,7 +2667,7 @@ impl AppCore {
         let _gate = self.sharing_gate(&session).await?;
         let env = self.sharing_environment(session.clone(), true).await?;
         let keys = env
-            .wait(env.session.storage.read(|tx| tx.setting_keys()))
+            .wait(env.session.storage()?.read(|tx| tx.setting_keys()))
             .await?;
         self.sharing_check(&env).await?;
         let mut result = Vec::new();
@@ -2719,7 +2719,7 @@ impl AppCore {
                 return Ok(vec![]);
             }
             let keys = env
-                .wait(env.session.storage.read(|tx| tx.setting_keys()))
+                .wait(env.session.storage()?.read(|tx| tx.setting_keys()))
                 .await?;
             self.sharing_check(&env).await?;
             let mut shares = Vec::new();
@@ -3020,7 +3020,7 @@ impl AppCore {
         let key = record_key(id);
         let value = rebuilt.clone();
         let shutdown = env.unlocked.sharing_shutdown.subscribe();
-        env.wait(env.session.storage.call(move |db| -> AppResult<()> {
+        env.wait(env.session.storage()?.call(move |db| -> AppResult<()> {
             let _lock = marks.lock().map_err(mark_error)?;
             db.write(|tx| -> AppResult<()> {
                 if *shutdown.borrow() {
@@ -3116,7 +3116,7 @@ impl AppCore {
         let marks = highwater(&env);
         let key = record_key(id);
         let (retained, old_raw, old) = env
-            .wait(env.session.storage.call(move |db| -> AppResult<_> {
+            .wait(env.session.storage()?.call(move |db| -> AppResult<_> {
                 let _lock = marks.lock().map_err(mark_error)?;
                 db.read(|tx| -> AppResult<_> {
                     let retained = recovery_marks(&marks, id)?;
@@ -3488,7 +3488,7 @@ impl AppCore {
         let marks = highwater(&env);
         let key = record_key(id);
         let (retained, old_raw) = env
-            .wait(env.session.storage.call(move |db| -> AppResult<_> {
+            .wait(env.session.storage()?.call(move |db| -> AppResult<_> {
                 let _lock = marks.lock().map_err(mark_error)?;
                 db.read(|tx| -> AppResult<_> {
                     let retained = recovery_marks(&marks, id)?;

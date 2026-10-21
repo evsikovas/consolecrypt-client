@@ -91,7 +91,7 @@ impl AppCore {
         let vault_ids = match vault_id.as_deref() {
             Some(v) => {
                 let v = parse_vault_id(v)?;
-                s.storage.setting_set(PENDING_TRUST_VAULT, v).await?;
+                s.storage()?.setting_set(PENDING_TRUST_VAULT, v).await?;
                 vec![v]
             }
             None => Vec::new(),
@@ -107,18 +107,22 @@ impl AppCore {
     }
 
     /// New device, after approval: fetch this device's envelope, open the
-    /// vault with the device key and start syncing. `Ok(false)` = not
-    /// approved yet.
+    /// vault with the device key, replace that envelope with this device's
+    /// trust marker (S5: the server keeps no VRK this device's plain key can
+    /// open; the attestation also proves the received VRK), seal the local
+    /// database and start syncing. `Ok(false)` = not approved yet.
     pub async fn finish_device_approval(&self, vault_id: Option<String>) -> AppResult<bool> {
         let s = self.session().await?;
-        if s.unlocked_opt().await.is_some() {
+        if s.unlocked_opt().await.is_some() || s.vault_id().is_some() {
+            // Already joined (the server envelope may be the trust marker
+            // by now: never open it again).
             return Ok(true);
         }
         let api = s.api()?;
         let vault_id = match vault_id.as_deref() {
             Some(v) => parse_vault_id(v)?,
             None => match s
-                .storage
+                .storage()?
                 .setting_get::<VaultId>(PENDING_TRUST_VAULT)
                 .await?
             {
@@ -148,9 +152,11 @@ impl AppCore {
             Err(AppError::DeviceNotAuthorized) => return Ok(false),
             Err(e) => return Err(e),
         };
+        let attest = vault.attest_device_request(&s.identity())?;
+        let marker = api.attest_device(s.device_id(), &attest).await?;
         let info = api.get_vault(vault_id).await?;
-        s.storage.upsert_vault_info(info.clone()).await?;
-        let (pw, rec, own) = match api.list_envelopes(vault_id).await {
+        s.storage()?.upsert_vault_info(info.clone()).await?;
+        let (pw, rec, _) = match api.list_envelopes(vault_id).await {
             Ok(l) => pick_envelopes(&l.envelopes, s.device_id()),
             Err(_) => (None, None, None),
         };
@@ -158,10 +164,11 @@ impl AppCore {
             vault_id,
             pw.or(material.password_envelope),
             rec.or(material.recovery_envelope),
-            own.or(material.device_envelope),
+            Some(marker),
         )
         .await?;
         s.set_vault_id(vault_id).await?;
+        s.seal_storage(&vault).await?;
         let u = s.install_unlocked(vault).await?;
         u.observe_vault_info(std::slice::from_ref(&info)).await;
         tracing::info!(vault_id = %vault_id, "device approval completed");

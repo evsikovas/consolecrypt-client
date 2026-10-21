@@ -20,6 +20,9 @@ os-keychain = [
     "dep:android-native-keyring-store",
     "dep:secret-service",
     "dep:base64",
+    "dep:core-foundation",
+    "dep:objc2",
+    "dep:windows",
 ]
 
 [dependencies]
@@ -31,9 +34,17 @@ directories = "6"
 # fallbacks). MIT OR Apache-2.0. No features: `reveal` would pull zbus.
 opener = "0.8"
 keyring-core = { version = "1", optional = true }
+# Random device unlock keys (Linux keyring, tests); same version as crypto-core.
+getrandom = "0.4"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "1", optional = true, features = ["keychain"] }
+
+# Device unlock (S5): Secure Enclave key + LAContext (Security and
+# LocalAuthentication frameworks). Already in the lockfile; no new crates.
+[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
+core-foundation = { version = "0.10", optional = true }
+objc2 = { version = "0.6", optional = true }
 
 [target.'cfg(target_os = "ios")'.dependencies]
 # iOS has the application-scoped protected-data keychain; the macOS legacy
@@ -42,6 +53,16 @@ apple-native-keyring-store = { version = "1", optional = true, features = ["prot
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-native-keyring-store = { version = "1", optional = true, default-features = false }
+# Device unlock (S5): Windows Hello KeyCredentialManager. Same version as the
+# one already in the lockfile; only WinRT features are added.
+windows = { version = "0.62", optional = true, features = [
+    "Foundation",
+    "Security_Credentials",
+    "Security_Cryptography",
+    "Storage_Streams",
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android-native-keyring-store = { version = "1", optional = true }

@@ -69,13 +69,18 @@ impl AppCore {
         Ok(dto)
     }
 
-    /// Forgot passphrase, trusted device: OS/biometric authentication →
-    /// device envelope → set a new passphrase. Leaves the vault unlocked.
-    pub async fn reset_passphrase_with_device(&self, new_passphrase: String) -> AppResult<()> {
+    /// Forgot passphrase with device unlock switched on: the OS releases
+    /// the unlock key (prompt with `reason`) → VRK → set a new passphrase.
+    /// Leaves the vault unlocked.
+    pub async fn reset_passphrase_with_device(
+        &self,
+        new_passphrase: String,
+        reason: String,
+    ) -> AppResult<()> {
         let s = self.session().await?;
         if s.unlocked_opt().await.is_none() {
-            let vault = self.device_unlock(&s).await?;
-            s.install_unlocked(vault).await?;
+            let vault = self.device_unlock(&s, reason).await?;
+            self.finish_unlock(&s, vault).await?;
         }
         self.set_new_passphrase(new_passphrase).await
     }
@@ -90,7 +95,7 @@ impl AppCore {
         let s = self.session().await?;
         if s.unlocked_opt().await.is_none() {
             let vault = self.recovery_unlock(&s, recovery_input).await?;
-            s.install_unlocked(vault).await?;
+            self.finish_unlock(&s, vault).await?;
         }
         self.set_new_passphrase(new_passphrase).await
     }

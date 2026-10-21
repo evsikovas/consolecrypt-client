@@ -13,7 +13,8 @@ use cc_protocol::version::Platform;
 use cc_protocol::{ObjectId, VaultId};
 use cc_vault_core::{
     create_vault, unlock_with_device, unlock_with_passphrase, unlock_with_recovery_input,
-    CreatedVault, DeviceIdentity, PendingApproval, UnlockedVault, VaultError,
+    unlock_with_unlock_key, CreatedVault, DeviceIdentity, PendingApproval, UnlockKey,
+    UnlockedVault, VaultError,
 };
 use common::*;
 
@@ -77,7 +78,17 @@ fn create_then_unlock_by_every_method() {
     let by_pass = unlock_with_passphrase(vault_id, &pw, &pass(PASSPHRASE)).unwrap();
     assert_same_vault(&created.unlocked, &by_pass);
 
-    let by_device = unlock_with_device(vault_id, &dev, &device).unwrap();
+    // The server copy of this device's envelope is a trust marker: the
+    // device key opens it, but it holds no VRK (S5).
+    let marker = unlock_with_device(vault_id, &dev, &device).unwrap();
+    assert_ne!(
+        marker.vault_access_key(),
+        created.unlocked.vault_access_key()
+    );
+    // Device unlock goes through the OS-protected unlock key instead.
+    let key = UnlockKey::from_material(&[42u8; 32]).unwrap();
+    let local = created.unlocked.seal_unlock_envelope(&key, b"p").unwrap();
+    let by_device = unlock_with_unlock_key(vault_id, &local, &key, b"p").unwrap();
     assert_same_vault(&created.unlocked, &by_device);
 
     let words = pass(created.recovery_kit.phrase().expose_phrase());
@@ -329,8 +340,12 @@ fn attest_after_passphrase_unlock_on_new_device() {
         )
     );
     attest.envelope.validate().unwrap();
-    let again = unlock_with_device(v, &attest.envelope, &b).unwrap();
-    assert_same_vault(&created.unlocked, &again);
+    // A trust marker: B's own key opens it, but it holds no VRK.
+    let marker = unlock_with_device(v, &attest.envelope, &b).unwrap();
+    assert_ne!(
+        marker.vault_access_key(),
+        created.unlocked.vault_access_key()
+    );
 }
 
 #[test]
@@ -365,12 +380,14 @@ fn change_passphrase() {
 
 #[test]
 fn forgot_passphrase_with_trusted_device_then_set_new() {
-    // ADR-0004 recovery scenario 1: device envelope → VRK → new passphrase.
+    // ADR-0004 recovery scenario 1 with device unlock switched on (S5):
+    // OS-released unlock key → local unlock envelope → VRK → new passphrase.
     let a = DeviceIdentity::generate().unwrap();
     let created = new_vault(&a);
     let v = created.create_request.vault_id;
-    let dev = stored(v, &created.create_request.device_envelope);
-    let unlocked = unlock_with_device(v, &dev, &a).unwrap();
+    let key = UnlockKey::from_material(&[7u8; 48]).unwrap();
+    let local = created.unlocked.seal_unlock_envelope(&key, b"p").unwrap();
+    let unlocked = unlock_with_unlock_key(v, &local, &key, b"p").unwrap();
     let replace = unlocked
         .change_passphrase(&pass("brand new passphrase"), kdf())
         .unwrap();

@@ -407,7 +407,7 @@ impl AppCore {
                     allow_exec_in_production: context.allow_exec_in_prod,
                     allow_port_forward_in_production: context.allow_port_forward_in_prod,
                 },
-                Arc::new(DurableAudit(owner.storage.clone())),
+                Arc::new(DurableAudit(owner.storage()?)),
                 cancel.clone(),
             )
             .map_err(|_| AppError::invalid("kubernetes", "invalid_connection"))?;
@@ -428,9 +428,10 @@ impl AppCore {
         if cancel.is_cancelled() {
             return Err(AppError::VaultLocked);
         }
+        let history_storage = owner.storage()?;
         let history = context.event_history_enabled.then(|| {
             crate::kubernetes_history::EventRecorder::start(
-                owner.storage.clone(),
+                history_storage,
                 context_id.clone(),
                 resources.clone(),
                 cancel.clone(),
@@ -837,7 +838,7 @@ impl AppCore {
     pub async fn kube_audit(&self) -> AppResult<Vec<KubeAuditRecord>> {
         let (owner, unlocked) = self.unlocked().await?;
         let audit = owner
-            .storage
+            .storage()?
             .setting_get(AUDIT_KEY)
             .await?
             .unwrap_or_default();

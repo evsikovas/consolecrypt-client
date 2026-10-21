@@ -113,7 +113,7 @@ impl AppCore {
             return Err(AppError::not_found("kube_context", id));
         }
         let value = owner
-            .storage
+            .storage()?
             .setting_get(format!("kubernetes.view.{id}"))
             .await?
             .unwrap_or_default();
@@ -138,7 +138,7 @@ impl AppCore {
         let _profile = self.hold_session(&owner).await?;
         let _generation = owner.hold_unlocked(&unlocked).await?;
         owner
-            .storage
+            .storage()?
             .write(move |tx| {
                 let mut current: KubeViewPreferences = tx.setting_get(&key)?.unwrap_or_default();
                 match patch {

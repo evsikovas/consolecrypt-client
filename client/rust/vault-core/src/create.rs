@@ -35,7 +35,7 @@ impl CreatedVault {
             vault_id: self.create_request.vault_id,
             password: self.create_request.password_envelope.clone(),
             recovery: self.create_request.recovery_envelope.clone(),
-            device: Some(self.create_request.device_envelope.clone()),
+            device: None,
         }
     }
 }
@@ -58,14 +58,16 @@ pub struct LocalVaultEnvelopes {
     pub vault_id: VaultId,
     pub password: NewEnvelope,
     pub recovery: NewEnvelope,
-    /// This installation's device envelope (OS/biometric unlock), if any.
+    /// Legacy (≤ 0.8.x): a device envelope of this installation. No longer
+    /// written — device unlock uses an OS-protected unlock envelope.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device: Option<NewEnvelope>,
 }
 
 /// Create a new vault: random `vault_id` and VRK, password envelope
-/// (Argon2id with `kdf`), a fresh Recovery Key + recovery envelope, and a
-/// device envelope for `identity`.
+/// (Argon2id with `kdf`), a fresh Recovery Key + recovery envelope, and the
+/// server trust envelope for `identity` (no VRK inside; see
+/// [`UnlockedVault::trust_envelope_for`]).
 ///
 /// `server_url` is printed on the Recovery Kit (`None` for local-only
 /// profiles). Blocking (Argon2id).
@@ -85,7 +87,7 @@ pub fn create_vault(
         vault_access_key: unlocked.vault_access_key(),
         password_envelope: unlocked.password_envelope(passphrase, kdf)?,
         recovery_envelope: unlocked.recovery_envelope(&rk)?,
-        device_envelope: unlocked.device_envelope_for(identity)?,
+        device_envelope: unlocked.trust_envelope_for(identity)?,
     };
     let recovery_kit = RecoveryKit::new(vault_id, &rk, server_url, created_at);
     Ok(CreatedVault {

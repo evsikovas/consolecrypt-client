@@ -334,9 +334,11 @@ async fn local_profile_lifecycle_backup_and_recovery() {
     app.unlock_with_recovery_key(kit.qr_payload.clone())
         .await
         .unwrap();
-    app.set_device_unlock_enabled(true).await.unwrap();
+    app.set_device_unlock_enabled(true, "test".into(), false)
+        .await
+        .unwrap();
     app.lock().await.unwrap();
-    app.unlock_with_device().await.unwrap();
+    app.unlock_with_device("test".into()).await.unwrap();
     assert_eq!(snapshot(&app).await, snap);
 
     // ── restart the installation ────────────────────────────────────────
@@ -352,7 +354,10 @@ async fn local_profile_lifecycle_backup_and_recovery() {
     let info = app.open_profile(pid.clone()).await.unwrap();
     assert_eq!(info.vault_state, VaultStateDto::Locked);
     assert_eq!(
-        app.unlock_with_device().await.unwrap_err().code(),
+        app.unlock_with_device("test".into())
+            .await
+            .unwrap_err()
+            .code(),
         "os_auth_failed"
     );
     app.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
@@ -795,10 +800,12 @@ async fn forgot_passphrase_with_device_auth() {
     app.create_local_profile("Dev".into(), PASSPHRASE.into())
         .await
         .unwrap();
-    app.set_device_unlock_enabled(true).await.unwrap();
+    app.set_device_unlock_enabled(true, "test".into(), false)
+        .await
+        .unwrap();
     app.save_host(host("h", "192.0.2.7", None)).await.unwrap();
     app.lock().await.unwrap();
-    app.reset_passphrase_with_device("reset via touch id".into())
+    app.reset_passphrase_with_device("reset via touch id".into(), "test".into())
         .await
         .unwrap();
     assert!(app.is_unlocked().await);
@@ -821,7 +828,7 @@ async fn forgot_passphrase_with_device_auth() {
     let pid = app2.last_active_profile_id().await.unwrap().unwrap();
     app2.open_profile(pid).await.unwrap();
     assert_eq!(
-        app2.reset_passphrase_with_device("whatever passphrase".into())
+        app2.reset_passphrase_with_device("whatever passphrase".into(), "test".into())
             .await
             .unwrap_err()
             .code(),

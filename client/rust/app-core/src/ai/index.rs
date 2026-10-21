@@ -1,6 +1,7 @@
 //! Per-profile local search index (CLIENT_SPEC §12.3, ADR-0105 §9): the
-//! SQLCipher key in the SecureStore, opening/recreating the file, and the
-//! documents fed from the decrypted working set.
+//! SQLCipher key (derived from the sealed profile database key since S5; the
+//! SecureStore item only for legacy profiles), opening/recreating the file,
+//! and the documents fed from the decrypted working set.
 //!
 //! The index is derived data: an unreadable file (lost key, corruption,
 //! schema change) is recreated and rebuilt. It is never synced.
@@ -44,18 +45,23 @@ async fn load_or_create_key(
     .await
 }
 
-/// Open the profile's index (`ProfilePaths::search_db`, SQLCipher with the
-/// SecureStore key). Falls back to an in-memory index when the key or the
-/// file is unavailable, so search keeps working for this unlock without
-/// writing plaintext to disk.
+/// Open the profile's index (`ProfilePaths::search_db`, SQLCipher with
+/// `derived_key`, or the legacy SecureStore key). A file under another key
+/// is recreated (derived data). Falls back to an in-memory index when the
+/// key or the file is unavailable, so search keeps working for this unlock
+/// without writing plaintext to disk.
 pub(crate) async fn open(
     store: Arc<dyn SecureStore>,
     profile: ProfileId,
     path: Option<PathBuf>,
+    derived_key: Option<Zeroizing<[u8; 32]>>,
 ) -> AppResult<SearchIndex> {
     let on_disk = async {
         let path = path.ok_or_else(|| AppError::internal("no profile directory"))?;
-        let key = load_or_create_key(store, profile).await?;
+        let key = match derived_key {
+            Some(k) => IndexKey::from_bytes(&k),
+            None => load_or_create_key(store, profile).await?,
+        };
         blocking(move || {
             SearchIndex::open_or_recreate(&path, Some(&key))
                 .map_err(|e| AppError::Storage(format!("search index: {e}")))

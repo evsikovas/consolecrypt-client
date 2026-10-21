@@ -264,7 +264,7 @@ async fn production_guard_audits_before_wire_and_closed_storage_blocks_writes() 
     assert_eq!(audit[0].method, "DELETE");
     assert_eq!(audit[0].path, "/api/v1/namespaces/default/pods/web");
     let (owner, _) = app.unlocked().await.unwrap();
-    owner.storage.close().await;
+    owner.storage().unwrap().close().await;
     assert!(app
         .kube_resource_delete(session.id, reference, "pod-uid".into(), "1".into())
         .await

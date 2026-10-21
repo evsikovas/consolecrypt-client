@@ -38,6 +38,7 @@ mod state;
 
 pub use state::MockObject;
 
+use cc_protocol::envelopes::KeyEnvelope;
 use cc_protocol::version::ProtocolVersion;
 use cc_protocol::{DeviceId, ErrorCode, ObjectId, UserId, VaultId, PROTOCOL_VERSION};
 use state::{Outgoing, State};
@@ -288,6 +289,12 @@ impl MockServer {
     /// Whether the device holds a non-revoked device envelope for the vault.
     pub fn device_trusted(&self, device_id: DeviceId, vault_id: VaultId) -> bool {
         self.shared.lock().device_trusted(device_id, vault_id)
+    }
+
+    /// The device's live device envelope for the vault (what the server
+    /// would hand that device), if any.
+    pub fn device_envelope(&self, device_id: DeviceId, vault_id: VaultId) -> Option<KeyEnvelope> {
+        self.shared.lock().device_envelope(device_id, vault_id)
     }
 
     /// Revoke a device as if from another trusted device (admin hook).

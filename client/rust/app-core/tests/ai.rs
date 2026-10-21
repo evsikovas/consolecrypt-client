@@ -273,8 +273,8 @@ async fn index_is_dropped_on_lock_and_rebuilt_after_unlock() {
     assert_eq!(titles(&app, "kubectl").await, vec!["Tail pod logs"]);
     let key_name = format!("profiles/{pid}/search-index-key");
     assert!(
-        store.get(&key_name).unwrap().is_some(),
-        "random index key in the SecureStore"
+        store.get(&key_name).unwrap().is_none(),
+        "index key derived from the sealed database key, not in the SecureStore (S5)"
     );
 
     // Locked: every AI call refuses; the file can be removed (handle closed).
@@ -295,10 +295,13 @@ async fn index_is_dropped_on_lock_and_rebuilt_after_unlock() {
     assert_eq!(titles(&app, "kubectl").await, vec!["Tail pod logs"]);
     assert!(dir.join("search.db").exists());
 
-    // Lost key (e.g. keychain reset): the unreadable file is recreated and
-    // rebuilt, never an error for the user.
+    // Unreadable file (e.g. written under another key): it is recreated
+    // and rebuilt, never an error for the user.
     app.lock().await.unwrap();
-    store.delete(&key_name).unwrap();
+    std::fs::write(dir.join("search.db"), [0x5au8; 4096]).unwrap();
+    for f in ["search.db-wal", "search.db-shm"] {
+        let _ = std::fs::remove_file(dir.join(f));
+    }
     app.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
     assert_eq!(titles(&app, "kubectl").await, vec!["Tail pod logs"]);
     let status = app.ai_index_status().await.unwrap();

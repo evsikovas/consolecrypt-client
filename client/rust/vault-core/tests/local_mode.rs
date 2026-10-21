@@ -5,14 +5,11 @@ mod common;
 
 use cc_models::host::Host;
 use cc_models::{ObjectPayload, VaultObject};
-use cc_platform_core::{
-    InMemorySecureStore, OsAuthAvailability, OsAuthError, OsAuthKind, OsAuthenticator,
-    UnsupportedOsAuthenticator,
-};
+use cc_platform_core::{DeviceKeyProtector, FakePrompt, InMemoryDeviceKeys, InMemorySecureStore};
 use cc_protocol::version::Platform;
 use cc_vault_core::{
-    create_vault, unlock_with_device, unlock_with_os_auth, unlock_with_passphrase,
-    unlock_with_recovery_input, DeviceIdentity, LocalVaultEnvelopes, VaultError,
+    create_vault, unlock_with_device, unlock_with_passphrase, unlock_with_recovery_input,
+    unlock_with_unlock_key, DeviceIdentity, LocalVaultEnvelopes, UnlockKey, VaultError,
 };
 use common::*;
 
@@ -52,16 +49,10 @@ fn local_vault_lifecycle_and_enable_sync() {
         payload
     );
 
-    // OS/biometric unlock path: device envelope + device keys from the store.
-    let device_env = envs.device.as_ref().unwrap();
-    let by_device = unlock_with_device(vault_id, device_env, &identity).unwrap();
-    assert_eq!(
-        by_device
-            .decrypt_object(object_id, 1, &body, None)
-            .unwrap()
-            .0,
-        payload
-    );
+    // No device envelope is kept locally any more: the device key alone
+    // never opens the vault (S5).
+    assert!(envs.device.is_none());
+    let by_device = &by_pass;
 
     // Forgot passphrase → Recovery Key against the local recovery envelope.
     let by_rk =
@@ -88,10 +79,10 @@ fn local_vault_lifecycle_and_enable_sync() {
         req.device_envelope.recipient_id,
         Some(identity.device_id().0)
     );
-    assert_ne!(&req.device_envelope, device_env, "device envelope is fresh");
-    // The uploaded envelopes still work from the server's copy.
+    // The uploaded device envelope is a trust marker without the VRK.
     let server_dev = stored(vault_id, &req.device_envelope);
-    unlock_with_device(vault_id, &server_dev, &identity).unwrap();
+    let marker = unlock_with_device(vault_id, &server_dev, &identity).unwrap();
+    assert_ne!(marker.vault_access_key(), by_pass.vault_access_key());
     let server_rec = stored(vault_id, &req.recovery_envelope);
     unlock_with_recovery_input(vault_id, &server_rec, &pass(&recovery_words)).unwrap();
 
@@ -136,79 +127,41 @@ fn enable_sync_rejects_wrong_envelopes() {
         .is_err());
 }
 
-/// Test double standing in for Touch ID / Windows Hello.
-#[derive(Debug)]
-struct FakeBiometrics {
-    approve: bool,
-}
-
-impl OsAuthenticator for FakeBiometrics {
-    fn availability(&self) -> OsAuthAvailability {
-        OsAuthAvailability::Available(OsAuthKind::TouchId)
-    }
-    fn authenticate(&self, _reason: &str) -> Result<(), OsAuthError> {
-        if self.approve {
-            Ok(())
-        } else {
-            Err(OsAuthError::Cancelled)
-        }
-    }
-}
-
 #[test]
-fn os_auth_unlock_uses_device_envelope_and_secure_store() {
+fn device_unlock_needs_the_os_released_key() {
     let store = InMemorySecureStore::new();
     let identity = DeviceIdentity::load_or_create(&store, PROFILE).unwrap();
     let created = create_vault(&identity, &pass(PASSPHRASE), kdf(), None, now()).unwrap();
     let v = created.unlocked.vault_id();
-    let env = created.local_envelopes().device.unwrap();
-    let reason = "Unlock your ConsoleCrypt vault";
+    let os = InMemoryDeviceKeys::new();
+    let protected = os.create(PROFILE, "enable").unwrap();
+    let key = UnlockKey::from_material(&protected.material).unwrap();
+    let env = created
+        .unlocked
+        .seal_unlock_envelope(&key, PROFILE.as_bytes())
+        .unwrap();
 
-    let u = unlock_with_os_auth(
+    // Approved prompt → the OS releases the material → vault opens.
+    let material = os.release(&protected.handle, "unlock").unwrap();
+    let u = unlock_with_unlock_key(
         v,
         &env,
-        &store,
-        PROFILE,
-        &FakeBiometrics { approve: true },
-        reason,
+        &UnlockKey::from_material(&material).unwrap(),
+        PROFILE.as_bytes(),
     )
     .unwrap();
     assert_eq!(u.vault_access_key(), created.unlocked.vault_access_key());
 
+    // Cancelled prompt → nothing to open the envelope with.
+    os.set_next(FakePrompt::Cancel);
+    assert!(os.release(&protected.handle, "unlock").is_err());
+
+    // Everything in the plain secret store (device identity) is useless.
+    let identity = DeviceIdentity::load(&store, PROFILE).unwrap().unwrap();
+    let guess =
+        UnlockKey::from_material(identity.device_id().0.as_bytes().repeat(2).as_slice()).unwrap();
     assert_eq!(
-        unlock_with_os_auth(
-            v,
-            &env,
-            &store,
-            PROFILE,
-            &FakeBiometrics { approve: false },
-            reason
-        )
-        .err(),
-        Some(VaultError::OsAuth(OsAuthError::Cancelled))
-    );
-    assert_eq!(
-        unlock_with_os_auth(
-            v,
-            &env,
-            &store,
-            PROFILE,
-            &UnsupportedOsAuthenticator,
-            reason
-        )
-        .err(),
-        Some(VaultError::OsAuth(OsAuthError::Unsupported))
-    );
-    assert_eq!(
-        unlock_with_os_auth(
-            v,
-            &env,
-            &store,
-            "other-profile",
-            &FakeBiometrics { approve: true },
-            reason
-        )
-        .err(),
-        Some(VaultError::NoDeviceIdentity)
+        unlock_with_unlock_key(v, &env, &guess, PROFILE.as_bytes()).err(),
+        Some(VaultError::DeviceNotAuthorized)
     );
 }

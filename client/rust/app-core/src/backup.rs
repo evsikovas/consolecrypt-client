@@ -154,7 +154,10 @@ impl AppCore {
         let path = crate::validate::file_path("path", &path)?;
         let (s, u) = self.unlocked().await?;
         let vault_id = u.vault_id;
-        let export = s.storage.read(move |tx| tx.export_vault(vault_id)).await?;
+        let export = s
+            .storage()?
+            .read(move |tx| tx.export_vault(vault_id))
+            .await?;
         let pw = export
             .password_envelope
             .ok_or_else(|| AppError::Storage("no password envelope stored".into()))?;
@@ -212,14 +215,16 @@ impl AppCore {
     /// The open profile's backup schedule.
     pub async fn backup_schedule(&self) -> AppResult<BackupScheduleDto> {
         let s = self.session().await?;
-        Ok(s.storage
+        Ok(s.storage()?
             .setting_get::<BackupScheduleDto>(SCHEDULE_SETTING)
             .await?
             .unwrap_or_default())
     }
 
     async fn store_schedule(&self, s: &Session, sch: &BackupScheduleDto) -> AppResult<()> {
-        s.storage.setting_set(SCHEDULE_SETTING, sch.clone()).await?;
+        s.storage()?
+            .setting_set(SCHEDULE_SETTING, sch.clone())
+            .await?;
         self.inner.ctx.emit(AppEvent::BackupScheduleChanged);
         Ok(())
     }
@@ -266,7 +271,7 @@ impl AppCore {
     /// Backups of the open profile written on this device, newest first.
     pub async fn recent_backups(&self) -> AppResult<Vec<BackupInfoDto>> {
         let s = self.session().await?;
-        Ok(s.storage
+        Ok(s.storage()?
             .setting_get::<Vec<BackupInfoDto>>(RECENT_SETTING)
             .await?
             .unwrap_or_default())
@@ -284,7 +289,7 @@ impl AppCore {
         }
         list.sort_by_key(|b| std::cmp::Reverse(b.created_at_ms));
         list.truncate(MAX_RECENT);
-        s.storage.setting_set(RECENT_SETTING, list).await?;
+        s.storage()?.setting_set(RECENT_SETTING, list).await?;
         self.inner.ctx.emit(AppEvent::BackupScheduleChanged);
         Ok(())
     }
@@ -323,7 +328,7 @@ impl AppCore {
             .into_iter()
             .filter(|b| !drop.contains(&b.path))
             .collect();
-        s.storage.setting_set(RECENT_SETTING, kept).await?;
+        s.storage()?.setting_set(RECENT_SETTING, kept).await?;
         Ok(())
     }
 
@@ -475,20 +480,16 @@ impl AppCore {
                     .collect(),
                 exported_at: restored.backup.created_at,
             };
-            let device_env = local_key_envelope(
-                vault_id,
-                restored.unlocked.device_envelope_for(&identity)?,
-                did,
-            );
             storage
                 .write(move |tx| {
                     tx.import_vault(&export)?;
-                    tx.cache_vault_envelopes(vault_id, None, None, Some(&device_env))?;
                     tx.setting_set(VAULT_ID_SETTING, &vault_id)
                 })
                 .await?;
             let session =
                 Session::with_storage(self.inner.ctx.clone(), pid, storage.clone()).await?;
+            // The database key moves under the vault key (S5).
+            session.seal_storage(&restored.unlocked).await?;
             session.install_unlocked(restored.unlocked).await?;
             Ok::<_, AppError>(session)
         }

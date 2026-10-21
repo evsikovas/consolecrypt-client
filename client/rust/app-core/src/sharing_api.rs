@@ -172,7 +172,7 @@ impl Environment {
     }
     fn store(&self) -> AppResult<SharingStateStore> {
         SharingStateStore::new(
-            self.session.storage.clone(),
+            self.session.storage()?.clone(),
             self.session.profile_id,
             self.pin.instance,
             self.session.ctx.secure.clone(),
@@ -1304,7 +1304,7 @@ impl AppCore {
             ));
         }
         let serialized: Option<String> = env
-            .wait(env.session.storage.setting_get(WORKSPACE_KEY))
+            .wait(env.session.storage()?.setting_get(WORKSPACE_KEY))
             .await?;
         self.sharing_check(&env).await?;
         if let Some(raw) = &serialized {
@@ -1331,7 +1331,7 @@ impl AppCore {
         let expected = env.serialized.clone();
         let replacement = next.clone();
         let changed = env
-            .wait(env.session.storage.write(
+            .wait(env.session.storage()?.write(
                 move |tx| -> Result<bool, cc_storage_core::StorageError> {
                     let existing: Option<String> = tx.setting_get(WORKSPACE_KEY)?;
                     if existing != expected {

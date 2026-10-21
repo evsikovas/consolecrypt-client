@@ -1,7 +1,9 @@
-//! Secrets at rest (CLIENT_ARCHITECTURE §4): per-profile SQLCipher key,
-//! device identity (vault-core naming) and session tokens, all in the
-//! [`SecureStore`]. Values never leave this module except as the typed
-//! wrappers of the consuming crates.
+//! Secrets at rest (CLIENT_ARCHITECTURE §4): device identity (vault-core
+//! naming) and session tokens in the [`SecureStore`]. The per-profile
+//! SQLCipher key lives there only for legacy (≤ 0.8.x) and vault-less
+//! profiles; once a profile has a vault its database key is sealed under
+//! the vault key in the profile key file (S5, `keyfile.rs`). Values never
+//! leave this module except as the typed wrappers of the consuming crates.
 
 use crate::error::{AppError, AppResult};
 use async_trait::async_trait;
@@ -34,7 +36,29 @@ where
         .map_err(|e| AppError::internal(format!("blocking task failed: {e}")))?
 }
 
-/// Create and store a fresh random 32-byte database key.
+/// A fresh random database key (not stored anywhere yet).
+pub(crate) fn random_db_key() -> AppResult<DatabaseKey> {
+    let mut bytes = Zeroizing::new([0u8; 32]);
+    cc_crypto_core::fill_random(bytes.as_mut())?;
+    Ok(DatabaseKey::from_bytes(*bytes))
+}
+
+/// Delete the OS-stored database and search-index keys of a profile whose
+/// database is now sealed under its vault key.
+pub(crate) async fn delete_storage_keys(
+    store: Arc<dyn SecureStore>,
+    profile: ProfileId,
+) -> AppResult<()> {
+    blocking(move || {
+        store.delete(&db_key_name(profile))?;
+        store.delete(&crate::ai::index_key_name(profile))?;
+        Ok(())
+    })
+    .await
+}
+
+/// Create and store a fresh random 32-byte database key (vault-less
+/// profiles until they are sealed).
 pub(crate) async fn create_db_key(
     store: Arc<dyn SecureStore>,
     profile: ProfileId,

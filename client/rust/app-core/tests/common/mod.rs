@@ -2,8 +2,7 @@
 #![allow(dead_code)]
 
 use cc_app_core::platform::{
-    InMemorySecureStore, OsAuthAvailability, OsAuthError, OsAuthKind, OsAuthenticator, SecureStore,
-    UnsupportedOsAuthenticator,
+    DeviceKeyProtector, InMemoryDeviceKeys, InMemorySecureStore, SecureStore, UnsupportedDeviceKeys,
 };
 use cc_app_core::{AppConfig, AppCore, AppError, HostDto};
 use std::future::Future;
@@ -14,19 +13,6 @@ use std::time::Duration;
 pub const PASSPHRASE: &str = "correct horse vault passphrase 42";
 pub const ACCOUNT_PASSWORD: &str = "account-password-for-tests-1234";
 
-/// Test double for Touch ID / Windows Hello.
-#[derive(Debug)]
-pub struct ApprovingOsAuth;
-
-impl OsAuthenticator for ApprovingOsAuth {
-    fn availability(&self) -> OsAuthAvailability {
-        OsAuthAvailability::Available(OsAuthKind::TouchId)
-    }
-    fn authenticate(&self, _reason: &str) -> Result<(), OsAuthError> {
-        Ok(())
-    }
-}
-
 pub fn config(dir: &Path) -> AppConfig {
     AppConfig::for_tests(dir.to_string_lossy().to_string())
 }
@@ -36,14 +22,24 @@ pub fn app(dir: &Path) -> AppCore {
     AppCore::new(config(dir)).expect("app")
 }
 
-/// App sharing `store` (to simulate restarts of the same installation).
+/// App sharing `store` (to simulate restarts of the same installation);
+/// with `biometrics`, a fake OS protector that approves every prompt.
 pub fn app_with(dir: &Path, store: Arc<dyn SecureStore>, biometrics: bool) -> AppCore {
-    let auth: Arc<dyn OsAuthenticator> = if biometrics {
-        Arc::new(ApprovingOsAuth)
+    let keys: Arc<dyn DeviceKeyProtector> = if biometrics {
+        Arc::new(InMemoryDeviceKeys::new())
     } else {
-        Arc::new(UnsupportedOsAuthenticator)
+        Arc::new(UnsupportedDeviceKeys)
     };
-    AppCore::with_platform(config(dir), store, auth).expect("app")
+    AppCore::with_platform(config(dir), store, keys).expect("app")
+}
+
+/// App sharing `store` and the fake OS protector `keys`.
+pub fn app_with_keys(
+    dir: &Path,
+    store: Arc<dyn SecureStore>,
+    keys: Arc<InMemoryDeviceKeys>,
+) -> AppCore {
+    AppCore::with_platform(config(dir), store, keys).expect("app")
 }
 
 pub fn memory_store() -> Arc<dyn SecureStore> {

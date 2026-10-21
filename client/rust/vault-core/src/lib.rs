@@ -13,7 +13,8 @@
 //! |---|---|
 //! | device identity | [`DeviceIdentity::load_or_create`], [`DeviceIdentity::registration`] |
 //! | create vault | [`create_vault`] → [`CreatedVault`] (+ [`RecoveryKit::start_check`]) |
-//! | unlock | [`unlock_with_passphrase`], [`unlock_with_device`], [`unlock_with_os_auth`], [`unlock_with_recovery_input`] |
+//! | unlock | [`unlock_with_passphrase`], [`unlock_with_unlock_key`] (device unlock), [`unlock_with_recovery_input`], [`unlock_with_device`] (approval of a new device) |
+//! | device unlock / trust | [`UnlockedVault::seal_unlock_envelope`], [`UnlockedVault::seal_local_secret`], [`UnlockedVault::trust_envelope_for`] |
 //! | objects | [`UnlockedVault::encrypt_object`], [`UnlockedVault::decrypt_object`] |
 //! | change passphrase | [`UnlockedVault::change_passphrase`] |
 //! | new recovery kit | [`UnlockedVault::regenerate_recovery_kit`] |
@@ -28,6 +29,7 @@ mod backup;
 mod calibrate;
 mod create;
 mod device_sharing;
+mod device_unlock;
 mod error;
 mod identity;
 mod recovery_kit;
@@ -43,19 +45,20 @@ pub use calibrate::{
     calibrate_argon2, calibrate_argon2_with, DEFAULT_CALIBRATION_TARGET, MAX_CALIBRATED_ITERATIONS,
 };
 pub use create::{create_vault, CreatedVault, LocalVaultEnvelopes};
+pub use device_unlock::unlock_with_unlock_key;
 pub use error::{Result, VaultError, MIN_PASSPHRASE_CHARS};
 pub use identity::DeviceIdentity;
 pub use recovery_kit::{RecoveryKit, RecoveryKitCheck, RECOVERY_CHECK_WORDS};
 pub use unlock::{
-    parse_recovery_input, unlock_with_device, unlock_with_os_auth, unlock_with_passphrase,
-    unlock_with_recovery, unlock_with_recovery_input, EnvelopeSource,
+    parse_recovery_input, unlock_with_device, unlock_with_passphrase, unlock_with_recovery,
+    unlock_with_recovery_input, EnvelopeSource,
 };
 pub use unlocked::UnlockedVault;
 
 /// Re-exports callers commonly need alongside this crate.
 pub use cc_crypto_core::{
-    Argon2Params, BackupObject, RecoveryKey, RecoveryPhrase, SecretString, VaultBackup,
-    VerificationCode,
+    Argon2Params, BackupObject, LocalSealed, RecoveryKey, RecoveryPhrase, SecretString, UnlockKey,
+    VaultBackup, VerificationCode,
 };
 
 #[cfg(test)]
