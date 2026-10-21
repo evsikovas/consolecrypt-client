@@ -9114,4 +9114,181 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbRouteDockerHint => 'Docker port forward, restored on connect';
+
+  @override
+  String get dockerComposeActions => 'Project actions';
+
+  @override
+  String get dockerComposeStartAll => 'Start all';
+
+  @override
+  String get dockerComposeStopAll => 'Stop all';
+
+  @override
+  String get dockerComposeRestartAll => 'Restart all';
+
+  @override
+  String get dockerComposeViewYaml => 'View YAML';
+
+  @override
+  String get dockerComposeEditYaml => 'Edit YAML';
+
+  @override
+  String dockerComposeStopAllTitle(String project) {
+    return 'Stop all containers of $project?';
+  }
+
+  @override
+  String dockerComposeRestartAllTitle(String project) {
+    return 'Restart all containers of $project?';
+  }
+
+  @override
+  String dockerComposeBulkHelp(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count containers are affected.',
+      one: '1 container is affected.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dockerComposeBulkFailed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'The action failed for $count containers.',
+      one: 'The action failed for 1 container.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dockerComposeFilesTitle(String project) {
+    return 'Compose files: $project';
+  }
+
+  @override
+  String dockerComposeWorkingDir(String path) {
+    return 'Project folder: $path';
+  }
+
+  @override
+  String dockerComposeEnvFiles(String files) {
+    return 'Environment files: $files';
+  }
+
+  @override
+  String get dockerComposeFiles => 'Files';
+
+  @override
+  String dockerComposeUnlockHelp(String project) {
+    return 'Compose files can contain passwords and decide what runs on the host. Enter the vault passphrase to edit the files of $project.';
+  }
+
+  @override
+  String get dockerComposeUnlockExpired =>
+      'The editing permission has expired. Enter the vault passphrase again to save.';
+
+  @override
+  String get dockerComposeUnlock => 'Allow editing';
+
+  @override
+  String get dockerComposeSaveApply => 'Save and apply';
+
+  @override
+  String get dockerComposeSaveOnly => 'Save without applying';
+
+  @override
+  String get dockerComposeValidating => 'Checking the configuration on the host…';
+
+  @override
+  String get dockerComposeInvalid => 'The configuration has errors. Nothing was saved.';
+
+  @override
+  String dockerComposeConflict(String path) {
+    return '$path changed on the host after it was opened. Nothing was saved: copy your changes, then open the file again.';
+  }
+
+  @override
+  String dockerComposeWriteDenied(String path) {
+    return 'No permission to write $path or its folder. The file was not changed.';
+  }
+
+  @override
+  String dockerComposeWriteFailed(String path) {
+    return 'Could not write $path. The file was not changed.';
+  }
+
+  @override
+  String get dockerComposeMissing =>
+      'The host has no compose command line tool, so the change cannot be checked. Nothing was saved.';
+
+  @override
+  String dockerComposeRunFailed(String detail) {
+    return 'The check could not run ($detail). Nothing was saved.';
+  }
+
+  @override
+  String dockerComposeSavedBackups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Saved. The previous versions are kept as:',
+      one: 'Saved. The previous version is kept as:',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dockerComposeSavedNotApplied => 'The running containers still use the previous configuration.';
+
+  @override
+  String get dockerComposeApplying => 'Applying the changes…';
+
+  @override
+  String get dockerComposeApplied => 'Changes applied.';
+
+  @override
+  String dockerComposeApplyFailed(int code) {
+    return 'Applying failed (exit code $code).';
+  }
+
+  @override
+  String get dockerComposeApplyError => 'Applying failed.';
+
+  @override
+  String get dockerComposeOutput => 'Output';
+
+  @override
+  String get dockerComposeDiscardTitle => 'Discard the changes?';
+
+  @override
+  String get dockerComposeDiscardHelp => 'The edited files have not been saved.';
+
+  @override
+  String get dockerComposeDiscard => 'Discard';
+
+  @override
+  String get dockerComposeFileNotFound => 'This file no longer exists on the host.';
+
+  @override
+  String get dockerComposeFileDenied => 'No permission to read this file: it may belong to another user, such as root.';
+
+  @override
+  String get dockerComposeFileTooLarge => 'The file is larger than 1 MB and is not shown.';
+
+  @override
+  String get dockerComposeFileNotText => 'The file is not UTF-8 text.';
+
+  @override
+  String get dockerComposeFileReadFailed => 'The file could not be read.';
+
+  @override
+  String get dockerComposeProjectGone => 'The project has no containers any more.';
+
+  @override
+  String get dockerComposeFilesUnknown => 'The project\'s containers do not record which compose files created them.';
 }

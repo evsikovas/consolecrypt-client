@@ -16447,6 +16447,264 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Docker port forward, restored on connect'**
   String get dbRouteDockerHint;
+
+  /// Docker: tooltip of the compose project header menu button.
+  ///
+  /// In en, this message translates to:
+  /// **'Project actions'**
+  String get dockerComposeActions;
+
+  /// Compose project menu: start every stopped container of the project.
+  ///
+  /// In en, this message translates to:
+  /// **'Start all'**
+  String get dockerComposeStartAll;
+
+  /// Compose project menu: stop every running container of the project.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop all'**
+  String get dockerComposeStopAll;
+
+  /// Compose project menu: restart every container of the project.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart all'**
+  String get dockerComposeRestartAll;
+
+  /// Compose project menu: show the project's compose files read-only.
+  ///
+  /// In en, this message translates to:
+  /// **'View YAML'**
+  String get dockerComposeViewYaml;
+
+  /// Compose project menu / files dialog: edit the compose files (asks for the vault passphrase).
+  ///
+  /// In en, this message translates to:
+  /// **'Edit YAML'**
+  String get dockerComposeEditYaml;
+
+  /// Confirmation title before stopping a whole compose project.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop all containers of {project}?'**
+  String dockerComposeStopAllTitle(String project);
+
+  /// Confirmation title before restarting a whole compose project.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart all containers of {project}?'**
+  String dockerComposeRestartAllTitle(String project);
+
+  /// Confirmation body for a project-wide stop/restart: how many containers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 container is affected.} other{{count} containers are affected.}}'**
+  String dockerComposeBulkHelp(int count);
+
+  /// Error after a project-wide start/stop/restart where some containers failed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The action failed for 1 container.} other{The action failed for {count} containers.}}'**
+  String dockerComposeBulkFailed(int count);
+
+  /// Title of the compose files dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Compose files: {project}'**
+  String dockerComposeFilesTitle(String project);
+
+  /// Compose files dialog: the project's working directory on the host.
+  ///
+  /// In en, this message translates to:
+  /// **'Project folder: {path}'**
+  String dockerComposeWorkingDir(String path);
+
+  /// Compose files dialog: env files passed to compose.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment files: {files}'**
+  String dockerComposeEnvFiles(String files);
+
+  /// Compose files dialog: accessible label of the file tabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get dockerComposeFiles;
+
+  /// Compose files dialog: passphrase gate before editing.
+  ///
+  /// In en, this message translates to:
+  /// **'Compose files can contain passwords and decide what runs on the host. Enter the vault passphrase to edit the files of {project}.'**
+  String dockerComposeUnlockHelp(String project);
+
+  /// Compose files dialog: the edit grant expired before saving.
+  ///
+  /// In en, this message translates to:
+  /// **'The editing permission has expired. Enter the vault passphrase again to save.'**
+  String get dockerComposeUnlockExpired;
+
+  /// Compose files dialog: button that checks the vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow editing'**
+  String get dockerComposeUnlock;
+
+  /// Compose editor: validate, save and redeploy the project.
+  ///
+  /// In en, this message translates to:
+  /// **'Save and apply'**
+  String get dockerComposeSaveApply;
+
+  /// Compose editor: validate and save without redeploying.
+  ///
+  /// In en, this message translates to:
+  /// **'Save without applying'**
+  String get dockerComposeSaveOnly;
+
+  /// Compose editor: validation in progress.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the configuration on the host…'**
+  String get dockerComposeValidating;
+
+  /// Compose editor: validation failed (output shown below).
+  ///
+  /// In en, this message translates to:
+  /// **'The configuration has errors. Nothing was saved.'**
+  String get dockerComposeInvalid;
+
+  /// Compose editor: the file changed on the server meanwhile.
+  ///
+  /// In en, this message translates to:
+  /// **'{path} changed on the host after it was opened. Nothing was saved: copy your changes, then open the file again.'**
+  String dockerComposeConflict(String path);
+
+  /// Compose editor: permission denied while writing.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to write {path} or its folder. The file was not changed.'**
+  String dockerComposeWriteDenied(String path);
+
+  /// Compose editor: writing failed for another reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not write {path}. The file was not changed.'**
+  String dockerComposeWriteFailed(String path);
+
+  /// Compose editor: neither compose plugin nor standalone binary on the host.
+  ///
+  /// In en, this message translates to:
+  /// **'The host has no compose command line tool, so the change cannot be checked. Nothing was saved.'**
+  String get dockerComposeMissing;
+
+  /// Compose editor: the validation command could not run.
+  ///
+  /// In en, this message translates to:
+  /// **'The check could not run ({detail}). Nothing was saved.'**
+  String dockerComposeRunFailed(String detail);
+
+  /// Compose editor: saved; backup file paths follow.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Saved. The previous version is kept as:} other{Saved. The previous versions are kept as:}}'**
+  String dockerComposeSavedBackups(int count);
+
+  /// Compose editor: saved without applying.
+  ///
+  /// In en, this message translates to:
+  /// **'The running containers still use the previous configuration.'**
+  String get dockerComposeSavedNotApplied;
+
+  /// Compose editor: up -d is running.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying the changes…'**
+  String get dockerComposeApplying;
+
+  /// Compose editor: up -d succeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes applied.'**
+  String get dockerComposeApplied;
+
+  /// Compose editor: up -d exited with an error.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying failed (exit code {code}).'**
+  String dockerComposeApplyFailed(int code);
+
+  /// Compose editor: up -d could not run or timed out.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying failed.'**
+  String get dockerComposeApplyError;
+
+  /// Compose editor: command output panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get dockerComposeOutput;
+
+  /// Compose editor: leaving with unsaved edits.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard the changes?'**
+  String get dockerComposeDiscardTitle;
+
+  /// Compose editor: leaving with unsaved edits, body.
+  ///
+  /// In en, this message translates to:
+  /// **'The edited files have not been saved.'**
+  String get dockerComposeDiscardHelp;
+
+  /// Compose editor: confirm discarding the edits.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get dockerComposeDiscard;
+
+  /// Compose files dialog: file missing.
+  ///
+  /// In en, this message translates to:
+  /// **'This file no longer exists on the host.'**
+  String get dockerComposeFileNotFound;
+
+  /// Compose files dialog: permission denied reading.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to read this file: it may belong to another user, such as root.'**
+  String get dockerComposeFileDenied;
+
+  /// Compose files dialog: file over the size cap.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is larger than 1 MB and is not shown.'**
+  String get dockerComposeFileTooLarge;
+
+  /// Compose files dialog: binary or wrongly encoded file.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is not UTF-8 text.'**
+  String get dockerComposeFileNotText;
+
+  /// Compose files dialog: other read error.
+  ///
+  /// In en, this message translates to:
+  /// **'The file could not be read.'**
+  String get dockerComposeFileReadFailed;
+
+  /// Compose files dialog: project vanished.
+  ///
+  /// In en, this message translates to:
+  /// **'The project has no containers any more.'**
+  String get dockerComposeProjectGone;
+
+  /// Compose files dialog: labels lack the config file paths.
+  ///
+  /// In en, this message translates to:
+  /// **'The project\'s containers do not record which compose files created them.'**
+  String get dockerComposeFilesUnknown;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

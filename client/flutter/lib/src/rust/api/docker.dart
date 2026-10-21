@@ -96,3 +96,41 @@ Future<String> dockerRevealEnvironment({
   container: container,
   passphrase: passphrase,
 );
+
+/// The compose files of a project, read on the engine host (contents are
+/// secret: they may hold passwords).
+Future<String> dockerComposeProject({required String sessionId, required String project}) =>
+    RustLib.instance.api.crateApiDockerDockerComposeProject(sessionId: sessionId, project: project);
+
+/// Checks the vault passphrase (sent as bytes); returns a grant to edit the
+/// project's files.
+Future<String> dockerComposeUnlock({
+  required String sessionId,
+  required String project,
+  required List<int> passphrase,
+}) => RustLib.instance.api.crateApiDockerDockerComposeUnlock(
+  sessionId: sessionId,
+  project: project,
+  passphrase: passphrase,
+);
+
+/// Validates and saves edited files (`edits`: UTF-8 JSON
+/// `[{"path","content","digest"}]`, zeroized here); with `apply` runs
+/// `up -d` as a job. `{"outcome": "saved" | "invalid" | ...}`.
+Future<String> dockerComposeSave({
+  required String sessionId,
+  required String project,
+  required String grant,
+  required List<int> edits,
+  required bool apply,
+}) => RustLib.instance.api.crateApiDockerDockerComposeSave(
+  sessionId: sessionId,
+  project: project,
+  grant: grant,
+  edits: edits,
+  apply: apply,
+);
+
+/// New output lines of an `up` job and whether it ended.
+Future<String> dockerComposeJobPoll({required String jobId, required int waitMs}) =>
+    RustLib.instance.api.crateApiDockerDockerComposeJobPoll(jobId: jobId, waitMs: waitMs);

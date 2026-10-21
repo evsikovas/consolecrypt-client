@@ -219,6 +219,164 @@ final class DockerVolume {
   );
 }
 
+/// Why a compose file could not be shown.
+enum DockerComposeFileError { notFound, permissionDenied, tooLarge, notAFile, notText, readFailed }
+
+/// One compose file as read on the engine host. [content] is secret (compose
+/// files often hold passwords); the dialog wipes it on close.
+final class DockerComposeFile {
+  DockerComposeFile({required this.path, this.content, this.digest, this.size = 0, this.error});
+  final String path;
+  final SecretText? content;
+
+  /// SHA-256 of what was read; a save refuses when the file changed since.
+  final String? digest;
+  final int size;
+  final DockerComposeFileError? error;
+  String get name => path.split('/').last;
+  factory DockerComposeFile.fromJson(DockerJson json) => DockerComposeFile(
+    path: json['path'] as String,
+    content: json['content'] == null ? null : SecretText(json['content'] as String),
+    digest: json['digest'] as String?,
+    size: json['size'] as int? ?? 0,
+    error: switch (json['error']) {
+      null => null,
+      'not_found' => DockerComposeFileError.notFound,
+      'permission_denied' => DockerComposeFileError.permissionDenied,
+      'too_large' => DockerComposeFileError.tooLarge,
+      'not_a_file' => DockerComposeFileError.notAFile,
+      'not_text' => DockerComposeFileError.notText,
+      _ => DockerComposeFileError.readFailed,
+    },
+  );
+  void wipe() => content?.wipe();
+}
+
+/// A compose project's files, located from its containers' labels.
+final class DockerComposeProject {
+  const DockerComposeProject({
+    required this.project,
+    required this.workingDir,
+    required this.files,
+    this.envFiles = const [],
+  });
+  final String project, workingDir;
+  final List<String> envFiles;
+  final List<DockerComposeFile> files;
+  factory DockerComposeProject.fromJson(DockerJson json) => DockerComposeProject(
+    project: json['project'] as String,
+    workingDir: json['working_dir'] as String? ?? '',
+    envFiles: (json['env_files'] as List? ?? const []).cast<String>(),
+    files: [for (final file in (json['files'] as List).cast<DockerJson>()) DockerComposeFile.fromJson(file)],
+  );
+  void wipe() {
+    for (final file in files) {
+      file.wipe();
+    }
+  }
+}
+
+/// A changed file: the new text and the digest of the text it was edited
+/// from. The service wipes [content] once sent.
+final class DockerComposeEdit {
+  const DockerComposeEdit({required this.path, required this.content, required this.digest});
+  final String path, digest;
+  final SecretText content;
+}
+
+/// Why writing failed.
+enum DockerComposeWriteError { permissionDenied, notFound, other }
+
+sealed class DockerComposeSaveResult {
+  const DockerComposeSaveResult();
+}
+
+/// Written; the originals were kept as [backups]. [jobId] streams `up -d`.
+final class DockerComposeSaved extends DockerComposeSaveResult {
+  const DockerComposeSaved({required this.backups, this.jobId});
+  final List<String> backups;
+  final String? jobId;
+}
+
+/// The configuration check failed; nothing was written.
+final class DockerComposeInvalid extends DockerComposeSaveResult {
+  const DockerComposeInvalid(this.output);
+  final String output;
+}
+
+/// The file changed on the host since it was opened.
+final class DockerComposeConflict extends DockerComposeSaveResult {
+  const DockerComposeConflict(this.path);
+  final String path;
+}
+
+final class DockerComposeWriteFailed extends DockerComposeSaveResult {
+  const DockerComposeWriteFailed(this.path, this.reason);
+  final String path;
+  final DockerComposeWriteError reason;
+}
+
+/// No compose command line tool on the host.
+final class DockerComposeMissing extends DockerComposeSaveResult {
+  const DockerComposeMissing();
+}
+
+/// The check could not run (timeout, refused channel).
+final class DockerComposeRunFailed extends DockerComposeSaveResult {
+  const DockerComposeRunFailed(this.detail);
+  final String detail;
+}
+
+/// The edit permission expired: ask for the passphrase again.
+final class DockerComposeLocked extends DockerComposeSaveResult {
+  const DockerComposeLocked();
+}
+
+DockerComposeSaveResult dockerComposeSaveResultFromJson(DockerJson json) => switch (json['outcome']) {
+  'saved' => DockerComposeSaved(
+    backups: (json['backups'] as List? ?? const []).cast<String>(),
+    jobId: json['job_id'] as String?,
+  ),
+  'invalid' => DockerComposeInvalid(json['output'] as String? ?? ''),
+  'conflict' => DockerComposeConflict(json['path'] as String? ?? ''),
+  'write_failed' => DockerComposeWriteFailed(json['path'] as String? ?? '', switch (json['reason']) {
+    'permission_denied' => DockerComposeWriteError.permissionDenied,
+    'not_found' => DockerComposeWriteError.notFound,
+    _ => DockerComposeWriteError.other,
+  }),
+  'compose_missing' => const DockerComposeMissing(),
+  'locked' => const DockerComposeLocked(),
+  _ => DockerComposeRunFailed(json['detail'] as String? ?? ''),
+};
+
+/// Output of `up -d` so far; [done] once it ended ([success] then says how).
+final class DockerComposeJobUpdate {
+  const DockerComposeJobUpdate({required this.lines, required this.done, this.exitCode, this.error});
+  final List<String> lines;
+  final bool done;
+  final int? exitCode;
+
+  /// `timeout`, `cancelled`, `compose_missing` or `run_failed`.
+  final String? error;
+  bool get success => done && error == null && exitCode == 0;
+  factory DockerComposeJobUpdate.fromJson(DockerJson json) => DockerComposeJobUpdate(
+    lines: (json['lines'] as List? ?? const []).cast<String>(),
+    done: json['done'] as bool? ?? false,
+    exitCode: json['exit_code'] as int?,
+    error: json['error'] as String?,
+  );
+}
+
+/// Why a project's files cannot be located.
+enum DockerComposeFailure { projectGone, filesUnknown, other }
+
+final class DockerComposeException implements Exception {
+  const DockerComposeException(this.failure);
+  final DockerComposeFailure failure;
+  @override
+  String toString() => 'DockerComposeException(${failure.name})';
+}
+
 /// The vault passphrase was wrong when revealing secrets.
 final class DockerWrongPassphrase implements Exception {
   const DockerWrongPassphrase();
@@ -262,6 +420,27 @@ abstract interface class DockerService {
   /// vault [passphrase] first and throws [DockerWrongPassphrase] if wrong.
   /// The caller wipes [passphrase].
   Future<List<String>> revealEnvironment(String sessionId, String containerId, SecretText passphrase);
+
+  /// The project's compose files, read on the engine host. Throws
+  /// [DockerComposeException] when they cannot be located.
+  Future<DockerComposeProject> composeProject(String sessionId, String project);
+
+  /// Checks the vault [passphrase] (throws [DockerWrongPassphrase]) and
+  /// returns a short-lived grant to edit [project]. Wipes [passphrase].
+  Future<String> composeUnlock(String sessionId, String project, SecretText passphrase);
+
+  /// Validates the edited files on the host, then writes them (keeping
+  /// backups); with [apply] runs `up -d` as a job. Wipes the edits' content.
+  Future<DockerComposeSaveResult> composeSave(
+    String sessionId,
+    String project,
+    String grant,
+    List<DockerComposeEdit> edits, {
+    bool apply = true,
+  });
+
+  /// Output of an `up -d` job until it ends (the last update has `done`).
+  Stream<DockerComposeJobUpdate> composeJob(String jobId);
 
   Future<DockerForward> startForward(
     String sessionId,

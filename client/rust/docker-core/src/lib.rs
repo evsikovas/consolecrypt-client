@@ -8,6 +8,7 @@ use std::{fmt, sync::Arc};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 mod client;
+pub mod compose;
 mod logs;
 pub use client::{
     ContainerSummary, DockerClient, EngineInfo, ExecSession, LogLine, PortMapping, VolumeSummary,

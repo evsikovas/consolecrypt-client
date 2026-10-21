@@ -135,6 +135,43 @@ void runDockerMenuValue(
   }
 }
 
+/// What the menu of a compose project header does.
+enum DockerComposeCommand { startAll, stopAll, restartAll, viewYaml, editYaml }
+
+/// The compose project header menu (right click, long press or "…").
+List<GlassMenuEntry<DockerComposeCommand>> dockerComposeMenu(AppLocalizations l, DockerContainerGroup group) {
+  GlassMenuItem<DockerComposeCommand> item(
+    DockerComposeCommand command,
+    String label,
+    IconData icon, {
+    bool enabled = true,
+  }) => GlassMenuItem<DockerComposeCommand>(
+    key: ValueKey('docker-compose-menu-${command.name}'),
+    value: command,
+    label: label,
+    icon: icon,
+    enabled: enabled,
+  );
+  return [
+    item(DockerComposeCommand.viewYaml, l.dockerComposeViewYaml, Icons.description_outlined),
+    item(DockerComposeCommand.editYaml, l.dockerComposeEditYaml, Icons.edit_outlined),
+    const GlassMenuDivider(),
+    item(
+      DockerComposeCommand.startAll,
+      l.dockerComposeStartAll,
+      Icons.play_arrow_rounded,
+      enabled: group.running < group.total,
+    ),
+    item(DockerComposeCommand.stopAll, l.dockerComposeStopAll, Icons.stop_rounded, enabled: group.running > 0),
+    item(
+      DockerComposeCommand.restartAll,
+      l.dockerComposeRestartAll,
+      Icons.restart_alt_rounded,
+      enabled: group.total > 0,
+    ),
+  ];
+}
+
 /// Containers grouped by compose project; groups collapse.
 class DockerContainerList extends StatelessWidget {
   const DockerContainerList({
@@ -143,6 +180,7 @@ class DockerContainerList extends StatelessWidget {
     required this.actions,
     required this.onToggleGroup,
     this.selectedId,
+    this.onCompose,
     super.key,
   });
   final List<DockerContainerGroup> groups;
@@ -150,6 +188,9 @@ class DockerContainerList extends StatelessWidget {
   final DockerContainerActions actions;
   final ValueChanged<String> onToggleGroup;
   final String? selectedId;
+
+  /// Runs a compose project menu command; null hides the menu.
+  final void Function(DockerContainerGroup group, DockerComposeCommand command)? onCompose;
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +227,14 @@ class DockerContainerList extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _GroupHeader(group: group, collapsed: !open, onToggle: () => onToggleGroup(group.key)),
+                        _GroupHeader(
+                          group: group,
+                          collapsed: !open,
+                          onToggle: () => onToggleGroup(group.key),
+                          onCompose: group.project == null || onCompose == null
+                              ? null
+                              : (command) => onCompose!(group, command),
+                        ),
                         if (open)
                           for (final container in group.containers)
                             DockerContainerRow(
@@ -210,17 +258,30 @@ class DockerContainerList extends StatelessWidget {
 }
 
 class _GroupHeader extends StatelessWidget {
-  const _GroupHeader({required this.group, required this.collapsed, required this.onToggle});
+  const _GroupHeader({required this.group, required this.collapsed, required this.onToggle, this.onCompose});
   final DockerContainerGroup group;
   final bool collapsed;
   final VoidCallback onToggle;
+  final ValueChanged<DockerComposeCommand>? onCompose;
+
+  Future<void> _menuAt(BuildContext context, Offset position) async {
+    final run = onCompose;
+    if (run == null) return;
+    final value = await showGlassMenu<DockerComposeCommand>(
+      context: context,
+      anchor: Rect.fromLTWH(position.dx, position.dy, 1, 1),
+      entries: dockerComposeMenu(context.l10n, group),
+    );
+    if (value != null && context.mounted) run(value);
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
     final compose = group.project != null;
-    return GlassInteractive(
+    final run = onCompose;
+    final header = GlassInteractive(
       key: ValueKey('docker-group-${group.key}'),
       semanticLabel: group.project ?? l.dockerStandalone,
       onPressed: onToggle,
@@ -230,7 +291,7 @@ class _GroupHeader extends StatelessWidget {
           shape: GlassRadii.shape(tokens.radii.row),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 10, 12, 6),
+          padding: run == null ? const EdgeInsets.fromLTRB(6, 10, 12, 6) : const EdgeInsets.fromLTRB(6, 6, 6, 2),
           child: Row(
             children: [
               Icon(
@@ -268,10 +329,33 @@ class _GroupHeader extends StatelessWidget {
                   color: group.running == group.total ? tokens.palette.success : tokens.secondaryLabel,
                 ),
               ),
+              if (run != null) ...[
+                const SizedBox(width: 4),
+                GlassMenuButton<DockerComposeCommand>(
+                  key: ValueKey('docker-compose-menu-${group.key}'),
+                  entries: dockerComposeMenu(l, group),
+                  onSelected: run,
+                  builder: (context, open) => GlassIconButton(
+                    key: ValueKey('docker-compose-menu-button-${group.key}'),
+                    icon: Icons.more_horiz_rounded,
+                    tooltip: l.dockerComposeActions,
+                    size: 24,
+                    iconSize: 16,
+                    style: GlassIconButtonStyle.plain,
+                    onPressed: open,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
+    );
+    if (run == null) return header;
+    return GestureDetector(
+      onSecondaryTapUp: (details) => unawaited(_menuAt(context, details.globalPosition)),
+      onLongPressStart: (details) => unawaited(_menuAt(context, details.globalPosition)),
+      child: header,
     );
   }
 }

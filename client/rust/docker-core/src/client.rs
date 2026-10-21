@@ -365,6 +365,44 @@ impl DockerClient {
             .collect())
     }
 
+    /// Labels of every container (running or not) of one compose project,
+    /// most recently created first.
+    pub async fn compose_labels(
+        &self,
+        project: &str,
+    ) -> Result<Vec<BTreeMap<String, String>>, DockerError> {
+        if !crate::compose::valid_project_name(project) {
+            return Err(DockerError::InvalidRequest);
+        }
+        let list = self
+            .json(Method::GET, "/containers/json?all=1", None)
+            .await?;
+        let mut items: Vec<&Value> = list
+            .as_array()
+            .ok_or(DockerError::Protocol)?
+            .iter()
+            .filter(|item| item["Labels"][crate::compose::LABEL_PROJECT].as_str() == Some(project))
+            .collect();
+        items.sort_by_key(|item| std::cmp::Reverse(item["Created"].as_i64().unwrap_or(0)));
+        Ok(items
+            .into_iter()
+            .map(|item| {
+                item["Labels"]
+                    .as_object()
+                    .map(|labels| {
+                        labels
+                            .iter()
+                            .filter(|(key, _)| key.starts_with("com.docker.compose."))
+                            .filter_map(|(key, value)| {
+                                Some((key.clone(), value.as_str()?.to_owned()))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            })
+            .collect())
+    }
+
     /// `docker inspect` with secret-looking environment values hidden.
     pub async fn inspect(&self, id: &str) -> Result<Value, DockerError> {
         let mut value = self

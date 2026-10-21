@@ -125,3 +125,69 @@ pub async fn docker_reveal_environment(
     })
     .await
 }
+
+/// The compose files of a project, read on the engine host (contents are
+/// secret: they may hold passwords).
+pub async fn docker_compose_project(
+    session_id: String,
+    project: String,
+) -> Result<String, BridgeError> {
+    with_core(
+        move |c| async move { to_json(&c.docker_compose_project(session_id, project).await?) },
+    )
+    .await
+}
+
+/// Checks the vault passphrase (sent as bytes); returns a grant to edit the
+/// project's files.
+pub async fn docker_compose_unlock(
+    session_id: String,
+    project: String,
+    passphrase: Vec<u8>,
+) -> Result<String, BridgeError> {
+    let passphrase = crate::state::secret_string("passphrase", passphrase)?;
+    with_core(move |c| async move {
+        Ok(c.docker_compose_unlock(session_id, project, passphrase)
+            .await?)
+    })
+    .await
+}
+
+/// Validates and saves edited files (`edits`: UTF-8 JSON
+/// `[{"path","content","digest"}]`, zeroized here); with `apply` runs
+/// `up -d` as a job. `{"outcome": "saved" | "invalid" | ...}`.
+pub async fn docker_compose_save(
+    session_id: String,
+    project: String,
+    grant: String,
+    edits: Vec<u8>,
+    apply: bool,
+) -> Result<String, BridgeError> {
+    let mut edits = edits;
+    let parsed = serde_json::from_slice::<Vec<cc_app_core::ComposeEdit>>(&edits);
+    zeroize::Zeroize::zeroize(&mut edits);
+    let edits = parsed.map_err(|e| {
+        BridgeError::invalid(
+            "edits",
+            format!("malformed edits ({:?} at line {})", e.classify(), e.line()),
+        )
+    })?;
+    with_core(move |c| async move {
+        to_json(
+            &c.docker_compose_save(session_id, project, grant, edits, apply)
+                .await?,
+        )
+    })
+    .await
+}
+
+/// New output lines of an `up` job and whether it ended.
+pub async fn docker_compose_job_poll(job_id: String, wait_ms: u32) -> Result<String, BridgeError> {
+    with_core(move |c| async move {
+        to_json(
+            &c.docker_compose_job_poll(job_id, u64::from(wait_ms))
+                .await?,
+        )
+    })
+    .await
+}

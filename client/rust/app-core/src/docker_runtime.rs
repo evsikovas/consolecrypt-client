@@ -124,8 +124,18 @@ struct LiveDocker {
     info: DockerSessionDto,
     client: DockerClient,
     ssh: Option<Arc<SshSession>>,
+    /// The engine socket of this computer (None over SSH).
+    local_socket: Option<std::path::PathBuf>,
     host_id: Option<ObjectId>,
     cancel: CancellationToken,
+}
+
+/// What compose file access needs from a session.
+pub(crate) struct ComposeTarget {
+    pub client: DockerClient,
+    pub ssh: Option<Arc<SshSession>>,
+    pub local_socket: Option<std::path::PathBuf>,
+    pub cancel: CancellationToken,
 }
 
 struct LogStream {
@@ -157,11 +167,13 @@ pub(crate) struct DockerRuntime {
     sessions: Mutex<HashMap<String, Arc<LiveDocker>>>,
     logs: Mutex<HashMap<String, Arc<LogStream>>>,
     forwards: Mutex<HashMap<String, Arc<Forward>>>,
+    pub(crate) compose: crate::docker_compose::ComposeState,
 }
 
 impl DockerRuntime {
     pub(crate) fn close(&self) {
         self.shutdown.cancel();
+        self.compose.close();
         self.logs.lock().unwrap_or_else(|e| e.into_inner()).clear();
         self.forwards
             .lock()
@@ -209,6 +221,16 @@ impl DockerRuntime {
                     && info.remote_port == remote_port
             })
             .map(|info| info.address)
+    }
+
+    pub(crate) fn compose_target(&self, id: &str) -> AppResult<ComposeTarget> {
+        let live = self.session(id)?;
+        Ok(ComposeTarget {
+            client: live.client.clone(),
+            ssh: live.ssh.clone(),
+            local_socket: live.local_socket.clone(),
+            cancel: live.cancel.clone(),
+        })
     }
 
     fn session(&self, id: &str) -> AppResult<Arc<LiveDocker>> {
@@ -299,14 +321,16 @@ impl AppCore {
         let failed = |failure: &'static str, detail: String| {
             Ok(DockerConnectOutcome::Failed { failure, detail })
         };
-        let (client, ssh, host, name) = if host_id == LOCAL_HOST {
+        let (client, ssh, host, name, local_socket) = if host_id == LOCAL_HOST {
             #[cfg(unix)]
             {
                 let Some(path) = cc_docker_core::local_socket() else {
                     return failed("not_running", String::new());
                 };
-                let client = DockerClient::new(Arc::new(cc_docker_core::UnixConnector { path }));
-                (client, None, None, String::new())
+                let client = DockerClient::new(Arc::new(cc_docker_core::UnixConnector {
+                    path: path.clone(),
+                }));
+                (client, None, None, String::new(), Some(path))
             }
             #[cfg(not(unix))]
             {
@@ -380,7 +404,7 @@ impl AppCore {
                     _ => failed("connection_failed", String::new()),
                 };
             };
-            (client, Some(session), Some(host), name)
+            (client, Some(session), Some(host), name, None)
         };
         let info = match tokio::time::timeout(Duration::from_secs(15), client.info()).await {
             Ok(Ok(info)) => info,
@@ -410,6 +434,7 @@ impl AppCore {
                     info: dto.clone(),
                     client,
                     ssh,
+                    local_socket,
                     host_id: host,
                     cancel,
                 }),
@@ -428,6 +453,7 @@ impl AppCore {
         {
             live.cancel.cancel();
         }
+        unlocked.docker.compose.forget_session(&session_id);
         unlocked
             .docker
             .forwards

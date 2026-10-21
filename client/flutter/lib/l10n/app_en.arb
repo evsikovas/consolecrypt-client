@@ -12518,5 +12518,247 @@
   "dbRouteDockerHint": "Docker port forward, restored on connect",
   "@dbRouteDockerHint": {
     "description": "Databases list: tooltip of a connection that goes through a Docker container forward."
+  },
+  "dockerComposeActions": "Project actions",
+  "@dockerComposeActions": {
+    "description": "Docker: tooltip of the compose project header menu button."
+  },
+  "dockerComposeStartAll": "Start all",
+  "@dockerComposeStartAll": {
+    "description": "Compose project menu: start every stopped container of the project."
+  },
+  "dockerComposeStopAll": "Stop all",
+  "@dockerComposeStopAll": {
+    "description": "Compose project menu: stop every running container of the project."
+  },
+  "dockerComposeRestartAll": "Restart all",
+  "@dockerComposeRestartAll": {
+    "description": "Compose project menu: restart every container of the project."
+  },
+  "dockerComposeViewYaml": "View YAML",
+  "@dockerComposeViewYaml": {
+    "description": "Compose project menu: show the project's compose files read-only."
+  },
+  "dockerComposeEditYaml": "Edit YAML",
+  "@dockerComposeEditYaml": {
+    "description": "Compose project menu / files dialog: edit the compose files (asks for the vault passphrase)."
+  },
+  "dockerComposeStopAllTitle": "Stop all containers of {project}?",
+  "@dockerComposeStopAllTitle": {
+    "description": "Confirmation title before stopping a whole compose project.",
+    "placeholders": {
+      "project": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeRestartAllTitle": "Restart all containers of {project}?",
+  "@dockerComposeRestartAllTitle": {
+    "description": "Confirmation title before restarting a whole compose project.",
+    "placeholders": {
+      "project": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeBulkHelp": "{count, plural, =1{1 container is affected.} other{{count} containers are affected.}}",
+  "@dockerComposeBulkHelp": {
+    "description": "Confirmation body for a project-wide stop/restart: how many containers.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dockerComposeBulkFailed": "{count, plural, =1{The action failed for 1 container.} other{The action failed for {count} containers.}}",
+  "@dockerComposeBulkFailed": {
+    "description": "Error after a project-wide start/stop/restart where some containers failed.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dockerComposeFilesTitle": "Compose files: {project}",
+  "@dockerComposeFilesTitle": {
+    "description": "Title of the compose files dialog.",
+    "placeholders": {
+      "project": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeWorkingDir": "Project folder: {path}",
+  "@dockerComposeWorkingDir": {
+    "description": "Compose files dialog: the project's working directory on the host.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeEnvFiles": "Environment files: {files}",
+  "@dockerComposeEnvFiles": {
+    "description": "Compose files dialog: env files passed to compose.",
+    "placeholders": {
+      "files": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeFiles": "Files",
+  "@dockerComposeFiles": {
+    "description": "Compose files dialog: accessible label of the file tabs."
+  },
+  "dockerComposeUnlockHelp": "Compose files can contain passwords and decide what runs on the host. Enter the vault passphrase to edit the files of {project}.",
+  "@dockerComposeUnlockHelp": {
+    "description": "Compose files dialog: passphrase gate before editing.",
+    "placeholders": {
+      "project": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeUnlockExpired": "The editing permission has expired. Enter the vault passphrase again to save.",
+  "@dockerComposeUnlockExpired": {
+    "description": "Compose files dialog: the edit grant expired before saving."
+  },
+  "dockerComposeUnlock": "Allow editing",
+  "@dockerComposeUnlock": {
+    "description": "Compose files dialog: button that checks the vault passphrase."
+  },
+  "dockerComposeSaveApply": "Save and apply",
+  "@dockerComposeSaveApply": {
+    "description": "Compose editor: validate, save and redeploy the project."
+  },
+  "dockerComposeSaveOnly": "Save without applying",
+  "@dockerComposeSaveOnly": {
+    "description": "Compose editor: validate and save without redeploying."
+  },
+  "dockerComposeValidating": "Checking the configuration on the host…",
+  "@dockerComposeValidating": {
+    "description": "Compose editor: validation in progress."
+  },
+  "dockerComposeInvalid": "The configuration has errors. Nothing was saved.",
+  "@dockerComposeInvalid": {
+    "description": "Compose editor: validation failed (output shown below)."
+  },
+  "dockerComposeConflict": "{path} changed on the host after it was opened. Nothing was saved: copy your changes, then open the file again.",
+  "@dockerComposeConflict": {
+    "description": "Compose editor: the file changed on the server meanwhile.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeWriteDenied": "No permission to write {path} or its folder. The file was not changed.",
+  "@dockerComposeWriteDenied": {
+    "description": "Compose editor: permission denied while writing.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeWriteFailed": "Could not write {path}. The file was not changed.",
+  "@dockerComposeWriteFailed": {
+    "description": "Compose editor: writing failed for another reason.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeMissing": "The host has no compose command line tool, so the change cannot be checked. Nothing was saved.",
+  "@dockerComposeMissing": {
+    "description": "Compose editor: neither compose plugin nor standalone binary on the host."
+  },
+  "dockerComposeRunFailed": "The check could not run ({detail}). Nothing was saved.",
+  "@dockerComposeRunFailed": {
+    "description": "Compose editor: the validation command could not run.",
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerComposeSavedBackups": "{count, plural, =1{Saved. The previous version is kept as:} other{Saved. The previous versions are kept as:}}",
+  "@dockerComposeSavedBackups": {
+    "description": "Compose editor: saved; backup file paths follow.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dockerComposeSavedNotApplied": "The running containers still use the previous configuration.",
+  "@dockerComposeSavedNotApplied": {
+    "description": "Compose editor: saved without applying."
+  },
+  "dockerComposeApplying": "Applying the changes…",
+  "@dockerComposeApplying": {
+    "description": "Compose editor: up -d is running."
+  },
+  "dockerComposeApplied": "Changes applied.",
+  "@dockerComposeApplied": {
+    "description": "Compose editor: up -d succeeded."
+  },
+  "dockerComposeApplyFailed": "Applying failed (exit code {code}).",
+  "@dockerComposeApplyFailed": {
+    "description": "Compose editor: up -d exited with an error.",
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "dockerComposeApplyError": "Applying failed.",
+  "@dockerComposeApplyError": {
+    "description": "Compose editor: up -d could not run or timed out."
+  },
+  "dockerComposeOutput": "Output",
+  "@dockerComposeOutput": {
+    "description": "Compose editor: command output panel."
+  },
+  "dockerComposeDiscardTitle": "Discard the changes?",
+  "@dockerComposeDiscardTitle": {
+    "description": "Compose editor: leaving with unsaved edits."
+  },
+  "dockerComposeDiscardHelp": "The edited files have not been saved.",
+  "@dockerComposeDiscardHelp": {
+    "description": "Compose editor: leaving with unsaved edits, body."
+  },
+  "dockerComposeDiscard": "Discard",
+  "@dockerComposeDiscard": {
+    "description": "Compose editor: confirm discarding the edits."
+  },
+  "dockerComposeFileNotFound": "This file no longer exists on the host.",
+  "@dockerComposeFileNotFound": {
+    "description": "Compose files dialog: file missing."
+  },
+  "dockerComposeFileDenied": "No permission to read this file: it may belong to another user, such as root.",
+  "@dockerComposeFileDenied": {
+    "description": "Compose files dialog: permission denied reading."
+  },
+  "dockerComposeFileTooLarge": "The file is larger than 1 MB and is not shown.",
+  "@dockerComposeFileTooLarge": {
+    "description": "Compose files dialog: file over the size cap."
+  },
+  "dockerComposeFileNotText": "The file is not UTF-8 text.",
+  "@dockerComposeFileNotText": {
+    "description": "Compose files dialog: binary or wrongly encoded file."
+  },
+  "dockerComposeFileReadFailed": "The file could not be read.",
+  "@dockerComposeFileReadFailed": {
+    "description": "Compose files dialog: other read error."
+  },
+  "dockerComposeProjectGone": "The project has no containers any more.",
+  "@dockerComposeProjectGone": {
+    "description": "Compose files dialog: project vanished."
+  },
+  "dockerComposeFilesUnknown": "The project's containers do not record which compose files created them.",
+  "@dockerComposeFilesUnknown": {
+    "description": "Compose files dialog: labels lack the config file paths."
   }
 }

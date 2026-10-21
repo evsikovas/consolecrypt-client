@@ -9327,4 +9327,189 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbRouteDockerHint => 'Проброс порта Docker, восстанавливается при подключении';
+
+  @override
+  String get dockerComposeActions => 'Действия с проектом';
+
+  @override
+  String get dockerComposeStartAll => 'Запустить все';
+
+  @override
+  String get dockerComposeStopAll => 'Остановить все';
+
+  @override
+  String get dockerComposeRestartAll => 'Перезапустить все';
+
+  @override
+  String get dockerComposeViewYaml => 'Показать YAML';
+
+  @override
+  String get dockerComposeEditYaml => 'Изменить YAML';
+
+  @override
+  String dockerComposeStopAllTitle(String project) {
+    return 'Остановить все контейнеры проекта $project?';
+  }
+
+  @override
+  String dockerComposeRestartAllTitle(String project) {
+    return 'Перезапустить все контейнеры проекта $project?';
+  }
+
+  @override
+  String dockerComposeBulkHelp(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Затронет $count контейнера.',
+      many: 'Затронет $count контейнеров.',
+      few: 'Затронет $count контейнера.',
+      one: 'Затронет $count контейнер.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dockerComposeBulkFailed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Действие не удалось для $count контейнера.',
+      many: 'Действие не удалось для $count контейнеров.',
+      few: 'Действие не удалось для $count контейнеров.',
+      one: 'Действие не удалось для $count контейнера.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dockerComposeFilesTitle(String project) {
+    return 'Файлы compose: $project';
+  }
+
+  @override
+  String dockerComposeWorkingDir(String path) {
+    return 'Папка проекта: $path';
+  }
+
+  @override
+  String dockerComposeEnvFiles(String files) {
+    return 'Файлы окружения: $files';
+  }
+
+  @override
+  String get dockerComposeFiles => 'Файлы';
+
+  @override
+  String dockerComposeUnlockHelp(String project) {
+    return 'Файлы compose могут содержать пароли и определяют, что запущено на хосте. Введите пароль хранилища, чтобы изменить файлы проекта $project.';
+  }
+
+  @override
+  String get dockerComposeUnlockExpired =>
+      'Разрешение на изменение истекло. Введите пароль хранилища ещё раз, чтобы сохранить.';
+
+  @override
+  String get dockerComposeUnlock => 'Разрешить изменение';
+
+  @override
+  String get dockerComposeSaveApply => 'Сохранить и применить';
+
+  @override
+  String get dockerComposeSaveOnly => 'Сохранить без применения';
+
+  @override
+  String get dockerComposeValidating => 'Проверка конфигурации на хосте…';
+
+  @override
+  String get dockerComposeInvalid => 'В конфигурации есть ошибки. Ничего не сохранено.';
+
+  @override
+  String dockerComposeConflict(String path) {
+    return 'Файл $path изменился на хосте после открытия. Ничего не сохранено: скопируйте свои изменения и откройте файл заново.';
+  }
+
+  @override
+  String dockerComposeWriteDenied(String path) {
+    return 'Нет прав на запись $path или его папки. Файл не изменён.';
+  }
+
+  @override
+  String dockerComposeWriteFailed(String path) {
+    return 'Не удалось записать $path. Файл не изменён.';
+  }
+
+  @override
+  String get dockerComposeMissing =>
+      'На хосте нет утилиты compose, поэтому изменения нельзя проверить. Ничего не сохранено.';
+
+  @override
+  String dockerComposeRunFailed(String detail) {
+    return 'Не удалось выполнить проверку ($detail). Ничего не сохранено.';
+  }
+
+  @override
+  String dockerComposeSavedBackups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Сохранено. Прежние версии сохранены как:',
+      many: 'Сохранено. Прежние версии сохранены как:',
+      few: 'Сохранено. Прежние версии сохранены как:',
+      one: 'Сохранено. Прежняя версия сохранена как:',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dockerComposeSavedNotApplied => 'Запущенные контейнеры пока используют прежнюю конфигурацию.';
+
+  @override
+  String get dockerComposeApplying => 'Применение изменений…';
+
+  @override
+  String get dockerComposeApplied => 'Изменения применены.';
+
+  @override
+  String dockerComposeApplyFailed(int code) {
+    return 'Не удалось применить изменения (код выхода $code).';
+  }
+
+  @override
+  String get dockerComposeApplyError => 'Не удалось применить изменения.';
+
+  @override
+  String get dockerComposeOutput => 'Вывод';
+
+  @override
+  String get dockerComposeDiscardTitle => 'Отменить изменения?';
+
+  @override
+  String get dockerComposeDiscardHelp => 'Изменённые файлы не сохранены.';
+
+  @override
+  String get dockerComposeDiscard => 'Не сохранять';
+
+  @override
+  String get dockerComposeFileNotFound => 'Этого файла больше нет на хосте.';
+
+  @override
+  String get dockerComposeFileDenied =>
+      'Нет прав на чтение этого файла: возможно, он принадлежит другому пользователю, например root.';
+
+  @override
+  String get dockerComposeFileTooLarge => 'Файл больше 1 МБ и не показывается.';
+
+  @override
+  String get dockerComposeFileNotText => 'Файл не является текстом в UTF-8.';
+
+  @override
+  String get dockerComposeFileReadFailed => 'Не удалось прочитать файл.';
+
+  @override
+  String get dockerComposeProjectGone => 'У проекта больше нет контейнеров.';
+
+  @override
+  String get dockerComposeFilesUnknown =>
+      'Контейнеры проекта не хранят сведений о том, из каких файлов compose они созданы.';
 }

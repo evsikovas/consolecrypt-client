@@ -274,6 +274,178 @@ class MockDockerService implements DockerService {
     return [for (final entry in env) entry.replaceAll('••••••', 'demo-secret-value')]; // l10n-ignore: demo value
   }
 
+  /// Compose files of the demo projects (path → text), shared by sessions.
+  final composeFiles = <String, String>{
+    '/srv/shop/compose.yaml': _shopCompose, // l10n-ignore: demo path
+    '/srv/shop/compose.override.yaml': _shopOverride, // l10n-ignore: demo path
+    '/opt/monitoring/docker-compose.yml': _monitoringCompose, // l10n-ignore: demo path
+  };
+
+  /// Files the demo SSH user may not read.
+  static const composeRootOnly = '/opt/monitoring/docker-compose.secrets.yml'; // l10n-ignore: demo path
+
+  static const _composeLayout = {
+    'shop': ['/srv/shop/compose.yaml', '/srv/shop/compose.override.yaml'], // l10n-ignore: demo paths
+    'monitoring': ['/opt/monitoring/docker-compose.yml', composeRootOnly], // l10n-ignore: demo paths
+  };
+
+  /// Backups written by saves, for tests.
+  final composeBackups = <String>[];
+  final _grants = <String>{};
+  final _composeJobs = <String, String>{};
+
+  static String composeDigest(String text) =>
+      text.codeUnits.fold<int>(17, (h, c) => (h * 31 + c) & 0x7fffffff).toRadixString(16);
+
+  @override
+  Future<DockerComposeProject> composeProject(String sessionId, String project) async {
+    await mockDelay(latency);
+    if (!_list(sessionId).any((c) => c.composeProject == project)) {
+      throw const DockerComposeException(DockerComposeFailure.projectGone);
+    }
+    final paths = _composeLayout[project];
+    if (paths == null) throw const DockerComposeException(DockerComposeFailure.filesUnknown);
+    return DockerComposeProject(
+      project: project,
+      workingDir: paths.first.substring(0, paths.first.lastIndexOf('/')),
+      envFiles: project == 'shop' ? const ['/srv/shop/.env'] : const [], // l10n-ignore: demo path
+      files: [
+        for (final path in paths)
+          if (path == composeRootOnly)
+            DockerComposeFile(path: path, error: DockerComposeFileError.permissionDenied)
+          else if (composeFiles[path] case final text?)
+            DockerComposeFile(path: path, content: SecretText(text), digest: composeDigest(text), size: text.length)
+          else
+            DockerComposeFile(path: path, error: DockerComposeFileError.notFound),
+      ],
+    );
+  }
+
+  @override
+  Future<String> composeUnlock(String sessionId, String project, SecretText passphrase) async {
+    await mockDelay(latency);
+    final ok = passphrase.expose() == demoPassphrase;
+    passphrase.wipe();
+    if (!ok) throw const DockerWrongPassphrase();
+    final grant = 'compose-grant-${++_next}';
+    _grants.add('$sessionId/$project/$grant');
+    return grant;
+  }
+
+  /// Revokes every edit grant (as if it expired).
+  void expireComposeGrants() => _grants.clear();
+
+  @override
+  Future<DockerComposeSaveResult> composeSave(
+    String sessionId,
+    String project,
+    String grant,
+    List<DockerComposeEdit> edits, {
+    bool apply = true,
+  }) async {
+    await mockDelay(latency);
+    final texts = [for (final edit in edits) edit.content.expose()];
+    for (final edit in edits) {
+      edit.content.wipe();
+    }
+    if (!_grants.contains('$sessionId/$project/$grant')) return const DockerComposeLocked();
+    for (final (index, edit) in edits.indexed) {
+      final current = composeFiles[edit.path];
+      if (current == null) return DockerComposeWriteFailed(edit.path, DockerComposeWriteError.notFound);
+      if (composeDigest(current) != edit.digest) return DockerComposeConflict(edit.path);
+      final tab = texts[index].split('\n').indexWhere((line) => line.contains('\t'));
+      if (tab >= 0) {
+        return DockerComposeInvalid(
+          '${edit.path}: yaml: line ${tab + 1}: found a tab character that violates indentation', // l10n-ignore: demo output
+        );
+      }
+    }
+    final backups = <String>[];
+    for (final (index, edit) in edits.indexed) {
+      final backup = '${edit.path}.bak-20261021-091500'; // l10n-ignore: demo path
+      backups.add(backup);
+      composeBackups.add(backup);
+      composeFiles[backup] = composeFiles[edit.path]!;
+      composeFiles[edit.path] = texts[index];
+    }
+    String? jobId;
+    if (apply) {
+      jobId = 'compose-job-${++_next}';
+      _composeJobs[jobId] = '$sessionId/$project';
+    }
+    return DockerComposeSaved(backups: backups, jobId: jobId);
+  }
+
+  @override
+  Stream<DockerComposeJobUpdate> composeJob(String jobId) async* {
+    final target = _composeJobs.remove(jobId);
+    if (target == null) throw const DockerException(DockerFailure.other, 'job closed');
+    final [sessionId, project] = target.split('/');
+    final list = _containers[sessionId] ?? const <DockerContainer>[];
+    final services = [
+      for (final c in list)
+        if (c.composeProject == project) c,
+    ];
+    await mockDelay(latency);
+    yield DockerComposeJobUpdate(
+      lines: [for (final c in services) 'Container ${c.name}  Recreate'], // l10n-ignore: demo output
+      done: false,
+    );
+    await mockDelay(latency);
+    for (final c in services) {
+      final index = list.indexOf(c);
+      if (index >= 0) list[index] = _copy(c, state: DockerContainerState.running, status: 'Up 1 second');
+    }
+    yield DockerComposeJobUpdate(
+      lines: [for (final c in services) 'Container ${c.name}  Started'], // l10n-ignore: demo output
+      done: true,
+      exitCode: 0,
+    );
+  }
+
+  static const _shopCompose = '''# Shop: web front, API, database and cache.
+services:
+  web:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on: [api]
+  api:
+    image: example/shop-api:2.4.1
+    environment:
+      DATABASE_URL: postgres://shop:demo-secret-value@postgres:5432/shop
+      API_TOKEN: demo-secret-value
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: demo-secret-value
+    volumes:
+      - shop_data:/var/lib/postgresql/data
+  redis:
+    image: redis:7-alpine
+volumes:
+  shop_data: {}
+'''; // l10n-ignore: demo file
+
+  static const _shopOverride = '''services:
+  api:
+    environment:
+      LOG_LEVEL: debug
+'''; // l10n-ignore: demo file
+
+  static const _monitoringCompose = '''services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "127.0.0.1:9090:9090"
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: demo-secret-value
+'''; // l10n-ignore: demo file
+
   static DockerContainer _copy(DockerContainer c, {required DockerContainerState state, required String status}) =>
       DockerContainer(
         id: c.id,

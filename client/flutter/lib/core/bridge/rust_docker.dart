@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_account.dart';
@@ -130,6 +131,82 @@ final class RustDockerService implements DockerService {
     } on AppException catch (error) {
       if (error.code == AppErrorCode.wrongPassphrase) throw const DockerWrongPassphrase();
       rethrow;
+    }
+  }
+
+  @override
+  Future<DockerComposeProject> composeProject(String sessionId, String project) async {
+    try {
+      final json = await guard(() => native.dockerComposeProject(sessionId: sessionId, project: project));
+      return DockerComposeProject.fromJson(jsonDecode(json) as DockerJson);
+    } on AppException catch (error) {
+      final failure = switch (error.args['rule']) {
+        'compose_project_not_found' => DockerComposeFailure.projectGone,
+        'compose_files_unknown' || 'compose_files_invalid' => DockerComposeFailure.filesUnknown,
+        _ => null,
+      };
+      if (failure != null) throw DockerComposeException(failure);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<String> composeUnlock(String sessionId, String project, SecretText passphrase) async {
+    try {
+      return await withSecret(
+        passphrase,
+        (bytes) => guard(() => native.dockerComposeUnlock(sessionId: sessionId, project: project, passphrase: bytes)),
+      );
+    } on AppException catch (error) {
+      if (error.code == AppErrorCode.wrongPassphrase) throw const DockerWrongPassphrase();
+      rethrow;
+    }
+  }
+
+  @override
+  Future<DockerComposeSaveResult> composeSave(
+    String sessionId,
+    String project,
+    String grant,
+    List<DockerComposeEdit> edits, {
+    bool apply = true,
+  }) async {
+    // The edited texts travel as one UTF-8 buffer that is zeroed here and
+    // in the core.
+    final payload = Uint8List.fromList(
+      utf8.encode(
+        jsonEncode([
+          for (final edit in edits) {'path': edit.path, 'content': edit.content.expose(), 'digest': edit.digest},
+        ]),
+      ),
+    );
+    for (final edit in edits) {
+      edit.content.wipe();
+    }
+    try {
+      final json = await guard(
+        () => native.dockerComposeSave(
+          sessionId: sessionId,
+          project: project,
+          grant: grant,
+          edits: payload,
+          apply: apply,
+        ),
+      );
+      return dockerComposeSaveResultFromJson(jsonDecode(json) as DockerJson);
+    } finally {
+      payload.fillRange(0, payload.length, 0);
+    }
+  }
+
+  @override
+  Stream<DockerComposeJobUpdate> composeJob(String jobId) async* {
+    while (true) {
+      final update = DockerComposeJobUpdate.fromJson(
+        jsonDecode(await guard(() => native.dockerComposeJobPoll(jobId: jobId, waitMs: 1000))) as DockerJson,
+      );
+      if (update.lines.isNotEmpty || update.done) yield update;
+      if (update.done) return;
     }
   }
 

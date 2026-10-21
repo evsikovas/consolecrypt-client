@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_providers.dart';
+import 'package:consolecrypt/docker/docker_compose_dialog.dart';
 import 'package:consolecrypt/docker/docker_container_details.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/docker/docker_database_connect.dart';
@@ -204,6 +205,60 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
     if (mounted) await _refresh();
   }
 
+  /// Project-wide engine actions and the compose files dialog.
+  Future<void> _compose(DockerContainerGroup group, DockerComposeCommand command) async {
+    final project = group.project;
+    if (project == null) return;
+    final action = switch (command) {
+      DockerComposeCommand.startAll => DockerAction.start,
+      DockerComposeCommand.stopAll => DockerAction.stop,
+      DockerComposeCommand.restartAll => DockerAction.restart,
+      DockerComposeCommand.viewYaml || DockerComposeCommand.editYaml => null,
+    };
+    if (action == null) {
+      await showDockerComposeDialog(
+        context,
+        service: widget.service,
+        session: widget.session,
+        project: project,
+        edit: command == DockerComposeCommand.editYaml,
+      );
+      if (mounted) await _refresh();
+      return;
+    }
+    final targets = [
+      for (final c in _containers.value)
+        if (c.composeProject == project && dockerActionAllowed(action, c.state) && !_busy.contains(c.id)) c,
+    ];
+    if (targets.isEmpty) return;
+    final l = context.l10n;
+    if (action != DockerAction.start) {
+      final stop = action == DockerAction.stop;
+      final approved = await showConfirmDialog(
+        context,
+        title: stop ? l.dockerComposeStopAllTitle(project) : l.dockerComposeRestartAllTitle(project),
+        message: l.dockerComposeBulkHelp(targets.length),
+        confirmLabel: stop ? l.dockerComposeStopAll : l.dockerComposeRestartAll,
+        destructive: stop,
+      );
+      if (!approved || !mounted) return;
+    }
+    setState(() => _busy.addAll(targets.map((c) => c.id)));
+    var failed = 0;
+    for (final container in targets) {
+      try {
+        await widget.service.action(widget.session.id, container.id, action);
+      } catch (_) {
+        failed++;
+      } finally {
+        if (mounted) setState(() => _busy.remove(container.id));
+      }
+      if (!mounted) return;
+    }
+    if (failed > 0 && mounted) showSnack(context, l.dockerComposeBulkFailed(failed), error: true);
+    if (mounted) await _refresh();
+  }
+
   Future<void> _terminal(DockerContainer container) =>
       openDockerTerminal(context, session: widget.session, hostName: _hostName, container: container);
 
@@ -268,6 +323,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
             collapsed: _collapsed,
             selectedId: _selected,
             actions: _actions,
+            onCompose: (group, command) => unawaited(_compose(group, command)),
             onToggleGroup: (key) =>
                 setState(() => _collapsed.contains(key) ? _collapsed.remove(key) : _collapsed.add(key)),
           );

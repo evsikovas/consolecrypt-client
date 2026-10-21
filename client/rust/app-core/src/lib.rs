@@ -41,10 +41,14 @@ mod database_import;
 pub mod database_inventory;
 mod database_route;
 mod database_runtime;
+mod docker_compose;
 mod docker_runtime;
 pub use database_ai::{DbAiConsent, DbAiRequest};
 pub use database_import::{DbImportChoice, DbImportReviewDto};
 pub use database_runtime::{DbLiveSession, DbPreparedQueryDto, DbQueryReviewDto};
+pub use docker_compose::{
+    ComposeEdit, ComposeFileDto, ComposeJobUpdate, ComposeProjectDto, ComposeSaveOutcome,
+};
 pub use docker_runtime::{DockerConnectOutcome, DockerForwardDto, DockerHostDto, DockerSessionDto};
 mod devices;
 pub mod dto;
