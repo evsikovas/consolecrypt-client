@@ -9,6 +9,7 @@ import 'api/app.dart';
 import 'api/backup.dart';
 import 'api/credentials.dart';
 import 'api/database.dart';
+import 'api/docker.dart';
 import 'api/enrollment.dart';
 import 'api/error.dart';
 import 'api/inventory.dart';

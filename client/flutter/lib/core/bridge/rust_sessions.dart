@@ -11,6 +11,7 @@ import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
+import 'package:consolecrypt/src/rust/api/docker.dart' as rs_docker;
 import 'package:consolecrypt/src/rust/api/inventory.dart' as rs_inv;
 import 'package:consolecrypt/src/rust/api/kubernetes.dart' as rs_kube;
 import 'package:consolecrypt/src/rust/api/sftp.dart' as rs_sftp;
@@ -57,7 +58,12 @@ final class _Session {
 /// prompts raised while a session connects are routed to that session's
 /// event stream and answered through `answerHostKey` / `answerPassword`.
 final class RustTerminalService
-    implements TerminalService, LocalTerminalService, KubernetesTerminalService, RuntimeTerminalService {
+    implements
+        TerminalService,
+        LocalTerminalService,
+        KubernetesTerminalService,
+        DockerTerminalService,
+        RuntimeTerminalService {
   RustTerminalService(this._hub) {
     _hub.onPrompt = _routePrompt;
   }
@@ -105,6 +111,10 @@ final class RustTerminalService
     }
     return _open(LocalTerminalTarget(profile), size);
   }
+
+  @override
+  Future<TerminalSessionHandle> openDocker({required DockerTerminalTarget target, required TerminalSize size}) async =>
+      _open(target, size);
 
   @override
   Future<TerminalSessionHandle> openKubernetes({
@@ -232,8 +242,15 @@ final class RustTerminalService
                 cols: s.size.columns,
                 rows: s.size.rows,
               ),
-            // Wired to the native Docker runtime with the bridge.
-            DockerTerminalTarget() => Future<String>.error(UnsupportedError('docker_terminal_unavailable')),
+            DockerTerminalTarget(:final sessionId, :final containerId, :final containerName, :final command) =>
+              rs_docker.dockerTerminalOpen(
+                sessionId: sessionId,
+                container: containerId,
+                name: containerName,
+                command: command,
+                cols: s.size.columns,
+                rows: s.size.rows,
+              ),
           },
         ),
       );

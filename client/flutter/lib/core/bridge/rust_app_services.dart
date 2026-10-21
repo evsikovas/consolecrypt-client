@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/bridge/rust_account.dart';
 import 'package:consolecrypt/core/bridge/rust_backend.dart';
 import 'package:consolecrypt/core/bridge/rust_backup.dart';
 import 'package:consolecrypt/core/bridge/rust_databases.dart';
+import 'package:consolecrypt/core/bridge/rust_docker.dart';
 import 'package:consolecrypt/core/bridge/rust_enrollment.dart';
 import 'package:consolecrypt/core/bridge/rust_inventory.dart';
 import 'package:consolecrypt/core/bridge/rust_kubernetes.dart';
@@ -152,6 +153,7 @@ final class RustAppServices {
       enrollment: const RustEnrollmentService(),
       kubernetes: RustKubeService(hub),
       databases: RustDbService(hub),
+      docker: RustDockerService(),
       onDispose: dispose,
     );
     final exitListener = options.hookAppExit
