@@ -4991,5 +4991,12 @@
   "dbElapsed": "{ms} мс",
   "dbQueryBlockedTitle": "Запрос заблокирован",
   "dbScanInsteadOfKeys": "KEYS перебирает все ключи разом и может остановить сервер. Используйте SCAN — он читает ключи порциями.",
-  "dbOpenSuggestion": "Открыть в новой вкладке"
+  "dbOpenSuggestion": "Открыть в новой вкладке",
+  "dbPlanByTime": "Полосы — доля времени выполнения, которую занял сам шаг.",
+  "dbPlanByCost": "Полосы — доля оценочной стоимости, которую занял сам шаг.",
+  "dbPlanTime": "{ms} мс",
+  "dbPlanRows": "{count} строк",
+  "dbPlanCost": "стоимость {cost}",
+  "dbPlanTree": "Дерево плана",
+  "dbPlanJson": "JSON"
 }

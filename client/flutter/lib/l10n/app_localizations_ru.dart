@@ -8634,4 +8634,31 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbOpenSuggestion => 'Открыть в новой вкладке';
+
+  @override
+  String get dbPlanByTime => 'Полосы — доля времени выполнения, которую занял сам шаг.';
+
+  @override
+  String get dbPlanByCost => 'Полосы — доля оценочной стоимости, которую занял сам шаг.';
+
+  @override
+  String dbPlanTime(String ms) {
+    return '$ms мс';
+  }
+
+  @override
+  String dbPlanRows(int count) {
+    return '$count строк';
+  }
+
+  @override
+  String dbPlanCost(String cost) {
+    return 'стоимость $cost';
+  }
+
+  @override
+  String get dbPlanTree => 'Дерево плана';
+
+  @override
+  String get dbPlanJson => 'JSON';
 }

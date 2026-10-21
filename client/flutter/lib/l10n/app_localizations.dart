@@ -15247,6 +15247,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open in a new tab'**
   String get dbOpenSuggestion;
+
+  /// Explain plan legend when actual times are known.
+  ///
+  /// In en, this message translates to:
+  /// **'Bars show each step\'s own share of the execution time.'**
+  String get dbPlanByTime;
+
+  /// Explain plan legend for estimated plans.
+  ///
+  /// In en, this message translates to:
+  /// **'Bars show each step\'s own share of the estimated cost.'**
+  String get dbPlanByCost;
+
+  /// Actual time of a plan step.
+  ///
+  /// In en, this message translates to:
+  /// **'{ms} ms'**
+  String dbPlanTime(String ms);
+
+  /// Rows of a plan step.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} rows'**
+  String dbPlanRows(int count);
+
+  /// Estimated cost of a plan step.
+  ///
+  /// In en, this message translates to:
+  /// **'cost {cost}'**
+  String dbPlanCost(String cost);
+
+  /// Switches the explain view to the plan tree.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan tree'**
+  String get dbPlanTree;
+
+  /// Switches the explain view to raw JSON.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON'**
+  String get dbPlanJson;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

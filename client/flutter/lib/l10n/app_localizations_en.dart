@@ -8430,4 +8430,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbOpenSuggestion => 'Open in a new tab';
+
+  @override
+  String get dbPlanByTime => 'Bars show each step\'s own share of the execution time.';
+
+  @override
+  String get dbPlanByCost => 'Bars show each step\'s own share of the estimated cost.';
+
+  @override
+  String dbPlanTime(String ms) {
+    return '$ms ms';
+  }
+
+  @override
+  String dbPlanRows(int count) {
+    return '$count rows';
+  }
+
+  @override
+  String dbPlanCost(String cost) {
+    return 'cost $cost';
+  }
+
+  @override
+  String get dbPlanTree => 'Plan tree';
+
+  @override
+  String get dbPlanJson => 'JSON';
 }

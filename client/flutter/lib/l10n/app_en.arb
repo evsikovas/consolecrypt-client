@@ -11548,5 +11548,48 @@
   "dbOpenSuggestion": "Open in a new tab",
   "@dbOpenSuggestion": {
     "description": "Opens the suggested safe query in a new editor tab."
+  },
+  "dbPlanByTime": "Bars show each step's own share of the execution time.",
+  "@dbPlanByTime": {
+    "description": "Explain plan legend when actual times are known."
+  },
+  "dbPlanByCost": "Bars show each step's own share of the estimated cost.",
+  "@dbPlanByCost": {
+    "description": "Explain plan legend for estimated plans."
+  },
+  "dbPlanTime": "{ms} ms",
+  "@dbPlanTime": {
+    "description": "Actual time of a plan step.",
+    "placeholders": {
+      "ms": {
+        "type": "String"
+      }
+    }
+  },
+  "dbPlanRows": "{count} rows",
+  "@dbPlanRows": {
+    "description": "Rows of a plan step.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dbPlanCost": "cost {cost}",
+  "@dbPlanCost": {
+    "description": "Estimated cost of a plan step.",
+    "placeholders": {
+      "cost": {
+        "type": "String"
+      }
+    }
+  },
+  "dbPlanTree": "Plan tree",
+  "@dbPlanTree": {
+    "description": "Switches the explain view to the plan tree."
+  },
+  "dbPlanJson": "JSON",
+  "@dbPlanJson": {
+    "description": "Switches the explain view to raw JSON."
   }
 }

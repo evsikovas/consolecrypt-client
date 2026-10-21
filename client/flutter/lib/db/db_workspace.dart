@@ -7,11 +7,11 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/db/db_ai_panel.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
-import 'package:consolecrypt/db/db_document_view.dart';
 import 'package:consolecrypt/db/db_editor.dart';
 import 'package:consolecrypt/db/db_export_dialog.dart';
 import 'package:consolecrypt/db/db_history_panel.dart';
 import 'package:consolecrypt/db/db_models.dart';
+import 'package:consolecrypt/db/db_plan_view.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_dialogs.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
@@ -814,7 +814,7 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
       content: SizedBox(
         width: 900,
         height: MediaQuery.sizeOf(context).height * .65,
-        child: DbDocumentView(document: widget.plan.document),
+        child: DbPlanView(document: widget.plan.document),
       ),
       secondaryActions: [GlassButton(label: context.l10n.commonClose, onPressed: () => closeDialog<void>(context))],
     );
