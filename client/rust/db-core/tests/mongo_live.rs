@@ -599,3 +599,50 @@ async fn mongo_replica_set_members_are_reached_through_the_relay() {
     .await
     .is_err());
 }
+
+#[tokio::test]
+async fn mongo_introspection_explain_and_first_documents() {
+    let Some(target) = target() else {
+        eprintln!("CC_DB_LIVE_MONGO not set; skipped");
+        return;
+    };
+    let dev = open(&connection(&target, &target.user, false), &target.password)
+        .await
+        .unwrap();
+    let _ = write(&dev, r#"db.cc_intro.drop()"#).await;
+    write(&dev, r#"db.cc_intro.insertMany([{"a":1,"b":"x"},{"a":2}])"#)
+        .await
+        .unwrap();
+    write(
+        &dev,
+        r#"{"createIndexes":"cc_intro","indexes":[{"key":{"b":1,"a":-1},"name":"b_1_a_-1"}]}"#,
+    )
+    .await
+    .unwrap();
+    let collection = cc_db_core::DbObjectRef {
+        database: target.database.clone(),
+        schema: None,
+        kind: cc_db_core::DbObjectKind::Collection,
+        name: "cc_intro".into(),
+        parent_name: None,
+    };
+    let first = dev.object_query(&collection, 5).await.unwrap();
+    assert_eq!(first, r#"db.getCollection("cc_intro").find({}).limit(5)"#);
+    assert_eq!(run(&dev, &first).await.values("_doc").len(), 2);
+    let plan = dev
+        .explain(
+            &cc_db_core::DbQueryRequest {
+                text: r#"db.cc_intro.find({"b":"x"}).sort({"b":1,"a":-1})"#.into(),
+                parameters: Vec::new(),
+                approval_ticket: None,
+            },
+            false,
+        )
+        .await
+        .unwrap();
+    assert!(plan["plan"]["queryPlanner"].is_object(), "{plan}");
+    assert!(dev.ddl(&collection).await.unwrap().contains("b_1_a_-1"));
+    let schema = dev.inspect(&collection, Some(10)).await.unwrap();
+    assert!(schema.to_string().contains("\"a\""), "{schema}");
+    write(&dev, r#"db.cc_intro.drop()"#).await.unwrap();
+}

@@ -427,3 +427,40 @@ async fn clickhouse_wrong_password_is_an_authentication_error() {
     assert_eq!(error, DbError::AuthenticationFailed);
     assert!(!format!("{error:?} {error}").contains("canary"));
 }
+
+#[tokio::test]
+async fn clickhouse_introspection_explain_and_completion() {
+    let Some((mut connection, credentials)) = target(false) else {
+        eprintln!("{VARIABLE} not set; skipped");
+        return;
+    };
+    connection.name = "introspection".into();
+    let dev = open(&connection, &credentials).await;
+    write(&dev, "DROP TABLE IF EXISTS cc_intro").await.ok();
+    write(
+        &dev,
+        "CREATE TABLE cc_intro (id UInt64, title String) ENGINE = MergeTree ORDER BY id",
+    )
+    .await
+    .unwrap();
+    let table = cc_db_core::DbObjectRef {
+        database: connection.database.clone(),
+        schema: None,
+        kind: cc_db_core::DbObjectKind::Table,
+        name: "cc_intro".into(),
+        parent_name: None,
+    };
+    assert!(dev.ddl(&table).await.unwrap().contains("CREATE TABLE"));
+    assert_eq!(
+        dev.object_query(&table, 5).await.unwrap(),
+        format!("SELECT * FROM `{}`.`cc_intro` LIMIT 5", connection.database)
+    );
+    let plan = dev
+        .explain(&request("SELECT title FROM cc_intro WHERE id = 1"), false)
+        .await
+        .unwrap();
+    assert!(!plan["plan"].is_null(), "{plan}");
+    let found = dev.complete("SELECT * FROM cc_in", 18).await.unwrap();
+    assert!(found.iter().any(|c| c.label == "cc_intro"), "{found:?}");
+    write(&dev, "DROP TABLE cc_intro").await.unwrap();
+}

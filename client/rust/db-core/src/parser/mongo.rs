@@ -22,6 +22,53 @@ pub enum KeyOrder {
     Array(Vec<KeyOrder>),
 }
 
+/// JSON text of `value` with object keys in the written `order` (serde_json
+/// maps would sort them; sort specs and compound keys depend on order).
+pub(crate) fn ordered_json(value: &serde_json::Value, order: &KeyOrder) -> String {
+    match (value, order) {
+        (serde_json::Value::Object(map), KeyOrder::Object(keys)) => {
+            let mut fields: Vec<String> = keys
+                .iter()
+                .filter_map(|(key, child)| {
+                    map.get(key).map(|value| {
+                        format!(
+                            "{}:{}",
+                            serde_json::Value::String(key.clone()),
+                            ordered_json(value, child)
+                        )
+                    })
+                })
+                .collect();
+            // Keys the order does not know keep serde's order after the known ones.
+            fields.extend(
+                map.iter()
+                    .filter(|(key, _)| !keys.iter().any(|(known, _)| known == *key))
+                    .map(|(key, value)| {
+                        format!(
+                            "{}:{}",
+                            serde_json::Value::String(key.clone()),
+                            ordered_json(value, &KeyOrder::Leaf)
+                        )
+                    }),
+            );
+            format!("{{{}}}", fields.join(","))
+        }
+        (serde_json::Value::Array(items), KeyOrder::Array(orders)) => format!(
+            "[{}]",
+            items
+                .iter()
+                .enumerate()
+                .map(|(index, item)| ordered_json(
+                    item,
+                    orders.get(index).unwrap_or(&KeyOrder::Leaf)
+                ))
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+        (value, _) => value.to_string(),
+    }
+}
+
 impl KeyOrder {
     fn object<const N: usize>(entries: [(&str, KeyOrder); N]) -> Self {
         Self::Object(

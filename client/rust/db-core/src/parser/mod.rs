@@ -15,6 +15,7 @@ pub(crate) use redis::quote as redis_quote;
 mod sql;
 mod template;
 
+pub(crate) use mongo::ordered_json;
 pub use mongo::KeyOrder;
 
 pub const MAX_STATEMENTS: usize = 256;

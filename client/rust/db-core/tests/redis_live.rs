@@ -177,6 +177,40 @@ async fn seed(dev: &Arc<DbSession>) {
     .unwrap();
 }
 
+/// Type-aware first entries and the description of a key.
+async fn object_queries(dev: &Arc<DbSession>) {
+    let key = |name: &str| DbObjectRef {
+        database: "0".into(),
+        schema: None,
+        kind: cc_db_core::DbObjectKind::RedisKey,
+        name: name.into(),
+        parent_name: None,
+    };
+    write(dev, "HSET \"cc:obj:h\" a 1").await.unwrap();
+    write(dev, "SET \"cc:obj:s\" x").await.unwrap();
+    assert_eq!(
+        dev.object_query(&key("cc:obj:h"), 10).await.unwrap(),
+        "HSCAN cc:obj:h 0 COUNT 10"
+    );
+    assert_eq!(
+        dev.object_query(&key("cc:obj:s"), 10).await.unwrap(),
+        "GET cc:obj:s"
+    );
+    let folder = DbObjectRef {
+        database: "0".into(),
+        schema: None,
+        kind: cc_db_core::DbObjectKind::RedisDatabase,
+        name: "cc:obj:".into(),
+        parent_name: Some("cc:".into()),
+    };
+    assert_eq!(
+        dev.object_query(&folder, 10).await.unwrap(),
+        "SCAN 0 MATCH cc:obj:* COUNT 10"
+    );
+    assert!(dev.ddl(&key("cc:obj:h")).await.unwrap().contains("hash"));
+    write(dev, "DEL \"cc:obj:h\" \"cc:obj:s\"").await.unwrap();
+}
+
 async fn cleanup(dev: &Arc<DbSession>) {
     for chunk in (0..BULK).collect::<Vec<_>>().chunks(400) {
         let keys: Vec<String> = chunk
@@ -432,6 +466,7 @@ async fn redis_production_reads_development_writes_and_scan_tree() {
     assert_eq!(resp3_scores.text(), [["a", "1.5"], ["b", "2"], ["c", "3"]]);
     resp3.close();
 
+    object_queries(&dev).await;
     cleanup(&dev).await;
     prod.close();
     dev.close();

@@ -256,10 +256,29 @@ impl DbSession {
             (DbEngine::Mysql | DbEngine::Mariadb, true) => {
                 (format!("EXPLAIN ANALYZE {statement}"), false)
             }
-            (DbEngine::Clickhouse, false) => (
-                format!("EXPLAIN PLAN json = 1, indexes = 1, actions = 1 {statement}"),
-                true,
-            ),
+            (DbEngine::Clickhouse, false) => (format!("EXPLAIN {statement}"), false),
+            (DbEngine::Mongodb, false) => {
+                // The parsed command keeps its key order inside `explain`.
+                let parsed = crate::parser::parse(
+                    DbEngine::Mongodb,
+                    &self.guard.policy().default_schema,
+                    request,
+                )?;
+                let [statement] = parsed.as_slice() else {
+                    return Err(DbError::InvalidRequest);
+                };
+                let crate::parser::ParsedStatement::Mongo { command, order } = &statement.parsed
+                else {
+                    return Err(DbError::InvalidRequest);
+                };
+                (
+                    format!(
+                        "{{\"explain\":{},\"verbosity\":\"queryPlanner\"}}",
+                        crate::parser::ordered_json(command, order)
+                    ),
+                    true,
+                )
+            }
             _ => return Err(DbError::InvalidRequest),
         };
         let mut explain = DbQueryRequest {
@@ -274,11 +293,19 @@ impl DbSession {
         }
         let mut stream = self.execute(&explain)?;
         let mut output = String::new();
+        // MongoDB rows carry the whole reply in `_doc`; SQL plans are one cell.
+        let mut only: Option<usize> = None;
         while let Some(event) = stream.events.recv().await {
             match event {
+                DbQueryEvent::Started { columns, .. } => {
+                    only = columns.iter().position(|column| column.name == "_doc");
+                }
                 DbQueryEvent::Rows { rows, .. } => {
                     for row in rows {
-                        for cell in row {
+                        for (index, cell) in row.into_iter().enumerate() {
+                            if only.is_some_and(|only| only != index) {
+                                continue;
+                            }
                             match &cell {
                                 DbCell::Json(value) | DbCell::Text(value) => {
                                     if !output.is_empty() {
@@ -596,7 +623,9 @@ impl DbSession {
         let (mut columns, mut rows) = (Vec::new(), Vec::new());
         while let Some(event) = stream.events.recv().await {
             match event {
-                DbQueryEvent::Started { columns: started, .. } if columns.is_empty() => columns = started,
+                DbQueryEvent::Started {
+                    columns: started, ..
+                } if columns.is_empty() => columns = started,
                 DbQueryEvent::Rows { rows: batch, .. } => {
                     rows.extend(batch.into_iter().take(limit - rows.len()));
                     if rows.len() >= limit {
