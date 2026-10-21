@@ -4313,13 +4313,13 @@
   "@dbClearPassword": {
     "description": "Database interface: Remove saved password"
   },
-  "dbProduction": "Прод — всегда только чтение",
+  "dbProduction": "Прод — только чтение, запись лишь во временном окне",
   "@dbProduction": {
-    "description": "Database interface: Production — always read only"
+    "description": "Database interface: production marker in the connection form"
   },
-  "dbProductionHelp": "Для прод-подключений нет временного разрешения записи. Используйте учётную запись БД с правами только на чтение.",
+  "dbProductionHelp": "Прод-подключение открывается только на чтение. Кнопка «Разблокировать прод» в рабочей области разрешает запись на 5–30 минут после пароля хранилища и имени подключения; каждое изменение по-прежнему проверяется. Для повседневной работы лучше учётная запись БД с правами только на чтение.",
   "@dbProductionHelp": {
-    "description": "Database interface: Production connections never have a write window. Use a database account with read-only privileges."
+    "description": "Database interface: help under the production marker in the connection form"
   },
   "dbProd": "ПРОД",
   "@dbProd": {

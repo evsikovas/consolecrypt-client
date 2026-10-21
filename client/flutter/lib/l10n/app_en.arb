@@ -10910,13 +10910,13 @@
   "@dbClearPassword": {
     "description": "Database interface: Remove saved password"
   },
-  "dbProduction": "Production — always read only",
+  "dbProduction": "Production — read only, writes only in a temporary window",
   "@dbProduction": {
-    "description": "Database interface: Production — always read only"
+    "description": "Database interface: production marker in the connection form"
   },
-  "dbProductionHelp": "Production connections never have a write window. Use a database account with read-only privileges.",
+  "dbProductionHelp": "Production connections open read-only. “Unlock production” in the workspace allows writes for 5–30 minutes after the vault passphrase and the connection name; every change is still reviewed. Prefer a database account with read-only privileges for everyday work.",
   "@dbProductionHelp": {
-    "description": "Database interface: Production connections never have a write window. Use a database account with read-only privileges."
+    "description": "Database interface: help under the production marker in the connection form"
   },
   "dbProd": "PROD",
   "@dbProd": {

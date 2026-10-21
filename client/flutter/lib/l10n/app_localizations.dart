@@ -14270,16 +14270,16 @@ abstract class AppLocalizations {
   /// **'Remove saved password'**
   String get dbClearPassword;
 
-  /// Database interface: Production — always read only
+  /// Database interface: production marker in the connection form
   ///
   /// In en, this message translates to:
-  /// **'Production — always read only'**
+  /// **'Production — read only, writes only in a temporary window'**
   String get dbProduction;
 
-  /// Database interface: Production connections never have a write window. Use a database account with read-only privileges.
+  /// Database interface: help under the production marker in the connection form
   ///
   /// In en, this message translates to:
-  /// **'Production connections never have a write window. Use a database account with read-only privileges.'**
+  /// **'Production connections open read-only. “Unlock production” in the workspace allows writes for 5–30 minutes after the vault passphrase and the connection name; every change is still reviewed. Prefer a database account with read-only privileges for everyday work.'**
   String get dbProductionHelp;
 
   /// Database interface: PROD

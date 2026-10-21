@@ -7937,11 +7937,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dbClearPassword => 'Remove saved password';
 
   @override
-  String get dbProduction => 'Production — always read only';
+  String get dbProduction => 'Production — read only, writes only in a temporary window';
 
   @override
   String get dbProductionHelp =>
-      'Production connections never have a write window. Use a database account with read-only privileges.';
+      'Production connections open read-only. “Unlock production” in the workspace allows writes for 5–30 minutes after the vault passphrase and the connection name; every change is still reviewed. Prefer a database account with read-only privileges for everyday work.';
 
   @override
   String get dbProd => 'PROD';
