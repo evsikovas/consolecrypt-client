@@ -15343,6 +15343,696 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Forward the {engine} port to localhost and open it in Databases'**
   String kubeConnectDatabaseHelp(String engine);
+
+  /// Docker section: sidebar item and page title (product name, not translated)
+  ///
+  /// In en, this message translates to:
+  /// **'Docker'**
+  String get dockerTitle;
+
+  /// Docker section: page subtitle under the title
+  ///
+  /// In en, this message translates to:
+  /// **'Containers on this computer or on a saved SSH host.'**
+  String get dockerSubtitle;
+
+  /// Docker section: empty state when this build has no Docker support
+  ///
+  /// In en, this message translates to:
+  /// **'Docker is unavailable'**
+  String get dockerUnavailable;
+
+  /// Docker section: explanation under the unavailable title
+  ///
+  /// In en, this message translates to:
+  /// **'This build of the app cannot reach Docker engines.'**
+  String get dockerUnavailableHelp;
+
+  /// Docker host picker: search field placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Search hosts'**
+  String get dockerSearchHosts;
+
+  /// Docker: refresh button tooltip (hosts, containers, details)
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get dockerRefresh;
+
+  /// Docker host picker: error when the host list fails to load
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the host list.'**
+  String get dockerHostsFailed;
+
+  /// Docker host picker: empty list title
+  ///
+  /// In en, this message translates to:
+  /// **'No hosts'**
+  String get dockerNoHosts;
+
+  /// Docker host picker: empty list explanation
+  ///
+  /// In en, this message translates to:
+  /// **'Docker was not found on this computer and there are no saved SSH hosts yet.'**
+  String get dockerNoHostsHelp;
+
+  /// Docker host picker: the local engine entry
+  ///
+  /// In en, this message translates to:
+  /// **'This computer'**
+  String get dockerLocalHost;
+
+  /// Docker host picker: subtitle of the local engine entry
+  ///
+  /// In en, this message translates to:
+  /// **'Local Docker engine'**
+  String get dockerLocalHostHelp;
+
+  /// Docker host picker: connect button
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get dockerConnect;
+
+  /// Docker host picker: connect button while connecting
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get dockerConnecting;
+
+  /// Docker connect error: retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get dockerReconnect;
+
+  /// Docker connect error title: the SSH user cannot open the Docker socket
+  ///
+  /// In en, this message translates to:
+  /// **'No access to the Docker socket'**
+  String get dockerPermissionDeniedTitle;
+
+  /// Docker connect error: permission denied explanation, followed by a command to copy
+  ///
+  /// In en, this message translates to:
+  /// **'The SSH user on {host} has no rights to the Docker socket. Add the user to the “{group}” group on the host and reconnect:'**
+  String dockerPermissionDenied(String host, String group);
+
+  /// Docker connect error: note under the usermod command
+  ///
+  /// In en, this message translates to:
+  /// **'Run it on the host yourself; the app never runs it. The new group applies to new SSH sessions.'**
+  String get dockerPermissionDeniedNote;
+
+  /// Docker connect error: copy button tooltip for the usermod command
+  ///
+  /// In en, this message translates to:
+  /// **'Copy command'**
+  String get dockerCopyCommand;
+
+  /// Docker connect error title: no daemon on the host
+  ///
+  /// In en, this message translates to:
+  /// **'Docker is not running'**
+  String get dockerNotRunningTitle;
+
+  /// Docker connect error: daemon not running explanation
+  ///
+  /// In en, this message translates to:
+  /// **'Docker is not running or not installed on {host}. Start the Docker service there and reconnect.'**
+  String dockerNotRunning(String host);
+
+  /// Docker connect error title: SSH or local connection failed
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed'**
+  String get dockerConnectionFailedTitle;
+
+  /// Docker connect error: connection failed explanation; the error detail follows on the next line
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to {host}.'**
+  String dockerConnectionFailed(String host);
+
+  /// Docker: generic error for a failed request
+  ///
+  /// In en, this message translates to:
+  /// **'Docker request failed'**
+  String get dockerRequestFailed;
+
+  /// Docker: retry loading containers
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get dockerRetry;
+
+  /// Docker engine header: back button tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect and choose another host'**
+  String get dockerDisconnect;
+
+  /// Docker engine header: engine version fact
+  ///
+  /// In en, this message translates to:
+  /// **'Engine {version}'**
+  String dockerEngineVersion(String version);
+
+  /// Docker engine header: running/total containers
+  ///
+  /// In en, this message translates to:
+  /// **'{running} of {total} running'**
+  String dockerRunningOfTotal(int running, int total);
+
+  /// Docker: forwards panel title and toggle tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Port forwards'**
+  String get dockerForwards;
+
+  /// Docker container list: filter field placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by name or image'**
+  String get dockerFilterContainers;
+
+  /// Docker container list: toggle to show stopped containers
+  ///
+  /// In en, this message translates to:
+  /// **'Show stopped'**
+  String get dockerShowStopped;
+
+  /// Docker container list: empty engine title
+  ///
+  /// In en, this message translates to:
+  /// **'No containers'**
+  String get dockerNoContainers;
+
+  /// Docker container list: empty engine explanation
+  ///
+  /// In en, this message translates to:
+  /// **'Containers started on this engine appear here.'**
+  String get dockerNoContainersHelp;
+
+  /// Docker container list: nothing matches the filter
+  ///
+  /// In en, this message translates to:
+  /// **'No matching containers'**
+  String get dockerNoMatches;
+
+  /// Docker details page: the container was removed
+  ///
+  /// In en, this message translates to:
+  /// **'The container no longer exists'**
+  String get dockerContainerGone;
+
+  /// Docker container list: group of containers not started by compose
+  ///
+  /// In en, this message translates to:
+  /// **'Standalone containers'**
+  String get dockerStandalone;
+
+  /// Docker container list: marker next to a compose project name (technical term)
+  ///
+  /// In en, this message translates to:
+  /// **'compose'**
+  String get dockerCompose;
+
+  /// Docker container list: group header count
+  ///
+  /// In en, this message translates to:
+  /// **'{running}/{total} running'**
+  String dockerGroupRunning(int running, int total);
+
+  /// Docker container state
+  ///
+  /// In en, this message translates to:
+  /// **'Created'**
+  String get dockerStateCreated;
+
+  /// Docker container state
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get dockerStateRunning;
+
+  /// Docker container state
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get dockerStatePaused;
+
+  /// Docker container state
+  ///
+  /// In en, this message translates to:
+  /// **'Restarting'**
+  String get dockerStateRestarting;
+
+  /// Docker container state
+  ///
+  /// In en, this message translates to:
+  /// **'Removing'**
+  String get dockerStateRemoving;
+
+  /// Docker container state
+  ///
+  /// In en, this message translates to:
+  /// **'Exited'**
+  String get dockerStateExited;
+
+  /// Docker container state (daemon could not stop it cleanly)
+  ///
+  /// In en, this message translates to:
+  /// **'Dead'**
+  String get dockerStateDead;
+
+  /// Docker container state
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get dockerStateUnknown;
+
+  /// Docker container health check result
+  ///
+  /// In en, this message translates to:
+  /// **'Healthy'**
+  String get dockerHealthHealthy;
+
+  /// Docker container health check result
+  ///
+  /// In en, this message translates to:
+  /// **'Unhealthy'**
+  String get dockerHealthUnhealthy;
+
+  /// Docker container health check result while starting
+  ///
+  /// In en, this message translates to:
+  /// **'Starting'**
+  String get dockerHealthStarting;
+
+  /// Docker container action
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get dockerActionStart;
+
+  /// Docker container action
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get dockerActionStop;
+
+  /// Docker container action
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get dockerActionRestart;
+
+  /// Docker container action
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get dockerActionPause;
+
+  /// Docker container action (unpause)
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get dockerActionUnpause;
+
+  /// Docker container action (SIGKILL)
+  ///
+  /// In en, this message translates to:
+  /// **'Kill'**
+  String get dockerActionKill;
+
+  /// Docker container action
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get dockerActionRemove;
+
+  /// Docker: kill confirmation title
+  ///
+  /// In en, this message translates to:
+  /// **'Kill {name}?'**
+  String dockerKillTitle(String name);
+
+  /// Docker: kill confirmation message
+  ///
+  /// In en, this message translates to:
+  /// **'The container\'s processes are stopped at once, without a chance to shut down cleanly.'**
+  String get dockerKillHelp;
+
+  /// Docker: remove confirmation title
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}?'**
+  String dockerRemoveTitle(String name);
+
+  /// Docker: remove confirmation message
+  ///
+  /// In en, this message translates to:
+  /// **'The container and its writable layer are deleted. Named volumes are kept.'**
+  String get dockerRemoveHelp;
+
+  /// Docker: logs action and details tab
+  ///
+  /// In en, this message translates to:
+  /// **'Logs'**
+  String get dockerLogs;
+
+  /// Docker: open a shell in the container
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal'**
+  String get dockerTerminal;
+
+  /// Docker: forward a container port action and dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Forward port'**
+  String get dockerForwardPort;
+
+  /// Docker: container details action and overview section
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get dockerDetails;
+
+  /// Docker: copy the container id
+  ///
+  /// In en, this message translates to:
+  /// **'Copy ID'**
+  String get dockerCopyId;
+
+  /// Docker: container id label; also the copied-item noun
+  ///
+  /// In en, this message translates to:
+  /// **'Container ID'**
+  String get dockerContainerId;
+
+  /// Docker details: overview tab
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get dockerOverview;
+
+  /// Docker details: raw inspect tab (technical term)
+  ///
+  /// In en, this message translates to:
+  /// **'JSON'**
+  String get dockerInspectJson;
+
+  /// Docker details: copy the inspect JSON
+  ///
+  /// In en, this message translates to:
+  /// **'Copy JSON'**
+  String get dockerCopyJson;
+
+  /// Docker details: image
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get dockerImage;
+
+  /// Docker details: status text
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get dockerStatus;
+
+  /// Docker details: health check result
+  ///
+  /// In en, this message translates to:
+  /// **'Health'**
+  String get dockerHealth;
+
+  /// Docker details: creation time
+  ///
+  /// In en, this message translates to:
+  /// **'Created'**
+  String get dockerCreated;
+
+  /// Docker details: start time
+  ///
+  /// In en, this message translates to:
+  /// **'Started'**
+  String get dockerStarted;
+
+  /// Docker details: entrypoint and arguments
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get dockerCommand;
+
+  /// Docker details: restart count
+  ///
+  /// In en, this message translates to:
+  /// **'Restarts'**
+  String get dockerRestartCount;
+
+  /// Docker details: compose project
+  ///
+  /// In en, this message translates to:
+  /// **'Compose project'**
+  String get dockerComposeProject;
+
+  /// Docker details: compose service
+  ///
+  /// In en, this message translates to:
+  /// **'Compose service'**
+  String get dockerComposeService;
+
+  /// Docker details: ports section
+  ///
+  /// In en, this message translates to:
+  /// **'Ports'**
+  String get dockerPorts;
+
+  /// Docker details: networks with container IPs
+  ///
+  /// In en, this message translates to:
+  /// **'Networks'**
+  String get dockerNetworks;
+
+  /// Docker details: mounts section
+  ///
+  /// In en, this message translates to:
+  /// **'Mounts'**
+  String get dockerMounts;
+
+  /// Docker details: labels section
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get dockerLabels;
+
+  /// Docker details: environment variables (secret values are masked)
+  ///
+  /// In en, this message translates to:
+  /// **'Environment'**
+  String get dockerEnvironment;
+
+  /// Docker logs: freeze the view
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get dockerLogsPause;
+
+  /// Docker logs: unfreeze the view
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get dockerLogsResume;
+
+  /// Docker logs: keep scrolled to the newest line
+  ///
+  /// In en, this message translates to:
+  /// **'Follow'**
+  String get dockerLogsFollow;
+
+  /// Docker logs: show timestamps
+  ///
+  /// In en, this message translates to:
+  /// **'Timestamps'**
+  String get dockerLogsTimestamps;
+
+  /// Docker logs: copy button tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Copy shown lines'**
+  String get dockerLogsCopy;
+
+  /// Docker logs: clear button tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get dockerLogsClear;
+
+  /// Docker logs: find field placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Find in logs'**
+  String get dockerLogsFind;
+
+  /// Docker logs: number of lines matching the find text
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No matches} one{{count} match} other{{count} matches}}'**
+  String dockerLogsMatches(int count);
+
+  /// Docker logs: status while paused
+  ///
+  /// In en, this message translates to:
+  /// **'Paused: new lines are kept until you resume'**
+  String get dockerLogsPaused;
+
+  /// Docker logs: older lines dropped
+  ///
+  /// In en, this message translates to:
+  /// **'Only the last {limit} lines are kept'**
+  String dockerLogsTrimmed(int limit);
+
+  /// Docker logs: stream error
+  ///
+  /// In en, this message translates to:
+  /// **'The log stream stopped with an error'**
+  String get dockerLogsFailed;
+
+  /// Docker logs: streaming, nothing yet
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for log lines…'**
+  String get dockerLogsWaiting;
+
+  /// Docker logs: empty
+  ///
+  /// In en, this message translates to:
+  /// **'No log lines'**
+  String get dockerNoLogs;
+
+  /// Docker forward dialog: explanation for an SSH host
+  ///
+  /// In en, this message translates to:
+  /// **'A local port is forwarded to the container port through the SSH connection to the host.'**
+  String get dockerForwardHelpSsh;
+
+  /// Docker forward dialog: explanation for the local engine
+  ///
+  /// In en, this message translates to:
+  /// **'A local port is forwarded to the container port on this computer.'**
+  String get dockerForwardHelpLocal;
+
+  /// Docker forward dialog: container port field
+  ///
+  /// In en, this message translates to:
+  /// **'Container port'**
+  String get dockerForwardContainerPort;
+
+  /// Docker forward dialog: local port field
+  ///
+  /// In en, this message translates to:
+  /// **'Local port'**
+  String get dockerForwardLocalPort;
+
+  /// Docker forward dialog: local port helper
+  ///
+  /// In en, this message translates to:
+  /// **'0 picks a free port'**
+  String get dockerForwardLocalHelp;
+
+  /// Docker forward dialog: start button
+  ///
+  /// In en, this message translates to:
+  /// **'Start forward'**
+  String get dockerForwardStart;
+
+  /// Docker forward dialog: success message
+  ///
+  /// In en, this message translates to:
+  /// **'The forward is running. It is listed in the port forwards panel.'**
+  String get dockerForwardCreated;
+
+  /// Docker forwards: copy local address tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Copy address'**
+  String get dockerForwardCopyAddress;
+
+  /// Docker forwards: stop button tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Stop forward'**
+  String get dockerForwardStop;
+
+  /// Docker forward state
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get dockerForwardRunning;
+
+  /// Docker forward state
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get dockerForwardFailed;
+
+  /// Docker forward state
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get dockerForwardStopped;
+
+  /// Docker forwards: active connections and bytes sent/received
+  ///
+  /// In en, this message translates to:
+  /// **'{connections} conn. · ↑ {sent} · ↓ {received}'**
+  String dockerForwardTraffic(int connections, String sent, String received);
+
+  /// Docker forwards panel: empty title
+  ///
+  /// In en, this message translates to:
+  /// **'No port forwards'**
+  String get dockerNoForwards;
+
+  /// Docker forwards panel: empty explanation
+  ///
+  /// In en, this message translates to:
+  /// **'Use “Forward port” on a running container.'**
+  String get dockerNoForwardsHelp;
+
+  /// Docker terminal dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Container terminal'**
+  String get dockerTerminalTitle;
+
+  /// Docker terminal dialog: shell picker label
+  ///
+  /// In en, this message translates to:
+  /// **'Shell'**
+  String get dockerShell;
+
+  /// Docker terminal dialog: auto shell option
+  ///
+  /// In en, this message translates to:
+  /// **'Detect automatically (bash, ash or sh)'**
+  String get dockerAutoShell;
+
+  /// Docker terminal dialog: open button
+  ///
+  /// In en, this message translates to:
+  /// **'Open terminal'**
+  String get dockerOpenShell;
+
+  /// Docker terminal dialog: error
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open a terminal in the container.'**
+  String get dockerTerminalFailed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

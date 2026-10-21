@@ -51,10 +51,27 @@ Future<void> settle(WidgetTester tester, {int steps = 12}) async {
 
 Future<void> tapKey(WidgetTester tester, String key) async {
   final finder = find.byKey(ValueKey(key));
+  if (finder.evaluate().isEmpty) await _revealInSidebar(tester, finder);
   await tester.ensureVisible(finder);
   await tester.pump();
   await tester.tap(finder);
   await settle(tester);
+}
+
+/// The sidebar list builds lazily: in short windows a navigation item far
+/// from the current scroll position does not exist until scrolled near.
+Future<void> _revealInSidebar(WidgetTester tester, Finder finder) async {
+  final scrollables = find.descendant(
+    of: find.byKey(const ValueKey('glass-sidebar')),
+    matching: find.byType(Scrollable),
+  );
+  if (scrollables.evaluate().isEmpty) return;
+  final position = tester.state<ScrollableState>(scrollables.first).position;
+  for (var offset = 0.0; ; offset += 100) {
+    position.jumpTo(offset.clamp(0, position.maxScrollExtent));
+    await tester.pump();
+    if (finder.evaluate().isNotEmpty || offset >= position.maxScrollExtent) return;
+  }
 }
 
 Future<void> enterKey(WidgetTester tester, String key, String text) async {

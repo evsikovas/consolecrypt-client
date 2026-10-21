@@ -58,6 +58,7 @@ String shellBranchLabel(ShellBranch branch, AppLocalizations l) => switch (branc
   ShellBranch.rdp => l.rdpTitle,
   ShellBranch.kubernetes => l.kubeTitle,
   ShellBranch.databases => l.dbTitle,
+  ShellBranch.docker => l.dockerTitle,
 };
 
 const _navItems = [
@@ -69,6 +70,7 @@ const _navItems = [
   _NavItem(ShellBranch.rdp, Icons.desktop_windows_outlined),
   if (kubernetesEnabled) _NavItem(ShellBranch.kubernetes, Icons.hub_outlined),
   if (databasesEnabled) _NavItem(ShellBranch.databases, Icons.storage_rounded),
+  if (dockerEnabled) _NavItem(ShellBranch.docker, Icons.view_in_ar_outlined),
   _NavItem(ShellBranch.sftp, Icons.folder_copy_rounded),
   _NavItem(ShellBranch.tunnels, Icons.swap_horiz_rounded),
   _NavItem(ShellBranch.devices, Icons.devices_rounded, syncedOnly: true),
@@ -95,6 +97,7 @@ const _liveToolbarBranches = {
   ShellBranch.settings,
   ShellBranch.sharing,
   ShellBranch.kubernetes,
+  ShellBranch.docker,
 };
 
 /// User-collapsed sidebar (session-scoped; windows < 1000 px are always

@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/mock/mock_config.dart';
 import 'package:consolecrypt/core/mock/mock_databases.dart';
 import 'package:consolecrypt/core/mock/mock_devices_service.dart';
+import 'package:consolecrypt/core/mock/mock_docker.dart';
 import 'package:consolecrypt/core/mock/mock_inventory_service.dart';
 import 'package:consolecrypt/core/mock/mock_profile_service.dart';
 import 'package:consolecrypt/core/mock/mock_prompt_service.dart';
@@ -81,6 +82,7 @@ final class MockBackend implements DeveloperControls {
     sftpBrowser: sftpBrowser,
     prompts: prompts,
     databases: MockDbService(),
+    docker: MockDockerService(latency: config.latency),
     developer: this,
     onDispose: dispose,
   );

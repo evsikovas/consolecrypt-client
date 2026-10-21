@@ -8488,4 +8488,380 @@ class AppLocalizationsEn extends AppLocalizations {
   String kubeConnectDatabaseHelp(String engine) {
     return 'Forward the $engine port to localhost and open it in Databases';
   }
+
+  @override
+  String get dockerTitle => 'Docker';
+
+  @override
+  String get dockerSubtitle => 'Containers on this computer or on a saved SSH host.';
+
+  @override
+  String get dockerUnavailable => 'Docker is unavailable';
+
+  @override
+  String get dockerUnavailableHelp => 'This build of the app cannot reach Docker engines.';
+
+  @override
+  String get dockerSearchHosts => 'Search hosts';
+
+  @override
+  String get dockerRefresh => 'Refresh';
+
+  @override
+  String get dockerHostsFailed => 'Could not load the host list.';
+
+  @override
+  String get dockerNoHosts => 'No hosts';
+
+  @override
+  String get dockerNoHostsHelp => 'Docker was not found on this computer and there are no saved SSH hosts yet.';
+
+  @override
+  String get dockerLocalHost => 'This computer';
+
+  @override
+  String get dockerLocalHostHelp => 'Local Docker engine';
+
+  @override
+  String get dockerConnect => 'Connect';
+
+  @override
+  String get dockerConnecting => 'Connecting…';
+
+  @override
+  String get dockerReconnect => 'Reconnect';
+
+  @override
+  String get dockerPermissionDeniedTitle => 'No access to the Docker socket';
+
+  @override
+  String dockerPermissionDenied(String host, String group) {
+    return 'The SSH user on $host has no rights to the Docker socket. Add the user to the “$group” group on the host and reconnect:';
+  }
+
+  @override
+  String get dockerPermissionDeniedNote =>
+      'Run it on the host yourself; the app never runs it. The new group applies to new SSH sessions.';
+
+  @override
+  String get dockerCopyCommand => 'Copy command';
+
+  @override
+  String get dockerNotRunningTitle => 'Docker is not running';
+
+  @override
+  String dockerNotRunning(String host) {
+    return 'Docker is not running or not installed on $host. Start the Docker service there and reconnect.';
+  }
+
+  @override
+  String get dockerConnectionFailedTitle => 'Connection failed';
+
+  @override
+  String dockerConnectionFailed(String host) {
+    return 'Could not connect to $host.';
+  }
+
+  @override
+  String get dockerRequestFailed => 'Docker request failed';
+
+  @override
+  String get dockerRetry => 'Retry';
+
+  @override
+  String get dockerDisconnect => 'Disconnect and choose another host';
+
+  @override
+  String dockerEngineVersion(String version) {
+    return 'Engine $version';
+  }
+
+  @override
+  String dockerRunningOfTotal(int running, int total) {
+    return '$running of $total running';
+  }
+
+  @override
+  String get dockerForwards => 'Port forwards';
+
+  @override
+  String get dockerFilterContainers => 'Filter by name or image';
+
+  @override
+  String get dockerShowStopped => 'Show stopped';
+
+  @override
+  String get dockerNoContainers => 'No containers';
+
+  @override
+  String get dockerNoContainersHelp => 'Containers started on this engine appear here.';
+
+  @override
+  String get dockerNoMatches => 'No matching containers';
+
+  @override
+  String get dockerContainerGone => 'The container no longer exists';
+
+  @override
+  String get dockerStandalone => 'Standalone containers';
+
+  @override
+  String get dockerCompose => 'compose';
+
+  @override
+  String dockerGroupRunning(int running, int total) {
+    return '$running/$total running';
+  }
+
+  @override
+  String get dockerStateCreated => 'Created';
+
+  @override
+  String get dockerStateRunning => 'Running';
+
+  @override
+  String get dockerStatePaused => 'Paused';
+
+  @override
+  String get dockerStateRestarting => 'Restarting';
+
+  @override
+  String get dockerStateRemoving => 'Removing';
+
+  @override
+  String get dockerStateExited => 'Exited';
+
+  @override
+  String get dockerStateDead => 'Dead';
+
+  @override
+  String get dockerStateUnknown => 'Unknown';
+
+  @override
+  String get dockerHealthHealthy => 'Healthy';
+
+  @override
+  String get dockerHealthUnhealthy => 'Unhealthy';
+
+  @override
+  String get dockerHealthStarting => 'Starting';
+
+  @override
+  String get dockerActionStart => 'Start';
+
+  @override
+  String get dockerActionStop => 'Stop';
+
+  @override
+  String get dockerActionRestart => 'Restart';
+
+  @override
+  String get dockerActionPause => 'Pause';
+
+  @override
+  String get dockerActionUnpause => 'Resume';
+
+  @override
+  String get dockerActionKill => 'Kill';
+
+  @override
+  String get dockerActionRemove => 'Remove';
+
+  @override
+  String dockerKillTitle(String name) {
+    return 'Kill $name?';
+  }
+
+  @override
+  String get dockerKillHelp => 'The container\'s processes are stopped at once, without a chance to shut down cleanly.';
+
+  @override
+  String dockerRemoveTitle(String name) {
+    return 'Remove $name?';
+  }
+
+  @override
+  String get dockerRemoveHelp => 'The container and its writable layer are deleted. Named volumes are kept.';
+
+  @override
+  String get dockerLogs => 'Logs';
+
+  @override
+  String get dockerTerminal => 'Terminal';
+
+  @override
+  String get dockerForwardPort => 'Forward port';
+
+  @override
+  String get dockerDetails => 'Details';
+
+  @override
+  String get dockerCopyId => 'Copy ID';
+
+  @override
+  String get dockerContainerId => 'Container ID';
+
+  @override
+  String get dockerOverview => 'Overview';
+
+  @override
+  String get dockerInspectJson => 'JSON';
+
+  @override
+  String get dockerCopyJson => 'Copy JSON';
+
+  @override
+  String get dockerImage => 'Image';
+
+  @override
+  String get dockerStatus => 'Status';
+
+  @override
+  String get dockerHealth => 'Health';
+
+  @override
+  String get dockerCreated => 'Created';
+
+  @override
+  String get dockerStarted => 'Started';
+
+  @override
+  String get dockerCommand => 'Command';
+
+  @override
+  String get dockerRestartCount => 'Restarts';
+
+  @override
+  String get dockerComposeProject => 'Compose project';
+
+  @override
+  String get dockerComposeService => 'Compose service';
+
+  @override
+  String get dockerPorts => 'Ports';
+
+  @override
+  String get dockerNetworks => 'Networks';
+
+  @override
+  String get dockerMounts => 'Mounts';
+
+  @override
+  String get dockerLabels => 'Labels';
+
+  @override
+  String get dockerEnvironment => 'Environment';
+
+  @override
+  String get dockerLogsPause => 'Pause';
+
+  @override
+  String get dockerLogsResume => 'Resume';
+
+  @override
+  String get dockerLogsFollow => 'Follow';
+
+  @override
+  String get dockerLogsTimestamps => 'Timestamps';
+
+  @override
+  String get dockerLogsCopy => 'Copy shown lines';
+
+  @override
+  String get dockerLogsClear => 'Clear';
+
+  @override
+  String get dockerLogsFind => 'Find in logs';
+
+  @override
+  String dockerLogsMatches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count matches',
+      one: '$count match',
+      zero: 'No matches',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dockerLogsPaused => 'Paused: new lines are kept until you resume';
+
+  @override
+  String dockerLogsTrimmed(int limit) {
+    return 'Only the last $limit lines are kept';
+  }
+
+  @override
+  String get dockerLogsFailed => 'The log stream stopped with an error';
+
+  @override
+  String get dockerLogsWaiting => 'Waiting for log lines…';
+
+  @override
+  String get dockerNoLogs => 'No log lines';
+
+  @override
+  String get dockerForwardHelpSsh =>
+      'A local port is forwarded to the container port through the SSH connection to the host.';
+
+  @override
+  String get dockerForwardHelpLocal => 'A local port is forwarded to the container port on this computer.';
+
+  @override
+  String get dockerForwardContainerPort => 'Container port';
+
+  @override
+  String get dockerForwardLocalPort => 'Local port';
+
+  @override
+  String get dockerForwardLocalHelp => '0 picks a free port';
+
+  @override
+  String get dockerForwardStart => 'Start forward';
+
+  @override
+  String get dockerForwardCreated => 'The forward is running. It is listed in the port forwards panel.';
+
+  @override
+  String get dockerForwardCopyAddress => 'Copy address';
+
+  @override
+  String get dockerForwardStop => 'Stop forward';
+
+  @override
+  String get dockerForwardRunning => 'Running';
+
+  @override
+  String get dockerForwardFailed => 'Failed';
+
+  @override
+  String get dockerForwardStopped => 'Stopped';
+
+  @override
+  String dockerForwardTraffic(int connections, String sent, String received) {
+    return '$connections conn. · ↑ $sent · ↓ $received';
+  }
+
+  @override
+  String get dockerNoForwards => 'No port forwards';
+
+  @override
+  String get dockerNoForwardsHelp => 'Use “Forward port” on a running container.';
+
+  @override
+  String get dockerTerminalTitle => 'Container terminal';
+
+  @override
+  String get dockerShell => 'Shell';
+
+  @override
+  String get dockerAutoShell => 'Detect automatically (bash, ash or sh)';
+
+  @override
+  String get dockerOpenShell => 'Open terminal';
+
+  @override
+  String get dockerTerminalFailed => 'Could not open a terminal in the container.';
 }

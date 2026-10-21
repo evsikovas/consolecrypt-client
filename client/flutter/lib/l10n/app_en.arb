@@ -11632,5 +11632,535 @@
         "type": "String"
       }
     }
+  },
+  "dockerTitle": "Docker",
+  "@dockerTitle": {
+    "description": "Docker section: sidebar item and page title (product name, not translated)"
+  },
+  "dockerSubtitle": "Containers on this computer or on a saved SSH host.",
+  "@dockerSubtitle": {
+    "description": "Docker section: page subtitle under the title"
+  },
+  "dockerUnavailable": "Docker is unavailable",
+  "@dockerUnavailable": {
+    "description": "Docker section: empty state when this build has no Docker support"
+  },
+  "dockerUnavailableHelp": "This build of the app cannot reach Docker engines.",
+  "@dockerUnavailableHelp": {
+    "description": "Docker section: explanation under the unavailable title"
+  },
+  "dockerSearchHosts": "Search hosts",
+  "@dockerSearchHosts": {
+    "description": "Docker host picker: search field placeholder"
+  },
+  "dockerRefresh": "Refresh",
+  "@dockerRefresh": {
+    "description": "Docker: refresh button tooltip (hosts, containers, details)"
+  },
+  "dockerHostsFailed": "Could not load the host list.",
+  "@dockerHostsFailed": {
+    "description": "Docker host picker: error when the host list fails to load"
+  },
+  "dockerNoHosts": "No hosts",
+  "@dockerNoHosts": {
+    "description": "Docker host picker: empty list title"
+  },
+  "dockerNoHostsHelp": "Docker was not found on this computer and there are no saved SSH hosts yet.",
+  "@dockerNoHostsHelp": {
+    "description": "Docker host picker: empty list explanation"
+  },
+  "dockerLocalHost": "This computer",
+  "@dockerLocalHost": {
+    "description": "Docker host picker: the local engine entry"
+  },
+  "dockerLocalHostHelp": "Local Docker engine",
+  "@dockerLocalHostHelp": {
+    "description": "Docker host picker: subtitle of the local engine entry"
+  },
+  "dockerConnect": "Connect",
+  "@dockerConnect": {
+    "description": "Docker host picker: connect button"
+  },
+  "dockerConnecting": "Connecting…",
+  "@dockerConnecting": {
+    "description": "Docker host picker: connect button while connecting"
+  },
+  "dockerReconnect": "Reconnect",
+  "@dockerReconnect": {
+    "description": "Docker connect error: retry button"
+  },
+  "dockerPermissionDeniedTitle": "No access to the Docker socket",
+  "@dockerPermissionDeniedTitle": {
+    "description": "Docker connect error title: the SSH user cannot open the Docker socket"
+  },
+  "dockerPermissionDenied": "The SSH user on {host} has no rights to the Docker socket. Add the user to the “{group}” group on the host and reconnect:",
+  "@dockerPermissionDenied": {
+    "description": "Docker connect error: permission denied explanation, followed by a command to copy",
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "group": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerPermissionDeniedNote": "Run it on the host yourself; the app never runs it. The new group applies to new SSH sessions.",
+  "@dockerPermissionDeniedNote": {
+    "description": "Docker connect error: note under the usermod command"
+  },
+  "dockerCopyCommand": "Copy command",
+  "@dockerCopyCommand": {
+    "description": "Docker connect error: copy button tooltip for the usermod command"
+  },
+  "dockerNotRunningTitle": "Docker is not running",
+  "@dockerNotRunningTitle": {
+    "description": "Docker connect error title: no daemon on the host"
+  },
+  "dockerNotRunning": "Docker is not running or not installed on {host}. Start the Docker service there and reconnect.",
+  "@dockerNotRunning": {
+    "description": "Docker connect error: daemon not running explanation",
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerConnectionFailedTitle": "Connection failed",
+  "@dockerConnectionFailedTitle": {
+    "description": "Docker connect error title: SSH or local connection failed"
+  },
+  "dockerConnectionFailed": "Could not connect to {host}.",
+  "@dockerConnectionFailed": {
+    "description": "Docker connect error: connection failed explanation; the error detail follows on the next line",
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerRequestFailed": "Docker request failed",
+  "@dockerRequestFailed": {
+    "description": "Docker: generic error for a failed request"
+  },
+  "dockerRetry": "Retry",
+  "@dockerRetry": {
+    "description": "Docker: retry loading containers"
+  },
+  "dockerDisconnect": "Disconnect and choose another host",
+  "@dockerDisconnect": {
+    "description": "Docker engine header: back button tooltip"
+  },
+  "dockerEngineVersion": "Engine {version}",
+  "@dockerEngineVersion": {
+    "description": "Docker engine header: engine version fact",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerRunningOfTotal": "{running} of {total} running",
+  "@dockerRunningOfTotal": {
+    "description": "Docker engine header: running/total containers",
+    "placeholders": {
+      "running": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "dockerForwards": "Port forwards",
+  "@dockerForwards": {
+    "description": "Docker: forwards panel title and toggle tooltip"
+  },
+  "dockerFilterContainers": "Filter by name or image",
+  "@dockerFilterContainers": {
+    "description": "Docker container list: filter field placeholder"
+  },
+  "dockerShowStopped": "Show stopped",
+  "@dockerShowStopped": {
+    "description": "Docker container list: toggle to show stopped containers"
+  },
+  "dockerNoContainers": "No containers",
+  "@dockerNoContainers": {
+    "description": "Docker container list: empty engine title"
+  },
+  "dockerNoContainersHelp": "Containers started on this engine appear here.",
+  "@dockerNoContainersHelp": {
+    "description": "Docker container list: empty engine explanation"
+  },
+  "dockerNoMatches": "No matching containers",
+  "@dockerNoMatches": {
+    "description": "Docker container list: nothing matches the filter"
+  },
+  "dockerContainerGone": "The container no longer exists",
+  "@dockerContainerGone": {
+    "description": "Docker details page: the container was removed"
+  },
+  "dockerStandalone": "Standalone containers",
+  "@dockerStandalone": {
+    "description": "Docker container list: group of containers not started by compose"
+  },
+  "dockerCompose": "compose",
+  "@dockerCompose": {
+    "description": "Docker container list: marker next to a compose project name (technical term)"
+  },
+  "dockerGroupRunning": "{running}/{total} running",
+  "@dockerGroupRunning": {
+    "description": "Docker container list: group header count",
+    "placeholders": {
+      "running": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "dockerStateCreated": "Created",
+  "@dockerStateCreated": {
+    "description": "Docker container state"
+  },
+  "dockerStateRunning": "Running",
+  "@dockerStateRunning": {
+    "description": "Docker container state"
+  },
+  "dockerStatePaused": "Paused",
+  "@dockerStatePaused": {
+    "description": "Docker container state"
+  },
+  "dockerStateRestarting": "Restarting",
+  "@dockerStateRestarting": {
+    "description": "Docker container state"
+  },
+  "dockerStateRemoving": "Removing",
+  "@dockerStateRemoving": {
+    "description": "Docker container state"
+  },
+  "dockerStateExited": "Exited",
+  "@dockerStateExited": {
+    "description": "Docker container state"
+  },
+  "dockerStateDead": "Dead",
+  "@dockerStateDead": {
+    "description": "Docker container state (daemon could not stop it cleanly)"
+  },
+  "dockerStateUnknown": "Unknown",
+  "@dockerStateUnknown": {
+    "description": "Docker container state"
+  },
+  "dockerHealthHealthy": "Healthy",
+  "@dockerHealthHealthy": {
+    "description": "Docker container health check result"
+  },
+  "dockerHealthUnhealthy": "Unhealthy",
+  "@dockerHealthUnhealthy": {
+    "description": "Docker container health check result"
+  },
+  "dockerHealthStarting": "Starting",
+  "@dockerHealthStarting": {
+    "description": "Docker container health check result while starting"
+  },
+  "dockerActionStart": "Start",
+  "@dockerActionStart": {
+    "description": "Docker container action"
+  },
+  "dockerActionStop": "Stop",
+  "@dockerActionStop": {
+    "description": "Docker container action"
+  },
+  "dockerActionRestart": "Restart",
+  "@dockerActionRestart": {
+    "description": "Docker container action"
+  },
+  "dockerActionPause": "Pause",
+  "@dockerActionPause": {
+    "description": "Docker container action"
+  },
+  "dockerActionUnpause": "Resume",
+  "@dockerActionUnpause": {
+    "description": "Docker container action (unpause)"
+  },
+  "dockerActionKill": "Kill",
+  "@dockerActionKill": {
+    "description": "Docker container action (SIGKILL)"
+  },
+  "dockerActionRemove": "Remove",
+  "@dockerActionRemove": {
+    "description": "Docker container action"
+  },
+  "dockerKillTitle": "Kill {name}?",
+  "@dockerKillTitle": {
+    "description": "Docker: kill confirmation title",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerKillHelp": "The container's processes are stopped at once, without a chance to shut down cleanly.",
+  "@dockerKillHelp": {
+    "description": "Docker: kill confirmation message"
+  },
+  "dockerRemoveTitle": "Remove {name}?",
+  "@dockerRemoveTitle": {
+    "description": "Docker: remove confirmation title",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerRemoveHelp": "The container and its writable layer are deleted. Named volumes are kept.",
+  "@dockerRemoveHelp": {
+    "description": "Docker: remove confirmation message"
+  },
+  "dockerLogs": "Logs",
+  "@dockerLogs": {
+    "description": "Docker: logs action and details tab"
+  },
+  "dockerTerminal": "Terminal",
+  "@dockerTerminal": {
+    "description": "Docker: open a shell in the container"
+  },
+  "dockerForwardPort": "Forward port",
+  "@dockerForwardPort": {
+    "description": "Docker: forward a container port action and dialog title"
+  },
+  "dockerDetails": "Details",
+  "@dockerDetails": {
+    "description": "Docker: container details action and overview section"
+  },
+  "dockerCopyId": "Copy ID",
+  "@dockerCopyId": {
+    "description": "Docker: copy the container id"
+  },
+  "dockerContainerId": "Container ID",
+  "@dockerContainerId": {
+    "description": "Docker: container id label; also the copied-item noun"
+  },
+  "dockerOverview": "Overview",
+  "@dockerOverview": {
+    "description": "Docker details: overview tab"
+  },
+  "dockerInspectJson": "JSON",
+  "@dockerInspectJson": {
+    "description": "Docker details: raw inspect tab (technical term)"
+  },
+  "dockerCopyJson": "Copy JSON",
+  "@dockerCopyJson": {
+    "description": "Docker details: copy the inspect JSON"
+  },
+  "dockerImage": "Image",
+  "@dockerImage": {
+    "description": "Docker details: image"
+  },
+  "dockerStatus": "Status",
+  "@dockerStatus": {
+    "description": "Docker details: status text"
+  },
+  "dockerHealth": "Health",
+  "@dockerHealth": {
+    "description": "Docker details: health check result"
+  },
+  "dockerCreated": "Created",
+  "@dockerCreated": {
+    "description": "Docker details: creation time"
+  },
+  "dockerStarted": "Started",
+  "@dockerStarted": {
+    "description": "Docker details: start time"
+  },
+  "dockerCommand": "Command",
+  "@dockerCommand": {
+    "description": "Docker details: entrypoint and arguments"
+  },
+  "dockerRestartCount": "Restarts",
+  "@dockerRestartCount": {
+    "description": "Docker details: restart count"
+  },
+  "dockerComposeProject": "Compose project",
+  "@dockerComposeProject": {
+    "description": "Docker details: compose project"
+  },
+  "dockerComposeService": "Compose service",
+  "@dockerComposeService": {
+    "description": "Docker details: compose service"
+  },
+  "dockerPorts": "Ports",
+  "@dockerPorts": {
+    "description": "Docker details: ports section"
+  },
+  "dockerNetworks": "Networks",
+  "@dockerNetworks": {
+    "description": "Docker details: networks with container IPs"
+  },
+  "dockerMounts": "Mounts",
+  "@dockerMounts": {
+    "description": "Docker details: mounts section"
+  },
+  "dockerLabels": "Labels",
+  "@dockerLabels": {
+    "description": "Docker details: labels section"
+  },
+  "dockerEnvironment": "Environment",
+  "@dockerEnvironment": {
+    "description": "Docker details: environment variables (secret values are masked)"
+  },
+  "dockerLogsPause": "Pause",
+  "@dockerLogsPause": {
+    "description": "Docker logs: freeze the view"
+  },
+  "dockerLogsResume": "Resume",
+  "@dockerLogsResume": {
+    "description": "Docker logs: unfreeze the view"
+  },
+  "dockerLogsFollow": "Follow",
+  "@dockerLogsFollow": {
+    "description": "Docker logs: keep scrolled to the newest line"
+  },
+  "dockerLogsTimestamps": "Timestamps",
+  "@dockerLogsTimestamps": {
+    "description": "Docker logs: show timestamps"
+  },
+  "dockerLogsCopy": "Copy shown lines",
+  "@dockerLogsCopy": {
+    "description": "Docker logs: copy button tooltip"
+  },
+  "dockerLogsClear": "Clear",
+  "@dockerLogsClear": {
+    "description": "Docker logs: clear button tooltip"
+  },
+  "dockerLogsFind": "Find in logs",
+  "@dockerLogsFind": {
+    "description": "Docker logs: find field placeholder"
+  },
+  "dockerLogsMatches": "{count, plural, =0{No matches} one{{count} match} other{{count} matches}}",
+  "@dockerLogsMatches": {
+    "description": "Docker logs: number of lines matching the find text",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dockerLogsPaused": "Paused: new lines are kept until you resume",
+  "@dockerLogsPaused": {
+    "description": "Docker logs: status while paused"
+  },
+  "dockerLogsTrimmed": "Only the last {limit} lines are kept",
+  "@dockerLogsTrimmed": {
+    "description": "Docker logs: older lines dropped",
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "dockerLogsFailed": "The log stream stopped with an error",
+  "@dockerLogsFailed": {
+    "description": "Docker logs: stream error"
+  },
+  "dockerLogsWaiting": "Waiting for log lines…",
+  "@dockerLogsWaiting": {
+    "description": "Docker logs: streaming, nothing yet"
+  },
+  "dockerNoLogs": "No log lines",
+  "@dockerNoLogs": {
+    "description": "Docker logs: empty"
+  },
+  "dockerForwardHelpSsh": "A local port is forwarded to the container port through the SSH connection to the host.",
+  "@dockerForwardHelpSsh": {
+    "description": "Docker forward dialog: explanation for an SSH host"
+  },
+  "dockerForwardHelpLocal": "A local port is forwarded to the container port on this computer.",
+  "@dockerForwardHelpLocal": {
+    "description": "Docker forward dialog: explanation for the local engine"
+  },
+  "dockerForwardContainerPort": "Container port",
+  "@dockerForwardContainerPort": {
+    "description": "Docker forward dialog: container port field"
+  },
+  "dockerForwardLocalPort": "Local port",
+  "@dockerForwardLocalPort": {
+    "description": "Docker forward dialog: local port field"
+  },
+  "dockerForwardLocalHelp": "0 picks a free port",
+  "@dockerForwardLocalHelp": {
+    "description": "Docker forward dialog: local port helper"
+  },
+  "dockerForwardStart": "Start forward",
+  "@dockerForwardStart": {
+    "description": "Docker forward dialog: start button"
+  },
+  "dockerForwardCreated": "The forward is running. It is listed in the port forwards panel.",
+  "@dockerForwardCreated": {
+    "description": "Docker forward dialog: success message"
+  },
+  "dockerForwardCopyAddress": "Copy address",
+  "@dockerForwardCopyAddress": {
+    "description": "Docker forwards: copy local address tooltip"
+  },
+  "dockerForwardStop": "Stop forward",
+  "@dockerForwardStop": {
+    "description": "Docker forwards: stop button tooltip"
+  },
+  "dockerForwardRunning": "Running",
+  "@dockerForwardRunning": {
+    "description": "Docker forward state"
+  },
+  "dockerForwardFailed": "Failed",
+  "@dockerForwardFailed": {
+    "description": "Docker forward state"
+  },
+  "dockerForwardStopped": "Stopped",
+  "@dockerForwardStopped": {
+    "description": "Docker forward state"
+  },
+  "dockerForwardTraffic": "{connections} conn. · ↑ {sent} · ↓ {received}",
+  "@dockerForwardTraffic": {
+    "description": "Docker forwards: active connections and bytes sent/received",
+    "placeholders": {
+      "connections": {
+        "type": "int"
+      },
+      "sent": {
+        "type": "String"
+      },
+      "received": {
+        "type": "String"
+      }
+    }
+  },
+  "dockerNoForwards": "No port forwards",
+  "@dockerNoForwards": {
+    "description": "Docker forwards panel: empty title"
+  },
+  "dockerNoForwardsHelp": "Use “Forward port” on a running container.",
+  "@dockerNoForwardsHelp": {
+    "description": "Docker forwards panel: empty explanation"
+  },
+  "dockerTerminalTitle": "Container terminal",
+  "@dockerTerminalTitle": {
+    "description": "Docker terminal dialog title"
+  },
+  "dockerShell": "Shell",
+  "@dockerShell": {
+    "description": "Docker terminal dialog: shell picker label"
+  },
+  "dockerAutoShell": "Detect automatically (bash, ash or sh)",
+  "@dockerAutoShell": {
+    "description": "Docker terminal dialog: auto shell option"
+  },
+  "dockerOpenShell": "Open terminal",
+  "@dockerOpenShell": {
+    "description": "Docker terminal dialog: open button"
+  },
+  "dockerTerminalFailed": "Could not open a terminal in the container.",
+  "@dockerTerminalFailed": {
+    "description": "Docker terminal dialog: error"
   }
 }

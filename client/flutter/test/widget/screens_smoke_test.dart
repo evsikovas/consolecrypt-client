@@ -39,7 +39,7 @@ void main() {
         addTearDown(backend.dispose);
         await backend.debugSignInDemoAndUnlock();
         await _pumpSized(tester, backend, size, locale: locale);
-        for (final branch in [..._branches, 'devices']) {
+        for (final branch in [..._branches, 'devices', 'docker']) {
           await tapKey(tester, 'nav-$branch');
           expect(tester.takeException(), isNull, reason: branch);
         }

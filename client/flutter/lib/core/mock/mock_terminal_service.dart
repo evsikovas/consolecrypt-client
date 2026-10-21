@@ -12,7 +12,7 @@ import 'package:consolecrypt/core/services/app_services.dart';
 /// Simulated SSH shell. Honours host-key policies against the mock known
 /// hosts (unknown → prompt, changed → hard failure), supports a few
 /// commands, `simulate-drop` (network drop → reconnect banner) and `exit`.
-final class MockTerminalService implements TerminalService, LocalTerminalService {
+final class MockTerminalService implements TerminalService, LocalTerminalService, DockerTerminalService {
   MockTerminalService(this._config, this._inventory);
 
   final MockConfig _config;
@@ -29,6 +29,23 @@ final class MockTerminalService implements TerminalService, LocalTerminalService
     final profile = localShellProfiles.profiles.where((p) => p.id == profileId).firstOrNull;
     if (profile == null) throw const AppException(AppErrorCode.notFound, 'Local shell is unavailable');
     final shell = _MockLocalShell(profile, size);
+    _localSessions[shell.id] = shell;
+    unawaited(shell.connect());
+    return TerminalSessionHandle(id: shell.id, output: shell.output.stream, events: shell.events.stream);
+  }
+
+  /// Echo shell standing in for a container shell.
+  @override
+  Future<TerminalSessionHandle> openDocker({required DockerTerminalTarget target, required TerminalSize size}) async {
+    final shell = _MockLocalShell(
+      LocalShellProfile(
+        id: 'docker-${target.containerId}',
+        kind: 'docker',
+        label: '${target.containerName} (${target.command.firstOrNull ?? ''})',
+        shell: target.command.firstOrNull ?? '/bin/sh',
+      ),
+      size,
+    );
     _localSessions[shell.id] = shell;
     unawaited(shell.connect());
     return TerminalSessionHandle(id: shell.id, output: shell.output.stream, events: shell.events.stream);

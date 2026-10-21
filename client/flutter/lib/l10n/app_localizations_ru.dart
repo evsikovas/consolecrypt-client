@@ -8692,4 +8692,381 @@ class AppLocalizationsRu extends AppLocalizations {
   String kubeConnectDatabaseHelp(String engine) {
     return 'Пробросить порт $engine на localhost и открыть в разделе «Базы данных»';
   }
+
+  @override
+  String get dockerTitle => 'Docker';
+
+  @override
+  String get dockerSubtitle => 'Контейнеры на этом компьютере или на сохранённом SSH-хосте.';
+
+  @override
+  String get dockerUnavailable => 'Docker недоступен';
+
+  @override
+  String get dockerUnavailableHelp => 'Эта сборка приложения не умеет подключаться к Docker.';
+
+  @override
+  String get dockerSearchHosts => 'Поиск хостов';
+
+  @override
+  String get dockerRefresh => 'Обновить';
+
+  @override
+  String get dockerHostsFailed => 'Не удалось загрузить список хостов.';
+
+  @override
+  String get dockerNoHosts => 'Нет хостов';
+
+  @override
+  String get dockerNoHostsHelp => 'Docker не найден на этом компьютере, и сохранённых SSH-хостов пока нет.';
+
+  @override
+  String get dockerLocalHost => 'Этот компьютер';
+
+  @override
+  String get dockerLocalHostHelp => 'Локальный Docker';
+
+  @override
+  String get dockerConnect => 'Подключиться';
+
+  @override
+  String get dockerConnecting => 'Подключение…';
+
+  @override
+  String get dockerReconnect => 'Подключиться снова';
+
+  @override
+  String get dockerPermissionDeniedTitle => 'Нет доступа к сокету Docker';
+
+  @override
+  String dockerPermissionDenied(String host, String group) {
+    return 'У SSH-пользователя на $host нет прав на сокет Docker. Добавьте пользователя в группу «$group» на хосте и подключитесь снова:';
+  }
+
+  @override
+  String get dockerPermissionDeniedNote =>
+      'Выполните её на хосте сами — приложение её не запускает. Новая группа действует в новых SSH-сессиях.';
+
+  @override
+  String get dockerCopyCommand => 'Скопировать команду';
+
+  @override
+  String get dockerNotRunningTitle => 'Docker не запущен';
+
+  @override
+  String dockerNotRunning(String host) {
+    return 'На $host Docker не запущен или не установлен. Запустите службу Docker и подключитесь снова.';
+  }
+
+  @override
+  String get dockerConnectionFailedTitle => 'Не удалось подключиться';
+
+  @override
+  String dockerConnectionFailed(String host) {
+    return 'Не удалось подключиться к $host.';
+  }
+
+  @override
+  String get dockerRequestFailed => 'Запрос к Docker не выполнен';
+
+  @override
+  String get dockerRetry => 'Повторить';
+
+  @override
+  String get dockerDisconnect => 'Отключиться и выбрать другой хост';
+
+  @override
+  String dockerEngineVersion(String version) {
+    return 'Engine $version';
+  }
+
+  @override
+  String dockerRunningOfTotal(int running, int total) {
+    return 'Запущено $running из $total';
+  }
+
+  @override
+  String get dockerForwards => 'Проброс портов';
+
+  @override
+  String get dockerFilterContainers => 'Фильтр по имени или образу';
+
+  @override
+  String get dockerShowStopped => 'Показывать остановленные';
+
+  @override
+  String get dockerNoContainers => 'Нет контейнеров';
+
+  @override
+  String get dockerNoContainersHelp => 'Здесь появятся контейнеры, запущенные на этом Docker.';
+
+  @override
+  String get dockerNoMatches => 'Подходящих контейнеров нет';
+
+  @override
+  String get dockerContainerGone => 'Контейнер больше не существует';
+
+  @override
+  String get dockerStandalone => 'Отдельные контейнеры';
+
+  @override
+  String get dockerCompose => 'compose';
+
+  @override
+  String dockerGroupRunning(int running, int total) {
+    return '$running/$total запущено';
+  }
+
+  @override
+  String get dockerStateCreated => 'Создан';
+
+  @override
+  String get dockerStateRunning => 'Работает';
+
+  @override
+  String get dockerStatePaused => 'Приостановлен';
+
+  @override
+  String get dockerStateRestarting => 'Перезапускается';
+
+  @override
+  String get dockerStateRemoving => 'Удаляется';
+
+  @override
+  String get dockerStateExited => 'Остановлен';
+
+  @override
+  String get dockerStateDead => 'Неисправен';
+
+  @override
+  String get dockerStateUnknown => 'Неизвестно';
+
+  @override
+  String get dockerHealthHealthy => 'Исправен';
+
+  @override
+  String get dockerHealthUnhealthy => 'Неисправен';
+
+  @override
+  String get dockerHealthStarting => 'Проверяется';
+
+  @override
+  String get dockerActionStart => 'Запустить';
+
+  @override
+  String get dockerActionStop => 'Остановить';
+
+  @override
+  String get dockerActionRestart => 'Перезапустить';
+
+  @override
+  String get dockerActionPause => 'Приостановить';
+
+  @override
+  String get dockerActionUnpause => 'Возобновить';
+
+  @override
+  String get dockerActionKill => 'Завершить принудительно';
+
+  @override
+  String get dockerActionRemove => 'Удалить';
+
+  @override
+  String dockerKillTitle(String name) {
+    return 'Принудительно завершить $name?';
+  }
+
+  @override
+  String get dockerKillHelp => 'Процессы контейнера будут остановлены сразу, без корректного завершения.';
+
+  @override
+  String dockerRemoveTitle(String name) {
+    return 'Удалить $name?';
+  }
+
+  @override
+  String get dockerRemoveHelp => 'Контейнер и его записываемый слой будут удалены. Именованные тома сохранятся.';
+
+  @override
+  String get dockerLogs => 'Логи';
+
+  @override
+  String get dockerTerminal => 'Терминал';
+
+  @override
+  String get dockerForwardPort => 'Пробросить порт';
+
+  @override
+  String get dockerDetails => 'Сведения';
+
+  @override
+  String get dockerCopyId => 'Скопировать ID';
+
+  @override
+  String get dockerContainerId => 'ID контейнера';
+
+  @override
+  String get dockerOverview => 'Обзор';
+
+  @override
+  String get dockerInspectJson => 'JSON';
+
+  @override
+  String get dockerCopyJson => 'Скопировать JSON';
+
+  @override
+  String get dockerImage => 'Образ';
+
+  @override
+  String get dockerStatus => 'Состояние';
+
+  @override
+  String get dockerHealth => 'Проверка здоровья';
+
+  @override
+  String get dockerCreated => 'Создан';
+
+  @override
+  String get dockerStarted => 'Запущен';
+
+  @override
+  String get dockerCommand => 'Команда';
+
+  @override
+  String get dockerRestartCount => 'Перезапуски';
+
+  @override
+  String get dockerComposeProject => 'Проект compose';
+
+  @override
+  String get dockerComposeService => 'Сервис compose';
+
+  @override
+  String get dockerPorts => 'Порты';
+
+  @override
+  String get dockerNetworks => 'Сети';
+
+  @override
+  String get dockerMounts => 'Монтирования';
+
+  @override
+  String get dockerLabels => 'Метки';
+
+  @override
+  String get dockerEnvironment => 'Переменные окружения';
+
+  @override
+  String get dockerLogsPause => 'Пауза';
+
+  @override
+  String get dockerLogsResume => 'Продолжить';
+
+  @override
+  String get dockerLogsFollow => 'Следить';
+
+  @override
+  String get dockerLogsTimestamps => 'Время';
+
+  @override
+  String get dockerLogsCopy => 'Скопировать строки';
+
+  @override
+  String get dockerLogsClear => 'Очистить';
+
+  @override
+  String get dockerLogsFind => 'Найти в логах';
+
+  @override
+  String dockerLogsMatches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count совпадения',
+      many: '$count совпадений',
+      few: '$count совпадения',
+      one: '$count совпадение',
+      zero: 'Совпадений нет',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dockerLogsPaused => 'Пауза: новые строки сохранятся до продолжения';
+
+  @override
+  String dockerLogsTrimmed(int limit) {
+    return 'Хранятся только последние $limit строк';
+  }
+
+  @override
+  String get dockerLogsFailed => 'Поток логов прервался с ошибкой';
+
+  @override
+  String get dockerLogsWaiting => 'Ожидание строк лога…';
+
+  @override
+  String get dockerNoLogs => 'Строк лога нет';
+
+  @override
+  String get dockerForwardHelpSsh => 'Локальный порт пробрасывается на порт контейнера через SSH-подключение к хосту.';
+
+  @override
+  String get dockerForwardHelpLocal => 'Локальный порт пробрасывается на порт контейнера на этом компьютере.';
+
+  @override
+  String get dockerForwardContainerPort => 'Порт контейнера';
+
+  @override
+  String get dockerForwardLocalPort => 'Локальный порт';
+
+  @override
+  String get dockerForwardLocalHelp => '0 — выбрать свободный порт';
+
+  @override
+  String get dockerForwardStart => 'Начать проброс';
+
+  @override
+  String get dockerForwardCreated => 'Проброс работает. Он отображается на панели проброса портов.';
+
+  @override
+  String get dockerForwardCopyAddress => 'Скопировать адрес';
+
+  @override
+  String get dockerForwardStop => 'Остановить проброс';
+
+  @override
+  String get dockerForwardRunning => 'Работает';
+
+  @override
+  String get dockerForwardFailed => 'Ошибка';
+
+  @override
+  String get dockerForwardStopped => 'Остановлен';
+
+  @override
+  String dockerForwardTraffic(int connections, String sent, String received) {
+    return '$connections подкл. · ↑ $sent · ↓ $received';
+  }
+
+  @override
+  String get dockerNoForwards => 'Пробросов нет';
+
+  @override
+  String get dockerNoForwardsHelp => 'Выберите «Пробросить порт» у работающего контейнера.';
+
+  @override
+  String get dockerTerminalTitle => 'Терминал контейнера';
+
+  @override
+  String get dockerShell => 'Оболочка';
+
+  @override
+  String get dockerAutoShell => 'Определить автоматически (bash, ash или sh)';
+
+  @override
+  String get dockerOpenShell => 'Открыть терминал';
+
+  @override
+  String get dockerTerminalFailed => 'Не удалось открыть терминал в контейнере.';
 }
