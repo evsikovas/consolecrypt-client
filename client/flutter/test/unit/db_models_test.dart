@@ -97,4 +97,47 @@ void main() {
     expect(event.toString(), isNot(contains('canary')));
     expect(DbQueryEvent.fromJson({'kind': 'paused', 'result_index': 2, 'has_more': true}).hasMore, isTrue);
   });
+
+  test('TLS settings omit the channel-binding opt-out unless it is on; sessions report their protection', () {
+    expect(const DbTls(mode: DbTlsMode.require).toJson().containsKey('allow_unbound_auth'), isFalse);
+    final unbound = DbTls.fromJson(const DbTls(mode: DbTlsMode.require, allowUnboundAuth: true).toJson());
+    expect(unbound.allowUnboundAuth, isTrue);
+    final info = DbSessionInfo.fromJson({
+      'id': 's',
+      'connection_id': 'c',
+      'engine': 'postgresql',
+      'server_version': '17',
+      'production': true,
+      'read_only': true,
+      'server_read_only': 'enforced',
+      'transport_security': 'tunnel',
+    });
+    expect(info.transportSecurity, DbTransportSecurity.tunnel);
+    expect(DbTransportSecurity.parse('something_new'), isNull);
+  });
+
+  test('cards expect what the TLS mode and route guarantee', () {
+    DbConnection connection(DbTlsMode mode, DbRouteKind route) => DbConnection(
+      id: 'c',
+      name: 'c',
+      engine: DbEngine.postgresql,
+      host: 'db.example.test',
+      port: 5432,
+      tls: DbTls(mode: mode),
+      route: DbRoute(kind: route, reference: route == DbRouteKind.direct ? null : 'r'),
+      options: const DbDriverOptions(engine: DbEngine.postgresql),
+    );
+    DbTransportSecurity? expected(DbTlsMode mode, DbRouteKind route, {bool loopback = false}) =>
+        DbTransportSecurity.expected(connection(mode, route), loopback: loopback);
+    expect(expected(DbTlsMode.verify, DbRouteKind.direct), DbTransportSecurity.verified);
+    expect(expected(DbTlsMode.require, DbRouteKind.kubernetes), DbTransportSecurity.unverified);
+    // Over the network "prefer" never continues without TLS.
+    expect(expected(DbTlsMode.prefer, DbRouteKind.direct), DbTransportSecurity.verified);
+    expect(expected(DbTlsMode.prefer, DbRouteKind.proxy), DbTransportSecurity.verified);
+    expect(expected(DbTlsMode.prefer, DbRouteKind.ssh), isNull);
+    expect(expected(DbTlsMode.prefer, DbRouteKind.direct, loopback: true), isNull);
+    expect(expected(DbTlsMode.disable, DbRouteKind.docker), DbTransportSecurity.tunnel);
+    expect(expected(DbTlsMode.disable, DbRouteKind.proxy, loopback: true), DbTransportSecurity.plaintext);
+    expect(expected(DbTlsMode.disable, DbRouteKind.direct), DbTransportSecurity.plaintext);
+  });
 }

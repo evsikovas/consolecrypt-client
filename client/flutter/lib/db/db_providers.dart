@@ -27,6 +27,22 @@ final dbConnectionsProvider = FutureProvider.autoDispose.family<List<DbConnectio
   return ref.watch(dbServiceProvider)?.connections() ?? const [];
 });
 
+/// What protected the last session of each connection, in memory for the
+/// unlocked profile only (the card shows it; nothing is stored).
+final dbLastSecurityProvider = NotifierProvider<DbLastSecurity, Map<String, DbTransportSecurity>>(DbLastSecurity.new);
+
+class DbLastSecurity extends Notifier<Map<String, DbTransportSecurity>> {
+  @override
+  Map<String, DbTransportSecurity> build() {
+    ref.watch(dbScopeProvider);
+    return const {};
+  }
+
+  void record(String connectionId, DbTransportSecurity? security) {
+    if (security != null && state[connectionId] != security) state = {...state, connectionId: security};
+  }
+}
+
 /// Asked to open in the Databases section once it is shown.
 final dbOpenRequestProvider = NotifierProvider<DbOpenRequest, String?>(DbOpenRequest.new);
 

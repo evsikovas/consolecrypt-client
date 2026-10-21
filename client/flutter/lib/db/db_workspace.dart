@@ -19,6 +19,7 @@ import 'package:consolecrypt/db/db_query_dialogs.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_result_controller.dart';
 import 'package:consolecrypt/db/db_result_grid.dart';
+import 'package:consolecrypt/db/db_transport_badge.dart';
 import 'package:consolecrypt/db/db_tree.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -109,6 +110,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
         _session = session;
         _addTab();
       });
+      ref.read(dbLastSecurityProvider.notifier).record(widget.connection.id, session.transportSecurity);
       widget.onSessionChanged?.call(session);
     } catch (error) {
       if (_current && generation == _generation) {
@@ -590,6 +592,10 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
               ],
             ),
           ),
+          if (session.transportSecurity case final security?) ...[
+            DbTransportBadge(security, compact: !wide, key: const ValueKey('db-transport-badge')),
+            const SizedBox(width: GlassSpacing.s6),
+          ],
           if (session.production) ...[
             GlassBadge(label: l.dbProd, tone: GlassTone.danger, icon: Icons.shield_outlined, dense: true),
             const SizedBox(width: GlassSpacing.s6),

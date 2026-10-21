@@ -57,6 +57,11 @@ pub struct DbTls {
     pub certificate_authority_pem: Option<String>,
     #[serde(default)]
     pub server_name: Option<String>,
+    /// PostgreSQL in "require" mode: allow password authentication without
+    /// SCRAM channel binding (md5, cleartext, SCRAM without -PLUS). Off by
+    /// default; omitted when off so older clients still decode the object.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub allow_unbound_auth: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

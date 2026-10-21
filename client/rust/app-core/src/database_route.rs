@@ -4,7 +4,7 @@
 use crate::session::{Session, Unlocked};
 use crate::{AppCore, AppError, AppResult};
 use async_trait::async_trait;
-use cc_db_core::transport::{DbConnector, DbDestination, DbIo, DirectConnector};
+use cc_db_core::transport::{DbConnector, DbDestination, DbIo, DbPath, DirectConnector};
 use cc_db_core::DbError;
 use cc_models::database::DbRoute;
 use cc_models::host::Proxy;
@@ -41,6 +41,20 @@ impl DbConnector for NativeConnector {
         destination: &DbDestination,
         cancel: CancellationToken,
     ) -> Result<DbIo, DbError> {
+        Ok(self.connect_path(destination, cancel).await?.0)
+    }
+
+    /// SSH and local forwards (Kubernetes, Docker, saved tunnels) protect the
+    /// socket; a proxy does not, whatever address it is asked for.
+    fn tunnelled(&self) -> bool {
+        matches!(self.transport, Transport::Ssh(_) | Transport::Loopback(_))
+    }
+
+    async fn connect_path(
+        &self,
+        destination: &DbDestination,
+        cancel: CancellationToken,
+    ) -> Result<(DbIo, DbPath), DbError> {
         DbDestination::new(destination.host.clone(), destination.port)?;
         let permit = self
             .slots
@@ -49,11 +63,16 @@ impl DbConnector for NativeConnector {
             .map_err(|_| DbError::ConnectionFailed)?;
         let connect = async {
             match &self.transport {
-                Transport::Direct => DirectConnector.connect(destination, cancel.clone()).await,
+                // The resolved peer decides whether a direct socket is loopback.
+                Transport::Direct => {
+                    DirectConnector
+                        .connect_path(destination, cancel.clone())
+                        .await
+                }
                 Transport::Ssh(ssh) => ssh
                     .open_direct_tcpip(&destination.host, destination.port, None)
                     .await
-                    .map(|stream| Box::new(stream) as DbIo)
+                    .map(|stream| (Box::new(stream) as DbIo, DbPath::Tunnel))
                     .map_err(|_| DbError::ConnectionFailed),
                 Transport::Proxy(proxy, password) => cc_ssh_core::proxy::connect_via_proxy(
                     proxy,
@@ -62,15 +81,16 @@ impl DbConnector for NativeConnector {
                     destination.port,
                 )
                 .await
-                .map(|stream| Box::new(stream) as DbIo)
+                .map(|stream| (Box::new(stream) as DbIo, DbPath::Network))
                 .map_err(|_| DbError::ConnectionFailed),
                 Transport::Loopback(address) => {
                     let forward = DbDestination::new(address.ip().to_string(), address.port())?;
-                    DirectConnector.connect(&forward, cancel.clone()).await
+                    let stream = DirectConnector.connect(&forward, cancel.clone()).await?;
+                    Ok((stream, DbPath::Tunnel))
                 }
             }
         };
-        let mut remote = tokio::select! {
+        let (mut remote, path) = tokio::select! {
             biased;
             _ = self.scope.cancelled() => return Err(DbError::Cancelled),
             _ = cancel.cancelled() => return Err(DbError::Cancelled),
@@ -90,7 +110,7 @@ impl DbConnector for NativeConnector {
                 _ = tokio::io::copy_bidirectional(&mut relay, &mut remote) => {},
             }
         });
-        Ok(Box::new(local))
+        Ok((Box::new(local), path))
     }
 }
 

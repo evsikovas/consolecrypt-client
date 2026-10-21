@@ -121,6 +121,50 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('PostgreSQL "require" binds the password to TLS unless the user opts out', (tester) async {
+    final service = _Service();
+    await _pump(tester, service);
+    final l = tester.element(find.byType(DbConnectionDialog)).l10n;
+    await _fill(tester);
+    await tester.ensureVisible(find.text(l.dbTls));
+    await tester.tap(find.text(l.dbTls));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-tls-unbound')), findsNothing);
+    await tester.ensureVisible(find.byKey(const ValueKey('db-tls')));
+    await tester.tap(find.byKey(const ValueKey('db-tls')));
+    await settle(tester);
+    await tester.tap(find.text(l.dbTlsRequire).last);
+    await settle(tester);
+    expect(find.text(l.dbTlsRequireHelp), findsOneWidget);
+    final toggle = find.byKey(const ValueKey('db-tls-unbound'));
+    expect(tester.widget<CheckboxListTile>(toggle).value, isFalse);
+    await tapKey(tester, 'db-test');
+    expect(service.tested.single.tls.toJson().containsKey('allow_unbound_auth'), isFalse);
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await settle(tester);
+    await tapKey(tester, 'db-save');
+    expect(service.saved.single.metadata.tls.allowUnboundAuth, isTrue);
+    expect(service.saved.single.metadata.tls.toJson()['allow_unbound_auth'], isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('"prefer" explains when it may continue without TLS; a test shows the protection', (tester) async {
+    final service = _Service()..check = DbTransportSecurity.tunnel;
+    await _pump(tester, service);
+    final l = tester.element(find.byType(DbConnectionDialog)).l10n;
+    await enterKey(tester, 'db-field-name', 'fixture');
+    await enterKey(tester, 'db-field-host', '127.0.0.1');
+    await tester.ensureVisible(find.text(l.dbTls));
+    await tester.tap(find.text(l.dbTls));
+    await settle(tester);
+    expect(find.text(l.dbTlsPreferHelp), findsOneWidget);
+    expect(find.byKey(const ValueKey('db-tls-unbound')), findsNothing);
+    await tapKey(tester, 'db-test');
+    expect(find.text(l.dbTransportTunnel), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('connection strings cannot be put into a plain host field', (tester) async {
     final service = _Service();
     await _pump(tester, service);
@@ -201,8 +245,13 @@ class _Service implements DbService {
   @override
   Future<void> deleteConnection(String id) async {}
   @override
-  Future<DbConnectionCheck> testConnection(DbConnectionDraft draft) async =>
-      const DbConnectionCheck(serverVersion: '17', serverReadOnly: DbServerReadOnly.enforced);
+  Future<DbConnectionCheck> testConnection(DbConnectionDraft draft) async {
+    tested.add(draft.metadata);
+    return DbConnectionCheck(serverVersion: '17', serverReadOnly: DbServerReadOnly.enforced, transportSecurity: check);
+  }
+
+  final tested = <DbConnection>[];
+  DbTransportSecurity? check;
   @override
   Future<DbImportReview> importConnectionString(SecretText uri) async {
     importSecret = uri;

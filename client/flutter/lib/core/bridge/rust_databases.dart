@@ -159,7 +159,11 @@ final class RustDbService
         (pw) => guard(() => native.dbTestConnection(connectionJson: jsonEncode(draft.metadata.toJson()), password: pw)),
       );
       final info = DbSessionInfo.fromJson(jsonDecode(json) as DbJson);
-      return DbConnectionCheck(serverVersion: info.serverVersion, serverReadOnly: info.serverReadOnly);
+      return DbConnectionCheck(
+        serverVersion: info.serverVersion,
+        serverReadOnly: info.serverReadOnly,
+        transportSecurity: info.transportSecurity,
+      );
     } finally {
       draft.wipe();
     }

@@ -50,6 +50,23 @@ impl fmt::Debug for DbDestination {
     }
 }
 
+/// How one socket reaches the database before any database TLS. Only a
+/// protected path may carry a PostgreSQL "prefer" session without TLS.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DbPath {
+    /// A direct or proxied socket to a non-loopback address.
+    Network,
+    /// A direct socket whose resolved peer is a loopback address.
+    Loopback,
+    /// Inside an SSH session, a saved tunnel, a Kubernetes or Docker forward.
+    Tunnel,
+}
+impl DbPath {
+    pub fn protected(self) -> bool {
+        self != Self::Network
+    }
+}
+
 /// AppCore implements this with the immutable vault route snapshot. Every
 /// discovered replica must use that same connector; there is no direct fallback.
 #[async_trait]
@@ -59,6 +76,25 @@ pub trait DbConnector: Send + Sync + fmt::Debug {
         destination: &DbDestination,
         cancel: CancellationToken,
     ) -> Result<DbIo, DbError>;
+
+    /// Every socket travels inside an SSH session or a local forward.
+    fn tunnelled(&self) -> bool {
+        false
+    }
+
+    /// The socket and the path it took. Unknown connectors are the network.
+    async fn connect_path(
+        &self,
+        destination: &DbDestination,
+        cancel: CancellationToken,
+    ) -> Result<(DbIo, DbPath), DbError> {
+        let path = if self.tunnelled() {
+            DbPath::Tunnel
+        } else {
+            DbPath::Network
+        };
+        Ok((self.connect(destination, cancel).await?, path))
+    }
 }
 
 #[derive(Debug)]
@@ -70,6 +106,15 @@ impl DbConnector for DirectConnector {
         destination: &DbDestination,
         cancel: CancellationToken,
     ) -> Result<DbIo, DbError> {
+        Ok(self.connect_path(destination, cancel).await?.0)
+    }
+
+    /// Loopback is decided by the connected peer, never by the host string.
+    async fn connect_path(
+        &self,
+        destination: &DbDestination,
+        cancel: CancellationToken,
+    ) -> Result<(DbIo, DbPath), DbError> {
         DbDestination::new(destination.host.clone(), destination.port)?;
         tokio::select! {
             biased;
@@ -77,7 +122,13 @@ impl DbConnector for DirectConnector {
             result = TcpStream::connect((destination.host.as_str(), destination.port)) => {
                 let stream = result.map_err(|_| DbError::ConnectionFailed)?;
                 stream.set_nodelay(true).map_err(|_| DbError::ConnectionFailed)?;
-                Ok(Box::new(stream) as DbIo)
+                let peer = stream.peer_addr().map_err(|_| DbError::ConnectionFailed)?;
+                let path = if peer.ip().to_canonical().is_loopback() {
+                    DbPath::Loopback
+                } else {
+                    DbPath::Network
+                };
+                Ok((Box::new(stream) as DbIo, path))
             }
         }
     }

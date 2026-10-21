@@ -5005,6 +5005,50 @@
   "dbErrorTimeout": "Сервер не ответил вовремя. Проверьте адрес и таймаут подключения.",
   "dbErrorRoute": "Выбранный маршрут недоступен: проверьте SSH-хост или jump-профиль.",
   "dbTlsLocalHint": "Локальный адрес: TLS переключён на «prefer» (у проброса порта обычно нет TLS).",
+  "dbTransportVerified": "TLS (проверен)",
+  "@dbTransportVerified": {
+    "description": "Database TLS status: TLS with a verified certificate."
+  },
+  "dbTransportUnverified": "TLS (без проверки сертификата)",
+  "@dbTransportUnverified": {
+    "description": "Database TLS status: TLS without certificate verification."
+  },
+  "dbTransportTunnel": "Без TLS — защищено туннелем",
+  "@dbTransportTunnel": {
+    "description": "Database TLS status: no TLS, inside a tunnel, forward or on this computer."
+  },
+  "dbTransportPlaintext": "Без TLS",
+  "@dbTransportPlaintext": {
+    "description": "Database TLS status: no encryption over the network."
+  },
+  "dbTlsPreferHelp": "TLS, если сервер поддерживает; без TLS только через туннель или на этом компьютере.",
+  "@dbTlsPreferHelp": {
+    "description": "Connection form: what the TLS mode prefer does."
+  },
+  "dbTlsRequireHelp": "Шифрование без проверки сертификата.",
+  "@dbTlsRequireHelp": {
+    "description": "Connection form: what the TLS mode require does."
+  },
+  "dbTlsAllowUnbound": "Разрешить вход без привязки к TLS (менее безопасно)",
+  "@dbTlsAllowUnbound": {
+    "description": "Connection form: PostgreSQL require mode accepts passwords without SCRAM channel binding."
+  },
+  "dbTlsAllowUnboundHelp": "Только для серверов с аутентификацией md5 или password либо без SCRAM-SHA-256-PLUS. Без проверки сертификата перехватчик сможет получить пароль.",
+  "@dbTlsAllowUnboundHelp": {
+    "description": "Connection form: explains the risk of sign-in without channel binding."
+  },
+  "dbErrorTlsUnavailable": "Сервер не поддерживает TLS. Подключение без шифрования передаст пароль в открытом виде. Выберите режим «Отключить TLS» явно, если это допустимо.",
+  "@dbErrorTlsUnavailable": {
+    "description": "Database connection error: the server refused TLS on a network route."
+  },
+  "dbErrorChannelBinding": "Сервер не привязал пароль к этому TLS-соединению (SCRAM-SHA-256-PLUS), а сертификат не проверяется: перехватчик мог бы получить пароль. Выберите «Проверять сертификат и имя сервера», включите SCRAM на сервере или разрешите вход без привязки к TLS в разделе «Защита TLS».",
+  "@dbErrorChannelBinding": {
+    "description": "Database connection error: PostgreSQL did not use SCRAM channel binding."
+  },
+  "dbErrorCleartext": "Сервер запросил пароль в открытом виде по незашифрованному сетевому подключению. Включите TLS или подключайтесь через туннель.",
+  "@dbErrorCleartext": {
+    "description": "Database connection error: a cleartext password request without TLS was refused."
+  },
   "colorPickerCustom": "Свой цвет",
   "kubeConnectDatabase": "Подключиться к БД",
   "kubeConnectDatabaseHelp": "Пробросить порт {engine} на localhost и открыть в разделе «Базы данных»",

@@ -10,9 +10,10 @@ use crate::{
     postgres::Postgres,
     redis_driver::Redis,
     streaming::{DbQueryStream, QuerySink, RowConsumer},
-    transport::{DbConnector, DbCredentials},
+    transport::{DbConnector, DbCredentials, DbPath},
     DbCell, DbColumn, DbError, DbObjectKind, DbObjectRef, DbParameter, DbQueryRequest,
-    DbServerReadOnly, DbSessionInfo, DbTreeNode, DbTreePage, DEFAULT_RESULT_BYTES,
+    DbServerReadOnly, DbSessionInfo, DbTransportSecurity, DbTreeNode, DbTreePage,
+    DEFAULT_RESULT_BYTES,
 };
 use async_trait::async_trait;
 use cc_models::database::{DbConnection, DbEngine, DbOptions};
@@ -141,10 +142,28 @@ impl DbSession {
         mobile: bool,
     ) -> Result<Self, DbError> {
         let scope = CancellationToken::new();
+        // Other engines never continue without TLS unless TLS is disabled;
+        // their status names the route (shown only, never a TLS decision).
+        let path = if connector.tunnelled() {
+            DbPath::Tunnel
+        } else if connection.host.eq_ignore_ascii_case("localhost")
+            || connection
+                .host
+                .parse::<std::net::IpAddr>()
+                .is_ok_and(|ip| ip.to_canonical().is_loopback())
+        {
+            DbPath::Loopback
+        } else {
+            DbPath::Network
+        };
+        let mut transport_security = DbTransportSecurity::of(connection.tls.mode, false, path);
         let driver = match connection.engine {
-            DbEngine::Postgresql => Driver::Postgres(
-                Postgres::connect(connection, credentials, connector, scope.clone()).await?,
-            ),
+            DbEngine::Postgresql => {
+                let driver =
+                    Postgres::connect(connection, credentials, connector, scope.clone()).await?;
+                transport_security = driver.security;
+                Driver::Postgres(driver)
+            }
             DbEngine::Mysql | DbEngine::Mariadb => Driver::Mysql(
                 Mysql::connect(connection, credentials, connector, scope.clone()).await?,
             ),
@@ -199,6 +218,7 @@ impl DbSession {
                 production: connection.production,
                 read_only,
                 server_read_only,
+                transport_security,
             },
             guard,
             driver: Mutex::new(driver),
@@ -519,5 +539,81 @@ impl RowConsumer for Collect {
 
     async fn statement_done(&mut self, _: u64, _: Option<u64>) -> Result<(), DbError> {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::transport::DirectConnector;
+    use cc_models::database::DbTlsMode;
+    use secrecy::SecretString;
+    use std::time::Duration;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    const PASSWORD: &str = "canary-engine-password";
+
+    /// A plaintext server on loopback that answers every connection with a
+    /// non-TLS reply and records what each client sent.
+    async fn plaintext() -> (u16, Arc<std::sync::Mutex<Vec<u8>>>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let seen = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let log = seen.clone();
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = listener.accept().await {
+                let log = log.clone();
+                tokio::spawn(async move {
+                    let mut buffer = [0; 4096];
+                    while let Ok(Ok(count @ 1..)) =
+                        tokio::time::timeout(Duration::from_secs(2), stream.read(&mut buffer)).await
+                    {
+                        log.lock().unwrap().extend_from_slice(&buffer[..count]);
+                        let _ = stream.write_all(b"HTTP/1.1 400 Bad Request\r\n\r\n").await;
+                    }
+                });
+            }
+        });
+        (port, seen)
+    }
+
+    #[tokio::test]
+    async fn engines_without_tls_negotiation_never_downgrade_even_on_loopback() {
+        for engine in [DbEngine::Clickhouse, DbEngine::Redis, DbEngine::Mongodb] {
+            for mode in [DbTlsMode::Prefer, DbTlsMode::Require] {
+                let (port, seen) = plaintext().await;
+                let mut connection = DbConnection::new("fake", "127.0.0.1", engine);
+                connection.port = port;
+                connection.username = "cc".into();
+                connection.tls.mode = mode;
+                connection.limits.connect_timeout_seconds = 2;
+                let credentials = DbCredentials {
+                    password: Some(SecretString::from(PASSWORD)),
+                    client_key_pem: None,
+                };
+                let opened = tokio::time::timeout(
+                    Duration::from_secs(20),
+                    DbSession::open(
+                        "fake".into(),
+                        &connection,
+                        &credentials,
+                        Arc::new(DirectConnector),
+                        false,
+                    ),
+                )
+                .await
+                .expect("open finishes");
+                assert!(opened.is_err(), "{engine:?} {mode:?}");
+                let seen = seen.lock().unwrap();
+                // Only TLS handshakes reached the server: no AUTH, header or SASL.
+                assert!(!seen.is_empty() && seen[0] == 0x16, "{engine:?} {mode:?}");
+                assert!(
+                    !seen
+                        .windows(PASSWORD.len())
+                        .any(|w| w == PASSWORD.as_bytes()),
+                    "{engine:?} {mode:?}"
+                );
+            }
+        }
     }
 }

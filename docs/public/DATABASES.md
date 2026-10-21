@@ -21,6 +21,30 @@
    локального адреса и проброса порта режим сам переключается на
    «Предпочитать шифрование». Через любой маршрут TLS проверяет исходное имя
    сервера базы.
+   - «Предпочитать шифрование» — TLS, если сервер его поддерживает; без TLS
+     только через туннель (SSH-хост, jump-профиль, SSH-туннель, проброс
+     Kubernetes или Docker) или на этом компьютере (адрес loopback после
+     разрешения имени). Напрямую или через прокси к другому хосту режим
+     работает как «Требовать»: если сервер не поддерживает TLS, подключение
+     завершается ошибкой «Сервер не поддерживает TLS», и пароль не уходит.
+     Старые подключения с этим режимом к удалённой базе без TLS получат эту
+     ошибку — выберите «Отключить TLS» явно, если это допустимо.
+   - «Требовать шифрование» — шифрование без проверки сертификата. В
+     PostgreSQL пароль тогда используется только через SCRAM-SHA-256-PLUS
+     (channel binding): подменивший сертификат перехватчик не получит пароль.
+     Если сервер не умеет SCRAM-PLUS (старые версии, `md5`/`password` в
+     `pg_hba.conf`), появится ошибка и переключатель «Разрешить вход без
+     привязки к TLS (менее безопасно)», по умолчанию выключен. MySQL/MariaDB
+     такой привязки не имеют: от активного перехватчика пароль защищает только
+     проверка сертификата.
+   - Без TLS по сети PostgreSQL не отвечает на запрос пароля открытым текстом
+     (`AuthenticationCleartextPassword`); через туннель и на этом компьютере
+     он разрешён. MySQL/MariaDB никогда не включают `mysql_clear_password`.
+     ClickHouse, Redis и MongoDB не переходят на открытый текст ни в каком
+     режиме, кроме «Отключить TLS».
+   Фактическая защита видна в шапке рабочей области и на карточке
+   подключения: «TLS (проверен)», «TLS (без проверки сертификата)», «Без TLS —
+   защищено туннелем» или «Без TLS».
 4. Выберите маршрут (см. ниже) и при необходимости отметьте «Прод — всегда
    только чтение».
 5. «Проверить подключение» показывает версию сервера до сохранения.
@@ -260,7 +284,27 @@ password. Save the password in the vault or type it on every open; a typed
 password is used once and never stored. TLS defaults to verifying the
 certificate and hostname; a local address or port forward switches to
 “Prefer encryption” automatically. Through any route, TLS verifies the
-original database hostname. “Test connection” shows the server version before
+original database hostname.
+
+“Prefer encryption” uses TLS when the server offers it and goes without TLS
+only through a tunnel (SSH host, jump profile, SSH tunnel, Kubernetes or Docker
+forward) or on this computer (a loopback address after name resolution).
+Direct or proxied connections to another host behave as “Require”: a server
+without TLS fails with “The server does not support TLS” and the password is
+never sent; older saved connections of this kind need “Disable TLS” chosen
+explicitly. “Require encryption” encrypts without verifying the certificate;
+PostgreSQL then uses the password only through SCRAM-SHA-256-PLUS (channel
+binding), so an interceptor with a forged certificate cannot obtain it. Servers
+without SCRAM-PLUS (older versions, `md5`/`password` in `pg_hba.conf`) get an
+explanation and the “Allow sign-in without TLS binding (less secure)” switch,
+off by default. MySQL/MariaDB have no such binding: only certificate
+verification protects their password from an active interceptor. Without TLS
+over the network PostgreSQL refuses cleartext password requests (allowed
+through a tunnel or on this computer); MySQL/MariaDB never enable
+`mysql_clear_password`; ClickHouse, Redis and MongoDB never fall back to
+plaintext unless TLS is disabled. The workspace header and the connection card
+show the actual protection: “TLS (verified)”, “TLS (certificate not
+verified)”, “No TLS — protected by a tunnel” or “No TLS”. “Test connection” shows the server version before
 saving.
 
 Groups, tags and a colour label are set under “Group”; the colour appears on
