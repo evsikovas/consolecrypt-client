@@ -1393,6 +1393,24 @@ impl SshSession {
         Ok(ch.into_stream())
     }
 
+    /// Open `direct-streamlocal@openssh.com` to a Unix socket on the target
+    /// (e.g. `/var/run/docker.sock`). The server refuses it when the SSH user
+    /// cannot open the socket or forwarding is disabled.
+    pub async fn open_direct_streamlocal(&self, socket_path: &str) -> Result<SshStream, SshError> {
+        self.ensure_open()?;
+        let ch = self
+            .target
+            .channel_open_direct_streamlocal(socket_path.to_string())
+            .await
+            .map_err(|e| match e {
+                russh::Error::ChannelOpenFailure(f) => SshError::Channel(format!(
+                    "direct-streamlocal to {socket_path} refused: {f:?}"
+                )),
+                other => SshError::Protocol(other),
+            })?;
+        Ok(ch.into_stream())
+    }
+
     /// Start a subsystem (e.g. `sftp`) and return its byte stream.
     pub async fn open_subsystem(&self, name: &str) -> Result<SshStream, SshError> {
         self.ensure_open()?;

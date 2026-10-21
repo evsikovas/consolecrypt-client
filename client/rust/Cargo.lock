@@ -1136,6 +1136,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "cc-docker-core"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "cc-k8s-core"
 version = "0.1.0"
 dependencies = [

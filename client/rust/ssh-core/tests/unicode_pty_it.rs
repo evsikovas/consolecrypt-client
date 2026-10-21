@@ -2,7 +2,7 @@
 //! runtime-generated test keys are used. Run with CC_SSH_IT=1; no user host,
 //! SSH agent, keychain or vault is involved.
 
-use cc_ssh_core::testing::{self, SshTestbed, TestInventory, connector};
+use cc_ssh_core::testing::{self, connector, SshTestbed, TestInventory};
 use cc_ssh_core::{
     ConnectionPlanner, HostKeyDecision, MemoryKnownHosts, PlannerDefaults, PtyRequest, ShellReader,
     ShellWriter, SshSession,
@@ -112,11 +112,9 @@ kill -HUP 1"#,
     );
     assert!(text(&initial).contains("CC_LANG=C CC_CTYPE=C.UTF-8 CC_ALL=\r\n"));
     assert!(text(&initial).contains("set convert-meta off"));
-    assert!(
-        text(&initial)
-            .split_ascii_whitespace()
-            .any(|mode| mode == "iutf8")
-    );
+    assert!(text(&initial)
+        .split_ascii_whitespace()
+        .any(|mode| mode == "iutf8"));
     input(&writer, &mut reader, b"\x03").await;
     assert_eq!(input(&writer, &mut reader, b"ASCII").await, b"ASCII");
     input(&writer, &mut reader, b"\x03").await;
