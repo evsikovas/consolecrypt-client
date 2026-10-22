@@ -247,20 +247,46 @@ String _targetLabel(TerminalTab tab) => switch (tab.target) {
   LocalTerminalTarget() || KubernetesTerminalTarget() || DockerTerminalTarget() => tab.target.label,
 };
 
+/// Snippets typed into an interactive client running in a terminal session
+/// (psql, mysql, clickhouse-client, redis-cli, mongosh, cqlsh) rather than
+/// executed by the shell. The type / dialect mapping is the one the Databases
+/// history uses when it saves a query as a snippet.
+bool isClientInputSnippet(Snippet snippet) => switch (snippet.snippetType) {
+  SnippetType.sql || SnippetType.postgresql || SnippetType.redisCli || SnippetType.cql => true,
+  _ => snippet.shell == 'mongosh',
+};
+
+/// Risk rules for a snippet's own language when it is client input (SQL is
+/// classified as SQL, not as a shell command line); `null` → the shell's.
+SnippetType? clientInputDialect(Snippet snippet) => switch (snippet.snippetType) {
+  SnippetType.sql || SnippetType.postgresql || SnippetType.cql || SnippetType.redisCli => snippet.snippetType,
+  _ => null,
+};
+
 /// Picks the target (active terminal tab or a host), asks for confirmation
 /// and runs. Nothing executes without the user pressing Run (§16).
+///
+/// [clientInput] text (SQL, redis-cli, mongosh) goes only to an already
+/// connected tab where the user started the client: a newly opened SSH
+/// session would hand it to the shell.
 Future<bool> runCommandFlow(
   BuildContext context,
   WidgetRef ref, {
   required String command,
   RiskLevel declared = RiskLevel.unknown,
   SnippetSource source = SnippetSource.user,
+  SnippetType? dialect,
+  bool clientInput = false,
 }) async {
   final tabs = ref.read(terminalTabsProvider.notifier);
   final profile = ref.read(activeProfileProvider)?.id;
   var target = ref.read(terminalTabsProvider).active;
   if (target?.isLocal == true) {
     showSnack(context, context.l10n.terminalLocalInsertOnly);
+    return false;
+  }
+  if (clientInput && (target == null || !target.isConnected)) {
+    showSnack(context, context.l10n.snippetClientSessionRequired);
     return false;
   }
   Host? host = target?.host;
@@ -272,7 +298,7 @@ Future<bool> runCommandFlow(
   try {
     risk = await ref
         .read(snippetServiceProvider)
-        .assessRisk(command, declared: declared, source: source, dialect: target?.target.shellType);
+        .assessRisk(command, declared: declared, source: source, dialect: dialect ?? target?.target.shellType);
   } on AppException catch (e) {
     if (context.mounted) showSnack(context, errorMessage(context.l10n, e), error: true);
     return false;
@@ -310,7 +336,15 @@ Future<bool> runSnippetFlow(BuildContext context, WidgetRef ref, Snippet snippet
     return false;
   }
   if (!context.mounted) return false;
-  final ran = await runCommandFlow(context, ref, command: command, declared: snippet.riskLevel, source: snippet.source);
+  final ran = await runCommandFlow(
+    context,
+    ref,
+    command: command,
+    declared: snippet.riskLevel,
+    source: snippet.source,
+    dialect: clientInputDialect(snippet),
+    clientInput: isClientInputSnippet(snippet),
+  );
   if (ran) await ref.read(snippetServiceProvider).recordUsage(snippet.id);
   return ran;
 }
@@ -367,7 +401,12 @@ Future<void> runSnippetInManyFlow(BuildContext context, WidgetRef ref, Snippet s
   if (command == null || !context.mounted) return;
   final risk = await runWithFeedback(
     context,
-    () => service.assessRisk(command, declared: snippet.riskLevel, source: snippet.source),
+    () => service.assessRisk(
+      command,
+      declared: snippet.riskLevel,
+      source: snippet.source,
+      dialect: clientInputDialect(snippet),
+    ),
   );
   if (risk == null || !context.mounted) return;
   final confirmed = await showRunConfirmation(

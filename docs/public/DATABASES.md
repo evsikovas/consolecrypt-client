@@ -308,6 +308,36 @@ Esc отменяет, Tab переходит к следующей ячейке.
 можно сохранить как сниппет: переменные `{{name}}` станут переменными
 сниппета.
 
+### Сниппеты для баз данных
+
+В разделе «Сниппеты» → «Базовые наборы» есть готовые наборы диагностических
+запросов: «SQL · PostgreSQL» (20), «SQL · MySQL/MariaDB» (20),
+«SQL · ClickHouse» (20), «Redis» (15) и «MongoDB» (15). Они добавляются в
+хранилище только по нажатию кнопки, после чего их можно править и удалять как
+обычные сниппеты. В наборах: активные и долгие запросы, дерево блокировок,
+размеры таблиц и баз, использование индексов, мёртвые строки и autovacuum,
+репликация и слоты, изменённые настройки, тяжёлые запросы
+(`pg_stat_statements`, дайджесты `performance_schema`, `system.query_log`),
+куски, слияния и мутации ClickHouse, память и медленные команды Redis,
+`currentOp`, статистика и профилировщик MongoDB. Почти все запросы только
+читают; `EXPLAIN ANALYZE` (выполняет запрос), отмена запроса и `KILL`
+помечены как изменяющие, завершение сессии PostgreSQL — как разрушительное, и
+перед запуском требуют подтверждения. В описании каждого сниппета указаны
+клиент (psql, mysql, clickhouse-client, redis-cli, mongosh) и требования к
+версии или расширению.
+
+Тип и диалект сниппета совпадают с теми, что использует история: PostgreSQL —
+`postgresql`, MySQL/MariaDB и ClickHouse — `sql` с диалектом `mysql` /
+`clickhouse`, Redis — `redis_cli`, MongoDB — `shell` с `mongosh`. Поэтому
+сниппеты подходят и для SSH-терминала: запустите в сессии psql, mysql,
+clickhouse-client, redis-cli или mongosh и выберите сниппет — после заполнения
+переменных и подтверждения риска он уйдёт в активную вкладку как текст (не
+через `sh -c`); многострочный запрос отправляется одной вставкой в режиме
+bracketed paste, если клиент его включил. Новую SSH-сессию для такого сниппета
+приложение не открывает. Команды администрирования сервера (например
+`CLIENT LIST`, `SLOWLOG`, `db.currentOp()`, `rs.status()`) рабочая область
+«Базы данных» не разрешает, поэтому они помечены как «только для терминала».
+
 ### ИИ-помощник
 
 Помощник работает с провайдерами из «Настройки → ИИ»: встроенной моделью,
@@ -555,6 +585,35 @@ History is kept per connection — text, time, duration, rows and error, never
 parameter values or data — with filters for successful, failed and favourite
 queries. It is local and encrypted by default, can join encrypted sync or be
 turned off, and any entry can become a snippet.
+
+### Database snippets
+
+Snippets → Starter packages offers diagnostic query packages: “SQL ·
+PostgreSQL” (20), “SQL · MySQL/MariaDB” (20), “SQL · ClickHouse” (20),
+“Redis” (15) and “MongoDB” (15). They are added to the vault only when you
+press the button and are ordinary editable snippets afterwards. They cover
+active and long-running queries, the lock tree, table and database sizes,
+index usage, dead tuples and autovacuum, replication and slots, non-default
+settings, top queries (`pg_stat_statements`, `performance_schema` digests,
+`system.query_log`), ClickHouse parts, merges and mutations, Redis memory and
+slow log, and MongoDB `currentOp`, stats and profiler. Almost all of them only
+read; `EXPLAIN ANALYZE` (it executes the query), cancelling a query and `KILL`
+are marked modifying and terminating a PostgreSQL session destructive, so they
+need confirmation. Each description names the client (psql, mysql,
+clickhouse-client, redis-cli, mongosh) and any version or extension
+requirement.
+
+Snippet type and dialect match what the history saves: PostgreSQL →
+`postgresql`, MySQL/MariaDB and ClickHouse → `sql` with the `mysql` /
+`clickhouse` dialect, Redis → `redis_cli`, MongoDB → `shell` with `mongosh`.
+The same snippets work in an SSH terminal: start psql, mysql,
+clickhouse-client, redis-cli or mongosh in the session and pick a snippet —
+after the variables and the risk confirmation it is typed into the active tab
+as text (never through `sh -c`), and a multi-line query is sent as one
+bracketed paste when the client enabled it. The app never opens a new SSH
+session for such a snippet. Server admin commands (for example `CLIENT LIST`,
+`SLOWLOG`, `db.currentOp()`, `rs.status()`) are not allowed in the Databases
+workspace and are tagged terminal-only.
 
 ### AI assistant
 
