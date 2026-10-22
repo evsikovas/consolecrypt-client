@@ -4,6 +4,12 @@
 //! sync-core's [`cc_sync_core::SyncEvent`]s (remote changes, conflict
 //! resolution, snapshots).
 //!
+//! Teams (protocol 1.9): objects of the profile's team vaults live in the
+//! same set, tagged with their vault ([`WorkingSet::vault_of`]); untagged
+//! entries belong to the personal vault. A team's `VaultSettings` never
+//! enters the set (the team runtime keeps it), so personal settings
+//! lookups stay unambiguous.
+//!
 //! Secret objects are **not** kept decrypted: only their id/kind/revision
 //! is tracked. Secret values are decrypted on demand by the credential
 //! resolver and dropped (zeroized) right after use.
@@ -15,6 +21,7 @@ use cc_models::known_host::KnownHost;
 use cc_models::secret::SecretKind;
 use cc_models::tunnel::Tunnel;
 use cc_models::{ObjectId, ObjectKind, VaultObject};
+use cc_protocol::VaultId;
 use cc_sync_core::DecryptedObject;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::RwLock;
@@ -62,6 +69,10 @@ struct Inner {
     /// Revisions of objects known to be deleted (guards against a stale
     /// read resurrecting them).
     tombstones: HashMap<ObjectId, i64>,
+    /// Team vault of an entry (absent = personal vault).
+    origin: HashMap<ObjectId, VaultId>,
+    /// Teams whose policy forbids sending their resources to AI providers.
+    ai_blocked: std::collections::HashSet<VaultId>,
     /// Bumped by every mutation (derived views such as the AI search index
     /// compare it to know they are stale).
     version: u64,
@@ -256,21 +267,124 @@ impl WorkingSet {
         true
     }
 
-    /// Replace everything (initial load, snapshot, lagged events).
+    /// Replace everything of the personal vault (initial load, snapshot,
+    /// lagged events). Team entries stay.
     pub(crate) fn replace_all(&self, objects: Vec<DecryptedObject>) {
+        self.replace_vault(None, objects);
+    }
+
+    /// Replace every entry of one vault (`None` = personal).
+    pub(crate) fn replace_vault(&self, vault: Option<VaultId>, objects: Vec<DecryptedObject>) {
         let mut g = self.write();
-        g.entries = objects
-            .into_iter()
-            .map(|d| (d.object_id, Entry::from_decrypted(d)))
-            .collect();
-        g.tombstones.clear();
+        let Inner {
+            entries,
+            tombstones,
+            origin,
+            ..
+        } = &mut *g;
+        entries.retain(|id, _| origin.get(id).copied() != vault);
+        tombstones.retain(|id, _| origin.get(id).copied() != vault);
+        origin.retain(|_, v| Some(*v) != vault);
+        for d in objects {
+            if vault.is_some() && d.payload.object.kind() == ObjectKind::VaultSettings {
+                continue;
+            }
+            let id = d.object_id;
+            entries.insert(id, Entry::from_decrypted(d));
+            if let Some(v) = vault {
+                origin.insert(id, v);
+            }
+        }
         g.revoke_stale();
+    }
+
+    /// Forget a team vault's entries (team closed or left).
+    pub(crate) fn drop_vault(&self, vault: VaultId) {
+        self.replace_vault(Some(vault), Vec::new());
+    }
+
+    /// Apply a team's "no AI context" policy (ТР-25).
+    pub(crate) fn set_ai_blocked(&self, vault: VaultId, blocked: bool) {
+        let changed = {
+            let g = self.read();
+            g.ai_blocked.contains(&vault) != blocked
+        };
+        if changed {
+            let mut g = self.write();
+            if blocked {
+                g.ai_blocked.insert(vault);
+            } else {
+                g.ai_blocked.remove(&vault);
+            }
+        }
+    }
+
+    /// The object belongs to a team whose policy keeps it away from AI.
+    pub(crate) fn is_ai_blocked(&self, id: ObjectId) -> bool {
+        let g = self.read();
+        g.origin.get(&id).is_some_and(|v| g.ai_blocked.contains(v))
+    }
+
+    /// The team vault of an object (`None` = personal or unknown).
+    pub(crate) fn vault_of(&self, id: ObjectId) -> Option<VaultId> {
+        self.read().origin.get(&id).copied()
+    }
+
+    /// Ids of the live objects of a team vault.
+    pub(crate) fn ids_in(&self, vault: VaultId) -> Vec<ObjectId> {
+        let g = self.read();
+        let mut v: Vec<ObjectId> = g
+            .origin
+            .iter()
+            .filter(|(id, o)| **o == vault && g.entries.contains_key(id))
+            .map(|(id, _)| *id)
+            .collect();
+        v.sort();
+        v
+    }
+
+    /// Every team-tagged live object id with its vault.
+    pub(crate) fn team_origins(&self) -> Vec<(ObjectId, VaultId)> {
+        let g = self.read();
+        let mut v: Vec<(ObjectId, VaultId)> = g
+            .origin
+            .iter()
+            .filter(|(id, _)| g.entries.contains_key(id))
+            .map(|(id, o)| (*id, *o))
+            .collect();
+        v.sort();
+        v
     }
 
     /// Apply a read-back of `id`. Returns the kind of the affected object
     /// (before or after), if any.
     pub(crate) fn apply(&self, id: ObjectId, r: Readback) -> Option<ObjectKind> {
+        self.apply_in(None, id, r)
+    }
+
+    /// [`WorkingSet::apply`] for an object of `vault` (`None` = personal).
+    pub(crate) fn apply_in(
+        &self,
+        vault: Option<VaultId>,
+        id: ObjectId,
+        r: Readback,
+    ) -> Option<ObjectKind> {
+        if vault.is_some() {
+            if let Readback::Live(d) = &r {
+                if d.payload.object.kind() == ObjectKind::VaultSettings {
+                    return None;
+                }
+            }
+        }
         let mut g = self.write();
+        match vault {
+            Some(v) => {
+                g.origin.insert(id, v);
+            }
+            None => {
+                g.origin.remove(&id);
+            }
+        }
         let current_rev = g
             .entries
             .get(&id)
@@ -307,6 +421,8 @@ impl WorkingSet {
         let mut g = self.write();
         g.entries.clear();
         g.tombstones.clear();
+        g.origin.clear();
+        g.ai_blocked.clear();
         g.revoke_stale();
     }
 

@@ -44,6 +44,9 @@ use uuid::Uuid;
 // ---- errors -------------------------------------------------------------------------
 
 /// Protocol error response.
+mod teams;
+pub(crate) use teams::TeamInvitationRec;
+
 #[derive(Debug)]
 pub(crate) struct MockError(pub(crate) ApiError);
 
@@ -164,6 +167,8 @@ struct Vault {
     /// Accepted mutations only (conflicts are not recorded, ADR-0003).
     mutations: HashMap<MutationId, (ObjectId, MutationResult)>,
     envelopes: Vec<KeyEnvelope>,
+    /// Teams (protocol 1.9): `Some` for team vaults.
+    team: Option<teams::TeamState>,
 }
 
 /// Saved sync state of one vault (test hook: backups for restore drills).
@@ -222,7 +227,11 @@ pub(crate) struct State {
     /// Protocol 1.5: request-proof nonces already used, per device.
     request_nonces: HashSet<(DeviceId, [u8; 32])>,
     pub(crate) proof_stats: RequestProofStats,
+    /// Teams (protocol 1.9).
+    team_invitations: HashMap<cc_protocol::TeamInvitationId, TeamInvitationRec>,
     events: broadcast::Sender<Outgoing>,
+    /// Protocol 1.8 enterprise sign-in (see `mock/enterprise.rs`).
+    pub(crate) enterprise: super::enterprise::Enterprise,
 }
 
 fn random_token() -> String {
@@ -330,7 +339,9 @@ impl State {
             checkpoints: HashMap::new(),
             request_nonces: HashSet::new(),
             proof_stats: RequestProofStats::default(),
+            team_invitations: HashMap::new(),
             events,
+            enterprise: Default::default(),
         }
     }
 
@@ -513,6 +524,43 @@ impl State {
             }
         }
         ids
+    }
+
+    pub(crate) fn revoke_user_sessions(&mut self, user: UserId) -> Vec<SessionId> {
+        let ids = self.revoke_sessions(|s| s.user_id == user);
+        self.access.retain(|_, a| !ids.contains(&a.session_id));
+        ids
+    }
+
+    pub(crate) fn close_user_sessions(&self, user: UserId, ids: Vec<SessionId>) {
+        self.close_sessions(user, ids);
+    }
+
+    pub(crate) fn email_of(&self, user: UserId) -> Option<String> {
+        self.users.get(&user).map(|u| u.email.clone())
+    }
+
+    /// Account of an enterprise user (created on first sign-in with an
+    /// unusable password; the e-mail comes from the IdP/directory and
+    /// counts as verified) → its internal password.
+    pub(crate) fn ensure_enterprise_user(&mut self, email: &str) -> String {
+        if let Some(u) = self.emails.get(email).and_then(|id| self.users.get(id)) {
+            return u.password.clone();
+        }
+        let user_id = UserId::new();
+        let password = random_token();
+        self.users.insert(
+            user_id,
+            User {
+                user_id,
+                email: email.to_owned(),
+                password: password.clone(),
+                email_verified: true,
+                created_at: Utc::now(),
+            },
+        );
+        self.emails.insert(email.to_owned(), user_id);
+        password
     }
 
     fn close_sessions(&self, user_id: UserId, ids: Vec<SessionId>) {
@@ -713,6 +761,9 @@ impl State {
         if device.status == DeviceStatus::Revoked {
             return Err(err(ErrorCode::DeviceRevoked, "device has been revoked"));
         }
+        if self.is_disabled_user(session.user_id) {
+            return Err(err(ErrorCode::AccountDisabled, "account disabled"));
+        }
         if session.revoked {
             return Err(unauthorized());
         }
@@ -859,8 +910,18 @@ impl State {
 
     fn member_vault(&self, p: &Principal, vault_id: VaultId) -> MResult<&Vault> {
         match self.vaults.get(&vault_id) {
-            Some(v) if v.owner == p.user_id && v.state != VaultState::Deleted => Ok(v),
+            Some(v) if Self::role_in(v, p.user_id).is_some() && v.state != VaultState::Deleted => {
+                Ok(v)
+            }
             _ => Err(not_found()),
+        }
+    }
+
+    /// The caller's role: owner of a personal vault, or the team role.
+    fn role_in(v: &Vault, user: UserId) -> Option<VaultRole> {
+        match &v.team {
+            None => (v.owner == user).then_some(VaultRole::Owner),
+            Some(t) => t.members.get(&user).map(|m| m.role),
         }
     }
 
@@ -898,14 +959,14 @@ impl State {
     pub(crate) fn is_member(&self, user_id: UserId, vault_id: VaultId) -> bool {
         self.vaults
             .get(&vault_id)
-            .is_some_and(|v| v.owner == user_id && v.state != VaultState::Deleted)
+            .is_some_and(|v| Self::role_in(v, user_id).is_some() && v.state != VaultState::Deleted)
     }
 
     fn vault_info(&self, v: &Vault, p: &Principal) -> VaultInfo {
         VaultInfo {
             vault_id: v.vault_id,
             owner_user_id: v.owner,
-            role: VaultRole::Owner,
+            role: Self::role_in(v, p.user_id).unwrap_or(VaultRole::Viewer),
             state: v.state,
             created_at: v.created_at,
             updated_at: v.updated_at,
@@ -1023,7 +1084,9 @@ impl State {
             let mut all: Vec<VaultId> = self
                 .vaults
                 .values()
-                .filter(|v| v.owner == p.user_id && v.state != VaultState::Deleted)
+                .filter(|v| {
+                    v.team.is_none() && v.owner == p.user_id && v.state != VaultState::Deleted
+                })
                 .map(|v| v.vault_id)
                 .collect();
             all.sort();
@@ -1306,6 +1369,7 @@ impl State {
                 objects: HashMap::new(),
                 mutations: HashMap::new(),
                 envelopes: Vec::new(),
+                team: None,
             },
         );
         for e in [
@@ -1323,7 +1387,7 @@ impl State {
         let mut vaults: Vec<VaultInfo> = self
             .vaults
             .values()
-            .filter(|v| v.owner == p.user_id && v.state != VaultState::Deleted)
+            .filter(|v| v.team.is_none() && v.owner == p.user_id && v.state != VaultState::Deleted)
             .map(|v| self.vault_info(v, &p))
             .collect();
         vaults.sort_by_key(|v| v.vault_id);
@@ -1484,7 +1548,13 @@ impl State {
                 "device_id does not match the session",
             ));
         }
-        self.trusted_vault(&p, req.vault_id)?;
+        let v = self.trusted_vault(&p, req.vault_id)?;
+        if Self::role_in(v, p.user_id) == Some(VaultRole::Viewer) {
+            return Err(
+                err(ErrorCode::Forbidden, "viewers cannot change team resources")
+                    .with_details(serde_json::json!({"reason": "team_role"})),
+            );
+        }
         // Validate the whole batch before applying anything.
         if req.mutations.len() > MAX_PUSH_BATCH {
             return Err(err(ErrorCode::PayloadTooLarge, "too many mutations"));

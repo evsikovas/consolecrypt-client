@@ -28,6 +28,10 @@ fn note_payload(body: String) -> (ObjectId, ObjectPayload) {
         title: "t".into(),
         body,
         tags: vec![],
+        pinned: false,
+        task: None,
+        remind_at: None,
+        target: None,
         created_at: now,
         updated_at: now,
     };

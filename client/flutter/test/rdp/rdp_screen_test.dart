@@ -35,7 +35,7 @@ class _RecordedClipboard extends SecureClipboard {
   int writes = 0, byteCount = 0;
   Completer<void>? copyGate;
   @override
-  Future<void> copySecret(String value, {bool Function()? isCurrent}) async {
+  Future<void> copySecret(String value, {bool Function()? isCurrent, Duration? limit}) async {
     await copyGate?.future;
     if (isCurrent?.call() == false) return;
     writes++;

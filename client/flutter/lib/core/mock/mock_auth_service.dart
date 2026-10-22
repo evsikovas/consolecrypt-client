@@ -16,12 +16,14 @@ final class MockAuthService implements AuthService {
 
   final MockCloud _cloud;
   final ValueStreamController<AuthState> _state = ValueStreamController(AuthState.signedOut);
+  final ValueStreamController<SignInHints> _hints = ValueStreamController(SignInHints.empty);
   late final StreamSubscription<void> _sub;
-  (ProfileId?, bool)? _signature;
+  (ProfileId?, bool, bool)? _signature;
+  var _ticket = 0;
 
   void _recompute() {
     final record = _cloud.activeRecord;
-    final signature = (record?.profile.id, record?.sessionActive ?? false);
+    final signature = (record?.profile.id, record?.sessionActive ?? false, record?.accountDisabled ?? false);
     if (signature == _signature) return;
     _signature = signature;
     if (record == null || !record.profile.isSynced) {
@@ -29,6 +31,10 @@ final class MockAuthService implements AuthService {
       return;
     }
     final p = record.profile;
+    if (record.accountDisabled) {
+      _state.value = AuthState(lastServerUrl: p.serverUrl, accountDisabled: true);
+      return;
+    }
     if (!record.sessionActive) {
       _state.value = AuthState(lastServerUrl: p.serverUrl);
       return;
@@ -62,7 +68,13 @@ final class MockAuthService implements AuthService {
         'Server unreachable. Check the URL and your connection.',
       );
     }
-    return const ServerInfo(serverVersion: '0.1.0 (mock)', protocolVersion: '1.0');
+    final auth = _cloud.authFor(serverUrl);
+    return ServerInfo(
+      serverVersion: auth.isEnterprise ? '0.2.0' : '0.1.0 (mock)',
+      protocolVersion: auth.isEnterprise ? '1.9' : '1.0',
+      registrationOpen: !auth.isEnterprise,
+      auth: auth,
+    );
   }
 
   @override
@@ -76,7 +88,13 @@ final class MockAuthService implements AuthService {
         reason: AppErrorReason.localProfileNoAccount,
       );
     }
-    final account = authenticateAccount(_cloud, email: email, password: password, createAccount: false);
+    final account = authenticateAccount(
+      _cloud,
+      email: email,
+      password: password,
+      createAccount: false,
+      serverUrl: record.profile.serverUrl,
+    );
     if (account.email != record.profile.accountEmail) {
       throw const AppException(
         AppErrorCode.invalidCredentials,
@@ -131,8 +149,110 @@ final class MockAuthService implements AuthService {
     account.password = next.expose();
   }
 
+  @override
+  Future<OidcChallenge> beginOidc({
+    required Uri serverUrl,
+    required EnterpriseSignInPurpose purpose,
+    String? loginHint,
+    String? displayName,
+    bool allowNewDeviceIdentity = false,
+  }) async {
+    await mockDelay(_cloud.config.latency);
+    if (!_cloud.authFor(serverUrl).isOidc) {
+      throw const AppException(AppErrorCode.enterpriseAuthRequired, 'enterprise_auth_required');
+    }
+    final ticket = 'mock-oidc-${++_ticket}';
+    mockOidcTickets[ticket] = loginHint;
+    return OidcChallenge(
+      ticket: ticket,
+      authorizationUrl: serverUrl.replace(path: '/v1/auth/oidc/start'),
+      redirectUri: Uri.parse('http://127.0.0.1:1/auth/callback'),
+      loopback: true,
+      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 10)),
+    );
+  }
+
+  @override
+  Future<void> cancelOidc(String ticket) async => mockOidcTickets.remove(ticket);
+
+  @override
+  Future<AccountSession> signInEnterprise(EnterpriseSignIn signIn) async {
+    await mockDelay(_cloud.config.latency);
+    final record = _cloud.activeRecord;
+    if (record == null || !record.profile.isSynced) {
+      if (signIn case LdapSignIn(:final password)) password.wipe();
+      throw const AppException(
+        AppErrorCode.unsupported,
+        'Local profiles have no account',
+        reason: AppErrorReason.localProfileNoAccount,
+      );
+    }
+    final MockAccount account;
+    try {
+      account = authenticateEnterprise(_cloud, serverUrl: record.profile.serverUrl!, signIn: signIn);
+    } on AppException catch (e) {
+      if (e.code == AppErrorCode.accountDisabled) {
+        record
+          ..accountDisabled = true
+          ..sessionActive = false;
+        _cloud.notifyChanged();
+      }
+      rethrow;
+    }
+    if (account.email != record.profile.accountEmail) {
+      throw const AppException(
+        AppErrorCode.invalidCredentials,
+        'This profile belongs to a different account',
+        reason: AppErrorReason.accountMismatch,
+      );
+    }
+    record
+      ..sessionActive = true
+      ..accountDisabled = false;
+    _cloud.notifyChanged();
+    return _state.value.session!;
+  }
+
+  @override
+  Stream<SignInHints> watchSignInHints() => _hints.stream;
+
+  @override
+  SignInHints get currentSignInHints => _hints.value;
+
+  @override
+  Future<void> rememberSignIn({
+    required Uri serverUrl,
+    required SignInMethod method,
+    String? displayName,
+    String? login,
+    ProfileId? profileId,
+  }) async {
+    _hints.value = _hints.value.remember(
+      SignInHint(
+        serverUrl: serverUrl,
+        method: method,
+        displayName: displayName,
+        login: (login ?? '').trim().isEmpty ? null : login!.trim(),
+        at: DateTime.now().toUtc(),
+      ),
+      profileId: profileId,
+    );
+  }
+
+  @override
+  Future<void> forgetSignInHint(Uri serverUrl) async => _hints.value = _hints.value.forgetServer(serverUrl);
+
+  @override
+  Future<void> clearAccountDisabled() async {
+    final record = _cloud.activeRecord;
+    if (record == null || !record.accountDisabled) return;
+    record.accountDisabled = false;
+    _cloud.notifyChanged();
+  }
+
   Future<void> dispose() async {
     await _sub.cancel();
     await _state.close();
+    await _hints.close();
   }
 }

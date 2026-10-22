@@ -184,11 +184,18 @@ async fn handler(State(state): State<Arc<Mock>>, request: Request) -> Response {
                 supports_kube_contexts: false,
                 supports_db_connections: false,
                 supports_owner_online_enrollment_v1: false,
+                supports_notes_v1: false,
             })
             .unwrap(),
         );
     }
-    if path == "/v1/shares/recipients" {
+    if path == RECIPIENT_LOOKUP_PATH {
+        // Protocol 1.8: the address is only in the JSON body.
+        let lookup: RecipientLookupRequest = serde_json::from_slice(&body).unwrap();
+        assert_eq!(parts.method, "POST");
+        assert_eq!(lookup.email, "alice@example.test");
+    }
+    if path == "/v1/shares/recipients" || path == RECIPIENT_LOOKUP_PATH {
         let member = current.access.manifest.members[0].clone();
         return reply(
             StatusCode::OK,
@@ -215,6 +222,7 @@ async fn handler(State(state): State<Arc<Mock>>, request: Request) -> Response {
                 items: vec![current],
                 next_after: None,
                 has_more: false,
+                departures: vec![],
             })
             .unwrap(),
         );
@@ -375,6 +383,7 @@ async fn every_sharing_route_uses_exact_signed_target_query_and_body() {
     api.create_share(&CreateShareRequest {
         access: current.access.clone(),
         revision: current.revision.clone(),
+        restored_from: None,
     })
     .await
     .unwrap();
@@ -562,9 +571,49 @@ async fn history_gaps_and_invalid_pagination_are_not_silently_accepted() {
             items: vec![current.clone(), current],
             next_after: None,
             has_more: false,
+            departures: vec![],
         })
         .unwrap(),
     );
+    assert!(matches!(
+        api.list_shares(None, 100).await,
+        Err(ApiError::InvalidResponse { .. })
+    ));
+}
+
+#[tokio::test]
+async fn unreadable_list_entries_are_skipped_and_counted() {
+    let f = Fixture::new(false).await;
+    let api = f.api.sharing(f.mock.server_instance).await.unwrap();
+    let current = f.mock.current.lock().unwrap().clone();
+    // Decodes, but its header and manifest disagree.
+    let mut inconsistent = current.clone();
+    inconsistent.access.manifest.share_id = ShareId::new();
+    inconsistent.revision.signed.mutation.context.item_id = ObjectId::new();
+    f.override_response(
+        "/v1/shares",
+        json!({
+            "items": [
+                {"access": "not a shared item"},
+                serde_json::to_value(&current).unwrap(),
+                serde_json::to_value(&inconsistent).unwrap(),
+            ],
+            "next_after": null,
+            "has_more": false,
+        }),
+    );
+    let (page, skipped) = api
+        .list_shares_checked(None, 100, ShareKinds::default())
+        .await
+        .unwrap();
+    assert_eq!(skipped, 2);
+    assert_eq!(page.items, vec![current.clone()]);
+    assert_eq!(
+        api.list_shares(None, 100).await.unwrap().items,
+        vec![current]
+    );
+    // Malformed pages (not entries) still fail as a whole.
+    f.override_response("/v1/shares", json!({"items": "nope", "has_more": false}));
     assert!(matches!(
         api.list_shares(None, 100).await,
         Err(ApiError::InvalidResponse { .. })
@@ -583,7 +632,8 @@ async fn secret_publication_and_mismatched_write_reply_are_rejected() {
     assert!(api
         .create_share(&CreateShareRequest {
             access: secret.access,
-            revision: secret.revision
+            revision: secret.revision,
+            restored_from: None,
         })
         .await
         .is_err());
@@ -659,6 +709,7 @@ async fn unadvertised_kind_request_never_sends_http_and_unsolicited_kind_is_reje
             items: vec![state],
             next_after: None,
             has_more: false,
+            departures: vec![],
         })
         .unwrap(),
     );
@@ -695,6 +746,7 @@ async fn database_kind_is_requested_only_when_advertised_and_never_unsolicited()
             items: vec![state],
             next_after: None,
             has_more: false,
+            departures: vec![],
         })
         .unwrap(),
     );
@@ -712,4 +764,28 @@ async fn database_kind_is_requested_only_when_advertised_and_never_unsolicited()
         requests.last().unwrap().1,
         "/v1/shares?limit=10&include_db_connections=true"
     );
+}
+
+#[tokio::test]
+async fn recipient_lookup_keeps_the_address_out_of_the_url_when_supported() {
+    let f = Fixture::new(false).await;
+    let api = f.api.sharing(f.mock.server_instance).await.unwrap();
+    let posted = api
+        .sharing_recipient_lookup(" alice@example.test ", true)
+        .await
+        .unwrap();
+    let legacy = api
+        .sharing_recipient_lookup("alice@example.test", false)
+        .await
+        .unwrap();
+    assert_eq!(posted, legacy);
+    let requests = f.mock.requests.lock().unwrap();
+    let [.., (post_method, post_target, _), (get_method, get_target, _)] = &requests[..] else {
+        panic!("two lookups expected");
+    };
+    assert_eq!(post_method, "POST");
+    assert_eq!(post_target, RECIPIENT_LOOKUP_PATH);
+    assert!(!post_target.contains("alice"));
+    assert_eq!(get_method, "GET");
+    assert!(get_target.contains("email=alice%40example.test"));
 }

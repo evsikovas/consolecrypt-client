@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_ddl_dialog.dart';
 import 'package:consolecrypt/db/db_models.dart';
+import 'package:consolecrypt/db/db_object_details.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -257,17 +258,17 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
             object,
             sampleDocuments: action == 'sample' ? 20 : null,
           );
-          value = SecretText(const JsonEncoder.withIndent('  ').convert(document));
+          value = SecretText(jsonEncode(document));
       }
       if (!mounted || !_current || value == null) return;
       await showAppDialog<void>(
         context,
         secure: true,
-        builder: (_) => DbProtectedTextDialog(title: object.name, value: value!),
+        builder: (_) => DbObjectDetailsDialog(title: object.name, document: value!),
       );
     } catch (_) {
       if (mounted && _current) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.dbOperationFailed)));
+        showSnack(context, context.l10n.dbOperationFailed, error: true);
       }
     } finally {
       value?.wipe();
@@ -350,7 +351,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
       GlassMenuItem(value: 'query', label: l.dbFirstRows, icon: Icons.table_rows_outlined),
     GlassMenuItem(value: 'insert', label: l.dbInsertName, icon: Icons.input_rounded),
     if (_describable.contains(object.kind)) GlassMenuItem(value: 'ddl', label: l.dbDdl, icon: Icons.code_rounded),
-    if (widget.service is DbObjectInspectService) ...[
+    if (widget.service is DbObjectInspectService && dbHasDetails(widget.session.engine, object)) ...[
       GlassMenuItem(value: 'inspect', label: l.dbInspect, icon: Icons.info_outline_rounded),
       if (object.kind == DbObjectKind.collection)
         GlassMenuItem(value: 'sample', label: l.dbSampleSchema, icon: Icons.schema_outlined),

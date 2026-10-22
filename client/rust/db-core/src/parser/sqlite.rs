@@ -421,19 +421,21 @@ pub(super) fn pragma_arguments(text: &str) -> Result<String, DbError> {
             index += 1;
             continue;
         }
-        // [schema .] name ( word )
+        // [schema .] name ( word )   or   [schema .] name = word
         let mut at = index + 1;
         if matches!(tokens.get(at + 1).map(|t| &t.token), Some(Token::Period)) {
             at += 2;
         }
-        let (Some(Token::Word(_)), Some(Token::LParen), Some(Token::Word(word)), Some(Token::RParen)) = (
-            tokens.get(at).map(|t| &t.token),
-            tokens.get(at + 1).map(|t| &t.token),
-            tokens.get(at + 2).map(|t| &t.token),
-            tokens.get(at + 3).map(|t| &t.token),
-        ) else {
-            index += 1;
-            continue;
+        let token = |offset: usize| tokens.get(at + offset).map(|t| &t.token);
+        let (word, closing) = match (token(0), token(1), token(2), token(3)) {
+            (Some(Token::Word(_)), Some(Token::LParen), Some(Token::Word(word)), Some(Token::RParen)) => {
+                (word, 4)
+            }
+            (Some(Token::Word(_)), Some(Token::Eq), Some(Token::Word(word)), _) => (word, 3),
+            _ => {
+                index += 1;
+                continue;
+            }
         };
         let start = super::template::byte_offset(text, tokens[at + 2].span.start)?;
         let end = super::template::byte_offset(text, tokens[at + 2].span.end)?;
@@ -445,7 +447,7 @@ pub(super) fn pragma_arguments(text: &str) -> Result<String, DbError> {
         output.push_str(&word.value.replace('\'', "''"));
         output.push('\'');
         cursor = end;
-        index = at + 4;
+        index = at + closing;
     }
     output.push_str(&text[cursor..]);
     Ok(output)
@@ -480,6 +482,10 @@ mod tests {
         assert_eq!(
             pragma_arguments("SELECT 'PRAGMA table_info(x)'").unwrap(),
             "SELECT 'PRAGMA table_info(x)'"
+        );
+        assert_eq!(
+            pragma_arguments("PRAGMA journal_mode = WAL").unwrap(),
+            "PRAGMA journal_mode = 'WAL'"
         );
         assert_eq!(
             pragma_arguments("PRAGMA table_info('a''b')").unwrap(),

@@ -471,6 +471,7 @@ impl AppCore {
     ) -> AppResult<DbAiReviewDto> {
         let (_, unlocked) = self.unlocked().await?;
         let session = unlocked.db.session(&session_id)?;
+        crate::teams::check_ai_allowed(unlocked.working(), &session.info().connection_id)?;
         if request.question.len() > MAX_TEXT
             || request.query.as_ref().is_some_and(|q| q.len() > MAX_TEXT)
         {
@@ -569,6 +570,7 @@ impl AppCore {
             .filter(|pending| pending.session_id == session_id && pending.expires > Instant::now())
             .ok_or_else(|| invalid("review_expired"))?;
         let session = unlocked.db.session(&session_id)?;
+        crate::teams::check_ai_allowed(unlocked.working(), &session.info().connection_id)?;
         let config = unlocked.ai.resolve_config(Some(&pending.provider_id))?;
         let provider = unlocked.ai.provider_for(&config).await?;
         // Rows chosen in the grid travel only with their own consent.

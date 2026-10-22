@@ -3,6 +3,7 @@ import 'package:consolecrypt/app/theme/glass_tokens.dart';
 import 'package:consolecrypt/core/glass/glass_button.dart';
 import 'package:consolecrypt/core/glass/glass_interaction.dart';
 import 'package:consolecrypt/core/glass/glass_strings.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -199,7 +200,9 @@ class _GlassFieldState extends State<GlassField> {
                 Icon(widget.leadingIcon, size: iconSize, color: tokens.secondaryLabel),
                 const SizedBox(width: GlassSpacing.s6),
               ],
-              Expanded(child: field),
+              Expanded(
+                child: RevealedSecret(visible: widget.secret && _revealed, child: field),
+              ),
               if (widget.secret)
                 GlassIconButton(
                   icon: _revealed ? Icons.visibility_off_rounded : Icons.visibility_rounded,

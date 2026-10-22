@@ -1,7 +1,7 @@
 import 'package:consolecrypt/core/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum WorkspaceTool { snippets, ai, forwards }
+enum WorkspaceTool { snippets, notes, ai, forwards }
 
 final class WorkspaceToolsState {
   const WorkspaceToolsState({this.selected, this.width = 420});

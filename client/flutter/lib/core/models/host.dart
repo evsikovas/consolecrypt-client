@@ -139,6 +139,33 @@ final class Host {
     metadata: metadata,
   );
 
+  /// Replace the free-text notes (moved into a note) and nothing else.
+  Host withNotes(String value) => Host(
+    id: id,
+    protocol: protocol,
+    rdpDomain: rdpDomain,
+    rdpWidth: rdpWidth,
+    rdpHeight: rdpHeight,
+    name: name,
+    address: address,
+    createdAt: createdAt,
+    updatedAt: DateTime.now().toUtc(),
+    port: port,
+    username: username,
+    credentialId: credentialId,
+    groupId: groupId,
+    jumpChain: jumpChain,
+    jumpProfileId: jumpProfileId,
+    proxyId: proxyId,
+    hostKeyPolicy: hostKeyPolicy,
+    backend: backend,
+    keepaliveSecs: keepaliveSecs,
+    agentForwarding: agentForwarding,
+    tags: tags,
+    notes: value,
+    metadata: metadata,
+  );
+
   /// Mirrors `Host::validate`.
   ValidationError? validate() {
     if (name.trim().isEmpty) {

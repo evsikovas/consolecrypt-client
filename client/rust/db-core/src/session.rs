@@ -215,7 +215,7 @@ impl DbSession {
                 Mongo::connect(connection, credentials, connector, scope.clone()).await?,
             ),
             // A file has no socket: see [`Self::open_sqlite`].
-            DbEngine::Sqlite => return Err(DbError::InvalidRequest),
+            DbEngine::Sqlite | DbEngine::Unknown => return Err(DbError::InvalidRequest),
         };
         Ok(Self::assemble(
             id,

@@ -11,6 +11,7 @@ import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/keyboard_layout.dart';
 import 'package:consolecrypt/core/widgets/obscurable_text_controller.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -140,32 +141,35 @@ class _RecoveryScreenState extends ConsumerState<RecoveryScreen> {
             const SizedBox(height: GlassSpacing.s8),
             // The words are never blurred: while hidden, each character is
             // drawn as a bullet, so the secret is not rendered at all (§4.14).
-            TextField(
-              key: const ValueKey('recovery-input'),
+            RevealedSecretText(
               controller: _recovery,
-              minLines: 3,
-              maxLines: 5,
-              autocorrect: false,
-              enableSuggestions: false,
-              enableIMEPersonalizedLearning: false,
-              style: t.mono.copyWith(color: tokens.palette.label),
-              decoration: InputDecoration(
-                hintText: l10n.recoveryInputHint,
-                suffixIcon: Align(
-                  alignment: Alignment.topCenter,
-                  widthFactor: 1,
-                  heightFactor: 1,
-                  child: IconButton(
-                    tooltip: _showRecoveryText ? l10n.commonHide : l10n.commonShow,
-                    icon: Icon(_showRecoveryText ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 18),
-                    onPressed: () => setState(() {
-                      _showRecoveryText = !_showRecoveryText;
-                      _recovery.obscured = !_showRecoveryText;
-                    }),
+              child: TextField(
+                key: const ValueKey('recovery-input'),
+                controller: _recovery,
+                minLines: 3,
+                maxLines: 5,
+                autocorrect: false,
+                enableSuggestions: false,
+                enableIMEPersonalizedLearning: false,
+                style: t.mono.copyWith(color: tokens.palette.label),
+                decoration: InputDecoration(
+                  hintText: l10n.recoveryInputHint,
+                  suffixIcon: Align(
+                    alignment: Alignment.topCenter,
+                    widthFactor: 1,
+                    heightFactor: 1,
+                    child: IconButton(
+                      tooltip: _showRecoveryText ? l10n.commonHide : l10n.commonShow,
+                      icon: Icon(_showRecoveryText ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 18),
+                      onPressed: () => setState(() {
+                        _showRecoveryText = !_showRecoveryText;
+                        _recovery.obscured = !_showRecoveryText;
+                      }),
+                    ),
                   ),
                 ),
+                onChanged: (_) => setState(() => _error = null),
               ),
-              onChanged: (_) => setState(() => _error = null),
             ),
             const SizedBox(height: GlassSpacing.s4),
             Text(

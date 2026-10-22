@@ -11,6 +11,7 @@ import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/keyboard_layout.dart';
 import 'package:consolecrypt/core/widgets/obscurable_text_controller.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -196,23 +197,29 @@ class _RestoreBackupScreenState extends ConsumerState<RestoreBackupScreen> {
               )
             else ...[
               // Recovery words are drawn as bullets until revealed (never blurred).
-              TextField(
+              RevealedSecretText(
                 controller: _recovery,
-                minLines: 2,
-                maxLines: 4,
-                autocorrect: false,
-                enableSuggestions: false,
-                enableIMEPersonalizedLearning: false,
-                style: t.mono.copyWith(color: tokens.palette.label),
-                decoration: InputDecoration(
-                  labelText: l10n.restoreRecoveryInputLabel,
-                  suffixIcon: IconButton(
-                    tooltip: _recovery.obscured ? l10n.commonShow : l10n.commonHide,
-                    icon: Icon(_recovery.obscured ? Icons.visibility_rounded : Icons.visibility_off_rounded, size: 18),
-                    onPressed: () => setState(() => _recovery.obscured = !_recovery.obscured),
+                child: TextField(
+                  controller: _recovery,
+                  minLines: 2,
+                  maxLines: 4,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  enableIMEPersonalizedLearning: false,
+                  style: t.mono.copyWith(color: tokens.palette.label),
+                  decoration: InputDecoration(
+                    labelText: l10n.restoreRecoveryInputLabel,
+                    suffixIcon: IconButton(
+                      tooltip: _recovery.obscured ? l10n.commonShow : l10n.commonHide,
+                      icon: Icon(
+                        _recovery.obscured ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                        size: 18,
+                      ),
+                      onPressed: () => setState(() => _recovery.obscured = !_recovery.obscured),
+                    ),
                   ),
+                  onChanged: (_) => setState(() {}),
                 ),
-                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: GlassSpacing.s12),
               SecretField(

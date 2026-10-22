@@ -18,7 +18,13 @@ use std::sync::{Arc, RwLock};
 pub(crate) struct VaultCodec {
     vault_id: VaultId,
     vault: RwLock<Option<Arc<UnlockedVault>>>,
+    /// Team vaults: keys of earlier epochs (newest first), used only to
+    /// decrypt revisions written before a rotation.
+    older: RwLock<Vec<Arc<UnlockedVault>>>,
 }
+
+/// Team vaults keep at most this many earlier key epochs (TZ teams ТР-15).
+pub(crate) const MAX_OLDER_EPOCHS: usize = 8;
 
 impl std::fmt::Debug for VaultCodec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -48,10 +54,35 @@ fn map_err(e: VaultError) -> CodecError {
 
 impl VaultCodec {
     pub(crate) fn new(vault: UnlockedVault) -> Arc<Self> {
+        Self::with_epochs(vault, Vec::new())
+    }
+
+    /// Codec of a team vault: `current` encrypts; `older` (newest first)
+    /// only decrypt.
+    pub(crate) fn with_epochs(current: UnlockedVault, older: Vec<UnlockedVault>) -> Arc<Self> {
         Arc::new(Self {
-            vault_id: vault.vault_id(),
-            vault: RwLock::new(Some(Arc::new(vault))),
+            vault_id: current.vault_id(),
+            vault: RwLock::new(Some(Arc::new(current))),
+            older: RwLock::new(
+                older
+                    .into_iter()
+                    .take(MAX_OLDER_EPOCHS)
+                    .map(Arc::new)
+                    .collect(),
+            ),
         })
+    }
+
+    /// After a key rotation: `current` takes over, the previous key joins
+    /// the decrypt-only epochs.
+    pub(crate) fn rotate(&self, current: UnlockedVault) -> AppResult<()> {
+        let mut slot = self.vault.write().unwrap_or_else(|p| p.into_inner());
+        let previous = slot.take().ok_or(AppError::VaultLocked)?;
+        let mut older = self.older.write().unwrap_or_else(|p| p.into_inner());
+        older.insert(0, previous);
+        older.truncate(MAX_OLDER_EPOCHS);
+        *slot = Some(Arc::new(current));
+        Ok(())
     }
 
     /// The unlocked vault (for envelope / approval / backup operations).
@@ -74,6 +105,8 @@ impl VaultCodec {
     pub(crate) fn clear(&self) {
         let taken = self.vault.write().unwrap_or_else(|p| p.into_inner()).take();
         drop(taken);
+        let older = std::mem::take(&mut *self.older.write().unwrap_or_else(|p| p.into_inner()));
+        drop(older);
     }
 
     fn with<T>(
@@ -114,8 +147,19 @@ impl ObjectCodec for VaultCodec {
     ) -> Result<ObjectPayload, CodecError> {
         // crypto-core verifies the class after decryption and falls back to
         // trial unwrapping if the (non-authoritative) hint is wrong.
-        self.with(|v| v.decrypt_object(object_id, revision, body, kek_class_hint))
-            .map(|(payload, _class)| payload)
+        let first = self
+            .with(|v| v.decrypt_object(object_id, revision, body, kek_class_hint))
+            .map(|(payload, _class)| payload);
+        if !matches!(first, Err(CodecError::Integrity)) {
+            return first;
+        }
+        let older = self.older.read().unwrap_or_else(|p| p.into_inner()).clone();
+        for v in older {
+            if let Ok((payload, _)) = v.decrypt_object(object_id, revision, body, kek_class_hint) {
+                return Ok(payload);
+            }
+        }
+        first
     }
 }
 

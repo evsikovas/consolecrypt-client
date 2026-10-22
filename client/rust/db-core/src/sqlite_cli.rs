@@ -54,42 +54,6 @@ impl fmt::Debug for CliOutput {
 /// (and a local process in tests). Cancellation stops the program.
 #[async_trait]
 pub trait SqliteCliRunner: Send + Sync + fmt::Debug {
-    /// Runs one statement and returns the program's output.
-    async fn execute(
-        &self,
-        sql: &str,
-        bindings: &[DbParameter],
-        writable: bool,
-        cancel: CancellationToken,
-    ) -> Result<CliOutput, DbError> {
-        let script = self.script(sql, bindings, writable)?;
-        let run = self.runner.run(
-            self.argv(writable),
-            script.into_bytes(),
-            self.output_limit,
-            cancel.clone(),
-        );
-        let output = tokio::select! {
-            biased;
-            _ = cancel.cancelled() => return Err(DbError::Cancelled),
-            result = tokio::time::timeout(self.timeout, run) => result.map_err(|_| DbError::Timeout)??,
-        };
-        if output.status != Some(0) {
-            return Err(classify_failure(&output));
-        }
-        Ok(output)
-    }
-
-    /// The raw output of a read (the plan drawing of EXPLAIN QUERY PLAN).
-    pub(crate) async fn raw(
-        &self,
-        sql: &str,
-        bindings: &[DbParameter],
-        cancel: CancellationToken,
-    ) -> Result<Vec<u8>, DbError> {
-        Ok(self.execute(sql, bindings, false, cancel).await?.stdout)
-    }
-
     async fn run(
         &self,
         argv: Vec<String>,
@@ -450,6 +414,9 @@ pub(crate) struct SqliteCli {
     read_only: bool,
     json: bool,
     safe: bool,
+    /// Reads open `mode=rw` under `query_only`: a WAL file whose shared
+    /// memory file a read-only open cannot create (older programs).
+    rw_reads: bool,
     timeout: Duration,
     output_limit: usize,
     /// Distinct per session: NULL in CSV output, the header of `changes()`.
@@ -501,12 +468,13 @@ impl SqliteCli {
             .filter(|name| !name.is_empty())
             .unwrap_or(&path)
             .to_owned();
-        let driver = Self {
+        let mut driver = Self {
             runner,
             path,
             read_only,
             json: version >= JSON_VERSION,
             safe: version >= SAFE_VERSION,
+            rw_reads: false,
             timeout: Duration::from_secs(u64::from(
                 connection.limits.statement_timeout_seconds,
             )),
@@ -516,16 +484,22 @@ impl SqliteCli {
             file_name,
         };
         // A missing file or one that is not a database fails here.
+        let probe = "SELECT count(*) FROM sqlite_master";
         let mut sink = crate::session::Collect::default();
-        driver
-            .run(
-                "SELECT count(*) FROM sqlite_master",
-                &[],
-                true,
-                &mut sink,
-                scope.child_token(),
-            )
-            .await?;
+        match driver
+            .run(probe, &[], true, &mut sink, scope.child_token())
+            .await
+        {
+            Err(DbError::FileMissing) => {
+                // A read-only open of a WAL file without its -shm file fails;
+                // `mode=rw` never creates the database itself.
+                driver.rw_reads = true;
+                driver
+                    .run(probe, &[], true, &mut sink, scope.child_token())
+                    .await?;
+            }
+            other => other?,
+        }
         Ok(driver)
     }
 
@@ -543,7 +517,8 @@ impl SqliteCli {
         if self.safe {
             argv.push("-safe".into());
         }
-        if !writable {
+        let open_writable = writable || self.rw_reads;
+        if !open_writable {
             argv.push("-readonly".into());
         }
         if self.json {
@@ -559,7 +534,7 @@ impl SqliteCli {
         argv.extend([
             "-cmd".into(),
             format!(".timeout {BUSY_MILLISECONDS}"),
-            file_uri(&self.path, writable),
+            file_uri(&self.path, open_writable),
         ]);
         argv
     }
@@ -621,6 +596,42 @@ impl SqliteCli {
             }
             Ok(())
         })
+    }
+
+    /// Runs one statement and returns the program's output.
+    async fn execute(
+        &self,
+        sql: &str,
+        bindings: &[DbParameter],
+        writable: bool,
+        cancel: CancellationToken,
+    ) -> Result<CliOutput, DbError> {
+        let script = self.script(sql, bindings, writable)?;
+        let run = self.runner.run(
+            self.argv(writable),
+            script.into_bytes(),
+            self.output_limit,
+            cancel.clone(),
+        );
+        let output = tokio::select! {
+            biased;
+            _ = cancel.cancelled() => return Err(DbError::Cancelled),
+            result = tokio::time::timeout(self.timeout, run) => result.map_err(|_| DbError::Timeout)??,
+        };
+        if output.status != Some(0) {
+            return Err(classify_failure(&output));
+        }
+        Ok(output)
+    }
+
+    /// The raw output of a read (the plan drawing of EXPLAIN QUERY PLAN).
+    pub(crate) async fn raw(
+        &self,
+        sql: &str,
+        bindings: &[DbParameter],
+        cancel: CancellationToken,
+    ) -> Result<Vec<u8>, DbError> {
+        Ok(self.execute(sql, bindings, false, cancel).await?.stdout)
     }
 
     async fn run(
@@ -690,7 +701,7 @@ mod tests {
 
     #[test]
     fn json_output_keeps_column_order_duplicates_types_and_blobs() {
-        let output = br#"[{"a":1,"b":"x'y\"z\nnl","c":"\u0000ÿA","d":1.5,"a":1},
+        let output = br#"[{"a":1,"b":"x'y\"z\nnl","c":"\u0000\u00ff\u0041","d":1.5,"a":1},
 {"a":9223372036854775807,"b":null,"c":null,"d":1.0e+300,"a":1}]
 [{"__cc_changes_x":2}]
 "#;

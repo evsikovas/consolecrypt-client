@@ -14,6 +14,15 @@ abstract interface class SharingService {
   Future<List<SharingOutboxEntry>> edit(String id, String projectionJson);
   Future<List<SharingOutboxEntry>> rotate(String id, List<SharingGrant> grants);
   Future<void> delete(String id);
+
+  /// Protocol 1.8: leave a received item on all devices of this account.
+  Future<void> leave(String id);
+
+  /// Protocol 1.8: owner-deleted items that the server keeps restorable.
+  Future<List<SharingDeletedItem>> deleted();
+
+  /// Protocol 1.8: republish a deleted item (queued; call [flush]).
+  Future<SharingItem> restore(String id);
   Future<List<SharingOutboxEntry>> outbox();
   Future<List<SharingOutboxEntry>> flush();
   Future<SharingItem> reconcile(String id, String confirmedOwnerCode);
@@ -26,7 +35,12 @@ abstract interface class SharingService {
   Future<Credential> copySecretCredential(String shareId);
   Future<Host> copyHost(String shareId, {String? credentialId});
   Future<Snippet> copySnippet(String shareId);
-  Future<Host> refreshBoundHost(String hostId, {bool confirmEndpointChange = false, String? expectedAddress, int? expectedPort});
+  Future<Host> refreshBoundHost(
+    String hostId, {
+    bool confirmEndpointChange = false,
+    String? expectedAddress,
+    int? expectedPort,
+  });
   Future<Host> detachHost(String hostId);
 }
 
@@ -55,6 +69,12 @@ final class UnavailableSharingService implements SharingService {
   @override
   Future<void> delete(String id) async => _unavailable();
   @override
+  Future<void> leave(String id) async => _unavailable();
+  @override
+  Future<List<SharingDeletedItem>> deleted() async => const [];
+  @override
+  Future<SharingItem> restore(String id) async => _unavailable();
+  @override
   Future<List<SharingOutboxEntry>> outbox() async => const [];
   @override
   Future<List<SharingOutboxEntry>> flush() async => _unavailable();
@@ -67,7 +87,8 @@ final class UnavailableSharingService implements SharingService {
   @override
   Future<String> previewSecret(String credentialId, {bool passphrase = false}) async => _unavailable();
   @override
-  Future<SharingItem> publishSecret(String credentialId, List<SharingGrant> grants, {bool passphrase = false}) async => _unavailable();
+  Future<SharingItem> publishSecret(String credentialId, List<SharingGrant> grants, {bool passphrase = false}) async =>
+      _unavailable();
   @override
   Future<SecretText> revealSecret(String shareId) async => _unavailable();
   @override
@@ -79,7 +100,12 @@ final class UnavailableSharingService implements SharingService {
   @override
   Future<Snippet> copySnippet(String shareId) async => _unavailable();
   @override
-  Future<Host> refreshBoundHost(String hostId, {bool confirmEndpointChange = false, String? expectedAddress, int? expectedPort}) async => _unavailable();
+  Future<Host> refreshBoundHost(
+    String hostId, {
+    bool confirmEndpointChange = false,
+    String? expectedAddress,
+    int? expectedPort,
+  }) async => _unavailable();
   @override
   Future<Host> detachHost(String hostId) async => _unavailable();
 }

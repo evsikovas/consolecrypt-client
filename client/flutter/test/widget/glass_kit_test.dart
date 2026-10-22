@@ -5,6 +5,7 @@ import 'package:consolecrypt/app/design_gallery_screen.dart';
 import 'package:consolecrypt/app/theme.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -373,6 +374,47 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
       expect(find.text('Delete…'), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+    testWidgets('menu: the pointer moves the one highlighted item', (tester) async {
+      await pumpGlass(
+        tester,
+        Center(
+          child: GlassMenuButton<String>(
+            entries: const [
+              GlassMenuItem(value: 'copy', label: 'Copy', key: ValueKey('menu-copy')),
+              GlassMenuItem(value: 'paste', label: 'Paste', key: ValueKey('menu-paste')),
+            ],
+            onSelected: (_) {},
+            builder: (context, open) => GlassButton(key: const ValueKey('open'), label: 'Menu', onPressed: open),
+          ),
+        ),
+      );
+      bool focusedIn(String key) {
+        var inside = false;
+        FocusManager.instance.primaryFocus?.context?.visitAncestorElements((element) {
+          inside = element.widget.key == ValueKey(key);
+          return !inside;
+        });
+        return inside;
+      }
+
+      // Opened from the keyboard: the first item has the focus highlight.
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(focusedIn('menu-copy'), isTrue);
+      // Hovering another item takes the focus with it, so only one row is lit.
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: Offset.zero);
+      addTearDown(mouse.removePointer);
+      await mouse.moveTo(tester.getCenter(find.byKey(const ValueKey('menu-paste'))));
+      await tester.pumpAndSettle();
+      expect(focusedIn('menu-paste'), isTrue);
+      expect(focusedIn('menu-copy'), isFalse);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
     }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
     testWidgets('dropdown field: label, glass menu, validation', (tester) async {

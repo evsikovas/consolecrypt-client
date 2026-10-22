@@ -69,7 +69,7 @@ fn text(value: &str) -> DbParameter {
 }
 
 impl DbSession {
-    async fn catalogue(
+    pub(crate) async fn catalogue(
         &self,
         sql: &str,
         bindings: &[DbParameter],
@@ -118,6 +118,7 @@ impl DbSession {
                 _ => Err(DbError::InvalidRequest),
             },
             DbEngine::Sqlite => self.sqlite_ddl(object).await,
+            DbEngine::Unknown => Err(DbError::InvalidRequest),
         }
     }
 
@@ -576,14 +577,20 @@ impl DbSession {
     }
 
     /// Sampled field types and presence of a MongoDB collection (`sample`
-    /// documents, at most 1000), or its description without sampling.
+    /// documents, at most 1000), or its description without sampling. Other
+    /// engines answer with grouped catalogue facts
+    /// ([`crate::details::ObjectDetails`]).
     pub async fn inspect(
         &self,
         object: &DbObjectRef,
         sample: Option<u32>,
     ) -> Result<serde_json::Value, DbError> {
-        if self.info.engine == DbEngine::Sqlite {
-            return self.sqlite_details(object).await;
+        if self.info.engine != DbEngine::Mongodb {
+            if sample.is_some() {
+                return Err(DbError::InvalidRequest);
+            }
+            return serde_json::to_value(self.object_details(object).await?)
+                .map_err(|_| DbError::QueryFailed);
         }
         match &mut *self.driver.lock().await {
             Driver::Mongo(driver) => match sample {

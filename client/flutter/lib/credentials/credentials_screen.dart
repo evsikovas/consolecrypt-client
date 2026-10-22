@@ -9,8 +9,10 @@ import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/credentials/credential_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_secrets.dart';
+import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -199,7 +201,13 @@ class _CredentialDetailsDialogState extends ConsumerState<CredentialDetailsDialo
     if (secret == null) return;
     try {
       if (!mounted) return;
-      await copySecretWithNotice(context, ref, secret.expose(), what: context.l10n.copyWhatPassword);
+      await copySecretWithNotice(
+        context,
+        ref,
+        secret.expose(),
+        what: context.l10n.copyWhatPassword,
+        limit: teamClipboardLimit(ref, widget.credential.id),
+      );
     } finally {
       secret.wipe();
     }
@@ -314,10 +322,13 @@ class _CredentialDetailsDialogState extends ConsumerState<CredentialDetailsDialo
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        _revealed ?? '••••••••••••',
-                        key: const ValueKey('password-value'),
-                        style: t.mono.copyWith(color: tokens.palette.label),
+                      child: RevealedSecret(
+                        visible: _revealed != null,
+                        child: Text(
+                          _revealed ?? '••••••••••••',
+                          key: const ValueKey('password-value'),
+                          style: t.mono.copyWith(color: tokens.palette.label),
+                        ),
                       ),
                     ),
                     GlassButton.plain(

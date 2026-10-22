@@ -46,6 +46,9 @@ pub(crate) fn router(shared: Arc<Shared>) -> Router {
         .route(paths::AUTH_REGISTER, post(register))
         .route(paths::AUTH_LOGIN, post(login))
         .route(paths::AUTH_REFRESH, post(refresh))
+        .route(paths::AUTH_OIDC_START, get(oidc_start))
+        .route(paths::AUTH_OIDC_EXCHANGE, post(oidc_exchange))
+        .route(paths::AUTH_LDAP_LOGIN, post(ldap_login))
         .route(paths::AUTH_LOGOUT, post(logout))
         .route(paths::AUTH_ME, get(me))
         .route(paths::AUTH_PASSWORD_FORGOT, post(forgot))
@@ -65,6 +68,14 @@ pub(crate) fn router(shared: Arc<Shared>) -> Router {
             get(list_envelopes).post(create_envelope),
         )
         .route(paths::VAULT_ENVELOPE, delete(delete_envelope))
+        .route(paths::TEAMS, get(list_teams).post(create_team))
+        .route(paths::TEAM_INVITATIONS_INBOX, get(incoming_invitations))
+        .route(paths::TEAM_INVITATION, delete(close_invitation))
+        .route(paths::TEAM_INVITATION_ACCEPT, post(accept_invitation))
+        .route(paths::TEAM, get(get_team))
+        .route(paths::TEAM_LOG, get(team_log).post(submit_team_log))
+        .route(paths::TEAM_KEY, get(team_key))
+        .route(paths::TEAM_INVITATIONS, get(team_invitations).post(invite))
         .route(paths::SYNC_PUSH, post(push))
         .route(paths::SYNC_CHANGES, get(changes))
         .route(paths::SYNC_SNAPSHOT, get(snapshot))
@@ -129,6 +140,10 @@ fn server_info(s: &Shared, upgrade_required: bool) -> ServerInfo {
         source_code_url: None,
         capabilities: cc_protocol::meta::ServerCapabilities {
             device_protection: st.cfg.device_protection,
+            auth: st.cfg.auth.clone(),
+            teams: true,
+            // The personal-sync mock has no sharing routes.
+            ..Default::default()
         },
     }
 }
@@ -144,7 +159,8 @@ fn client_version(headers: &HeaderMap) -> Option<Result<ProtocolVersion, ()>> {
 async fn gate(State(s): S, req: Request, next: Next) -> Response {
     let path = req.uri().path().to_owned();
     s.record(&path);
-    if path != paths::META {
+    // `/v1/meta` and the browser-opened OIDC start carry no client headers.
+    if path != paths::META && path != paths::AUTH_OIDC_START {
         let min = s.lock().cfg.minimum_protocol;
         match client_version(req.headers()) {
             None => {
@@ -268,13 +284,33 @@ async fn meta(State(s): S, headers: HeaderMap) -> Response {
 }
 
 async fn register(State(s): S, body: Bytes) -> MResult<Response> {
+    s.lock().check_password_auth_allowed()?;
     let req: RegisterRequest = parse(&body)?;
     Ok(json(StatusCode::CREATED, s.lock().register(req)?))
 }
 
 async fn login(State(s): S, body: Bytes) -> MResult<Response> {
+    s.lock().check_password_auth_allowed()?;
     let req: LoginRequest = parse(&body)?;
     Ok(json(StatusCode::OK, s.lock().login(req)?))
+}
+
+async fn oidc_start(
+    State(s): S,
+    q: Result<Query<cc_protocol::enterprise_auth::OidcStartQuery>, QueryRejection>,
+) -> MResult<Response> {
+    let location = s.lock().oidc_start(query(q)?)?;
+    Ok((StatusCode::FOUND, [(header::LOCATION, location)]).into_response())
+}
+
+async fn oidc_exchange(State(s): S, body: Bytes) -> MResult<Response> {
+    let req: cc_protocol::enterprise_auth::OidcExchangeRequest = parse(&body)?;
+    Ok(json(StatusCode::OK, s.lock().oidc_exchange(req)?))
+}
+
+async fn ldap_login(State(s): S, body: Bytes) -> MResult<Response> {
+    let req: cc_protocol::enterprise_auth::LdapLoginRequest = parse(&body)?;
+    Ok(json(StatusCode::OK, s.lock().ldap_login(req)?))
 }
 
 async fn refresh(State(s): S, body: Bytes) -> MResult<Response> {
@@ -481,6 +517,115 @@ async fn delete_envelope(
     let req: DeleteEnvelopeRequest = parse(&body)?;
     s.lock()
         .delete_envelope(p, vault_id, envelope_id, Some(req.vault_access_key))?;
+    Ok(no_content())
+}
+
+// ---- teams (protocol 1.9) ---------------------------------------------------------------------
+
+async fn create_team(State(s): S, headers: HeaderMap, body: Bytes) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    let req: cc_protocol::teams::CreateTeamRequest = parse(&body)?;
+    Ok(json(StatusCode::CREATED, s.lock().create_team(p, req)?))
+}
+
+async fn list_teams(State(s): S, headers: HeaderMap) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    Ok(json(StatusCode::OK, s.lock().list_teams(p)))
+}
+
+async fn get_team(State(s): S, headers: HeaderMap, Path(vault): Path<String>) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    Ok(json(StatusCode::OK, s.lock().get_team(p, id(&vault)?)?))
+}
+
+#[derive(serde::Deserialize)]
+struct TeamLogParams {
+    after: Option<u64>,
+}
+
+async fn team_log(
+    State(s): S,
+    headers: HeaderMap,
+    Path(vault): Path<String>,
+    q: Result<Query<TeamLogParams>, QueryRejection>,
+) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    let q = query(q)?;
+    Ok(json(
+        StatusCode::OK,
+        s.lock().team_log(p, id(&vault)?, q.after)?,
+    ))
+}
+
+async fn submit_team_log(
+    State(s): S,
+    headers: HeaderMap,
+    Path(vault): Path<String>,
+    body: Bytes,
+) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    let req: cc_protocol::teams::SubmitTeamLogRequest = parse(&body)?;
+    Ok(json(
+        StatusCode::OK,
+        s.lock().submit_team_log(p, id(&vault)?, req)?,
+    ))
+}
+
+async fn team_key(State(s): S, headers: HeaderMap, Path(vault): Path<String>) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    Ok(json(StatusCode::OK, s.lock().team_key(p, id(&vault)?)?))
+}
+
+async fn invite(
+    State(s): S,
+    headers: HeaderMap,
+    Path(vault): Path<String>,
+    body: Bytes,
+) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    let req: cc_protocol::teams::InviteTeamMemberRequest = parse(&body)?;
+    s.lock().invite(p, id(&vault)?, req)?;
+    Ok(StatusCode::ACCEPTED.into_response())
+}
+
+async fn team_invitations(
+    State(s): S,
+    headers: HeaderMap,
+    Path(vault): Path<String>,
+) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    Ok(json(
+        StatusCode::OK,
+        s.lock().team_invitations(p, id(&vault)?)?,
+    ))
+}
+
+async fn incoming_invitations(State(s): S, headers: HeaderMap) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    Ok(json(StatusCode::OK, s.lock().incoming_invitations(p)))
+}
+
+async fn accept_invitation(
+    State(s): S,
+    headers: HeaderMap,
+    Path(invitation): Path<String>,
+    body: Bytes,
+) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    let req: cc_protocol::teams::AcceptTeamInvitationRequest = parse(&body)?;
+    Ok(json(
+        StatusCode::OK,
+        s.lock().accept_invitation(p, id(&invitation)?, req)?,
+    ))
+}
+
+async fn close_invitation(
+    State(s): S,
+    headers: HeaderMap,
+    Path(invitation): Path<String>,
+) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    s.lock().close_invitation(p, id(&invitation)?)?;
     Ok(no_content())
 }
 

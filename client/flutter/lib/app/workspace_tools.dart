@@ -1,6 +1,7 @@
 import 'package:consolecrypt/ai/ai_chat_screen.dart';
 import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/symbols.dart';
 import 'package:consolecrypt/app/workspace_forwards.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
@@ -12,6 +13,8 @@ import 'package:consolecrypt/kubernetes/kube_ai_host.dart';
 import 'package:consolecrypt/kubernetes/kube_ai_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
+import 'package:consolecrypt/notes/notes_panel.dart';
+import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/snippets/snippets_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,12 +28,14 @@ List<WorkspaceTool> get workspaceTools => [
 
 String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (tool) {
   WorkspaceTool.snippets => l.navSnippets,
+  WorkspaceTool.notes => l.navNotes,
   WorkspaceTool.ai => l.navAiChat,
   WorkspaceTool.forwards => l.navPortForwards,
 };
 
 AppSymbol _symbol(WorkspaceTool tool) => switch (tool) {
   WorkspaceTool.snippets => AppSymbol.snippets,
+  WorkspaceTool.notes => AppSymbol.notes,
   WorkspaceTool.ai => AppSymbol.ai,
   WorkspaceTool.forwards => AppSymbol.tunnels,
 };
@@ -55,6 +60,7 @@ class WorkspaceToolRail extends ConsumerWidget {
         (kubernetesEnabled && scope.unlocked
             ? (ref.watch(kubeForwardsProvider(scope)).value ?? const []).where((f) => f.state == 'running').length
             : 0);
+    final notes = ref.watch(notesAttentionProvider);
     return Padding(
       padding: integrated ? EdgeInsets.zero : const EdgeInsets.fromLTRB(8, 8, 0, 8),
       child: GlassSurface(
@@ -71,8 +77,12 @@ class WorkspaceToolRail extends ConsumerWidget {
                 icon: tool == WorkspaceTool.ai ? Icons.auto_awesome_rounded : Icons.code_rounded,
                 leading: AppSymbolIcon(_symbol(tool)),
                 label: workspaceToolLabel(l, tool),
-                badge: tool == WorkspaceTool.forwards && forwards > 0 ? '$forwards' : null,
-                badgeTone: GlassTone.success,
+                badge: switch (tool) {
+                  WorkspaceTool.forwards when forwards > 0 => '$forwards',
+                  WorkspaceTool.notes when notes > 0 => '$notes',
+                  _ => null,
+                },
+                badgeTone: tool == WorkspaceTool.notes ? GlassTone.warning : GlassTone.success,
                 compact: true,
                 selected: tool == selected,
                 onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(tool),
@@ -87,8 +97,11 @@ class WorkspaceToolRail extends ConsumerWidget {
 }
 
 class WorkspaceToolPanel extends ConsumerStatefulWidget {
-  const WorkspaceToolPanel({super.key, this.integrated = false});
+  const WorkspaceToolPanel({super.key, this.integrated = false, this.branch = ShellBranch.hosts});
   final bool integrated;
+
+  /// The section on screen: notes follow its open object.
+  final ShellBranch branch;
 
   @override
   ConsumerState<WorkspaceToolPanel> createState() => _WorkspaceToolPanelState();
@@ -203,6 +216,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                         : switch (tool) {
                                             WorkspaceTool.ai => const _AiTool(),
                                             WorkspaceTool.snippets => const SnippetsScreen(embedded: true),
+                                            WorkspaceTool.notes => NotesPanel(branch: widget.branch),
                                             WorkspaceTool.forwards => const WorkspaceForwardsPanel(),
                                           },
                                   ),

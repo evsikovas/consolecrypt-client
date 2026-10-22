@@ -306,6 +306,10 @@ async fn settings_conflict_is_last_writer_wins() {
         terminal_history_mode: Default::default(),
         default_privacy_profile: Default::default(),
         sync_ai_conversations: false,
+        color: None,
+        icon: None,
+        description: None,
+        policies: Default::default(),
         created_at: now,
         updated_at: now,
     };

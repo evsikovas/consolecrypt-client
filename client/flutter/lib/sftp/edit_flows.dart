@@ -15,8 +15,23 @@ import 'package:consolecrypt/sftp/widgets/sftp_activity.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+/// Files whose "can run code" notice was shown in this app run, per host
+/// and path (security audit H4: once per file).
+final _activeContentNoticesProvider = NotifierProvider<_ActiveContentNotices, Set<String>>(_ActiveContentNotices.new);
+
+class _ActiveContentNotices extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => const {};
+
+  void add(String key) => state = {...state, key};
+}
+
 /// "Open" / "Open With…": first-use hint, size check, then an edit session
-/// (SFTP_BROWSER_SPEC §2).
+/// (SFTP_BROWSER_SPEC §2). A file whose default action would run code
+/// (security audit H4) is never run: the core opens it as text, the UI says
+/// so first, offers "Choose an Editor…" when no text editor is found, and
+/// on Windows replaces the system "Open with" dialog (which preselects the
+/// handler that runs it) with an application picker.
 Future<void> openInEditor(
   BuildContext context,
   WidgetRef ref,
@@ -39,24 +54,43 @@ Future<void> openInEditor(
     if (hint == null || !context.mounted) return;
     if (hint.dontShowAgain) ref.read(sftpControllerProvider.notifier).acknowledgeEditHint();
   }
+  final service = ref.read(sftpBrowserServiceProvider);
+  final opensAsText = service.opensAsText(entry.name);
+  if (opensAsText && openWith is OpenWithDefault) {
+    final key = '${state.host?.id.value ?? ''}\n${entry.path}';
+    if (!ref.read(_activeContentNoticesProvider).contains(key)) {
+      final open = await showActiveContentNotice(context, entry.name);
+      if (!open || !context.mounted) return;
+      ref.read(_activeContentNoticesProvider.notifier).add(key);
+    }
+  }
+  bool stillCurrent() =>
+      context.mounted &&
+      ref.read(activeProfileProvider)?.id == profileId &&
+      ref.read(sftpControllerProvider).session == session;
+  Future<String?> chooseApplication() => ref
+      .read(fileDialogServiceProvider)
+      .chooseApplication(label: l10n.sftpApplications, confirmButtonText: l10n.sftpChooseApplication);
   try {
     if (openWith is OpenWithDefault) {
       final editor = ref.read(settingsServiceProvider).currentLocal.sftpDefaultEditor;
       if (editor != null) openWith = OpenWithApp(editor);
     }
-    if (openWith is OpenWithChoose && (AppPlatform.isMacOS || AppPlatform.isLinux)) {
-      final appPath = await ref
-          .read(fileDialogServiceProvider)
-          .chooseApplication(label: l10n.sftpApplications, confirmButtonText: l10n.sftpChooseApplication);
+    if (openWith is OpenWithChoose && (AppPlatform.isMacOS || AppPlatform.isLinux || opensAsText)) {
+      final appPath = await chooseApplication();
       if (appPath == null || !context.mounted) return;
       openWith = OpenWithApp(AppRef(AppRefKind.path, appPath));
     }
-    if (!context.mounted ||
-        ref.read(activeProfileProvider)?.id != profileId ||
-        ref.read(sftpControllerProvider).session != session) {
-      return;
+    if (!stillCurrent()) return;
+    try {
+      await service.openInEditor(session, entry.path, openWith: openWith);
+    } on AppException catch (e) {
+      if (e.reason != AppErrorReason.noTextEditor || !context.mounted) rethrow;
+      if (!await showNoTextEditorDialog(context, entry.name) || !context.mounted) return;
+      final appPath = await chooseApplication();
+      if (appPath == null || !stillCurrent()) return;
+      await service.openInEditor(session, entry.path, openWith: OpenWithApp(AppRef(AppRefKind.path, appPath)));
     }
-    await ref.read(sftpBrowserServiceProvider).openInEditor(session, entry.path, openWith: openWith);
     if (!context.mounted) return;
     ref.read(sftpActivityProvider.notifier).show(SftpActivityTab.editing);
     showSnack(context, l10n.sftpEditOpened(entry.name));

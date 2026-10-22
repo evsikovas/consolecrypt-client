@@ -103,6 +103,10 @@ pub enum CryptoError {
         required: KekClass,
     },
 
+    /// A team membership log failed verification (protocol 1.9).
+    #[error("team log: {0}")]
+    TeamLog(&'static str),
+
     /// Ed25519 signature verification failed.
     #[error("invalid signature")]
     InvalidSignature,

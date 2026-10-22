@@ -378,18 +378,24 @@ pub fn verification_code(
         signing_public_key,
     ))
     .into();
-    let mut groups = [0u32; 6];
-    for (i, g) in groups.iter_mut().enumerate() {
-        let v = h[5 * i..5 * i + 5]
-            .iter()
-            .fold(0u64, |acc, b| (acc << 8) | u64::from(*b));
-        // < 100000, always fits in u32.
-        *g = (v % 100_000) as u32;
-    }
-    VerificationCode { groups }
+    VerificationCode::from_hash(&h)
 }
 
 impl VerificationCode {
+    /// Render a SHA-256 hash: group `i` = big-endian u40 of bytes
+    /// `[5i, 5i+5)` mod 100000 (device and team member codes).
+    pub(crate) fn from_hash(h: &[u8; 32]) -> Self {
+        let mut groups = [0u32; 6];
+        for (i, g) in groups.iter_mut().enumerate() {
+            let v = h[5 * i..5 * i + 5]
+                .iter()
+                .fold(0u64, |acc, b| (acc << 8) | u64::from(*b));
+            // < 100000, always fits in u32.
+            *g = (v % 100_000) as u32;
+        }
+        Self { groups }
+    }
+
     /// The six groups as numbers (each < 100000).
     pub fn groups(&self) -> [u32; 6] {
         self.groups

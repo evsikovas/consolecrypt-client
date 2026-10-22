@@ -32,6 +32,7 @@
 //! Intended for tests (this crate, other crates, `cc` CLI E2E). Methods
 //! that bind sockets panic on failure, like other test servers.
 
+mod enterprise;
 mod proxy;
 mod routes;
 mod state;
@@ -65,6 +66,9 @@ pub struct MockServerConfig {
     /// `device_registered`, report quarantine (14 days, the registering
     /// device exempt) and enforce it on revoke / `logout all`.
     pub device_protection: bool,
+    /// Protocol 1.8 `capabilities.auth` (default: standard). In enterprise
+    /// mode password register/login answer `enterprise_auth_required`.
+    pub auth: cc_protocol::meta::AuthCapability,
 }
 
 impl Default for MockServerConfig {
@@ -77,6 +81,7 @@ impl Default for MockServerConfig {
             minimum_protocol: ProtocolVersion::new(PROTOCOL_VERSION.major, 0),
             require_request_proof: false,
             device_protection: false,
+            auth: Default::default(),
         }
     }
 }
@@ -286,6 +291,26 @@ impl MockServer {
         self.shared.lock().email_tokens(email)
     }
 
+    /// Enterprise LDAP: add a directory user (`login` is case-insensitive).
+    pub fn add_directory_user(&self, login: &str, password: &str, email: &str) {
+        self.shared.lock().enterprise.directory.insert(
+            login.trim().to_lowercase(),
+            (password.to_owned(), email.trim().to_lowercase()),
+        );
+    }
+
+    /// Enterprise OIDC: the user the mock IdP signs in (`None`: the IdP
+    /// answers `access_denied`).
+    pub fn set_oidc_user(&self, email: Option<&str>) {
+        self.shared.lock().enterprise.oidc_user = email.map(|e| e.trim().to_lowercase());
+    }
+
+    /// Disable an account (administrator / IdP): every session is revoked and
+    /// refresh answers `403 account_disabled`.
+    pub fn disable_account(&self, email: &str) {
+        self.shared.lock().disable_account(email);
+    }
+
     /// Account id of an email.
     pub fn user_id(&self, email: &str) -> Option<UserId> {
         self.shared.lock().user_id(email)
@@ -300,6 +325,16 @@ impl MockServer {
     /// would hand that device), if any.
     pub fn device_envelope(&self, device_id: DeviceId, vault_id: VaultId) -> Option<KeyEnvelope> {
         self.shared.lock().device_envelope(device_id, vault_id)
+    }
+
+    /// Hostile-server hook (teams): add a member with a forged log entry
+    /// that no admin signed. Clients must refuse it.
+    pub fn inject_team_member(
+        &self,
+        vault_id: VaultId,
+        keys: cc_protocol::teams::TeamMemberKeys,
+    ) -> bool {
+        self.shared.lock().inject_team_member(vault_id, keys)
     }
 
     /// Revoke a device as if from another trusted device (admin hook).

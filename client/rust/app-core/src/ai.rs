@@ -324,6 +324,9 @@ impl AppCore {
                 None => None,
             },
         };
+        if host_id.is_some_and(|h| u.working().is_ai_blocked(h)) {
+            return Err(crate::teams::ai_blocked());
+        }
         let selected_text = opts
             .selected_text
             .clone()

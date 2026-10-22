@@ -329,11 +329,6 @@ impl Sqlite {
             result
         })
     }
-
-    /// Whether the file was opened read-only.
-    pub fn opened_read_only(&self) -> bool {
-        self.read_only
-    }
 }
 
 impl Drop for Sqlite {
@@ -530,4 +525,87 @@ pub(crate) fn bind_value(cell: &DbCell) -> Result<Value, DbError> {
         | DbCell::Timestamp(value)
         | DbCell::Json(value) => Value::Text(value.clone()),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::session::Collect;
+
+    async fn writable_file(dir: &Path) -> Sqlite {
+        let path = dir.join("t.db");
+        Connection::open(&path)
+            .unwrap()
+            .execute_batch("CREATE TABLE t (a INTEGER, b TEXT); INSERT INTO t VALUES (1, 'x');")
+            .unwrap();
+        let mut connection = DbConnection::new("t", "localhost", cc_models::database::DbEngine::Sqlite);
+        connection.database = path.to_string_lossy().into_owned();
+        connection.options = DbOptions::Sqlite { read_only: false };
+        Sqlite::open(&connection).await.unwrap()
+    }
+
+    async fn query(driver: &mut Sqlite, sql: &str, read_only: bool) -> Result<Vec<Vec<String>>, DbError> {
+        let mut rows = Collect::default();
+        driver
+            .query(sql, &[], read_only, &mut rows, CancellationToken::new())
+            .await?;
+        Ok(rows.rows)
+    }
+
+    /// Even a statement that reached the driver as a read cannot change the
+    /// file: query_only and the authorizer refuse it.
+    #[tokio::test]
+    async fn reads_cannot_write_attach_or_unlock_even_past_the_guard() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut driver = writable_file(dir.path()).await;
+        for sql in [
+            "INSERT INTO t VALUES (2, 'y')",
+            "UPDATE t SET b = 'z'",
+            "CREATE TABLE u (x)",
+            "PRAGMA query_only = 0",
+            "PRAGMA user_version = 3",
+            "PRAGMA writable_schema = 1",
+            "PRAGMA key = 'k'",
+            "PRAGMA rekey = 'k'",
+        ] {
+            assert!(query(&mut driver, sql, true).await.is_err(), "{sql}");
+        }
+        for sql in [
+            "ATTACH DATABASE ':memory:' AS other",
+            "SELECT load_extension('x')",
+        ] {
+            assert!(query(&mut driver, sql, false).await.is_err(), "{sql}");
+        }
+        assert_eq!(
+            query(&mut driver, "SELECT count(*) FROM t", true).await.unwrap(),
+            [["1"]]
+        );
+        // A permitted write works and the connection returns to query_only.
+        query(&mut driver, "INSERT INTO t VALUES (2, 'y')", false)
+            .await
+            .unwrap();
+        assert!(query(&mut driver, "DELETE FROM t", true).await.is_err());
+        assert_eq!(
+            query(&mut driver, "PRAGMA query_only", true).await.unwrap(),
+            [["1"]]
+        );
+    }
+
+    #[test]
+    fn storage_classes_map_to_cells_and_back() {
+        assert_eq!(cell(ValueRef::Null).unwrap(), DbCell::Null);
+        assert_eq!(cell(ValueRef::Integer(-3)).unwrap(), DbCell::Int("-3".into()));
+        assert_eq!(cell(ValueRef::Real(1.0)).unwrap(), DbCell::Float("1.0".into()));
+        assert_eq!(cell(ValueRef::Real(1e300)).unwrap(), DbCell::Float("1e300".into()));
+        assert_eq!(cell(ValueRef::Text(b"hi")).unwrap(), DbCell::Text("hi".into()));
+        assert_eq!(cell(ValueRef::Text(&[0xff])).unwrap(), DbCell::Binary("/w==".into()));
+        assert_eq!(cell(ValueRef::Blob(&[0, 1])).unwrap(), DbCell::Binary("AAE=".into()));
+        assert_eq!(bind_value(&DbCell::Bool(true)).unwrap(), Value::Integer(1));
+        assert_eq!(
+            bind_value(&DbCell::Binary("AAE=".into())).unwrap(),
+            Value::Blob(vec![0, 1])
+        );
+        assert!(bind_value(&DbCell::Uint(u64::MAX.to_string())).is_err());
+        assert_eq!(bind_value(&DbCell::Decimal("1.50".into())).unwrap(), Value::Text("1.50".into()));
+    }
 }

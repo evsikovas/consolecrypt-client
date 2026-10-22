@@ -89,14 +89,17 @@ enum EnableSyncStep {
 }
 
 final class EnableSyncProgress {
-  const EnableSyncProgress(this.step, {this.uploaded = 0, this.total = 0, this.message});
+  const EnableSyncProgress(this.step, {this.uploaded = 0, this.total = 0, this.message, this.error});
 
   final EnableSyncStep step;
   final int uploaded;
   final int total;
 
-  /// Error text for `failed`.
+  /// Error text for `failed` (English diagnostic).
   final String? message;
+
+  /// The service error behind `failed`, for a localized message.
+  final Object? error;
 
   double? get fraction => total == 0 ? null : uploaded / total;
 }

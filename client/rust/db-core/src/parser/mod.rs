@@ -166,6 +166,7 @@ pub(crate) fn parse(
         | DbEngine::Mariadb
         | DbEngine::Clickhouse
         | DbEngine::Sqlite => sql::parse(engine, default_schema, request),
+        DbEngine::Unknown => Err(DbError::InvalidRequest),
     }?;
     if result.is_empty() || result.len() > MAX_STATEMENTS {
         Err(DbError::InvalidRequest)

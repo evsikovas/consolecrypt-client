@@ -29,6 +29,68 @@ Future<void> accountRequestPasswordReset({required String serverUrl, required St
 Future<void> accountChangePassword({required List<int> current, required List<int> next}) =>
     RustLib.instance.api.crateApiAccountAccountChangePassword(current: current, next: next);
 
+/// Start a browser (OIDC) sign-in → `EnterpriseOidcChallengeDto` JSON.
+/// `purpose` = `new_profile` | `reauthenticate` | `enable_sync`. Open
+/// `authorization_url` in the system browser, then call
+/// [`enterprise_oidc_complete`] (desktop: without a callback URL — the core
+/// receives the loopback redirect; mobile: with the URL the OS auth session
+/// returned).
+Future<String> enterpriseOidcBegin({
+  required String serverUrl,
+  required String purpose,
+  String? loginHint,
+  String? displayName,
+  required bool allowNewDeviceIdentity,
+}) => RustLib.instance.api.crateApiAccountEnterpriseOidcBegin(
+  serverUrl: serverUrl,
+  purpose: purpose,
+  loginHint: loginHint,
+  displayName: displayName,
+  allowNewDeviceIdentity: allowNewDeviceIdentity,
+);
+
+/// Finish a browser sign-in → `EnterpriseSignInResultDto` JSON (`account`
+/// for a new profile, `auth_state` after re-authentication, `profile` after
+/// enable-sync). The callback URL carries a single-use code: it is checked
+/// against the flow's `state` and never stored.
+Future<String> enterpriseOidcComplete({required String ticket, String? callbackUrl}) =>
+    RustLib.instance.api.crateApiAccountEnterpriseOidcComplete(ticket: ticket, callbackUrl: callbackUrl);
+
+/// Abandon a browser sign-in (removes a new profile prepared for it).
+Future<void> enterpriseOidcCancel({required String ticket}) =>
+    RustLib.instance.api.crateApiAccountEnterpriseOidcCancel(ticket: ticket);
+
+/// New synced profile signed in with the organisation's directory (LDAP /
+/// Active Directory) → `SyncedAccountDto` JSON. The password is sent once
+/// over TLS and never stored.
+Future<String> profilesCreateSyncedLdap({
+  String? displayName,
+  required String serverUrl,
+  required String login,
+  required List<int> password,
+}) => RustLib.instance.api.crateApiAccountProfilesCreateSyncedLdap(
+  displayName: displayName,
+  serverUrl: serverUrl,
+  login: login,
+  password: password,
+);
+
+/// Sign the open synced profile in again with the directory → `AuthStateDto`.
+Future<String> syncReauthenticateLdap({
+  required String login,
+  required List<int> password,
+  required bool allowNewDeviceIdentity,
+}) => RustLib.instance.api.crateApiAccountSyncReauthenticateLdap(
+  login: login,
+  password: password,
+  allowNewDeviceIdentity: allowNewDeviceIdentity,
+);
+
+/// Local → Synced signing in with the directory → `ProfileInfo` JSON
+/// (emits `enable_sync_progress`).
+Future<String> syncEnableLdap({required String serverUrl, required String login, required List<int> password}) =>
+    RustLib.instance.api.crateApiAccountSyncEnableLdap(serverUrl: serverUrl, login: login, password: password);
+
 /// **Explicit user action only** (Reveal / Copy): the secret of a password
 /// or key credential as UTF-8 bytes, returned once. app-core zeroizes its
 /// copies and logs an audit line without the value; the buffer handed to

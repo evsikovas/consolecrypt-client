@@ -66,6 +66,27 @@ pub fn decode_backup(bytes: &[u8]) -> Result<VaultBackup> {
     Ok(backup)
 }
 
+/// [`decode_backup`] straight from a file or stream: at most
+/// [`MAX_BACKUP_BYTES`] are read whatever the file claims (it may grow
+/// between a size check and the read), and the JSON is parsed while it is
+/// read instead of after a second full copy in memory.
+pub fn decode_backup_from(reader: impl std::io::Read) -> Result<VaultBackup> {
+    decode_backup_limited(reader, MAX_BACKUP_BYTES)
+}
+
+fn decode_backup_limited(reader: impl std::io::Read, max: usize) -> Result<VaultBackup> {
+    let mut limited = std::io::BufReader::new(reader.take(max as u64 + 1));
+    let backup: VaultBackup =
+        serde_json::from_reader(&mut limited).map_err(|_| VaultError::BackupEncoding)?;
+    // `from_reader` reads to the end (only whitespace may follow); an
+    // exhausted limit means more than `MAX_BACKUP_BYTES` were there.
+    if limited.into_inner().limit() == 0 {
+        return Err(VaultError::BackupEncoding);
+    }
+    backup.validate_structure()?;
+    Ok(backup)
+}
+
 /// A verified, unlocked backup ready to import.
 pub struct RestoredBackup {
     /// The vault, unlocked with the backup's envelope.
@@ -191,5 +212,47 @@ mod tests {
             restore_backup_with_passphrase(sealed, &pass),
             Err(VaultError::BackupObject { object_id, .. }) if object_id == id
         ));
+    }
+
+    #[test]
+    fn streamed_decoding_is_bounded() {
+        let identity = DeviceIdentity::generate().unwrap();
+        let created = create_vault(
+            &identity,
+            &SecretString::from("backup unit passphrase"),
+            Argon2Params::for_tests(),
+            None,
+            chrono::Utc::now(),
+        )
+        .unwrap();
+        let envs = created.local_envelopes();
+        let backup = created
+            .unlocked
+            .create_backup(
+                &envs.password,
+                &envs.recovery,
+                Vec::new(),
+                chrono::Utc::now(),
+                "t",
+            )
+            .unwrap();
+        let bytes = encode_backup(&backup).unwrap();
+        assert_eq!(
+            decode_backup_from(bytes.as_slice()).unwrap().vault_id,
+            backup.vault_id
+        );
+        assert!(decode_backup_limited(bytes.as_slice(), bytes.len()).is_ok());
+        // One byte over the limit, even trailing whitespace, is refused.
+        let mut padded = bytes.clone();
+        padded.push(b' ');
+        assert!(matches!(
+            decode_backup_limited(padded.as_slice(), bytes.len()),
+            Err(VaultError::BackupEncoding)
+        ));
+        assert!(matches!(
+            decode_backup_limited(bytes.as_slice(), bytes.len() - 1),
+            Err(VaultError::BackupEncoding)
+        ));
+        assert!(decode_backup_from(&b"not json"[..]).is_err());
     }
 }

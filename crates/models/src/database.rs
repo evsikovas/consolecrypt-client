@@ -19,6 +19,11 @@ pub enum DbEngine {
     /// container or a Kubernetes Pod. `database` holds the file path; `host`
     /// and `port` are unused.
     Sqlite,
+    /// An engine added by a newer version. Decoding tolerates it so a vault
+    /// object of a future engine does not fail the whole object; nothing can
+    /// open, create or edit such a connection here.
+    #[serde(other)]
+    Unknown,
 }
 
 impl DbEngine {
@@ -40,13 +45,30 @@ impl DbEngine {
             Self::Clickhouse => 8123,
             Self::Redis => 6379,
             Self::Mongodb => 27017,
-            Self::Sqlite => 0,
+            Self::Sqlite | Self::Unknown => 0,
         }
     }
 
     /// Engines reached over a network socket (SQLite opens a file).
     pub const fn networked(self) -> bool {
-        !matches!(self, Self::Sqlite)
+        !matches!(self, Self::Sqlite | Self::Unknown)
+    }
+
+    /// Engines that clients up to 0.9.1 decode. A vault object with any other
+    /// engine fails to decode there (one unreadable object; a backup that
+    /// holds one cannot be restored), so connections of later engines stay on
+    /// this device: never synced, backed up into the vault or shared. Syncing
+    /// them is enabled in a later release.
+    pub const fn local_only(self) -> bool {
+        !matches!(
+            self,
+            Self::Postgresql
+                | Self::Mysql
+                | Self::Mariadb
+                | Self::Clickhouse
+                | Self::Redis
+                | Self::Mongodb
+        )
     }
 }
 
@@ -298,6 +320,10 @@ pub enum DbOptions {
         #[serde(default = "production_default")]
         read_only: bool,
     },
+    /// Options of an engine added by a newer version (see
+    /// [`DbEngine::Unknown`]); their fields are not kept.
+    #[serde(other)]
+    Unknown,
 }
 
 impl DbOptions {
@@ -320,6 +346,7 @@ impl DbOptions {
                 read_preference: MongoReadPreference::default(),
             },
             DbEngine::Sqlite => Self::Sqlite { read_only: true },
+            DbEngine::Unknown => Self::Unknown,
         }
     }
 
@@ -332,6 +359,7 @@ impl DbOptions {
             Self::Redis { .. } => DbEngine::Redis,
             Self::Mongodb { .. } => DbEngine::Mongodb,
             Self::Sqlite { .. } => DbEngine::Sqlite,
+            Self::Unknown => DbEngine::Unknown,
         }
     }
 }
@@ -415,6 +443,9 @@ impl DbConnection {
             || self.auth.secret_ids().contains(&ObjectId::NIL)
         {
             return Err(invalid("reference", "invalid object reference"));
+        }
+        if self.engine == DbEngine::Unknown {
+            return Err(invalid("engine", "engine of a newer version"));
         }
         self.route.validate()?;
         text(&self.name, 256, false, "name")?;
@@ -503,7 +534,7 @@ impl DbConnection {
                     }
                 }
             }
-            DbOptions::Redis { .. } | DbOptions::Sqlite { .. } => {}
+            DbOptions::Redis { .. } | DbOptions::Sqlite { .. } | DbOptions::Unknown => {}
             DbOptions::Mongodb {
                 auth_source,
                 replica_set,
@@ -669,6 +700,33 @@ mod tests {
         let mut secret = value.clone();
         secret.auth.password_secret_id = Some(ObjectId::new());
         assert!(secret.validate().is_err());
+    }
+
+    #[test]
+    fn engines_of_newer_versions_decode_as_unknown_and_never_validate() {
+        let mut json = serde_json::to_value(DbConnection::new(
+            "future",
+            "db.example.test",
+            DbEngine::Postgresql,
+        ))
+        .unwrap();
+        json["engine"] = serde_json::json!("cassandra");
+        json["options"] = serde_json::json!({"kind": "cassandra", "page_size": 500});
+        let decoded: DbConnection = serde_json::from_value(json).unwrap();
+        assert_eq!(decoded.engine, DbEngine::Unknown);
+        assert_eq!(decoded.options, DbOptions::Unknown);
+        assert!(decoded.validate().is_err());
+        assert!(DbEngine::Unknown.local_only() && DbEngine::Sqlite.local_only());
+        assert!(!DbEngine::Postgresql.local_only() && !DbEngine::Mongodb.local_only());
+        // Known shapes stay strict.
+        let mut strict = serde_json::to_value(DbConnection::new(
+            "x",
+            "db.example.test",
+            DbEngine::Redis,
+        ))
+        .unwrap();
+        strict["options"]["local_infile"] = serde_json::json!(true);
+        assert!(serde_json::from_value::<DbConnection>(strict).is_err());
     }
 
     #[test]

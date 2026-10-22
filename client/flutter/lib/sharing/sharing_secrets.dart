@@ -6,6 +6,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
@@ -350,10 +351,13 @@ class _SharingSecretDialogState extends ConsumerState<SharingSecretDialog> {
                 const SizedBox(height: 12),
                 if (_busy) const LinearProgressIndicator(),
                 if (_failed) Text(l.sharingUnavailable),
-                Text(
-                  _secret?.expose() ?? '••••••••', // l10n-ignore: masked secret
-                  key: const ValueKey('sharing-secret-value'),
-                  style: const TextStyle(fontFamily: 'monospace'),
+                RevealedSecret(
+                  visible: _secret != null,
+                  child: Text(
+                    _secret?.expose() ?? '••••••••', // l10n-ignore: masked secret
+                    key: const ValueKey('sharing-secret-value'),
+                    style: const TextStyle(fontFamily: 'monospace'),
+                  ),
                 ),
                 GlassButton(
                   key: const ValueKey('sharing-secret-reveal'),
@@ -512,17 +516,21 @@ class _SharingSecretEditDialogState extends ConsumerState<SharingSecretEditDialo
                 Text(l.sharingSecretWarning),
                 if (!allowed || _failed) Text(l.sharingUnavailable),
                 if (_busy) const LinearProgressIndicator(),
-                TextField(
-                  key: const ValueKey('sharing-secret-edit-value'),
+                RevealedSecretText(
                   controller: _value,
-                  enabled: allowed && !_busy,
-                  obscureText: !key,
-                  maxLines: key ? 6 : 1,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  keyboardType: key ? TextInputType.multiline : TextInputType.visiblePassword,
-                  decoration: InputDecoration(labelText: l.sharingSecretSelection),
-                  onChanged: (_) => setState(() => _confirmed = false),
+                  enabled: key,
+                  child: TextField(
+                    key: const ValueKey('sharing-secret-edit-value'),
+                    controller: _value,
+                    enabled: allowed && !_busy,
+                    obscureText: !key,
+                    maxLines: key ? 6 : 1,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    keyboardType: key ? TextInputType.multiline : TextInputType.visiblePassword,
+                    decoration: InputDecoration(labelText: l.sharingSecretSelection),
+                    onChanged: (_) => setState(() => _confirmed = false),
+                  ),
                 ),
                 CheckboxListTile(
                   key: const ValueKey('sharing-secret-edit-confirmed'),

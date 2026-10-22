@@ -4,11 +4,13 @@
 //! as bound values. Each listing is one statement, because the remote route
 //! starts the program once per statement.
 use crate::{
+    details::{DetailKind, ObjectDetails},
     session::{Collect, DbSession, Driver},
     DbCell, DbError, DbObjectKind, DbObjectRef, DbParameter, DbQueryRequest, DbTreeNode,
     DbTreePage,
 };
 use serde_json::{json, Value};
+
 
 /// The schema name of the opened file.
 pub(crate) const MAIN: &str = "main";
@@ -388,8 +390,9 @@ impl DbSession {
         }))
     }
 
-    /// Size, page and mode facts of the file, or of one table or index.
-    pub(crate) async fn sqlite_details(&self, object: &DbObjectRef) -> Result<Value, DbError> {
+    /// Size, page and mode facts of the file, or of one table, view or index
+    /// (row estimate from `sqlite_stat1` when ANALYZE ran).
+    pub(crate) async fn sqlite_details(&self, object: &DbObjectRef) -> Result<ObjectDetails, DbError> {
         let file = self
             .sqlite_rows(
                 "SELECT (SELECT page_size FROM pragma_page_size), (SELECT page_count FROM pragma_page_count), \
@@ -398,64 +401,100 @@ impl DbSession {
                 &[],
             )
             .await?;
-        let number = |value: Option<&String>| value.and_then(|v| v.parse::<i64>().ok());
-        let first = file.first().cloned().unwrap_or_default();
-        let page_size = number(first.first());
-        let page_count = number(first.get(1));
-        let stats = number(first.get(3)) == Some(1);
-        match object.kind {
-            DbObjectKind::Database => Ok(json!({
-                "engine": "sqlite",
-                "version": self.info.server_version,
-                "page_size": page_size,
-                "page_count": page_count,
-                "size_bytes": page_size.zip(page_count).map(|(size, count)| size * count),
-                "freelist_count": number(first.get(2)),
-                "statistics": stats,
-            })),
-            DbObjectKind::Table | DbObjectKind::View | DbObjectKind::Index => {
-                let rows = self
-                    .sqlite_rows(
-                        "SELECT type, tbl_name, COALESCE(sql, ''), \
-                         (SELECT count(*) FROM pragma_table_info(?1)), \
-                         (SELECT count(*) FROM pragma_index_list(?1)), \
-                         (SELECT count(*) FROM pragma_foreign_key_list(?1)) \
-                         FROM sqlite_master WHERE name = ?1",
-                        &[text(&object.name)],
-                    )
-                    .await?;
-                let row = rows.first().ok_or(DbError::QueryFailed)?;
-                let (strict, without_rowid) = table_options(row.get(2).map_or("", String::as_str));
-                // sqlite_stat1 (after ANALYZE) holds the row count estimate.
-                let estimate = if stats {
-                    self.sqlite_rows(
-                        "SELECT stat FROM sqlite_stat1 WHERE tbl = ?1 ORDER BY idx IS NULL DESC LIMIT 1",
-                        &[text(row.get(1).map_or(&object.name, |table| table))],
-                    )
-                    .await?
-                    .first()
-                    .and_then(|row| row.first())
-                    .and_then(|stat| stat.split_whitespace().next()?.parse::<i64>().ok())
-                } else {
-                    None
-                };
-                Ok(json!({
-                    "engine": "sqlite",
-                    "type": row.first(),
-                    "table": row.get(1),
-                    "columns": number(row.get(3)),
-                    "indexes": number(row.get(4)),
-                    "foreign_keys": number(row.get(5)),
-                    "strict": strict,
-                    "without_rowid": without_rowid,
-                    "autoincrement": row.get(2).is_some_and(|sql| sql.to_ascii_uppercase().contains("AUTOINCREMENT")),
-                    "row_count_estimate": estimate,
-                    "page_size": page_size,
-                    "database_page_count": page_count,
-                }))
-            }
-            _ => Err(DbError::InvalidRequest),
+        let first = file.into_iter().next().unwrap_or_default();
+        let value = |index: usize| first.get(index).cloned().unwrap_or_default();
+        let number = |text: &str| text.parse::<i64>().ok();
+        let (page_size, page_count) = (value(0), value(1));
+        let stats = value(3) == "1";
+        let yes_no = |flag: bool| if flag { "yes" } else { "no" };
+        let mut details = ObjectDetails::default();
+        if object.kind == DbObjectKind::Database {
+            let size = number(&page_size)
+                .zip(number(&page_count))
+                .map(|(size, count)| (size * count).to_string())
+                .unwrap_or_default();
+            details
+                .section("general")
+                .field("engine", "SQLite", DetailKind::Code)
+                .field("version", &self.info.server_version, DetailKind::Code);
+            details
+                .section("size")
+                .field("total_size", &size, DetailKind::Bytes)
+                .field("page_size", &page_size, DetailKind::Bytes)
+                .field("page_count", &page_count, DetailKind::Count)
+                .field("freelist_count", &value(2), DetailKind::Count);
+            return Ok(details.done());
         }
+        let rows = self
+            .sqlite_rows(
+                "SELECT type, tbl_name, COALESCE(sql, ''), \
+                 (SELECT count(*) FROM pragma_table_info(?1)), \
+                 (SELECT count(*) FROM pragma_index_list(?1)), \
+                 (SELECT count(*) FROM pragma_foreign_key_list(?1)), \
+                 (SELECT count(*) FROM sqlite_master WHERE type = 'trigger' AND tbl_name = ?1) \
+                 FROM sqlite_master WHERE name = ?1",
+                &[text(&object.name)],
+            )
+            .await?;
+        let row = rows.into_iter().next().ok_or(DbError::QueryFailed)?;
+        let cell = |index: usize| row.get(index).cloned().unwrap_or_default();
+        let (kind, table, sql) = (cell(0), cell(1), cell(2));
+        let (strict, without_rowid) = table_options(&sql);
+        // sqlite_stat1 (after ANALYZE) holds the row count estimate.
+        let estimate = if stats && kind != "view" {
+            self.sqlite_rows(
+                "SELECT stat FROM sqlite_stat1 WHERE tbl = ?1 AND (?2 = '' OR idx = ?2) \
+                 ORDER BY idx IS NULL DESC LIMIT 1",
+                &[
+                    text(&table),
+                    text(if kind == "index" { &object.name } else { "" }),
+                ],
+            )
+            .await?
+            .first()
+            .and_then(|row| row.first())
+            .and_then(|stat| stat.split_whitespace().next().map(str::to_owned))
+            .unwrap_or_default()
+        } else {
+            String::new()
+        };
+        details
+            .section("general")
+            .field("kind", &kind, DetailKind::Keyword);
+        if kind == "index" {
+            details.field("table", &table, DetailKind::Code);
+        }
+        if kind == "table" {
+            details
+                .field("strict", yes_no(strict), DetailKind::Keyword)
+                .field("without_rowid", yes_no(without_rowid), DetailKind::Keyword)
+                .field(
+                    "autoincrement",
+                    yes_no(sql.to_ascii_uppercase().contains("AUTOINCREMENT")),
+                    DetailKind::Keyword,
+                );
+        }
+        details
+            .section("size")
+            .field("rows", &estimate, DetailKind::Estimate);
+        if kind != "index" {
+            details
+                .section("structure")
+                .field("columns", &cell(3), DetailKind::Count);
+        }
+        if kind == "table" {
+            details
+                .field("indexes", &cell(4), DetailKind::Count)
+                .field("foreign_keys", &cell(5), DetailKind::Count)
+                .field("triggers", &cell(6), DetailKind::Count);
+        }
+        details.field_with_unit(
+            "definition_length",
+            &sql.chars().count().to_string(),
+            DetailKind::Count,
+            Some("characters"),
+        );
+        Ok(details.done())
     }
 }
 

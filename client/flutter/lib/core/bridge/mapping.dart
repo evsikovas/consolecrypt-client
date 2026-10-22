@@ -14,6 +14,7 @@ import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/core/models/sftp_browser.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/models/terminal_colors.dart';
+import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/src/rust/api/error.dart';
 
@@ -188,6 +189,8 @@ AppException mapBridgeError(BridgeError e) {
       code = AppErrorCode.sessionExpired;
     case 'new_device_identity_required' || 'device_revoked':
       code = AppErrorCode.deviceRevoked;
+    case 'account_disabled':
+      code = AppErrorCode.accountDisabled;
     case 'device_proof_rejected':
       code = AppErrorCode.invalidProof;
     case 'upgrade_required':
@@ -237,6 +240,12 @@ AppException mapBridgeError(BridgeError e) {
       code = AppErrorCode.cancelled;
     case 'permission_denied':
       code = AppErrorCode.forbidden;
+    case 'team_read_only':
+      code = AppErrorCode.forbidden;
+      reason = AppErrorReason.teamReadOnly;
+    case 'team_untrusted':
+      code = AppErrorCode.forbidden;
+      reason = AppErrorReason.teamUntrusted;
     case 'payload_too_large':
       code = AppErrorCode.payloadTooLarge;
       args = {'size': d['size'] ?? '', 'limit': d['limit'] ?? ''};
@@ -272,6 +281,13 @@ AppErrorCode _serverCode(String? protocolCode) => switch (protocolCode) {
   'envelope_rate_limited' => AppErrorCode.envelopeRateLimited,
   'device_in_quarantine' => AppErrorCode.deviceInQuarantine,
   'unavailable' => AppErrorCode.serverUnavailable,
+  'account_disabled' => AppErrorCode.accountDisabled,
+  'enterprise_auth_required' => AppErrorCode.enterpriseAuthRequired,
+  'identity_conflict' => AppErrorCode.identityConflict,
+  'domain_not_allowed' => AppErrorCode.domainNotAllowed,
+  'group_required' => AppErrorCode.groupRequired,
+  'mfa_required' => AppErrorCode.mfaRequired,
+  'idp_unavailable' => AppErrorCode.idpUnavailable,
   _ => AppErrorCode.internal,
 };
 
@@ -304,6 +320,34 @@ ServerInfo serverInfoFromJson(Json j) => ServerInfo(
   upgradeRequired: _bool(j['upgrade_required']),
   registrationOpen: j['registration_open'] as bool? ?? true,
   emailVerificationRequired: _bool(j['email_verification_required']),
+  auth: serverAuthFromJson((j['capabilities'] as Map?)?['auth']),
+);
+
+/// `capabilities.auth` (protocol 1.8); absent → standard.
+ServerAuth serverAuthFromJson(Object? raw) {
+  if (raw is! Map) return ServerAuth.standard;
+  final mode = switch (raw['mode']) {
+    'enterprise' => ServerAuthMode.enterprise,
+    'standard' || null => ServerAuthMode.standard,
+    _ => ServerAuthMode.unknown,
+  };
+  final provider = switch (raw['provider']) {
+    null => null,
+    'oidc' => ServerAuthProvider.oidc,
+    'ldap' => ServerAuthProvider.ldap,
+    _ => ServerAuthProvider.unknown,
+  };
+  final name = (raw['display_name'] as String?)?.trim();
+  return ServerAuth(mode: mode, provider: provider, displayName: name == null || name.isEmpty ? null : name);
+}
+
+/// `EnterpriseOidcChallengeDto`.
+OidcChallenge oidcChallengeFromJson(Json j) => OidcChallenge(
+  ticket: j['ticket']! as String,
+  authorizationUrl: Uri.parse(j['authorization_url']! as String),
+  redirectUri: Uri.parse(j['redirect_uri']! as String),
+  loopback: _bool(j['loopback']),
+  expiresAt: fromMs(j['expires_at_ms']),
 );
 
 // ---- inventory ---------------------------------------------------------------------
@@ -746,6 +790,8 @@ Json localSettingsToJson(LocalSettings s) => {
   'workspace_panel_style': s.workspacePanelStyle.name,
   'databases_view': s.databasesView.name,
   'docker_terminal_hint_shown': s.dockerTerminalHintShown,
+  'db_code_wrap': s.dbCodeWrap,
+  'screen_capture_protection': s.screenCaptureProtection.wireName,
   'sftp_default_editor': s.sftpDefaultEditor == null
       ? null
       : {'kind': s.sftpDefaultEditor!.kind.wireName, 'value': s.sftpDefaultEditor!.value},
@@ -798,7 +844,7 @@ LocalSettings localSettingsFromJson(Json j) {
           if (entry.value case final String value when value.length <= 64) entry.key: value,
     },
     terminalScrollback: _int(j['terminal_scrollback']) ?? d.terminalScrollback,
-    clipboardClearSeconds: _int(j['clipboard_clear_seconds']) ?? d.clipboardClearSeconds,
+    clipboardClearSeconds: clipboardClearSeconds(_int(j['clipboard_clear_seconds']) ?? d.clipboardClearSeconds),
     autoLockMinutes: _int(j['auto_lock_minutes']) ?? d.autoLockMinutes,
     appLocale: AppLocale.fromWire(_str(j['app_locale'])),
     glassMode: GlassMode.fromWire(_str(j['glass_mode'])),
@@ -811,6 +857,13 @@ LocalSettings localSettingsFromJson(Json j) {
     ),
     databasesView: _byWire(CollectionView.values, (view) => view.name, j['databases_view'], d.databasesView),
     dockerTerminalHintShown: j['docker_terminal_hint_shown'] == true,
+    dbCodeWrap: j['db_code_wrap'] != false,
+    screenCaptureProtection: _byWire(
+      ScreenCaptureProtection.values,
+      (e) => e.wireName,
+      j['screen_capture_protection'],
+      d.screenCaptureProtection,
+    ),
   );
 }
 

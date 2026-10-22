@@ -604,6 +604,15 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
       ),
       _Item(
         group: _Group.actions,
+        icon: Icons.sticky_note_2_outlined,
+        title: l10n.navNotes,
+        onSelect: () {
+          ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.notes);
+          _close();
+        },
+      ),
+      _Item(
+        group: _Group.actions,
         icon: Icons.auto_awesome_rounded,
         title: l10n.paletteOpenAiChat,
         onSelect: () {

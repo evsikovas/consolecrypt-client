@@ -39,6 +39,9 @@ getrandom = "0.4"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "1", optional = true, features = ["keychain"] }
+# setxattr: `com.apple.quarantine` on downloaded files (mark.rs). Already in
+# the lockfile.
+libc = "0.2"
 
 # Device unlock (S5): Secure Enclave key + LAContext (Security and
 # LocalAuthentication frameworks). Already in the lockfile; no new crates.

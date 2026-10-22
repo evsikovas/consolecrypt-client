@@ -17,6 +17,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
+import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
@@ -147,6 +148,10 @@ class _TabStrip extends ConsumerWidget {
           GlassTab(
             key: ValueKey('tab-${tab.target.label}-$i'),
             title: tab.displayTitle,
+            teamColor: switch (tab.host) {
+              final host? => teamColor(teamOf(ref, host.id)?.color),
+              null => null,
+            },
             attention: tab.attention,
             subtitle: _subtitle(context, tab, subtitleMode),
             state: _state(tab),

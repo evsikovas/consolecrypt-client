@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/app/about.dart';
 import 'package:consolecrypt/app/app_info.dart';
 import 'package:consolecrypt/app/auto_lock.dart';
+import 'package:consolecrypt/app/capture_protection.dart';
 import 'package:consolecrypt/app/commands.dart';
 import 'package:consolecrypt/app/design_gallery_screen.dart';
 import 'package:consolecrypt/app/gate.dart';
@@ -33,6 +34,8 @@ class ConsoleCryptApp extends ConsumerWidget {
     // the Windows high-contrast theme via MediaQuery (highContrast* themes).
     final increaseContrast = ref.watch(osIncreaseContrastProvider);
     final localProfile = ref.watch(activeProfileProvider.select((p) => p?.isLocal ?? false));
+    // Created at start so a clipboard clear pending from before a restart runs.
+    ref.watch(secureClipboardProvider);
     return MaterialApp.router(
       title: kAppName,
       debugShowCheckedModeBanner: false,
@@ -52,17 +55,19 @@ class ConsoleCryptApp extends ConsumerWidget {
       // on macOS, the unified transparent title bar — the shell and the gate
       // screens reserve the traffic-light area and route toolbar clicks
       // through `MacosToolbarPassthrough` (ADR-0101 §11).
-      builder: (context, child) => AutoLockScope(
-        child: GlassAppScope(
-          ambient: !AppPlatform.isMobile,
-          unifiedTitlebar: AppPlatform.isMacOS,
-          localProfileCue: localProfile,
-          child: ColoredBox(
-            color: AppPlatform.isMobile ? GlassTokens.of(context).ambient.base : Colors.transparent,
-            child: UpdateNoticeScope(
-              navigatorKey: rootNavigatorKey,
-              child: EnrollmentAutomationScope(
-                child: DesignGalleryShortcut(child: AppCommandsScope(child: child ?? const SizedBox.shrink())),
+      builder: (context, child) => CaptureProtectionScope(
+        child: AutoLockScope(
+          child: GlassAppScope(
+            ambient: !AppPlatform.isMobile,
+            unifiedTitlebar: AppPlatform.isMacOS,
+            localProfileCue: localProfile,
+            child: ColoredBox(
+              color: AppPlatform.isMobile ? GlassTokens.of(context).ambient.base : Colors.transparent,
+              child: UpdateNoticeScope(
+                navigatorKey: rootNavigatorKey,
+                child: EnrollmentAutomationScope(
+                  child: DesignGalleryShortcut(child: AppCommandsScope(child: child ?? const SizedBox.shrink())),
+                ),
               ),
             ),
           ),
@@ -88,8 +93,7 @@ class AppCommandsScope extends ConsumerWidget {
     Widget result = Shortcuts(
       shortcuts: {
         if (!capturing)
-          for (final c in commands)
-            ?c.activator: AppCommandIntent(c.id),
+          for (final c in commands) ?c.activator: AppCommandIntent(c.id),
       },
       child: Actions(
         actions: {

@@ -83,6 +83,7 @@ class _TerminalDialogState extends ConsumerState<_TerminalDialog> {
           hostName: widget.hostName,
           containerId: widget.container.id,
           containerName: widget.container.name,
+          hostId: widget.session.hostId,
           command: [_shell],
         ),
       );
