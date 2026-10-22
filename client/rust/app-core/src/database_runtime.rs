@@ -198,7 +198,7 @@ fn invalid(reason: &'static str) -> AppError {
     AppError::invalid("database", reason)
 }
 
-fn db_error(error: DbError) -> AppError {
+pub(crate) fn db_error(error: DbError) -> AppError {
     let code = match error {
         DbError::InvalidRequest => "invalid_request",
         DbError::PolicyDenied => "policy_denied",

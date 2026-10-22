@@ -35,6 +35,7 @@ mod codec;
 mod config;
 mod credentials;
 mod database_ai;
+mod database_designer;
 mod database_forward_route;
 mod database_history;
 mod database_import;

@@ -4,6 +4,7 @@
 pub mod types;
 pub use types::*;
 mod clickhouse;
+pub mod designer;
 pub mod details;
 pub mod edit;
 pub mod export;

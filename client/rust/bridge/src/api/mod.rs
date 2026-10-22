@@ -11,6 +11,7 @@ pub mod app;
 pub mod backup;
 pub mod credentials;
 pub mod database;
+pub mod database_designer;
 pub mod docker;
 pub mod error;
 pub mod inventory;
