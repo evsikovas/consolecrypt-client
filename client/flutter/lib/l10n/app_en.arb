@@ -13643,7 +13643,7 @@
       }
     }
   },
-  "dbDetailsField": "{id, select, kind{Object type} persistence{Storage} schema{Schema} owner{Owner} tablespace{Tablespace} comment{Comment} rows{Rows} live_rows{Live rows} dead_rows{Dead rows} total_size{Total size} table_size{Table data} index_size{Indexes} toast_size{TOAST} columns{Columns} indexes{Indexes} constraints{Constraints} triggers{Triggers} definition_length{Definition length, characters} partition_key{Partition key} partitions{Partitions} partition_of{Partition of} last_vacuum{Last VACUUM} last_autovacuum{Last autovacuum} last_analyze{Last ANALYZE} last_autoanalyze{Last autoanalyze} engine{Engine} row_format{Row format} collation{Collation} definer{Definer} updatable{Updatable} security{Security} average_row{Average row} free_space{Free space} auto_increment{Next AUTO_INCREMENT} created{Created} updated{Updated} uncompressed_size{Uncompressed} parts{Active parts} sorting_key{Sorting key} primary_key{Primary key} sampling_key{Sampling key} ttl{TTL} metadata_modified{Metadata changed} type{Type} encoding{Encoding} database{Database} memory{Memory} keys{Keys} length_bytes{Length, bytes} length_fields{Fields} length_elements{Elements} length_members{Members} length_entries{Entries} other{{id}}}",
+  "dbDetailsField": "{id, select, kind{Object type} persistence{Storage} schema{Schema} owner{Owner} tablespace{Tablespace} comment{Comment} rows{Rows} live_rows{Live rows} dead_rows{Dead rows} total_size{Total size} table_size{Table data} index_size{Indexes} toast_size{TOAST} columns{Columns} indexes{Indexes} constraints{Constraints} triggers{Triggers} definition_length{Definition length, characters} partition_key{Partition key} partitions{Partitions} partition_of{Partition of} last_vacuum{Last VACUUM} last_autovacuum{Last autovacuum} last_analyze{Last ANALYZE} last_autoanalyze{Last autoanalyze} engine{Engine} row_format{Row format} collation{Collation} definer{Definer} updatable{Updatable} security{Security} average_row{Average row} free_space{Free space} auto_increment{Next AUTO_INCREMENT} created{Created} updated{Updated} uncompressed_size{Uncompressed} parts{Active parts} sorting_key{Sorting key} primary_key{Primary key} sampling_key{Sampling key} ttl{TTL} metadata_modified{Metadata changed} type{Type} encoding{Encoding} database{Database} memory{Memory} keys{Keys} length_bytes{Length, bytes} length_fields{Fields} length_elements{Elements} length_members{Members} length_entries{Entries} page_size{Page size} page_count{Pages} freelist_count{Free pages} foreign_keys{Foreign keys} strict{STRICT} without_rowid{WITHOUT ROWID} autoincrement{AUTOINCREMENT} version{Version} table{Table} other{{id}}}",
   "@dbDetailsField": {
     "description": "Object details dialog: label of one catalogue fact about a table, view or key; id is a fixed field id.",
     "placeholders": {
@@ -13652,7 +13652,7 @@
       }
     }
   },
-  "dbDetailsKeyword": "{id, select, table{Table} partitioned_table{Partitioned table} view{View} materialized_view{Materialized view} foreign_table{Foreign table} unlogged{Unlogged} temporary{Temporary} other{{id}}}",
+  "dbDetailsKeyword": "{id, select, table{Table} partitioned_table{Partitioned table} view{View} materialized_view{Materialized view} foreign_table{Foreign table} unlogged{Unlogged} temporary{Temporary} index{Index} yes{Yes} no{No} other{{id}}}",
   "@dbDetailsKeyword": {
     "description": "Object details dialog: the kind or storage of a relation; id is a fixed keyword.",
     "placeholders": {
@@ -15573,5 +15573,101 @@
         "type": "String"
       }
     }
+  },
+  "dbFolderKeys": "Keys",
+  "@dbFolderKeys": {
+    "description": "Database structure tree: folder of a table's primary key and unique constraints."
+  },
+  "dbFolderForeignKeys": "Foreign keys",
+  "@dbFolderForeignKeys": {
+    "description": "Database structure tree: folder of a table's foreign keys to other tables."
+  },
+  "dbFolderReferences": "References",
+  "@dbFolderReferences": {
+    "description": "Database structure tree: folder of foreign keys of other tables that point at this table."
+  },
+  "dbFolderDataTypes": "Data types",
+  "@dbFolderDataTypes": {
+    "description": "Database structure tree: folder of the engine's storage classes / type affinities (informational)."
+  },
+  "dbFolderTableTriggers": "Table triggers",
+  "@dbFolderTableTriggers": {
+    "description": "Database structure tree: folder of all table triggers of a database file."
+  },
+  "dbLocalOnly": "This device only",
+  "@dbLocalOnly": {
+    "description": "Badge on a database connection that is stored on this device only (not synced or shared)."
+  },
+  "dbLocalOnlyHelp": "Stored on this device only: not synced, backed up to the vault or shared, because older app versions cannot open this connection type.",
+  "@dbLocalOnlyHelp": {
+    "description": "Explanation of the 'this device only' badge for database connections."
+  },
+  "dbSqlitePath": "Database file path",
+  "@dbSqlitePath": {
+    "description": "SQLite connection form: path of the database file."
+  },
+  "dbSqliteLocation": "File location",
+  "@dbSqliteLocation": {
+    "description": "SQLite connection form: where the database file is (this computer, SSH host, container, Pod)."
+  },
+  "dbSqliteThisComputer": "This computer",
+  "@dbSqliteThisComputer": {
+    "description": "SQLite connection form: the file is on this computer."
+  },
+  "dbSqliteSshHost": "SSH host",
+  "@dbSqliteSshHost": {
+    "description": "SQLite connection form: the file is on a saved SSH host."
+  },
+  "dbSqliteDocker": "Docker container",
+  "@dbSqliteDocker": {
+    "description": "SQLite connection form: the file is inside a Docker container."
+  },
+  "dbSqliteKubernetes": "Kubernetes Pod",
+  "@dbSqliteKubernetes": {
+    "description": "SQLite connection form: the file is inside a Kubernetes Pod."
+  },
+  "dbSqliteKubeContext": "Kubernetes context",
+  "@dbSqliteKubeContext": {
+    "description": "SQLite connection form: saved Kubernetes context of the Pod."
+  },
+  "dbSqliteChooseFile": "Choose file…",
+  "@dbSqliteChooseFile": {
+    "description": "SQLite connection form: button that opens a file chooser for an existing database file."
+  },
+  "dbSqliteCreateFile": "Create new database…",
+  "@dbSqliteCreateFile": {
+    "description": "SQLite connection form: button that creates a new empty database file at a chosen location."
+  },
+  "dbSqliteReadOnly": "Read only",
+  "@dbSqliteReadOnly": {
+    "description": "SQLite connection form: open the file read-only (on by default)."
+  },
+  "dbSqliteReadOnlyHelp": "The file opens read-only: no query can change it.",
+  "@dbSqliteReadOnlyHelp": {
+    "description": "SQLite connection form: help under the read-only switch."
+  },
+  "dbSqliteRemoteHelp": "Queries run with the sqlite3 program (3.16 or newer) on the host, in the container or Pod; the file is not copied.",
+  "@dbSqliteRemoteHelp": {
+    "description": "SQLite connection form: how remote files are read."
+  },
+  "dbSqliteLocalUnavailable": "Files on this device open in the desktop app only. Choose an SSH host, a container or a Pod.",
+  "@dbSqliteLocalUnavailable": {
+    "description": "SQLite connection form/error on phones: local files are not supported."
+  },
+  "dbErrorSqliteNotDatabase": "The file is not an SQLite database (or it is encrypted).",
+  "@dbErrorSqliteNotDatabase": {
+    "description": "Database error: the chosen file is not an SQLite database."
+  },
+  "dbErrorSqliteMissing": "The database file was not found. A new file is created only with “Create new database”.",
+  "@dbErrorSqliteMissing": {
+    "description": "Database error: the SQLite file does not exist (it is never created implicitly)."
+  },
+  "dbErrorSqliteCli": "sqlite3 (3.16 or newer) is not installed on the host, in the container or Pod. Install it and try again.",
+  "@dbErrorSqliteCli": {
+    "description": "Database error: the remote sqlite3 program is missing or too old."
+  },
+  "dbErrorKubeExecBlocked": "Running commands in this production Kubernetes context is turned off in its settings.",
+  "@dbErrorKubeExecBlocked": {
+    "description": "Database error: a production Kubernetes context does not allow exec."
   }
 }

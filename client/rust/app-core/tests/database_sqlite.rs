@@ -61,7 +61,9 @@ async fn sqlite_connections_are_device_local_and_open_files_read_only() {
     let mut rows = Vec::new();
     for _ in 0..50 {
         let events = app.db_poll(query.clone(), 200).await.unwrap();
-        let done = events.iter().any(|event| matches!(event, DbQueryEvent::Done));
+        let done = events
+            .iter()
+            .any(|event| matches!(event, DbQueryEvent::Done));
         for event in events {
             if let DbQueryEvent::Rows { rows: batch, .. } = event {
                 rows.extend(batch);
@@ -73,7 +75,10 @@ async fn sqlite_connections_are_device_local_and_open_files_read_only() {
     }
     assert_eq!(rows, vec![vec![DbCell::Text("hello".into())]]);
     assert!(app
-        .db_execute(live.info.id.clone(), request("DELETE FROM notes WHERE id = 1"))
+        .db_execute(
+            live.info.id.clone(),
+            request("DELETE FROM notes WHERE id = 1")
+        )
         .await
         .is_err());
     let history = app
@@ -84,7 +89,9 @@ async fn sqlite_connections_are_device_local_and_open_files_read_only() {
     assert_eq!(history.entries[0].engine, DbEngine::Sqlite);
     app.db_disconnect(live.info.id).await.unwrap();
 
-    app.db_delete_connection(saved.id.to_string()).await.unwrap();
+    app.db_delete_connection(saved.id.to_string())
+        .await
+        .unwrap();
     assert!(app.db_connections().await.unwrap().is_empty());
     // Creating a file is explicit and refuses an existing one.
     let fresh = tmp.path().join("fresh.db");

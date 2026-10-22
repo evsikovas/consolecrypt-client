@@ -615,7 +615,8 @@ impl DockerClient {
                     Err(error) if error.kind() == std::io::ErrorKind::UnexpectedEof => break,
                     Err(_) => return Err(DockerError::Connection),
                 }
-                let size = u32::from_be_bytes([header[4], header[5], header[6], header[7]]) as usize;
+                let size =
+                    u32::from_be_bytes([header[4], header[5], header[6], header[7]]) as usize;
                 if size > MAX_BODY {
                     return Err(DockerError::Protocol);
                 }
@@ -629,7 +630,9 @@ impl DockerClient {
                         if frame.len() > room {
                             output.truncated = true;
                         }
-                        output.stdout.extend_from_slice(&frame[..frame.len().min(room)]);
+                        output
+                            .stdout
+                            .extend_from_slice(&frame[..frame.len().min(room)]);
                         if output.truncated {
                             break;
                         }

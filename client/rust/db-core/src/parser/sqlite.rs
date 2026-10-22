@@ -428,9 +428,12 @@ pub(super) fn pragma_arguments(text: &str) -> Result<String, DbError> {
         }
         let token = |offset: usize| tokens.get(at + offset).map(|t| &t.token);
         let (word, closing) = match (token(0), token(1), token(2), token(3)) {
-            (Some(Token::Word(_)), Some(Token::LParen), Some(Token::Word(word)), Some(Token::RParen)) => {
-                (word, 4)
-            }
+            (
+                Some(Token::Word(_)),
+                Some(Token::LParen),
+                Some(Token::Word(word)),
+                Some(Token::RParen),
+            ) => (word, 4),
             (Some(Token::Word(_)), Some(Token::Eq), Some(Token::Word(word)), _) => (word, 3),
             _ => {
                 index += 1;
@@ -465,12 +468,21 @@ mod tests {
         assert_eq!(pragma_kind("user_version", false, true), PragmaKind::Write);
         assert_eq!(pragma_kind("journal_mode", false, true), PragmaKind::Write);
         assert_eq!(pragma_kind("optimize", false, false), PragmaKind::Write);
-        assert_eq!(pragma_kind("wal_checkpoint", true, false), PragmaKind::Write);
+        assert_eq!(
+            pragma_kind("wal_checkpoint", true, false),
+            PragmaKind::Write
+        );
         assert_eq!(pragma_kind("query_only", false, true), PragmaKind::Denied);
-        assert_eq!(pragma_kind("writable_schema", false, true), PragmaKind::Denied);
+        assert_eq!(
+            pragma_kind("writable_schema", false, true),
+            PragmaKind::Denied
+        );
         assert_eq!(pragma_kind("rekey", false, true), PragmaKind::Denied);
         assert_eq!(pragma_kind("key", false, false), PragmaKind::Denied);
-        assert_eq!(pragma_kind("cipher_compatibility", false, true), PragmaKind::Denied);
+        assert_eq!(
+            pragma_kind("cipher_compatibility", false, true),
+            PragmaKind::Denied
+        );
     }
 
     #[test]

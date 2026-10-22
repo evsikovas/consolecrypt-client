@@ -11,13 +11,15 @@ use crate::{
 };
 use serde_json::{json, Value};
 
-
 /// The schema name of the opened file.
 pub(crate) const MAIN: &str = "main";
 
 /// Storage classes and the declared types that get each affinity.
 pub const SQLITE_TYPES: [(&str, &str); 5] = [
-    ("INTEGER", "INT, INTEGER, TINYINT, SMALLINT, MEDIUMINT, BIGINT, INT8"),
+    (
+        "INTEGER",
+        "INT, INTEGER, TINYINT, SMALLINT, MEDIUMINT, BIGINT, INT8",
+    ),
     ("TEXT", "TEXT, CHAR(n), VARCHAR(n), NCHAR(n), CLOB"),
     ("REAL", "REAL, DOUBLE, DOUBLE PRECISION, FLOAT"),
     ("NUMERIC", "NUMERIC, DECIMAL(p,s), BOOLEAN, DATE, DATETIME"),
@@ -228,10 +230,7 @@ impl DbSession {
                 .await?
             {
                 if let [name, value, ..] = row.as_slice() {
-                    nodes.push(leaf(
-                        reference(DbObjectKind::Sequence, name, None),
-                        value,
-                    ));
+                    nodes.push(leaf(reference(DbObjectKind::Sequence, name, None), value));
                 }
             }
         }
@@ -241,14 +240,14 @@ impl DbSession {
         Ok(nodes)
     }
 
-    async fn sqlite_table_children(
-        &self,
-        table: &DbObjectRef,
-    ) -> Result<Vec<DbTreeNode>, DbError> {
-        let rows = self.sqlite_rows(TABLE_CHILDREN, &[text(&table.name)]).await?;
+    async fn sqlite_table_children(&self, table: &DbObjectRef) -> Result<Vec<DbTreeNode>, DbError> {
+        let rows = self
+            .sqlite_rows(TABLE_CHILDREN, &[text(&table.name)])
+            .await?;
         let mut nodes = Vec::new();
         for row in rows {
-            let [kind, name, detail, nullable, default, primary, target, ..] = row.as_slice() else {
+            let [kind, name, detail, nullable, default, primary, target, ..] = row.as_slice()
+            else {
                 continue;
             };
             let object_kind = match kind.as_str() {
@@ -265,10 +264,7 @@ impl DbSession {
             } else {
                 detail.clone()
             };
-            let mut node = leaf(
-                reference(object_kind, name, Some(&table.name)),
-                &detail,
-            );
+            let mut node = leaf(reference(object_kind, name, Some(&table.name)), &detail);
             if object_kind == DbObjectKind::Column {
                 node.nullable = Some(nullable == "true");
                 node.default_value = (!default.is_empty()).then(|| default.clone());
@@ -351,7 +347,11 @@ impl DbSession {
 
     /// `EXPLAIN QUERY PLAN` as a tree: `{"sqlite_plan": [{detail, children}]}`.
     /// The statement passes the guard like any read.
-    pub(crate) async fn sqlite_explain(&self, statement: &str, request: &DbQueryRequest) -> Result<Value, DbError> {
+    pub(crate) async fn sqlite_explain(
+        &self,
+        statement: &str,
+        request: &DbQueryRequest,
+    ) -> Result<Value, DbError> {
         let explain = DbQueryRequest {
             text: format!("EXPLAIN QUERY PLAN {statement}"),
             parameters: request.parameters.clone(),
@@ -392,7 +392,10 @@ impl DbSession {
 
     /// Size, page and mode facts of the file, or of one table, view or index
     /// (row estimate from `sqlite_stat1` when ANALYZE ran).
-    pub(crate) async fn sqlite_details(&self, object: &DbObjectRef) -> Result<ObjectDetails, DbError> {
+    pub(crate) async fn sqlite_details(
+        &self,
+        object: &DbObjectRef,
+    ) -> Result<ObjectDetails, DbError> {
         let file = self
             .sqlite_rows(
                 "SELECT (SELECT page_size FROM pragma_page_size), (SELECT page_count FROM pragma_page_count), \
@@ -567,7 +570,10 @@ mod tests {
             table_options("CREATE TABLE t (a INTEGER PRIMARY KEY) STRICT, WITHOUT ROWID"),
             (true, true)
         );
-        assert_eq!(table_options("CREATE TABLE t (a, b TEXT CHECK (b <> ')'))"), (false, false));
+        assert_eq!(
+            table_options("CREATE TABLE t (a, b TEXT CHECK (b <> ')'))"),
+            (false, false)
+        );
         assert_eq!(
             trigger_event("CREATE TRIGGER x BEFORE UPDATE OF a ON t BEGIN SELECT 1; END"),
             "BEFORE UPDATE"

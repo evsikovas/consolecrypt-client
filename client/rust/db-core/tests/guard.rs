@@ -616,7 +616,11 @@ fn sqlite_pragmas_attach_vacuum_and_file_functions_are_classified() {
         "CREATE TRIGGER x AFTER INSERT ON t BEGIN SELECT 1; END",
         "DROP TABLE t",
     ] {
-        assert_eq!(risk(destructive), Ok(QueryRisk::Destructive), "{destructive}");
+        assert_eq!(
+            risk(destructive),
+            Ok(QueryRisk::Destructive),
+            "{destructive}"
+        );
     }
     for refused in [
         "PRAGMA query_only = 0",

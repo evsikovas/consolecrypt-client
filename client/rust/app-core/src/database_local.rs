@@ -56,7 +56,10 @@ impl AppCore {
     }
 
     /// A saved connection from the vault or from this device.
-    pub(crate) async fn db_saved_connection(&self, id: ObjectId) -> AppResult<Option<DbConnection>> {
+    pub(crate) async fn db_saved_connection(
+        &self,
+        id: ObjectId,
+    ) -> AppResult<Option<DbConnection>> {
         let (_, unlocked) = self.unlocked().await?;
         if let Some(connection) = unlocked.working().db_connection(id) {
             return Ok(Some(connection));
@@ -99,7 +102,8 @@ impl AppCore {
         )?;
         let _profile = self.hold_session(&owner).await?;
         let _generation = owner.hold_unlocked(&unlocked).await?;
-        let stored = serde_json::to_value(&connection).map_err(|_| invalid("invalid_connection"))?;
+        let stored =
+            serde_json::to_value(&connection).map_err(|_| invalid("invalid_connection"))?;
         let id = connection.id;
         owner
             .storage()?
@@ -250,10 +254,13 @@ impl AppCore {
         {
             Some(live) => live,
             None => {
-                let info = self.kube_connect(context.clone()).await.map_err(|error| match error {
-                    AppError::VaultLocked => error,
-                    _ => invalid("kube_unreachable"),
-                })?;
+                let info =
+                    self.kube_connect(context.clone())
+                        .await
+                        .map_err(|error| match error {
+                            AppError::VaultLocked => error,
+                            _ => invalid("kube_unreachable"),
+                        })?;
                 self.kube_live(&info.id).await?
             }
         };
@@ -269,10 +276,13 @@ impl AppCore {
             .map_err(|_| invalid("kube_unreachable"))?
             .is_empty()
         {
-            tokio::time::timeout(std::time::Duration::from_secs(15), live.resources.discover())
-                .await
-                .map_err(|_| invalid("kube_unreachable"))?
-                .map_err(|_| invalid("kube_unreachable"))?;
+            tokio::time::timeout(
+                std::time::Duration::from_secs(15),
+                live.resources.discover(),
+            )
+            .await
+            .map_err(|_| invalid("kube_unreachable"))?
+            .map_err(|_| invalid("kube_unreachable"))?;
         }
         let (group, resource) = match kind {
             DbKubeTargetKind::Service => ("", "services"),
@@ -354,7 +364,9 @@ impl SqliteCliRunner for SshProgram {
                 match message {
                     ChannelMsg::Data { data } => {
                         let room = stdout_limit.saturating_sub(output.stdout.len());
-                        output.stdout.extend_from_slice(&data[..data.len().min(room)]);
+                        output
+                            .stdout
+                            .extend_from_slice(&data[..data.len().min(room)]);
                         if data.len() > room {
                             output.truncated = true;
                             let _ = channel.close().await;
@@ -409,9 +421,9 @@ impl SqliteCliRunner for DockerProgram {
         cancel: CancellationToken,
     ) -> Result<CliOutput, DbError> {
         let stop = cancel.child_token();
-        let run = self
-            .client
-            .exec_collect(&self.container, &argv, &stdin, stdout_limit, stop.clone());
+        let run =
+            self.client
+                .exec_collect(&self.container, &argv, &stdin, stdout_limit, stop.clone());
         let output = tokio::select! {
             biased;
             _ = self.scope.cancelled() => return Err(DbError::SessionClosed),
@@ -471,7 +483,8 @@ impl SqliteCliRunner for KubeProgram {
         let stop = cancel.child_token();
         let api = self.resources.clone();
         let scope = stop.clone();
-        let task = tokio::spawn(async move { api.terminal(request, input_rx, output_tx, scope).await });
+        let task =
+            tokio::spawn(async move { api.terminal(request, input_rx, output_tx, scope).await });
         let collect = async {
             let mut output = CliOutput::default();
             let mut fed = false;
@@ -481,7 +494,9 @@ impl SqliteCliRunner for KubeProgram {
                         fed = true;
                         for chunk in stdin.chunks(32 * 1024) {
                             input
-                                .send(PodTerminalInput::Stdin(zeroize::Zeroizing::new(chunk.to_vec())))
+                                .send(PodTerminalInput::Stdin(zeroize::Zeroizing::new(
+                                    chunk.to_vec(),
+                                )))
                                 .await
                                 .map_err(|_| DbError::ConnectionFailed)?;
                         }
@@ -492,7 +507,9 @@ impl SqliteCliRunner for KubeProgram {
                     }
                     PodTerminalOutput::Stdout(data) => {
                         let room = stdout_limit.saturating_sub(output.stdout.len());
-                        output.stdout.extend_from_slice(&data[..data.len().min(room)]);
+                        output
+                            .stdout
+                            .extend_from_slice(&data[..data.len().min(room)]);
                         if data.len() > room {
                             output.truncated = true;
                             output.status = Some(0);

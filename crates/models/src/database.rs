@@ -586,7 +586,10 @@ fn validate_sqlite(connection: &DbConnection) -> Result<(), ValidationError> {
         connection.route,
         DbRoute::Direct | DbRoute::Ssh { .. } | DbRoute::Docker { .. } | DbRoute::Kubernetes { .. }
     ) {
-        return Err(invalid("route", "SQLite opens a file on this computer, an SSH host, a container or a Pod"));
+        return Err(invalid(
+            "route",
+            "SQLite opens a file on this computer, an SSH host, a container or a Pod",
+        ));
     }
     if connection.auth != DbAuth::default() || !connection.username.is_empty() {
         return Err(invalid("auth", "SQLite files have no credentials"));
@@ -634,7 +637,10 @@ mod tests {
 
     #[test]
     fn typed_engine_defaults_and_references_roundtrip_without_secrets() {
-        for engine in DbEngine::ALL.into_iter().filter(|engine| engine.networked()) {
+        for engine in DbEngine::ALL
+            .into_iter()
+            .filter(|engine| engine.networked())
+        {
             let mut value = DbConnection::new("fixture", "db.example.test", engine);
             value.auth.password_secret_id = Some(ObjectId::new());
             value.validate().unwrap();
@@ -661,17 +667,27 @@ mod tests {
             json["options"],
             serde_json::json!({"kind": "sqlite", "read_only": true})
         );
-        assert_eq!(serde_json::from_value::<DbConnection>(json.clone()).unwrap(), value);
+        assert_eq!(
+            serde_json::from_value::<DbConnection>(json.clone()).unwrap(),
+            value
+        );
         // Omitted read_only stays read-only.
         let mut legacy = json.clone();
         legacy["options"] = serde_json::json!({"kind": "sqlite"});
         assert_eq!(
-            serde_json::from_value::<DbConnection>(legacy).unwrap().options,
+            serde_json::from_value::<DbConnection>(legacy)
+                .unwrap()
+                .options,
             DbOptions::Sqlite { read_only: true }
         );
         for route in [
-            DbRoute::Ssh { host_id: ObjectId::new() },
-            DbRoute::Docker { host_id: None, container: "app".into() },
+            DbRoute::Ssh {
+                host_id: ObjectId::new(),
+            },
+            DbRoute::Docker {
+                host_id: None,
+                container: "app".into(),
+            },
             DbRoute::Kubernetes {
                 context_id: ObjectId::new(),
                 namespace: "data".into(),
@@ -684,9 +700,15 @@ mod tests {
             remote.validate().unwrap();
         }
         for route in [
-            DbRoute::Proxy { proxy_id: ObjectId::new() },
-            DbRoute::Jump { jump_profile_id: ObjectId::new() },
-            DbRoute::Tunnel { tunnel_id: ObjectId::new() },
+            DbRoute::Proxy {
+                proxy_id: ObjectId::new(),
+            },
+            DbRoute::Jump {
+                jump_profile_id: ObjectId::new(),
+            },
+            DbRoute::Tunnel {
+                tunnel_id: ObjectId::new(),
+            },
         ] {
             let mut socket = value.clone();
             socket.route = route;
@@ -719,12 +741,9 @@ mod tests {
         assert!(DbEngine::Unknown.local_only() && DbEngine::Sqlite.local_only());
         assert!(!DbEngine::Postgresql.local_only() && !DbEngine::Mongodb.local_only());
         // Known shapes stay strict.
-        let mut strict = serde_json::to_value(DbConnection::new(
-            "x",
-            "db.example.test",
-            DbEngine::Redis,
-        ))
-        .unwrap();
+        let mut strict =
+            serde_json::to_value(DbConnection::new("x", "db.example.test", DbEngine::Redis))
+                .unwrap();
         strict["options"]["local_infile"] = serde_json::json!(true);
         assert!(serde_json::from_value::<DbConnection>(strict).is_err());
     }

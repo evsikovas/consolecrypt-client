@@ -23,7 +23,9 @@ mod sqlite_introspect;
 pub mod streaming;
 pub mod transport;
 pub use session::{DbSession, SqliteTarget};
-pub use sqlite::{check_file as sqlite_check_file, create_file as sqlite_create_file, SQLITE_HEADER};
+pub use sqlite::{
+    check_file as sqlite_check_file, create_file as sqlite_create_file, SQLITE_HEADER,
+};
 
 /// Columns whose values are treated as secrets (masked by default, copied with
 /// clipboard auto-clear): password, token, secret, API/private keys and the like.

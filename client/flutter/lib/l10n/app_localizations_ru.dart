@@ -10245,6 +10245,15 @@ class AppLocalizationsRu extends AppLocalizations {
       'length_elements': 'Элементов',
       'length_members': 'Элементов',
       'length_entries': 'Записей',
+      'page_size': 'Размер страницы',
+      'page_count': 'Страниц',
+      'freelist_count': 'Свободных страниц',
+      'foreign_keys': 'Внешних ключей',
+      'strict': 'STRICT',
+      'without_rowid': 'WITHOUT ROWID',
+      'autoincrement': 'AUTOINCREMENT',
+      'version': 'Версия',
+      'table': 'Таблица',
       'other': '$id',
     });
     return '$_temp0';
@@ -10260,6 +10269,9 @@ class AppLocalizationsRu extends AppLocalizations {
       'foreign_table': 'Внешняя таблица',
       'unlogged': 'Без журнала (UNLOGGED)',
       'temporary': 'Временная',
+      'index': 'Индекс',
+      'yes': 'Да',
+      'no': 'Нет',
       'other': '$id',
     });
     return '$_temp0';
@@ -11655,4 +11667,81 @@ class AppLocalizationsRu extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'Я проверил(а) эту команду для $host (политика команды)';
   }
+
+  @override
+  String get dbFolderKeys => 'Ключи';
+
+  @override
+  String get dbFolderForeignKeys => 'Внешние ключи';
+
+  @override
+  String get dbFolderReferences => 'Ссылки';
+
+  @override
+  String get dbFolderDataTypes => 'Типы данных';
+
+  @override
+  String get dbFolderTableTriggers => 'Триггеры таблиц';
+
+  @override
+  String get dbLocalOnly => 'Только на этом устройстве';
+
+  @override
+  String get dbLocalOnlyHelp =>
+      'Хранится только на этом устройстве: не синхронизируется, не попадает в хранилище и не передаётся другим, потому что старые версии приложения не умеют открывать такие подключения.';
+
+  @override
+  String get dbSqlitePath => 'Путь к файлу базы';
+
+  @override
+  String get dbSqliteLocation => 'Где находится файл';
+
+  @override
+  String get dbSqliteThisComputer => 'Этот компьютер';
+
+  @override
+  String get dbSqliteSshHost => 'SSH-хост';
+
+  @override
+  String get dbSqliteDocker => 'Docker-контейнер';
+
+  @override
+  String get dbSqliteKubernetes => 'Под Kubernetes';
+
+  @override
+  String get dbSqliteKubeContext => 'Контекст Kubernetes';
+
+  @override
+  String get dbSqliteChooseFile => 'Выбрать файл…';
+
+  @override
+  String get dbSqliteCreateFile => 'Создать новую базу…';
+
+  @override
+  String get dbSqliteReadOnly => 'Только чтение';
+
+  @override
+  String get dbSqliteReadOnlyHelp => 'Файл открывается только для чтения: ни один запрос не может его изменить.';
+
+  @override
+  String get dbSqliteRemoteHelp =>
+      'Запросы выполняет программа sqlite3 (версии 3.16 или новее) на хосте, в контейнере или поде; файл не копируется.';
+
+  @override
+  String get dbSqliteLocalUnavailable =>
+      'Файлы на этом устройстве открываются только в настольной версии. Выберите SSH-хост, контейнер или под.';
+
+  @override
+  String get dbErrorSqliteNotDatabase => 'Файл не является базой SQLite (или он зашифрован).';
+
+  @override
+  String get dbErrorSqliteMissing => 'Файл базы не найден. Новый файл создаётся только кнопкой «Создать новую базу».';
+
+  @override
+  String get dbErrorSqliteCli =>
+      'На хосте, в контейнере или поде нет программы sqlite3 версии 3.16 или новее. Установите её и повторите попытку.';
+
+  @override
+  String get dbErrorKubeExecBlocked =>
+      'Выполнение команд в этом продакшн-контексте Kubernetes отключено в его настройках.';
 }

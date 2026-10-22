@@ -239,8 +239,8 @@ impl DbSession {
             return Err(DbError::InvalidRequest);
         }
         let scope = CancellationToken::new();
-        let result_bytes = (connection.limits.result_memory_bytes as usize)
-            .clamp(1 << 20, DEFAULT_RESULT_BYTES);
+        let result_bytes =
+            (connection.limits.result_memory_bytes as usize).clamp(1 << 20, DEFAULT_RESULT_BYTES);
         let driver = match target {
             SqliteTarget::Local => Driver::Sqlite(Sqlite::open(connection).await?),
             SqliteTarget::Cli(runner) => Driver::SqliteCli(
@@ -288,10 +288,7 @@ impl DbSession {
                 connection_name: connection.name.clone(),
                 production: connection.production,
                 mobile,
-                read_only: matches!(
-                    connection.options,
-                    DbOptions::Sqlite { read_only: true }
-                ),
+                read_only: matches!(connection.options, DbOptions::Sqlite { read_only: true }),
             },
             scope.clone(),
         );

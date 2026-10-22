@@ -182,9 +182,12 @@ async fn read_only_files_browse_query_and_refuse_every_write() {
     assert_eq!(session.info().server_read_only, DbServerReadOnly::Enforced);
 
     // Types: INTEGER, REAL, TEXT (with a quote), BLOB, NULL.
-    let rows = run(&session, &request("SELECT id, customer_id, total, payload FROM orders ORDER BY id"))
-        .await
-        .unwrap();
+    let rows = run(
+        &session,
+        &request("SELECT id, customer_id, total, payload FROM orders ORDER BY id"),
+    )
+    .await
+    .unwrap();
     assert_eq!(rows[0][0], DbCell::Int("1".into()));
     assert_eq!(rows[0][2], DbCell::Float("150.5".into()));
     assert_eq!(rows[0][3], DbCell::Binary("AP9B".into()));
@@ -195,10 +198,19 @@ async fn read_only_files_browse_query_and_refuse_every_write() {
         value: DbCell::Text("a@example.test".into()),
         type_hint: None,
     });
-    assert_eq!(run(&session, &bound).await.unwrap(), [[DbCell::Text("it's".into())]]);
+    assert_eq!(
+        run(&session, &bound).await.unwrap(),
+        [[DbCell::Text("it's".into())]]
+    );
 
     // Streams past the first page.
-    assert_eq!(run(&session, &request("SELECT * FROM loose")).await.unwrap().len(), 2002);
+    assert_eq!(
+        run(&session, &request("SELECT * FROM loose"))
+            .await
+            .unwrap()
+            .len(),
+        2002
+    );
 
     // Writes, pragmas that write, ATTACH and file functions never run.
     for text in [
@@ -216,14 +228,21 @@ async fn read_only_files_browse_query_and_refuse_every_write() {
     }
     assert!(session.guard().allow_session_write().is_err());
     // Read pragmas work.
-    let info = run(&session, &request("PRAGMA table_info(customers)")).await.unwrap();
+    let info = run(&session, &request("PRAGMA table_info(customers)"))
+        .await
+        .unwrap();
     assert_eq!(info.len(), 3);
     assert_eq!(
-        run(&session, &request("PRAGMA page_count")).await.unwrap().len(),
+        run(&session, &request("PRAGMA page_count"))
+            .await
+            .unwrap()
+            .len(),
         1
     );
     // The file is unchanged.
-    let count = run(&session, &request("SELECT count(*) FROM loose")).await.unwrap();
+    let count = run(&session, &request("SELECT count(*) FROM loose"))
+        .await
+        .unwrap();
     assert_eq!(count, [[DbCell::Int("2002".into())]]);
 }
 
@@ -236,7 +255,10 @@ async fn structure_tree_ddl_details_plan_and_completion() {
     assert_eq!(root.nodes.len(), 1);
     assert_eq!(root.nodes[0].reference.kind, DbObjectKind::Database);
     assert_eq!(root.nodes[0].reference.name, "shop.db");
-    let database = session.tree(Some(&root.nodes[0].reference), None).await.unwrap();
+    let database = session
+        .tree(Some(&root.nodes[0].reference), None)
+        .await
+        .unwrap();
     let names = |kind: DbObjectKind| {
         database
             .nodes
@@ -245,7 +267,10 @@ async fn structure_tree_ddl_details_plan_and_completion() {
             .map(|node| node.reference.name.clone())
             .collect::<Vec<_>>()
     };
-    assert_eq!(names(DbObjectKind::Table), ["customers", "loose", "orders", "tags"]);
+    assert_eq!(
+        names(DbObjectKind::Table),
+        ["customers", "loose", "orders", "tags"]
+    );
     assert_eq!(names(DbObjectKind::View), ["big_orders"]);
     assert!(names(DbObjectKind::Index).contains(&"orders_by_customer".to_owned()));
     assert_eq!(names(DbObjectKind::Trigger), ["orders_touch"]);
@@ -258,7 +283,11 @@ async fn structure_tree_ddl_details_plan_and_completion() {
         .unwrap();
     assert_eq!(orders.detail.as_deref(), Some("STRICT"));
 
-    let children = session.tree(Some(&table("orders")), None).await.unwrap().nodes;
+    let children = session
+        .tree(Some(&table("orders")), None)
+        .await
+        .unwrap()
+        .nodes;
     let of = |kind: DbObjectKind| {
         children
             .iter()
@@ -275,10 +304,24 @@ async fn structure_tree_ddl_details_plan_and_completion() {
     assert_eq!(of(DbObjectKind::Key)[0].detail.as_deref(), Some("(id)"));
     let foreign = of(DbObjectKind::ForeignKey);
     assert_eq!(foreign[0].reference.name, "customer_id");
-    assert!(foreign[0].detail.as_deref().unwrap().contains("customers(id) ON DELETE CASCADE"));
-    assert_eq!(of(DbObjectKind::Index)[0].detail.as_deref(), Some("(customer_id, total)"));
-    assert_eq!(of(DbObjectKind::Trigger)[0].detail.as_deref(), Some("AFTER UPDATE"));
-    let customers = session.tree(Some(&table("customers")), None).await.unwrap().nodes;
+    assert!(foreign[0]
+        .detail
+        .as_deref()
+        .unwrap()
+        .contains("customers(id) ON DELETE CASCADE"));
+    assert_eq!(
+        of(DbObjectKind::Index)[0].detail.as_deref(),
+        Some("(customer_id, total)")
+    );
+    assert_eq!(
+        of(DbObjectKind::Trigger)[0].detail.as_deref(),
+        Some("AFTER UPDATE")
+    );
+    let customers = session
+        .tree(Some(&table("customers")), None)
+        .await
+        .unwrap()
+        .nodes;
     let reference = customers
         .iter()
         .find(|node| node.reference.kind == DbObjectKind::Reference)
@@ -286,14 +329,16 @@ async fn structure_tree_ddl_details_plan_and_completion() {
     assert_eq!(reference.reference.name, "orders");
     assert!(customers
         .iter()
-        .any(|node| node.reference.kind == DbObjectKind::Key && node.detail.as_deref() == Some("UNIQUE (email)")));
+        .any(|node| node.reference.kind == DbObjectKind::Key
+            && node.detail.as_deref() == Some("UNIQUE (email)")));
 
     let ddl = session.ddl(&table("orders")).await.unwrap();
     assert!(ddl.starts_with("CREATE TABLE orders"));
     assert!(ddl.contains("CREATE INDEX orders_by_customer"));
     assert!(ddl.contains("CREATE TRIGGER orders_touch"));
 
-    let details = serde_json::to_value(session.object_details(&table("tags")).await.unwrap()).unwrap();
+    let details =
+        serde_json::to_value(session.object_details(&table("tags")).await.unwrap()).unwrap();
     let text = details.to_string();
     assert!(text.contains("\"without_rowid\"") && text.contains("\"yes\""));
     let file = serde_json::to_value(
@@ -312,7 +357,10 @@ async fn structure_tree_ddl_details_plan_and_completion() {
     assert!(loose.contains("\"rows\""), "{loose}");
 
     let plan = session
-        .explain(&request("SELECT * FROM orders WHERE customer_id = 1"), false)
+        .explain(
+            &request("SELECT * FROM orders WHERE customer_id = 1"),
+            false,
+        )
         .await
         .unwrap();
     assert!(plan["plan"]["sqlite_plan"][0]["detail"]
@@ -363,19 +411,33 @@ async fn writable_files_edit_cells_by_key_or_rowid_after_review() {
     apply.approval_ticket = Some(ticket);
     assert_eq!(session.apply_cell_edits(&apply).await.unwrap(), 1);
     assert_eq!(
-        run(&session, &request("SELECT note FROM customers WHERE id = 2")).await.unwrap(),
+        run(
+            &session,
+            &request("SELECT note FROM customers WHERE id = 2")
+        )
+        .await
+        .unwrap(),
         [[DbCell::Text("o'k".into())]]
     );
 
     // A rowid table without a key edits by rowid.
-    run(&session, &request("INSERT INTO loose VALUES (1, 'one')")).await.unwrap();
-    let rowid = plain(&run(&session, &request("SELECT rowid FROM loose")).await.unwrap()[0][0]);
+    run(&session, &request("INSERT INTO loose VALUES (1, 'one')"))
+        .await
+        .unwrap();
+    let rowid = plain(
+        &run(&session, &request("SELECT rowid FROM loose"))
+            .await
+            .unwrap()[0][0],
+    );
     let edit = DbCellEdit {
         original_primary_key: BTreeMap::from([("rowid".into(), DbCell::Int(rowid))]),
         column: "b".into(),
         value: DbCell::Binary("AAE=".into()),
     };
-    let review = session.review_cell_edits(&table("loose"), &[edit]).await.unwrap();
+    let review = session
+        .review_cell_edits(&table("loose"), &[edit])
+        .await
+        .unwrap();
     assert!(review.preview.contains("X'0001'"));
     let ticket = session.guard().review(&review.request).unwrap().ticket;
     session.guard().approve(&ticket).unwrap();
@@ -436,9 +498,14 @@ async fn long_queries_cancel_and_files_are_checked_before_opening() {
     let text = dir.path().join("notes.txt");
     std::fs::write(&text, "this is not a database at all").unwrap();
     assert_eq!(
-        DbSession::open_sqlite("t".into(), &connection(&text, true, false), SqliteTarget::Local, false)
-            .await
-            .unwrap_err(),
+        DbSession::open_sqlite(
+            "t".into(),
+            &connection(&text, true, false),
+            SqliteTarget::Local,
+            false
+        )
+        .await
+        .unwrap_err(),
         DbError::NotSqlite
     );
     // Creating is explicit and refuses an existing file.
@@ -477,18 +544,42 @@ async fn the_sqlite3_program_route_reads_writes_and_browses() {
         run(&session, &bound).await.unwrap(),
         [[DbCell::Text("'; DROP TABLE orders; --!".into())]]
     );
-    assert_eq!(run(&session, &request("SELECT * FROM loose")).await.unwrap().len(), 2002);
-    assert!(session.execute(&request("DELETE FROM loose WHERE a = 1")).is_err());
+    assert_eq!(
+        run(&session, &request("SELECT * FROM loose"))
+            .await
+            .unwrap()
+            .len(),
+        2002
+    );
+    assert!(session
+        .execute(&request("DELETE FROM loose WHERE a = 1"))
+        .is_err());
     let database = session
-        .tree(Some(&session.tree(None, None).await.unwrap().nodes[0].reference), None)
+        .tree(
+            Some(&session.tree(None, None).await.unwrap().nodes[0].reference),
+            None,
+        )
         .await
         .unwrap();
-    assert!(database.nodes.iter().any(|node| node.reference.name == "big_orders"));
+    assert!(database
+        .nodes
+        .iter()
+        .any(|node| node.reference.name == "big_orders"));
     let columns = session.tree(Some(&table("orders")), None).await.unwrap();
-    assert!(columns.nodes.iter().any(|node| node.reference.kind == DbObjectKind::ForeignKey));
-    assert!(session.ddl(&table("tags")).await.unwrap().contains("WITHOUT ROWID"));
+    assert!(columns
+        .nodes
+        .iter()
+        .any(|node| node.reference.kind == DbObjectKind::ForeignKey));
+    assert!(session
+        .ddl(&table("tags"))
+        .await
+        .unwrap()
+        .contains("WITHOUT ROWID"));
     let plan = session
-        .explain(&request("SELECT * FROM orders WHERE customer_id = 1"), false)
+        .explain(
+            &request("SELECT * FROM orders WHERE customer_id = 1"),
+            false,
+        )
         .await
         .unwrap();
     assert!(!plan["plan"]["sqlite_plan"].as_array().unwrap().is_empty());
@@ -499,7 +590,9 @@ async fn the_sqlite3_program_route_reads_writes_and_browses() {
         .await
         .unwrap();
     assert_eq!(
-        run(&writable, &request("SELECT b FROM loose WHERE a = 7")).await.unwrap(),
+        run(&writable, &request("SELECT b FROM loose WHERE a = 7"))
+            .await
+            .unwrap(),
         [[DbCell::Text("seven".into())]]
     );
 

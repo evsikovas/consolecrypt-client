@@ -234,7 +234,7 @@ final class RustDbService
   Future<String?> createSqliteFile() async {
     final location = await getSaveLocation(suggestedName: 'database.sqlite'); // l10n-ignore: file name
     if (location == null) return null;
-    await guard(() => native.dbSqliteCreateFile(path: location.path));
+    await guard<void>(() => native.dbSqliteCreateFile(path: location.path));
     return location.path;
   }
 
@@ -498,18 +498,18 @@ final class RustDbService
       entries: [
         for (final entry in (json['entries'] as List).cast<DbJson>())
           if (DbEngine.tryParse(entry['engine']) != null)
-          DbHistoryEntry(
-            id: entry['id'] as String,
-            connectionId: entry['connection_id'] as String,
-            engine: DbEngine.parse(entry['engine'] as String),
-            text: entry['text'] as String,
-            createdAt: DateTime.parse(entry['created_at'] as String),
-            elapsedMs: entry['elapsed_ms'] as int? ?? 0,
-            rows: entry['rows'] as int? ?? 0,
-            errorCode: entry['error_code'] as String?,
-            favorite: entry['favorite'] as bool? ?? false,
-            productionWrite: entry['production_write'] as bool? ?? false,
-          ),
+            DbHistoryEntry(
+              id: entry['id'] as String,
+              connectionId: entry['connection_id'] as String,
+              engine: DbEngine.parse(entry['engine'] as String),
+              text: entry['text'] as String,
+              createdAt: DateTime.parse(entry['created_at'] as String),
+              elapsedMs: entry['elapsed_ms'] as int? ?? 0,
+              rows: entry['rows'] as int? ?? 0,
+              errorCode: entry['error_code'] as String?,
+              favorite: entry['favorite'] as bool? ?? false,
+              productionWrite: entry['production_write'] as bool? ?? false,
+            ),
       ],
       nextCursor: json['next_cursor'] as String?,
     );

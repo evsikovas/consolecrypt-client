@@ -272,11 +272,8 @@ impl AppCore {
             None => {
                 let mut found = None;
                 for key in RECORD_KEYS {
-                    let rows: Vec<DbHistoryEntry> = owner
-                        .storage()?
-                        .setting_get(key)
-                        .await?
-                        .unwrap_or_default();
+                    let rows: Vec<DbHistoryEntry> =
+                        owner.storage()?.setting_get(key).await?.unwrap_or_default();
                     if let Some(row) = rows.into_iter().find(|row| row.id == id) {
                         found = Some(row);
                         break;

@@ -10005,6 +10005,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'length_elements': 'Elements',
       'length_members': 'Members',
       'length_entries': 'Entries',
+      'page_size': 'Page size',
+      'page_count': 'Pages',
+      'freelist_count': 'Free pages',
+      'foreign_keys': 'Foreign keys',
+      'strict': 'STRICT',
+      'without_rowid': 'WITHOUT ROWID',
+      'autoincrement': 'AUTOINCREMENT',
+      'version': 'Version',
+      'table': 'Table',
       'other': '$id',
     });
     return '$_temp0';
@@ -10020,6 +10029,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'foreign_table': 'Foreign table',
       'unlogged': 'Unlogged',
       'temporary': 'Temporary',
+      'index': 'Index',
+      'yes': 'Yes',
+      'no': 'No',
       'other': '$id',
     });
     return '$_temp0';
@@ -11372,4 +11384,82 @@ class AppLocalizationsEn extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'I checked this command for $host (team policy)';
   }
+
+  @override
+  String get dbFolderKeys => 'Keys';
+
+  @override
+  String get dbFolderForeignKeys => 'Foreign keys';
+
+  @override
+  String get dbFolderReferences => 'References';
+
+  @override
+  String get dbFolderDataTypes => 'Data types';
+
+  @override
+  String get dbFolderTableTriggers => 'Table triggers';
+
+  @override
+  String get dbLocalOnly => 'This device only';
+
+  @override
+  String get dbLocalOnlyHelp =>
+      'Stored on this device only: not synced, backed up to the vault or shared, because older app versions cannot open this connection type.';
+
+  @override
+  String get dbSqlitePath => 'Database file path';
+
+  @override
+  String get dbSqliteLocation => 'File location';
+
+  @override
+  String get dbSqliteThisComputer => 'This computer';
+
+  @override
+  String get dbSqliteSshHost => 'SSH host';
+
+  @override
+  String get dbSqliteDocker => 'Docker container';
+
+  @override
+  String get dbSqliteKubernetes => 'Kubernetes Pod';
+
+  @override
+  String get dbSqliteKubeContext => 'Kubernetes context';
+
+  @override
+  String get dbSqliteChooseFile => 'Choose file…';
+
+  @override
+  String get dbSqliteCreateFile => 'Create new database…';
+
+  @override
+  String get dbSqliteReadOnly => 'Read only';
+
+  @override
+  String get dbSqliteReadOnlyHelp => 'The file opens read-only: no query can change it.';
+
+  @override
+  String get dbSqliteRemoteHelp =>
+      'Queries run with the sqlite3 program (3.16 or newer) on the host, in the container or Pod; the file is not copied.';
+
+  @override
+  String get dbSqliteLocalUnavailable =>
+      'Files on this device open in the desktop app only. Choose an SSH host, a container or a Pod.';
+
+  @override
+  String get dbErrorSqliteNotDatabase => 'The file is not an SQLite database (or it is encrypted).';
+
+  @override
+  String get dbErrorSqliteMissing =>
+      'The database file was not found. A new file is created only with “Create new database”.';
+
+  @override
+  String get dbErrorSqliteCli =>
+      'sqlite3 (3.16 or newer) is not installed on the host, in the container or Pod. Install it and try again.';
+
+  @override
+  String get dbErrorKubeExecBlocked =>
+      'Running commands in this production Kubernetes context is turned off in its settings.';
 }

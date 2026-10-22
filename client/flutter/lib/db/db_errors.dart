@@ -28,6 +28,11 @@ String dbFailureText(Object error, AppLocalizations l) => switch (dbFailureCode(
   'docker_unreachable' => l.dbErrorDockerUnreachable,
   'docker_container_missing' => l.dbErrorDockerContainer,
   'docker_forward_failed' => l.dbErrorDockerForward,
+  'sqlite_not_database' => l.dbErrorSqliteNotDatabase,
+  'sqlite_file_missing' => l.dbErrorSqliteMissing,
+  'sqlite_cli_missing' => l.dbErrorSqliteCli,
+  'sqlite_local_unavailable' => l.dbSqliteLocalUnavailable,
+  'kube_exec_blocked' => l.dbErrorKubeExecBlocked,
   _ => l.dbFailed,
 };
 

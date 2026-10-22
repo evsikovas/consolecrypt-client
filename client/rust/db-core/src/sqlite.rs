@@ -10,8 +10,7 @@
 //! Queries run on the blocking pool and stream rows in batches; cancellation
 //! and timeouts interrupt the running statement.
 use crate::{
-    streaming::RowConsumer, DbCell, DbColumn, DbError, DbParameter, MAX_EVENT_BYTES,
-    MAX_EVENT_ROWS,
+    streaming::RowConsumer, DbCell, DbColumn, DbError, DbParameter, MAX_EVENT_BYTES, MAX_EVENT_ROWS,
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
 use cc_models::database::{DbConnection, DbOptions};
@@ -159,9 +158,10 @@ fn authorize(mode: &AtomicU8, context: AuthContext<'_>) -> Authorization {
             let argument = pragma_value.is_some();
             let as_argument = pragma_kind(pragma_name, argument, false);
             let as_assignment = pragma_kind(pragma_name, false, argument);
-            if as_argument == PragmaKind::Denied || as_assignment == PragmaKind::Denied {
-                Authorization::Deny
-            } else if read && as_argument != PragmaKind::Read {
+            if as_argument == PragmaKind::Denied
+                || as_assignment == PragmaKind::Denied
+                || (read && as_argument != PragmaKind::Read)
+            {
                 Authorization::Deny
             } else {
                 Authorization::Allow
@@ -371,7 +371,11 @@ fn run_blocking(
             internal(
                 connection,
                 mode,
-                if writable { "BEGIN IMMEDIATE;" } else { "BEGIN;" },
+                if writable {
+                    "BEGIN IMMEDIATE;"
+                } else {
+                    "BEGIN;"
+                },
             )?;
         }
         for (sql, parameters) in &statements {
@@ -447,10 +451,7 @@ fn run_one(
     if !batch.is_empty() {
         send(sender, Message::Rows(batch))?;
     }
-    send(
-        sender,
-        Message::Done(changes.then(|| connection.changes())),
-    )
+    send(sender, Message::Done(changes.then(|| connection.changes())))
 }
 
 fn send(sender: &Sender, message: Message) -> Result<(), DbError> {
@@ -506,12 +507,16 @@ pub(crate) fn bind_value(cell: &DbCell) -> Result<Value, DbError> {
     Ok(match cell {
         DbCell::Null => Value::Null,
         DbCell::Bool(value) => Value::Integer(i64::from(*value)),
-        DbCell::Int(value) => Value::Integer(value.trim().parse().map_err(|_| DbError::InvalidRequest)?),
+        DbCell::Int(value) => {
+            Value::Integer(value.trim().parse().map_err(|_| DbError::InvalidRequest)?)
+        }
         DbCell::Uint(value) => {
             let value: u64 = value.trim().parse().map_err(|_| DbError::InvalidRequest)?;
             Value::Integer(i64::try_from(value).map_err(|_| DbError::InvalidRequest)?)
         }
-        DbCell::Float(value) => Value::Real(value.trim().parse().map_err(|_| DbError::InvalidRequest)?),
+        DbCell::Float(value) => {
+            Value::Real(value.trim().parse().map_err(|_| DbError::InvalidRequest)?)
+        }
         DbCell::Binary(value) => Value::Blob(
             STANDARD
                 .decode(value)
@@ -538,13 +543,18 @@ mod tests {
             .unwrap()
             .execute_batch("CREATE TABLE t (a INTEGER, b TEXT); INSERT INTO t VALUES (1, 'x');")
             .unwrap();
-        let mut connection = DbConnection::new("t", "localhost", cc_models::database::DbEngine::Sqlite);
+        let mut connection =
+            DbConnection::new("t", "localhost", cc_models::database::DbEngine::Sqlite);
         connection.database = path.to_string_lossy().into_owned();
         connection.options = DbOptions::Sqlite { read_only: false };
         Sqlite::open(&connection).await.unwrap()
     }
 
-    async fn query(driver: &mut Sqlite, sql: &str, read_only: bool) -> Result<Vec<Vec<String>>, DbError> {
+    async fn query(
+        driver: &mut Sqlite,
+        sql: &str,
+        read_only: bool,
+    ) -> Result<Vec<Vec<String>>, DbError> {
         let mut rows = Collect::default();
         driver
             .query(sql, &[], read_only, &mut rows, CancellationToken::new())
@@ -577,7 +587,9 @@ mod tests {
             assert!(query(&mut driver, sql, false).await.is_err(), "{sql}");
         }
         assert_eq!(
-            query(&mut driver, "SELECT count(*) FROM t", true).await.unwrap(),
+            query(&mut driver, "SELECT count(*) FROM t", true)
+                .await
+                .unwrap(),
             [["1"]]
         );
         // A permitted write works and the connection returns to query_only.
@@ -594,18 +606,39 @@ mod tests {
     #[test]
     fn storage_classes_map_to_cells_and_back() {
         assert_eq!(cell(ValueRef::Null).unwrap(), DbCell::Null);
-        assert_eq!(cell(ValueRef::Integer(-3)).unwrap(), DbCell::Int("-3".into()));
-        assert_eq!(cell(ValueRef::Real(1.0)).unwrap(), DbCell::Float("1.0".into()));
-        assert_eq!(cell(ValueRef::Real(1e300)).unwrap(), DbCell::Float("1e300".into()));
-        assert_eq!(cell(ValueRef::Text(b"hi")).unwrap(), DbCell::Text("hi".into()));
-        assert_eq!(cell(ValueRef::Text(&[0xff])).unwrap(), DbCell::Binary("/w==".into()));
-        assert_eq!(cell(ValueRef::Blob(&[0, 1])).unwrap(), DbCell::Binary("AAE=".into()));
+        assert_eq!(
+            cell(ValueRef::Integer(-3)).unwrap(),
+            DbCell::Int("-3".into())
+        );
+        assert_eq!(
+            cell(ValueRef::Real(1.0)).unwrap(),
+            DbCell::Float("1.0".into())
+        );
+        assert_eq!(
+            cell(ValueRef::Real(1e300)).unwrap(),
+            DbCell::Float("1e300".into())
+        );
+        assert_eq!(
+            cell(ValueRef::Text(b"hi")).unwrap(),
+            DbCell::Text("hi".into())
+        );
+        assert_eq!(
+            cell(ValueRef::Text(&[0xff])).unwrap(),
+            DbCell::Binary("/w==".into())
+        );
+        assert_eq!(
+            cell(ValueRef::Blob(&[0, 1])).unwrap(),
+            DbCell::Binary("AAE=".into())
+        );
         assert_eq!(bind_value(&DbCell::Bool(true)).unwrap(), Value::Integer(1));
         assert_eq!(
             bind_value(&DbCell::Binary("AAE=".into())).unwrap(),
             Value::Blob(vec![0, 1])
         );
         assert!(bind_value(&DbCell::Uint(u64::MAX.to_string())).is_err());
-        assert_eq!(bind_value(&DbCell::Decimal("1.50".into())).unwrap(), Value::Text("1.50".into()));
+        assert_eq!(
+            bind_value(&DbCell::Decimal("1.50".into())).unwrap(),
+            Value::Text("1.50".into())
+        );
     }
 }

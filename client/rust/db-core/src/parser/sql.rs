@@ -484,8 +484,12 @@ impl VisitorMut for GuardVisitor<'_> {
 
     fn pre_visit_table_factor(&mut self, table: &mut TableFactor) -> ControlFlow<DbError> {
         if self.engine == DbEngine::Sqlite {
-            if let TableFactor::Table { name, args: Some(_), .. } | TableFactor::Function { name, .. } =
-                table
+            if let TableFactor::Table {
+                name,
+                args: Some(_),
+                ..
+            }
+            | TableFactor::Function { name, .. } = table
             {
                 if super::sqlite::denied_function(name) {
                     return ControlFlow::Break(DbError::PolicyDenied);

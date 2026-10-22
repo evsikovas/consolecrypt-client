@@ -103,7 +103,11 @@ pub fn file_uri(path: &str, writable: bool) -> String {
 pub fn parse_version(text: &str) -> Option<(u32, u32, u32)> {
     let word = text.split_whitespace().next()?;
     let mut parts = word.split('.').map(|part| part.parse::<u32>().ok());
-    Some((parts.next()??, parts.next()??, parts.next().flatten().unwrap_or(0)))
+    Some((
+        parts.next()??,
+        parts.next()??,
+        parts.next().flatten().unwrap_or(0),
+    ))
 }
 
 /// Why `sqlite3` failed, from its exit status and message.
@@ -124,7 +128,8 @@ pub fn classify_failure(output: &CliOutput) -> DbError {
         || message.contains("safe mode")
     {
         DbError::PolicyDenied
-    } else if message.contains("database is locked") || message.contains("database table is locked") {
+    } else if message.contains("database is locked") || message.contains("database table is locked")
+    {
         DbError::Timeout
     } else if message.contains("interrupted") {
         DbError::Cancelled
@@ -333,7 +338,11 @@ pub fn parse_json(output: &[u8]) -> Result<Vec<CliResult>, DbError> {
 /// the header, then rows. Values are text (CSV keeps no types) except the
 /// NULL sentinel. `changes_header` starts a second result (the row count of
 /// a write).
-pub fn parse_csv(output: &[u8], null: &str, changes_header: Option<&str>) -> Result<Vec<CliResult>, DbError> {
+pub fn parse_csv(
+    output: &[u8],
+    null: &str,
+    changes_header: Option<&str>,
+) -> Result<Vec<CliResult>, DbError> {
     let text = std::str::from_utf8(output).map_err(|_| DbError::QueryFailed)?;
     let mut records: Vec<Vec<(String, bool)>> = Vec::new();
     let mut record: Vec<(String, bool)> = Vec::new();
@@ -475,9 +484,7 @@ impl SqliteCli {
             json: version >= JSON_VERSION,
             safe: version >= SAFE_VERSION,
             rw_reads: false,
-            timeout: Duration::from_secs(u64::from(
-                connection.limits.statement_timeout_seconds,
-            )),
+            timeout: Duration::from_secs(u64::from(connection.limits.statement_timeout_seconds)),
             output_limit: output_limit.max(1 << 20),
             nonce: uuid::Uuid::new_v4().simple().to_string(),
             version: format!("{}.{}.{}", version.0, version.1, version.2),
@@ -565,7 +572,10 @@ impl SqliteCli {
         script.push_str(statement.trim_end().trim_end_matches(';'));
         script.push_str(";\n");
         if writable {
-            script.push_str(&format!("SELECT changes() AS \"{}\";\n", self.changes_header()));
+            script.push_str(&format!(
+                "SELECT changes() AS \"{}\";\n",
+                self.changes_header()
+            ));
         }
         Ok(script)
     }
@@ -718,7 +728,10 @@ mod tests {
                 DbCell::Int("1".into()),
             ]
         );
-        assert_eq!(results[0].rows[1][0], DbCell::Int("9223372036854775807".into()));
+        assert_eq!(
+            results[0].rows[1][0],
+            DbCell::Int("9223372036854775807".into())
+        );
         assert_eq!(results[0].rows[1][1], DbCell::Null);
         assert_eq!(results[0].rows[1][3], DbCell::Float("1.0e+300".into()));
         assert_eq!(results[1].rows[0][0], DbCell::Int("2".into()));
@@ -759,8 +772,14 @@ mod tests {
         assert_eq!(sqlite_literal(&DbCell::Int(" -5 ".into())).unwrap(), "-5");
         assert!(sqlite_literal(&DbCell::Int("1; DROP".into())).is_err());
         assert!(sqlite_literal(&DbCell::Uint("18446744073709551615".into())).is_err());
-        assert_eq!(sqlite_literal(&DbCell::Float("1e300".into())).unwrap(), "1e300");
-        assert_eq!(sqlite_literal(&DbCell::Float("inf".into())).unwrap(), "9e999");
+        assert_eq!(
+            sqlite_literal(&DbCell::Float("1e300".into())).unwrap(),
+            "1e300"
+        );
+        assert_eq!(
+            sqlite_literal(&DbCell::Float("inf".into())).unwrap(),
+            "9e999"
+        );
         assert_eq!(
             sqlite_literal(&DbCell::Text("it's \\ fine".into())).unwrap(),
             "'it''s \\ fine'"
@@ -799,12 +818,23 @@ mod tests {
     #[test]
     fn commands_quote_for_the_shell_and_uris_never_create() {
         assert_eq!(
-            shell_command(&["sqlite3".into(), "-cmd".into(), ".timeout 5000".into(), "it's".into()]),
+            shell_command(&[
+                "sqlite3".into(),
+                "-cmd".into(),
+                ".timeout 5000".into(),
+                "it's".into()
+            ]),
             "sqlite3 -cmd '.timeout 5000' 'it'\\''s'"
         );
-        assert_eq!(file_uri("/data/my db?.sqlite", false), "file:///data/my%20db%3f.sqlite?mode=ro");
+        assert_eq!(
+            file_uri("/data/my db?.sqlite", false),
+            "file:///data/my%20db%3f.sqlite?mode=ro"
+        );
         assert_eq!(file_uri("app.db", true), "file:app.db?mode=rw");
-        assert_eq!(parse_version("3.31.1 2020-01-27 19:55:54 abc"), Some((3, 31, 1)));
+        assert_eq!(
+            parse_version("3.31.1 2020-01-27 19:55:54 abc"),
+            Some((3, 31, 1))
+        );
         assert_eq!(parse_version("3.8 x"), Some((3, 8, 0)));
         assert_eq!(parse_version("sh: sqlite3: not found"), None);
         let missing = CliOutput {
@@ -814,7 +844,9 @@ mod tests {
         };
         assert_eq!(classify_failure(&missing), DbError::SqliteCliMissing);
         let docker = CliOutput {
-            stderr: b"OCI runtime exec failed: exec: \"sqlite3\": executable file not found in $PATH".to_vec(),
+            stderr:
+                b"OCI runtime exec failed: exec: \"sqlite3\": executable file not found in $PATH"
+                    .to_vec(),
             status: Some(126),
             ..Default::default()
         };
