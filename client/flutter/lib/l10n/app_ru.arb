@@ -5528,5 +5528,10 @@
   "dbCellEditHint": "Enter — сохранить, Esc — отменить, Tab — следующая ячейка",
   "dbPendingEdit": "Изменено, ещё не применено",
   "dbSelectedRows": "{count, plural, one{Выбрано строк: {count}} few{Выбрано строк: {count}} many{Выбрано строк: {count}} other{Выбрано строк: {count}}}",
-  "settingsTerminalFontMissing": "Шрифт «{family}» не установлен — используется {fallback}."
+  "settingsTerminalFontMissing": "Шрифт «{family}» не установлен — используется {fallback}.",
+  "settingsCaptureProtectionLabel": "Скрывать окно от записи экрана",
+  "settingsCaptureProtectionOff": "Никогда",
+  "settingsCaptureProtectionSecrets": "Когда видны секреты",
+  "settingsCaptureProtectionAlways": "Всегда",
+  "settingsCaptureProtectionHelp": "Окно не попадёт в скриншоты, запись и демонстрацию экрана (Zoom, Teams). В режиме «Всегда» коллеги не увидят окно ConsoleCrypt при показе экрана."
 }

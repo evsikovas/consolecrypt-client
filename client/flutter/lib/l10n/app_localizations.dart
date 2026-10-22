@@ -17395,6 +17395,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Font “{family}” is not installed — using {fallback}.'**
   String settingsTerminalFontMissing(String family, String fallback);
+
+  /// Settings → Security: label of the selector that hides the app window from screenshots, screen recording and screen sharing (Windows).
+  ///
+  /// In en, this message translates to:
+  /// **'Hide window from screen capture'**
+  String get settingsCaptureProtectionLabel;
+
+  /// Screen capture protection option: the window is never hidden from capture.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get settingsCaptureProtectionOff;
+
+  /// Screen capture protection option (default): the window is hidden from capture only while a password, key or recovery words are shown in plain text.
+  ///
+  /// In en, this message translates to:
+  /// **'While secrets are shown'**
+  String get settingsCaptureProtectionSecrets;
+
+  /// Screen capture protection option: the window is always hidden from capture. Must match the quoted word in settingsCaptureProtectionHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Always'**
+  String get settingsCaptureProtectionAlways;
+
+  /// Explanation under the screen capture protection selector in Settings → Security.
+  ///
+  /// In en, this message translates to:
+  /// **'The window is left out of screenshots, recordings and screen sharing (Zoom, Teams). With “Always”, colleagues will not see the ConsoleCrypt window while you share your screen.'**
+  String get settingsCaptureProtectionHelp;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -4,6 +4,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/kubernetes/kube_cluster_menu.dart';
 import 'package:consolecrypt/kubernetes/kube_import_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_inventory_service.dart';
@@ -214,18 +215,22 @@ class _KubeConnectionEditorState extends ConsumerState<KubeConnectionEditor> {
         );
     Widget field(String key, TextEditingController controller, String label, {bool secret = false, int lines = 1}) =>
         gap(
-          TextField(
-            key: ValueKey(key),
+          RevealedSecretText(
             controller: controller,
-            enabled: !_busy,
-            obscureText: secret && lines == 1,
-            minLines: lines,
-            maxLines: lines == 1 ? 1 : 5,
-            autocorrect: false,
-            enableSuggestions: false,
-            enableIMEPersonalizedLearning: false,
-            decoration: InputDecoration(labelText: label),
-            onChanged: (_) => setState(() {}),
+            enabled: secret && lines > 1,
+            child: TextField(
+              key: ValueKey(key),
+              controller: controller,
+              enabled: !_busy,
+              obscureText: secret && lines == 1,
+              minLines: lines,
+              maxLines: lines == 1 ? 1 : 5,
+              autocorrect: false,
+              enableSuggestions: false,
+              enableIMEPersonalizedLearning: false,
+              decoration: InputDecoration(labelText: label),
+              onChanged: (_) => setState(() {}),
+            ),
           ),
         );
     return GlassDialog(

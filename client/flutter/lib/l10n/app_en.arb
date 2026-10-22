@@ -13368,5 +13368,25 @@
         "type": "String"
       }
     }
+  },
+  "settingsCaptureProtectionLabel": "Hide window from screen capture",
+  "@settingsCaptureProtectionLabel": {
+    "description": "Settings → Security: label of the selector that hides the app window from screenshots, screen recording and screen sharing (Windows)."
+  },
+  "settingsCaptureProtectionOff": "Never",
+  "@settingsCaptureProtectionOff": {
+    "description": "Screen capture protection option: the window is never hidden from capture."
+  },
+  "settingsCaptureProtectionSecrets": "While secrets are shown",
+  "@settingsCaptureProtectionSecrets": {
+    "description": "Screen capture protection option (default): the window is hidden from capture only while a password, key or recovery words are shown in plain text."
+  },
+  "settingsCaptureProtectionAlways": "Always",
+  "@settingsCaptureProtectionAlways": {
+    "description": "Screen capture protection option: the window is always hidden from capture. Must match the quoted word in settingsCaptureProtectionHelp."
+  },
+  "settingsCaptureProtectionHelp": "The window is left out of screenshots, recordings and screen sharing (Zoom, Teams). With “Always”, colleagues will not see the ConsoleCrypt window while you share your screen.",
+  "@settingsCaptureProtectionHelp": {
+    "description": "Explanation under the screen capture protection selector in Settings → Security."
   }
 }

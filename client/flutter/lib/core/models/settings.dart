@@ -70,6 +70,21 @@ enum TerminalTabSubtitle { name, address, off }
 /// Terminal colours are independent of the interface; system follows it.
 enum TerminalColorScheme { system, dark, light, midnight, ocean, forest, amber, custom }
 
+/// When the window is hidden from screenshots, recordings and screen
+/// sharing (Windows: `WDA_EXCLUDEFROMCAPTURE`).
+enum ScreenCaptureProtection {
+  off('off'),
+
+  /// Only while a secret is shown in plain text (default).
+  whileSecretsVisible('secrets'),
+  always('always');
+
+  const ScreenCaptureProtection(this.wireName);
+
+  /// Persisted value in `local_settings`.
+  final String wireName;
+}
+
 /// UI language (device-local). [system] follows the OS locale and falls
 /// back to English when the OS language is not supported.
 enum AppLocale {
@@ -116,6 +131,7 @@ final class LocalSettings {
     this.rdpMobile = const RdpMobileSettings(),
     this.databasesView = CollectionView.cards,
     this.dockerTerminalHintShown = false,
+    this.screenCaptureProtection = ScreenCaptureProtection.whileSecretsVisible,
   });
 
   final AppThemeMode themeMode;
@@ -189,6 +205,10 @@ final class LocalSettings {
   /// (environment included) was shown in this profile.
   final bool dockerTerminalHintShown;
 
+  /// Hide the window from screen capture: never, while secrets are shown, or
+  /// always (only where the OS supports it).
+  final ScreenCaptureProtection screenCaptureProtection;
+
   LocalSettings copyWith({
     AppThemeMode? themeMode,
     double? uiFontScale,
@@ -218,6 +238,7 @@ final class LocalSettings {
     RdpMobileSettings? rdpMobile,
     CollectionView? databasesView,
     bool? dockerTerminalHintShown,
+    ScreenCaptureProtection? screenCaptureProtection,
   }) => LocalSettings(
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
@@ -244,5 +265,6 @@ final class LocalSettings {
     rdpMobile: rdpMobile ?? this.rdpMobile,
     databasesView: databasesView ?? this.databasesView,
     dockerTerminalHintShown: dockerTerminalHintShown ?? this.dockerTerminalHintShown,
+    screenCaptureProtection: screenCaptureProtection ?? this.screenCaptureProtection,
   );
 }

@@ -16,6 +16,13 @@ constexpr char kWindowChannel[] = "consolecrypt/window";
 constexpr DWORD kDwmCaptionColor = 35;
 constexpr DWORD kDwmTextColor = 36;
 
+// SetWindowDisplayAffinity value from Windows 10 2004 (build 19041): the
+// window is left out of screenshots, recordings and screen sharing. Older
+// builds reject it; WDA_MONITOR (window captured as black) is the fallback.
+#ifndef WDA_EXCLUDEFROMCAPTURE
+#define WDA_EXCLUDEFROMCAPTURE 0x00000011
+#endif
+
 constexpr wchar_t kPersonalizeKey[] =
     L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize";
 constexpr wchar_t kEnableTransparencyValue[] = L"EnableTransparency";
@@ -134,6 +141,28 @@ GlassWindowBridge::GlassWindowBridge(flutter::BinaryMessenger* messenger,
           result->Success();
           return;
         }
+        if (call.method_name() == "setCaptureExcluded") {
+          const auto* args =
+              std::get_if<flutter::EncodableMap>(call.arguments());
+          const bool* excluded = nullptr;
+          if (args != nullptr) {
+            const auto it = args->find(flutter::EncodableValue("excluded"));
+            if (it != args->end()) {
+              excluded = std::get_if<bool>(&it->second);
+            }
+          }
+          if (excluded == nullptr) {
+            result->Error("bad_args", "Expected {excluded: bool}.");
+            return;
+          }
+          const char* applied = SetCaptureExcluded(*excluded);
+          if (applied == nullptr) {
+            result->Error("display_affinity", "SetWindowDisplayAffinity failed.");
+          } else {
+            result->Success(flutter::EncodableValue(applied));
+          }
+          return;
+        }
         if (call.method_name() == "isRdpMinimized") {
           result->Success(flutter::EncodableValue(IsIconic(window_) != FALSE));
           return;
@@ -169,6 +198,16 @@ GlassWindowBridge::~GlassWindowBridge() {
   if (window_channel_) {
     window_channel_->SetMethodCallHandler(nullptr);
   }
+}
+
+const char* GlassWindowBridge::SetCaptureExcluded(bool excluded) {
+  if (!excluded) {
+    return SetWindowDisplayAffinity(window_, WDA_NONE) ? "none" : nullptr;
+  }
+  if (SetWindowDisplayAffinity(window_, WDA_EXCLUDEFROMCAPTURE)) {
+    return "exclude";
+  }
+  return SetWindowDisplayAffinity(window_, WDA_MONITOR) ? "monitor" : nullptr;
 }
 
 bool GlassWindowBridge::IsFullscreen() const {

@@ -6,6 +6,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/color_label_picker.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/db/db_errors.dart';
 import 'package:consolecrypt/db/db_models.dart';
@@ -333,20 +334,25 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
               enabled: !_busy,
               validator: validate,
             )
-          : TextFormField(
-              key: ValueKey('db-field-$key'),
+          : RevealedSecretText(
               controller: _field(key),
-              enabled: !_busy,
-              maxLines: lines,
-              autocorrect: false,
-              enableSuggestions: false,
-              enableIMEPersonalizedLearning: false,
-              obscureText: secret,
-              keyboardType: min == null
-                  ? (lines > 1 ? TextInputType.multiline : TextInputType.text)
-                  : TextInputType.number,
-              decoration: InputDecoration(labelText: label),
-              validator: validate,
+              // A pasted private key is shown in plain text.
+              enabled: secret && key == 'key',
+              child: TextFormField(
+                key: ValueKey('db-field-$key'),
+                controller: _field(key),
+                enabled: !_busy,
+                maxLines: lines,
+                autocorrect: false,
+                enableSuggestions: false,
+                enableIMEPersonalizedLearning: false,
+                obscureText: secret,
+                keyboardType: min == null
+                    ? (lines > 1 ? TextInputType.multiline : TextInputType.text)
+                    : TextInputType.number,
+                decoration: InputDecoration(labelText: label),
+                validator: validate,
+              ),
             ),
     );
   }

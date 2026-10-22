@@ -9978,4 +9978,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String settingsTerminalFontMissing(String family, String fallback) {
     return 'Шрифт «$family» не установлен — используется $fallback.';
   }
+
+  @override
+  String get settingsCaptureProtectionLabel => 'Скрывать окно от записи экрана';
+
+  @override
+  String get settingsCaptureProtectionOff => 'Никогда';
+
+  @override
+  String get settingsCaptureProtectionSecrets => 'Когда видны секреты';
+
+  @override
+  String get settingsCaptureProtectionAlways => 'Всегда';
+
+  @override
+  String get settingsCaptureProtectionHelp =>
+      'Окно не попадёт в скриншоты, запись и демонстрацию экрана (Zoom, Teams). В режиме «Всегда» коллеги не увидят окно ConsoleCrypt при показе экрана.';
 }

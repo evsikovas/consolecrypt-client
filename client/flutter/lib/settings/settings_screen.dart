@@ -726,6 +726,7 @@ class _SecuritySection extends ConsumerWidget {
             ),
           ),
           const ScreenCaptureSettings(),
+          const WindowCaptureProtectionSettings(),
         ],
       ),
     );

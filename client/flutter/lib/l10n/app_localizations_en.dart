@@ -9741,4 +9741,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String settingsTerminalFontMissing(String family, String fallback) {
     return 'Font “$family” is not installed — using $fallback.';
   }
+
+  @override
+  String get settingsCaptureProtectionLabel => 'Hide window from screen capture';
+
+  @override
+  String get settingsCaptureProtectionOff => 'Never';
+
+  @override
+  String get settingsCaptureProtectionSecrets => 'While secrets are shown';
+
+  @override
+  String get settingsCaptureProtectionAlways => 'Always';
+
+  @override
+  String get settingsCaptureProtectionHelp =>
+      'The window is left out of screenshots, recordings and screen sharing (Zoom, Teams). With “Always”, colleagues will not see the ConsoleCrypt window while you share your screen.';
 }
