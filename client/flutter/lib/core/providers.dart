@@ -53,6 +53,9 @@ final developerControlsProvider = Provider<DeveloperControls?>((ref) => ref.watc
 final profilesProvider = StreamProvider<ProfilesState>((ref) => ref.watch(profileServiceProvider).watchProfiles());
 final activeProfileProvider = Provider<Profile?>((ref) => ref.watch(profilesProvider).value?.active);
 final authStateProvider = StreamProvider<AuthState>((ref) => ref.watch(authServiceProvider).watchAuthState());
+
+/// Remembered sign-ins per server / profile (device-local, non-secret).
+final signInHintsProvider = StreamProvider<SignInHints>((ref) => ref.watch(authServiceProvider).watchSignInHints());
 final vaultStatusProvider = StreamProvider<VaultStatus>((ref) => ref.watch(vaultServiceProvider).watchStatus());
 
 final hostsProvider = StreamProvider<List<Host>>((ref) => ref.watch(inventoryServiceProvider).watchHosts());

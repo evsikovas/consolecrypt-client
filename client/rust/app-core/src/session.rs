@@ -1290,6 +1290,7 @@ async fn object_event_task(
                         is_self: true,
                     }),
                     StopReason::ReauthRequired => ctx.emit(AppEvent::ReauthRequired),
+                    StopReason::AccountDisabled => ctx.emit(AppEvent::AccountDisabled),
                     _ => {}
                 }
             }
@@ -1346,8 +1347,10 @@ async fn ws_event_task(mut rx: broadcast::Receiver<WsEvent>, ctx: Arc<AppCtx>, o
                 _ => {}
             },
             Ok(WsEvent::Terminated { reason }) => {
-                if reason == StopReason::ReauthRequired {
-                    ctx.emit(AppEvent::ReauthRequired);
+                match reason {
+                    StopReason::ReauthRequired => ctx.emit(AppEvent::ReauthRequired),
+                    StopReason::AccountDisabled => ctx.emit(AppEvent::AccountDisabled),
+                    _ => {}
                 }
                 break;
             }

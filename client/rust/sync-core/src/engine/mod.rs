@@ -443,7 +443,9 @@ impl SyncEngine {
             WsEvent::Connected => self.trigger(),
             WsEvent::Event(e) => self.handle_server_event(e),
             WsEvent::Terminated { reason } => match reason {
-                StopReason::DeviceRevoked | StopReason::ReauthRequired => self.halt(*reason),
+                StopReason::DeviceRevoked
+                | StopReason::ReauthRequired
+                | StopReason::AccountDisabled => self.halt(*reason),
                 _ => {}
             },
             WsEvent::Disconnected { .. } => {}

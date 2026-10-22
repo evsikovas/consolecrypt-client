@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/account/enterprise_sign_in.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
@@ -59,6 +60,9 @@ class _EnableSyncWizardState extends ConsumerState<EnableSyncWizard> {
   Object? _error;
   bool _busy = false;
 
+  /// Browser sign-in in progress (enterprise OIDC): Cancel aborts it.
+  OidcSignInRun? _oidcRun;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -102,6 +106,12 @@ class _EnableSyncWizardState extends ConsumerState<EnableSyncWizard> {
     }
   }
 
+  String? _hintLogin(ServerAuth auth) {
+    final url = Uri.tryParse(_server.text.trim());
+    final hint = url == null ? null : ref.read(authServiceProvider).currentSignInHints.forServer(url);
+    return hint?.method == auth.method ? hint?.login : null;
+  }
+
   void _start() {
     if (!_email.text.contains('@') || _password.text.isEmpty) {
       setState(() => _error = _WizardError.credentialsRequired);
@@ -127,8 +137,47 @@ class _EnableSyncWizardState extends ConsumerState<EnableSyncWizard> {
           onDone: () {
             password.wipe();
             _password.clear();
+            if (_progress?.step == EnableSyncStep.done) {
+              unawaited(_remember(SignInMethod.email, null, _email.text.trim()));
+            }
           },
         );
+  }
+
+  Future<void> _remember(SignInMethod method, String? displayName, String? login) async {
+    try {
+      await ref
+          .read(authServiceProvider)
+          .rememberSignIn(
+            serverUrl: Uri.parse(_server.text.trim()),
+            method: method,
+            displayName: displayName,
+            login: login,
+            profileId: ref.read(profileServiceProvider).currentProfiles.activeId,
+          );
+    } on Object {
+      // A convenience only.
+    }
+  }
+
+  /// Enable sync with the organisation's sign-in: runs until the upload
+  /// finished or failed (the progress step shows it).
+  Future<void> _startEnterprise(ServerAuth auth, EnterpriseSignIn signIn, String? login) async {
+    setState(() {
+      _step = _WizardStep.upload;
+      _error = null;
+      _progress = const EnableSyncProgress(EnableSyncStep.authenticating);
+    });
+    final finished = Completer<void>();
+    _sub = ref
+        .read(syncServiceProvider)
+        .enableSyncEnterprise(serverUrl: Uri.parse(_server.text.trim()), signIn: signIn, deviceName: _deviceName.text)
+        .listen((p) {
+          if (mounted) setState(() => _progress = p);
+        }, onDone: finished.complete);
+    await finished.future;
+    _oidcRun = null;
+    if (_progress?.step == EnableSyncStep.done) await _remember(auth.method, auth.displayName, login);
   }
 
   @override
@@ -169,6 +218,34 @@ class _EnableSyncWizardState extends ConsumerState<EnableSyncWizard> {
                   hintText: 'https://sync.consolecrypt.dev',
                 ),
                 onSubmitted: (_) => _checkServer(),
+              ),
+            ],
+            _WizardStep.account when _info?.auth.needsNewerApp ?? false => [
+              InfoBanner(
+                key: const ValueKey('server-needs-newer-app'),
+                tone: BannerTone.danger,
+                message: l10n.serverNeedsNewerApp,
+              ),
+            ],
+            _WizardStep.account when _info?.auth.isEnterprise ?? false => [
+              InfoBanner(
+                tone: BannerTone.success,
+                message: l10n.enableSyncDialogServerInfo(_info!.serverVersion, _info!.protocolVersion),
+              ),
+              const SizedBox(height: GlassSpacing.s12),
+              CorporateAuthNotice(auth: _info!.auth),
+              const SizedBox(height: GlassSpacing.s12),
+              EnterpriseSignInForm(
+                serverUrl: Uri.parse(_server.text.trim()),
+                auth: _info!.auth,
+                purpose: EnterpriseSignInPurpose.enableSync,
+                initialLogin: _hintLogin(_info!.auth),
+                onRunStarted: (run) => _oidcRun = run,
+                onSubmit: (signIn, login) => _startEnterprise(_info!.auth, signIn, login),
+                footer: TextField(
+                  controller: _deviceName,
+                  decoration: InputDecoration(labelText: l10n.enableSyncDialogDeviceName),
+                ),
               ),
             ],
             _WizardStep.account => [
@@ -226,8 +303,10 @@ class _EnableSyncWizardState extends ConsumerState<EnableSyncWizard> {
               if (failed)
                 InfoBanner(
                   tone: BannerTone.danger,
-                  title: progress?.message == null ? null : l10n.enableSyncDialogFailedTitle,
-                  message: progress?.message ?? l10n.enableSyncDialogFailed,
+                  title: progress?.message == null && progress?.error == null ? null : l10n.enableSyncDialogFailedTitle,
+                  message: progress?.error != null
+                      ? errorMessage(l10n, progress!.error!)
+                      : progress?.message ?? l10n.enableSyncDialogFailed,
                 ),
             ],
           },
@@ -240,7 +319,12 @@ class _EnableSyncWizardState extends ConsumerState<EnableSyncWizard> {
       secondaryActions: [
         if (!done)
           GlassButton(
-            onPressed: _step == _WizardStep.upload && !failed ? null : () => closeDialog<void>(context),
+            key: const ValueKey('sync-cancel'),
+            onPressed: _step == _WizardStep.upload && !failed
+                ? (progress?.step == EnableSyncStep.authenticating && _oidcRun != null
+                      ? () => _oidcRun?.cancel()
+                      : null)
+                : () => closeDialog<void>(context),
             label: l10n.commonCancel,
           ),
         if (_step == _WizardStep.account)
@@ -253,6 +337,8 @@ class _EnableSyncWizardState extends ConsumerState<EnableSyncWizard> {
           onPressed: _busy ? null : _checkServer,
           label: l10n.commonNext,
         ),
+        // The organisation's sign-in form has its own button.
+        _WizardStep.account when _info?.auth.isEnterprise ?? false => null,
         _WizardStep.account => GlassButton.prominent(
           key: const ValueKey('sync-start'),
           onPressed: _start,

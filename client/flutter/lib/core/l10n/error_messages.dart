@@ -26,6 +26,13 @@
 /// | EnvelopeRateLimited (1.7) | envelopeRateLimited (`args.retry_after_seconds`) |
 /// | Internal | internal |
 /// | Unavailable | serverUnavailable |
+/// | AccountDisabled (1.8) | accountDisabled |
+/// | EnterpriseAuthRequired (1.8) | enterpriseAuthRequired |
+/// | IdentityConflict (1.8) | identityConflict |
+/// | DomainNotAllowed (1.8) | domainNotAllowed |
+/// | GroupRequired (1.8) | groupRequired |
+/// | MfaRequired (1.8) | mfaRequired |
+/// | IdpUnavailable (1.8) | idpUnavailable |
 /// | (transport failure) | serverUnreachable / offline |
 library;
 
@@ -90,6 +97,13 @@ String errorCodeMessage(AppLocalizations l, AppErrorCode code, {Map<String, Stri
     _ => l.errorEnvelopeRateLimited,
   },
   AppErrorCode.sharingReconciliationRequired => l.sharingReconcileHelp,
+  AppErrorCode.accountDisabled => l.errorAccountDisabled,
+  AppErrorCode.enterpriseAuthRequired => l.errorEnterpriseAuthRequired,
+  AppErrorCode.identityConflict => l.errorIdentityConflict,
+  AppErrorCode.domainNotAllowed => l.errorDomainNotAllowed,
+  AppErrorCode.groupRequired => l.errorGroupRequired,
+  AppErrorCode.mfaRequired => l.errorMfaRequired,
+  AppErrorCode.idpUnavailable => l.errorIdpUnavailable,
 };
 
 String? _reasonMessage(AppLocalizations l, AppException e) {
@@ -147,6 +161,9 @@ String? _reasonMessage(AppLocalizations l, AppException e) {
     AppErrorReason.currentPassphraseWrong => l.errorReasonCurrentPassphraseWrong,
     AppErrorReason.currentPasswordWrong => l.errorReasonCurrentPasswordWrong,
     AppErrorReason.accountMismatch => l.errorReasonAccountMismatch,
+    AppErrorReason.enterpriseCallbackInvalid => l.errorReasonEnterpriseCallbackInvalid,
+    AppErrorReason.enterpriseSignInTimeout => l.errorReasonEnterpriseSignInTimeout,
+    AppErrorReason.enterpriseBrowserUnavailable => l.errorReasonEnterpriseBrowserUnavailable,
   };
 }
 

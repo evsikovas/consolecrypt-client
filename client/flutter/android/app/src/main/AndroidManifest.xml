@@ -47,7 +47,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".KubeAuthCallbackActivity"
+            android:name=".AuthCallbackActivity"
             android:exported="true"
             android:excludeFromRecents="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
@@ -56,6 +56,12 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="consolecrypt" android:host="kubernetes" android:path="/oauth/callback" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="consolecrypt" android:host="auth" android:path="/callback" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

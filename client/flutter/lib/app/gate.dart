@@ -13,6 +13,10 @@ enum AppStage {
   /// Active synced profile without a session.
   signedOut,
 
+  /// Active synced profile whose account the administrator disabled
+  /// (enterprise sign-in): locked, "Access disabled by the administrator".
+  accountDisabled,
+
   /// Active profile has no vault yet → create passphrase.
   needsVault,
 
@@ -27,6 +31,7 @@ enum AppStage {
 AppStage computeStage(ProfilesState profiles, AuthState auth, VaultStatus vault) {
   final active = profiles.active;
   if (active == null) return AppStage.welcome;
+  if (active.isSynced && auth.accountDisabled) return AppStage.accountDisabled;
   if (active.isSynced && !auth.isSignedIn) return AppStage.signedOut;
   switch (vault.phase) {
     case VaultPhase.none:
@@ -52,6 +57,7 @@ abstract final class AppRoutes {
   static const loading = '/loading';
   static const welcome = '/welcome';
   static const login = '/login';
+  static const accountDisabled = '/account-disabled';
   static const restore = '/restore';
   static const onboarding = '/onboarding';
   static const recoveryKit = '/onboarding/kit';
@@ -111,6 +117,7 @@ String stageHome(AppStage stage) => switch (stage) {
   AppStage.loading => AppRoutes.loading,
   AppStage.welcome => AppRoutes.welcome,
   AppStage.signedOut => AppRoutes.login,
+  AppStage.accountDisabled => AppRoutes.accountDisabled,
   AppStage.needsVault => AppRoutes.onboarding,
   AppStage.recoveryKitPending => AppRoutes.recoveryKit,
   AppStage.locked => AppRoutes.unlock,
@@ -127,6 +134,7 @@ String? redirectFor(AppStage stage, String location) {
   final allowed = switch (stage) {
     AppStage.loading => location == AppRoutes.loading,
     AppStage.welcome || AppStage.signedOut => false,
+    AppStage.accountDisabled => location == AppRoutes.accountDisabled,
     AppStage.needsVault => location == AppRoutes.onboarding,
     AppStage.recoveryKitPending =>
       location == AppRoutes.recoveryKit || location == AppRoutes.verifyKit || location == AppRoutes.localNotice,

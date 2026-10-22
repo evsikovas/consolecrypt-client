@@ -1,3 +1,4 @@
+import 'package:consolecrypt/account/enterprise_sign_in.dart';
 import 'package:consolecrypt/account/profile_switcher.dart';
 import 'package:consolecrypt/app/about.dart';
 import 'package:consolecrypt/app/app_info.dart';
@@ -186,12 +187,19 @@ class _AccountSyncSection extends ConsumerWidget {
         ),
       );
     }
+    final hints = ref.watch(signInHintsProvider).value ?? ref.read(authServiceProvider).currentSignInHints;
+    final corporate = profileSignIn(hints, profile)?.method.isCorporate ?? false;
     return SectionCard(
       title: l10n.settingsAccountSyncTitle,
       icon: Icons.cloud_rounded,
       child: Column(
         children: [
           LabeledValue(label: l10n.settingsServerLabel, value: SelectableText(profile.serverUrl?.toString() ?? '—')),
+          LabeledValue(
+            key: const ValueKey('settings-auth-row'),
+            label: l10n.settingsAuthLabel,
+            value: AuthorizationSummary(profile: profile),
+          ),
           LabeledValue(label: l10n.settingsAccountLabel, value: Text(profile.accountEmail ?? '—')),
           LabeledValue(label: l10n.settingsThisDeviceLabel, value: Text(session?.deviceName ?? '—')),
           const SizedBox(height: GlassSpacing.s8),
@@ -199,10 +207,12 @@ class _AccountSyncSection extends ConsumerWidget {
             spacing: GlassSpacing.s8,
             runSpacing: GlassSpacing.s8,
             children: [
-              GlassButton(
-                onPressed: () => showChangeAccountPasswordDialog(context),
-                label: l10n.settingsChangeAccountPassword,
-              ),
+              // Corporate accounts have no account password here.
+              if (!corporate)
+                GlassButton(
+                  onPressed: () => showChangeAccountPasswordDialog(context),
+                  label: l10n.settingsChangeAccountPassword,
+                ),
               GlassButton(
                 key: const ValueKey('settings-disconnect'),
                 onPressed: () => showDisconnectDialog(context, ref),

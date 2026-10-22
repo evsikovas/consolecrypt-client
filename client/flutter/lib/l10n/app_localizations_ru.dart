@@ -11068,4 +11068,193 @@ class AppLocalizationsRu extends AppLocalizations {
   String sharingRestoreUntil(String date, int count) {
     return 'Можно восстановить до $date · получателей: $count';
   }
+
+  @override
+  String loginSsoButton(String name) {
+    return 'Войти через $name';
+  }
+
+  @override
+  String get loginSsoButtonDefault => 'Войти через SSO';
+
+  @override
+  String get loginSsoEmailLabel => 'E-mail (необязательно)';
+
+  @override
+  String get loginSsoEmailHelper => 'Подставится на странице входа вашей организации.';
+
+  @override
+  String get loginSsoWaiting => 'Завершите вход в браузере…';
+
+  @override
+  String get loginSsoWaitingHelp =>
+      'В браузере открыта страница входа вашей организации. Вернитесь сюда, когда она об этом попросит.';
+
+  @override
+  String get loginLdapLoginLabel => 'Логин (email или DOMAIN\\user)';
+
+  @override
+  String get loginLdapPasswordLabel => 'Пароль';
+
+  @override
+  String get loginLdapCaption => 'Учётная запись вашей организации';
+
+  @override
+  String get loginLdapLoginRequired => 'Введите логин';
+
+  @override
+  String get corporateAuthNoticeTitle => 'Корпоративный вход';
+
+  @override
+  String corporateAuthNotice(String name) {
+    return 'Вход через корпоративный сервер авторизации $name. Пароль организации не открывает хранилище — для этого нужен пароль хранилища.';
+  }
+
+  @override
+  String get authProviderOidc => 'OIDC';
+
+  @override
+  String get authProviderLdap => 'Active Directory';
+
+  @override
+  String get authProviderSsoFallback => 'SSO';
+
+  @override
+  String get serverNeedsNewerApp =>
+      'Сервер использует способ входа, который эта версия не поддерживает. Обновите ConsoleCrypt.';
+
+  @override
+  String get signInMethodEmail => 'email и пароль';
+
+  @override
+  String signInMethodOidc(String name) {
+    return '$name (OIDC)';
+  }
+
+  @override
+  String signInMethodLdap(String name) {
+    return '$name (Active Directory)';
+  }
+
+  @override
+  String signInLastTime(String method, String login) {
+    return 'В прошлый раз вы входили через $method как $login';
+  }
+
+  @override
+  String signInLastTimeNoLogin(String method) {
+    return 'В прошлый раз вы входили через $method';
+  }
+
+  @override
+  String get signInForget => 'Забыть';
+
+  @override
+  String authModeChangedToEnterprise(String name) {
+    return 'Сервер перешёл на вход через корпоративный сервер авторизации $name. Прежний пароль аккаунта больше не используется.';
+  }
+
+  @override
+  String get authModeChangedToStandard =>
+      'Сервер перешёл с корпоративного входа на вход по email и паролю аккаунта. Используйте пароль, который администратор задал для вашей учётной записи.';
+
+  @override
+  String get recentServersLabel => 'Недавние серверы';
+
+  @override
+  String get authBadgeEmail => 'Email';
+
+  @override
+  String authBadgeSso(String name) {
+    return 'SSO: $name';
+  }
+
+  @override
+  String get authBadgeAd => 'AD';
+
+  @override
+  String get settingsAuthLabel => 'Авторизация';
+
+  @override
+  String settingsAuthCorporate(String name, String kind) {
+    return 'Корпоративный сервер — $name ($kind)';
+  }
+
+  @override
+  String get settingsAuthStandard => 'Email и пароль аккаунта';
+
+  @override
+  String get settingsAuthCorporateHelp =>
+      'Кто входит, проверяет сервер авторизации вашей организации. Доступа к хранилищу он не получает: пароль хранилища остаётся на ваших устройствах.';
+
+  @override
+  String settingsAuthSignedIn(String method, String date) {
+    return 'Это устройство вошло через $method $date';
+  }
+
+  @override
+  String settingsAuthSignedInAs(String method, String login, String date) {
+    return 'Это устройство вошло через $method как $login $date';
+  }
+
+  @override
+  String devicesAuthCorporate(String name) {
+    return 'Аккаунты на этом сервере входят через корпоративный сервер авторизации $name.';
+  }
+
+  @override
+  String get accountDisabledTitle => 'Доступ отключён администратором';
+
+  @override
+  String accountDisabledBody(String server) {
+    return 'Ваша организация отключила эту учётную запись на сервере $server. Синхронизация остановлена, профиль заблокирован. Данные на этом устройстве остаются зашифрованными.';
+  }
+
+  @override
+  String get accountDisabledSignIn => 'Войти снова';
+
+  @override
+  String get accountDisabledDelete => 'Удалить профиль с этого устройства';
+
+  @override
+  String accountDisabledDeleteTitle(String name) {
+    return 'Удалить профиль «$name»?';
+  }
+
+  @override
+  String get accountDisabledDeleteMessage =>
+      'Зашифрованная локальная копия будет удалена с этого устройства. На сервере ничего не изменится.';
+
+  @override
+  String get errorAccountDisabled => 'Доступ отключён администратором.';
+
+  @override
+  String get errorEnterpriseAuthRequired =>
+      'Этот сервер принимает только вход вашей организации. Проверьте сервер ещё раз или обновите приложение.';
+
+  @override
+  String get errorIdentityConflict =>
+      'Учётная запись организации уже связана с другим аккаунтом на этом сервере. Обратитесь к администратору.';
+
+  @override
+  String get errorDomainNotAllowed => 'Домен вашей почты не допущен на этом сервере.';
+
+  @override
+  String get errorGroupRequired =>
+      'Ваша учётная запись не входит в группу, которой разрешён этот сервер. Обратитесь к администратору.';
+
+  @override
+  String get errorMfaRequired => 'Ваша организация требует вход со вторым фактором. Войдите снова с его помощью.';
+
+  @override
+  String get errorIdpUnavailable => 'Служба входа вашей организации недоступна. Повторите попытку позже.';
+
+  @override
+  String get errorReasonEnterpriseCallbackInvalid => 'Браузер вернул неожиданный ответ. Начните вход заново.';
+
+  @override
+  String get errorReasonEnterpriseSignInTimeout => 'Вход занял слишком много времени. Начните заново.';
+
+  @override
+  String get errorReasonEnterpriseBrowserUnavailable => 'Не удалось открыть браузер для входа.';
 }

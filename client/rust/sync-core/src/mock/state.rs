@@ -223,6 +223,8 @@ pub(crate) struct State {
     request_nonces: HashSet<(DeviceId, [u8; 32])>,
     pub(crate) proof_stats: RequestProofStats,
     events: broadcast::Sender<Outgoing>,
+    /// Protocol 1.8 enterprise sign-in (see `mock/enterprise.rs`).
+    pub(crate) enterprise: super::enterprise::Enterprise,
 }
 
 fn random_token() -> String {
@@ -331,6 +333,7 @@ impl State {
             request_nonces: HashSet::new(),
             proof_stats: RequestProofStats::default(),
             events,
+            enterprise: Default::default(),
         }
     }
 
@@ -513,6 +516,43 @@ impl State {
             }
         }
         ids
+    }
+
+    pub(crate) fn revoke_user_sessions(&mut self, user: UserId) -> Vec<SessionId> {
+        let ids = self.revoke_sessions(|s| s.user_id == user);
+        self.access.retain(|_, a| !ids.contains(&a.session_id));
+        ids
+    }
+
+    pub(crate) fn close_user_sessions(&self, user: UserId, ids: Vec<SessionId>) {
+        self.close_sessions(user, ids);
+    }
+
+    pub(crate) fn email_of(&self, user: UserId) -> Option<String> {
+        self.users.get(&user).map(|u| u.email.clone())
+    }
+
+    /// Account of an enterprise user (created on first sign-in with an
+    /// unusable password; the e-mail comes from the IdP/directory and
+    /// counts as verified) → its internal password.
+    pub(crate) fn ensure_enterprise_user(&mut self, email: &str) -> String {
+        if let Some(u) = self.emails.get(email).and_then(|id| self.users.get(id)) {
+            return u.password.clone();
+        }
+        let user_id = UserId::new();
+        let password = random_token();
+        self.users.insert(
+            user_id,
+            User {
+                user_id,
+                email: email.to_owned(),
+                password: password.clone(),
+                email_verified: true,
+                created_at: Utc::now(),
+            },
+        );
+        self.emails.insert(email.to_owned(), user_id);
+        password
     }
 
     fn close_sessions(&self, user_id: UserId, ids: Vec<SessionId>) {
@@ -712,6 +752,9 @@ impl State {
             .ok_or_else(unauthorized)?;
         if device.status == DeviceStatus::Revoked {
             return Err(err(ErrorCode::DeviceRevoked, "device has been revoked"));
+        }
+        if self.is_disabled_user(session.user_id) {
+            return Err(err(ErrorCode::AccountDisabled, "account disabled"));
         }
         if session.revoked {
             return Err(unauthorized());

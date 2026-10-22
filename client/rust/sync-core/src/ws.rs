@@ -196,6 +196,7 @@ async fn run(
 fn classify_api(e: ApiError) -> ConnectError {
     match e {
         ApiError::DeviceRevoked => ConnectError::Terminal(StopReason::DeviceRevoked),
+        ApiError::AccountDisabled => ConnectError::Terminal(StopReason::AccountDisabled),
         ApiError::UpgradeRequired { .. } => ConnectError::Terminal(StopReason::UpgradeRequired),
         e if e.requires_reauth() => ConnectError::Terminal(StopReason::ReauthRequired),
         e => ConnectError::Retry(e.to_string()),
@@ -302,6 +303,9 @@ async fn connect(api: &ApiClient) -> Result<Ws, ConnectError> {
                     (401, _) => return Err(ConnectError::Terminal(StopReason::ReauthRequired)),
                     (403, Some(ErrorCode::DeviceRevoked)) => {
                         return Err(ConnectError::Terminal(StopReason::DeviceRevoked))
+                    }
+                    (403, Some(ErrorCode::AccountDisabled)) => {
+                        return Err(ConnectError::Terminal(StopReason::AccountDisabled))
                     }
                     (426, _) => return Err(ConnectError::Terminal(StopReason::UpgradeRequired)),
                     _ => {

@@ -19147,6 +19147,312 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Restorable until {date} · recipients: {count}'**
   String sharingRestoreUntil(String date, int count);
+
+  /// Enterprise OIDC sign-in button; name = the server's display name for the organisation's sign-in.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with {name}'**
+  String loginSsoButton(String name);
+
+  /// Enterprise OIDC sign-in button when the server gives no display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with SSO'**
+  String get loginSsoButtonDefault;
+
+  /// Optional e-mail field passed to the organisation's sign-in page as a login hint.
+  ///
+  /// In en, this message translates to:
+  /// **'E-mail (optional)'**
+  String get loginSsoEmailLabel;
+
+  /// Helper under the optional e-mail (login hint) field.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-filled on your organisation\'s sign-in page.'**
+  String get loginSsoEmailHelper;
+
+  /// Waiting state while the system browser shows the organisation's sign-in page.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish signing in in the browser…'**
+  String get loginSsoWaiting;
+
+  /// Explanation under the browser waiting state.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser shows your organisation\'s sign-in page. Return here when it says so.'**
+  String get loginSsoWaitingHelp;
+
+  /// Login field for directory (Active Directory / LDAP) sign-in.
+  ///
+  /// In en, this message translates to:
+  /// **'Login (email or DOMAIN\\user)'**
+  String get loginLdapLoginLabel;
+
+  /// Directory (Active Directory / LDAP) password field.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get loginLdapPasswordLabel;
+
+  /// Caption above the directory login and password fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organisation\'s account'**
+  String get loginLdapCaption;
+
+  /// Validation: the directory login is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your login'**
+  String get loginLdapLoginRequired;
+
+  /// Title of the notice that a corporate authorization server is used.
+  ///
+  /// In en, this message translates to:
+  /// **'Corporate sign-in'**
+  String get corporateAuthNoticeTitle;
+
+  /// Notice on the sign-in screen of an enterprise server; name = the authorization server's display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in through the corporate authorization server {name}. Your organisation\'s password does not open the vault — the vault passphrase does.'**
+  String corporateAuthNotice(String name);
+
+  /// Kind of corporate authorization server: OpenID Connect identity provider.
+  ///
+  /// In en, this message translates to:
+  /// **'OIDC'**
+  String get authProviderOidc;
+
+  /// Kind of corporate authorization server: Active Directory / LDAP directory.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Directory'**
+  String get authProviderLdap;
+
+  /// Name of the organisation's sign-in when the server gives no display name.
+  ///
+  /// In en, this message translates to:
+  /// **'SSO'**
+  String get authProviderSsoFallback;
+
+  /// The server advertises an unknown sign-in mode or provider.
+  ///
+  /// In en, this message translates to:
+  /// **'This server uses a sign-in method this version does not support. Update ConsoleCrypt.'**
+  String get serverNeedsNewerApp;
+
+  /// Sign-in method name used in 'Last time you signed in with {method}'.
+  ///
+  /// In en, this message translates to:
+  /// **'e-mail and password'**
+  String get signInMethodEmail;
+
+  /// Sign-in method name: the organisation's OIDC sign-in; name = server display name.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (OIDC)'**
+  String signInMethodOidc(String name);
+
+  /// Sign-in method name: the organisation's directory sign-in; name = server display name.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (Active Directory)'**
+  String signInMethodLdap(String name);
+
+  /// Remembered sign-in hint on the sign-in screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Last time you signed in with {method} as {login}'**
+  String signInLastTime(String method, String login);
+
+  /// Remembered sign-in hint without a remembered login.
+  ///
+  /// In en, this message translates to:
+  /// **'Last time you signed in with {method}'**
+  String signInLastTimeNoLogin(String method);
+
+  /// Button: forget the remembered sign-in method and login of this server.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget'**
+  String get signInForget;
+
+  /// The server's sign-in mode changed from what this device remembers to corporate sign-in.
+  ///
+  /// In en, this message translates to:
+  /// **'The server switched to sign-in through the corporate authorization server {name}. The previous account password is no longer used.'**
+  String authModeChangedToEnterprise(String name);
+
+  /// The server's sign-in mode changed from corporate sign-in back to e-mail and password.
+  ///
+  /// In en, this message translates to:
+  /// **'The server switched from corporate sign-in to e-mail and account password. Use the password your administrator set for your account.'**
+  String get authModeChangedToStandard;
+
+  /// Label of the remembered sync servers under the server address field.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent servers'**
+  String get recentServersLabel;
+
+  /// Compact badge: this server signs in with e-mail and password.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get authBadgeEmail;
+
+  /// Compact badge: this server signs in through the organisation's SSO; name = display name.
+  ///
+  /// In en, this message translates to:
+  /// **'SSO: {name}'**
+  String authBadgeSso(String name);
+
+  /// Compact badge: this server signs in through Active Directory / LDAP.
+  ///
+  /// In en, this message translates to:
+  /// **'AD'**
+  String get authBadgeAd;
+
+  /// Label of the row that says how the account signs in to the sync server.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorization'**
+  String get settingsAuthLabel;
+
+  /// The account signs in through a corporate authorization server; kind = OIDC or Active Directory.
+  ///
+  /// In en, this message translates to:
+  /// **'Corporate server — {name} ({kind})'**
+  String settingsAuthCorporate(String name, String kind);
+
+  /// The account signs in with e-mail and account password (standard server).
+  ///
+  /// In en, this message translates to:
+  /// **'E-mail and account password'**
+  String get settingsAuthStandard;
+
+  /// Explanation under the corporate authorization row in Settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organisation\'s authorization server checks who signs in. It never gets access to the vault: the vault passphrase stays on your devices.'**
+  String get settingsAuthCorporateHelp;
+
+  /// How and when this device signed in.
+  ///
+  /// In en, this message translates to:
+  /// **'This device signed in with {method} on {date}'**
+  String settingsAuthSignedIn(String method, String date);
+
+  /// How, as whom and when this device signed in.
+  ///
+  /// In en, this message translates to:
+  /// **'This device signed in with {method} as {login} on {date}'**
+  String settingsAuthSignedInAs(String method, String login, String date);
+
+  /// Devices page notice for an enterprise server.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts on this server sign in through the corporate authorization server {name}.'**
+  String devicesAuthCorporate(String name);
+
+  /// Title of the screen shown when the organisation disabled the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Access disabled by the administrator'**
+  String get accountDisabledTitle;
+
+  /// Body of the account disabled screen; server = sync server address.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organisation disabled this account on {server}. Synchronisation stopped and the profile is locked. The data on this device stays encrypted.'**
+  String accountDisabledBody(String server);
+
+  /// Button on the account disabled screen: try signing in again (if access was restored).
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again'**
+  String get accountDisabledSignIn;
+
+  /// Button on the account disabled screen: remove the locked profile from this device.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete profile from this device'**
+  String get accountDisabledDelete;
+
+  /// Confirmation title for deleting a disabled profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete profile “{name}”?'**
+  String accountDisabledDeleteTitle(String name);
+
+  /// Confirmation message for deleting a disabled profile.
+  ///
+  /// In en, this message translates to:
+  /// **'The encrypted local copy is removed from this device. Nothing changes on the server.'**
+  String get accountDisabledDeleteMessage;
+
+  /// Error: the organisation disabled the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Access was disabled by the administrator.'**
+  String get errorAccountDisabled;
+
+  /// Error: password sign-in was refused by an enterprise server.
+  ///
+  /// In en, this message translates to:
+  /// **'This server only accepts your organisation\'s sign-in. Check the server again, or update the app.'**
+  String get errorEnterpriseAuthRequired;
+
+  /// Error: the identity is linked to another account.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organisation\'s account is already linked to another account on this server. Contact the administrator.'**
+  String get errorIdentityConflict;
+
+  /// Error: the e-mail domain is not allowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your e-mail domain is not allowed on this server.'**
+  String get errorDomainNotAllowed;
+
+  /// Error: the identity lacks the required group or role.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account is not in the group allowed to use this server. Contact the administrator.'**
+  String get errorGroupRequired;
+
+  /// Error: multi-factor sign-in is required.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organisation requires sign-in with a second factor. Sign in again using it.'**
+  String get errorMfaRequired;
+
+  /// Error: the organisation's identity provider or directory is unreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organisation\'s sign-in service is unavailable. Try again later.'**
+  String get errorIdpUnavailable;
+
+  /// Error: the sign-in redirect had a wrong state or no code.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser returned an unexpected answer. Start signing in again.'**
+  String get errorReasonEnterpriseCallbackInvalid;
+
+  /// Error: the browser sign-in timed out.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing in took too long. Start again.'**
+  String get errorReasonEnterpriseSignInTimeout;
+
+  /// Error: the system browser or the redirect listener is unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the browser for signing in.'**
+  String get errorReasonEnterpriseBrowserUnavailable;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

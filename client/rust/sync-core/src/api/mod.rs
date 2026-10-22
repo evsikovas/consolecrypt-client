@@ -14,6 +14,7 @@
 //!   surface as [`ApiError::RequestProofRejected`].
 //! * Logs only method, path, status and timing — never tokens or bodies.
 
+pub mod enterprise;
 mod error;
 mod sharing;
 mod sharing_enrollment;
@@ -442,6 +443,7 @@ impl ApiClient {
                 let terminal = match &e {
                     ApiError::RefreshTokenReused => Some(ApiError::RefreshTokenReused),
                     ApiError::DeviceRevoked => Some(ApiError::DeviceRevoked),
+                    ApiError::AccountDisabled => Some(ApiError::AccountDisabled),
                     ApiError::SessionExpired => Some(ApiError::SessionExpired),
                     ApiError::Server { status: 401, .. } => Some(ApiError::SessionExpired),
                     _ => None,
@@ -1148,6 +1150,7 @@ pub(crate) fn map_error(raw: &Raw) -> ApiError {
         ErrorCode::Unauthorized if status == 401 => ApiError::SessionExpired,
         ErrorCode::RefreshTokenReused => ApiError::RefreshTokenReused,
         ErrorCode::DeviceRevoked => ApiError::DeviceRevoked,
+        ErrorCode::AccountDisabled => ApiError::AccountDisabled,
         ErrorCode::UpgradeRequired => ApiError::UpgradeRequired {
             server: err
                 .details

@@ -48,15 +48,26 @@ final class MockProfileService implements ProfileService {
     String? name,
   }) async {
     await mockDelay(_cloud.config.latency);
-    final account = authenticateAccount(_cloud, email: email, password: password, createAccount: createAccount);
+    final account = authenticateAccount(
+      _cloud,
+      email: email,
+      password: password,
+      createAccount: createAccount,
+      serverUrl: serverUrl,
+    );
+    return _activate(account, serverUrl: serverUrl, deviceName: deviceName, name: name);
+  }
 
+  Profile _activate(MockAccount account, {required Uri serverUrl, required String deviceName, String? name}) {
     // Signing into an account that already has a profile re-activates it.
     for (final record in _cloud.records.values) {
       if (record.profile.isSynced &&
           record.profile.accountEmail == account.email &&
           record.profile.serverUrl == serverUrl) {
         _cloud.lockActive();
-        record.sessionActive = true;
+        record
+          ..sessionActive = true
+          ..accountDisabled = false;
         _cloud.publishProfiles(activeId: record.profile.id);
         return record.profile;
       }
@@ -84,6 +95,18 @@ final class MockProfileService implements ProfileService {
     _cloud.records[profile.id] = record;
     _cloud.publishProfiles(activeId: profile.id);
     return profile;
+  }
+
+  @override
+  Future<Profile> createEnterpriseProfile({
+    required Uri serverUrl,
+    required EnterpriseSignIn signIn,
+    required String deviceName,
+    String? name,
+  }) async {
+    await mockDelay(_cloud.config.latency);
+    final account = authenticateEnterprise(_cloud, serverUrl: serverUrl, signIn: signIn);
+    return _activate(account, serverUrl: serverUrl, deviceName: deviceName, name: name);
   }
 
   @override
@@ -131,12 +154,49 @@ final class MockProfileService implements ProfileService {
   }
 }
 
+/// Pending mock browser sign-ins: ticket → login hint.
+final Map<String, String?> mockOidcTickets = {};
+
+/// The organisation's sign-in on a mock enterprise server: the directory
+/// accepts any login with [MockCloud.demoPassword] (`DOMAIN\user` →
+/// `user@domain.test`); the mock IdP signs the login hint in (default
+/// [MockCloud.ssoUserEmail]). The account is created on first sign-in.
+MockAccount authenticateEnterprise(MockCloud cloud, {required Uri serverUrl, required EnterpriseSignIn signIn}) {
+  if (cloud.offline) {
+    throw const AppException(AppErrorCode.serverUnreachable, 'Server unreachable. Check the URL and your connection.');
+  }
+  final auth = cloud.authFor(serverUrl);
+  final String email;
+  switch (signIn) {
+    case LdapSignIn(:final login, :final password):
+      final ok = password.expose() == MockCloud.demoPassword;
+      password.wipe();
+      if (!auth.isLdap) throw const AppException(AppErrorCode.enterpriseAuthRequired, 'enterprise_auth_required');
+      if (!ok) throw const AppException(AppErrorCode.invalidCredentials, 'Wrong login or password');
+      final l = login.trim().toLowerCase();
+      final slash = l.indexOf(r'\');
+      email = l.contains('@')
+          ? l
+          : (slash > 0 ? '${l.substring(slash + 1)}@${l.substring(0, slash)}.test' : '$l@acme.test');
+    case OidcSignIn(:final ticket):
+      if (!auth.isOidc) throw const AppException(AppErrorCode.enterpriseAuthRequired, 'enterprise_auth_required');
+      if (!mockOidcTickets.containsKey(ticket)) throw const AppException(AppErrorCode.cancelled, 'cancelled');
+      final hint = mockOidcTickets.remove(ticket);
+      email = (hint == null || !hint.contains('@')) ? MockCloud.ssoUserEmail : hint.trim().toLowerCase();
+  }
+  if (cloud.disabledAccounts.contains(email)) {
+    throw const AppException(AppErrorCode.accountDisabled, 'account disabled');
+  }
+  return cloud.accounts[email] ??= MockAccount(email: email, password: 'enterprise-${generateUuidV4()}');
+}
+
 /// Shared by profile creation and the enable-sync wizard.
 MockAccount authenticateAccount(
   MockCloud cloud, {
   required String email,
   required SecretText password,
   required bool createAccount,
+  Uri? serverUrl,
 }) {
   if (cloud.offline) {
     throw const AppException(AppErrorCode.serverUnreachable, 'Server unreachable. Check the URL and your connection.');
@@ -162,6 +222,9 @@ MockAccount authenticateAccount(
       throw const AppException(AppErrorCode.emailTaken, 'An account with this e-mail already exists');
     }
     return cloud.accounts[normalized] = MockAccount(email: normalized, password: pass);
+  }
+  if (serverUrl != null && cloud.authFor(serverUrl).isEnterprise) {
+    throw const AppException(AppErrorCode.enterpriseAuthRequired, 'enterprise_auth_required');
   }
   final account = cloud.accounts[normalized];
   if (account == null || account.password != pass) {

@@ -86,6 +86,10 @@ SSH/RDP/SFTP traffic does not pass through the sync server. The server handles
 accounts and encrypted data, but it can see email addresses and operational
 metadata. Do not include secrets in text you choose to send to an AI provider.
 
+Servers in enterprise mode sign accounts in through the organisation's
+authorization server (SSO or Active Directory); see the
+[Account and sync guide](docs/public/SYNC_ACCOUNT.md).
+
 ## Source layout
 
 - `client/flutter/` — shared Flutter interface and platform integrations.
