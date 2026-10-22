@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/db/db_ai_panel.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
+import 'package:consolecrypt/db/db_designer_workspace.dart';
 import 'package:consolecrypt/db/db_editor.dart';
 import 'package:consolecrypt/db/db_errors.dart';
 import 'package:consolecrypt/db/db_export_dialog.dart';
@@ -66,7 +67,8 @@ class DbWorkspace extends ConsumerStatefulWidget {
   ConsumerState<DbWorkspace> createState() => _DbWorkspaceState();
 }
 
-class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingObserver {
+class _DbWorkspaceState extends ConsumerState<DbWorkspace>
+    with WidgetsBindingObserver, DbDesignerWorkspace<DbWorkspace> {
   late final _scope = ref.read(dbScopeProvider);
   late final Object? _backend = ref.read(dbServiceProvider);
   DbQueryService? get _service => _backend is DbQueryService ? _backend : null;
@@ -176,6 +178,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   }
 
   void _select(int index) {
+    activeDesigner = null;
     _active = index;
     final tab = _tabs[index];
     if (!tab.preview) _lastEditor = tab;
@@ -184,6 +187,21 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   void _changed() {
     if (_current) setState(() {});
   }
+
+  @override
+  bool get designerCurrent => _current;
+  @override
+  DbSessionInfo? get designerSession => _session;
+  @override
+  Object? get designerBackend => _backend;
+  @override
+  DbConnection get designerConnection => widget.connection;
+  @override
+  DbObjectRef? get designerSelection => _selectedObject;
+  @override
+  void designerDraft(String text) => _draft(text);
+  @override
+  void designerDiscardReview(String session, String ticket) => unawaited(_discardReview(session, ticket));
 
   /// Generated text (DDL, history, AI, suggestions) goes below the text of
   /// the current editor tab without running. While the data preview tab is
@@ -269,6 +287,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     }
     _tabs.clear();
     _lastEditor = null;
+    closeDesigners();
     _lastPlan = null;
     _selectedObject = null;
     if (session != null && _service != null) unawaited(_service!.disconnect(session.id).catchError((Object _) {}));
@@ -848,6 +867,8 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
               _writeMode,
             ),
           _tool('db-privileges', Icons.verified_user_outlined, l.dbCheckPrivileges, _privileges),
+          if (designerAvailable)
+            _tool('db-design-new', Icons.add_box_outlined, l.dbDesignerCreateTable, () => unawaited(openDesigner())),
           if (wide) ...[
             Container(
               width: 1,
@@ -1078,49 +1099,53 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
                 title: item.preview ? l.dbPreviewTabTitle(item.previewName!) : '${l.dbEditor} ${item.id}',
                 state: item.result.running ? GlassTabState.reconnecting : GlassTabState.none,
               ),
+            ...designerTabs(l),
           ],
-          activeIndex: _active,
-          onSelect: (i) => setState(() => _select(i)),
-          onClose: (i) => _closeTab(_tabs[i]),
+          activeIndex: designerTabIndex(_tabs.length) ?? _active,
+          onSelect: (i) => i >= _tabs.length ? selectDesignerTab(i - _tabs.length) : setState(() => _select(i)),
+          onClose: (i) => i >= _tabs.length ? unawaited(closeDesignerTab(i - _tabs.length)) : _closeTab(_tabs[i]),
           onAdd: _tabs.length < 12 ? () => setState(() => _addTab()) : null,
         ),
         const SizedBox(height: GlassSpacing.s8),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, bounds) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  height: bounds.maxHeight * _editorFraction,
-                  child: _panel(
-                    const ValueKey('db-editor-panel'),
-                    solid: true,
-                    DbQueryEditor(
-                      key: ValueKey(tab.id),
-                      controller: tab.controller,
-                      session: session,
-                      service: _service!,
-                      isCurrent: () => _tabCurrent(tab),
-                      running: tab.preparing || tab.result.running,
-                      onRun: _run,
-                      onCancel: tab.result.cancel,
-                      onExplain: _explain,
-                      onHistory: _hasHistory ? () => _showSide('history') : null,
-                      onAi: _hasAi ? () => _showSide('ai') : null,
+        if (activeDesigner case final designer?)
+          Expanded(child: designerView(designer, session, _service!))
+        else
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, bounds) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    height: bounds.maxHeight * _editorFraction,
+                    child: _panel(
+                      const ValueKey('db-editor-panel'),
+                      solid: true,
+                      DbQueryEditor(
+                        key: ValueKey(tab.id),
+                        controller: tab.controller,
+                        session: session,
+                        service: _service!,
+                        isCurrent: () => _tabCurrent(tab),
+                        running: tab.preparing || tab.result.running,
+                        onRun: _run,
+                        onCancel: tab.result.cancel,
+                        onExplain: _explain,
+                        onHistory: _hasHistory ? () => _showSide('history') : null,
+                        onAi: _hasAi ? () => _showSide('ai') : null,
+                      ),
                     ),
                   ),
-                ),
-                _Splitter(
-                  key: const ValueKey('db-editor-splitter'),
-                  vertical: false,
-                  onDrag: (dy) =>
-                      setState(() => _editorFraction = (_editorFraction + dy / bounds.maxHeight).clamp(.2, .75)),
-                ),
-                Expanded(child: _results(tab, session)),
-              ],
+                  _Splitter(
+                    key: const ValueKey('db-editor-splitter'),
+                    vertical: false,
+                    onDrag: (dy) =>
+                        setState(() => _editorFraction = (_editorFraction + dy / bounds.maxHeight).clamp(.2, .75)),
+                  ),
+                  Expanded(child: _results(tab, session)),
+                ],
+              ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -1264,6 +1289,9 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
                 if (_current) _tab?.controller.insert(value);
               },
               onSelect: (object) => setState(() => _selectedObject = object),
+              overlay: designerAvailable ? designers : null,
+              extraMenu: designerAvailable ? designerMenu : null,
+              onExtra: designerAvailable ? designerAction : null,
             );
             final side = switch (_side) {
               'history' when _hasHistory => 'history',

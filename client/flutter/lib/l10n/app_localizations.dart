@@ -62,7 +62,8 @@ import 'app_localizations_ru.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -70,7 +71,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -82,15 +84,19 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('ru'),
+  ];
 
   /// Button: dismiss a dialog without changes.
   ///
@@ -2124,13 +2130,19 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · registration open'**
-  String loginServerInfoRegistrationOpen(String serverVersion, String protocolVersion);
+  String loginServerInfoRegistrationOpen(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Login screen: result of a successful server check when registration is invite-only.
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · invite only'**
-  String loginServerInfoInviteOnly(String serverVersion, String protocolVersion);
+  String loginServerInfoInviteOnly(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Login screen: segmented button option to sign in to an existing account.
   ///
@@ -3426,7 +3438,10 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion}'**
-  String enableSyncDialogServerInfo(String serverVersion, String protocolVersion);
+  String enableSyncDialogServerInfo(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Enable-sync wizard segment: register a new account.
   ///
@@ -19056,7 +19071,11 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{note} Runs in {client} in a terminal; the Databases workspace does not allow it. From the {package} starter package.'**
-  String snippetStarterDbTerminalOrigin(String note, String client, String package);
+  String snippetStarterDbTerminalOrigin(
+    String note,
+    String client,
+    String package,
+  );
 
   /// Snippet run flow: a SQL/redis-cli/mongosh snippet needs an open terminal session running the database client
   ///
@@ -20095,9 +20114,1024 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I checked this command for {host} (team policy)'**
   String teamsPolicyAck(String host);
+
+  /// DB tree/toolbar: open the table designer for a new table
+  ///
+  /// In en, this message translates to:
+  /// **'Create table…'**
+  String get dbDesignerCreateTable;
+
+  /// DB tree: open the designer for a new MongoDB collection
+  ///
+  /// In en, this message translates to:
+  /// **'Create collection…'**
+  String get dbDesignerCreateCollection;
+
+  /// DB tree: open the table designer for an existing table
+  ///
+  /// In en, this message translates to:
+  /// **'Edit structure…'**
+  String get dbDesignerAlterTable;
+
+  /// Workspace tab title of a table designer
+  ///
+  /// In en, this message translates to:
+  /// **'Design: {name}'**
+  String dbDesignerTabTitle(String name);
+
+  /// Tab title of a designer whose table has no name yet
+  ///
+  /// In en, this message translates to:
+  /// **'New table'**
+  String get dbDesignerNewTab;
+
+  /// Closing a designer with pending changes: dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes to {name}?'**
+  String dbDesignerUnsavedTitle(String name);
+
+  /// Closing a designer with pending changes: message
+  ///
+  /// In en, this message translates to:
+  /// **'The table designer has changes that are not applied to the database yet.'**
+  String get dbDesignerUnsavedMessage;
+
+  /// Closing a designer: discard the draft
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t save'**
+  String get dbDesignerDontSave;
+
+  /// Closing a designer: open the save dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Save…'**
+  String get dbDesignerSaveButton;
+
+  /// Snackbar when the current table structure cannot be read
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the table structure.'**
+  String get dbDesignerLoadFailed;
+
+  /// Snackbar after the designer script ran
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: changes applied'**
+  String dbDesignerSaved(String name);
+
+  /// Tooltip/semantic label of the unsaved marker on a designer tab and draft tree nodes
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved changes'**
+  String get dbDesignerUnsavedMark;
+
+  /// Tooltip of a draft object in the DB tree
+  ///
+  /// In en, this message translates to:
+  /// **'New, not saved yet'**
+  String get dbDesignerDraftNew;
+
+  /// Tooltip of a changed object in the DB tree
+  ///
+  /// In en, this message translates to:
+  /// **'Changed, not saved yet'**
+  String get dbDesignerDraftChanged;
+
+  /// Save dialog title of the table designer
+  ///
+  /// In en, this message translates to:
+  /// **'{name} — save changes'**
+  String dbDesignerSaveTitle(String name);
+
+  /// Save dialog: caption above the generated script
+  ///
+  /// In en, this message translates to:
+  /// **'SQL preview'**
+  String get dbDesignerSqlPreview;
+
+  /// Designer: the script is transactional (PostgreSQL)
+  ///
+  /// In en, this message translates to:
+  /// **'Runs in one transaction: all statements apply or none.'**
+  String get dbDesignerTransactional;
+
+  /// Designer: the script is not transactional (MySQL, ClickHouse, MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'DDL is not transactional here: if a statement fails, the ones before it stay applied.'**
+  String get dbDesignerNotTransactional;
+
+  /// Save dialog: risk banner for destructive changes
+  ///
+  /// In en, this message translates to:
+  /// **'The script drops data or rewrites the table (dropped columns, type or key changes).'**
+  String get dbDesignerDestructive;
+
+  /// Save dialog: production session without an open write window
+  ///
+  /// In en, this message translates to:
+  /// **'This is a production connection. Unlock production writes in the workspace header to run the script.'**
+  String get dbDesignerProductionLocked;
+
+  /// Save dialog: read-only session
+  ///
+  /// In en, this message translates to:
+  /// **'The session is read-only. Allow writes in the workspace header to run the script.'**
+  String get dbDesignerReadOnly;
+
+  /// Save dialog: passphrase prompt
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the vault passphrase to run the script.'**
+  String get dbDesignerConfirm;
+
+  /// Save dialog: transactional script failed
+  ///
+  /// In en, this message translates to:
+  /// **'A statement failed; nothing was changed.'**
+  String get dbDesignerFailedRolledBack;
+
+  /// Save dialog: non-transactional script failed
+  ///
+  /// In en, this message translates to:
+  /// **'A statement failed; the statements before it were applied.'**
+  String get dbDesignerFailedPartly;
+
+  /// Save dialog: result line of one statement
+  ///
+  /// In en, this message translates to:
+  /// **'{index}. {status}'**
+  String dbDesignerStatementResult(int index, String status);
+
+  /// Statement result
+  ///
+  /// In en, this message translates to:
+  /// **'applied'**
+  String get dbDesignerStatusDone;
+
+  /// Statement result
+  ///
+  /// In en, this message translates to:
+  /// **'rolled back'**
+  String get dbDesignerStatusRolledBack;
+
+  /// Statement result
+  ///
+  /// In en, this message translates to:
+  /// **'not run'**
+  String get dbDesignerStatusSkipped;
+
+  /// Statement result: the server refused it
+  ///
+  /// In en, this message translates to:
+  /// **'failed on the server'**
+  String get dbDesignerStatementFailed;
+
+  /// Designer section: MongoDB fields
+  ///
+  /// In en, this message translates to:
+  /// **'Fields'**
+  String get dbDesignFields;
+
+  /// Designer section
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get dbDesignColumns;
+
+  /// Designer section
+  ///
+  /// In en, this message translates to:
+  /// **'Keys'**
+  String get dbDesignKeys;
+
+  /// Designer section
+  ///
+  /// In en, this message translates to:
+  /// **'Foreign keys'**
+  String get dbDesignForeignKeys;
+
+  /// Designer section
+  ///
+  /// In en, this message translates to:
+  /// **'Indexes'**
+  String get dbDesignIndexes;
+
+  /// Designer section: CHECK constraints
+  ///
+  /// In en, this message translates to:
+  /// **'Checks'**
+  String get dbDesignChecks;
+
+  /// Designer section: engine options
+  ///
+  /// In en, this message translates to:
+  /// **'Options'**
+  String get dbDesignOptions;
+
+  /// Designer section: live DDL preview
+  ///
+  /// In en, this message translates to:
+  /// **'DDL'**
+  String get dbDesignDdl;
+
+  /// Designer row marker tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Has errors'**
+  String get dbDesignHasErrors;
+
+  /// Designer row marker tooltip: not on the server yet
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get dbDesignNew;
+
+  /// Designer row marker tooltip: differs from the server
+  ///
+  /// In en, this message translates to:
+  /// **'Changed'**
+  String get dbDesignChanged;
+
+  /// Designer: columns picker placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Choose columns'**
+  String get dbDesignPickColumns;
+
+  /// Designer header placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Collection name'**
+  String get dbDesignCollectionName;
+
+  /// Designer header placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Table name'**
+  String get dbDesignTableName;
+
+  /// Designer: schema field
+  ///
+  /// In en, this message translates to:
+  /// **'Schema'**
+  String get dbDesignSchema;
+
+  /// Designer: database field
+  ///
+  /// In en, this message translates to:
+  /// **'Database'**
+  String get dbDesignDatabase;
+
+  /// Designer: comment field
+  ///
+  /// In en, this message translates to:
+  /// **'Comment'**
+  String get dbDesignComment;
+
+  /// Designer: MongoDB field description
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get dbDesignDescription;
+
+  /// Designer badge: existing table
+  ///
+  /// In en, this message translates to:
+  /// **'Edit structure'**
+  String get dbDesignModeAlter;
+
+  /// Designer badge: table to create
+  ///
+  /// In en, this message translates to:
+  /// **'New table'**
+  String get dbDesignModeCreate;
+
+  /// Designer badge: pending changes
+  ///
+  /// In en, this message translates to:
+  /// **'Changed'**
+  String get dbDesignPending;
+
+  /// Designer: undo the last edit
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get dbDesignUndo;
+
+  /// Designer: drop the draft
+  ///
+  /// In en, this message translates to:
+  /// **'Revert all changes'**
+  String get dbDesignRevert;
+
+  /// Designer: open the save dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get dbDesignSave;
+
+  /// Designer: save button tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes (⌘S / Ctrl+S)'**
+  String get dbDesignSaveShortcut;
+
+  /// Designer column grid header
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get dbDesignColName;
+
+  /// Designer column grid header
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get dbDesignColType;
+
+  /// Designer field grid header (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'BSON type'**
+  String get dbDesignBsonType;
+
+  /// Designer column grid header: length or precision
+  ///
+  /// In en, this message translates to:
+  /// **'Length'**
+  String get dbDesignColLength;
+
+  /// Designer column grid header: numeric scale
+  ///
+  /// In en, this message translates to:
+  /// **'Scale'**
+  String get dbDesignColScale;
+
+  /// Designer: MongoDB required field
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get dbDesignRequired;
+
+  /// Designer: ClickHouse Nullable(T)
+  ///
+  /// In en, this message translates to:
+  /// **'Nullable'**
+  String get dbDesignNullable;
+
+  /// Designer: NOT NULL checkbox
+  ///
+  /// In en, this message translates to:
+  /// **'Not null'**
+  String get dbDesignNotNull;
+
+  /// Designer column grid header
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get dbDesignColDefault;
+
+  /// Designer column grid header: identity / AUTO_INCREMENT
+  ///
+  /// In en, this message translates to:
+  /// **'Auto increment'**
+  String get dbDesignColIdentity;
+
+  /// Designer: primary key checkbox (short)
+  ///
+  /// In en, this message translates to:
+  /// **'PK'**
+  String get dbDesignPk;
+
+  /// Designer: unique checkbox (short)
+  ///
+  /// In en, this message translates to:
+  /// **'Unique'**
+  String get dbDesignUnique;
+
+  /// Designer: MySQL UNSIGNED
+  ///
+  /// In en, this message translates to:
+  /// **'Unsigned'**
+  String get dbDesignUnsigned;
+
+  /// Designer: PostgreSQL array type
+  ///
+  /// In en, this message translates to:
+  /// **'Array'**
+  String get dbDesignArray;
+
+  /// Designer: ClickHouse LowCardinality (short)
+  ///
+  /// In en, this message translates to:
+  /// **'LowCard.'**
+  String get dbDesignLowCardinality;
+
+  /// Designer: type list button
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a type'**
+  String get dbDesignPickType;
+
+  /// Designer: default value presets button
+  ///
+  /// In en, this message translates to:
+  /// **'Default presets'**
+  String get dbDesignDefaultPresets;
+
+  /// Designer: clear the default
+  ///
+  /// In en, this message translates to:
+  /// **'No default'**
+  String get dbDesignNoDefault;
+
+  /// Designer column menu
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get dbDesignDuplicate;
+
+  /// Designer column menu
+  ///
+  /// In en, this message translates to:
+  /// **'Move up'**
+  String get dbDesignMoveUp;
+
+  /// Designer column menu
+  ///
+  /// In en, this message translates to:
+  /// **'Move down'**
+  String get dbDesignMoveDown;
+
+  /// Designer: remove an item
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get dbDesignRemove;
+
+  /// Designer column menu button
+  ///
+  /// In en, this message translates to:
+  /// **'Column actions'**
+  String get dbDesignColumnActions;
+
+  /// Designer: a server column the draft drops
+  ///
+  /// In en, this message translates to:
+  /// **'will be dropped'**
+  String get dbDesignWillDrop;
+
+  /// Designer: bring back a dropped column
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get dbDesignRestore;
+
+  /// Designer: add a MongoDB field
+  ///
+  /// In en, this message translates to:
+  /// **'Add field'**
+  String get dbDesignAddField;
+
+  /// Designer: add a column
+  ///
+  /// In en, this message translates to:
+  /// **'Add column'**
+  String get dbDesignAddColumn;
+
+  /// Designer keys section caption
+  ///
+  /// In en, this message translates to:
+  /// **'Primary key'**
+  String get dbDesignPrimaryKey;
+
+  /// Designer keys section caption
+  ///
+  /// In en, this message translates to:
+  /// **'Unique constraints'**
+  String get dbDesignUniqueKeys;
+
+  /// Designer: optional constraint name placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Name (automatic)'**
+  String get dbDesignAutoName;
+
+  /// Designer keys section
+  ///
+  /// In en, this message translates to:
+  /// **'Add unique constraint'**
+  String get dbDesignAddUnique;
+
+  /// Designer foreign key: referenced table
+  ///
+  /// In en, this message translates to:
+  /// **'Referenced table'**
+  String get dbDesignRefTable;
+
+  /// Designer foreign key: table list button
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a table'**
+  String get dbDesignPickTable;
+
+  /// Designer foreign key: ON DELETE
+  ///
+  /// In en, this message translates to:
+  /// **'On delete'**
+  String get dbDesignOnDelete;
+
+  /// Designer foreign key: ON UPDATE
+  ///
+  /// In en, this message translates to:
+  /// **'On update'**
+  String get dbDesignOnUpdate;
+
+  /// Designer: server default choice
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get dbDesignDefault;
+
+  /// Designer foreign keys section
+  ///
+  /// In en, this message translates to:
+  /// **'Add foreign key'**
+  String get dbDesignAddForeignKey;
+
+  /// Designer indexes section
+  ///
+  /// In en, this message translates to:
+  /// **'Add index'**
+  String get dbDesignAddIndex;
+
+  /// Designer check expression placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Condition, e.g. price >= 0'**
+  String get dbDesignCheckExpression;
+
+  /// Designer checks section
+  ///
+  /// In en, this message translates to:
+  /// **'Add check'**
+  String get dbDesignAddCheck;
+
+  /// Designer: option that cannot change in alter mode
+  ///
+  /// In en, this message translates to:
+  /// **'Set when the table is created'**
+  String get dbDesignCreateOnly;
+
+  /// Designer ClickHouse options hint
+  ///
+  /// In en, this message translates to:
+  /// **'Sorting key: column names or expressions, comma-separated; empty uses the primary key. TTL and SETTINGS can be added in the editor later.'**
+  String get dbDesignClickhouseHint;
+
+  /// Designer DDL tab with validation errors
+  ///
+  /// In en, this message translates to:
+  /// **'Fix the errors to see the DDL.'**
+  String get dbDesignFixErrors;
+
+  /// Designer DDL tab: nothing to run
+  ///
+  /// In en, this message translates to:
+  /// **'No changes.'**
+  String get dbDesignNoChanges;
+
+  /// Designer: no identity
+  ///
+  /// In en, this message translates to:
+  /// **'—'**
+  String get dbDesignNone;
+
+  /// PostgreSQL GENERATED BY DEFAULT AS IDENTITY
+  ///
+  /// In en, this message translates to:
+  /// **'Identity (by default)'**
+  String get dbDesignIdentityByDefault;
+
+  /// PostgreSQL GENERATED ALWAYS AS IDENTITY
+  ///
+  /// In en, this message translates to:
+  /// **'Identity (always)'**
+  String get dbDesignIdentityAlways;
+
+  /// PostgreSQL serial pseudo-type
+  ///
+  /// In en, this message translates to:
+  /// **'serial'**
+  String get dbDesignIdentitySerial;
+
+  /// MySQL AUTO_INCREMENT
+  ///
+  /// In en, this message translates to:
+  /// **'AUTO_INCREMENT'**
+  String get dbDesignIdentityAutoIncrement;
+
+  /// Designer option
+  ///
+  /// In en, this message translates to:
+  /// **'Engine'**
+  String get dbDesignOptEngine;
+
+  /// Designer option (ClickHouse, e.g. the version column)
+  ///
+  /// In en, this message translates to:
+  /// **'Engine parameters'**
+  String get dbDesignOptEngineArgs;
+
+  /// Designer option (ClickHouse)
+  ///
+  /// In en, this message translates to:
+  /// **'ORDER BY (sorting key)'**
+  String get dbDesignOptOrderBy;
+
+  /// Designer option
+  ///
+  /// In en, this message translates to:
+  /// **'Partition by'**
+  String get dbDesignOptPartitionBy;
+
+  /// Designer option (PostgreSQL)
+  ///
+  /// In en, this message translates to:
+  /// **'Partition key'**
+  String get dbDesignOptPartitionKey;
+
+  /// Designer option (MySQL)
+  ///
+  /// In en, this message translates to:
+  /// **'Character set'**
+  String get dbDesignOptCharset;
+
+  /// Designer option (MySQL)
+  ///
+  /// In en, this message translates to:
+  /// **'Collation'**
+  String get dbDesignOptCollation;
+
+  /// Designer option (MySQL)
+  ///
+  /// In en, this message translates to:
+  /// **'AUTO_INCREMENT start'**
+  String get dbDesignOptAutoIncrement;
+
+  /// Designer option (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Capped'**
+  String get dbDesignOptCapped;
+
+  /// Designer option (MongoDB capped)
+  ///
+  /// In en, this message translates to:
+  /// **'Size, bytes'**
+  String get dbDesignOptSize;
+
+  /// Designer option (MongoDB capped)
+  ///
+  /// In en, this message translates to:
+  /// **'Max documents'**
+  String get dbDesignOptMax;
+
+  /// Designer option (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Time field (time series)'**
+  String get dbDesignOptTimeField;
+
+  /// Designer option (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Meta field'**
+  String get dbDesignOptMetaField;
+
+  /// Designer option (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Granularity'**
+  String get dbDesignOptGranularity;
+
+  /// Designer option (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Expire after, seconds'**
+  String get dbDesignOptExpire;
+
+  /// Designer option (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Validation level'**
+  String get dbDesignOptValidationLevel;
+
+  /// Designer option (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Validation action'**
+  String get dbDesignOptValidationAction;
+
+  /// Designer option (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Collation locale'**
+  String get dbDesignOptCollationLocale;
+
+  /// Designer option (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Collation strength'**
+  String get dbDesignOptCollationStrength;
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'A name is required.'**
+  String get dbDesignIssueNameRequired;
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” cannot be used as a name here.'**
+  String dbDesignIssueNameInvalid(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” is too long for this database.'**
+  String dbDesignIssueNameTooLong(String name);
+
+  /// Designer validation warning
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” starts or ends with a space.'**
+  String dbDesignIssueNameSpaces(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'The name “{name}” is used twice.'**
+  String dbDesignIssueNameDuplicate(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one column.'**
+  String get dbDesignIssueColumnsRequired;
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” is not a valid type.'**
+  String dbDesignIssueTypeInvalid(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: this type needs a length.'**
+  String dbDesignIssueLengthRequired(String name);
+
+  /// Designer validation warning
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: this type takes no length; it is ignored.'**
+  String dbDesignIssueLengthIgnored(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: check the length and scale.'**
+  String dbDesignIssueLengthInvalid(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}”: not a single expression (no “;”, comments or unbalanced brackets/quotes).'**
+  String dbDesignIssueExpressionInvalid(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the check condition.'**
+  String get dbDesignIssueExpressionRequired;
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: auto increment needs an integer type.'**
+  String dbDesignIssueIdentityType(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: an auto-increment column cannot have a default.'**
+  String dbDesignIssueIdentityDefault(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: this auto-increment change cannot be made here; use the editor.'**
+  String dbDesignIssueIdentityChange(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'Choose at least one column.'**
+  String get dbDesignIssueKeyColumns;
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'There is no column “{name}”.'**
+  String dbDesignIssueColumnUnknown(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'Column “{name}” is listed twice.'**
+  String dbDesignIssueColumnRepeated(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the referenced table.'**
+  String get dbDesignIssueRefTable;
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'Choose as many referenced columns as key columns.'**
+  String get dbDesignIssueRefColumns;
+
+  /// Designer validation (MySQL)
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: AUTO_INCREMENT needs a key that starts with this column.'**
+  String dbDesignIssueAutoIncrementKey(String name);
+
+  /// Designer validation (MySQL)
+  ///
+  /// In en, this message translates to:
+  /// **'Only one column can be AUTO_INCREMENT.'**
+  String get dbDesignIssueAutoIncrementSingle;
+
+  /// Designer validation (MySQL)
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: UNSIGNED applies to numeric types only.'**
+  String dbDesignIssueUnsigned(String name);
+
+  /// Designer validation (MySQL)
+  ///
+  /// In en, this message translates to:
+  /// **'Foreign keys need the InnoDB engine (now {name}).'**
+  String dbDesignIssueForeignKeysEngine(String name);
+
+  /// Designer validation (ClickHouse)
+  ///
+  /// In en, this message translates to:
+  /// **'MergeTree tables need a sorting key: set ORDER BY or a primary key.'**
+  String get dbDesignIssueOrderBy;
+
+  /// Designer validation (ClickHouse)
+  ///
+  /// In en, this message translates to:
+  /// **'The primary key ({name}) must be the start of ORDER BY.'**
+  String dbDesignIssuePrimaryKeyPrefix(String name);
+
+  /// Designer validation (ClickHouse)
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: a key column cannot be Nullable.'**
+  String dbDesignIssueNullableKey(String name);
+
+  /// Designer validation (ClickHouse)
+  ///
+  /// In en, this message translates to:
+  /// **'The {name} engine has no keys or partitions.'**
+  String dbDesignIssueEngineOption(String name);
+
+  /// Designer validation (PostgreSQL)
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the partition key.'**
+  String get dbDesignIssuePartitionKey;
+
+  /// Designer validation warning (PostgreSQL)
+  ///
+  /// In en, this message translates to:
+  /// **'The primary key of a partitioned table must include the partition key.'**
+  String get dbDesignIssuePartitionPrimaryKey;
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'This comment cannot contain an apostrophe (\') yet.'**
+  String get dbDesignIssueCommentQuote;
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'Check the value “{name}”.'**
+  String dbDesignIssueOptionInvalid(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'Option “{name}” is set when the table is created and is not changed here.'**
+  String dbDesignIssueOptionCreateOnly(String name);
+
+  /// Designer validation warning (MySQL)
+  ///
+  /// In en, this message translates to:
+  /// **'The table comment is not changed here; use the editor.'**
+  String get dbDesignIssueCommentChange;
+
+  /// Designer validation warning
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: NOT NULL without a default fails if the table has rows.'**
+  String dbDesignIssueNotNullDefault(String name);
+
+  /// Designer validation warning
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is added at the end of the table.'**
+  String dbDesignIssueColumnOrder(String name);
+
+  /// Designer validation
+  ///
+  /// In en, this message translates to:
+  /// **'Renaming or moving the table is not supported here.'**
+  String get dbDesignIssueRename;
+
+  /// Designer validation (ClickHouse)
+  ///
+  /// In en, this message translates to:
+  /// **'The primary key of this table cannot be changed.'**
+  String get dbDesignIssuePrimaryKeyChange;
+
+  /// Designer validation (ClickHouse)
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: removing a default is not supported here.'**
+  String dbDesignIssueRemoveDefault(String name);
+
+  /// Designer validation (ClickHouse)
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: removing a comment is not supported here.'**
+  String dbDesignIssueRemoveComment(String name);
+
+  /// Designer validation (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'A capped collection needs a size.'**
+  String get dbDesignIssueCappedSize;
+
+  /// Designer validation (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'A time-series collection cannot be capped.'**
+  String get dbDesignIssueCappedTimeSeries;
+
+  /// Designer validation (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Set the time field first.'**
+  String get dbDesignIssueTimeField;
+
+  /// Designer validation (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Set the collation locale first.'**
+  String get dbDesignIssueCollationLocale;
+
+  /// Designer validation warning (MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: defaults are not part of a collection and are ignored.'**
+  String dbDesignIssueDefaultIgnored(String name);
+
+  /// Designer validation (ClickHouse)
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: use the Nullable checkbox instead of Nullable(…) in the type.'**
+  String dbDesignIssueNullableTwice(String name);
+
+  /// Designer validation: unknown code
+  ///
+  /// In en, this message translates to:
+  /// **'Check the design ({name}).'**
+  String dbDesignIssueOther(String name);
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -20106,7 +21140,8 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'ru'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'ru'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

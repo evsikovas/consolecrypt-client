@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_account.dart';
 import 'package:consolecrypt/core/bridge/rust_backend.dart';
+import 'package:consolecrypt/core/bridge/rust_db_designer.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
@@ -20,6 +21,7 @@ import 'package:file_selector/file_selector.dart';
 /// Native databases: connections live in the vault, sessions and query streams
 /// in the core. Passwords cross the bridge only as wiped byte buffers.
 final class RustDbService
+    with RustDbTableDesign
     implements
         DbService,
         DbQueryService,
