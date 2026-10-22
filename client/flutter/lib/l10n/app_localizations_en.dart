@@ -9736,4 +9736,33 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get sftpActiveContentTitle => 'This file can run code';
+
+  @override
+  String sftpActiveContentBody(String name) {
+    return '“$name” can run code. It will open as text in an editor.';
+  }
+
+  @override
+  String get sftpActiveContentNoRun =>
+      'ConsoleCrypt never runs downloaded files. To run it, use a terminal on the server.';
+
+  @override
+  String get sftpActiveContentOpenAsText => 'Open as Text';
+
+  @override
+  String get sftpNoTextEditorTitle => 'No text editor found';
+
+  @override
+  String sftpNoTextEditorBody(String name) {
+    return '“$name” can run code, so it opens only as text, but no text editor was found. Choose an editor to open it with.';
+  }
+
+  @override
+  String get sftpChooseEditor => 'Choose an Editor…';
+
+  @override
+  String get errorNoTextEditor => 'No text editor found to open this file safely. Choose an editor using Open With.';
 }

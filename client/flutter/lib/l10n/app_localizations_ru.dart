@@ -9973,4 +9973,34 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get sftpActiveContentTitle => 'Этот файл может выполнить код';
+
+  @override
+  String sftpActiveContentBody(String name) {
+    return 'Файл «$name» может выполнить код. Он откроется как текст в редакторе.';
+  }
+
+  @override
+  String get sftpActiveContentNoRun =>
+      'ConsoleCrypt не запускает загруженные файлы. Чтобы выполнить его, используйте терминал на сервере.';
+
+  @override
+  String get sftpActiveContentOpenAsText => 'Открыть как текст';
+
+  @override
+  String get sftpNoTextEditorTitle => 'Текстовый редактор не найден';
+
+  @override
+  String sftpNoTextEditorBody(String name) {
+    return 'Файл «$name» может выполнить код, поэтому он открывается только как текст, но текстовый редактор не найден. Выберите редактор.';
+  }
+
+  @override
+  String get sftpChooseEditor => 'Выбрать редактор…';
+
+  @override
+  String get errorNoTextEditor =>
+      'Не найден текстовый редактор, чтобы безопасно открыть этот файл. Выберите редактор через «Открыть в программе…».';
 }

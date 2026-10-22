@@ -158,6 +158,9 @@ final class RustSftpBrowserService implements SftpBrowserService {
   Future<void> revealEditSession(EditSessionId id) => guard(() => rs_sftp.editReveal(sessionId: id.value));
 
   @override
+  bool opensAsText(String fileName) => rs_sftp.editOpensAsText(fileName: fileName);
+
+  @override
   Future<void> resolveEditConflict(EditSessionId id, EditConflictResolution resolution) async {
     await guard(
       () => rs_sftp.editResolve(

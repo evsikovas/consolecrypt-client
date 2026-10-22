@@ -5527,5 +5527,13 @@
   "dbSetNull": "Установить NULL",
   "dbCellEditHint": "Enter — сохранить, Esc — отменить, Tab — следующая ячейка",
   "dbPendingEdit": "Изменено, ещё не применено",
-  "dbSelectedRows": "{count, plural, one{Выбрано строк: {count}} few{Выбрано строк: {count}} many{Выбрано строк: {count}} other{Выбрано строк: {count}}}"
+  "dbSelectedRows": "{count, plural, one{Выбрано строк: {count}} few{Выбрано строк: {count}} many{Выбрано строк: {count}} other{Выбрано строк: {count}}}",
+  "sftpActiveContentTitle": "Этот файл может выполнить код",
+  "sftpActiveContentBody": "Файл «{name}» может выполнить код. Он откроется как текст в редакторе.",
+  "sftpActiveContentNoRun": "ConsoleCrypt не запускает загруженные файлы. Чтобы выполнить его, используйте терминал на сервере.",
+  "sftpActiveContentOpenAsText": "Открыть как текст",
+  "sftpNoTextEditorTitle": "Текстовый редактор не найден",
+  "sftpNoTextEditorBody": "Файл «{name}» может выполнить код, поэтому он открывается только как текст, но текстовый редактор не найден. Выберите редактор.",
+  "sftpChooseEditor": "Выбрать редактор…",
+  "errorNoTextEditor": "Не найден текстовый редактор, чтобы безопасно открыть этот файл. Выберите редактор через «Открыть в программе…»."
 }

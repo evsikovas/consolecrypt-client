@@ -17389,6 +17389,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, one{Selected: {count} row} other{Selected: {count} rows}}'**
   String dbSelectedRows(int count);
+
+  /// SECURITY (audit H4): title of the notice before opening a remote file whose default action would run code (scripts, shortcuts, executables).
+  ///
+  /// In en, this message translates to:
+  /// **'This file can run code'**
+  String get sftpActiveContentTitle;
+
+  /// SECURITY (audit H4): notice body; ConsoleCrypt never runs such files, it opens them as text. {name} is the file name.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” can run code. It will open as text in an editor.'**
+  String sftpActiveContentBody(String name);
+
+  /// SECURITY (audit H4): notice detail — there is no option to run the file from ConsoleCrypt.
+  ///
+  /// In en, this message translates to:
+  /// **'ConsoleCrypt never runs downloaded files. To run it, use a terminal on the server.'**
+  String get sftpActiveContentNoRun;
+
+  /// Button in the active-content notice: open the file in a text editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Open as Text'**
+  String get sftpActiveContentOpenAsText;
+
+  /// Dialog title: a file that can run code opens only as text, and no text editor was found on this computer.
+  ///
+  /// In en, this message translates to:
+  /// **'No text editor found'**
+  String get sftpNoTextEditorTitle;
+
+  /// Dialog body when no text editor was found for a file that can run code. {name} is the file name.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” can run code, so it opens only as text, but no text editor was found. Choose an editor to open it with.'**
+  String sftpNoTextEditorBody(String name);
+
+  /// Button: pick a text editor application to open the file with.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an Editor…'**
+  String get sftpChooseEditor;
+
+  /// Error: a file that can run code opens only as text and no text editor was found.
+  ///
+  /// In en, this message translates to:
+  /// **'No text editor found to open this file safely. Choose an editor using Open With.'**
+  String get errorNoTextEditor;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -126,6 +126,7 @@ String? _reasonMessage(AppLocalizations l, AppException e) {
     AppErrorReason.secretNotStored => l.errorReasonSecretNotStored,
     AppErrorReason.sessionClosed => l.errorReasonSessionClosed,
     AppErrorReason.editorLaunchFailed => l.errorEditorLaunchFailed(args['detail'] ?? ''),
+    AppErrorReason.noTextEditor => l.errorNoTextEditor,
     AppErrorReason.applicationPickerFailed => l.errorApplicationPickerFailed(args['detail'] ?? ''),
     AppErrorReason.directoryNotFound => l.errorReasonDirectoryNotFound(args['path'] ?? ''),
     AppErrorReason.directoryNotEmpty => l.errorReasonDirectoryNotEmpty,
