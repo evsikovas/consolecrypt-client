@@ -20095,6 +20095,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I checked this command for {host} (team policy)'**
   String teamsPolicyAck(String host);
+
+  /// Error toast when the protected native clipboard is unavailable; the app never falls back to an ordinary copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t copy securely. Nothing was placed on the clipboard.'**
+  String get clipboardSecureCopyFailed;
+
+  /// Desktop only: second sentence of the toast after copying a secret (macOS, Windows, Linux).
+  ///
+  /// In en, this message translates to:
+  /// **'It won\'t appear in clipboard history or on other devices.'**
+  String get copiedSecretPrivateNote;
+
+  /// Settings > Security, Android only: switch title for clearing the clipboard without an ownership check.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the clipboard in the background even if the secret can\'t be verified'**
+  String get settingsClipboardBackgroundClear;
+
+  /// Settings > Security, Android only: help under the background clipboard clearing switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Android doesn\'t let an app in the background read the clipboard. When this is on, the clipboard is emptied at the deadline without a check, so text you copied in another app during that time may be erased too. When it\'s off, the secret stays on the clipboard until you return to ConsoleCrypt.'**
+  String get settingsClipboardBackgroundClearHelp;
+
+  /// Settings > Security, Android only: error under the background clipboard clearing switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read or save this setting.'**
+  String get settingsClipboardBackgroundClearError;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

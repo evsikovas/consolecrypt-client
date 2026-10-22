@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
+import 'package:consolecrypt/core/widgets/secret_selectable_text.dart';
 import 'package:consolecrypt/db/db_document_view.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
@@ -366,6 +367,15 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                                   key: ValueKey(full == null ? 'docker-json-masked-view' : 'docker-json-full-view'),
                                   document: shown!,
                                   rawText: json,
+                                  onCopySecret: full == null
+                                      ? null
+                                      : (selected) => copySecretWithNotice(
+                                          context,
+                                          ref,
+                                          selected,
+                                          what: l.dockerInspectJson,
+                                          isCurrent: () => mounted && _fullInspect != null,
+                                        ),
                                 ),
                               ),
                             ),
@@ -656,7 +666,20 @@ class _EnvironmentSectionState extends ConsumerState<_EnvironmentSection> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: SelectableText(entry, style: mono),
+                      // A revealed value copies as a secret; masked lines stay plain.
+                      child: _revealed != null
+                          ? SecretSelectableText(
+                              entry,
+                              style: mono,
+                              onCopy: (selected) => copySecretWithNotice(
+                                context,
+                                ref,
+                                selected,
+                                what: entry.split('=').first,
+                                isCurrent: () => mounted && _revealed != null,
+                              ),
+                            )
+                          : SelectableText(entry, style: mono),
                     ),
                   ),
                   if (_revealed != null && entry.contains('='))

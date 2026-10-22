@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/widgets/secret_selectable_text.dart';
 import 'package:material_ui/material_ui.dart';
 
 final class DbJsonNumber {
@@ -31,10 +32,14 @@ Object? decodeDbDocument(String text) {
 /// A lazy, depth-limited document tree; large arrays never allocate a widget per
 /// entry. Raw values stay in the enclosing scoped result, never on disk.
 class DbDocumentView extends StatefulWidget {
-  const DbDocumentView({required this.document, this.rawText, this.maxNodes = 10000, super.key});
+  const DbDocumentView({required this.document, this.rawText, this.maxNodes = 10000, this.onCopySecret, super.key});
   final Object? document;
   final String? rawText;
   final int maxNodes;
+
+  /// Set when the document is a revealed secret: the raw view's Copy goes
+  /// here (the protected clipboard) instead of the standard plain copy.
+  final Future<void> Function(String selected)? onCopySecret;
   @override
   State<DbDocumentView> createState() => _DbDocumentViewState();
 }
@@ -72,6 +77,7 @@ class _DbDocumentViewState extends State<DbDocumentView> {
   @override
   Widget build(BuildContext context) {
     final rows = _rows(), l = context.l10n;
+    final raw = _raw ? widget.rawText ?? const JsonEncoder.withIndent('  ').convert(widget.document) : '';
     return Column(
       children: [
         Align(
@@ -85,10 +91,13 @@ class _DbDocumentViewState extends State<DbDocumentView> {
         Expanded(
           child: _raw
               ? SingleChildScrollView(
-                  child: SelectableText(
-                    widget.rawText ?? const JsonEncoder.withIndent('  ').convert(widget.document),
-                    style: const TextStyle(fontFamily: 'monospace'),
-                  ),
+                  child: widget.onCopySecret == null
+                      ? SelectableText(raw, style: const TextStyle(fontFamily: 'monospace'))
+                      : SecretSelectableText(
+                          raw,
+                          style: const TextStyle(fontFamily: 'monospace'),
+                          onCopy: widget.onCopySecret!,
+                        ),
                 )
               : ListView.builder(
                   itemCount: rows.length,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -145,8 +146,9 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
                     icon: Icons.content_copy_rounded,
                     tooltip: l.dockerForwardCopyAddress,
                     style: GlassIconButtonStyle.plain,
-                    onPressed: () =>
-                        unawaited(Clipboard.setData(ClipboardData(text: dockerForwardLocalAddress(created.address)))),
+                    onPressed: () => unawaited(
+                      ref.read(secureClipboardProvider).copyPlain(dockerForwardLocalAddress(created.address)),
+                    ),
                   ),
                 ],
               ),
@@ -411,7 +413,7 @@ class _DockerForwardsPanelState extends ConsumerState<DockerForwardsPanel> with 
             icon: Icons.content_copy_rounded,
             tooltip: l.dockerForwardCopyAddress,
             style: GlassIconButtonStyle.plain,
-            onPressed: () => unawaited(Clipboard.setData(ClipboardData(text: address))),
+            onPressed: () => unawaited(ref.read(secureClipboardProvider).copyPlain(address)),
           ),
           GlassIconButton(
             key: ValueKey('docker-forward-stop-${forward.id}'),

@@ -26,6 +26,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../helpers/fake_native_clipboard.dart';
 import '../helpers/test_app.dart';
 
 // Optional local QA captures never contain a revealed secret or real account.
@@ -665,22 +666,7 @@ void main() {
   testWidgets('copy uses timed secret clipboard and wipes the display buffer', (tester) async {
     final sharing = _Sharing();
     await _pump(tester, sharing);
-    String? clipboard;
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
-      if (call.method == 'Clipboard.setData') clipboard = (call.arguments as Map)['text'] as String?;
-      if (call.method == 'Clipboard.getData') return {'text': clipboard};
-      return null;
-    });
-    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
-    const nativeClipboard = MethodChannel('consolecrypt/clipboard');
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(nativeClipboard, (call) async {
-      expect(call.method, 'copySecret');
-      final arguments = call.arguments as Map;
-      expect(arguments['clearAfterMilliseconds'], 30000);
-      clipboard = arguments['text'] as String;
-      return null;
-    });
-    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(nativeClipboard, null));
+    final native = FakeNativeClipboard()..install();
     showSharingSecret(_context(tester), _item('secret', SharingKind.secret)).ignore();
     await settle(tester);
     await tapKey(tester, 'sharing-secret-reveal');
@@ -688,12 +674,15 @@ void main() {
     final sameValue = secret.expose();
     await tapKey(tester, 'sharing-secret-copy');
     expect(sharing.reveals, 2);
-    expect(clipboard == sameValue, true);
+    expect(native.text == sameValue, true);
+    expect(native.lastSecret!['clearAfterMilliseconds'], 30000);
     expect(secret.isWiped, true);
     expect(isEnabled(tester, 'sharing-secret-copy'), false);
     await tester.pump(const Duration(seconds: 31));
     await settle(tester);
-    expect(clipboard?.isEmpty, true);
+    expect(native.text, isNull);
+    expect(native.calls, ['copySecret', 'clearIfOwned']);
+    expect(native.dartReads, 0);
   });
 
   testWidgets('blocked shared secret cannot reveal its plaintext', (tester) async {

@@ -11372,4 +11372,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'I checked this command for $host (team policy)';
   }
+
+  @override
+  String get clipboardSecureCopyFailed => 'Couldn\'t copy securely. Nothing was placed on the clipboard.';
+
+  @override
+  String get copiedSecretPrivateNote => 'It won\'t appear in clipboard history or on other devices.';
+
+  @override
+  String get settingsClipboardBackgroundClear =>
+      'Clear the clipboard in the background even if the secret can\'t be verified';
+
+  @override
+  String get settingsClipboardBackgroundClearHelp =>
+      'Android doesn\'t let an app in the background read the clipboard. When this is on, the clipboard is emptied at the deadline without a check, so text you copied in another app during that time may be erased too. When it\'s off, the secret stays on the clipboard until you return to ConsoleCrypt.';
+
+  @override
+  String get settingsClipboardBackgroundClearError => 'Couldn\'t read or save this setting.';
 }

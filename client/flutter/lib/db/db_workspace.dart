@@ -522,15 +522,15 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   }
 
   /// Copies one result value: masked columns through the clipboard that
-  /// clears itself.
+  /// clears itself, others kept out of clipboard history (query results).
   Future<void> _copyCell(DbResultSet result, int row, int column) async {
     if (!_current) return;
     final info = result.columns[column], cell = result.rows[row][column];
     final l = context.l10n;
     if (info.sensitive) {
-      await copySecretWithNotice(context, ref, cell.text, what: l.copyWhatValue);
+      await copySecretWithNotice(context, ref, cell.text, what: l.copyWhatValue, isCurrent: () => _current);
     } else {
-      await copyPlainWithNotice(context, ref, cell.text, what: l.copyWhatValue);
+      await copyPrivateWithNotice(context, ref, cell.text, what: l.copyWhatValue);
     }
   }
 

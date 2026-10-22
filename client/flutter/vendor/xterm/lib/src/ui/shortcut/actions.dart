@@ -10,11 +10,16 @@ class TerminalActions extends StatelessWidget {
     required this.terminal,
     required this.controller,
     required this.child,
+    this.onCopy,
   });
 
   final Terminal terminal;
 
   final TerminalController controller;
+
+  /// ConsoleCrypt: the app writes copied text through its protected
+  /// clipboard; the package itself never writes the clipboard.
+  final Future<void> Function(String text)? onCopy;
 
   final Widget child;
 
@@ -43,7 +48,7 @@ class TerminalActions extends StatelessWidget {
 
             final text = terminal.buffer.getText(selection);
 
-            await Clipboard.setData(ClipboardData(text: text));
+            await onCopy?.call(text);
 
             return null;
           },

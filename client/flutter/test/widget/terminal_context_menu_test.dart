@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:xterm/xterm.dart';
 
+import '../helpers/fake_native_clipboard.dart';
 import '../helpers/test_app.dart';
 
 Future<(MockBackend, ProviderContainer, TerminalTab)> _open(WidgetTester tester, {bool compact = false}) async {
@@ -210,24 +211,38 @@ void main() {
     final (_, _, tab) = await _open(tester);
     _select(tab, '  echo sample  ');
     final selected = tab.rawSelectedText;
-    String? copied;
-    var reads = 0;
-    _clipboard(
-      tester,
-      handler: (call) async {
-        if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String;
-        if (call.method == 'Clipboard.getData') reads++;
-        return null;
-      },
-    );
+    final native = FakeNativeClipboard()..install();
     await _menu(tester);
     expect(tab.rawSelectedText, selected);
     expect(find.byKey(const ValueKey('terminal-menu-ask-ai')), findsOneWidget);
     await tapKey(tester, 'terminal-menu-copy');
-    expect(copied, selected);
-    expect(copied, startsWith('  '));
-    expect(reads, 0);
+    // Kept out of clipboard history and other devices; not auto-cleared.
+    expect(native.calls, ['copyPrivate']);
+    expect(native.text, selected);
+    expect(native.text, startsWith('  '));
+    expect(native.dartReads, 0);
     expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('a selection that looks like a secret is copied as a secret from the menu and the shortcut', (
+    tester,
+  ) async {
+    final (_, _, tab) = await _open(tester);
+    final native = FakeNativeClipboard()..install();
+    _select(tab, 'export password=hunter2-sample');
+    await _menu(tester);
+    await tapKey(tester, 'terminal-menu-copy');
+    expect(native.calls, ['copySecret']);
+    expect(native.text, 'export password=hunter2-sample');
+
+    _select(tab, 'plain output line');
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await settle(tester);
+    expect(native.calls, ['copySecret', 'copyPrivate']);
+    expect(native.text, 'plain output line');
+    expect(native.dartReads, 0);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('Ask AI attaches a snapshot, keeps the draft, sends only on Send and clears after use', (tester) async {

@@ -11655,4 +11655,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'Я проверил(а) эту команду для $host (политика команды)';
   }
+
+  @override
+  String get clipboardSecureCopyFailed => 'Не удалось безопасно скопировать. В буфер обмена ничего не помещено.';
+
+  @override
+  String get copiedSecretPrivateNote => 'Не попадёт в историю буфера и на другие устройства.';
+
+  @override
+  String get settingsClipboardBackgroundClear => 'Очищать буфер в фоне, даже если нельзя проверить, что там наш секрет';
+
+  @override
+  String get settingsClipboardBackgroundClearHelp =>
+      'Android не даёт приложению в фоне прочитать буфер обмена. Если включено, по истечении срока буфер очищается без проверки — может пропасть и текст, который вы за это время скопировали в другом приложении. Если выключено, секрет остаётся в буфере, пока вы не вернётесь в ConsoleCrypt.';
+
+  @override
+  String get settingsClipboardBackgroundClearError => 'Не удалось прочитать или сохранить настройку.';
 }

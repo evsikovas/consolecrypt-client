@@ -1,8 +1,10 @@
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/errors.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -115,28 +117,66 @@ Future<T?> runWithFeedback<T>(BuildContext context, Future<T> Function() action,
   }
 }
 
+/// Runs a native protected copy; on failure shows "Couldn't copy securely"
+/// (nothing was copied — never an ordinary fallback) and returns false.
+Future<bool> _protectedCopy(BuildContext context, Future<void> Function() copy) async {
+  try {
+    await copy();
+    return true;
+  } on PlatformException {
+    // Fall through: the native clipboard refused or failed.
+  } on MissingPluginException {
+    // Fall through: no native handler on this platform.
+  }
+  if (context.mounted) showSnack(context, context.l10n.clipboardSecureCopyFailed, error: true);
+  return false;
+}
+
 /// Copies a secret; the clipboard is cleared automatically. The toast shows
 /// a countdown ring and "Clears in N s", never the value (§4.11). [what] is a
 /// localized noun from the `copyWhat*` keys (defaults to "Secret").
-/// [limit] shortens the clearing delay (a team's clipboard policy).
+/// [limit] shortens the clearing delay (a team's clipboard policy);
+/// [isCurrent] guards scoped values (a locked scope never copies).
+/// Every secret copy goes through this or [SecureClipboard.copySecret]; if
+/// the protected native clipboard is unavailable, nothing is copied and an
+/// error is shown (S8/S9).
 Future<void> copySecretWithNotice(
   BuildContext context,
   WidgetRef ref,
   String value, {
   String? what,
   Duration? limit,
+  bool Function()? isCurrent,
 }) async {
   final clipboard = ref.read(secureClipboardProvider);
-  await clipboard.copySecret(value, limit: limit);
-  if (context.mounted) {
+  if (!await _protectedCopy(context, () => clipboard.copySecret(value, limit: limit, isCurrent: isCurrent))) return;
+  if (context.mounted && (isCurrent?.call() ?? true)) {
     final l10n = context.l10n;
+    final copied = l10n.copiedNotice(what ?? l10n.copyWhatSecret);
     GlassToast.show(
       context,
       GlassToastRequest(
-        message: l10n.copiedNotice(what ?? l10n.copyWhatSecret),
+        // Desktop: kept out of clipboard history and Universal/cloud clipboard.
+        message: AppPlatform.isMobile ? copied : '$copied ${l10n.copiedSecretPrivateNote}',
         countdown: clipboard.effectiveClearAfter(limit),
       ),
     );
+  }
+}
+
+/// Copies text that stays on this device and out of clipboard history, but
+/// is not cleared automatically (terminal and log selection, query
+/// results). [notify] shows the "copied" toast; failures are always shown.
+Future<void> copyPrivateWithNotice(
+  BuildContext context,
+  WidgetRef ref,
+  String value, {
+  String? what,
+  bool notify = true,
+}) async {
+  if (!await _protectedCopy(context, () => ref.read(secureClipboardProvider).copyPrivate(value))) return;
+  if (notify && context.mounted) {
+    showSnack(context, context.l10n.copiedNotice(what ?? context.l10n.copyWhatText), tone: GlassTone.success);
   }
 }
 

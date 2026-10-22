@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_selectable_text.dart';
 import 'package:consolecrypt/db/db_ddl_dialog.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_object_details.dart';
@@ -690,7 +691,17 @@ class _DbProtectedTextDialogState extends ConsumerState<DbProtectedTextDialog> {
       content: SizedBox(
         width: 760,
         child: SingleChildScrollView(
-          child: SelectableText(widget.value.expose(), style: const TextStyle(fontFamily: 'monospace')),
+          child: SecretSelectableText(
+            widget.value.expose(),
+            style: const TextStyle(fontFamily: 'monospace'),
+            onCopy: (selected) => copySecretWithNotice(
+              context,
+              ref,
+              selected,
+              what: context.l10n.copyWhatText,
+              isCurrent: () => mounted && _scope.unlocked && !widget.value.isWiped,
+            ),
+          ),
         ),
       ),
       secondaryActions: [GlassButton(label: context.l10n.commonClose, onPressed: () => closeDialog<void>(context))],
