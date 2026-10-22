@@ -38,8 +38,8 @@ mod unlocked;
 
 pub use approval::{ConfirmedApproval, PendingApproval};
 pub use backup::{
-    decode_backup, encode_backup, restore_backup_with_passphrase, restore_backup_with_recovery,
-    RestoredBackup, MAX_BACKUP_BYTES,
+    decode_backup, decode_backup_from, encode_backup, restore_backup_with_passphrase,
+    restore_backup_with_recovery, RestoredBackup, MAX_BACKUP_BYTES,
 };
 pub use calibrate::{
     calibrate_argon2, calibrate_argon2_with, DEFAULT_CALIBRATION_TARGET, MAX_CALIBRATED_ITERATIONS,
