@@ -11,6 +11,7 @@ import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
+import 'package:consolecrypt/db/db_result_edits.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/src/rust/api/database.dart' as native;
 import 'package:consolecrypt/src/rust/api/inventory.dart' as rs_inv;
@@ -27,6 +28,7 @@ final class RustDbService
         DbPgpassFileService,
         DbExportService,
         DbCellEditService,
+        DbRowEditService,
         DbObjectInspectService,
         DbProductionWriteService,
         DbAiService {
@@ -595,6 +597,40 @@ final class RustDbService
       sql: SecretText(json['sql'] as String),
       expiresAt: DateTime.now().add(Duration(seconds: json['expires_in_seconds'] as int? ?? 60)),
       rows: json['rows'] as int,
+    );
+  }
+
+  @override
+  Future<List<DbEditColumn>> editColumns(String sessionId, DbObjectRef table) async {
+    final json = jsonDecode(
+      await guard(() => native.dbEditColumns(sessionId: sessionId, tableJson: jsonEncode(table.toJson()))),
+    ) as List;
+    return [for (final column in json.cast<DbJson>()) DbEditColumn.fromJson(column)];
+  }
+
+  @override
+  Future<DbRowChangeReview> reviewRowChanges(String sessionId, DbObjectRef table, List<DbRowChange> changes) async {
+    final json = jsonDecode(
+      await guard(
+        () => native.dbReviewRowChanges(
+          sessionId: sessionId,
+          tableJson: jsonEncode(table.toJson()),
+          changesJson: jsonEncode([for (final change in changes) change.toJson()]),
+        ),
+      ),
+    ) as DbJson;
+    return DbRowChangeReview(
+      ticket: json['ticket'] as String,
+      sql: SecretText(json['sql'] as String),
+      expiresAt: DateTime.now().add(Duration(seconds: json['expires_in_seconds'] as int? ?? 60)),
+      risk: switch (json['risk']) {
+        'read_only' => DbQueryRisk.read,
+        'write' => DbQueryRisk.write,
+        _ => DbQueryRisk.dangerous,
+      },
+      inserted: json['inserted'] as int? ?? 0,
+      updated: json['updated'] as int? ?? 0,
+      deleted: json['deleted'] as int? ?? 0,
     );
   }
 

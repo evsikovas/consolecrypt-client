@@ -358,7 +358,10 @@ pub async fn db_review_cell_edits(
 }
 
 /// Columns of an editable table (NULL, default, generated and key flags).
-pub async fn db_edit_columns(session_id: String, table_json: String) -> Result<String, BridgeError> {
+pub async fn db_edit_columns(
+    session_id: String,
+    table_json: String,
+) -> Result<String, BridgeError> {
     let table: DbObjectRef = from_json("table", &table_json)?;
     with_core(move |c| async move { to_json(&c.db_edit_columns(session_id, table).await?) }).await
 }

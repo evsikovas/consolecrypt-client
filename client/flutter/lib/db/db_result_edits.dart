@@ -233,8 +233,7 @@ class DbResultEdits extends ChangeNotifier {
       for (final row in rows) DbRowChange.update(key(row), byRow[row]!),
       for (final values in added)
         DbRowChange.insert({
-          for (var i = 0; i < values.length && i < result.columns.length; i++)
-            if (values[i] case final value?) result.columns[i].name: value,
+          for (var i = 0; i < values.length && i < result.columns.length; i++) result.columns[i].name: ?values[i],
         }),
     ];
   }

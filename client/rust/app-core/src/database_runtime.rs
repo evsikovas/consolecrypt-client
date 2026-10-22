@@ -195,12 +195,17 @@ fn cell_size(cell: &DbCell) -> usize {
     }
 }
 
-fn invalid(reason: &'static str) -> AppError {
+pub(crate) fn invalid(reason: &'static str) -> AppError {
     AppError::invalid("database", reason)
 }
 
-fn db_error(error: DbError) -> AppError {
-    let code = match error {
+pub(crate) fn db_error(error: DbError) -> AppError {
+    AppError::invalid("database", db_error_code(&error))
+}
+
+/// The stable code of a database error (no driver detail).
+pub(crate) fn db_error_code(error: &DbError) -> &'static str {
+    match error {
         DbError::InvalidRequest => "invalid_request",
         DbError::PolicyDenied => "policy_denied",
         DbError::ApprovalRequired => "approval_required",
@@ -215,8 +220,7 @@ fn db_error(error: DbError) -> AppError {
         DbError::Cancelled => "cancelled",
         DbError::ResultLimit => "result_limit",
         DbError::SessionClosed => "session_closed",
-    };
-    AppError::invalid("database", code)
+    }
 }
 
 /// Session metadata plus the live write state (non-production sessions can

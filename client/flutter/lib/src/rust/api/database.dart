@@ -187,6 +187,22 @@ Future<String> dbReviewCellEdits({required String sessionId, required String tab
       editsJson: editsJson,
     );
 
+/// Columns of an editable table (NULL, default, generated and key flags).
+Future<String> dbEditColumns({required String sessionId, required String tableJson}) =>
+    RustLib.instance.api.crateApiDatabaseDbEditColumns(sessionId: sessionId, tableJson: tableJson);
+
+/// Reviews pending row changes (changed cells, added and deleted rows) of a
+/// result; commit with `db_commit_cell_edits`.
+Future<String> dbReviewRowChanges({
+  required String sessionId,
+  required String tableJson,
+  required String changesJson,
+}) => RustLib.instance.api.crateApiDatabaseDbReviewRowChanges(
+  sessionId: sessionId,
+  tableJson: tableJson,
+  changesJson: changesJson,
+);
+
 Future<int> dbCommitCellEdits({required String sessionId, required String ticket}) =>
     RustLib.instance.api.crateApiDatabaseDbCommitCellEdits(sessionId: sessionId, ticket: ticket);
 

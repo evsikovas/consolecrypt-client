@@ -213,6 +213,7 @@ final class LocalSettings {
   /// Hide the window from screen capture: never, while secrets are shown, or
   /// always (only where the OS supports it).
   final ScreenCaptureProtection screenCaptureProtection;
+
   /// Rows the result panel loads per "load more", by database connection id.
   final Map<String, int> dbFetchSizes;
 

@@ -11655,4 +11655,231 @@ class AppLocalizationsRu extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'Я проверил(а) эту команду для $host (политика команды)';
   }
+
+  @override
+  String get dbNullCell => '[NULL]';
+
+  @override
+  String get dbDefaultCell => '[ПО УМОЛЧАНИЮ]';
+
+  @override
+  String get dbRowAddedHint => 'Новая строка, ещё не сохранена';
+
+  @override
+  String get dbRowDeletedHint => 'Будет удалена при сохранении';
+
+  @override
+  String get dbRequiredValue => 'Нужно значение';
+
+  @override
+  String get dbKeyColumn => 'Ключевой столбец';
+
+  @override
+  String get dbTypeNumber => 'Число';
+
+  @override
+  String get dbTypeText => 'Текст';
+
+  @override
+  String get dbTypeDate => 'Дата и время';
+
+  @override
+  String get dbTypeBool => 'Да/нет';
+
+  @override
+  String get dbTypeJson => 'JSON';
+
+  @override
+  String get dbTypeBinary => 'Двоичные данные';
+
+  @override
+  String get dbEditUnsupported => 'Редактирование строк здесь недоступно';
+
+  @override
+  String get dbEditEngineUnsupported => 'Строки этой СУБД здесь не редактируются';
+
+  @override
+  String get dbEditDesktopOnly => 'Строки редактируются на компьютере';
+
+  @override
+  String get dbEditNoKey => 'Для правки нужен запрос к одной таблице с первичным или уникальным ключом';
+
+  @override
+  String get dbEditProductionLocked => 'Продакшен только для чтения: сначала разрешите запись';
+
+  @override
+  String get dbEditReadOnly => 'Сессия только для чтения: сначала разрешите запись';
+
+  @override
+  String dbRequiredMissing(String columns) {
+    return 'Заполните обязательные столбцы: $columns';
+  }
+
+  @override
+  String get dbSaveFailed => 'Изменения не сохранены';
+
+  @override
+  String get dbUnsavedTitle => 'Несохранённые изменения';
+
+  @override
+  String dbUnsavedMessage(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'В $count строки есть несохранённые изменения.',
+      many: 'В $count строках есть несохранённые изменения.',
+      few: 'В $count строках есть несохранённые изменения.',
+      one: 'В $count строке есть несохранённые изменения.',
+    );
+    return '$_temp0 Сохранить их?';
+  }
+
+  @override
+  String get dbSave => 'Сохранить';
+
+  @override
+  String get dbSaveOptions => 'Варианты сохранения';
+
+  @override
+  String get dbShowSql => 'Показать SQL';
+
+  @override
+  String get dbPendingSql => 'Несохранённые изменения в SQL';
+
+  @override
+  String get dbRefreshReadOnly => 'обновляются только результаты читающих запросов';
+
+  @override
+  String get dbRefreshUnavailable => 'Этот результат больше нельзя обновить — запустите запрос снова';
+
+  @override
+  String get dbAutoRefresh => 'Автообновление';
+
+  @override
+  String get dbAutoRefreshOff => 'Выключено';
+
+  @override
+  String dbEverySeconds(int seconds) {
+    return 'Каждые $seconds с';
+  }
+
+  @override
+  String dbEveryMinutes(int minutes) {
+    return 'Каждые $minutes мин';
+  }
+
+  @override
+  String get dbEditRow => 'Редактировать текущую строку';
+
+  @override
+  String get dbAddRow => 'Добавить строку';
+
+  @override
+  String get dbDuplicateRow => 'Дублировать строку';
+
+  @override
+  String get dbDeleteRow => 'Удалить строку';
+
+  @override
+  String get dbFirstRow => 'Первая строка';
+
+  @override
+  String get dbPreviousRow => 'Предыдущая строка';
+
+  @override
+  String get dbNextRow => 'Следующая строка';
+
+  @override
+  String get dbLastRow => 'Последняя строка';
+
+  @override
+  String get dbExportData => 'Экспорт данных…';
+
+  @override
+  String get dbImportData => 'Импорт данных…';
+
+  @override
+  String get dbFetchSize => 'Строк за раз';
+
+  @override
+  String dbFetchRows(int count) {
+    return '$count строк';
+  }
+
+  @override
+  String get dbFetchSizeInvalid => 'Введите число от 1 до 1000';
+
+  @override
+  String get dbLoadNext => 'Загрузить следующую порцию';
+
+  @override
+  String get dbFetchAll => 'Загрузить все строки';
+
+  @override
+  String dbRowsFetched(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'получено $count строки',
+      many: 'получено $count строк',
+      few: 'получено $count строки',
+      one: 'получена $count строка',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dbFetchedTiming(String seconds, String date, String time) {
+    return '$seconds с, $date в $time';
+  }
+
+  @override
+  String get dbMoreAvailable => 'есть ещё';
+
+  @override
+  String dbPendingChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count изменения не сохранены',
+      many: '$count изменений не сохранено',
+      few: '$count изменения не сохранены',
+      one: '$count изменение не сохранено',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbViewTable => 'Таблица';
+
+  @override
+  String get dbViewText => 'Текст';
+
+  @override
+  String get dbViewRecord => 'Запись';
+
+  @override
+  String dbTextMoreRows(int count) {
+    return '… ещё строк: $count (все строки — через экспорт)';
+  }
+
+  @override
+  String get dbNoRows => 'Нет строк';
+
+  @override
+  String get dbNewRow => 'Новая строка';
+
+  @override
+  String dbRecordNumber(int row, int count) {
+    return 'Строка $row из $count';
+  }
+
+  @override
+  String get dbKeepValue => 'Оставить значение';
+
+  @override
+  String get dbRecordEditHint => 'Нажмите, чтобы изменить значение';
+
+  @override
+  String get dbUseDefault => 'Оставить серверу (по умолчанию)';
 }

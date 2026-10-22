@@ -14930,7 +14930,7 @@ abstract class AppLocalizations {
   /// **'Disconnect'**
   String get dbDisconnect;
 
-  /// Database interface: Refresh
+  /// Run the result's read query again
   ///
   /// In en, this message translates to:
   /// **'Refresh'**
@@ -20095,6 +20095,372 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I checked this command for {host} (team policy)'**
   String teamsPolicyAck(String host);
+
+  /// A NULL value in a result cell
+  ///
+  /// In en, this message translates to:
+  /// **'[NULL]'**
+  String get dbNullCell;
+
+  /// Placeholder of a new row's cell the server fills (default or identity)
+  ///
+  /// In en, this message translates to:
+  /// **'[DEFAULT]'**
+  String get dbDefaultCell;
+
+  /// Tooltip/badge of a row added in the result grid
+  ///
+  /// In en, this message translates to:
+  /// **'New row, not saved yet'**
+  String get dbRowAddedHint;
+
+  /// Tooltip/badge of a row marked for deletion
+  ///
+  /// In en, this message translates to:
+  /// **'Will be deleted on save'**
+  String get dbRowDeletedHint;
+
+  /// Tooltip of a required empty cell of a new row
+  ///
+  /// In en, this message translates to:
+  /// **'A value is required'**
+  String get dbRequiredValue;
+
+  /// Tooltip of the key icon in a result column header
+  ///
+  /// In en, this message translates to:
+  /// **'Key column'**
+  String get dbKeyColumn;
+
+  /// Column type kind tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Number'**
+  String get dbTypeNumber;
+
+  /// Column type kind tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get dbTypeText;
+
+  /// Column type kind tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Date and time'**
+  String get dbTypeDate;
+
+  /// Column type kind tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'True/false'**
+  String get dbTypeBool;
+
+  /// Column type kind tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'JSON'**
+  String get dbTypeJson;
+
+  /// Column type kind tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Binary'**
+  String get dbTypeBinary;
+
+  /// Why row editing is disabled: backend lacks support
+  ///
+  /// In en, this message translates to:
+  /// **'Row editing is not available here'**
+  String get dbEditUnsupported;
+
+  /// Why row editing is disabled: engine (ClickHouse, Redis, MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Rows of this database type cannot be edited here'**
+  String get dbEditEngineUnsupported;
+
+  /// Why row editing is disabled on mobile
+  ///
+  /// In en, this message translates to:
+  /// **'Rows are edited on a computer'**
+  String get dbEditDesktopOnly;
+
+  /// Why row editing is disabled: no key to identify rows
+  ///
+  /// In en, this message translates to:
+  /// **'Editing needs a query of one table with a primary or unique key'**
+  String get dbEditNoKey;
+
+  /// Why row editing is disabled on a locked production session
+  ///
+  /// In en, this message translates to:
+  /// **'Production is read-only: unlock writes first'**
+  String get dbEditProductionLocked;
+
+  /// Why row editing is disabled on a read-only session
+  ///
+  /// In en, this message translates to:
+  /// **'The session is read-only: allow writes first'**
+  String get dbEditReadOnly;
+
+  /// Save refused: new row lacks required values
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in the required columns: {columns}'**
+  String dbRequiredMissing(String columns);
+
+  /// Toast when saving result changes fails
+  ///
+  /// In en, this message translates to:
+  /// **'The changes were not saved'**
+  String get dbSaveFailed;
+
+  /// Title of the prompt about pending result changes
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved changes'**
+  String get dbUnsavedTitle;
+
+  /// Prompt body about pending result changes
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 row has changes that are not saved.} other{{count} rows have changes that are not saved.}} Save them first?'**
+  String dbUnsavedMessage(int count);
+
+  /// Save pending result changes
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get dbSave;
+
+  /// Tooltip of the save dropdown
+  ///
+  /// In en, this message translates to:
+  /// **'Save options'**
+  String get dbSaveOptions;
+
+  /// Menu item: show the statements of pending changes
+  ///
+  /// In en, this message translates to:
+  /// **'Show SQL'**
+  String get dbShowSql;
+
+  /// Title of the dialog with the statements of pending changes
+  ///
+  /// In en, this message translates to:
+  /// **'Pending changes as SQL'**
+  String get dbPendingSql;
+
+  /// Why refresh is disabled (after a dash)
+  ///
+  /// In en, this message translates to:
+  /// **'only results of read queries refresh'**
+  String get dbRefreshReadOnly;
+
+  /// Toast when refresh is refused
+  ///
+  /// In en, this message translates to:
+  /// **'This result can no longer be refreshed; run the query again'**
+  String get dbRefreshUnavailable;
+
+  /// Auto-refresh menu tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-refresh'**
+  String get dbAutoRefresh;
+
+  /// Auto-refresh off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get dbAutoRefreshOff;
+
+  /// Auto-refresh interval
+  ///
+  /// In en, this message translates to:
+  /// **'Every {seconds} s'**
+  String dbEverySeconds(int seconds);
+
+  /// Auto-refresh interval
+  ///
+  /// In en, this message translates to:
+  /// **'Every {minutes} min'**
+  String dbEveryMinutes(int minutes);
+
+  /// Toolbar: open the record form of the current row
+  ///
+  /// In en, this message translates to:
+  /// **'Edit the current row'**
+  String get dbEditRow;
+
+  /// Toolbar: add a new row
+  ///
+  /// In en, this message translates to:
+  /// **'Add a row'**
+  String get dbAddRow;
+
+  /// Toolbar: copy the current row as a new row
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate the row'**
+  String get dbDuplicateRow;
+
+  /// Toolbar: mark the current (or selected) rows for deletion
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the row'**
+  String get dbDeleteRow;
+
+  /// Navigate to the first row
+  ///
+  /// In en, this message translates to:
+  /// **'First row'**
+  String get dbFirstRow;
+
+  /// Navigate to the previous row
+  ///
+  /// In en, this message translates to:
+  /// **'Previous row'**
+  String get dbPreviousRow;
+
+  /// Navigate to the next row
+  ///
+  /// In en, this message translates to:
+  /// **'Next row'**
+  String get dbNextRow;
+
+  /// Navigate to the last row
+  ///
+  /// In en, this message translates to:
+  /// **'Last row'**
+  String get dbLastRow;
+
+  /// Toolbar: export the result
+  ///
+  /// In en, this message translates to:
+  /// **'Export data…'**
+  String get dbExportData;
+
+  /// Toolbar: import a CSV file into the result's table
+  ///
+  /// In en, this message translates to:
+  /// **'Import data…'**
+  String get dbImportData;
+
+  /// Fetch size field tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Rows per fetch'**
+  String get dbFetchSize;
+
+  /// Fetch size preset
+  ///
+  /// In en, this message translates to:
+  /// **'{count} rows'**
+  String dbFetchRows(int count);
+
+  /// Invalid fetch size
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a number from 1 to 1000'**
+  String get dbFetchSizeInvalid;
+
+  /// Toolbar: fetch the next page
+  ///
+  /// In en, this message translates to:
+  /// **'Load the next rows'**
+  String get dbLoadNext;
+
+  /// Toolbar: fetch every remaining row
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch all rows'**
+  String get dbFetchAll;
+
+  /// Status: rows fetched
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 row fetched} other{{count} rows fetched}}'**
+  String dbRowsFetched(int count);
+
+  /// Status: elapsed seconds and when the query finished
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s, {date} at {time}'**
+  String dbFetchedTiming(String seconds, String date, String time);
+
+  /// Status: more rows can be fetched
+  ///
+  /// In en, this message translates to:
+  /// **'more available'**
+  String get dbMoreAvailable;
+
+  /// Status: pending row changes
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change not saved} other{{count} changes not saved}}'**
+  String dbPendingChanges(int count);
+
+  /// Result view: grid
+  ///
+  /// In en, this message translates to:
+  /// **'Table'**
+  String get dbViewTable;
+
+  /// Result view: plain text table
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get dbViewText;
+
+  /// Result view: one row as a form
+  ///
+  /// In en, this message translates to:
+  /// **'Record'**
+  String get dbViewRecord;
+
+  /// Last line of the text view when rows were cut
+  ///
+  /// In en, this message translates to:
+  /// **'… {count} more rows (use export for all rows)'**
+  String dbTextMoreRows(int count);
+
+  /// Record view without rows
+  ///
+  /// In en, this message translates to:
+  /// **'No rows'**
+  String get dbNoRows;
+
+  /// Record view title of an added row
+  ///
+  /// In en, this message translates to:
+  /// **'New row'**
+  String get dbNewRow;
+
+  /// Record view title
+  ///
+  /// In en, this message translates to:
+  /// **'Row {row} of {count}'**
+  String dbRecordNumber(int row, int count);
+
+  /// Record view: commit the typed value
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the value'**
+  String get dbKeepValue;
+
+  /// Record view value tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Click to change the value'**
+  String get dbRecordEditHint;
+
+  /// Record view: clear a new row's value so the default applies
+  ///
+  /// In en, this message translates to:
+  /// **'Leave to the server (default)'**
+  String get dbUseDefault;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

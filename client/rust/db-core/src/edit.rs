@@ -273,7 +273,11 @@ impl DbSession {
         self.key_columns(table, false).await
     }
 
-    async fn key_columns(&self, table: &DbObjectRef, primary: bool) -> Result<Vec<String>, DbError> {
+    async fn key_columns(
+        &self,
+        table: &DbObjectRef,
+        primary: bool,
+    ) -> Result<Vec<String>, DbError> {
         let text = |value: &str| DbParameter {
             name: String::new(),
             value: DbCell::Text(value.into()),

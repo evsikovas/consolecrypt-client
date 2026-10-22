@@ -11372,4 +11372,225 @@ class AppLocalizationsEn extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'I checked this command for $host (team policy)';
   }
+
+  @override
+  String get dbNullCell => '[NULL]';
+
+  @override
+  String get dbDefaultCell => '[DEFAULT]';
+
+  @override
+  String get dbRowAddedHint => 'New row, not saved yet';
+
+  @override
+  String get dbRowDeletedHint => 'Will be deleted on save';
+
+  @override
+  String get dbRequiredValue => 'A value is required';
+
+  @override
+  String get dbKeyColumn => 'Key column';
+
+  @override
+  String get dbTypeNumber => 'Number';
+
+  @override
+  String get dbTypeText => 'Text';
+
+  @override
+  String get dbTypeDate => 'Date and time';
+
+  @override
+  String get dbTypeBool => 'True/false';
+
+  @override
+  String get dbTypeJson => 'JSON';
+
+  @override
+  String get dbTypeBinary => 'Binary';
+
+  @override
+  String get dbEditUnsupported => 'Row editing is not available here';
+
+  @override
+  String get dbEditEngineUnsupported => 'Rows of this database type cannot be edited here';
+
+  @override
+  String get dbEditDesktopOnly => 'Rows are edited on a computer';
+
+  @override
+  String get dbEditNoKey => 'Editing needs a query of one table with a primary or unique key';
+
+  @override
+  String get dbEditProductionLocked => 'Production is read-only: unlock writes first';
+
+  @override
+  String get dbEditReadOnly => 'The session is read-only: allow writes first';
+
+  @override
+  String dbRequiredMissing(String columns) {
+    return 'Fill in the required columns: $columns';
+  }
+
+  @override
+  String get dbSaveFailed => 'The changes were not saved';
+
+  @override
+  String get dbUnsavedTitle => 'Unsaved changes';
+
+  @override
+  String dbUnsavedMessage(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rows have changes that are not saved.',
+      one: '1 row has changes that are not saved.',
+    );
+    return '$_temp0 Save them first?';
+  }
+
+  @override
+  String get dbSave => 'Save';
+
+  @override
+  String get dbSaveOptions => 'Save options';
+
+  @override
+  String get dbShowSql => 'Show SQL';
+
+  @override
+  String get dbPendingSql => 'Pending changes as SQL';
+
+  @override
+  String get dbRefreshReadOnly => 'only results of read queries refresh';
+
+  @override
+  String get dbRefreshUnavailable => 'This result can no longer be refreshed; run the query again';
+
+  @override
+  String get dbAutoRefresh => 'Auto-refresh';
+
+  @override
+  String get dbAutoRefreshOff => 'Off';
+
+  @override
+  String dbEverySeconds(int seconds) {
+    return 'Every $seconds s';
+  }
+
+  @override
+  String dbEveryMinutes(int minutes) {
+    return 'Every $minutes min';
+  }
+
+  @override
+  String get dbEditRow => 'Edit the current row';
+
+  @override
+  String get dbAddRow => 'Add a row';
+
+  @override
+  String get dbDuplicateRow => 'Duplicate the row';
+
+  @override
+  String get dbDeleteRow => 'Delete the row';
+
+  @override
+  String get dbFirstRow => 'First row';
+
+  @override
+  String get dbPreviousRow => 'Previous row';
+
+  @override
+  String get dbNextRow => 'Next row';
+
+  @override
+  String get dbLastRow => 'Last row';
+
+  @override
+  String get dbExportData => 'Export data…';
+
+  @override
+  String get dbImportData => 'Import data…';
+
+  @override
+  String get dbFetchSize => 'Rows per fetch';
+
+  @override
+  String dbFetchRows(int count) {
+    return '$count rows';
+  }
+
+  @override
+  String get dbFetchSizeInvalid => 'Enter a number from 1 to 1000';
+
+  @override
+  String get dbLoadNext => 'Load the next rows';
+
+  @override
+  String get dbFetchAll => 'Fetch all rows';
+
+  @override
+  String dbRowsFetched(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rows fetched',
+      one: '1 row fetched',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dbFetchedTiming(String seconds, String date, String time) {
+    return '$seconds s, $date at $time';
+  }
+
+  @override
+  String get dbMoreAvailable => 'more available';
+
+  @override
+  String dbPendingChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes not saved',
+      one: '1 change not saved',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbViewTable => 'Table';
+
+  @override
+  String get dbViewText => 'Text';
+
+  @override
+  String get dbViewRecord => 'Record';
+
+  @override
+  String dbTextMoreRows(int count) {
+    return '… $count more rows (use export for all rows)';
+  }
+
+  @override
+  String get dbNoRows => 'No rows';
+
+  @override
+  String get dbNewRow => 'New row';
+
+  @override
+  String dbRecordNumber(int row, int count) {
+    return 'Row $row of $count';
+  }
+
+  @override
+  String get dbKeepValue => 'Keep the value';
+
+  @override
+  String get dbRecordEditHint => 'Click to change the value';
+
+  @override
+  String get dbUseDefault => 'Leave to the server (default)';
 }

@@ -412,7 +412,12 @@ mod tests {
             "original_primary_key": {"id": {"kind": "int", "value": "1"}}
         }))
         .unwrap();
-        assert_eq!(delete, DbRowChange::Delete { original_primary_key: key("1") });
+        assert_eq!(
+            delete,
+            DbRowChange::Delete {
+                original_primary_key: key("1")
+            }
+        );
         assert!(serde_json::from_value::<DbRowChange>(serde_json::json!({
             "kind": "delete",
             "original_primary_key": {},
@@ -429,10 +434,7 @@ mod tests {
     fn postgres_statements_run_deletes_then_updates_then_inserts() {
         let changes = [
             DbRowChange::Insert {
-                values: values(&[
-                    ("name", DbCell::Text("new".into())),
-                    ("note", DbCell::Null),
-                ]),
+                values: values(&[("name", DbCell::Text("new".into())), ("note", DbCell::Null)]),
             },
             DbRowChange::Update {
                 original_primary_key: key("2"),
@@ -511,7 +513,7 @@ mod tests {
             edit.preview,
             "DELETE FROM `shop`.`items` WHERE `a` = 1 AND `b` = 'x';\n\
              INSERT INTO `shop`.`items` () VALUES ();\n\
-             INSERT INTO `shop`.`items` (`blob`, `we``ird`) VALUES (FROM_BASE64('AP8='), 'a\\\\b\\'c');"
+             INSERT INTO `shop`.`items` (`blob`, `we``ird`) VALUES (FROM_BASE64('AP8='), 'a\\\\b''c');"
         );
         let empty = row_change_request(
             DbEngine::Postgresql,

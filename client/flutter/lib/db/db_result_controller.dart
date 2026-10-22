@@ -37,6 +37,17 @@ class DbResultController extends ChangeNotifier {
   final notices = <String>[];
   String? queryId, errorCode;
   bool running = false, loadingMore = false, cancelled = false, truncated = false;
+
+  /// "Fetch all" keeps asking for the next page until the result ends or
+  /// hits a limit.
+  bool fetchingAll = false;
+
+  /// When the last query started and when it stopped producing rows.
+  DateTime? startedAt, finishedAt;
+
+  /// The last read-only query (without its approval), run again by refresh.
+  DbQueryRequest? _repeat;
+  bool get repeatable => _repeat != null;
   int _generation = 0, _bytes = 0;
   bool _disposed = false;
   StreamSubscription<DbQueryEvent>? _subscription;
@@ -63,8 +74,11 @@ class DbResultController extends ChangeNotifier {
     }());
   }
 
-  Future<void> execute(DbQueryRequest request) async {
+  /// Runs an approved request. A [read] request (the review said it only
+  /// reads) can be run again by [refresh].
+  Future<void> execute(DbQueryRequest request, {bool read = false}) async {
     if (!_current || running || loadingMore) return;
+    _repeat = read ? DbQueryRequest(text: request.text, parameters: request.parameters) : null;
     final generation = ++_generation;
     await _subscription?.cancel();
     if (!_current || generation != _generation) return;
@@ -81,7 +95,10 @@ class DbResultController extends ChangeNotifier {
     running = true;
     cancelled = false;
     truncated = false;
+    fetchingAll = false;
     errorCode = null;
+    startedAt = DateTime.now();
+    finishedAt = null;
     _notify();
     try {
       final id = await service.execute(sessionId, request);
@@ -130,6 +147,47 @@ class DbResultController extends ChangeNotifier {
       result.hasMore = false;
     }
     unawaited(cancel());
+  }
+
+  /// Runs the last read-only query again after a fresh review; returns
+  /// false when there is none or the review no longer says it only reads.
+  Future<bool> refresh() async {
+    final request = _repeat;
+    if (!_current || request == null || running || loadingMore) return false;
+    final review = await service.reviewQuery(sessionId, request);
+    try {
+      if (!_current || review.risk != DbQueryRisk.read || !DateTime.now().isBefore(review.expiresAt)) return false;
+      await execute(
+        DbQueryRequest(text: request.text, parameters: request.parameters, approvalTicket: review.ticket),
+        read: true,
+      );
+      return true;
+    } finally {
+      final reviews = service;
+      if (reviews is DbQueryReviewService) {
+        unawaited(
+          (reviews as DbQueryReviewService).discardQueryReview(sessionId, review.ticket).catchError((Object _) {}),
+        );
+      }
+    }
+  }
+
+  /// Loads every remaining row, page by page, within the memory limits.
+  Future<void> fetchAll() async {
+    if (!_current || !results.any((r) => r.hasMore) || truncated) return;
+    fetchingAll = true;
+    await more(rows: 1000);
+  }
+
+  void _finished() {
+    finishedAt = DateTime.now();
+    if (fetchingAll && !truncated && errorCode == null && results.any((r) => r.hasMore) && !cancelled) {
+      scheduleMicrotask(() {
+        if (_current && fetchingAll) unawaited(more(rows: 1000));
+      });
+    } else {
+      fetchingAll = false;
+    }
   }
 
   void _event(DbQueryEvent event) {
@@ -189,6 +247,7 @@ class DbResultController extends ChangeNotifier {
         if (target != null) target.hasMore = event.hasMore;
         running = false;
         loadingMore = false;
+        _finished();
       case DbQueryEventKind.statementDone:
         final target = result();
         if (target != null) {
@@ -201,14 +260,20 @@ class DbResultController extends ChangeNotifier {
       case DbQueryEventKind.done:
         running = false;
         loadingMore = false;
+        fetchingAll = false;
+        finishedAt = DateTime.now();
       case DbQueryEventKind.cancelled:
         running = false;
         loadingMore = false;
+        fetchingAll = false;
         cancelled = true;
+        finishedAt = DateTime.now();
       case DbQueryEventKind.error:
         running = false;
         loadingMore = false;
+        fetchingAll = false;
         errorCode = event.code ?? 'query_failed';
+        finishedAt = DateTime.now();
     }
     _notify();
   }
@@ -240,7 +305,9 @@ class DbResultController extends ChangeNotifier {
     unawaited(subscription?.cancel() ?? Future<void>.value());
     running = false;
     loadingMore = false;
+    fetchingAll = false;
     cancelled = true;
+    finishedAt ??= DateTime.now();
     for (final result in results) {
       result.hasMore = false;
     }
@@ -262,6 +329,7 @@ class DbResultController extends ChangeNotifier {
     final id = queryId;
     if (id != null) _release(id, cancel: running || loadingMore || results.any((r) => r.hasMore));
     queryId = null;
+    _repeat = null;
     for (final result in results) {
       result.clear();
     }

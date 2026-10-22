@@ -284,19 +284,74 @@ CSV, TSV, JSON, NDJSON, Markdown или как SQL `INSERT`. «Экспорт р
 обратная косая черта удваивается, для PostgreSQL текст с ней записывается как
 `E'…'`, так что файл читается одинаково при любых настройках экранирования.
 
-### Редактирование ячеек
+### Панель результата
+
+Слева от результата — переключатель вида: «Таблица» (сетка), «Текст»
+(выровненная текстовая таблица моноширинным шрифтом, её можно выделить и
+скопировать; показывает до 2000 строк, NULL — как `[NULL]`, скрытые значения —
+точками) и «Запись» (одна строка формой «поле → значение»). Выбранный вид
+запоминается для вкладки. В заголовках колонок — значок типа (число, текст,
+дата и время, да/нет, JSON, двоичные данные) и ключ у ключевых колонок; NULL
+показан приглушённым `[NULL]`.
+
+Под результатом — панель инструментов:
+
+- «Обновить» (F5, ⌘R / Ctrl+R) заново выполняет последний читающий запрос
+  вкладки после новой проверки; меню рядом включает автообновление (выкл.,
+  5 с, 10 с, 30 с, 1 мин, 5 мин). Автообновление работает только для
+  читающих запросов (в том числе на проде) и пропускает такт, пока есть
+  несохранённые изменения, запрос ещё выполняется или окно скрыто.
+- «Сохранить» (⌘S / Ctrl+S) применяет несохранённые изменения, в меню —
+  «Показать SQL»; «Отменить изменения» (⌥⌘Z / Ctrl+Alt+Z) сбрасывает их.
+- Строки: «Редактировать текущую строку» (⇧↵, открывает вид «Запись»),
+  «Добавить строку» (⌥⌘N / Ctrl+Alt+N), «Дублировать строку» (⌘D / Ctrl+D),
+  «Удалить строку» (⌘⌫ / Ctrl+Delete; с выделением — все выбранные строки).
+- Переход: первая (⌘↑ / Ctrl+Home), предыдущая (⌥↑ / Alt+↑), следующая
+  (⌥↓ / Alt+↓) и последняя (⌘↓ / Ctrl+End) строка; в сетке текущую строку
+  двигают и стрелки ↑/↓.
+- «Экспорт данных…» (⇧⌘E / Ctrl+Shift+E), «Импорт данных…» (CSV в таблицу
+  результата, см. ниже).
+- Шестерёнка и поле «Строк за раз» задают размер следующей порции (1–1000,
+  запоминается для подключения); «Загрузить следующую порцию» и «Загрузить
+  все строки» (в пределах лимита памяти результата).
+
+Строка состояния: сколько строк получено, время выполнения, дата и время
+окончания, «есть ещё», если строки остались на сервере, число выбранных
+строк и несохранённых изменений.
+
+### Изменение строк
 
 На компьютере в сессии с разрешённой записью (непрод-подключение или прод с
-открытым окном записи) можно менять ячейки результата простого `SELECT` из
-одной таблицы с первичным ключом. Двойной щелчок по ячейке открывает
-редактирование прямо в таблице: Enter сохраняет значение в списке изменений,
-Esc отменяет, Tab переходит к следующей ячейке. Тип значения берётся из
-описания колонки в результате и проверяется при вводе; NULL задаётся
-отдельным переключателем. Изменённые ячейки подсвечиваются. «Проверить
-изменения» показывает сгенерированные `UPDATE … WHERE <первичный ключ>`
-(значения передаются параметрами); после подтверждения они выполняются одной
-транзакцией. Если какое-то изменение не нашло свою строку, откатываются все.
-Без права записи двойной щелчок открывает просмотр значения.
+открытым окном записи) строки результата простого `SELECT` из одной таблицы
+можно менять, добавлять и удалять. Строка определяется первичным ключом, а
+если его нет — первым уникальным ключом из NOT NULL-колонок (адрес строки
+вроде `ctid` нестабилен и не используется). Без такого ключа, для ClickHouse,
+Redis и MongoDB, а также на телефоне кнопки изменения неактивны, а подсказка
+объясняет почему.
+
+- Двойной щелчок по ячейке (или Enter/F2) — правка на месте: Enter оставляет
+  значение в списке изменений, Esc отменяет, Tab переходит к следующей
+  ячейке. Тип берётся из колонки и проверяется при вводе, NULL — отдельный
+  переключатель. Изменённые ячейки подсвечены жёлтым.
+- Новая строка подсвечена зелёным, номер строки — «+». Колонки, которые
+  заполнит сервер (значение по умолчанию, identity, auto-increment), показаны
+  как `[ПО УМОЛЧАНИЮ]`, остальные пустые — `[NULL]`. Обязательные колонки
+  (NOT NULL без значения по умолчанию) нужно заполнить: иначе «Сохранить»
+  подсветит их и ничего не отправит. Вычисляемые колонки не записываются.
+- «Дублировать» копирует строку без ключевых, вычисляемых и скрытых значений.
+- Удаляемая строка зачёркнута и подсвечена красным до сохранения; повторное
+  «Удалить» снимает отметку, новая строка удаляется сразу.
+
+До «Сохранить» ничего не выполняется. Ядро строит из изменений
+параметризованные `DELETE`, `UPDATE` и `INSERT` (в этом порядке) по ключу,
+а проверка показывает те же операторы со значениями-литералами и требует
+пароль хранилища; защита прода не обходится. После подтверждения операторы
+выполняются одной транзакцией, и каждый должен изменить ровно одну строку —
+иначе откатывается всё. Затем результат обновляется. «Показать SQL»
+открывает операторы в виде кода: их можно скопировать или добавить в текущую
+вкладку редактора. Если при повторном запуске, обновлении, смене набора
+результатов, закрытии вкладки или выходе из подключения есть несохранённые
+изменения, приложение спрашивает: сохранить, отменить или остаться.
 
 ### История
 
@@ -572,14 +627,63 @@ number selects the row, Shift+click extends the selection and ⌘/Ctrl+click
 toggles a row, Esc clears it. The status line counts selected rows, and copy,
 export and the AI assistant use the selection when there is one.
 
+A switcher on the left of the result shows it as a **Table** (the grid),
+**Text** (an aligned, selectable and copyable monospace table of up to 2,000
+rows; NULL as `[NULL]`, masked values as dots) or a **Record** (one row as a
+field → value form). The view is remembered per tab. Column headers carry a
+type glyph (number, text, date/time, true/false, JSON, binary) and a key on
+key columns; NULL shows as a dim `[NULL]`.
+
+The toolbar under the result has:
+
+- **Refresh** (F5, ⌘R / Ctrl+R) runs the tab's last read query again after a
+  fresh review; its menu turns on auto-refresh (off, 5 s, 10 s, 30 s, 1 min,
+  5 min). Auto-refresh only repeats read queries (production included) and
+  skips a beat while changes are pending, a query runs or the window is hidden.
+- **Save** (⌘S / Ctrl+S) applies the pending changes; its menu has **Show
+  SQL**. **Discard changes** (⌥⌘Z / Ctrl+Alt+Z) drops them.
+- Rows: **Edit the current row** (⇧↵, opens the Record view), **Add a row**
+  (⌥⌘N / Ctrl+Alt+N), **Duplicate the row** (⌘D / Ctrl+D) and **Delete the
+  row** (⌘⌫ / Ctrl+Delete; every selected row when there is a selection).
+- Navigation: first (⌘↑ / Ctrl+Home), previous (⌥↑ / Alt+↑), next (⌥↓ /
+  Alt+↓) and last (⌘↓ / Ctrl+End) row; ↑/↓ also move the current row in the grid.
+- **Export data…** (⇧⌘E / Ctrl+Shift+E) and **Import data…** (CSV into the
+  result's table, see below).
+- The gear and the **Rows per fetch** field set the next page size (1–1,000,
+  remembered per connection); **Load the next rows** and **Fetch all rows**
+  (within the result memory limit).
+
+The status line shows the rows fetched, the elapsed time, the date and time
+the query finished, “more available” when rows are left on the server, and
+the selected rows and pending changes.
+
 On desktop, sessions with writes allowed (non-production, or production in
-its write window) can edit cells of a simple single-table `SELECT` with a
-primary key: double-click a cell to edit it in place, Enter keeps the value,
-Esc cancels and Tab moves to the next cell. The value is checked and bound
-with the column's type from the result; NULL is an explicit toggle. Pending
-edits are highlighted, reviewed as parameterized `UPDATE` statements and
-applied in one transaction that rolls back unless every change hit exactly
-one row. Without write access a double-click opens the value viewer.
+its write window) can change, add and delete rows of a simple single-table
+`SELECT`. Rows are identified by the primary key or, without one, by the
+first unique key of NOT NULL columns (physical row addresses such as `ctid`
+are not stable and never used). Without such a key, for ClickHouse, Redis and
+MongoDB, and on phones the editing actions are off and their tooltip says why.
+
+- Double-click a cell (or Enter/F2) to edit it in place: Enter keeps the
+  value, Esc cancels, Tab moves on. The value is checked and bound with the
+  column's type; NULL is an explicit toggle. Changed cells are yellow.
+- A new row is green with “+” as its number. Columns the server fills
+  (default, identity, auto-increment) read `[DEFAULT]`, other empty ones
+  `[NULL]`. Required columns (NOT NULL without a default) must be filled in —
+  Save highlights them and sends nothing. Generated columns are never written.
+- **Duplicate** copies a row without key, generated and masked values.
+- A row to delete is struck through in red until saved; Delete again unmarks
+  it, and a new row is simply removed.
+
+Nothing runs before Save. The core turns the changes into parameterized
+`DELETE`, `UPDATE` and `INSERT` statements (in that order) by key; the review
+shows them with the values as literals and asks for the vault passphrase, and
+the production guard still applies. They run in one transaction in which each
+statement must change exactly one row, otherwise everything rolls back; then
+the result refreshes. **Show SQL** opens the statements as code to copy or add
+to the current editor tab. Running again, refreshing, switching result sets,
+closing the tab or leaving the connection with pending changes asks whether to
+save, discard or stay.
 
 History is kept per connection — text, time, duration, rows and error, never
 parameter values or data — with filters for successful, failed and favourite
