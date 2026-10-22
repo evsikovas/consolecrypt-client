@@ -60,7 +60,10 @@ impl AppCore {
     pub async fn db_history_policy(&self, connection_id: String) -> AppResult<DbHistoryPolicy> {
         let (owner, unlocked) = self.unlocked().await?;
         let id = crate::dto::parse_id("connection_id", &connection_id)?;
-        if unlocked.working().db_connection(id).is_none() {
+        if crate::database_local::connection(&owner, &unlocked, id)
+            .await?
+            .is_none()
+        {
             return Err(invalid("connection_unavailable"));
         }
         let policies: Policies = owner
@@ -79,7 +82,13 @@ impl AppCore {
         let (owner, unlocked) = self.unlocked().await?;
         let id = crate::dto::parse_id("connection_id", &connection_id)?;
         if unlocked.working().db_connection(id).is_none() {
-            return Err(invalid("connection_unavailable"));
+            // A device-local connection keeps its history on this device.
+            if !crate::database_local::is_local(&owner, &unlocked, id).await? {
+                return Err(invalid("connection_unavailable"));
+            }
+            if policy == DbHistoryPolicy::EncryptedSync {
+                return Err(invalid("local_only"));
+            }
         }
         let _gate = unlocked.db_history_lock.lock().await;
         let _profile = self.hold_session(&owner).await?;
@@ -109,11 +118,11 @@ impl AppCore {
         let _gate = unlocked.db_history_lock.lock().await;
         let _profile = self.hold_session(owner).await?;
         let _generation = owner.hold_unlocked(unlocked).await?;
-        if unlocked
+        let synced = unlocked
             .working()
             .db_connection(row.connection_id)
-            .is_none()
-        {
+            .is_some();
+        if !synced && !crate::database_local::is_local(owner, unlocked, row.connection_id).await? {
             return Ok(());
         }
         let policies: Policies = owner
@@ -121,11 +130,16 @@ impl AppCore {
             .setting_get(POLICIES)
             .await?
             .unwrap_or_default();
-        match policies
+        let policy = policies
             .get(&row.connection_id.to_string())
             .copied()
-            .unwrap_or_default()
-        {
+            .unwrap_or_default();
+        // History of a device-local connection never becomes a vault object.
+        let policy = match policy {
+            DbHistoryPolicy::EncryptedSync if !synced => DbHistoryPolicy::Local,
+            policy => policy,
+        };
+        match policy {
             DbHistoryPolicy::Disabled => {}
             DbHistoryPolicy::EncryptedSync => {
                 unlocked
@@ -270,6 +284,8 @@ impl AppCore {
             DbEngine::Clickhouse => (SnippetType::Sql, Some("clickhouse")),
             DbEngine::Redis => (SnippetType::RedisCli, None),
             DbEngine::Mongodb => (SnippetType::Shell, Some("mongosh")),
+            DbEngine::Cassandra => (SnippetType::Cql, None),
+            DbEngine::Unknown => return Err(invalid("engine_unavailable")),
         };
         let template = row.text.expose_secret().to_owned();
         let now = chrono::Utc::now();

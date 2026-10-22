@@ -203,7 +203,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
         if (tab == null || tab.preview) return;
       }
       _select(_tabs.indexOf(tab));
-      tab.controller.appendStatement(text, sql: _session!.engine.sql);
+      tab.controller.appendStatement(text, sql: _session!.engine.semicolons);
       _view = 'query';
     });
   }
@@ -367,6 +367,21 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
           showSnack(context, context.l10n.dbQueryBlocked, error: true);
         }
         return;
+      }
+      // CQL reads that scan a whole table run only after a confirmation.
+      final scan = review.risk == DbQueryRisk.read
+          ? review.reasonCodes.where((code) => code == 'cql_allow_filtering' || code == 'cql_full_scan').firstOrNull
+          : null;
+      if (scan != null) {
+        if (!mounted) return;
+        final l = context.l10n;
+        final run = await showConfirmDialog(
+          context,
+          title: l.dbScanWarningTitle,
+          message: scan == 'cql_allow_filtering' ? l.dbScanAllowFiltering : l.dbScanFullTable,
+          confirmLabel: l.dbRun,
+        );
+        if (!_tabCurrent(tab) || !run) return;
       }
       if (review.risk != DbQueryRisk.read) {
         if (!mounted) return;

@@ -478,7 +478,9 @@ fn replication_fields(json: &str) -> (String, String) {
         .iter()
         .filter(|(key, _)| key.as_str() != "class")
         .map(|(key, value)| {
-            let value = value.as_str().map_or_else(|| value.to_string(), str::to_owned);
+            let value = value
+                .as_str()
+                .map_or_else(|| value.to_string(), str::to_owned);
             if key == "replication_factor" {
                 value
             } else {
@@ -492,7 +494,11 @@ fn replication_fields(json: &str) -> (String, String) {
 
 /// Details of a keyspace from its `system_schema.keyspaces` row
 /// (replication JSON, durable_writes) and object counts.
-pub fn cassandra_keyspace_details(replication: &str, durable: &str, counts: [usize; 4]) -> ObjectDetails {
+pub fn cassandra_keyspace_details(
+    replication: &str,
+    durable: &str,
+    counts: [usize; 4],
+) -> ObjectDetails {
     let (strategy, factors) = replication_fields(replication);
     let mut details = ObjectDetails::default();
     details
@@ -542,7 +548,11 @@ pub fn cassandra_table_details(facts: &CassandraTableFacts) -> ObjectDetails {
         .section("general")
         .field(
             "kind",
-            if facts.view { "materialized_view" } else { "table" },
+            if facts.view {
+                "materialized_view"
+            } else {
+                "table"
+            },
             DetailKind::Keyword,
         )
         .field("keyspace", &facts.keyspace, DetailKind::Code)
@@ -552,7 +562,7 @@ pub fn cassandra_table_details(facts: &CassandraTableFacts) -> ObjectDetails {
     details
         .section("structure")
         .field("columns", &facts.columns.to_string(), DetailKind::Count)
-        .field("partition_key", &facts.partition_key, DetailKind::Code)
+        .field("cql_partition_key", &facts.partition_key, DetailKind::Code)
         .field("clustering_key", &facts.clustering_key, DetailKind::Code)
         .field(
             "indexes",
@@ -563,21 +573,32 @@ pub fn cassandra_table_details(facts: &CassandraTableFacts) -> ObjectDetails {
         .section("storage")
         .field("compaction", &facts.compaction, DetailKind::Code)
         .field("compression", &facts.compression, DetailKind::Code)
-        .field("gc_grace_seconds", &facts.gc_grace_seconds, DetailKind::Count)
+        .field(
+            "gc_grace_seconds",
+            &facts.gc_grace_seconds,
+            DetailKind::Count,
+        )
         .field("default_ttl", &facts.default_ttl, DetailKind::Count)
         .field("caching", &facts.caching, DetailKind::Code)
         .field("bloom_filter", &facts.bloom_filter, DetailKind::Code)
-        .field("speculative_retry", &facts.speculative_retry, DetailKind::Code);
+        .field(
+            "speculative_retry",
+            &facts.speculative_retry,
+            DetailKind::Code,
+        );
     details
         .section("size")
         .field(
-            "partitions",
+            "cql_partitions",
             &facts.partitions.map(|n| n.to_string()).unwrap_or_default(),
             DetailKind::Estimate,
         )
         .field(
             "mean_partition_size",
-            &facts.mean_partition_size.map(|n| n.to_string()).unwrap_or_default(),
+            &facts
+                .mean_partition_size
+                .map(|n| n.to_string())
+                .unwrap_or_default(),
             DetailKind::Bytes,
         );
     details.done()
@@ -585,7 +606,7 @@ pub fn cassandra_table_details(facts: &CassandraTableFacts) -> ObjectDetails {
 
 impl DbSession {
     async fn cassandra_details(&self, object: &DbObjectRef) -> Result<ObjectDetails, DbError> {
-        use crate::cassandra::{CqlColumnKind, option_literal};
+        use crate::cassandra::{option_literal, CqlColumnKind};
         let driver = self.driver.lock().await;
         let Driver::Cassandra(driver) = &*driver else {
             return Err(DbError::InvalidRequest);
@@ -634,7 +655,9 @@ impl DbSession {
         let plain = |name: &str| {
             value(name)
                 .map(|value| match value {
-                    scylla::value::CqlValue::Text(text) | scylla::value::CqlValue::Ascii(text) => text,
+                    scylla::value::CqlValue::Text(text) | scylla::value::CqlValue::Ascii(text) => {
+                        text
+                    }
                     other => option_literal(&other),
                 })
                 .unwrap_or_default()
@@ -712,7 +735,11 @@ impl DbSession {
         Ok(cassandra_table_details(&CassandraTableFacts {
             view,
             keyspace: keyspace.to_owned(),
-            base_table: if view { plain("base_table_name") } else { String::new() },
+            base_table: if view {
+                plain("base_table_name")
+            } else {
+                String::new()
+            },
             id: plain("id"),
             comment: plain("comment"),
             columns: columns.len(),
@@ -758,7 +785,10 @@ mod tests {
             [2, 1, 0, 0],
         );
         let json = serde_json::to_value(&details).unwrap();
-        assert_eq!(json["sections"][1]["fields"][0]["value"], "NetworkTopologyStrategy");
+        assert_eq!(
+            json["sections"][1]["fields"][0]["value"],
+            "NetworkTopologyStrategy"
+        );
         assert_eq!(json["sections"][1]["fields"][1]["value"], "dc1: 3");
         let details = cassandra_table_details(&CassandraTableFacts {
             keyspace: "shop".into(),

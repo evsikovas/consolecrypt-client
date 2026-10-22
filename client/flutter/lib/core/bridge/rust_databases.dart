@@ -71,7 +71,10 @@ final class RustDbService
   @override
   Future<List<DbConnection>> connections() async {
     final list = jsonDecode(await guard(native.dbConnections)) as List;
-    return List.unmodifiable(list.cast<DbJson>().map(DbConnection.fromJson));
+    // Engines of a newer version are skipped (the core never lists them today).
+    return List.unmodifiable(
+      list.cast<DbJson>().where((json) => DbEngine.tryParse(json['engine'] as String?) != null).map(DbConnection.fromJson),
+    );
   }
 
   @override
@@ -482,10 +485,11 @@ final class RustDbService
     return DbHistoryPage(
       entries: [
         for (final entry in (json['entries'] as List).cast<DbJson>())
+          if (DbEngine.tryParse(entry['engine'] as String?) case final engine?)
           DbHistoryEntry(
             id: entry['id'] as String,
             connectionId: entry['connection_id'] as String,
-            engine: DbEngine.parse(entry['engine'] as String),
+            engine: engine,
             text: entry['text'] as String,
             createdAt: DateTime.parse(entry['created_at'] as String),
             elapsedMs: entry['elapsed_ms'] as int? ?? 0,

@@ -594,7 +594,10 @@ fn cql_production_is_read_only_and_never_manages_roles() {
         "USE shop",
         "DESCRIBE KEYSPACES",
     ] {
-        assert!(prod.prepare(&request(read)).unwrap()[0].is_read_only(), "{read}");
+        assert!(
+            prod.prepare(&request(read)).unwrap()[0].is_read_only(),
+            "{read}"
+        );
     }
     for write in [
         "INSERT INTO items (id) VALUES (1)",
@@ -608,7 +611,8 @@ fn cql_production_is_read_only_and_never_manages_roles() {
             "{write}"
         );
     }
-    prod.open_production_write(Duration::from_secs(300)).unwrap();
+    prod.open_production_write(Duration::from_secs(300))
+        .unwrap();
     assert!(!prod
         .prepare(&request("INSERT INTO items (id) VALUES (1)"))
         .unwrap()[0]
@@ -619,8 +623,14 @@ fn cql_production_is_read_only_and_never_manages_roles() {
         "CREATE ROLE reader WITH LOGIN = true",
         "DROP USER old",
     ] {
-        assert!(matches!(prod.review(&request(role)), Err(DbError::PolicyDenied)), "{role}");
-        assert!(matches!(prod.prepare(&request(role)), Err(DbError::PolicyDenied)), "{role}");
+        assert!(
+            matches!(prod.review(&request(role)), Err(DbError::PolicyDenied)),
+            "{role}"
+        );
+        assert!(
+            matches!(prod.prepare(&request(role)), Err(DbError::PolicyDenied)),
+            "{role}"
+        );
     }
     // Development: destructive statements need the exact approval.
     let dev = guard(DbEngine::Cassandra, false, false);

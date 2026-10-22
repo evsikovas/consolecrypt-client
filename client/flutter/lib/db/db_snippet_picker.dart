@@ -19,7 +19,7 @@ const _engineDialects = {'mysql', 'mariadb', 'clickhouse'};
 /// Databases history saves (`db_save_history_snippet`): PostgreSQL →
 /// postgresql; MySQL / MariaDB / ClickHouse → sql + "mysql" / "mariadb" /
 /// "clickhouse" (MySQL and MariaDB share snippets); Redis → redis_cli;
-/// MongoDB → shell + "mongosh". Plain SQL snippets without an engine dialect
+/// MongoDB → shell + "mongosh"; Cassandra / ScyllaDB → cql. Plain SQL snippets without an engine dialect
 /// match every SQL engine. Snippets tagged [terminalOnlySnippetTag] are
 /// server admin commands the workspace guard refuses, so they are left out.
 bool snippetMatchesEngine(Snippet snippet, DbEngine engine) {
@@ -33,6 +33,7 @@ bool snippetMatchesEngine(Snippet snippet, DbEngine engine) {
     DbEngine.clickhouse => sql && dialect == 'clickhouse' || genericSql,
     DbEngine.redis => snippet.snippetType == SnippetType.redisCli,
     DbEngine.mongodb => snippet.snippetType == SnippetType.shell && dialect == 'mongosh',
+    DbEngine.cassandra => snippet.snippetType == SnippetType.cql,
   };
 }
 

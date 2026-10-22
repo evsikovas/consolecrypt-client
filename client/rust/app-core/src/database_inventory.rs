@@ -66,8 +66,13 @@ fn prepare_credentials(
 
 impl AppCore {
     pub async fn db_connections(&self) -> AppResult<Vec<DbConnection>> {
-        let (_, unlocked) = self.unlocked().await?;
+        let (owner, unlocked) = self.unlocked().await?;
         let mut connections = unlocked.working().db_connections();
+        let local = crate::database_local::load(&owner, &unlocked).await?;
+        if let Some(local) = local.as_ref() {
+            connections.extend(local.connections());
+        }
+        drop(local);
         connections.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
         Ok(connections)
     }
@@ -87,12 +92,21 @@ impl AppCore {
             None
         } else {
             Some(
-                unlocked
-                    .working()
-                    .db_connection(connection.id)
+                crate::database_local::connection(&owner, &unlocked, connection.id)
+                    .await?
                     .ok_or_else(|| invalid("connection_unavailable"))?,
             )
         };
+        // Device-local and vault connections live in different stores: an
+        // engine change across them would leave a stale copy on older
+        // devices (see `DbEngine::device_local`).
+        let local = connection.engine.device_local();
+        if existing
+            .as_ref()
+            .is_some_and(|old| old.engine.device_local() != local)
+        {
+            return Err(invalid("engine_change_unsupported"));
+        }
         let now = chrono::Utc::now();
         connection.created_at = existing.as_ref().map_or(now, |old| old.created_at);
         connection.updated_at = now;
@@ -105,6 +119,24 @@ impl AppCore {
         let mut references = connection.clone();
         references.auth = DbAuth::default();
         validate_refs(unlocked.working(), &VaultObject::DbConnection(references))?;
+        if local {
+            let _profile = self.hold_session(&owner).await?;
+            let _generation = owner.hold_unlocked(&unlocked).await?;
+            {
+                let store = crate::database_local::load(&owner, &unlocked).await?;
+                let store = store
+                    .as_ref()
+                    .ok_or_else(|| AppError::internal("device-local store not loaded"))?;
+                for id in connection.auth.secret_ids() {
+                    if !fresh.contains(&id) && !store.contains(id) {
+                        return Err(invalid("credential_unavailable"));
+                    }
+                }
+            }
+            crate::database_local::save(&owner, &unlocked, connection.clone(), secrets).await?;
+            crate::database_local::close_sessions(&unlocked, connection.id);
+            return Ok(connection);
+        }
         for id in connection.auth.secret_ids() {
             if !fresh.contains(&id) && unlocked.working().kind_of(id) != Some(ObjectKind::Secret) {
                 return Err(invalid("credential_unavailable"));
@@ -121,6 +153,13 @@ impl AppCore {
     pub async fn db_delete_connection(&self, id: String) -> AppResult<()> {
         let (owner, unlocked) = self.unlocked().await?;
         let id = crate::dto::parse_id("connection_id", &id)?;
+        if crate::database_local::is_local(&owner, &unlocked, id).await? {
+            let _profile = self.hold_session(&owner).await?;
+            let _generation = owner.hold_unlocked(&unlocked).await?;
+            crate::database_local::delete(&owner, &unlocked, id).await?;
+            crate::database_local::close_sessions(&unlocked, id);
+            return Ok(());
+        }
         if unlocked.working().db_connection(id).is_none() {
             return Err(invalid("connection_unavailable"));
         }

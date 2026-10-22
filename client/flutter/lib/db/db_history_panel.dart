@@ -210,6 +210,8 @@ class _DbHistoryPanelState extends ConsumerState<DbHistoryPanel> {
                       onSelected: _policyChanged,
                       itemBuilder: (_) => [
                         for (final p in DbHistoryPolicy.values)
+                          // History of a device-local connection stays here too.
+                          if (p != DbHistoryPolicy.encryptedSync || !widget.connection.engine.deviceLocal)
                           CheckedPopupMenuItem(
                             value: p,
                             checked: p == _policy,

@@ -92,7 +92,9 @@ pub(crate) fn lex(text: &str) -> Result<Vec<Token>, DbError> {
             index += 1;
             continue;
         } else if rest.starts_with(b"--") || rest.starts_with(b"//") {
-            index = text[index..].find('\n').map_or(bytes.len(), |end| index + end);
+            index = text[index..]
+                .find('\n')
+                .map_or(bytes.len(), |end| index + end);
             Kind::Comment
         } else if rest.starts_with(b"/*") {
             let end = text[index + 2..]
@@ -418,8 +420,19 @@ fn classify(text: &str, tokens: &[Token]) -> Result<(QueryRisk, &'static str), D
             };
             (QueryRisk::ReadOnly, reason)
         }
-        "LIST" if matches!(at(1), "ROLES" | "USERS" | "PERMISSIONS" | "ALL")
-            || matches!(at(1), "SELECT" | "MODIFY" | "CREATE" | "ALTER" | "DROP" | "AUTHORIZE" | "DESCRIBE" | "EXECUTE") =>
+        "LIST"
+            if matches!(at(1), "ROLES" | "USERS" | "PERMISSIONS" | "ALL")
+                || matches!(
+                    at(1),
+                    "SELECT"
+                        | "MODIFY"
+                        | "CREATE"
+                        | "ALTER"
+                        | "DROP"
+                        | "AUTHORIZE"
+                        | "DESCRIBE"
+                        | "EXECUTE"
+                ) =>
         {
             (QueryRisk::ReadOnly, READ)
         }
@@ -638,7 +651,10 @@ pub(crate) fn format(text: &str) -> Result<String, DbError> {
             continue;
         }
         let operator = |value: &str| {
-            matches!(value, "=" | "<" | ">" | "<=" | ">=" | "!=" | "+=" | "-=" | ",")
+            matches!(
+                value,
+                "=" | "<" | ">" | "<=" | ">=" | "!=" | "+=" | "-=" | ","
+            )
         };
         let previous = line.rsplit(' ').next().unwrap_or_default();
         let glued = matches!(slice, "." | "," | ")" | "]" | "}")
@@ -730,12 +746,63 @@ pub fn quote_name(name: &str) -> String {
 
 /// Reserved CQL keywords that cannot be used as unquoted names.
 const RESERVED: &[&str] = &[
-    "ADD", "ALLOW", "ALTER", "AND", "APPLY", "ASC", "AUTHORIZE", "BATCH", "BEGIN", "BY",
-    "COLUMNFAMILY", "CREATE", "DELETE", "DESC", "DESCRIBE", "DROP", "ENTRIES", "EXECUTE", "FROM",
-    "FULL", "GRANT", "IF", "IN", "INDEX", "INFINITY", "INSERT", "INTO", "IS", "KEYSPACE", "LIMIT",
-    "MODIFY", "NAN", "NORECURSIVE", "NOT", "NULL", "OF", "ON", "OR", "ORDER", "PRIMARY", "RENAME",
-    "REPLACE", "REVOKE", "SCHEMA", "SELECT", "SET", "TABLE", "TO", "TOKEN", "TRUNCATE",
-    "UNLOGGED", "UPDATE", "USE", "USING", "VIEW", "WHERE", "WITH",
+    "ADD",
+    "ALLOW",
+    "ALTER",
+    "AND",
+    "APPLY",
+    "ASC",
+    "AUTHORIZE",
+    "BATCH",
+    "BEGIN",
+    "BY",
+    "COLUMNFAMILY",
+    "CREATE",
+    "DELETE",
+    "DESC",
+    "DESCRIBE",
+    "DROP",
+    "ENTRIES",
+    "EXECUTE",
+    "FROM",
+    "FULL",
+    "GRANT",
+    "IF",
+    "IN",
+    "INDEX",
+    "INFINITY",
+    "INSERT",
+    "INTO",
+    "IS",
+    "KEYSPACE",
+    "LIMIT",
+    "MODIFY",
+    "NAN",
+    "NORECURSIVE",
+    "NOT",
+    "NULL",
+    "OF",
+    "ON",
+    "OR",
+    "ORDER",
+    "PRIMARY",
+    "RENAME",
+    "REPLACE",
+    "REVOKE",
+    "SCHEMA",
+    "SELECT",
+    "SET",
+    "TABLE",
+    "TO",
+    "TOKEN",
+    "TRUNCATE",
+    "UNLOGGED",
+    "UPDATE",
+    "USE",
+    "USING",
+    "VIEW",
+    "WHERE",
+    "WITH",
 ];
 
 /// `keyspace.name` with each part quoted when needed.
@@ -951,7 +1018,10 @@ mod tests {
             format("select  a,b from   ks.t where a={{id}} ; -- note\nbegin batch insert into t (a) values (1); delete from t where a=2; apply batch;").unwrap(),
             "select a, b from ks.t where a = {{id}};\n-- note\nbegin batch\n  insert into t (a) values (1);\n  delete from t where a = 2;\napply batch;"
         );
-        assert_eq!(format("SELECT now() FROM system.local").unwrap(), "SELECT now() FROM system.local");
+        assert_eq!(
+            format("SELECT now() FROM system.local").unwrap(),
+            "SELECT now() FROM system.local"
+        );
     }
 
     #[test]

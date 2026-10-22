@@ -29,8 +29,8 @@ use cc_models::database::{CqlConsistency, DbConnection, DbOptions, DbRoute, DbTl
 use futures::future::BoxFuture;
 use scylla::{
     client::{
-        execution_profile::ExecutionProfile, session::Session, SelfIdentity,
-        session_builder::SessionBuilder, PoolSize,
+        execution_profile::ExecutionProfile, session::Session, session_builder::SessionBuilder,
+        PoolSize, SelfIdentity,
     },
     cluster::metadata::Peer,
     errors::TranslationError,
@@ -200,15 +200,24 @@ pub(crate) fn option_literal(value: &CqlValue) -> String {
         ),
         CqlValue::Set(items) => format!(
             "{{{}}}",
-            items.iter().map(option_literal).collect::<Vec<_>>().join(", ")
+            items
+                .iter()
+                .map(option_literal)
+                .collect::<Vec<_>>()
+                .join(", ")
         ),
         CqlValue::List(items) => format!(
             "[{}]",
-            items.iter().map(option_literal).collect::<Vec<_>>().join(", ")
+            items
+                .iter()
+                .map(option_literal)
+                .collect::<Vec<_>>()
+                .join(", ")
         ),
-        CqlValue::Blob(bytes) => cassandra_value::literal(&DbCell::Binary(
-            base64::Engine::encode(&base64::engine::general_purpose::STANDARD, bytes),
-        )),
+        CqlValue::Blob(bytes) => cassandra_value::literal(&DbCell::Binary(base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            bytes,
+        ))),
         other => text(Some(other)),
     }
 }
@@ -295,7 +304,11 @@ pub fn create_table_cql(
                 .join(", ")
         ));
     }
-    with.extend(options.iter().map(|(name, value)| format!("{name} = {value}")));
+    with.extend(
+        options
+            .iter()
+            .map(|(name, value)| format!("{name} = {value}")),
+    );
     let mut ddl = format!(
         "CREATE TABLE {} (\n{}\n)",
         qualified(keyspace, table),
@@ -393,7 +406,9 @@ fn replication_summary(json: &str) -> String {
         .iter()
         .filter(|(key, _)| key.as_str() != "class")
         .map(|(key, value)| {
-            let value = value.as_str().map_or_else(|| value.to_string(), str::to_owned);
+            let value = value
+                .as_str()
+                .map_or_else(|| value.to_string(), str::to_owned);
             if key == "replication_factor" {
                 value
             } else {
@@ -576,7 +591,9 @@ impl Cassandra {
 
     /// The keyspace unqualified names refer to (`USE` or the connection's).
     pub(crate) fn keyspace(&self) -> Option<String> {
-        self.session.get_keyspace().map(|keyspace| keyspace.to_string())
+        self.session
+            .get_keyspace()
+            .map(|keyspace| keyspace.to_string())
     }
 
     /// Prepared when parameters are bound; values follow the server's types.
@@ -710,9 +727,7 @@ impl Cassandra {
         parameters: &[DbParameter],
         cancel: &CancellationToken,
     ) -> Result<bool, DbError> {
-        let (prepared, values) = self
-            .prepared(text, parameters, self.write, cancel)
-            .await?;
+        let (prepared, values) = self.prepared(text, parameters, self.write, cancel).await?;
         let result = cancellable(cancel, self.session.execute_unpaged(&prepared, &values)).await?;
         let rows = result
             .into_rows_result()
@@ -1010,7 +1025,12 @@ impl Cassandra {
             {
                 let target = serde_json::from_str::<serde_json::Value>(&row[2])
                     .ok()
-                    .and_then(|options| options.get("target").and_then(|t| t.as_str()).map(str::to_owned))
+                    .and_then(|options| {
+                        options
+                            .get("target")
+                            .and_then(|t| t.as_str())
+                            .map(str::to_owned)
+                    })
                     .unwrap_or_default();
                 nodes.push(DbTreeNode {
                     reference: DbObjectRef {
@@ -1109,7 +1129,7 @@ impl Cassandra {
         self.built_ddl(object, cancel).await
     }
 
-    async fn built_ddl(
+    pub(crate) async fn built_ddl(
         &self,
         object: &DbObjectRef,
         cancel: &CancellationToken,
@@ -1131,7 +1151,10 @@ impl Cassandra {
                     "CREATE KEYSPACE {} WITH replication = {} AND durable_writes = {};",
                     quote_name(keyspace),
                     row[0].as_ref().map(option_literal).unwrap_or_default(),
-                    row[1].as_ref().map(option_literal).unwrap_or_else(|| "true".into())
+                    row[1]
+                        .as_ref()
+                        .map(option_literal)
+                        .unwrap_or_else(|| "true".into())
                 ))
             }
             DbObjectKind::Table => {
@@ -1306,7 +1329,10 @@ impl Cassandra {
                     .join("\n\n"))
             }
             DbObjectKind::Index => {
-                let table = object.parent_name.as_deref().ok_or(DbError::InvalidRequest)?;
+                let table = object
+                    .parent_name
+                    .as_deref()
+                    .ok_or(DbError::InvalidRequest)?;
                 let row = first(
                     self.catalogue(
                         "SELECT options FROM system_schema.indexes \
@@ -1406,20 +1432,62 @@ mod tests {
             ddl,
             "CREATE TABLE shop.\"Orders\" (\n    customer int,\n    region int,\n    placed int,\n    id int,\n    note int static,\n    total int,\n    PRIMARY KEY ((customer, region), placed, id)\n) WITH CLUSTERING ORDER BY (placed DESC, id ASC)\n    AND comment = 'it''s'\n    AND gc_grace_seconds = 864000;"
         );
-        assert!(create_table_cql("shop", "t", &[column("a", CqlColumnKind::Regular)], &[]).is_err());
-        let simple = create_table_cql("", "t", &[column("a", CqlColumnKind::PartitionKey)], &[]).unwrap();
-        assert_eq!(simple, "CREATE TABLE t (\n    a int,\n    PRIMARY KEY ((a))\n);");
+        assert!(
+            create_table_cql("shop", "t", &[column("a", CqlColumnKind::Regular)], &[]).is_err()
+        );
+        let simple =
+            create_table_cql("", "t", &[column("a", CqlColumnKind::PartitionKey)], &[]).unwrap();
+        assert_eq!(
+            simple,
+            "CREATE TABLE t (\n    a int,\n    PRIMARY KEY ((a))\n);"
+        );
     }
 
     #[test]
     fn catalogue_columns_sort_in_key_order_then_by_name() {
         let rows = vec![
-            vec!["z".into(), "text".into(), "regular".into(), "-1".into(), "none".into()],
-            vec!["ck2".into(), "int".into(), "clustering".into(), "1".into(), "desc".into()],
-            vec!["pk".into(), "uuid".into(), "partition_key".into(), "0".into(), "none".into()],
-            vec!["a".into(), "text".into(), "regular".into(), "-1".into(), "none".into()],
-            vec!["ck1".into(), "int".into(), "clustering".into(), "0".into(), "asc".into()],
-            vec!["s".into(), "int".into(), "static".into(), "-1".into(), "none".into()],
+            vec![
+                "z".into(),
+                "text".into(),
+                "regular".into(),
+                "-1".into(),
+                "none".into(),
+            ],
+            vec![
+                "ck2".into(),
+                "int".into(),
+                "clustering".into(),
+                "1".into(),
+                "desc".into(),
+            ],
+            vec![
+                "pk".into(),
+                "uuid".into(),
+                "partition_key".into(),
+                "0".into(),
+                "none".into(),
+            ],
+            vec![
+                "a".into(),
+                "text".into(),
+                "regular".into(),
+                "-1".into(),
+                "none".into(),
+            ],
+            vec![
+                "ck1".into(),
+                "int".into(),
+                "clustering".into(),
+                "0".into(),
+                "asc".into(),
+            ],
+            vec![
+                "s".into(),
+                "int".into(),
+                "static".into(),
+                "-1".into(),
+                "none".into(),
+            ],
         ];
         let names: Vec<String> = table_columns(&rows)
             .into_iter()
@@ -1434,7 +1502,10 @@ mod tests {
             CqlValue::Text("class".into()),
             CqlValue::Text("SizeTieredCompactionStrategy".into()),
         )]);
-        assert_eq!(option_literal(&map), "{'class': 'SizeTieredCompactionStrategy'}");
+        assert_eq!(
+            option_literal(&map),
+            "{'class': 'SizeTieredCompactionStrategy'}"
+        );
         assert_eq!(option_literal(&CqlValue::Double(0.01)), "0.01");
         assert_eq!(option_literal(&CqlValue::Text("a'b".into())), "'a''b'");
         assert_eq!(
@@ -1448,7 +1519,14 @@ mod tests {
             "NetworkTopologyStrategy dc1:3"
         );
         assert_eq!(
-            batch_cql(&["INSERT INTO t (a) VALUES (1)".into(), "INSERT INTO t (a) VALUES (2)".into()], 1).len(),
+            batch_cql(
+                &[
+                    "INSERT INTO t (a) VALUES (1)".into(),
+                    "INSERT INTO t (a) VALUES (2)".into()
+                ],
+                1
+            )
+            .len(),
             2
         );
         assert_eq!(

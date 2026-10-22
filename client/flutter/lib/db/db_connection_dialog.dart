@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/color_label_picker.dart';
+import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
@@ -39,6 +40,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
   Object? _error;
   late DbAuthMechanism _mechanism;
   late DbMongoReadPreference _readPreference;
+  late DbCqlConsistency _readConsistency, _writeConsistency;
   late bool _production, _resp3, _srv;
   bool _savePassword = true, _clearPassword = false, _busy = false, _failed = false, _disposing = false;
   String? _group;
@@ -102,6 +104,8 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
     _resp3 = c?.options.resp3 ?? false;
     _srv = c?.options.srv ?? false;
     _readPreference = c?.options.readPreference ?? DbMongoReadPreference.secondaryPreferred;
+    _readConsistency = c?.options.readConsistency ?? DbCqlConsistency.localOne;
+    _writeConsistency = c?.options.writeConsistency ?? DbCqlConsistency.localQuorum;
     _route = c?.route ?? const DbRoute();
     _kubeKind = _route.targetKind;
     _tlsChosen = c != null;
@@ -128,6 +132,9 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
       'charset': c?.options.charset ?? 'utf8mb4',
       'authSource': c?.options.authSource ?? '',
       'replicaSet': c?.options.replicaSet ?? '',
+      'contactPoints': c?.options.contactPoints.join(', ') ?? '',
+      'localDc': c?.options.localDatacenter ?? '',
+      'pageSize': '${c?.options.pageSize ?? 500}',
       'kubeNamespace': _route.namespace,
       'kubeTarget': _route.targetName,
       'dockerContainer': _route.container,
@@ -239,6 +246,14 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
           replicaSet: nullable('replicaSet'),
           srv: _srv,
           readPreference: _readPreference,
+          // Forwards reach one endpoint; extra contact points need a socket route.
+          contactPoints: _forwarded
+              ? const []
+              : _value('contactPoints').split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+          localDatacenter: nullable('localDc'),
+          readConsistency: _readConsistency,
+          writeConsistency: _writeConsistency,
+          pageSize: _engine == DbEngine.cassandra ? number('pageSize') : 500,
         ),
         createdAt: old?.createdAt,
         updatedAt: old?.updatedAt,
@@ -301,10 +316,17 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
       if (min != null && (int.tryParse(value) == null || int.parse(value) < min || int.parse(value) > max!)) {
         return l.dbInvalid;
       }
-      if (value.isNotEmpty &&
-          key == 'host' &&
-          (value.contains(RegExp(r'[\s/@?#\[\]\\]')) ||
-              (value.contains(':') && InternetAddress.tryParse(value) == null))) {
+      bool badHost(String host) =>
+          host.contains(RegExp(r'[\s/@?#\[\]\\]')) || (host.contains(':') && InternetAddress.tryParse(host) == null);
+      if (value.isNotEmpty && key == 'host' && badHost(value)) return l.dbInvalid;
+      if (key == 'contactPoints') {
+        final hosts = value.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+        if (hosts.length > 15 || hosts.any(badHost)) return l.dbInvalid;
+      }
+      if (_engine == DbEngine.cassandra &&
+          key == 'database' &&
+          value.isNotEmpty &&
+          (value.length > 48 || !RegExp(r'^[A-Za-z0-9_]+$').hasMatch(value))) {
         return l.dbInvalid;
       }
       if (key == 'kubeNamespace' && !_kubeName(value, 63, dots: false)) return l.dbInvalid;
@@ -434,6 +456,15 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                           });
                         },
                 ),
+                if (_engine.deviceLocal)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: InfoBanner(
+                      key: const ValueKey('db-device-only'),
+                      title: l.dbDeviceOnly,
+                      message: l.dbDeviceOnlyHelp,
+                    ),
+                  ),
                 const SizedBox(height: 12),
                 if (!_forwarded && !_tunnel) _input('host', l.dbHost, required: true),
                 if (!_tunnel) _input('port', _forwarded ? l.dbContainerPort : l.dbPort, min: 1, max: 65535),
@@ -452,7 +483,11 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                     null => const SizedBox.shrink(),
                   },
                 ),
-                _input('database', l.dbDatabase, required: _engine == DbEngine.redis),
+                _input(
+                  'database',
+                  _engine == DbEngine.cassandra ? l.dbKeyspace : l.dbDatabase,
+                  required: _engine == DbEngine.redis,
+                ),
                 _input('username', l.dbUsername),
                 _input('password', l.dbPassword, secret: true),
                 if (widget.connection?.auth.passwordSecretId != null) ...[
@@ -666,6 +701,33 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                         title: const Text('RESP3'), // l10n-ignore: Redis protocol version.
                         onChanged: _busy ? null : (v) => setState(() => _resp3 = v!),
                       ),
+                    if (_engine == DbEngine.cassandra) ...[
+                      if (!_forwarded) _input('contactPoints', l.dbCassandraContactPoints),
+                      _input('localDc', l.dbCassandraLocalDc),
+                      GlassDropdownField<DbCqlConsistency>(
+                        key: const ValueKey('db-cql-read'),
+                        value: _readConsistency,
+                        label: l.dbCassandraReadConsistency,
+                        items: [
+                          for (final level in DbCqlConsistency.values)
+                            if (level.readable) GlassSelectItem(value: level, label: level.label),
+                        ],
+                        onChanged: _busy ? null : (v) => setState(() => _readConsistency = v),
+                      ),
+                      const SizedBox(height: 12),
+                      GlassDropdownField<DbCqlConsistency>(
+                        key: const ValueKey('db-cql-write'),
+                        value: _writeConsistency,
+                        label: l.dbCassandraWriteConsistency,
+                        items: [
+                          for (final level in DbCqlConsistency.values) GlassSelectItem(value: level, label: level.label),
+                        ],
+                        onChanged: _busy ? null : (v) => setState(() => _writeConsistency = v),
+                      ),
+                      const SizedBox(height: 12),
+                      _input('pageSize', l.dbCassandraPageSize, min: 1, max: 10000),
+                      Text(l.dbCassandraRouteHelp),
+                    ],
                     if (_engine == DbEngine.mongodb) ...[
                       _input('authSource', l.dbMongoAuthSource),
                       _input('replicaSet', l.dbMongoReplicaSet),

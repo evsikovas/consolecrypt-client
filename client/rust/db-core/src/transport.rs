@@ -232,11 +232,7 @@ impl TlsProfile {
 
     /// Like [`Self::connect`], but tells a server without TLS on that port
     /// ([`DbError::TlsUnavailable`]) apart from a failed verification.
-    pub async fn connect_checked(
-        &self,
-        stream: DbIo,
-        name: Option<&str>,
-    ) -> Result<DbIo, DbError> {
+    pub async fn connect_checked(&self, stream: DbIo, name: Option<&str>) -> Result<DbIo, DbError> {
         if self.mode == DbTlsMode::Disable {
             return Ok(stream);
         }

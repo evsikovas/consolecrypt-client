@@ -230,6 +230,8 @@ pub(crate) struct Unlocked {
     pub(crate) db_ai: crate::database_ai::DbAiRuntime,
     pub(crate) docker: crate::docker_runtime::DockerRuntime,
     pub db_history_lock: tokio::sync::Mutex<()>,
+    /// Connections kept on this device only (engines newer than 0.9.1).
+    pub(crate) db_local: crate::database_local::LocalDb,
     event_stream: tokio::sync::Mutex<Option<EventStream>>,
     tasks: Mutex<Vec<JoinHandle<()>>>,
     engine_tasks: Mutex<Vec<JoinHandle<()>>>,
@@ -989,6 +991,7 @@ impl Session {
             db_ai: Default::default(),
             docker: Default::default(),
             db_history_lock: tokio::sync::Mutex::new(()),
+            db_local: Default::default(),
             event_stream: tokio::sync::Mutex::new(None),
             tasks: Mutex::new(Vec::new()),
             engine_tasks: Mutex::new(Vec::new()),

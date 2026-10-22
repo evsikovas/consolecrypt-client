@@ -255,10 +255,7 @@ impl DbGuard {
 
     /// Role and permission management never runs on a production session,
     /// not even inside a production write window.
-    fn refuse_on_production(
-        &self,
-        batch: &[parser::ClassifiedStatement],
-    ) -> Result<(), DbError> {
+    fn refuse_on_production(&self, batch: &[parser::ClassifiedStatement]) -> Result<(), DbError> {
         if self.policy.production
             && batch
                 .iter()

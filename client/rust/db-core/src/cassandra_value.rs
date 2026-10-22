@@ -47,9 +47,10 @@ pub(crate) fn type_name(column: &ColumnType<'_>) -> String {
         ColumnType::Vector { typ, dimensions } => {
             format!("vector<{}, {dimensions}>", type_name(typ))
         }
-        ColumnType::UserDefinedType { frozen: f, definition } => {
-            frozen(*f, definition.name.to_string())
-        }
+        ColumnType::UserDefinedType {
+            frozen: f,
+            definition,
+        } => frozen(*f, definition.name.to_string()),
         ColumnType::Tuple(items) => format!(
             "tuple<{}>",
             items.iter().map(type_name).collect::<Vec<_>>().join(", ")
@@ -135,7 +136,10 @@ fn date(value: CqlDate) -> String {
     let days = i64::from(value.0) - DATE_EPOCH;
     NaiveDate::from_ymd_opt(1970, 1, 1)
         .and_then(|epoch| epoch.checked_add_signed(chrono::Duration::days(days)))
-        .map_or_else(|| days.to_string(), |date| date.format("%Y-%m-%d").to_string())
+        .map_or_else(
+            || days.to_string(),
+            |date| date.format("%Y-%m-%d").to_string(),
+        )
 }
 
 fn time(value: CqlTime) -> String {
@@ -190,7 +194,8 @@ fn duration(value: &CqlDuration) -> String {
 }
 
 fn float(value: f64) -> Value {
-    serde_json::Number::from_f64(value).map_or_else(|| Value::String(value.to_string()), Value::Number)
+    serde_json::Number::from_f64(value)
+        .map_or_else(|| Value::String(value.to_string()), Value::Number)
 }
 
 /// A nested value in `toJson()` shape.
@@ -209,8 +214,7 @@ pub(crate) fn json(value: &CqlValue, depth: usize) -> Result<Value, DbError> {
         CqlValue::TinyInt(value) => Value::from(*value),
         CqlValue::Varint(value) => {
             let text = varint(value);
-            text.parse::<i64>()
-                .map_or(Value::String(text), Value::from)
+            text.parse::<i64>().map_or(Value::String(text), Value::from)
         }
         CqlValue::Decimal(value) => Value::String(decimal(value)),
         CqlValue::Double(value) => float(*value),
@@ -271,7 +275,9 @@ pub(crate) fn cell(value: Option<&CqlValue>) -> Result<DbCell, DbError> {
             }
             DbCell::Binary(STANDARD.encode(bytes))
         }
-        CqlValue::Counter(Counter(value)) | CqlValue::BigInt(value) => DbCell::Int(value.to_string()),
+        CqlValue::Counter(Counter(value)) | CqlValue::BigInt(value) => {
+            DbCell::Int(value.to_string())
+        }
         CqlValue::Int(value) => DbCell::Int(value.to_string()),
         CqlValue::SmallInt(value) => DbCell::Int(value.to_string()),
         CqlValue::TinyInt(value) => DbCell::Int(value.to_string()),
@@ -398,13 +404,17 @@ fn parse_duration(text: &str) -> Result<CqlDuration, DbError> {
     }
     let (mut months, mut days, mut nanos) = (0i64, 0i64, 0i64);
     while !rest.is_empty() {
-        let digits = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+        let digits = rest
+            .find(|c: char| !c.is_ascii_digit())
+            .unwrap_or(rest.len());
         if digits == 0 {
             return Err(DbError::InvalidRequest);
         }
         let amount: i64 = rest[..digits].parse().map_err(invalid)?;
         rest = &rest[digits..];
-        let unit_length = rest.find(|c: char| c.is_ascii_digit()).unwrap_or(rest.len());
+        let unit_length = rest
+            .find(|c: char| c.is_ascii_digit())
+            .unwrap_or(rest.len());
         let unit = rest[..unit_length].to_ascii_lowercase();
         rest = &rest[unit_length..];
         let add = |total: &mut i64, factor: i64| -> Result<(), DbError> {
@@ -488,7 +498,9 @@ fn scalar(text: &str, column: &ColumnType<'_>) -> Result<CqlValue, DbError> {
         NativeType::SmallInt => CqlValue::SmallInt(trimmed.parse().map_err(invalid)?),
         NativeType::TinyInt => CqlValue::TinyInt(trimmed.parse().map_err(invalid)?),
         NativeType::Varint => CqlValue::Varint(CqlVarint::from_signed_bytes_be(
-            BigInt::from_str(trimmed).map_err(invalid)?.to_signed_bytes_be(),
+            BigInt::from_str(trimmed)
+                .map_err(invalid)?
+                .to_signed_bytes_be(),
         )),
         NativeType::Decimal => CqlValue::Decimal(parse_decimal(trimmed)?),
         NativeType::Double => CqlValue::Double(trimmed.parse().map_err(invalid)?),
@@ -505,15 +517,12 @@ fn scalar(text: &str, column: &ColumnType<'_>) -> Result<CqlValue, DbError> {
         NativeType::Timestamp => CqlValue::Timestamp(CqlTimestamp(parse_timestamp(trimmed)?)),
         NativeType::Date => {
             let days = match NaiveDate::parse_from_str(trimmed, "%Y-%m-%d") {
-                Ok(date) => {
-                    date.signed_duration_since(NaiveDate::from_ymd_opt(1970, 1, 1).expect("epoch"))
-                        .num_days()
-                }
+                Ok(date) => date
+                    .signed_duration_since(NaiveDate::from_ymd_opt(1970, 1, 1).expect("epoch"))
+                    .num_days(),
                 Err(_) => trimmed.parse::<i64>().map_err(invalid)?,
             };
-            CqlValue::Date(CqlDate(
-                u32::try_from(days + DATE_EPOCH).map_err(invalid)?,
-            ))
+            CqlValue::Date(CqlDate(u32::try_from(days + DATE_EPOCH).map_err(invalid)?))
         }
         NativeType::Time => {
             let time = NaiveTime::parse_from_str(trimmed, "%H:%M:%S%.f")
@@ -551,10 +560,16 @@ fn from_json(value: &Value, column: &ColumnType<'_>, depth: usize) -> Result<Cql
         (ColumnType::Native(_), Value::Bool(value)) => scalar(&value.to_string(), column),
         (ColumnType::Collection { typ, .. }, _) => match (typ, value) {
             (CollectionType::List(inner), Value::Array(items)) => Ok(CqlValue::List(
-                items.iter().map(|v| item(v, inner)).collect::<Result<_, _>>()?,
+                items
+                    .iter()
+                    .map(|v| item(v, inner))
+                    .collect::<Result<_, _>>()?,
             )),
             (CollectionType::Set(inner), Value::Array(items)) => Ok(CqlValue::Set(
-                items.iter().map(|v| item(v, inner)).collect::<Result<_, _>>()?,
+                items
+                    .iter()
+                    .map(|v| item(v, inner))
+                    .collect::<Result<_, _>>()?,
             )),
             (CollectionType::Map(key, inner), Value::Object(entries)) => Ok(CqlValue::Map(
                 entries
@@ -563,8 +578,7 @@ fn from_json(value: &Value, column: &ColumnType<'_>, depth: usize) -> Result<Cql
                         let key = match key.as_ref() {
                             ColumnType::Native(_) => scalar(name, key)?,
                             other => {
-                                let parsed: Value =
-                                    serde_json::from_str(name).map_err(invalid)?;
+                                let parsed: Value = serde_json::from_str(name).map_err(invalid)?;
                                 item(&parsed, other)?
                             }
                         };
@@ -579,7 +593,10 @@ fn from_json(value: &Value, column: &ColumnType<'_>, depth: usize) -> Result<Cql
                 return Err(DbError::InvalidRequest);
             }
             Ok(CqlValue::Vector(
-                items.iter().map(|v| item(v, typ)).collect::<Result<_, _>>()?,
+                items
+                    .iter()
+                    .map(|v| item(v, typ))
+                    .collect::<Result<_, _>>()?,
             ))
         }
         (ColumnType::Tuple(types), Value::Array(items)) => {
@@ -595,10 +612,12 @@ fn from_json(value: &Value, column: &ColumnType<'_>, depth: usize) -> Result<Cql
             ))
         }
         (ColumnType::UserDefinedType { definition, .. }, Value::Object(fields)) => {
-            if fields
-                .keys()
-                .any(|name| !definition.field_types.iter().any(|(field, _)| field == name))
-            {
+            if fields.keys().any(|name| {
+                !definition
+                    .field_types
+                    .iter()
+                    .any(|(field, _)| field == name)
+            }) {
                 return Err(DbError::InvalidRequest);
             }
             Ok(CqlValue::UserDefinedType {
@@ -713,7 +732,10 @@ mod tests {
                 )),
                 DbCell::Decimal("0.005".into()),
             ),
-            (CqlValue::Blob(vec![0xca, 0xfe]), DbCell::Binary("yv4=".into())),
+            (
+                CqlValue::Blob(vec![0xca, 0xfe]),
+                DbCell::Binary("yv4=".into()),
+            ),
             (CqlValue::Counter(Counter(7)), DbCell::Int("7".into())),
             (
                 CqlValue::Timestamp(CqlTimestamp(1_700_000_000_123)),
@@ -735,7 +757,10 @@ mod tests {
                 }),
                 DbCell::Text("1y2mo3d1h2m3s".into()),
             ),
-            (CqlValue::Inet("::1".parse().unwrap()), DbCell::Text("::1".into())),
+            (
+                CqlValue::Inet("::1".parse().unwrap()),
+                DbCell::Text("::1".into()),
+            ),
             (CqlValue::Empty, DbCell::Null),
         ];
         for (value, expected) in cases {
@@ -783,10 +808,7 @@ mod tests {
         assert_eq!(bind(&DbCell::Json(text), &map).unwrap(), Some(value));
 
         let tuple = ColumnType::Tuple(vec![native(NativeType::Text), native(NativeType::Uuid)]);
-        let value = CqlValue::Tuple(vec![
-            Some(CqlValue::Text("a".into())),
-            None,
-        ]);
+        let value = CqlValue::Tuple(vec![Some(CqlValue::Text("a".into())), None]);
         let DbCell::Json(text) = &cell(Some(&value)).unwrap() else {
             panic!("json");
         };
@@ -815,10 +837,26 @@ mod tests {
     #[test]
     fn typed_text_binds_to_the_reported_column_type() {
         let cases = [
-            (NativeType::Int, DbCell::Text(" 42 ".into()), CqlValue::Int(42)),
-            (NativeType::Boolean, DbCell::Text("TRUE".into()), CqlValue::Boolean(true)),
-            (NativeType::Blob, DbCell::Text("0xCAFE".into()), CqlValue::Blob(vec![0xca, 0xfe])),
-            (NativeType::Blob, DbCell::Binary("yv4=".into()), CqlValue::Blob(vec![0xca, 0xfe])),
+            (
+                NativeType::Int,
+                DbCell::Text(" 42 ".into()),
+                CqlValue::Int(42),
+            ),
+            (
+                NativeType::Boolean,
+                DbCell::Text("TRUE".into()),
+                CqlValue::Boolean(true),
+            ),
+            (
+                NativeType::Blob,
+                DbCell::Text("0xCAFE".into()),
+                CqlValue::Blob(vec![0xca, 0xfe]),
+            ),
+            (
+                NativeType::Blob,
+                DbCell::Binary("yv4=".into()),
+                CqlValue::Blob(vec![0xca, 0xfe]),
+            ),
             (
                 NativeType::Timestamp,
                 DbCell::Timestamp("2023-11-14 22:13:20.123Z".into()),
@@ -873,7 +911,10 @@ mod tests {
             (NativeType::Blob, "cafe"),
             (NativeType::Duration, "5 parsecs"),
         ] {
-            assert!(bind(&DbCell::Text(input.into()), &native(typ.clone())).is_err(), "{typ:?}");
+            assert!(
+                bind(&DbCell::Text(input.into()), &native(typ.clone())).is_err(),
+                "{typ:?}"
+            );
         }
     }
 
@@ -884,7 +925,10 @@ mod tests {
         assert_eq!(literal(&DbCell::Int("5".into())), "5");
         assert_eq!(literal(&DbCell::Null), "null");
         assert_eq!(literal(&DbCell::Json("[1]".into())), "fromJson('[1]')");
-        assert_eq!(json_of_cell(&DbCell::Binary("yv4=".into())), Value::String("0xcafe".into()));
+        assert_eq!(
+            json_of_cell(&DbCell::Binary("yv4=".into())),
+            Value::String("0xcafe".into())
+        );
         assert_eq!(json_of_cell(&DbCell::Json("{\"a\":1}".into()))["a"], 1);
     }
 }

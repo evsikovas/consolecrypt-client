@@ -31,7 +31,7 @@ pub(crate) enum Driver {
     Redis(Redis),
     ClickHouse(ClickHouse),
     Mongo(Mongo),
-    Cassandra(Cassandra),
+    Cassandra(Box<Cassandra>),
 }
 
 impl Driver {
@@ -215,7 +215,7 @@ impl DbSession {
                 let driver =
                     Cassandra::connect(connection, credentials, connector, scope.clone()).await?;
                 transport_security = driver.security;
-                Driver::Cassandra(driver)
+                Driver::Cassandra(Box::new(driver))
             }
             DbEngine::Unknown => return Err(DbError::InvalidRequest),
         };

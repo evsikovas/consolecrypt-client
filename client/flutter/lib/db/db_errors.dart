@@ -28,6 +28,9 @@ String dbFailureText(Object error, AppLocalizations l) => switch (dbFailureCode(
   'docker_unreachable' => l.dbErrorDockerUnreachable,
   'docker_container_missing' => l.dbErrorDockerContainer,
   'docker_forward_failed' => l.dbErrorDockerForward,
+  'datacenter_mismatch' => l.dbErrorDatacenter,
+  'engine_change_unsupported' => l.dbErrorEngineChange,
+  'local_only' => l.dbErrorDeviceOnly,
   _ => l.dbFailed,
 };
 

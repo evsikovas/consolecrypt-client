@@ -291,6 +291,7 @@ IconData _engineIcon(DbEngine engine) => switch (engine.wireName) {
   'redis' => Icons.memory_rounded,
   'mongodb' => Icons.data_object_rounded,
   'clickhouse' => Icons.view_column_rounded,
+  'cassandra' => Icons.hub_outlined,
   _ => Icons.storage_rounded,
 };
 
@@ -386,7 +387,9 @@ class _DbConnectionEntry extends StatelessWidget {
       entries: [
         GlassMenuItem(value: _DbAction.open, label: l.commonConnect, icon: Icons.play_arrow_rounded),
         GlassMenuItem(value: _DbAction.edit, label: l.commonEdit, icon: Icons.edit_rounded),
-        if (canShare) GlassMenuItem(value: _DbAction.share, label: l.sharingTitle, icon: Icons.share_outlined),
+        // Device-local connections are never shared (see DbEngine.deviceLocal).
+        if (canShare && !c.engine.deviceLocal)
+          GlassMenuItem(value: _DbAction.share, label: l.sharingTitle, icon: Icons.share_outlined),
         const GlassMenuDivider(),
         GlassMenuItem(value: _DbAction.delete, label: l.commonDelete, icon: Icons.delete_rounded, destructive: true),
       ],
@@ -399,10 +402,23 @@ class _DbConnectionEntry extends StatelessWidget {
         onPressed: open,
       ),
     );
-    final badge = c.production
+    final badge = c.production || c.engine.deviceLocal
         ? Padding(
             padding: const EdgeInsets.only(left: 8),
-            child: GlassBadge(label: l.dbProd, tone: GlassTone.danger, dense: true),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (c.engine.deviceLocal)
+                  GlassBadge(
+                    key: ValueKey('db-device-only-${c.id}'),
+                    label: l.dbDeviceOnly,
+                    tone: GlassTone.neutral,
+                    dense: true,
+                  ),
+                if (c.engine.deviceLocal && c.production) const SizedBox(width: 6),
+                if (c.production) GlassBadge(label: l.dbProd, tone: GlassTone.danger, dense: true),
+              ],
+            ),
           )
         : null;
     return GlassInteractive(

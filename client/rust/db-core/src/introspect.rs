@@ -133,6 +133,16 @@ impl DbSession {
         }
     }
 
+    /// The CQL creation statement built from `system_schema`, the fallback
+    /// for servers without `DESCRIBE` (exercised by the live tests).
+    #[doc(hidden)]
+    pub async fn cassandra_schema_ddl(&self, object: &DbObjectRef) -> Result<String, DbError> {
+        match &*self.driver.lock().await {
+            Driver::Cassandra(driver) => driver.built_ddl(object, &self.scope.child_token()).await,
+            _ => Err(DbError::InvalidRequest),
+        }
+    }
+
     async fn postgres_ddl(&self, object: &DbObjectRef) -> Result<String, DbError> {
         let schema = object.schema.as_deref().unwrap_or("public");
         let first = |rows: Vec<Vec<String>>| {
@@ -553,13 +563,12 @@ impl DbSession {
                     _ => format!("GET {key}"),
                 })
             }
-            (
-                DbEngine::Cassandra,
-                DbObjectKind::Table | DbObjectKind::MaterializedView,
-            ) => Ok(format!(
-                "SELECT * FROM {} LIMIT {limit};",
-                quote_identifier(self.info.engine, object)
-            )),
+            (DbEngine::Cassandra, DbObjectKind::Table | DbObjectKind::MaterializedView) => {
+                Ok(format!(
+                    "SELECT * FROM {} LIMIT {limit};",
+                    quote_identifier(self.info.engine, object)
+                ))
+            }
             (DbEngine::Mongodb, DbObjectKind::Collection) => Ok(format!(
                 "db.getCollection({}).find({{}}).limit({limit})",
                 serde_json::Value::String(object.name.clone())

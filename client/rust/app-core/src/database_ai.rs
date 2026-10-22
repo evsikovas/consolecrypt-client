@@ -147,6 +147,11 @@ fn dialect(engine: DbEngine) -> &'static str {
         DbEngine::Clickhouse => "ClickHouse SQL",
         DbEngine::Redis => "Redis commands (one command per line, redis-cli syntax)",
         DbEngine::Mongodb => "MongoDB shell syntax (db.collection.find(...) / aggregate([...]))",
+        DbEngine::Cassandra => {
+            "CQL for Apache Cassandra / ScyllaDB (restrict the full partition key, no joins, \
+             avoid ALLOW FILTERING; batches as BEGIN BATCH … APPLY BATCH)"
+        }
+        DbEngine::Unknown => "the database's own query language",
     }
 }
 
@@ -154,6 +159,7 @@ fn fence(engine: DbEngine) -> &'static str {
     match engine {
         DbEngine::Redis => "redis",
         DbEngine::Mongodb => "javascript",
+        DbEngine::Cassandra => "cql",
         _ => "sql",
     }
 }
@@ -469,7 +475,7 @@ impl AppCore {
         provider_id: String,
         request: DbAiRequest,
     ) -> AppResult<DbAiReviewDto> {
-        let (_, unlocked) = self.unlocked().await?;
+        let (owner, unlocked) = self.unlocked().await?;
         let session = unlocked.db.session(&session_id)?;
         crate::teams::check_ai_allowed(unlocked.working(), &session.info().connection_id)?;
         if request.question.len() > MAX_TEXT
@@ -498,9 +504,8 @@ impl AppCore {
             })
             .collect();
         let connection_id = crate::dto::parse_id("connection_id", &session.info().connection_id)?;
-        let connection_name = unlocked
-            .working()
-            .db_connection(connection_id)
+        let connection_name = crate::database_local::connection(&owner, &unlocked, connection_id)
+            .await?
             .map(|connection| connection.name)
             .unwrap_or_default();
         let history_messages = request

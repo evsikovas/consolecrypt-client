@@ -80,6 +80,35 @@ pub(crate) struct DbRuntime {
 }
 
 impl DbRuntime {
+    /// Closes every live session (and its queries) of one connection.
+    pub(crate) fn close_connection(&self, connection_id: &str) {
+        let closed: Vec<Arc<DbSession>> = {
+            let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+            let ids: Vec<String> = sessions
+                .iter()
+                .filter(|(_, session)| session.info().connection_id == connection_id)
+                .map(|(id, _)| id.clone())
+                .collect();
+            ids.iter().filter_map(|id| sessions.remove(id)).collect()
+        };
+        if closed.is_empty() {
+            return;
+        }
+        self.queries
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .retain(|_, query| {
+                !closed
+                    .iter()
+                    .any(|session| session.info().id == query.session_id)
+            });
+        for session in closed {
+            session.close();
+        }
+    }
+}
+
+impl DbRuntime {
     pub(crate) fn close(&self) {
         self.shutdown.cancel();
         self.edits.lock().unwrap_or_else(|e| e.into_inner()).clear();
@@ -214,6 +243,7 @@ fn db_error(error: DbError) -> AppError {
         DbError::Cancelled => "cancelled",
         DbError::ResultLimit => "result_limit",
         DbError::SessionClosed => "session_closed",
+        DbError::DatacenterMismatch => "datacenter_mismatch",
     };
     AppError::invalid("database", code)
 }
@@ -280,25 +310,26 @@ impl AppCore {
         connection: &DbConnection,
         password: Option<SecretString>,
     ) -> AppResult<DbCredentials> {
-        let (_, unlocked) = self.unlocked().await?;
+        let (owner, unlocked) = self.unlocked().await?;
+        // Device-local connections keep their secrets on this device too.
+        let read = |id: cc_models::ObjectId| {
+            let (owner, unlocked) = (owner.clone(), unlocked.clone());
+            async move {
+                match crate::database_local::secret(&owner, &unlocked, id).await? {
+                    Some(secret) => Ok::<_, AppError>(secret),
+                    None => unlocked.writer.read_secret(id).await,
+                }
+            }
+        };
         let password = match (password, connection.auth.password_secret_id) {
             (Some(password), _) => Some(password),
-            (None, Some(id)) => Some(SecretString::from(
-                unlocked.writer.read_secret(id).await?.value.expose_secret(),
-            )),
+            (None, Some(id)) => Some(SecretString::from(read(id).await?.value.expose_secret())),
             (None, None) => None,
         };
         let client_key_pem = match &connection.auth.client_certificate {
-            Some(certificate) if certificate.key_secret_id != cc_models::ObjectId::NIL => {
-                Some(SecretString::from(
-                    unlocked
-                        .writer
-                        .read_secret(certificate.key_secret_id)
-                        .await?
-                        .value
-                        .expose_secret(),
-                ))
-            }
+            Some(certificate) if certificate.key_secret_id != cc_models::ObjectId::NIL => Some(
+                SecretString::from(read(certificate.key_secret_id).await?.value.expose_secret()),
+            ),
             _ => None,
         };
         Ok(DbCredentials {
@@ -320,6 +351,7 @@ impl AppCore {
                 | DbEngine::Clickhouse
                 | DbEngine::Redis
                 | DbEngine::Mongodb
+                | DbEngine::Cassandra
         ) {
             return Err(invalid("engine_unavailable"));
         }
@@ -359,11 +391,10 @@ impl AppCore {
         connection_id: String,
         password: Option<SecretString>,
     ) -> AppResult<DbLiveSession> {
-        let (_, unlocked) = self.unlocked().await?;
+        let (owner, unlocked) = self.unlocked().await?;
         let id = crate::dto::parse_id("connection_id", &connection_id)?;
-        let connection = unlocked
-            .working()
-            .db_connection(id)
+        let connection = crate::database_local::connection(&owner, &unlocked, id)
+            .await?
             .ok_or_else(|| invalid("connection_unavailable"))?;
         let session = self.db_open(&connection, password).await?;
         let mut sessions = unlocked

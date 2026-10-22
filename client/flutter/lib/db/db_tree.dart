@@ -29,6 +29,8 @@ IconData _kindIcon(DbTreeNode node) => switch (node.reference.kind) {
   DbObjectKind.dictionary => Icons.menu_book_outlined,
   DbObjectKind.projection => Icons.layers_outlined,
   DbObjectKind.redisKey => Icons.vpn_key_outlined,
+  DbObjectKind.userType => Icons.category_outlined,
+  DbObjectKind.aggregate => Icons.functions,
 };
 
 /// Objects whose creation statement or description can be shown.
@@ -42,7 +44,12 @@ const _describable = {
   DbObjectKind.dictionary,
   DbObjectKind.collection,
   DbObjectKind.redisKey,
+  DbObjectKind.userType,
+  DbObjectKind.aggregate,
 };
+
+/// Also describable on CQL: keyspaces and secondary indexes.
+const _describableCql = {DbObjectKind.database, DbObjectKind.indexObject};
 
 final class _Branch {
   final nodes = <DbTreeNode>[];
@@ -55,12 +62,25 @@ final class _Branch {
 
 /// Client-side groups of a node's children, like the folders of the classic
 /// SQL clients' navigators. Only shown when a node has several kinds.
-enum _Folder { tables, views, functions, sequences, dictionaries, columns, indexes, constraints, triggers, projections }
+enum _Folder {
+  tables,
+  views,
+  types,
+  functions,
+  sequences,
+  dictionaries,
+  columns,
+  indexes,
+  constraints,
+  triggers,
+  projections,
+}
 
 _Folder? _folderOf(DbObjectKind kind) => switch (kind) {
   DbObjectKind.table || DbObjectKind.collection => _Folder.tables,
   DbObjectKind.view || DbObjectKind.materializedView => _Folder.views,
-  DbObjectKind.function || DbObjectKind.procedure => _Folder.functions,
+  DbObjectKind.function || DbObjectKind.procedure || DbObjectKind.aggregate => _Folder.functions,
+  DbObjectKind.userType => _Folder.types,
   DbObjectKind.sequence => _Folder.sequences,
   DbObjectKind.dictionary => _Folder.dictionaries,
   DbObjectKind.column => _Folder.columns,
@@ -74,6 +94,7 @@ _Folder? _folderOf(DbObjectKind kind) => switch (kind) {
 String _folderLabel(AppLocalizations l, _Folder folder) => switch (folder) {
   _Folder.tables => l.dbFolderTables,
   _Folder.views => l.dbFolderViews,
+  _Folder.types => l.dbFolderTypes,
   _Folder.functions => l.dbFolderFunctions,
   _Folder.sequences => l.dbFolderSequences,
   _Folder.dictionaries => l.dbFolderDictionaries,
@@ -227,7 +248,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
             builder: (_) => DbDdlDialog(title: object.name, value: value!, engine: widget.session.engine),
           );
           if (open == true && _current && !value.isWiped) {
-            final blocks = widget.session.engine.sql ? splitSqlStatements(value.expose()) : [value.expose()];
+            final blocks = widget.session.engine.semicolons ? splitSqlStatements(value.expose()) : [value.expose()];
             widget.onDraft(blocks.join('\n\n'));
           }
           return;
@@ -350,7 +371,9 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
     if (_previewable.contains(object.kind))
       GlassMenuItem(value: 'query', label: l.dbFirstRows, icon: Icons.table_rows_outlined),
     GlassMenuItem(value: 'insert', label: l.dbInsertName, icon: Icons.input_rounded),
-    if (_describable.contains(object.kind)) GlassMenuItem(value: 'ddl', label: l.dbDdl, icon: Icons.code_rounded),
+    if (_describable.contains(object.kind) ||
+        (widget.session.engine == DbEngine.cassandra && _describableCql.contains(object.kind)))
+      GlassMenuItem(value: 'ddl', label: l.dbDdl, icon: Icons.code_rounded),
     if (widget.service is DbObjectInspectService && dbHasDetails(widget.session.engine, object)) ...[
       GlassMenuItem(value: 'inspect', label: l.dbInspect, icon: Icons.info_outline_rounded),
       if (object.kind == DbObjectKind.collection)

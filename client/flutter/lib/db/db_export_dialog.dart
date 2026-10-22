@@ -159,7 +159,7 @@ class _DbExportDialogState extends ConsumerState<DbExportDialog> {
                 label: l.dbExportFormat,
                 items: [
                   for (final format in DbExportFormat.values)
-                    if (format != DbExportFormat.insert || widget.session.engine.sql)
+                    if (format != DbExportFormat.insert || widget.session.engine.semicolons)
                       GlassSelectItem(value: format, label: format.name.toUpperCase()),
                 ],
                 onChanged: _busy ? null : (v) => setState(() => _format = v),

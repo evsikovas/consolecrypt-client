@@ -28,6 +28,11 @@ bool dbHasDetails(DbEngine engine, DbObjectRef object) => switch (engine) {
   DbEngine.redis =>
     object.kind == DbObjectKind.redisKey || (object.kind == DbObjectKind.redisDatabase && object.parentName == null),
   DbEngine.mongodb => const [DbObjectKind.database, DbObjectKind.collection, DbObjectKind.view].contains(object.kind),
+  DbEngine.cassandra => const [
+    DbObjectKind.database,
+    DbObjectKind.table,
+    DbObjectKind.materializedView,
+  ].contains(object.kind),
 };
 
 /// One catalogue fact as the core sent it.
