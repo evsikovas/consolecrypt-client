@@ -1227,6 +1227,7 @@ dependencies = [
  "directories",
  "getrandom 0.4.3",
  "keyring-core",
+ "libc",
  "objc2",
  "opener",
  "secrecy",

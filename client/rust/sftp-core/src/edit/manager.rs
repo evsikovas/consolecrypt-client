@@ -4,9 +4,9 @@ use super::opener::{EditOpener, OpenWith};
 use super::remote::EditRemote;
 use super::session::{lock, open_in_editor, Actor, NewSession, Registry, SessionKey};
 use super::store::{
-    create_session_dir, list_leftovers, prepare_root, remote_base_name, remove_leftover,
-    sanitize_file_name, secure_remove_dir, sha256, write_private_file, BaseVersion, Leftover,
-    Manifest,
+    create_session_dir, list_leftovers, mark_downloaded, prepare_root, remote_base_name,
+    remove_leftover, sanitize_file_name, secure_remove_dir, sha256, write_private_file,
+    BaseVersion, Leftover, Manifest,
 };
 use super::types::{
     EditConfig, EditError, EditEvent, EditSessionInfo, EditStatus, StopMode, StopOutcome,
@@ -318,6 +318,8 @@ impl EditManager {
         };
         let hash = sha256(&data);
         write_private_file(&work, &data, true).map_err(|e| EditError::local(&work, e))?;
+        // Before the watcher and the session's first look at the file.
+        mark_downloaded(&work);
         drop(data);
         let base = BaseVersion::new(&entry, hash);
         Manifest::new(id, host_id, requested, target, &file_name, base.clone()).save(&dir)?;
@@ -477,6 +479,11 @@ impl EditManager {
         }
         let _guard = OpeningGuard::acquire(&self.inner.registry, keys.clone(), &m.remote_path)?;
         let dir = dunce::canonicalize(&dir).map_err(|e| EditError::local(&dir, e))?;
+        // Working copies from versions that did not mark them.
+        let work = dir.join(&m.file_name);
+        if !cc_platform_core::is_marked_downloaded(&work) {
+            mark_downloaded(&work);
+        }
         let open_with = with.clone().unwrap_or_default();
         let (mut actor, session, rx) = Actor::new(
             NewSession {

@@ -264,6 +264,11 @@ async fn open_downloads_privately_and_opens_editor() {
     }
     #[cfg(target_os = "macos")]
     assert!(f.root.join(".metadata_never_index").exists());
+    // Mark-of-the-Web / quarantine on the working copy (H4).
+    assert_eq!(
+        cc_platform_core::is_marked_downloaded(&local),
+        cfg!(any(target_os = "macos", windows))
+    );
     // The manifest holds metadata only, never the content.
     let manifest = std::fs::read_to_string(dir.join(".cc-edit-session.json")).unwrap();
     assert!(manifest.contains(FILE) && !manifest.contains("original"));
@@ -446,6 +451,10 @@ async fn resolve_keep_remote_copy_locally() {
     assert_eq!(std::fs::read(&copy).unwrap(), b"theirs\n");
     #[cfg(unix)]
     assert_eq!(mode(&copy), 0o600);
+    assert_eq!(
+        cc_platform_core::is_marked_downloaded(&copy),
+        cfg!(any(target_os = "macos", windows))
+    );
     assert_eq!(
         f.opener.calls().last().unwrap().0,
         copy,
@@ -927,4 +936,107 @@ async fn dropping_the_manager_keeps_files_for_recovery() {
     assert_eq!(left.len(), 1);
     assert_eq!(left[0].session_id, id);
     assert_eq!(left[0].locally_modified, Some(false));
+}
+
+/// Records launches of the real [`FileOpener`]; `stdout` answers the Linux
+/// `xdg-mime` query.
+#[derive(Debug, Default)]
+struct Launches {
+    specs: std::sync::Mutex<Vec<cc_platform_core::open::LaunchSpec>>,
+    stdout: String,
+}
+
+impl cc_platform_core::Launcher for Launches {
+    fn launch(
+        &self,
+        spec: &cc_platform_core::open::LaunchSpec,
+    ) -> Result<cc_platform_core::open::LaunchOutput, OpenError> {
+        self.specs.lock().unwrap().push(spec.clone());
+        Ok(cc_platform_core::open::LaunchOutput {
+            stdout: self.stdout.clone(),
+        })
+    }
+}
+
+/// H4: "Open" on a remote file that would run code goes to a text editor,
+/// never to the OS default handler, and the session still uploads saves.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn active_remote_files_open_as_text() {
+    use cc_platform_core::open::LaunchSpec;
+    let tmp = tempfile::tempdir().unwrap();
+    let launches = Arc::new(Launches::default());
+    let opener = FileOpener::new(cc_platform_core::OsFamily::MacOs, launches.clone());
+    let mgr = EditManager::new(cfg(&tmp.path().join("edit")), Arc::new(opener)).unwrap();
+    let remote = FakeRemote::new();
+    for (path, data) in [
+        ("/srv/app/Run Me.command", &b"#!/bin/sh\nid\n"[..]),
+        ("/srv/app/invoice.pdf.js", b"WScript.Echo(1)"),
+        ("/srv/app/deploy", b"#!/bin/sh\nid\n"),
+    ] {
+        remote.put(path, data, 0o755);
+        let s = mgr
+            .open(remote.clone(), HOST, path, OpenWith::Default)
+            .await
+            .unwrap();
+        let spec = launches.specs.lock().unwrap().last().cloned().unwrap();
+        let LaunchSpec::Exec(e) = spec else {
+            panic!("default handler for {path}: {spec:?}")
+        };
+        let args: Vec<_> = e.args.iter().map(|a| a.to_string_lossy()).collect();
+        assert_eq!(args[..2], ["-e", "--"], "{path}: TextEdit");
+        // Saving in the editor still uploads (the mark does not disturb the watcher).
+        std::fs::write(s.local_path(), b"edited\n").unwrap();
+        eventually("upload", || uploads(&s) == 1).await;
+        assert_eq!(remote.data(path).unwrap(), b"edited\n");
+        s.stop(StopMode::Discard).await.unwrap();
+    }
+    // A plain document keeps its default application.
+    remote.put("/srv/app/notes.txt", b"hi", 0o644);
+    let s = mgr
+        .open(
+            remote.clone(),
+            HOST,
+            "/srv/app/notes.txt",
+            OpenWith::Default,
+        )
+        .await
+        .unwrap();
+    let LaunchSpec::Exec(e) = launches.specs.lock().unwrap().last().cloned().unwrap() else {
+        panic!()
+    };
+    assert_eq!(e.args[0], std::ffi::OsString::from("--"));
+    s.stop(StopMode::Discard).await.unwrap();
+}
+
+/// Linux without a usable text editor: a typed error, nothing launched,
+/// no session left behind.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn no_text_editor_is_a_typed_error() {
+    let tmp = tempfile::tempdir().unwrap();
+    let launches = Arc::new(Launches::default());
+    let opener = FileOpener::new(cc_platform_core::OsFamily::Linux, launches.clone());
+    let root = tmp.path().join("edit");
+    let mgr = EditManager::new(cfg(&root), Arc::new(opener)).unwrap();
+    let remote = FakeRemote::new();
+    remote.put(
+        "/srv/app/install.desktop",
+        b"[Desktop Entry]\nExec=id\n",
+        0o644,
+    );
+    let r = mgr
+        .open(
+            remote.clone(),
+            HOST,
+            "/srv/app/install.desktop",
+            OpenWith::Default,
+        )
+        .await;
+    assert!(matches!(r, Err(EditError::NoTextEditor)), "{r:?}");
+    assert_eq!(
+        launches.specs.lock().unwrap().len(),
+        1,
+        "only the xdg-mime query"
+    );
+    assert!(session_dirs(&root).is_empty());
+    assert!(mgr.sessions().is_empty());
 }

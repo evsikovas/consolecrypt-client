@@ -109,6 +109,11 @@ async fn upload_download_roundtrip_with_progress() {
     assert_eq!(sum.bytes, payload.len() as u64);
     assert_eq!(last.total, Some(payload.len() as u64));
     assert_eq!(std::fs::read(&dst).unwrap(), payload);
+    // Mark-of-the-Web / quarantine on downloads (security audit H4).
+    assert_eq!(
+        cc_platform_core::is_marked_downloaded(&dst),
+        cfg!(any(target_os = "macos", windows))
+    );
 
     // no-overwrite
     let no = TransferOptions {

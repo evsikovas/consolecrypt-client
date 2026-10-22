@@ -105,7 +105,8 @@ docker CLI. Если Docker не запущен, приложение так и 
 которые их используют; неиспользуемые тома помечены отдельно. Путь тома или
 монтирования открывается в SFTP этого SSH-хоста (файл монтирования — с
 выделением в папке). Для локального Docker путь открывается в файловом
-менеджере. Docker Desktop хранит тома внутри своей виртуальной машины, поэтому
+менеджере; папка-пакет macOS (например, `.app`) только выделяется в Finder и
+никогда не запускается. Docker Desktop хранит тома внутри своей виртуальной машины, поэтому
 их папки с компьютера не открываются — приложение это поясняет.
 
 ### Проброс портов
@@ -283,7 +284,8 @@ computer: turn on the vault's auto-lock in Settings for that.
 The Volumes view groups volumes by compose project with the containers that
 use them; unused volumes are marked. A volume or mount path opens in SFTP on
 that SSH host (a mounted file is selected in its folder), or in the file
-manager for local Docker. Docker Desktop keeps volumes inside its virtual
+manager for local Docker; a macOS bundle folder (such as `.app`) is only
+selected in Finder, never launched. Docker Desktop keeps volumes inside its virtual
 machine, so their folders cannot be opened from the computer; the app says so.
 
 ### Port forwarding
