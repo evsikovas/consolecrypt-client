@@ -18,6 +18,7 @@ import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
+import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -148,7 +149,9 @@ void main() {
       final l10n = lookupAppLocalizations(Locale(locale.wireName));
       final glass = screen.startsWith('glass-');
       final personalized = glass || ['appearance', 'terminal', 'palette', 'spectrum'].contains(screen);
-      final platform = screen == 'terminal-wsl-picker' ? TargetPlatform.windows : TargetPlatform.macOS;
+      final platform = screen == 'terminal-wsl-picker' || screen == 'security-settings-windows'
+          ? TargetPlatform.windows
+          : TargetPlatform.macOS;
       testWidgets('${theme.name} $screen', (tester) async {
         tester.view.physicalSize = screen.endsWith('-compact')
             ? const Size(1024, 720)
@@ -234,8 +237,14 @@ void main() {
                 : null,
           ),
         );
+        if (_guide && screen == 'vault-settings') {
+          await backend.vault.setDeviceUnlockEnabled(true, reason: 'guide');
+        }
+        if (_guide && screen == 'devices') {
+          backend.devices.debugAnnounceNewDevice('Linux workstation');
+        }
         final key = GlobalKey();
-        final sharing = GuideSharingService();
+        final sharing = GuideSharingService(databases: screen == 'db-shared');
         await tester.pumpWidget(
           RepaintBoundary(
             key: key,
@@ -409,6 +418,19 @@ void main() {
           await tapKey(tester, 'sftp-row-/home/deploy/deploy.sh');
           await tapKey(tester, 'sftp-toolbar-quicklook');
         }
+        if (screen == 'sftp-open-as-text') {
+          // "Open" on a script: the notice says it opens as text, never runs.
+          await tapKey(tester, 'nav-sftp');
+          await tapKey(tester, 'sftp-connect');
+          await pickHost(tester, 'prod-web-1');
+          await tapKey(tester, 'sftp-row-/home/deploy/deploy.sh');
+          await tapKey(tester, 'sftp-toolbar-actions');
+          await tapKey(tester, 'sftp-action-open');
+          if (find.byKey(const ValueKey('sftp-edit-hint-open')).evaluate().isNotEmpty) {
+            await tapKey(tester, 'sftp-edit-hint-open');
+          }
+          await settle(tester);
+        }
         if (screen.startsWith('inventory-')) {
           await tester.tap(find.byKey(const ValueKey('inventory-nav-groups')));
           for (var i = 0; i < 12; i++) {
@@ -581,8 +603,22 @@ void main() {
             }
           }
         }
-        if (_guide && ['credentials', 'devices', 'tunnels', 'backups', 'sync', 'sharing-main'].contains(screen)) {
-          await tapKey(tester, 'nav-${screen == 'sharing-main' ? 'sharing' : screen}');
+        if (_guide &&
+            [
+              'credentials',
+              'devices',
+              'tunnels',
+              'backups',
+              'sync',
+              'sharing-main',
+              'sharing-deleted',
+            ].contains(screen)) {
+          await tapKey(tester, 'nav-${screen.startsWith('sharing-') ? 'sharing' : screen}');
+          if (screen == 'sharing-deleted') {
+            await tapKey(tester, 'sharing-owned');
+            await tester.tap(find.byKey(const ValueKey('sharing-recently-deleted')));
+            await settle(tester);
+          }
           if (screen == 'credentials') {
             await tapKey(tester, 'credential-home-lab password');
           }
@@ -598,6 +634,14 @@ void main() {
             tester.element(find.byKey(const ValueKey('screen-capture-macos-info'))),
             alignment: .4,
           );
+          await settle(tester);
+        }
+        if (_guide && screen == 'security-settings-windows') {
+          await tapKey(tester, 'nav-settings');
+          await Scrollable.ensureVisible(tester.element(find.byKey(const ValueKey('clipboard-clear'))), alignment: .25);
+          await settle(tester);
+          // A plain tap: tapKey would scroll the select to the top edge.
+          await tester.tap(find.byKey(const ValueKey('capture-protection')));
           await settle(tester);
         }
         if (_guide && localAi != null) {
@@ -647,7 +691,7 @@ void main() {
           expect(find.byKey(const ValueKey('pick-Windows demo')), findsOneWidget);
           expect(find.byKey(const ValueKey('host-picker')), findsOneWidget);
         }
-        if (_guide && screen.startsWith('sharing-') && screen != 'sharing-main') {
+        if (_guide && screen.startsWith('sharing-') && screen != 'sharing-main' && screen != 'sharing-deleted') {
           final context = tester.element(find.byType(Navigator).first);
           if (screen == 'sharing-secret') {
             showSharingSecretPublish(context, credential: backend.cloud.activeData!.credentials.first).ignore();
@@ -720,17 +764,42 @@ Future<void> _databaseScreen(WidgetTester tester, String screen, AppLocalization
     await tester.tap(find.byKey(const ValueKey('db-route')));
     await settle(tester);
   }
-  if (const ['db-workspace', 'db-explain', 'db-ai'].contains(screen)) {
+  if (screen == 'db-share') {
+    await tapKey(tester, 'db-menu-pg');
+    await tester.tap(find.text(l10n.sharingTitle).last);
+    await settle(tester);
+    await tester.enterText(find.byKey(const ValueKey('sharing-email')), 'colleague@example.test');
+    await tapKey(tester, 'sharing-find');
+    await tapKey(tester, 'sharing-verify-${guideRecipient.deviceId}');
+    // Back to the top: the preview shows what the colleague receives.
+    await Scrollable.ensureVisible(tester.element(find.text(l10n.sharingPreview)));
+    await settle(tester);
+  }
+  if (const [
+    'db-workspace',
+    'db-explain',
+    'db-ai',
+    'db-prod-unlock',
+    'db-prod-write',
+    'db-row-selection',
+    'db-ddl',
+    'db-query-review',
+    'db-preview-tab',
+    'db-details',
+  ].contains(screen)) {
     await tapKey(tester, 'db-connection-pg');
     await tester.tap(find.text('public').first);
     await settle(tester);
     await tester.tap(find.text('orders').first);
     await settle(tester);
+    final plain = screen == 'db-prod-write' || screen == 'db-query-review';
     await tester.enterText(
       find.byKey(const ValueKey('db-query-editor')),
-      'SELECT o.id, c.name AS customer, c.email, o.total, o.status, o.created_at\n'
-      'FROM orders o\nJOIN customers c ON c.id = o.customer_id\n'
-      "WHERE o.created_at >= now() - interval '7 days'\nORDER BY o.created_at DESC\nLIMIT 100;",
+      plain
+          ? 'SELECT id, customer_id, total, status, created_at\nFROM orders\nORDER BY created_at DESC\nLIMIT 100;'
+          : 'SELECT o.id, c.name AS customer, c.email, o.total, o.status, o.created_at\n'
+                'FROM orders o\nJOIN customers c ON c.id = o.customer_id\n'
+                "WHERE o.created_at >= now() - interval '7 days'\nORDER BY o.created_at DESC\nLIMIT 100;",
     );
     await tester.pump();
     await tapKey(tester, 'db-run');
@@ -738,6 +807,56 @@ Future<void> _databaseScreen(WidgetTester tester, String screen, AppLocalization
       await tapKey(tester, 'db-explain');
       await tester.tap(find.text(l10n.dbExplain).last);
       await settle(tester);
+    }
+    final objectMenu = {'db-ddl': l10n.dbDdl, 'db-preview-tab': l10n.dbFirstRows, 'db-details': l10n.dbInspect}[screen];
+    if (objectMenu != null) {
+      final menu = find.byWidgetPredicate(
+        (w) =>
+            w.key is ValueKey<String> &&
+            RegExp(r'^db-object-menu-.*:table6:orders').hasMatch((w.key! as ValueKey<String>).value),
+      );
+      await tester.tap(menu.first);
+      await settle(tester);
+      await tester.tap(find.text(objectMenu).last);
+      await settle(tester);
+    }
+    if (screen == 'db-row-selection') {
+      await tapKey(tester, 'db-row-number-1');
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tapKey(tester, 'db-row-number-3');
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await settle(tester);
+    }
+    if (screen == 'db-prod-unlock' || screen == 'db-prod-write' || screen == 'db-query-review') {
+      await tapKey(tester, 'db-prod-unlock');
+      await tester.enterText(find.byKey(const ValueKey('db-prod-passphrase')).first, MockCloud.demoPassphrase);
+      await tester.pump();
+      await tester.tap(find.text(l10n.dbMinutes(15)).last);
+      await settle(tester);
+      if (screen != 'db-prod-unlock') {
+        await tapKey(tester, 'db-prod-unlock-submit');
+        Future<void> doubleClick(String key) async {
+          await tester.tap(find.byKey(ValueKey(key)));
+          await tester.pump(const Duration(milliseconds: 60));
+          await tester.tap(find.byKey(ValueKey(key)));
+          await settle(tester, steps: 4);
+        }
+
+        await doubleClick('db-cell-1-3');
+        await tester.enterText(find.byKey(const ValueKey('db-cell-editor')), 'delivered');
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await settle(tester);
+        await doubleClick('db-cell-5-3');
+        await tester.enterText(find.byKey(const ValueKey('db-cell-editor')), 'paid');
+        await settle(tester);
+        if (screen == 'db-query-review') {
+          // The review shows the values and asks for the vault passphrase.
+          await tester.testTextInput.receiveAction(TextInputAction.done);
+          await settle(tester);
+          await tapKey(tester, 'db-apply-edits');
+          await settle(tester);
+        }
+      }
     }
     if (screen == 'db-ai') {
       await tapKey(tester, 'db-toggle-ai');
@@ -858,6 +977,7 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(find.byKey(const ValueKey('workspace-panel-expanded')), findsOneWidget);
     case 'vault-settings':
       expect(find.byKey(const ValueKey('device-unlock-switch')), findsOneWidget);
+      expect(find.byKey(const ValueKey('device-unlock-protected')), findsOneWidget);
       expect(find.byKey(const ValueKey('auto-lock')), findsOneWidget);
     case 'security-settings':
       expect(find.byKey(const ValueKey('screen-capture-macos-info')), findsOneWidget);
@@ -874,12 +994,16 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(texts, contains('•'));
     case 'devices':
       expect(find.byKey(const ValueKey('review-request')), findsOneWidget);
+      expect(find.byKey(const ValueKey('new-device-banner')), findsOneWidget);
+      expect(find.byKey(const ValueKey('quarantine-Linux workstation')), findsOneWidget);
+      expect(texts, contains(l10n.devicesStatusUnconfirmed));
     case 'tunnels':
       expect(find.byKey(const ValueKey('add-tunnel')), findsOneWidget);
       expect(texts, contains('service.example.test'));
     case 'sharing-main':
       expect(texts, contains('Disk health'));
       expect(texts, contains('Deployment credential'));
+      expect(find.byKey(const ValueKey('sharing-leave-guide-share-snippet')), findsOneWidget);
     case 'sharing-recipient' || 'sharing-roles':
       expect(find.text(guideRecipient.code), findsOneWidget);
       expect(
@@ -901,6 +1025,43 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(texts, contains('Hash Join'));
     case 'db-ai':
       expect(find.byKey(const ValueKey('db-ai-accept')), findsOneWidget);
+    case 'db-shared':
+      expect(find.byKey(const ValueKey('db-shared-header')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-shared-badge-guide-share-db-shop')), findsOneWidget);
+    case 'db-share':
+      expect(find.byKey(const ValueKey('sharing-db-route-notice')), findsOneWidget);
+      expect(find.byKey(const ValueKey('sharing-db-production')), findsOneWidget);
+    case 'db-prod-unlock':
+      expect(find.byKey(const ValueKey('db-prod-unlock-dialog')), findsOneWidget);
+      expect(tester.widget<GlassButton>(find.byKey(const ValueKey('db-prod-unlock-submit'))).onPressed, isNotNull);
+    case 'db-prod-write':
+      expect(find.byKey(const ValueKey('db-prod-write-badge')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-prod-role-read-only')), findsNothing);
+      expect(find.byKey(const ValueKey('db-apply-edits')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-cell-editor')), findsOneWidget);
+    case 'db-row-selection':
+      expect(texts, contains(l10n.dbSelectedRows(3)));
+    case 'db-ddl':
+      expect(find.byKey(const ValueKey('db-ddl-dialog')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-ddl-open')), findsOneWidget);
+    case 'db-query-review':
+      expect(find.byKey(const ValueKey('db-query-review')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-query-review-sql')), findsOneWidget);
+      expect(find.byKey(const ValueKey('vault-passphrase-confirm')), findsOneWidget);
+      expect(texts, isNot(contains('{{p0}}')));
+    case 'db-preview-tab':
+      expect(texts, contains(l10n.dbPreviewTabTitle('orders')));
+      expect(find.byKey(const ValueKey('db-result-grid')), findsOneWidget);
+    case 'db-details':
+      expect(find.byKey(const ValueKey('db-details-dialog')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-details-total_size')), findsOneWidget);
+    case 'sharing-deleted':
+      expect(find.byKey(const ValueKey('sharing-deleted-guide-deleted-host')), findsOneWidget);
+    case 'sftp-open-as-text':
+      expect(find.byKey(const ValueKey('sftp-active-content')), findsOneWidget);
+      expect(find.byKey(const ValueKey('sftp-active-content-open')), findsOneWidget);
+    case 'security-settings-windows':
+      expect(find.byKey(const ValueKey('capture-protection-settings')), findsOneWidget);
     case 'docker-hosts':
       expect(find.byKey(const ValueKey('docker-host-local')), findsOneWidget);
     case 'docker-containers':

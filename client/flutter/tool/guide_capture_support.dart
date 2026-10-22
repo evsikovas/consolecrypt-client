@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/services/database_sharing_service.dart';
 import 'package:consolecrypt/core/services/enrollment_service.dart';
 import 'package:consolecrypt/core/services/sharing_service.dart';
 import 'package:consolecrypt/sharing/enrollment_models.dart';
@@ -31,6 +32,7 @@ const guideScreens = [
   'rdp-host-picker',
   'sftp-preview',
   'sftp-settings',
+  'sftp-open-as-text',
   'snippet-packages',
   'snippet-catalog',
   'workspace-ai-selection',
@@ -43,6 +45,7 @@ const guideScreens = [
   'appearance',
   'vault-settings',
   'security-settings',
+  'security-settings-windows',
   'panel-mode-settings',
   'backups',
   'updates',
@@ -51,6 +54,7 @@ const guideScreens = [
   'devices',
   'tunnels',
   'sharing-main',
+  'sharing-deleted',
   'sharing-recipient',
   'sharing-roles',
   'sharing-secret',
@@ -61,6 +65,15 @@ const guideScreens = [
   'db-workspace',
   'db-explain',
   'db-ai',
+  'db-shared',
+  'db-share',
+  'db-prod-unlock',
+  'db-prod-write',
+  'db-row-selection',
+  'db-ddl',
+  'db-query-review',
+  'db-preview-tab',
+  'db-details',
   'docker-hosts',
   'docker-containers',
   'docker-details',
@@ -176,7 +189,87 @@ const guideRecipient = SharingIdentity(
 );
 const guideUnexpectedMetadata = 'UNEXPECTED_FIELD_MUST_NOT_RENDER';
 
-final class GuideSharingService implements SharingService {
+final class GuideSharingService implements SharingService, DatabaseSharingService {
+  GuideSharingService({this.databases = false});
+
+  /// Databases screens list shared database connections as well.
+  final bool databases;
+
+  static Map<String, Object?> _db(
+    String name,
+    String engine,
+    String host,
+    int port,
+    String database, {
+    required bool production,
+    String routeKind = 'direct',
+  }) => {
+    'name': name,
+    'engine': engine,
+    'host': host,
+    'port': port,
+    'database': database,
+    'username': 'reporting',
+    'tls_mode': 'verify',
+    'production': production,
+    'route_kind': routeKind,
+    'requires_route': routeKind != 'direct',
+    'includes_credentials': false,
+    'tags': <String>[],
+  };
+
+  SharingItem _dbItem(String id, Map<String, Object?> data, {required bool owned, SharingTrust? trust}) => SharingItem(
+    id: 'guide-share-$id',
+    itemId: 'guide-item-$id',
+    kind: SharingKind.dbConnection,
+    ownerUserId: owned ? guideOwner.userId : guideRecipient.userId,
+    ownerDeviceId: owned ? guideOwner.deviceId : guideRecipient.deviceId,
+    revision: 1,
+    epoch: 1,
+    owned: owned,
+    trust: trust ?? SharingTrust.verified,
+    role: SharingRole.reader,
+    members: owned ? const [guideOwner, guideRecipient] : const [],
+    previewJson: jsonEncode({'kind': 'db_connection', 'data': data}),
+  );
+
+  List<SharingItem> get databaseItems => [
+    _dbItem(
+      'db-orders',
+      _db('orders-replica', 'postgresql', 'orders-ro.internal', 5432, 'orders', production: true, routeKind: 'relay'),
+      owned: false,
+    ),
+    _dbItem(
+      'db-warehouse',
+      _db('warehouse', 'mysql', 'warehouse.internal', 3306, 'stock', production: false),
+      owned: false,
+      trust: SharingTrust.unverified,
+    ),
+    _dbItem(
+      'db-shop',
+      _db('shop-prod', 'postgresql', 'db.shop.internal', 5432, 'shop', production: true, routeKind: 'relay'),
+      owned: true,
+    ),
+  ];
+
+  @override
+  Future<DbSharingPreview> previewDbConnection(String connectionId, {bool includeCredentials = false}) async =>
+      DbSharingPreview(
+        snapshotStamp: 'guide-stamp',
+        previewJson: jsonEncode({
+          'kind': 'db_connection',
+          'data': _db(
+            'shop-prod',
+            'postgresql',
+            'db.shop.internal',
+            5432,
+            'shop',
+            production: true,
+            routeKind: 'relay',
+          ),
+        }),
+      );
+
   SharingItem get ownedHost => SharingItem(
     id: 'guide-share-host',
     itemId: 'guide-item-host',
@@ -212,13 +305,42 @@ final class GuideSharingService implements SharingService {
     supportsGroups: true,
     supportsSecrets: true,
     supportsOwnerOnlineEnrollment: true,
+    supportsDbConnections: true,
+    supportsLeave: true,
+    supportsRestore: true,
   );
+
+  /// Owner-deleted items still restorable (fixed dates, masked previews).
+  @override
+  Future<List<SharingDeletedItem>> deleted() async => [
+    SharingDeletedItem(
+      id: 'guide-deleted-host',
+      kind: SharingKind.host,
+      restorableUntil: DateTime(2026, 11, 18),
+      recipients: 2,
+      previewJson: jsonEncode({
+        'kind': 'host',
+        'data': {'name': 'staging-web', 'address': 'staging-web.example.test', 'port': 22},
+      }),
+    ),
+    SharingDeletedItem(
+      id: 'guide-deleted-snippet',
+      kind: SharingKind.snippet,
+      restorableUntil: DateTime(2026, 11, 9),
+      recipients: 1,
+      previewJson: jsonEncode({
+        'kind': 'snippet',
+        'data': {'name': 'Restart nginx', 'template': 'sudo systemctl restart nginx', 'snippet_type': 'shell'},
+      }),
+    ),
+  ];
   @override
   Future<List<SharingIdentity>> discover(String email) async => const [guideRecipient];
   @override
   Future<List<SharingOutboxEntry>> outbox() async => const [];
   @override
   Future<List<SharingItem>> list({bool refresh = false}) async => [
+    if (databases) ...databaseItems,
     ownedHost,
     SharingItem(
       id: 'guide-share-snippet',
