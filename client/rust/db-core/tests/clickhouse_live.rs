@@ -416,7 +416,7 @@ async fn clickhouse_production_write_window() {
     let create = "CREATE TABLE cc_prod_window (id UInt32) ENGINE = MergeTree ORDER BY id";
     assert!(write(&prod, create).await.is_err());
     prod.guard()
-        .open_production_write("orders-prod", Duration::from_secs(300))
+        .open_production_write(Duration::from_secs(300))
         .unwrap();
     write(&prod, "DROP TABLE IF EXISTS cc_prod_window")
         .await
@@ -437,7 +437,7 @@ async fn clickhouse_production_write_window() {
         .await
         .is_err());
     prod.guard()
-        .open_production_write("orders-prod", Duration::from_secs(300))
+        .open_production_write(Duration::from_secs(300))
         .unwrap();
     write(&prod, "DROP TABLE cc_prod_window").await.unwrap();
     prod.close();

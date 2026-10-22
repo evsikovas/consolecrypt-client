@@ -378,7 +378,6 @@ abstract class RustLibApi extends BaseApi {
 
   Future<String> crateApiDatabaseDbUnlockProduction({
     required String sessionId,
-    required String typedConnectionName,
     required List<int> passphrase,
     required int minutes,
   });
@@ -3331,7 +3330,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @override
   Future<String> crateApiDatabaseDbUnlockProduction({
     required String sessionId,
-    required String typedConnectionName,
     required List<int> passphrase,
     required int minutes,
   }) {
@@ -3340,23 +3338,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          sse_encode_String(typedConnectionName, serializer);
           sse_encode_list_prim_u_8_loose(passphrase, serializer);
           sse_encode_u_32(minutes, serializer);
           pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 92, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbUnlockProductionConstMeta,
-        argValues: [sessionId, typedConnectionName, passphrase, minutes],
+        argValues: [sessionId, passphrase, minutes],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiDatabaseDbUnlockProductionConstMeta => const TaskConstMeta(
-    debugName: "db_unlock_production",
-    argNames: ["sessionId", "typedConnectionName", "passphrase", "minutes"],
-  );
+  TaskConstMeta get kCrateApiDatabaseDbUnlockProductionConstMeta =>
+      const TaskConstMeta(debugName: "db_unlock_production", argNames: ["sessionId", "passphrase", "minutes"]);
 
   @override
   Future<void> crateApiSyncDevicesConfirmApproval({required String requestId, required String confirmedCode}) {

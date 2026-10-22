@@ -20,6 +20,7 @@ class SecretField extends StatefulWidget {
     super.key,
     this.hint,
     this.helper,
+    this.errorText,
     this.validator,
     this.onSubmitted,
     this.onChanged,
@@ -35,6 +36,9 @@ class SecretField extends StatefulWidget {
   final String label;
   final String? hint;
   final String? helper;
+
+  /// Error shown under the field (e.g. a wrong passphrase).
+  final String? errorText;
   final FormFieldValidator<String>? validator;
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
@@ -147,6 +151,7 @@ class _SecretFieldState extends State<SecretField> {
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hint,
+        errorText: widget.errorText,
         helperText: notes.isEmpty ? widget.helper : null,
         helper: notes.isEmpty
             ? null

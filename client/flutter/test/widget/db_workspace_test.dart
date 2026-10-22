@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
@@ -193,7 +195,7 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiS
 class _ProdService extends _Service implements DbProductionWriteService, DbCellEditService {
   _ProdService() : super(production: true, readOnly: true);
   DateTime? until;
-  final unlocks = <(String, int)>[], locks = <String>[], commits = <String>[];
+  final unlocks = <int>[], locks = <String>[], commits = <String>[];
   List<DbCellEdit> reviewed = const [];
   bool roleCanWrite = false;
 
@@ -216,12 +218,11 @@ class _ProdService extends _Service implements DbProductionWriteService, DbCellE
   @override
   Future<DbSessionInfo> unlockProduction(
     String sessionId, {
-    required String typedConnectionName,
     required SecretText passphrase,
     required int minutes,
   }) async {
     if (passphrase.expose() != 'vault-pass') throw const DbWrongPassphrase();
-    unlocks.add((typedConnectionName, minutes));
+    unlocks.add(minutes);
     until = DateTime.now().add(Duration(minutes: minutes));
     return _live();
   }
@@ -260,9 +261,14 @@ class _ProdService extends _Service implements DbProductionWriteService, DbCellE
   @override
   Future<DbCellEditReview> reviewCellEdits(String sessionId, DbObjectRef table, List<DbCellEdit> edits) async {
     reviewed = edits;
+    // The core writes the values out as literals for the review.
+    final edit = edits.single;
     return DbCellEditReview(
       ticket: 'edits',
-      sql: SecretText('UPDATE "public"."items" SET "name" = {{p0}} WHERE "id" = {{p1}};'),
+      sql: SecretText(
+        'UPDATE "public"."items" SET "${edit.column}" = \'${edit.value.text}\' '
+        'WHERE "id" = ${edit.originalPrimaryKey['id']!.text};',
+      ),
       expiresAt: DateTime.now().add(const Duration(minutes: 5)),
       rows: edits.length,
     );
@@ -283,6 +289,8 @@ Future<ProviderContainer> _pump(
 }) async {
   final backend = testBackend();
   addTearDown(backend.dispose);
+  // Changing statements are confirmed with the vault passphrase.
+  await backend.debugSignInDemoAndUnlock();
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -400,22 +408,37 @@ void main() {
     await settle(tester);
     expect(service.executed, isEmpty);
     expect(service.discarded, ['review']);
-    expect(find.byKey(const ValueKey('db-query-confirmation')), findsNothing);
+    expect(find.byKey(const ValueKey('db-query-review')), findsNothing);
   });
-  testWidgets('non-production changing query requires exact connection name', (tester) async {
+  testWidgets('non-production changing query requires the vault passphrase, not a typed name', (tester) async {
     final service = _Service(production: false, readOnly: false)..risk = DbQueryRisk.dangerous;
     await _pump(tester, service);
     await _type(tester, 'DROP TABLE items');
     await tester.tap(find.byKey(const ValueKey('db-run')));
     await settle(tester);
     expect(service.executed, isEmpty);
-    await tester.enterText(find.byKey(const ValueKey('db-query-confirmation')), 'wrong');
+    expect(find.byKey(const ValueKey('db-query-review')), findsOneWidget);
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('db-query-review-sql')), matching: find.text('DROP TABLE items')),
+      findsOneWidget,
+      reason: 'the query is shown as a code block',
+    );
+    final field = find.byKey(const ValueKey('vault-passphrase-confirm'));
+    final run = find.byKey(const ValueKey('vault-passphrase-confirm-action'));
+    expect(tester.widget<GlassButton>(run).onPressed, isNull);
+    // The connection name is no longer a confirmation.
+    await tester.enterText(field, 'fixture-db');
     await tester.pump();
-    expect(service.executed, isEmpty);
-    await tester.enterText(find.byKey(const ValueKey('db-query-confirmation')), 'fixture-db');
-    await tester.pump();
-    await tester.tap(find.text('Run').last);
+    await tester.tap(run);
     await settle(tester);
+    expect(service.executed, isEmpty);
+    expect(find.text('Wrong vault passphrase.'), findsOneWidget);
+    expect(tester.widget<TextField>(find.descendant(of: field, matching: find.byType(TextField))).controller!.text, '');
+    // The right passphrase approves with Enter.
+    await tester.enterText(field, MockCloud.demoPassphrase);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-query-review')), findsNothing);
     expect(service.executed, hasLength(1));
   });
   testWidgets('late review and metadata after lock are discarded without executing', (tester) async {
@@ -482,7 +505,7 @@ void main() {
     expect(service.executed, isEmpty);
     expect(tester.widget<TextField>(find.byKey(const ValueKey('db-query-editor'))).controller!.text, 'SELECT 42');
   });
-  testWidgets('production unlock needs the passphrase and the name, then writes go through review', (tester) async {
+  testWidgets('production unlock needs only the passphrase, then writes go through review', (tester) async {
     final service = _ProdService()..risk = DbQueryRisk.write;
     await _pump(tester, service);
     // Locked: changing statements are blocked before any review dialog.
@@ -490,19 +513,14 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('db-run')));
     await settle(tester);
     expect(service.executed, isEmpty);
-    expect(find.byKey(const ValueKey('db-query-confirmation')), findsNothing);
+    expect(find.byKey(const ValueKey('db-query-review')), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('db-prod-unlock')));
     await settle(tester);
     expect(find.byKey(const ValueKey('db-prod-unlock-dialog')), findsOneWidget);
+    expect(find.byKey(const ValueKey('db-prod-name')), findsNothing, reason: 'no typed connection name');
     final submit = find.byKey(const ValueKey('db-prod-unlock-submit'));
     await tester.enterText(find.byKey(const ValueKey('db-prod-passphrase')).first, 'wrong-pass');
-    await tester.enterText(find.byKey(const ValueKey('db-prod-name')), 'fixture');
-    await tester.pump();
-    await tester.tap(submit);
-    await settle(tester);
-    expect(service.unlocks, isEmpty, reason: 'the name must match exactly');
-    await tester.enterText(find.byKey(const ValueKey('db-prod-name')), 'fixture-db');
     await tester.pump();
     await tester.tap(submit);
     await settle(tester);
@@ -513,7 +531,7 @@ void main() {
     await tester.pump();
     await tester.tap(submit);
     await settle(tester);
-    expect(service.unlocks, [('fixture-db', 5)]);
+    expect(service.unlocks, [5]);
     expect(find.byKey(const ValueKey('db-prod-unlock-dialog')), findsNothing);
     expect(find.byKey(const ValueKey('db-prod-write-badge')), findsOneWidget);
     expect(find.textContaining('Production writes until'), findsWidgets);
@@ -521,13 +539,13 @@ void main() {
     // The role cannot write: the privilege check says so.
     expect(find.byKey(const ValueKey('db-prod-role-read-only')), findsOneWidget);
 
-    // A change still needs the review with the connection name typed.
+    // A change still needs the review with the vault passphrase.
     await tester.tap(find.byKey(const ValueKey('db-run')));
     await settle(tester);
-    expect(find.byKey(const ValueKey('db-query-confirmation')), findsOneWidget);
-    await tester.enterText(find.byKey(const ValueKey('db-query-confirmation')), 'fixture-db');
+    expect(find.byKey(const ValueKey('db-query-review')), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), MockCloud.demoPassphrase);
     await tester.pump();
-    await tester.tap(find.text('Run').last);
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.executed, hasLength(1));
 
@@ -560,7 +578,6 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('db-prod-unlock')));
     await settle(tester);
     await tester.enterText(find.byKey(const ValueKey('db-prod-passphrase')).first, 'vault-pass');
-    await tester.enterText(find.byKey(const ValueKey('db-prod-name')), 'fixture-db');
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('db-prod-unlock-submit')));
     await settle(tester);
@@ -583,9 +600,21 @@ void main() {
     expect(service.reviewed.single.value.text, 'bravo');
     expect(service.reviewed.single.originalPrimaryKey['id']!.text, '2');
     expect(service.commits, isEmpty);
-    await tester.enterText(find.byKey(const ValueKey('db-query-confirmation')), 'fixture-db');
+    // The review shows the values, not placeholders.
+    final sql = find.byKey(const ValueKey('db-query-review-sql'));
+    expect(
+      find.descendant(of: sql, matching: find.textContaining('SET "name" = \'bravo\' WHERE "id" = 2;')),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: sql, matching: find.textContaining('{{p')), findsNothing);
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), 'wrong');
     await tester.pump();
-    await tester.tap(find.text('Run').last);
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
+    await settle(tester);
+    expect(service.commits, isEmpty);
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), MockCloud.demoPassphrase);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.commits, ['edits']);
     expect(find.byKey(const ValueKey('db-apply-edits')), findsNothing);

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_gitops_details.dart';
@@ -131,6 +132,7 @@ Future<ProviderContainer> _pump(
 }) async {
   final backend = testBackend();
   addTearDown(backend.dispose);
+  await backend.debugSignInDemoAndUnlock();
   tester.view.physicalSize = const Size(412, 900);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -369,10 +371,10 @@ void main() {
     await _pump(tester, service);
     await tester.tap(find.byKey(const ValueKey('gitops-reconcile-source')));
     await settle(tester);
-    await tester.enterText(find.byKey(const ValueKey('kube-confirm-name')), 'source');
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), MockCloud.demoPassphrase);
     service.allowed = false;
     await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('kube-confirm-action')));
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.reconciles, 0);
     expect(tester.takeException(), isNull);

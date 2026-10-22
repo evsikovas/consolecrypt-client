@@ -149,6 +149,39 @@ class DbCodeView extends StatelessWidget {
   }
 }
 
+/// [DbCodeView] on a rounded field surface, at most [maxHeight] tall (the
+/// reviewed statement of a confirmation).
+class DbCodeBlock extends StatelessWidget {
+  const DbCodeBlock({required this.text, super.key, this.maxHeight = 320});
+  final String text;
+  final double maxHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = GlassTokens.of(context);
+    final radius = BorderRadius.circular(tokens.radii.card);
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: tokens.surfaces.fillField,
+          shape: RoundedRectangleBorder(
+            borderRadius: radius,
+            side: BorderSide(color: tokens.surfaces.hairlineCard),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s8),
+            child: DbCodeView(blocks: [text]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// DDL of a structure object as a code block: copy it or open it in a new
 /// query tab (closes with true). Wiped and closed when the vault scope ends.
 class DbDdlDialog extends ConsumerStatefulWidget {

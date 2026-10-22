@@ -105,11 +105,10 @@
 
 Когда изменить прод всё же нужно, кнопка **«Разблокировать прод»** в шапке
 рабочей области открывает временное окно записи. Нужно ввести пароль хранилища
-(он проверяется в ядре приложения), набрать имя подключения и выбрать срок:
-5, 15 или 30 минут. Пока окно открыто, в шапке горит красная метка «Запись в
+(он проверяется в ядре приложения) и выбрать срок: 5, 15 или 30 минут. Пока окно открыто, в шапке горит красная метка «Запись в
 прод до ЧЧ:ММ» с обратным отсчётом и кнопкой «Заблокировать». Каждый
 изменяющий запрос по-прежнему показывается на проверку, и для него нужно
-ввести имя подключения; ячейки результата можно редактировать. Окно
+ввести пароль хранилища; ячейки результата можно редактировать. Окно
 принадлежит только этому сеансу и закрывается само по истечении срока, по
 кнопке «Заблокировать», при отключении, блокировке хранилища или смене
 профиля. Серверная защита снимается только для разрешённых изменений: чтения
@@ -127,9 +126,10 @@ ClickHouse — профиль `readonly=1`, в Redis — ACL `+@read -@write`, �
 
 Непрод-подключение тоже открывается в режиме «Только чтение». Кнопка с замком
 в шапке разрешает запись до закрытия подключения. Изменяющий запрос перед
-выполнением показывается в окне проверки с именем подключения. Для опасных
-запросов (`DROP`, `TRUNCATE`, `UPDATE` или `DELETE` без `WHERE`, `FLUSHALL`,
-удаление коллекции) нужно ввести имя подключения. Команда Redis `KEYS` не
+выполнением показывается в окне проверки целиком, и выполнить его можно только
+после ввода пароля хранилища. Это касается и опасных запросов (`DROP`,
+`TRUNCATE`, `UPDATE` или `DELETE` без `WHERE`, `FLUSHALL`, удаление
+коллекции), и правок ячеек: в проверке правок видны сами новые значения. Команда Redis `KEYS` не
 выполняется никогда: вместо неё предлагается такой же `SCAN`, который можно
 открыть в новой вкладке.
 
@@ -382,10 +382,10 @@ statements and attempts to lift the protection.
 
 When production must be changed, **Unlock production** in the workspace
 header opens a temporary write window: enter the vault passphrase (checked by
-the app core), type the connection name and pick 5, 15 or 30 minutes. While it
+the app core) and pick 5, 15 or 30 minutes. While it
 is open the header shows a red “Production writes until HH:MM” badge with a
 countdown and a **Lock** button. Every changing statement is still shown for
-review and needs the connection name typed; result cells can be edited. The
+review and needs the vault passphrase; result cells can be edited. The
 window belongs to that session only and closes when the time runs out, on
 Lock, on disconnect, vault lock or profile change. Server-side protection is
 lifted only for the permitted changes — reads still run in read-only
@@ -399,10 +399,10 @@ in MySQL, a `readonly=1` profile in ClickHouse, ACL `+@read -@write` in Redis
 and the `read` role in MongoDB.
 
 Non-production connections also open read-only; the lock button allows writes
-until the connection closes. Changing statements are shown for review with
-the connection name, and dangerous ones (`DROP`, `TRUNCATE`, `UPDATE` or
-`DELETE` without `WHERE`, `FLUSHALL`, dropping a collection) require typing
-it. Redis `KEYS` never runs; the equivalent `SCAN` is offered in a new tab.
+until the connection closes. Changing statements are shown in full for review
+and run only after the vault passphrase is entered. This covers dangerous ones
+(`DROP`, `TRUNCATE`, `UPDATE` or `DELETE` without `WHERE`, `FLUSHALL`,
+dropping a collection) and cell edits, whose review shows the new values. Redis `KEYS` never runs; the equivalent `SCAN` is offered in a new tab.
 
 ### Sharing
 

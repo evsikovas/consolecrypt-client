@@ -8419,7 +8419,7 @@
   },
   "kubeAllowChangesHelp": "This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Enter the vault passphrase to continue.",
   "@kubeAllowChangesHelp": {
-    "description": "Kubernetes guarded mutations: This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue."
+    "description": "Kubernetes guarded mutations: opening a production write window; confirmed with the vault passphrase."
   },
   "kubeCloseWriteWindow": "Return to read only",
   "@kubeCloseWriteWindow": {
@@ -8438,10 +8438,6 @@
   "@kubeWriteWindowFailed": {
     "description": "Kubernetes guarded mutations: Could not change the write window. Reconnect and try again."
   },
-  "kubeTypeName": "Type the exact name above",
-  "@kubeTypeName": {
-    "description": "Kubernetes guarded mutations: Type the exact name above"
-  },
   "kubeEditYaml": "Edit YAML",
   "@kubeEditYaml": {
     "description": "Kubernetes guarded mutations: Edit YAML"
@@ -8450,9 +8446,9 @@
   "@kubeApplyYaml": {
     "description": "Kubernetes guarded mutations: Apply changes"
   },
-  "kubeApplyYamlHelp": "Apply the reviewed changes to this resource? Type its exact name to confirm. The server will reject the update if its resource version has changed.",
+  "kubeApplyYamlHelp": "Apply the reviewed changes to this resource? Enter the vault passphrase to confirm. The server will reject the update if its resource version has changed.",
   "@kubeApplyYamlHelp": {
-    "description": "Kubernetes guarded mutations: Apply the reviewed changes to this resource? Type its exact name to confirm. The server will reject the update if its resource version has changed."
+    "description": "Kubernetes guarded mutations: confirmation of a YAML apply with the vault passphrase."
   },
   "kubeApplyFailed": "The change was not accepted. Refresh the object and check permissions, validation errors or ownership conflicts before trying again.",
   "@kubeApplyFailed": {
@@ -8490,9 +8486,9 @@
   "@kubeDeleteResource": {
     "description": "Kubernetes guarded mutations: Delete Kubernetes resource"
   },
-  "kubeDeleteResourceHelp": "This deletes the resource from the cluster and may stop running workloads. Type its exact name to confirm.",
+  "kubeDeleteResourceHelp": "This deletes the resource from the cluster and may stop running workloads. Enter the vault passphrase to confirm.",
   "@kubeDeleteResourceHelp": {
-    "description": "Kubernetes guarded mutations: This deletes the resource from the cluster and may stop running workloads. Type its exact name to confirm."
+    "description": "Kubernetes guarded mutations: confirmation of a resource deletion with the vault passphrase."
   },
   "kubeFollowLogs": "Follow new log lines",
   "@kubeFollowLogs": {
@@ -8614,9 +8610,9 @@
   "@kubeArgoHardRefresh": {
     "description": "Kubernetes cluster interface: Refresh application and manifests"
   },
-  "kubeGitOpsChangeHelp": "This sends a change to the controller and can affect running applications. Review the action and type the exact resource name to continue.",
+  "kubeGitOpsChangeHelp": "This sends a change to the controller and can affect running applications. Review the action and enter the vault passphrase to continue.",
   "@kubeGitOpsChangeHelp": {
-    "description": "Kubernetes cluster interface: This sends a change to the controller and can affect running applications. Review the action and type the exact resource name to continue."
+    "description": "Kubernetes cluster interface: GitOps action confirmation with the vault passphrase."
   },
   "kubeGitOpsReason": "Reason (stored in the resource annotation)",
   "@kubeGitOpsReason": {
@@ -8966,9 +8962,9 @@
   "@kubeDebugContainer": {
     "description": "Kubernetes operations interface."
   },
-  "kubeMutationConfirmHelp": "Review the operation and type the exact resource name to confirm. Kubernetes permissions and production safeguards are checked again before execution.",
+  "kubeMutationConfirmHelp": "Review the operation and enter the vault passphrase to confirm. Kubernetes permissions and production safeguards are checked again before execution.",
   "@kubeMutationConfirmHelp": {
-    "description": "Kubernetes operations interface."
+    "description": "Kubernetes cluster interface: confirmation of a cluster change with the vault passphrase."
   },
   "kubeOperationFailed": "The operation could not complete. Check permissions and resource state, then refresh before trying again.",
   "@kubeOperationFailed": {
@@ -9395,9 +9391,9 @@
   "@kubeHelmRollback": {
     "description": "Explicit desktop Helm rollback."
   },
-  "kubeHelmRollbackHelp": "Review the exact Helm binary, checksum and command. The operation changes cluster resources; Helm hooks are disabled. Type the release name to confirm.",
+  "kubeHelmRollbackHelp": "Review the exact Helm binary, checksum and command. The operation changes cluster resources; Helm hooks are disabled. Enter the vault passphrase to confirm.",
   "@kubeHelmRollbackHelp": {
-    "description": "Explicit desktop Helm rollback."
+    "description": "Helm rollback dialog: review the binary and command, confirm with the vault passphrase."
   },
   "kubeHelmRollbackFailed": "Rollback could not complete. Check the Helm path, permissions and current release revision. Review the command again before retrying.",
   "@kubeHelmRollbackFailed": {
@@ -9735,9 +9731,9 @@
   "@kubeBulkActions": {
     "description": "Guarded bulk Kubernetes operations"
   },
-  "kubeBulkHelp": "Review the exact list and type the context name. Operations run in order; cancellation stops after the current operation. Up to 100 resources.",
+  "kubeBulkHelp": "Review the exact list and enter the vault passphrase. Operations run in order; cancellation stops after the current operation. Up to 100 resources.",
   "@kubeBulkHelp": {
-    "description": "Guarded bulk Kubernetes operations"
+    "description": "Kubernetes bulk actions dialog: review the list, confirm with the vault passphrase."
   },
   "kubeBulkProductionBlocked": "Bulk changes are disabled in production contexts.",
   "@kubeBulkProductionBlocked": {
@@ -9765,10 +9761,6 @@
   },
   "kubeResizePanel": "Resize bottom panel",
   "@kubeResizePanel": {
-    "description": "Kubernetes workspace tools"
-  },
-  "kubeConfirmName": "Type the exact name",
-  "@kubeConfirmName": {
     "description": "Kubernetes workspace tools"
   },
   "kubeAiProposalReview": "Review proposal",
@@ -9811,7 +9803,7 @@
   "kubeGitOpsHistoryEmpty": "No reconciliation history is available.",
   "kubeGitOpsControllerUnavailable": "Controller logs are unavailable. Check resource discovery and permissions.",
   "kubeGitOpsSignatureUnknown": "Not reported by the controller",
-  "kubeGitOpsSourceReconcileHelp": "Request a new reconciliation for this source. Enter its exact name to continue.",
+  "kubeGitOpsSourceReconcileHelp": "Request a new reconciliation for this source. Enter the vault passphrase to continue.",
   "kubeGitOpsMetadataOnly": "Only object references are shown here. Secret values are hidden.",
   "@kubeGitOpsSource": {
     "description": "Kubernetes GitOps resource details label."
@@ -9862,7 +9854,7 @@
     "description": "Kubernetes GitOps resource details label."
   },
   "@kubeGitOpsSourceReconcileHelp": {
-    "description": "Kubernetes GitOps resource details label."
+    "description": "GitOps source reconcile confirmation; the user confirms with the vault passphrase."
   },
   "@kubeGitOpsMetadataOnly": {
     "description": "Kubernetes GitOps resource details label."
@@ -10542,14 +10534,6 @@
   "kubeApplyInvalid": "The server rejected the YAML: check the syntax and fields that cannot be changed (most of a Pod's spec is immutable).",
   "@kubeApplyInvalid": {
     "description": "YAML apply rejected as invalid."
-  },
-  "kubeVaultPasswordConfirm": "Vault passphrase",
-  "@kubeVaultPasswordConfirm": {
-    "description": "Field label: confirm a production write window with the vault passphrase."
-  },
-  "kubeVaultPasswordWrong": "Wrong passphrase.",
-  "@kubeVaultPasswordWrong": {
-    "description": "Error under the vault passphrase field."
   },
   "kubeApplyOwnedBy": "These fields are managed by {managers}. Turn on \"Take ownership of conflicting fields\" to override them; the controller may change them back.",
   "@kubeApplyOwnedBy": {
@@ -11234,9 +11218,9 @@
   "@dbQueryBlocked": {
     "description": "Database interface: This query is blocked by connection policy. Use a non-production connection with appropriate privileges."
   },
-  "dbQueryDangerous": "This query can change or delete data. Review the full query and type the connection name.",
+  "dbQueryDangerous": "This query can change or delete data. Review the query and enter the vault passphrase.",
   "@dbQueryDangerous": {
-    "description": "Database interface: This query can change or delete data. Review the full query and type the connection name."
+    "description": "Database interface: review dialog of a changing query; the user confirms with the vault passphrase."
   },
   "dbReviewExpired": "The review expired. Run the query again to obtain a fresh review.",
   "@dbReviewExpired": {
@@ -13263,22 +13247,9 @@
   "@dbUnlockProductionTitle": {
     "description": "Title of the dialog that opens a temporary production write window."
   },
-  "dbUnlockProductionWarning": "Changes will go straight to the production database “{name}”. Every changing statement is still shown for review with the connection name. Writes lock again when the time runs out, when you lock them, disconnect or lock the vault.",
+  "dbUnlockProductionWarning": "Changes will go straight to the production database “{name}”. Every changing statement is still shown for review and needs the vault passphrase. Writes lock again when the time runs out, when you lock them, disconnect or lock the vault.",
   "@dbUnlockProductionWarning": {
     "description": "Warning in the production unlock dialog; name is the connection name.",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "dbVaultPassphrase": "Vault passphrase",
-  "@dbVaultPassphrase": {
-    "description": "Production unlock dialog: vault passphrase field label."
-  },
-  "dbTypeConnectionName": "Type the connection name: {name}",
-  "@dbTypeConnectionName": {
-    "description": "Production unlock dialog: label of the field where the connection name is typed to confirm.",
     "placeholders": {
       "name": {
         "type": "String"
@@ -13297,10 +13268,6 @@
         "type": "int"
       }
     }
-  },
-  "dbWrongPassphrase": "Wrong vault passphrase.",
-  "@dbWrongPassphrase": {
-    "description": "Production unlock dialog: the vault passphrase did not match."
   },
   "dbProdWriteUntil": "Production writes until {time}",
   "@dbProdWriteUntil": {
@@ -13356,5 +13323,13 @@
         "type": "int"
       }
     }
+  },
+  "vaultPassphraseConfirmLabel": "Vault passphrase",
+  "@vaultPassphraseConfirmLabel": {
+    "description": "Label of the vault passphrase field that confirms a dangerous action (database writes, cluster changes)."
+  },
+  "vaultPassphraseConfirmWrong": "Wrong vault passphrase.",
+  "@vaultPassphraseConfirmWrong": {
+    "description": "Error under the vault passphrase confirmation field when the passphrase does not match."
   }
 }

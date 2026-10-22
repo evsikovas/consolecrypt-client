@@ -205,9 +205,9 @@ class KubeGitOpsDetailsState extends ConsumerState<KubeGitOpsDetails> {
   Future<void> _reconcile() async {
     final service = widget.service;
     if (!_current || _busy || service is! KubeInsightsService || service is! KubeMutationService) return;
-    final approved = await showTypedKubeConfirmation(
+    final approved = await showKubePassphraseConfirmation(
       context,
-      expected: widget.resource.name,
+      subject: widget.resource.name,
       title: context.l10n.kubeGitOpsReconcile,
       message: context.l10n.kubeGitOpsSourceReconcileHelp,
       confirmLabel: context.l10n.kubeGitOpsReconcile,

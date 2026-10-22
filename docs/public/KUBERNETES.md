@@ -79,8 +79,10 @@ Secret скрывает значения по умолчанию; просмот
 «Прод» принудительно ограничивает изменения в ядре, включая запросы внешних
 CLI через локальный прокси. На компьютере можно явно открыть временное окно
 записи на 10 минут — оно подтверждается паролем хранилища; на телефоне окно
-недоступно. Массовые изменения запрещены в production
-даже при открытом окне. Exec и port-forward имеют отдельные разрешения
+недоступно. Каждое изменение (применение YAML, удаление, перезапуск,
+масштабирование, действия GitOps, откат Helm, массовые операции) тоже
+подтверждается паролем хранилища, а не вводом имени ресурса или контекста.
+Массовые изменения запрещены в production даже при открытом окне. Exec и port-forward имеют отдельные разрешения
 production-контекста.
 
 ### Логи, shell и туннели
@@ -236,8 +238,10 @@ change the rest through its owner (Deployment, StatefulSet and so on). Secret va
 
 Production restrictions are enforced by the native core, including external
 CLI requests through the local proxy. Desktop allows a 10-minute write window
-confirmed with the vault passphrase; mobile does not. Bulk mutations remain prohibited in
-production even during a write window. Exec and port forwarding have separate
+confirmed with the vault passphrase; mobile does not. Every change (YAML apply,
+delete, restart, scale, GitOps actions, Helm rollback, bulk actions) is also
+confirmed with the vault passphrase instead of typing the resource or context
+name. Bulk mutations remain prohibited in production even during a write window. Exec and port forwarding have separate
 production permissions.
 
 ### Logs, shell and port forwarding

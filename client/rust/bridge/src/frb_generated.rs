@@ -3613,7 +3613,6 @@ fn wire__crate__api__database__db_unlock_production_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_session_id = <String>::sse_decode(&mut deserializer);
-            let api_typed_connection_name = <String>::sse_decode(&mut deserializer);
             let api_passphrase = <Vec<u8>>::sse_decode(&mut deserializer);
             let api_minutes = <u32>::sse_decode(&mut deserializer);
             deserializer.end();
@@ -3622,7 +3621,6 @@ fn wire__crate__api__database__db_unlock_production_impl(
                     (move || async move {
                         let output_ok = crate::api::database::db_unlock_production(
                             api_session_id,
-                            api_typed_connection_name,
                             api_passphrase,
                             api_minutes,
                         )

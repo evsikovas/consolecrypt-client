@@ -74,9 +74,9 @@ class _KubeAiHistoryDialogState extends ConsumerState<KubeAiHistoryDialog> with 
     if (!_current || _loading) return;
     final conversation = row['conversation'] as KubeJson;
     final title = conversation['title'] as String;
-    final approved = await showTypedKubeConfirmation(
+    final approved = await showKubePassphraseConfirmation(
       context,
-      expected: title,
+      subject: title,
       title: context.l10n.commonDelete,
       message: context.l10n.kubeAiHistoryDeleteHelp,
       confirmLabel: context.l10n.commonDelete,

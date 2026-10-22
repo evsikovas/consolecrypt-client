@@ -6288,9 +6288,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeWriteWindowFailed => 'Не удалось изменить окно записи. Подключитесь заново и повторите попытку.';
 
   @override
-  String get kubeTypeName => 'Введите точное имя выше';
-
-  @override
   String get kubeEditYaml => 'Изменить YAML';
 
   @override
@@ -6298,7 +6295,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeApplyYamlHelp =>
-      'Применить проверенные изменения к ресурсу? Для подтверждения введите его точное имя. Сервер отклонит обновление, если версия ресурса изменилась.';
+      'Применить проверенные изменения к ресурсу? Для подтверждения введите пароль хранилища. Сервер отклонит обновление, если версия ресурса изменилась.';
 
   @override
   String get kubeApplyFailed =>
@@ -6332,7 +6329,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeDeleteResourceHelp =>
-      'Ресурс будет удалён из кластера. Это может остановить работающие приложения. Для подтверждения введите точное имя ресурса.';
+      'Ресурс будет удалён из кластера. Это может остановить работающие приложения. Для подтверждения введите пароль хранилища.';
 
   @override
   String get kubeFollowLogs => 'Следить за новыми записями';
@@ -6427,7 +6424,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeGitOpsChangeHelp =>
-      'Контроллер получит изменение, которое может повлиять на работающие приложения. Проверьте действие и введите точное имя ресурса.';
+      'Контроллер получит изменение, которое может повлиять на работающие приложения. Проверьте действие и введите пароль хранилища.';
 
   @override
   String get kubeGitOpsReason => 'Причина (сохраняется в аннотации ресурса)';
@@ -6693,7 +6690,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeMutationConfirmHelp =>
-      'Проверьте действие и введите точное имя ресурса для подтверждения. Права Kubernetes и защита production будут проверены перед выполнением.';
+      'Проверьте действие и введите пароль хранилища для подтверждения. Права Kubernetes и защита production будут проверены перед выполнением.';
 
   @override
   String get kubeOperationFailed =>
@@ -7025,7 +7022,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeHelmRollbackHelp =>
-      'Проверьте точный путь Helm, контрольную сумму и команду. Операция изменяет ресурсы кластера; хуки Helm отключены. Введите имя релиза для подтверждения.';
+      'Проверьте точный путь Helm, контрольную сумму и команду. Операция изменяет ресурсы кластера; хуки Helm отключены. Введите пароль хранилища для подтверждения.';
 
   @override
   String get kubeHelmRollbackFailed =>
@@ -7286,7 +7283,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeBulkHelp =>
-      'Проверьте список и введите имя контекста. Операции выполняются по очереди; отмена остановит их после текущей операции. Не более 100 ресурсов.';
+      'Проверьте список и введите пароль хранилища. Операции выполняются по очереди; отмена остановит их после текущей операции. Не более 100 ресурсов.';
 
   @override
   String get kubeBulkProductionBlocked => 'Массовые изменения недоступны в прод-контекстах.';
@@ -7310,9 +7307,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeResizePanel => 'Изменить высоту нижней панели';
-
-  @override
-  String get kubeConfirmName => 'Введите точное имя';
 
   @override
   String get kubeAiProposalReview => 'Проверить предложение';
@@ -7383,7 +7377,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeGitOpsSourceReconcileHelp =>
-      'Запросить новую сверку источника. Для продолжения введите его точное имя.';
+      'Запросить новую сверку источника. Для продолжения введите пароль хранилища.';
 
   @override
   String get kubeGitOpsMetadataOnly => 'Здесь показаны только ссылки на объекты. Значения секретов скрыты.';
@@ -7901,12 +7895,6 @@ class AppLocalizationsRu extends AppLocalizations {
       'Сервер отклонил YAML: проверьте синтаксис и поля, которые нельзя менять (большая часть spec у Pod неизменяема).';
 
   @override
-  String get kubeVaultPasswordConfirm => 'Пароль хранилища';
-
-  @override
-  String get kubeVaultPasswordWrong => 'Неверный пароль.';
-
-  @override
   String kubeApplyOwnedBy(String managers) {
     return 'Эти поля ведёт $managers. Включите «Передать владение конфликтующими полями», чтобы перезаписать их; контроллер может вернуть значения обратно.';
   }
@@ -8388,7 +8376,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbQueryDangerous =>
-      'Этот запрос может изменить или удалить данные. Проверьте весь запрос и введите имя подключения.';
+      'Этот запрос может изменить или удалить данные. Проверьте запрос и введите пароль хранилища.';
 
   @override
   String get dbReviewExpired => 'Срок подтверждения истёк. Запустите запрос заново для повторной проверки.';
@@ -9899,15 +9887,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String dbUnlockProductionWarning(String name) {
-    return 'Изменения пойдут прямо в прод-базу «$name». Каждый изменяющий запрос по-прежнему показывается на проверку с именем подключения. Запись снова блокируется, когда истечёт время, по кнопке «Заблокировать», при отключении или блокировке хранилища.';
-  }
-
-  @override
-  String get dbVaultPassphrase => 'Пароль хранилища';
-
-  @override
-  String dbTypeConnectionName(String name) {
-    return 'Введите имя подключения: $name';
+    return 'Изменения пойдут прямо в прод-базу «$name». Каждый изменяющий запрос по-прежнему показывается на проверку и требует пароль хранилища. Запись снова блокируется, когда истечёт время, по кнопке «Заблокировать», при отключении или блокировке хранилища.';
   }
 
   @override
@@ -9925,9 +9905,6 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get dbWrongPassphrase => 'Неверный пароль хранилища.';
 
   @override
   String dbProdWriteUntil(String time) {
@@ -9973,4 +9950,10 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get vaultPassphraseConfirmLabel => 'Пароль хранилища';
+
+  @override
+  String get vaultPassphraseConfirmWrong => 'Неверный пароль хранилища.';
 }

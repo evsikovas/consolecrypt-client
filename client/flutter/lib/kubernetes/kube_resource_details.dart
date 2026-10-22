@@ -426,9 +426,9 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
     final uid = metadata?['uid'] as String?;
     final version = metadata?['resourceVersion'] as String?;
     if (uid == null || uid.isEmpty || version == null || version.isEmpty) return;
-    final approved = await showTypedKubeConfirmation(
+    final approved = await showKubePassphraseConfirmation(
       context,
-      expected: widget.resource.name,
+      subject: widget.resource.name,
       title: context.l10n.kubeDeleteResource,
       message: context.l10n.kubeDeleteResourceHelp,
       confirmLabel: context.l10n.commonDelete,

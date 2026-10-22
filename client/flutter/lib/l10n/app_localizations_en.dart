@@ -6089,9 +6089,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kubeWriteWindowFailed => 'Could not change the write window. Reconnect and try again.';
 
   @override
-  String get kubeTypeName => 'Type the exact name above';
-
-  @override
   String get kubeEditYaml => 'Edit YAML';
 
   @override
@@ -6099,7 +6096,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeApplyYamlHelp =>
-      'Apply the reviewed changes to this resource? Type its exact name to confirm. The server will reject the update if its resource version has changed.';
+      'Apply the reviewed changes to this resource? Enter the vault passphrase to confirm. The server will reject the update if its resource version has changed.';
 
   @override
   String get kubeApplyFailed =>
@@ -6134,7 +6131,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeDeleteResourceHelp =>
-      'This deletes the resource from the cluster and may stop running workloads. Type its exact name to confirm.';
+      'This deletes the resource from the cluster and may stop running workloads. Enter the vault passphrase to confirm.';
 
   @override
   String get kubeFollowLogs => 'Follow new log lines';
@@ -6229,7 +6226,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeGitOpsChangeHelp =>
-      'This sends a change to the controller and can affect running applications. Review the action and type the exact resource name to continue.';
+      'This sends a change to the controller and can affect running applications. Review the action and enter the vault passphrase to continue.';
 
   @override
   String get kubeGitOpsReason => 'Reason (stored in the resource annotation)';
@@ -6496,7 +6493,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeMutationConfirmHelp =>
-      'Review the operation and type the exact resource name to confirm. Kubernetes permissions and production safeguards are checked again before execution.';
+      'Review the operation and enter the vault passphrase to confirm. Kubernetes permissions and production safeguards are checked again before execution.';
 
   @override
   String get kubeOperationFailed =>
@@ -6825,7 +6822,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeHelmRollbackHelp =>
-      'Review the exact Helm binary, checksum and command. The operation changes cluster resources; Helm hooks are disabled. Type the release name to confirm.';
+      'Review the exact Helm binary, checksum and command. The operation changes cluster resources; Helm hooks are disabled. Enter the vault passphrase to confirm.';
 
   @override
   String get kubeHelmRollbackFailed =>
@@ -7086,7 +7083,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeBulkHelp =>
-      'Review the exact list and type the context name. Operations run in order; cancellation stops after the current operation. Up to 100 resources.';
+      'Review the exact list and enter the vault passphrase. Operations run in order; cancellation stops after the current operation. Up to 100 resources.';
 
   @override
   String get kubeBulkProductionBlocked => 'Bulk changes are disabled in production contexts.';
@@ -7110,9 +7107,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeResizePanel => 'Resize bottom panel';
-
-  @override
-  String get kubeConfirmName => 'Type the exact name';
 
   @override
   String get kubeAiProposalReview => 'Review proposal';
@@ -7184,7 +7178,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kubeGitOpsSourceReconcileHelp =>
-      'Request a new reconciliation for this source. Enter its exact name to continue.';
+      'Request a new reconciliation for this source. Enter the vault passphrase to continue.';
 
   @override
   String get kubeGitOpsMetadataOnly => 'Only object references are shown here. Secret values are hidden.';
@@ -7701,12 +7695,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'The server rejected the YAML: check the syntax and fields that cannot be changed (most of a Pod\'s spec is immutable).';
 
   @override
-  String get kubeVaultPasswordConfirm => 'Vault passphrase';
-
-  @override
-  String get kubeVaultPasswordWrong => 'Wrong passphrase.';
-
-  @override
   String kubeApplyOwnedBy(String managers) {
     return 'These fields are managed by $managers. Turn on \"Take ownership of conflicting fields\" to override them; the controller may change them back.';
   }
@@ -8186,7 +8174,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbQueryDangerous =>
-      'This query can change or delete data. Review the full query and type the connection name.';
+      'This query can change or delete data. Review the query and enter the vault passphrase.';
 
   @override
   String get dbReviewExpired => 'The review expired. Run the query again to obtain a fresh review.';
@@ -9671,15 +9659,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String dbUnlockProductionWarning(String name) {
-    return 'Changes will go straight to the production database “$name”. Every changing statement is still shown for review with the connection name. Writes lock again when the time runs out, when you lock them, disconnect or lock the vault.';
-  }
-
-  @override
-  String get dbVaultPassphrase => 'Vault passphrase';
-
-  @override
-  String dbTypeConnectionName(String name) {
-    return 'Type the connection name: $name';
+    return 'Changes will go straight to the production database “$name”. Every changing statement is still shown for review and needs the vault passphrase. Writes lock again when the time runs out, when you lock them, disconnect or lock the vault.';
   }
 
   @override
@@ -9690,9 +9670,6 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count minutes', one: '$count minute');
     return '$_temp0';
   }
-
-  @override
-  String get dbWrongPassphrase => 'Wrong vault passphrase.';
 
   @override
   String dbProdWriteUntil(String time) {
@@ -9736,4 +9713,10 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get vaultPassphraseConfirmLabel => 'Vault passphrase';
+
+  @override
+  String get vaultPassphraseConfirmWrong => 'Wrong vault passphrase.';
 }

@@ -442,18 +442,16 @@ fn production_writes_need_an_open_window_bound_to_the_connection_name() {
             Err(DbError::PolicyDenied)
         ));
         assert_eq!(prod.production_write_remaining(), None);
-        // The typed name must match exactly; only 5/15/30 minutes exist.
-        assert!(prod.open_production_write("orders", five).is_err());
-        assert!(prod.open_production_write("ORDERS-PROD", five).is_err());
+        // Only 5/15/30 minutes exist.
         for minutes in [0, 1, 10, 60, 24 * 60] {
             assert!(prod
-                .open_production_write("orders-prod", Duration::from_secs(minutes * 60))
+                .open_production_write(Duration::from_secs(minutes * 60))
                 .is_err());
         }
         assert!(prod.is_read_only());
         // Within the window the same write gets a permit, marked as a
         // production write; it still goes through review.
-        prod.open_production_write("orders-prod", five).unwrap();
+        prod.open_production_write(five).unwrap();
         assert!(!prod.is_read_only());
         assert!(prod.production_write_remaining().unwrap() <= five);
         let review = prod.review(&request(query)).unwrap();
@@ -466,16 +464,16 @@ fn production_writes_need_an_open_window_bound_to_the_connection_name() {
         assert!(prod.validate_permit(&permit[0]).is_err());
         assert!(prod.prepare(&request(query)).is_err());
         // Closing the session ends the window for good.
-        prod.open_production_write("orders-prod", five).unwrap();
+        prod.open_production_write(five).unwrap();
         prod.close();
         assert!(prod.is_read_only());
-        assert!(prod.open_production_write("orders-prod", five).is_err());
+        assert!(prod.open_production_write(five).is_err());
         // Non-production and mobile production sessions never get a window.
         assert!(guard(engine, false, false)
-            .open_production_write("orders-prod", five)
+            .open_production_write(five)
             .is_err());
         let mobile = guard(engine, true, true);
-        assert!(mobile.open_production_write("orders-prod", five).is_err());
+        assert!(mobile.open_production_write(five).is_err());
         assert!(mobile.prepare(&request(query)).is_err());
     }
 }

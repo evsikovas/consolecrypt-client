@@ -303,8 +303,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
         final approved = await showAppDialog<bool>(
           context,
           secure: true,
-          builder: (_) =>
-              DbQueryReviewDialog(connectionName: widget.connection.name, query: request.text, review: review),
+          builder: (_) => DbQueryReviewDialog(query: request.text, review: review),
         );
         if (!_tabCurrent(tab) || approved != true) return;
       }
@@ -562,7 +561,6 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
         context,
         secure: true,
         builder: (_) => DbQueryReviewDialog(
-          connectionName: widget.connection.name,
           query: review!.sql.expose(),
           review: DbQueryReview(ticket: review.ticket, risk: DbQueryRisk.write, expiresAt: review.expiresAt),
         ),

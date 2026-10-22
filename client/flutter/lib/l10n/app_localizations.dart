@@ -10802,7 +10802,7 @@ abstract class AppLocalizations {
   /// **'Allow changes for 10 minutes'**
   String get kubeAllowChanges;
 
-  /// Kubernetes guarded mutations: This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue.
+  /// Kubernetes guarded mutations: opening a production write window; confirmed with the vault passphrase.
   ///
   /// In en, this message translates to:
   /// **'This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Enter the vault passphrase to continue.'**
@@ -10826,12 +10826,6 @@ abstract class AppLocalizations {
   /// **'Could not change the write window. Reconnect and try again.'**
   String get kubeWriteWindowFailed;
 
-  /// Kubernetes guarded mutations: Type the exact name above
-  ///
-  /// In en, this message translates to:
-  /// **'Type the exact name above'**
-  String get kubeTypeName;
-
   /// Kubernetes guarded mutations: Edit YAML
   ///
   /// In en, this message translates to:
@@ -10844,10 +10838,10 @@ abstract class AppLocalizations {
   /// **'Apply changes'**
   String get kubeApplyYaml;
 
-  /// Kubernetes guarded mutations: Apply the reviewed changes to this resource? Type its exact name to confirm. The server will reject the update if its resource version has changed.
+  /// Kubernetes guarded mutations: confirmation of a YAML apply with the vault passphrase.
   ///
   /// In en, this message translates to:
-  /// **'Apply the reviewed changes to this resource? Type its exact name to confirm. The server will reject the update if its resource version has changed.'**
+  /// **'Apply the reviewed changes to this resource? Enter the vault passphrase to confirm. The server will reject the update if its resource version has changed.'**
   String get kubeApplyYamlHelp;
 
   /// Kubernetes guarded mutations: The change was not accepted. Refresh the object and check permissions, validation errors or ownership conflicts before trying again.
@@ -10904,10 +10898,10 @@ abstract class AppLocalizations {
   /// **'Delete Kubernetes resource'**
   String get kubeDeleteResource;
 
-  /// Kubernetes guarded mutations: This deletes the resource from the cluster and may stop running workloads. Type its exact name to confirm.
+  /// Kubernetes guarded mutations: confirmation of a resource deletion with the vault passphrase.
   ///
   /// In en, this message translates to:
-  /// **'This deletes the resource from the cluster and may stop running workloads. Type its exact name to confirm.'**
+  /// **'This deletes the resource from the cluster and may stop running workloads. Enter the vault passphrase to confirm.'**
   String get kubeDeleteResourceHelp;
 
   /// Kubernetes log stream: Follow new log lines
@@ -11090,10 +11084,10 @@ abstract class AppLocalizations {
   /// **'Refresh application and manifests'**
   String get kubeArgoHardRefresh;
 
-  /// Kubernetes cluster interface: This sends a change to the controller and can affect running applications. Review the action and type the exact resource name to continue.
+  /// Kubernetes cluster interface: GitOps action confirmation with the vault passphrase.
   ///
   /// In en, this message translates to:
-  /// **'This sends a change to the controller and can affect running applications. Review the action and type the exact resource name to continue.'**
+  /// **'This sends a change to the controller and can affect running applications. Review the action and enter the vault passphrase to continue.'**
   String get kubeGitOpsChangeHelp;
 
   /// Kubernetes cluster interface: Reason (stored in the resource annotation)
@@ -11594,10 +11588,10 @@ abstract class AppLocalizations {
   /// **'Add debug container'**
   String get kubeDebugContainer;
 
-  /// Kubernetes operations interface.
+  /// Kubernetes cluster interface: confirmation of a cluster change with the vault passphrase.
   ///
   /// In en, this message translates to:
-  /// **'Review the operation and type the exact resource name to confirm. Kubernetes permissions and production safeguards are checked again before execution.'**
+  /// **'Review the operation and enter the vault passphrase to confirm. Kubernetes permissions and production safeguards are checked again before execution.'**
   String get kubeMutationConfirmHelp;
 
   /// Kubernetes operations interface.
@@ -12206,10 +12200,10 @@ abstract class AppLocalizations {
   /// **'Roll back Helm release'**
   String get kubeHelmRollback;
 
-  /// Explicit desktop Helm rollback.
+  /// Helm rollback dialog: review the binary and command, confirm with the vault passphrase.
   ///
   /// In en, this message translates to:
-  /// **'Review the exact Helm binary, checksum and command. The operation changes cluster resources; Helm hooks are disabled. Type the release name to confirm.'**
+  /// **'Review the exact Helm binary, checksum and command. The operation changes cluster resources; Helm hooks are disabled. Enter the vault passphrase to confirm.'**
   String get kubeHelmRollbackHelp;
 
   /// Explicit desktop Helm rollback.
@@ -12716,10 +12710,10 @@ abstract class AppLocalizations {
   /// **'Selected resources'**
   String get kubeBulkActions;
 
-  /// Guarded bulk Kubernetes operations
+  /// Kubernetes bulk actions dialog: review the list, confirm with the vault passphrase.
   ///
   /// In en, this message translates to:
-  /// **'Review the exact list and type the context name. Operations run in order; cancellation stops after the current operation. Up to 100 resources.'**
+  /// **'Review the exact list and enter the vault passphrase. Operations run in order; cancellation stops after the current operation. Up to 100 resources.'**
   String get kubeBulkHelp;
 
   /// Guarded bulk Kubernetes operations
@@ -12763,12 +12757,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resize bottom panel'**
   String get kubeResizePanel;
-
-  /// Kubernetes workspace tools
-  ///
-  /// In en, this message translates to:
-  /// **'Type the exact name'**
-  String get kubeConfirmName;
 
   /// Kubernetes AI proposals and history resume
   ///
@@ -12902,10 +12890,10 @@ abstract class AppLocalizations {
   /// **'Not reported by the controller'**
   String get kubeGitOpsSignatureUnknown;
 
-  /// Kubernetes GitOps resource details label.
+  /// GitOps source reconcile confirmation; the user confirms with the vault passphrase.
   ///
   /// In en, this message translates to:
-  /// **'Request a new reconciliation for this source. Enter its exact name to continue.'**
+  /// **'Request a new reconciliation for this source. Enter the vault passphrase to continue.'**
   String get kubeGitOpsSourceReconcileHelp;
 
   /// Kubernetes GitOps resource details label.
@@ -13874,18 +13862,6 @@ abstract class AppLocalizations {
   /// **'The server rejected the YAML: check the syntax and fields that cannot be changed (most of a Pod\'s spec is immutable).'**
   String get kubeApplyInvalid;
 
-  /// Field label: confirm a production write window with the vault passphrase.
-  ///
-  /// In en, this message translates to:
-  /// **'Vault passphrase'**
-  String get kubeVaultPasswordConfirm;
-
-  /// Error under the vault passphrase field.
-  ///
-  /// In en, this message translates to:
-  /// **'Wrong passphrase.'**
-  String get kubeVaultPasswordWrong;
-
   /// YAML apply conflict naming the field managers.
   ///
   /// In en, this message translates to:
@@ -14756,10 +14732,10 @@ abstract class AppLocalizations {
   /// **'This query is blocked by connection policy. Use a non-production connection with appropriate privileges.'**
   String get dbQueryBlocked;
 
-  /// Database interface: This query can change or delete data. Review the full query and type the connection name.
+  /// Database interface: review dialog of a changing query; the user confirms with the vault passphrase.
   ///
   /// In en, this message translates to:
-  /// **'This query can change or delete data. Review the full query and type the connection name.'**
+  /// **'This query can change or delete data. Review the query and enter the vault passphrase.'**
   String get dbQueryDangerous;
 
   /// Database interface: The review expired. Run the query again to obtain a fresh review.
@@ -17297,20 +17273,8 @@ abstract class AppLocalizations {
   /// Warning in the production unlock dialog; name is the connection name.
   ///
   /// In en, this message translates to:
-  /// **'Changes will go straight to the production database “{name}”. Every changing statement is still shown for review with the connection name. Writes lock again when the time runs out, when you lock them, disconnect or lock the vault.'**
+  /// **'Changes will go straight to the production database “{name}”. Every changing statement is still shown for review and needs the vault passphrase. Writes lock again when the time runs out, when you lock them, disconnect or lock the vault.'**
   String dbUnlockProductionWarning(String name);
-
-  /// Production unlock dialog: vault passphrase field label.
-  ///
-  /// In en, this message translates to:
-  /// **'Vault passphrase'**
-  String get dbVaultPassphrase;
-
-  /// Production unlock dialog: label of the field where the connection name is typed to confirm.
-  ///
-  /// In en, this message translates to:
-  /// **'Type the connection name: {name}'**
-  String dbTypeConnectionName(String name);
 
   /// Production unlock dialog: label above the 5/15/30 minute choice.
   ///
@@ -17323,12 +17287,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, one{{count} minute} other{{count} minutes}}'**
   String dbMinutes(int count);
-
-  /// Production unlock dialog: the vault passphrase did not match.
-  ///
-  /// In en, this message translates to:
-  /// **'Wrong vault passphrase.'**
-  String get dbWrongPassphrase;
 
   /// Database workspace header badge while a production write window is open; time is the local end time (HH:MM).
   ///
@@ -17389,6 +17347,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, one{Selected: {count} row} other{Selected: {count} rows}}'**
   String dbSelectedRows(int count);
+
+  /// Label of the vault passphrase field that confirms a dangerous action (database writes, cluster changes).
+  ///
+  /// In en, this message translates to:
+  /// **'Vault passphrase'**
+  String get vaultPassphraseConfirmLabel;
+
+  /// Error under the vault passphrase confirmation field when the passphrase does not match.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong vault passphrase.'**
+  String get vaultPassphraseConfirmWrong;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -440,14 +440,13 @@ impl AppCore {
     }
 
     /// Opens a temporary write window on a production session after the
-    /// vault passphrase checks out and the user typed the connection name.
+    /// vault passphrase checks out.
     /// The window belongs to this session only and closes on expiry, on
     /// [`Self::db_lock_production`], on disconnect, vault lock or profile
     /// change. Every changing statement still needs its review.
     pub async fn db_unlock_production(
         &self,
         session_id: String,
-        typed_connection_name: String,
         passphrase: String,
         minutes: u32,
     ) -> AppResult<DbLiveSession> {
@@ -459,9 +458,6 @@ impl AppCore {
         if !cc_db_core::guard::PRODUCTION_WRITE_MINUTES.contains(&u64::from(minutes)) {
             return Err(invalid("production_write_duration"));
         }
-        if typed_connection_name != session.guard().policy().connection_name {
-            return Err(invalid("connection_name_mismatch"));
-        }
         if !self.verify_passphrase(passphrase).await? {
             return Err(AppError::WrongPassphrase);
         }
@@ -469,10 +465,7 @@ impl AppCore {
         let session = unlocked.db.session(&session_id)?;
         session
             .guard()
-            .open_production_write(
-                &typed_connection_name,
-                Duration::from_secs(u64::from(minutes) * 60),
-            )
+            .open_production_write(Duration::from_secs(u64::from(minutes) * 60))
             .map_err(db_error)?;
         Ok(live(&session))
     }

@@ -145,9 +145,9 @@ class _KubeCreateDialogState extends ConsumerState<KubeCreateDialog> {
     final source = _validated;
     if (!_canWrite || _busy || source == null || source != _yaml.text) return;
     final reference = _reference;
-    final approved = await showTypedKubeConfirmation(
+    final approved = await showKubePassphraseConfirmation(
       context,
-      expected: reference.name,
+      subject: reference.name,
       title: context.l10n.kubeCreateResource,
       message: context.l10n.kubeMutationConfirmHelp,
       confirmLabel: context.l10n.kubeCreateResource,

@@ -2963,10 +2963,9 @@
   "kubeCloseWriteWindow": "Вернуть режим только для чтения",
   "kubeWriteWindowRemaining": "ПРОД · изменения разрешены · осталось {time}",
   "kubeWriteWindowFailed": "Не удалось изменить окно записи. Подключитесь заново и повторите попытку.",
-  "kubeTypeName": "Введите точное имя выше",
   "kubeEditYaml": "Изменить YAML",
   "kubeApplyYaml": "Применить изменения",
-  "kubeApplyYamlHelp": "Применить проверенные изменения к ресурсу? Для подтверждения введите его точное имя. Сервер отклонит обновление, если версия ресурса изменилась.",
+  "kubeApplyYamlHelp": "Применить проверенные изменения к ресурсу? Для подтверждения введите пароль хранилища. Сервер отклонит обновление, если версия ресурса изменилась.",
   "kubeApplyFailed": "Изменение не принято. Обновите объект и проверьте права, корректность YAML и конфликты владения полями перед повторной попыткой.",
   "kubeReviewChanges": "Проверка изменений",
   "kubeDryRun": "Проверить на сервере",
@@ -2976,7 +2975,7 @@
   "kubeForceApplyHelp": "Включайте только если намерены заменить поля, которыми управляет другой контроллер. После включения проверьте изменения заново.",
   "kubeNoYamlChanges": "Сервер не обнаружил изменений в YAML.",
   "kubeDeleteResource": "Удалить ресурс Kubernetes",
-  "kubeDeleteResourceHelp": "Ресурс будет удалён из кластера. Это может остановить работающие приложения. Для подтверждения введите точное имя ресурса.",
+  "kubeDeleteResourceHelp": "Ресурс будет удалён из кластера. Это может остановить работающие приложения. Для подтверждения введите пароль хранилища.",
   "kubeFollowLogs": "Следить за новыми записями",
   "kubePauseLogs": "Пауза",
   "kubeResumeLogs": "Продолжить",
@@ -3007,7 +3006,7 @@
   "kubeArgoSync": "Синхронизировать приложение",
   "kubeArgoRefresh": "Обновить состояние приложения",
   "kubeArgoHardRefresh": "Обновить состояние и манифесты",
-  "kubeGitOpsChangeHelp": "Контроллер получит изменение, которое может повлиять на работающие приложения. Проверьте действие и введите точное имя ресурса.",
+  "kubeGitOpsChangeHelp": "Контроллер получит изменение, которое может повлиять на работающие приложения. Проверьте действие и введите пароль хранилища.",
   "kubeGitOpsReason": "Причина (сохраняется в аннотации ресурса)",
   "kubeIssueCrashLoop": "Контейнер постоянно перезапускается после сбоя",
   "kubeIssueImagePull": "Не удаётся скачать образ контейнера",
@@ -3091,7 +3090,7 @@
   "kubeUncordon": "Разрешить размещение на узле",
   "kubeDrain": "Освободить узел",
   "kubeDebugContainer": "Добавить debug-контейнер",
-  "kubeMutationConfirmHelp": "Проверьте действие и введите точное имя ресурса для подтверждения. Права Kubernetes и защита production будут проверены перед выполнением.",
+  "kubeMutationConfirmHelp": "Проверьте действие и введите пароль хранилища для подтверждения. Права Kubernetes и защита production будут проверены перед выполнением.",
   "kubeOperationFailed": "Не удалось завершить действие. Проверьте права и состояние ресурса, затем обновите данные перед повтором.",
   "kubeReplicas": "Число реплик (0–1 000 000)",
   "kubeContainerImage": "Образ контейнера",
@@ -3229,7 +3228,7 @@
   "kubeManifestTemplate": "Вставить шаблон метаданных",
   "kubeSchema": "Схема ресурса Kubernetes",
   "kubeHelmRollback": "Откатить релиз Helm",
-  "kubeHelmRollbackHelp": "Проверьте точный путь Helm, контрольную сумму и команду. Операция изменяет ресурсы кластера; хуки Helm отключены. Введите имя релиза для подтверждения.",
+  "kubeHelmRollbackHelp": "Проверьте точный путь Helm, контрольную сумму и команду. Операция изменяет ресурсы кластера; хуки Helm отключены. Введите пароль хранилища для подтверждения.",
   "kubeHelmRollbackFailed": "Откат не завершён. Проверьте путь Helm, права и текущую ревизию релиза. Перед повтором заново проверьте команду.",
   "kubeHelmBinary": "Абсолютный путь к Helm (необязательно)",
   "kubeAiHistory": "История диалогов ИИ",
@@ -3560,9 +3559,9 @@
   "@kubeBulkActions": {
     "description": "Guarded bulk Kubernetes operations"
   },
-  "kubeBulkHelp": "Проверьте список и введите имя контекста. Операции выполняются по очереди; отмена остановит их после текущей операции. Не более 100 ресурсов.",
+  "kubeBulkHelp": "Проверьте список и введите пароль хранилища. Операции выполняются по очереди; отмена остановит их после текущей операции. Не более 100 ресурсов.",
   "@kubeBulkHelp": {
-    "description": "Guarded bulk Kubernetes operations"
+    "description": "Kubernetes bulk actions dialog: review the list, confirm with the vault passphrase."
   },
   "kubeBulkProductionBlocked": "Массовые изменения недоступны в прод-контекстах.",
   "@kubeBulkProductionBlocked": {
@@ -3590,10 +3589,6 @@
   },
   "kubeResizePanel": "Изменить высоту нижней панели",
   "@kubeResizePanel": {
-    "description": "Kubernetes workspace tools"
-  },
-  "kubeConfirmName": "Введите точное имя",
-  "@kubeConfirmName": {
     "description": "Kubernetes workspace tools"
   },
   "kubeAiProposalReview": "Проверить предложение",
@@ -3636,7 +3631,7 @@
   "kubeGitOpsHistoryEmpty": "История сверки пока недоступна.",
   "kubeGitOpsControllerUnavailable": "Журнал контроллера недоступен. Проверьте доступ к ресурсам кластера.",
   "kubeGitOpsSignatureUnknown": "Контроллер не сообщил результат",
-  "kubeGitOpsSourceReconcileHelp": "Запросить новую сверку источника. Для продолжения введите его точное имя.",
+  "kubeGitOpsSourceReconcileHelp": "Запросить новую сверку источника. Для продолжения введите пароль хранилища.",
   "kubeGitOpsMetadataOnly": "Здесь показаны только ссылки на объекты. Значения секретов скрыты.",
   "@kubeGitOps": {
     "description": "Kubernetes GitOps resource details label."
@@ -3672,7 +3667,7 @@
     "description": "Kubernetes GitOps resource details label."
   },
   "@kubeGitOpsChangeHelp": {
-    "description": "Kubernetes GitOps resource details label."
+    "description": "Kubernetes cluster interface: GitOps action confirmation with the vault passphrase."
   },
   "@kubeGitOpsReason": {
     "description": "Kubernetes GitOps resource details label."
@@ -3726,7 +3721,7 @@
     "description": "Kubernetes GitOps resource details label."
   },
   "@kubeGitOpsSourceReconcileHelp": {
-    "description": "Kubernetes GitOps resource details label."
+    "description": "GitOps source reconcile confirmation; the user confirms with the vault passphrase."
   },
   "@kubeGitOpsMetadataOnly": {
     "description": "Kubernetes GitOps resource details label."
@@ -4178,8 +4173,6 @@
   "kubeApplyConflict": "Часть полей принадлежит другому контроллеру, или объект изменился. Включите «Передать владение конфликтующими полями» или обновите объект.",
   "kubeApplyForbidden": "Кластер не разрешает вам изменять этот объект.",
   "kubeApplyInvalid": "Сервер отклонил YAML: проверьте синтаксис и поля, которые нельзя менять (большая часть spec у Pod неизменяема).",
-  "kubeVaultPasswordConfirm": "Пароль хранилища",
-  "kubeVaultPasswordWrong": "Неверный пароль.",
   "kubeApplyOwnedBy": "Эти поля ведёт {managers}. Включите «Передать владение конфликтующими полями», чтобы перезаписать их; контроллер может вернуть значения обратно.",
   "kubeApplyRejectedFields": "Сервер отклонил поля:",
   "kubeApplyPodImmutable": "У запущенного пода можно менять только image, activeDeadlineSeconds, добавлять tolerations, а также labels и annotations. Меняйте владельца: {owner}.",
@@ -4637,9 +4630,9 @@
   "@dbQueryBlocked": {
     "description": "Database interface: This query is blocked by connection policy. Use a non-production connection with appropriate privileges."
   },
-  "dbQueryDangerous": "Этот запрос может изменить или удалить данные. Проверьте весь запрос и введите имя подключения.",
+  "dbQueryDangerous": "Этот запрос может изменить или удалить данные. Проверьте запрос и введите пароль хранилища.",
   "@dbQueryDangerous": {
-    "description": "Database interface: This query can change or delete data. Review the full query and type the connection name."
+    "description": "Database interface: review dialog of a changing query; the user confirms with the vault passphrase."
   },
   "dbReviewExpired": "Срок подтверждения истёк. Запустите запрос заново для повторной проверки.",
   "@dbReviewExpired": {
@@ -5512,12 +5505,9 @@
   "dbOpenInEditor": "Открыть в редакторе",
   "dbUnlockProduction": "Разблокировать прод",
   "dbUnlockProductionTitle": "Разблокировать прод для изменений",
-  "dbUnlockProductionWarning": "Изменения пойдут прямо в прод-базу «{name}». Каждый изменяющий запрос по-прежнему показывается на проверку с именем подключения. Запись снова блокируется, когда истечёт время, по кнопке «Заблокировать», при отключении или блокировке хранилища.",
-  "dbVaultPassphrase": "Пароль хранилища",
-  "dbTypeConnectionName": "Введите имя подключения: {name}",
+  "dbUnlockProductionWarning": "Изменения пойдут прямо в прод-базу «{name}». Каждый изменяющий запрос по-прежнему показывается на проверку и требует пароль хранилища. Запись снова блокируется, когда истечёт время, по кнопке «Заблокировать», при отключении или блокировке хранилища.",
   "dbUnlockFor": "Разрешить запись на",
   "dbMinutes": "{count, plural, one{{count} минуту} few{{count} минуты} many{{count} минут} other{{count} минуты}}",
-  "dbWrongPassphrase": "Неверный пароль хранилища.",
   "dbProdWriteUntil": "Запись в прод до {time}",
   "dbProdWriteLeft": "Осталось {time}",
   "dbLockProduction": "Заблокировать",
@@ -5527,5 +5517,7 @@
   "dbSetNull": "Установить NULL",
   "dbCellEditHint": "Enter — сохранить, Esc — отменить, Tab — следующая ячейка",
   "dbPendingEdit": "Изменено, ещё не применено",
-  "dbSelectedRows": "{count, plural, one{Выбрано строк: {count}} few{Выбрано строк: {count}} many{Выбрано строк: {count}} other{Выбрано строк: {count}}}"
+  "dbSelectedRows": "{count, plural, one{Выбрано строк: {count}} few{Выбрано строк: {count}} many{Выбрано строк: {count}} other{Выбрано строк: {count}}}",
+  "vaultPassphraseConfirmLabel": "Пароль хранилища",
+  "vaultPassphraseConfirmWrong": "Неверный пароль хранилища."
 }

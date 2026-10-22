@@ -357,14 +357,7 @@ async fn production_window(variable: &str, engine: DbEngine) {
     assert!(write(&session, "CREATE TABLE cc_prod_window (id int)")
         .await
         .is_err());
-    assert!(session
-        .guard()
-        .open_production_write("orders", five)
-        .is_err());
-    session
-        .guard()
-        .open_production_write("orders-prod", five)
-        .unwrap();
+    session.guard().open_production_write(five).unwrap();
     write(&session, "DROP TABLE IF EXISTS cc_prod_window")
         .await
         .unwrap();
@@ -398,10 +391,7 @@ async fn production_window(variable: &str, engine: DbEngine) {
             .unwrap(),
         vec![vec!["1".to_string()]]
     );
-    session
-        .guard()
-        .open_production_write("orders-prod", five)
-        .unwrap();
+    session.guard().open_production_write(five).unwrap();
     write(&session, "DROP TABLE cc_prod_window").await.unwrap();
     session.close();
 }

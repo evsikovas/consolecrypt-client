@@ -119,19 +119,14 @@ final class DbWrongPassphrase implements Exception {
 }
 
 /// Temporary write windows of production sessions. The core checks the vault
-/// passphrase and the typed connection name, owns the expiry and re-locks on
+/// passphrase, owns the expiry and re-locks on
 /// disconnect, vault lock and profile change.
 abstract interface class DbProductionWriteService {
   /// Live write state of a session (asked again when a window runs out).
   Future<DbSessionInfo> sessionState(String sessionId);
 
   /// Opens the window for [minutes] (5, 15 or 30); throws [DbWrongPassphrase].
-  Future<DbSessionInfo> unlockProduction(
-    String sessionId, {
-    required String typedConnectionName,
-    required SecretText passphrase,
-    required int minutes,
-  });
+  Future<DbSessionInfo> unlockProduction(String sessionId, {required SecretText passphrase, required int minutes});
   Future<DbSessionInfo> lockProduction(String sessionId);
 }
 

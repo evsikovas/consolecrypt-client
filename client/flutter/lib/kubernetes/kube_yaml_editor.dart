@@ -190,9 +190,9 @@ class _KubeYamlEditorState extends ConsumerState<KubeYamlEditor> with SingleTick
     }
     final source = _validatedSource;
     if (!_current || _busy || !_canWrite || source == null || source != _yaml.text || _preview == null) return;
-    final approved = await showTypedKubeConfirmation(
+    final approved = await showKubePassphraseConfirmation(
       context,
-      expected: widget.resource.name,
+      subject: widget.resource.name,
       title: context.l10n.kubeApplyYaml,
       message: context.l10n.kubeApplyYamlHelp,
       confirmLabel: context.l10n.kubeApplyYaml,

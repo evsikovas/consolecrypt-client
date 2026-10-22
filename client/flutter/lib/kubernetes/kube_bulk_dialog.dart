@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -6,6 +8,7 @@ import 'package:consolecrypt/kubernetes/kube_mutation_service.dart';
 import 'package:consolecrypt/kubernetes/kube_operations_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
+import 'package:consolecrypt/vault/vault_passphrase_confirmation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -27,9 +30,9 @@ class KubeBulkDialog extends ConsumerStatefulWidget {
   ConsumerState<KubeBulkDialog> createState() => _KubeBulkDialogState();
 }
 
-class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> {
+class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> with VaultPassphraseCheck<KubeBulkDialog> {
   late final KubeScope _scope = ref.read(kubeScopeProvider);
-  final _confirm = TextEditingController(), _replicas = TextEditingController(text: '1');
+  final _replicas = TextEditingController(text: '1');
   String _action = 'delete';
   final _completed = <String>{};
   String? _failed;
@@ -43,17 +46,17 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> {
       widget.kind.group == 'apps' && const ['Deployment', 'StatefulSet', 'DaemonSet'].contains(widget.kind.kind);
   @override
   void dispose() {
-    _confirm.dispose();
     _replicas.dispose();
     super.dispose();
   }
 
   Future<void> _run() async {
-    if (!_canWrite || _busy || _confirm.text != widget.contextName || widget.rows.length > 100) {
+    if (!_canWrite || _busy || passphraseBusy || !passphraseEntered || widget.rows.length > 100) {
       return;
     }
     final replicas = int.tryParse(_replicas.text);
     if (_action == 'scale' && (replicas == null || replicas < 0 || replicas > 1000000)) return;
+    if (!await checkPassphrase() || !_canWrite || _busy) return;
     setState(() {
       _busy = true;
       _failed = null;
@@ -97,7 +100,7 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> {
     ref.listen(kubeScopeProvider, (_, next) {
       if (identical(_scope, next)) return;
       _cancel = true;
-      _confirm.clear();
+      passphrase.clear();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final route = ModalRoute.of(context);
@@ -156,12 +159,11 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> {
                     ),
                     Text('${_completed.length}/${widget.rows.length}'),
                     if (_failed != null) Text(_failed!),
-                    TextField(
+                    SelectableText(widget.contextName, style: GlassTokens.of(context).typography.mono),
+                    passphraseField(
                       key: const ValueKey('kube-bulk-confirm'),
-                      controller: _confirm,
                       enabled: !_busy,
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(labelText: '${l.kubeConfirmName} · ${widget.contextName}'),
+                      onSubmitted: (_) => unawaited(_run()),
                     ),
                     if (_busy) const LinearProgressIndicator(),
                   ],
@@ -170,10 +172,11 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> {
         primaryAction: GlassButton.destructive(
           key: const ValueKey('kube-bulk-run'),
           label: l.commonContinue,
+          busy: passphraseBusy,
           onPressed:
-              !_canWrite || _busy || _confirm.text != widget.contextName || _completed.length == widget.rows.length
+              !_canWrite || _busy || passphraseBusy || !passphraseEntered || _completed.length == widget.rows.length
               ? null
-              : _run,
+              : () => unawaited(_run()),
         ),
         secondaryActions: [
           GlassButton(

@@ -10,6 +10,7 @@ import 'package:consolecrypt/kubernetes/kube_helm_cli_service.dart';
 import 'package:consolecrypt/kubernetes/kube_insights_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
+import 'package:consolecrypt/vault/vault_passphrase_confirmation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -22,9 +23,10 @@ class KubeHelmRollbackDialog extends ConsumerStatefulWidget {
   ConsumerState<KubeHelmRollbackDialog> createState() => _KubeHelmRollbackDialogState();
 }
 
-class _KubeHelmRollbackDialogState extends ConsumerState<KubeHelmRollbackDialog> {
+class _KubeHelmRollbackDialogState extends ConsumerState<KubeHelmRollbackDialog>
+    with VaultPassphraseCheck<KubeHelmRollbackDialog> {
   late final KubeScope _scope = ref.read(kubeScopeProvider);
-  final _path = TextEditingController(), _confirm = TextEditingController();
+  final _path = TextEditingController();
   HelmRollbackReview? _review;
   FluxCliOutput? _output;
   bool _busy = false, _failed = false;
@@ -41,7 +43,6 @@ class _KubeHelmRollbackDialogState extends ConsumerState<KubeHelmRollbackDialog>
     _discard();
     _output?.dispose();
     _path.dispose();
-    _confirm.dispose();
     super.dispose();
   }
 
@@ -72,21 +73,23 @@ class _KubeHelmRollbackDialogState extends ConsumerState<KubeHelmRollbackDialog>
     }
   }
 
+  bool _reviewUsable(HelmRollbackReview? review) =>
+      _canWrite &&
+      !_busy &&
+      review != null &&
+      identical(review, _review) &&
+      !review.expiresAt.isBefore(DateTime.now().toUtc());
+
   Future<void> _apply() async {
     final review = _review;
-    if (!_canWrite ||
-        _busy ||
-        review == null ||
-        review.expiresAt.isBefore(DateTime.now().toUtc()) ||
-        _confirm.text != review.release) {
-      return;
-    }
+    if (!_reviewUsable(review) || !passphraseEntered || passphraseBusy) return;
+    if (!await checkPassphrase() || !_reviewUsable(review)) return;
     setState(() {
       _busy = true;
       _failed = false;
     });
     try {
-      final output = await widget.service.approveHelmRollback(review.ticket);
+      final output = await widget.service.approveHelmRollback(review!.ticket);
       if (!_current) {
         output.dispose();
         return;
@@ -111,7 +114,7 @@ class _KubeHelmRollbackDialogState extends ConsumerState<KubeHelmRollbackDialog>
       _discard();
       _output?.dispose();
       _output = null;
-      _confirm.clear();
+      passphrase.clear();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final route = ModalRoute.of(context);
@@ -151,15 +154,11 @@ class _KubeHelmRollbackDialogState extends ConsumerState<KubeHelmRollbackDialog>
                         // l10n-ignore: Reviewed executable path, SHA-256 digest, revision numbers and exact JSON argv.
                         /* l10n-ignore: Reviewed executable path, SHA-256 digest, revision numbers and exact JSON argv. */ '${review.path}\nSHA-256: ${review.sha256}\n${review.currentRevision} → ${review.revision}\n${jsonEncode(review.arguments)}',
                       ),
-                      TextField(
-                        key: const ValueKey('kube-helm-rollback-name'),
-                        controller: _confirm,
+                      const SizedBox(height: GlassSpacing.s12),
+                      passphraseField(
+                        key: const ValueKey('kube-helm-rollback-passphrase'),
                         enabled: !_busy,
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        enableIMEPersonalizedLearning: false,
-                        decoration: InputDecoration(labelText: review.release),
-                        onChanged: (_) => setState(() {}),
+                        onSubmitted: (_) => unawaited(_apply()),
                       ),
                     ],
                     if (_busy) const LinearProgressIndicator(),
@@ -180,7 +179,8 @@ class _KubeHelmRollbackDialogState extends ConsumerState<KubeHelmRollbackDialog>
           : GlassButton.destructive(
               key: const ValueKey('kube-helm-rollback-apply'),
               label: l.kubeHelmRollback,
-              onPressed: _canWrite && !_busy && _confirm.text == review.release ? _apply : null,
+              busy: passphraseBusy,
+              onPressed: _canWrite && !_busy && !passphraseBusy && passphraseEntered ? () => unawaited(_apply()) : null,
             ),
       secondaryActions: _output != null
           ? const []

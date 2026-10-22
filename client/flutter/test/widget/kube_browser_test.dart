@@ -99,7 +99,7 @@ Future<ProviderContainer> _pump(
   Size size = const Size(1100, 900),
   double textScale = 1,
   TerminalService? terminalService,
-  bool unlockVault = false,
+  bool unlockVault = true,
 }) async {
   final backend = testBackend();
   addTearDown(backend.dispose);
@@ -219,17 +219,17 @@ void main() {
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
-  testWidgets('mobile workload restart swipe requires typed approval and fresh resource version', (tester) async {
+  testWidgets('mobile workload restart swipe requires passphrase approval and fresh resource version', (tester) async {
     final service = _WorkloadSwipeService();
     await _pump(tester, service, size: const Size(412, 915));
     await tester.drag(find.byKey(const ValueKey('kube-resource-swipe-demo-pod')), const Offset(-320, 0));
     await settle(tester);
-    expect(find.byKey(const ValueKey('kube-confirm-name')), findsOneWidget);
+    expect(find.byKey(const ValueKey('vault-passphrase-confirm')), findsOneWidget);
     expect(service.restarted, isEmpty);
-    expect(isEnabled(tester, 'kube-confirm-action'), isFalse);
-    await tester.enterText(find.byKey(const ValueKey('kube-confirm-name')), 'demo-pod');
+    expect(isEnabled(tester, 'vault-passphrase-confirm-action'), isFalse);
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), MockCloud.demoPassphrase);
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('kube-confirm-action')));
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.restarted, [('demo-pod', 'latest-version')]);
     expect(tester.takeException(), isNull);
@@ -262,7 +262,7 @@ void main() {
     expect(swipe, findsOneWidget);
     await tester.drag(swipe, const Offset(320, 0));
     await settle(tester);
-    expect(find.byKey(const ValueKey('kube-gitops-confirm-name')), findsOneWidget);
+    expect(find.byKey(const ValueKey('kube-gitops-confirm-passphrase')), findsOneWidget);
     expect(service.fluxActions, isEmpty);
     expect(tester.widget<GlassButton>(find.byKey(const ValueKey('kube-gitops-confirm-action'))).onPressed, isNull);
     await tester.tap(find.text('Cancel').last);
@@ -549,7 +549,7 @@ void main() {
     );
     await settle(tester);
     expect(service.deleted, isEmpty);
-    await tester.enterText(find.byKey(const ValueKey('kube-bulk-confirm')), 'demo-cluster');
+    await tester.enterText(find.byKey(const ValueKey('kube-bulk-confirm')), MockCloud.demoPassphrase);
     await settle(tester);
     await tester.tap(find.byKey(const ValueKey('kube-bulk-run')));
     await settle(tester);
@@ -583,7 +583,7 @@ void main() {
       ),
     );
     await settle(tester);
-    await tester.enterText(find.byKey(const ValueKey('kube-bulk-confirm')), 'demo-cluster');
+    await tester.enterText(find.byKey(const ValueKey('kube-bulk-confirm')), MockCloud.demoPassphrase);
     await settle(tester);
     expect(isEnabled(tester, 'kube-bulk-run'), isFalse);
     expect(service.deleted, isEmpty);
@@ -693,12 +693,16 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('kube-create-apply')));
     await settle(tester);
     expect(service.creates, hasLength(1));
-    await tester.enterText(find.byKey(const ValueKey('kube-confirm-name')), 'wrong');
+    expect(isEnabled(tester, 'vault-passphrase-confirm-action'), isFalse);
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), 'wrong');
     await settle(tester);
-    expect(isEnabled(tester, 'kube-confirm-action'), isFalse);
-    await tester.enterText(find.byKey(const ValueKey('kube-confirm-name')), 'new-pod');
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('kube-confirm-action')));
+    expect(service.creates, hasLength(1), reason: 'a wrong passphrase approves nothing');
+    expect(find.text('Wrong vault passphrase.'), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), MockCloud.demoPassphrase);
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.creates.last.dryRun, isFalse);
     expect(service.creates.last.manifest.isWiped, isTrue);
@@ -1014,7 +1018,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('debug container creation validates image and exact Pod name and sends version precondition', (
+  testWidgets('debug container creation validates image, needs the vault passphrase and sends version precondition', (
     tester,
   ) async {
     final service = _OperationsService();
@@ -1024,10 +1028,15 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('kube-operation-debug')));
     await settle(tester);
     await tester.enterText(find.byKey(const ValueKey('kube-debug-image')), 'busybox:1.36');
-    await tester.enterText(find.byKey(const ValueKey('kube-operation-confirm-name')), 'wrong');
-    await settle(tester);
     expect(isEnabled(tester, 'kube-operation-confirm'), isFalse);
-    await tester.enterText(find.byKey(const ValueKey('kube-operation-confirm-name')), 'demo-pod');
+    // The Pod name is no longer a confirmation: only the vault passphrase.
+    await tester.enterText(find.byKey(const ValueKey('kube-operation-confirm-passphrase')), 'demo-pod');
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('kube-operation-confirm')));
+    await settle(tester);
+    expect(service.debugged, isEmpty);
+    expect(find.text('Wrong vault passphrase.'), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('kube-operation-confirm-passphrase')), MockCloud.demoPassphrase);
     await settle(tester);
     await tester.tap(find.byKey(const ValueKey('kube-operation-confirm')));
     await settle(tester);
@@ -1105,7 +1114,7 @@ void main() {
     });
   }
 
-  testWidgets('Flux suspend requires an exact resource name and an audit reason', (tester) async {
+  testWidgets('Flux suspend requires the vault passphrase and an audit reason', (tester) async {
     final service = _InsightsService()..access = const KubeWriteAccess(production: false);
     await _pump(tester, service);
     await tester.tap(find.byKey(const ValueKey('kube-view-gitops')));
@@ -1119,7 +1128,7 @@ void main() {
       find.text('Flux stops applying changes from Git to the selected resources until sync is resumed (flux suspend)'),
       findsOneWidget,
     );
-    await tester.enterText(find.byKey(const ValueKey('kube-gitops-confirm-name')), 'demo-flux');
+    await tester.enterText(find.byKey(const ValueKey('kube-gitops-confirm-passphrase')), MockCloud.demoPassphrase);
     await settle(tester);
     expect(tester.widget<GlassButton>(find.byKey(const ValueKey('kube-gitops-confirm-action'))).onPressed, isNull);
     await tester.enterText(find.byKey(const ValueKey('kube-gitops-reason')), 'Maintenance window');
@@ -1170,16 +1179,16 @@ void main() {
     await _pump(tester, service, unlockVault: true);
     await tester.tap(find.byKey(const ValueKey('kube-write-window')));
     await settle(tester);
-    expect(tester.widget<GlassButton>(find.byKey(const ValueKey('kube-confirm-action'))).onPressed, isNull);
-    await tester.enterText(find.byKey(const ValueKey('kube-confirm-passphrase-input')), 'wrong passphrase');
+    expect(tester.widget<GlassButton>(find.byKey(const ValueKey('vault-passphrase-confirm-action'))).onPressed, isNull);
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), 'wrong passphrase');
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('kube-confirm-action')));
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.openedNames, isEmpty);
-    expect(find.text('Wrong passphrase.'), findsOneWidget);
-    await tester.enterText(find.byKey(const ValueKey('kube-confirm-passphrase-input')), MockCloud.demoPassphrase);
+    expect(find.text('Wrong vault passphrase.'), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), MockCloud.demoPassphrase);
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('kube-confirm-action')));
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.openedNames, ['demo-cluster']);
     expect(find.textContaining('changes allowed'), findsOneWidget);
@@ -1201,7 +1210,9 @@ void main() {
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
-  testWidgets('YAML requires server validation, reviewed source and typed confirmation before apply', (tester) async {
+  testWidgets('YAML requires server validation, reviewed source and passphrase confirmation before apply', (
+    tester,
+  ) async {
     final service = _MutationService()..access = const KubeWriteAccess(production: false);
     await _pump(tester, service);
     await tester.tap(find.byKey(const ValueKey('kube-resource-demo-pod')));
@@ -1220,9 +1231,9 @@ void main() {
     expect(find.byKey(const ValueKey('kube-yaml-diff')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('kube-yaml-apply')));
     await settle(tester);
-    await tester.enterText(find.byKey(const ValueKey('kube-confirm-name')), 'demo-pod');
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), MockCloud.demoPassphrase);
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('kube-confirm-action')));
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.applies.map((a) => a.dryRun), [true, false]);
     expect(service.applies.last.manifest.isWiped, isTrue);
@@ -1269,9 +1280,9 @@ void main() {
     service.access = const KubeWriteAccess(production: true);
     container.invalidate(kubeWriteAccessProvider);
     await settle(tester);
-    await tester.enterText(find.byKey(const ValueKey('kube-confirm-name')), 'demo-pod');
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), MockCloud.demoPassphrase);
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('kube-confirm-action')));
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.applies.map((a) => a.dryRun), [true]);
     expect(tester.widget<GlassButton>(find.byKey(const ValueKey('kube-yaml-apply'))).onPressed, isNull);
@@ -1286,9 +1297,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('kube-delete-resource')));
     await settle(tester);
     expect(service.deleted, isEmpty);
-    await tester.enterText(find.byKey(const ValueKey('kube-confirm-name')), 'demo-pod');
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), MockCloud.demoPassphrase);
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('kube-confirm-action')));
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.deleted.single, (name: 'demo-pod', uid: 'demo-pod-uid', version: '10'));
     expect(find.byKey(const ValueKey('kube-resource-details')), findsNothing);
