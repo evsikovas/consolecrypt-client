@@ -112,6 +112,47 @@ final class RustProfileService implements ProfileService {
   }
 
   @override
+  Future<Profile> createEnterpriseProfile({
+    required Uri serverUrl,
+    required EnterpriseSignIn signIn,
+    required String deviceName,
+    String? name,
+  }) async {
+    final display = (name ?? '').trim().isEmpty ? null : name!.trim();
+    final String json;
+    switch (signIn) {
+      case LdapSignIn(:final login, :final password):
+        json = await withSecret(
+          password,
+          (pw) => guard(
+            () => rs_account.profilesCreateSyncedLdap(
+              displayName: display,
+              serverUrl: serverUrl.toString(),
+              login: login.trim(),
+              password: pw,
+            ),
+          ),
+        );
+      case OidcSignIn(:final ticket, :final callbackUrl):
+        final result = decodeObject(
+          await guard(() => rs_account.enterpriseOidcComplete(ticket: ticket, callbackUrl: callbackUrl)),
+        );
+        json = encodeJson(result['account']! as Map);
+    }
+    final account = decodeObject(json);
+    final info = (account['profile']! as Map).cast<String, Object?>();
+    final id = info['id']! as String;
+    _hub
+      ..draftProfile = null
+      ..signedOut.remove(id)
+      ..userIds[id] = account['user_id'] as String? ?? ''
+      ..remoteVaults = [for (final v in account['vaults'] as List? ?? const []) (v as Map).cast<String, Object?>()];
+    await _hub.clearAccountDisabled(id);
+    await _hub.refreshState();
+    return profileFromJson(info);
+  }
+
+  @override
   Future<void> switchTo(ProfileId id) async {
     if (_hub.draftProfile?.id == id) return;
     _hub.draftProfile = null;
@@ -142,6 +183,9 @@ final class RustProfileService implements ProfileService {
     }
     await guard(() => rs_prof.profilesRemove(profileId: id.value));
     await _hub.setKitPending(id.value, pending: false);
+    await _hub.clearAccountDisabled(id.value);
+    final hints = _hub.signInHints.value;
+    if (hints.forProfile(id) != null) await _hub.saveSignInHints(hints.forgetProfile(id));
     await _hub.storeSet('backup_schedule:${id.value}', null);
     await _hub.storeSet('recent_backups:${id.value}', null);
     await _hub.refreshState();
@@ -187,21 +231,145 @@ final class RustAuthService implements AuthService {
         reason: AppErrorReason.accountMismatch,
       );
     }
-    await withSecret(password, (pw) async {
-      try {
-        await guard(() => rs_sync.syncReauthenticate(password: pw, allowNewDeviceIdentity: false));
-      } on AppException catch (e) {
-        if (e.code != AppErrorCode.deviceRevoked) rethrow;
-        // The identity was revoked / taken: register a new one (the device
-        // must be approved again for the vault).
-        await guard(() => rs_sync.syncReauthenticate(password: pw, allowNewDeviceIdentity: true));
-      }
-    });
-    _hub.signedOut.remove(active['id']);
+    await _disabledAware(
+      () => withSecret(password, (pw) async {
+        try {
+          await guard(() => rs_sync.syncReauthenticate(password: pw, allowNewDeviceIdentity: false));
+        } on AppException catch (e) {
+          if (e.code != AppErrorCode.deviceRevoked) rethrow;
+          // The identity was revoked / taken: register a new one (the device
+          // must be approved again for the vault).
+          await guard(() => rs_sync.syncReauthenticate(password: pw, allowNewDeviceIdentity: true));
+        }
+      }),
+    );
+    return _signedIn(active['id']! as String);
+  }
+
+  Future<AccountSession> _signedIn(String id) async {
+    _hub.signedOut.remove(id);
+    await _hub.clearAccountDisabled(id);
     await _hub.refreshState();
     final session = _hub.authState.value.session;
     if (session == null) throw const AppException(AppErrorCode.internal, 'Signed in, but no session');
     return session;
+  }
+
+  /// `account_disabled` while signing the active profile in: lock it and
+  /// show "Access disabled by the administrator".
+  Future<T> _disabledAware<T>(Future<T> Function() call) async {
+    try {
+      return await call();
+    } on AppException catch (e) {
+      if (e.code == AppErrorCode.accountDisabled) await _hub.markAccountDisabled();
+      rethrow;
+    }
+  }
+
+  Json? _activeSynced() {
+    final active = _hub.activeInfo;
+    if (active == null || active['kind'] != 'synced') {
+      throw const AppException(
+        AppErrorCode.unsupported,
+        'Local profiles have no account', // l10n-ignore: diagnostic (UI renders code/reason)
+        reason: AppErrorReason.localProfileNoAccount,
+      );
+    }
+    return active;
+  }
+
+  @override
+  Future<OidcChallenge> beginOidc({
+    required Uri serverUrl,
+    required EnterpriseSignInPurpose purpose,
+    String? loginHint,
+    String? displayName,
+    bool allowNewDeviceIdentity = false,
+  }) async => oidcChallengeFromJson(
+    decodeObject(
+      await guard(
+        () => rs_account.enterpriseOidcBegin(
+          serverUrl: serverUrl.toString(),
+          purpose: purpose.wireName,
+          loginHint: loginHint,
+          displayName: displayName,
+          allowNewDeviceIdentity: allowNewDeviceIdentity,
+        ),
+      ),
+    ),
+  );
+
+  @override
+  Future<void> cancelOidc(String ticket) => guard(() => rs_account.enterpriseOidcCancel(ticket: ticket));
+
+  @override
+  Future<AccountSession> signInEnterprise(EnterpriseSignIn signIn) async {
+    final Json active;
+    try {
+      active = _activeSynced()!;
+    } on AppException {
+      if (signIn case LdapSignIn(:final password)) password.wipe();
+      rethrow;
+    }
+    switch (signIn) {
+      case LdapSignIn(:final login, :final password):
+        await _disabledAware(
+          () => withSecret(password, (pw) async {
+            try {
+              await guard(
+                () =>
+                    rs_account.syncReauthenticateLdap(login: login.trim(), password: pw, allowNewDeviceIdentity: false),
+              );
+            } on AppException catch (e) {
+              if (e.code != AppErrorCode.deviceRevoked) rethrow;
+              await guard(
+                () =>
+                    rs_account.syncReauthenticateLdap(login: login.trim(), password: pw, allowNewDeviceIdentity: true),
+              );
+            }
+          }),
+        );
+      case OidcSignIn(:final ticket, :final callbackUrl):
+        await _disabledAware(
+          () => guard(() => rs_account.enterpriseOidcComplete(ticket: ticket, callbackUrl: callbackUrl)),
+        );
+    }
+    return _signedIn(active['id']! as String);
+  }
+
+  @override
+  Stream<SignInHints> watchSignInHints() => _hub.signInHints.stream;
+
+  @override
+  SignInHints get currentSignInHints => _hub.signInHints.value;
+
+  @override
+  Future<void> rememberSignIn({
+    required Uri serverUrl,
+    required SignInMethod method,
+    String? displayName,
+    String? login,
+    ProfileId? profileId,
+  }) => _hub.saveSignInHints(
+    _hub.signInHints.value.remember(
+      SignInHint(
+        serverUrl: serverUrl,
+        method: method,
+        displayName: displayName,
+        login: (login ?? '').trim().isEmpty ? null : login!.trim(),
+        at: DateTime.now().toUtc(),
+      ),
+      profileId: profileId,
+    ),
+  );
+
+  @override
+  Future<void> forgetSignInHint(Uri serverUrl) => _hub.saveSignInHints(_hub.signInHints.value.forgetServer(serverUrl));
+
+  @override
+  Future<void> clearAccountDisabled() async {
+    final id = _hub.activeInfo?['id'] as String?;
+    if (id != null) await _hub.clearAccountDisabled(id);
   }
 
   @override
@@ -380,7 +548,10 @@ final class RustVaultService implements VaultService {
       await _hub.refreshState();
       throw const AppException(AppErrorCode.osAuthInvalidated, 'Biometrics changed'); // l10n-ignore: diagnostic
     } on LocalAuthCancelled {
-      throw const AppException(AppErrorCode.osAuthFailed, 'OS authentication failed or was cancelled'); // l10n-ignore: diagnostic
+      throw const AppException(
+        AppErrorCode.osAuthFailed,
+        'OS authentication failed or was cancelled',
+      ); // l10n-ignore: diagnostic
     }
   }
 
@@ -423,11 +594,17 @@ final class RustVaultService implements VaultService {
         try {
           key = await LocalAuthChannel.instance.createKey(alias, reason);
         } on Exception {
-          throw const AppException(AppErrorCode.osAuthFailed, 'OS authentication failed or was cancelled'); // l10n-ignore: diagnostic
+          throw const AppException(
+            AppErrorCode.osAuthFailed,
+            'OS authentication failed or was cancelled',
+          ); // l10n-ignore: diagnostic
         }
         try {
           if (profileId != _activeProfileId) {
-            throw const AppException(AppErrorCode.cancelled, 'Profile changed during authentication'); // l10n-ignore: diagnostic
+            throw const AppException(
+              AppErrorCode.cancelled,
+              'Profile changed during authentication',
+            ); // l10n-ignore: diagnostic
           }
           final kind = switch (_hub.deviceUnlock.kind) {
             DeviceAuthKind.faceId => 'face_id',
@@ -538,7 +715,10 @@ final class RustVaultService implements VaultService {
         material.fillRange(0, material.length, 0);
       }
     } else {
-      await withSecret(newPassphrase, (p) => guard(() => rs_prof.vaultResetPassphraseWithDevice(next: p, reason: reason)));
+      await withSecret(
+        newPassphrase,
+        (p) => guard(() => rs_prof.vaultResetPassphraseWithDevice(next: p, reason: reason)),
+      );
     }
     await _afterUnlock();
   }
@@ -644,7 +824,12 @@ final class RustSyncService implements SyncService {
   @override
   Future<void> syncNow() async {
     if (_hub.activeInfo?['kind'] != 'synced') return;
-    await guard(rs_sync.syncNow);
+    try {
+      await guard(rs_sync.syncNow);
+    } on AppException catch (e) {
+      if (e.code == AppErrorCode.accountDisabled) await _hub.markAccountDisabled();
+      rethrow;
+    }
     await _hub.refreshSyncStatus();
   }
 
@@ -655,7 +840,40 @@ final class RustSyncService implements SyncService {
     required SecretText password,
     required String deviceName,
     required bool createAccount,
-  }) {
+  }) => _enable(
+    () => withSecret(
+      password,
+      (pw) => guard(
+        () => rs_sync.syncEnable(
+          serverUrl: serverUrl.toString(),
+          email: email.trim(),
+          password: pw,
+          register: createAccount,
+        ),
+      ),
+    ),
+  );
+
+  @override
+  Stream<EnableSyncProgress> enableSyncEnterprise({
+    required Uri serverUrl,
+    required EnterpriseSignIn signIn,
+    required String deviceName,
+  }) => _enable(
+    () => switch (signIn) {
+      LdapSignIn(:final login, :final password) => withSecret(
+        password,
+        (pw) =>
+            guard(() => rs_account.syncEnableLdap(serverUrl: serverUrl.toString(), login: login.trim(), password: pw)),
+      ),
+      OidcSignIn(:final ticket, :final callbackUrl) => guard(
+        () => rs_account.enterpriseOidcComplete(ticket: ticket, callbackUrl: callbackUrl),
+      ),
+    },
+  );
+
+  /// Runs an enable-sync call, turning core progress events into a stream.
+  Stream<EnableSyncProgress> _enable(Future<Object?> Function() call) {
     final out = StreamController<EnableSyncProgress>();
     void onEvent(Json e) {
       if (e['type'] != 'enable_sync_progress' || out.isClosed) return;
@@ -681,23 +899,13 @@ final class RustSyncService implements SyncService {
       out.add(const EnableSyncProgress(EnableSyncStep.authenticating));
       _hub.eventListeners.add(onEvent);
       try {
-        await withSecret(
-          password,
-          (pw) => guard(
-            () => rs_sync.syncEnable(
-              serverUrl: serverUrl.toString(),
-              email: email.trim(),
-              password: pw,
-              register: createAccount,
-            ),
-          ),
-        );
+        await call();
         final id = _hub.activeInfo?['id'] as String?;
         if (id != null) _hub.signedOut.remove(id);
         await _hub.refreshState();
         out.add(const EnableSyncProgress(EnableSyncStep.done));
       } on AppException catch (e) {
-        out.add(EnableSyncProgress(EnableSyncStep.failed, message: e.message));
+        out.add(EnableSyncProgress(EnableSyncStep.failed, message: e.message, error: e));
       } finally {
         _hub.eventListeners.remove(onEvent);
         await out.close();

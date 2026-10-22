@@ -1061,6 +1061,7 @@ pub enum SyncPhaseDto {
 pub enum SyncStopReasonDto {
     DeviceRevoked,
     ReauthRequired,
+    AccountDisabled,
     NotTrusted,
     VaultGone,
     UpgradeRequired,
@@ -1073,6 +1074,7 @@ impl From<cc_sync_core::StopReason> for SyncStopReasonDto {
         match r {
             S::DeviceRevoked => Self::DeviceRevoked,
             S::ReauthRequired => Self::ReauthRequired,
+            S::AccountDisabled => Self::AccountDisabled,
             S::NotTrusted => Self::NotTrusted,
             S::VaultGone => Self::VaultGone,
             S::UpgradeRequired => Self::UpgradeRequired,
@@ -1569,6 +1571,10 @@ pub enum AppEvent {
     },
     /// The session expired: call `reauthenticate`.
     ReauthRequired,
+    /// Enterprise sign-in: the account was disabled by the administrator /
+    /// in the IdP or directory and every session was revoked. Lock the
+    /// synced profile ("access disabled by the administrator").
+    AccountDisabled,
     /// A device was revoked (`is_self`: this installation — sync stopped;
     /// reconnecting needs a new device identity).
     DeviceRevoked {

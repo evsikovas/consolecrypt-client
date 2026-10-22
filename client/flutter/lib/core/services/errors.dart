@@ -64,6 +64,29 @@ enum AppErrorCode {
   /// attempts from new devices (`args['retry_after_seconds']`).
   envelopeRateLimited,
   sharingReconciliationRequired,
+
+  /// Enterprise sign-in (protocol 1.8): the account was disabled by the
+  /// administrator / in the IdP or directory; every session was revoked.
+  accountDisabled,
+
+  /// The server only accepts the organisation's sign-in (no account
+  /// password, registration or password reset).
+  enterpriseAuthRequired,
+
+  /// The organisation's identity is linked to another account here.
+  identityConflict,
+
+  /// The e-mail domain is not allowed on this server.
+  domainNotAllowed,
+
+  /// The identity lacks the required group / role.
+  groupRequired,
+
+  /// The organisation requires multi-factor sign-in.
+  mfaRequired,
+
+  /// The organisation's IdP / directory is unreachable (retry later).
+  idpUnavailable,
 }
 
 /// Optional refinement of an [AppErrorCode] so the UI can show a precise,
@@ -129,7 +152,16 @@ enum AppErrorReason {
   currentPasswordWrong('current_password_wrong'),
 
   /// Signing in to a synced profile with a different account.
-  accountMismatch('account_mismatch');
+  accountMismatch('account_mismatch'),
+
+  /// The browser came back with a missing or foreign `state` / code.
+  enterpriseCallbackInvalid('enterprise_callback_invalid'),
+
+  /// The browser sign-in took too long (10 minutes).
+  enterpriseSignInTimeout('enterprise_sign_in_timeout'),
+
+  /// The system browser / redirect listener could not be used.
+  enterpriseBrowserUnavailable('enterprise_browser_unavailable');
 
   const AppErrorReason(this.wireName);
 

@@ -30,4 +30,47 @@ abstract interface class AuthService {
   Future<void> requestPasswordReset({required Uri serverUrl, required String email});
 
   Future<void> changeAccountPassword({required SecretText current, required SecretText next});
+
+  // ---- enterprise sign-in (protocol 1.8) -------------------------------------------------
+
+  /// Starts a browser (OIDC) sign-in at [serverUrl]: open the returned URL in
+  /// the system browser, then finish with an [OidcSignIn] (profile creation,
+  /// [signInEnterprise] or enable-sync) or [cancelOidc].
+  Future<OidcChallenge> beginOidc({
+    required Uri serverUrl,
+    required EnterpriseSignInPurpose purpose,
+    String? loginHint,
+    String? displayName,
+    bool allowNewDeviceIdentity = false,
+  });
+
+  /// Abandons a browser sign-in (Cancel / the OS auth session was closed).
+  Future<void> cancelOidc(String ticket);
+
+  /// Re-authenticates the active synced profile with the organisation's
+  /// sign-in (LDAP password or a finished browser hand-off). Wipes the
+  /// password. A revoked device identity is replaced like [signIn] does.
+  Future<AccountSession> signInEnterprise(EnterpriseSignIn signIn);
+
+  /// Remembered sign-ins (device-local, non-secret).
+  Stream<SignInHints> watchSignInHints();
+
+  SignInHints get currentSignInHints;
+
+  /// Remembers how [serverUrl] was signed in to (and, with [profileId], how
+  /// this device signed that profile in). Never stores a password.
+  Future<void> rememberSignIn({
+    required Uri serverUrl,
+    required SignInMethod method,
+    String? displayName,
+    String? login,
+    ProfileId? profileId,
+  });
+
+  /// Forgets the remembered sign-in of [serverUrl] ("Forget").
+  Future<void> forgetSignInHint(Uri serverUrl);
+
+  /// After "Access disabled by the administrator": show the sign-in again
+  /// (the flag returns if the server still refuses the account).
+  Future<void> clearAccountDisabled();
 }

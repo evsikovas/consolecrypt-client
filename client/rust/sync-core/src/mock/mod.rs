@@ -32,6 +32,7 @@
 //! Intended for tests (this crate, other crates, `cc` CLI E2E). Methods
 //! that bind sockets panic on failure, like other test servers.
 
+mod enterprise;
 mod proxy;
 mod routes;
 mod state;
@@ -65,6 +66,9 @@ pub struct MockServerConfig {
     /// `device_registered`, report quarantine (14 days, the registering
     /// device exempt) and enforce it on revoke / `logout all`.
     pub device_protection: bool,
+    /// Protocol 1.8 `capabilities.auth` (default: standard). In enterprise
+    /// mode password register/login answer `enterprise_auth_required`.
+    pub auth: cc_protocol::meta::AuthCapability,
 }
 
 impl Default for MockServerConfig {
@@ -77,6 +81,7 @@ impl Default for MockServerConfig {
             minimum_protocol: ProtocolVersion::new(PROTOCOL_VERSION.major, 0),
             require_request_proof: false,
             device_protection: false,
+            auth: Default::default(),
         }
     }
 }
@@ -284,6 +289,26 @@ impl MockServer {
     /// what the real server would email.
     pub fn email_tokens(&self, email: &str) -> Vec<String> {
         self.shared.lock().email_tokens(email)
+    }
+
+    /// Enterprise LDAP: add a directory user (`login` is case-insensitive).
+    pub fn add_directory_user(&self, login: &str, password: &str, email: &str) {
+        self.shared.lock().enterprise.directory.insert(
+            login.trim().to_lowercase(),
+            (password.to_owned(), email.trim().to_lowercase()),
+        );
+    }
+
+    /// Enterprise OIDC: the user the mock IdP signs in (`None`: the IdP
+    /// answers `access_denied`).
+    pub fn set_oidc_user(&self, email: Option<&str>) {
+        self.shared.lock().enterprise.oidc_user = email.map(|e| e.trim().to_lowercase());
+    }
+
+    /// Disable an account (administrator / IdP): every session is revoked and
+    /// refresh answers `403 account_disabled`.
+    pub fn disable_account(&self, email: &str) {
+        self.shared.lock().disable_account(email);
     }
 
     /// Account id of an email.

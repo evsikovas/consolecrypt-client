@@ -13356,5 +13356,294 @@
         "type": "int"
       }
     }
+  },
+  "loginSsoButton": "Sign in with {name}",
+  "@loginSsoButton": {
+    "description": "Enterprise OIDC sign-in button; name = the server's display name for the organisation's sign-in.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "loginSsoButtonDefault": "Sign in with SSO",
+  "@loginSsoButtonDefault": {
+    "description": "Enterprise OIDC sign-in button when the server gives no display name."
+  },
+  "loginSsoEmailLabel": "E-mail (optional)",
+  "@loginSsoEmailLabel": {
+    "description": "Optional e-mail field passed to the organisation's sign-in page as a login hint."
+  },
+  "loginSsoEmailHelper": "Pre-filled on your organisation's sign-in page.",
+  "@loginSsoEmailHelper": {
+    "description": "Helper under the optional e-mail (login hint) field."
+  },
+  "loginSsoWaiting": "Finish signing in in the browser…",
+  "@loginSsoWaiting": {
+    "description": "Waiting state while the system browser shows the organisation's sign-in page."
+  },
+  "loginSsoWaitingHelp": "The browser shows your organisation's sign-in page. Return here when it says so.",
+  "@loginSsoWaitingHelp": {
+    "description": "Explanation under the browser waiting state."
+  },
+  "loginLdapLoginLabel": "Login (email or DOMAIN\\user)",
+  "@loginLdapLoginLabel": {
+    "description": "Login field for directory (Active Directory / LDAP) sign-in."
+  },
+  "loginLdapPasswordLabel": "Password",
+  "@loginLdapPasswordLabel": {
+    "description": "Directory (Active Directory / LDAP) password field."
+  },
+  "loginLdapCaption": "Your organisation's account",
+  "@loginLdapCaption": {
+    "description": "Caption above the directory login and password fields."
+  },
+  "loginLdapLoginRequired": "Enter your login",
+  "@loginLdapLoginRequired": {
+    "description": "Validation: the directory login is empty."
+  },
+  "corporateAuthNoticeTitle": "Corporate sign-in",
+  "@corporateAuthNoticeTitle": {
+    "description": "Title of the notice that a corporate authorization server is used."
+  },
+  "corporateAuthNotice": "Sign-in through the corporate authorization server {name}. Your organisation's password does not open the vault — the vault passphrase does.",
+  "@corporateAuthNotice": {
+    "description": "Notice on the sign-in screen of an enterprise server; name = the authorization server's display name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "authProviderOidc": "OIDC",
+  "@authProviderOidc": {
+    "description": "Kind of corporate authorization server: OpenID Connect identity provider."
+  },
+  "authProviderLdap": "Active Directory",
+  "@authProviderLdap": {
+    "description": "Kind of corporate authorization server: Active Directory / LDAP directory."
+  },
+  "authProviderSsoFallback": "SSO",
+  "@authProviderSsoFallback": {
+    "description": "Name of the organisation's sign-in when the server gives no display name."
+  },
+  "serverNeedsNewerApp": "This server uses a sign-in method this version does not support. Update ConsoleCrypt.",
+  "@serverNeedsNewerApp": {
+    "description": "The server advertises an unknown sign-in mode or provider."
+  },
+  "signInMethodEmail": "e-mail and password",
+  "@signInMethodEmail": {
+    "description": "Sign-in method name used in 'Last time you signed in with {method}'."
+  },
+  "signInMethodOidc": "{name} (OIDC)",
+  "@signInMethodOidc": {
+    "description": "Sign-in method name: the organisation's OIDC sign-in; name = server display name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "signInMethodLdap": "{name} (Active Directory)",
+  "@signInMethodLdap": {
+    "description": "Sign-in method name: the organisation's directory sign-in; name = server display name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "signInLastTime": "Last time you signed in with {method} as {login}",
+  "@signInLastTime": {
+    "description": "Remembered sign-in hint on the sign-in screen.",
+    "placeholders": {
+      "method": {
+        "type": "String"
+      },
+      "login": {
+        "type": "String"
+      }
+    }
+  },
+  "signInLastTimeNoLogin": "Last time you signed in with {method}",
+  "@signInLastTimeNoLogin": {
+    "description": "Remembered sign-in hint without a remembered login.",
+    "placeholders": {
+      "method": {
+        "type": "String"
+      }
+    }
+  },
+  "signInForget": "Forget",
+  "@signInForget": {
+    "description": "Button: forget the remembered sign-in method and login of this server."
+  },
+  "authModeChangedToEnterprise": "The server switched to sign-in through the corporate authorization server {name}. The previous account password is no longer used.",
+  "@authModeChangedToEnterprise": {
+    "description": "The server's sign-in mode changed from what this device remembers to corporate sign-in.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "authModeChangedToStandard": "The server switched from corporate sign-in to e-mail and account password. Use the password your administrator set for your account.",
+  "@authModeChangedToStandard": {
+    "description": "The server's sign-in mode changed from corporate sign-in back to e-mail and password."
+  },
+  "recentServersLabel": "Recent servers",
+  "@recentServersLabel": {
+    "description": "Label of the remembered sync servers under the server address field."
+  },
+  "authBadgeEmail": "Email",
+  "@authBadgeEmail": {
+    "description": "Compact badge: this server signs in with e-mail and password."
+  },
+  "authBadgeSso": "SSO: {name}",
+  "@authBadgeSso": {
+    "description": "Compact badge: this server signs in through the organisation's SSO; name = display name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "authBadgeAd": "AD",
+  "@authBadgeAd": {
+    "description": "Compact badge: this server signs in through Active Directory / LDAP."
+  },
+  "settingsAuthLabel": "Authorization",
+  "@settingsAuthLabel": {
+    "description": "Label of the row that says how the account signs in to the sync server."
+  },
+  "settingsAuthCorporate": "Corporate server — {name} ({kind})",
+  "@settingsAuthCorporate": {
+    "description": "The account signs in through a corporate authorization server; kind = OIDC or Active Directory.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsAuthStandard": "E-mail and account password",
+  "@settingsAuthStandard": {
+    "description": "The account signs in with e-mail and account password (standard server)."
+  },
+  "settingsAuthCorporateHelp": "Your organisation's authorization server checks who signs in. It never gets access to the vault: the vault passphrase stays on your devices.",
+  "@settingsAuthCorporateHelp": {
+    "description": "Explanation under the corporate authorization row in Settings."
+  },
+  "settingsAuthSignedIn": "This device signed in with {method} on {date}",
+  "@settingsAuthSignedIn": {
+    "description": "How and when this device signed in.",
+    "placeholders": {
+      "method": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsAuthSignedInAs": "This device signed in with {method} as {login} on {date}",
+  "@settingsAuthSignedInAs": {
+    "description": "How, as whom and when this device signed in.",
+    "placeholders": {
+      "method": {
+        "type": "String"
+      },
+      "login": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "devicesAuthCorporate": "Accounts on this server sign in through the corporate authorization server {name}.",
+  "@devicesAuthCorporate": {
+    "description": "Devices page notice for an enterprise server.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accountDisabledTitle": "Access disabled by the administrator",
+  "@accountDisabledTitle": {
+    "description": "Title of the screen shown when the organisation disabled the account."
+  },
+  "accountDisabledBody": "Your organisation disabled this account on {server}. Synchronisation stopped and the profile is locked. The data on this device stays encrypted.",
+  "@accountDisabledBody": {
+    "description": "Body of the account disabled screen; server = sync server address.",
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "accountDisabledSignIn": "Sign in again",
+  "@accountDisabledSignIn": {
+    "description": "Button on the account disabled screen: try signing in again (if access was restored)."
+  },
+  "accountDisabledDelete": "Delete profile from this device",
+  "@accountDisabledDelete": {
+    "description": "Button on the account disabled screen: remove the locked profile from this device."
+  },
+  "accountDisabledDeleteTitle": "Delete profile “{name}”?",
+  "@accountDisabledDeleteTitle": {
+    "description": "Confirmation title for deleting a disabled profile.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accountDisabledDeleteMessage": "The encrypted local copy is removed from this device. Nothing changes on the server.",
+  "@accountDisabledDeleteMessage": {
+    "description": "Confirmation message for deleting a disabled profile."
+  },
+  "errorAccountDisabled": "Access was disabled by the administrator.",
+  "@errorAccountDisabled": {
+    "description": "Error: the organisation disabled the account."
+  },
+  "errorEnterpriseAuthRequired": "This server only accepts your organisation's sign-in. Check the server again, or update the app.",
+  "@errorEnterpriseAuthRequired": {
+    "description": "Error: password sign-in was refused by an enterprise server."
+  },
+  "errorIdentityConflict": "Your organisation's account is already linked to another account on this server. Contact the administrator.",
+  "@errorIdentityConflict": {
+    "description": "Error: the identity is linked to another account."
+  },
+  "errorDomainNotAllowed": "Your e-mail domain is not allowed on this server.",
+  "@errorDomainNotAllowed": {
+    "description": "Error: the e-mail domain is not allowed."
+  },
+  "errorGroupRequired": "Your account is not in the group allowed to use this server. Contact the administrator.",
+  "@errorGroupRequired": {
+    "description": "Error: the identity lacks the required group or role."
+  },
+  "errorMfaRequired": "Your organisation requires sign-in with a second factor. Sign in again using it.",
+  "@errorMfaRequired": {
+    "description": "Error: multi-factor sign-in is required."
+  },
+  "errorIdpUnavailable": "Your organisation's sign-in service is unavailable. Try again later.",
+  "@errorIdpUnavailable": {
+    "description": "Error: the organisation's identity provider or directory is unreachable."
+  },
+  "errorReasonEnterpriseCallbackInvalid": "The browser returned an unexpected answer. Start signing in again.",
+  "@errorReasonEnterpriseCallbackInvalid": {
+    "description": "Error: the sign-in redirect had a wrong state or no code."
+  },
+  "errorReasonEnterpriseSignInTimeout": "Signing in took too long. Start again.",
+  "@errorReasonEnterpriseSignInTimeout": {
+    "description": "Error: the browser sign-in timed out."
+  },
+  "errorReasonEnterpriseBrowserUnavailable": "Could not open the browser for signing in.",
+  "@errorReasonEnterpriseBrowserUnavailable": {
+    "description": "Error: the system browser or the redirect listener is unavailable."
   }
 }

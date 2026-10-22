@@ -108,6 +108,11 @@ pub enum AppError {
     /// This device was revoked.
     #[error("this device has been revoked")]
     DeviceRevoked,
+    /// Enterprise sign-in (protocol 1.8): the account was disabled by the
+    /// administrator or in the IdP/directory; every session was revoked.
+    /// The app locks the synced profile; local data stays encrypted.
+    #[error("access was disabled by the administrator")]
+    AccountDisabled,
     /// The server refused this device's proof of possession at login
     /// (ADR-0006; reason = `device_proof_required` | `invalid_signature` |
     /// `stale` | `replayed`). Security-relevant: never retried without a
@@ -273,6 +278,7 @@ impl AppError {
             AppError::ReauthRequired => "reauth_required",
             AppError::NewDeviceIdentityRequired => "new_device_identity_required",
             AppError::DeviceRevoked => "device_revoked",
+            AppError::AccountDisabled => "account_disabled",
             AppError::DeviceProofRejected(_) => "device_proof_rejected",
             AppError::DeviceNotTrusted => "device_not_trusted",
             AppError::UpgradeRequired => "upgrade_required",
@@ -461,6 +467,10 @@ fn invalid_reason(field: &str, rule: &str) -> &'static str {
         "algorithm" => "unsupported_key_algorithm",
         "backup_folder" => "backup_folder_required",
         "keep_last" => "keep_at_least_one",
+        "account" if rule == "account_mismatch" => "account_mismatch",
+        "enterprise_auth" if rule == "invalid_callback" => "enterprise_callback_invalid",
+        "enterprise_auth" if rule == "timeout" => "enterprise_sign_in_timeout",
+        "enterprise_auth" if rule == "browser_unavailable" => "enterprise_browser_unavailable",
         _ => "invalid_field",
     }
 }
@@ -592,6 +602,7 @@ impl From<StopReason> for AppError {
         match r {
             StopReason::DeviceRevoked => AppError::DeviceRevoked,
             StopReason::ReauthRequired => AppError::ReauthRequired,
+            StopReason::AccountDisabled => AppError::AccountDisabled,
             StopReason::NotTrusted => AppError::DeviceNotTrusted,
             StopReason::VaultGone => AppError::not_found("vault on server", "-"),
             StopReason::UpgradeRequired => AppError::UpgradeRequired,
@@ -625,6 +636,7 @@ impl From<ApiError> for AppError {
             | ApiError::SessionExpired
             | ApiError::RefreshTokenReused => AppError::ReauthRequired,
             ApiError::DeviceRevoked => AppError::DeviceRevoked,
+            ApiError::AccountDisabled => AppError::AccountDisabled,
             ApiError::DeviceIdentityRevoked | ApiError::DeviceIdentityConflict => {
                 AppError::NewDeviceIdentityRequired
             }
@@ -644,6 +656,7 @@ impl From<ApiError> for AppError {
             ApiError::Server { status, error } => match error.code {
                 ErrorCode::InvalidCredentials => AppError::InvalidCredentials,
                 ErrorCode::DeviceRevoked => AppError::DeviceRevoked,
+                ErrorCode::AccountDisabled => AppError::AccountDisabled,
                 ErrorCode::DeviceNotTrusted => AppError::DeviceNotTrusted,
                 ErrorCode::Unauthorized | ErrorCode::RefreshTokenReused => AppError::ReauthRequired,
                 ErrorCode::AlreadyExists => {

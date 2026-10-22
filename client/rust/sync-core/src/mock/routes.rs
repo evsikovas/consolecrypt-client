@@ -46,6 +46,9 @@ pub(crate) fn router(shared: Arc<Shared>) -> Router {
         .route(paths::AUTH_REGISTER, post(register))
         .route(paths::AUTH_LOGIN, post(login))
         .route(paths::AUTH_REFRESH, post(refresh))
+        .route(paths::AUTH_OIDC_START, get(oidc_start))
+        .route(paths::AUTH_OIDC_EXCHANGE, post(oidc_exchange))
+        .route(paths::AUTH_LDAP_LOGIN, post(ldap_login))
         .route(paths::AUTH_LOGOUT, post(logout))
         .route(paths::AUTH_ME, get(me))
         .route(paths::AUTH_PASSWORD_FORGOT, post(forgot))
@@ -129,6 +132,7 @@ fn server_info(s: &Shared, upgrade_required: bool) -> ServerInfo {
         source_code_url: None,
         capabilities: cc_protocol::meta::ServerCapabilities {
             device_protection: st.cfg.device_protection,
+            auth: st.cfg.auth.clone(),
         },
     }
 }
@@ -144,7 +148,8 @@ fn client_version(headers: &HeaderMap) -> Option<Result<ProtocolVersion, ()>> {
 async fn gate(State(s): S, req: Request, next: Next) -> Response {
     let path = req.uri().path().to_owned();
     s.record(&path);
-    if path != paths::META {
+    // `/v1/meta` and the browser-opened OIDC start carry no client headers.
+    if path != paths::META && path != paths::AUTH_OIDC_START {
         let min = s.lock().cfg.minimum_protocol;
         match client_version(req.headers()) {
             None => {
@@ -268,13 +273,33 @@ async fn meta(State(s): S, headers: HeaderMap) -> Response {
 }
 
 async fn register(State(s): S, body: Bytes) -> MResult<Response> {
+    s.lock().check_password_auth_allowed()?;
     let req: RegisterRequest = parse(&body)?;
     Ok(json(StatusCode::CREATED, s.lock().register(req)?))
 }
 
 async fn login(State(s): S, body: Bytes) -> MResult<Response> {
+    s.lock().check_password_auth_allowed()?;
     let req: LoginRequest = parse(&body)?;
     Ok(json(StatusCode::OK, s.lock().login(req)?))
+}
+
+async fn oidc_start(
+    State(s): S,
+    q: Result<Query<cc_protocol::enterprise_auth::OidcStartQuery>, QueryRejection>,
+) -> MResult<Response> {
+    let location = s.lock().oidc_start(query(q)?)?;
+    Ok((StatusCode::FOUND, [(header::LOCATION, location)]).into_response())
+}
+
+async fn oidc_exchange(State(s): S, body: Bytes) -> MResult<Response> {
+    let req: cc_protocol::enterprise_auth::OidcExchangeRequest = parse(&body)?;
+    Ok(json(StatusCode::OK, s.lock().oidc_exchange(req)?))
+}
+
+async fn ldap_login(State(s): S, body: Bytes) -> MResult<Response> {
+    let req: cc_protocol::enterprise_auth::LdapLoginRequest = parse(&body)?;
+    Ok(json(StatusCode::OK, s.lock().ldap_login(req)?))
 }
 
 async fn refresh(State(s): S, body: Bytes) -> MResult<Response> {

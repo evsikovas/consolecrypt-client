@@ -137,6 +137,33 @@ final class MockSyncService implements SyncService {
     required SecretText password,
     required String deviceName,
     required bool createAccount,
+  }) => _enable(
+    serverUrl: serverUrl,
+    deviceName: deviceName,
+    authenticate: () => authenticateAccount(
+      _cloud,
+      email: email,
+      password: password,
+      createAccount: createAccount,
+      serverUrl: serverUrl,
+    ),
+  );
+
+  @override
+  Stream<EnableSyncProgress> enableSyncEnterprise({
+    required Uri serverUrl,
+    required EnterpriseSignIn signIn,
+    required String deviceName,
+  }) => _enable(
+    serverUrl: serverUrl,
+    deviceName: deviceName,
+    authenticate: () => authenticateEnterprise(_cloud, serverUrl: serverUrl, signIn: signIn),
+  );
+
+  Stream<EnableSyncProgress> _enable({
+    required Uri serverUrl,
+    required String deviceName,
+    required MockAccount Function() authenticate,
   }) async* {
     final r = _cloud.activeRecord;
     final keys = r?.vault;
@@ -148,9 +175,9 @@ final class MockSyncService implements SyncService {
     await mockDelay(_config.latency);
     final MockAccount account;
     try {
-      account = authenticateAccount(_cloud, email: email, password: password, createAccount: createAccount);
+      account = authenticate();
     } on AppException catch (e) {
-      yield EnableSyncProgress(EnableSyncStep.failed, message: e.message);
+      yield EnableSyncProgress(EnableSyncStep.failed, message: e.message, error: e);
       return;
     }
     final existing = account.vault;

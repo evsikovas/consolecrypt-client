@@ -9736,4 +9736,193 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String loginSsoButton(String name) {
+    return 'Sign in with $name';
+  }
+
+  @override
+  String get loginSsoButtonDefault => 'Sign in with SSO';
+
+  @override
+  String get loginSsoEmailLabel => 'E-mail (optional)';
+
+  @override
+  String get loginSsoEmailHelper => 'Pre-filled on your organisation\'s sign-in page.';
+
+  @override
+  String get loginSsoWaiting => 'Finish signing in in the browser…';
+
+  @override
+  String get loginSsoWaitingHelp => 'The browser shows your organisation\'s sign-in page. Return here when it says so.';
+
+  @override
+  String get loginLdapLoginLabel => 'Login (email or DOMAIN\\user)';
+
+  @override
+  String get loginLdapPasswordLabel => 'Password';
+
+  @override
+  String get loginLdapCaption => 'Your organisation\'s account';
+
+  @override
+  String get loginLdapLoginRequired => 'Enter your login';
+
+  @override
+  String get corporateAuthNoticeTitle => 'Corporate sign-in';
+
+  @override
+  String corporateAuthNotice(String name) {
+    return 'Sign-in through the corporate authorization server $name. Your organisation\'s password does not open the vault — the vault passphrase does.';
+  }
+
+  @override
+  String get authProviderOidc => 'OIDC';
+
+  @override
+  String get authProviderLdap => 'Active Directory';
+
+  @override
+  String get authProviderSsoFallback => 'SSO';
+
+  @override
+  String get serverNeedsNewerApp =>
+      'This server uses a sign-in method this version does not support. Update ConsoleCrypt.';
+
+  @override
+  String get signInMethodEmail => 'e-mail and password';
+
+  @override
+  String signInMethodOidc(String name) {
+    return '$name (OIDC)';
+  }
+
+  @override
+  String signInMethodLdap(String name) {
+    return '$name (Active Directory)';
+  }
+
+  @override
+  String signInLastTime(String method, String login) {
+    return 'Last time you signed in with $method as $login';
+  }
+
+  @override
+  String signInLastTimeNoLogin(String method) {
+    return 'Last time you signed in with $method';
+  }
+
+  @override
+  String get signInForget => 'Forget';
+
+  @override
+  String authModeChangedToEnterprise(String name) {
+    return 'The server switched to sign-in through the corporate authorization server $name. The previous account password is no longer used.';
+  }
+
+  @override
+  String get authModeChangedToStandard =>
+      'The server switched from corporate sign-in to e-mail and account password. Use the password your administrator set for your account.';
+
+  @override
+  String get recentServersLabel => 'Recent servers';
+
+  @override
+  String get authBadgeEmail => 'Email';
+
+  @override
+  String authBadgeSso(String name) {
+    return 'SSO: $name';
+  }
+
+  @override
+  String get authBadgeAd => 'AD';
+
+  @override
+  String get settingsAuthLabel => 'Authorization';
+
+  @override
+  String settingsAuthCorporate(String name, String kind) {
+    return 'Corporate server — $name ($kind)';
+  }
+
+  @override
+  String get settingsAuthStandard => 'E-mail and account password';
+
+  @override
+  String get settingsAuthCorporateHelp =>
+      'Your organisation\'s authorization server checks who signs in. It never gets access to the vault: the vault passphrase stays on your devices.';
+
+  @override
+  String settingsAuthSignedIn(String method, String date) {
+    return 'This device signed in with $method on $date';
+  }
+
+  @override
+  String settingsAuthSignedInAs(String method, String login, String date) {
+    return 'This device signed in with $method as $login on $date';
+  }
+
+  @override
+  String devicesAuthCorporate(String name) {
+    return 'Accounts on this server sign in through the corporate authorization server $name.';
+  }
+
+  @override
+  String get accountDisabledTitle => 'Access disabled by the administrator';
+
+  @override
+  String accountDisabledBody(String server) {
+    return 'Your organisation disabled this account on $server. Synchronisation stopped and the profile is locked. The data on this device stays encrypted.';
+  }
+
+  @override
+  String get accountDisabledSignIn => 'Sign in again';
+
+  @override
+  String get accountDisabledDelete => 'Delete profile from this device';
+
+  @override
+  String accountDisabledDeleteTitle(String name) {
+    return 'Delete profile “$name”?';
+  }
+
+  @override
+  String get accountDisabledDeleteMessage =>
+      'The encrypted local copy is removed from this device. Nothing changes on the server.';
+
+  @override
+  String get errorAccountDisabled => 'Access was disabled by the administrator.';
+
+  @override
+  String get errorEnterpriseAuthRequired =>
+      'This server only accepts your organisation\'s sign-in. Check the server again, or update the app.';
+
+  @override
+  String get errorIdentityConflict =>
+      'Your organisation\'s account is already linked to another account on this server. Contact the administrator.';
+
+  @override
+  String get errorDomainNotAllowed => 'Your e-mail domain is not allowed on this server.';
+
+  @override
+  String get errorGroupRequired =>
+      'Your account is not in the group allowed to use this server. Contact the administrator.';
+
+  @override
+  String get errorMfaRequired => 'Your organisation requires sign-in with a second factor. Sign in again using it.';
+
+  @override
+  String get errorIdpUnavailable => 'Your organisation\'s sign-in service is unavailable. Try again later.';
+
+  @override
+  String get errorReasonEnterpriseCallbackInvalid =>
+      'The browser returned an unexpected answer. Start signing in again.';
+
+  @override
+  String get errorReasonEnterpriseSignInTimeout => 'Signing in took too long. Start again.';
+
+  @override
+  String get errorReasonEnterpriseBrowserUnavailable => 'Could not open the browser for signing in.';
 }
