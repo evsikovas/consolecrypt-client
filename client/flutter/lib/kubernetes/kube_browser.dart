@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/shell.dart' show SidebarCollapsed, sidebarCollapsedProvider;
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
@@ -46,6 +47,8 @@ import 'package:consolecrypt/kubernetes/kube_view_preferences_service.dart';
 import 'package:consolecrypt/kubernetes/kube_workspace_content.dart';
 import 'package:consolecrypt/kubernetes/kube_workspace_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
+import 'package:consolecrypt/notes/note_models.dart';
+import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -71,7 +74,10 @@ class KubeBrowser extends ConsumerStatefulWidget {
   ConsumerState<KubeBrowser> createState() => _KubeBrowserState();
 }
 
-class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingObserver {
+class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingObserver, NoteContextPublisher {
+  @override
+  ShellBranch get noteBranch => ShellBranch.kubernetes;
+
   static const _maxRows = 10000;
   static const _maxSnapshotPages = 100;
   final _selector = TextEditingController();
@@ -1657,6 +1663,26 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     final width = MediaQuery.sizeOf(context).width;
     final rightPanel = _panelRight && width >= 1100;
     final inspected = _inspected;
+    publishNoteContext(
+      inspected == null
+          ? NoteContext(
+              target: NoteObjectTarget(NoteObjectKind.kubeContext, widget.connection.id),
+              label: widget.connection.name,
+              icon: Icons.anchor_rounded,
+            )
+          : NoteContext(
+              target: NoteKubeTarget(
+                contextId: widget.connection.id,
+                group: inspected.api.group,
+                resource: inspected.api.resource,
+                kind: inspected.api.kind,
+                namespace: inspected.namespace,
+                name: inspected.name,
+              ),
+              label: noteKubeLabel(inspected.api.kind, inspected.namespace, inspected.name),
+              icon: Icons.anchor_rounded,
+            ),
+    );
     final main = LayoutBuilder(
       builder: (context, box) {
         // The table keeps at least ~55 % of the column: an open terminal or AI

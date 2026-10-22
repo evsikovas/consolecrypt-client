@@ -559,6 +559,168 @@ class AppLocalizationsRu extends AppLocalizations {
   String get navSnippets => 'Сниппеты';
 
   @override
+  String get navNotes => 'Заметки';
+
+  @override
+  String get notesThisObject => 'Объект';
+
+  @override
+  String get notesAll => 'Все';
+
+  @override
+  String get notesTasks => 'Задачи';
+
+  @override
+  String get notesSearchHint => 'Поиск по заметкам';
+
+  @override
+  String get notesNew => 'Новая заметка';
+
+  @override
+  String get notesEmptyTitle => 'Заметок пока нет';
+
+  @override
+  String get notesEmptyMessage =>
+      'Записывайте задачи, напоминания и всё, что важно помнить о серверах, базах и контейнерах.';
+
+  @override
+  String notesEmptyObject(String name) {
+    return 'О «$name» пока ничего нет';
+  }
+
+  @override
+  String get notesNothingFound => 'Ничего не найдено';
+
+  @override
+  String notesCompleted(int count) {
+    return 'Выполненные ($count)';
+  }
+
+  @override
+  String get notesTitle => 'Заголовок';
+
+  @override
+  String get notesBody => 'Текст (Markdown)';
+
+  @override
+  String get notesBodyEmpty => 'Текста нет';
+
+  @override
+  String get notesEdit => 'Правка';
+
+  @override
+  String get notesPreview => 'Просмотр';
+
+  @override
+  String get notesTags => 'Метки через запятую';
+
+  @override
+  String get notesTask => 'Задача';
+
+  @override
+  String get notesDue => 'Срок';
+
+  @override
+  String get notesDone => 'Выполнено';
+
+  @override
+  String get notesReminder => 'Напоминание';
+
+  @override
+  String get notesAttachedTo => 'Привязка';
+
+  @override
+  String get notesNoTarget => 'Без привязки';
+
+  @override
+  String get notesTargetMissing => 'Объект не найден';
+
+  @override
+  String get notesWhenNone => 'Нет';
+
+  @override
+  String get notesWhenInHour => 'Через час';
+
+  @override
+  String get notesWhenThisEvening => 'Сегодня в 18:00';
+
+  @override
+  String get notesWhenTomorrow => 'Завтра в 09:00';
+
+  @override
+  String get notesWhenNextWeek => 'Через неделю';
+
+  @override
+  String get notesWhenCustom => 'Дата и время…';
+
+  @override
+  String get notesWhenCustomHint => 'ГГГГ-ММ-ДД ЧЧ:ММ';
+
+  @override
+  String get notesInvalidTime => 'Введите дату в виде ГГГГ-ММ-ДД ЧЧ:ММ';
+
+  @override
+  String notesOverdueAt(String when) {
+    return 'Просрочено · $when';
+  }
+
+  @override
+  String get notesPin => 'Закрепить';
+
+  @override
+  String get notesUnpin => 'Открепить';
+
+  @override
+  String get notesSnooze => 'Напомнить через час';
+
+  @override
+  String notesAttachHere(String name) {
+    return 'Привязать к «$name»';
+  }
+
+  @override
+  String get notesDetach => 'Отвязать';
+
+  @override
+  String get notesDelete => 'Удалить заметку';
+
+  @override
+  String notesDeleteMessage(String title) {
+    return 'Заметка «$title» будет удалена на всех ваших устройствах.';
+  }
+
+  @override
+  String get notesMarkDone => 'Отметить выполненной';
+
+  @override
+  String get notesMarkOpen => 'Снять отметку о выполнении';
+
+  @override
+  String get notesBack => 'К списку заметок';
+
+  @override
+  String get notesSaveFailed => 'Не сохранено';
+
+  @override
+  String notesReminderToast(String title) {
+    return 'Напоминание: $title';
+  }
+
+  @override
+  String get notesOpen => 'Открыть';
+
+  @override
+  String get notesHostNotesTitle => 'Заметка из карточки хоста';
+
+  @override
+  String get notesHostNotesMove => 'Перенести в заметки';
+
+  @override
+  String notesFromHostTitle(String name) {
+    return 'Заметки: $name';
+  }
+
+  @override
   String get navAiChat => 'ИИ-чат';
 
   @override

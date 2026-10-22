@@ -514,6 +514,167 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navSnippets => 'Snippets';
 
   @override
+  String get navNotes => 'Notes';
+
+  @override
+  String get notesThisObject => 'Object';
+
+  @override
+  String get notesAll => 'All';
+
+  @override
+  String get notesTasks => 'Tasks';
+
+  @override
+  String get notesSearchHint => 'Search notes';
+
+  @override
+  String get notesNew => 'New note';
+
+  @override
+  String get notesEmptyTitle => 'No notes yet';
+
+  @override
+  String get notesEmptyMessage => 'Keep tasks, reminders and what to remember about servers, databases and containers.';
+
+  @override
+  String notesEmptyObject(String name) {
+    return 'Nothing about $name yet';
+  }
+
+  @override
+  String get notesNothingFound => 'Nothing found';
+
+  @override
+  String notesCompleted(int count) {
+    return 'Completed ($count)';
+  }
+
+  @override
+  String get notesTitle => 'Title';
+
+  @override
+  String get notesBody => 'Text (Markdown)';
+
+  @override
+  String get notesBodyEmpty => 'No text';
+
+  @override
+  String get notesEdit => 'Edit';
+
+  @override
+  String get notesPreview => 'Preview';
+
+  @override
+  String get notesTags => 'Tags, comma-separated';
+
+  @override
+  String get notesTask => 'Task';
+
+  @override
+  String get notesDue => 'Due';
+
+  @override
+  String get notesDone => 'Done';
+
+  @override
+  String get notesReminder => 'Reminder';
+
+  @override
+  String get notesAttachedTo => 'Attached to';
+
+  @override
+  String get notesNoTarget => 'Not attached';
+
+  @override
+  String get notesTargetMissing => 'Object not found';
+
+  @override
+  String get notesWhenNone => 'None';
+
+  @override
+  String get notesWhenInHour => 'In an hour';
+
+  @override
+  String get notesWhenThisEvening => 'Today at 18:00';
+
+  @override
+  String get notesWhenTomorrow => 'Tomorrow at 09:00';
+
+  @override
+  String get notesWhenNextWeek => 'In a week';
+
+  @override
+  String get notesWhenCustom => 'Date and time…';
+
+  @override
+  String get notesWhenCustomHint => 'YYYY-MM-DD HH:MM';
+
+  @override
+  String get notesInvalidTime => 'Enter the date as YYYY-MM-DD HH:MM';
+
+  @override
+  String notesOverdueAt(String when) {
+    return 'Overdue · $when';
+  }
+
+  @override
+  String get notesPin => 'Pin';
+
+  @override
+  String get notesUnpin => 'Unpin';
+
+  @override
+  String get notesSnooze => 'Remind in an hour';
+
+  @override
+  String notesAttachHere(String name) {
+    return 'Attach to $name';
+  }
+
+  @override
+  String get notesDetach => 'Detach';
+
+  @override
+  String get notesDelete => 'Delete note';
+
+  @override
+  String notesDeleteMessage(String title) {
+    return '“$title” will be deleted on all your devices.';
+  }
+
+  @override
+  String get notesMarkDone => 'Mark done';
+
+  @override
+  String get notesMarkOpen => 'Mark not done';
+
+  @override
+  String get notesBack => 'Back to notes';
+
+  @override
+  String get notesSaveFailed => 'Not saved';
+
+  @override
+  String notesReminderToast(String title) {
+    return 'Reminder: $title';
+  }
+
+  @override
+  String get notesOpen => 'Open';
+
+  @override
+  String get notesHostNotesTitle => 'Notes from the host card';
+
+  @override
+  String get notesHostNotesMove => 'Move to notes';
+
+  @override
+  String notesFromHostTitle(String name) {
+    return 'Notes: $name';
+  }
+
+  @override
   String get navAiChat => 'AI Chat';
 
   @override

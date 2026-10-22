@@ -1022,6 +1022,300 @@ abstract class AppLocalizations {
   /// **'Snippets'**
   String get navSnippets;
 
+  /// Right workspace panel tool: notes, tasks and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get navNotes;
+
+  /// Notes panel filter: notes attached to the object open in the current section.
+  ///
+  /// In en, this message translates to:
+  /// **'Object'**
+  String get notesThisObject;
+
+  /// Notes panel filter: every note.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get notesAll;
+
+  /// Notes panel filter: tasks only.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get notesTasks;
+
+  /// Notes panel search field placeholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search notes'**
+  String get notesSearchHint;
+
+  /// Notes panel: create a note.
+  ///
+  /// In en, this message translates to:
+  /// **'New note'**
+  String get notesNew;
+
+  /// Notes panel empty state title.
+  ///
+  /// In en, this message translates to:
+  /// **'No notes yet'**
+  String get notesEmptyTitle;
+
+  /// Notes panel empty state message.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep tasks, reminders and what to remember about servers, databases and containers.'**
+  String get notesEmptyMessage;
+
+  /// Notes panel empty state for the current object.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing about {name} yet'**
+  String notesEmptyObject(String name);
+
+  /// Notes panel: search has no results.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing found'**
+  String get notesNothingFound;
+
+  /// Notes panel: collapsed section of completed tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed ({count})'**
+  String notesCompleted(int count);
+
+  /// Note editor: title field.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get notesTitle;
+
+  /// Note editor: body field.
+  ///
+  /// In en, this message translates to:
+  /// **'Text (Markdown)'**
+  String get notesBody;
+
+  /// Note editor preview of an empty body.
+  ///
+  /// In en, this message translates to:
+  /// **'No text'**
+  String get notesBodyEmpty;
+
+  /// Note editor: edit mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get notesEdit;
+
+  /// Note editor: rendered Markdown mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get notesPreview;
+
+  /// Note editor: tags field.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags, comma-separated'**
+  String get notesTags;
+
+  /// Note editor: switch that makes the note a task.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get notesTask;
+
+  /// Note editor: task due time.
+  ///
+  /// In en, this message translates to:
+  /// **'Due'**
+  String get notesDue;
+
+  /// Note editor: task completed switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get notesDone;
+
+  /// Note editor: reminder time.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder'**
+  String get notesReminder;
+
+  /// Note editor: what the note is about.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached to'**
+  String get notesAttachedTo;
+
+  /// Note editor: the note is not about any object.
+  ///
+  /// In en, this message translates to:
+  /// **'Not attached'**
+  String get notesNoTarget;
+
+  /// Note attached to an object that no longer exists.
+  ///
+  /// In en, this message translates to:
+  /// **'Object not found'**
+  String get notesTargetMissing;
+
+  /// Due/reminder choice: no time.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get notesWhenNone;
+
+  /// Due/reminder choice.
+  ///
+  /// In en, this message translates to:
+  /// **'In an hour'**
+  String get notesWhenInHour;
+
+  /// Due/reminder choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Today at 18:00'**
+  String get notesWhenThisEvening;
+
+  /// Due/reminder choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow at 09:00'**
+  String get notesWhenTomorrow;
+
+  /// Due/reminder choice.
+  ///
+  /// In en, this message translates to:
+  /// **'In a week'**
+  String get notesWhenNextWeek;
+
+  /// Due/reminder choice: type a date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'Date and time…'**
+  String get notesWhenCustom;
+
+  /// Format hint for a typed date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'YYYY-MM-DD HH:MM'**
+  String get notesWhenCustomHint;
+
+  /// Error for a mistyped date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the date as YYYY-MM-DD HH:MM'**
+  String get notesInvalidTime;
+
+  /// Task past its due time.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue · {when}'**
+  String notesOverdueAt(String when);
+
+  /// Note menu action.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin'**
+  String get notesPin;
+
+  /// Note menu action.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin'**
+  String get notesUnpin;
+
+  /// Note menu action: set the reminder an hour from now.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind in an hour'**
+  String get notesSnooze;
+
+  /// Note menu action: attach to the object open now.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach to {name}'**
+  String notesAttachHere(String name);
+
+  /// Note menu action: remove the attachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Detach'**
+  String get notesDetach;
+
+  /// Note menu action and confirmation title.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete note'**
+  String get notesDelete;
+
+  /// Delete note confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” will be deleted on all your devices.'**
+  String notesDeleteMessage(String title);
+
+  /// Task checkbox accessibility label.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark done'**
+  String get notesMarkDone;
+
+  /// Task checkbox accessibility label.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark not done'**
+  String get notesMarkOpen;
+
+  /// Note editor: back button.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to notes'**
+  String get notesBack;
+
+  /// Note editor: the last save failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved'**
+  String get notesSaveFailed;
+
+  /// Toast when a note reminder goes off.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder: {title}'**
+  String notesReminderToast(String title);
+
+  /// Reminder toast action: open the note.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get notesOpen;
+
+  /// Notes panel: the host's legacy notes field.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes from the host card'**
+  String get notesHostNotesTitle;
+
+  /// Notes panel: turn the host card notes into a note.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to notes'**
+  String get notesHostNotesMove;
+
+  /// Title of a note moved from a host card.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes: {name}'**
+  String notesFromHostTitle(String name);
+
   /// Sidebar item.
   ///
   /// In en, this message translates to:

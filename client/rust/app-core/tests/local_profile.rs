@@ -238,8 +238,7 @@ async fn local_profile_lifecycle_backup_and_recovery() {
         title: "runbook".into(),
         body: "restart order".into(),
         tags: vec![],
-        created_at_ms: 0,
-        updated_at_ms: 0,
+        ..NoteDto::default()
     })
     .await
     .unwrap();
@@ -483,8 +482,57 @@ async fn local_profile_lifecycle_backup_and_recovery() {
         .unwrap();
     assert_eq!(snapshot(&app).await, snap);
 
+    // A task attached to a host: done time is set by the core, and the
+    // note outlives the host it is about.
+    let task = app
+        .save_note(NoteDto {
+            title: "Rotate certificates".into(),
+            tags: vec![" ops ".into(), " ".into()],
+            task: Some(cc_app_core::NoteTaskDto {
+                done: true,
+                due_at_ms: Some(1_800_000_000_000),
+                done_at_ms: None,
+            }),
+            target: Some(cc_models::note::NoteTarget::Object {
+                object_kind: cc_models::note::NoteObjectKind::Host,
+                id: db.id.parse().unwrap(),
+            }),
+            ..NoteDto::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(task.tags, ["ops"]);
+    let done_at = task.task.as_ref().unwrap().done_at_ms.unwrap();
+    let again = app
+        .save_note(NoteDto {
+            body: "renewed".into(),
+            ..task.clone()
+        })
+        .await
+        .unwrap();
+    assert_eq!(again.task.unwrap().done_at_ms, Some(done_at));
+    assert!(app
+        .save_note(NoteDto {
+            title: "bad".into(),
+            target: Some(cc_models::note::NoteTarget::DockerContainer {
+                host_id: None,
+                name: "../escape".into(),
+            }),
+            ..NoteDto::default()
+        })
+        .await
+        .is_err());
+
     // ── deletes & profile removal ───────────────────────────────────────
     app.delete_host(db.id.clone()).await.unwrap();
+    assert!(
+        app.list_notes()
+            .await
+            .unwrap()
+            .iter()
+            .any(|note| note.id == task.id && note.target.is_some()),
+        "notes are not cascaded with their object"
+    );
     assert!(
         app.list_tunnels().await.unwrap().is_empty(),
         "tunnels cascade"

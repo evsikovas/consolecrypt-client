@@ -155,6 +155,237 @@
   "navSftp": "SFTP",
   "navTunnels": "Туннели",
   "navSnippets": "Сниппеты",
+  "navNotes": "Заметки",
+  "@navNotes": {
+    "description": "Right workspace panel tool: notes, tasks and reminders."
+  },
+  "notesThisObject": "Объект",
+  "@notesThisObject": {
+    "description": "Notes panel filter: notes attached to the object open in the current section."
+  },
+  "notesAll": "Все",
+  "@notesAll": {
+    "description": "Notes panel filter: every note."
+  },
+  "notesTasks": "Задачи",
+  "@notesTasks": {
+    "description": "Notes panel filter: tasks only."
+  },
+  "notesSearchHint": "Поиск по заметкам",
+  "@notesSearchHint": {
+    "description": "Notes panel search field placeholder."
+  },
+  "notesNew": "Новая заметка",
+  "@notesNew": {
+    "description": "Notes panel: create a note."
+  },
+  "notesEmptyTitle": "Заметок пока нет",
+  "@notesEmptyTitle": {
+    "description": "Notes panel empty state title."
+  },
+  "notesEmptyMessage": "Записывайте задачи, напоминания и всё, что важно помнить о серверах, базах и контейнерах.",
+  "@notesEmptyMessage": {
+    "description": "Notes panel empty state message."
+  },
+  "notesEmptyObject": "О «{name}» пока ничего нет",
+  "@notesEmptyObject": {
+    "description": "Notes panel empty state for the current object.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notesNothingFound": "Ничего не найдено",
+  "@notesNothingFound": {
+    "description": "Notes panel: search has no results."
+  },
+  "notesCompleted": "Выполненные ({count})",
+  "@notesCompleted": {
+    "description": "Notes panel: collapsed section of completed tasks.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notesTitle": "Заголовок",
+  "@notesTitle": {
+    "description": "Note editor: title field."
+  },
+  "notesBody": "Текст (Markdown)",
+  "@notesBody": {
+    "description": "Note editor: body field."
+  },
+  "notesBodyEmpty": "Текста нет",
+  "@notesBodyEmpty": {
+    "description": "Note editor preview of an empty body."
+  },
+  "notesEdit": "Правка",
+  "@notesEdit": {
+    "description": "Note editor: edit mode."
+  },
+  "notesPreview": "Просмотр",
+  "@notesPreview": {
+    "description": "Note editor: rendered Markdown mode."
+  },
+  "notesTags": "Метки через запятую",
+  "@notesTags": {
+    "description": "Note editor: tags field."
+  },
+  "notesTask": "Задача",
+  "@notesTask": {
+    "description": "Note editor: switch that makes the note a task."
+  },
+  "notesDue": "Срок",
+  "@notesDue": {
+    "description": "Note editor: task due time."
+  },
+  "notesDone": "Выполнено",
+  "@notesDone": {
+    "description": "Note editor: task completed switch."
+  },
+  "notesReminder": "Напоминание",
+  "@notesReminder": {
+    "description": "Note editor: reminder time."
+  },
+  "notesAttachedTo": "Привязка",
+  "@notesAttachedTo": {
+    "description": "Note editor: what the note is about."
+  },
+  "notesNoTarget": "Без привязки",
+  "@notesNoTarget": {
+    "description": "Note editor: the note is not about any object."
+  },
+  "notesTargetMissing": "Объект не найден",
+  "@notesTargetMissing": {
+    "description": "Note attached to an object that no longer exists."
+  },
+  "notesWhenNone": "Нет",
+  "@notesWhenNone": {
+    "description": "Due/reminder choice: no time."
+  },
+  "notesWhenInHour": "Через час",
+  "@notesWhenInHour": {
+    "description": "Due/reminder choice."
+  },
+  "notesWhenThisEvening": "Сегодня в 18:00",
+  "@notesWhenThisEvening": {
+    "description": "Due/reminder choice."
+  },
+  "notesWhenTomorrow": "Завтра в 09:00",
+  "@notesWhenTomorrow": {
+    "description": "Due/reminder choice."
+  },
+  "notesWhenNextWeek": "Через неделю",
+  "@notesWhenNextWeek": {
+    "description": "Due/reminder choice."
+  },
+  "notesWhenCustom": "Дата и время…",
+  "@notesWhenCustom": {
+    "description": "Due/reminder choice: type a date and time."
+  },
+  "notesWhenCustomHint": "ГГГГ-ММ-ДД ЧЧ:ММ",
+  "@notesWhenCustomHint": {
+    "description": "Format hint for a typed date and time."
+  },
+  "notesInvalidTime": "Введите дату в виде ГГГГ-ММ-ДД ЧЧ:ММ",
+  "@notesInvalidTime": {
+    "description": "Error for a mistyped date and time."
+  },
+  "notesOverdueAt": "Просрочено · {when}",
+  "@notesOverdueAt": {
+    "description": "Task past its due time.",
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "notesPin": "Закрепить",
+  "@notesPin": {
+    "description": "Note menu action."
+  },
+  "notesUnpin": "Открепить",
+  "@notesUnpin": {
+    "description": "Note menu action."
+  },
+  "notesSnooze": "Напомнить через час",
+  "@notesSnooze": {
+    "description": "Note menu action: set the reminder an hour from now."
+  },
+  "notesAttachHere": "Привязать к «{name}»",
+  "@notesAttachHere": {
+    "description": "Note menu action: attach to the object open now.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notesDetach": "Отвязать",
+  "@notesDetach": {
+    "description": "Note menu action: remove the attachment."
+  },
+  "notesDelete": "Удалить заметку",
+  "@notesDelete": {
+    "description": "Note menu action and confirmation title."
+  },
+  "notesDeleteMessage": "Заметка «{title}» будет удалена на всех ваших устройствах.",
+  "@notesDeleteMessage": {
+    "description": "Delete note confirmation.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notesMarkDone": "Отметить выполненной",
+  "@notesMarkDone": {
+    "description": "Task checkbox accessibility label."
+  },
+  "notesMarkOpen": "Снять отметку о выполнении",
+  "@notesMarkOpen": {
+    "description": "Task checkbox accessibility label."
+  },
+  "notesBack": "К списку заметок",
+  "@notesBack": {
+    "description": "Note editor: back button."
+  },
+  "notesSaveFailed": "Не сохранено",
+  "@notesSaveFailed": {
+    "description": "Note editor: the last save failed."
+  },
+  "notesReminderToast": "Напоминание: {title}",
+  "@notesReminderToast": {
+    "description": "Toast when a note reminder goes off.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notesOpen": "Открыть",
+  "@notesOpen": {
+    "description": "Reminder toast action: open the note."
+  },
+  "notesHostNotesTitle": "Заметка из карточки хоста",
+  "@notesHostNotesTitle": {
+    "description": "Notes panel: the host's legacy notes field."
+  },
+  "notesHostNotesMove": "Перенести в заметки",
+  "@notesHostNotesMove": {
+    "description": "Notes panel: turn the host card notes into a note."
+  },
+  "notesFromHostTitle": "Заметки: {name}",
+  "@notesFromHostTitle": {
+    "description": "Title of a note moved from a host card.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "navAiChat": "ИИ-чат",
   "navDevices": "Устройства",
   "navSync": "Синхронизация",

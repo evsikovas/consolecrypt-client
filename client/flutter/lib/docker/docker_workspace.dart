@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -18,6 +19,8 @@ import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/docker/docker_terminal.dart';
 import 'package:consolecrypt/docker/docker_volume_list.dart';
+import 'package:consolecrypt/notes/note_models.dart';
+import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -49,7 +52,10 @@ class DockerWorkspace extends ConsumerStatefulWidget {
   ConsumerState<DockerWorkspace> createState() => _DockerWorkspaceState();
 }
 
-class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsBindingObserver {
+class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsBindingObserver, NoteContextPublisher {
+  @override
+  ShellBranch get noteBranch => ShellBranch.docker;
+
   final _containers = ValueNotifier<List<DockerContainer>>(const []);
   final _collapsed = <String>{};
   final _busy = <String>{};
@@ -291,6 +297,20 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
 
   @override
   Widget build(BuildContext context) {
+    final noted = _containers.value.where((c) => c.id == _selected).firstOrNull;
+    publishNoteContext(
+      noted == null
+          ? null
+          : NoteContext(
+              // The Docker host id is `local` for this computer.
+              target: NoteDockerTarget(
+                hostId: widget.session.hostId == 'local' ? null : widget.session.hostId, // l10n-ignore: Docker host id
+                name: noted.name,
+              ),
+              label: noted.name,
+              icon: Icons.view_in_ar_outlined,
+            ),
+    );
     final l = context.l10n;
     final containers = _containers.value;
     final groups = groupDockerContainers(containers, query: _query, filter: _filter);

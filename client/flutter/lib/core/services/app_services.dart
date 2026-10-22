@@ -19,6 +19,7 @@ import 'package:consolecrypt/core/services/vault_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
+import 'package:consolecrypt/notes/note_service.dart';
 
 export 'package:consolecrypt/core/services/ai_service.dart';
 export 'package:consolecrypt/core/services/auth_service.dart';
@@ -79,6 +80,7 @@ final class AppServices {
     this.kubernetes,
     this.databases,
     this.docker,
+    this.notes,
     this.developer,
     this.onDispose,
   });
@@ -115,6 +117,9 @@ final class AppServices {
 
   /// Docker on this computer or saved SSH hosts (desktop).
   final DockerService? docker;
+
+  /// Notes, tasks and reminders (vault objects).
+  final NoteService? notes;
   final DeveloperControls? developer;
   final Future<void> Function()? onDispose;
 

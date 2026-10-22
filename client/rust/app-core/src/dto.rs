@@ -13,7 +13,7 @@ use cc_models::credential::Credential;
 use cc_models::group::Group;
 use cc_models::host::{Host, JumpProfile, Proxy};
 use cc_models::known_host::KnownHost;
-use cc_models::note::Note;
+use cc_models::note::{Note, NoteTarget, NoteTask};
 use cc_models::settings::VaultSettings;
 use cc_models::snippet::{Snippet, SnippetVariable};
 use cc_models::tunnel::Tunnel;
@@ -832,15 +832,34 @@ impl EditableDto for SnippetDto {
     }
 }
 
-/// Knowledge-base note. Empty `id` = create.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Note, task or reminder. Empty `id` = create.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NoteDto {
     pub id: String,
     pub title: String,
     pub body: String,
     pub tags: Vec<String>,
+    #[serde(default)]
+    pub pinned: bool,
+    #[serde(default)]
+    pub task: Option<NoteTaskDto>,
+    #[serde(default)]
+    pub remind_at_ms: Option<i64>,
+    #[serde(default)]
+    pub target: Option<NoteTarget>,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NoteTaskDto {
+    #[serde(default)]
+    pub done: bool,
+    #[serde(default)]
+    pub due_at_ms: Option<i64>,
+    /// Set by the core when a task is first marked done.
+    #[serde(default)]
+    pub done_at_ms: Option<i64>,
 }
 
 impl EditableDto for NoteDto {
@@ -855,6 +874,14 @@ impl EditableDto for NoteDto {
             title: n.title.clone(),
             body: n.body.clone(),
             tags: n.tags.clone(),
+            pinned: n.pinned,
+            task: n.task.as_ref().map(|task| NoteTaskDto {
+                done: task.done,
+                due_at_ms: task.due_at.as_ref().map(ms),
+                done_at_ms: task.done_at.as_ref().map(ms),
+            }),
+            remind_at_ms: n.remind_at.as_ref().map(ms),
+            target: n.target.clone(),
             created_at_ms: ms(&n.created_at),
             updated_at_ms: ms(&n.updated_at),
         }
@@ -862,14 +889,36 @@ impl EditableDto for NoteDto {
     fn to_model(&self, id: ObjectId, existing: Option<&Note>) -> AppResult<Note> {
         require_name("title", &self.title)?;
         let (created_at, updated_at) = created(existing.map(|e| e.created_at));
-        Ok(Note {
+        let task = self.task.as_ref().map(|task| {
+            let done_before = existing
+                .and_then(|e| e.task.as_ref())
+                .filter(|t| t.done)
+                .and_then(|t| t.done_at);
+            NoteTask {
+                done: task.done,
+                due_at: task.due_at_ms.and_then(from_ms),
+                done_at: task.done.then(|| done_before.unwrap_or(updated_at)),
+            }
+        });
+        let note = Note {
             id,
             title: self.title.trim().to_owned(),
             body: self.body.clone(),
-            tags: self.tags.clone(),
+            tags: self
+                .tags
+                .iter()
+                .map(|tag| tag.trim().to_owned())
+                .filter(|tag| !tag.is_empty())
+                .collect(),
+            pinned: self.pinned,
+            task,
+            remind_at: self.remind_at_ms.and_then(from_ms),
+            target: self.target.clone(),
             created_at,
             updated_at,
-        })
+        };
+        note.validate()?;
+        Ok(note)
     }
 }
 

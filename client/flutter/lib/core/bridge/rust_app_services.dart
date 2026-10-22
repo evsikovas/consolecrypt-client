@@ -12,6 +12,7 @@ import 'package:consolecrypt/core/bridge/rust_docker.dart';
 import 'package:consolecrypt/core/bridge/rust_enrollment.dart';
 import 'package:consolecrypt/core/bridge/rust_inventory.dart';
 import 'package:consolecrypt/core/bridge/rust_kubernetes.dart';
+import 'package:consolecrypt/core/bridge/rust_notes.dart';
 import 'package:consolecrypt/core/bridge/rust_prompts.dart';
 import 'package:consolecrypt/core/bridge/rust_sessions.dart';
 import 'package:consolecrypt/core/bridge/rust_sftp_browser.dart';
@@ -154,6 +155,7 @@ final class RustAppServices {
       kubernetes: RustKubeService(hub),
       databases: RustDbService(hub),
       docker: RustDockerService(),
+      notes: RustNoteService(hub),
       onDispose: dispose,
     );
     final exitListener = options.hookAppExit

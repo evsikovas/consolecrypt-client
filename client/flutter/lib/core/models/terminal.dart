@@ -46,9 +46,13 @@ final class DockerTerminalTarget extends TerminalTarget {
     required this.hostName,
     required this.containerId,
     required this.containerName,
+    this.hostId,
     this.command = const ['/bin/sh'],
   });
   final String sessionId, hostName, containerId, containerName;
+
+  /// The Docker host (`local` or a saved SSH host id), for notes.
+  final String? hostId;
 
   /// The shell to run; the auto-detect marker picks bash, ash or sh.
   final List<String> command;
@@ -68,12 +72,16 @@ final class KubernetesTerminalTarget extends TerminalTarget {
     required this.contextName,
     required this.namespace,
     required this.pod,
+    this.contextId,
     this.container,
     this.command = const ['/bin/sh'],
     this.tty = true,
   });
   final String sessionId, contextName, namespace, pod;
   final String? container;
+
+  /// The saved Kubernetes context, for notes.
+  final String? contextId;
 
   /// Null attaches to the container's existing process.
   final List<String>? command;
