@@ -9736,4 +9736,9 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String settingsTerminalFontMissing(String family, String fallback) {
+    return 'Font “$family” is not installed — using $fallback.';
+  }
 }

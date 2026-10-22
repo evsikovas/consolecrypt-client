@@ -17389,6 +17389,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, one{Selected: {count} row} other{Selected: {count} rows}}'**
   String dbSelectedRows(int count);
+
+  /// Hint under the terminal font picker when the chosen font (or its Nerd Font alias) is not installed on this computer. {family} is the chosen font family, {fallback} the font used instead.
+  ///
+  /// In en, this message translates to:
+  /// **'Font “{family}” is not installed — using {fallback}.'**
+  String settingsTerminalFontMissing(String family, String fallback);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

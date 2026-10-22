@@ -13356,5 +13356,17 @@
         "type": "int"
       }
     }
+  },
+  "settingsTerminalFontMissing": "Font “{family}” is not installed — using {fallback}.",
+  "@settingsTerminalFontMissing": {
+    "description": "Hint under the terminal font picker when the chosen font (or its Nerd Font alias) is not installed on this computer. {family} is the chosen font family, {fallback} the font used instead.",
+    "placeholders": {
+      "family": {
+        "type": "String"
+      },
+      "fallback": {
+        "type": "String"
+      }
+    }
   }
 }

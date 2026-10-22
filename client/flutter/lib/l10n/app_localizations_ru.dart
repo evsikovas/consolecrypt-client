@@ -9973,4 +9973,9 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String settingsTerminalFontMissing(String family, String fallback) {
+    return 'Шрифт «$family» не установлен — используется $fallback.';
+  }
 }

@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "fonts_bridge.h"
 #include "glass_window_bridge.h"
 #include "win32_window.h"
 
@@ -32,6 +33,9 @@ class FlutterWindow : public Win32Window {
 
   // Accessibility signals + caption colours for the Liquid Glass kit.
   std::unique_ptr<GlassWindowBridge> glass_bridge_;
+
+  // Installed font families for the terminal font picker.
+  std::unique_ptr<FontsBridge> fonts_bridge_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_
