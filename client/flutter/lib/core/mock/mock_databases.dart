@@ -20,7 +20,8 @@ final class MockDbService
         DbExportService,
         DbAiService,
         DbProductionWriteService,
-        DbCellEditService {
+        DbCellEditService,
+        DbObjectInspectService {
   final _changes = StreamController<void>.broadcast();
   final _history = <DbHistoryEntry>[];
   var _next = 0;
@@ -279,7 +280,6 @@ final class MockDbService
   @override
   Future<DbSessionInfo> unlockProduction(
     String sessionId, {
-    required String typedConnectionName,
     required SecretText passphrase,
     required int minutes,
   }) async {
@@ -287,7 +287,7 @@ final class MockDbService
     final ok = passphrase.expose() == MockCloud.demoPassphrase;
     passphrase.wipe();
     if (!ok) throw const DbWrongPassphrase();
-    if (!s.production || typedConnectionName != _byId(s.connectionId).name || ![5, 15, 30].contains(minutes)) {
+    if (!s.production || ![5, 15, 30].contains(minutes)) {
       throw StateError('Production unlock refused');
     }
     return _window(sessionId, DateTime.now().add(Duration(minutes: minutes)));
@@ -512,6 +512,54 @@ final class MockDbService
       '${indexed.map((c) => 'CREATE INDEX ${name}_${c}_idx\n    ON public.$name ($c${c == 'created_at' ? ' DESC' : ''});\n').join()}'
       "\nCOMMENT ON TABLE public.$name IS 'Demo shop: $name';",
     );
+  }
+
+  /// Object details in the core's section format (PostgreSQL layout) with
+  /// fixed demo figures.
+  @override
+  Future<DbJson> inspectObject(String sessionId, DbObjectRef object, {int? sampleDocuments}) async {
+    final columns = _tables[object.name]?.length ?? 0;
+    Map<String, dynamic> field(String id, String value, String kind) => {'id': id, 'value': value, 'kind': kind};
+    return {
+      'sections': [
+        {
+          'id': 'general',
+          'fields': [
+            field('kind', 'table', 'keyword'),
+            field('schema', object.schema ?? 'public', 'code'),
+            field('owner', 'shop_owner', 'code'),
+            field('comment', 'Demo shop: ${object.name}', 'text'),
+          ],
+        },
+        {
+          'id': 'size',
+          'fields': [
+            field('rows', '184230', 'estimate'),
+            field('live_rows', '184102', 'estimate'),
+            field('dead_rows', '1287', 'estimate'),
+            field('total_size', '48627712', 'bytes'),
+            field('table_size', '31457280', 'bytes'),
+            field('index_size', '16777216', 'bytes'),
+          ],
+        },
+        {
+          'id': 'structure',
+          'fields': [
+            field('columns', '$columns', 'count'),
+            field('indexes', '3', 'count'),
+            field('constraints', '2', 'count'),
+            field('triggers', '0', 'count'),
+          ],
+        },
+        {
+          'id': 'maintenance',
+          'fields': [
+            field('last_autovacuum', '2026-10-22T03:14:00Z', 'time'),
+            field('last_autoanalyze', '2026-10-22T03:15:00Z', 'time'),
+          ],
+        },
+      ],
+    };
   }
 
   @override

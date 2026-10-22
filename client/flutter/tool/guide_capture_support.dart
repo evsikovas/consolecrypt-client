@@ -32,6 +32,7 @@ const guideScreens = [
   'rdp-host-picker',
   'sftp-preview',
   'sftp-settings',
+  'sftp-open-as-text',
   'snippet-packages',
   'snippet-catalog',
   'workspace-ai-selection',
@@ -44,6 +45,7 @@ const guideScreens = [
   'appearance',
   'vault-settings',
   'security-settings',
+  'security-settings-windows',
   'panel-mode-settings',
   'backups',
   'updates',
@@ -52,6 +54,7 @@ const guideScreens = [
   'devices',
   'tunnels',
   'sharing-main',
+  'sharing-deleted',
   'sharing-recipient',
   'sharing-roles',
   'sharing-secret',
@@ -68,6 +71,9 @@ const guideScreens = [
   'db-prod-write',
   'db-row-selection',
   'db-ddl',
+  'db-query-review',
+  'db-preview-tab',
+  'db-details',
   'docker-hosts',
   'docker-containers',
   'docker-details',
@@ -300,7 +306,34 @@ final class GuideSharingService implements SharingService, DatabaseSharingServic
     supportsSecrets: true,
     supportsOwnerOnlineEnrollment: true,
     supportsDbConnections: true,
+    supportsLeave: true,
+    supportsRestore: true,
   );
+
+  /// Owner-deleted items still restorable (fixed dates, masked previews).
+  @override
+  Future<List<SharingDeletedItem>> deleted() async => [
+    SharingDeletedItem(
+      id: 'guide-deleted-host',
+      kind: SharingKind.host,
+      restorableUntil: DateTime(2026, 11, 18),
+      recipients: 2,
+      previewJson: jsonEncode({
+        'kind': 'host',
+        'data': {'name': 'staging-web', 'address': 'staging-web.example.test', 'port': 22},
+      }),
+    ),
+    SharingDeletedItem(
+      id: 'guide-deleted-snippet',
+      kind: SharingKind.snippet,
+      restorableUntil: DateTime(2026, 11, 9),
+      recipients: 1,
+      previewJson: jsonEncode({
+        'kind': 'snippet',
+        'data': {'name': 'Restart nginx', 'template': 'sudo systemctl restart nginx', 'snippet_type': 'shell'},
+      }),
+    ),
+  ];
   @override
   Future<List<SharingIdentity>> discover(String email) async => const [guideRecipient];
   @override
