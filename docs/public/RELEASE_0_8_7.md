@@ -39,6 +39,52 @@
 - Окно DDL подстраивается под ширину экрана и не оставляет пустого места под
   коротким кодом. Длинные строки переносятся с отступом; если выключить
   «Переносить строки», код прокручивается вбок. Выбор запоминается.
+- Базовые наборы сниппетов: SQL · PostgreSQL (20), SQL · MySQL/MariaDB (20),
+  SQL · ClickHouse (20), Redis (15) и MongoDB (15) — активные и долгие запросы,
+  блокировки, размеры, индексы, репликация, тяжёлые запросы. Добавляются в
+  «Сниппеты → Стартовые наборы». Их же можно запускать в psql, mysql,
+  clickhouse-client, redis-cli и mongosh внутри SSH-сессии: многострочный
+  запрос уходит одной вставкой; изменяющие команды требуют подтверждения.
+- Экспорт в CSV/TSV экранирует формулы для табличных редакторов (флажок
+  «Экранировать формулы (для Excel)», включён по умолчанию); SQL-экспорт
+  правильно экранирует кавычки и обратную косую черту для каждой базы.
+- Сохранённый туннель с сетевым адресом для подключения к базе запускается
+  только на 127.0.0.1.
+
+**Общий доступ** (сервер синхронизации 0.1.17).
+
+- Удалить общий элемент может только владелец; удалённое можно восстановить в
+  течение 30 дней: «Я поделился → Недавно удалённые».
+- Получатель может выйти из общего доступа — в карточке элемента или во
+  входящем приглашении; сохранённые личные копии остаются. Владелец видит, кто
+  вышел.
+- Повреждённая общая запись больше не ломает весь список: она скрывается, а
+  приложение сообщает, сколько записей не удалось прочитать.
+- Адрес почты при поиске получателя больше не передаётся в адресе запроса.
+
+**Безопасность.**
+
+- SFTP: «Открыть» больше не запускает загруженные файлы, способные выполнить
+  код (скрипты, ярлыки, .exe, .command, .desktop и т. п.) — они открываются как
+  текст в редакторе после предупреждения. Загруженные файлы помечаются как
+  полученные из интернета (Windows) и карантином (macOS).
+- Новая парольная фраза хранилища — не короче 12 символов; существующие
+  хранилища открываются как прежде. Ключ шифруется Argon2id не слабее 64 МиБ;
+  старые параметры обновляются при следующей разблокировке фразой.
+- Резервные копии записываются через безопасно созданный временный файл;
+  чтение копий и ответов сервера ограничено по размеру.
+- Автоочистка буфера обмена настраивается от 30 секунд до 1 дня и срабатывает
+  и после перезапуска, не трогая чужое содержимое.
+
+**Windows.**
+
+- В выборе шрифта терминала — только установленные моноширинные шрифты,
+  включая установленные для пользователя (например, JetBrainsMono Nerd Font);
+  имена «… Nerd Font Mono» и «… NFM» взаимозаменяемы, а если шрифт не
+  установлен, настройки подскажут. Linux тоже показывает установленные шрифты.
+- Окно скрывается от скриншотов, записи и демонстрации экрана, пока открыт
+  пароль, ключ или слова восстановления. «Настройки → Безопасность»: «Никогда»,
+  «Когда видны секреты» или «Всегда».
 
 ## English
 
@@ -79,5 +125,50 @@ after every attempt and Enter confirms.
 - The DDL dialog follows the window width and leaves no empty space under
   short code. Long lines wrap with an indent; "Wrap lines" switches to
   horizontal scrolling, and the choice is remembered.
+- Database starter snippets: SQL · PostgreSQL (20), SQL · MySQL/MariaDB (20),
+  SQL · ClickHouse (20), Redis (15) and MongoDB (15) — active and long-running
+  queries, locks, sizes, indexes, replication and top queries. Add them from
+  Snippets → Starter packages. They also run inside psql, mysql,
+  clickhouse-client, redis-cli and mongosh in an SSH session: a multi-line
+  query is sent as one paste; changing commands need confirmation.
+- CSV/TSV export escapes spreadsheet formulas ("Escape formulas (for Excel)",
+  on by default); SQL export escapes quotes and backslashes correctly for each
+  database.
+- A saved tunnel with a network bind address starts on 127.0.0.1 only when a
+  database connection uses it.
+
+**Sharing** (sync server 0.1.17).
+
+- Only the owner can delete a shared item; deleted items can be restored for
+  30 days from Shared by me → Recently deleted.
+- Recipients can leave a shared item from the item or an incoming invitation;
+  saved personal copies stay. Owners see who left.
+- One malformed shared record no longer breaks the shared list: it is hidden
+  and the app shows how many entries could not be read.
+- Recipient search no longer puts the e-mail address into the request URL.
+
+**Security.**
+
+- SFTP: Open no longer runs downloaded files that can execute code (scripts,
+  shortcuts, .exe, .command, .desktop, etc.) — they open as text in an editor
+  after a notice. Downloads are marked as coming from the Internet (Windows)
+  and quarantined (macOS).
+- New vault passphrases need at least 12 characters; existing vaults open as
+  before. Keys are wrapped with Argon2id of at least 64 MiB; older parameters
+  are upgraded at the next passphrase unlock.
+- Backups are written through a safely created temporary file; backup and
+  server-response reads are size-bounded.
+- Clipboard auto-clear is configurable from 30 seconds to 1 day and also
+  completes after an app restart, never clearing foreign content.
+
+**Windows.**
+
+- The terminal font picker lists the monospaced fonts actually installed,
+  including per-user fonts such as JetBrainsMono Nerd Font; "… Nerd Font Mono"
+  and "… NFM" names are interchangeable, and Settings tells you when the chosen
+  font isn't installed. Linux lists installed fonts too.
+- The window is hidden from screenshots, recordings and screen sharing while a
+  password, key or recovery words are shown. Settings → Security: Never, While
+  secrets are shown, or Always.
 
 See the [Databases guide](DATABASES.md) and the [Kubernetes guide](KUBERNETES.md).
