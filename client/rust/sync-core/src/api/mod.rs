@@ -63,6 +63,47 @@ use url::Url;
 /// Refresh the access token when it expires within this window.
 const EXPIRY_SKEW: Duration = Duration::from_secs(30);
 
+/// Largest response body read from an object endpoint (sync changes and
+/// snapshot pages, sharing). The server bounds those pages by its byte
+/// budget (8 MiB by default, always at least one object of at most 1 MiB).
+pub const MAX_OBJECT_RESPONSE_BYTES: usize = 64 * 1024 * 1024;
+/// Largest response body read from any other endpoint (small JSON).
+pub const MAX_JSON_RESPONSE_BYTES: usize = 4 * 1024 * 1024;
+
+/// The response body limit for a request to `path` (base path included).
+fn response_limit(path: &str) -> usize {
+    if path.contains("/v1/sync/") || path.contains(cc_protocol::sharing::API_PATH) {
+        MAX_OBJECT_RESPONSE_BYTES
+    } else {
+        MAX_JSON_RESPONSE_BYTES
+    }
+}
+
+/// Reads at most `limit` body bytes: a declared or streamed larger body is
+/// refused before it is buffered (a hostile or broken server cannot make
+/// the client allocate without bound).
+async fn read_body(mut resp: reqwest::Response, limit: usize) -> Result<bytes::Bytes, ApiError> {
+    let too_large = |status: StatusCode| ApiError::InvalidResponse {
+        status: status.as_u16(),
+        reason: "response body too large".into(),
+    };
+    let status = resp.status();
+    if resp
+        .content_length()
+        .is_some_and(|length| length > limit as u64)
+    {
+        return Err(too_large(status));
+    }
+    let mut body = bytes::BytesMut::new();
+    while let Some(chunk) = resp.chunk().await.map_err(map_transport)? {
+        if body.len() + chunk.len() > limit {
+            return Err(too_large(status));
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body.freeze())
+}
+
 /// Client configuration.
 #[derive(Debug, Clone)]
 pub struct ApiConfig {
@@ -449,7 +490,7 @@ impl ApiClient {
         let resp = rb.send().await.map_err(map_transport)?;
         let status = resp.status();
         let headers = resp.headers().clone();
-        let body = resp.bytes().await.map_err(map_transport)?;
+        let body = read_body(resp, response_limit(&path)).await?;
         tracing::debug!(
             method = %method,
             path = %path,
@@ -1159,4 +1200,89 @@ fn map_transport(e: reqwest::Error) -> ApiError {
         src = s.source();
     }
     ApiError::Network(msg.chars().take(300).collect())
+}
+
+#[cfg(test)]
+mod response_limit_tests {
+    use super::*;
+
+    #[test]
+    fn object_endpoints_get_the_larger_limit() {
+        for path in [
+            "/v1/sync/changes",
+            "/v1/sync/snapshot",
+            "/base/v1/sync/changes",
+            "/v1/shares",
+            "/v1/shares/0b6f/history",
+        ] {
+            assert_eq!(response_limit(path), MAX_OBJECT_RESPONSE_BYTES, "{path}");
+        }
+        for path in [
+            "/v1/meta",
+            "/v1/auth/login",
+            "/v1/devices",
+            "/v1/vaults/x/envelopes",
+        ] {
+            assert_eq!(response_limit(path), MAX_JSON_RESPONSE_BYTES, "{path}");
+        }
+    }
+
+    /// A one-shot HTTP server answering `head` and then `body_len` bytes.
+    async fn serve(head: String, body_len: usize) -> Url {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = Url::parse(&format!("http://{}", listener.local_addr().unwrap())).unwrap();
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0u8; 4096];
+            let _ = socket.read(&mut request).await;
+            let _ = socket.write_all(head.as_bytes()).await;
+            let chunk = vec![b' '; 64 * 1024];
+            let mut left = body_len;
+            while left > 0 {
+                let n = left.min(chunk.len());
+                if socket.write_all(&chunk[..n]).await.is_err() {
+                    return;
+                }
+                left -= n;
+            }
+        });
+        url
+    }
+
+    #[tokio::test]
+    async fn oversized_bodies_are_refused() {
+        let client = reqwest::Client::new();
+        let limit = 256 * 1024;
+        // Declared too large.
+        let url = serve(
+            format!("HTTP/1.1 200 OK\r\ncontent-length: {}\r\n\r\n", limit + 1),
+            0,
+        )
+        .await;
+        let resp = client.get(url).send().await.unwrap();
+        assert!(matches!(
+            read_body(resp, limit).await,
+            Err(ApiError::InvalidResponse { status: 200, .. })
+        ));
+        // Streamed (no length) past the limit.
+        let url = serve(
+            "HTTP/1.1 200 OK\r\nconnection: close\r\n\r\n".into(),
+            limit * 2,
+        )
+        .await;
+        let resp = client.get(url).send().await.unwrap();
+        assert!(matches!(
+            read_body(resp, limit).await,
+            Err(ApiError::InvalidResponse { .. })
+        ));
+        // Within the limit.
+        let url = serve(
+            format!("HTTP/1.1 200 OK\r\ncontent-length: {limit}\r\n\r\n"),
+            limit,
+        )
+        .await;
+        let resp = client.get(url).send().await.unwrap();
+        assert_eq!(read_body(resp, limit).await.unwrap().len(), limit);
+    }
 }

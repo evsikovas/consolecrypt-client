@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/services/ai_service.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
@@ -716,10 +717,9 @@ class _SecuritySection extends ConsumerWidget {
               alignment: AlignmentDirectional.centerStart,
               child: GlassSelect<int>(
                 key: const ValueKey('clipboard-clear'),
-                value: const [15, 30, 60, 120].contains(local.clipboardClearSeconds) ? local.clipboardClearSeconds : 30,
+                value: clipboardClearSeconds(local.clipboardClearSeconds),
                 items: [
-                  for (final s in const [15, 30, 60, 120])
-                    GlassSelectItem(value: s, label: l10n.settingsClearClipboardAfter(s)),
+                  for (final s in clipboardClearChoices) GlassSelectItem(value: s, label: clipboardClearLabel(l10n, s)),
                 ],
                 onChanged: (v) => settings.updateLocal(local.copyWith(clipboardClearSeconds: v)),
               ),

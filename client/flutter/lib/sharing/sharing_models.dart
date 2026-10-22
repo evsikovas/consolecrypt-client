@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 
 enum SharingKind { host, snippet, group, secret, kubeContext, dbConnection }
@@ -179,3 +180,35 @@ final class SharingOutboxEntry {
     j['reason'] as String?,
   );
 }
+
+/// A shared list plus how many entries the core skipped because they could
+/// not be read (malformed, or failing signature/trust/ciphertext checks).
+final class SharingItemList extends ListBase<SharingItem> {
+  SharingItemList(this._items, {this.unreadable = 0});
+  final List<SharingItem> _items;
+  final int unreadable;
+
+  /// The core's `{items, unreadable}` reply; a bare list from older cores.
+  factory SharingItemList.fromJson(Object? json) {
+    final map = json is Map<String, dynamic> ? json : null;
+    final items = (map == null ? json : map['items']) as List;
+    return SharingItemList(
+      items.map((v) => SharingItem.fromJson(v as Map<String, dynamic>)).toList(),
+      unreadable: (map?['unreadable'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
+  int get length => _items.length;
+  @override
+  set length(int value) => _items.length = value;
+  @override
+  SharingItem operator [](int index) => _items[index];
+  @override
+  void operator []=(int index, SharingItem value) => _items[index] = value;
+  @override
+  void add(SharingItem element) => _items.add(element);
+}
+
+/// Entries of [items] the core could not read (0 for plain lists).
+int sharingUnreadable(List<SharingItem>? items) => items is SharingItemList ? items.unreadable : 0;

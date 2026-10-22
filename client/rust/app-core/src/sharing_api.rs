@@ -56,6 +56,12 @@ fn invalid(reason: &'static str) -> AppError {
     AppError::invalid("sharing", reason)
 }
 
+/// A shared entry that failed signature, trust-state or ciphertext checks:
+/// skipped from the list (and counted), never shown or used.
+fn unreadable_entry(error: &AppError) -> bool {
+    matches!(error, AppError::Crypto(_))
+}
+
 fn integrity(error: impl std::fmt::Display + 'static) -> AppError {
     if matches!(
         (&error as &dyn std::any::Any).downcast_ref::<crate::sharing_state::SharingStateError>(),
@@ -739,6 +745,15 @@ impl AppCore {
     }
 
     pub async fn sharing_list(&self, refresh: bool) -> AppResult<Vec<SharingItemDto>> {
+        Ok(self.sharing_list_report(refresh).await?.items)
+    }
+
+    /// [`AppCore::sharing_list`] that skips (and counts) entries which cannot
+    /// be read — undecodable on the wire, or failing signature, trust-state
+    /// or ciphertext verification — instead of failing the whole list.
+    /// Network, lock and reconciliation errors still fail it.
+    pub async fn sharing_list_report(&self, refresh: bool) -> AppResult<SharingListDto> {
+        let mut unreadable = 0u32;
         let session = self.session().await?;
         let _gate = self.sharing_gate(&session).await?;
         let mut env = self.sharing_environment(session.clone(), refresh).await?;
@@ -748,8 +763,8 @@ impl AppCore {
             let mut after = None;
             let mut complete = false;
             for _ in 0..100 {
-                let page = env
-                    .wait(env.transport()?.list_shares_including(
+                let (page, skipped) = env
+                    .wait(env.transport()?.list_shares_checked(
                         after,
                         100,
                         ShareKinds {
@@ -760,6 +775,7 @@ impl AppCore {
                         },
                     ))
                     .await?;
+                unreadable = unreadable.saturating_add(skipped);
                 self.sharing_check(&env).await?;
                 for item in page.items {
                     remote.insert(item.access.manifest.share_id, item);
@@ -816,9 +832,17 @@ impl AppCore {
             };
             let mut blocked = indexed.blocked;
             let snapshot = if let Some(current) = remote.remove(&binding.share_id) {
-                let verified = self
+                let verified = match self
                     .sharing_refresh_state(&env, &store, &binding, current)
-                    .await?;
+                    .await
+                {
+                    Ok(verified) => verified,
+                    Err(error) if unreadable_entry(&error) => {
+                        unreadable = unreadable.saturating_add(1);
+                        continue;
+                    }
+                    Err(error) => return Err(error),
+                };
                 blocked = false;
                 verified
             } else if refresh
@@ -831,9 +855,20 @@ impl AppCore {
                     .await?
                 {
                     Ok(current) => {
-                        blocked = false;
-                        self.sharing_refresh_state(&env, &store, &binding, current)
-                            .await?
+                        match self
+                            .sharing_refresh_state(&env, &store, &binding, current)
+                            .await
+                        {
+                            Ok(verified) => {
+                                blocked = false;
+                                verified
+                            }
+                            Err(error) if unreadable_entry(&error) => {
+                                unreadable = unreadable.saturating_add(1);
+                                continue;
+                            }
+                            Err(error) => return Err(error),
+                        }
                     }
                     Err(error) if matches!(error.status(), Some(403 | 404)) => {
                         blocked = true;
@@ -861,13 +896,21 @@ impl AppCore {
         }
         let mut items = blocked_items;
         for current in remote.into_values() {
-            if !env.supports(current.access.manifest.kind) {
-                let mut item = item_dto(&env, &current, SharingTrustDto::Blocked, None)?;
-                item.blocked_reason = Some("unsupported_sharing_kind".into());
-                items.push(item);
-                continue;
+            let supported = env.supports(current.access.manifest.kind);
+            let trust = if supported {
+                SharingTrustDto::Unverified
+            } else {
+                SharingTrustDto::Blocked
+            };
+            match item_dto(&env, &current, trust, None) {
+                Ok(mut item) => {
+                    if !supported {
+                        item.blocked_reason = Some("unsupported_sharing_kind".into());
+                    }
+                    items.push(item);
+                }
+                Err(_) => unreadable = unreadable.saturating_add(1),
             }
-            items.push(item_dto(&env, &current, SharingTrustDto::Unverified, None)?);
         }
         // Only after all network/history work finishes, open accepted cached
         // projections. Shutdown cancels the remaining work and zeroizes DTOs.
@@ -876,13 +919,22 @@ impl AppCore {
             let projection = if blocked {
                 None
             } else {
-                env.wait(async {
-                    store
-                        .open_cached(&snapshot, env.pin.device, env.identity.as_ref())
-                        .await
-                        .map_err(integrity)
-                })
-                .await?
+                match env
+                    .wait(async {
+                        store
+                            .open_cached(&snapshot, env.pin.device, env.identity.as_ref())
+                            .await
+                            .map_err(integrity)
+                    })
+                    .await
+                {
+                    Ok(projection) => projection,
+                    Err(error) if unreadable_entry(&error) => {
+                        unreadable = unreadable.saturating_add(1);
+                        continue;
+                    }
+                    Err(error) => return Err(error),
+                }
             };
             self.sharing_check(&env).await?;
             let trust = if blocked {
@@ -894,15 +946,16 @@ impl AppCore {
             } else {
                 SharingTrustDto::Verified
             };
-            items.push(item_dto(
-                &env,
-                snapshot.state(),
-                trust,
-                projection.as_ref(),
-            )?);
+            match item_dto(&env, snapshot.state(), trust, projection.as_ref()) {
+                Ok(item) => items.push(item),
+                Err(_) => unreadable = unreadable.saturating_add(1),
+            }
         }
         self.sharing_check(&env).await?;
-        Ok(items)
+        if unreadable > 0 {
+            tracing::warn!(unreadable, "unreadable shared entries skipped");
+        }
+        Ok(SharingListDto { items, unreadable })
     }
 
     fn sharing_validate_dispatch(

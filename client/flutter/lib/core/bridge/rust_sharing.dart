@@ -24,9 +24,7 @@ final class RustSharingService implements SharingService, KubernetesSharingServi
 
   @override
   Future<List<SharingItem>> list({bool refresh = false}) async =>
-      (jsonDecode(await guard(() => rs.sharingList(refresh: refresh))) as List)
-          .map((v) => SharingItem.fromJson(v as Map<String, dynamic>))
-          .toList();
+      SharingItemList.fromJson(jsonDecode(await guard(() => rs.sharingList(refresh: refresh))));
   @override
   Future<SharingInvitation> inspect(String id) async =>
       SharingInvitation.fromJson(decodeObject(await guard(() => rs.sharingInspect(id: id))));

@@ -73,8 +73,10 @@
   ConsoleCrypt, включая их jump-цепочки.
 - **SSH-туннель** — через сохранённый туннель локального проброса. Адрес и
   порт берутся из цели туннеля; если туннель не запущен, он стартует при
-  подключении. Если в форме указан localhost с портом сохранённого туннеля,
-  форма предложит использовать этот туннель.
+  подключении — всегда на 127.0.0.1, даже если в туннеле указан сетевой
+  адрес, чтобы база не стала доступна другим компьютерам. Если в форме указан
+  localhost с портом сохранённого туннеля, форма предложит использовать этот
+  туннель.
 - **Kubernetes** — проброс порта к Pod, Service, Deployment или StatefulSet
   выбранного контекста. Для Service и Deployment выбирается готовый Pod,
   поэтому подключение переживает перезапуск подов.
@@ -274,6 +276,14 @@ CSV, TSV, JSON, NDJSON, Markdown или как SQL `INSERT`. «Экспорт р
 прогрессом и отменой. Экспортируются только запросы на чтение: изменяющий
 запрос для экспорта не повторяется.
 
+В CSV и TSV флажок «Экранировать формулы (для Excel)» (включён по умолчанию)
+добавляет апостроф перед текстом, который начинается с `=`, `+`, `-`, `@`,
+табуляции или возврата каретки, чтобы табличный редактор не выполнил его как
+формулу; числа из числовых столбцов не меняются. Строки в SQL `INSERT`
+экранируются удвоением кавычки (`''`); для MySQL, MariaDB и ClickHouse
+обратная косая черта удваивается, для PostgreSQL текст с ней записывается как
+`E'…'`, так что файл читается одинаково при любых настройках экранирования.
+
 ### Редактирование ячеек
 
 На компьютере в сессии с разрешённой записью (непрод-подключение или прод с
@@ -389,8 +399,9 @@ server never sees them.
 - **SSH host** or **SSH jump profile** from your saved inventory, including
   jump chains.
 - **SSH tunnel**: a saved local-forward tunnel, started on connect when it is
-  not running. The form offers a matching tunnel when you type localhost and
-  its port.
+  not running — always on 127.0.0.1, even when the tunnel names a network
+  bind address, so the database is never exposed to other computers. The
+  form offers a matching tunnel when you type localhost and its port.
 - **Kubernetes**: a port forward to a Pod, Service, Deployment or
   StatefulSet. Services and Deployments use a ready Pod, so the connection
   survives Pod restarts.
@@ -517,6 +528,14 @@ more”. Sensitive-looking columns are masked and copied values clear from the
 clipboard automatically. Copy a cell, row, selection or the loaded result as
 CSV, TSV, JSON, NDJSON, Markdown or `INSERT`; file export re-runs read-only
 queries and streams every row with progress and cancellation.
+
+For CSV and TSV, “Escape formulas (for Excel)” (on by default) prefixes text
+starting with `=`, `+`, `-`, `@`, TAB or CR with an apostrophe so a
+spreadsheet does not run it as a formula; numbers from numeric columns are
+left as they are. `INSERT` string literals double the quote (`''`); MySQL,
+MariaDB and ClickHouse literals also double backslashes, and PostgreSQL text
+containing a backslash is written as `E'…'`, so the file reads back the same
+whatever the server's escape settings.
 
 A click focuses a cell (⌘C / Ctrl+C copies its value); a click on the row
 number selects the row, Shift+click extends the selection and ⌘/Ctrl+click

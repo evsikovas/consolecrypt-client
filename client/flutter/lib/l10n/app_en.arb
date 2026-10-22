@@ -13494,5 +13494,54 @@
   "errorNoTextEditor": "No text editor found to open this file safely. Choose an editor using Open With.",
   "@errorNoTextEditor": {
     "description": "Error: a file that can run code opens only as text and no text editor was found."
+  },
+  "dbExportEscapeFormulas": "Escape formulas (for Excel)",
+  "@dbExportEscapeFormulas": {
+    "description": "Database export dialog checkbox (CSV/TSV): prefix text cells starting with =, +, -, @ with an apostrophe so spreadsheets do not run them as formulas. Excel is a product name, not translated."
+  },
+  "settingsClearClipboardSeconds": "{count, plural, one{{count} second} other{{count} seconds}} after copying a secret",
+  "@settingsClearClipboardSeconds": {
+    "description": "Settings > Security: clipboard auto-clear choice in seconds.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsClearClipboardMinutes": "{count, plural, one{{count} minute} other{{count} minutes}} after copying a secret",
+  "@settingsClearClipboardMinutes": {
+    "description": "Settings > Security: clipboard auto-clear choice in minutes.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsClearClipboardHours": "{count, plural, one{{count} hour} other{{count} hours}} after copying a secret",
+  "@settingsClearClipboardHours": {
+    "description": "Settings > Security: clipboard auto-clear choice in hours.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsClearClipboardDays": "{count, plural, one{{count} day} other{{count} days}} after copying a secret",
+  "@settingsClearClipboardDays": {
+    "description": "Settings > Security: clipboard auto-clear choice in days.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharingUnreadableEntries": "{count, plural, one{{count} shared entry could not be read and is hidden.} other{{count} shared entries could not be read and are hidden.}}",
+  "@sharingUnreadableEntries": {
+    "description": "Sharing screen warning: the server returned shared entries that are malformed or failed signature/encryption checks; they are skipped and the rest of the list works. {count} is the number of skipped entries.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

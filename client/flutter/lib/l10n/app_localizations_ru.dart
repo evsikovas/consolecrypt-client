@@ -10139,4 +10139,72 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get errorNoTextEditor =>
       'Не найден текстовый редактор, чтобы безопасно открыть этот файл. Выберите редактор через «Открыть в программе…».';
+
+  @override
+  String get dbExportEscapeFormulas => 'Экранировать формулы (для Excel)';
+
+  @override
+  String settingsClearClipboardSeconds(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count секунды',
+      many: '$count секунд',
+      few: '$count секунды',
+      one: '$count секунду',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String settingsClearClipboardMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count минуты',
+      many: '$count минут',
+      few: '$count минуты',
+      one: '$count минуту',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String settingsClearClipboardHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count часа',
+      many: '$count часов',
+      few: '$count часа',
+      one: '$count час',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String settingsClearClipboardDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count дня',
+      many: '$count дней',
+      few: '$count дня',
+      one: '$count день',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String sharingUnreadableEntries(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count записи не удалось прочитать, они скрыты.',
+      many: '$count записей не удалось прочитать, они скрыты.',
+      few: '$count записи не удалось прочитать, они скрыты.',
+      one: '$count запись не удалось прочитать, она скрыта.',
+    );
+    return '$_temp0';
+  }
 }

@@ -9,8 +9,9 @@ use crate::dto::RecoveryKitDto;
 use crate::error::{AppError, AppResult};
 use crate::secrets::blocking;
 use crate::session::{PendingKit, Session, Unlocked};
+use cc_protocol::envelopes::KeyEnvelope;
 use cc_storage_core::{local_key_envelope, ProfileKind};
-use cc_vault_core::SecretString;
+use cc_vault_core::{password_envelope_needs_rewrap, SecretString};
 use std::sync::Arc;
 
 impl AppCore {
@@ -47,6 +48,73 @@ impl AppCore {
         }
         tracing::info!(vault_id = %u.vault_id, "vault passphrase changed");
         Ok(())
+    }
+
+    /// After a passphrase unlock with `opened`: an envelope sealed below the
+    /// minimum KDF cost for new envelopes (pre-0.8.7 calibration on a slow
+    /// machine) is re-wrapped with current parameters — same passphrase, same
+    /// vault key, objects untouched. Best effort: the old envelope stays in
+    /// place until the new one has been verified and stored (atomically),
+    /// and a failure is retried at the next unlock.
+    pub(crate) async fn rewrap_password_envelope(
+        &self,
+        s: &Arc<Session>,
+        opened: KeyEnvelope,
+        passphrase: &Arc<SecretString>,
+    ) {
+        if !password_envelope_needs_rewrap(&opened) {
+            return;
+        }
+        match self.try_rewrap(s, opened, passphrase.clone()).await {
+            Ok(true) => {
+                tracing::info!("vault password envelope re-wrapped with current KDF parameters")
+            }
+            Ok(false) => {}
+            Err(error) => {
+                tracing::warn!(code = error.code(), "password envelope re-wrap postponed")
+            }
+        }
+    }
+
+    async fn try_rewrap(
+        &self,
+        s: &Arc<Session>,
+        opened: KeyEnvelope,
+        passphrase: Arc<SecretString>,
+    ) -> AppResult<bool> {
+        let kdf = self.inner.ctx.kdf().await?;
+        // Test and `--fast-kdf` policies seal at the floor: nothing to gain.
+        if !kdf.meets_new_minimum() {
+            return Ok(false);
+        }
+        let (current, u) = self.unlocked().await?;
+        if !Arc::ptr_eq(&current, s) {
+            return Ok(false);
+        }
+        let vault = u.vault()?;
+        let req = blocking(move || Ok(vault.rewrap_password_envelope(&passphrase, kdf)?)).await?;
+        // Only over the envelope that was opened: a passphrase changed
+        // meanwhile (elsewhere, for a synced vault) is never overwritten.
+        let (_, stored, _) = s.unlock_envelopes().await?;
+        if stored.map(|env| env.envelope_id) != Some(opened.envelope_id) {
+            return Ok(false);
+        }
+        match s.kind().await? {
+            ProfileKind::Synced => {
+                let api = s.api()?;
+                let server = api.recovery_vault_envelope(u.vault_id).await?;
+                if server.password_envelope.map(|env| env.envelope_id) != Some(opened.envelope_id) {
+                    return Ok(false);
+                }
+                let env = api.replace_password_envelope(&req).await?;
+                s.cache_envelopes(u.vault_id, Some(env), None, None).await?;
+            }
+            ProfileKind::Local => {
+                let env = local_key_envelope(u.vault_id, req.envelope, Some(s.device_id()));
+                s.cache_envelopes(u.vault_id, Some(env), None, None).await?;
+            }
+        }
+        Ok(true)
     }
 
     /// Generate a new Recovery Key (the old one stops working). Show the

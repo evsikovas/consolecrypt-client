@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -25,7 +26,12 @@ class KubeSecretDialog extends ConsumerStatefulWidget {
 class _KubeSecretDialogState extends ConsumerState<KubeSecretDialog> with WidgetsBindingObserver {
   late final KubeScope _scope = ref.read(kubeScopeProvider);
   final _values = <String, SecretText>{}, _binary = <String>{};
-  final _clipboard = SecureClipboard(clearAfter: const Duration(seconds: 30));
+  // The configured auto-clear; closing the dialog or locking clears sooner.
+  late final _clipboard = SecureClipboard(
+    clearAfter: Duration(
+      seconds: clipboardClearSeconds(ref.read(localSettingsProvider).value?.clipboardClearSeconds ?? 30),
+    ),
+  );
   Timer? _timer;
   bool _busy = false, _failed = false, _expired = false;
   int _generation = 0;

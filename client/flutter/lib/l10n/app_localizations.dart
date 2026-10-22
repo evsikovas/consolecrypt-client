@@ -17539,6 +17539,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No text editor found to open this file safely. Choose an editor using Open With.'**
   String get errorNoTextEditor;
+
+  /// Database export dialog checkbox (CSV/TSV): prefix text cells starting with =, +, -, @ with an apostrophe so spreadsheets do not run them as formulas. Excel is a product name, not translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Escape formulas (for Excel)'**
+  String get dbExportEscapeFormulas;
+
+  /// Settings > Security: clipboard auto-clear choice in seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} second} other{{count} seconds}} after copying a secret'**
+  String settingsClearClipboardSeconds(int count);
+
+  /// Settings > Security: clipboard auto-clear choice in minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} minute} other{{count} minutes}} after copying a secret'**
+  String settingsClearClipboardMinutes(int count);
+
+  /// Settings > Security: clipboard auto-clear choice in hours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} hour} other{{count} hours}} after copying a secret'**
+  String settingsClearClipboardHours(int count);
+
+  /// Settings > Security: clipboard auto-clear choice in days.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} day} other{{count} days}} after copying a secret'**
+  String settingsClearClipboardDays(int count);
+
+  /// Sharing screen warning: the server returned shared entries that are malformed or failed signature/encryption checks; they are skipped and the rest of the list works. {count} is the number of skipped entries.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} shared entry could not be read and is hidden.} other{{count} shared entries could not be read and are hidden.}}'**
+  String sharingUnreadableEntries(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

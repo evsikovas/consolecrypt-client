@@ -5552,5 +5552,11 @@
   "sftpNoTextEditorTitle": "Текстовый редактор не найден",
   "sftpNoTextEditorBody": "Файл «{name}» может выполнить код, поэтому он открывается только как текст, но текстовый редактор не найден. Выберите редактор.",
   "sftpChooseEditor": "Выбрать редактор…",
-  "errorNoTextEditor": "Не найден текстовый редактор, чтобы безопасно открыть этот файл. Выберите редактор через «Открыть в программе…»."
+  "errorNoTextEditor": "Не найден текстовый редактор, чтобы безопасно открыть этот файл. Выберите редактор через «Открыть в программе…».",
+  "dbExportEscapeFormulas": "Экранировать формулы (для Excel)",
+  "settingsClearClipboardSeconds": "Через {count, plural, one{{count} секунду} few{{count} секунды} many{{count} секунд} other{{count} секунды}} после копирования секрета",
+  "settingsClearClipboardMinutes": "Через {count, plural, one{{count} минуту} few{{count} минуты} many{{count} минут} other{{count} минуты}} после копирования секрета",
+  "settingsClearClipboardHours": "Через {count, plural, one{{count} час} few{{count} часа} many{{count} часов} other{{count} часа}} после копирования секрета",
+  "settingsClearClipboardDays": "Через {count, plural, one{{count} день} few{{count} дня} many{{count} дней} other{{count} дня}} после копирования секрета",
+  "sharingUnreadableEntries": "{count, plural, one{{count} запись не удалось прочитать, она скрыта.} few{{count} записи не удалось прочитать, они скрыты.} many{{count} записей не удалось прочитать, они скрыты.} other{{count} записи не удалось прочитать, они скрыты.}}"
 }

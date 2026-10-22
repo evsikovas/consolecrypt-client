@@ -34,6 +34,8 @@ class ConsoleCryptApp extends ConsumerWidget {
     // the Windows high-contrast theme via MediaQuery (highContrast* themes).
     final increaseContrast = ref.watch(osIncreaseContrastProvider);
     final localProfile = ref.watch(activeProfileProvider.select((p) => p?.isLocal ?? false));
+    // Created at start so a clipboard clear pending from before a restart runs.
+    ref.watch(secureClipboardProvider);
     return MaterialApp.router(
       title: kAppName,
       debugShowCheckedModeBanner: false,

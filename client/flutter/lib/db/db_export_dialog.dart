@@ -34,7 +34,7 @@ class _DbExportDialogState extends ConsumerState<DbExportDialog> {
   late final _scope = ref.read(dbScopeProvider);
   final _delimiter = TextEditingController(text: ','), _quote = TextEditingController(text: '"');
   DbExportFormat _format = DbExportFormat.csv;
-  bool _header = true, _bom = false, _busy = false, _failed = false;
+  bool _header = true, _bom = false, _escapeFormulas = true, _busy = false, _failed = false;
   String? _exportId;
   DbExportProgress? _progress;
   StreamSubscription<DbExportProgress>? _subscription;
@@ -71,6 +71,7 @@ class _DbExportDialogState extends ConsumerState<DbExportDialog> {
       bom: _bom,
       delimiter: _delimiter.text,
       quote: _quote.text,
+      escapeFormulas: _escapeFormulas,
     );
     try {
       final selection = widget.selection;
@@ -168,6 +169,12 @@ class _DbExportDialogState extends ConsumerState<DbExportDialog> {
                   title: Text(l.dbExportHeader),
                   value: _header,
                   onChanged: _busy ? null : (v) => setState(() => _header = v!),
+                ),
+                CheckboxListTile(
+                  key: const ValueKey('db-export-escape-formulas'),
+                  title: Text(l.dbExportEscapeFormulas),
+                  value: _escapeFormulas,
+                  onChanged: _busy ? null : (v) => setState(() => _escapeFormulas = v!),
                 ),
                 if (widget.selection == null)
                   CheckboxListTile(
