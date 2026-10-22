@@ -188,8 +188,11 @@ ClickHouse — профиль `readonly=1`, в Redis — ACL `+@read -@write`, �
 ключа, для MongoDB — параметры коллекции и индексы), «Вставить имя» и
 «Сведения об объекте». DDL показывается блоком кода с номерами строк и
 подсветкой, каждый оператор (`CREATE TABLE`, каждый `CREATE INDEX`) отделён
-чертой, длинные строки прокручиваются вбок; кнопки «Копировать» и «Открыть в
-редакторе». Для коллекций MongoDB есть «Схема по выборке документов»: типы
+чертой. Окно подстраивается под ширину экрана и по высоте не больше кода.
+Длинные строки по умолчанию переносятся с отступом, номер стоит на первой
+строке; кнопка «Переносить строки» выключает перенос, и тогда код
+прокручивается вбок (настройка запоминается). Кнопки «Копировать» и «Открыть
+в редакторе». Для коллекций MongoDB есть «Схема по выборке документов»: типы
 полей и доля документов, в которых поле встречается.
 
 «Сведения об объекте» показывают факты из системного каталога, только чтением
@@ -459,7 +462,10 @@ The structure tree loads lazily and sorts objects into folders (tables,
 views, functions, sequences, dictionaries; columns, indexes, constraints,
 triggers, projections). The expanded table is framed and keys carry icons.
 Object menus offer the first 100 rows, DDL (a numbered, highlighted code
-block per statement, with Copy and Open in editor), the quoted identifier and
+block per statement, with Copy and Open in editor; the dialog follows the
+window width and is only as tall as the code; long lines wrap with an
+indent by default, and "Wrap lines" switches to sideways scrolling,
+remembered on this device), the quoted identifier and
 details; MongoDB collections can infer a schema from a sample. Redis keys are
 grouped by `:` and read with `SCAN`.
 

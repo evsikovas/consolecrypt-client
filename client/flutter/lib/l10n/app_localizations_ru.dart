@@ -10062,4 +10062,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get copyWhatObjectDetails => 'Сведения об объекте';
+
+  @override
+  String get dbWrapLines => 'Переносить строки';
 }

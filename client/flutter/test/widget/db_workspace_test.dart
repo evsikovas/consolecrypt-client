@@ -769,10 +769,13 @@ void main() {
     expect(service.commits, isEmpty);
     // The review shows the values, not placeholders.
     final sql = find.byKey(const ValueKey('db-query-review-sql'));
-    expect(
-      find.descendant(of: sql, matching: find.textContaining('SET "name" = \'bravo\' WHERE "id" = 2;')),
-      findsOneWidget,
-    );
+    for (final part in ['"name" = \'bravo\'', '"id" = 2;']) {
+      expect(
+        find.descendant(of: sql, matching: find.textContaining(part)),
+        findsOneWidget,
+        reason: part,
+      );
+    }
     expect(find.descendant(of: sql, matching: find.textContaining('{{p')), findsNothing);
     await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), 'wrong');
     await tester.pump();

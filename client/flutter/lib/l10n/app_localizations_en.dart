@@ -9825,4 +9825,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get copyWhatObjectDetails => 'Object details';
+
+  @override
+  String get dbWrapLines => 'Wrap lines';
 }

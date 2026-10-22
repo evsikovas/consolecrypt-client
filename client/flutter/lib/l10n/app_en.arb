@@ -13383,5 +13383,9 @@
   "copyWhatObjectDetails": "Object details",
   "@copyWhatObjectDetails": {
     "description": "Noun for the copied notice: the text of the object details dialog."
+  },
+  "dbWrapLines": "Wrap lines",
+  "@dbWrapLines": {
+    "description": "Database code view (DDL, reviewed query): toggle that wraps long lines instead of scrolling sideways."
   }
 }

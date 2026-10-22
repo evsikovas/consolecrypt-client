@@ -5527,5 +5527,6 @@
   "dbDetailsNoExpiry": "Без срока",
   "dbDetailsJson": "JSON",
   "dbDetailsEmpty": "Для этого объекта сведений нет.",
-  "copyWhatObjectDetails": "Сведения об объекте"
+  "copyWhatObjectDetails": "Сведения об объекте",
+  "dbWrapLines": "Переносить строки"
 }

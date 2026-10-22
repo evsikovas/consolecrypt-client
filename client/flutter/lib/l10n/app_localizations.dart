@@ -17407,6 +17407,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Object details'**
   String get copyWhatObjectDetails;
+
+  /// Database code view (DDL, reviewed query): toggle that wraps long lines instead of scrolling sideways.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrap lines'**
+  String get dbWrapLines;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
