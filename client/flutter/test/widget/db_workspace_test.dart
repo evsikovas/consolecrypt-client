@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
+import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -13,6 +14,7 @@ import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/db/db_workspace.dart';
+import 'package:consolecrypt/snippets/starter_catalog.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -315,11 +317,15 @@ Future<ProviderContainer> _pump(
   String language = 'en',
   Size size = const Size(1200, 900),
   double scale = 1,
+  List<Snippet> snippets = const [],
 }) async {
   final backend = testBackend();
   addTearDown(backend.dispose);
   // Changing statements are confirmed with the vault passphrase.
   await backend.debugSignInDemoAndUnlock();
+  for (final snippet in snippets) {
+    await backend.snippets.saveSnippet(snippet);
+  }
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -407,6 +413,44 @@ void main() {
     expect(service.preparations.last.$2, DbRunMode.script);
     expect(service.executed, hasLength(3));
   });
+
+  testWidgets('the snippets button and Ctrl+J put a snippet below the text without running it', (tester) async {
+    final en = lookupAppLocalizations(const Locale('en'));
+    final activity = starterSnippetPackages(en)
+        .firstWhere((p) => p.id == 'postgresql')
+        .snippets
+        .firstWhere((s) => s.catalogId == 'consolecrypt.db.pg.activity.v1');
+    final service = _Service();
+    await _pump(tester, service, snippets: [activity]);
+    final controller = tester.widget<TextField>(find.byKey(const ValueKey('db-query-editor'))).controller!;
+    Finder row() =>
+        find.descendant(of: find.byKey(const ValueKey('db-snippet-picker')), matching: find.text(activity.name));
+    await _type(tester, 'SELECT 1');
+    expect(find.byTooltip('Snippets: insert into the editor (Ctrl+J)'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('db-snippets')));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-snippet-picker')), findsOneWidget);
+    await tester.tap(row());
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-snippet-picker')), findsNothing);
+    final query = activity.template.trim();
+    expect(controller.text, 'SELECT 1;\n\n$query');
+    expect(controller.selection.baseOffset, 'SELECT 1;\n\n'.length, reason: 'the caret is at the inserted text');
+
+    // The shortcut opens the same picker; cancelling leaves the text alone.
+    await tester.tap(find.byKey(const ValueKey('db-query-editor')));
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyJ);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-snippet-picker')), findsOneWidget);
+    await tester.tap(find.text('Cancel').last);
+    await settle(tester);
+    expect(controller.text, 'SELECT 1;\n\n$query');
+    expect(service.preparations, isEmpty, reason: 'an inserted snippet never runs');
+    expect(service.executed, isEmpty);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets('structure groups mixed children into folders and frames an expanded table', (tester) async {
     final service = _Service()..mixedTree = true;

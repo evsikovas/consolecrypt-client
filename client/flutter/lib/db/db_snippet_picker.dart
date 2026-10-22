@@ -6,7 +6,6 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/risk_badge.dart';
-import 'package:consolecrypt/db/db_editor.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/snippets/run_flow.dart';
 import 'package:consolecrypt/snippets/starter_catalog_db.dart';
@@ -65,26 +64,6 @@ Future<String?> pickDbSnippet(BuildContext context, WidgetRef ref, {required DbE
     // Usage statistics are best effort; the text is still inserted.
   }
   return text;
-}
-
-extension DbEditorSnippetAppend on DbEditorController {
-  /// Appends [snippet] below the existing text (separated by a blank line)
-  /// and puts the caret at its end; the existing text is kept as is.
-  void appendSnippet(String snippet) {
-    final current = text;
-    final separator = current.trim().isEmpty
-        ? ''
-        : current.endsWith('\n\n')
-        ? ''
-        : current.endsWith('\n')
-        ? '\n'
-        : '\n\n';
-    final next = current.trim().isEmpty ? snippet : '$current$separator$snippet';
-    value = TextEditingValue(
-      text: next,
-      selection: TextSelection.collapsed(offset: next.length),
-    );
-  }
 }
 
 /// The chooser dialog; pops with the selected [Snippet].

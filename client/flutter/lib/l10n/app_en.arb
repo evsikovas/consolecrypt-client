@@ -15573,5 +15573,14 @@
         "type": "String"
       }
     }
+  },
+  "dbInsertSnippetHelp": "Snippets: insert into the editor ({shortcut})",
+  "@dbInsertSnippetHelp": {
+    "description": "Database editor: tooltip of the toolbar button that picks a saved snippet and inserts it below the text (nothing runs).",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
   }
 }

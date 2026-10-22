@@ -11655,4 +11655,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'Я проверил(а) эту команду для $host (политика команды)';
   }
+
+  @override
+  String dbInsertSnippetHelp(String shortcut) {
+    return 'Сниппеты: вставить в редактор ($shortcut)';
+  }
 }

@@ -20,6 +20,7 @@ import 'package:consolecrypt/db/db_query_dialogs.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_result_controller.dart';
 import 'package:consolecrypt/db/db_result_grid.dart';
+import 'package:consolecrypt/db/db_snippet_picker.dart';
 import 'package:consolecrypt/db/db_transport_badge.dart';
 import 'package:consolecrypt/db/db_tree.dart';
 import 'package:flutter/foundation.dart';
@@ -543,6 +544,15 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
       result.editableTable != null &&
       result.columns.any((c) => c.primaryKey) &&
       _backend is DbCellEditService;
+
+  /// Picks one of the user's snippets for this engine and puts it below the
+  /// text of the editor (like any generated text); nothing runs.
+  Future<void> _insertSnippet() async {
+    final session = _session;
+    if (!_current || session == null) return;
+    final sql = await pickDbSnippet(context, ref, engine: session.engine);
+    if (sql != null && _current && _session?.id == session.id) _draft(sql);
+  }
 
   Future<void> _explain(bool analyze) async {
     final tab = _tab, session = _session;
@@ -1107,6 +1117,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
                       onExplain: _explain,
                       onHistory: _hasHistory ? () => _showSide('history') : null,
                       onAi: _hasAi ? () => _showSide('ai') : null,
+                      onSnippets: _insertSnippet,
                     ),
                   ),
                 ),

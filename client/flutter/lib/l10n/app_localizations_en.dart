@@ -11372,4 +11372,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'I checked this command for $host (team policy)';
   }
+
+  @override
+  String dbInsertSnippetHelp(String shortcut) {
+    return 'Snippets: insert into the editor ($shortcut)';
+  }
 }

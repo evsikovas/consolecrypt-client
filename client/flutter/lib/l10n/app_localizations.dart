@@ -20095,6 +20095,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I checked this command for {host} (team policy)'**
   String teamsPolicyAck(String host);
+
+  /// Database editor: tooltip of the toolbar button that picks a saved snippet and inserts it below the text (nothing runs).
+  ///
+  /// In en, this message translates to:
+  /// **'Snippets: insert into the editor ({shortcut})'**
+  String dbInsertSnippetHelp(String shortcut);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
