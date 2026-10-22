@@ -598,6 +598,87 @@ pub(crate) fn parameter_names(text: &str) -> Result<BTreeSet<String>, DbError> {
     Ok(names)
 }
 
+/// The editor's "format": one statement per line ending with `;`, a batch
+/// with one inner statement per line, comments kept on their own lines and
+/// whitespace inside a statement collapsed. Templates stay as written.
+pub(crate) fn format(text: &str) -> Result<String, DbError> {
+    let tokens = lex(text)?;
+    let mut output = String::with_capacity(text.len());
+    let mut line = String::new();
+    let mut previous_end: Option<usize> = None;
+    let mut statement: Vec<Option<String>> = Vec::new();
+    let mut in_batch = false;
+    let flush = |line: &mut String, output: &mut String| {
+        let trimmed = line.trim_end();
+        if !trimmed.trim_start().is_empty() {
+            output.push_str(trimmed);
+            output.push('\n');
+        }
+        line.clear();
+    };
+    for token in &tokens {
+        let slice = &text[token.start..token.end];
+        if token.kind == Kind::Comment {
+            flush(&mut line, &mut output);
+            output.push_str(slice.trim_end());
+            output.push('\n');
+            previous_end = None;
+            continue;
+        }
+        if is_punct(text, Some(token), ";") {
+            line.push(';');
+            if in_batch {
+                line.insert_str(0, "  ");
+            }
+            flush(&mut line, &mut output);
+            previous_end = None;
+            if !in_batch {
+                statement.clear();
+            }
+            continue;
+        }
+        let operator = |value: &str| {
+            matches!(value, "=" | "<" | ">" | "<=" | ">=" | "!=" | "+=" | "-=" | ",")
+        };
+        let previous = line.rsplit(' ').next().unwrap_or_default();
+        let glued = matches!(slice, "." | "," | ")" | "]" | "}")
+            || line.ends_with(['.', '(', '[', '{'])
+            || (previous_end == Some(token.start)
+                && !operator(slice)
+                && !operator(previous)
+                && !line.ends_with(','));
+        if !line.is_empty() && !glued {
+            line.push(' ');
+        }
+        line.push_str(slice);
+        previous_end = Some(token.end);
+        statement.push(word(text, token));
+        let length = statement.len();
+        if length == 1 && statement[0].as_deref() == Some("BEGIN") {
+            in_batch = true;
+        }
+        if in_batch && statement[length - 1].as_deref() == Some("BATCH") {
+            let applied = length >= 2 && statement[length - 2].as_deref() == Some("APPLY");
+            if applied {
+                in_batch = false;
+            } else {
+                flush(&mut line, &mut output);
+                previous_end = None;
+            }
+        }
+        if in_batch && word(text, token).as_deref() == Some("APPLY") {
+            let apply = line.split_off(line.len() - slice.len());
+            if !line.trim().is_empty() {
+                line.insert_str(0, "  ");
+            }
+            flush(&mut line, &mut output);
+            line = apply;
+        }
+    }
+    flush(&mut line, &mut output);
+    Ok(output.trim_end().to_owned())
+}
+
 /// Editor pieces: (comment, delimiter, start, end). A `;` inside a batch is
 /// part of the batch, not a delimiter.
 pub(crate) fn pieces(text: &str) -> Result<Vec<(bool, bool, usize, usize)>, DbError> {
@@ -862,6 +943,15 @@ mod tests {
             panic!("not CQL");
         };
         assert_eq!(keyspace.as_deref(), Some("MyKs"));
+    }
+
+    #[test]
+    fn formatting_puts_statements_and_batch_members_on_lines() {
+        assert_eq!(
+            format("select  a,b from   ks.t where a={{id}} ; -- note\nbegin batch insert into t (a) values (1); delete from t where a=2; apply batch;").unwrap(),
+            "select a, b from ks.t where a = {{id}};\n-- note\nbegin batch\n  insert into t (a) values (1);\n  delete from t where a = 2;\napply batch;"
+        );
+        assert_eq!(format("SELECT now() FROM system.local").unwrap(), "SELECT now() FROM system.local");
     }
 
     #[test]

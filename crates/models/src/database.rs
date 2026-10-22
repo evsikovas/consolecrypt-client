@@ -16,6 +16,12 @@ pub enum DbEngine {
     Mongodb,
     /// Apache Cassandra and ScyllaDB (CQL native protocol).
     Cassandra,
+    /// An engine of a newer client. Decoding stays tolerant for values that
+    /// only name an engine (history entries, previews); a connection object
+    /// still needs its typed options, so one of an unknown engine is skipped
+    /// as a whole and never rewritten. Never valid in a saved connection.
+    #[serde(other)]
+    Unknown,
 }
 
 impl DbEngine {
@@ -38,20 +44,16 @@ impl DbEngine {
             Self::Redis => 6379,
             Self::Mongodb => 27017,
             Self::Cassandra => 9042,
+            Self::Unknown => 0,
         }
     }
 
-    /// Whether every 0.8.x client can decode a connection of this engine.
-    ///
-    /// Clients up to 0.8.6 know exactly the first six engines: a vault object
-    /// with any other engine fails to decode there and is skipped (kept
-    /// encrypted and untouched, never rewritten). Every engine added later
-    /// returns false here, which is the single switch for the rules around
-    /// such connections: an existing connection never changes its engine to
-    /// one of them (an older device would keep editing its stale copy), and
-    /// the UI says that older versions do not show the connection.
-    pub const fn legacy(self) -> bool {
-        !matches!(self, Self::Cassandra)
+    /// Connections of engines added after 0.9.1 stay on the device that
+    /// created them (never synced, shared or backed up): clients up to
+    /// 0.9.1 cannot decode such a vault object. This is the single switch
+    /// for every later engine until syncing them is enabled.
+    pub const fn device_local(self) -> bool {
+        matches!(self, Self::Cassandra)
     }
 }
 
@@ -357,7 +359,8 @@ impl DbOptions {
                 srv: false,
                 read_preference: MongoReadPreference::default(),
             },
-            DbEngine::Cassandra => Self::Cassandra {
+            // Never valid: the options of a Cassandra connection do not match.
+            DbEngine::Cassandra | DbEngine::Unknown => Self::Cassandra {
                 contact_points: Vec::new(),
                 local_datacenter: None,
                 read_consistency: cql_read_consistency(),
@@ -469,6 +472,9 @@ impl DbConnection {
             || self.auth.secret_ids().contains(&ObjectId::NIL)
         {
             return Err(invalid("reference", "invalid object reference"));
+        }
+        if self.engine == DbEngine::Unknown {
+            return Err(invalid("engine", "engine of a newer client"));
         }
         self.route.validate()?;
         text(&self.name, 256, false, "name")?;
@@ -846,11 +852,11 @@ mod tests {
     fn cassandra_options_roundtrip_with_defaults_and_validate() {
         let mut value = DbConnection::new("ring", "cass-1.example.test", DbEngine::Cassandra);
         assert_eq!(value.port, 9042);
-        assert!(!DbEngine::Cassandra.legacy());
+        assert!(DbEngine::Cassandra.device_local());
         assert!(DbEngine::ALL
             .iter()
             .filter(|engine| **engine != DbEngine::Cassandra)
-            .all(|engine| engine.legacy()));
+            .all(|engine| !engine.device_local()));
         value.database = "shop_events".into();
         value.options = DbOptions::Cassandra {
             contact_points: vec!["cass-2.example.test".into(), "10.0.0.3".into()],
@@ -916,11 +922,19 @@ mod tests {
         assert!(serde_json::from_value::<DbConnection>(json).is_err());
     }
 
-    /// Clients that do not know an engine fail to decode the whole object,
-    /// so the vault list skips it instead of showing a half-understood
-    /// connection (see `DbEngine::legacy`).
+    /// An unknown engine name decodes as `Unknown`, but a connection object
+    /// of that engine fails as a whole: the vault list skips it instead of
+    /// holding a half-understood copy that could be written back lossy.
     #[test]
-    fn an_unknown_engine_fails_the_whole_object() {
+    fn unknown_engines_decode_tolerantly_but_never_as_a_connection() {
+        assert_eq!(
+            serde_json::from_value::<DbEngine>(serde_json::json!("future_engine")).unwrap(),
+            DbEngine::Unknown
+        );
+        let mut unknown = DbConnection::new("future", "db.example.test", DbEngine::Unknown);
+        assert!(unknown.validate().is_err());
+        unknown.options = DbOptions::for_engine(DbEngine::Postgresql);
+        assert!(unknown.validate().is_err());
         let value = DbConnection::new("future", "db.example.test", DbEngine::Postgresql);
         let mut json = serde_json::to_value(crate::ObjectPayload::new(
             crate::VaultObject::DbConnection(value),

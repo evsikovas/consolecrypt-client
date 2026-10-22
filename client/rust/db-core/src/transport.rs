@@ -225,6 +225,18 @@ impl TlsProfile {
     }
 
     pub async fn connect(&self, stream: DbIo, name: Option<&str>) -> Result<DbIo, DbError> {
+        self.connect_checked(stream, name)
+            .await
+            .map_err(|_| DbError::TlsFailed)
+    }
+
+    /// Like [`Self::connect`], but tells a server without TLS on that port
+    /// ([`DbError::TlsUnavailable`]) apart from a failed verification.
+    pub async fn connect_checked(
+        &self,
+        stream: DbIo,
+        name: Option<&str>,
+    ) -> Result<DbIo, DbError> {
         if self.mode == DbTlsMode::Disable {
             return Ok(stream);
         }
@@ -241,7 +253,30 @@ impl TlsProfile {
             .connect(name, stream)
             .await
             .map(|stream| Box::new(stream) as DbIo)
-            .map_err(|_| DbError::TlsFailed)
+            .map_err(classify_handshake)
+    }
+}
+
+/// A server that answers a ClientHello with something that is not TLS (or
+/// just hangs up) does not offer TLS on that port; anything else, such as a
+/// certificate the profile rejects, is a TLS failure.
+pub(crate) fn classify_handshake(error: io::Error) -> DbError {
+    if let Some(inner) = error
+        .get_ref()
+        .and_then(|inner| inner.downcast_ref::<rustls::Error>())
+    {
+        return match inner {
+            rustls::Error::InvalidMessage(_) => DbError::TlsUnavailable,
+            _ => DbError::TlsFailed,
+        };
+    }
+    match error.kind() {
+        io::ErrorKind::UnexpectedEof
+        | io::ErrorKind::ConnectionReset
+        | io::ErrorKind::ConnectionAborted
+        | io::ErrorKind::BrokenPipe
+        | io::ErrorKind::InvalidData => DbError::TlsUnavailable,
+        _ => DbError::TlsFailed,
     }
 }
 
@@ -316,19 +351,23 @@ impl LocalRelay {
         destination: DbDestination,
         scope: CancellationToken,
     ) -> Result<Self, DbError> {
-        Self::start(
-            connector,
-            Arc::new(HashSet::from([destination])),
-            None,
-            None,
-            scope,
-        )
-        .await
+        Self::start(connector, Arc::new(vec![destination]), None, None, scope).await
+    }
+
+    /// The CQL driver dials only this listener. Each accepted socket goes to
+    /// the first destination that answers, in order, through `tls` when set.
+    pub async fn failover(
+        connector: Arc<dyn DbConnector>,
+        destinations: Vec<DbDestination>,
+        tls: Option<TlsProfile>,
+        scope: CancellationToken,
+    ) -> Result<Self, DbError> {
+        Self::start(connector, Arc::new(destinations), None, tls, scope).await
     }
 
     async fn start(
         connector: Arc<dyn DbConnector>,
-        destinations: Arc<HashSet<DbDestination>>,
+        destinations: Arc<Vec<DbDestination>>,
         authentication: Option<Arc<SocksCredentials>>,
         tls: Option<TlsProfile>,
         scope: CancellationToken,
@@ -364,15 +403,26 @@ impl LocalRelay {
                         children.spawn(async move {
                             let _permit = permit;
                             let operation = async {
-                                let destination = if let Some(auth) = &authentication {
-                                    socks_request(&mut local, auth, &destinations).await?
+                                let candidates = if let Some(auth) = &authentication {
+                                    vec![socks_request(&mut local, auth, &destinations).await?]
                                 } else {
-                                    destinations.iter().next().cloned().ok_or(DbError::InvalidRequest)?
+                                    destinations.to_vec()
                                 };
-                                let mut remote = connector.connect(&destination, cancel.clone()).await?;
-                                if let Some(tls) = &tls {
-                                    remote = tls.connect(remote, Some(&destination.host)).await?;
+                                let mut opened = Err(DbError::InvalidRequest);
+                                for destination in &candidates {
+                                    opened = async {
+                                        let remote = connector.connect(destination, cancel.clone()).await?;
+                                        match &tls {
+                                            Some(tls) => tls.connect(remote, Some(&destination.host)).await,
+                                            None => Ok(remote),
+                                        }
+                                    }
+                                    .await;
+                                    if opened.is_ok() {
+                                        break;
+                                    }
                                 }
+                                let remote = opened?;
                                 if authentication.is_some() {
                                     // Do not announce success before upstream TLS verifies.
                                     local.write_all(&[5,0,0,1,127,0,0,1,0,0]).await.map_err(|_| DbError::ConnectionFailed)?;
@@ -437,7 +487,7 @@ impl MongoRelay {
         });
         let relay = LocalRelay::start(
             connector,
-            Arc::new(destinations),
+            Arc::new(destinations.into_iter().collect()),
             Some(authentication.clone()),
             Some(tls),
             scope,
@@ -453,7 +503,7 @@ impl MongoRelay {
 async fn socks_request(
     stream: &mut TcpStream,
     credentials: &SocksCredentials,
-    destinations: &HashSet<DbDestination>,
+    destinations: &[DbDestination],
 ) -> Result<DbDestination, DbError> {
     async fn byte(stream: &mut TcpStream) -> Result<u8, DbError> {
         stream

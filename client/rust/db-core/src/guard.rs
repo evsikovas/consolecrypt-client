@@ -253,6 +253,22 @@ impl DbGuard {
             .ok_or(DbError::InvalidRequest)
     }
 
+    /// Role and permission management never runs on a production session,
+    /// not even inside a production write window.
+    fn refuse_on_production(
+        &self,
+        batch: &[parser::ClassifiedStatement],
+    ) -> Result<(), DbError> {
+        if self.policy.production
+            && batch
+                .iter()
+                .any(|statement| statement.reason == parser::cql::ROLE_MANAGEMENT)
+        {
+            return Err(DbError::PolicyDenied);
+        }
+        Ok(())
+    }
+
     fn live(&self) -> Result<(), DbError> {
         if self.cancel.is_cancelled() {
             Err(DbError::SessionClosed)
@@ -304,6 +320,7 @@ impl DbGuard {
     pub fn review(&self, request: &DbQueryRequest) -> Result<QueryReview, DbError> {
         self.live()?;
         let batch = parser::parse(self.policy.engine, &self.policy.default_schema, request)?;
+        self.refuse_on_production(&batch)?;
         let risk = batch
             .iter()
             .map(|statement| statement.risk)
@@ -363,6 +380,7 @@ impl DbGuard {
     pub fn prepare(&self, request: &DbQueryRequest) -> Result<Vec<GuardedStatement>, DbError> {
         self.live()?;
         let batch = parser::parse(self.policy.engine, &self.policy.default_schema, request)?;
+        self.refuse_on_production(&batch)?;
         let risk = batch
             .iter()
             .map(|statement| statement.risk)

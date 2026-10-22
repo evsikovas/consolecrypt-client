@@ -583,3 +583,82 @@ fn side_effecting_server_functions_stay_blocked_on_production() {
         assert!(g.prepare(&request(query)).is_err(), "accepted {query}");
     }
 }
+
+#[test]
+fn cql_production_is_read_only_and_never_manages_roles() {
+    use std::time::Duration;
+    let prod = guard(DbEngine::Cassandra, true, false);
+    for read in [
+        "SELECT * FROM shop.items WHERE id = 1",
+        "SELECT * FROM shop.items",
+        "USE shop",
+        "DESCRIBE KEYSPACES",
+    ] {
+        assert!(prod.prepare(&request(read)).unwrap()[0].is_read_only(), "{read}");
+    }
+    for write in [
+        "INSERT INTO items (id) VALUES (1)",
+        "UPDATE items SET v = 1 WHERE id = 1",
+        "BEGIN BATCH DELETE FROM items WHERE id = 1; APPLY BATCH",
+        "CREATE TABLE t (a int PRIMARY KEY)",
+        "TRUNCATE items",
+    ] {
+        assert!(
+            matches!(prod.prepare(&request(write)), Err(DbError::PolicyDenied)),
+            "{write}"
+        );
+    }
+    prod.open_production_write(Duration::from_secs(300)).unwrap();
+    assert!(!prod
+        .prepare(&request("INSERT INTO items (id) VALUES (1)"))
+        .unwrap()[0]
+        .is_read_only());
+    // Role management stays blocked inside the window, even with a review.
+    for role in [
+        "GRANT SELECT ON KEYSPACE shop TO reader",
+        "CREATE ROLE reader WITH LOGIN = true",
+        "DROP USER old",
+    ] {
+        assert!(matches!(prod.review(&request(role)), Err(DbError::PolicyDenied)), "{role}");
+        assert!(matches!(prod.prepare(&request(role)), Err(DbError::PolicyDenied)), "{role}");
+    }
+    // Development: destructive statements need the exact approval.
+    let dev = guard(DbEngine::Cassandra, false, false);
+    dev.allow_session_write().unwrap();
+    let mut drop = request("DROP TABLE items");
+    assert!(matches!(dev.prepare(&drop), Err(DbError::ApprovalRequired)));
+    let review = dev.review(&drop).unwrap();
+    assert_eq!(review.risk, QueryRisk::Destructive);
+    assert_eq!(review.reason_codes, ["cql_drop"]);
+    dev.approve(&review.ticket).unwrap();
+    drop.approval_ticket = Some(review.ticket);
+    dev.prepare(&drop).unwrap();
+    // A scan warning is a reason code of a read, not a block.
+    let scan = dev
+        .review(&request("SELECT * FROM items WHERE v = 1 ALLOW FILTERING"))
+        .unwrap();
+    assert_eq!(scan.risk, QueryRisk::ReadOnly);
+    assert_eq!(scan.reason_codes, ["cql_allow_filtering"]);
+    // Unknown statements are refused.
+    assert!(matches!(
+        dev.prepare(&request("ADD NODE 10.0.0.1")),
+        Err(DbError::InvalidRequest)
+    ));
+}
+
+#[test]
+fn cql_parameters_are_bound_values() {
+    let g = guard(DbEngine::Cassandra, true, false);
+    let mut q = request("SELECT * FROM items WHERE id = {{id}} AND label = {{id}}");
+    q.parameters = vec![param("id", "'; DROP TABLE items; --")];
+    let p = g.prepare(&q).unwrap();
+    let ParsedStatement::Cql {
+        text, parameters, ..
+    } = p[0].parsed()
+    else {
+        panic!()
+    };
+    assert_eq!(text, "SELECT * FROM items WHERE id = ? AND label = ?");
+    assert_eq!(parameters.len(), 2);
+    assert!(!text.contains("DROP"));
+}

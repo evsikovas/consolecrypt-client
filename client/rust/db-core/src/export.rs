@@ -317,6 +317,26 @@ impl Formatter {
                     _ => format!(",\n  {text}"),
                 }
             }
+            ExportFormat::Insert if self.engine == DbEngine::Cassandra => {
+                // INSERT … JSON keeps every CQL type, collections included.
+                let fields: Vec<String> = self
+                    .columns
+                    .iter()
+                    .zip(row)
+                    .map(|(column, cell)| {
+                        format!(
+                            "{}:{}",
+                            serde_json::Value::String(column.name.clone()),
+                            crate::cassandra_value::json_of_cell(cell)
+                        )
+                    })
+                    .collect();
+                format!(
+                    "INSERT INTO {} JSON '{}';\n",
+                    self.table,
+                    format!("{{{}}}", fields.join(",")).replace('\'', "''")
+                )
+            }
             ExportFormat::Insert => {
                 let names: Vec<String> = self
                     .columns

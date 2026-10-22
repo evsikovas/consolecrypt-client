@@ -2,6 +2,7 @@
 //! vault connection, guarded query streams and read-only structure browsing.
 //! Production and read-only policy come only from the stored connection.
 use crate::{
+    cassandra::Cassandra,
     clickhouse::ClickHouse,
     guard::{DbGuard, GuardPolicy},
     mongo::Mongo,
@@ -30,6 +31,7 @@ pub(crate) enum Driver {
     Redis(Redis),
     ClickHouse(ClickHouse),
     Mongo(Mongo),
+    Cassandra(Cassandra),
 }
 
 impl Driver {
@@ -48,6 +50,7 @@ impl Driver {
             Self::Redis(driver) => &driver.version,
             Self::ClickHouse(driver) => &driver.version,
             Self::Mongo(driver) => &driver.version,
+            Self::Cassandra(driver) => &driver.version,
         }
     }
 
@@ -60,9 +63,25 @@ impl Driver {
         cancel: CancellationToken,
     ) -> BoxFuture<'a, Result<(), DbError>> {
         match statement {
-            ParsedStatement::Sql { text, parameters } => {
-                self.query(text, parameters, read_only, sink, cancel)
-            }
+            ParsedStatement::Sql { text, parameters } => match self {
+                Self::Cassandra(_) => Box::pin(async { Err(DbError::InvalidRequest) }),
+                _ => self.query(text, parameters, read_only, sink, cancel),
+            },
+            ParsedStatement::Cql {
+                text,
+                parameters,
+                keyspace,
+            } => match self {
+                Self::Cassandra(driver) => driver.run(
+                    text,
+                    parameters,
+                    keyspace.as_deref(),
+                    read_only,
+                    sink,
+                    cancel,
+                ),
+                _ => Box::pin(async { Err(DbError::InvalidRequest) }),
+            },
             ParsedStatement::Redis { argv } => match self {
                 Self::Redis(driver) => driver.command(argv, sink, cancel),
                 _ => Box::pin(async { Err(DbError::InvalidRequest) }),
@@ -80,8 +99,10 @@ impl Driver {
         &'a mut self,
         parent: Option<&'a DbObjectRef>,
         cursor: Option<&'a str>,
+        cancel: CancellationToken,
     ) -> BoxFuture<'a, Result<DbTreePage, DbError>> {
         match self {
+            Self::Cassandra(driver) => driver.browse(parent, cancel),
             Self::Redis(driver) => driver.browse(parent, cursor),
             Self::ClickHouse(driver) => driver.browse(parent, cursor),
             Self::Mongo(driver) => driver.browse(parent, cursor),
@@ -114,6 +135,12 @@ impl Driver {
                     driver.query(sql, bindings, read_only, sink, cancel).await
                 }
                 Self::Mongo(_) => Err(DbError::InvalidRequest),
+                // Catalogue CQL with `?` markers and bound names.
+                Self::Cassandra(driver) => {
+                    driver
+                        .run(sql, bindings, None, read_only, sink, cancel)
+                        .await
+                }
             }
         })
     }
@@ -184,6 +211,13 @@ impl DbSession {
             DbEngine::Mongodb => Driver::Mongo(
                 Mongo::connect(connection, credentials, connector, scope.clone()).await?,
             ),
+            DbEngine::Cassandra => {
+                let driver =
+                    Cassandra::connect(connection, credentials, connector, scope.clone()).await?;
+                transport_security = driver.security;
+                Driver::Cassandra(driver)
+            }
+            DbEngine::Unknown => return Err(DbError::InvalidRequest),
         };
         let server_version = driver.version().to_owned();
         let default_schema = match &connection.options {
@@ -211,8 +245,9 @@ impl DbSession {
         let server_read_only = match &driver {
             // MongoDB has no read-only session; only its roles can be verified.
             Driver::Mongo(driver) => driver.server_read_only.clone(),
-            // Redis has no server switch (use a read-only ACL user).
-            Driver::Redis(_) => DbServerReadOnly::Unverified,
+            // Redis has no server switch (use a read-only ACL user); CQL has
+            // no read-only session either (use a role with SELECT only).
+            Driver::Redis(_) | Driver::Cassandra(_) => DbServerReadOnly::Unverified,
             // SQL drivers open every guarded read in a server read-only
             // transaction; ClickHouse sends readonly=2 with every read.
             _ if read_only => DbServerReadOnly::Enforced,
@@ -261,7 +296,9 @@ impl DbSession {
         tokio::spawn(async move {
             let cancel = sink.cancel.clone();
             if let [statement] = statements.as_slice() {
-                if let ParsedStatement::Sql { text, .. } = statement.parsed() {
+                if let ParsedStatement::Sql { text, .. } | ParsedStatement::Cql { text, .. } =
+                    statement.parsed()
+                {
                     if statement.is_read_only() {
                         if let Some((table, key)) = session.editable_source(text).await {
                             sink.set_editable(table, key);
@@ -416,7 +453,7 @@ impl DbSession {
                     return Ok(DbTreePage { nodes: Vec::new(), next_cursor: None })
                 }
                 _ => {
-                    return driver.browse(parent, cursor).await
+                    return driver.browse(parent, cursor, self.scope.child_token()).await
                 }
             };
         let mut rows = Collect::default();

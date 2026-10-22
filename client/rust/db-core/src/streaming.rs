@@ -72,6 +72,10 @@ pub(crate) trait RowConsumer: Send {
         elapsed_ms: u64,
         affected_rows: Option<u64>,
     ) -> Result<(), DbError>;
+    /// A server message about the running statement (CQL warnings).
+    async fn notice(&mut self, _message: String) -> Result<(), DbError> {
+        Ok(())
+    }
 }
 
 pub(crate) struct QuerySink {
@@ -262,6 +266,11 @@ impl RowConsumer for QuerySink {
             .ok_or(DbError::ResultLimit)?;
         Ok(())
     }
+
+    async fn notice(&mut self, message: String) -> Result<(), DbError> {
+        self.flush().await?;
+        self.emit(DbQueryEvent::Notice { message }).await
+    }
 }
 
 fn bounded_size(value: &impl serde::Serialize) -> Result<usize, DbError> {
@@ -299,5 +308,6 @@ pub(crate) fn error_code(error: &DbError) -> &'static str {
         DbError::Cancelled => "cancelled",
         DbError::ResultLimit => "result_limit",
         DbError::SessionClosed => "session_closed",
+        DbError::DatacenterMismatch => "datacenter_mismatch",
     }
 }

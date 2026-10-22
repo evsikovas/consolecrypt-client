@@ -157,6 +157,10 @@ pub enum DbObjectKind {
     RedisDatabase,
     RedisKey,
     Collection,
+    /// A CQL user-defined type.
+    UserType,
+    /// A CQL user-defined aggregate.
+    Aggregate,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -341,6 +345,9 @@ pub enum DbError {
     ResultLimit,
     #[error("database session is closed")]
     SessionClosed,
+    /// The coordinator is not in the connection's local data center.
+    #[error("database coordinator is in another data center")]
+    DatacenterMismatch,
 }
 
 #[cfg(test)]
