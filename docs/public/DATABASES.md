@@ -247,6 +247,14 @@ CSV, TSV, JSON, NDJSON, Markdown или как SQL `INSERT`. «Экспорт р
 прогрессом и отменой. Экспортируются только запросы на чтение: изменяющий
 запрос для экспорта не повторяется.
 
+В CSV и TSV флажок «Экранировать формулы (для Excel)» (включён по умолчанию)
+добавляет апостроф перед текстом, который начинается с `=`, `+`, `-`, `@`,
+табуляции или возврата каретки, чтобы табличный редактор не выполнил его как
+формулу; числа из числовых столбцов не меняются. Строки в SQL `INSERT`
+экранируются удвоением кавычки (`''`); для MySQL, MariaDB и ClickHouse
+обратная косая черта удваивается, для PostgreSQL текст с ней записывается как
+`E'…'`, так что файл читается одинаково при любых настройках экранирования.
+
 ### Редактирование ячеек
 
 На компьютере в сессии с разрешённой записью (непрод-подключение или прод с
@@ -465,6 +473,14 @@ more”. Sensitive-looking columns are masked and copied values clear from the
 clipboard automatically. Copy a cell, row, selection or the loaded result as
 CSV, TSV, JSON, NDJSON, Markdown or `INSERT`; file export re-runs read-only
 queries and streams every row with progress and cancellation.
+
+For CSV and TSV, “Escape formulas (for Excel)” (on by default) prefixes text
+starting with `=`, `+`, `-`, `@`, TAB or CR with an apostrophe so a
+spreadsheet does not run it as a formula; numbers from numeric columns are
+left as they are. `INSERT` string literals double the quote (`''`); MySQL,
+MariaDB and ClickHouse literals also double backslashes, and PostgreSQL text
+containing a backslash is written as `E'…'`, so the file reads back the same
+whatever the server's escape settings.
 
 A click focuses a cell (⌘C / Ctrl+C copies its value); a click on the row
 number selects the row, Shift+click extends the selection and ⌘/Ctrl+click

@@ -13356,5 +13356,9 @@
         "type": "int"
       }
     }
+  },
+  "dbExportEscapeFormulas": "Escape formulas (for Excel)",
+  "@dbExportEscapeFormulas": {
+    "description": "Database export dialog checkbox (CSV/TSV): prefix text cells starting with =, +, -, @ with an apostrophe so spreadsheets do not run them as formulas. Excel is a product name, not translated."
   }
 }

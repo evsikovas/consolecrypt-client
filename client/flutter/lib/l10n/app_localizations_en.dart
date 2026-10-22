@@ -9736,4 +9736,7 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get dbExportEscapeFormulas => 'Escape formulas (for Excel)';
 }
