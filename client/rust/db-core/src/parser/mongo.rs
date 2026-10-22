@@ -542,6 +542,8 @@ fn classify(command: &Value) -> Result<(QueryRisk, &'static str), DbError> {
             "validationLevel",
             "validationAction",
             "collation",
+            "timeseries",
+            "expireAfterSeconds",
             "maxTimeMS",
             "comment",
         ],

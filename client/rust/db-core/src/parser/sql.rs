@@ -368,6 +368,7 @@ impl VisitorMut for GuardVisitor<'_> {
                 "sql_delete",
             ),
             Statement::CreateTable(_)
+            | Statement::Comment { .. }
             | Statement::CreateView { .. }
             | Statement::CreateIndex(_)
             | Statement::CreateSchema { .. }
