@@ -11367,4 +11367,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get teamsNewGroupHint => 'Hosts created in a team group belong to the team.';
+
+  @override
+  String teamsPolicyAck(String host) {
+    return 'I checked this command for $host (team policy)';
+  }
 }

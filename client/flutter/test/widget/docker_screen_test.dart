@@ -70,7 +70,7 @@ class _Clipboard extends SecureClipboard {
   final secrets = <String>[];
   final plain = <String>[];
   @override
-  Future<void> copySecret(String value, {bool Function()? isCurrent}) async => secrets.add(value);
+  Future<void> copySecret(String value, {bool Function()? isCurrent, Duration? limit}) async => secrets.add(value);
   @override
   Future<void> copyPlain(String value) async => plain.add(value);
 }

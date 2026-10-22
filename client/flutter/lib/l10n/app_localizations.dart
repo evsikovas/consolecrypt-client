@@ -20089,6 +20089,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hosts created in a team group belong to the team.'**
   String get teamsNewGroupHint;
+
+  /// Run confirmation: acknowledgement required by the team policy for a read-only command.
+  ///
+  /// In en, this message translates to:
+  /// **'I checked this command for {host} (team policy)'**
+  String teamsPolicyAck(String host);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

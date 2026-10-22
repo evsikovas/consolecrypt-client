@@ -12,6 +12,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/credentials/credential_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_secrets.dart';
+import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -200,7 +201,13 @@ class _CredentialDetailsDialogState extends ConsumerState<CredentialDetailsDialo
     if (secret == null) return;
     try {
       if (!mounted) return;
-      await copySecretWithNotice(context, ref, secret.expose(), what: context.l10n.copyWhatPassword);
+      await copySecretWithNotice(
+        context,
+        ref,
+        secret.expose(),
+        what: context.l10n.copyWhatPassword,
+        limit: teamClipboardLimit(ref, widget.credential.id),
+      );
     } finally {
       secret.wipe();
     }

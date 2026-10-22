@@ -48,6 +48,12 @@ Team? teamOf(WidgetRef ref, ObjectId id) {
   return vault == null ? null : ref.watch(teamByIdProvider)[vault];
 }
 
+/// Clipboard clearing limit of the team an object belongs to (policy).
+Duration? teamClipboardLimit(WidgetRef ref, ObjectId id) {
+  final seconds = teamOf(ref, id)?.policies.clipboardClearSeconds ?? 0;
+  return seconds > 0 ? Duration(seconds: seconds) : null;
+}
+
 final incomingTeamInvitationsProvider = FutureProvider.autoDispose<List<TeamInvitation>>((ref) async {
   ref.watch(teamChangesProvider);
   if (!_teamsAvailable(ref)) return const [];

@@ -11650,4 +11650,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get teamsNewGroupHint => 'Хосты, созданные в группе команды, принадлежат команде.';
+
+  @override
+  String teamsPolicyAck(String host) {
+    return 'Я проверил(а) эту команду для $host (политика команды)';
+  }
 }

@@ -15564,5 +15564,14 @@
   "teamsNewGroupHint": "Hosts created in a team group belong to the team.",
   "@teamsNewGroupHint": {
     "description": "Hint next to creating a team group."
+  },
+  "teamsPolicyAck": "I checked this command for {host} (team policy)",
+  "@teamsPolicyAck": {
+    "description": "Run confirmation: acknowledgement required by the team policy for a read-only command.",
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
   }
 }

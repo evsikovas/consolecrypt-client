@@ -130,14 +130,20 @@ class SecureClipboard {
     }
   }
 
+  /// The deadline for a copy: [limit] (e.g. a team policy) may only shorten
+  /// the app setting, never extend it.
+  Duration effectiveClearAfter(Duration? limit) =>
+      limit == null || _bounded(limit) >= clearAfter ? clearAfter : _bounded(limit);
+
   /// Copies a secret and schedules clearing it. [isCurrent] optionally guards
   /// delayed scoped operations. If an already-started OS write finishes after
   /// revocation, compare-and-clear removes only the value this call wrote.
-  Future<void> copySecret(String value, {bool Function()? isCurrent}) => _enqueue(() async {
+  /// [limit] shortens the deadline (team clipboard policy).
+  Future<void> copySecret(String value, {bool Function()? isCurrent, Duration? limit}) => _enqueue(() async {
     // A revoked operation queued behind another OS write must never start.
     if (!_operationCurrent(isCurrent)) return;
     if (_disposed) throw StateError('Clipboard owner disposed');
-    final deadline = clearAfter;
+    final deadline = effectiveClearAfter(limit);
     if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
       // Fail closed if the native handler is unavailable: ordinary mobile
       // clipboard writes would lose sensitive/device-local/expiry options.

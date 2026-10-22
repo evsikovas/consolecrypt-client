@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/risk_badge.dart';
 import 'package:consolecrypt/hosts/host_picker.dart';
+import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -114,12 +115,18 @@ Future<bool> showRunConfirmation(
   required String hostLabel,
   required RiskAssessment risk,
   String? confirmLabel,
+  bool teamPolicy = false,
 }) async =>
     await showAppDialog<bool>(
       context,
       secure: true,
-      builder: (_) =>
-          RunConfirmationDialog(command: command, hostLabel: hostLabel, risk: risk, confirmLabel: confirmLabel),
+      builder: (_) => RunConfirmationDialog(
+        command: command,
+        hostLabel: hostLabel,
+        risk: risk,
+        confirmLabel: confirmLabel,
+        teamPolicy: teamPolicy,
+      ),
     ) ??
     false;
 
@@ -133,6 +140,7 @@ class RunConfirmationDialog extends StatefulWidget {
     required this.hostLabel,
     required this.risk,
     this.confirmLabel,
+    this.teamPolicy = false,
     super.key,
   });
 
@@ -140,6 +148,9 @@ class RunConfirmationDialog extends StatefulWidget {
   final String hostLabel;
   final RiskAssessment risk;
   final String? confirmLabel;
+
+  /// The host's team asks to confirm every command explicitly.
+  final bool teamPolicy;
 
   @override
   State<RunConfirmationDialog> createState() => _RunConfirmationDialogState();
@@ -155,7 +166,8 @@ class _RunConfirmationDialogState extends State<RunConfirmationDialog> {
     final tokens = GlassTokens.of(context);
     final t = tokens.typography;
     final destructive = risk == RiskLevel.destructive;
-    final canRun = canRunCommand(risk, acknowledged: _acknowledged);
+    final needsAck = risk.requiresConfirmation || widget.teamPolicy;
+    final canRun = !needsAck || _acknowledged;
     void run() => closeDialog(context, true);
     return GlassDialog(
       key: const ValueKey('run-confirmation'),
@@ -203,7 +215,7 @@ class _RunConfirmationDialogState extends State<RunConfirmationDialog> {
                 ),
                 style: t.callout.copyWith(color: tokens.secondaryLabel),
               ),
-            if (risk.requiresConfirmation) ...[
+            if (needsAck) ...[
               const SizedBox(height: GlassSpacing.s8),
               CheckboxListTile(
                 key: const ValueKey('run-acknowledge'),
@@ -214,6 +226,7 @@ class _RunConfirmationDialogState extends State<RunConfirmationDialog> {
                 title: Text(switch (risk) {
                   RiskLevel.destructive => l10n.runFlowAckDestructive(widget.hostLabel),
                   RiskLevel.modifying => l10n.runFlowAckModifying(widget.hostLabel),
+                  RiskLevel.readOnly => l10n.teamsPolicyAck(widget.hostLabel),
                   _ => l10n.runFlowAckUnknown,
                 }),
               ),
@@ -304,7 +317,13 @@ Future<bool> runCommandFlow(
     return false;
   }
   if (!context.mounted) return false;
-  final ok = await showRunConfirmation(context, command: command, hostLabel: _hostLabel(host), risk: risk);
+  final ok = await showRunConfirmation(
+    context,
+    command: command,
+    hostLabel: _hostLabel(host),
+    risk: risk,
+    teamPolicy: teamOf(ref, host.id)?.policies.confirmRiskyCommands ?? false,
+  );
   if (!ok || !context.mounted) return false;
   if (profile != ref.read(activeProfileProvider)?.id ||
       (target != null && !ref.read(terminalTabsProvider).tabs.contains(target))) {
@@ -414,6 +433,12 @@ Future<void> runSnippetInManyFlow(BuildContext context, WidgetRef ref, Snippet s
     command: command,
     hostLabel: targets.map(_targetLabel).join('\n'),
     risk: risk,
+    teamPolicy: targets.any(
+      (t) => switch (t.host) {
+        final host? => teamOf(ref, host.id)?.policies.confirmRiskyCommands ?? false,
+        null => false,
+      },
+    ),
   );
   if (!confirmed || !context.mounted) return;
   final current = ref.read(terminalTabsProvider).tabs;
