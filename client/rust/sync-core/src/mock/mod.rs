@@ -327,6 +327,16 @@ impl MockServer {
         self.shared.lock().device_envelope(device_id, vault_id)
     }
 
+    /// Hostile-server hook (teams): add a member with a forged log entry
+    /// that no admin signed. Clients must refuse it.
+    pub fn inject_team_member(
+        &self,
+        vault_id: VaultId,
+        keys: cc_protocol::teams::TeamMemberKeys,
+    ) -> bool {
+        self.shared.lock().inject_team_member(vault_id, keys)
+    }
+
     /// Revoke a device as if from another trusted device (admin hook).
     pub fn revoke_device(&self, device_id: DeviceId) -> bool {
         self.shared.lock().revoke_device_internal(device_id)

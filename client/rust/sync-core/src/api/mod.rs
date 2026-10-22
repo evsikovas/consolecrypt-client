@@ -19,6 +19,7 @@ mod error;
 mod sharing;
 mod sharing_enrollment;
 pub(crate) mod signer;
+mod teams;
 mod tokens;
 
 pub use error::ApiError;

@@ -962,6 +962,17 @@ pub struct VaultSettingsDto {
     pub terminal_history_mode: TerminalHistoryMode,
     pub default_privacy_profile: PrivacyProfile,
     pub sync_ai_conversations: bool,
+    /// Display colour (palette name or `#rrggbb`).
+    #[serde(default)]
+    pub color: Option<String>,
+    /// Icon symbol name.
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    /// Team policies.
+    #[serde(default)]
+    pub policies: cc_models::settings::VaultPolicies,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
 }
@@ -979,12 +990,42 @@ impl EditableDto for VaultSettingsDto {
             terminal_history_mode: s.terminal_history_mode,
             default_privacy_profile: s.default_privacy_profile,
             sync_ai_conversations: s.sync_ai_conversations,
+            color: s.color.clone(),
+            icon: s.icon.clone(),
+            description: s.description.clone(),
+            policies: s.policies.clone(),
             created_at_ms: ms(&s.created_at),
             updated_at_ms: ms(&s.updated_at),
         }
     }
     fn to_model(&self, id: ObjectId, existing: Option<&VaultSettings>) -> AppResult<VaultSettings> {
         require_name("vault_name", &self.vault_name)?;
+        let trimmed = |v: &Option<String>| {
+            v.as_deref()
+                .map(str::trim)
+                .filter(|x| !x.is_empty())
+                .map(str::to_owned)
+        };
+        let color = trimmed(&self.color);
+        if color
+            .as_deref()
+            .is_some_and(|c| !cc_models::settings::valid_color(c))
+        {
+            return Err(AppError::invalid("color", "a palette name or #rrggbb"));
+        }
+        let icon = trimmed(&self.icon);
+        if icon.as_deref().is_some_and(|i| {
+            i.len() > 48 || !i.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        }) {
+            return Err(AppError::invalid("icon", "an icon name"));
+        }
+        let description = trimmed(&self.description);
+        if description
+            .as_deref()
+            .is_some_and(|d| d.chars().count() > 500)
+        {
+            return Err(AppError::invalid("description", "at most 500 characters"));
+        }
         let (created_at, updated_at) = created(existing.map(|e| e.created_at));
         Ok(VaultSettings {
             id,
@@ -992,6 +1033,10 @@ impl EditableDto for VaultSettingsDto {
             terminal_history_mode: self.terminal_history_mode,
             default_privacy_profile: self.default_privacy_profile,
             sync_ai_conversations: self.sync_ai_conversations,
+            color,
+            icon,
+            description,
+            policies: self.policies.clone(),
             created_at,
             updated_at,
         })
