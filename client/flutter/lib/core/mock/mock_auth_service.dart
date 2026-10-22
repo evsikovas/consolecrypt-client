@@ -70,8 +70,8 @@ final class MockAuthService implements AuthService {
     }
     final auth = _cloud.authFor(serverUrl);
     return ServerInfo(
-      serverVersion: auth.isEnterprise ? '0.2.0 (mock)' : '0.1.0 (mock)',
-      protocolVersion: auth.isEnterprise ? '1.8' : '1.0',
+      serverVersion: auth.isEnterprise ? '0.2.0' : '0.1.0 (mock)',
+      protocolVersion: auth.isEnterprise ? '1.9' : '1.0',
       registrationOpen: !auth.isEnterprise,
       auth: auth,
     );

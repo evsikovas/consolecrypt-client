@@ -19,6 +19,7 @@ import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
+import 'package:consolecrypt/core/mock/mock_notes.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -26,6 +27,7 @@ import 'package:consolecrypt/core/services/app_services.dart' show DeviceLocalAi
 import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/hosts/known_hosts_import.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
+import 'package:consolecrypt/notes/note_models.dart';
 import 'package:consolecrypt/sharing/enrollment_owner.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
@@ -144,7 +146,8 @@ void main() {
                 'glass-tinted',
                 'glass-solid',
               ]) {
-      final welcome = screen == 'welcome';
+      // Corporate sign-in starts like a first launch: no profile yet.
+      final welcome = screen == 'welcome' || screen.startsWith('enterprise-login-');
       const locale = _guide && _guideLanguage == 'en' ? AppLocale.en : AppLocale.ru;
       final l10n = lookupAppLocalizations(Locale(locale.wireName));
       final glass = screen.startsWith('glass-');
@@ -733,6 +736,8 @@ void main() {
         }
         if (_guide && screen.startsWith('db-')) await _databaseScreen(tester, screen, l10n);
         if (_guide && screen.startsWith('docker-')) await _dockerScreen(tester, screen, l10n);
+        if (_guide && screen.startsWith('notes-')) await _notesScreen(tester, screen, backend);
+        if (_guide && screen.startsWith('enterprise-')) await _enterpriseScreen(tester, screen, backend, l10n);
         expect(tester.takeException(), isNull);
         if (_guide) _assertGuideScreen(tester, screen, l10n);
         final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
@@ -747,6 +752,122 @@ void main() {
         });
       }, variant: TargetPlatformVariant.only(platform));
     }
+  }
+}
+
+/// Notes beside a terminal on staging-web: personal notes about the host, a
+/// task with a reminder and shared notes of the host's share (synthetic).
+Future<void> _notesScreen(WidgetTester tester, String screen, MockBackend backend) async {
+  final notes = backend.services.notes! as MockNoteService;
+  const en = _guideLanguage == 'en';
+  final host = backend.inventory.currentHosts.firstWhere((h) => h.name == 'staging-web');
+  final target = NoteObjectTarget(NoteObjectKind.host, host.id.value);
+  final now = DateTime.now();
+  // Localized notes only: the demo seed is English.
+  for (final note in await notes.notes()) {
+    await notes.delete(note.id);
+  }
+  await notes.save(
+    Note(
+      title: en ? 'Rotate nginx logs' : 'Ротация логов nginx',
+      body: en
+          ? 'logrotate keeps 7 days; check /var/log/nginx after the release.'
+          : 'logrotate хранит 7 дней; после релиза проверить /var/log/nginx.',
+      tags: const ['ops'],
+      target: target,
+    ),
+  );
+  await notes.save(
+    Note(
+      title: en ? 'Update the TLS certificate' : 'Обновить TLS-сертификат',
+      body: en ? 'Expires on Friday; renew on staging first.' : 'Истекает в пятницу; сначала обновить на стенде.',
+      task: NoteTask(dueAt: now.subtract(const Duration(hours: 3))),
+      target: target,
+    ),
+  );
+  await notes.save(
+    Note(
+      title: en ? 'Ask the vendor about the licence' : 'Спросить поставщика о лицензии',
+      body: en
+          ? '## Questions\n\n- How many **seats** are left?\n- Renewal price for 2027'
+          : '## Вопросы\n\n- Сколько **мест** осталось?\n- Цена продления на 2027 год',
+      tags: const ['vendor'],
+      task: NoteTask(dueAt: now.add(const Duration(days: 1))),
+      remindAt: now.add(const Duration(hours: 20)),
+    ),
+  );
+  notes.shared['guide-share-notes'] = [
+    SharedNote(
+      id: 'guide-shared-1',
+      title: en ? 'Maintenance window' : 'Окно обслуживания',
+      body: en
+          ? 'Tuesdays 22:00–23:00, announce in the team chat.'
+          : 'Вторник 22:00–23:00, предупредить в чате команды.',
+      authorUserId: 'guide-colleague',
+      createdAt: now,
+      updatedAt: now,
+    ),
+    SharedNote(
+      id: 'guide-shared-2',
+      title: en ? 'Firewall: port 443 only' : 'Файрвол: только порт 443',
+      authorUserId: 'me',
+      mine: true,
+      canDelete: true,
+      createdAt: now,
+      updatedAt: now,
+    ),
+  ];
+  await notes.linkShare('host:${host.id.value}', 'guide-share-notes');
+  await tester.enterText(find.byKey(const ValueKey('hosts-search')), 'staging-web');
+  await settle(tester);
+  await tapKey(tester, 'connect-staging-web');
+  await tapKey(tester, 'accept-host-key');
+  await tapKey(tester, 'nav-notes');
+  if (screen == 'notes-tasks') await tapKey(tester, 'notes-mode-tasks');
+  if (screen == 'notes-editor') {
+    await tapKey(tester, 'notes-mode-all');
+    await tester.tap(find.text(en ? 'Ask the vendor about the licence' : 'Спросить поставщика о лицензии'));
+    await settle(tester);
+  }
+}
+
+/// Corporate sign-in on the mock enterprise servers (`sso.*` → OIDC
+/// "Acme SSO", `ldap.*` → directory "ACME"); the demo profile otherwise.
+Future<void> _enterpriseScreen(WidgetTester tester, String screen, MockBackend backend, AppLocalizations l10n) async {
+  if (screen.startsWith('enterprise-login-')) {
+    final sso = screen == 'enterprise-login-sso';
+    await tester.tap(find.text(l10n.welcomeServerAction));
+    await settle(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('server-url')),
+      sso ? 'https://sso.example.test' : 'https://ldap.example.test',
+    );
+    await tester.tap(find.text(l10n.loginCheckServer));
+    await settle(tester);
+    if (sso) {
+      await tester.enterText(find.byKey(const ValueKey('oidc-login-hint')), 'ann@example.test');
+    } else {
+      await tester.enterText(find.byKey(const ValueKey('ldap-login')), r'ACME\ann');
+    }
+    await settle(tester);
+    return;
+  }
+  if (screen == 'enterprise-settings') {
+    final profile = backend.profiles.currentProfiles.active!;
+    await backend.auth.rememberSignIn(
+      serverUrl: profile.serverUrl!,
+      method: SignInMethod.oidc,
+      displayName: MockCloud.ssoDisplayName,
+      login: MockCloud.demoEmail,
+      profileId: profile.id,
+    );
+    await tapKey(tester, 'nav-settings');
+    await Scrollable.ensureVisible(tester.element(find.byKey(const ValueKey('settings-auth-row'))), alignment: .3);
+    await settle(tester);
+  }
+  if (screen == 'enterprise-disabled') {
+    backend.cloud.disableAccount(MockCloud.demoEmail);
+    await settle(tester);
   }
 }
 
@@ -930,6 +1051,25 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
   expect(texts, isNot(contains('demo-password-1')));
   expect(find.byType(ConsoleCryptApp), findsOneWidget);
   switch (screen) {
+    case 'notes-object':
+      expect(find.byKey(const ValueKey('notes-list')), findsOneWidget);
+      expect(texts, contains(l10n.notesShared));
+    case 'notes-tasks':
+      expect(find.byKey(const ValueKey('notes-list')), findsOneWidget);
+    case 'notes-editor':
+      expect(find.byKey(const ValueKey('note-due')), findsOneWidget);
+      expect(find.byKey(const ValueKey('note-reminder')), findsOneWidget);
+    case 'enterprise-login-sso':
+      expect(find.byKey(const ValueKey('corporate-auth-notice')), findsOneWidget);
+      expect(find.byKey(const ValueKey('oidc-login-hint')), findsOneWidget);
+      expect(find.byKey(const ValueKey('password')), findsNothing);
+    case 'enterprise-login-ldap':
+      expect(find.byKey(const ValueKey('corporate-auth-notice')), findsOneWidget);
+      expect(find.byKey(const ValueKey('ldap-login')), findsOneWidget);
+    case 'enterprise-settings':
+      expect(texts, contains(l10n.settingsAuthCorporate(MockCloud.ssoDisplayName, l10n.authProviderOidc)));
+    case 'enterprise-disabled':
+      expect(find.byKey(const ValueKey('account-disabled-screen')), findsOneWidget);
     case 'hosts':
       expect(find.byKey(const ValueKey('add-host')), findsOneWidget);
       expect(texts, contains('bastion-a.example.test'));

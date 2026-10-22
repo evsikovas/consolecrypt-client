@@ -83,6 +83,13 @@ const guideScreens = [
   'docker-compose-yaml',
   'docker-database',
   'docker-forwards',
+  'notes-object',
+  'notes-tasks',
+  'notes-editor',
+  'enterprise-login-sso',
+  'enterprise-login-ldap',
+  'enterprise-settings',
+  'enterprise-disabled',
 ];
 
 // Explicit synthetic profiles. Capture fixtures never discover or spawn a
