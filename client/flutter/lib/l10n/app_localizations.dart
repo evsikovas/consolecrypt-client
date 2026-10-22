@@ -15668,10 +15668,10 @@ abstract class AppLocalizations {
   /// **'KEYS scans every key at once and can stall the server. Use SCAN to read keys page by page.'**
   String get dbScanInsteadOfKeys;
 
-  /// Opens the suggested safe query in a new editor tab.
+  /// Puts the suggested safe query (e.g. SCAN instead of KEYS) below the text of the current editor tab; nothing runs.
   ///
   /// In en, this message translates to:
-  /// **'Open in a new tab'**
+  /// **'Insert into the editor'**
   String get dbOpenSuggestion;
 
   /// Explain plan legend when actual times are known.

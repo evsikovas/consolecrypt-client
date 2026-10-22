@@ -8884,7 +8884,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'KEYS перебирает все ключи разом и может остановить сервер. Используйте SCAN — он читает ключи порциями.';
 
   @override
-  String get dbOpenSuggestion => 'Открыть в новой вкладке';
+  String get dbOpenSuggestion => 'Вставить в редактор';
 
   @override
   String get dbPlanByTime => 'Полосы — доля времени выполнения, которую занял сам шаг.';

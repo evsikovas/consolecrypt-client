@@ -11892,9 +11892,9 @@
   "@dbScanInsteadOfKeys": {
     "description": "Explains why Redis KEYS is refused and suggests SCAN."
   },
-  "dbOpenSuggestion": "Open in a new tab",
+  "dbOpenSuggestion": "Insert into the editor",
   "@dbOpenSuggestion": {
-    "description": "Opens the suggested safe query in a new editor tab."
+    "description": "Puts the suggested safe query (e.g. SCAN instead of KEYS) below the text of the current editor tab; nothing runs."
   },
   "dbPlanByTime": "Bars show each step's own share of the execution time.",
   "@dbPlanByTime": {

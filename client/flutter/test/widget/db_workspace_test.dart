@@ -60,6 +60,7 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiS
   final consents = <DbAiConsent>[];
   final aiCancelled = <String>[];
   DbQueryRisk risk = DbQueryRisk.read;
+  String? suggestion;
   Completer<DbQueryReview>? pendingReview;
   Completer<DbTreePage>? pendingTree;
   List<String> parameters = [];
@@ -134,7 +135,12 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiS
   @override
   Future<DbQueryReview> reviewQuery(String sessionId, DbQueryRequest request) async =>
       pendingReview?.future ??
-      DbQueryReview(ticket: 'review', risk: risk, expiresAt: DateTime.now().add(const Duration(minutes: 2)));
+      DbQueryReview(
+        ticket: 'review',
+        risk: risk,
+        expiresAt: DateTime.now().add(const Duration(minutes: 2)),
+        suggestion: suggestion,
+      );
   @override
   Future<void> discardQueryReview(String sessionId, String ticket) async => discarded.add(ticket);
   @override
@@ -451,6 +457,23 @@ void main() {
     expect(service.preparations, isEmpty, reason: 'an inserted snippet never runs');
     expect(service.executed, isEmpty);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('a blocked query offers its safe alternative for the editor, never runs it', (tester) async {
+    final service = _Service()
+      ..risk = DbQueryRisk.blocked
+      ..suggestion = 'SCAN 0 MATCH * COUNT 100';
+    await _pump(tester, service);
+    await _type(tester, 'KEYS *');
+    await tester.tap(find.byKey(const ValueKey('db-run')));
+    await settle(tester);
+    expect(find.text('Insert into the editor'), findsOneWidget);
+    await tester.tap(find.text('Insert into the editor'));
+    await settle(tester);
+    final controller = tester.widget<TextField>(find.byKey(const ValueKey('db-query-editor'))).controller!;
+    expect(controller.text, 'KEYS *;\n\nSCAN 0 MATCH * COUNT 100', reason: 'appended to the current tab');
+    expect(find.byKey(const ValueKey('db-query-tabs')), findsOneWidget);
+    expect(service.executed, isEmpty);
+  });
 
   testWidgets('structure groups mixed children into folders and frames an expanded table', (tester) async {
     final service = _Service()..mixedTree = true;

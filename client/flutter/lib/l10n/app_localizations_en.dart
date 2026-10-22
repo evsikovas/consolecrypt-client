@@ -8677,7 +8677,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'KEYS scans every key at once and can stall the server. Use SCAN to read keys page by page.';
 
   @override
-  String get dbOpenSuggestion => 'Open in a new tab';
+  String get dbOpenSuggestion => 'Insert into the editor';
 
   @override
   String get dbPlanByTime => 'Bars show each step\'s own share of the execution time.';
