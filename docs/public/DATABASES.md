@@ -189,13 +189,28 @@ ClickHouse — профиль `readonly=1`, в Redis — ACL `+@read -@write`, �
 «Сведения об объекте». DDL показывается блоком кода с номерами строк и
 подсветкой, каждый оператор (`CREATE TABLE`, каждый `CREATE INDEX`) отделён
 чертой, длинные строки прокручиваются вбок; кнопки «Копировать» и «Открыть в
-редакторе».
+редакторе». Для коллекций MongoDB есть «Схема по выборке документов»: типы
+полей и доля документов, в которых поле встречается.
+
+«Сведения об объекте» показывают факты из системного каталога, только чтением
+и с параметрами вместо подстановки имён: для таблиц и представлений
+PostgreSQL — схему, владельца, вид, оценку числа строк, размеры (всего,
+данные, индексы, TOAST), число колонок, индексов, ограничений и триггеров,
+табличное пространство, комментарий, ключ секционирования и последние
+VACUUM/ANALYZE; для MySQL/MariaDB — движок, формат строк, оценку строк,
+размеры данных и индексов, AUTO_INCREMENT, сопоставление, время создания и
+изменения; для ClickHouse — движок, строки, размер, части, ключи
+секционирования, сортировки и выборки, TTL; для ключа Redis — тип, TTL,
+кодировку, длину и память, для базы Redis — число ключей. Оценки помечены
+«≈», размеры показаны в КиБ/МиБ, кнопка «Копировать» копирует всё окно. Для
+MongoDB описание показывается как JSON. Пункт скрыт у объектов, для которых
+сведений нет.
+
 Сгенерированный текст — DDL из «Открыть в редакторе», запрос из истории,
 черновик помощника, предложенный `SCAN` — добавляется в текущую вкладку
 ниже уже написанного, через пустую строку; курсор встаёт в начало вставки,
 ничего не выполняется. Если открыта вкладка просмотра, текст уходит в
-последнюю вкладку редактора; новая вкладка создаётся, только если других нет. Для коллекций MongoDB есть «Схема по выборке
-документов»: типы полей и доля документов, в которых поле встречается.
+последнюю вкладку редактора; новая вкладка создаётся, только если других нет.
 
 ### Редактор и выполнение
 
@@ -447,6 +462,18 @@ Object menus offer the first 100 rows, DDL (a numbered, highlighted code
 block per statement, with Copy and Open in editor), the quoted identifier and
 details; MongoDB collections can infer a schema from a sample. Redis keys are
 grouped by `:` and read with `SCAN`.
+
+Object details are read-only catalogue facts, looked up with bound names:
+for PostgreSQL tables and views the schema, owner, kind, estimated rows,
+sizes (total, data, indexes, TOAST), column/index/constraint/trigger counts,
+tablespace, comment, partition key and the last VACUUM/ANALYZE; for
+MySQL/MariaDB the engine, row format, estimated rows, data and index sizes,
+AUTO_INCREMENT, collation and create/update times; for ClickHouse the engine,
+rows, size, parts, partition/sorting/sampling keys and TTL; for a Redis key
+its type, TTL, encoding, length and memory, and for a Redis database its key
+count. Estimates are marked "≈", sizes are shown in KiB/MiB and Copy copies
+the whole dialog. MongoDB descriptions are shown as JSON. The item is hidden
+for objects without details.
 
 Double-clicking a table, view, collection or Redis key, or choosing the first
 100 rows, shows the data below right away in a single preview tab ("items —

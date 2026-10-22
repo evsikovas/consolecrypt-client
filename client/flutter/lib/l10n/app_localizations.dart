@@ -17365,6 +17365,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} — data'**
   String dbPreviewTabTitle(String name);
+
+  /// Object details dialog: title of a group of fields; id is a fixed section id.
+  ///
+  /// In en, this message translates to:
+  /// **'{id, select, general{General} size{Size} structure{Structure} partitioning{Partitioning} maintenance{Maintenance} other{{id}}}'**
+  String dbDetailsSection(String id);
+
+  /// Object details dialog: label of one catalogue fact about a table, view or key; id is a fixed field id.
+  ///
+  /// In en, this message translates to:
+  /// **'{id, select, kind{Object type} persistence{Storage} schema{Schema} owner{Owner} tablespace{Tablespace} comment{Comment} rows{Rows} live_rows{Live rows} dead_rows{Dead rows} total_size{Total size} table_size{Table data} index_size{Indexes} toast_size{TOAST} columns{Columns} indexes{Indexes} constraints{Constraints} triggers{Triggers} definition_length{Definition length, characters} partition_key{Partition key} partitions{Partitions} partition_of{Partition of} last_vacuum{Last VACUUM} last_autovacuum{Last autovacuum} last_analyze{Last ANALYZE} last_autoanalyze{Last autoanalyze} engine{Engine} row_format{Row format} collation{Collation} definer{Definer} updatable{Updatable} security{Security} average_row{Average row} free_space{Free space} auto_increment{Next AUTO_INCREMENT} created{Created} updated{Updated} uncompressed_size{Uncompressed} parts{Active parts} sorting_key{Sorting key} primary_key{Primary key} sampling_key{Sampling key} ttl{TTL} metadata_modified{Metadata changed} type{Type} encoding{Encoding} database{Database} memory{Memory} keys{Keys} length_bytes{Length, bytes} length_fields{Fields} length_elements{Elements} length_members{Members} length_entries{Entries} other{{id}}}'**
+  String dbDetailsField(String id);
+
+  /// Object details dialog: the kind or storage of a relation; id is a fixed keyword.
+  ///
+  /// In en, this message translates to:
+  /// **'{id, select, table{Table} partitioned_table{Partitioned table} view{View} materialized_view{Materialized view} foreign_table{Foreign table} unlogged{Unlogged} temporary{Temporary} other{{id}}}'**
+  String dbDetailsKeyword(String id);
+
+  /// Object details dialog: a Redis key without TTL.
+  ///
+  /// In en, this message translates to:
+  /// **'No expiry'**
+  String get dbDetailsNoExpiry;
+
+  /// Object details dialog: expandable section with the raw description as JSON.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON'**
+  String get dbDetailsJson;
+
+  /// Object details dialog: the server returned no facts.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to show for this object.'**
+  String get dbDetailsEmpty;
+
+  /// Noun for the copied notice: the text of the object details dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Object details'**
+  String get copyWhatObjectDetails;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

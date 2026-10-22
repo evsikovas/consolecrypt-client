@@ -190,6 +190,41 @@ async fn exercise(variable: &str, engine: DbEngine) {
         .clone();
     assert_eq!(table.kind, DbObjectKind::Table);
     let columns = dev.tree(Some(&table), None).await.unwrap();
+    // Object details: grouped, read-only catalogue facts.
+    let details = dev.inspect(&table, None).await.unwrap();
+    let field = |id: &str| {
+        details["sections"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|section| section["fields"].as_array().unwrap().iter())
+            .find(|field| field["id"] == id)
+            .map(|field| field["value"].as_str().unwrap().to_owned())
+    };
+    assert_eq!(field("columns").as_deref(), Some("3"));
+    assert_eq!(field("indexes").as_deref(), Some("2"));
+    assert!(field("table_size").is_some());
+    assert_eq!(field("kind").as_deref(), Some("table"));
+    write(&dev, "CREATE VIEW cc_items_view AS SELECT id FROM cc_items")
+        .await
+        .unwrap();
+    let view = cc_db_core::DbObjectRef {
+        kind: DbObjectKind::View,
+        name: "cc_items_view".into(),
+        ..table.clone()
+    };
+    let details = dev.inspect(&view, None).await.unwrap();
+    let ids: Vec<&str> = details["sections"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|section| section["id"].as_str().unwrap())
+        .collect();
+    assert!(
+        ids.contains(&"structure") && !ids.contains(&"size"),
+        "{ids:?}"
+    );
+    write(&dev, "DROP VIEW cc_items_view").await.unwrap();
     assert!(columns
         .nodes
         .iter()

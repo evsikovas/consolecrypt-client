@@ -9961,4 +9961,105 @@ class AppLocalizationsRu extends AppLocalizations {
   String dbPreviewTabTitle(String name) {
     return '$name — данные';
   }
+
+  @override
+  String dbDetailsSection(String id) {
+    String _temp0 = intl.Intl.selectLogic(id, {
+      'general': 'Общее',
+      'size': 'Размер',
+      'structure': 'Структура',
+      'partitioning': 'Секционирование',
+      'maintenance': 'Обслуживание',
+      'other': '$id',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dbDetailsField(String id) {
+    String _temp0 = intl.Intl.selectLogic(id, {
+      'kind': 'Тип объекта',
+      'persistence': 'Хранение',
+      'schema': 'Схема',
+      'owner': 'Владелец',
+      'tablespace': 'Табличное пространство',
+      'comment': 'Комментарий',
+      'rows': 'Строк',
+      'live_rows': 'Живых строк',
+      'dead_rows': 'Мёртвых строк',
+      'total_size': 'Общий размер',
+      'table_size': 'Данные таблицы',
+      'index_size': 'Индексы',
+      'toast_size': 'TOAST',
+      'columns': 'Колонок',
+      'indexes': 'Индексов',
+      'constraints': 'Ограничений',
+      'triggers': 'Триггеров',
+      'definition_length': 'Длина определения, символов',
+      'partition_key': 'Ключ секционирования',
+      'partitions': 'Секций',
+      'partition_of': 'Секция таблицы',
+      'last_vacuum': 'Последний VACUUM',
+      'last_autovacuum': 'Последний autovacuum',
+      'last_analyze': 'Последний ANALYZE',
+      'last_autoanalyze': 'Последний autoanalyze',
+      'engine': 'Движок',
+      'row_format': 'Формат строк',
+      'collation': 'Сопоставление',
+      'definer': 'Определил',
+      'updatable': 'Обновляемое',
+      'security': 'Права выполнения',
+      'average_row': 'Средняя строка',
+      'free_space': 'Свободно',
+      'auto_increment': 'Следующий AUTO_INCREMENT',
+      'created': 'Создана',
+      'updated': 'Изменена',
+      'uncompressed_size': 'Без сжатия',
+      'parts': 'Активных частей',
+      'sorting_key': 'Ключ сортировки',
+      'primary_key': 'Первичный ключ',
+      'sampling_key': 'Ключ выборки',
+      'ttl': 'TTL',
+      'metadata_modified': 'Метаданные изменены',
+      'type': 'Тип',
+      'encoding': 'Кодировка',
+      'database': 'База',
+      'memory': 'Память',
+      'keys': 'Ключей',
+      'length_bytes': 'Длина, байт',
+      'length_fields': 'Полей',
+      'length_elements': 'Элементов',
+      'length_members': 'Элементов',
+      'length_entries': 'Записей',
+      'other': '$id',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dbDetailsKeyword(String id) {
+    String _temp0 = intl.Intl.selectLogic(id, {
+      'table': 'Таблица',
+      'partitioned_table': 'Секционированная таблица',
+      'view': 'Представление',
+      'materialized_view': 'Материализованное представление',
+      'foreign_table': 'Внешняя таблица',
+      'unlogged': 'Без журнала (UNLOGGED)',
+      'temporary': 'Временная',
+      'other': '$id',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get dbDetailsNoExpiry => 'Без срока';
+
+  @override
+  String get dbDetailsJson => 'JSON';
+
+  @override
+  String get dbDetailsEmpty => 'Для этого объекта сведений нет.';
+
+  @override
+  String get copyWhatObjectDetails => 'Сведения об объекте';
 }
