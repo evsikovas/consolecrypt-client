@@ -59,7 +59,10 @@ void main() {
     expect(h.at, at);
     expect(back.forProfile(const ProfileId('p1'))?.displayName, 'ACME');
     expect(hints.toJson().toString(), isNot(contains('password')));
-    expect(back.forgetServer(Uri.parse('https://sync.acme.test')).forServer(Uri.parse('https://sync.acme.test')), isNull);
+    expect(
+      back.forgetServer(Uri.parse('https://sync.acme.test')).forServer(Uri.parse('https://sync.acme.test')),
+      isNull,
+    );
   });
 
   test('enterprise error codes map to localized messages', () {
@@ -67,8 +70,10 @@ void main() {
     final ru = lookupAppLocalizations(const Locale('ru'));
     AppException server(String code) =>
         mapBridgeError(BridgeError(code: 'server', message: 'x', details: {'protocol_code': code}));
-    expect(mapBridgeError(const BridgeError(code: 'account_disabled', message: 'x', details: {})).code,
-        AppErrorCode.accountDisabled);
+    expect(
+      mapBridgeError(const BridgeError(code: 'account_disabled', message: 'x', details: {})).code,
+      AppErrorCode.accountDisabled,
+    );
     final cases = {
       'enterprise_auth_required': AppErrorCode.enterpriseAuthRequired,
       'identity_conflict': AppErrorCode.identityConflict,

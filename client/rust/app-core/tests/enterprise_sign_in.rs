@@ -95,7 +95,7 @@ async fn ldap_profile_vault_reauth_and_disable() {
         .reauthenticate_ldap("other".into(), "other-pw".into(), false)
         .await
         .unwrap_err();
-    assert_eq!(e.reason(), Some("account_mismatch"));
+    assert_eq!(e.reason(), Some("account_mismatch"), "{e:?}");
 
     // Disabled by the administrator: refresh answers account_disabled.
     server.disable_account("jdoe@acme.test");

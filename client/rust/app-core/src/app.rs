@@ -1192,6 +1192,18 @@ pub(crate) async fn authenticate(
                 .await
             }
         };
+        // The IdP or directory picked the account: a device id owned by
+        // another account means another user signed in on this profile.
+        // Never regenerate this profile's device identity for that.
+        if matches!(
+            (&r, credential),
+            (
+                Err(cc_sync_core::ApiError::DeviceIdentityConflict),
+                Credential::Ldap { .. } | Credential::Oidc { .. }
+            )
+        ) {
+            return Err(AppError::invalid("account", "account_mismatch"));
+        }
         match r.map_err(AppError::from) {
             Err(AppError::DeviceProofRejected(reason)) if reason == "stale" => {
                 tracing::warn!("device login proof rejected as stale; retrying once");

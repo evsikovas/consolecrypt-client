@@ -195,6 +195,10 @@ struct Inner {
     store: Arc<dyn TokenStore>,
     cache: std::sync::Mutex<TokenCache>,
     refresh_lock: tokio::sync::Mutex<()>,
+    /// Why the server ended the session at the last refresh (disabled
+    /// account, revoked device…), so callers that waited on the refresh
+    /// lock report the same reason instead of a bare "not authenticated".
+    ended: std::sync::Mutex<Option<ApiError>>,
     signer: std::sync::RwLock<Option<Arc<dyn RequestSigner>>>,
 }
 
@@ -244,6 +248,7 @@ impl ApiClient {
                 store: tokens,
                 cache: std::sync::Mutex::new(TokenCache::default()),
                 refresh_lock: tokio::sync::Mutex::new(()),
+                ended: std::sync::Mutex::new(None),
                 signer: std::sync::RwLock::new(None),
             }),
         })
@@ -339,6 +344,7 @@ impl ApiClient {
     }
 
     async fn store_tokens(&self, tokens: &TokenPair) -> Result<(), ApiError> {
+        *self.inner.ended.lock().unwrap_or_else(|e| e.into_inner()) = None;
         self.inner
             .store
             .save(tokens)
@@ -351,7 +357,18 @@ impl ApiClient {
     }
 
     /// Forget tokens locally (store + cache) without calling the server.
+    /// No tokens: the reason the server ended the session, if it did.
+    fn signed_out(&self) -> ApiError {
+        self.inner
+            .ended
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+            .unwrap_or(ApiError::NotAuthenticated)
+    }
+
     pub async fn clear_tokens(&self) -> Result<(), ApiError> {
+        *self.inner.ended.lock().unwrap_or_else(|e| e.into_inner()) = None;
         {
             let mut c = self.lock_cache();
             c.loaded = true;
@@ -380,14 +397,14 @@ impl ApiClient {
         let tokens = self
             .cached_tokens()
             .await?
-            .ok_or(ApiError::NotAuthenticated)?;
+            .ok_or_else(|| self.signed_out())?;
         if expiring(&tokens) {
             self.refresh_after_rejection(tokens.access_token.expose_secret())
                 .await?;
             return Ok(self
                 .cached_tokens()
                 .await?
-                .ok_or(ApiError::NotAuthenticated)?
+                .ok_or_else(|| self.signed_out())?
                 .access_token);
         }
         Ok(tokens.access_token)
@@ -400,7 +417,7 @@ impl ApiClient {
         let current = self
             .cached_tokens()
             .await?
-            .ok_or(ApiError::NotAuthenticated)?;
+            .ok_or_else(|| self.signed_out())?;
         if current.access_token.expose_secret() != rejected && !expiring(&current) {
             return Ok(());
         }
@@ -413,7 +430,7 @@ impl ApiClient {
         let current = self
             .cached_tokens()
             .await?
-            .ok_or(ApiError::NotAuthenticated)?;
+            .ok_or_else(|| self.signed_out())?;
         self.refresh_with(current.refresh_token).await
     }
 
@@ -452,6 +469,8 @@ impl ApiClient {
                     Some(t) => {
                         tracing::warn!(error = %t, "token refresh rejected; clearing session");
                         let _ = self.clear_tokens().await;
+                        *self.inner.ended.lock().unwrap_or_else(|e| e.into_inner()) =
+                            Some(t.clone());
                         Err(t)
                     }
                     None => Err(e),
@@ -562,7 +581,7 @@ impl ApiClient {
             let token = self
                 .cached_tokens()
                 .await?
-                .ok_or(ApiError::NotAuthenticated)?;
+                .ok_or_else(|| self.signed_out())?;
             return self
                 .send_signed(method, url, body, Some(token.access_token.expose_secret()))
                 .await;

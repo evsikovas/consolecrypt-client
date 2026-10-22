@@ -550,8 +550,8 @@ final class RustVaultService implements VaultService {
     } on LocalAuthCancelled {
       throw const AppException(
         AppErrorCode.osAuthFailed,
-        'OS authentication failed or was cancelled',
-      ); // l10n-ignore: diagnostic
+        'OS authentication failed or was cancelled', // l10n-ignore: diagnostic
+      );
     }
   }
 
@@ -596,15 +596,15 @@ final class RustVaultService implements VaultService {
         } on Exception {
           throw const AppException(
             AppErrorCode.osAuthFailed,
-            'OS authentication failed or was cancelled',
-          ); // l10n-ignore: diagnostic
+            'OS authentication failed or was cancelled', // l10n-ignore: diagnostic
+          );
         }
         try {
           if (profileId != _activeProfileId) {
             throw const AppException(
               AppErrorCode.cancelled,
-              'Profile changed during authentication',
-            ); // l10n-ignore: diagnostic
+              'Profile changed during authentication', // l10n-ignore: diagnostic
+            );
           }
           final kind = switch (_hub.deviceUnlock.kind) {
             DeviceAuthKind.faceId => 'face_id',
