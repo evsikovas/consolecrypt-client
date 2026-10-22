@@ -280,7 +280,7 @@ impl AppCore {
             return Ok(page);
         }
         let mut keys = Self::share_note_keys(cx, &page);
-        if !keys.contains_key(&epoch) {
+        if let std::collections::hash_map::Entry::Vacant(slot) = keys.entry(epoch) {
             let key = NotesKey::generate().map_err(integrity)?;
             let set = cx
                 .env
@@ -291,7 +291,7 @@ impl AppCore {
                 .wait(cx.api()?.put_share_notes_key(cx.share, &set))
                 .await?;
             page.key_sets.push(set);
-            keys.insert(epoch, key);
+            slot.insert(key);
         }
         let stale: Vec<&SharedNote> = page
             .notes
@@ -331,10 +331,7 @@ impl AppCore {
                 .wait(cx.api()?.rekey_share_notes(cx.share, &request))
                 .await?;
         }
-        cx.env
-            .wait(cx.api()?.share_notes(cx.share))
-            .await
-            .map_err(Into::into)
+        cx.env.wait(cx.api()?.share_notes(cx.share)).await
     }
 
     pub async fn share_notes(&self, share_id: String) -> AppResult<SharedNotesDto> {
@@ -505,9 +502,6 @@ impl AppCore {
         let _gate = self.sharing_gate(&session).await?;
         let cx = self.share_notes_context(&share_id).await?;
         let id = ObjectId::from_str(&note_id).map_err(|_| invalid("invalid note id"))?;
-        cx.env
-            .wait(cx.api()?.delete_share_note(cx.share, id))
-            .await
-            .map_err(Into::into)
+        cx.env.wait(cx.api()?.delete_share_note(cx.share, id)).await
     }
 }
