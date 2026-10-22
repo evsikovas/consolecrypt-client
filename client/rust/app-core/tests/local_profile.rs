@@ -836,3 +836,59 @@ async fn forgot_passphrase_with_device_auth() {
     );
     app2.shutdown().await.unwrap();
 }
+
+/// KDF memory and iterations of the stored password envelope, read from a
+/// fresh backup (which carries it unchanged).
+async fn password_kdf(app: &AppCore, dir: &std::path::Path) -> (u32, u32) {
+    let path = dir.join(format!("kdf-{}.ccbackup", uuid::Uuid::new_v4().simple()));
+    app.export_backup(path.to_string_lossy().into_owned())
+        .await
+        .unwrap();
+    let backup = cc_vault_core::decode_backup_from(std::fs::File::open(&path).unwrap()).unwrap();
+    let kdf = backup.password_envelope.metadata.kdf.unwrap();
+    (kdf.memory_kib, kdf.iterations)
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn weak_kdf_password_envelope_is_rewrapped_on_passphrase_unlock() {
+    let tmp = tempfile::tempdir().unwrap();
+    let store = memory_store();
+    // A vault sealed at the protocol floor, as pre-0.8.7 calibration did
+    // on slow machines (the test config seals at the floor).
+    let old = app_with(tmp.path(), store.clone(), false);
+    old.create_local_profile("Old".into(), PASSPHRASE.into())
+        .await
+        .unwrap();
+    old.save_host(host("h", "192.0.2.7", None)).await.unwrap();
+    assert_eq!(password_kdf(&old, tmp.path()).await, (19 * 1024, 2));
+    old.shutdown().await.unwrap();
+    drop(old);
+
+    // The upgraded app seals new envelopes at 64 MiB / t = 3.
+    let mut config = AppConfig::for_tests(tmp.path().to_string_lossy().to_string());
+    config.kdf = KdfPolicy::Default;
+    let app = AppCore::with_platform(
+        config,
+        store,
+        std::sync::Arc::new(cc_app_core::platform::UnsupportedDeviceKeys),
+    )
+    .unwrap();
+    let pid = app.last_active_profile_id().await.unwrap().unwrap();
+    app.open_profile(pid).await.unwrap();
+    app.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
+    assert_eq!(password_kdf(&app, tmp.path()).await, (64 * 1024, 3));
+    assert_eq!(app.list_hosts().await.unwrap().len(), 1);
+    // Same passphrase, same vault; nothing more to re-wrap.
+    app.lock().await.unwrap();
+    assert_eq!(
+        app.unlock_with_passphrase("not the passphrase".into())
+            .await
+            .unwrap_err()
+            .code(),
+        "wrong_passphrase"
+    );
+    app.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
+    assert_eq!(password_kdf(&app, tmp.path()).await, (64 * 1024, 3));
+    assert_eq!(app.list_hosts().await.unwrap().len(), 1);
+    app.shutdown().await.unwrap();
+}

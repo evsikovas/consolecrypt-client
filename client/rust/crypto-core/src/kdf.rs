@@ -54,6 +54,28 @@ impl Argon2Params {
         parallelism: 1,
     };
 
+    /// The minimum for **new** password envelopes (vault creation,
+    /// passphrase change or reset, and the re-wrap of older envelopes): the
+    /// default, 64 MiB and t = 3. Calibration only adds iterations above it.
+    /// Envelopes read from disk, a backup or the server are still accepted
+    /// down to [`Argon2Params::FLOOR`] (the protocol floor, 19 MiB / t = 2):
+    /// vaults created before 0.8.7 on slow machines were calibrated down to
+    /// it and must keep opening.
+    pub const NEW_MINIMUM: Self = Self::DEFAULT;
+
+    /// Whether these parameters cost at least [`Argon2Params::NEW_MINIMUM`]
+    /// in both memory and iterations.
+    pub const fn meets_new_minimum(&self) -> bool {
+        self.memory_kib >= Self::NEW_MINIMUM.memory_kib
+            && self.iterations >= Self::NEW_MINIMUM.iterations
+    }
+
+    /// Cost parameters recorded in an envelope's `metadata.kdf` (bounds
+    /// checked as on unlock).
+    pub fn of_envelope(k: &KdfParams) -> Result<Self> {
+        Self::from_protocol(k).map(|(params, _)| params)
+    }
+
     /// Validated constructor.
     pub fn new(memory_kib: u32, iterations: u32, parallelism: u32) -> Result<Self> {
         let p = Self {

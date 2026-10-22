@@ -50,8 +50,8 @@ pub use error::{Result, VaultError, MIN_PASSPHRASE_CHARS};
 pub use identity::DeviceIdentity;
 pub use recovery_kit::{RecoveryKit, RecoveryKitCheck, RECOVERY_CHECK_WORDS};
 pub use unlock::{
-    parse_recovery_input, unlock_with_device, unlock_with_passphrase, unlock_with_recovery,
-    unlock_with_recovery_input, EnvelopeSource,
+    parse_recovery_input, password_envelope_needs_rewrap, unlock_with_device,
+    unlock_with_passphrase, unlock_with_recovery, unlock_with_recovery_input, EnvelopeSource,
 };
 pub use unlocked::UnlockedVault;
 

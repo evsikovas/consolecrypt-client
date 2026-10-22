@@ -142,6 +142,34 @@ impl UnlockedVault {
         )?)
     }
 
+    /// Re-wrap of the password envelope (KDF wrapper only; objects are not
+    /// touched): a new envelope for the passphrase that just opened the vault,
+    /// sealed with `kdf` (at least [`Argon2Params::NEW_MINIMUM`]). No length
+    /// policy — it is the existing passphrase. The new envelope is opened
+    /// again and must yield this vault's key before it is returned, so the
+    /// caller replaces the stored envelope only with a verified one.
+    pub fn rewrap_password_envelope(
+        &self,
+        passphrase: &SecretString,
+        kdf: Argon2Params,
+    ) -> Result<ReplaceEnvelopeRequest> {
+        if !kdf.meets_new_minimum() {
+            return Err(
+                cc_crypto_core::CryptoError::KdfParams("re-wrap below the new minimum").into(),
+            );
+        }
+        let envelope = seal_password_envelope(&self.vrk, self.vault_id, passphrase, kdf)?;
+        let reopened = crate::unlock::unlock_with_passphrase(self.vault_id, &envelope, passphrase)?;
+        if reopened.vault_access_key_verifier() != self.vault_access_key_verifier() {
+            return Err(VaultError::VaultMismatch);
+        }
+        Ok(ReplaceEnvelopeRequest {
+            vault_id: self.vault_id,
+            vault_access_key: self.vault_access_key(),
+            envelope,
+        })
+    }
+
     /// New recovery envelope for `rk`.
     pub fn recovery_envelope(&self, rk: &RecoveryKey) -> Result<NewEnvelope> {
         Ok(seal_recovery_envelope(&self.vrk, self.vault_id, rk)?)
@@ -309,5 +337,36 @@ mod tests {
                 .err(),
             Some(VaultError::WeakPassphrase)
         );
+    }
+
+    #[test]
+    fn weak_kdf_envelopes_are_rewrapped_and_verified() {
+        let v = vault();
+        let pass = SecretString::from("8 chars!");
+        let legacy =
+            seal_password_envelope(v.vrk(), v.vault_id(), &pass, Argon2Params::FLOOR).unwrap();
+        assert!(crate::password_envelope_needs_rewrap(&legacy));
+        // Only to the new minimum or above.
+        assert!(v
+            .rewrap_password_envelope(&pass, Argon2Params::FLOOR)
+            .is_err());
+        // The existing (short) passphrase is kept; only the KDF cost rises.
+        let request = v
+            .rewrap_password_envelope(&pass, Argon2Params::NEW_MINIMUM)
+            .unwrap();
+        assert_eq!(request.vault_id, v.vault_id());
+        let kdf = request.envelope.metadata.kdf.as_ref().unwrap();
+        assert_eq!((kdf.memory_kib, kdf.iterations), (64 * 1024, 3));
+        assert!(!crate::password_envelope_needs_rewrap(&request.envelope));
+        let opened = unlock_with_passphrase(v.vault_id(), &request.envelope, &pass).unwrap();
+        assert_eq!(
+            opened.vault_access_key_verifier(),
+            v.vault_access_key_verifier()
+        );
+        // Recovery envelopes are never re-wrap candidates.
+        let recovery = v
+            .recovery_envelope(&RecoveryKey::generate().unwrap())
+            .unwrap();
+        assert!(!crate::password_envelope_needs_rewrap(&recovery));
     }
 }
