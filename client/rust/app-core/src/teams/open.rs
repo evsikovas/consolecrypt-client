@@ -215,6 +215,33 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
             warning.map(TeamWarning::code).unwrap_or_default().into(),
         ));
     }
+    // Already open with the same key: refresh the membership view in place.
+    // Rebuilding the store and engine here would race the running sync.
+    if let Some(open) = writer.teams.get(vault_id) {
+        let st = open.state();
+        if online
+            && warning.is_none()
+            && st.warning.is_none()
+            && st.key_epoch == cache.key.key_epoch
+        {
+            open.update(|s| {
+                s.view = view.clone();
+                s.log = cache.log.clone();
+                s.listed = cache.detail.members.clone();
+                s.rotation_required = cache.detail.team.rotation_required;
+                s.offline = false;
+            });
+            cx.session
+                .storage()?
+                .setting_set(cache_key(vault_id), cache)
+                .await?;
+            record_verified_head(writer, m, &view).await?;
+            if open.engine().is_none() {
+                start_team_engine(cx, &open).await?;
+            }
+            return Ok(());
+        }
+    }
     let current = UnlockedVault::open_team(&identity, &cache.key.envelope, vault_id, cx.user_id)
         .map_err(AppError::from)?;
     let mut older = Vec::new();
@@ -291,18 +318,7 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
         }
     }
     if warning.is_none() {
-        let head = hex(&view.head);
-        if view.seq != m.verified_log_seq
-            || head != m.verified_log_head
-            || m.invitation_id.is_some()
-        {
-            let mut updated = m.clone();
-            updated.invitation_id = None;
-            updated.verified_log_seq = view.seq;
-            updated.verified_log_head = head;
-            updated.updated_at = chrono::Utc::now();
-            writer.put(VaultObject::TeamMembership(updated)).await?;
-        }
+        record_verified_head(writer, m, &view).await?;
         if online {
             start_team_engine(cx, &handle).await?;
         }
@@ -311,6 +327,25 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
             vault_id: vault_id.to_string(),
             warning: warning.map(TeamWarning::code).unwrap_or_default().into(),
         });
+    }
+    Ok(())
+}
+
+/// Remember the verified log head (rollback detection) and finish a
+/// pending join in the personal-vault membership object.
+async fn record_verified_head(
+    writer: &VaultWriter,
+    m: &TeamMembership,
+    view: &TeamLogView,
+) -> AppResult<()> {
+    let head = hex(&view.head);
+    if view.seq != m.verified_log_seq || head != m.verified_log_head || m.invitation_id.is_some() {
+        let mut updated = m.clone();
+        updated.invitation_id = None;
+        updated.verified_log_seq = view.seq;
+        updated.verified_log_head = head;
+        updated.updated_at = chrono::Utc::now();
+        writer.put(VaultObject::TeamMembership(updated)).await?;
     }
     Ok(())
 }

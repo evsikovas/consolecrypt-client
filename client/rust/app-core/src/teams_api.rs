@@ -920,6 +920,9 @@ async fn submit(
 /// previous key chained under it, then every live object re-encrypted.
 async fn rotate(cx: &TeamCtx, team: &Arc<TeamHandle>) -> AppResult<()> {
     let vid = team.vault_id;
+    // A `team_key_rotated` event must not re-open the team between the
+    // server accepting the new epoch and this codec switching to it.
+    let gate = cx.unlocked.writer.teams.gate.lock().await;
     let st = team.state();
     let epoch = st.view.key_epoch + 1;
     let current = team.codec.vault()?;
@@ -955,6 +958,8 @@ async fn rotate(cx: &TeamCtx, team: &Arc<TeamHandle>) -> AppResult<()> {
     cx.api.submit_team_log(vid, &req).await?;
     drop(current);
     team.codec.rotate(next)?;
+    team.update(|s| s.key_epoch = epoch);
+    drop(gate);
     // Re-encrypt every live object under the new epoch.
     let (objects, _) = team.store.list().await?;
     let payloads: Vec<_> = objects.into_iter().map(|d| d.payload).collect();

@@ -369,6 +369,11 @@ async fn teams_lifecycle() {
     );
     // Reads keep working.
     assert!(host_names(&alice).await.contains(&"web".to_string()));
+
+    // Stop sync engines, WebSockets and storage before the runtime ends.
+    for app in [&alice, &alice2, &bob, &carol] {
+        app.shutdown().await.unwrap();
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -437,4 +442,5 @@ async fn copy_and_move_into_a_team() {
     assert!(alice.get_host(h.id.clone()).await.is_err());
     assert!(alice.get_host(moved[0].clone()).await.is_ok());
     assert_eq!(host_names(&alice).await, vec!["web", "web"]);
+    alice.shutdown().await.unwrap();
 }
