@@ -26,6 +26,17 @@ abstract interface class ProfileService {
     String? name,
   });
 
+  /// "Connect to a server" in enterprise mode: the organisation's sign-in
+  /// (directory password or a finished browser hand-off) instead of an
+  /// account password. A new account then goes through the normal vault
+  /// onboarding. Without [name] the profile is named by the account e-mail.
+  Future<Profile> createEnterpriseProfile({
+    required Uri serverUrl,
+    required EnterpriseSignIn signIn,
+    required String deviceName,
+    String? name,
+  });
+
   Future<void> switchTo(ProfileId id);
 
   Future<void> rename(ProfileId id, String name);

@@ -6,8 +6,10 @@ use cc_platform_core::{OsAuthError, SecureStoreError};
 use cc_protocol::ObjectId;
 
 /// Minimum vault passphrase length in Unicode scalar values (after NFC),
-/// enforced when a passphrase is *set* (create / change), not on unlock.
-pub const MIN_PASSPHRASE_CHARS: usize = 8;
+/// enforced when a passphrase is *set* (create / change / reset), never on
+/// unlock: vaults created with a shorter passphrase (the minimum was 8
+/// before 0.8.7) keep opening. Matches the app's strength meter.
+pub const MIN_PASSPHRASE_CHARS: usize = 12;
 
 /// Everything that can go wrong in `cc-vault-core`.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]

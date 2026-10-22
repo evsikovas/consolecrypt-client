@@ -106,6 +106,7 @@ pub fn make_conflict_copy(payload: &ObjectPayload, new_id: ObjectId) -> ObjectPa
             suffix(&mut o.title);
         }
         VaultObject::VaultSettings(o) => o.id = new_id,
+        VaultObject::TeamMembership(o) => o.id = new_id,
         VaultObject::AiProvider(o) => {
             o.id = new_id;
             suffix(&mut o.name);
@@ -136,6 +137,7 @@ pub fn payload_updated_at(payload: &ObjectPayload) -> Timestamp {
         VaultObject::AiConversation(o) => o.updated_at,
         VaultObject::VaultSettings(o) => o.updated_at,
         VaultObject::AiProvider(o) => o.updated_at,
+        VaultObject::TeamMembership(o) => o.updated_at,
     }
 }
 

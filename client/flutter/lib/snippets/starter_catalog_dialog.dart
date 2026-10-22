@@ -9,6 +9,13 @@ import 'package:consolecrypt/snippets/starter_catalog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+/// Names of the first commands; large packages end with an ellipsis.
+String _preview(StarterSnippetPackage package) {
+  const shown = 8;
+  final names = package.snippets.take(shown).map((s) => s.name).join(' · ');
+  return package.snippets.length > shown ? '$names · …' : names;
+}
+
 Future<void> showStarterCatalog(BuildContext context) =>
     showAppDialog<void>(context, builder: (_) => const _StarterCatalogDialog());
 
@@ -70,7 +77,7 @@ class _StarterCatalogDialogState extends ConsumerState<_StarterCatalogDialog> {
                       const SizedBox(height: 6),
                       Text(package.description, style: t.typography.callout),
                       const SizedBox(height: 8),
-                      Text(package.snippets.map((s) => s.name).join(' · '), style: t.typography.caption),
+                      Text(_preview(package), style: t.typography.caption),
                       const SizedBox(height: 12),
                       Align(
                         alignment: Alignment.centerRight,

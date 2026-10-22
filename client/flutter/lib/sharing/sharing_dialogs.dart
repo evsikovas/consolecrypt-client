@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_models.dart';
+import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/sharing/sharing_database.dart';
 import 'package:consolecrypt/sharing/sharing_kubernetes.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
@@ -307,6 +309,12 @@ class _SharingPublishDialogState extends ConsumerState<SharingPublishDialog> {
     final ok = await runWithFeedback(context, () => ref.read(sharingServiceProvider).publish(_preview!, _grants));
     if (!mounted) return;
     if (ok != null && sharingSessionCurrent(ref, _profile)) {
+      // Notes about the host travel with its share (best effort).
+      if (widget.kind == SharingKind.host) {
+        unawaited(
+          ref.read(sharedNoteServiceProvider)?.linkShare('host:${widget.objectId}', ok.id).catchError((Object _) {}),
+        );
+      }
       // A queued publication already exists even if dispatch fails. Close the
       // composer so retrying delivery cannot accidentally create another share.
       await runWithFeedback(context, () => ref.read(sharingServiceProvider).flush());

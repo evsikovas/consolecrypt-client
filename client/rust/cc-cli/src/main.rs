@@ -1176,7 +1176,7 @@ async fn sync(cli: &Cli, app: &AppCore, cmd: &SyncCmd, out: &Out) -> R {
             out.profile(&info);
         }
         SyncCmd::Disconnect { revoke } => {
-            open(cli, app).await?;
+            unlocked(cli, app).await?;
             let info = app.disconnect(*revoke).await?;
             out.profile(&info);
         }

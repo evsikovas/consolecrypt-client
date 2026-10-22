@@ -82,6 +82,72 @@ class _EditHintDialogState extends State<_EditHintDialog> {
   }
 }
 
+/// Before "Open" of a file whose default action would run code (security
+/// audit H4): it opens as text in an editor, never runs. `true` = open.
+/// There is deliberately no option to run it.
+Future<bool> showActiveContentNotice(BuildContext context, String fileName) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final l10n = context.l10n;
+        final theme = Theme.of(context);
+        return AlertDialog(
+          key: const ValueKey('sftp-active-content'),
+          icon: Icon(Icons.gpp_maybe_outlined, color: theme.colorScheme.tertiary),
+          title: Text(l10n.sftpActiveContentTitle),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.sftpActiveContentBody(fileName)),
+                const SizedBox(height: 12),
+                Text(l10n.sftpActiveContentNoRun, style: theme.textTheme.bodySmall),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.commonCancel)),
+            FilledButton(
+              key: const ValueKey('sftp-active-content-open'),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.sftpActiveContentOpenAsText),
+            ),
+          ],
+        );
+      },
+    ) ??
+    false;
+
+/// No text editor was found for a file that can run code: offers
+/// "Choose an Editor…". `true` = choose one.
+Future<bool> showNoTextEditorDialog(BuildContext context, String fileName) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final l10n = context.l10n;
+        return AlertDialog(
+          key: const ValueKey('sftp-no-text-editor'),
+          icon: const Icon(Icons.edit_note_rounded),
+          title: Text(l10n.sftpNoTextEditorTitle),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Text(l10n.sftpNoTextEditorBody(fileName)),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.commonCancel)),
+            FilledButton(
+              key: const ValueKey('sftp-no-text-editor-choose'),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.sftpChooseEditor),
+            ),
+          ],
+        );
+      },
+    ) ??
+    false;
+
 /// Conflict resolution for [session] (status Conflict). `null` = decide later.
 Future<EditConflictResolution?> showEditConflictDialog(BuildContext context, EditSessionInfo session) =>
     showDialog<EditConflictResolution>(

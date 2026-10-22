@@ -17,10 +17,13 @@ Map<String, dynamic> _arb(String locale) =>
 
 Iterable<String> _messageKeys(Map<String, dynamic> arb) => arb.keys.where((k) => !k.startsWith('@'));
 
-/// Top-level `{name}` / `{name, plural, …}` arguments of an ICU message.
+/// `{name}` / `{name, plural|select, …}` arguments of an ICU message. In a
+/// plural or select, a brace right after a word opens a case (`other{…}`),
+/// not an argument.
 Set<String> _arguments(String message) {
   final names = <String>{};
-  for (final m in RegExp(r'\{\s*(\w+)\s*[,}]').allMatches(message)) {
+  final cases = RegExp(r',\s*(plural|select)\s*,').hasMatch(message);
+  for (final m in RegExp(cases ? r'(?<!\w)\{\s*(\w+)\s*[,}]' : r'\{\s*(\w+)\s*[,}]').allMatches(message)) {
     names.add(m.group(1)!);
   }
   return names;

@@ -6,8 +6,15 @@ import androidx.browser.customtabs.CustomTabsIntent
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-/** Browser-only OIDC transport. Rust owns PKCE, state verification and tokens. */
-class KubeAuthBrowser(private val activity: Activity) {
+/**
+ * Browser-only OIDC transport (Custom Tabs) for one fixed redirect URI:
+ * Kubernetes sign-in (`consolecrypt://kubernetes/oauth/callback`) or the
+ * sync server's enterprise sign-in (`consolecrypt://auth/callback`). Rust
+ * owns PKCE, state verification and tokens; this only hands back the
+ * callback whose `state` matches the one in the opened URL.
+ */
+class AuthSessionBrowser(private val activity: Activity, private val redirectUri: String) {
+    private val redirect = Uri.parse(redirectUri)
     private var result: MethodChannel.Result? = null
     private var ticket: String? = null
     private var expectedState: String? = null
@@ -22,12 +29,13 @@ class KubeAuthBrowser(private val activity: Activity) {
                 }
                 try {
                     val url = Uri.parse(call.argument<String>("url") ?: "")
-                    val redirect = call.argument<String>("redirectUri")
+                    val redirectArg = call.argument<String>("redirectUri")
                     val requestTicket = call.argument<String>("ticket")
                     val state = url.getQueryParameters("state")
-                    require(url.scheme == "https" && !url.host.isNullOrEmpty() &&
+                    val loopbackDev = url.scheme == "http" && url.host in setOf("localhost", "127.0.0.1", "::1")
+                    require((url.scheme == "https" || loopbackDev) && !url.host.isNullOrEmpty() &&
                         url.userInfo == null && url.fragment == null)
-                    require(redirect == "consolecrypt://kubernetes/oauth/callback")
+                    require(redirectArg == redirectUri)
                     require(state.size == 1 && state[0].length in 32..256)
                     require(!requestTicket.isNullOrEmpty() && requestTicket.length <= 64)
                     result = completion
@@ -47,10 +55,13 @@ class KubeAuthBrowser(private val activity: Activity) {
         }
     }
 
+    /** Whether [uri] is addressed to this browser's redirect URI. */
+    fun accepts(uri: Uri?): Boolean = uri != null && uri.scheme == redirect.scheme &&
+        uri.host == redirect.host && uri.path == redirect.path
+
     fun onCallback(uri: Uri?) {
         if (result == null || uri == null || uri.toString().length > 32768) return
-        if (uri.scheme != "consolecrypt" || uri.host != "kubernetes" ||
-            uri.path != "/oauth/callback" || uri.fragment != null || uri.userInfo != null) return
+        if (!accepts(uri) || uri.fragment != null || uri.userInfo != null) return
         val states = uri.getQueryParameters("state")
         if (states.size != 1 || states[0] != expectedState) return
         // The code is handed directly to the active native flow. It is not
@@ -79,5 +90,16 @@ class KubeAuthBrowser(private val activity: Activity) {
         expectedState = null
         leftActivity = false
         return completion
+    }
+
+    companion object {
+        const val KUBERNETES_REDIRECT = "consolecrypt://kubernetes/oauth/callback"
+        const val SYNC_SERVER_REDIRECT = "consolecrypt://auth/callback"
+
+        /** The redirect URIs the callback activity forwards. */
+        fun isCallback(uri: Uri?): Boolean = uri != null && uri.scheme == "consolecrypt" &&
+            ((uri.host == "kubernetes" && uri.path == "/oauth/callback") ||
+                (uri.host == "auth" && uri.path == "/callback")) &&
+            uri.toString().length <= 32768
     }
 }

@@ -56,6 +56,10 @@ fn fixture() -> Fixture {
         title: "runbook".into(),
         body: SECRET_MARKER.into(),
         tags: vec![],
+        pinned: false,
+        task: None,
+        remind_at: None,
+        target: None,
         created_at: t,
         updated_at: t,
     };

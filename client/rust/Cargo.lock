@@ -1227,6 +1227,7 @@ dependencies = [
  "directories",
  "getrandom 0.4.3",
  "keyring-core",
+ "libc",
  "objc2",
  "opener",
  "secrecy",
@@ -1241,7 +1242,7 @@ dependencies = [
 [[package]]
 name = "cc-protocol"
 version = "0.1.0"
-source = "git+https://github.com/evsikovas/consolecrypt-server.git?rev=a0a49d69a2c2c3a9a0c2d7f3c3d34dcb662ffd3a#a0a49d69a2c2c3a9a0c2d7f3c3d34dcb662ffd3a"
+source = "git+https://github.com/evsikovas/consolecrypt-server.git?rev=2cb6630f02cb9a68262887705c33f0fbbe3b93f9#2cb6630f02cb9a68262887705c33f0fbbe3b93f9"
 dependencies = [
  "base64 0.22.1",
  "chrono",

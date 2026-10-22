@@ -62,6 +62,7 @@ class _PodTerminalDialogState extends ConsumerState<_PodTerminalDialog> {
         KubernetesTerminalTarget(
           sessionId: widget.session.id,
           contextName: widget.contextName,
+          contextId: widget.session.contextId,
           namespace: widget.resource.namespace!,
           pod: widget.resource.name,
           container: _container,

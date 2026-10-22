@@ -13,6 +13,9 @@ pub enum StopReason {
     DeviceRevoked,
     /// Session gone (expired refresh token, reuse detected, not signed in).
     ReauthRequired,
+    /// The account was disabled by the administrator / in the IdP or
+    /// directory (enterprise sign-in, protocol 1.8); sessions are revoked.
+    AccountDisabled,
     /// The device is not (or no longer) trusted for the vault.
     NotTrusted,
     /// The vault is not visible on the server (deleted / not a member).
@@ -28,6 +31,7 @@ impl std::fmt::Display for StopReason {
         f.write_str(match self {
             StopReason::DeviceRevoked => "device revoked",
             StopReason::ReauthRequired => "sign-in required",
+            StopReason::AccountDisabled => "account disabled by the administrator",
             StopReason::NotTrusted => "device not trusted for this vault",
             StopReason::VaultGone => "vault not found on server",
             StopReason::UpgradeRequired => "client upgrade required",
@@ -99,6 +103,7 @@ impl SyncError {
             SyncError::LocalProfile => Disposition::Stop(StopReason::Shutdown),
             SyncError::Api(e) => match e {
                 ApiError::DeviceRevoked => Disposition::Stop(StopReason::DeviceRevoked),
+                ApiError::AccountDisabled => Disposition::Stop(StopReason::AccountDisabled),
                 ApiError::NotAuthenticated
                 | ApiError::SessionExpired
                 | ApiError::RefreshTokenReused => Disposition::Stop(StopReason::ReauthRequired),

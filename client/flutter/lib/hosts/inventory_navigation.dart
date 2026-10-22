@@ -8,6 +8,21 @@ const inventoryAll = 'all';
 const inventoryGroups = 'groups';
 const inventoryUngrouped = 'ungrouped';
 
+/// Teams: personal-vault resources only.
+const inventoryPersonal = 'personal';
+
+/// Teams: one team's resources (`team:<vault id>`).
+const inventoryTeamPrefix = 'team:';
+
+/// A team section of the navigation (colour, name, host count).
+final class InventoryTeamEntry {
+  const InventoryTeamEntry({required this.vaultId, required this.name, required this.color, required this.count});
+  final String vaultId;
+  final String name;
+  final Color? color;
+  final int count;
+}
+
 /// The same locations appear in the desktop tree and the compact selector.
 class InventoryNavigation extends StatelessWidget {
   const InventoryNavigation({
@@ -19,6 +34,8 @@ class InventoryNavigation extends StatelessWidget {
     required this.collapsed,
     required this.onToggle,
     this.compact = false,
+    this.teams = const [],
+    this.personalCount = 0,
   });
 
   final Map<ObjectId, Group> groups;
@@ -28,6 +45,10 @@ class InventoryNavigation extends StatelessWidget {
   final Set<ObjectId> collapsed;
   final ValueChanged<ObjectId> onToggle;
   final bool compact;
+
+  /// Team sections (empty: the profile has no teams).
+  final List<InventoryTeamEntry> teams;
+  final int personalCount;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +66,25 @@ class InventoryNavigation extends StatelessWidget {
         count: hosts.where((h) => !groups.containsKey(h.groupId)).length,
       ),
     ];
+    final teamItems = teams.isEmpty
+        ? const <({String value, String label, IconData icon, int count, Color? color})>[]
+        : [
+            (
+              value: inventoryPersonal,
+              label: l.teamsFilterPersonal,
+              icon: Icons.person_rounded,
+              count: personalCount,
+              color: null,
+            ),
+            for (final t in teams)
+              (
+                value: '$inventoryTeamPrefix${t.vaultId}',
+                label: t.name.isEmpty ? l.teamsUnnamed : t.name,
+                icon: Icons.groups_rounded,
+                count: t.count,
+                color: t.color,
+              ),
+          ];
     if (compact) {
       return GlassSelect<String>(
         key: const ValueKey('inventory-location'),
@@ -53,6 +93,13 @@ class InventoryNavigation extends StatelessWidget {
         semanticLabel: l.inventoryLocation,
         items: [
           for (final item in base)
+            GlassSelectItem(
+              value: item.value,
+              label: '${item.label} (${item.count})',
+              icon: item.icon,
+              key: ValueKey('inventory-location-${item.value}'),
+            ),
+          for (final item in teamItems)
             GlassSelectItem(
               value: item.value,
               label: '${item.label} (${item.count})',
@@ -93,6 +140,23 @@ class InventoryNavigation extends StatelessWidget {
               selected: location == item.value,
               onTap: () => onSelect(item.value),
             ),
+          if (teamItems.isNotEmpty) ...[
+            const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+              child: Text(l.teamsTitle, style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel)),
+            ),
+            for (final item in teamItems)
+              _LocationRow(
+                key: ValueKey('inventory-nav-${item.value}'),
+                label: item.label,
+                icon: item.icon,
+                count: item.count,
+                selected: location == item.value,
+                stripe: item.color,
+                onTap: () => onSelect(item.value),
+              ),
+          ],
           const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
@@ -143,6 +207,7 @@ class _LocationRow extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.toggle,
+    this.stripe,
   });
   final String label;
   final IconData icon;
@@ -150,6 +215,9 @@ class _LocationRow extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final Widget? toggle;
+
+  /// Team colour bar on the leading edge.
+  final Color? stripe;
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +245,15 @@ class _LocationRow extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(icon, size: 18, color: selected ? fg : t.secondaryLabel),
+                if (stripe != null) ...[
+                  Container(
+                    width: 4,
+                    height: 20,
+                    decoration: BoxDecoration(color: stripe, borderRadius: BorderRadius.circular(2)),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Icon(icon, size: 18, color: selected ? fg : stripe ?? t.secondaryLabel),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

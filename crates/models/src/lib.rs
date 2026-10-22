@@ -26,6 +26,7 @@ pub mod rdp;
 pub mod secret;
 pub mod settings;
 pub mod snippet;
+pub mod team;
 pub mod tunnel;
 
 pub use cc_protocol::{DeviceId, ObjectId, Timestamp, VaultId};
@@ -90,6 +91,8 @@ pub enum ObjectKind {
     AiConversation,
     VaultSettings,
     AiProvider,
+    /// Teams (protocol 1.9): in the personal vault only.
+    TeamMembership,
 }
 
 impl ObjectKind {
@@ -106,7 +109,7 @@ impl ObjectKind {
             | ObjectKind::Credential
             | ObjectKind::Tunnel
             | ObjectKind::KnownHost => KekClass::Inventory,
-            ObjectKind::Secret => KekClass::Secrets,
+            ObjectKind::Secret | ObjectKind::TeamMembership => KekClass::Secrets,
             ObjectKind::Snippet | ObjectKind::Note => KekClass::Snippets,
             ObjectKind::HistoryEntry | ObjectKind::DbHistoryEntry | ObjectKind::AiConversation => {
                 KekClass::History
@@ -139,6 +142,7 @@ pub enum VaultObject {
     AiConversation(ai::AiConversation),
     VaultSettings(settings::VaultSettings),
     AiProvider(ai::AiProviderConfig),
+    TeamMembership(team::TeamMembership),
 }
 
 impl VaultObject {
@@ -163,6 +167,7 @@ impl VaultObject {
             VaultObject::AiConversation(_) => ObjectKind::AiConversation,
             VaultObject::VaultSettings(_) => ObjectKind::VaultSettings,
             VaultObject::AiProvider(_) => ObjectKind::AiProvider,
+            VaultObject::TeamMembership(_) => ObjectKind::TeamMembership,
         }
     }
 
@@ -187,6 +192,7 @@ impl VaultObject {
             VaultObject::AiConversation(o) => o.id,
             VaultObject::VaultSettings(o) => o.id,
             VaultObject::AiProvider(o) => o.id,
+            VaultObject::TeamMembership(o) => o.id,
         }
     }
 }

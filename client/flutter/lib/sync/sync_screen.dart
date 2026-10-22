@@ -1,3 +1,4 @@
+import 'package:consolecrypt/account/enterprise_sign_in.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/shell.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
@@ -111,6 +112,12 @@ class SyncScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                if (profile != null)
+                  LabeledValue(
+                    key: const ValueKey('sync-auth-row'),
+                    label: l10n.settingsAuthLabel,
+                    value: AuthorizationSummary(profile: profile, showHelp: false),
+                  ),
                 LabeledValue(
                   label: l10n.syncScreenLastSync,
                   value: Text(

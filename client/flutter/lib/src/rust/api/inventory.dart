@@ -65,6 +65,13 @@ Future<String> tunnelsSave({required String tunnelJson}) =>
 /// Stop the tunnel if running, then delete it.
 Future<void> tunnelsDelete({required String id}) => RustLib.instance.api.crateApiInventoryTunnelsDelete(id: id);
 
+Future<String> notesList() => RustLib.instance.api.crateApiInventoryNotesList();
+
+Future<String> notesSave({required String noteJson}) =>
+    RustLib.instance.api.crateApiInventoryNotesSave(noteJson: noteJson);
+
+Future<void> notesDelete({required String id}) => RustLib.instance.api.crateApiInventoryNotesDelete(id: id);
+
 Future<String> snippetsList() => RustLib.instance.api.crateApiInventorySnippetsList();
 
 Future<String> snippetsSave({required String snippetJson}) =>

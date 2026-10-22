@@ -489,6 +489,36 @@ async fn clickhouse_introspection_explain_and_completion() {
         parent_name: None,
     };
     assert!(dev.ddl(&table).await.unwrap().contains("CREATE TABLE"));
+    // Object details come from system.tables with bound names.
+    write(&dev, "INSERT INTO cc_intro VALUES (1, 'a'), (2, 'b')")
+        .await
+        .unwrap();
+    let details = dev.inspect(&table, None).await.unwrap();
+    let fields: Vec<(String, String)> = details["sections"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|section| section["fields"].as_array().unwrap().iter())
+        .map(|field| {
+            (
+                field["id"].as_str().unwrap().to_owned(),
+                field["value"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect();
+    assert!(
+        fields.contains(&("engine".into(), "MergeTree".into())),
+        "{fields:?}"
+    );
+    assert!(fields.contains(&("rows".into(), "2".into())), "{fields:?}");
+    assert!(
+        fields.contains(&("columns".into(), "2".into())),
+        "{fields:?}"
+    );
+    assert!(
+        fields.contains(&("sorting_key".into(), "id".into())),
+        "{fields:?}"
+    );
     assert_eq!(
         dev.object_query(&table, 5).await.unwrap(),
         format!(

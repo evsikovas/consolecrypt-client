@@ -208,6 +208,30 @@ async fn object_queries(dev: &Arc<DbSession>) {
         "SCAN 0 MATCH cc:obj:* COUNT 10"
     );
     assert!(dev.ddl(&key("cc:obj:h")).await.unwrap().contains("hash"));
+    // Object details: type, TTL, length and memory of a key; DBSIZE of a database.
+    let details = dev.inspect(&key("cc:obj:h"), None).await.unwrap();
+    let general = &details["sections"][0]["fields"];
+    assert_eq!(general[0]["id"], "type");
+    assert_eq!(general[0]["value"], "hash");
+    assert!(general
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|f| f["id"] == "ttl" && f["value"] == "-1"));
+    assert_eq!(details["sections"][1]["fields"][0]["unit"], "fields");
+    let database = DbObjectRef {
+        database: "0".into(),
+        schema: None,
+        kind: cc_db_core::DbObjectKind::RedisDatabase,
+        name: "db0".into(),
+        parent_name: None,
+    };
+    let details = dev.inspect(&database, None).await.unwrap();
+    assert_eq!(details["sections"][0]["fields"][1]["id"], "keys");
+    assert!(
+        dev.inspect(&folder, None).await.is_err(),
+        "folders have no details"
+    );
     write(dev, "DEL \"cc:obj:h\" \"cc:obj:s\"").await.unwrap();
 }
 

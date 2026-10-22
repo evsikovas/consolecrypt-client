@@ -251,6 +251,7 @@ impl AppCore {
         }
         let (owner, unlocked) = self.unlocked().await?;
         let live = unlocked.kube.get(&session_id)?;
+        crate::teams::check_ai_allowed(unlocked.working(), &live.info.context_id)?;
         let config = unlocked
             .ai
             .resolve_config(question.provider_id.as_deref())?;
@@ -334,6 +335,7 @@ impl AppCore {
     ) -> AppResult<String> {
         let (owner, unlocked) = self.unlocked().await?;
         let live = unlocked.kube.get(&session_id)?;
+        crate::teams::check_ai_allowed(unlocked.working(), &live.info.context_id)?;
         let pending = live
             .ai
             .pending
