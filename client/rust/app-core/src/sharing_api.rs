@@ -25,7 +25,7 @@ use cc_sync_core::api::{ShareKinds, SharingApi};
 use cc_sync_core::ApiError;
 use cc_vault_core::DeviceIdentity;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr as _;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -124,6 +124,9 @@ struct EncryptedOutboxEntry {
     expected_manifest_revision: u64,
     expected_manifest_hash: Bytes,
     blocked_reason: Option<String>,
+    /// Protocol 1.8: a Create that republishes an owner-deleted item.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    restored_from: Option<ShareId>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -271,6 +274,7 @@ impl Environment {
                 manifest.map_or([0; 32], |checkpoint| checkpoint.hash),
             ),
             blocked_reason: None,
+            restored_from: None,
         });
         if !self
             .workspace
@@ -482,7 +486,27 @@ fn item_dto(
                 })
             })
             .collect::<AppResult<_>>()?,
+        departed_user_ids: vec![],
     })
+}
+
+/// Owner view of recipients who left (protocol 1.8): hide them from the
+/// member lists so the next access change drops them from the manifest.
+fn apply_departures(items: &mut [SharingItemDto], departed: &BTreeMap<ShareId, BTreeSet<UserId>>) {
+    for item in items.iter_mut().filter(|item| item.owned) {
+        let Some(users) = ShareId::from_str(&item.share_id)
+            .ok()
+            .and_then(|id| departed.get(&id))
+        else {
+            continue;
+        };
+        let users: BTreeSet<String> = users.iter().map(ToString::to_string).collect();
+        item.members
+            .retain(|member| !users.contains(&member.user_id));
+        item.member_roles
+            .retain(|member| !users.contains(&member.identity.user_id));
+        item.departed_user_ids = users.into_iter().collect();
+    }
 }
 
 /// Ordinary UI metadata never serializes a SecretValue, even temporarily.
@@ -644,6 +668,7 @@ impl AppCore {
             preview_json: None,
             members: vec![],
             member_roles: vec![],
+            departed_user_ids: vec![],
         })
     }
     async fn sharing_gate<'a>(
@@ -759,6 +784,7 @@ impl AppCore {
         let mut env = self.sharing_environment(session.clone(), refresh).await?;
         let store = env.store()?;
         let mut remote = BTreeMap::new();
+        let mut departed: BTreeMap<ShareId, BTreeSet<UserId>> = BTreeMap::new();
         if refresh {
             let mut after = None;
             let mut complete = false;
@@ -777,6 +803,12 @@ impl AppCore {
                     .await?;
                 unreadable = unreadable.saturating_add(skipped);
                 self.sharing_check(&env).await?;
+                for departure in page.departures {
+                    departed
+                        .entry(departure.share_id)
+                        .or_default()
+                        .insert(departure.user_id);
+                }
                 for item in page.items {
                     remote.insert(item.access.manifest.share_id, item);
                 }
@@ -951,6 +983,7 @@ impl AppCore {
                 Err(_) => unreadable = unreadable.saturating_add(1),
             }
         }
+        apply_departures(&mut items, &departed);
         self.sharing_check(&env).await?;
         if unreadable > 0 {
             tracing::warn!(unreadable, "unreadable shared entries skipped");
@@ -1160,6 +1193,7 @@ impl AppCore {
                             .create_share(&CreateShareRequest {
                                 access: entry.state.access.clone(),
                                 revision: entry.state.revision.clone(),
+                                restored_from: entry.restored_from,
                             })
                             .await
                     }
@@ -1208,6 +1242,10 @@ impl AppCore {
                     }
                     match error {
                         ApiError::Network(_) | ApiError::Timeout => break,
+                        error if error.status() == Some(410) && entry.restored_from.is_some() => {
+                            self.sharing_block(&mut env, mutation, "restore_unavailable")
+                                .await?
+                        }
                         error if error.status() == Some(409) => {
                             self.sharing_block(&mut env, mutation, "conflict").await?
                         }
@@ -1435,6 +1473,8 @@ impl AppCore {
                 supports_kube_contexts: false,
                 supports_db_connections: false,
                 supports_owner_online_enrollment_v1: false,
+                supports_leave: false,
+                supports_restore: false,
             });
         }
         if session.kind().await? != ProfileKind::Synced {
@@ -1450,11 +1490,14 @@ impl AppCore {
                 supports_kube_contexts: false,
                 supports_db_connections: false,
                 supports_owner_online_enrollment_v1: false,
+                supports_leave: false,
+                supports_restore: false,
             });
         }
         let _gate = self.sharing_gate(&session).await?;
         let env = self.sharing_environment(session.clone(), true).await?;
         self.sharing_check(&env).await?;
+        let server = self.sharing_server_capabilities(&env).await?;
         Ok(SharingStatusDto {
             enabled: true,
             locked: false,
@@ -1477,7 +1520,21 @@ impl AppCore {
             supports_kube_contexts: env.pin.supports_kube_contexts,
             supports_db_connections: env.pin.supports_db_connections,
             supports_owner_online_enrollment_v1: env.pin.supports_owner_online_enrollment_v1,
+            supports_leave: server.share_leave,
+            supports_restore: server.share_restore,
         })
+    }
+
+    /// Optional server features from `/v1/meta` (protocol 1.8 leave/restore).
+    /// An older or unreachable server reads as "everything off".
+    async fn sharing_server_capabilities(
+        &self,
+        env: &Environment,
+    ) -> AppResult<cc_protocol::meta::ServerCapabilities> {
+        let api = env.session.api()?;
+        let meta = env.raw(api.meta()).await?;
+        self.sharing_check(env).await?;
+        Ok(meta.map(|info| info.capabilities).unwrap_or_default())
     }
 
     pub async fn sharing_identity(&self) -> AppResult<SharingIdentityDto> {
@@ -1492,7 +1549,14 @@ impl AppCore {
         let session = self.session().await?;
         let _gate = self.sharing_gate(&session).await?;
         let env = self.sharing_environment(session.clone(), true).await?;
-        let recipient = env.wait(env.transport()?.sharing_recipient(&email)).await?;
+        // Keep the address out of URLs whenever the server allows it.
+        let post = self
+            .sharing_server_capabilities(&env)
+            .await?
+            .recipient_lookup_post;
+        let recipient = env
+            .wait(env.transport()?.sharing_recipient_lookup(&email, post))
+            .await?;
         self.sharing_check(&env).await?;
         Ok(SharingRecipientDto {
             user_id: recipient.user_id.to_string(),
@@ -1914,6 +1978,19 @@ impl AppCore {
         projection: SharedProjection,
         recipients: Vec<SharingGrantDto>,
     ) -> AppResult<SharingItemDto> {
+        let members = grants(env.pin.instance, env.own_member(), recipients)?;
+        self.sharing_publish_members(env, projection, members, None)
+            .await
+    }
+
+    /// `members` are verified identities including this owner device.
+    async fn sharing_publish_members(
+        &self,
+        env: &mut Environment,
+        projection: SharedProjection,
+        members: Vec<SharingMember>,
+        restored_from: Option<ShareId>,
+    ) -> AppResult<SharingItemDto> {
         env.require_kind(projection.kind())?;
         if projection.carries_secrets() {
             env.require_kind(SharedItemKind::Secret)?;
@@ -1940,7 +2017,7 @@ impl AppCore {
             access_epoch: 1,
             previous_manifest_hash: Bytes::from([0; 32]),
             kind: context.kind,
-            members: grants(env.pin.instance, env.own_member(), recipients)?,
+            members,
         };
         let access = env
             .identity
@@ -1957,6 +2034,9 @@ impl AppCore {
         // Persist the recoverable ciphertext request before the independent
         // cache pin. Cancellation here cannot lose the publication request.
         env.queue(QueuedKind::Create, binding.clone(), state.clone(), None)?;
+        if let Some(entry) = env.workspace.outbox.last_mut() {
+            entry.restored_from = restored_from;
+        }
         self.sharing_save(env).await?;
         let store = env.store()?;
         let accepted = env
@@ -2180,3 +2260,6 @@ impl AppCore {
 
 #[path = "sharing_secret_api.rs"]
 mod sharing_secrets;
+
+#[path = "sharing_membership_api.rs"]
+mod sharing_membership;

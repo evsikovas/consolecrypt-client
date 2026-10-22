@@ -396,6 +396,7 @@ async fn exercise_item(
         .create_share(&CreateShareRequest {
             access: signed_access,
             revision: initial,
+            restored_from: None,
         })
         .await
         .unwrap();

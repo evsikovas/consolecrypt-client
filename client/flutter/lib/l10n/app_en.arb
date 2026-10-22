@@ -14326,5 +14326,62 @@
         "type": "String"
       }
     }
+  },
+  "sharingLeave": "Leave share",
+  "@sharingLeave": {
+    "description": "Selective sharing: action for a recipient to leave a shared item or decline an incoming invitation."
+  },
+  "sharingLeaveHelp": "You stop receiving this item on all your devices and it disappears from this list. Personal copies you saved stay. The owner sees that you left.",
+  "@sharingLeaveHelp": {
+    "description": "Selective sharing: confirmation text before a recipient leaves a shared item."
+  },
+  "sharingLeft": "You left the share",
+  "@sharingLeft": {
+    "description": "Selective sharing: notice after a recipient left a shared item."
+  },
+  "sharingStopRestoreHelp": "Recipients lose access immediately. For 30 days you can restore the item from Recently deleted.",
+  "@sharingStopRestoreHelp": {
+    "description": "Selective sharing: owner confirmation before deleting a shared item when the server keeps it restorable."
+  },
+  "sharingMembersLeft": "Left the share: {count}",
+  "@sharingMembersLeft": {
+    "description": "Selective sharing: owner view, number of recipient accounts who left this item; they are removed at the next access change.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharingRecentlyDeleted": "Recently deleted",
+  "@sharingRecentlyDeleted": {
+    "description": "Selective sharing: owner entry and dialog title listing deleted shared items that can still be restored."
+  },
+  "sharingRecentlyDeletedHelp": "Shared items you deleted can be restored for 30 days. A restored item is shared again with the same people except those who left; they accept it again.",
+  "@sharingRecentlyDeletedHelp": {
+    "description": "Selective sharing: explanation in the Recently deleted dialog."
+  },
+  "sharingRecentlyDeletedEmpty": "No recently deleted items",
+  "@sharingRecentlyDeletedEmpty": {
+    "description": "Selective sharing: empty state of the Recently deleted dialog."
+  },
+  "sharingRestore": "Restore",
+  "@sharingRestore": {
+    "description": "Selective sharing: action restoring a deleted shared item."
+  },
+  "sharingRestored": "Item restored and shared again",
+  "@sharingRestored": {
+    "description": "Selective sharing: notice after a deleted shared item was restored."
+  },
+  "sharingRestoreUntil": "Restorable until {date} · recipients: {count}",
+  "@sharingRestoreUntil": {
+    "description": "Selective sharing: subtitle of a deleted item with the restore deadline and the number of recipient devices.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

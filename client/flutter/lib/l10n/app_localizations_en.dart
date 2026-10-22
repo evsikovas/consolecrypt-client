@@ -10542,4 +10542,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String dbSnippetPickerEmpty(String engine) {
     return 'No $engine snippets yet. Add them in Snippets → Starter packages or save a query from the history.';
   }
+
+  @override
+  String get sharingLeave => 'Leave share';
+
+  @override
+  String get sharingLeaveHelp =>
+      'You stop receiving this item on all your devices and it disappears from this list. Personal copies you saved stay. The owner sees that you left.';
+
+  @override
+  String get sharingLeft => 'You left the share';
+
+  @override
+  String get sharingStopRestoreHelp =>
+      'Recipients lose access immediately. For 30 days you can restore the item from Recently deleted.';
+
+  @override
+  String sharingMembersLeft(int count) {
+    return 'Left the share: $count';
+  }
+
+  @override
+  String get sharingRecentlyDeleted => 'Recently deleted';
+
+  @override
+  String get sharingRecentlyDeletedHelp =>
+      'Shared items you deleted can be restored for 30 days. A restored item is shared again with the same people except those who left; they accept it again.';
+
+  @override
+  String get sharingRecentlyDeletedEmpty => 'No recently deleted items';
+
+  @override
+  String get sharingRestore => 'Restore';
+
+  @override
+  String get sharingRestored => 'Item restored and shared again';
+
+  @override
+  String sharingRestoreUntil(String date, int count) {
+    return 'Restorable until $date · recipients: $count';
+  }
 }
