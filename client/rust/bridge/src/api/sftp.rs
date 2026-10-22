@@ -181,6 +181,16 @@ pub async fn edit_reveal(session_id: String) -> Result<(), BridgeError> {
     with_core(move |c| async move { Ok(c.edit_reveal(session_id).await?) }).await
 }
 
+/// Whether "Open" shows `file_name` as text because its OS default action
+/// would run code (`.js`, `.lnk`, `.command`, `.desktop`, …; security audit
+/// H4). By name only — for remote files before download; the core decides
+/// again on the downloaded copy (content, permissions) and never hands such
+/// files to the default handler.
+#[flutter_rust_bridge::frb(sync)]
+pub fn edit_opens_as_text(file_name: String) -> bool {
+    cc_app_core::platform::is_active_name(&file_name)
+}
+
 /// Resolve a conflict; the saved remote copy's path for
 /// `KeepRemoteCopyLocally`.
 pub async fn edit_resolve(
@@ -232,6 +242,13 @@ pub async fn edit_discard_leftover(session_id: String) -> Result<(), BridgeError
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn opens_as_text_by_name() {
+        assert!(edit_opens_as_text("invoice.pdf.js".into()));
+        assert!(edit_opens_as_text("Run.COMMAND".into()));
+        assert!(!edit_opens_as_text("notes.txt".into()));
+    }
 
     #[test]
     fn open_with_json_is_parsed_or_refused() {

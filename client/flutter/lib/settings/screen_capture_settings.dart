@@ -1,8 +1,13 @@
+import 'package:consolecrypt/app/capture_protection.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Native device preference, deliberately outside vault/profile settings:
@@ -117,4 +122,55 @@ class _ScreenCaptureSettingsState extends State<ScreenCaptureSettings> with Widg
       ],
     );
   }
+}
+
+/// "Hide window from screen capture" (device-local; Windows only for now):
+/// off, only while a secret is shown in plain text (default), or always.
+class WindowCaptureProtectionSettings extends ConsumerWidget {
+  const WindowCaptureProtectionSettings({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!WindowCaptureAffinity.supported) return const SizedBox.shrink();
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    final settings = ref.read(settingsServiceProvider);
+    final mode = ref.watch(
+      localSettingsProvider.select(
+        (s) => s.value?.screenCaptureProtection ?? const LocalSettings().screenCaptureProtection,
+      ),
+    );
+    return Column(
+      key: const ValueKey('capture-protection-settings'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LabeledValue(
+          label: l.settingsCaptureProtectionLabel,
+          value: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: GlassSelect<ScreenCaptureProtection>(
+              key: const ValueKey('capture-protection'),
+              value: mode,
+              semanticLabel: l.settingsCaptureProtectionLabel,
+              items: [
+                for (final m in ScreenCaptureProtection.values)
+                  GlassSelectItem(key: ValueKey('capture-protection-${m.wireName}'), value: m, label: m.localized(l)),
+              ],
+              onChanged: (m) => settings.updateLocal(settings.currentLocal.copyWith(screenCaptureProtection: m)),
+            ),
+          ),
+        ),
+        Text(l.settingsCaptureProtectionHelp, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
+        const SizedBox(height: GlassSpacing.s8),
+      ],
+    );
+  }
+}
+
+extension on ScreenCaptureProtection {
+  String localized(AppLocalizations l) => switch (this) {
+    ScreenCaptureProtection.off => l.settingsCaptureProtectionOff,
+    ScreenCaptureProtection.whileSecretsVisible => l.settingsCaptureProtectionSecrets,
+    ScreenCaptureProtection.always => l.settingsCaptureProtectionAlways,
+  };
 }

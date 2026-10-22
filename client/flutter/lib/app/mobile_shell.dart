@@ -78,6 +78,13 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
                     onPressed: () => ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.snippets),
                   ),
                   GlassIconButton(
+                    key: const ValueKey('mobile-notes'),
+                    icon: Icons.sticky_note_2_outlined,
+                    tooltip: l.navNotes,
+                    style: GlassIconButtonStyle.plain,
+                    onPressed: () => ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.notes),
+                  ),
+                  GlassIconButton(
                     key: const ValueKey('mobile-ai'),
                     icon: Icons.auto_awesome_rounded,
                     tooltip: l.navAiChat,
@@ -130,7 +137,7 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
                     ),
                   ],
                 ),
-              WorkspaceToolPanel(key: ValueKey('mobile-tools-${profile?.id.value}'), integrated: true),
+              WorkspaceToolPanel(key: ValueKey('mobile-tools-${profile?.id.value}'), integrated: true, branch: branch),
             ],
           ),
         ),

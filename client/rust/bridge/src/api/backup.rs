@@ -46,8 +46,8 @@ pub(crate) fn inspect_file(path: &str) -> Result<BackupHeader, BridgeError> {
     if meta.len() as usize > cc_vault_core::MAX_BACKUP_BYTES {
         return Err(AppError::Backup("file too large".into()).into());
     }
-    let bytes = std::fs::read(path).map_err(|e| AppError::Io(e.to_string()))?;
-    let b = cc_vault_core::decode_backup(&bytes)
+    let file = std::fs::File::open(path).map_err(|e| AppError::Io(e.to_string()))?;
+    let b = cc_vault_core::decode_backup_from(file)
         .map_err(|_| AppError::Backup("not a ConsoleCrypt backup".into()))?;
     Ok(BackupHeader {
         path: path.to_owned(),

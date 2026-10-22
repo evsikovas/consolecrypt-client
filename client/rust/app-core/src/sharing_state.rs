@@ -548,6 +548,27 @@ impl SharingStateStore {
         })
     }
 
+    /// Drop the cached record and its independent mark after this account
+    /// left the share (protocol 1.8). A later invitation is pinned anew after
+    /// an explicit owner-code comparison; nothing else is touched.
+    pub async fn forget(&self, binding: &SharingBinding) -> Result<()> {
+        self.check_binding(binding)?;
+        let key = self.key(binding);
+        let binding = binding.clone();
+        let highwater = self.highwater.clone();
+        self.storage
+            .call(move |db| -> Result<()> {
+                let _lock = highwater.lock()?;
+                db.write(|tx| -> Result<()> {
+                    tx.setting_delete(&key)?;
+                    Ok(())
+                })?;
+                highwater.remove(&binding)?;
+                Ok(())
+            })
+            .await
+    }
+
     fn next_manifest(
         &self,
         binding: &SharingBinding,

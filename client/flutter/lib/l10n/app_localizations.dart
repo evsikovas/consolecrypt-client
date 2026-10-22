@@ -1022,6 +1022,378 @@ abstract class AppLocalizations {
   /// **'Snippets'**
   String get navSnippets;
 
+  /// Notes panel: notes every member of the shared object sees.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared notes'**
+  String get notesShared;
+
+  /// Notes panel: reload shared notes from the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh shared notes'**
+  String get notesSharedRefresh;
+
+  /// Notes panel: write a note all members see.
+  ///
+  /// In en, this message translates to:
+  /// **'New shared note'**
+  String get notesSharedNew;
+
+  /// Notes panel: shared notes failed to load.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared notes could not be loaded. Check the connection to the sync server.'**
+  String get notesSharedFailed;
+
+  /// Notes panel: the owner has not issued the notes key yet.
+  ///
+  /// In en, this message translates to:
+  /// **'The owner has not opened shared notes for this object yet. They appear once the owner opens the notes panel.'**
+  String get notesSharedWaiting;
+
+  /// Notes panel: notes not yet moved to the current key.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 note becomes readable after the owner opens the notes panel} other{{count} notes become readable after the owner opens the notes panel}}'**
+  String notesSharedPending(int count);
+
+  /// Notes panel: the shared section is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No shared notes yet.'**
+  String get notesSharedEmpty;
+
+  /// Shared note editor: who sees the note.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone you share this object with sees the note. Only you can change it.'**
+  String get notesSharedHint;
+
+  /// Shared note view: someone else's note.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the author can change this note.'**
+  String get notesSharedReadOnly;
+
+  /// Delete shared note confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” will be deleted for everyone with access to the object.'**
+  String notesSharedDeleteMessage(String title);
+
+  /// Shared note author: this user.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get notesAuthorYou;
+
+  /// Shared note author: the owner of the shared object.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get notesAuthorOwner;
+
+  /// Shared note author: another member.
+  ///
+  /// In en, this message translates to:
+  /// **'Member'**
+  String get notesAuthorMember;
+
+  /// Right workspace panel tool: notes, tasks and reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get navNotes;
+
+  /// Notes panel filter: notes attached to the object open in the current section.
+  ///
+  /// In en, this message translates to:
+  /// **'Object'**
+  String get notesThisObject;
+
+  /// Notes panel filter: every note.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get notesAll;
+
+  /// Notes panel filter: tasks only.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get notesTasks;
+
+  /// Notes panel search field placeholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search notes'**
+  String get notesSearchHint;
+
+  /// Notes panel: create a note.
+  ///
+  /// In en, this message translates to:
+  /// **'New note'**
+  String get notesNew;
+
+  /// Notes panel empty state title.
+  ///
+  /// In en, this message translates to:
+  /// **'No notes yet'**
+  String get notesEmptyTitle;
+
+  /// Notes panel empty state message.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep tasks, reminders and what to remember about servers, databases and containers.'**
+  String get notesEmptyMessage;
+
+  /// Notes panel empty state for the current object.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing about {name} yet'**
+  String notesEmptyObject(String name);
+
+  /// Notes panel: search has no results.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing found'**
+  String get notesNothingFound;
+
+  /// Notes panel: collapsed section of completed tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed ({count})'**
+  String notesCompleted(int count);
+
+  /// Note editor: title field.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get notesTitle;
+
+  /// Note editor: body field.
+  ///
+  /// In en, this message translates to:
+  /// **'Text (Markdown)'**
+  String get notesBody;
+
+  /// Note editor preview of an empty body.
+  ///
+  /// In en, this message translates to:
+  /// **'No text'**
+  String get notesBodyEmpty;
+
+  /// Note editor: edit mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get notesEdit;
+
+  /// Note editor: rendered Markdown mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get notesPreview;
+
+  /// Note editor: tags field.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags, comma-separated'**
+  String get notesTags;
+
+  /// Note editor: switch that makes the note a task.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get notesTask;
+
+  /// Note editor: task due time.
+  ///
+  /// In en, this message translates to:
+  /// **'Due'**
+  String get notesDue;
+
+  /// Note editor: task completed switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get notesDone;
+
+  /// Note editor: reminder time.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder'**
+  String get notesReminder;
+
+  /// Note editor: what the note is about.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached to'**
+  String get notesAttachedTo;
+
+  /// Note editor: the note is not about any object.
+  ///
+  /// In en, this message translates to:
+  /// **'Not attached'**
+  String get notesNoTarget;
+
+  /// Note attached to an object that no longer exists.
+  ///
+  /// In en, this message translates to:
+  /// **'Object not found'**
+  String get notesTargetMissing;
+
+  /// Due/reminder choice: no time.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get notesWhenNone;
+
+  /// Due/reminder choice.
+  ///
+  /// In en, this message translates to:
+  /// **'In an hour'**
+  String get notesWhenInHour;
+
+  /// Due/reminder choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Today at 18:00'**
+  String get notesWhenThisEvening;
+
+  /// Due/reminder choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow at 09:00'**
+  String get notesWhenTomorrow;
+
+  /// Due/reminder choice.
+  ///
+  /// In en, this message translates to:
+  /// **'In a week'**
+  String get notesWhenNextWeek;
+
+  /// Due/reminder choice: type a date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'Date and time…'**
+  String get notesWhenCustom;
+
+  /// Format hint for a typed date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'YYYY-MM-DD HH:MM'**
+  String get notesWhenCustomHint;
+
+  /// Error for a mistyped date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the date as YYYY-MM-DD HH:MM'**
+  String get notesInvalidTime;
+
+  /// Task past its due time.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue · {when}'**
+  String notesOverdueAt(String when);
+
+  /// Note menu action.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin'**
+  String get notesPin;
+
+  /// Note menu action.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin'**
+  String get notesUnpin;
+
+  /// Note menu action: set the reminder an hour from now.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind in an hour'**
+  String get notesSnooze;
+
+  /// Note menu action: attach to the object open now.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach to {name}'**
+  String notesAttachHere(String name);
+
+  /// Note menu action: remove the attachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Detach'**
+  String get notesDetach;
+
+  /// Note menu action and confirmation title.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete note'**
+  String get notesDelete;
+
+  /// Delete note confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” will be deleted on all your devices.'**
+  String notesDeleteMessage(String title);
+
+  /// Task checkbox accessibility label.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark done'**
+  String get notesMarkDone;
+
+  /// Task checkbox accessibility label.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark not done'**
+  String get notesMarkOpen;
+
+  /// Note editor: back button.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to notes'**
+  String get notesBack;
+
+  /// Note editor: the last save failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved'**
+  String get notesSaveFailed;
+
+  /// Toast when a note reminder goes off.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder: {title}'**
+  String notesReminderToast(String title);
+
+  /// Reminder toast action: open the note.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get notesOpen;
+
+  /// Notes panel: the host's legacy notes field.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes from the host card'**
+  String get notesHostNotesTitle;
+
+  /// Notes panel: turn the host card notes into a note.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to notes'**
+  String get notesHostNotesMove;
+
+  /// Title of a note moved from a host card.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes: {name}'**
+  String notesFromHostTitle(String name);
+
   /// Sidebar item.
   ///
   /// In en, this message translates to:
@@ -17365,6 +17737,2364 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} — data'**
   String dbPreviewTabTitle(String name);
+
+  /// Object details dialog: title of a group of fields; id is a fixed section id.
+  ///
+  /// In en, this message translates to:
+  /// **'{id, select, general{General} size{Size} structure{Structure} partitioning{Partitioning} maintenance{Maintenance} other{{id}}}'**
+  String dbDetailsSection(String id);
+
+  /// Object details dialog: label of one catalogue fact about a table, view or key; id is a fixed field id.
+  ///
+  /// In en, this message translates to:
+  /// **'{id, select, kind{Object type} persistence{Storage} schema{Schema} owner{Owner} tablespace{Tablespace} comment{Comment} rows{Rows} live_rows{Live rows} dead_rows{Dead rows} total_size{Total size} table_size{Table data} index_size{Indexes} toast_size{TOAST} columns{Columns} indexes{Indexes} constraints{Constraints} triggers{Triggers} definition_length{Definition length, characters} partition_key{Partition key} partitions{Partitions} partition_of{Partition of} last_vacuum{Last VACUUM} last_autovacuum{Last autovacuum} last_analyze{Last ANALYZE} last_autoanalyze{Last autoanalyze} engine{Engine} row_format{Row format} collation{Collation} definer{Definer} updatable{Updatable} security{Security} average_row{Average row} free_space{Free space} auto_increment{Next AUTO_INCREMENT} created{Created} updated{Updated} uncompressed_size{Uncompressed} parts{Active parts} sorting_key{Sorting key} primary_key{Primary key} sampling_key{Sampling key} ttl{TTL} metadata_modified{Metadata changed} type{Type} encoding{Encoding} database{Database} memory{Memory} keys{Keys} length_bytes{Length, bytes} length_fields{Fields} length_elements{Elements} length_members{Members} length_entries{Entries} other{{id}}}'**
+  String dbDetailsField(String id);
+
+  /// Object details dialog: the kind or storage of a relation; id is a fixed keyword.
+  ///
+  /// In en, this message translates to:
+  /// **'{id, select, table{Table} partitioned_table{Partitioned table} view{View} materialized_view{Materialized view} foreign_table{Foreign table} unlogged{Unlogged} temporary{Temporary} other{{id}}}'**
+  String dbDetailsKeyword(String id);
+
+  /// Object details dialog: a Redis key without TTL.
+  ///
+  /// In en, this message translates to:
+  /// **'No expiry'**
+  String get dbDetailsNoExpiry;
+
+  /// Object details dialog: expandable section with the raw description as JSON.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON'**
+  String get dbDetailsJson;
+
+  /// Object details dialog: the server returned no facts.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to show for this object.'**
+  String get dbDetailsEmpty;
+
+  /// Noun for the copied notice: the text of the object details dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Object details'**
+  String get copyWhatObjectDetails;
+
+  /// Database code view (DDL, reviewed query): toggle that wraps long lines instead of scrolling sideways.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrap lines'**
+  String get dbWrapLines;
+
+  /// Hint under the terminal font picker when the chosen font (or its Nerd Font alias) is not installed on this computer. {family} is the chosen font family, {fallback} the font used instead.
+  ///
+  /// In en, this message translates to:
+  /// **'Font “{family}” is not installed — using {fallback}.'**
+  String settingsTerminalFontMissing(String family, String fallback);
+
+  /// Settings → Security: label of the selector that hides the app window from screenshots, screen recording and screen sharing (Windows).
+  ///
+  /// In en, this message translates to:
+  /// **'Hide window from screen capture'**
+  String get settingsCaptureProtectionLabel;
+
+  /// Screen capture protection option: the window is never hidden from capture.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get settingsCaptureProtectionOff;
+
+  /// Screen capture protection option (default): the window is hidden from capture only while a password, key or recovery words are shown in plain text.
+  ///
+  /// In en, this message translates to:
+  /// **'While secrets are shown'**
+  String get settingsCaptureProtectionSecrets;
+
+  /// Screen capture protection option: the window is always hidden from capture. Must match the quoted word in settingsCaptureProtectionHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Always'**
+  String get settingsCaptureProtectionAlways;
+
+  /// Explanation under the screen capture protection selector in Settings → Security.
+  ///
+  /// In en, this message translates to:
+  /// **'The window is left out of screenshots, recordings and screen sharing (Zoom, Teams). With “Always”, colleagues will not see the ConsoleCrypt window while you share your screen.'**
+  String get settingsCaptureProtectionHelp;
+
+  /// SECURITY (audit H4): title of the notice before opening a remote file whose default action would run code (scripts, shortcuts, executables).
+  ///
+  /// In en, this message translates to:
+  /// **'This file can run code'**
+  String get sftpActiveContentTitle;
+
+  /// SECURITY (audit H4): notice body; ConsoleCrypt never runs such files, it opens them as text. {name} is the file name.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” can run code. It will open as text in an editor.'**
+  String sftpActiveContentBody(String name);
+
+  /// SECURITY (audit H4): notice detail — there is no option to run the file from ConsoleCrypt.
+  ///
+  /// In en, this message translates to:
+  /// **'ConsoleCrypt never runs downloaded files. To run it, use a terminal on the server.'**
+  String get sftpActiveContentNoRun;
+
+  /// Button in the active-content notice: open the file in a text editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Open as Text'**
+  String get sftpActiveContentOpenAsText;
+
+  /// Dialog title: a file that can run code opens only as text, and no text editor was found on this computer.
+  ///
+  /// In en, this message translates to:
+  /// **'No text editor found'**
+  String get sftpNoTextEditorTitle;
+
+  /// Dialog body when no text editor was found for a file that can run code. {name} is the file name.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” can run code, so it opens only as text, but no text editor was found. Choose an editor to open it with.'**
+  String sftpNoTextEditorBody(String name);
+
+  /// Button: pick a text editor application to open the file with.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an Editor…'**
+  String get sftpChooseEditor;
+
+  /// Error: a file that can run code opens only as text and no text editor was found.
+  ///
+  /// In en, this message translates to:
+  /// **'No text editor found to open this file safely. Choose an editor using Open With.'**
+  String get errorNoTextEditor;
+
+  /// Database export dialog checkbox (CSV/TSV): prefix text cells starting with =, +, -, @ with an apostrophe so spreadsheets do not run them as formulas. Excel is a product name, not translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Escape formulas (for Excel)'**
+  String get dbExportEscapeFormulas;
+
+  /// Settings > Security: clipboard auto-clear choice in seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} second} other{{count} seconds}} after copying a secret'**
+  String settingsClearClipboardSeconds(int count);
+
+  /// Settings > Security: clipboard auto-clear choice in minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} minute} other{{count} minutes}} after copying a secret'**
+  String settingsClearClipboardMinutes(int count);
+
+  /// Settings > Security: clipboard auto-clear choice in hours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} hour} other{{count} hours}} after copying a secret'**
+  String settingsClearClipboardHours(int count);
+
+  /// Settings > Security: clipboard auto-clear choice in days.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} day} other{{count} days}} after copying a secret'**
+  String settingsClearClipboardDays(int count);
+
+  /// Sharing screen warning: the server returned shared entries that are malformed or failed signature/encryption checks; they are skipped and the rest of the list works. {count} is the number of skipped entries.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} shared entry could not be read and is hidden.} other{{count} shared entries could not be read and are hidden.}}'**
+  String sharingUnreadableEntries(int count);
+
+  /// Snippet library: name of the SQL · PostgreSQL starter package (product name, keep as is)
+  ///
+  /// In en, this message translates to:
+  /// **'SQL · PostgreSQL'**
+  String get snippetPackPostgresql;
+
+  /// Snippet library: description of the SQL · PostgreSQL starter package
+  ///
+  /// In en, this message translates to:
+  /// **'Activity, locks, sizes, indexes, vacuum, replication and settings. For psql or the Databases workspace.'**
+  String get snippetPackPostgresqlDescription;
+
+  /// Snippet library: name of the SQL · MySQL/MariaDB starter package (product name, keep as is)
+  ///
+  /// In en, this message translates to:
+  /// **'SQL · MySQL/MariaDB'**
+  String get snippetPackMysql;
+
+  /// Snippet library: description of the SQL · MySQL/MariaDB starter package
+  ///
+  /// In en, this message translates to:
+  /// **'Processlist, InnoDB locks, sizes, indexes, replication and statement digests. For the mysql client or the Databases workspace.'**
+  String get snippetPackMysqlDescription;
+
+  /// Snippet library: name of the SQL · ClickHouse starter package (product name, keep as is)
+  ///
+  /// In en, this message translates to:
+  /// **'SQL · ClickHouse'**
+  String get snippetPackClickhouse;
+
+  /// Snippet library: description of the SQL · ClickHouse starter package
+  ///
+  /// In en, this message translates to:
+  /// **'Running and slow queries, parts, merges, mutations, replication and disks. For clickhouse-client or the Databases workspace.'**
+  String get snippetPackClickhouseDescription;
+
+  /// Snippet library: name of the Redis starter package (product name, keep as is)
+  ///
+  /// In en, this message translates to:
+  /// **'Redis'**
+  String get snippetPackRedis;
+
+  /// Snippet library: description of the Redis starter package
+  ///
+  /// In en, this message translates to:
+  /// **'Memory, clients, slow log, keyspace and replication. For redis-cli or the Databases workspace.'**
+  String get snippetPackRedisDescription;
+
+  /// Snippet library: name of the MongoDB starter package (product name, keep as is)
+  ///
+  /// In en, this message translates to:
+  /// **'MongoDB'**
+  String get snippetPackMongodb;
+
+  /// Snippet library: description of the MongoDB starter package
+  ///
+  /// In en, this message translates to:
+  /// **'Operations, server and collection stats, indexes, replica set and profiler. For mongosh; some also run in the Databases workspace.'**
+  String get snippetPackMongodbDescription;
+
+  /// Snippet library: name of the pg.activity database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Active queries'**
+  String get snippetDbPgActivity;
+
+  /// Snippet library: one-sentence note for the pg.activity database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions that are not idle, longest first.'**
+  String get snippetDbPgActivityNote;
+
+  /// Snippet library: name of the pg.long_running database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Long-running queries'**
+  String get snippetDbPgLongRunning;
+
+  /// Snippet library: one-sentence note for the pg.long_running database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Queries running longer than the given number of seconds.'**
+  String get snippetDbPgLongRunningNote;
+
+  /// Snippet library: name of the pg.blocking database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Lock tree'**
+  String get snippetDbPgBlocking;
+
+  /// Snippet library: one-sentence note for the pg.blocking database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Blocking sessions with the sessions waiting on them, indented by depth (PG 9.6+).'**
+  String get snippetDbPgBlockingNote;
+
+  /// Snippet library: name of the pg.table_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Largest tables'**
+  String get snippetDbPgTableSizes;
+
+  /// Snippet library: one-sentence note for the pg.table_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Total size with heap, indexes and TOAST; row counts are planner estimates.'**
+  String get snippetDbPgTableSizesNote;
+
+  /// Snippet library: name of the pg.database_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Database sizes'**
+  String get snippetDbPgDatabaseSizes;
+
+  /// Snippet library: one-sentence note for the pg.database_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Size of every database that accepts connections.'**
+  String get snippetDbPgDatabaseSizesNote;
+
+  /// Snippet library: name of the pg.index_usage database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Index usage'**
+  String get snippetDbPgIndexUsage;
+
+  /// Snippet library: one-sentence note for the pg.index_usage database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Least-used indexes first; idx_scan = 0 means unused since the last statistics reset. Check replicas too, and keep unique indexes.'**
+  String get snippetDbPgIndexUsageNote;
+
+  /// Snippet library: name of the pg.dead_tuples database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Dead tuples and autovacuum'**
+  String get snippetDbPgDeadTuples;
+
+  /// Snippet library: one-sentence note for the pg.dead_tuples database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Bloat estimate from dead tuples with the last vacuum and analyze times.'**
+  String get snippetDbPgDeadTuplesNote;
+
+  /// Snippet library: name of the pg.cache_hit database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Cache hit ratio'**
+  String get snippetDbPgCacheHit;
+
+  /// Snippet library: one-sentence note for the pg.cache_hit database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Share of blocks read from shared buffers per database; below 99% on OLTP is worth a look.'**
+  String get snippetDbPgCacheHitNote;
+
+  /// Snippet library: name of the pg.replication database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Replication status'**
+  String get snippetDbPgReplication;
+
+  /// Snippet library: one-sentence note for the pg.replication database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Connected replicas with lag in bytes and time. Run on the primary (PG 10+).'**
+  String get snippetDbPgReplicationNote;
+
+  /// Snippet library: name of the pg.slots database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Replication slots'**
+  String get snippetDbPgSlots;
+
+  /// Snippet library: one-sentence note for the pg.slots database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Slots and the WAL they retain; an inactive slot keeps WAL forever (PG 13+).'**
+  String get snippetDbPgSlotsNote;
+
+  /// Snippet library: name of the pg.connections database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Connections by user and application'**
+  String get snippetDbPgConnections;
+
+  /// Snippet library: one-sentence note for the pg.connections database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Client connections grouped by database, user, application and state.'**
+  String get snippetDbPgConnectionsNote;
+
+  /// Snippet library: name of the pg.settings_changed database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Non-default settings'**
+  String get snippetDbPgSettingsChanged;
+
+  /// Snippet library: one-sentence note for the pg.settings_changed database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Settings whose source is not the built-in default.'**
+  String get snippetDbPgSettingsChangedNote;
+
+  /// Snippet library: name of the pg.columns database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Table columns'**
+  String get snippetDbPgColumns;
+
+  /// Snippet library: one-sentence note for the pg.columns database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Columns with types, defaults and comments.'**
+  String get snippetDbPgColumnsNote;
+
+  /// Snippet library: name of the pg.foreign_keys database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Foreign keys of a table'**
+  String get snippetDbPgForeignKeys;
+
+  /// Snippet library: one-sentence note for the pg.foreign_keys database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Foreign keys of the table and those that reference it.'**
+  String get snippetDbPgForeignKeysNote;
+
+  /// Snippet library: name of the pg.sequences database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Sequences near their limit'**
+  String get snippetDbPgSequences;
+
+  /// Snippet library: one-sentence note for the pg.sequences database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Sequences that used more than the given percent of their range; also check the column type (PG 10+).'**
+  String get snippetDbPgSequencesNote;
+
+  /// Snippet library: name of the pg.fk_without_index database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Foreign keys without an index'**
+  String get snippetDbPgFkWithoutIndex;
+
+  /// Snippet library: one-sentence note for the pg.fk_without_index database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Foreign keys whose columns do not lead any index; deletes and updates on the parent scan the child table.'**
+  String get snippetDbPgFkWithoutIndexNote;
+
+  /// Snippet library: name of the pg.statements database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Top queries (pg_stat_statements)'**
+  String get snippetDbPgStatements;
+
+  /// Snippet library: one-sentence note for the pg.statements database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Needs the pg_stat_statements extension (shared_preload_libraries and CREATE EXTENSION); otherwise it fails with \"relation does not exist\". Column names are for PG 13+.'**
+  String get snippetDbPgStatementsNote;
+
+  /// Snippet library: name of the pg.explain_analyze database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'EXPLAIN ANALYZE'**
+  String get snippetDbPgExplainAnalyze;
+
+  /// Snippet library: one-sentence note for the pg.explain_analyze database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Runs the query to measure the real plan; put data-changing statements inside BEGIN … ROLLBACK.'**
+  String get snippetDbPgExplainAnalyzeNote;
+
+  /// Snippet library: name of the pg.cancel database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel a query'**
+  String get snippetDbPgCancel;
+
+  /// Snippet library: one-sentence note for the pg.cancel database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Cancels the current query of the backend; the session stays connected.'**
+  String get snippetDbPgCancelNote;
+
+  /// Snippet library: name of the pg.terminate database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Terminate a session'**
+  String get snippetDbPgTerminate;
+
+  /// Snippet library: one-sentence note for the pg.terminate database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnects the backend and rolls back its open transaction.'**
+  String get snippetDbPgTerminateNote;
+
+  /// Snippet library: name of the mysql.processlist database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Active queries'**
+  String get snippetDbMysqlProcesslist;
+
+  /// Snippet library: one-sentence note for the mysql.processlist database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Connections that are not sleeping, longest first.'**
+  String get snippetDbMysqlProcesslistNote;
+
+  /// Snippet library: name of the mysql.long_running database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Long-running queries'**
+  String get snippetDbMysqlLongRunning;
+
+  /// Snippet library: one-sentence note for the mysql.long_running database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Statements running longer than the given number of seconds.'**
+  String get snippetDbMysqlLongRunningNote;
+
+  /// Snippet library: name of the mysql.lock_waits database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'InnoDB lock waits'**
+  String get snippetDbMysqlLockWaits;
+
+  /// Snippet library: one-sentence note for the mysql.lock_waits database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Who waits for whom, with the blocking statement. Needs the sys schema (MySQL 5.7+, MariaDB 10.6+).'**
+  String get snippetDbMysqlLockWaitsNote;
+
+  /// Snippet library: name of the mysql.transactions database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Open transactions'**
+  String get snippetDbMysqlTransactions;
+
+  /// Snippet library: one-sentence note for the mysql.transactions database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'InnoDB transactions, oldest first, with locked and modified rows.'**
+  String get snippetDbMysqlTransactionsNote;
+
+  /// Snippet library: name of the mysql.table_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Largest tables'**
+  String get snippetDbMysqlTableSizes;
+
+  /// Snippet library: one-sentence note for the mysql.table_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Data, index and free space in MB; information_schema statistics are approximate and cached.'**
+  String get snippetDbMysqlTableSizesNote;
+
+  /// Snippet library: name of the mysql.database_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Database sizes'**
+  String get snippetDbMysqlDatabaseSizes;
+
+  /// Snippet library: one-sentence note for the mysql.database_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Total data and index size per schema in MB.'**
+  String get snippetDbMysqlDatabaseSizesNote;
+
+  /// Snippet library: name of the mysql.index_usage database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Index usage'**
+  String get snippetDbMysqlIndexUsage;
+
+  /// Snippet library: one-sentence note for the mysql.index_usage database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Reads and writes per index since server start (performance_schema).'**
+  String get snippetDbMysqlIndexUsageNote;
+
+  /// Snippet library: name of the mysql.unused_indexes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Unused indexes'**
+  String get snippetDbMysqlUnusedIndexes;
+
+  /// Snippet library: one-sentence note for the mysql.unused_indexes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Indexes without reads since server start. Needs the sys schema; check replicas before dropping.'**
+  String get snippetDbMysqlUnusedIndexesNote;
+
+  /// Snippet library: name of the mysql.auto_increment database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'AUTO_INCREMENT near the limit'**
+  String get snippetDbMysqlAutoIncrement;
+
+  /// Snippet library: one-sentence note for the mysql.auto_increment database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Share of the column type range already used. Needs the sys schema.'**
+  String get snippetDbMysqlAutoIncrementNote;
+
+  /// Snippet library: name of the mysql.indexes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Indexes of a table'**
+  String get snippetDbMysqlIndexes;
+
+  /// Snippet library: one-sentence note for the mysql.indexes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Index columns in order with cardinality.'**
+  String get snippetDbMysqlIndexesNote;
+
+  /// Snippet library: name of the mysql.columns database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Table columns'**
+  String get snippetDbMysqlColumns;
+
+  /// Snippet library: one-sentence note for the mysql.columns database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Columns with types, keys, defaults and comments.'**
+  String get snippetDbMysqlColumnsNote;
+
+  /// Snippet library: name of the mysql.foreign_keys database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Foreign keys of a table'**
+  String get snippetDbMysqlForeignKeys;
+
+  /// Snippet library: one-sentence note for the mysql.foreign_keys database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Foreign keys of the table and those that reference it.'**
+  String get snippetDbMysqlForeignKeysNote;
+
+  /// Snippet library: name of the mysql.replica_status database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Replica status'**
+  String get snippetDbMysqlReplicaStatus;
+
+  /// Snippet library: one-sentence note for the mysql.replica_status database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'MySQL 8.0.22+ and MariaDB 10.5.1+; on older servers use SHOW SLAVE STATUS.'**
+  String get snippetDbMysqlReplicaStatusNote;
+
+  /// Snippet library: name of the mysql.variables database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Server variables'**
+  String get snippetDbMysqlVariables;
+
+  /// Snippet library: one-sentence note for the mysql.variables database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Global variables matching a LIKE pattern.'**
+  String get snippetDbMysqlVariablesNote;
+
+  /// Snippet library: name of the mysql.status database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Key status counters'**
+  String get snippetDbMysqlStatus;
+
+  /// Snippet library: one-sentence note for the mysql.status database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Uptime, connections, slow queries, row lock waits and buffer pool reads.'**
+  String get snippetDbMysqlStatusNote;
+
+  /// Snippet library: name of the mysql.connections database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Connections by user and host'**
+  String get snippetDbMysqlConnections;
+
+  /// Snippet library: one-sentence note for the mysql.connections database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Connections grouped by user, client host, schema and command.'**
+  String get snippetDbMysqlConnectionsNote;
+
+  /// Snippet library: name of the mysql.digest database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Top queries (statement digests)'**
+  String get snippetDbMysqlDigest;
+
+  /// Snippet library: one-sentence note for the mysql.digest database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Normalized statements by total time from performance_schema (enabled by default in MySQL; off by default in MariaDB).'**
+  String get snippetDbMysqlDigestNote;
+
+  /// Snippet library: name of the mysql.innodb_status database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'InnoDB status'**
+  String get snippetDbMysqlInnodbStatus;
+
+  /// Snippet library: one-sentence note for the mysql.innodb_status database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Engine report with the latest deadlock, semaphores and buffer pool; needs the PROCESS privilege.'**
+  String get snippetDbMysqlInnodbStatusNote;
+
+  /// Snippet library: name of the mysql.explain_analyze database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'EXPLAIN ANALYZE'**
+  String get snippetDbMysqlExplainAnalyze;
+
+  /// Snippet library: one-sentence note for the mysql.explain_analyze database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Runs the query to measure the real plan (MySQL 8.0.18+; in MariaDB use ANALYZE SELECT …).'**
+  String get snippetDbMysqlExplainAnalyzeNote;
+
+  /// Snippet library: name of the mysql.kill_query database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel a query'**
+  String get snippetDbMysqlKillQuery;
+
+  /// Snippet library: one-sentence note for the mysql.kill_query database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Stops the current statement of the connection; the connection stays open.'**
+  String get snippetDbMysqlKillQueryNote;
+
+  /// Snippet library: name of the clickhouse.processes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Running queries'**
+  String get snippetDbClickhouseProcesses;
+
+  /// Snippet library: one-sentence note for the clickhouse.processes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Initial queries with elapsed time, memory and rows read.'**
+  String get snippetDbClickhouseProcessesNote;
+
+  /// Snippet library: name of the clickhouse.long_running database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Long-running queries'**
+  String get snippetDbClickhouseLongRunning;
+
+  /// Snippet library: one-sentence note for the clickhouse.long_running database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Queries running longer than the given number of seconds.'**
+  String get snippetDbClickhouseLongRunningNote;
+
+  /// Snippet library: name of the clickhouse.slow_queries database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Slow queries'**
+  String get snippetDbClickhouseSlowQueries;
+
+  /// Snippet library: one-sentence note for the clickhouse.slow_queries database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Slowest finished queries from system.query_log for the last hours.'**
+  String get snippetDbClickhouseSlowQueriesNote;
+
+  /// Snippet library: name of the clickhouse.failed_queries database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Failed queries'**
+  String get snippetDbClickhouseFailedQueries;
+
+  /// Snippet library: one-sentence note for the clickhouse.failed_queries database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Recent queries that ended with an exception.'**
+  String get snippetDbClickhouseFailedQueriesNote;
+
+  /// Snippet library: name of the clickhouse.query_patterns database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Heaviest query patterns'**
+  String get snippetDbClickhouseQueryPatterns;
+
+  /// Snippet library: one-sentence note for the clickhouse.query_patterns database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Finished queries grouped by normalized text, by total duration.'**
+  String get snippetDbClickhouseQueryPatternsNote;
+
+  /// Snippet library: name of the clickhouse.table_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Largest tables'**
+  String get snippetDbClickhouseTableSizes;
+
+  /// Snippet library: one-sentence note for the clickhouse.table_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Compressed and uncompressed size of active parts with the compression ratio.'**
+  String get snippetDbClickhouseTableSizesNote;
+
+  /// Snippet library: name of the clickhouse.database_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Database sizes'**
+  String get snippetDbClickhouseDatabaseSizes;
+
+  /// Snippet library: one-sentence note for the clickhouse.database_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Disk usage of active parts per database.'**
+  String get snippetDbClickhouseDatabaseSizesNote;
+
+  /// Snippet library: name of the clickhouse.partitions database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Partitions of a table'**
+  String get snippetDbClickhousePartitions;
+
+  /// Snippet library: one-sentence note for the clickhouse.partitions database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Parts, rows and size per partition.'**
+  String get snippetDbClickhousePartitionsNote;
+
+  /// Snippet library: name of the clickhouse.parts_count database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Partitions with many parts'**
+  String get snippetDbClickhousePartsCount;
+
+  /// Snippet library: one-sentence note for the clickhouse.parts_count database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Too many active parts slow down inserts and selects (“Too many parts”).'**
+  String get snippetDbClickhousePartsCountNote;
+
+  /// Snippet library: name of the clickhouse.column_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Column sizes of a table'**
+  String get snippetDbClickhouseColumnSizes;
+
+  /// Snippet library: one-sentence note for the clickhouse.column_sizes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Compressed size, ratio and codec per column.'**
+  String get snippetDbClickhouseColumnSizesNote;
+
+  /// Snippet library: name of the clickhouse.merges database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Running merges'**
+  String get snippetDbClickhouseMerges;
+
+  /// Snippet library: one-sentence note for the clickhouse.merges database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Merges and mutations in progress.'**
+  String get snippetDbClickhouseMergesNote;
+
+  /// Snippet library: name of the clickhouse.mutations database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Unfinished mutations'**
+  String get snippetDbClickhouseMutations;
+
+  /// Snippet library: one-sentence note for the clickhouse.mutations database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'ALTER … UPDATE/DELETE still running, with the latest failure reason.'**
+  String get snippetDbClickhouseMutationsNote;
+
+  /// Snippet library: name of the clickhouse.replication_queue database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Replication queue'**
+  String get snippetDbClickhouseReplicationQueue;
+
+  /// Snippet library: one-sentence note for the clickhouse.replication_queue database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest replication tasks with retries and the last error (Replicated* tables).'**
+  String get snippetDbClickhouseReplicationQueueNote;
+
+  /// Snippet library: name of the clickhouse.replicas database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Replica status'**
+  String get snippetDbClickhouseReplicas;
+
+  /// Snippet library: one-sentence note for the clickhouse.replicas database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Delay, queue and read-only state of Replicated* tables.'**
+  String get snippetDbClickhouseReplicasNote;
+
+  /// Snippet library: name of the clickhouse.disks database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Disks'**
+  String get snippetDbClickhouseDisks;
+
+  /// Snippet library: one-sentence note for the clickhouse.disks database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Free and total space of the configured disks.'**
+  String get snippetDbClickhouseDisksNote;
+
+  /// Snippet library: name of the clickhouse.errors database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Server errors'**
+  String get snippetDbClickhouseErrors;
+
+  /// Snippet library: one-sentence note for the clickhouse.errors database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Error counters since start with the latest message.'**
+  String get snippetDbClickhouseErrorsNote;
+
+  /// Snippet library: name of the clickhouse.settings_changed database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Changed settings'**
+  String get snippetDbClickhouseSettingsChanged;
+
+  /// Snippet library: one-sentence note for the clickhouse.settings_changed database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Session settings that differ from the defaults.'**
+  String get snippetDbClickhouseSettingsChangedNote;
+
+  /// Snippet library: name of the clickhouse.metrics database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Current metrics'**
+  String get snippetDbClickhouseMetrics;
+
+  /// Snippet library: one-sentence note for the clickhouse.metrics database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Non-zero gauges: queries, merges, connections, memory.'**
+  String get snippetDbClickhouseMetricsNote;
+
+  /// Snippet library: name of the clickhouse.explain database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'EXPLAIN with indexes'**
+  String get snippetDbClickhouseExplain;
+
+  /// Snippet library: one-sentence note for the clickhouse.explain database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Plan with the primary key and skip indexes used; the query is not executed.'**
+  String get snippetDbClickhouseExplainNote;
+
+  /// Snippet library: name of the clickhouse.kill_query database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel a query'**
+  String get snippetDbClickhouseKillQuery;
+
+  /// Snippet library: one-sentence note for the clickhouse.kill_query database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Stops the query with the given query_id.'**
+  String get snippetDbClickhouseKillQueryNote;
+
+  /// Snippet library: name of the redis.info database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Server info'**
+  String get snippetDbRedisInfo;
+
+  /// Snippet library: one-sentence note for the redis.info database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'One INFO section: server, clients, memory, persistence, stats, replication, cpu, keyspace.'**
+  String get snippetDbRedisInfoNote;
+
+  /// Snippet library: name of the redis.memory database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Memory'**
+  String get snippetDbRedisMemory;
+
+  /// Snippet library: one-sentence note for the redis.memory database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Used and peak memory, fragmentation and the maxmemory policy.'**
+  String get snippetDbRedisMemoryNote;
+
+  /// Snippet library: name of the redis.memory_doctor database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Memory doctor'**
+  String get snippetDbRedisMemoryDoctor;
+
+  /// Snippet library: one-sentence note for the redis.memory_doctor database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Redis advice on memory problems.'**
+  String get snippetDbRedisMemoryDoctorNote;
+
+  /// Snippet library: name of the redis.slowlog database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Slow log'**
+  String get snippetDbRedisSlowlog;
+
+  /// Snippet library: one-sentence note for the redis.slowlog database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Latest slow commands with duration in microseconds.'**
+  String get snippetDbRedisSlowlogNote;
+
+  /// Snippet library: name of the redis.clients database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Client list'**
+  String get snippetDbRedisClients;
+
+  /// Snippet library: one-sentence note for the redis.clients database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Connected clients with address, age, idle time and last command.'**
+  String get snippetDbRedisClientsNote;
+
+  /// Snippet library: name of the redis.dbsize database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Number of keys'**
+  String get snippetDbRedisDbsize;
+
+  /// Snippet library: one-sentence note for the redis.dbsize database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Keys in the selected database.'**
+  String get snippetDbRedisDbsizeNote;
+
+  /// Snippet library: name of the redis.keyspace database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Keyspace'**
+  String get snippetDbRedisKeyspace;
+
+  /// Snippet library: one-sentence note for the redis.keyspace database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Keys and expiring keys per database.'**
+  String get snippetDbRedisKeyspaceNote;
+
+  /// Snippet library: name of the redis.scan database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Find keys by pattern'**
+  String get snippetDbRedisScan;
+
+  /// Snippet library: one-sentence note for the redis.scan database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Incremental SCAN instead of KEYS; repeat with the returned cursor until it is 0.'**
+  String get snippetDbRedisScanNote;
+
+  /// Snippet library: name of the redis.type database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Key type'**
+  String get snippetDbRedisType;
+
+  /// Snippet library: one-sentence note for the redis.type database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Data type stored at the key.'**
+  String get snippetDbRedisTypeNote;
+
+  /// Snippet library: name of the redis.ttl database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Key TTL'**
+  String get snippetDbRedisTtl;
+
+  /// Snippet library: one-sentence note for the redis.ttl database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds to expiry; -1 means no expiry, -2 means the key does not exist.'**
+  String get snippetDbRedisTtlNote;
+
+  /// Snippet library: name of the redis.memory_usage database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Key memory usage'**
+  String get snippetDbRedisMemoryUsage;
+
+  /// Snippet library: one-sentence note for the redis.memory_usage database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Bytes used by the key and its value.'**
+  String get snippetDbRedisMemoryUsageNote;
+
+  /// Snippet library: name of the redis.latency database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Latency doctor'**
+  String get snippetDbRedisLatency;
+
+  /// Snippet library: one-sentence note for the redis.latency database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Latency report; needs latency-monitor-threshold > 0.'**
+  String get snippetDbRedisLatencyNote;
+
+  /// Snippet library: name of the redis.config database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration value'**
+  String get snippetDbRedisConfig;
+
+  /// Snippet library: one-sentence note for the redis.config database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration parameters matching a glob pattern.'**
+  String get snippetDbRedisConfigNote;
+
+  /// Snippet library: name of the redis.replication database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Replication'**
+  String get snippetDbRedisReplication;
+
+  /// Snippet library: one-sentence note for the redis.replication database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Role, connected replicas and replication offsets.'**
+  String get snippetDbRedisReplicationNote;
+
+  /// Snippet library: name of the redis.commandstats database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Command statistics'**
+  String get snippetDbRedisCommandstats;
+
+  /// Snippet library: one-sentence note for the redis.commandstats database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Calls and time per command since the last reset.'**
+  String get snippetDbRedisCommandstatsNote;
+
+  /// Snippet library: name of the mongodb.current_ops database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Active operations'**
+  String get snippetDbMongodbCurrentOps;
+
+  /// Snippet library: one-sentence note for the mongodb.current_ops database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Operations running now (mongosh).'**
+  String get snippetDbMongodbCurrentOpsNote;
+
+  /// Snippet library: name of the mongodb.long_ops database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Long-running operations'**
+  String get snippetDbMongodbLongOps;
+
+  /// Snippet library: one-sentence note for the mongodb.long_ops database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Operations running longer than the given number of seconds (mongosh).'**
+  String get snippetDbMongodbLongOpsNote;
+
+  /// Snippet library: name of the mongodb.connections database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Connections'**
+  String get snippetDbMongodbConnections;
+
+  /// Snippet library: one-sentence note for the mongodb.connections database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Current, available and total created connections (mongosh).'**
+  String get snippetDbMongodbConnectionsNote;
+
+  /// Snippet library: name of the mongodb.opcounters database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Operation counters'**
+  String get snippetDbMongodbOpcounters;
+
+  /// Snippet library: one-sentence note for the mongodb.opcounters database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Inserts, queries, updates, deletes and commands since start (mongosh).'**
+  String get snippetDbMongodbOpcountersNote;
+
+  /// Snippet library: name of the mongodb.memory database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Memory'**
+  String get snippetDbMongodbMemory;
+
+  /// Snippet library: one-sentence note for the mongodb.memory database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Resident and virtual memory in MB (mongosh).'**
+  String get snippetDbMongodbMemoryNote;
+
+  /// Snippet library: name of the mongodb.db_stats database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Database stats'**
+  String get snippetDbMongodbDbStats;
+
+  /// Snippet library: one-sentence note for the mongodb.db_stats database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Collections, objects, data and index size in MB.'**
+  String get snippetDbMongodbDbStatsNote;
+
+  /// Snippet library: name of the mongodb.collection_stats database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Collection stats'**
+  String get snippetDbMongodbCollectionStats;
+
+  /// Snippet library: one-sentence note for the mongodb.collection_stats database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Documents, storage and per-index size in MB.'**
+  String get snippetDbMongodbCollectionStatsNote;
+
+  /// Snippet library: name of the mongodb.indexes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Indexes of a collection'**
+  String get snippetDbMongodbIndexes;
+
+  /// Snippet library: one-sentence note for the mongodb.indexes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Index keys and options.'**
+  String get snippetDbMongodbIndexesNote;
+
+  /// Snippet library: name of the mongodb.index_stats database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Index usage'**
+  String get snippetDbMongodbIndexStats;
+
+  /// Snippet library: one-sentence note for the mongodb.index_stats database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Operations per index since the last restart (mongosh).'**
+  String get snippetDbMongodbIndexStatsNote;
+
+  /// Snippet library: name of the mongodb.explain database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Query plan with statistics'**
+  String get snippetDbMongodbExplain;
+
+  /// Snippet library: one-sentence note for the mongodb.explain database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Runs the find and reports the plan, keys and documents examined (mongosh).'**
+  String get snippetDbMongodbExplainNote;
+
+  /// Snippet library: name of the mongodb.rs_status database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Replica set status'**
+  String get snippetDbMongodbRsStatus;
+
+  /// Snippet library: one-sentence note for the mongodb.rs_status database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Members, their state and health (mongosh).'**
+  String get snippetDbMongodbRsStatusNote;
+
+  /// Snippet library: name of the mongodb.rs_lag database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Replication lag'**
+  String get snippetDbMongodbRsLag;
+
+  /// Snippet library: one-sentence note for the mongodb.rs_lag database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'How far each secondary is behind the primary (mongosh, MongoDB 4.4+).'**
+  String get snippetDbMongodbRsLagNote;
+
+  /// Snippet library: name of the mongodb.profiler_status database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Profiler level'**
+  String get snippetDbMongodbProfilerStatus;
+
+  /// Snippet library: one-sentence note for the mongodb.profiler_status database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Profiler level and slowms threshold of the current database (mongosh).'**
+  String get snippetDbMongodbProfilerStatusNote;
+
+  /// Snippet library: name of the mongodb.slow_ops database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Slow operations (profiler)'**
+  String get snippetDbMongodbSlowOps;
+
+  /// Snippet library: one-sentence note for the mongodb.slow_ops database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Latest profiled operations slower than the threshold; enable with db.setProfilingLevel(1).'**
+  String get snippetDbMongodbSlowOpsNote;
+
+  /// Snippet library: name of the mongodb.kill_op database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Kill an operation'**
+  String get snippetDbMongodbKillOp;
+
+  /// Snippet library: one-sentence note for the mongodb.kill_op database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Stops the operation with the given opid from currentOp (mongosh).'**
+  String get snippetDbMongodbKillOpNote;
+
+  /// Snippet library: description of a database starter snippet; note is a full sentence, client a CLI name such as psql
+  ///
+  /// In en, this message translates to:
+  /// **'{note} For {client} or the Databases workspace. From the {package} starter package.'**
+  String snippetStarterDbOrigin(String note, String client, String package);
+
+  /// Snippet library: description of a terminal-only database starter snippet; note is a full sentence, client a CLI name such as mongosh
+  ///
+  /// In en, this message translates to:
+  /// **'{note} Runs in {client} in a terminal; the Databases workspace does not allow it. From the {package} starter package.'**
+  String snippetStarterDbTerminalOrigin(String note, String client, String package);
+
+  /// Snippet run flow: a SQL/redis-cli/mongosh snippet needs an open terminal session running the database client
+  ///
+  /// In en, this message translates to:
+  /// **'Start the database client (psql, mysql, clickhouse-client, redis-cli, mongosh) in a connected terminal tab first, then run the snippet there.'**
+  String get snippetClientSessionRequired;
+
+  /// Databases workspace: title of the snippet picker that inserts a saved query into the editor
+  ///
+  /// In en, this message translates to:
+  /// **'Insert a snippet'**
+  String get dbSnippetPickerTitle;
+
+  /// Databases workspace: search field hint in the snippet picker; engine is a product name such as PostgreSQL
+  ///
+  /// In en, this message translates to:
+  /// **'Search {engine} snippets'**
+  String dbSnippetPickerSearch(String engine);
+
+  /// Databases workspace: snippet picker empty state; engine is a product name such as PostgreSQL
+  ///
+  /// In en, this message translates to:
+  /// **'No {engine} snippets yet. Add them in Snippets → Starter packages or save a query from the history.'**
+  String dbSnippetPickerEmpty(String engine);
+
+  /// Selective sharing: action for a recipient to leave a shared item or decline an incoming invitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave share'**
+  String get sharingLeave;
+
+  /// Selective sharing: confirmation text before a recipient leaves a shared item.
+  ///
+  /// In en, this message translates to:
+  /// **'You stop receiving this item on all your devices and it disappears from this list. Personal copies you saved stay. The owner sees that you left.'**
+  String get sharingLeaveHelp;
+
+  /// Selective sharing: notice after a recipient left a shared item.
+  ///
+  /// In en, this message translates to:
+  /// **'You left the share'**
+  String get sharingLeft;
+
+  /// Selective sharing: owner confirmation before deleting a shared item when the server keeps it restorable.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipients lose access immediately. For 30 days you can restore the item from Recently deleted.'**
+  String get sharingStopRestoreHelp;
+
+  /// Selective sharing: owner view, number of recipient accounts who left this item; they are removed at the next access change.
+  ///
+  /// In en, this message translates to:
+  /// **'Left the share: {count}'**
+  String sharingMembersLeft(int count);
+
+  /// Selective sharing: owner entry and dialog title listing deleted shared items that can still be restored.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently deleted'**
+  String get sharingRecentlyDeleted;
+
+  /// Selective sharing: explanation in the Recently deleted dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared items you deleted can be restored for 30 days. A restored item is shared again with the same people except those who left; they accept it again.'**
+  String get sharingRecentlyDeletedHelp;
+
+  /// Selective sharing: empty state of the Recently deleted dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'No recently deleted items'**
+  String get sharingRecentlyDeletedEmpty;
+
+  /// Selective sharing: action restoring a deleted shared item.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get sharingRestore;
+
+  /// Selective sharing: notice after a deleted shared item was restored.
+  ///
+  /// In en, this message translates to:
+  /// **'Item restored and shared again'**
+  String get sharingRestored;
+
+  /// Selective sharing: subtitle of a deleted item with the restore deadline and the number of recipient devices.
+  ///
+  /// In en, this message translates to:
+  /// **'Restorable until {date} · recipients: {count}'**
+  String sharingRestoreUntil(String date, int count);
+
+  /// Enterprise OIDC sign-in button; name = the server's display name for the organisation's sign-in.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with {name}'**
+  String loginSsoButton(String name);
+
+  /// Enterprise OIDC sign-in button when the server gives no display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with SSO'**
+  String get loginSsoButtonDefault;
+
+  /// Optional e-mail field passed to the organisation's sign-in page as a login hint.
+  ///
+  /// In en, this message translates to:
+  /// **'E-mail (optional)'**
+  String get loginSsoEmailLabel;
+
+  /// Helper under the optional e-mail (login hint) field.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-filled on your organisation\'s sign-in page.'**
+  String get loginSsoEmailHelper;
+
+  /// Waiting state while the system browser shows the organisation's sign-in page.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish signing in in the browser…'**
+  String get loginSsoWaiting;
+
+  /// Explanation under the browser waiting state.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser shows your organisation\'s sign-in page. Return here when it says so.'**
+  String get loginSsoWaitingHelp;
+
+  /// Login field for directory (Active Directory / LDAP) sign-in.
+  ///
+  /// In en, this message translates to:
+  /// **'Login (email or DOMAIN\\user)'**
+  String get loginLdapLoginLabel;
+
+  /// Directory (Active Directory / LDAP) password field.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get loginLdapPasswordLabel;
+
+  /// Caption above the directory login and password fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organisation\'s account'**
+  String get loginLdapCaption;
+
+  /// Validation: the directory login is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your login'**
+  String get loginLdapLoginRequired;
+
+  /// Title of the notice that a corporate authorization server is used.
+  ///
+  /// In en, this message translates to:
+  /// **'Corporate sign-in'**
+  String get corporateAuthNoticeTitle;
+
+  /// Notice on the sign-in screen of an enterprise server; name = the authorization server's display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in through the corporate authorization server {name}. Your organisation\'s password does not open the vault — the vault passphrase does.'**
+  String corporateAuthNotice(String name);
+
+  /// Kind of corporate authorization server: OpenID Connect identity provider.
+  ///
+  /// In en, this message translates to:
+  /// **'OIDC'**
+  String get authProviderOidc;
+
+  /// Kind of corporate authorization server: Active Directory / LDAP directory.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Directory'**
+  String get authProviderLdap;
+
+  /// Name of the organisation's sign-in when the server gives no display name.
+  ///
+  /// In en, this message translates to:
+  /// **'SSO'**
+  String get authProviderSsoFallback;
+
+  /// The server advertises an unknown sign-in mode or provider.
+  ///
+  /// In en, this message translates to:
+  /// **'This server uses a sign-in method this version does not support. Update ConsoleCrypt.'**
+  String get serverNeedsNewerApp;
+
+  /// Sign-in method name used in 'Last time you signed in with {method}'.
+  ///
+  /// In en, this message translates to:
+  /// **'e-mail and password'**
+  String get signInMethodEmail;
+
+  /// Sign-in method name: the organisation's OIDC sign-in; name = server display name.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (OIDC)'**
+  String signInMethodOidc(String name);
+
+  /// Sign-in method name: the organisation's directory sign-in; name = server display name.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (Active Directory)'**
+  String signInMethodLdap(String name);
+
+  /// Remembered sign-in hint on the sign-in screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Last time you signed in with {method} as {login}'**
+  String signInLastTime(String method, String login);
+
+  /// Remembered sign-in hint without a remembered login.
+  ///
+  /// In en, this message translates to:
+  /// **'Last time you signed in with {method}'**
+  String signInLastTimeNoLogin(String method);
+
+  /// Button: forget the remembered sign-in method and login of this server.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget'**
+  String get signInForget;
+
+  /// The server's sign-in mode changed from what this device remembers to corporate sign-in.
+  ///
+  /// In en, this message translates to:
+  /// **'The server switched to sign-in through the corporate authorization server {name}. The previous account password is no longer used.'**
+  String authModeChangedToEnterprise(String name);
+
+  /// The server's sign-in mode changed from corporate sign-in back to e-mail and password.
+  ///
+  /// In en, this message translates to:
+  /// **'The server switched from corporate sign-in to e-mail and account password. Use the password your administrator set for your account.'**
+  String get authModeChangedToStandard;
+
+  /// Label of the remembered sync servers under the server address field.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent servers'**
+  String get recentServersLabel;
+
+  /// Compact badge: this server signs in with e-mail and password.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get authBadgeEmail;
+
+  /// Compact badge: this server signs in through the organisation's SSO; name = display name.
+  ///
+  /// In en, this message translates to:
+  /// **'SSO: {name}'**
+  String authBadgeSso(String name);
+
+  /// Compact badge: this server signs in through Active Directory / LDAP.
+  ///
+  /// In en, this message translates to:
+  /// **'AD'**
+  String get authBadgeAd;
+
+  /// Label of the row that says how the account signs in to the sync server.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorization'**
+  String get settingsAuthLabel;
+
+  /// The account signs in through a corporate authorization server; kind = OIDC or Active Directory.
+  ///
+  /// In en, this message translates to:
+  /// **'Corporate server — {name} ({kind})'**
+  String settingsAuthCorporate(String name, String kind);
+
+  /// The account signs in with e-mail and account password (standard server).
+  ///
+  /// In en, this message translates to:
+  /// **'E-mail and account password'**
+  String get settingsAuthStandard;
+
+  /// Explanation under the corporate authorization row in Settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organisation\'s authorization server checks who signs in. It never gets access to the vault: the vault passphrase stays on your devices.'**
+  String get settingsAuthCorporateHelp;
+
+  /// How and when this device signed in.
+  ///
+  /// In en, this message translates to:
+  /// **'This device signed in with {method} on {date}'**
+  String settingsAuthSignedIn(String method, String date);
+
+  /// How, as whom and when this device signed in.
+  ///
+  /// In en, this message translates to:
+  /// **'This device signed in with {method} as {login} on {date}'**
+  String settingsAuthSignedInAs(String method, String login, String date);
+
+  /// Devices page notice for an enterprise server.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts on this server sign in through the corporate authorization server {name}.'**
+  String devicesAuthCorporate(String name);
+
+  /// Title of the screen shown when the organisation disabled the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Access disabled by the administrator'**
+  String get accountDisabledTitle;
+
+  /// Body of the account disabled screen; server = sync server address.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organisation disabled this account on {server}. Synchronisation stopped and the profile is locked. The data on this device stays encrypted.'**
+  String accountDisabledBody(String server);
+
+  /// Button on the account disabled screen: try signing in again (if access was restored).
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again'**
+  String get accountDisabledSignIn;
+
+  /// Button on the account disabled screen: remove the locked profile from this device.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete profile from this device'**
+  String get accountDisabledDelete;
+
+  /// Confirmation title for deleting a disabled profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete profile “{name}”?'**
+  String accountDisabledDeleteTitle(String name);
+
+  /// Confirmation message for deleting a disabled profile.
+  ///
+  /// In en, this message translates to:
+  /// **'The encrypted local copy is removed from this device. Nothing changes on the server.'**
+  String get accountDisabledDeleteMessage;
+
+  /// Error: the organisation disabled the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Access was disabled by the administrator.'**
+  String get errorAccountDisabled;
+
+  /// Error: password sign-in was refused by an enterprise server.
+  ///
+  /// In en, this message translates to:
+  /// **'This server only accepts your organisation\'s sign-in. Check the server again, or update the app.'**
+  String get errorEnterpriseAuthRequired;
+
+  /// Error: the identity is linked to another account.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organisation\'s account is already linked to another account on this server. Contact the administrator.'**
+  String get errorIdentityConflict;
+
+  /// Error: the e-mail domain is not allowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your e-mail domain is not allowed on this server.'**
+  String get errorDomainNotAllowed;
+
+  /// Error: the identity lacks the required group or role.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account is not in the group allowed to use this server. Contact the administrator.'**
+  String get errorGroupRequired;
+
+  /// Error: multi-factor sign-in is required.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organisation requires sign-in with a second factor. Sign in again using it.'**
+  String get errorMfaRequired;
+
+  /// Error: the organisation's identity provider or directory is unreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organisation\'s sign-in service is unavailable. Try again later.'**
+  String get errorIdpUnavailable;
+
+  /// Error: the sign-in redirect had a wrong state or no code.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser returned an unexpected answer. Start signing in again.'**
+  String get errorReasonEnterpriseCallbackInvalid;
+
+  /// Error: the browser sign-in timed out.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing in took too long. Start again.'**
+  String get errorReasonEnterpriseSignInTimeout;
+
+  /// Error: the system browser or the redirect listener is unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the browser for signing in.'**
+  String get errorReasonEnterpriseBrowserUnavailable;
+
+  /// Settings section title: teams (team vaults shared by several accounts).
+  ///
+  /// In en, this message translates to:
+  /// **'Teams'**
+  String get teamsTitle;
+
+  /// Subtitle of the Teams settings section.
+  ///
+  /// In en, this message translates to:
+  /// **'Resources owned by a team. Every member sees them; roles decide who may change them.'**
+  String get teamsSubtitle;
+
+  /// Teams settings: empty state.
+  ///
+  /// In en, this message translates to:
+  /// **'You are not in any team yet.'**
+  String get teamsEmpty;
+
+  /// Button: create a new team.
+  ///
+  /// In en, this message translates to:
+  /// **'Create team'**
+  String get teamsCreate;
+
+  /// Button: re-read teams from the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get teamsRefresh;
+
+  /// Shown when a team name is not readable yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed team'**
+  String get teamsUnnamed;
+
+  /// Team row: the join was accepted on this account, an admin still has to confirm it.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for an admin to compare the code'**
+  String get teamsPendingConfirmation;
+
+  /// Team row: the team could not be opened (server refused or not reachable).
+  ///
+  /// In en, this message translates to:
+  /// **'Not available right now'**
+  String get teamsUnavailable;
+
+  /// Team row subtitle: this member role and the number of members.
+  ///
+  /// In en, this message translates to:
+  /// **'{role} · {count, plural, =1{1 member} other{{count} members}}'**
+  String teamsRowMeta(String role, int count);
+
+  /// Badge on a team whose membership log could not be verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get teamsWarningBadge;
+
+  /// Badge on a team whose key should be rotated (a member left or was removed).
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate key'**
+  String get teamsRotationBadge;
+
+  /// Badge: the team was opened from the local cache.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get teamsOfflineBadge;
+
+  /// Badge on team resources the member may only view.
+  ///
+  /// In en, this message translates to:
+  /// **'Read only'**
+  String get teamsReadOnly;
+
+  /// Screen reader label of a team chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Team {name}'**
+  String teamsChipSemantics(String name);
+
+  /// Incoming team invitation banner.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} invites you to a team as {role}.'**
+  String teamsInvitationFrom(String email, String role);
+
+  /// Incoming invitation: the plain-text note the admin added.
+  ///
+  /// In en, this message translates to:
+  /// **'Note: {note}'**
+  String teamsInvitationNote(String note);
+
+  /// Button: accept a team invitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get teamsAccept;
+
+  /// Button: decline a team invitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get teamsDecline;
+
+  /// Create-team dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'New team'**
+  String get teamsCreateTitle;
+
+  /// Create-team dialog explanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The name, colour and everything the team stores are end-to-end encrypted. The server only sees who is a member.'**
+  String get teamsCreateBody;
+
+  /// Field: team name.
+  ///
+  /// In en, this message translates to:
+  /// **'Team name'**
+  String get teamsNameLabel;
+
+  /// Field: team description.
+  ///
+  /// In en, this message translates to:
+  /// **'Description (optional)'**
+  String get teamsDescriptionLabel;
+
+  /// Label of the team colour chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour'**
+  String get teamsColorLabel;
+
+  /// Swatch that clears the personal colour override (use the team colour).
+  ///
+  /// In en, this message translates to:
+  /// **'Team colour'**
+  String get teamsColorNone;
+
+  /// Button: pick any colour for a team.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom…'**
+  String get teamsColorCustom;
+
+  /// Toast after creating a team.
+  ///
+  /// In en, this message translates to:
+  /// **'Team \"{name}\" created'**
+  String teamsCreated(String name);
+
+  /// Dialog title shown to the invitee after accepting.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare the code'**
+  String get teamsJoinCodeTitle;
+
+  /// Join-code dialog for the invitee. {email} is the inviting admin.
+  ///
+  /// In en, this message translates to:
+  /// **'Read this code to {email} (in person, by phone or in a messenger). They see the same code on their screen and confirm it.'**
+  String teamsJoinCodeBody(String email);
+
+  /// Join-code dialog: what happens next.
+  ///
+  /// In en, this message translates to:
+  /// **'The team opens on your devices as soon as the admin confirms.'**
+  String get teamsJoinCodeWait;
+
+  /// Banner for an admin: a join waits for the code comparison.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} accepted the invitation ({role}). Compare the code before adding them.'**
+  String teamsJoinRequest(String email, String role);
+
+  /// Button: open the code comparison for a join.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare code'**
+  String get teamsCompareCode;
+
+  /// Code-comparison dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {email}?'**
+  String teamsCompareTitle(String email);
+
+  /// Code-comparison dialog: the role the member gets.
+  ///
+  /// In en, this message translates to:
+  /// **'Role: {role}'**
+  String teamsCompareRole(String role);
+
+  /// Code-comparison dialog instructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask {email} to read the code on their screen. Add them only if every group matches.'**
+  String teamsCompareBody(String email);
+
+  /// Checkbox the admin must tick before adding a member.
+  ///
+  /// In en, this message translates to:
+  /// **'The code on {email}\'s screen is the same'**
+  String teamsCodesMatchCheckbox(String email);
+
+  /// Warning in the code-comparison dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'A different code means someone may be intercepting the invitation. Do not add the member.'**
+  String get teamsCompareWarning;
+
+  /// Button: the codes differ; rejects the join.
+  ///
+  /// In en, this message translates to:
+  /// **'Codes don\'t match'**
+  String get teamsCodesDontMatch;
+
+  /// Button: add the member after comparing the code.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to team'**
+  String get teamsAddMember;
+
+  /// Toast after adding a member.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} added to the team'**
+  String teamsMemberAdded(String email);
+
+  /// Title after pressing "codes don't match".
+  ///
+  /// In en, this message translates to:
+  /// **'Join rejected'**
+  String get teamsCodeRejectedTitle;
+
+  /// Body after a rejected join.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody was added. Invite the person again and compare the code over a channel you trust.'**
+  String get teamsCodeRejectedBody;
+
+  /// Team dialog tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get teamsTabMembers;
+
+  /// Team dialog tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get teamsTabSettings;
+
+  /// Team dialog tab: the verified membership log.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get teamsTabHistory;
+
+  /// Team dialog: the membership log contains an entry that failed verification.
+  ///
+  /// In en, this message translates to:
+  /// **'The server showed a membership change nobody signed. The team is paused (read only) and no keys are shared until this is resolved.'**
+  String get teamsWarningInvalidLog;
+
+  /// Team dialog: the membership log was rolled back.
+  ///
+  /// In en, this message translates to:
+  /// **'The server showed an older or different team membership than before. The team is paused (read only).'**
+  String get teamsWarningRollback;
+
+  /// Team dialog banner for admins.
+  ///
+  /// In en, this message translates to:
+  /// **'A member left the team. Rotate the key so they cannot read anything added from now on.'**
+  String get teamsRotationRequired;
+
+  /// Button: rotate the team key.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate key'**
+  String get teamsRotateKey;
+
+  /// Toast after a key rotation.
+  ///
+  /// In en, this message translates to:
+  /// **'Team key rotated'**
+  String get teamsKeyRotated;
+
+  /// Member list: this account.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} (you)'**
+  String teamsMemberYou(String email);
+
+  /// Heading of pending invitations in the team dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitations sent'**
+  String get teamsPendingInvitations;
+
+  /// Button: cancel a pending invitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get teamsCancelInvitation;
+
+  /// Button: invite someone to the team.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite member'**
+  String get teamsInvite;
+
+  /// Action: transfer team ownership to a member.
+  ///
+  /// In en, this message translates to:
+  /// **'Make owner'**
+  String get teamsTransferOwner;
+
+  /// Confirmation of an ownership transfer.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} becomes the owner of the team; you stay an admin.'**
+  String teamsTransferOwnerConfirm(String email);
+
+  /// Action: remove a member.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from team'**
+  String get teamsRemoveMember;
+
+  /// Confirmation of removing a member.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} loses access to the team. The team key is rotated so nothing added later is readable for them.'**
+  String teamsRemoveMemberConfirm(String email);
+
+  /// Invite dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite to {name}'**
+  String teamsInviteTitle(String name);
+
+  /// Invite dialog explanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The person needs a ConsoleCrypt account on this server. After they accept, you compare a code with them before they get access.'**
+  String get teamsInviteBody;
+
+  /// Invite dialog: email field.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get teamsInviteEmail;
+
+  /// Label of a role selector.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get teamsRoleLabel;
+
+  /// Invite dialog: optional note.
+  ///
+  /// In en, this message translates to:
+  /// **'Note for the invitation (optional)'**
+  String get teamsInviteNote;
+
+  /// Invite dialog: warning under the note field.
+  ///
+  /// In en, this message translates to:
+  /// **'The note is not encrypted: the server can read it.'**
+  String get teamsInviteNoteWarning;
+
+  /// Invite dialog primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Send invitation'**
+  String get teamsInviteSend;
+
+  /// Toast after inviting.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation sent to {email}'**
+  String teamsInvited(String email);
+
+  /// Team settings tab for non-admins.
+  ///
+  /// In en, this message translates to:
+  /// **'Only owners and admins change team settings.'**
+  String get teamsSettingsReadOnly;
+
+  /// Heading of team policies.
+  ///
+  /// In en, this message translates to:
+  /// **'Policies'**
+  String get teamsPoliciesTitle;
+
+  /// Team policy switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark new Kubernetes contexts and databases as production'**
+  String get teamsPolicyProduction;
+
+  /// Team policy switch: block AI context.
+  ///
+  /// In en, this message translates to:
+  /// **'Never send these resources to AI assistants'**
+  String get teamsPolicyBlockAi;
+
+  /// Team policy switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask before running risky commands'**
+  String get teamsPolicyConfirmRisky;
+
+  /// Team policy: clipboard clearing delay.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear copied secrets after'**
+  String get teamsPolicyClipboard;
+
+  /// Clipboard policy option: use the app setting.
+  ///
+  /// In en, this message translates to:
+  /// **'App default'**
+  String get teamsPolicyClipboardDefault;
+
+  /// Clipboard policy option in seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s'**
+  String teamsPolicySeconds(int seconds);
+
+  /// Toast after saving team settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Team settings saved'**
+  String get teamsSettingsSaved;
+
+  /// Heading: personal colour override.
+  ///
+  /// In en, this message translates to:
+  /// **'My colour for this team'**
+  String get teamsMyColorTitle;
+
+  /// Explanation of the personal colour override.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes the colour only on your devices.'**
+  String get teamsMyColorBody;
+
+  /// Button: leave the team.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave team'**
+  String get teamsLeave;
+
+  /// Leave-team confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'You lose access to \"{name}\" on all your devices.'**
+  String teamsLeaveConfirm(String name);
+
+  /// Caption: current team key epoch.
+  ///
+  /// In en, this message translates to:
+  /// **'Key generation {epoch}'**
+  String teamsKeyEpoch(int epoch);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} created the team'**
+  String teamsLogGenesis(String actor);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} added {member} as {role}'**
+  String teamsLogAdd(String actor, String member, String role);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} changed the role of {member} to {role}'**
+  String teamsLogRole(String actor, String member, String role);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} removed {member}'**
+  String teamsLogRemove(String actor, String member);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} left the team'**
+  String teamsLogLeave(String actor);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} made {member} the owner'**
+  String teamsLogTransfer(String actor, String member);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} rotated the key (generation {epoch})'**
+  String teamsLogRotate(String actor, int epoch);
+
+  /// Team role.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get teamsRoleOwner;
+
+  /// Team role.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get teamsRoleAdmin;
+
+  /// Team role.
+  ///
+  /// In en, this message translates to:
+  /// **'Editor'**
+  String get teamsRoleEditor;
+
+  /// Team role: read only.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewer'**
+  String get teamsRoleViewer;
+
+  /// Error: a viewer tried to change a team resource.
+  ///
+  /// In en, this message translates to:
+  /// **'You can only view this team\'s resources.'**
+  String get teamsErrorReadOnly;
+
+  /// Error: the team membership log is not trusted.
+  ///
+  /// In en, this message translates to:
+  /// **'The team is paused: its membership could not be verified.'**
+  String get teamsErrorUntrusted;
+
+  /// Error: a team object references a personal object.
+  ///
+  /// In en, this message translates to:
+  /// **'A team resource can only use resources of the same team. Copy the credential or jump host into the team first.'**
+  String get teamsErrorCrossVault;
+
+  /// Error: the object kind cannot live in a team.
+  ///
+  /// In en, this message translates to:
+  /// **'This kind of item stays in your personal vault.'**
+  String get teamsErrorPersonalOnly;
+
+  /// Error: AI request about a resource of a team that blocks AI context.
+  ///
+  /// In en, this message translates to:
+  /// **'The team policy does not allow sending this resource to AI assistants.'**
+  String get teamsErrorAiBlocked;
+
+  /// Error: the owner tried to leave.
+  ///
+  /// In en, this message translates to:
+  /// **'Make another member the owner before leaving.'**
+  String get teamsErrorOwnerCannotLeave;
+
+  /// Inventory filter: personal and team resources.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get teamsFilterAll;
+
+  /// Inventory filter / sidebar: personal vault only.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal'**
+  String get teamsFilterPersonal;
+
+  /// Context action: copy a resource into a team.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to team…'**
+  String get teamsCopyTo;
+
+  /// Context action: move a resource into a team.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to team…'**
+  String get teamsMoveTo;
+
+  /// Context action: move a team resource into the personal vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to personal'**
+  String get teamsMoveToPersonal;
+
+  /// Dialog title: choose the target team.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a team'**
+  String get teamsPickTitle;
+
+  /// Toast after copying into a team.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to {name}'**
+  String teamsCopied(String name);
+
+  /// Toast after moving into a team.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved to {name}'**
+  String teamsMoved(String name);
+
+  /// Action: create a group directly in a team.
+  ///
+  /// In en, this message translates to:
+  /// **'New team group'**
+  String get teamsNewGroup;
+
+  /// Hint next to creating a team group.
+  ///
+  /// In en, this message translates to:
+  /// **'Hosts created in a team group belong to the team.'**
+  String get teamsNewGroupHint;
+
+  /// Run confirmation: acknowledgement required by the team policy for a read-only command.
+  ///
+  /// In en, this message translates to:
+  /// **'I checked this command for {host} (team policy)'**
+  String teamsPolicyAck(String host);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

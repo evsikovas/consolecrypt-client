@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/risk_badge.dart';
 import 'package:consolecrypt/hosts/host_picker.dart';
+import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -114,12 +115,18 @@ Future<bool> showRunConfirmation(
   required String hostLabel,
   required RiskAssessment risk,
   String? confirmLabel,
+  bool teamPolicy = false,
 }) async =>
     await showAppDialog<bool>(
       context,
       secure: true,
-      builder: (_) =>
-          RunConfirmationDialog(command: command, hostLabel: hostLabel, risk: risk, confirmLabel: confirmLabel),
+      builder: (_) => RunConfirmationDialog(
+        command: command,
+        hostLabel: hostLabel,
+        risk: risk,
+        confirmLabel: confirmLabel,
+        teamPolicy: teamPolicy,
+      ),
     ) ??
     false;
 
@@ -133,6 +140,7 @@ class RunConfirmationDialog extends StatefulWidget {
     required this.hostLabel,
     required this.risk,
     this.confirmLabel,
+    this.teamPolicy = false,
     super.key,
   });
 
@@ -140,6 +148,9 @@ class RunConfirmationDialog extends StatefulWidget {
   final String hostLabel;
   final RiskAssessment risk;
   final String? confirmLabel;
+
+  /// The host's team asks to confirm every command explicitly.
+  final bool teamPolicy;
 
   @override
   State<RunConfirmationDialog> createState() => _RunConfirmationDialogState();
@@ -155,7 +166,8 @@ class _RunConfirmationDialogState extends State<RunConfirmationDialog> {
     final tokens = GlassTokens.of(context);
     final t = tokens.typography;
     final destructive = risk == RiskLevel.destructive;
-    final canRun = canRunCommand(risk, acknowledged: _acknowledged);
+    final needsAck = risk.requiresConfirmation || widget.teamPolicy;
+    final canRun = !needsAck || _acknowledged;
     void run() => closeDialog(context, true);
     return GlassDialog(
       key: const ValueKey('run-confirmation'),
@@ -203,7 +215,7 @@ class _RunConfirmationDialogState extends State<RunConfirmationDialog> {
                 ),
                 style: t.callout.copyWith(color: tokens.secondaryLabel),
               ),
-            if (risk.requiresConfirmation) ...[
+            if (needsAck) ...[
               const SizedBox(height: GlassSpacing.s8),
               CheckboxListTile(
                 key: const ValueKey('run-acknowledge'),
@@ -214,6 +226,7 @@ class _RunConfirmationDialogState extends State<RunConfirmationDialog> {
                 title: Text(switch (risk) {
                   RiskLevel.destructive => l10n.runFlowAckDestructive(widget.hostLabel),
                   RiskLevel.modifying => l10n.runFlowAckModifying(widget.hostLabel),
+                  RiskLevel.readOnly => l10n.teamsPolicyAck(widget.hostLabel),
                   _ => l10n.runFlowAckUnknown,
                 }),
               ),
@@ -247,20 +260,46 @@ String _targetLabel(TerminalTab tab) => switch (tab.target) {
   LocalTerminalTarget() || KubernetesTerminalTarget() || DockerTerminalTarget() => tab.target.label,
 };
 
+/// Snippets typed into an interactive client running in a terminal session
+/// (psql, mysql, clickhouse-client, redis-cli, mongosh, cqlsh) rather than
+/// executed by the shell. The type / dialect mapping is the one the Databases
+/// history uses when it saves a query as a snippet.
+bool isClientInputSnippet(Snippet snippet) => switch (snippet.snippetType) {
+  SnippetType.sql || SnippetType.postgresql || SnippetType.redisCli || SnippetType.cql => true,
+  _ => snippet.shell == 'mongosh',
+};
+
+/// Risk rules for a snippet's own language when it is client input (SQL is
+/// classified as SQL, not as a shell command line); `null` → the shell's.
+SnippetType? clientInputDialect(Snippet snippet) => switch (snippet.snippetType) {
+  SnippetType.sql || SnippetType.postgresql || SnippetType.cql || SnippetType.redisCli => snippet.snippetType,
+  _ => null,
+};
+
 /// Picks the target (active terminal tab or a host), asks for confirmation
 /// and runs. Nothing executes without the user pressing Run (§16).
+///
+/// [clientInput] text (SQL, redis-cli, mongosh) goes only to an already
+/// connected tab where the user started the client: a newly opened SSH
+/// session would hand it to the shell.
 Future<bool> runCommandFlow(
   BuildContext context,
   WidgetRef ref, {
   required String command,
   RiskLevel declared = RiskLevel.unknown,
   SnippetSource source = SnippetSource.user,
+  SnippetType? dialect,
+  bool clientInput = false,
 }) async {
   final tabs = ref.read(terminalTabsProvider.notifier);
   final profile = ref.read(activeProfileProvider)?.id;
   var target = ref.read(terminalTabsProvider).active;
   if (target?.isLocal == true) {
     showSnack(context, context.l10n.terminalLocalInsertOnly);
+    return false;
+  }
+  if (clientInput && (target == null || !target.isConnected)) {
+    showSnack(context, context.l10n.snippetClientSessionRequired);
     return false;
   }
   Host? host = target?.host;
@@ -272,13 +311,19 @@ Future<bool> runCommandFlow(
   try {
     risk = await ref
         .read(snippetServiceProvider)
-        .assessRisk(command, declared: declared, source: source, dialect: target?.target.shellType);
+        .assessRisk(command, declared: declared, source: source, dialect: dialect ?? target?.target.shellType);
   } on AppException catch (e) {
     if (context.mounted) showSnack(context, errorMessage(context.l10n, e), error: true);
     return false;
   }
   if (!context.mounted) return false;
-  final ok = await showRunConfirmation(context, command: command, hostLabel: _hostLabel(host), risk: risk);
+  final ok = await showRunConfirmation(
+    context,
+    command: command,
+    hostLabel: _hostLabel(host),
+    risk: risk,
+    teamPolicy: teamOf(ref, host.id)?.policies.confirmRiskyCommands ?? false,
+  );
   if (!ok || !context.mounted) return false;
   if (profile != ref.read(activeProfileProvider)?.id ||
       (target != null && !ref.read(terminalTabsProvider).tabs.contains(target))) {
@@ -310,7 +355,15 @@ Future<bool> runSnippetFlow(BuildContext context, WidgetRef ref, Snippet snippet
     return false;
   }
   if (!context.mounted) return false;
-  final ran = await runCommandFlow(context, ref, command: command, declared: snippet.riskLevel, source: snippet.source);
+  final ran = await runCommandFlow(
+    context,
+    ref,
+    command: command,
+    declared: snippet.riskLevel,
+    source: snippet.source,
+    dialect: clientInputDialect(snippet),
+    clientInput: isClientInputSnippet(snippet),
+  );
   if (ran) await ref.read(snippetServiceProvider).recordUsage(snippet.id);
   return ran;
 }
@@ -367,7 +420,12 @@ Future<void> runSnippetInManyFlow(BuildContext context, WidgetRef ref, Snippet s
   if (command == null || !context.mounted) return;
   final risk = await runWithFeedback(
     context,
-    () => service.assessRisk(command, declared: snippet.riskLevel, source: snippet.source),
+    () => service.assessRisk(
+      command,
+      declared: snippet.riskLevel,
+      source: snippet.source,
+      dialect: clientInputDialect(snippet),
+    ),
   );
   if (risk == null || !context.mounted) return;
   final confirmed = await showRunConfirmation(
@@ -375,6 +433,12 @@ Future<void> runSnippetInManyFlow(BuildContext context, WidgetRef ref, Snippet s
     command: command,
     hostLabel: targets.map(_targetLabel).join('\n'),
     risk: risk,
+    teamPolicy: targets.any(
+      (t) => switch (t.host) {
+        final host? => teamOf(ref, host.id)?.policies.confirmRiskyCommands ?? false,
+        null => false,
+      },
+    ),
   );
   if (!confirmed || !context.mounted) return;
   final current = ref.read(terminalTabsProvider).tabs;

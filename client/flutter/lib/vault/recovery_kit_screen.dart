@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
 import 'package:consolecrypt/vault/onboarding_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -201,8 +202,12 @@ class RecoveryKitPaper extends StatelessWidget {
   final RecoveryKit kit;
   final double qrSize;
 
+  // The words are on screen whenever the paper is: it counts as a revealed
+  // secret (screen-capture protection).
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => RevealedSecret(child: _paper(context));
+
+  Widget _paper(BuildContext context) {
     final words = kit.exposeWords();
     final tokens = GlassTokens.of(context);
     final t = tokens.typography;

@@ -152,6 +152,9 @@ final class MockProfileRecord {
   DeviceUnlockReoffer? deviceUnlockReoffer;
   bool recoveryKitConfirmed = true;
   bool sessionActive = false;
+
+  /// The administrator disabled the account (enterprise `account_disabled`).
+  bool accountDisabled = false;
   String deviceName = 'This device';
 
   // Sync engine (synced profiles).
@@ -193,6 +196,50 @@ final class MockCloud {
   final StreamController<void> _mutations = StreamController<void>.broadcast();
 
   bool offline = false;
+
+  /// Sign-in mode per server host (protocol 1.8 `capabilities.auth`). Hosts
+  /// not listed: [defaultServerAuth] (a host containing `sso` → OIDC
+  /// "Acme SSO", `ldap` or `ad.` → directory "ACME").
+  final Map<String, ServerAuth> serverAuth = {};
+
+  /// Accounts disabled by the administrator / in the IdP.
+  final Set<String> disabledAccounts = {};
+
+  static const ssoDisplayName = 'Acme SSO';
+  static const ssoUserEmail = 'sso.user@acme.test';
+
+  ServerAuth authFor(Uri serverUrl) => serverAuth[serverUrl.host] ?? defaultServerAuth(serverUrl);
+
+  static ServerAuth defaultServerAuth(Uri serverUrl) {
+    final host = serverUrl.host.toLowerCase();
+    if (host.contains('sso')) {
+      return const ServerAuth(
+        mode: ServerAuthMode.enterprise,
+        provider: ServerAuthProvider.oidc,
+        displayName: ssoDisplayName,
+      );
+    }
+    if (host.contains('ldap') || host.startsWith('ad.')) {
+      return const ServerAuth(mode: ServerAuthMode.enterprise, provider: ServerAuthProvider.ldap, displayName: 'ACME');
+    }
+    return ServerAuth.standard;
+  }
+
+  /// Disables [email]'s account: its profiles lose their session and show
+  /// "Access disabled by the administrator".
+  void disableAccount(String email) {
+    final normalized = email.trim().toLowerCase();
+    disabledAccounts.add(normalized);
+    for (final r in records.values) {
+      if (r.profile.accountEmail == normalized) {
+        r
+          ..accountDisabled = true
+          ..sessionActive = false;
+        if (r.phase == VaultPhase.unlocked) r.phase = VaultPhase.locked;
+      }
+    }
+    notifyChanged();
+  }
 
   static const demoEmail = 'demo@consolecrypt.test';
   static const newDeviceEmail = 'newdevice@consolecrypt.test';

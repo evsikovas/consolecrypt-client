@@ -155,6 +155,299 @@
   "navSftp": "SFTP",
   "navTunnels": "Туннели",
   "navSnippets": "Сниппеты",
+  "notesShared": "Общие заметки",
+  "@notesShared": {
+    "description": "Notes panel: notes every member of the shared object sees."
+  },
+  "notesSharedRefresh": "Обновить общие заметки",
+  "@notesSharedRefresh": {
+    "description": "Notes panel: reload shared notes from the server."
+  },
+  "notesSharedNew": "Новая общая заметка",
+  "@notesSharedNew": {
+    "description": "Notes panel: write a note all members see."
+  },
+  "notesSharedFailed": "Не удалось загрузить общие заметки. Проверьте подключение к серверу синхронизации.",
+  "@notesSharedFailed": {
+    "description": "Notes panel: shared notes failed to load."
+  },
+  "notesSharedWaiting": "Владелец ещё не открыл общие заметки для этого объекта. Они появятся, когда он откроет панель заметок.",
+  "@notesSharedWaiting": {
+    "description": "Notes panel: the owner has not issued the notes key yet."
+  },
+  "notesSharedPending": "{count, plural, one{{count} заметка станет доступна, когда владелец откроет панель заметок} few{{count} заметки станут доступны, когда владелец откроет панель заметок} many{{count} заметок станут доступны, когда владелец откроет панель заметок} other{{count} заметки станут доступны, когда владелец откроет панель заметок}}",
+  "@notesSharedPending": {
+    "description": "Notes panel: notes not yet moved to the current key.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notesSharedEmpty": "Общих заметок пока нет.",
+  "@notesSharedEmpty": {
+    "description": "Notes panel: the shared section is empty."
+  },
+  "notesSharedHint": "Заметку видят все, с кем вы поделились объектом. Изменить её можете только вы.",
+  "@notesSharedHint": {
+    "description": "Shared note editor: who sees the note."
+  },
+  "notesSharedReadOnly": "Изменить заметку может только автор.",
+  "@notesSharedReadOnly": {
+    "description": "Shared note view: someone else's note."
+  },
+  "notesSharedDeleteMessage": "Заметка «{title}» будет удалена у всех, у кого есть доступ к объекту.",
+  "@notesSharedDeleteMessage": {
+    "description": "Delete shared note confirmation.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notesAuthorYou": "Вы",
+  "@notesAuthorYou": {
+    "description": "Shared note author: this user."
+  },
+  "notesAuthorOwner": "Владелец",
+  "@notesAuthorOwner": {
+    "description": "Shared note author: the owner of the shared object."
+  },
+  "notesAuthorMember": "Участник",
+  "@notesAuthorMember": {
+    "description": "Shared note author: another member."
+  },
+  "navNotes": "Заметки",
+  "@navNotes": {
+    "description": "Right workspace panel tool: notes, tasks and reminders."
+  },
+  "notesThisObject": "Объект",
+  "@notesThisObject": {
+    "description": "Notes panel filter: notes attached to the object open in the current section."
+  },
+  "notesAll": "Все",
+  "@notesAll": {
+    "description": "Notes panel filter: every note."
+  },
+  "notesTasks": "Задачи",
+  "@notesTasks": {
+    "description": "Notes panel filter: tasks only."
+  },
+  "notesSearchHint": "Поиск по заметкам",
+  "@notesSearchHint": {
+    "description": "Notes panel search field placeholder."
+  },
+  "notesNew": "Новая заметка",
+  "@notesNew": {
+    "description": "Notes panel: create a note."
+  },
+  "notesEmptyTitle": "Заметок пока нет",
+  "@notesEmptyTitle": {
+    "description": "Notes panel empty state title."
+  },
+  "notesEmptyMessage": "Записывайте задачи, напоминания и всё, что важно помнить о серверах, базах и контейнерах.",
+  "@notesEmptyMessage": {
+    "description": "Notes panel empty state message."
+  },
+  "notesEmptyObject": "О «{name}» пока ничего нет",
+  "@notesEmptyObject": {
+    "description": "Notes panel empty state for the current object.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notesNothingFound": "Ничего не найдено",
+  "@notesNothingFound": {
+    "description": "Notes panel: search has no results."
+  },
+  "notesCompleted": "Выполненные ({count})",
+  "@notesCompleted": {
+    "description": "Notes panel: collapsed section of completed tasks.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notesTitle": "Заголовок",
+  "@notesTitle": {
+    "description": "Note editor: title field."
+  },
+  "notesBody": "Текст (Markdown)",
+  "@notesBody": {
+    "description": "Note editor: body field."
+  },
+  "notesBodyEmpty": "Текста нет",
+  "@notesBodyEmpty": {
+    "description": "Note editor preview of an empty body."
+  },
+  "notesEdit": "Правка",
+  "@notesEdit": {
+    "description": "Note editor: edit mode."
+  },
+  "notesPreview": "Просмотр",
+  "@notesPreview": {
+    "description": "Note editor: rendered Markdown mode."
+  },
+  "notesTags": "Метки через запятую",
+  "@notesTags": {
+    "description": "Note editor: tags field."
+  },
+  "notesTask": "Задача",
+  "@notesTask": {
+    "description": "Note editor: switch that makes the note a task."
+  },
+  "notesDue": "Срок",
+  "@notesDue": {
+    "description": "Note editor: task due time."
+  },
+  "notesDone": "Выполнено",
+  "@notesDone": {
+    "description": "Note editor: task completed switch."
+  },
+  "notesReminder": "Напоминание",
+  "@notesReminder": {
+    "description": "Note editor: reminder time."
+  },
+  "notesAttachedTo": "Привязка",
+  "@notesAttachedTo": {
+    "description": "Note editor: what the note is about."
+  },
+  "notesNoTarget": "Без привязки",
+  "@notesNoTarget": {
+    "description": "Note editor: the note is not about any object."
+  },
+  "notesTargetMissing": "Объект не найден",
+  "@notesTargetMissing": {
+    "description": "Note attached to an object that no longer exists."
+  },
+  "notesWhenNone": "Нет",
+  "@notesWhenNone": {
+    "description": "Due/reminder choice: no time."
+  },
+  "notesWhenInHour": "Через час",
+  "@notesWhenInHour": {
+    "description": "Due/reminder choice."
+  },
+  "notesWhenThisEvening": "Сегодня в 18:00",
+  "@notesWhenThisEvening": {
+    "description": "Due/reminder choice."
+  },
+  "notesWhenTomorrow": "Завтра в 09:00",
+  "@notesWhenTomorrow": {
+    "description": "Due/reminder choice."
+  },
+  "notesWhenNextWeek": "Через неделю",
+  "@notesWhenNextWeek": {
+    "description": "Due/reminder choice."
+  },
+  "notesWhenCustom": "Дата и время…",
+  "@notesWhenCustom": {
+    "description": "Due/reminder choice: type a date and time."
+  },
+  "notesWhenCustomHint": "ГГГГ-ММ-ДД ЧЧ:ММ",
+  "@notesWhenCustomHint": {
+    "description": "Format hint for a typed date and time."
+  },
+  "notesInvalidTime": "Введите дату в виде ГГГГ-ММ-ДД ЧЧ:ММ",
+  "@notesInvalidTime": {
+    "description": "Error for a mistyped date and time."
+  },
+  "notesOverdueAt": "Просрочено · {when}",
+  "@notesOverdueAt": {
+    "description": "Task past its due time.",
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "notesPin": "Закрепить",
+  "@notesPin": {
+    "description": "Note menu action."
+  },
+  "notesUnpin": "Открепить",
+  "@notesUnpin": {
+    "description": "Note menu action."
+  },
+  "notesSnooze": "Напомнить через час",
+  "@notesSnooze": {
+    "description": "Note menu action: set the reminder an hour from now."
+  },
+  "notesAttachHere": "Привязать к «{name}»",
+  "@notesAttachHere": {
+    "description": "Note menu action: attach to the object open now.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notesDetach": "Отвязать",
+  "@notesDetach": {
+    "description": "Note menu action: remove the attachment."
+  },
+  "notesDelete": "Удалить заметку",
+  "@notesDelete": {
+    "description": "Note menu action and confirmation title."
+  },
+  "notesDeleteMessage": "Заметка «{title}» будет удалена на всех ваших устройствах.",
+  "@notesDeleteMessage": {
+    "description": "Delete note confirmation.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notesMarkDone": "Отметить выполненной",
+  "@notesMarkDone": {
+    "description": "Task checkbox accessibility label."
+  },
+  "notesMarkOpen": "Снять отметку о выполнении",
+  "@notesMarkOpen": {
+    "description": "Task checkbox accessibility label."
+  },
+  "notesBack": "К списку заметок",
+  "@notesBack": {
+    "description": "Note editor: back button."
+  },
+  "notesSaveFailed": "Не сохранено",
+  "@notesSaveFailed": {
+    "description": "Note editor: the last save failed."
+  },
+  "notesReminderToast": "Напоминание: {title}",
+  "@notesReminderToast": {
+    "description": "Toast when a note reminder goes off.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notesOpen": "Открыть",
+  "@notesOpen": {
+    "description": "Reminder toast action: open the note."
+  },
+  "notesHostNotesTitle": "Заметка из карточки хоста",
+  "@notesHostNotesTitle": {
+    "description": "Notes panel: the host's legacy notes field."
+  },
+  "notesHostNotesMove": "Перенести в заметки",
+  "@notesHostNotesMove": {
+    "description": "Notes panel: turn the host card notes into a note."
+  },
+  "notesFromHostTitle": "Заметки: {name}",
+  "@notesFromHostTitle": {
+    "description": "Title of a note moved from a host card.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "navAiChat": "ИИ-чат",
   "navDevices": "Устройства",
   "navSync": "Синхронизация",
@@ -5520,5 +5813,398 @@
   "dbSelectedRows": "{count, plural, one{Выбрано строк: {count}} few{Выбрано строк: {count}} many{Выбрано строк: {count}} other{Выбрано строк: {count}}}",
   "vaultPassphraseConfirmLabel": "Пароль хранилища",
   "vaultPassphraseConfirmWrong": "Неверный пароль хранилища.",
-  "dbPreviewTabTitle": "{name} — данные"
+  "dbPreviewTabTitle": "{name} — данные",
+  "dbDetailsSection": "{id, select, general{Общее} size{Размер} structure{Структура} partitioning{Секционирование} maintenance{Обслуживание} other{{id}}}",
+  "dbDetailsField": "{id, select, kind{Тип объекта} persistence{Хранение} schema{Схема} owner{Владелец} tablespace{Табличное пространство} comment{Комментарий} rows{Строк} live_rows{Живых строк} dead_rows{Мёртвых строк} total_size{Общий размер} table_size{Данные таблицы} index_size{Индексы} toast_size{TOAST} columns{Колонок} indexes{Индексов} constraints{Ограничений} triggers{Триггеров} definition_length{Длина определения, символов} partition_key{Ключ секционирования} partitions{Секций} partition_of{Секция таблицы} last_vacuum{Последний VACUUM} last_autovacuum{Последний autovacuum} last_analyze{Последний ANALYZE} last_autoanalyze{Последний autoanalyze} engine{Движок} row_format{Формат строк} collation{Сопоставление} definer{Определил} updatable{Обновляемое} security{Права выполнения} average_row{Средняя строка} free_space{Свободно} auto_increment{Следующий AUTO_INCREMENT} created{Создана} updated{Изменена} uncompressed_size{Без сжатия} parts{Активных частей} sorting_key{Ключ сортировки} primary_key{Первичный ключ} sampling_key{Ключ выборки} ttl{TTL} metadata_modified{Метаданные изменены} type{Тип} encoding{Кодировка} database{База} memory{Память} keys{Ключей} length_bytes{Длина, байт} length_fields{Полей} length_elements{Элементов} length_members{Элементов} length_entries{Записей} other{{id}}}",
+  "dbDetailsKeyword": "{id, select, table{Таблица} partitioned_table{Секционированная таблица} view{Представление} materialized_view{Материализованное представление} foreign_table{Внешняя таблица} unlogged{Без журнала (UNLOGGED)} temporary{Временная} other{{id}}}",
+  "dbDetailsNoExpiry": "Без срока",
+  "dbDetailsJson": "JSON",
+  "dbDetailsEmpty": "Для этого объекта сведений нет.",
+  "copyWhatObjectDetails": "Сведения об объекте",
+  "dbWrapLines": "Переносить строки",
+  "settingsTerminalFontMissing": "Шрифт «{family}» не установлен — используется {fallback}.",
+  "settingsCaptureProtectionLabel": "Скрывать окно от записи экрана",
+  "settingsCaptureProtectionOff": "Никогда",
+  "settingsCaptureProtectionSecrets": "Когда видны секреты",
+  "settingsCaptureProtectionAlways": "Всегда",
+  "settingsCaptureProtectionHelp": "Окно не попадёт в скриншоты, запись и демонстрацию экрана (Zoom, Teams). В режиме «Всегда» коллеги не увидят окно ConsoleCrypt при показе экрана.",
+  "sftpActiveContentTitle": "Этот файл может выполнить код",
+  "sftpActiveContentBody": "Файл «{name}» может выполнить код. Он откроется как текст в редакторе.",
+  "sftpActiveContentNoRun": "ConsoleCrypt не запускает загруженные файлы. Чтобы выполнить его, используйте терминал на сервере.",
+  "sftpActiveContentOpenAsText": "Открыть как текст",
+  "sftpNoTextEditorTitle": "Текстовый редактор не найден",
+  "sftpNoTextEditorBody": "Файл «{name}» может выполнить код, поэтому он открывается только как текст, но текстовый редактор не найден. Выберите редактор.",
+  "sftpChooseEditor": "Выбрать редактор…",
+  "errorNoTextEditor": "Не найден текстовый редактор, чтобы безопасно открыть этот файл. Выберите редактор через «Открыть в программе…».",
+  "dbExportEscapeFormulas": "Экранировать формулы (для Excel)",
+  "settingsClearClipboardSeconds": "Через {count, plural, one{{count} секунду} few{{count} секунды} many{{count} секунд} other{{count} секунды}} после копирования секрета",
+  "settingsClearClipboardMinutes": "Через {count, plural, one{{count} минуту} few{{count} минуты} many{{count} минут} other{{count} минуты}} после копирования секрета",
+  "settingsClearClipboardHours": "Через {count, plural, one{{count} час} few{{count} часа} many{{count} часов} other{{count} часа}} после копирования секрета",
+  "settingsClearClipboardDays": "Через {count, plural, one{{count} день} few{{count} дня} many{{count} дней} other{{count} дня}} после копирования секрета",
+  "sharingUnreadableEntries": "{count, plural, one{{count} запись не удалось прочитать, она скрыта.} few{{count} записи не удалось прочитать, они скрыты.} many{{count} записей не удалось прочитать, они скрыты.} other{{count} записи не удалось прочитать, они скрыты.}}",
+  "snippetPackPostgresql": "SQL · PostgreSQL",
+  "snippetPackPostgresqlDescription": "Активность, блокировки, размеры, индексы, vacuum, репликация и настройки. Для psql или раздела «Базы данных».",
+  "snippetPackMysql": "SQL · MySQL/MariaDB",
+  "snippetPackMysqlDescription": "Processlist, блокировки InnoDB, размеры, индексы, репликация и дайджесты запросов. Для клиента mysql или раздела «Базы данных».",
+  "snippetPackClickhouse": "SQL · ClickHouse",
+  "snippetPackClickhouseDescription": "Текущие и медленные запросы, куски, слияния, мутации, репликация и диски. Для clickhouse-client или раздела «Базы данных».",
+  "snippetPackRedis": "Redis",
+  "snippetPackRedisDescription": "Память, клиенты, медленные команды, ключи и репликация. Для redis-cli или раздела «Базы данных».",
+  "snippetPackMongodb": "MongoDB",
+  "snippetPackMongodbDescription": "Операции, статистика сервера и коллекций, индексы, набор реплик и профилировщик. Для mongosh; часть работает и в разделе «Базы данных».",
+  "snippetDbPgActivity": "Активные запросы",
+  "snippetDbPgActivityNote": "Сессии не в состоянии idle, самые долгие сверху.",
+  "snippetDbPgLongRunning": "Долгие запросы",
+  "snippetDbPgLongRunningNote": "Запросы, которые выполняются дольше заданного числа секунд.",
+  "snippetDbPgBlocking": "Дерево блокировок",
+  "snippetDbPgBlockingNote": "Блокирующие сессии и ожидающие их сессии с отступом по глубине (PG 9.6+).",
+  "snippetDbPgTableSizes": "Самые большие таблицы",
+  "snippetDbPgTableSizesNote": "Полный размер, а также таблица, индексы и TOAST; число строк — оценка планировщика.",
+  "snippetDbPgDatabaseSizes": "Размеры баз данных",
+  "snippetDbPgDatabaseSizesNote": "Размер каждой базы, к которой разрешено подключение.",
+  "snippetDbPgIndexUsage": "Использование индексов",
+  "snippetDbPgIndexUsageNote": "Сначала редко используемые индексы; idx_scan = 0 — не использовался с последнего сброса статистики. Проверьте и реплики; уникальные индексы не удаляйте.",
+  "snippetDbPgDeadTuples": "Мёртвые строки и autovacuum",
+  "snippetDbPgDeadTuplesNote": "Оценка раздувания по мёртвым строкам и время последних vacuum и analyze.",
+  "snippetDbPgCacheHit": "Попадания в кэш",
+  "snippetDbPgCacheHitNote": "Доля блоков из shared buffers по базам; ниже 99% для OLTP стоит разобраться.",
+  "snippetDbPgReplication": "Состояние репликации",
+  "snippetDbPgReplicationNote": "Подключённые реплики и отставание в байтах и по времени. Выполняйте на primary (PG 10+).",
+  "snippetDbPgSlots": "Слоты репликации",
+  "snippetDbPgSlotsNote": "Слоты и удерживаемый ими WAL; неактивный слот держит WAL бесконечно (PG 13+).",
+  "snippetDbPgConnections": "Подключения по пользователям и приложениям",
+  "snippetDbPgConnectionsNote": "Клиентские подключения по базе, пользователю, приложению и состоянию.",
+  "snippetDbPgSettingsChanged": "Изменённые настройки",
+  "snippetDbPgSettingsChangedNote": "Параметры, значение которых отличается от встроенного по умолчанию.",
+  "snippetDbPgColumns": "Колонки таблицы",
+  "snippetDbPgColumnsNote": "Колонки с типами, значениями по умолчанию и комментариями.",
+  "snippetDbPgForeignKeys": "Внешние ключи таблицы",
+  "snippetDbPgForeignKeysNote": "Внешние ключи таблицы и ключи, которые ссылаются на неё.",
+  "snippetDbPgSequences": "Последовательности у предела",
+  "snippetDbPgSequencesNote": "Последовательности, израсходовавшие больше заданного процента диапазона; проверьте и тип колонки (PG 10+).",
+  "snippetDbPgFkWithoutIndex": "Внешние ключи без индекса",
+  "snippetDbPgFkWithoutIndexNote": "Внешние ключи, колонки которых не стоят в начале ни одного индекса; удаление и изменение родителя сканирует дочернюю таблицу.",
+  "snippetDbPgStatements": "Тяжёлые запросы (pg_stat_statements)",
+  "snippetDbPgStatementsNote": "Нужно расширение pg_stat_statements (shared_preload_libraries и CREATE EXTENSION); без него будет ошибка «relation does not exist». Имена колонок — для PG 13+.",
+  "snippetDbPgExplainAnalyze": "EXPLAIN ANALYZE",
+  "snippetDbPgExplainAnalyzeNote": "Выполняет запрос, чтобы измерить реальный план; изменяющие данные запросы оборачивайте в BEGIN … ROLLBACK.",
+  "snippetDbPgCancel": "Отменить запрос",
+  "snippetDbPgCancelNote": "Отменяет текущий запрос процесса; сессия остаётся подключённой.",
+  "snippetDbPgTerminate": "Завершить сессию",
+  "snippetDbPgTerminateNote": "Отключает процесс и откатывает его открытую транзакцию.",
+  "snippetDbMysqlProcesslist": "Активные запросы",
+  "snippetDbMysqlProcesslistNote": "Подключения не в состоянии Sleep, самые долгие сверху.",
+  "snippetDbMysqlLongRunning": "Долгие запросы",
+  "snippetDbMysqlLongRunningNote": "Запросы, которые выполняются дольше заданного числа секунд.",
+  "snippetDbMysqlLockWaits": "Ожидания блокировок InnoDB",
+  "snippetDbMysqlLockWaitsNote": "Кто кого ждёт и блокирующий запрос. Нужна схема sys (MySQL 5.7+, MariaDB 10.6+).",
+  "snippetDbMysqlTransactions": "Открытые транзакции",
+  "snippetDbMysqlTransactionsNote": "Транзакции InnoDB, самые старые сверху, с числом заблокированных и изменённых строк.",
+  "snippetDbMysqlTableSizes": "Самые большие таблицы",
+  "snippetDbMysqlTableSizesNote": "Данные, индексы и свободное место в МБ; статистика information_schema приблизительная и кэшируется.",
+  "snippetDbMysqlDatabaseSizes": "Размеры баз данных",
+  "snippetDbMysqlDatabaseSizesNote": "Суммарный размер данных и индексов по схемам в МБ.",
+  "snippetDbMysqlIndexUsage": "Использование индексов",
+  "snippetDbMysqlIndexUsageNote": "Чтения и записи по индексам с момента запуска сервера (performance_schema).",
+  "snippetDbMysqlUnusedIndexes": "Неиспользуемые индексы",
+  "snippetDbMysqlUnusedIndexesNote": "Индексы без чтений с момента запуска сервера. Нужна схема sys; перед удалением проверьте реплики.",
+  "snippetDbMysqlAutoIncrement": "AUTO_INCREMENT у предела",
+  "snippetDbMysqlAutoIncrementNote": "Какая доля диапазона типа колонки уже израсходована. Нужна схема sys.",
+  "snippetDbMysqlIndexes": "Индексы таблицы",
+  "snippetDbMysqlIndexesNote": "Колонки индексов по порядку и их кардинальность.",
+  "snippetDbMysqlColumns": "Колонки таблицы",
+  "snippetDbMysqlColumnsNote": "Колонки с типами, ключами, значениями по умолчанию и комментариями.",
+  "snippetDbMysqlForeignKeys": "Внешние ключи таблицы",
+  "snippetDbMysqlForeignKeysNote": "Внешние ключи таблицы и ключи, которые ссылаются на неё.",
+  "snippetDbMysqlReplicaStatus": "Состояние реплики",
+  "snippetDbMysqlReplicaStatusNote": "MySQL 8.0.22+ и MariaDB 10.5.1+; на старых серверах — SHOW SLAVE STATUS.",
+  "snippetDbMysqlVariables": "Переменные сервера",
+  "snippetDbMysqlVariablesNote": "Глобальные переменные по шаблону LIKE.",
+  "snippetDbMysqlStatus": "Основные счётчики",
+  "snippetDbMysqlStatusNote": "Время работы, подключения, медленные запросы, ожидания блокировок строк и чтения buffer pool.",
+  "snippetDbMysqlConnections": "Подключения по пользователям и хостам",
+  "snippetDbMysqlConnectionsNote": "Подключения по пользователю, хосту клиента, схеме и команде.",
+  "snippetDbMysqlDigest": "Тяжёлые запросы (дайджесты)",
+  "snippetDbMysqlDigestNote": "Нормализованные запросы по суммарному времени из performance_schema (в MySQL включена по умолчанию, в MariaDB — выключена).",
+  "snippetDbMysqlInnodbStatus": "Состояние InnoDB",
+  "snippetDbMysqlInnodbStatusNote": "Отчёт движка: последний дедлок, семафоры, buffer pool; нужна привилегия PROCESS.",
+  "snippetDbMysqlExplainAnalyze": "EXPLAIN ANALYZE",
+  "snippetDbMysqlExplainAnalyzeNote": "Выполняет запрос, чтобы измерить реальный план (MySQL 8.0.18+; в MariaDB — ANALYZE SELECT …).",
+  "snippetDbMysqlKillQuery": "Отменить запрос",
+  "snippetDbMysqlKillQueryNote": "Останавливает текущий запрос подключения; само подключение остаётся.",
+  "snippetDbClickhouseProcesses": "Выполняющиеся запросы",
+  "snippetDbClickhouseProcessesNote": "Исходные запросы со временем выполнения, памятью и прочитанными строками.",
+  "snippetDbClickhouseLongRunning": "Долгие запросы",
+  "snippetDbClickhouseLongRunningNote": "Запросы, которые выполняются дольше заданного числа секунд.",
+  "snippetDbClickhouseSlowQueries": "Медленные запросы",
+  "snippetDbClickhouseSlowQueriesNote": "Самые медленные завершённые запросы из system.query_log за последние часы.",
+  "snippetDbClickhouseFailedQueries": "Запросы с ошибками",
+  "snippetDbClickhouseFailedQueriesNote": "Последние запросы, завершившиеся исключением.",
+  "snippetDbClickhouseQueryPatterns": "Самые тяжёлые шаблоны запросов",
+  "snippetDbClickhouseQueryPatternsNote": "Завершённые запросы, сгруппированные по нормализованному тексту, по суммарному времени.",
+  "snippetDbClickhouseTableSizes": "Самые большие таблицы",
+  "snippetDbClickhouseTableSizesNote": "Сжатый и несжатый размер активных кусков и степень сжатия.",
+  "snippetDbClickhouseDatabaseSizes": "Размеры баз данных",
+  "snippetDbClickhouseDatabaseSizesNote": "Место на диске под активные куски по базам.",
+  "snippetDbClickhousePartitions": "Партиции таблицы",
+  "snippetDbClickhousePartitionsNote": "Куски, строки и размер по партициям.",
+  "snippetDbClickhousePartsCount": "Партиции с большим числом кусков",
+  "snippetDbClickhousePartsCountNote": "Слишком много активных кусков замедляет вставки и чтение («Too many parts»).",
+  "snippetDbClickhouseColumnSizes": "Размеры колонок таблицы",
+  "snippetDbClickhouseColumnSizesNote": "Сжатый размер, степень сжатия и кодек по колонкам.",
+  "snippetDbClickhouseMerges": "Текущие слияния",
+  "snippetDbClickhouseMergesNote": "Выполняющиеся слияния и мутации.",
+  "snippetDbClickhouseMutations": "Незавершённые мутации",
+  "snippetDbClickhouseMutationsNote": "Ещё выполняющиеся ALTER … UPDATE/DELETE и причина последней ошибки.",
+  "snippetDbClickhouseReplicationQueue": "Очередь репликации",
+  "snippetDbClickhouseReplicationQueueNote": "Самые старые задачи репликации с повторами и последней ошибкой (таблицы Replicated*).",
+  "snippetDbClickhouseReplicas": "Состояние реплик",
+  "snippetDbClickhouseReplicasNote": "Задержка, очередь и режим только чтения у таблиц Replicated*.",
+  "snippetDbClickhouseDisks": "Диски",
+  "snippetDbClickhouseDisksNote": "Свободное и общее место на настроенных дисках.",
+  "snippetDbClickhouseErrors": "Ошибки сервера",
+  "snippetDbClickhouseErrorsNote": "Счётчики ошибок с момента запуска и последнее сообщение.",
+  "snippetDbClickhouseSettingsChanged": "Изменённые настройки",
+  "snippetDbClickhouseSettingsChangedNote": "Настройки сессии, отличающиеся от значений по умолчанию.",
+  "snippetDbClickhouseMetrics": "Текущие метрики",
+  "snippetDbClickhouseMetricsNote": "Ненулевые текущие показатели: запросы, слияния, подключения, память.",
+  "snippetDbClickhouseExplain": "EXPLAIN с индексами",
+  "snippetDbClickhouseExplainNote": "План с использованными первичным ключом и индексами пропуска; запрос не выполняется.",
+  "snippetDbClickhouseKillQuery": "Отменить запрос",
+  "snippetDbClickhouseKillQueryNote": "Останавливает запрос с указанным query_id.",
+  "snippetDbRedisInfo": "Сведения о сервере",
+  "snippetDbRedisInfoNote": "Один раздел INFO: server, clients, memory, persistence, stats, replication, cpu, keyspace.",
+  "snippetDbRedisMemory": "Память",
+  "snippetDbRedisMemoryNote": "Занятая и пиковая память, фрагментация и политика maxmemory.",
+  "snippetDbRedisMemoryDoctor": "Диагностика памяти",
+  "snippetDbRedisMemoryDoctorNote": "Советы Redis по проблемам с памятью.",
+  "snippetDbRedisSlowlog": "Журнал медленных команд",
+  "snippetDbRedisSlowlogNote": "Последние медленные команды с длительностью в микросекундах.",
+  "snippetDbRedisClients": "Список клиентов",
+  "snippetDbRedisClientsNote": "Подключённые клиенты: адрес, возраст, простой и последняя команда.",
+  "snippetDbRedisDbsize": "Число ключей",
+  "snippetDbRedisDbsizeNote": "Ключи в выбранной базе.",
+  "snippetDbRedisKeyspace": "Пространство ключей",
+  "snippetDbRedisKeyspaceNote": "Число ключей и ключей с TTL по базам.",
+  "snippetDbRedisScan": "Поиск ключей по шаблону",
+  "snippetDbRedisScanNote": "Пошаговый SCAN вместо KEYS; повторяйте с возвращённым курсором, пока он не станет 0.",
+  "snippetDbRedisType": "Тип ключа",
+  "snippetDbRedisTypeNote": "Тип данных, хранящихся в ключе.",
+  "snippetDbRedisTtl": "TTL ключа",
+  "snippetDbRedisTtlNote": "Секунд до истечения; -1 — без срока, -2 — ключа нет.",
+  "snippetDbRedisMemoryUsage": "Память ключа",
+  "snippetDbRedisMemoryUsageNote": "Сколько байт занимают ключ и значение.",
+  "snippetDbRedisLatency": "Диагностика задержек",
+  "snippetDbRedisLatencyNote": "Отчёт о задержках; нужен latency-monitor-threshold > 0.",
+  "snippetDbRedisConfig": "Параметр конфигурации",
+  "snippetDbRedisConfigNote": "Параметры конфигурации по glob-шаблону.",
+  "snippetDbRedisReplication": "Репликация",
+  "snippetDbRedisReplicationNote": "Роль, подключённые реплики и смещения репликации.",
+  "snippetDbRedisCommandstats": "Статистика команд",
+  "snippetDbRedisCommandstatsNote": "Вызовы и время по командам с последнего сброса.",
+  "snippetDbMongodbCurrentOps": "Активные операции",
+  "snippetDbMongodbCurrentOpsNote": "Операции, выполняющиеся сейчас (mongosh).",
+  "snippetDbMongodbLongOps": "Долгие операции",
+  "snippetDbMongodbLongOpsNote": "Операции, которые выполняются дольше заданного числа секунд (mongosh).",
+  "snippetDbMongodbConnections": "Подключения",
+  "snippetDbMongodbConnectionsNote": "Текущие, доступные и всего созданные подключения (mongosh).",
+  "snippetDbMongodbOpcounters": "Счётчики операций",
+  "snippetDbMongodbOpcountersNote": "Вставки, запросы, обновления, удаления и команды с момента запуска (mongosh).",
+  "snippetDbMongodbMemory": "Память",
+  "snippetDbMongodbMemoryNote": "Резидентная и виртуальная память в МБ (mongosh).",
+  "snippetDbMongodbDbStats": "Статистика базы",
+  "snippetDbMongodbDbStatsNote": "Коллекции, документы, размер данных и индексов в МБ.",
+  "snippetDbMongodbCollectionStats": "Статистика коллекции",
+  "snippetDbMongodbCollectionStatsNote": "Документы, место на диске и размер каждого индекса в МБ.",
+  "snippetDbMongodbIndexes": "Индексы коллекции",
+  "snippetDbMongodbIndexesNote": "Ключи и параметры индексов.",
+  "snippetDbMongodbIndexStats": "Использование индексов",
+  "snippetDbMongodbIndexStatsNote": "Число операций по каждому индексу с последнего перезапуска (mongosh).",
+  "snippetDbMongodbExplain": "План запроса со статистикой",
+  "snippetDbMongodbExplainNote": "Выполняет find и показывает план, просмотренные ключи и документы (mongosh).",
+  "snippetDbMongodbRsStatus": "Состояние набора реплик",
+  "snippetDbMongodbRsStatusNote": "Участники набора, их состояние и здоровье (mongosh).",
+  "snippetDbMongodbRsLag": "Отставание репликации",
+  "snippetDbMongodbRsLagNote": "Насколько каждая secondary отстаёт от primary (mongosh, MongoDB 4.4+).",
+  "snippetDbMongodbProfilerStatus": "Уровень профилировщика",
+  "snippetDbMongodbProfilerStatusNote": "Уровень профилировщика и порог slowms текущей базы (mongosh).",
+  "snippetDbMongodbSlowOps": "Медленные операции (профилировщик)",
+  "snippetDbMongodbSlowOpsNote": "Последние операции из профилировщика медленнее порога; включение — db.setProfilingLevel(1).",
+  "snippetDbMongodbKillOp": "Прервать операцию",
+  "snippetDbMongodbKillOpNote": "Останавливает операцию с указанным opid из currentOp (mongosh).",
+  "snippetStarterDbOrigin": "{note} Для {client} или раздела «Базы данных». Из базового набора «{package}».",
+  "snippetStarterDbTerminalOrigin": "{note} Выполняется в {client} в терминале; раздел «Базы данных» его не разрешает. Из базового набора «{package}».",
+  "snippetClientSessionRequired": "Сначала запустите клиент базы данных (psql, mysql, clickhouse-client, redis-cli, mongosh) в подключённой вкладке терминала, затем выполните сниппет в ней.",
+  "dbSnippetPickerTitle": "Вставить сниппет",
+  "dbSnippetPickerSearch": "Поиск сниппетов {engine}",
+  "dbSnippetPickerEmpty": "Сниппетов для {engine} пока нет. Добавьте их в разделе «Сниппеты» → «Базовые наборы» или сохраните запрос из истории.",
+  "sharingLeave": "Выйти из общего доступа",
+  "sharingLeaveHelp": "Элемент перестанет приходить на все ваши устройства и исчезнет из списка. Сохранённые личные копии останутся. Владелец увидит, что вы вышли.",
+  "sharingLeft": "Вы вышли из общего доступа",
+  "sharingStopRestoreHelp": "Получатели сразу потеряют доступ. В течение 30 дней элемент можно восстановить в разделе «Недавно удалённые».",
+  "sharingMembersLeft": "Вышли из общего доступа: {count}",
+  "sharingRecentlyDeleted": "Недавно удалённые",
+  "sharingRecentlyDeletedHelp": "Удалённые общие элементы можно восстановить в течение 30 дней. Восстановленный элемент снова передаётся тем же людям, кроме вышедших; они принимают его заново.",
+  "sharingRecentlyDeletedEmpty": "Нет недавно удалённых элементов",
+  "sharingRestore": "Восстановить",
+  "sharingRestored": "Элемент восстановлен и снова передан",
+  "sharingRestoreUntil": "Можно восстановить до {date} · получателей: {count}",
+  "loginSsoButton": "Войти через {name}",
+  "loginSsoButtonDefault": "Войти через SSO",
+  "loginSsoEmailLabel": "E-mail (необязательно)",
+  "loginSsoEmailHelper": "Подставится на странице входа вашей организации.",
+  "loginSsoWaiting": "Завершите вход в браузере…",
+  "loginSsoWaitingHelp": "В браузере открыта страница входа вашей организации. Вернитесь сюда, когда она об этом попросит.",
+  "loginLdapLoginLabel": "Логин (email или DOMAIN\\user)",
+  "loginLdapPasswordLabel": "Пароль",
+  "loginLdapCaption": "Учётная запись вашей организации",
+  "loginLdapLoginRequired": "Введите логин",
+  "corporateAuthNoticeTitle": "Корпоративный вход",
+  "corporateAuthNotice": "Вход через корпоративный сервер авторизации {name}. Пароль организации не открывает хранилище — для этого нужен пароль хранилища.",
+  "authProviderOidc": "OIDC",
+  "authProviderLdap": "Active Directory",
+  "authProviderSsoFallback": "SSO",
+  "serverNeedsNewerApp": "Сервер использует способ входа, который эта версия не поддерживает. Обновите ConsoleCrypt.",
+  "signInMethodEmail": "email и пароль",
+  "signInMethodOidc": "{name} (OIDC)",
+  "signInMethodLdap": "{name} (Active Directory)",
+  "signInLastTime": "В прошлый раз вы входили через {method} как {login}",
+  "signInLastTimeNoLogin": "В прошлый раз вы входили через {method}",
+  "signInForget": "Забыть",
+  "authModeChangedToEnterprise": "Сервер перешёл на вход через корпоративный сервер авторизации {name}. Прежний пароль аккаунта больше не используется.",
+  "authModeChangedToStandard": "Сервер перешёл с корпоративного входа на вход по email и паролю аккаунта. Используйте пароль, который администратор задал для вашей учётной записи.",
+  "recentServersLabel": "Недавние серверы",
+  "authBadgeEmail": "Email",
+  "authBadgeSso": "SSO: {name}",
+  "authBadgeAd": "AD",
+  "settingsAuthLabel": "Авторизация",
+  "settingsAuthCorporate": "Корпоративный сервер — {name} ({kind})",
+  "settingsAuthStandard": "Email и пароль аккаунта",
+  "settingsAuthCorporateHelp": "Кто входит, проверяет сервер авторизации вашей организации. Доступа к хранилищу он не получает: пароль хранилища остаётся на ваших устройствах.",
+  "settingsAuthSignedIn": "Это устройство вошло через {method} {date}",
+  "settingsAuthSignedInAs": "Это устройство вошло через {method} как {login} {date}",
+  "devicesAuthCorporate": "Аккаунты на этом сервере входят через корпоративный сервер авторизации {name}.",
+  "accountDisabledTitle": "Доступ отключён администратором",
+  "accountDisabledBody": "Ваша организация отключила эту учётную запись на сервере {server}. Синхронизация остановлена, профиль заблокирован. Данные на этом устройстве остаются зашифрованными.",
+  "accountDisabledSignIn": "Войти снова",
+  "accountDisabledDelete": "Удалить профиль с этого устройства",
+  "accountDisabledDeleteTitle": "Удалить профиль «{name}»?",
+  "accountDisabledDeleteMessage": "Зашифрованная локальная копия будет удалена с этого устройства. На сервере ничего не изменится.",
+  "errorAccountDisabled": "Доступ отключён администратором.",
+  "errorEnterpriseAuthRequired": "Этот сервер принимает только вход вашей организации. Проверьте сервер ещё раз или обновите приложение.",
+  "errorIdentityConflict": "Учётная запись организации уже связана с другим аккаунтом на этом сервере. Обратитесь к администратору.",
+  "errorDomainNotAllowed": "Домен вашей почты не допущен на этом сервере.",
+  "errorGroupRequired": "Ваша учётная запись не входит в группу, которой разрешён этот сервер. Обратитесь к администратору.",
+  "errorMfaRequired": "Ваша организация требует вход со вторым фактором. Войдите снова с его помощью.",
+  "errorIdpUnavailable": "Служба входа вашей организации недоступна. Повторите попытку позже.",
+  "errorReasonEnterpriseCallbackInvalid": "Браузер вернул неожиданный ответ. Начните вход заново.",
+  "errorReasonEnterpriseSignInTimeout": "Вход занял слишком много времени. Начните заново.",
+  "errorReasonEnterpriseBrowserUnavailable": "Не удалось открыть браузер для входа.",
+  "teamsTitle": "Команды",
+  "teamsSubtitle": "Ресурсы, закреплённые за командой. Их видят все участники; роль определяет, кто может их менять.",
+  "teamsEmpty": "Вы пока не состоите ни в одной команде.",
+  "teamsCreate": "Создать команду",
+  "teamsRefresh": "Обновить",
+  "teamsUnnamed": "Команда без названия",
+  "teamsPendingConfirmation": "Ждём, когда администратор сверит код",
+  "teamsUnavailable": "Сейчас недоступна",
+  "teamsRowMeta": "{role} · {count, plural, one{{count} участник} few{{count} участника} many{{count} участников} other{{count} участника}}",
+  "teamsWarningBadge": "На паузе",
+  "teamsRotationBadge": "Смените ключ",
+  "teamsOfflineBadge": "Офлайн",
+  "teamsReadOnly": "Только чтение",
+  "teamsChipSemantics": "Команда {name}",
+  "teamsInvitationFrom": "{email} приглашает вас в команду с ролью «{role}».",
+  "teamsInvitationNote": "Комментарий: {note}",
+  "teamsAccept": "Принять",
+  "teamsDecline": "Отклонить",
+  "teamsCreateTitle": "Новая команда",
+  "teamsCreateBody": "Название, цвет и всё, что хранит команда, зашифровано сквозным шифрованием. Сервер видит только состав участников.",
+  "teamsNameLabel": "Название команды",
+  "teamsDescriptionLabel": "Описание (необязательно)",
+  "teamsColorLabel": "Цвет",
+  "teamsColorNone": "Цвет команды",
+  "teamsColorCustom": "Свой…",
+  "teamsCreated": "Команда «{name}» создана",
+  "teamsJoinCodeTitle": "Сверьте код",
+  "teamsJoinCodeBody": "Продиктуйте этот код {email} (лично, по телефону или в мессенджере). У администратора на экране тот же код — он подтвердит совпадение.",
+  "teamsJoinCodeWait": "Команда откроется на ваших устройствах, как только администратор подтвердит.",
+  "teamsJoinRequest": "{email} принял(а) приглашение (роль «{role}»). Сверьте код, прежде чем добавлять.",
+  "teamsCompareCode": "Сверить код",
+  "teamsCompareTitle": "Добавить {email}?",
+  "teamsCompareRole": "Роль: {role}",
+  "teamsCompareBody": "Попросите {email} продиктовать код со своего экрана. Добавляйте, только если совпадают все группы.",
+  "teamsCodesMatchCheckbox": "Код на экране {email} совпадает",
+  "teamsCompareWarning": "Другой код означает, что приглашение могут перехватывать. Не добавляйте участника.",
+  "teamsCodesDontMatch": "Коды не совпадают",
+  "teamsAddMember": "Добавить в команду",
+  "teamsMemberAdded": "{email} добавлен(а) в команду",
+  "teamsCodeRejectedTitle": "Вступление отклонено",
+  "teamsCodeRejectedBody": "Никто не добавлен. Пригласите человека снова и сверьте код по каналу, которому доверяете.",
+  "teamsTabMembers": "Участники",
+  "teamsTabSettings": "Настройки",
+  "teamsTabHistory": "История",
+  "teamsWarningInvalidLog": "Сервер показал изменение состава, которое никто не подписал. Команда на паузе (только чтение), ключи никому не передаются.",
+  "teamsWarningRollback": "Сервер показал более старый или другой состав команды, чем раньше. Команда на паузе (только чтение).",
+  "teamsRotationRequired": "Участник покинул команду. Смените ключ, чтобы он не смог прочитать то, что будет добавлено дальше.",
+  "teamsRotateKey": "Сменить ключ",
+  "teamsKeyRotated": "Ключ команды сменён",
+  "teamsMemberYou": "{email} (вы)",
+  "teamsPendingInvitations": "Отправленные приглашения",
+  "teamsCancelInvitation": "Отменить",
+  "teamsInvite": "Пригласить участника",
+  "teamsTransferOwner": "Сделать владельцем",
+  "teamsTransferOwnerConfirm": "{email} станет владельцем команды, вы останетесь администратором.",
+  "teamsRemoveMember": "Удалить из команды",
+  "teamsRemoveMemberConfirm": "{email} потеряет доступ к команде. Ключ команды будет сменён, чтобы новое было им недоступно.",
+  "teamsInviteTitle": "Пригласить в «{name}»",
+  "teamsInviteBody": "Нужна учётная запись ConsoleCrypt на этом сервере. После принятия приглашения вы сверите с человеком код — только после этого он получит доступ.",
+  "teamsInviteEmail": "Почта",
+  "teamsRoleLabel": "Роль",
+  "teamsInviteNote": "Комментарий к приглашению (необязательно)",
+  "teamsInviteNoteWarning": "Комментарий не шифруется: сервер может его прочитать.",
+  "teamsInviteSend": "Отправить приглашение",
+  "teamsInvited": "Приглашение отправлено: {email}",
+  "teamsSettingsReadOnly": "Настройки команды меняют только владелец и администраторы.",
+  "teamsPoliciesTitle": "Политики",
+  "teamsPolicyProduction": "Отмечать новые контексты Kubernetes и базы данных как рабочие (прод)",
+  "teamsPolicyBlockAi": "Не отправлять эти ресурсы ИИ-помощникам",
+  "teamsPolicyConfirmRisky": "Спрашивать перед опасными командами",
+  "teamsPolicyClipboard": "Очищать скопированные секреты через",
+  "teamsPolicyClipboardDefault": "Как в приложении",
+  "teamsPolicySeconds": "{seconds} с",
+  "teamsSettingsSaved": "Настройки команды сохранены",
+  "teamsMyColorTitle": "Мой цвет для этой команды",
+  "teamsMyColorBody": "Меняет цвет только на ваших устройствах.",
+  "teamsLeave": "Покинуть команду",
+  "teamsLeaveConfirm": "Вы потеряете доступ к «{name}» на всех своих устройствах.",
+  "teamsKeyEpoch": "Поколение ключа: {epoch}",
+  "teamsLogGenesis": "{actor} создал(а) команду",
+  "teamsLogAdd": "{actor} добавил(а) {member} с ролью «{role}»",
+  "teamsLogRole": "{actor} изменил(а) роль {member} на «{role}»",
+  "teamsLogRemove": "{actor} удалил(а) {member}",
+  "teamsLogLeave": "{actor} покинул(а) команду",
+  "teamsLogTransfer": "{actor} передал(а) владение {member}",
+  "teamsLogRotate": "{actor} сменил(а) ключ (поколение {epoch})",
+  "teamsRoleOwner": "Владелец",
+  "teamsRoleAdmin": "Администратор",
+  "teamsRoleEditor": "Редактор",
+  "teamsRoleViewer": "Наблюдатель",
+  "teamsErrorReadOnly": "Ресурсы этой команды доступны вам только для просмотра.",
+  "teamsErrorUntrusted": "Команда на паузе: не удалось проверить её состав.",
+  "teamsErrorCrossVault": "Ресурс команды может использовать только ресурсы той же команды. Сначала скопируйте учётные данные или промежуточный хост в команду.",
+  "teamsErrorPersonalOnly": "Этот тип данных хранится только в личном хранилище.",
+  "teamsErrorAiBlocked": "Политика команды запрещает отправлять этот ресурс ИИ-помощникам.",
+  "teamsErrorOwnerCannotLeave": "Перед выходом передайте владение другому участнику.",
+  "teamsFilterAll": "Все",
+  "teamsFilterPersonal": "Личное",
+  "teamsCopyTo": "Копировать в команду…",
+  "teamsMoveTo": "Переместить в команду…",
+  "teamsMoveToPersonal": "Переместить в личное",
+  "teamsPickTitle": "Выберите команду",
+  "teamsCopied": "Скопировано в «{name}»",
+  "teamsMoved": "Перемещено в «{name}»",
+  "teamsNewGroup": "Новая группа команды",
+  "teamsNewGroupHint": "Хосты, созданные в группе команды, принадлежат команде.",
+  "teamsPolicyAck": "Я проверил(а) эту команду для {host} (политика команды)"
 }

@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/mock/mock_databases.dart';
 import 'package:consolecrypt/core/mock/mock_devices_service.dart';
 import 'package:consolecrypt/core/mock/mock_docker.dart';
 import 'package:consolecrypt/core/mock/mock_inventory_service.dart';
+import 'package:consolecrypt/core/mock/mock_notes.dart';
 import 'package:consolecrypt/core/mock/mock_profile_service.dart';
 import 'package:consolecrypt/core/mock/mock_prompt_service.dart';
 import 'package:consolecrypt/core/mock/mock_settings_service.dart';
@@ -83,6 +84,7 @@ final class MockBackend implements DeveloperControls {
     prompts: prompts,
     databases: MockDbService(),
     docker: MockDockerService(latency: config.latency),
+    notes: MockNoteService(),
     developer: this,
     onDispose: dispose,
   );

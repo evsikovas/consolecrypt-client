@@ -4,6 +4,7 @@ import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -25,6 +26,7 @@ Future<void> pumpApp(
   MockBackend backend, {
   AppLocale locale = AppLocale.en,
   Size size = const Size(1600, 1000),
+  List<Override> overrides = const [],
 }) async {
   setTestLocale(backend, locale);
   tester.view.physicalSize = size;
@@ -32,7 +34,7 @@ Future<void> pumpApp(
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [appServicesProvider.overrideWithValue(backend.services)],
+      overrides: [appServicesProvider.overrideWithValue(backend.services), ...overrides],
       retry: (_, _) => null,
       child: const ConsoleCryptApp(),
     ),

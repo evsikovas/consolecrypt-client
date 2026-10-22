@@ -1,0 +1,161 @@
+# Аккаунт и синхронизация
+
+## Русский
+
+Профиль синхронизации связывает это устройство с аккаунтом на сервере
+синхронизации ConsoleCrypt. Сервер хранит только зашифрованные данные: открыть
+хранилище можно паролем хранилища, ключом восстановления или одобрением с уже
+доверенного устройства. Пароль или вход в аккаунт лишь доказывают серверу, кто
+вы.
+
+### Подключение к серверу
+
+1. **Добавить профиль → Подключиться к серверу** (или **Настройки →
+   Синхронизация → Включить синхронизацию** для локального профиля).
+2. Введите адрес сервера и нажмите **Проверить**. Приложение читает `/v1/meta`
+   и показывает форму входа, которую ожидает сервер.
+3. Новый аккаунт проходит обычное создание хранилища: пароль хранилища и
+   Recovery Kit. Второе устройство подключается паролем хранилища, ключом
+   восстановления или одобрением.
+
+Приложение запоминает на этом устройстве, как вы входили на каждый сервер:
+способ входа и логин (никогда пароль или токены). При следующем подключении
+этот способ выбран заранее, логин подставлен, а под адресом видны недавние
+серверы с меткой способа — «Email», «SSO: …», «AD». Подсказку можно удалить
+кнопкой **Забыть**.
+
+### Корпоративный вход (Enterprise)
+
+Сервер синхронизации 0.2.0 и новее (протокол 1.8) может работать в
+enterprise-режиме: вход в аккаунт выполняется только через корпоративный
+сервер авторизации организации. Регистрации, пароля аккаунта и сброса пароля
+по почте в этом режиме нет.
+
+- **IdP по OIDC** (например, Entra ID, AD FS, Keycloak, Google Workspace):
+  кнопка **Войти через {название}** открывает страницу входа организации в
+  системном браузере. Поле e-mail необязательно — оно только подставляется
+  на странице входа. Пока идёт вход, приложение ждёт браузер; **Отмена**
+  прерывает вход. На компьютере браузер возвращается в приложение через
+  адрес `http://127.0.0.1:…/auth/callback`, на Android и iOS — через
+  `consolecrypt://auth/callback`. Приложение использует PKCE и проверяет
+  `state`; одноразовый код входа живёт 60 секунд.
+- **Active Directory / LDAP:** поля **Логин (email или DOMAIN\user)** и
+  **Пароль** под подписью «Учётная запись вашей организации». Пароль
+  передаётся серверу по TLS один раз, не сохраняется и стирается из поля
+  после каждой попытки.
+
+Везде, где показан аккаунт или подключение к серверу, приложение говорит, что
+используется корпоративный сервер авторизации:
+
+- на экране входа — «Вход через корпоративный сервер авторизации {название}.
+  Пароль организации не открывает хранилище — для этого нужен пароль
+  хранилища.»;
+- в **Настройках → Аккаунт и синхронизация** — строка **Авторизация:
+  корпоративный сервер — {название} (OIDC | Active Directory)** с пояснением,
+  а также как и когда это устройство вошло. На стандартном сервере там
+  написано «Email и пароль аккаунта»;
+- в разделах **Синхронизация** и **Устройства**.
+
+Если сервер сменил режим (например, перешёл со входа по паролю на
+корпоративный), экран входа предупреждает об этом: прежний пароль аккаунта
+больше не используется.
+
+Корпоративный вход не даёт доступа к данным. После входа устройство —
+обычное новое устройство: действуют защита от входа с нового устройства,
+письмо о новом устройстве и одобрение. Ни IdP, ни Active Directory, ни сервер
+не получают ничего, чем можно открыть хранилище.
+
+**Доступ отключён администратором.** Если организация отключила учётную
+запись (в IdP, в AD или командой администратора сервера), сервер отзывает все
+сессии. Приложение блокирует профиль и показывает «Доступ отключён
+администратором». Локальные данные остаются зашифрованными. Можно попробовать
+**Войти снова** (если доступ вернули), переключиться на другой профиль или
+**Удалить профиль с этого устройства** — на сервере при этом ничего не
+меняется.
+
+Другие сообщения корпоративного входа: домен почты не допущен, нет нужной
+группы, требуется второй фактор, учётная запись организации уже связана с
+другим аккаунтом, служба входа организации недоступна, слишком много попыток
+(приложение показывает, когда можно повторить).
+
+Старые серверы и серверы в стандартном режиме работают как раньше.
+Настройка enterprise-режима на сервере описана в документации сервера.
+
+## English
+
+A sync profile links this device to an account on a ConsoleCrypt sync server.
+The server only stores encrypted data: the vault is opened with the vault
+passphrase, the Recovery Key or approval from an already trusted device.
+Signing in to the account only proves to the server who you are.
+
+### Connecting to a server
+
+1. **Add profile → Connect to a server** (or **Settings → Sync → Enable sync**
+   for a local profile).
+2. Enter the server address and press **Check**. The app reads `/v1/meta` and
+   shows the sign-in form the server expects.
+3. A new account goes through the usual vault setup: vault passphrase and
+   Recovery Kit. A second device joins with the vault passphrase, the Recovery
+   Key or approval.
+
+The app remembers on this device how you signed in to each server: the method
+and the login (never a password or tokens). Next time that method is
+preselected, the login is filled in, and recent servers are listed under the
+address with a method badge — "Email", "SSO: …", "AD". **Forget** removes the
+hint.
+
+### Corporate sign-in (Enterprise)
+
+Sync server 0.2.0 and later (protocol 1.8) can run in enterprise mode: account
+sign-in goes only through the organisation's corporate authorization server.
+There is no registration, account password or password reset by e-mail in
+this mode.
+
+- **OIDC identity provider** (for example Entra ID, AD FS, Keycloak, Google
+  Workspace): **Sign in with {name}** opens the organisation's sign-in page in
+  the system browser. The e-mail field is optional — it is only pre-filled on
+  the sign-in page. While signing in, the app waits for the browser; **Cancel**
+  stops it. On desktops the browser returns to the app through
+  `http://127.0.0.1:…/auth/callback`, on Android and iOS through
+  `consolecrypt://auth/callback`. The app uses PKCE and checks `state`; the
+  single-use sign-in code lives 60 seconds.
+- **Active Directory / LDAP:** **Login (email or DOMAIN\user)** and
+  **Password** under "Your organisation's account". The password is sent to
+  the server once over TLS, never stored, and cleared from the field after
+  every attempt.
+
+Wherever the account or the server connection is shown, the app says that a
+corporate authorization server is used:
+
+- on the sign-in screen — "Sign-in through the corporate authorization server
+  {name}. Your organisation's password does not open the vault — the vault
+  passphrase does.";
+- in **Settings → Account and sync** — the **Authorization: Corporate server —
+  {name} (OIDC | Active Directory)** row with an explanation, and how and when
+  this device signed in. On a standard server it reads "E-mail and account
+  password";
+- in **Sync** and **Devices**.
+
+If the server changed its mode (for example from password sign-in to corporate
+sign-in), the sign-in screen says so: the previous account password is no
+longer used.
+
+Corporate sign-in grants no access to data. After signing in the device is an
+ordinary new device: new-device protection, the new-device e-mail and approval
+apply. Neither the IdP, Active Directory nor the server receives anything that
+can open the vault.
+
+**Access disabled by the administrator.** When the organisation disables the
+account (in the IdP, in AD or with the server administrator's command), the
+server revokes every session. The app locks the profile and shows "Access
+disabled by the administrator". Local data stays encrypted. You can **Sign in
+again** (if access was restored), switch to another profile, or **Delete
+profile from this device** — nothing changes on the server.
+
+Other corporate sign-in messages: the e-mail domain is not allowed, the
+required group is missing, a second factor is required, the organisation's
+account is already linked to another account, the organisation's sign-in
+service is unavailable, too many attempts (the app shows when to retry).
+
+Older servers and servers in standard mode work as before. Setting up the
+enterprise mode is described in the server documentation.

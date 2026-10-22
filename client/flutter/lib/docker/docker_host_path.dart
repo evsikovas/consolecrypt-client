@@ -95,8 +95,25 @@ Future<void> _revealLocal(BuildContext context, String path) async {
       // Anything else (e.g. privacy prompts): let the file manager decide.
     }
   }
+  if (AppPlatform.isMacOS && macOSRevealsInstead(dir)) {
+    // `open` would launch a bundle (`x.app`, `x.workflow`…): select it in
+    // Finder instead (security audit H4). Argument vector, no shell.
+    final result = await Process.run('/usr/bin/open', ['-R', '--', dir]);
+    if (result.exitCode != 0 && context.mounted) showSnack(context, l.errorUnsupported, error: true);
+    return;
+  }
   final opened = await launchUrl(Uri.directory(dir, windows: AppPlatform.isWindows));
   if (!opened && context.mounted) showSnack(context, l.errorUnsupported, error: true);
+}
+
+/// macOS: whether folder [dir] may be a bundle that `open` launches rather
+/// than shows — any folder name with an extension (`Tool.app`,
+/// `Run.workflow`, `x.prefPane`). Such folders are revealed in Finder.
+@visibleForTesting
+bool macOSRevealsInstead(String dir) {
+  final name = dir.split('/').lastWhere((s) => s.isNotEmpty, orElse: () => '');
+  final dot = name.lastIndexOf('.');
+  return dot > 0 && dot < name.length - 1;
 }
 
 /// A host path (bind source or volume mount point) as a link: opens it in

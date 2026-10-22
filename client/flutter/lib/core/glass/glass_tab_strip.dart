@@ -34,6 +34,7 @@ final class GlassTab {
     required this.title,
     this.subtitle,
     this.hostColor,
+    this.teamColor,
     this.state = GlassTabState.none,
     this.tooltip,
     this.key,
@@ -49,6 +50,9 @@ final class GlassTab {
   /// User (secondary).
   final String? subtitle;
   final Color? hostColor;
+
+  /// Thin bar in the team colour when the tab's resource belongs to a team.
+  final Color? teamColor;
   final GlassTabState state;
 
   /// Carries the connection state as text (colour is never the only cue).
@@ -209,6 +213,14 @@ class _TabChip extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (tab.teamColor != null) ...[
+                        Container(
+                          width: 3,
+                          height: 16,
+                          decoration: BoxDecoration(color: tab.teamColor, borderRadius: BorderRadius.circular(2)),
+                        ),
+                        const SizedBox(width: GlassSpacing.s4),
+                      ],
                       _StatusDot(state: tab.state, hostColor: tab.hostColor),
                       const SizedBox(width: GlassSpacing.s6),
                       Flexible(

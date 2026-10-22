@@ -785,6 +785,28 @@ fn safe_function(engine: DbEngine, name: &str, table: bool) -> bool {
                         | "pg_indexes_size"
                         | "pg_total_relation_size"
                         | "pg_relation_size"
+                        // Read-only server diagnostics: session and server
+                        // identity, WAL positions, catalog decompilers and
+                        // sizes. None writes, signals, sleeps, locks for the
+                        // session or touches files.
+                        | "format"
+                        | "version"
+                        | "pg_backend_pid"
+                        | "pg_blocking_pids"
+                        | "pg_postmaster_start_time"
+                        | "inet_server_addr"
+                        | "inet_server_port"
+                        | "pg_database_size"
+                        | "pg_is_in_recovery"
+                        | "pg_current_wal_lsn"
+                        | "pg_last_wal_receive_lsn"
+                        | "pg_last_wal_replay_lsn"
+                        | "pg_last_xact_replay_timestamp"
+                        | "pg_wal_lsn_diff"
+                        | "col_description"
+                        | "obj_description"
+                        | "pg_get_constraintdef"
+                        | "pg_get_indexdef"
                 )
         }
         DbEngine::Mysql | DbEngine::Mariadb => matches!(
@@ -995,6 +1017,18 @@ fn safe_function(engine: DbEngine, name: &str, table: bool) -> bool {
                 | "base64decode"
                 | "isfinite"
                 | "isnan"
+                // Pure formatting and server identity (no I/O).
+                | "formatreadablesize"
+                | "formatreadablequantity"
+                | "formatreadabletimedelta"
+                | "uptime"
+                | "version"
+                | "hostname"
+                | "tostartofminute"
+                | "tostartoffiveminutes"
+                | "tostartoffifteenminutes"
+                | "tostartofweek"
+                | "tostartofquarter"
         ),
         _ => false,
     }

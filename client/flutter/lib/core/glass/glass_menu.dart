@@ -255,24 +255,44 @@ class _GlassMenuBody<T> extends StatelessWidget {
   }
 }
 
-class _GlassMenuTile<T> extends StatelessWidget {
+/// One menu row. The pointer moves the keyboard focus, so exactly one row is
+/// highlighted: the hovered one, or the one reached with the arrow keys.
+class _GlassMenuTile<T> extends StatefulWidget {
   const _GlassMenuTile({required this.item, required this.autofocus});
 
   final GlassMenuItem<T> item;
   final bool autofocus;
 
   @override
+  State<_GlassMenuTile<T>> createState() => _GlassMenuTileState<T>();
+}
+
+class _GlassMenuTileState<T> extends State<_GlassMenuTile<T>> {
+  final _focus = FocusNode(debugLabel: 'GlassMenuTile');
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final tokens = GlassTokens.of(context);
     final p = tokens.palette;
     final radius = GlassRadii.concentric(tokens.radii.menu, GlassSpacing.s6, height: GlassSizes.menuItem);
     return GlassInteractive(
       key: item.key,
-      autofocus: autofocus,
+      focusNode: _focus,
+      autofocus: widget.autofocus,
       minHitSize: 0,
+      onHoverChanged: (hovered) {
+        if (hovered && item.enabled && !_focus.hasFocus) _focus.requestFocus();
+      },
       onPressed: item.enabled ? () => Navigator.of(context).pop(item.value) : null,
       builder: (context, state) {
-        final highlighted = state.enabled && (state.hovered || state.focusVisible || state.pressed);
+        final highlighted = state.enabled && (state.pressed || state.focusVisible || (state.hovered && state.focused));
         final Color fg;
         final Color bg;
         if (!state.enabled) {

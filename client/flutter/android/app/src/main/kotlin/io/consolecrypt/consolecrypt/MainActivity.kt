@@ -20,7 +20,8 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterActivity() {
-    private val kubeAuthBrowser by lazy { KubeAuthBrowser(this) }
+    private val kubeAuthBrowser by lazy { AuthSessionBrowser(this, AuthSessionBrowser.KUBERNETES_REDIRECT) }
+    private val syncAuthBrowser by lazy { AuthSessionBrowser(this, AuthSessionBrowser.SYNC_SERVER_REDIRECT) }
     private external fun nativeInitialize(context: android.content.Context)
     private var exportResult: MethodChannel.Result? = null
     private var exportSource: File? = null
@@ -118,6 +119,9 @@ class MainActivity : FlutterActivity() {
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/kube_auth")
             .setMethodCallHandler { call, result -> kubeAuthBrowser.handle(call, result) }
+        // Enterprise sign-in to the sync server (protocol 1.8).
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/auth_session")
+            .setMethodCallHandler { call, result -> syncAuthBrowser.handle(call, result) }
         applyScreenCaptureAllowed(savedScreenCaptureAllowed())
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/window").setMethodCallHandler { call, result ->
             when (call.method) {
@@ -318,6 +322,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         kubeAuthBrowser.cancel()
+        syncAuthBrowser.cancel()
         forwardPermissionResult?.error("cancelled", "Notification request was cancelled", null)
         forwardPermissionResult = null
         exportResult?.success(false)
@@ -328,20 +333,24 @@ class MainActivity : FlutterActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (intent.data?.scheme == "consolecrypt" && intent.data?.host == "kubernetes") {
-            kubeAuthBrowser.onCallback(intent.data)
+        val data = intent.data
+        if (AuthSessionBrowser.isCallback(data)) {
+            if (kubeAuthBrowser.accepts(data)) kubeAuthBrowser.onCallback(data)
+            if (syncAuthBrowser.accepts(data)) syncAuthBrowser.onCallback(data)
             intent.data = null
         }
     }
 
     override fun onPause() {
         kubeAuthBrowser.onPause()
+        syncAuthBrowser.onPause()
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
         kubeAuthBrowser.onResume()
+        syncAuthBrowser.onResume()
     }
 
     private val deviceUnlockKeys by lazy { DeviceUnlockKeys(this) }

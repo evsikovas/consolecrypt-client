@@ -21,6 +21,7 @@ import 'api/sftp.dart';
 import 'api/sharing.dart';
 import 'api/ssh.dart';
 import 'api/sync.dart';
+import 'api/teams.dart';
 
 import 'dart:async';
 import 'dart:convert';

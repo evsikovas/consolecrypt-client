@@ -12,6 +12,7 @@ use cc_crypto_core::sharing_enrollment::{
     OwnerChallengeSecret, VerifiedAnchorEndorsement, VerifiedDevicePossession,
     VerifiedEnrollmentGrant, VerifiedEnrollmentRequest,
 };
+use cc_crypto_core::sharing_notes::{self as notes, NotesKey};
 use cc_protocol::sharing::{
     AccessManifest, SharedEncryptedBody, SharingContext, SharingMutation, SignedAccessManifest,
     SignedSharingMutation,
@@ -22,7 +23,8 @@ use cc_protocol::sharing_enrollment::{
     SignedSharingDeviceChallengeResponse, SignedSharingOwnDeviceRequest,
     SignedSharingOwnDevicesGrantState,
 };
-use cc_protocol::DeviceId;
+use cc_protocol::sharing_notes::{SharedNote, SharedNotesKeySet};
+use cc_protocol::{DeviceId, ObjectId, ShareId, UserId};
 
 type Result<T> = std::result::Result<T, SharingCryptoError>;
 
@@ -60,6 +62,54 @@ impl DeviceIdentity {
             return Err(SharingCryptoError::DeviceKeyMismatch);
         }
         sharing::sign_shared_mutation(manifest, self.secret_keys(), mutation, body, previous)
+    }
+}
+
+/// Shared notes: the owner issues epoch keys, members open them and sign
+/// their own notes. Device secrets never leave this crate.
+impl DeviceIdentity {
+    pub fn sharing_seal_notes_key_set(
+        &self,
+        manifest: &VerifiedSharingManifest,
+        key: &NotesKey,
+    ) -> Result<SharedNotesKeySet> {
+        notes::seal_notes_key_set(self.secret_keys(), manifest, key)
+    }
+
+    pub fn sharing_open_notes_key_set(
+        &self,
+        set: &SharedNotesKeySet,
+        manifest: &VerifiedSharingManifest,
+    ) -> Result<NotesKey> {
+        notes::open_notes_key_set(set, manifest, self.device_id(), self.secret_keys())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn sharing_seal_note(
+        &self,
+        user_id: UserId,
+        server_instance_id: uuid::Uuid,
+        share_id: ShareId,
+        note_id: ObjectId,
+        revision: u64,
+        access_epoch: u64,
+        key: &NotesKey,
+        payload: &[u8],
+    ) -> Result<SharedNote> {
+        notes::seal_shared_note(
+            self.secret_keys(),
+            notes::NoteAuthor {
+                user_id,
+                device_id: self.device_id(),
+            },
+            server_instance_id,
+            share_id,
+            note_id,
+            revision,
+            access_epoch,
+            key,
+            payload,
+        )
     }
 }
 

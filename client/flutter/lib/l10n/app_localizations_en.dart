@@ -514,6 +514,217 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navSnippets => 'Snippets';
 
   @override
+  String get notesShared => 'Shared notes';
+
+  @override
+  String get notesSharedRefresh => 'Refresh shared notes';
+
+  @override
+  String get notesSharedNew => 'New shared note';
+
+  @override
+  String get notesSharedFailed => 'Shared notes could not be loaded. Check the connection to the sync server.';
+
+  @override
+  String get notesSharedWaiting =>
+      'The owner has not opened shared notes for this object yet. They appear once the owner opens the notes panel.';
+
+  @override
+  String notesSharedPending(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count notes become readable after the owner opens the notes panel',
+      one: '1 note becomes readable after the owner opens the notes panel',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notesSharedEmpty => 'No shared notes yet.';
+
+  @override
+  String get notesSharedHint => 'Everyone you share this object with sees the note. Only you can change it.';
+
+  @override
+  String get notesSharedReadOnly => 'Only the author can change this note.';
+
+  @override
+  String notesSharedDeleteMessage(String title) {
+    return '“$title” will be deleted for everyone with access to the object.';
+  }
+
+  @override
+  String get notesAuthorYou => 'You';
+
+  @override
+  String get notesAuthorOwner => 'Owner';
+
+  @override
+  String get notesAuthorMember => 'Member';
+
+  @override
+  String get navNotes => 'Notes';
+
+  @override
+  String get notesThisObject => 'Object';
+
+  @override
+  String get notesAll => 'All';
+
+  @override
+  String get notesTasks => 'Tasks';
+
+  @override
+  String get notesSearchHint => 'Search notes';
+
+  @override
+  String get notesNew => 'New note';
+
+  @override
+  String get notesEmptyTitle => 'No notes yet';
+
+  @override
+  String get notesEmptyMessage => 'Keep tasks, reminders and what to remember about servers, databases and containers.';
+
+  @override
+  String notesEmptyObject(String name) {
+    return 'Nothing about $name yet';
+  }
+
+  @override
+  String get notesNothingFound => 'Nothing found';
+
+  @override
+  String notesCompleted(int count) {
+    return 'Completed ($count)';
+  }
+
+  @override
+  String get notesTitle => 'Title';
+
+  @override
+  String get notesBody => 'Text (Markdown)';
+
+  @override
+  String get notesBodyEmpty => 'No text';
+
+  @override
+  String get notesEdit => 'Edit';
+
+  @override
+  String get notesPreview => 'Preview';
+
+  @override
+  String get notesTags => 'Tags, comma-separated';
+
+  @override
+  String get notesTask => 'Task';
+
+  @override
+  String get notesDue => 'Due';
+
+  @override
+  String get notesDone => 'Done';
+
+  @override
+  String get notesReminder => 'Reminder';
+
+  @override
+  String get notesAttachedTo => 'Attached to';
+
+  @override
+  String get notesNoTarget => 'Not attached';
+
+  @override
+  String get notesTargetMissing => 'Object not found';
+
+  @override
+  String get notesWhenNone => 'None';
+
+  @override
+  String get notesWhenInHour => 'In an hour';
+
+  @override
+  String get notesWhenThisEvening => 'Today at 18:00';
+
+  @override
+  String get notesWhenTomorrow => 'Tomorrow at 09:00';
+
+  @override
+  String get notesWhenNextWeek => 'In a week';
+
+  @override
+  String get notesWhenCustom => 'Date and time…';
+
+  @override
+  String get notesWhenCustomHint => 'YYYY-MM-DD HH:MM';
+
+  @override
+  String get notesInvalidTime => 'Enter the date as YYYY-MM-DD HH:MM';
+
+  @override
+  String notesOverdueAt(String when) {
+    return 'Overdue · $when';
+  }
+
+  @override
+  String get notesPin => 'Pin';
+
+  @override
+  String get notesUnpin => 'Unpin';
+
+  @override
+  String get notesSnooze => 'Remind in an hour';
+
+  @override
+  String notesAttachHere(String name) {
+    return 'Attach to $name';
+  }
+
+  @override
+  String get notesDetach => 'Detach';
+
+  @override
+  String get notesDelete => 'Delete note';
+
+  @override
+  String notesDeleteMessage(String title) {
+    return '“$title” will be deleted on all your devices.';
+  }
+
+  @override
+  String get notesMarkDone => 'Mark done';
+
+  @override
+  String get notesMarkOpen => 'Mark not done';
+
+  @override
+  String get notesBack => 'Back to notes';
+
+  @override
+  String get notesSaveFailed => 'Not saved';
+
+  @override
+  String notesReminderToast(String title) {
+    return 'Reminder: $title';
+  }
+
+  @override
+  String get notesOpen => 'Open';
+
+  @override
+  String get notesHostNotesTitle => 'Notes from the host card';
+
+  @override
+  String get notesHostNotesMove => 'Move to notes';
+
+  @override
+  String notesFromHostTitle(String name) {
+    return 'Notes: $name';
+  }
+
+  @override
   String get navAiChat => 'AI Chat';
 
   @override
@@ -9723,5 +9934,1442 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String dbPreviewTabTitle(String name) {
     return '$name — data';
+  }
+
+  @override
+  String dbDetailsSection(String id) {
+    String _temp0 = intl.Intl.selectLogic(id, {
+      'general': 'General',
+      'size': 'Size',
+      'structure': 'Structure',
+      'partitioning': 'Partitioning',
+      'maintenance': 'Maintenance',
+      'other': '$id',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dbDetailsField(String id) {
+    String _temp0 = intl.Intl.selectLogic(id, {
+      'kind': 'Object type',
+      'persistence': 'Storage',
+      'schema': 'Schema',
+      'owner': 'Owner',
+      'tablespace': 'Tablespace',
+      'comment': 'Comment',
+      'rows': 'Rows',
+      'live_rows': 'Live rows',
+      'dead_rows': 'Dead rows',
+      'total_size': 'Total size',
+      'table_size': 'Table data',
+      'index_size': 'Indexes',
+      'toast_size': 'TOAST',
+      'columns': 'Columns',
+      'indexes': 'Indexes',
+      'constraints': 'Constraints',
+      'triggers': 'Triggers',
+      'definition_length': 'Definition length, characters',
+      'partition_key': 'Partition key',
+      'partitions': 'Partitions',
+      'partition_of': 'Partition of',
+      'last_vacuum': 'Last VACUUM',
+      'last_autovacuum': 'Last autovacuum',
+      'last_analyze': 'Last ANALYZE',
+      'last_autoanalyze': 'Last autoanalyze',
+      'engine': 'Engine',
+      'row_format': 'Row format',
+      'collation': 'Collation',
+      'definer': 'Definer',
+      'updatable': 'Updatable',
+      'security': 'Security',
+      'average_row': 'Average row',
+      'free_space': 'Free space',
+      'auto_increment': 'Next AUTO_INCREMENT',
+      'created': 'Created',
+      'updated': 'Updated',
+      'uncompressed_size': 'Uncompressed',
+      'parts': 'Active parts',
+      'sorting_key': 'Sorting key',
+      'primary_key': 'Primary key',
+      'sampling_key': 'Sampling key',
+      'ttl': 'TTL',
+      'metadata_modified': 'Metadata changed',
+      'type': 'Type',
+      'encoding': 'Encoding',
+      'database': 'Database',
+      'memory': 'Memory',
+      'keys': 'Keys',
+      'length_bytes': 'Length, bytes',
+      'length_fields': 'Fields',
+      'length_elements': 'Elements',
+      'length_members': 'Members',
+      'length_entries': 'Entries',
+      'other': '$id',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dbDetailsKeyword(String id) {
+    String _temp0 = intl.Intl.selectLogic(id, {
+      'table': 'Table',
+      'partitioned_table': 'Partitioned table',
+      'view': 'View',
+      'materialized_view': 'Materialized view',
+      'foreign_table': 'Foreign table',
+      'unlogged': 'Unlogged',
+      'temporary': 'Temporary',
+      'other': '$id',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get dbDetailsNoExpiry => 'No expiry';
+
+  @override
+  String get dbDetailsJson => 'JSON';
+
+  @override
+  String get dbDetailsEmpty => 'Nothing to show for this object.';
+
+  @override
+  String get copyWhatObjectDetails => 'Object details';
+
+  @override
+  String get dbWrapLines => 'Wrap lines';
+
+  @override
+  String settingsTerminalFontMissing(String family, String fallback) {
+    return 'Font “$family” is not installed — using $fallback.';
+  }
+
+  @override
+  String get settingsCaptureProtectionLabel => 'Hide window from screen capture';
+
+  @override
+  String get settingsCaptureProtectionOff => 'Never';
+
+  @override
+  String get settingsCaptureProtectionSecrets => 'While secrets are shown';
+
+  @override
+  String get settingsCaptureProtectionAlways => 'Always';
+
+  @override
+  String get settingsCaptureProtectionHelp =>
+      'The window is left out of screenshots, recordings and screen sharing (Zoom, Teams). With “Always”, colleagues will not see the ConsoleCrypt window while you share your screen.';
+
+  @override
+  String get sftpActiveContentTitle => 'This file can run code';
+
+  @override
+  String sftpActiveContentBody(String name) {
+    return '“$name” can run code. It will open as text in an editor.';
+  }
+
+  @override
+  String get sftpActiveContentNoRun =>
+      'ConsoleCrypt never runs downloaded files. To run it, use a terminal on the server.';
+
+  @override
+  String get sftpActiveContentOpenAsText => 'Open as Text';
+
+  @override
+  String get sftpNoTextEditorTitle => 'No text editor found';
+
+  @override
+  String sftpNoTextEditorBody(String name) {
+    return '“$name” can run code, so it opens only as text, but no text editor was found. Choose an editor to open it with.';
+  }
+
+  @override
+  String get sftpChooseEditor => 'Choose an Editor…';
+
+  @override
+  String get errorNoTextEditor => 'No text editor found to open this file safely. Choose an editor using Open With.';
+
+  @override
+  String get dbExportEscapeFormulas => 'Escape formulas (for Excel)';
+
+  @override
+  String settingsClearClipboardSeconds(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count seconds', one: '$count second');
+    return '$_temp0 after copying a secret';
+  }
+
+  @override
+  String settingsClearClipboardMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count minutes', one: '$count minute');
+    return '$_temp0 after copying a secret';
+  }
+
+  @override
+  String settingsClearClipboardHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count hours', one: '$count hour');
+    return '$_temp0 after copying a secret';
+  }
+
+  @override
+  String settingsClearClipboardDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count days', one: '$count day');
+    return '$_temp0 after copying a secret';
+  }
+
+  @override
+  String sharingUnreadableEntries(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count shared entries could not be read and are hidden.',
+      one: '$count shared entry could not be read and is hidden.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get snippetPackPostgresql => 'SQL · PostgreSQL';
+
+  @override
+  String get snippetPackPostgresqlDescription =>
+      'Activity, locks, sizes, indexes, vacuum, replication and settings. For psql or the Databases workspace.';
+
+  @override
+  String get snippetPackMysql => 'SQL · MySQL/MariaDB';
+
+  @override
+  String get snippetPackMysqlDescription =>
+      'Processlist, InnoDB locks, sizes, indexes, replication and statement digests. For the mysql client or the Databases workspace.';
+
+  @override
+  String get snippetPackClickhouse => 'SQL · ClickHouse';
+
+  @override
+  String get snippetPackClickhouseDescription =>
+      'Running and slow queries, parts, merges, mutations, replication and disks. For clickhouse-client or the Databases workspace.';
+
+  @override
+  String get snippetPackRedis => 'Redis';
+
+  @override
+  String get snippetPackRedisDescription =>
+      'Memory, clients, slow log, keyspace and replication. For redis-cli or the Databases workspace.';
+
+  @override
+  String get snippetPackMongodb => 'MongoDB';
+
+  @override
+  String get snippetPackMongodbDescription =>
+      'Operations, server and collection stats, indexes, replica set and profiler. For mongosh; some also run in the Databases workspace.';
+
+  @override
+  String get snippetDbPgActivity => 'Active queries';
+
+  @override
+  String get snippetDbPgActivityNote => 'Sessions that are not idle, longest first.';
+
+  @override
+  String get snippetDbPgLongRunning => 'Long-running queries';
+
+  @override
+  String get snippetDbPgLongRunningNote => 'Queries running longer than the given number of seconds.';
+
+  @override
+  String get snippetDbPgBlocking => 'Lock tree';
+
+  @override
+  String get snippetDbPgBlockingNote =>
+      'Blocking sessions with the sessions waiting on them, indented by depth (PG 9.6+).';
+
+  @override
+  String get snippetDbPgTableSizes => 'Largest tables';
+
+  @override
+  String get snippetDbPgTableSizesNote => 'Total size with heap, indexes and TOAST; row counts are planner estimates.';
+
+  @override
+  String get snippetDbPgDatabaseSizes => 'Database sizes';
+
+  @override
+  String get snippetDbPgDatabaseSizesNote => 'Size of every database that accepts connections.';
+
+  @override
+  String get snippetDbPgIndexUsage => 'Index usage';
+
+  @override
+  String get snippetDbPgIndexUsageNote =>
+      'Least-used indexes first; idx_scan = 0 means unused since the last statistics reset. Check replicas too, and keep unique indexes.';
+
+  @override
+  String get snippetDbPgDeadTuples => 'Dead tuples and autovacuum';
+
+  @override
+  String get snippetDbPgDeadTuplesNote => 'Bloat estimate from dead tuples with the last vacuum and analyze times.';
+
+  @override
+  String get snippetDbPgCacheHit => 'Cache hit ratio';
+
+  @override
+  String get snippetDbPgCacheHitNote =>
+      'Share of blocks read from shared buffers per database; below 99% on OLTP is worth a look.';
+
+  @override
+  String get snippetDbPgReplication => 'Replication status';
+
+  @override
+  String get snippetDbPgReplicationNote =>
+      'Connected replicas with lag in bytes and time. Run on the primary (PG 10+).';
+
+  @override
+  String get snippetDbPgSlots => 'Replication slots';
+
+  @override
+  String get snippetDbPgSlotsNote => 'Slots and the WAL they retain; an inactive slot keeps WAL forever (PG 13+).';
+
+  @override
+  String get snippetDbPgConnections => 'Connections by user and application';
+
+  @override
+  String get snippetDbPgConnectionsNote => 'Client connections grouped by database, user, application and state.';
+
+  @override
+  String get snippetDbPgSettingsChanged => 'Non-default settings';
+
+  @override
+  String get snippetDbPgSettingsChangedNote => 'Settings whose source is not the built-in default.';
+
+  @override
+  String get snippetDbPgColumns => 'Table columns';
+
+  @override
+  String get snippetDbPgColumnsNote => 'Columns with types, defaults and comments.';
+
+  @override
+  String get snippetDbPgForeignKeys => 'Foreign keys of a table';
+
+  @override
+  String get snippetDbPgForeignKeysNote => 'Foreign keys of the table and those that reference it.';
+
+  @override
+  String get snippetDbPgSequences => 'Sequences near their limit';
+
+  @override
+  String get snippetDbPgSequencesNote =>
+      'Sequences that used more than the given percent of their range; also check the column type (PG 10+).';
+
+  @override
+  String get snippetDbPgFkWithoutIndex => 'Foreign keys without an index';
+
+  @override
+  String get snippetDbPgFkWithoutIndexNote =>
+      'Foreign keys whose columns do not lead any index; deletes and updates on the parent scan the child table.';
+
+  @override
+  String get snippetDbPgStatements => 'Top queries (pg_stat_statements)';
+
+  @override
+  String get snippetDbPgStatementsNote =>
+      'Needs the pg_stat_statements extension (shared_preload_libraries and CREATE EXTENSION); otherwise it fails with \"relation does not exist\". Column names are for PG 13+.';
+
+  @override
+  String get snippetDbPgExplainAnalyze => 'EXPLAIN ANALYZE';
+
+  @override
+  String get snippetDbPgExplainAnalyzeNote =>
+      'Runs the query to measure the real plan; put data-changing statements inside BEGIN … ROLLBACK.';
+
+  @override
+  String get snippetDbPgCancel => 'Cancel a query';
+
+  @override
+  String get snippetDbPgCancelNote => 'Cancels the current query of the backend; the session stays connected.';
+
+  @override
+  String get snippetDbPgTerminate => 'Terminate a session';
+
+  @override
+  String get snippetDbPgTerminateNote => 'Disconnects the backend and rolls back its open transaction.';
+
+  @override
+  String get snippetDbMysqlProcesslist => 'Active queries';
+
+  @override
+  String get snippetDbMysqlProcesslistNote => 'Connections that are not sleeping, longest first.';
+
+  @override
+  String get snippetDbMysqlLongRunning => 'Long-running queries';
+
+  @override
+  String get snippetDbMysqlLongRunningNote => 'Statements running longer than the given number of seconds.';
+
+  @override
+  String get snippetDbMysqlLockWaits => 'InnoDB lock waits';
+
+  @override
+  String get snippetDbMysqlLockWaitsNote =>
+      'Who waits for whom, with the blocking statement. Needs the sys schema (MySQL 5.7+, MariaDB 10.6+).';
+
+  @override
+  String get snippetDbMysqlTransactions => 'Open transactions';
+
+  @override
+  String get snippetDbMysqlTransactionsNote => 'InnoDB transactions, oldest first, with locked and modified rows.';
+
+  @override
+  String get snippetDbMysqlTableSizes => 'Largest tables';
+
+  @override
+  String get snippetDbMysqlTableSizesNote =>
+      'Data, index and free space in MB; information_schema statistics are approximate and cached.';
+
+  @override
+  String get snippetDbMysqlDatabaseSizes => 'Database sizes';
+
+  @override
+  String get snippetDbMysqlDatabaseSizesNote => 'Total data and index size per schema in MB.';
+
+  @override
+  String get snippetDbMysqlIndexUsage => 'Index usage';
+
+  @override
+  String get snippetDbMysqlIndexUsageNote => 'Reads and writes per index since server start (performance_schema).';
+
+  @override
+  String get snippetDbMysqlUnusedIndexes => 'Unused indexes';
+
+  @override
+  String get snippetDbMysqlUnusedIndexesNote =>
+      'Indexes without reads since server start. Needs the sys schema; check replicas before dropping.';
+
+  @override
+  String get snippetDbMysqlAutoIncrement => 'AUTO_INCREMENT near the limit';
+
+  @override
+  String get snippetDbMysqlAutoIncrementNote => 'Share of the column type range already used. Needs the sys schema.';
+
+  @override
+  String get snippetDbMysqlIndexes => 'Indexes of a table';
+
+  @override
+  String get snippetDbMysqlIndexesNote => 'Index columns in order with cardinality.';
+
+  @override
+  String get snippetDbMysqlColumns => 'Table columns';
+
+  @override
+  String get snippetDbMysqlColumnsNote => 'Columns with types, keys, defaults and comments.';
+
+  @override
+  String get snippetDbMysqlForeignKeys => 'Foreign keys of a table';
+
+  @override
+  String get snippetDbMysqlForeignKeysNote => 'Foreign keys of the table and those that reference it.';
+
+  @override
+  String get snippetDbMysqlReplicaStatus => 'Replica status';
+
+  @override
+  String get snippetDbMysqlReplicaStatusNote =>
+      'MySQL 8.0.22+ and MariaDB 10.5.1+; on older servers use SHOW SLAVE STATUS.';
+
+  @override
+  String get snippetDbMysqlVariables => 'Server variables';
+
+  @override
+  String get snippetDbMysqlVariablesNote => 'Global variables matching a LIKE pattern.';
+
+  @override
+  String get snippetDbMysqlStatus => 'Key status counters';
+
+  @override
+  String get snippetDbMysqlStatusNote => 'Uptime, connections, slow queries, row lock waits and buffer pool reads.';
+
+  @override
+  String get snippetDbMysqlConnections => 'Connections by user and host';
+
+  @override
+  String get snippetDbMysqlConnectionsNote => 'Connections grouped by user, client host, schema and command.';
+
+  @override
+  String get snippetDbMysqlDigest => 'Top queries (statement digests)';
+
+  @override
+  String get snippetDbMysqlDigestNote =>
+      'Normalized statements by total time from performance_schema (enabled by default in MySQL; off by default in MariaDB).';
+
+  @override
+  String get snippetDbMysqlInnodbStatus => 'InnoDB status';
+
+  @override
+  String get snippetDbMysqlInnodbStatusNote =>
+      'Engine report with the latest deadlock, semaphores and buffer pool; needs the PROCESS privilege.';
+
+  @override
+  String get snippetDbMysqlExplainAnalyze => 'EXPLAIN ANALYZE';
+
+  @override
+  String get snippetDbMysqlExplainAnalyzeNote =>
+      'Runs the query to measure the real plan (MySQL 8.0.18+; in MariaDB use ANALYZE SELECT …).';
+
+  @override
+  String get snippetDbMysqlKillQuery => 'Cancel a query';
+
+  @override
+  String get snippetDbMysqlKillQueryNote => 'Stops the current statement of the connection; the connection stays open.';
+
+  @override
+  String get snippetDbClickhouseProcesses => 'Running queries';
+
+  @override
+  String get snippetDbClickhouseProcessesNote => 'Initial queries with elapsed time, memory and rows read.';
+
+  @override
+  String get snippetDbClickhouseLongRunning => 'Long-running queries';
+
+  @override
+  String get snippetDbClickhouseLongRunningNote => 'Queries running longer than the given number of seconds.';
+
+  @override
+  String get snippetDbClickhouseSlowQueries => 'Slow queries';
+
+  @override
+  String get snippetDbClickhouseSlowQueriesNote => 'Slowest finished queries from system.query_log for the last hours.';
+
+  @override
+  String get snippetDbClickhouseFailedQueries => 'Failed queries';
+
+  @override
+  String get snippetDbClickhouseFailedQueriesNote => 'Recent queries that ended with an exception.';
+
+  @override
+  String get snippetDbClickhouseQueryPatterns => 'Heaviest query patterns';
+
+  @override
+  String get snippetDbClickhouseQueryPatternsNote => 'Finished queries grouped by normalized text, by total duration.';
+
+  @override
+  String get snippetDbClickhouseTableSizes => 'Largest tables';
+
+  @override
+  String get snippetDbClickhouseTableSizesNote =>
+      'Compressed and uncompressed size of active parts with the compression ratio.';
+
+  @override
+  String get snippetDbClickhouseDatabaseSizes => 'Database sizes';
+
+  @override
+  String get snippetDbClickhouseDatabaseSizesNote => 'Disk usage of active parts per database.';
+
+  @override
+  String get snippetDbClickhousePartitions => 'Partitions of a table';
+
+  @override
+  String get snippetDbClickhousePartitionsNote => 'Parts, rows and size per partition.';
+
+  @override
+  String get snippetDbClickhousePartsCount => 'Partitions with many parts';
+
+  @override
+  String get snippetDbClickhousePartsCountNote =>
+      'Too many active parts slow down inserts and selects (“Too many parts”).';
+
+  @override
+  String get snippetDbClickhouseColumnSizes => 'Column sizes of a table';
+
+  @override
+  String get snippetDbClickhouseColumnSizesNote => 'Compressed size, ratio and codec per column.';
+
+  @override
+  String get snippetDbClickhouseMerges => 'Running merges';
+
+  @override
+  String get snippetDbClickhouseMergesNote => 'Merges and mutations in progress.';
+
+  @override
+  String get snippetDbClickhouseMutations => 'Unfinished mutations';
+
+  @override
+  String get snippetDbClickhouseMutationsNote => 'ALTER … UPDATE/DELETE still running, with the latest failure reason.';
+
+  @override
+  String get snippetDbClickhouseReplicationQueue => 'Replication queue';
+
+  @override
+  String get snippetDbClickhouseReplicationQueueNote =>
+      'Oldest replication tasks with retries and the last error (Replicated* tables).';
+
+  @override
+  String get snippetDbClickhouseReplicas => 'Replica status';
+
+  @override
+  String get snippetDbClickhouseReplicasNote => 'Delay, queue and read-only state of Replicated* tables.';
+
+  @override
+  String get snippetDbClickhouseDisks => 'Disks';
+
+  @override
+  String get snippetDbClickhouseDisksNote => 'Free and total space of the configured disks.';
+
+  @override
+  String get snippetDbClickhouseErrors => 'Server errors';
+
+  @override
+  String get snippetDbClickhouseErrorsNote => 'Error counters since start with the latest message.';
+
+  @override
+  String get snippetDbClickhouseSettingsChanged => 'Changed settings';
+
+  @override
+  String get snippetDbClickhouseSettingsChangedNote => 'Session settings that differ from the defaults.';
+
+  @override
+  String get snippetDbClickhouseMetrics => 'Current metrics';
+
+  @override
+  String get snippetDbClickhouseMetricsNote => 'Non-zero gauges: queries, merges, connections, memory.';
+
+  @override
+  String get snippetDbClickhouseExplain => 'EXPLAIN with indexes';
+
+  @override
+  String get snippetDbClickhouseExplainNote =>
+      'Plan with the primary key and skip indexes used; the query is not executed.';
+
+  @override
+  String get snippetDbClickhouseKillQuery => 'Cancel a query';
+
+  @override
+  String get snippetDbClickhouseKillQueryNote => 'Stops the query with the given query_id.';
+
+  @override
+  String get snippetDbRedisInfo => 'Server info';
+
+  @override
+  String get snippetDbRedisInfoNote =>
+      'One INFO section: server, clients, memory, persistence, stats, replication, cpu, keyspace.';
+
+  @override
+  String get snippetDbRedisMemory => 'Memory';
+
+  @override
+  String get snippetDbRedisMemoryNote => 'Used and peak memory, fragmentation and the maxmemory policy.';
+
+  @override
+  String get snippetDbRedisMemoryDoctor => 'Memory doctor';
+
+  @override
+  String get snippetDbRedisMemoryDoctorNote => 'Redis advice on memory problems.';
+
+  @override
+  String get snippetDbRedisSlowlog => 'Slow log';
+
+  @override
+  String get snippetDbRedisSlowlogNote => 'Latest slow commands with duration in microseconds.';
+
+  @override
+  String get snippetDbRedisClients => 'Client list';
+
+  @override
+  String get snippetDbRedisClientsNote => 'Connected clients with address, age, idle time and last command.';
+
+  @override
+  String get snippetDbRedisDbsize => 'Number of keys';
+
+  @override
+  String get snippetDbRedisDbsizeNote => 'Keys in the selected database.';
+
+  @override
+  String get snippetDbRedisKeyspace => 'Keyspace';
+
+  @override
+  String get snippetDbRedisKeyspaceNote => 'Keys and expiring keys per database.';
+
+  @override
+  String get snippetDbRedisScan => 'Find keys by pattern';
+
+  @override
+  String get snippetDbRedisScanNote =>
+      'Incremental SCAN instead of KEYS; repeat with the returned cursor until it is 0.';
+
+  @override
+  String get snippetDbRedisType => 'Key type';
+
+  @override
+  String get snippetDbRedisTypeNote => 'Data type stored at the key.';
+
+  @override
+  String get snippetDbRedisTtl => 'Key TTL';
+
+  @override
+  String get snippetDbRedisTtlNote => 'Seconds to expiry; -1 means no expiry, -2 means the key does not exist.';
+
+  @override
+  String get snippetDbRedisMemoryUsage => 'Key memory usage';
+
+  @override
+  String get snippetDbRedisMemoryUsageNote => 'Bytes used by the key and its value.';
+
+  @override
+  String get snippetDbRedisLatency => 'Latency doctor';
+
+  @override
+  String get snippetDbRedisLatencyNote => 'Latency report; needs latency-monitor-threshold > 0.';
+
+  @override
+  String get snippetDbRedisConfig => 'Configuration value';
+
+  @override
+  String get snippetDbRedisConfigNote => 'Configuration parameters matching a glob pattern.';
+
+  @override
+  String get snippetDbRedisReplication => 'Replication';
+
+  @override
+  String get snippetDbRedisReplicationNote => 'Role, connected replicas and replication offsets.';
+
+  @override
+  String get snippetDbRedisCommandstats => 'Command statistics';
+
+  @override
+  String get snippetDbRedisCommandstatsNote => 'Calls and time per command since the last reset.';
+
+  @override
+  String get snippetDbMongodbCurrentOps => 'Active operations';
+
+  @override
+  String get snippetDbMongodbCurrentOpsNote => 'Operations running now (mongosh).';
+
+  @override
+  String get snippetDbMongodbLongOps => 'Long-running operations';
+
+  @override
+  String get snippetDbMongodbLongOpsNote => 'Operations running longer than the given number of seconds (mongosh).';
+
+  @override
+  String get snippetDbMongodbConnections => 'Connections';
+
+  @override
+  String get snippetDbMongodbConnectionsNote => 'Current, available and total created connections (mongosh).';
+
+  @override
+  String get snippetDbMongodbOpcounters => 'Operation counters';
+
+  @override
+  String get snippetDbMongodbOpcountersNote => 'Inserts, queries, updates, deletes and commands since start (mongosh).';
+
+  @override
+  String get snippetDbMongodbMemory => 'Memory';
+
+  @override
+  String get snippetDbMongodbMemoryNote => 'Resident and virtual memory in MB (mongosh).';
+
+  @override
+  String get snippetDbMongodbDbStats => 'Database stats';
+
+  @override
+  String get snippetDbMongodbDbStatsNote => 'Collections, objects, data and index size in MB.';
+
+  @override
+  String get snippetDbMongodbCollectionStats => 'Collection stats';
+
+  @override
+  String get snippetDbMongodbCollectionStatsNote => 'Documents, storage and per-index size in MB.';
+
+  @override
+  String get snippetDbMongodbIndexes => 'Indexes of a collection';
+
+  @override
+  String get snippetDbMongodbIndexesNote => 'Index keys and options.';
+
+  @override
+  String get snippetDbMongodbIndexStats => 'Index usage';
+
+  @override
+  String get snippetDbMongodbIndexStatsNote => 'Operations per index since the last restart (mongosh).';
+
+  @override
+  String get snippetDbMongodbExplain => 'Query plan with statistics';
+
+  @override
+  String get snippetDbMongodbExplainNote =>
+      'Runs the find and reports the plan, keys and documents examined (mongosh).';
+
+  @override
+  String get snippetDbMongodbRsStatus => 'Replica set status';
+
+  @override
+  String get snippetDbMongodbRsStatusNote => 'Members, their state and health (mongosh).';
+
+  @override
+  String get snippetDbMongodbRsLag => 'Replication lag';
+
+  @override
+  String get snippetDbMongodbRsLagNote => 'How far each secondary is behind the primary (mongosh, MongoDB 4.4+).';
+
+  @override
+  String get snippetDbMongodbProfilerStatus => 'Profiler level';
+
+  @override
+  String get snippetDbMongodbProfilerStatusNote =>
+      'Profiler level and slowms threshold of the current database (mongosh).';
+
+  @override
+  String get snippetDbMongodbSlowOps => 'Slow operations (profiler)';
+
+  @override
+  String get snippetDbMongodbSlowOpsNote =>
+      'Latest profiled operations slower than the threshold; enable with db.setProfilingLevel(1).';
+
+  @override
+  String get snippetDbMongodbKillOp => 'Kill an operation';
+
+  @override
+  String get snippetDbMongodbKillOpNote => 'Stops the operation with the given opid from currentOp (mongosh).';
+
+  @override
+  String snippetStarterDbOrigin(String note, String client, String package) {
+    return '$note For $client or the Databases workspace. From the $package starter package.';
+  }
+
+  @override
+  String snippetStarterDbTerminalOrigin(String note, String client, String package) {
+    return '$note Runs in $client in a terminal; the Databases workspace does not allow it. From the $package starter package.';
+  }
+
+  @override
+  String get snippetClientSessionRequired =>
+      'Start the database client (psql, mysql, clickhouse-client, redis-cli, mongosh) in a connected terminal tab first, then run the snippet there.';
+
+  @override
+  String get dbSnippetPickerTitle => 'Insert a snippet';
+
+  @override
+  String dbSnippetPickerSearch(String engine) {
+    return 'Search $engine snippets';
+  }
+
+  @override
+  String dbSnippetPickerEmpty(String engine) {
+    return 'No $engine snippets yet. Add them in Snippets → Starter packages or save a query from the history.';
+  }
+
+  @override
+  String get sharingLeave => 'Leave share';
+
+  @override
+  String get sharingLeaveHelp =>
+      'You stop receiving this item on all your devices and it disappears from this list. Personal copies you saved stay. The owner sees that you left.';
+
+  @override
+  String get sharingLeft => 'You left the share';
+
+  @override
+  String get sharingStopRestoreHelp =>
+      'Recipients lose access immediately. For 30 days you can restore the item from Recently deleted.';
+
+  @override
+  String sharingMembersLeft(int count) {
+    return 'Left the share: $count';
+  }
+
+  @override
+  String get sharingRecentlyDeleted => 'Recently deleted';
+
+  @override
+  String get sharingRecentlyDeletedHelp =>
+      'Shared items you deleted can be restored for 30 days. A restored item is shared again with the same people except those who left; they accept it again.';
+
+  @override
+  String get sharingRecentlyDeletedEmpty => 'No recently deleted items';
+
+  @override
+  String get sharingRestore => 'Restore';
+
+  @override
+  String get sharingRestored => 'Item restored and shared again';
+
+  @override
+  String sharingRestoreUntil(String date, int count) {
+    return 'Restorable until $date · recipients: $count';
+  }
+
+  @override
+  String loginSsoButton(String name) {
+    return 'Sign in with $name';
+  }
+
+  @override
+  String get loginSsoButtonDefault => 'Sign in with SSO';
+
+  @override
+  String get loginSsoEmailLabel => 'E-mail (optional)';
+
+  @override
+  String get loginSsoEmailHelper => 'Pre-filled on your organisation\'s sign-in page.';
+
+  @override
+  String get loginSsoWaiting => 'Finish signing in in the browser…';
+
+  @override
+  String get loginSsoWaitingHelp => 'The browser shows your organisation\'s sign-in page. Return here when it says so.';
+
+  @override
+  String get loginLdapLoginLabel => 'Login (email or DOMAIN\\user)';
+
+  @override
+  String get loginLdapPasswordLabel => 'Password';
+
+  @override
+  String get loginLdapCaption => 'Your organisation\'s account';
+
+  @override
+  String get loginLdapLoginRequired => 'Enter your login';
+
+  @override
+  String get corporateAuthNoticeTitle => 'Corporate sign-in';
+
+  @override
+  String corporateAuthNotice(String name) {
+    return 'Sign-in through the corporate authorization server $name. Your organisation\'s password does not open the vault — the vault passphrase does.';
+  }
+
+  @override
+  String get authProviderOidc => 'OIDC';
+
+  @override
+  String get authProviderLdap => 'Active Directory';
+
+  @override
+  String get authProviderSsoFallback => 'SSO';
+
+  @override
+  String get serverNeedsNewerApp =>
+      'This server uses a sign-in method this version does not support. Update ConsoleCrypt.';
+
+  @override
+  String get signInMethodEmail => 'e-mail and password';
+
+  @override
+  String signInMethodOidc(String name) {
+    return '$name (OIDC)';
+  }
+
+  @override
+  String signInMethodLdap(String name) {
+    return '$name (Active Directory)';
+  }
+
+  @override
+  String signInLastTime(String method, String login) {
+    return 'Last time you signed in with $method as $login';
+  }
+
+  @override
+  String signInLastTimeNoLogin(String method) {
+    return 'Last time you signed in with $method';
+  }
+
+  @override
+  String get signInForget => 'Forget';
+
+  @override
+  String authModeChangedToEnterprise(String name) {
+    return 'The server switched to sign-in through the corporate authorization server $name. The previous account password is no longer used.';
+  }
+
+  @override
+  String get authModeChangedToStandard =>
+      'The server switched from corporate sign-in to e-mail and account password. Use the password your administrator set for your account.';
+
+  @override
+  String get recentServersLabel => 'Recent servers';
+
+  @override
+  String get authBadgeEmail => 'Email';
+
+  @override
+  String authBadgeSso(String name) {
+    return 'SSO: $name';
+  }
+
+  @override
+  String get authBadgeAd => 'AD';
+
+  @override
+  String get settingsAuthLabel => 'Authorization';
+
+  @override
+  String settingsAuthCorporate(String name, String kind) {
+    return 'Corporate server — $name ($kind)';
+  }
+
+  @override
+  String get settingsAuthStandard => 'E-mail and account password';
+
+  @override
+  String get settingsAuthCorporateHelp =>
+      'Your organisation\'s authorization server checks who signs in. It never gets access to the vault: the vault passphrase stays on your devices.';
+
+  @override
+  String settingsAuthSignedIn(String method, String date) {
+    return 'This device signed in with $method on $date';
+  }
+
+  @override
+  String settingsAuthSignedInAs(String method, String login, String date) {
+    return 'This device signed in with $method as $login on $date';
+  }
+
+  @override
+  String devicesAuthCorporate(String name) {
+    return 'Accounts on this server sign in through the corporate authorization server $name.';
+  }
+
+  @override
+  String get accountDisabledTitle => 'Access disabled by the administrator';
+
+  @override
+  String accountDisabledBody(String server) {
+    return 'Your organisation disabled this account on $server. Synchronisation stopped and the profile is locked. The data on this device stays encrypted.';
+  }
+
+  @override
+  String get accountDisabledSignIn => 'Sign in again';
+
+  @override
+  String get accountDisabledDelete => 'Delete profile from this device';
+
+  @override
+  String accountDisabledDeleteTitle(String name) {
+    return 'Delete profile “$name”?';
+  }
+
+  @override
+  String get accountDisabledDeleteMessage =>
+      'The encrypted local copy is removed from this device. Nothing changes on the server.';
+
+  @override
+  String get errorAccountDisabled => 'Access was disabled by the administrator.';
+
+  @override
+  String get errorEnterpriseAuthRequired =>
+      'This server only accepts your organisation\'s sign-in. Check the server again, or update the app.';
+
+  @override
+  String get errorIdentityConflict =>
+      'Your organisation\'s account is already linked to another account on this server. Contact the administrator.';
+
+  @override
+  String get errorDomainNotAllowed => 'Your e-mail domain is not allowed on this server.';
+
+  @override
+  String get errorGroupRequired =>
+      'Your account is not in the group allowed to use this server. Contact the administrator.';
+
+  @override
+  String get errorMfaRequired => 'Your organisation requires sign-in with a second factor. Sign in again using it.';
+
+  @override
+  String get errorIdpUnavailable => 'Your organisation\'s sign-in service is unavailable. Try again later.';
+
+  @override
+  String get errorReasonEnterpriseCallbackInvalid =>
+      'The browser returned an unexpected answer. Start signing in again.';
+
+  @override
+  String get errorReasonEnterpriseSignInTimeout => 'Signing in took too long. Start again.';
+
+  @override
+  String get errorReasonEnterpriseBrowserUnavailable => 'Could not open the browser for signing in.';
+
+  @override
+  String get teamsTitle => 'Teams';
+
+  @override
+  String get teamsSubtitle => 'Resources owned by a team. Every member sees them; roles decide who may change them.';
+
+  @override
+  String get teamsEmpty => 'You are not in any team yet.';
+
+  @override
+  String get teamsCreate => 'Create team';
+
+  @override
+  String get teamsRefresh => 'Refresh';
+
+  @override
+  String get teamsUnnamed => 'Unnamed team';
+
+  @override
+  String get teamsPendingConfirmation => 'Waiting for an admin to compare the code';
+
+  @override
+  String get teamsUnavailable => 'Not available right now';
+
+  @override
+  String teamsRowMeta(String role, int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count members', one: '1 member');
+    return '$role · $_temp0';
+  }
+
+  @override
+  String get teamsWarningBadge => 'Paused';
+
+  @override
+  String get teamsRotationBadge => 'Rotate key';
+
+  @override
+  String get teamsOfflineBadge => 'Offline';
+
+  @override
+  String get teamsReadOnly => 'Read only';
+
+  @override
+  String teamsChipSemantics(String name) {
+    return 'Team $name';
+  }
+
+  @override
+  String teamsInvitationFrom(String email, String role) {
+    return '$email invites you to a team as $role.';
+  }
+
+  @override
+  String teamsInvitationNote(String note) {
+    return 'Note: $note';
+  }
+
+  @override
+  String get teamsAccept => 'Accept';
+
+  @override
+  String get teamsDecline => 'Decline';
+
+  @override
+  String get teamsCreateTitle => 'New team';
+
+  @override
+  String get teamsCreateBody =>
+      'The name, colour and everything the team stores are end-to-end encrypted. The server only sees who is a member.';
+
+  @override
+  String get teamsNameLabel => 'Team name';
+
+  @override
+  String get teamsDescriptionLabel => 'Description (optional)';
+
+  @override
+  String get teamsColorLabel => 'Colour';
+
+  @override
+  String get teamsColorNone => 'Team colour';
+
+  @override
+  String get teamsColorCustom => 'Custom…';
+
+  @override
+  String teamsCreated(String name) {
+    return 'Team \"$name\" created';
+  }
+
+  @override
+  String get teamsJoinCodeTitle => 'Compare the code';
+
+  @override
+  String teamsJoinCodeBody(String email) {
+    return 'Read this code to $email (in person, by phone or in a messenger). They see the same code on their screen and confirm it.';
+  }
+
+  @override
+  String get teamsJoinCodeWait => 'The team opens on your devices as soon as the admin confirms.';
+
+  @override
+  String teamsJoinRequest(String email, String role) {
+    return '$email accepted the invitation ($role). Compare the code before adding them.';
+  }
+
+  @override
+  String get teamsCompareCode => 'Compare code';
+
+  @override
+  String teamsCompareTitle(String email) {
+    return 'Add $email?';
+  }
+
+  @override
+  String teamsCompareRole(String role) {
+    return 'Role: $role';
+  }
+
+  @override
+  String teamsCompareBody(String email) {
+    return 'Ask $email to read the code on their screen. Add them only if every group matches.';
+  }
+
+  @override
+  String teamsCodesMatchCheckbox(String email) {
+    return 'The code on $email\'s screen is the same';
+  }
+
+  @override
+  String get teamsCompareWarning =>
+      'A different code means someone may be intercepting the invitation. Do not add the member.';
+
+  @override
+  String get teamsCodesDontMatch => 'Codes don\'t match';
+
+  @override
+  String get teamsAddMember => 'Add to team';
+
+  @override
+  String teamsMemberAdded(String email) {
+    return '$email added to the team';
+  }
+
+  @override
+  String get teamsCodeRejectedTitle => 'Join rejected';
+
+  @override
+  String get teamsCodeRejectedBody =>
+      'Nobody was added. Invite the person again and compare the code over a channel you trust.';
+
+  @override
+  String get teamsTabMembers => 'Members';
+
+  @override
+  String get teamsTabSettings => 'Settings';
+
+  @override
+  String get teamsTabHistory => 'History';
+
+  @override
+  String get teamsWarningInvalidLog =>
+      'The server showed a membership change nobody signed. The team is paused (read only) and no keys are shared until this is resolved.';
+
+  @override
+  String get teamsWarningRollback =>
+      'The server showed an older or different team membership than before. The team is paused (read only).';
+
+  @override
+  String get teamsRotationRequired =>
+      'A member left the team. Rotate the key so they cannot read anything added from now on.';
+
+  @override
+  String get teamsRotateKey => 'Rotate key';
+
+  @override
+  String get teamsKeyRotated => 'Team key rotated';
+
+  @override
+  String teamsMemberYou(String email) {
+    return '$email (you)';
+  }
+
+  @override
+  String get teamsPendingInvitations => 'Invitations sent';
+
+  @override
+  String get teamsCancelInvitation => 'Cancel';
+
+  @override
+  String get teamsInvite => 'Invite member';
+
+  @override
+  String get teamsTransferOwner => 'Make owner';
+
+  @override
+  String teamsTransferOwnerConfirm(String email) {
+    return '$email becomes the owner of the team; you stay an admin.';
+  }
+
+  @override
+  String get teamsRemoveMember => 'Remove from team';
+
+  @override
+  String teamsRemoveMemberConfirm(String email) {
+    return '$email loses access to the team. The team key is rotated so nothing added later is readable for them.';
+  }
+
+  @override
+  String teamsInviteTitle(String name) {
+    return 'Invite to $name';
+  }
+
+  @override
+  String get teamsInviteBody =>
+      'The person needs a ConsoleCrypt account on this server. After they accept, you compare a code with them before they get access.';
+
+  @override
+  String get teamsInviteEmail => 'Email';
+
+  @override
+  String get teamsRoleLabel => 'Role';
+
+  @override
+  String get teamsInviteNote => 'Note for the invitation (optional)';
+
+  @override
+  String get teamsInviteNoteWarning => 'The note is not encrypted: the server can read it.';
+
+  @override
+  String get teamsInviteSend => 'Send invitation';
+
+  @override
+  String teamsInvited(String email) {
+    return 'Invitation sent to $email';
+  }
+
+  @override
+  String get teamsSettingsReadOnly => 'Only owners and admins change team settings.';
+
+  @override
+  String get teamsPoliciesTitle => 'Policies';
+
+  @override
+  String get teamsPolicyProduction => 'Mark new Kubernetes contexts and databases as production';
+
+  @override
+  String get teamsPolicyBlockAi => 'Never send these resources to AI assistants';
+
+  @override
+  String get teamsPolicyConfirmRisky => 'Ask before running risky commands';
+
+  @override
+  String get teamsPolicyClipboard => 'Clear copied secrets after';
+
+  @override
+  String get teamsPolicyClipboardDefault => 'App default';
+
+  @override
+  String teamsPolicySeconds(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String get teamsSettingsSaved => 'Team settings saved';
+
+  @override
+  String get teamsMyColorTitle => 'My colour for this team';
+
+  @override
+  String get teamsMyColorBody => 'Changes the colour only on your devices.';
+
+  @override
+  String get teamsLeave => 'Leave team';
+
+  @override
+  String teamsLeaveConfirm(String name) {
+    return 'You lose access to \"$name\" on all your devices.';
+  }
+
+  @override
+  String teamsKeyEpoch(int epoch) {
+    return 'Key generation $epoch';
+  }
+
+  @override
+  String teamsLogGenesis(String actor) {
+    return '$actor created the team';
+  }
+
+  @override
+  String teamsLogAdd(String actor, String member, String role) {
+    return '$actor added $member as $role';
+  }
+
+  @override
+  String teamsLogRole(String actor, String member, String role) {
+    return '$actor changed the role of $member to $role';
+  }
+
+  @override
+  String teamsLogRemove(String actor, String member) {
+    return '$actor removed $member';
+  }
+
+  @override
+  String teamsLogLeave(String actor) {
+    return '$actor left the team';
+  }
+
+  @override
+  String teamsLogTransfer(String actor, String member) {
+    return '$actor made $member the owner';
+  }
+
+  @override
+  String teamsLogRotate(String actor, int epoch) {
+    return '$actor rotated the key (generation $epoch)';
+  }
+
+  @override
+  String get teamsRoleOwner => 'Owner';
+
+  @override
+  String get teamsRoleAdmin => 'Admin';
+
+  @override
+  String get teamsRoleEditor => 'Editor';
+
+  @override
+  String get teamsRoleViewer => 'Viewer';
+
+  @override
+  String get teamsErrorReadOnly => 'You can only view this team\'s resources.';
+
+  @override
+  String get teamsErrorUntrusted => 'The team is paused: its membership could not be verified.';
+
+  @override
+  String get teamsErrorCrossVault =>
+      'A team resource can only use resources of the same team. Copy the credential or jump host into the team first.';
+
+  @override
+  String get teamsErrorPersonalOnly => 'This kind of item stays in your personal vault.';
+
+  @override
+  String get teamsErrorAiBlocked => 'The team policy does not allow sending this resource to AI assistants.';
+
+  @override
+  String get teamsErrorOwnerCannotLeave => 'Make another member the owner before leaving.';
+
+  @override
+  String get teamsFilterAll => 'All';
+
+  @override
+  String get teamsFilterPersonal => 'Personal';
+
+  @override
+  String get teamsCopyTo => 'Copy to team…';
+
+  @override
+  String get teamsMoveTo => 'Move to team…';
+
+  @override
+  String get teamsMoveToPersonal => 'Move to personal';
+
+  @override
+  String get teamsPickTitle => 'Choose a team';
+
+  @override
+  String teamsCopied(String name) {
+    return 'Copied to $name';
+  }
+
+  @override
+  String teamsMoved(String name) {
+    return 'Moved to $name';
+  }
+
+  @override
+  String get teamsNewGroup => 'New team group';
+
+  @override
+  String get teamsNewGroupHint => 'Hosts created in a team group belong to the team.';
+
+  @override
+  String teamsPolicyAck(String host) {
+    return 'I checked this command for $host (team policy)';
   }
 }

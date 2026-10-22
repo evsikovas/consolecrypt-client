@@ -8,9 +8,13 @@
 //!   after biometrics / the device password ([`platform_device_keys`]);
 //!   [`UnsupportedDeviceKeys`] declines, [`InMemoryDeviceKeys`] for tests.
 //! * [`FileOpener`] / [`open_path`] / [`open_with`] / [`choose_app_and_open`] /
-//!   [`reveal`] — open local files with the default or a chosen application.
+//!   [`reveal`] — open local files with the default or a chosen application;
+//!   active content ([`active`]: files whose default action runs code) opens
+//!   as text instead.
+//! * [`mark_downloaded`] — Mark-of-the-Web / quarantine on downloaded files.
 //! * [`strip_verbatim_prefix`] — the user-facing form of Windows `\\?\` paths.
 
+pub mod active;
 mod auth;
 mod device_key;
 #[cfg(all(feature = "os-keychain", any(target_os = "macos", target_os = "ios")))]
@@ -20,12 +24,14 @@ mod device_key_windows;
 mod dirs;
 #[cfg(all(feature = "os-keychain", target_os = "linux"))]
 mod linux_secret_service;
+mod mark;
 pub mod open;
 #[cfg(all(feature = "os-keychain", not(target_os = "linux")))]
 mod os_store;
 mod paths;
 mod secure_store;
 
+pub use active::{classify_name, classify_path, is_active_name, is_active_path, ActiveContent};
 pub use auth::{OsAuthError, OsAuthKind};
 pub use device_key::{
     DeviceKeyProtector, DeviceKeyStatus, ExternalDeviceKeys, FakePrompt, InMemoryDeviceKeys,
@@ -40,6 +46,7 @@ pub use dirs::{
 };
 #[cfg(all(feature = "os-keychain", target_os = "linux"))]
 pub use linux_secret_service::{OsSecureStore, DEFAULT_SERVICE};
+pub use mark::{is_marked_downloaded, mark_downloaded};
 pub use open::{
     choose_app_and_open, open_path, open_with, reveal, AppRef, ChooseOutcome, FileOpener, Launcher,
     OpenError, OsFamily, SystemLauncher,

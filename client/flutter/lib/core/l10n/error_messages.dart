@@ -26,6 +26,13 @@
 /// | EnvelopeRateLimited (1.7) | envelopeRateLimited (`args.retry_after_seconds`) |
 /// | Internal | internal |
 /// | Unavailable | serverUnavailable |
+/// | AccountDisabled (1.8) | accountDisabled |
+/// | EnterpriseAuthRequired (1.8) | enterpriseAuthRequired |
+/// | IdentityConflict (1.8) | identityConflict |
+/// | DomainNotAllowed (1.8) | domainNotAllowed |
+/// | GroupRequired (1.8) | groupRequired |
+/// | MfaRequired (1.8) | mfaRequired |
+/// | IdpUnavailable (1.8) | idpUnavailable |
 /// | (transport failure) | serverUnreachable / offline |
 library;
 
@@ -90,6 +97,13 @@ String errorCodeMessage(AppLocalizations l, AppErrorCode code, {Map<String, Stri
     _ => l.errorEnvelopeRateLimited,
   },
   AppErrorCode.sharingReconciliationRequired => l.sharingReconcileHelp,
+  AppErrorCode.accountDisabled => l.errorAccountDisabled,
+  AppErrorCode.enterpriseAuthRequired => l.errorEnterpriseAuthRequired,
+  AppErrorCode.identityConflict => l.errorIdentityConflict,
+  AppErrorCode.domainNotAllowed => l.errorDomainNotAllowed,
+  AppErrorCode.groupRequired => l.errorGroupRequired,
+  AppErrorCode.mfaRequired => l.errorMfaRequired,
+  AppErrorCode.idpUnavailable => l.errorIdpUnavailable,
 };
 
 String? _reasonMessage(AppLocalizations l, AppException e) {
@@ -125,7 +139,10 @@ String? _reasonMessage(AppLocalizations l, AppException e) {
     AppErrorReason.requestNotFound => l.errorReasonRequestNotFound,
     AppErrorReason.secretNotStored => l.errorReasonSecretNotStored,
     AppErrorReason.sessionClosed => l.errorReasonSessionClosed,
+    AppErrorReason.teamReadOnly => l.teamsErrorReadOnly,
+    AppErrorReason.teamUntrusted => l.teamsErrorUntrusted,
     AppErrorReason.editorLaunchFailed => l.errorEditorLaunchFailed(args['detail'] ?? ''),
+    AppErrorReason.noTextEditor => l.errorNoTextEditor,
     AppErrorReason.applicationPickerFailed => l.errorApplicationPickerFailed(args['detail'] ?? ''),
     AppErrorReason.directoryNotFound => l.errorReasonDirectoryNotFound(args['path'] ?? ''),
     AppErrorReason.directoryNotEmpty => l.errorReasonDirectoryNotEmpty,
@@ -146,6 +163,9 @@ String? _reasonMessage(AppLocalizations l, AppException e) {
     AppErrorReason.currentPassphraseWrong => l.errorReasonCurrentPassphraseWrong,
     AppErrorReason.currentPasswordWrong => l.errorReasonCurrentPasswordWrong,
     AppErrorReason.accountMismatch => l.errorReasonAccountMismatch,
+    AppErrorReason.enterpriseCallbackInvalid => l.errorReasonEnterpriseCallbackInvalid,
+    AppErrorReason.enterpriseSignInTimeout => l.errorReasonEnterpriseSignInTimeout,
+    AppErrorReason.enterpriseBrowserUnavailable => l.errorReasonEnterpriseBrowserUnavailable,
   };
 }
 
@@ -158,6 +178,10 @@ String validationMessage(AppLocalizations l, String field, String rule) {
   if (field == 'shared_host' && rule == 'shared_route_requires_verified_plan') return l.sharingTunnelVerify;
   if (field == 'auto_start' && rule == 'shared_host_requires_verification') return l.sharingTunnelVerify;
   if (field == 'jump_chain') return l.validationJumpChainSelf;
+  if (field == 'vault' && rule == 'cross_vault') return l.teamsErrorCrossVault;
+  if (field == 'vault' && rule == 'personal_only') return l.teamsErrorPersonalOnly;
+  if (field == 'ai_context' && rule == 'blocked_by_team_policy') return l.teamsErrorAiBlocked;
+  if (field == 'role' && rule == 'owner_cannot_leave') return l.teamsErrorOwnerCannotLeave;
   final name = switch (field) {
     'name' => l.validationFieldName,
     'address' => l.validationFieldAddress,

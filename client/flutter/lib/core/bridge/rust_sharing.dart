@@ -24,9 +24,7 @@ final class RustSharingService implements SharingService, KubernetesSharingServi
 
   @override
   Future<List<SharingItem>> list({bool refresh = false}) async =>
-      (jsonDecode(await guard(() => rs.sharingList(refresh: refresh))) as List)
-          .map((v) => SharingItem.fromJson(v as Map<String, dynamic>))
-          .toList();
+      SharingItemList.fromJson(jsonDecode(await guard(() => rs.sharingList(refresh: refresh))));
   @override
   Future<SharingInvitation> inspect(String id) async =>
       SharingInvitation.fromJson(decodeObject(await guard(() => rs.sharingInspect(id: id))));
@@ -145,6 +143,15 @@ final class RustSharingService implements SharingService, KubernetesSharingServi
   );
   @override
   Future<void> delete(String id) => guard(() => rs.sharingDelete(id: id));
+  @override
+  Future<void> leave(String id) => guard(() => rs.sharingLeave(id: id));
+  @override
+  Future<List<SharingDeletedItem>> deleted() async => (jsonDecode(await guard(rs.sharingDeleted)) as List)
+      .map((v) => SharingDeletedItem.fromJson(v as Map<String, dynamic>))
+      .toList();
+  @override
+  Future<SharingItem> restore(String id) async =>
+      SharingItem.fromJson(decodeObject(await guard(() => rs.sharingRestore(id: id))));
   List<SharingOutboxEntry> _outbox(String raw) => (decodeObject(raw)['entries'] as List)
       .map((v) => SharingOutboxEntry.fromJson(v as Map<String, dynamic>))
       .toList();

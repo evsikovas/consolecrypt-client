@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -11,6 +12,8 @@ import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/hosts/connection_picker.dart';
+import 'package:consolecrypt/notes/note_models.dart';
+import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/rdp/rdp_clipboard.dart';
 import 'package:consolecrypt/rdp/rdp_controller.dart';
 import 'package:consolecrypt/rdp/rdp_fullscreen.dart';
@@ -37,7 +40,10 @@ class RdpScreen extends ConsumerStatefulWidget {
   ConsumerState<RdpScreen> createState() => _RdpScreenState();
 }
 
-class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserver {
+class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserver, NoteContextPublisher {
+  @override
+  ShellBranch get noteBranch => ShellBranch.rdp;
+
   bool _fullscreen = false;
   RdpWorkspaceController? _controller;
   String? _minimizedPhoneSession;
@@ -159,6 +165,15 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
       builder: (context, _) {
         final active = controller.active;
         _autoOpenPhone(active, visible);
+        publishNoteContext(
+          active?.hostId == null
+              ? null
+              : NoteContext(
+                  target: NoteObjectTarget(NoteObjectKind.rdpHost, active!.hostId!),
+                  label: active.title,
+                  icon: Icons.desktop_windows_outlined,
+                ),
+        );
         final body = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

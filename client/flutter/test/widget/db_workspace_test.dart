@@ -5,12 +5,15 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
 import 'package:consolecrypt/db/db_models.dart';
+import 'package:consolecrypt/db/db_object_details.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/db/db_workspace.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -45,7 +48,7 @@ DbSessionInfo _session({bool production = true, bool readOnly = true}) => DbSess
   transportSecurity: DbTransportSecurity.unverified,
 );
 
-class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiService {
+class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiService, DbObjectInspectService {
   _Service({this.production = true, this.readOnly = true});
   final bool production;
   bool readOnly;
@@ -152,6 +155,29 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiS
     ),
     DbQueryEvent(kind: DbQueryEventKind.done),
   ]);
+  @override
+  Future<DbJson> inspectObject(String sessionId, DbObjectRef object, {int? sampleDocuments}) async {
+    if (object.name != 'items') throw const DbWrongPassphrase();
+    return {
+      'sections': [
+        {
+          'id': 'general',
+          'fields': [
+            {'id': 'kind', 'value': 'table', 'kind': 'keyword'},
+            {'id': 'owner', 'value': 'app', 'kind': 'code'},
+          ],
+        },
+        {
+          'id': 'size',
+          'fields': [
+            {'id': 'rows', 'value': '1234', 'kind': 'estimate'},
+            {'id': 'total_size', 'value': '81920', 'kind': 'bytes'},
+          ],
+        },
+      ],
+    };
+  }
+
   @override
   Future<String> objectQuery(String sessionId, DbObjectRef object, {int limit = 100}) async =>
       'SELECT * FROM "public"."${object.name}" LIMIT $limit;';
@@ -485,6 +511,62 @@ void main() {
     });
   });
 
+  group('object details', () {
+    Future<void> menu(WidgetTester tester, String name) async {
+      await tester.tap(find.text(name), buttons: kSecondaryButton);
+      await settle(tester);
+      await tester.tap(find.text('Object details'));
+      await settle(tester);
+    }
+
+    testWidgets('show grouped, formatted facts with a copy button', (tester) async {
+      final service = _Service()..mixedTree = true;
+      await _pump(tester, service);
+      await menu(tester, 'items');
+      expect(find.byKey(const ValueKey('db-details-dialog')), findsOneWidget);
+      expect(find.text('General'), findsOneWidget);
+      expect(find.text('Size'), findsOneWidget);
+      expect(find.text('Table'), findsOneWidget, reason: 'the relation kind is translated');
+      expect(find.text('≈ 1,234'), findsOneWidget, reason: 'estimates are marked');
+      expect(find.text('80.0 KiB'), findsOneWidget, reason: 'sizes are human-readable');
+      expect(find.byKey(const ValueKey('db-details-copy')), findsOneWidget);
+      expect(find.textContaining('"sections"'), findsNothing, reason: 'no raw JSON');
+    });
+
+    testWidgets('a failure is a glass toast, never a Material snackbar', (tester) async {
+      final service = _Service()..mixedTree = true;
+      await _pump(tester, service);
+      await tester.tap(find.text('Views'));
+      await settle(tester);
+      await menu(tester, 'orders_view');
+      expect(find.byKey(const ValueKey('db-details-dialog')), findsNothing);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.textContaining('The database operation failed'), findsOneWidget, reason: 'shown by the glass toast');
+      expect(find.byWidgetPredicate((w) => '${w.runtimeType}' == '_GlassToastView'), findsOneWidget);
+    });
+
+    testWidgets('a raw MongoDB description is shown as an expandable JSON block', (tester) async {
+      await _pump(tester, _Service());
+      unawaited(
+        showAppDialog<void>(
+          tester.element(find.byType(DbWorkspace)),
+          secure: true,
+          builder: (_) => DbObjectDetailsDialog(
+            title: 'orders',
+            document: SecretText('{"database": "shop", "indexes": [{"name": "_id_"}]}'),
+          ),
+        ),
+      );
+      await settle(tester);
+      final json = find.byKey(const ValueKey('db-details-json'));
+      expect(json, findsOneWidget);
+      expect(find.descendant(of: json, matching: find.textContaining('"database": "shop"')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('db-details-json-toggle')));
+      await settle(tester);
+      expect(json, findsNothing);
+    });
+  });
+
   testWidgets('production blocks write review even if a backend mistakenly offers a ticket', (tester) async {
     final service = _Service()..risk = DbQueryRisk.write;
     await _pump(tester, service);
@@ -687,10 +769,13 @@ void main() {
     expect(service.commits, isEmpty);
     // The review shows the values, not placeholders.
     final sql = find.byKey(const ValueKey('db-query-review-sql'));
-    expect(
-      find.descendant(of: sql, matching: find.textContaining('SET "name" = \'bravo\' WHERE "id" = 2;')),
-      findsOneWidget,
-    );
+    for (final part in ['"name" = \'bravo\'', '"id" = 2;']) {
+      expect(
+        find.descendant(of: sql, matching: find.textContaining(part)),
+        findsOneWidget,
+        reason: part,
+      );
+    }
     expect(find.descendant(of: sql, matching: find.textContaining('{{p')), findsNothing);
     await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), 'wrong');
     await tester.pump();

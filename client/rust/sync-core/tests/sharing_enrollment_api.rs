@@ -384,6 +384,7 @@ impl Http {
                 supports_kube_contexts: false,
                 supports_db_connections: false,
                 supports_owner_online_enrollment_v1: true,
+                supports_notes_v1: false,
             }),
             reply: Mutex::new(Value::Null),
             public: keys.public_keys().signing,

@@ -31,6 +31,12 @@ pub enum ApiError {
     /// This device was revoked; all its sessions are gone.
     #[error("this device has been revoked")]
     DeviceRevoked,
+    /// Enterprise sign-in (protocol 1.8): the account was disabled by the
+    /// administrator or in the IdP/directory (`403 account_disabled`, also
+    /// from `POST /v1/auth/refresh` after the periodic re-check). Every
+    /// session was revoked; the local tokens are cleared.
+    #[error("the account was disabled by the administrator")]
+    AccountDisabled,
     /// Login refused because this device id was revoked: generate a new
     /// device identity (id + keys) and log in again.
     #[error("device identity revoked; a new device identity is required")]
@@ -87,6 +93,7 @@ impl ApiError {
             }
             ApiError::DeviceIdentityConflict => Some(ErrorCode::AlreadyExists),
             ApiError::RefreshTokenReused => Some(ErrorCode::RefreshTokenReused),
+            ApiError::AccountDisabled => Some(ErrorCode::AccountDisabled),
             ApiError::UpgradeRequired { .. } => Some(ErrorCode::UpgradeRequired),
             ApiError::RateLimited { .. } => Some(ErrorCode::RateLimited),
             ApiError::RequestProofRejected { .. } => Some(ErrorCode::InvalidProof),
@@ -100,7 +107,9 @@ impl ApiError {
             ApiError::Server { status, .. } | ApiError::InvalidResponse { status, .. } => {
                 Some(*status)
             }
-            ApiError::DeviceRevoked | ApiError::DeviceIdentityRevoked => Some(403),
+            ApiError::DeviceRevoked
+            | ApiError::DeviceIdentityRevoked
+            | ApiError::AccountDisabled => Some(403),
             ApiError::DeviceIdentityConflict => Some(409),
             ApiError::UpgradeRequired { .. } => Some(426),
             ApiError::RateLimited { .. } => Some(429),

@@ -91,6 +91,14 @@ final class RustBackend {
   /// Synced profiles whose session expired / were signed out in this run.
   final Set<String> signedOut = {};
 
+  /// Synced profiles whose account the administrator disabled (enterprise
+  /// sign-in, `account_disabled`): locked until they sign in again.
+  /// Persisted in the device-local UI store.
+  final Set<String> accountDisabled = {};
+
+  /// Remembered sign-ins (device-local, non-secret).
+  final signInHints = ValueStreamController<SignInHints>(SignInHints.empty);
+
   /// Account ids learned at sign-in (not part of `ProfileInfo`).
   final Map<String, String> userIds = {};
 
@@ -122,6 +130,8 @@ final class RustBackend {
   bool _disposed = false;
 
   static const kitPendingKey = 'kit_pending_profiles';
+  static const accountDisabledKey = 'account_disabled_profiles';
+  static const signInHintsKey = 'sign_in_hints';
   static const localSettingsKey = 'local_settings';
 
   // ---- start-up ---------------------------------------------------------------------
@@ -134,6 +144,15 @@ final class RustBackend {
     _prompts = rs_app.corePrompts().listen((json) => unawaited(_onPrompt(json)), onError: (Object _) {});
     await LocalAuthChannel.instance.reportToCore();
     _legacyKitPending.addAll(await _readStringList(kitPendingKey));
+    accountDisabled.addAll(await _readStringList(accountDisabledKey));
+    final hints = await storeGet(signInHintsKey);
+    if (hints != null) {
+      try {
+        signInHints.value = SignInHints.fromJson(decodeObject(hints));
+      } on FormatException {
+        // Corrupt hints: start over (they are only conveniences).
+      }
+    }
     final settings = await storeGet(localSettingsKey);
     if (settings != null) {
       try {
@@ -268,6 +287,7 @@ final class RustBackend {
     final url = Uri.tryParse(a['server_url'] as String? ?? '');
     final email = a['email'] as String? ?? '';
     final id = a['id']! as String;
+    if (accountDisabled.contains(id)) return AuthState(lastServerUrl: url, accountDisabled: true);
     if (url == null || signedOut.contains(id)) return AuthState(lastServerUrl: url);
     return AuthState(
       session: AccountSession(
@@ -559,6 +579,8 @@ final class RustBackend {
           final id = activeInfo?['id'] as String?;
           if (id != null) signedOut.add(id);
           _publishState();
+        case 'account_disabled':
+          await markAccountDisabled();
         case 'device_revoked':
           final revoked = e['device_id'];
           newDevices.value = ([...newDevices.value.where((n) => n.deviceId.value != revoked)]);
@@ -633,6 +655,36 @@ final class RustBackend {
 
   // ---- device-local UI store ------------------------------------------------------------
 
+  /// `account_disabled` for the open synced profile: lock it, remember the
+  /// state (survives restarts) and show "Access disabled by the
+  /// administrator". Local data stays encrypted on the device.
+  Future<void> markAccountDisabled() async {
+    final a = activeInfo;
+    final id = a?['id'] as String?;
+    if (id == null || a?['kind'] != 'synced') return;
+    signedOut.add(id);
+    if (accountDisabled.add(id)) await _storeDisabled();
+    try {
+      await guard(rs_prof.vaultLock);
+    } on AppException {
+      // Not unlocked.
+    }
+    await refreshState();
+  }
+
+  Future<void> clearAccountDisabled(String profileId) async {
+    if (accountDisabled.remove(profileId)) await _storeDisabled();
+    _publishState();
+  }
+
+  Future<void> _storeDisabled() =>
+      storeSet(accountDisabledKey, accountDisabled.isEmpty ? null : encodeJson(accountDisabled.toList()..sort()));
+
+  Future<void> saveSignInHints(SignInHints hints) async {
+    signInHints.value = hints;
+    await storeSet(signInHintsKey, encodeJson(hints.toJson()));
+  }
+
   Future<String?> storeGet(String key) => guard(() => rs_app.uiStoreGet(key: key));
 
   Future<void> storeSet(String key, String? value) => guard(() => rs_app.uiStoreSet(key: key, value: value));
@@ -686,6 +738,7 @@ final class RustBackend {
       aiProviders,
       vaultSettings,
       tunnelRuntime,
+      signInHints,
     ]) {
       await c.close();
     }

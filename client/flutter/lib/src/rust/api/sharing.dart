@@ -8,6 +8,8 @@ import 'error.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `link_notes`
+
 Future<String> sharingStatus() => RustLib.instance.api.crateApiSharingSharingStatus();
 
 Future<String> sharingIdentity() => RustLib.instance.api.crateApiSharingSharingIdentity();
@@ -90,6 +92,15 @@ Future<String> sharingRotate({required String id, required String grantsJson}) =
 
 Future<void> sharingDelete({required String id}) => RustLib.instance.api.crateApiSharingSharingDelete(id: id);
 
+/// Protocol 1.8: this account leaves a received item on all its devices.
+Future<void> sharingLeave({required String id}) => RustLib.instance.api.crateApiSharingSharingLeave(id: id);
+
+/// Protocol 1.8: owner-deleted items that are still restorable.
+Future<String> sharingDeleted() => RustLib.instance.api.crateApiSharingSharingDeleted();
+
+/// Protocol 1.8: republish a deleted item; call `sharing_flush` afterwards.
+Future<String> sharingRestore({required String id}) => RustLib.instance.api.crateApiSharingSharingRestore(id: id);
+
 Future<String> sharingOutbox() => RustLib.instance.api.crateApiSharingSharingOutbox();
 
 Future<String> sharingFlush() => RustLib.instance.api.crateApiSharingSharingFlush();
@@ -131,3 +142,21 @@ Future<String> sharingCopySecretCredential({required String id}) =>
 
 Future<String> sharingRefreshBoundHostExpected({required String id, required String address, required int port}) =>
     RustLib.instance.api.crateApiSharingSharingRefreshBoundHostExpected(id: id, address: address, port: port);
+
+/// `Vec<ShareNoteLinkDto>`: local objects linked to shares for notes.
+Future<String> shareNoteLinks() => RustLib.instance.api.crateApiSharingShareNoteLinks();
+
+/// Links `object` (`host:<id>`…) to a share; an empty `share_id` unlinks it.
+Future<void> shareNoteLink({required String object, required String shareId}) =>
+    RustLib.instance.api.crateApiSharingShareNoteLink(object: object, shareId: shareId);
+
+/// `SharedNotesDto` of one share (the owner device also issues keys and rekeys).
+Future<String> shareNotes({required String shareId}) =>
+    RustLib.instance.api.crateApiSharingShareNotes(shareId: shareId);
+
+/// Creates or updates this user's note; returns `SharedNoteDto`.
+Future<String> shareNoteSave({required String shareId, required String noteJson}) =>
+    RustLib.instance.api.crateApiSharingShareNoteSave(shareId: shareId, noteJson: noteJson);
+
+Future<void> shareNoteDelete({required String shareId, required String noteId}) =>
+    RustLib.instance.api.crateApiSharingShareNoteDelete(shareId: shareId, noteId: noteId);

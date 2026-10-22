@@ -140,4 +140,12 @@ void main() {
     expect(expected(DbTlsMode.disable, DbRouteKind.proxy, loopback: true), DbTransportSecurity.plaintext);
     expect(expected(DbTlsMode.disable, DbRouteKind.direct), DbTransportSecurity.plaintext);
   });
+
+  test('export options escape spreadsheet formulas unless switched off', () {
+    expect(const DbExportOptions(format: DbExportFormat.csv).toJson()['escape_formulas'], isTrue);
+    expect(
+      const DbExportOptions(format: DbExportFormat.tsv, escapeFormulas: false).toJson(),
+      containsPair('escape_formulas', false),
+    );
+  });
 }

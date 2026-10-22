@@ -25,7 +25,7 @@ use cc_sync_core::api::{ShareKinds, SharingApi};
 use cc_sync_core::ApiError;
 use cc_vault_core::DeviceIdentity;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr as _;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -54,6 +54,12 @@ async fn wait_generation<T, E: Into<AppError>>(
 
 fn invalid(reason: &'static str) -> AppError {
     AppError::invalid("sharing", reason)
+}
+
+/// A shared entry that failed signature, trust-state or ciphertext checks:
+/// skipped from the list (and counted), never shown or used.
+fn unreadable_entry(error: &AppError) -> bool {
+    matches!(error, AppError::Crypto(_))
 }
 
 fn integrity(error: impl std::fmt::Display + 'static) -> AppError {
@@ -118,6 +124,9 @@ struct EncryptedOutboxEntry {
     expected_manifest_revision: u64,
     expected_manifest_hash: Bytes,
     blocked_reason: Option<String>,
+    /// Protocol 1.8: a Create that republishes an owner-deleted item.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    restored_from: Option<ShareId>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -265,6 +274,7 @@ impl Environment {
                 manifest.map_or([0; 32], |checkpoint| checkpoint.hash),
             ),
             blocked_reason: None,
+            restored_from: None,
         });
         if !self
             .workspace
@@ -476,7 +486,27 @@ fn item_dto(
                 })
             })
             .collect::<AppResult<_>>()?,
+        departed_user_ids: vec![],
     })
+}
+
+/// Owner view of recipients who left (protocol 1.8): hide them from the
+/// member lists so the next access change drops them from the manifest.
+fn apply_departures(items: &mut [SharingItemDto], departed: &BTreeMap<ShareId, BTreeSet<UserId>>) {
+    for item in items.iter_mut().filter(|item| item.owned) {
+        let Some(users) = ShareId::from_str(&item.share_id)
+            .ok()
+            .and_then(|id| departed.get(&id))
+        else {
+            continue;
+        };
+        let users: BTreeSet<String> = users.iter().map(ToString::to_string).collect();
+        item.members
+            .retain(|member| !users.contains(&member.user_id));
+        item.member_roles
+            .retain(|member| !users.contains(&member.identity.user_id));
+        item.departed_user_ids = users.into_iter().collect();
+    }
 }
 
 /// Ordinary UI metadata never serializes a SecretValue, even temporarily.
@@ -638,6 +668,7 @@ impl AppCore {
             preview_json: None,
             members: vec![],
             member_roles: vec![],
+            departed_user_ids: vec![],
         })
     }
     async fn sharing_gate<'a>(
@@ -739,17 +770,27 @@ impl AppCore {
     }
 
     pub async fn sharing_list(&self, refresh: bool) -> AppResult<Vec<SharingItemDto>> {
+        Ok(self.sharing_list_report(refresh).await?.items)
+    }
+
+    /// [`AppCore::sharing_list`] that skips (and counts) entries which cannot
+    /// be read — undecodable on the wire, or failing signature, trust-state
+    /// or ciphertext verification — instead of failing the whole list.
+    /// Network, lock and reconciliation errors still fail it.
+    pub async fn sharing_list_report(&self, refresh: bool) -> AppResult<SharingListDto> {
+        let mut unreadable = 0u32;
         let session = self.session().await?;
         let _gate = self.sharing_gate(&session).await?;
         let mut env = self.sharing_environment(session.clone(), refresh).await?;
         let store = env.store()?;
         let mut remote = BTreeMap::new();
+        let mut departed: BTreeMap<ShareId, BTreeSet<UserId>> = BTreeMap::new();
         if refresh {
             let mut after = None;
             let mut complete = false;
             for _ in 0..100 {
-                let page = env
-                    .wait(env.transport()?.list_shares_including(
+                let (page, skipped) = env
+                    .wait(env.transport()?.list_shares_checked(
                         after,
                         100,
                         ShareKinds {
@@ -760,7 +801,14 @@ impl AppCore {
                         },
                     ))
                     .await?;
+                unreadable = unreadable.saturating_add(skipped);
                 self.sharing_check(&env).await?;
+                for departure in page.departures {
+                    departed
+                        .entry(departure.share_id)
+                        .or_default()
+                        .insert(departure.user_id);
+                }
                 for item in page.items {
                     remote.insert(item.access.manifest.share_id, item);
                 }
@@ -816,9 +864,17 @@ impl AppCore {
             };
             let mut blocked = indexed.blocked;
             let snapshot = if let Some(current) = remote.remove(&binding.share_id) {
-                let verified = self
+                let verified = match self
                     .sharing_refresh_state(&env, &store, &binding, current)
-                    .await?;
+                    .await
+                {
+                    Ok(verified) => verified,
+                    Err(error) if unreadable_entry(&error) => {
+                        unreadable = unreadable.saturating_add(1);
+                        continue;
+                    }
+                    Err(error) => return Err(error),
+                };
                 blocked = false;
                 verified
             } else if refresh
@@ -831,9 +887,20 @@ impl AppCore {
                     .await?
                 {
                     Ok(current) => {
-                        blocked = false;
-                        self.sharing_refresh_state(&env, &store, &binding, current)
-                            .await?
+                        match self
+                            .sharing_refresh_state(&env, &store, &binding, current)
+                            .await
+                        {
+                            Ok(verified) => {
+                                blocked = false;
+                                verified
+                            }
+                            Err(error) if unreadable_entry(&error) => {
+                                unreadable = unreadable.saturating_add(1);
+                                continue;
+                            }
+                            Err(error) => return Err(error),
+                        }
                     }
                     Err(error) if matches!(error.status(), Some(403 | 404)) => {
                         blocked = true;
@@ -861,13 +928,21 @@ impl AppCore {
         }
         let mut items = blocked_items;
         for current in remote.into_values() {
-            if !env.supports(current.access.manifest.kind) {
-                let mut item = item_dto(&env, &current, SharingTrustDto::Blocked, None)?;
-                item.blocked_reason = Some("unsupported_sharing_kind".into());
-                items.push(item);
-                continue;
+            let supported = env.supports(current.access.manifest.kind);
+            let trust = if supported {
+                SharingTrustDto::Unverified
+            } else {
+                SharingTrustDto::Blocked
+            };
+            match item_dto(&env, &current, trust, None) {
+                Ok(mut item) => {
+                    if !supported {
+                        item.blocked_reason = Some("unsupported_sharing_kind".into());
+                    }
+                    items.push(item);
+                }
+                Err(_) => unreadable = unreadable.saturating_add(1),
             }
-            items.push(item_dto(&env, &current, SharingTrustDto::Unverified, None)?);
         }
         // Only after all network/history work finishes, open accepted cached
         // projections. Shutdown cancels the remaining work and zeroizes DTOs.
@@ -876,13 +951,22 @@ impl AppCore {
             let projection = if blocked {
                 None
             } else {
-                env.wait(async {
-                    store
-                        .open_cached(&snapshot, env.pin.device, env.identity.as_ref())
-                        .await
-                        .map_err(integrity)
-                })
-                .await?
+                match env
+                    .wait(async {
+                        store
+                            .open_cached(&snapshot, env.pin.device, env.identity.as_ref())
+                            .await
+                            .map_err(integrity)
+                    })
+                    .await
+                {
+                    Ok(projection) => projection,
+                    Err(error) if unreadable_entry(&error) => {
+                        unreadable = unreadable.saturating_add(1);
+                        continue;
+                    }
+                    Err(error) => return Err(error),
+                }
             };
             self.sharing_check(&env).await?;
             let trust = if blocked {
@@ -894,15 +978,17 @@ impl AppCore {
             } else {
                 SharingTrustDto::Verified
             };
-            items.push(item_dto(
-                &env,
-                snapshot.state(),
-                trust,
-                projection.as_ref(),
-            )?);
+            match item_dto(&env, snapshot.state(), trust, projection.as_ref()) {
+                Ok(item) => items.push(item),
+                Err(_) => unreadable = unreadable.saturating_add(1),
+            }
         }
+        apply_departures(&mut items, &departed);
         self.sharing_check(&env).await?;
-        Ok(items)
+        if unreadable > 0 {
+            tracing::warn!(unreadable, "unreadable shared entries skipped");
+        }
+        Ok(SharingListDto { items, unreadable })
     }
 
     fn sharing_validate_dispatch(
@@ -1107,6 +1193,7 @@ impl AppCore {
                             .create_share(&CreateShareRequest {
                                 access: entry.state.access.clone(),
                                 revision: entry.state.revision.clone(),
+                                restored_from: entry.restored_from,
                             })
                             .await
                     }
@@ -1155,6 +1242,10 @@ impl AppCore {
                     }
                     match error {
                         ApiError::Network(_) | ApiError::Timeout => break,
+                        error if error.status() == Some(410) && entry.restored_from.is_some() => {
+                            self.sharing_block(&mut env, mutation, "restore_unavailable")
+                                .await?
+                        }
                         error if error.status() == Some(409) => {
                             self.sharing_block(&mut env, mutation, "conflict").await?
                         }
@@ -1382,6 +1473,8 @@ impl AppCore {
                 supports_kube_contexts: false,
                 supports_db_connections: false,
                 supports_owner_online_enrollment_v1: false,
+                supports_leave: false,
+                supports_restore: false,
             });
         }
         if session.kind().await? != ProfileKind::Synced {
@@ -1397,11 +1490,14 @@ impl AppCore {
                 supports_kube_contexts: false,
                 supports_db_connections: false,
                 supports_owner_online_enrollment_v1: false,
+                supports_leave: false,
+                supports_restore: false,
             });
         }
         let _gate = self.sharing_gate(&session).await?;
         let env = self.sharing_environment(session.clone(), true).await?;
         self.sharing_check(&env).await?;
+        let server = self.sharing_server_capabilities(&env).await?;
         Ok(SharingStatusDto {
             enabled: true,
             locked: false,
@@ -1424,7 +1520,21 @@ impl AppCore {
             supports_kube_contexts: env.pin.supports_kube_contexts,
             supports_db_connections: env.pin.supports_db_connections,
             supports_owner_online_enrollment_v1: env.pin.supports_owner_online_enrollment_v1,
+            supports_leave: server.share_leave,
+            supports_restore: server.share_restore,
         })
+    }
+
+    /// Optional server features from `/v1/meta` (protocol 1.8 leave/restore).
+    /// An older or unreachable server reads as "everything off".
+    async fn sharing_server_capabilities(
+        &self,
+        env: &Environment,
+    ) -> AppResult<cc_protocol::meta::ServerCapabilities> {
+        let api = env.session.api()?;
+        let meta = env.raw(api.meta()).await?;
+        self.sharing_check(env).await?;
+        Ok(meta.map(|info| info.capabilities).unwrap_or_default())
     }
 
     pub async fn sharing_identity(&self) -> AppResult<SharingIdentityDto> {
@@ -1439,7 +1549,14 @@ impl AppCore {
         let session = self.session().await?;
         let _gate = self.sharing_gate(&session).await?;
         let env = self.sharing_environment(session.clone(), true).await?;
-        let recipient = env.wait(env.transport()?.sharing_recipient(&email)).await?;
+        // Keep the address out of URLs whenever the server allows it.
+        let post = self
+            .sharing_server_capabilities(&env)
+            .await?
+            .recipient_lookup_post;
+        let recipient = env
+            .wait(env.transport()?.sharing_recipient_lookup(&email, post))
+            .await?;
         self.sharing_check(&env).await?;
         Ok(SharingRecipientDto {
             user_id: recipient.user_id.to_string(),
@@ -1861,6 +1978,19 @@ impl AppCore {
         projection: SharedProjection,
         recipients: Vec<SharingGrantDto>,
     ) -> AppResult<SharingItemDto> {
+        let members = grants(env.pin.instance, env.own_member(), recipients)?;
+        self.sharing_publish_members(env, projection, members, None)
+            .await
+    }
+
+    /// `members` are verified identities including this owner device.
+    async fn sharing_publish_members(
+        &self,
+        env: &mut Environment,
+        projection: SharedProjection,
+        members: Vec<SharingMember>,
+        restored_from: Option<ShareId>,
+    ) -> AppResult<SharingItemDto> {
         env.require_kind(projection.kind())?;
         if projection.carries_secrets() {
             env.require_kind(SharedItemKind::Secret)?;
@@ -1887,7 +2017,7 @@ impl AppCore {
             access_epoch: 1,
             previous_manifest_hash: Bytes::from([0; 32]),
             kind: context.kind,
-            members: grants(env.pin.instance, env.own_member(), recipients)?,
+            members,
         };
         let access = env
             .identity
@@ -1904,6 +2034,9 @@ impl AppCore {
         // Persist the recoverable ciphertext request before the independent
         // cache pin. Cancellation here cannot lose the publication request.
         env.queue(QueuedKind::Create, binding.clone(), state.clone(), None)?;
+        if let Some(entry) = env.workspace.outbox.last_mut() {
+            entry.restored_from = restored_from;
+        }
         self.sharing_save(env).await?;
         let store = env.store()?;
         let accepted = env
@@ -2127,3 +2260,10 @@ impl AppCore {
 
 #[path = "sharing_secret_api.rs"]
 mod sharing_secrets;
+
+#[path = "sharing_membership_api.rs"]
+mod sharing_membership;
+
+#[path = "sharing_notes.rs"]
+mod notes;
+pub use notes::{ShareNoteLinkDto, SharedNoteDto, SharedNoteInputDto, SharedNotesDto};
