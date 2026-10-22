@@ -17359,6 +17359,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wrong vault passphrase.'**
   String get vaultPassphraseConfirmWrong;
+
+  /// Title of the single reusable query tab that shows the first rows of a table opened from the structure tree; name is the table name.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} — data'**
+  String dbPreviewTabTitle(String name);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

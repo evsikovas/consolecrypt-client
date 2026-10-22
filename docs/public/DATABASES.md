@@ -129,9 +129,9 @@ ClickHouse — профиль `readonly=1`, в Redis — ACL `+@read -@write`, �
 выполнением показывается в окне проверки целиком, и выполнить его можно только
 после ввода пароля хранилища. Это касается и опасных запросов (`DROP`,
 `TRUNCATE`, `UPDATE` или `DELETE` без `WHERE`, `FLUSHALL`, удаление
-коллекции), и правок ячеек: в проверке правок видны сами новые значения. Команда Redis `KEYS` не
-выполняется никогда: вместо неё предлагается такой же `SCAN`, который можно
-открыть в новой вкладке.
+коллекции), и правок ячеек: в проверке правок видны сами новые значения.
+Команда Redis `KEYS` не выполняется никогда: вместо неё предлагается такой же
+`SCAN`, который можно добавить в редактор.
 
 ### Общий доступ
 
@@ -178,12 +178,23 @@ ClickHouse — профиль `readonly=1`, в Redis — ACL `+@read -@write`, �
   TTL. Ключи читаются порциями через `SCAN`.
 - **MongoDB**: базы → коллекции → индексы.
 
+Двойной щелчок по таблице, представлению, коллекции или ключу Redis и пункт
+«Первые 100 строк» сразу показывают данные внизу. Для этого есть одна
+вкладка просмотра («items — данные»): следующий объект открывается в ней же,
+новые вкладки не плодятся. Если изменить текст этой вкладки, она становится
+обычной и больше не перезаписывается.
+
 В меню объекта: «Первые 100 строк», «Показать DDL» (для Redis — описание
 ключа, для MongoDB — параметры коллекции и индексы), «Вставить имя» и
 «Сведения об объекте». DDL показывается блоком кода с номерами строк и
 подсветкой, каждый оператор (`CREATE TABLE`, каждый `CREATE INDEX`) отделён
 чертой, длинные строки прокручиваются вбок; кнопки «Копировать» и «Открыть в
-редакторе» (DDL открывается в новой вкладке). Для коллекций MongoDB есть «Схема по выборке
+редакторе».
+Сгенерированный текст — DDL из «Открыть в редакторе», запрос из истории,
+черновик помощника, предложенный `SCAN` — добавляется в текущую вкладку
+ниже уже написанного, через пустую строку; курсор встаёт в начало вставки,
+ничего не выполняется. Если открыта вкладка просмотра, текст уходит в
+последнюю вкладку редактора; новая вкладка создаётся, только если других нет. Для коллекций MongoDB есть «Схема по выборке
 документов»: типы полей и доля документов, в которых поле встречается.
 
 ### Редактор и выполнение
@@ -298,7 +309,7 @@ Esc отменяет, Tab переходит к следующей ячейке.
 Согласие можно отозвать кнопкой в панели помощника.
 
 Ответ — черновик с пояснением и списком переданного контекста. «Принять
-черновик» открывает его в новой вкладке редактора; сам помощник ничего не
+черновик» добавляет его в текущую вкладку редактора; сам помощник ничего не
 выполняет — запрос запускаете вы, с обычными проверками. Для
 прод-подключений черновики DDL только показываются.
 
@@ -402,7 +413,8 @@ Non-production connections also open read-only; the lock button allows writes
 until the connection closes. Changing statements are shown in full for review
 and run only after the vault passphrase is entered. This covers dangerous ones
 (`DROP`, `TRUNCATE`, `UPDATE` or `DELETE` without `WHERE`, `FLUSHALL`,
-dropping a collection) and cell edits, whose review shows the new values. Redis `KEYS` never runs; the equivalent `SCAN` is offered in a new tab.
+dropping a collection) and cell edits, whose review shows the new values.
+Redis `KEYS` never runs; the equivalent `SCAN` is offered for the editor.
 
 ### Sharing
 
@@ -435,6 +447,16 @@ Object menus offer the first 100 rows, DDL (a numbered, highlighted code
 block per statement, with Copy and Open in editor), the quoted identifier and
 details; MongoDB collections can infer a schema from a sample. Redis keys are
 grouped by `:` and read with `SCAN`.
+
+Double-clicking a table, view, collection or Redis key, or choosing the first
+100 rows, shows the data below right away in a single preview tab ("items —
+data"): the next object reuses it instead of adding tabs. Editing the preview
+tab's text turns it into an ordinary tab that is never overwritten. Generated
+text — DDL from Open in editor, a history entry, an AI draft, the suggested
+`SCAN` — is added to the current tab below the existing text after a blank
+line, with the caret at its start, and never runs. While the preview tab is
+shown it goes to the last editor tab; a new tab is created only when there is
+none.
 
 The editor numbers lines, highlights syntax, completes keywords, tables and
 columns at the caret (including aliases), formats, toggles comments and finds
@@ -490,5 +512,5 @@ selected rows. Schema metadata, selected rows, row samples (up to 20) and one
 read-only probe (up to 50 rows) are shared only with per-request consent;
 everything starts off. Passwords, connection strings and server addresses are
 never sent. Strict privacy pseudonymizes identifiers for external providers.
-Drafts open in a new editor tab and never run automatically; production DDL
+Drafts are added to the current editor tab and never run automatically; production DDL
 drafts are shown only.

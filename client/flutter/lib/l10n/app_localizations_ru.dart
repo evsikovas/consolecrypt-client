@@ -9956,4 +9956,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get vaultPassphraseConfirmWrong => 'Неверный пароль хранилища.';
+
+  @override
+  String dbPreviewTabTitle(String name) {
+    return '$name — данные';
+  }
 }

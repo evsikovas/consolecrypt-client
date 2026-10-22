@@ -114,18 +114,34 @@ final class _Row {
   bool blockStart = false, blockEnd = false;
 }
 
+/// Objects whose first rows open in the data preview tab.
+const _previewable = [
+  DbObjectKind.table,
+  DbObjectKind.view,
+  DbObjectKind.materializedView,
+  DbObjectKind.collection,
+  DbObjectKind.redisKey,
+  DbObjectKind.redisDatabase,
+];
+
 class DbObjectTree extends ConsumerStatefulWidget {
   const DbObjectTree({
     required this.session,
     required this.service,
     required this.onDraft,
     required this.onInsert,
+    required this.onPreview,
     this.onSelect,
     super.key,
   });
   final DbSessionInfo session;
   final DbQueryService service;
+
+  /// Generated text for the editor ([onDraft]) or an identifier for the caret.
   final ValueChanged<String> onDraft, onInsert;
+
+  /// The first rows of [object]: [text] is its read query, run at once.
+  final void Function(DbObjectRef object, String text) onPreview;
   final ValueChanged<DbObjectRef>? onSelect;
   @override
   ConsumerState<DbObjectTree> createState() => _DbObjectTreeState();
@@ -199,7 +215,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
           return;
         case 'query':
           final text = await widget.service.objectQuery(widget.session.id, object);
-          if (_current) widget.onDraft(text);
+          if (_current) widget.onPreview(object, text);
           return;
         case 'ddl':
           value = await widget.service.ddl(widget.session.id, object);
@@ -330,14 +346,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
 
   /// Actions of one object, offered from the row menu and right click.
   List<GlassMenuEntry<String>> _menu(AppLocalizations l, DbObjectRef object) => [
-    if (const [
-      DbObjectKind.table,
-      DbObjectKind.view,
-      DbObjectKind.materializedView,
-      DbObjectKind.collection,
-      DbObjectKind.redisKey,
-      DbObjectKind.redisDatabase,
-    ].contains(object.kind))
+    if (_previewable.contains(object.kind))
       GlassMenuItem(value: 'query', label: l.dbFirstRows, icon: Icons.table_rows_outlined),
     GlassMenuItem(value: 'insert', label: l.dbInsertName, icon: Icons.input_rounded),
     if (_describable.contains(object.kind)) GlassMenuItem(value: 'ddl', label: l.dbDdl, icon: Icons.code_rounded),
@@ -440,7 +449,12 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
             unawaited(_menuAt(object, Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1))),
         onLongPressStart: (details) =>
             unawaited(_menuAt(object, Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1))),
-        onDoubleTap: node.hasChildren ? () => _toggle(object) : () => unawaited(_action('insert', object)),
+        // Tables and views show their first rows; other branches open.
+        onDoubleTap: _previewable.contains(object.kind)
+            ? () => unawaited(_action('query', object))
+            : node.hasChildren
+            ? () => _toggle(object)
+            : () => unawaited(_action('insert', object)),
         child: GlassInteractive(
           key: ValueKey('db-object-${object.id}'),
           selected: selected,

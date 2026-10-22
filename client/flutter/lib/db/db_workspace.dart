@@ -39,7 +39,14 @@ final class _QueryTab {
   int resultIndex = 0;
   List<int> selectedRows = [];
   bool preparing = false, stale = false;
+
+  /// The data preview tab: the object whose first rows it shows and the
+  /// query it holds. The next preview replaces both; editing the text makes
+  /// it an ordinary tab, so typed text is never overwritten.
+  String? previewName, previewText;
+  bool get preview => previewName != null;
   void dispose() {
+    previewName = previewText = null;
     controller.clear();
     controller.dispose();
     result.dispose();
@@ -66,6 +73,10 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   DbSessionInfo? _session;
   final _tabs = <_QueryTab>[];
   int _active = 0, _nextId = 1, _generation = 0;
+
+  /// The editor tab used last; generated text goes there while the data
+  /// preview tab is shown.
+  _QueryTab? _lastEditor;
   bool _connecting = false, _failed = false;
   Object? _connectError;
   String _view = 'query';
@@ -151,20 +162,78 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
       ),
     );
     tab.result.addListener(_changed);
+    tab.controller.addListener(() {
+      if (mounted && tab.preview && tab.controller.text != tab.previewText) {
+        tab
+          ..previewName = null
+          ..previewText = null;
+        _lastEditor = tab;
+        _changed();
+      }
+    });
     _tabs.add(tab);
-    _active = _tabs.length - 1;
+    _select(_tabs.length - 1);
+  }
+
+  void _select(int index) {
+    _active = index;
+    final tab = _tabs[index];
+    if (!tab.preview) _lastEditor = tab;
   }
 
   void _changed() {
     if (_current) setState(() {});
   }
 
+  /// Generated text (DDL, history, AI, suggestions) goes below the text of
+  /// the current editor tab without running. While the data preview tab is
+  /// shown it goes to the editor tab used last; a tab is created only when
+  /// there is none.
   void _draft(String text) {
-    if (!_current) return;
+    if (!_current || _session == null) return;
     setState(() {
-      _addTab(text);
+      var tab = _tab;
+      if (tab == null || tab.preview) {
+        final last = _lastEditor;
+        tab = last != null && _tabs.contains(last) && !last.preview ? last : _tabs.where((t) => !t.preview).lastOrNull;
+      }
+      if (tab == null) {
+        _addTab();
+        tab = _tabs.lastOrNull;
+        if (tab == null || tab.preview) return;
+      }
+      _select(_tabs.indexOf(tab));
+      tab.controller.appendStatement(text, sql: _session!.engine.sql);
       _view = 'query';
     });
+  }
+
+  /// First rows of [object] in the one reusable data preview tab, run at
+  /// once (a read never needs a review dialog).
+  Future<void> _preview(DbObjectRef object, String text) async {
+    if (!_current || _session == null) return;
+    var tab = _tabs.where((t) => t.preview).firstOrNull;
+    if (tab == null) {
+      if (_tabs.length >= 12) {
+        // No room for the preview tab: the query goes to the editor instead.
+        _draft(text);
+        return;
+      }
+      setState(_addTab);
+      tab = _tabs.lastOrNull;
+      if (tab == null) return;
+    }
+    if (tab.result.running || tab.result.loadingMore) await tab.result.cancel();
+    if (!_tabCurrent(tab) || tab.preparing) return;
+    setState(() {
+      tab!
+        ..previewName = object.name
+        ..previewText = text;
+      tab.controller.value = TextEditingValue(text: text, selection: const TextSelection.collapsed(offset: 0));
+      _active = _tabs.indexOf(tab);
+      _view = 'query';
+    });
+    await _run(DbRunMode.script);
   }
 
   Future<void> _closeTab(_QueryTab tab) async {
@@ -199,6 +268,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
       tab.dispose();
     }
     _tabs.clear();
+    _lastEditor = null;
     _lastPlan = null;
     _selectedObject = null;
     if (session != null && _service != null) unawaited(_service!.disconnect(session.id).catchError((Object _) {}));
@@ -292,7 +362,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
             secure: true,
             extra: SelectableText(suggestion, style: const TextStyle(fontFamily: 'monospace')),
           );
-          if (open && _tabCurrent(tab)) setState(() => _addTab(suggestion));
+          if (open && _tabCurrent(tab)) _draft(suggestion);
         } else if (mounted) {
           showSnack(context, context.l10n.dbQueryBlocked, error: true);
         }
@@ -1005,12 +1075,12 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
             for (final item in _tabs)
               GlassTab(
                 key: ValueKey('db-query-tab-${item.id}'),
-                title: '${l.dbEditor} ${item.id}',
+                title: item.preview ? l.dbPreviewTabTitle(item.previewName!) : '${l.dbEditor} ${item.id}',
                 state: item.result.running ? GlassTabState.reconnecting : GlassTabState.none,
               ),
           ],
           activeIndex: _active,
-          onSelect: (i) => setState(() => _active = i),
+          onSelect: (i) => setState(() => _select(i)),
           onClose: (i) => _closeTab(_tabs[i]),
           onAdd: _tabs.length < 12 ? () => setState(() => _addTab()) : null,
         ),
@@ -1189,6 +1259,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
               session: session,
               service: _service!,
               onDraft: _draft,
+              onPreview: (object, text) => unawaited(_preview(object, text)),
               onInsert: (value) {
                 if (_current) _tab?.controller.insert(value);
               },

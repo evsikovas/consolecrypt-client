@@ -5519,5 +5519,6 @@
   "dbPendingEdit": "Изменено, ещё не применено",
   "dbSelectedRows": "{count, plural, one{Выбрано строк: {count}} few{Выбрано строк: {count}} many{Выбрано строк: {count}} other{Выбрано строк: {count}}}",
   "vaultPassphraseConfirmLabel": "Пароль хранилища",
-  "vaultPassphraseConfirmWrong": "Неверный пароль хранилища."
+  "vaultPassphraseConfirmWrong": "Неверный пароль хранилища.",
+  "dbPreviewTabTitle": "{name} — данные"
 }

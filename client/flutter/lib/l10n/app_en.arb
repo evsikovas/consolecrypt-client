@@ -13331,5 +13331,14 @@
   "vaultPassphraseConfirmWrong": "Wrong vault passphrase.",
   "@vaultPassphraseConfirmWrong": {
     "description": "Error under the vault passphrase confirmation field when the passphrase does not match."
+  },
+  "dbPreviewTabTitle": "{name} — data",
+  "@dbPreviewTabTitle": {
+    "description": "Title of the single reusable query tab that shows the first rows of a table opened from the structure tree; name is the table name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

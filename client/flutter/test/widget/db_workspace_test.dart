@@ -153,6 +153,9 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiS
     DbQueryEvent(kind: DbQueryEventKind.done),
   ]);
   @override
+  Future<String> objectQuery(String sessionId, DbObjectRef object, {int limit = 100}) async =>
+      'SELECT * FROM "public"."${object.name}" LIMIT $limit;';
+  @override
   Future<void> cancelQuery(String sessionId, String queryId) async => cancelled.add(queryId);
   @override
   Future<void> releaseQuery(String sessionId, String queryId) async {}
@@ -398,6 +401,88 @@ void main() {
     await settle(tester);
     expect(find.text('id'), findsNothing);
     expect(find.text('orders_view'), findsNothing);
+  });
+
+  group('data preview tab', () {
+    Finder tabs() => find.byWidgetPredicate(
+      (w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('db-query-tab-'),
+    );
+    String editorText(WidgetTester tester) =>
+        tester.widget<TextField>(find.byKey(const ValueKey('db-query-editor'))).controller!.text;
+    Future<void> doubleClick(WidgetTester tester, DbObjectRef object) async {
+      final row = find.byKey(ValueKey('db-object-${object.id}'));
+      await tester.tap(row);
+      await tester.pump(const Duration(milliseconds: 60));
+      await tester.tap(row);
+      // Releasing the previous query's stream finishes a few frames later.
+      for (var i = 0; i < 5; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      await settle(tester);
+    }
+
+    const items = DbObjectRef(database: 'fixture', kind: DbObjectKind.table, name: 'items');
+    const view = DbObjectRef(database: 'fixture', kind: DbObjectKind.view, name: 'orders_view');
+
+    testWidgets('double clicks reuse one tab and show the rows at once', (tester) async {
+      final service = _Service()..mixedTree = true;
+      await _pump(tester, service);
+      await tester.tap(find.text('Views'));
+      await settle(tester);
+      expect(tabs(), findsOneWidget);
+
+      await doubleClick(tester, items);
+      expect(tabs(), findsNWidgets(2));
+      expect(find.text('items — data'), findsOneWidget);
+      expect(editorText(tester), 'SELECT * FROM "public"."items" LIMIT 100;');
+      expect(service.executed.single.text, 'SELECT * FROM "public"."items" LIMIT 100;');
+      expect(find.text('42'), findsOneWidget, reason: 'the rows are shown without pressing Run');
+
+      await doubleClick(tester, view);
+      expect(tabs(), findsNWidgets(2), reason: 'the preview tab is replaced, not added');
+      expect(find.text('items — data'), findsNothing);
+      expect(find.text('orders_view — data'), findsOneWidget);
+      expect(service.executed.map((r) => r.text), [
+        'SELECT * FROM "public"."items" LIMIT 100;',
+        'SELECT * FROM "public"."orders_view" LIMIT 100;',
+      ]);
+
+      // Editing the preview turns it into an ordinary tab; the next preview
+      // gets a tab of its own and the typed text stays.
+      await _type(tester, 'SELECT count(*) FROM orders_view');
+      expect(find.text('orders_view — data'), findsNothing);
+      await doubleClick(tester, items);
+      expect(tabs(), findsNWidgets(3));
+      expect(find.text('items — data'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('db-query-tab-2')));
+      await settle(tester);
+      expect(editorText(tester), 'SELECT count(*) FROM orders_view');
+    });
+
+    testWidgets('generated SQL goes below the current text without running', (tester) async {
+      final service = _Service()..mixedTree = true;
+      await _pump(tester, service);
+      await _type(tester, 'SELECT 1');
+      // Showing a table first: the draft returns to the editor tab.
+      await doubleClick(tester, items);
+      expect(service.executed, hasLength(1));
+      await tester.tap(find.byTooltip('AI assistant').first);
+      await settle(tester);
+      await tester.enterText(find.byKey(const ValueKey('db-ai-question')), 'Count rows');
+      await tester.tap(find.text('AI assistant').last);
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('db-ai-consent-submit')));
+      await settle(tester);
+      await tester.ensureVisible(find.byKey(const ValueKey('db-ai-accept')));
+      await tester.tap(find.byKey(const ValueKey('db-ai-accept')));
+      await settle(tester);
+      expect(tabs(), findsNWidgets(2), reason: 'no new tab for generated text');
+      expect(editorText(tester), 'SELECT 1;\n\nSELECT 42');
+      final selection = tester.widget<TextField>(find.byKey(const ValueKey('db-query-editor'))).controller!.selection;
+      expect(selection.baseOffset, 'SELECT 1;\n\n'.length, reason: 'the caret is at the inserted text');
+      expect(service.executed, hasLength(1), reason: 'generated text never runs');
+    });
   });
 
   testWidgets('production blocks write review even if a backend mistakenly offers a ticket', (tester) async {

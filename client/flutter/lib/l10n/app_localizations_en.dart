@@ -9719,4 +9719,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vaultPassphraseConfirmWrong => 'Wrong vault passphrase.';
+
+  @override
+  String dbPreviewTabTitle(String name) {
+    return '$name — data';
+  }
 }
