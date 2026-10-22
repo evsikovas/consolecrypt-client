@@ -178,7 +178,7 @@ impl AppCore {
         if let Some(address) = running() {
             return Ok(address);
         }
-        match self.start_tunnel(tunnel_id.to_string()).await {
+        match self.start_tunnel_spec(loopback_tunnel(tunnel)).await {
             Ok(status) => loopback(&status.listen).ok_or_else(|| failure("tunnel_failed")),
             Err(AppError::VaultLocked) => Err(AppError::VaultLocked),
             // Started concurrently (e.g. by the Tunnels section).
@@ -239,6 +239,17 @@ impl AppCore {
     }
 }
 
+/// The saved tunnel as a database route starts it: always on loopback, so
+/// the database is never exposed to the network by connecting to it. A
+/// network bind configured for the Tunnels section is kept only when the
+/// user starts the tunnel there.
+fn loopback_tunnel(mut tunnel: cc_models::tunnel::Tunnel) -> cc_models::tunnel::Tunnel {
+    if !cc_tunnel_core::is_loopback_host(&tunnel.bind_host) {
+        tunnel.bind_host = std::net::Ipv4Addr::LOCALHOST.to_string();
+    }
+    tunnel
+}
+
 /// A listen address as a dialable loopback address (`0.0.0.0` → `127.0.0.1`).
 fn loopback(listen: &str) -> Option<SocketAddr> {
     let mut address: SocketAddr = listen.parse().ok()?;
@@ -268,6 +279,33 @@ mod tests {
             Some("127.0.0.1:3306".parse().unwrap())
         );
         assert_eq!(loopback("localhost:3306"), None);
+    }
+
+    #[test]
+    fn database_routes_start_saved_tunnels_on_loopback_only() {
+        let mut tunnel = cc_models::tunnel::Tunnel {
+            id: ObjectId::NIL,
+            name: "orders-db".into(),
+            kind: TunnelKind::Local,
+            host_id: ObjectId::NIL,
+            bind_host: "0.0.0.0".into(),
+            bind_port: 15432,
+            target_host: Some("db.internal".into()),
+            target_port: Some(5432),
+            auto_start: false,
+            created_at: Default::default(),
+            updated_at: Default::default(),
+        };
+        assert_eq!(loopback_tunnel(tunnel.clone()).bind_host, "127.0.0.1");
+        for host in ["192.168.1.10", "::", "[::]", "db-gateway"] {
+            tunnel.bind_host = host.into();
+            assert_eq!(loopback_tunnel(tunnel.clone()).bind_host, "127.0.0.1");
+        }
+        for host in ["127.0.0.1", "::1", "[::1]", "localhost", "127.0.0.5"] {
+            tunnel.bind_host = host.into();
+            assert_eq!(loopback_tunnel(tunnel.clone()).bind_host, host);
+        }
+        assert_eq!(loopback_tunnel(tunnel.clone()).bind_port, 15432);
     }
 
     #[test]

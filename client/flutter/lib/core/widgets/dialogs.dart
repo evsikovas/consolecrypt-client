@@ -118,14 +118,24 @@ Future<T?> runWithFeedback<T>(BuildContext context, Future<T> Function() action,
 /// Copies a secret; the clipboard is cleared automatically. The toast shows
 /// a countdown ring and "Clears in N s", never the value (§4.11). [what] is a
 /// localized noun from the `copyWhat*` keys (defaults to "Secret").
-Future<void> copySecretWithNotice(BuildContext context, WidgetRef ref, String value, {String? what}) async {
+/// [limit] shortens the clearing delay (a team's clipboard policy).
+Future<void> copySecretWithNotice(
+  BuildContext context,
+  WidgetRef ref,
+  String value, {
+  String? what,
+  Duration? limit,
+}) async {
   final clipboard = ref.read(secureClipboardProvider);
-  await clipboard.copySecret(value);
+  await clipboard.copySecret(value, limit: limit);
   if (context.mounted) {
     final l10n = context.l10n;
     GlassToast.show(
       context,
-      GlassToastRequest(message: l10n.copiedNotice(what ?? l10n.copyWhatSecret), countdown: clipboard.clearAfter),
+      GlassToastRequest(
+        message: l10n.copiedNotice(what ?? l10n.copyWhatSecret),
+        countdown: clipboard.effectiveClearAfter(limit),
+      ),
     );
   }
 }

@@ -1,7 +1,10 @@
+import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/db/db_connections_screen.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_workspace.dart';
+import 'package:consolecrypt/notes/note_models.dart';
+import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/sharing/sharing_database.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
@@ -17,7 +20,10 @@ class DatabasesScreen extends ConsumerStatefulWidget {
   ConsumerState<DatabasesScreen> createState() => _DatabasesScreenState();
 }
 
-class _DatabasesScreenState extends ConsumerState<DatabasesScreen> {
+class _DatabasesScreenState extends ConsumerState<DatabasesScreen> with NoteContextPublisher {
+  @override
+  ShellBranch get noteBranch => ShellBranch.databases;
+
   DbConnection? _open;
 
   @override
@@ -39,6 +45,15 @@ class _DatabasesScreenState extends ConsumerState<DatabasesScreen> {
   Widget build(BuildContext context) {
     ref.listen(dbOpenRequestProvider, (_, id) => _openRequested(id));
     final open = _open;
+    publishNoteContext(
+      open == null
+          ? null
+          : NoteContext(
+              target: NoteObjectTarget(NoteObjectKind.dbConnection, open.id),
+              label: open.name,
+              icon: Icons.storage_rounded,
+            ),
+    );
     if (open == null) {
       // Offered only when the server advertises database connection sharing;
       // older servers keep both the action and the section hidden.

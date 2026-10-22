@@ -258,6 +258,16 @@ pub(crate) fn write_private_file(path: &Path, data: &[u8], create_new: bool) -> 
     f.sync_all()
 }
 
+/// Mark a working copy as downloaded from the Internet (Windows
+/// Mark-of-the-Web, macOS quarantine; security audit H4). Best effort: a
+/// file system without streams / extended attributes keeps the file
+/// unmarked, and editing still works.
+pub(crate) fn mark_downloaded(path: &Path) {
+    if let Err(e) = cc_platform_core::mark_downloaded(path) {
+        tracing::debug!(path = %path.display(), error = %e, "cannot mark the working copy as downloaded");
+    }
+}
+
 /// Prepare the edit root: 0700, Spotlight marker and (optionally) a Time
 /// Machine exclusion on macOS.
 pub(crate) fn prepare_root(root: &Path, exclude_from_backup: bool) -> io::Result<()> {

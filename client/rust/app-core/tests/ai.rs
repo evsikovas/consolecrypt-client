@@ -88,8 +88,7 @@ fn note(title: &str, body: &str) -> NoteDto {
         title: title.into(),
         body: body.into(),
         tags: Vec::new(),
-        created_at_ms: 0,
-        updated_at_ms: 0,
+        ..NoteDto::default()
     }
 }
 

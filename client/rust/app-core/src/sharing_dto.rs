@@ -72,6 +72,13 @@ pub struct SharingStatusDto {
     pub supports_kube_contexts: bool,
     pub supports_db_connections: bool,
     pub supports_owner_online_enrollment_v1: bool,
+    /// Server protocol 1.8 `capabilities.share_leave`: recipients may leave.
+    #[serde(default)]
+    pub supports_leave: bool,
+    /// Server protocol 1.8 `capabilities.share_restore`: owner-deleted items
+    /// stay restorable for the server's restore window.
+    #[serde(default)]
+    pub supports_restore: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -92,6 +99,11 @@ pub struct SharingItemDto {
     pub preview_json: Option<String>,
     pub members: Vec<SharingIdentityDto>,
     pub member_roles: Vec<SharingMemberDto>,
+    /// Owner view: accounts that left this share (protocol 1.8). They are
+    /// already omitted from `members`/`member_roles`, so the next access
+    /// change drops them from the signed manifest.
+    #[serde(default)]
+    pub departed_user_ids: Vec<String>,
 }
 
 impl std::fmt::Debug for SharingItemDto {
@@ -105,6 +117,45 @@ impl std::fmt::Debug for SharingItemDto {
 }
 
 impl Drop for SharingItemDto {
+    fn drop(&mut self) {
+        use zeroize::Zeroize as _;
+        self.preview_json.zeroize();
+    }
+}
+
+/// The shared list plus how many entries could not be read (malformed, or
+/// their signatures, trust state or ciphertext did not verify). Those are
+/// skipped and never shown or used; the rest of the list stays usable.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SharingListDto {
+    pub items: Vec<SharingItemDto>,
+    pub unreadable: u32,
+}
+
+/// An owner-deleted item that can still be restored (protocol 1.8). Its
+/// preview is the same masked metadata as `SharingItemDto.preview_json`.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SharingDeletedItemDto {
+    pub share_id: String,
+    pub kind: SharingKindDto,
+    pub preview_json: Option<String>,
+    /// Milliseconds since the Unix epoch.
+    pub deleted_at_ms: i64,
+    pub restorable_until_ms: i64,
+    /// Recipient devices a restore shares the item with again.
+    pub recipients: u32,
+}
+
+impl std::fmt::Debug for SharingDeletedItemDto {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SharingDeletedItemDto")
+            .field("share_id", &self.share_id)
+            .field("preview_json", &"<redacted>")
+            .finish_non_exhaustive()
+    }
+}
+
+impl Drop for SharingDeletedItemDto {
     fn drop(&mut self) {
         use zeroize::Zeroize as _;
         self.preview_json.zeroize();

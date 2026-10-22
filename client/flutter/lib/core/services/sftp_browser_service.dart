@@ -108,6 +108,13 @@ abstract interface class SftpBrowserService {
     OpenWith openWith = const OpenWithDefault(),
   });
 
+  /// Whether "Open" shows [fileName] as text because its default action
+  /// would run code (scripts, shortcuts, executables, launchers; security
+  /// audit H4). By name only, for the notice before downloading; the core
+  /// decides again on the downloaded copy and never hands such a file to
+  /// the default application. Core: `platform_core::active::is_active_name`.
+  bool opensAsText(String fileName);
+
   /// All active edit sessions of the profile (every host), oldest first.
   /// Closed sessions disappear from the list. Core: `EditManager::sessions`
   /// + the `EditEvent` broadcast.
@@ -258,6 +265,9 @@ final class SftpBrowserFallback implements SftpBrowserService {
     String remotePath, {
     OpenWith openWith = const OpenWithDefault(),
   }) async => _unsupported('editSessions');
+
+  @override
+  bool opensAsText(String fileName) => false;
 
   @override
   Stream<List<EditSessionInfo>> watchEditSessions() => Stream.value(const []);

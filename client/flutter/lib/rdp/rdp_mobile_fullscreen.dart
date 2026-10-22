@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/hosts/connection_picker.dart';
 import 'package:consolecrypt/rdp/rdp_clipboard.dart';
 import 'package:consolecrypt/rdp/rdp_controller.dart';
@@ -116,8 +117,7 @@ class _RdpMobileFullscreenState extends ConsumerState<RdpMobileFullscreen> {
     }
     _back = now;
     view?.showControls(!(view.menuOpen));
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(context.l10n.rdpMobileBackAgain), duration: const Duration(seconds: 2)));
+    showSnack(context, context.l10n.rdpMobileBackAgain);
   }
 
   Future<void> _sessions() async {

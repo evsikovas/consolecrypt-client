@@ -12,10 +12,13 @@ import 'package:consolecrypt/core/bridge/rust_docker.dart';
 import 'package:consolecrypt/core/bridge/rust_enrollment.dart';
 import 'package:consolecrypt/core/bridge/rust_inventory.dart';
 import 'package:consolecrypt/core/bridge/rust_kubernetes.dart';
+import 'package:consolecrypt/core/bridge/rust_notes.dart';
 import 'package:consolecrypt/core/bridge/rust_prompts.dart';
 import 'package:consolecrypt/core/bridge/rust_sessions.dart';
 import 'package:consolecrypt/core/bridge/rust_sftp_browser.dart';
 import 'package:consolecrypt/core/bridge/rust_sharing.dart';
+import 'package:consolecrypt/core/bridge/rust_teams.dart';
+import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/storage/app_storage_paths.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
@@ -71,6 +74,9 @@ final class RustAppServices {
   final AppStoragePaths storagePaths;
 
   static RustAppServices? _current;
+
+  /// Pending clipboard clear in the device-local UI store.
+  late final ClipboardClearStore clipboardClearStore = _RustClipboardClearStore(backend);
 
   /// The instance opened by [open] (read by `appServicesProvider`).
   static RustAppServices? get current => _current;
@@ -150,10 +156,12 @@ final class RustAppServices {
       sftpBrowser: sftpBrowser,
       prompts: prompts,
       sharing: RustSharingService(hub),
+      teams: RustTeamService(hub),
       enrollment: const RustEnrollmentService(),
       kubernetes: RustKubeService(hub),
       databases: RustDbService(hub),
       docker: RustDockerService(),
+      notes: RustNoteService(hub),
       onDispose: dispose,
     );
     final exitListener = options.hookAppExit
@@ -172,4 +180,14 @@ final class RustAppServices {
 
   /// Locks and closes everything, then releases the Dart side.
   Future<void> close() => services.dispose();
+}
+
+final class _RustClipboardClearStore implements ClipboardClearStore {
+  const _RustClipboardClearStore(this._backend);
+  final RustBackend _backend;
+  static const _key = 'clipboard_pending_clear';
+  @override
+  Future<String?> read() => _backend.storeGet(_key);
+  @override
+  Future<void> write(String? record) => _backend.storeSet(_key, record);
 }

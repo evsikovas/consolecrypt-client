@@ -445,6 +445,7 @@ async fn live_owner_online_enrollment_verifies_accounts_pairing_possession_and_f
         .create_share(&CreateShareRequest {
             access: signed,
             revision: original.clone(),
+            restored_from: None,
         })
         .await
         .unwrap();

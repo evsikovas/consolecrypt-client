@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 
 enum SharingKind { host, snippet, group, secret, kubeContext, dbConnection }
@@ -70,6 +71,8 @@ final class SharingStatus {
     this.supportsOwnerOnlineEnrollment = false,
     this.supportsKubeContexts = false,
     this.supportsDbConnections = false,
+    this.supportsLeave = false,
+    this.supportsRestore = false,
   });
   final bool enabled,
       locked,
@@ -78,6 +81,9 @@ final class SharingStatus {
       supportsOwnerOnlineEnrollment,
       supportsKubeContexts,
       supportsDbConnections;
+
+  /// Server protocol 1.8: recipients may leave; deleted items are restorable.
+  final bool supportsLeave, supportsRestore;
   final String? instance;
   final SharingIdentity? identity;
   final int pending, blocked;
@@ -88,6 +94,8 @@ final class SharingStatus {
     supportsKubeContexts: j['supports_kube_contexts'] == true,
     supportsDbConnections: j['supports_db_connections'] == true,
     supportsOwnerOnlineEnrollment: j['supports_owner_online_enrollment_v1'] == true,
+    supportsLeave: j['supports_leave'] == true,
+    supportsRestore: j['supports_restore'] == true,
     locked: j['locked'] == true,
     instance: j['server_instance_id'] as String?,
     identity: j['identity'] == null ? null : SharingIdentity.fromJson(j['identity'] as Map<String, dynamic>),
@@ -112,6 +120,7 @@ final class SharingItem {
     this.blockedReason,
     this.members = const [],
     this.memberRoles = const [],
+    this.departedUserIds = const [],
   });
   final String id, itemId, ownerUserId, ownerDeviceId;
   final SharingKind kind;
@@ -125,6 +134,9 @@ final class SharingItem {
   final String? blockedReason;
   final List<SharingIdentity> members;
   final List<SharingGrant> memberRoles;
+
+  /// Owner view: accounts that left; already omitted from [memberRoles].
+  final List<String> departedUserIds;
   Map<String, dynamic>? get projection => previewJson == null ? null : jsonDecode(previewJson!) as Map<String, dynamic>;
   Map<String, dynamic>? get data => projection?['data'] as Map<String, dynamic>?;
   String? get name => data?['name'] as String?;
@@ -152,9 +164,43 @@ final class SharingItem {
           return SharingGrant(identity, _enum(SharingRole.values, m['role']), identity.code);
         })
         .toList(growable: false),
+    departedUserIds: ((j['departed_user_ids'] as List?) ?? const []).cast<String>().toList(growable: false),
   );
   @override
   String toString() => 'SharingItem(<redacted>)';
+}
+
+/// An owner-deleted shared item that the server still keeps restorable.
+final class SharingDeletedItem {
+  const SharingDeletedItem({
+    required this.id,
+    required this.kind,
+    required this.restorableUntil,
+    this.previewJson,
+    this.recipients = 0,
+  });
+  final String id;
+  final SharingKind kind;
+  final DateTime restorableUntil;
+
+  /// Masked metadata only (same as [SharingItem.previewJson]).
+  final String? previewJson;
+  final int recipients;
+  String? get name {
+    final preview = previewJson == null ? null : jsonDecode(previewJson!);
+    final data = preview is Map<String, dynamic> ? preview['data'] : null;
+    return data is Map<String, dynamic> ? data['name'] as String? : null;
+  }
+
+  factory SharingDeletedItem.fromJson(Map<String, dynamic> j) => SharingDeletedItem(
+    id: j['share_id'] as String,
+    kind: _enum(SharingKind.values, j['kind']),
+    restorableUntil: DateTime.fromMillisecondsSinceEpoch((j['restorable_until_ms'] as num).toInt()),
+    previewJson: j['preview_json'] as String?,
+    recipients: (j['recipients'] as num?)?.toInt() ?? 0,
+  );
+  @override
+  String toString() => 'SharingDeletedItem(<redacted>)';
 }
 
 final class SharingInvitation {
@@ -179,3 +225,35 @@ final class SharingOutboxEntry {
     j['reason'] as String?,
   );
 }
+
+/// A shared list plus how many entries the core skipped because they could
+/// not be read (malformed, or failing signature/trust/ciphertext checks).
+final class SharingItemList extends ListBase<SharingItem> {
+  SharingItemList(this._items, {this.unreadable = 0});
+  final List<SharingItem> _items;
+  final int unreadable;
+
+  /// The core's `{items, unreadable}` reply; a bare list from older cores.
+  factory SharingItemList.fromJson(Object? json) {
+    final map = json is Map<String, dynamic> ? json : null;
+    final items = (map == null ? json : map['items']) as List;
+    return SharingItemList(
+      items.map((v) => SharingItem.fromJson(v as Map<String, dynamic>)).toList(),
+      unreadable: (map?['unreadable'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
+  int get length => _items.length;
+  @override
+  set length(int value) => _items.length = value;
+  @override
+  SharingItem operator [](int index) => _items[index];
+  @override
+  void operator []=(int index, SharingItem value) => _items[index] = value;
+  @override
+  void add(SharingItem element) => _items.add(element);
+}
+
+/// Entries of [items] the core could not read (0 for plain lists).
+int sharingUnreadable(List<SharingItem>? items) => items is SharingItemList ? items.unreadable : 0;

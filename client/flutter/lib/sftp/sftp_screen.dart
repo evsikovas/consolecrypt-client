@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/hosts/host_picker.dart';
+import 'package:consolecrypt/notes/note_models.dart';
+import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/sftp/sftp_actions.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/sftp/sftp_providers.dart';
@@ -31,7 +34,10 @@ class SftpScreen extends ConsumerStatefulWidget {
   ConsumerState<SftpScreen> createState() => _SftpScreenState();
 }
 
-class _SftpScreenState extends ConsumerState<SftpScreen> {
+class _SftpScreenState extends ConsumerState<SftpScreen> with NoteContextPublisher {
+  @override
+  ShellBranch get noteBranch => ShellBranch.sftp;
+
   final FocusNode _listFocus = FocusNode(debugLabel: 'sftp-list');
   final FocusNode _searchFocus = FocusNode(debugLabel: 'sftp-search');
   final TextEditingController _search = TextEditingController();
@@ -107,6 +113,11 @@ class _SftpScreenState extends ConsumerState<SftpScreen> {
     final theme = Theme.of(context);
     final state = ref.watch(sftpControllerProvider);
     final controller = ref.read(sftpControllerProvider.notifier);
+    publishNoteContext(
+      state.host == null
+          ? null
+          : NoteContext(target: NoteObjectTarget(NoteObjectKind.host, state.host!.id.value), label: state.host!.name),
+    );
 
     // Keep the search field in sync when navigation clears the filter.
     ref.listen(sftpControllerProvider.select((s) => s.filter), (_, next) {

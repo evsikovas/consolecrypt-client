@@ -94,18 +94,23 @@ impl AiContextProvider for AppAiContext {
         {
             return hits
                 .into_iter()
+                .filter(|h| !self.working.is_ai_blocked(h.id))
                 .filter_map(|h| self.working.snippet(h.id))
                 .collect();
         }
         self.working
             .snippets()
             .into_iter()
+            .filter(|s| !self.working.is_ai_blocked(s.id))
             .filter(|s| substring_match(query, &[&s.name, &s.description, &s.template]))
             .take(limit)
             .collect()
     }
 
     async fn get_host_context(&self, host_id: ObjectId) -> Option<HostContext> {
+        if self.working.is_ai_blocked(host_id) {
+            return None;
+        }
         self.working
             .host(host_id)
             .map(|h| HostContext::from_host(&h))
@@ -124,8 +129,11 @@ impl AiContextProvider for AppAiContext {
     }
 
     async fn search_local_kb(&self, query: &str, limit: usize) -> Vec<KbHit> {
-        self.search(query, limit, SearchFilter::default())
+        let mut hits = self
+            .search(query, limit, SearchFilter::default())
             .await
-            .unwrap_or_default()
+            .unwrap_or_default();
+        hits.retain(|h| !self.working.is_ai_blocked(h.id));
+        hits
     }
 }

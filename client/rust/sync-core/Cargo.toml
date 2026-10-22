@@ -14,7 +14,7 @@ default = []
 # In-process axum mock of the ConsoleCrypt sync server (in-memory state).
 # For tests of this and other crates and for `cc` CLI E2E tests. Never enable
 # in production builds.
-mock-server = ["dep:axum", "dep:sha2", "dep:ed25519-dalek"]
+mock-server = ["dep:axum", "dep:sha2", "dep:ed25519-dalek", "dep:base64"]
 
 [dependencies]
 cc-protocol.workspace = true
@@ -46,6 +46,7 @@ log = { version = "0.4", features = ["max_level_debug", "release_max_level_info"
 axum = { version = "0.8", optional = true, default-features = false, features = ["http1", "json", "query", "tokio", "ws"] }
 sha2 = { version = "0.11", optional = true }
 ed25519-dalek = { version = "3", optional = true }
+base64 = { workspace = true, optional = true }
 
 [dev-dependencies]
 cc-crypto-core.workspace = true

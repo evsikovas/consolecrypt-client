@@ -108,6 +108,11 @@ pub enum AppError {
     /// This device was revoked.
     #[error("this device has been revoked")]
     DeviceRevoked,
+    /// Enterprise sign-in (protocol 1.8): the account was disabled by the
+    /// administrator or in the IdP/directory; every session was revoked.
+    /// The app locks the synced profile; local data stays encrypted.
+    #[error("access was disabled by the administrator")]
+    AccountDisabled,
     /// The server refused this device's proof of possession at login
     /// (ADR-0006; reason = `device_proof_required` | `invalid_signature` |
     /// `stale` | `replayed`). Security-relevant: never retried without a
@@ -200,6 +205,11 @@ pub enum AppError {
     /// The OS failed to hand a working copy to its external editor.
     #[error("could not open editor: {0}")]
     EditorLaunch(String),
+    /// The file could run code when opened and no text editor was found to
+    /// open it safely (code `io`, reason `no_text_editor`): the user should
+    /// choose an editor.
+    #[error("no text editor found to open this file safely")]
+    NoTextEditor,
     /// Backup file invalid / unreadable.
     #[error("backup: {0}")]
     Backup(String),
@@ -244,6 +254,13 @@ pub enum AppError {
     /// Local file system error.
     #[error("io: {0}")]
     Io(String),
+    /// Teams: this member may only read the team (viewer role).
+    #[error("the team is read-only for you")]
+    TeamReadOnly,
+    /// Teams: the server showed a membership log this client cannot trust
+    /// (`invalid_log`, `log_rollback`, `not_member`); the team is paused.
+    #[error("team membership could not be verified: {0}")]
+    TeamUntrusted(String),
     /// Bug or unexpected state.
     #[error("internal error: {0}")]
     Internal(String),
@@ -273,6 +290,7 @@ impl AppError {
             AppError::ReauthRequired => "reauth_required",
             AppError::NewDeviceIdentityRequired => "new_device_identity_required",
             AppError::DeviceRevoked => "device_revoked",
+            AppError::AccountDisabled => "account_disabled",
             AppError::DeviceProofRejected(_) => "device_proof_rejected",
             AppError::DeviceNotTrusted => "device_not_trusted",
             AppError::UpgradeRequired => "upgrade_required",
@@ -298,7 +316,7 @@ impl AppError {
             AppError::PermissionDenied(_) => "permission_denied",
             AppError::TooLarge { .. } => "payload_too_large",
             AppError::Terminal(_) => "terminal",
-            AppError::EditorLaunch(_) => "io",
+            AppError::EditorLaunch(_) | AppError::NoTextEditor => "io",
             AppError::Backup(_) => "backup",
             AppError::Storage(_) => "storage",
             AppError::SecureStore(_) => "secure_store",
@@ -314,6 +332,8 @@ impl AppError {
             AppError::UnresolvedPlaceholders(_) => "unresolved_placeholders",
             AppError::ApprovalRequired(_) => "approval_required",
             AppError::Io(_) => "io",
+            AppError::TeamReadOnly => "team_read_only",
+            AppError::TeamUntrusted(_) => "team_untrusted",
             AppError::Internal(_) => "internal",
         }
     }
@@ -350,6 +370,7 @@ impl AppError {
             AppError::Backup(_) => "not_a_backup",
             AppError::SshPassphraseRequired(_) => "key_passphrase_required",
             AppError::EditorLaunch(_) => "editor_launch_failed",
+            AppError::NoTextEditor => "no_text_editor",
             AppError::UnresolvedPlaceholders(_) => "missing_variables",
             AppError::AiNotConfigured => "provider_not_found",
             _ => return None,
@@ -405,6 +426,7 @@ impl AppError {
                 put("protocol_code", code.clone());
             }
             AppError::DeviceProofRejected(reason) => put("proof", reason.clone()),
+            AppError::TeamUntrusted(reason) => put("reason", reason.clone()),
             AppError::EditorLaunch(detail) => put("detail", detail.chars().take(512).collect()),
             AppError::UnresolvedPlaceholders(names) => put("names", names.join(", ")),
             AppError::ConnectionPlanRejected {
@@ -461,6 +483,10 @@ fn invalid_reason(field: &str, rule: &str) -> &'static str {
         "algorithm" => "unsupported_key_algorithm",
         "backup_folder" => "backup_folder_required",
         "keep_last" => "keep_at_least_one",
+        "account" if rule == "account_mismatch" => "account_mismatch",
+        "enterprise_auth" if rule == "invalid_callback" => "enterprise_callback_invalid",
+        "enterprise_auth" if rule == "timeout" => "enterprise_sign_in_timeout",
+        "enterprise_auth" if rule == "browser_unavailable" => "enterprise_browser_unavailable",
         _ => "invalid_field",
     }
 }
@@ -592,6 +618,7 @@ impl From<StopReason> for AppError {
         match r {
             StopReason::DeviceRevoked => AppError::DeviceRevoked,
             StopReason::ReauthRequired => AppError::ReauthRequired,
+            StopReason::AccountDisabled => AppError::AccountDisabled,
             StopReason::NotTrusted => AppError::DeviceNotTrusted,
             StopReason::VaultGone => AppError::not_found("vault on server", "-"),
             StopReason::UpgradeRequired => AppError::UpgradeRequired,
@@ -625,6 +652,7 @@ impl From<ApiError> for AppError {
             | ApiError::SessionExpired
             | ApiError::RefreshTokenReused => AppError::ReauthRequired,
             ApiError::DeviceRevoked => AppError::DeviceRevoked,
+            ApiError::AccountDisabled => AppError::AccountDisabled,
             ApiError::DeviceIdentityRevoked | ApiError::DeviceIdentityConflict => {
                 AppError::NewDeviceIdentityRequired
             }
@@ -644,6 +672,7 @@ impl From<ApiError> for AppError {
             ApiError::Server { status, error } => match error.code {
                 ErrorCode::InvalidCredentials => AppError::InvalidCredentials,
                 ErrorCode::DeviceRevoked => AppError::DeviceRevoked,
+                ErrorCode::AccountDisabled => AppError::AccountDisabled,
                 ErrorCode::DeviceNotTrusted => AppError::DeviceNotTrusted,
                 ErrorCode::Unauthorized | ErrorCode::RefreshTokenReused => AppError::ReauthRequired,
                 ErrorCode::AlreadyExists => {
@@ -813,6 +842,7 @@ impl From<EditError> for AppError {
             }
             EditError::Cancelled => AppError::Cancelled,
             EditError::Opener(detail) => AppError::EditorLaunch(detail),
+            EditError::NoTextEditor => AppError::NoTextEditor,
             EditError::Upload(m) => AppError::Sftp(m),
             EditError::Busy(path) => AppError::InUse {
                 what: "file".into(),
@@ -859,6 +889,9 @@ mod tests {
         let e: AppError = EditError::Opener("я".repeat(600)).into();
         assert_eq!(e.args()["detail"].chars().count(), 512);
         assert_eq!(AppError::from(EditError::Cancelled), AppError::Cancelled);
+        let e = AppError::from(EditError::NoTextEditor);
+        assert_eq!(e, AppError::NoTextEditor);
+        assert_eq!((e.code(), e.reason()), ("io", Some("no_text_editor")));
     }
 
     #[test]

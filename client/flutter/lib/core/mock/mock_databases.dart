@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
 import 'package:consolecrypt/db/db_models.dart';
@@ -11,7 +12,16 @@ import 'package:consolecrypt/db/db_service.dart';
 
 /// In-memory databases for the demo/mock backend: one connection per engine,
 /// a small shop schema, results, history and a canned assistant answer.
-final class MockDbService implements DbService, DbQueryService, DbHistoryService, DbExportService, DbAiService {
+final class MockDbService
+    implements
+        DbService,
+        DbQueryService,
+        DbHistoryService,
+        DbExportService,
+        DbAiService,
+        DbProductionWriteService,
+        DbCellEditService,
+        DbObjectInspectService {
   final _changes = StreamController<void>.broadcast();
   final _history = <DbHistoryEntry>[];
   var _next = 0;
@@ -215,6 +225,7 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
       readOnly: connection.production,
       serverReadOnly: connection.production ? DbServerReadOnly.enforced : DbServerReadOnly.unverified,
       transportSecurity: DbTransportSecurity.expected(connection, loopback: false) ?? DbTransportSecurity.tunnel,
+      canUnlockProduction: connection.production,
     );
     return _sessions[session.id] = session;
   }
@@ -223,8 +234,11 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
   Future<void> disconnect(String sessionId) async => _sessions.remove(sessionId);
 
   @override
-  Future<DbPrivilegeReport> checkPrivileges(String sessionId) async =>
-      const DbPrivilegeReport(serverReadOnly: DbServerReadOnly.enforced, hasWritePrivileges: false);
+  Future<DbPrivilegeReport> checkPrivileges(String sessionId) async => DbPrivilegeReport(
+    serverReadOnly: DbServerReadOnly.enforced,
+    // The demo production role may write only while its window is open.
+    hasWritePrivileges: _sessions[sessionId]?.productionWriteOpen ?? false,
+  );
 
   DbSessionInfo _write(String sessionId, bool allow) {
     final s = _sessions[sessionId]!;
@@ -237,8 +251,84 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
       readOnly: s.production || !allow,
       serverReadOnly: s.serverReadOnly,
       transportSecurity: s.transportSecurity,
+      canUnlockProduction: s.canUnlockProduction,
     );
   }
+
+  DbSessionInfo _window(String sessionId, DateTime? until) {
+    final s = _sessions[sessionId]!;
+    return _sessions[sessionId] = DbSessionInfo(
+      id: s.id,
+      connectionId: s.connectionId,
+      engine: s.engine,
+      serverVersion: s.serverVersion,
+      production: s.production,
+      readOnly: until == null,
+      serverReadOnly: s.serverReadOnly,
+      transportSecurity: s.transportSecurity,
+      canUnlockProduction: s.canUnlockProduction,
+      productionWriteUntil: until,
+    );
+  }
+
+  @override
+  Future<DbSessionInfo> sessionState(String sessionId) async {
+    final s = _sessions[sessionId]!;
+    return s.production && !s.productionWriteOpen && !s.readOnly ? _window(sessionId, null) : s;
+  }
+
+  @override
+  Future<DbSessionInfo> unlockProduction(
+    String sessionId, {
+    required SecretText passphrase,
+    required int minutes,
+  }) async {
+    final s = _sessions[sessionId]!;
+    final ok = passphrase.expose() == MockCloud.demoPassphrase;
+    passphrase.wipe();
+    if (!ok) throw const DbWrongPassphrase();
+    if (!s.production || ![5, 15, 30].contains(minutes)) {
+      throw StateError('Production unlock refused');
+    }
+    return _window(sessionId, DateTime.now().add(Duration(minutes: minutes)));
+  }
+
+  @override
+  Future<DbSessionInfo> lockProduction(String sessionId) async => _window(sessionId, null);
+
+  // In-grid edits.
+
+  static String _literal(DbCell cell) => switch (cell.kind) {
+    DbCellKind.nullValue => 'NULL',
+    DbCellKind.intValue || DbCellKind.decimal => cell.text,
+    _ => "'${cell.text.replaceAll("'", "''")}'",
+  };
+
+  @override
+  Future<DbCellEditReview> reviewCellEdits(
+    String sessionId,
+    DbObjectRef table,
+    List<DbCellEdit> edits,
+  ) async => DbCellEditReview(
+    ticket: 'edits-${_next++}',
+    sql: SecretText(
+      edits
+          .map(
+            (e) =>
+                'UPDATE "${table.schema ?? 'public'}"."${table.name}" SET "${e.column}" = ${_literal(e.value)} '
+                'WHERE ${e.originalPrimaryKey.entries.map((k) => '"${k.key}" = ${_literal(k.value)}').join(' AND ')};',
+          )
+          .join('\n'),
+    ),
+    expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+    rows: edits.length,
+  );
+
+  @override
+  Future<void> commitCellEdits(String sessionId, String ticket) async {}
+
+  @override
+  Future<void> discardCellEdits(String sessionId, String ticket) async {}
 
   @override
   Future<DbSessionInfo> allowSessionWrite(String sessionId) async => _write(sessionId, true);
@@ -403,12 +493,73 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
 
   @override
   Future<SecretText> ddl(String sessionId, DbObjectRef object) async {
-    final columns = _tables[object.name] ?? const [];
+    final name = object.name;
+    final columns = _tables[name] ?? const [];
+    final keys = [
+      for (final c in columns)
+        if (c.$1.endsWith('_id')) c.$1,
+    ];
+    final indexed = [if (columns.any((c) => c.$1 == 'created_at')) 'created_at', ...keys];
+    final lines = [
+      for (final (column, type, primary) in columns)
+        '    $column $type${primary || column.endsWith('_id') ? ' NOT NULL' : ''}${column == 'created_at' ? ' DEFAULT now()' : ''}',
+      '    CONSTRAINT ${name}_pkey PRIMARY KEY (${columns.firstWhere((c) => c.$3).$1})',
+      for (final key in keys)
+        '    CONSTRAINT ${name}_${key}_fkey\n        FOREIGN KEY ($key)\n        REFERENCES public.${key.replaceAll('_id', '')}s (id)',
+    ];
     return SecretText(
-      'CREATE TABLE "public"."${object.name}" (\n'
-      '${columns.map((c) => '    ${c.$1} ${c.$2}${c.$3 ? ' NOT NULL' : ''}').join(',\n')},\n'
-      '    CONSTRAINT ${object.name}_pkey PRIMARY KEY (id)\n);',
+      'CREATE TABLE "public"."$name" (\n${lines.join(',\n')}\n);\n\n'
+      '${indexed.map((c) => 'CREATE INDEX ${name}_${c}_idx\n    ON public.$name ($c${c == 'created_at' ? ' DESC' : ''});\n').join()}'
+      "\nCOMMENT ON TABLE public.$name IS 'Demo shop: $name';",
     );
+  }
+
+  /// Object details in the core's section format (PostgreSQL layout) with
+  /// fixed demo figures.
+  @override
+  Future<DbJson> inspectObject(String sessionId, DbObjectRef object, {int? sampleDocuments}) async {
+    final columns = _tables[object.name]?.length ?? 0;
+    Map<String, dynamic> field(String id, String value, String kind) => {'id': id, 'value': value, 'kind': kind};
+    return {
+      'sections': [
+        {
+          'id': 'general',
+          'fields': [
+            field('kind', 'table', 'keyword'),
+            field('schema', object.schema ?? 'public', 'code'),
+            field('owner', 'shop_owner', 'code'),
+            field('comment', 'Demo shop: ${object.name}', 'text'),
+          ],
+        },
+        {
+          'id': 'size',
+          'fields': [
+            field('rows', '184230', 'estimate'),
+            field('live_rows', '184102', 'estimate'),
+            field('dead_rows', '1287', 'estimate'),
+            field('total_size', '48627712', 'bytes'),
+            field('table_size', '31457280', 'bytes'),
+            field('index_size', '16777216', 'bytes'),
+          ],
+        },
+        {
+          'id': 'structure',
+          'fields': [
+            field('columns', '$columns', 'count'),
+            field('indexes', '3', 'count'),
+            field('constraints', '2', 'count'),
+            field('triggers', '0', 'count'),
+          ],
+        },
+        {
+          'id': 'maintenance',
+          'fields': [
+            field('last_autovacuum', '2026-10-22T03:14:00Z', 'time'),
+            field('last_autoanalyze', '2026-10-22T03:15:00Z', 'time'),
+          ],
+        },
+      ],
+    };
   }
 
   @override
@@ -484,13 +635,15 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
 
   @override
   Stream<DbQueryEvent> watchQuery(String sessionId, String queryId) async* {
-    const columns = [
-      DbColumn(name: 'id', typeName: 'int8', nullable: false, primaryKey: true),
-      DbColumn(name: 'customer', typeName: 'text'),
-      DbColumn(name: 'email', typeName: 'text'),
-      DbColumn(name: 'total', typeName: 'numeric'),
-      DbColumn(name: 'status', typeName: 'text'),
-      DbColumn(name: 'created_at', typeName: 'timestamptz'),
+    // A join reads customers too; a plain SELECT from orders is editable.
+    final join = _queries[queryId]?.text.toUpperCase().contains('JOIN') ?? true;
+    final columns = [
+      const DbColumn(name: 'id', typeName: 'int8', nullable: false, primaryKey: true),
+      if (join) ...const [DbColumn(name: 'customer', typeName: 'text'), DbColumn(name: 'email', typeName: 'text')] else
+        const DbColumn(name: 'customer_id', typeName: 'int8', nullable: false),
+      const DbColumn(name: 'total', typeName: 'numeric'),
+      const DbColumn(name: 'status', typeName: 'text'),
+      const DbColumn(name: 'created_at', typeName: 'timestamptz'),
     ];
     const names = [
       'Anna Petrova',
@@ -503,10 +656,12 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
       'Sergey Kozlov',
     ];
     const statuses = ['paid', 'shipped', 'paid', 'refunded', 'paid', 'new', 'shipped', 'paid'];
-    yield const DbQueryEvent(
+    yield DbQueryEvent(
       kind: DbQueryEventKind.started,
       columns: columns,
-      editableTable: DbObjectRef(database: 'shop', schema: 'public', kind: DbObjectKind.table, name: 'orders'),
+      editableTable: join
+          ? null
+          : const DbObjectRef(database: 'shop', schema: 'public', kind: DbObjectKind.table, name: 'orders'),
     );
     yield DbQueryEvent(
       kind: DbQueryEventKind.rows,
@@ -514,8 +669,11 @@ final class MockDbService implements DbService, DbQueryService, DbHistoryService
         for (var i = 0; i < names.length; i++)
           [
             _int(10240 + i),
-            _text(names[i]),
-            _text('${names[i].split(' ').first.toLowerCase()}@example.com'),
+            if (join) ...[
+              _text(names[i]),
+              _text('${names[i].split(' ').first.toLowerCase()}@example.com'),
+            ] else
+              _int(501 + i * 7),
             DbCell(DbCellKind.decimal, (1290.5 + i * 317.25).toStringAsFixed(2)),
             _text(statuses[i]),
             DbCell(DbCellKind.timestamp, '2026-10-${(20 - i).toString().padLeft(2, '0')} 1${i % 10}:24:0${i % 10}+03'),

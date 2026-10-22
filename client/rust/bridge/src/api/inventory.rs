@@ -11,7 +11,7 @@ use crate::api::error::BridgeError;
 use crate::state::{from_json, opt_secret_string, to_json, with_core};
 use cc_app_core::{
     AgentKind, AiProviderDto, AppCore, AppError, GroupDto, HostAuth, HostDto, JumpProfileDto,
-    SnippetDto, TunnelDto, VaultSettingsDto,
+    NoteDto, SnippetDto, TunnelDto, VaultSettingsDto,
 };
 use zeroize::Zeroize;
 
@@ -254,6 +254,26 @@ pub async fn tunnels_delete(id: String) -> Result<(), BridgeError> {
         Ok(c.delete_tunnel(id).await?)
     })
     .await
+}
+
+// ---- notes -------------------------------------------------------------------------
+
+pub async fn notes_list() -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.list_notes().await?) }).await
+}
+
+pub async fn notes_save(note_json: String) -> Result<String, BridgeError> {
+    let mut n: NoteDto = from_json("note", &note_json)?;
+    with_core(move |c| async move {
+        let exists = c.list_notes().await?.iter().any(|x| x.id == n.id);
+        upsert_id(&mut n.id, exists);
+        to_json(&c.save_note(n).await?)
+    })
+    .await
+}
+
+pub async fn notes_delete(id: String) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.delete_note(id).await?) }).await
 }
 
 // ---- snippets ----------------------------------------------------------------------

@@ -5,7 +5,8 @@ use super::opener::{EditOpener, OpenWith};
 use super::remote::EditRemote;
 use super::replace;
 use super::store::{
-    remote_copy_name, secure_remove_dir, sha256, write_private_file, BaseVersion, Manifest,
+    mark_downloaded, remote_copy_name, secure_remove_dir, sha256, write_private_file, BaseVersion,
+    Manifest,
 };
 use super::types::{
     ConflictResolution, EditConfig, EditError, EditEvent, EditSessionInfo, EditStatus, RemoteMeta,
@@ -13,7 +14,7 @@ use super::types::{
 };
 use super::watch::DirWatcher;
 use crate::{RemoteEntry, SftpError, TransferProgress};
-use cc_platform_core::ChooseOutcome;
+use cc_platform_core::{ChooseOutcome, OpenError};
 use chrono::{DateTime, Utc};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -283,7 +284,10 @@ pub(crate) async fn open_in_editor(
     tokio::task::spawn_blocking(move || opener.open(&path, &with))
         .await
         .map_err(|e| EditError::Opener(e.to_string()))?
-        .map_err(|e| EditError::Opener(e.to_string()))
+        .map_err(|e| match e {
+            OpenError::NoTextEditor => EditError::NoTextEditor,
+            e => EditError::Opener(e.to_string()),
+        })
 }
 
 async fn sleep_opt(at: Option<Instant>) {
@@ -796,6 +800,7 @@ impl Actor {
                     let p = self.dir.join(remote_copy_name(&self.file_name, now, n));
                     match write_private_file(&p, &data, true) {
                         Ok(()) => {
+                            mark_downloaded(&p);
                             copy = Some(p);
                             break;
                         }

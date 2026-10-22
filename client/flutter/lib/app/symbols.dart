@@ -21,6 +21,7 @@ enum AppSymbol {
   kubernetes,
   databases,
   docker,
+  notes,
 }
 
 class AppSymbolIcon extends StatelessWidget {
@@ -125,6 +126,11 @@ class _SymbolPainter extends CustomPainter {
         path(const [Offset(7, 6), Offset(2, 12), Offset(7, 18)]);
         path(const [Offset(17, 6), Offset(22, 12), Offset(17, 18)]);
         line(14, 3, 10, 21);
+      case AppSymbol.notes:
+        path(const [Offset(4, 3), Offset(15, 3), Offset(20, 8), Offset(20, 21), Offset(4, 21)], close: true);
+        path(const [Offset(15, 3), Offset(15, 8), Offset(20, 8)]);
+        line(8, 12, 16, 12);
+        line(8, 16, 13, 16);
       case AppSymbol.ai:
         path(const [
           Offset(12, 2),

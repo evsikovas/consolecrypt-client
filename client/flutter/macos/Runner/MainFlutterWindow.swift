@@ -42,7 +42,9 @@ class MainFlutterWindow: NSWindow {
 }
 
 /// `consolecrypt/fonts`: `monospaceFamilies` lists the installed fixed-pitch
-/// font families, so the terminal font picker offers only fonts that render.
+/// font families, so the terminal font picker offers only fonts that render;
+/// `installedFamilies` lists every installed family, so a typed name that is
+/// merely not fixed-pitch is not reported as missing.
 final class FontsBridge: NSObject {
   private let channel: FlutterMethodChannel
 
@@ -50,11 +52,15 @@ final class FontsBridge: NSObject {
     channel = FlutterMethodChannel(name: "consolecrypt/fonts", binaryMessenger: messenger)
     super.init()
     channel.setMethodCallHandler { call, result in
+      let manager = NSFontManager.shared
+      if call.method == "installedFamilies" {
+        result(manager.availableFontFamilies.filter { !$0.hasPrefix(".") })
+        return
+      }
       guard call.method == "monospaceFamilies" else {
         result(FlutterMethodNotImplemented)
         return
       }
-      let manager = NSFontManager.shared
       let families = manager.availableFontFamilies.filter { family in
         guard !family.hasPrefix(".") else { return false }
         return manager.availableMembers(ofFontFamily: family)?.contains { member in

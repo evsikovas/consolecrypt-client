@@ -127,6 +127,7 @@ pub(crate) fn all_documents(ws: &WorkingSet) -> Vec<Document> {
     let history = history_enabled(ws);
     ws.objects()
         .iter()
+        .filter(|o| !ws.is_ai_blocked(o.id()))
         .filter_map(|o| document(o, history))
         .collect()
 }

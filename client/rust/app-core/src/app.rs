@@ -37,6 +37,8 @@ pub(crate) struct Inner {
     active: tokio::sync::Mutex<Option<Arc<Session>>>,
     /// Held while a scheduled backup runs.
     pub backup_busy: tokio::sync::Mutex<()>,
+    /// Browser sign-ins (enterprise OIDC) waiting for their redirect.
+    pub enterprise: crate::enterprise_auth::PendingFlows,
 }
 
 /// The application facade used by the Flutter UI (via flutter_rust_bridge)
@@ -161,6 +163,7 @@ impl AppCore {
                 profiles,
                 active: tokio::sync::Mutex::new(None),
                 backup_busy: tokio::sync::Mutex::new(()),
+                enterprise: Default::default(),
             }),
         };
         if app.inner.ctx.config.backup_scheduler {
@@ -628,21 +631,47 @@ impl AppCore {
     ) -> AppResult<SyncedAccountDto> {
         crate::validate::display_name("display_name", &display_name)?;
         let email = crate::validate::email(&email)?;
-        let server_url = crate::validate::server_url(&server_url)?;
         crate::validate::secret_text("account_password", &account_password)?;
-        let password = cc_protocol::auth::SecretString::new(account_password);
-        // Validate the URL before touching the disk.
-        self.inner.ctx.check_server_url(server_url.trim())?;
-        let (pid, storage, identity) = self
-            .new_profile_storage(&display_name, ProfileKind::Synced)
-            .await?;
+        let credential = Credential::Password {
+            email,
+            password: cc_protocol::auth::SecretString::new(account_password),
+            mode,
+        };
+        self.create_synced_profile_with(Some(display_name), server_url, credential, None)
+            .await
+    }
+
+    /// [`AppCore::create_synced_profile`] for any [`Credential`]. `prepared`
+    /// is the profile storage + device identity created before a browser
+    /// sign-in (its `login_code` is bound to that device id); it is discarded
+    /// on failure like a storage created here. Without `display_name` the
+    /// profile is named after the account e-mail.
+    pub(crate) async fn create_synced_profile_with(
+        &self,
+        display_name: Option<String>,
+        server_url: String,
+        credential: Credential,
+        prepared: Option<(ProfileId, Storage, Arc<DeviceIdentity>)>,
+    ) -> AppResult<SyncedAccountDto> {
+        let server_url = crate::validate::server_url(&server_url)?;
+        let (pid, storage, identity) = match prepared {
+            Some(p) => p,
+            None => {
+                // Validate the URL before touching the disk.
+                self.inner.ctx.check_server_url(server_url.trim())?;
+                let name = display_name
+                    .clone()
+                    .unwrap_or_else(|| server_host(&server_url));
+                self.new_profile_storage(&name, ProfileKind::Synced).await?
+            }
+        };
         let r = async {
             let cell = crate::session::identity_cell(identity.clone());
             let api = self.inner.ctx.api_for(pid, server_url.trim(), &cell)?;
-            let (auth, identity) =
-                sign_in(self, &api, pid, identity, &email, &password, mode).await?;
+            let (auth, identity) = sign_in(self, &api, pid, identity, &credential).await?;
             // A regenerated identity signs the requests that follow.
             *cell.write().unwrap_or_else(|p| p.into_inner()) = identity.clone();
+            let email = account_email(&api, &credential).await?;
             let mut profile = Profile::new_synced(
                 pid,
                 identity.device_id(),
@@ -650,15 +679,21 @@ impl AppCore {
                 Some(auth.user_id),
                 Some(email.clone()),
             );
-            profile.display_name = Some(display_name.trim().to_owned());
+            let name = display_name
+                .as_deref()
+                .map(str::trim)
+                .filter(|n| !n.is_empty())
+                .unwrap_or(&email)
+                .to_owned();
+            profile.display_name = Some(name.clone());
             storage.put_profile(profile).await?;
             let vaults = api.list_vaults().await?.vaults;
             let session =
                 Session::with_storage(self.inner.ctx.clone(), pid, storage.clone()).await?;
-            Ok::<_, AppError>((session, auth, vaults))
+            Ok::<_, AppError>((session, auth, vaults, name))
         }
         .await;
-        let (session, auth, vaults) = match r {
+        let (session, auth, vaults, name) = match r {
             Ok(v) => v,
             Err(e) => {
                 self.discard_profile(pid, Some(storage)).await;
@@ -666,6 +701,10 @@ impl AppCore {
             }
         };
         self.activate(session.clone()).await?;
+        if display_name.is_none() {
+            // The directory entry was created before the e-mail was known.
+            let _ = self.rename_profile(pid.to_string(), name).await;
+        }
         tracing::info!(profile_id = %pid, "synced profile created");
         let entry = self.entry(pid).await?;
         Ok(SyncedAccountDto {
@@ -867,7 +906,8 @@ impl AppCore {
             .ok_or_else(|| AppError::Storage("no password envelope stored".into()))?;
         let pass = Arc::new(secret(passphrase));
         let p = pass.clone();
-        let first = blocking(move || Ok(unlock_with_passphrase(vault_id, &env, &p)?)).await;
+        let opened = env.clone();
+        let first = blocking(move || Ok(unlock_with_passphrase(vault_id, &opened, &p)?)).await;
         let (vault, fresh_env) = match first {
             Ok(v) => (v, None),
             Err(AppError::WrongPassphrase) if s.api_opt().is_some() => {
@@ -878,7 +918,8 @@ impl AppCore {
                 match fresh {
                     Some(env) if Some(&env) != cached.as_ref() => {
                         let e2 = env.clone();
-                        let v = blocking(move || Ok(unlock_with_passphrase(vault_id, &e2, &pass)?))
+                        let p = pass.clone();
+                        let v = blocking(move || Ok(unlock_with_passphrase(vault_id, &e2, &p)?))
                             .await?;
                         (v, Some(env))
                     }
@@ -892,7 +933,10 @@ impl AppCore {
             s.cache_envelopes(vault_id, Some(env.clone()), None, None)
                 .await?;
         }
-        self.finish_unlock(&s, vault).await
+        self.finish_unlock(&s, vault).await?;
+        self.rewrap_password_envelope(&s, fresh_env.unwrap_or(env), &pass)
+            .await;
+        Ok(())
     }
 
     /// Unlock with the Recovery Key against the stored recovery envelope.
@@ -1022,47 +1066,144 @@ impl AppCore {
     }
 }
 
-/// One register/login request with a fresh device proof (ADR-0006; nonces
-/// are single-use, so every attempt signs anew). A `stale` proof (clock
-/// skew / slow network) is retried once; other rejections are returned as
+/// What proves the account to the server.
+pub(crate) enum Credential {
+    /// Standard mode: account e-mail + password (register or log in).
+    Password {
+        email: String,
+        password: cc_protocol::auth::SecretString,
+        mode: AccountMode,
+    },
+    /// Enterprise LDAP / Active Directory: directory login + password.
+    Ldap {
+        login: String,
+        password: cc_protocol::auth::SecretString,
+    },
+    /// Enterprise OIDC: the single-use `login_code` from the browser
+    /// redirect and the PKCE verifier of that sign-in.
+    Oidc {
+        login_code: cc_protocol::auth::SecretString,
+        code_verifier: cc_protocol::auth::SecretString,
+    },
+}
+
+impl std::fmt::Debug for Credential {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Credential::Password { .. } => "Credential::Password",
+            Credential::Ldap { .. } => "Credential::Ldap",
+            Credential::Oidc { .. } => "Credential::Oidc",
+        })
+    }
+}
+
+impl Credential {
+    /// A browser `login_code` can be redeemed once, by one device id.
+    fn single_use(&self) -> bool {
+        matches!(self, Credential::Oidc { .. })
+    }
+}
+
+/// The account e-mail after a successful sign-in (enterprise: from
+/// `GET /v1/auth/me`; the IdP/directory decides it).
+pub(crate) async fn account_email(api: &ApiClient, credential: &Credential) -> AppResult<String> {
+    match credential {
+        Credential::Password { email, .. } => Ok(email.clone()),
+        _ => Ok(api.me().await?.email),
+    }
+}
+
+/// Host of a server URL (placeholder profile name before the e-mail is known).
+pub(crate) fn server_host(url: &str) -> String {
+    url::Url::parse(url.trim())
+        .ok()
+        .and_then(|u| u.host_str().map(str::to_owned))
+        .unwrap_or_else(|| url.trim().to_owned())
+}
+
+/// One sign-in request with a fresh device proof (ADR-0006; nonces are
+/// single-use, so every attempt signs anew). A `stale` proof (clock skew /
+/// slow network) is retried once — except for a browser `login_code`, which
+/// is single-use; other rejections are returned as
 /// [`AppError::DeviceProofRejected`] — never retried without a proof.
 pub(crate) async fn authenticate(
     app: &AppCore,
     api: &ApiClient,
     identity: &DeviceIdentity,
-    email: &str,
-    password: &cc_protocol::auth::SecretString,
-    mode: AccountMode,
+    credential: &Credential,
 ) -> AppResult<cc_protocol::auth::AuthResponse> {
+    use cc_sync_core::api::enterprise::{LdapLoginRequest, OidcExchangeRequest};
     let cfg = &app.inner.ctx.config;
+    let attempts = if credential.single_use() { 1 } else { 2 };
     let mut last = None;
-    for _ in 0..2 {
+    for _ in 0..attempts {
         let device = identity.registration(
             &cfg.device_name,
             cfg.platform,
             Some(cfg.client_version.clone()),
         )?;
         let device_proof = Some(identity.login_proof(chrono::Utc::now())?);
-        let r = match mode {
-            AccountMode::Register => {
+        let r = match credential {
+            Credential::Password {
+                email,
+                password,
+                mode: AccountMode::Register,
+            } => {
                 api.register(&RegisterRequest {
-                    email: email.to_owned(),
+                    email: email.clone(),
                     password: password.clone(),
                     device,
                     device_proof,
                 })
                 .await
             }
-            AccountMode::Login => {
+            Credential::Password {
+                email,
+                password,
+                mode: AccountMode::Login,
+            } => {
                 api.login(&LoginRequest {
-                    email: email.to_owned(),
+                    email: email.clone(),
                     password: password.clone(),
+                    device,
+                    device_proof,
+                })
+                .await
+            }
+            Credential::Ldap { login, password } => {
+                api.ldap_login(&LdapLoginRequest {
+                    login: login.clone(),
+                    password: password.clone(),
+                    device,
+                    device_proof,
+                })
+                .await
+            }
+            Credential::Oidc {
+                login_code,
+                code_verifier,
+            } => {
+                api.oidc_exchange(&OidcExchangeRequest {
+                    login_code: login_code.clone(),
+                    code_verifier: code_verifier.clone(),
                     device,
                     device_proof,
                 })
                 .await
             }
         };
+        // The IdP or directory picked the account: a device id owned by
+        // another account means another user signed in on this profile.
+        // Never regenerate this profile's device identity for that.
+        if matches!(
+            (&r, credential),
+            (
+                Err(cc_sync_core::ApiError::DeviceIdentityConflict),
+                Credential::Ldap { .. } | Credential::Oidc { .. }
+            )
+        ) {
+            return Err(AppError::invalid("account", "account_mismatch"));
+        }
         match r.map_err(AppError::from) {
             Err(AppError::DeviceProofRejected(reason)) if reason == "stale" => {
                 tracing::warn!("device login proof rejected as stale; retrying once");
@@ -1074,25 +1215,27 @@ pub(crate) async fn authenticate(
     Err(last.unwrap_or(AppError::DeviceProofRejected("stale".into())))
 }
 
-/// Register or log in `identity` (regenerating it once if the server
-/// refuses the device id).
+/// Sign in `identity` (regenerating it once if the server refuses the
+/// device id — not for a single-use browser `login_code`, which is bound to
+/// the device id: the caller starts a new browser sign-in).
 pub(crate) async fn sign_in(
     app: &AppCore,
     api: &ApiClient,
     pid: ProfileId,
     identity: Arc<DeviceIdentity>,
-    email: &str,
-    password: &cc_protocol::auth::SecretString,
-    mode: AccountMode,
+    credential: &Credential,
 ) -> AppResult<(cc_protocol::auth::AuthResponse, Arc<DeviceIdentity>)> {
     let mut identity = identity;
     for attempt in 0..2 {
-        match authenticate(app, api, &identity, email, password, mode).await {
+        match authenticate(app, api, &identity, credential).await {
             Ok(auth) => return Ok((auth, identity)),
             Err(AppError::NewDeviceIdentityRequired) if attempt == 0 => {
                 identity = Arc::new(
                     secrets::regenerate_identity(app.inner.ctx.secure.clone(), pid).await?,
                 );
+                if credential.single_use() {
+                    return Err(AppError::NewDeviceIdentityRequired);
+                }
             }
             Err(e) => return Err(e),
         }
@@ -1127,6 +1270,10 @@ async fn seed_vault_settings(u: &Unlocked, name: &str) -> AppResult<()> {
             terminal_history_mode: Default::default(),
             default_privacy_profile: Default::default(),
             sync_ai_conversations: false,
+            color: None,
+            icon: None,
+            description: None,
+            policies: Default::default(),
             created_at: now,
             updated_at: now,
         }))

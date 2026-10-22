@@ -1,3 +1,4 @@
+import 'package:consolecrypt/account/account_disabled_screen.dart';
 import 'package:consolecrypt/account/login_screen.dart';
 import 'package:consolecrypt/account/welcome_screen.dart';
 import 'package:consolecrypt/app/features.dart';
@@ -80,6 +81,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       _gate(AppRoutes.loading, (_) => const _SplashScreen()),
       _gate(AppRoutes.welcome, (_) => const WelcomeScreen()),
       _gate(AppRoutes.login, (s) => LoginScreen(newProfile: s.uri.queryParameters['new'] == '1')),
+      _gate(AppRoutes.accountDisabled, (_) => const AccountDisabledScreen()),
       _gate(AppRoutes.restore, (_) => const RestoreBackupScreen()),
       _gate(AppRoutes.onboarding, (_) => const CreateVaultScreen()),
       _gate(AppRoutes.recoveryKit, (_) => const RecoveryKitScreen()),

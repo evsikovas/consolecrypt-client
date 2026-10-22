@@ -1,5 +1,6 @@
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
+import 'package:consolecrypt/snippets/starter_catalog_db.dart';
 
 /// Bundled examples are imported only on explicit request. Once imported,
 /// commands are ordinary E2EE vault objects; edits and deletions stay authoritative.
@@ -16,6 +17,21 @@ final class StarterSnippetPackage {
   }
 }
 
+/// Builds one catalog entry; `catalogId` is `consolecrypt.<id>.v1`.
+typedef StarterEntry = Snippet Function(
+  String id,
+  String name,
+  String package,
+  SnippetType type,
+  String command, {
+  List<SnippetVariable> variables,
+  RiskLevel risk,
+  String? shell,
+  String? description,
+  List<String> tags,
+});
+
+/// The base starter set: Linux, Docker, Kubernetes and the database packages.
 List<StarterSnippetPackage> starterSnippetPackages(AppLocalizations l) {
   final now = DateTime.now().toUtc();
   Snippet entry(
@@ -23,19 +39,24 @@ List<StarterSnippetPackage> starterSnippetPackages(AppLocalizations l) {
     String name,
     String package,
     SnippetType type,
-    String command, [
+    String command, {
     List<SnippetVariable> variables = const [],
-  ]) => Snippet(
+    RiskLevel risk = RiskLevel.readOnly,
+    String? shell = 'sh',
+    String? description,
+    List<String> tags = const [],
+  }) => Snippet(
     id: ObjectId.generate(),
     name: name,
     packageName: package,
     catalogId: 'consolecrypt.$id.v1',
-    description: l.snippetStarterOrigin(package),
+    description: description ?? l.snippetStarterOrigin(package),
     snippetType: type,
-    shell: 'sh',
+    shell: shell,
     template: command,
     variables: variables,
-    riskLevel: RiskLevel.readOnly,
+    tags: tags,
+    riskLevel: risk,
     source: SnippetSource.imported,
     createdAt: now,
     updatedAt: now,
@@ -54,7 +75,10 @@ List<StarterSnippetPackage> starterSnippetPackages(AppLocalizations l) {
         l.snippetPackLinux,
         SnippetType.shell,
         'journalctl -u {{service}} -n {{lines}} --no-pager',
-        [const SnippetVariable(name: 'service', defaultValue: 'sshd'), lines],
+        variables: [
+          const SnippetVariable(name: 'service', defaultValue: 'sshd'),
+          lines,
+        ],
       ),
     ]),
     StarterSnippetPackage('docker', l.snippetPackDocker, l.snippetPackDockerDescription, [
@@ -85,7 +109,10 @@ List<StarterSnippetPackage> starterSnippetPackages(AppLocalizations l) {
         l.snippetPackDocker,
         SnippetType.docker,
         'docker logs --tail {{lines}} {{container}}', // l10n-ignore: shell command
-        [lines, const SnippetVariable(name: 'container')],
+        variables: [
+          lines,
+          const SnippetVariable(name: 'container'),
+        ],
       ),
       entry(
         'docker.disk',
@@ -109,7 +136,7 @@ List<StarterSnippetPackage> starterSnippetPackages(AppLocalizations l) {
         l.snippetPackKubernetes,
         SnippetType.kubectl,
         'kubectl get pods -n {{namespace}} -o wide', // l10n-ignore: shell command
-        [namespace],
+        variables: [namespace],
       ),
       entry(
         'kubernetes.services',
@@ -117,7 +144,7 @@ List<StarterSnippetPackage> starterSnippetPackages(AppLocalizations l) {
         l.snippetPackKubernetes,
         SnippetType.kubectl,
         'kubectl get svc -n {{namespace}}', // l10n-ignore: shell command
-        [namespace],
+        variables: [namespace],
       ),
       entry(
         'kubernetes.logs',
@@ -125,7 +152,11 @@ List<StarterSnippetPackage> starterSnippetPackages(AppLocalizations l) {
         l.snippetPackKubernetes,
         SnippetType.kubectl,
         'kubectl logs -n {{namespace}} {{pod}} --tail={{lines}}', // l10n-ignore: shell command
-        [namespace, const SnippetVariable(name: 'pod'), lines],
+        variables: [
+          namespace,
+          const SnippetVariable(name: 'pod'),
+          lines,
+        ],
       ),
       entry(
         'kubernetes.events',
@@ -133,8 +164,9 @@ List<StarterSnippetPackage> starterSnippetPackages(AppLocalizations l) {
         l.snippetPackKubernetes,
         SnippetType.kubectl,
         'kubectl get events -n {{namespace}} --sort-by=.lastTimestamp', // l10n-ignore: shell command
-        [namespace],
+        variables: [namespace],
       ),
     ]),
+    ...databaseStarterPackages(l, entry),
   ];
 }

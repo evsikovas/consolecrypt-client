@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:flutter/foundation.dart';
@@ -235,7 +236,7 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
     }
   }
 
-  void _error() => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.dbOperationFailed)));
+  void _error() => showSnack(context, context.l10n.dbOperationFailed, error: true);
   void _comments() {
     final controller = widget.controller, s = widget.controller.selection;
     if (!s.isValid) return;

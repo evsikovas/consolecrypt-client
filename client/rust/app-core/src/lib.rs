@@ -58,6 +58,7 @@ pub mod dto;
 mod edit;
 pub mod enrollment_dto;
 mod enrollment_highwater;
+pub mod enterprise_auth;
 pub mod error;
 mod host_auth;
 mod inventory;
@@ -83,6 +84,7 @@ mod kubernetes_terminal;
 pub mod kubernetes_view_preferences;
 mod kubernetes_wsl;
 pub mod logging;
+mod loopback;
 mod plan;
 mod profile_hints;
 mod prompts;
@@ -105,6 +107,9 @@ mod ssh;
 mod ssh_api;
 mod ssh_config_import;
 mod sync;
+pub mod team_dto;
+mod teams;
+mod teams_api;
 mod transfers;
 pub mod validate;
 mod working_set;
@@ -137,6 +142,7 @@ pub use rdp_hosts::RdpSavedHostTicket;
 pub use sftp_browser::{
     normalize_remote_path, RemoteFileInfoDto, SftpPreviewDto, MAX_PREVIEW_BYTES,
 };
+pub use sharing_api::{ShareNoteLinkDto, SharedNoteDto, SharedNoteInputDto, SharedNotesDto};
 pub use sharing_dto::*;
 pub use snippets::SnippetSearchHitDto;
 pub use ssh_api::OpenSshCommandDto;
@@ -153,10 +159,10 @@ pub use cc_protocol::version::Platform;
 pub mod platform {
     pub use cc_platform_core::open::{LaunchOutput, LaunchSpec};
     pub use cc_platform_core::{
-        platform_device_keys, AppRef, DeviceKeyProtector, DeviceKeyStatus, ExternalDeviceKeys,
-        FakePrompt, FileOpener, InMemoryDeviceKeys, InMemorySecureStore, Launcher, OpenError,
-        OsAuthError, OsAuthKind, OsFamily, SecureStore, SecureStoreError, StoreBackedDeviceKeys,
-        UnlockProtection, UnsupportedDeviceKeys,
+        is_active_name, platform_device_keys, AppRef, DeviceKeyProtector, DeviceKeyStatus,
+        ExternalDeviceKeys, FakePrompt, FileOpener, InMemoryDeviceKeys, InMemorySecureStore,
+        Launcher, OpenError, OsAuthError, OsAuthKind, OsFamily, SecureStore, SecureStoreError,
+        StoreBackedDeviceKeys, UnlockProtection, UnsupportedDeviceKeys,
     };
 }
 

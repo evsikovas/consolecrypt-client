@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
+import 'package:consolecrypt/terminal/terminal_fonts.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -208,7 +209,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
   Widget build(BuildContext context) {
     final tab = widget.tab;
     final fontSize = ref.watch(localSettingsProvider.select((s) => s.value?.terminalFontSize ?? 13));
-    final fontFamily = ref.watch(localSettingsProvider.select((s) => s.value?.terminalFontFamily));
+    final font = ref.watch(terminalFontProvider);
     final dispatcher = ref.read(appCommandDispatcherProvider);
     final scheme = ref.watch(
       localSettingsProvider.select((s) => s.value?.terminalColorScheme ?? TerminalColorScheme.system),
@@ -268,11 +269,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
               autofocus: widget.active,
               keyboardType: TextInputType.text,
               theme: AppTheme.terminalTheme(Theme.of(context).brightness, scheme: scheme, custom: custom),
-              textStyle: TerminalStyle(
-                fontSize: fontSize,
-                fontFamily: fontFamily ?? AppPlatform.monospaceFamily,
-                fontFamilyFallback: [AppPlatform.monospaceFamily, ...AppPlatform.monospaceFallback],
-              ),
+              textStyle: TerminalStyle(fontSize: fontSize, fontFamily: font.family, fontFamilyFallback: font.fallback),
               onSecondaryTapUp: (details, _) {
                 _focus.requestFocus();
                 unawaited(showTerminalContextMenu(context, ref, tab, details.globalPosition & const Size(1, 1)));

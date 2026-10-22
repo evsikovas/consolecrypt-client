@@ -1,3 +1,4 @@
+import 'package:consolecrypt/account/enterprise_sign_in.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -70,6 +71,8 @@ class DevicesScreen extends ConsumerWidget {
     final snapshotAsync = ref.watch(devicesProvider);
     final vaultId = ref.watch(vaultStatusProvider).value?.vaultId;
     final email = profile?.accountEmail;
+    final hints = ref.watch(signInHintsProvider).value ?? ref.read(authServiceProvider).currentSignInHints;
+    final signIn = profileSignIn(hints, profile);
     return PageScaffold(
       title: l10n.devicesTitle,
       subtitle: email == null ? l10n.devicesSubtitleNoEmail : l10n.devicesSubtitle(email),
@@ -85,6 +88,16 @@ class DevicesScreen extends ConsumerWidget {
         value: snapshotAsync,
         data: (snapshot) => ListView(
           children: [
+            if (signIn != null && signIn.method.isCorporate) ...[
+              InfoBanner(
+                key: const ValueKey('devices-auth-notice'),
+                icon: Icons.apartment_rounded,
+                message: l10n.devicesAuthCorporate(
+                  corporateAuthName(l10n, displayName: signIn.displayName, method: signIn.method),
+                ),
+              ),
+              const SizedBox(height: GlassSpacing.s12),
+            ],
             for (final r in snapshot.pendingRequests) ...[
               _PendingRequestCard(request: r),
               const SizedBox(height: GlassSpacing.s12),

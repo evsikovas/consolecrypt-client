@@ -376,6 +376,23 @@ fn change_passphrase() {
             .err(),
         Some(VaultError::WeakPassphrase)
     );
+    // The minimum is 12 characters (Unicode scalar values after NFC).
+    assert_eq!(cc_vault_core::MIN_PASSPHRASE_CHARS, 12);
+    assert_eq!(
+        created
+            .unlocked
+            .change_passphrase(&pass("elevenchars"), kdf())
+            .err(),
+        Some(VaultError::WeakPassphrase)
+    );
+    assert!(created
+        .unlocked
+        .change_passphrase(&pass("twelve chars"), kdf())
+        .is_ok());
+    assert!(created
+        .unlocked
+        .change_passphrase(&pass("ключ-двенадц"), kdf())
+        .is_ok());
 }
 
 #[test]

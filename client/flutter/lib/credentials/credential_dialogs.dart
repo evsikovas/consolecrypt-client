@@ -11,6 +11,7 @@ import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/obscurable_text_controller.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -430,19 +431,22 @@ class _ImportKeyDialogState extends ConsumerState<ImportKeyDialog> with _Busy {
         ),
         // The key is drawn as bullets until "Show" — never blurred (a blur still
         // renders the secret; LIQUID_GLASS_SPEC §4.14).
-        TextField(
-          key: const ValueKey('private-key-input'),
+        RevealedSecretText(
           controller: _key,
-          minLines: 4,
-          maxLines: 8,
-          autocorrect: false,
-          enableSuggestions: false,
-          enableIMEPersonalizedLearning: false,
-          style: mono,
-          decoration: const InputDecoration(
-            hintText: '-----BEGIN OPENSSH PRIVATE KEY-----', // l10n-ignore: key format example
+          child: TextField(
+            key: const ValueKey('private-key-input'),
+            controller: _key,
+            minLines: 4,
+            maxLines: 8,
+            autocorrect: false,
+            enableSuggestions: false,
+            enableIMEPersonalizedLearning: false,
+            style: mono,
+            decoration: const InputDecoration(
+              hintText: '-----BEGIN OPENSSH PRIVATE KEY-----', // l10n-ignore: key format example
+            ),
+            onChanged: _onKeyChanged,
           ),
-          onChanged: _onKeyChanged,
         ),
         const SizedBox(height: GlassSpacing.s8),
         if (inspection != null)

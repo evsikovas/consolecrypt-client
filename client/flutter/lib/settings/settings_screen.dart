@@ -1,3 +1,4 @@
+import 'package:consolecrypt/account/enterprise_sign_in.dart';
 import 'package:consolecrypt/account/profile_switcher.dart';
 import 'package:consolecrypt/app/about.dart';
 import 'package:consolecrypt/app/app_info.dart';
@@ -8,6 +9,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/services/ai_service.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
@@ -23,6 +25,7 @@ import 'package:consolecrypt/settings/settings_dialogs.dart';
 import 'package:consolecrypt/settings/sftp_settings.dart';
 import 'package:consolecrypt/settings/shortcut_settings.dart';
 import 'package:consolecrypt/sync/enable_sync_dialog.dart';
+import 'package:consolecrypt/teams/teams_settings.dart';
 import 'package:consolecrypt/terminal/terminal_fonts.dart';
 import 'package:consolecrypt/updates/update_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,6 +48,8 @@ class SettingsScreen extends ConsumerWidget {
           _AccountSyncSection(),
           SizedBox(height: GlassSpacing.s16),
           _VaultSection(),
+          SizedBox(height: GlassSpacing.s16),
+          TeamsSettingsSection(),
           SizedBox(height: GlassSpacing.s16),
           _AppearanceSection(),
           SizedBox(height: GlassSpacing.s16),
@@ -185,12 +190,19 @@ class _AccountSyncSection extends ConsumerWidget {
         ),
       );
     }
+    final hints = ref.watch(signInHintsProvider).value ?? ref.read(authServiceProvider).currentSignInHints;
+    final corporate = profileSignIn(hints, profile)?.method.isCorporate ?? false;
     return SectionCard(
       title: l10n.settingsAccountSyncTitle,
       icon: Icons.cloud_rounded,
       child: Column(
         children: [
           LabeledValue(label: l10n.settingsServerLabel, value: SelectableText(profile.serverUrl?.toString() ?? '—')),
+          LabeledValue(
+            key: const ValueKey('settings-auth-row'),
+            label: l10n.settingsAuthLabel,
+            value: AuthorizationSummary(profile: profile),
+          ),
           LabeledValue(label: l10n.settingsAccountLabel, value: Text(profile.accountEmail ?? '—')),
           LabeledValue(label: l10n.settingsThisDeviceLabel, value: Text(session?.deviceName ?? '—')),
           const SizedBox(height: GlassSpacing.s8),
@@ -198,10 +210,12 @@ class _AccountSyncSection extends ConsumerWidget {
             spacing: GlassSpacing.s8,
             runSpacing: GlassSpacing.s8,
             children: [
-              GlassButton(
-                onPressed: () => showChangeAccountPasswordDialog(context),
-                label: l10n.settingsChangeAccountPassword,
-              ),
+              // Corporate accounts have no account password here.
+              if (!corporate)
+                GlassButton(
+                  onPressed: () => showChangeAccountPasswordDialog(context),
+                  label: l10n.settingsChangeAccountPassword,
+                ),
               GlassButton(
                 key: const ValueKey('settings-disconnect'),
                 onPressed: () => showDisconnectDialog(context, ref),
@@ -384,6 +398,7 @@ class _TerminalSection extends ConsumerWidget {
     final l10n = context.l10n;
     final vault = ref.watch(vaultSettingsProvider).value;
     final local = ref.watch(localSettingsProvider).value ?? const LocalSettings();
+    final terminalFont = ref.watch(terminalFontProvider);
     final settings = ref.read(settingsServiceProvider);
     final synced = ref.watch(activeProfileProvider)?.isSynced ?? false;
     return SectionCard(
@@ -430,46 +445,57 @@ class _TerminalSection extends ConsumerWidget {
           ),
           LabeledValue(
             label: l10n.settingsTerminalFontLabel,
-            value: Align(
-              alignment: Alignment.centerLeft,
-              child: GlassSelect<String>(
-                key: const ValueKey('terminal-font-family'),
-                value: local.terminalFontFamily ?? '',
-                semanticLabel: l10n.settingsTerminalFontLabel,
-                items: [
-                  GlassSelectItem(value: '', label: l10n.settingsTerminalFontSystem),
-                  for (final family in {
-                    ...ref.watch(terminalFontFamiliesProvider).value ?? AppPlatform.terminalFontChoices,
-                    ?local.terminalFontFamily,
-                  })
-                    GlassSelectItem(key: ValueKey('terminal-font-$family'), value: family, label: family),
-                  GlassSelectItem(
-                    key: const ValueKey('terminal-font-custom'),
-                    value: '\u0000custom',
-                    label: l10n.settingsTerminalFontCustom,
-                    icon: Icons.edit_outlined,
+            value: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GlassSelect<String>(
+                  key: const ValueKey('terminal-font-family'),
+                  value: local.terminalFontFamily ?? '',
+                  semanticLabel: l10n.settingsTerminalFontLabel,
+                  items: [
+                    GlassSelectItem(value: '', label: l10n.settingsTerminalFontSystem),
+                    for (final family in {
+                      ...ref.watch(terminalFontCatalogProvider).value?.offered ?? AppPlatform.terminalFontChoices,
+                      ?local.terminalFontFamily,
+                    })
+                      GlassSelectItem(key: ValueKey('terminal-font-$family'), value: family, label: family),
+                    GlassSelectItem(
+                      key: const ValueKey('terminal-font-custom'),
+                      value: '\u0000custom',
+                      label: l10n.settingsTerminalFontCustom,
+                      icon: Icons.edit_outlined,
+                    ),
+                  ],
+                  onChanged: (value) async {
+                    if (value == '\u0000custom') {
+                      final family = await showTextInputDialog(
+                        context,
+                        title: l10n.settingsTerminalFontCustomTitle,
+                        initial: local.terminalFontFamily ?? '',
+                        label: l10n.settingsTerminalFontCustomHint,
+                      );
+                      final name = family?.trim() ?? '';
+                      if (name.isEmpty || name.length > 80) return;
+                      await settings.updateLocal(settings.currentLocal.copyWith(terminalFontFamily: name));
+                      return;
+                    }
+                    await settings.updateLocal(
+                      value.isEmpty
+                          ? settings.currentLocal.copyWith(resetTerminalFontFamily: true)
+                          : settings.currentLocal.copyWith(terminalFontFamily: value),
+                    );
+                  },
+                ),
+                if (terminalFont.missing) ...[
+                  const SizedBox(height: GlassSpacing.s4),
+                  Text(
+                    l10n.settingsTerminalFontMissing(terminalFont.requested ?? '', terminalFont.fallbackFamily),
+                    key: const ValueKey('terminal-font-missing'),
+                    style: GlassTokens.of(context).typography.callout
+                        .copyWith(color: GlassTokens.of(context).secondaryLabel),
                   ),
                 ],
-                onChanged: (value) async {
-                  if (value == '\u0000custom') {
-                    final family = await showTextInputDialog(
-                      context,
-                      title: l10n.settingsTerminalFontCustomTitle,
-                      initial: local.terminalFontFamily ?? '',
-                      label: l10n.settingsTerminalFontCustomHint,
-                    );
-                    final name = family?.trim() ?? '';
-                    if (name.isEmpty || name.length > 80) return;
-                    await settings.updateLocal(settings.currentLocal.copyWith(terminalFontFamily: name));
-                    return;
-                  }
-                  await settings.updateLocal(
-                    value.isEmpty
-                        ? settings.currentLocal.copyWith(resetTerminalFontFamily: true)
-                        : settings.currentLocal.copyWith(terminalFontFamily: value),
-                  );
-                },
-              ),
+              ],
             ),
           ),
           const TerminalAppearanceControls(),
@@ -704,16 +730,16 @@ class _SecuritySection extends ConsumerWidget {
               alignment: AlignmentDirectional.centerStart,
               child: GlassSelect<int>(
                 key: const ValueKey('clipboard-clear'),
-                value: const [15, 30, 60, 120].contains(local.clipboardClearSeconds) ? local.clipboardClearSeconds : 30,
+                value: clipboardClearSeconds(local.clipboardClearSeconds),
                 items: [
-                  for (final s in const [15, 30, 60, 120])
-                    GlassSelectItem(value: s, label: l10n.settingsClearClipboardAfter(s)),
+                  for (final s in clipboardClearChoices) GlassSelectItem(value: s, label: clipboardClearLabel(l10n, s)),
                 ],
                 onChanged: (v) => settings.updateLocal(local.copyWith(clipboardClearSeconds: v)),
               ),
             ),
           ),
           const ScreenCaptureSettings(),
+          const WindowCaptureProtectionSettings(),
         ],
       ),
     );

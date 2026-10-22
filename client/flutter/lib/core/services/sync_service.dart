@@ -24,6 +24,14 @@ abstract interface class SyncService {
     required bool createAccount,
   });
 
+  /// [enableSync] signing in with the organisation's sign-in (enterprise
+  /// servers): a directory password or a finished browser hand-off.
+  Stream<EnableSyncProgress> enableSyncEnterprise({
+    required Uri serverUrl,
+    required EnterpriseSignIn signIn,
+    required String deviceName,
+  });
+
   /// Synced → Local: stops sync and keeps all local data. Optionally revokes
   /// this device on the server; the server copy is left untouched.
   Future<void> disconnect({required bool revokeThisDevice});

@@ -43,6 +43,22 @@ impl EnvelopeSource for KeyEnvelope {
     }
 }
 
+/// Whether a password envelope was sealed with KDF parameters below
+/// [`cc_crypto_core::Argon2Params::NEW_MINIMUM`] (vaults calibrated down on
+/// slow machines before 0.8.7): re-wrap it after the next passphrase unlock
+/// ([`UnlockedVault::rewrap_password_envelope`]). `false` for any other
+/// envelope or unreadable parameters.
+pub fn password_envelope_needs_rewrap(source: &(impl EnvelopeSource + ?Sized)) -> bool {
+    let envelope = source.envelope();
+    envelope.recipient_type == cc_protocol::envelopes::RecipientType::Password
+        && envelope
+            .metadata
+            .kdf
+            .as_ref()
+            .and_then(|kdf| cc_crypto_core::Argon2Params::of_envelope(kdf).ok())
+            .is_some_and(|params| !params.meets_new_minimum())
+}
+
 /// The envelope, after checking any vault id recorded next to it.
 pub(crate) fn envelope_for<'a>(
     source: &'a (impl EnvelopeSource + ?Sized),

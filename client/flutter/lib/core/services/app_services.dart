@@ -13,12 +13,14 @@ import 'package:consolecrypt/core/services/sftp_service.dart';
 import 'package:consolecrypt/core/services/sharing_service.dart';
 import 'package:consolecrypt/core/services/snippet_service.dart';
 import 'package:consolecrypt/core/services/sync_service.dart';
+import 'package:consolecrypt/core/services/team_service.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/core/services/tunnel_service.dart';
 import 'package:consolecrypt/core/services/vault_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
+import 'package:consolecrypt/notes/note_service.dart';
 
 export 'package:consolecrypt/core/services/ai_service.dart';
 export 'package:consolecrypt/core/services/auth_service.dart';
@@ -75,10 +77,12 @@ final class AppServices {
     this.sftpBrowser,
     this.prompts,
     this.sharing,
+    this.teams,
     this.enrollment,
     this.kubernetes,
     this.databases,
     this.docker,
+    this.notes,
     this.developer,
     this.onDispose,
   });
@@ -107,6 +111,9 @@ final class AppServices {
   /// (SFTP, tunnels, exec). `null`: such prompts are declined.
   final PromptService? prompts;
   final SharingService? sharing;
+
+  /// Team vaults (synced profiles on servers with teams).
+  final TeamService? teams;
   final EnrollmentService? enrollment;
   final KubeService? kubernetes;
 
@@ -115,6 +122,9 @@ final class AppServices {
 
   /// Docker on this computer or saved SSH hosts (desktop).
   final DockerService? docker;
+
+  /// Notes, tasks and reminders (vault objects).
+  final NoteService? notes;
   final DeveloperControls? developer;
   final Future<void> Function()? onDispose;
 

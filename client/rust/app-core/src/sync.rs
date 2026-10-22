@@ -2,7 +2,7 @@
 //! sync / disconnect) and re-authentication (expired session, revoked or
 //! conflicting device identity).
 
-use crate::app::{authenticate, pick_envelopes, sign_in, AppCore};
+use crate::app::{account_email, authenticate, pick_envelopes, sign_in, AppCore, Credential};
 use crate::dto::*;
 use crate::error::{AppError, AppResult};
 use crate::secrets;
@@ -29,6 +29,7 @@ impl AppCore {
         if report.pulled > 0 || report.resolved > 0 || report.snapshot_pages > 0 {
             u.writer.reload_all().await?;
         }
+        crate::teams::sync_teams(&u.writer).await;
         Ok((&report).into())
     }
 
@@ -60,17 +61,30 @@ impl AppCore {
         account_password: String,
         mode: AccountMode,
     ) -> AppResult<ProfileInfo> {
+        let email = crate::validate::email(&email)?;
+        crate::validate::secret_text("account_password", &account_password)?;
+        let credential = Credential::Password {
+            email,
+            password: cc_protocol::auth::SecretString::new(account_password),
+            mode,
+        };
+        self.enable_sync_with(server_url, credential).await
+    }
+
+    /// [`AppCore::enable_sync`] for any [`Credential`] (enterprise sign-in).
+    pub(crate) async fn enable_sync_with(
+        &self,
+        server_url: String,
+        credential: Credential,
+    ) -> AppResult<ProfileInfo> {
         let (s, u) = self.unlocked().await?;
         let old = s.profile().await?;
         if old.kind == ProfileKind::Synced {
             return Err(AppError::AlreadySynced);
         }
-        let email = crate::validate::email(&email)?;
         let url = crate::validate::server_url(&server_url)?;
-        crate::validate::secret_text("account_password", &account_password)?;
         let pid = s.profile_id;
         let api = self.inner.ctx.api_for(pid, &url, &s.identity_cell())?;
-        let password = cc_protocol::auth::SecretString::new(account_password);
         let progress = |step: &str, uploaded: u64, total: u64| {
             self.inner.ctx.emit(AppEvent::EnableSyncProgress {
                 step: step.to_owned(),
@@ -79,9 +93,9 @@ impl AppCore {
             })
         };
         progress("authenticating", 0, 0);
-        let (auth, identity) =
-            sign_in(self, &api, pid, s.identity(), &email, &password, mode).await?;
+        let (auth, identity) = sign_in(self, &api, pid, s.identity(), &credential).await?;
         s.set_identity(identity.clone());
+        let email = account_email(&api, &credential).await?;
         let vault = u.vault()?;
         let rec = s
             .storage()?
@@ -232,26 +246,39 @@ impl AppCore {
     ) -> AppResult<AuthStateDto> {
         crate::validate::secret_text("account_password", &account_password)?;
         let s = self.session().await?;
+        let email = s
+            .profile()
+            .await?
+            .email
+            .ok_or_else(|| AppError::Storage("synced profile without email".into()))?;
+        let credential = Credential::Password {
+            email,
+            password: cc_protocol::auth::SecretString::new(account_password),
+            mode: AccountMode::Login,
+        };
+        self.reauthenticate_with(credential, allow_new_device_identity)
+            .await
+    }
+
+    /// [`AppCore::reauthenticate`] for any [`Credential`]. A browser
+    /// `login_code` is bound to the current device id, so a refused identity
+    /// is not replaced here: the caller regenerates it
+    /// ([`AppCore::enterprise_oidc_begin`] with `allow_new_device_identity`)
+    /// and signs in again.
+    pub(crate) async fn reauthenticate_with(
+        &self,
+        credential: Credential,
+        allow_new_device_identity: bool,
+    ) -> AppResult<AuthStateDto> {
+        let s = self.session().await?;
         let api = s.api()?;
         let mut profile = s.profile().await?;
-        let email = profile
-            .email
-            .clone()
-            .ok_or_else(|| AppError::Storage("synced profile without email".into()))?;
-        let password = cc_protocol::auth::SecretString::new(account_password);
         let mut new_identity = false;
-        let auth = match authenticate(
-            self,
-            &api,
-            &s.identity(),
-            &email,
-            &password,
-            AccountMode::Login,
-        )
-        .await
-        {
+        let auth = match authenticate(self, &api, &s.identity(), &credential).await {
             Ok(a) => a,
-            Err(AppError::NewDeviceIdentityRequired) if allow_new_device_identity => {
+            Err(AppError::NewDeviceIdentityRequired)
+                if allow_new_device_identity && !matches!(credential, Credential::Oidc { .. }) =>
+            {
                 let fresh = std::sync::Arc::new(
                     secrets::regenerate_identity(self.inner.ctx.secure.clone(), s.profile_id)
                         .await?,
@@ -259,10 +286,16 @@ impl AppCore {
                 s.set_identity(fresh.clone());
                 new_identity = true;
                 s.set_needs_attest(true).await?;
-                authenticate(self, &api, &fresh, &email, &password, AccountMode::Login).await?
+                authenticate(self, &api, &fresh, &credential).await?
             }
             Err(e) => return Err(e),
         };
+        // Enterprise sign-in picks the account at the IdP/directory: it must
+        // be the account of this profile.
+        if profile.user_id.is_some_and(|u| u != auth.user_id) {
+            let _ = api.clear_tokens().await;
+            return Err(AppError::invalid("account", "account_mismatch"));
+        }
         profile.device_id = s.device_id();
         profile.user_id = Some(auth.user_id);
         profile.updated_at = chrono::Utc::now();

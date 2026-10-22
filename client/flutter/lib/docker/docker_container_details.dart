@@ -6,6 +6,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/db/db_document_view.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
@@ -359,10 +360,13 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                               ],
                             ),
                             Expanded(
-                              child: DbDocumentView(
-                                key: ValueKey(full == null ? 'docker-json-masked-view' : 'docker-json-full-view'),
-                                document: shown!,
-                                rawText: json,
+                              child: RevealedSecret(
+                                visible: full != null,
+                                child: DbDocumentView(
+                                  key: ValueKey(full == null ? 'docker-json-masked-view' : 'docker-json-full-view'),
+                                  document: shown!,
+                                  rawText: json,
+                                ),
                               ),
                             ),
                           ],
@@ -640,38 +644,41 @@ class _EnvironmentSectionState extends ConsumerState<_EnvironmentSection> {
               onPressed: () => unawaited(_reveal()),
             )
           : null,
-      child: Column(
-        key: const ValueKey('docker-env'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final entry in entries)
-            Row(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: SelectableText(entry, style: mono),
-                  ),
-                ),
-                if (_revealed != null && entry.contains('='))
-                  GlassIconButton(
-                    icon: Icons.copy_rounded,
-                    tooltip: l.commonCopy,
-                    size: 24,
-                    iconSize: 14,
-                    style: GlassIconButtonStyle.plain,
-                    onPressed: () => unawaited(
-                      copySecretWithNotice(
-                        context,
-                        ref,
-                        entry.substring(entry.indexOf('=') + 1),
-                        what: entry.split('=').first,
-                      ),
+      child: RevealedSecret(
+        visible: _revealed != null,
+        child: Column(
+          key: const ValueKey('docker-env'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final entry in entries)
+              Row(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: SelectableText(entry, style: mono),
                     ),
                   ),
-              ],
-            ),
-        ],
+                  if (_revealed != null && entry.contains('='))
+                    GlassIconButton(
+                      icon: Icons.copy_rounded,
+                      tooltip: l.commonCopy,
+                      size: 24,
+                      iconSize: 14,
+                      style: GlassIconButtonStyle.plain,
+                      onPressed: () => unawaited(
+                        copySecretWithNotice(
+                          context,
+                          ref,
+                          entry.substring(entry.indexOf('=') + 1),
+                          what: entry.split('=').first,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
       ),
     );
   }

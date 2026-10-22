@@ -14,9 +14,18 @@ public final class CcBridgePlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
     let instance = CcBridgePlugin()
     instance.registrar = registrar
-    let kubeBrowser = KubeAuthBrowser(registrar: registrar)
+    let kubeBrowser = AuthSessionBrowser(
+      registrar: registrar, redirectUri: "consolecrypt://kubernetes/oauth/callback",
+      ephemeral: true, allowLoopbackHttp: false)
     let kubeChannel = FlutterMethodChannel(name: "consolecrypt/kube_auth", binaryMessenger: registrar.messenger())
     kubeChannel.setMethodCallHandler { call, result in kubeBrowser.handle(call, result: result) }
+    // Enterprise sign-in to the sync server (protocol 1.8): not ephemeral, so
+    // an existing session at the organisation's IdP is reused.
+    let syncBrowser = AuthSessionBrowser(
+      registrar: registrar, redirectUri: "consolecrypt://auth/callback",
+      ephemeral: false, allowLoopbackHttp: true)
+    let syncChannel = FlutterMethodChannel(name: "consolecrypt/auth_session", binaryMessenger: registrar.messenger())
+    syncChannel.setMethodCallHandler { call, result in syncBrowser.handle(call, result: result) }
     for name in ["consolecrypt/ios", "consolecrypt/accessibility", "consolecrypt/clipboard"] {
       let channel = FlutterMethodChannel(name: name, binaryMessenger: registrar.messenger())
       if name == "consolecrypt/accessibility" {

@@ -9,7 +9,9 @@ import 'package:consolecrypt/core/models/terminal_colors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/settings/color_picker.dart';
 import 'package:consolecrypt/settings/terminal_theme_io.dart';
+import 'package:consolecrypt/terminal/terminal_fonts.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 Future<TerminalColors?> editTerminalColors(BuildContext context, TerminalColors colors) =>
@@ -216,12 +218,13 @@ const _previewUser = 'user@host ';
 const _previewDirectory = '~/projects ';
 const _previewCommand = '% ls\nsrc/  README.md  build.sh '; // l10n-ignore: technical terminal sample.
 
-class TerminalPalettePreview extends StatelessWidget {
+class TerminalPalettePreview extends ConsumerWidget {
   const TerminalPalettePreview({super.key, required this.colors});
   final TerminalColors colors;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = customTerminalPalette(colors);
+    final font = ref.watch(terminalFontProvider);
     return Container(
       key: const ValueKey('custom-terminal-preview'),
       padding: const EdgeInsets.all(16),
@@ -247,13 +250,14 @@ class TerminalPalettePreview extends StatelessWidget {
                 WidgetSpan(child: Container(width: 8, height: 16, color: theme.cursor)),
               ],
             ),
-            style: TextStyle(fontFamily: AppPlatform.monospaceFamily, fontSize: 13, height: 1.5),
+            style: TextStyle(fontFamily: font.family, fontFamilyFallback: font.fallback, fontSize: 13, height: 1.5),
           ),
           const SizedBox(height: 8),
           Text(
             context.l10n.terminalSampleSelection,
             style: TextStyle(
-              fontFamily: AppPlatform.monospaceFamily,
+              fontFamily: font.family,
+              fontFamilyFallback: font.fallback,
               fontSize: 13,
               color: theme.foreground,
               backgroundColor: theme.selection,

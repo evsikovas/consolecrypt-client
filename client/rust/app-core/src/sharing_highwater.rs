@@ -176,6 +176,13 @@ impl SharingHighwater {
         Ok(Some(marker))
     }
 
+    /// Caller holds the profile lock and already removed the cached record
+    /// (the account left this share, protocol 1.8).
+    pub(crate) fn remove(&self, binding: &SharingBinding) -> Result<(), SharingHighwaterError> {
+        self.secure.delete(&self.name(binding))?;
+        Ok(())
+    }
+
     /// Caller holds the profile lock and has checked the previous exact mark.
     /// Read-back detects an acknowledged-but-lost/partial backend write. Any
     /// ambiguity is an error, so the application returns no decrypted result.

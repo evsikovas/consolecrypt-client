@@ -70,7 +70,7 @@ class _Clipboard extends SecureClipboard {
   final secrets = <String>[];
   final plain = <String>[];
   @override
-  Future<void> copySecret(String value, {bool Function()? isCurrent}) async => secrets.add(value);
+  Future<void> copySecret(String value, {bool Function()? isCurrent, Duration? limit}) async => secrets.add(value);
   @override
   Future<void> copyPlain(String value) async => plain.add(value);
 }
@@ -716,6 +716,11 @@ void main() {
       expect(dockerLocalPath('/host_mnt/Users/me/app'), '/Users/me/app');
       expect(dockerLocalPath('/run/desktop/mnt/host/c/Users/me/app', windows: true), r'C:\Users\me\app');
       expect(dockerLocalPath('/opt/x/postgres-init.sql', windows: false), '/opt/x/postgres-init.sql');
+      // Bundles are revealed in Finder, never opened (`open` would launch them).
+      expect(macOSRevealsInstead('/Users/me/Downloads/Tool.app'), isTrue);
+      expect(macOSRevealsInstead('/Users/me/Downloads/Run.workflow/'), isTrue);
+      expect(macOSRevealsInstead('/Users/me/app'), isFalse);
+      expect(macOSRevealsInstead('/Users/me/.config'), isFalse);
     });
   });
 

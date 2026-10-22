@@ -19,7 +19,6 @@ use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant, SystemTime},
 };
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
 use url::Url;
@@ -941,72 +940,22 @@ async fn loopback_callback(
     cancel: CancellationToken,
     expires: Instant,
 ) -> AppResult<Url> {
-    let work = async {
-        loop {
-            let (mut stream, peer) = listener
-                .accept()
-                .await
-                .map_err(|_| invalid("oidc_callback_unavailable"))?;
-            if !peer.ip().is_loopback() {
-                continue;
-            }
-            let request = tokio::time::timeout(Duration::from_secs(5), async {
-                let mut bytes = Zeroizing::new(Vec::new());
-                let mut byte = [0u8; 1];
-                while bytes.len() < 32 * 1024 && !bytes.ends_with(b"\r\n\r\n") {
-                    stream.read_exact(&mut byte).await?;
-                    bytes.push(byte[0]);
-                }
-                Ok::<_, std::io::Error>(bytes)
-            })
-            .await;
-            let callback = request.ok().and_then(Result::ok).and_then(|bytes| {
-                let header = std::str::from_utf8(&bytes).ok()?;
-                if !header.ends_with("\r\n\r\n") {
-                    return None;
-                }
-                let mut words = header.lines().next()?.split_whitespace();
-                if words.next()? != "GET" {
-                    return None;
-                }
-                let path = words.next()?;
-                if !path.starts_with('/') || path.starts_with("//") {
-                    return None;
-                }
-                let expected_host = format!("127.0.0.1:{}", flow.redirect_uri().port()?);
-                let hosts: Vec<_> = header
-                    .lines()
-                    .filter_map(|line| line.split_once(':'))
-                    .filter(|(name, _)| name.eq_ignore_ascii_case("host"))
-                    .collect();
-                if hosts.len() != 1 || hosts[0].1.trim() != expected_host {
-                    return None;
-                }
-                let callback = flow.redirect_uri().join(path).ok()?;
-                flow.validate_callback(&callback).ok()?;
-                Some(callback)
-            });
-            let response = if callback.is_some() {
-                "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 27\r\nCache-Control: no-store\r\nContent-Security-Policy: default-src 'none'\r\nConnection: close\r\n\r\nReturn to ConsoleCrypt now."
-            } else {
-                "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n"
-            };
-            let _ = tokio::time::timeout(
-                Duration::from_secs(1),
-                stream.write_all(response.as_bytes()),
-            )
-            .await;
-            if let Some(callback) = callback {
-                return Ok(callback);
-            }
-        }
-    };
-    tokio::select! {
-        biased;
-        _ = cancel.cancelled() => Err(invalid("auth_cancelled")),
-        result = tokio::time::timeout(expires.saturating_duration_since(Instant::now()),work) =>
-            result.map_err(|_|invalid("auth_timeout"))?,
-    }
+    use crate::loopback::{await_callback, LoopbackError};
+    await_callback(
+        &listener,
+        flow.redirect_uri(),
+        |callback| flow.validate_callback(callback).is_ok(),
+        cancel,
+        expires,
+    )
+    .await
+    .map_err(|e| {
+        invalid(match e {
+            LoopbackError::Unavailable => "oidc_callback_unavailable",
+            LoopbackError::Cancelled => "auth_cancelled",
+            LoopbackError::Timeout => "auth_timeout",
+        })
+    })
 }
 
 #[cfg(all(test, unix, not(any(target_os = "android", target_os = "ios"))))]

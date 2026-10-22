@@ -559,6 +559,220 @@ class AppLocalizationsRu extends AppLocalizations {
   String get navSnippets => 'Сниппеты';
 
   @override
+  String get notesShared => 'Общие заметки';
+
+  @override
+  String get notesSharedRefresh => 'Обновить общие заметки';
+
+  @override
+  String get notesSharedNew => 'Новая общая заметка';
+
+  @override
+  String get notesSharedFailed => 'Не удалось загрузить общие заметки. Проверьте подключение к серверу синхронизации.';
+
+  @override
+  String get notesSharedWaiting =>
+      'Владелец ещё не открыл общие заметки для этого объекта. Они появятся, когда он откроет панель заметок.';
+
+  @override
+  String notesSharedPending(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count заметки станут доступны, когда владелец откроет панель заметок',
+      many: '$count заметок станут доступны, когда владелец откроет панель заметок',
+      few: '$count заметки станут доступны, когда владелец откроет панель заметок',
+      one: '$count заметка станет доступна, когда владелец откроет панель заметок',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notesSharedEmpty => 'Общих заметок пока нет.';
+
+  @override
+  String get notesSharedHint => 'Заметку видят все, с кем вы поделились объектом. Изменить её можете только вы.';
+
+  @override
+  String get notesSharedReadOnly => 'Изменить заметку может только автор.';
+
+  @override
+  String notesSharedDeleteMessage(String title) {
+    return 'Заметка «$title» будет удалена у всех, у кого есть доступ к объекту.';
+  }
+
+  @override
+  String get notesAuthorYou => 'Вы';
+
+  @override
+  String get notesAuthorOwner => 'Владелец';
+
+  @override
+  String get notesAuthorMember => 'Участник';
+
+  @override
+  String get navNotes => 'Заметки';
+
+  @override
+  String get notesThisObject => 'Объект';
+
+  @override
+  String get notesAll => 'Все';
+
+  @override
+  String get notesTasks => 'Задачи';
+
+  @override
+  String get notesSearchHint => 'Поиск по заметкам';
+
+  @override
+  String get notesNew => 'Новая заметка';
+
+  @override
+  String get notesEmptyTitle => 'Заметок пока нет';
+
+  @override
+  String get notesEmptyMessage =>
+      'Записывайте задачи, напоминания и всё, что важно помнить о серверах, базах и контейнерах.';
+
+  @override
+  String notesEmptyObject(String name) {
+    return 'О «$name» пока ничего нет';
+  }
+
+  @override
+  String get notesNothingFound => 'Ничего не найдено';
+
+  @override
+  String notesCompleted(int count) {
+    return 'Выполненные ($count)';
+  }
+
+  @override
+  String get notesTitle => 'Заголовок';
+
+  @override
+  String get notesBody => 'Текст (Markdown)';
+
+  @override
+  String get notesBodyEmpty => 'Текста нет';
+
+  @override
+  String get notesEdit => 'Правка';
+
+  @override
+  String get notesPreview => 'Просмотр';
+
+  @override
+  String get notesTags => 'Метки через запятую';
+
+  @override
+  String get notesTask => 'Задача';
+
+  @override
+  String get notesDue => 'Срок';
+
+  @override
+  String get notesDone => 'Выполнено';
+
+  @override
+  String get notesReminder => 'Напоминание';
+
+  @override
+  String get notesAttachedTo => 'Привязка';
+
+  @override
+  String get notesNoTarget => 'Без привязки';
+
+  @override
+  String get notesTargetMissing => 'Объект не найден';
+
+  @override
+  String get notesWhenNone => 'Нет';
+
+  @override
+  String get notesWhenInHour => 'Через час';
+
+  @override
+  String get notesWhenThisEvening => 'Сегодня в 18:00';
+
+  @override
+  String get notesWhenTomorrow => 'Завтра в 09:00';
+
+  @override
+  String get notesWhenNextWeek => 'Через неделю';
+
+  @override
+  String get notesWhenCustom => 'Дата и время…';
+
+  @override
+  String get notesWhenCustomHint => 'ГГГГ-ММ-ДД ЧЧ:ММ';
+
+  @override
+  String get notesInvalidTime => 'Введите дату в виде ГГГГ-ММ-ДД ЧЧ:ММ';
+
+  @override
+  String notesOverdueAt(String when) {
+    return 'Просрочено · $when';
+  }
+
+  @override
+  String get notesPin => 'Закрепить';
+
+  @override
+  String get notesUnpin => 'Открепить';
+
+  @override
+  String get notesSnooze => 'Напомнить через час';
+
+  @override
+  String notesAttachHere(String name) {
+    return 'Привязать к «$name»';
+  }
+
+  @override
+  String get notesDetach => 'Отвязать';
+
+  @override
+  String get notesDelete => 'Удалить заметку';
+
+  @override
+  String notesDeleteMessage(String title) {
+    return 'Заметка «$title» будет удалена на всех ваших устройствах.';
+  }
+
+  @override
+  String get notesMarkDone => 'Отметить выполненной';
+
+  @override
+  String get notesMarkOpen => 'Снять отметку о выполнении';
+
+  @override
+  String get notesBack => 'К списку заметок';
+
+  @override
+  String get notesSaveFailed => 'Не сохранено';
+
+  @override
+  String notesReminderToast(String title) {
+    return 'Напоминание: $title';
+  }
+
+  @override
+  String get notesOpen => 'Открыть';
+
+  @override
+  String get notesHostNotesTitle => 'Заметка из карточки хоста';
+
+  @override
+  String get notesHostNotesMove => 'Перенести в заметки';
+
+  @override
+  String notesFromHostTitle(String name) {
+    return 'Заметки: $name';
+  }
+
+  @override
   String get navAiChat => 'ИИ-чат';
 
   @override
@@ -9960,5 +10174,1485 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String dbPreviewTabTitle(String name) {
     return '$name — данные';
+  }
+
+  @override
+  String dbDetailsSection(String id) {
+    String _temp0 = intl.Intl.selectLogic(id, {
+      'general': 'Общее',
+      'size': 'Размер',
+      'structure': 'Структура',
+      'partitioning': 'Секционирование',
+      'maintenance': 'Обслуживание',
+      'other': '$id',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dbDetailsField(String id) {
+    String _temp0 = intl.Intl.selectLogic(id, {
+      'kind': 'Тип объекта',
+      'persistence': 'Хранение',
+      'schema': 'Схема',
+      'owner': 'Владелец',
+      'tablespace': 'Табличное пространство',
+      'comment': 'Комментарий',
+      'rows': 'Строк',
+      'live_rows': 'Живых строк',
+      'dead_rows': 'Мёртвых строк',
+      'total_size': 'Общий размер',
+      'table_size': 'Данные таблицы',
+      'index_size': 'Индексы',
+      'toast_size': 'TOAST',
+      'columns': 'Колонок',
+      'indexes': 'Индексов',
+      'constraints': 'Ограничений',
+      'triggers': 'Триггеров',
+      'definition_length': 'Длина определения, символов',
+      'partition_key': 'Ключ секционирования',
+      'partitions': 'Секций',
+      'partition_of': 'Секция таблицы',
+      'last_vacuum': 'Последний VACUUM',
+      'last_autovacuum': 'Последний autovacuum',
+      'last_analyze': 'Последний ANALYZE',
+      'last_autoanalyze': 'Последний autoanalyze',
+      'engine': 'Движок',
+      'row_format': 'Формат строк',
+      'collation': 'Сопоставление',
+      'definer': 'Определил',
+      'updatable': 'Обновляемое',
+      'security': 'Права выполнения',
+      'average_row': 'Средняя строка',
+      'free_space': 'Свободно',
+      'auto_increment': 'Следующий AUTO_INCREMENT',
+      'created': 'Создана',
+      'updated': 'Изменена',
+      'uncompressed_size': 'Без сжатия',
+      'parts': 'Активных частей',
+      'sorting_key': 'Ключ сортировки',
+      'primary_key': 'Первичный ключ',
+      'sampling_key': 'Ключ выборки',
+      'ttl': 'TTL',
+      'metadata_modified': 'Метаданные изменены',
+      'type': 'Тип',
+      'encoding': 'Кодировка',
+      'database': 'База',
+      'memory': 'Память',
+      'keys': 'Ключей',
+      'length_bytes': 'Длина, байт',
+      'length_fields': 'Полей',
+      'length_elements': 'Элементов',
+      'length_members': 'Элементов',
+      'length_entries': 'Записей',
+      'other': '$id',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dbDetailsKeyword(String id) {
+    String _temp0 = intl.Intl.selectLogic(id, {
+      'table': 'Таблица',
+      'partitioned_table': 'Секционированная таблица',
+      'view': 'Представление',
+      'materialized_view': 'Материализованное представление',
+      'foreign_table': 'Внешняя таблица',
+      'unlogged': 'Без журнала (UNLOGGED)',
+      'temporary': 'Временная',
+      'other': '$id',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get dbDetailsNoExpiry => 'Без срока';
+
+  @override
+  String get dbDetailsJson => 'JSON';
+
+  @override
+  String get dbDetailsEmpty => 'Для этого объекта сведений нет.';
+
+  @override
+  String get copyWhatObjectDetails => 'Сведения об объекте';
+
+  @override
+  String get dbWrapLines => 'Переносить строки';
+
+  @override
+  String settingsTerminalFontMissing(String family, String fallback) {
+    return 'Шрифт «$family» не установлен — используется $fallback.';
+  }
+
+  @override
+  String get settingsCaptureProtectionLabel => 'Скрывать окно от записи экрана';
+
+  @override
+  String get settingsCaptureProtectionOff => 'Никогда';
+
+  @override
+  String get settingsCaptureProtectionSecrets => 'Когда видны секреты';
+
+  @override
+  String get settingsCaptureProtectionAlways => 'Всегда';
+
+  @override
+  String get settingsCaptureProtectionHelp =>
+      'Окно не попадёт в скриншоты, запись и демонстрацию экрана (Zoom, Teams). В режиме «Всегда» коллеги не увидят окно ConsoleCrypt при показе экрана.';
+
+  @override
+  String get sftpActiveContentTitle => 'Этот файл может выполнить код';
+
+  @override
+  String sftpActiveContentBody(String name) {
+    return 'Файл «$name» может выполнить код. Он откроется как текст в редакторе.';
+  }
+
+  @override
+  String get sftpActiveContentNoRun =>
+      'ConsoleCrypt не запускает загруженные файлы. Чтобы выполнить его, используйте терминал на сервере.';
+
+  @override
+  String get sftpActiveContentOpenAsText => 'Открыть как текст';
+
+  @override
+  String get sftpNoTextEditorTitle => 'Текстовый редактор не найден';
+
+  @override
+  String sftpNoTextEditorBody(String name) {
+    return 'Файл «$name» может выполнить код, поэтому он открывается только как текст, но текстовый редактор не найден. Выберите редактор.';
+  }
+
+  @override
+  String get sftpChooseEditor => 'Выбрать редактор…';
+
+  @override
+  String get errorNoTextEditor =>
+      'Не найден текстовый редактор, чтобы безопасно открыть этот файл. Выберите редактор через «Открыть в программе…».';
+
+  @override
+  String get dbExportEscapeFormulas => 'Экранировать формулы (для Excel)';
+
+  @override
+  String settingsClearClipboardSeconds(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count секунды',
+      many: '$count секунд',
+      few: '$count секунды',
+      one: '$count секунду',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String settingsClearClipboardMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count минуты',
+      many: '$count минут',
+      few: '$count минуты',
+      one: '$count минуту',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String settingsClearClipboardHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count часа',
+      many: '$count часов',
+      few: '$count часа',
+      one: '$count час',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String settingsClearClipboardDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count дня',
+      many: '$count дней',
+      few: '$count дня',
+      one: '$count день',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String sharingUnreadableEntries(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count записи не удалось прочитать, они скрыты.',
+      many: '$count записей не удалось прочитать, они скрыты.',
+      few: '$count записи не удалось прочитать, они скрыты.',
+      one: '$count запись не удалось прочитать, она скрыта.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get snippetPackPostgresql => 'SQL · PostgreSQL';
+
+  @override
+  String get snippetPackPostgresqlDescription =>
+      'Активность, блокировки, размеры, индексы, vacuum, репликация и настройки. Для psql или раздела «Базы данных».';
+
+  @override
+  String get snippetPackMysql => 'SQL · MySQL/MariaDB';
+
+  @override
+  String get snippetPackMysqlDescription =>
+      'Processlist, блокировки InnoDB, размеры, индексы, репликация и дайджесты запросов. Для клиента mysql или раздела «Базы данных».';
+
+  @override
+  String get snippetPackClickhouse => 'SQL · ClickHouse';
+
+  @override
+  String get snippetPackClickhouseDescription =>
+      'Текущие и медленные запросы, куски, слияния, мутации, репликация и диски. Для clickhouse-client или раздела «Базы данных».';
+
+  @override
+  String get snippetPackRedis => 'Redis';
+
+  @override
+  String get snippetPackRedisDescription =>
+      'Память, клиенты, медленные команды, ключи и репликация. Для redis-cli или раздела «Базы данных».';
+
+  @override
+  String get snippetPackMongodb => 'MongoDB';
+
+  @override
+  String get snippetPackMongodbDescription =>
+      'Операции, статистика сервера и коллекций, индексы, набор реплик и профилировщик. Для mongosh; часть работает и в разделе «Базы данных».';
+
+  @override
+  String get snippetDbPgActivity => 'Активные запросы';
+
+  @override
+  String get snippetDbPgActivityNote => 'Сессии не в состоянии idle, самые долгие сверху.';
+
+  @override
+  String get snippetDbPgLongRunning => 'Долгие запросы';
+
+  @override
+  String get snippetDbPgLongRunningNote => 'Запросы, которые выполняются дольше заданного числа секунд.';
+
+  @override
+  String get snippetDbPgBlocking => 'Дерево блокировок';
+
+  @override
+  String get snippetDbPgBlockingNote => 'Блокирующие сессии и ожидающие их сессии с отступом по глубине (PG 9.6+).';
+
+  @override
+  String get snippetDbPgTableSizes => 'Самые большие таблицы';
+
+  @override
+  String get snippetDbPgTableSizesNote =>
+      'Полный размер, а также таблица, индексы и TOAST; число строк — оценка планировщика.';
+
+  @override
+  String get snippetDbPgDatabaseSizes => 'Размеры баз данных';
+
+  @override
+  String get snippetDbPgDatabaseSizesNote => 'Размер каждой базы, к которой разрешено подключение.';
+
+  @override
+  String get snippetDbPgIndexUsage => 'Использование индексов';
+
+  @override
+  String get snippetDbPgIndexUsageNote =>
+      'Сначала редко используемые индексы; idx_scan = 0 — не использовался с последнего сброса статистики. Проверьте и реплики; уникальные индексы не удаляйте.';
+
+  @override
+  String get snippetDbPgDeadTuples => 'Мёртвые строки и autovacuum';
+
+  @override
+  String get snippetDbPgDeadTuplesNote => 'Оценка раздувания по мёртвым строкам и время последних vacuum и analyze.';
+
+  @override
+  String get snippetDbPgCacheHit => 'Попадания в кэш';
+
+  @override
+  String get snippetDbPgCacheHitNote => 'Доля блоков из shared buffers по базам; ниже 99% для OLTP стоит разобраться.';
+
+  @override
+  String get snippetDbPgReplication => 'Состояние репликации';
+
+  @override
+  String get snippetDbPgReplicationNote =>
+      'Подключённые реплики и отставание в байтах и по времени. Выполняйте на primary (PG 10+).';
+
+  @override
+  String get snippetDbPgSlots => 'Слоты репликации';
+
+  @override
+  String get snippetDbPgSlotsNote => 'Слоты и удерживаемый ими WAL; неактивный слот держит WAL бесконечно (PG 13+).';
+
+  @override
+  String get snippetDbPgConnections => 'Подключения по пользователям и приложениям';
+
+  @override
+  String get snippetDbPgConnectionsNote => 'Клиентские подключения по базе, пользователю, приложению и состоянию.';
+
+  @override
+  String get snippetDbPgSettingsChanged => 'Изменённые настройки';
+
+  @override
+  String get snippetDbPgSettingsChangedNote => 'Параметры, значение которых отличается от встроенного по умолчанию.';
+
+  @override
+  String get snippetDbPgColumns => 'Колонки таблицы';
+
+  @override
+  String get snippetDbPgColumnsNote => 'Колонки с типами, значениями по умолчанию и комментариями.';
+
+  @override
+  String get snippetDbPgForeignKeys => 'Внешние ключи таблицы';
+
+  @override
+  String get snippetDbPgForeignKeysNote => 'Внешние ключи таблицы и ключи, которые ссылаются на неё.';
+
+  @override
+  String get snippetDbPgSequences => 'Последовательности у предела';
+
+  @override
+  String get snippetDbPgSequencesNote =>
+      'Последовательности, израсходовавшие больше заданного процента диапазона; проверьте и тип колонки (PG 10+).';
+
+  @override
+  String get snippetDbPgFkWithoutIndex => 'Внешние ключи без индекса';
+
+  @override
+  String get snippetDbPgFkWithoutIndexNote =>
+      'Внешние ключи, колонки которых не стоят в начале ни одного индекса; удаление и изменение родителя сканирует дочернюю таблицу.';
+
+  @override
+  String get snippetDbPgStatements => 'Тяжёлые запросы (pg_stat_statements)';
+
+  @override
+  String get snippetDbPgStatementsNote =>
+      'Нужно расширение pg_stat_statements (shared_preload_libraries и CREATE EXTENSION); без него будет ошибка «relation does not exist». Имена колонок — для PG 13+.';
+
+  @override
+  String get snippetDbPgExplainAnalyze => 'EXPLAIN ANALYZE';
+
+  @override
+  String get snippetDbPgExplainAnalyzeNote =>
+      'Выполняет запрос, чтобы измерить реальный план; изменяющие данные запросы оборачивайте в BEGIN … ROLLBACK.';
+
+  @override
+  String get snippetDbPgCancel => 'Отменить запрос';
+
+  @override
+  String get snippetDbPgCancelNote => 'Отменяет текущий запрос процесса; сессия остаётся подключённой.';
+
+  @override
+  String get snippetDbPgTerminate => 'Завершить сессию';
+
+  @override
+  String get snippetDbPgTerminateNote => 'Отключает процесс и откатывает его открытую транзакцию.';
+
+  @override
+  String get snippetDbMysqlProcesslist => 'Активные запросы';
+
+  @override
+  String get snippetDbMysqlProcesslistNote => 'Подключения не в состоянии Sleep, самые долгие сверху.';
+
+  @override
+  String get snippetDbMysqlLongRunning => 'Долгие запросы';
+
+  @override
+  String get snippetDbMysqlLongRunningNote => 'Запросы, которые выполняются дольше заданного числа секунд.';
+
+  @override
+  String get snippetDbMysqlLockWaits => 'Ожидания блокировок InnoDB';
+
+  @override
+  String get snippetDbMysqlLockWaitsNote =>
+      'Кто кого ждёт и блокирующий запрос. Нужна схема sys (MySQL 5.7+, MariaDB 10.6+).';
+
+  @override
+  String get snippetDbMysqlTransactions => 'Открытые транзакции';
+
+  @override
+  String get snippetDbMysqlTransactionsNote =>
+      'Транзакции InnoDB, самые старые сверху, с числом заблокированных и изменённых строк.';
+
+  @override
+  String get snippetDbMysqlTableSizes => 'Самые большие таблицы';
+
+  @override
+  String get snippetDbMysqlTableSizesNote =>
+      'Данные, индексы и свободное место в МБ; статистика information_schema приблизительная и кэшируется.';
+
+  @override
+  String get snippetDbMysqlDatabaseSizes => 'Размеры баз данных';
+
+  @override
+  String get snippetDbMysqlDatabaseSizesNote => 'Суммарный размер данных и индексов по схемам в МБ.';
+
+  @override
+  String get snippetDbMysqlIndexUsage => 'Использование индексов';
+
+  @override
+  String get snippetDbMysqlIndexUsageNote =>
+      'Чтения и записи по индексам с момента запуска сервера (performance_schema).';
+
+  @override
+  String get snippetDbMysqlUnusedIndexes => 'Неиспользуемые индексы';
+
+  @override
+  String get snippetDbMysqlUnusedIndexesNote =>
+      'Индексы без чтений с момента запуска сервера. Нужна схема sys; перед удалением проверьте реплики.';
+
+  @override
+  String get snippetDbMysqlAutoIncrement => 'AUTO_INCREMENT у предела';
+
+  @override
+  String get snippetDbMysqlAutoIncrementNote => 'Какая доля диапазона типа колонки уже израсходована. Нужна схема sys.';
+
+  @override
+  String get snippetDbMysqlIndexes => 'Индексы таблицы';
+
+  @override
+  String get snippetDbMysqlIndexesNote => 'Колонки индексов по порядку и их кардинальность.';
+
+  @override
+  String get snippetDbMysqlColumns => 'Колонки таблицы';
+
+  @override
+  String get snippetDbMysqlColumnsNote => 'Колонки с типами, ключами, значениями по умолчанию и комментариями.';
+
+  @override
+  String get snippetDbMysqlForeignKeys => 'Внешние ключи таблицы';
+
+  @override
+  String get snippetDbMysqlForeignKeysNote => 'Внешние ключи таблицы и ключи, которые ссылаются на неё.';
+
+  @override
+  String get snippetDbMysqlReplicaStatus => 'Состояние реплики';
+
+  @override
+  String get snippetDbMysqlReplicaStatusNote =>
+      'MySQL 8.0.22+ и MariaDB 10.5.1+; на старых серверах — SHOW SLAVE STATUS.';
+
+  @override
+  String get snippetDbMysqlVariables => 'Переменные сервера';
+
+  @override
+  String get snippetDbMysqlVariablesNote => 'Глобальные переменные по шаблону LIKE.';
+
+  @override
+  String get snippetDbMysqlStatus => 'Основные счётчики';
+
+  @override
+  String get snippetDbMysqlStatusNote =>
+      'Время работы, подключения, медленные запросы, ожидания блокировок строк и чтения buffer pool.';
+
+  @override
+  String get snippetDbMysqlConnections => 'Подключения по пользователям и хостам';
+
+  @override
+  String get snippetDbMysqlConnectionsNote => 'Подключения по пользователю, хосту клиента, схеме и команде.';
+
+  @override
+  String get snippetDbMysqlDigest => 'Тяжёлые запросы (дайджесты)';
+
+  @override
+  String get snippetDbMysqlDigestNote =>
+      'Нормализованные запросы по суммарному времени из performance_schema (в MySQL включена по умолчанию, в MariaDB — выключена).';
+
+  @override
+  String get snippetDbMysqlInnodbStatus => 'Состояние InnoDB';
+
+  @override
+  String get snippetDbMysqlInnodbStatusNote =>
+      'Отчёт движка: последний дедлок, семафоры, buffer pool; нужна привилегия PROCESS.';
+
+  @override
+  String get snippetDbMysqlExplainAnalyze => 'EXPLAIN ANALYZE';
+
+  @override
+  String get snippetDbMysqlExplainAnalyzeNote =>
+      'Выполняет запрос, чтобы измерить реальный план (MySQL 8.0.18+; в MariaDB — ANALYZE SELECT …).';
+
+  @override
+  String get snippetDbMysqlKillQuery => 'Отменить запрос';
+
+  @override
+  String get snippetDbMysqlKillQueryNote => 'Останавливает текущий запрос подключения; само подключение остаётся.';
+
+  @override
+  String get snippetDbClickhouseProcesses => 'Выполняющиеся запросы';
+
+  @override
+  String get snippetDbClickhouseProcessesNote =>
+      'Исходные запросы со временем выполнения, памятью и прочитанными строками.';
+
+  @override
+  String get snippetDbClickhouseLongRunning => 'Долгие запросы';
+
+  @override
+  String get snippetDbClickhouseLongRunningNote => 'Запросы, которые выполняются дольше заданного числа секунд.';
+
+  @override
+  String get snippetDbClickhouseSlowQueries => 'Медленные запросы';
+
+  @override
+  String get snippetDbClickhouseSlowQueriesNote =>
+      'Самые медленные завершённые запросы из system.query_log за последние часы.';
+
+  @override
+  String get snippetDbClickhouseFailedQueries => 'Запросы с ошибками';
+
+  @override
+  String get snippetDbClickhouseFailedQueriesNote => 'Последние запросы, завершившиеся исключением.';
+
+  @override
+  String get snippetDbClickhouseQueryPatterns => 'Самые тяжёлые шаблоны запросов';
+
+  @override
+  String get snippetDbClickhouseQueryPatternsNote =>
+      'Завершённые запросы, сгруппированные по нормализованному тексту, по суммарному времени.';
+
+  @override
+  String get snippetDbClickhouseTableSizes => 'Самые большие таблицы';
+
+  @override
+  String get snippetDbClickhouseTableSizesNote => 'Сжатый и несжатый размер активных кусков и степень сжатия.';
+
+  @override
+  String get snippetDbClickhouseDatabaseSizes => 'Размеры баз данных';
+
+  @override
+  String get snippetDbClickhouseDatabaseSizesNote => 'Место на диске под активные куски по базам.';
+
+  @override
+  String get snippetDbClickhousePartitions => 'Партиции таблицы';
+
+  @override
+  String get snippetDbClickhousePartitionsNote => 'Куски, строки и размер по партициям.';
+
+  @override
+  String get snippetDbClickhousePartsCount => 'Партиции с большим числом кусков';
+
+  @override
+  String get snippetDbClickhousePartsCountNote =>
+      'Слишком много активных кусков замедляет вставки и чтение («Too many parts»).';
+
+  @override
+  String get snippetDbClickhouseColumnSizes => 'Размеры колонок таблицы';
+
+  @override
+  String get snippetDbClickhouseColumnSizesNote => 'Сжатый размер, степень сжатия и кодек по колонкам.';
+
+  @override
+  String get snippetDbClickhouseMerges => 'Текущие слияния';
+
+  @override
+  String get snippetDbClickhouseMergesNote => 'Выполняющиеся слияния и мутации.';
+
+  @override
+  String get snippetDbClickhouseMutations => 'Незавершённые мутации';
+
+  @override
+  String get snippetDbClickhouseMutationsNote => 'Ещё выполняющиеся ALTER … UPDATE/DELETE и причина последней ошибки.';
+
+  @override
+  String get snippetDbClickhouseReplicationQueue => 'Очередь репликации';
+
+  @override
+  String get snippetDbClickhouseReplicationQueueNote =>
+      'Самые старые задачи репликации с повторами и последней ошибкой (таблицы Replicated*).';
+
+  @override
+  String get snippetDbClickhouseReplicas => 'Состояние реплик';
+
+  @override
+  String get snippetDbClickhouseReplicasNote => 'Задержка, очередь и режим только чтения у таблиц Replicated*.';
+
+  @override
+  String get snippetDbClickhouseDisks => 'Диски';
+
+  @override
+  String get snippetDbClickhouseDisksNote => 'Свободное и общее место на настроенных дисках.';
+
+  @override
+  String get snippetDbClickhouseErrors => 'Ошибки сервера';
+
+  @override
+  String get snippetDbClickhouseErrorsNote => 'Счётчики ошибок с момента запуска и последнее сообщение.';
+
+  @override
+  String get snippetDbClickhouseSettingsChanged => 'Изменённые настройки';
+
+  @override
+  String get snippetDbClickhouseSettingsChangedNote => 'Настройки сессии, отличающиеся от значений по умолчанию.';
+
+  @override
+  String get snippetDbClickhouseMetrics => 'Текущие метрики';
+
+  @override
+  String get snippetDbClickhouseMetricsNote => 'Ненулевые текущие показатели: запросы, слияния, подключения, память.';
+
+  @override
+  String get snippetDbClickhouseExplain => 'EXPLAIN с индексами';
+
+  @override
+  String get snippetDbClickhouseExplainNote =>
+      'План с использованными первичным ключом и индексами пропуска; запрос не выполняется.';
+
+  @override
+  String get snippetDbClickhouseKillQuery => 'Отменить запрос';
+
+  @override
+  String get snippetDbClickhouseKillQueryNote => 'Останавливает запрос с указанным query_id.';
+
+  @override
+  String get snippetDbRedisInfo => 'Сведения о сервере';
+
+  @override
+  String get snippetDbRedisInfoNote =>
+      'Один раздел INFO: server, clients, memory, persistence, stats, replication, cpu, keyspace.';
+
+  @override
+  String get snippetDbRedisMemory => 'Память';
+
+  @override
+  String get snippetDbRedisMemoryNote => 'Занятая и пиковая память, фрагментация и политика maxmemory.';
+
+  @override
+  String get snippetDbRedisMemoryDoctor => 'Диагностика памяти';
+
+  @override
+  String get snippetDbRedisMemoryDoctorNote => 'Советы Redis по проблемам с памятью.';
+
+  @override
+  String get snippetDbRedisSlowlog => 'Журнал медленных команд';
+
+  @override
+  String get snippetDbRedisSlowlogNote => 'Последние медленные команды с длительностью в микросекундах.';
+
+  @override
+  String get snippetDbRedisClients => 'Список клиентов';
+
+  @override
+  String get snippetDbRedisClientsNote => 'Подключённые клиенты: адрес, возраст, простой и последняя команда.';
+
+  @override
+  String get snippetDbRedisDbsize => 'Число ключей';
+
+  @override
+  String get snippetDbRedisDbsizeNote => 'Ключи в выбранной базе.';
+
+  @override
+  String get snippetDbRedisKeyspace => 'Пространство ключей';
+
+  @override
+  String get snippetDbRedisKeyspaceNote => 'Число ключей и ключей с TTL по базам.';
+
+  @override
+  String get snippetDbRedisScan => 'Поиск ключей по шаблону';
+
+  @override
+  String get snippetDbRedisScanNote =>
+      'Пошаговый SCAN вместо KEYS; повторяйте с возвращённым курсором, пока он не станет 0.';
+
+  @override
+  String get snippetDbRedisType => 'Тип ключа';
+
+  @override
+  String get snippetDbRedisTypeNote => 'Тип данных, хранящихся в ключе.';
+
+  @override
+  String get snippetDbRedisTtl => 'TTL ключа';
+
+  @override
+  String get snippetDbRedisTtlNote => 'Секунд до истечения; -1 — без срока, -2 — ключа нет.';
+
+  @override
+  String get snippetDbRedisMemoryUsage => 'Память ключа';
+
+  @override
+  String get snippetDbRedisMemoryUsageNote => 'Сколько байт занимают ключ и значение.';
+
+  @override
+  String get snippetDbRedisLatency => 'Диагностика задержек';
+
+  @override
+  String get snippetDbRedisLatencyNote => 'Отчёт о задержках; нужен latency-monitor-threshold > 0.';
+
+  @override
+  String get snippetDbRedisConfig => 'Параметр конфигурации';
+
+  @override
+  String get snippetDbRedisConfigNote => 'Параметры конфигурации по glob-шаблону.';
+
+  @override
+  String get snippetDbRedisReplication => 'Репликация';
+
+  @override
+  String get snippetDbRedisReplicationNote => 'Роль, подключённые реплики и смещения репликации.';
+
+  @override
+  String get snippetDbRedisCommandstats => 'Статистика команд';
+
+  @override
+  String get snippetDbRedisCommandstatsNote => 'Вызовы и время по командам с последнего сброса.';
+
+  @override
+  String get snippetDbMongodbCurrentOps => 'Активные операции';
+
+  @override
+  String get snippetDbMongodbCurrentOpsNote => 'Операции, выполняющиеся сейчас (mongosh).';
+
+  @override
+  String get snippetDbMongodbLongOps => 'Долгие операции';
+
+  @override
+  String get snippetDbMongodbLongOpsNote => 'Операции, которые выполняются дольше заданного числа секунд (mongosh).';
+
+  @override
+  String get snippetDbMongodbConnections => 'Подключения';
+
+  @override
+  String get snippetDbMongodbConnectionsNote => 'Текущие, доступные и всего созданные подключения (mongosh).';
+
+  @override
+  String get snippetDbMongodbOpcounters => 'Счётчики операций';
+
+  @override
+  String get snippetDbMongodbOpcountersNote =>
+      'Вставки, запросы, обновления, удаления и команды с момента запуска (mongosh).';
+
+  @override
+  String get snippetDbMongodbMemory => 'Память';
+
+  @override
+  String get snippetDbMongodbMemoryNote => 'Резидентная и виртуальная память в МБ (mongosh).';
+
+  @override
+  String get snippetDbMongodbDbStats => 'Статистика базы';
+
+  @override
+  String get snippetDbMongodbDbStatsNote => 'Коллекции, документы, размер данных и индексов в МБ.';
+
+  @override
+  String get snippetDbMongodbCollectionStats => 'Статистика коллекции';
+
+  @override
+  String get snippetDbMongodbCollectionStatsNote => 'Документы, место на диске и размер каждого индекса в МБ.';
+
+  @override
+  String get snippetDbMongodbIndexes => 'Индексы коллекции';
+
+  @override
+  String get snippetDbMongodbIndexesNote => 'Ключи и параметры индексов.';
+
+  @override
+  String get snippetDbMongodbIndexStats => 'Использование индексов';
+
+  @override
+  String get snippetDbMongodbIndexStatsNote => 'Число операций по каждому индексу с последнего перезапуска (mongosh).';
+
+  @override
+  String get snippetDbMongodbExplain => 'План запроса со статистикой';
+
+  @override
+  String get snippetDbMongodbExplainNote =>
+      'Выполняет find и показывает план, просмотренные ключи и документы (mongosh).';
+
+  @override
+  String get snippetDbMongodbRsStatus => 'Состояние набора реплик';
+
+  @override
+  String get snippetDbMongodbRsStatusNote => 'Участники набора, их состояние и здоровье (mongosh).';
+
+  @override
+  String get snippetDbMongodbRsLag => 'Отставание репликации';
+
+  @override
+  String get snippetDbMongodbRsLagNote => 'Насколько каждая secondary отстаёт от primary (mongosh, MongoDB 4.4+).';
+
+  @override
+  String get snippetDbMongodbProfilerStatus => 'Уровень профилировщика';
+
+  @override
+  String get snippetDbMongodbProfilerStatusNote => 'Уровень профилировщика и порог slowms текущей базы (mongosh).';
+
+  @override
+  String get snippetDbMongodbSlowOps => 'Медленные операции (профилировщик)';
+
+  @override
+  String get snippetDbMongodbSlowOpsNote =>
+      'Последние операции из профилировщика медленнее порога; включение — db.setProfilingLevel(1).';
+
+  @override
+  String get snippetDbMongodbKillOp => 'Прервать операцию';
+
+  @override
+  String get snippetDbMongodbKillOpNote => 'Останавливает операцию с указанным opid из currentOp (mongosh).';
+
+  @override
+  String snippetStarterDbOrigin(String note, String client, String package) {
+    return '$note Для $client или раздела «Базы данных». Из базового набора «$package».';
+  }
+
+  @override
+  String snippetStarterDbTerminalOrigin(String note, String client, String package) {
+    return '$note Выполняется в $client в терминале; раздел «Базы данных» его не разрешает. Из базового набора «$package».';
+  }
+
+  @override
+  String get snippetClientSessionRequired =>
+      'Сначала запустите клиент базы данных (psql, mysql, clickhouse-client, redis-cli, mongosh) в подключённой вкладке терминала, затем выполните сниппет в ней.';
+
+  @override
+  String get dbSnippetPickerTitle => 'Вставить сниппет';
+
+  @override
+  String dbSnippetPickerSearch(String engine) {
+    return 'Поиск сниппетов $engine';
+  }
+
+  @override
+  String dbSnippetPickerEmpty(String engine) {
+    return 'Сниппетов для $engine пока нет. Добавьте их в разделе «Сниппеты» → «Базовые наборы» или сохраните запрос из истории.';
+  }
+
+  @override
+  String get sharingLeave => 'Выйти из общего доступа';
+
+  @override
+  String get sharingLeaveHelp =>
+      'Элемент перестанет приходить на все ваши устройства и исчезнет из списка. Сохранённые личные копии останутся. Владелец увидит, что вы вышли.';
+
+  @override
+  String get sharingLeft => 'Вы вышли из общего доступа';
+
+  @override
+  String get sharingStopRestoreHelp =>
+      'Получатели сразу потеряют доступ. В течение 30 дней элемент можно восстановить в разделе «Недавно удалённые».';
+
+  @override
+  String sharingMembersLeft(int count) {
+    return 'Вышли из общего доступа: $count';
+  }
+
+  @override
+  String get sharingRecentlyDeleted => 'Недавно удалённые';
+
+  @override
+  String get sharingRecentlyDeletedHelp =>
+      'Удалённые общие элементы можно восстановить в течение 30 дней. Восстановленный элемент снова передаётся тем же людям, кроме вышедших; они принимают его заново.';
+
+  @override
+  String get sharingRecentlyDeletedEmpty => 'Нет недавно удалённых элементов';
+
+  @override
+  String get sharingRestore => 'Восстановить';
+
+  @override
+  String get sharingRestored => 'Элемент восстановлен и снова передан';
+
+  @override
+  String sharingRestoreUntil(String date, int count) {
+    return 'Можно восстановить до $date · получателей: $count';
+  }
+
+  @override
+  String loginSsoButton(String name) {
+    return 'Войти через $name';
+  }
+
+  @override
+  String get loginSsoButtonDefault => 'Войти через SSO';
+
+  @override
+  String get loginSsoEmailLabel => 'E-mail (необязательно)';
+
+  @override
+  String get loginSsoEmailHelper => 'Подставится на странице входа вашей организации.';
+
+  @override
+  String get loginSsoWaiting => 'Завершите вход в браузере…';
+
+  @override
+  String get loginSsoWaitingHelp =>
+      'В браузере открыта страница входа вашей организации. Вернитесь сюда, когда она об этом попросит.';
+
+  @override
+  String get loginLdapLoginLabel => 'Логин (email или DOMAIN\\user)';
+
+  @override
+  String get loginLdapPasswordLabel => 'Пароль';
+
+  @override
+  String get loginLdapCaption => 'Учётная запись вашей организации';
+
+  @override
+  String get loginLdapLoginRequired => 'Введите логин';
+
+  @override
+  String get corporateAuthNoticeTitle => 'Корпоративный вход';
+
+  @override
+  String corporateAuthNotice(String name) {
+    return 'Вход через корпоративный сервер авторизации $name. Пароль организации не открывает хранилище — для этого нужен пароль хранилища.';
+  }
+
+  @override
+  String get authProviderOidc => 'OIDC';
+
+  @override
+  String get authProviderLdap => 'Active Directory';
+
+  @override
+  String get authProviderSsoFallback => 'SSO';
+
+  @override
+  String get serverNeedsNewerApp =>
+      'Сервер использует способ входа, который эта версия не поддерживает. Обновите ConsoleCrypt.';
+
+  @override
+  String get signInMethodEmail => 'email и пароль';
+
+  @override
+  String signInMethodOidc(String name) {
+    return '$name (OIDC)';
+  }
+
+  @override
+  String signInMethodLdap(String name) {
+    return '$name (Active Directory)';
+  }
+
+  @override
+  String signInLastTime(String method, String login) {
+    return 'В прошлый раз вы входили через $method как $login';
+  }
+
+  @override
+  String signInLastTimeNoLogin(String method) {
+    return 'В прошлый раз вы входили через $method';
+  }
+
+  @override
+  String get signInForget => 'Забыть';
+
+  @override
+  String authModeChangedToEnterprise(String name) {
+    return 'Сервер перешёл на вход через корпоративный сервер авторизации $name. Прежний пароль аккаунта больше не используется.';
+  }
+
+  @override
+  String get authModeChangedToStandard =>
+      'Сервер перешёл с корпоративного входа на вход по email и паролю аккаунта. Используйте пароль, который администратор задал для вашей учётной записи.';
+
+  @override
+  String get recentServersLabel => 'Недавние серверы';
+
+  @override
+  String get authBadgeEmail => 'Email';
+
+  @override
+  String authBadgeSso(String name) {
+    return 'SSO: $name';
+  }
+
+  @override
+  String get authBadgeAd => 'AD';
+
+  @override
+  String get settingsAuthLabel => 'Авторизация';
+
+  @override
+  String settingsAuthCorporate(String name, String kind) {
+    return 'Корпоративный сервер — $name ($kind)';
+  }
+
+  @override
+  String get settingsAuthStandard => 'Email и пароль аккаунта';
+
+  @override
+  String get settingsAuthCorporateHelp =>
+      'Кто входит, проверяет сервер авторизации вашей организации. Доступа к хранилищу он не получает: пароль хранилища остаётся на ваших устройствах.';
+
+  @override
+  String settingsAuthSignedIn(String method, String date) {
+    return 'Это устройство вошло через $method $date';
+  }
+
+  @override
+  String settingsAuthSignedInAs(String method, String login, String date) {
+    return 'Это устройство вошло через $method как $login $date';
+  }
+
+  @override
+  String devicesAuthCorporate(String name) {
+    return 'Аккаунты на этом сервере входят через корпоративный сервер авторизации $name.';
+  }
+
+  @override
+  String get accountDisabledTitle => 'Доступ отключён администратором';
+
+  @override
+  String accountDisabledBody(String server) {
+    return 'Ваша организация отключила эту учётную запись на сервере $server. Синхронизация остановлена, профиль заблокирован. Данные на этом устройстве остаются зашифрованными.';
+  }
+
+  @override
+  String get accountDisabledSignIn => 'Войти снова';
+
+  @override
+  String get accountDisabledDelete => 'Удалить профиль с этого устройства';
+
+  @override
+  String accountDisabledDeleteTitle(String name) {
+    return 'Удалить профиль «$name»?';
+  }
+
+  @override
+  String get accountDisabledDeleteMessage =>
+      'Зашифрованная локальная копия будет удалена с этого устройства. На сервере ничего не изменится.';
+
+  @override
+  String get errorAccountDisabled => 'Доступ отключён администратором.';
+
+  @override
+  String get errorEnterpriseAuthRequired =>
+      'Этот сервер принимает только вход вашей организации. Проверьте сервер ещё раз или обновите приложение.';
+
+  @override
+  String get errorIdentityConflict =>
+      'Учётная запись организации уже связана с другим аккаунтом на этом сервере. Обратитесь к администратору.';
+
+  @override
+  String get errorDomainNotAllowed => 'Домен вашей почты не допущен на этом сервере.';
+
+  @override
+  String get errorGroupRequired =>
+      'Ваша учётная запись не входит в группу, которой разрешён этот сервер. Обратитесь к администратору.';
+
+  @override
+  String get errorMfaRequired => 'Ваша организация требует вход со вторым фактором. Войдите снова с его помощью.';
+
+  @override
+  String get errorIdpUnavailable => 'Служба входа вашей организации недоступна. Повторите попытку позже.';
+
+  @override
+  String get errorReasonEnterpriseCallbackInvalid => 'Браузер вернул неожиданный ответ. Начните вход заново.';
+
+  @override
+  String get errorReasonEnterpriseSignInTimeout => 'Вход занял слишком много времени. Начните заново.';
+
+  @override
+  String get errorReasonEnterpriseBrowserUnavailable => 'Не удалось открыть браузер для входа.';
+
+  @override
+  String get teamsTitle => 'Команды';
+
+  @override
+  String get teamsSubtitle =>
+      'Ресурсы, закреплённые за командой. Их видят все участники; роль определяет, кто может их менять.';
+
+  @override
+  String get teamsEmpty => 'Вы пока не состоите ни в одной команде.';
+
+  @override
+  String get teamsCreate => 'Создать команду';
+
+  @override
+  String get teamsRefresh => 'Обновить';
+
+  @override
+  String get teamsUnnamed => 'Команда без названия';
+
+  @override
+  String get teamsPendingConfirmation => 'Ждём, когда администратор сверит код';
+
+  @override
+  String get teamsUnavailable => 'Сейчас недоступна';
+
+  @override
+  String teamsRowMeta(String role, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count участника',
+      many: '$count участников',
+      few: '$count участника',
+      one: '$count участник',
+    );
+    return '$role · $_temp0';
+  }
+
+  @override
+  String get teamsWarningBadge => 'На паузе';
+
+  @override
+  String get teamsRotationBadge => 'Смените ключ';
+
+  @override
+  String get teamsOfflineBadge => 'Офлайн';
+
+  @override
+  String get teamsReadOnly => 'Только чтение';
+
+  @override
+  String teamsChipSemantics(String name) {
+    return 'Команда $name';
+  }
+
+  @override
+  String teamsInvitationFrom(String email, String role) {
+    return '$email приглашает вас в команду с ролью «$role».';
+  }
+
+  @override
+  String teamsInvitationNote(String note) {
+    return 'Комментарий: $note';
+  }
+
+  @override
+  String get teamsAccept => 'Принять';
+
+  @override
+  String get teamsDecline => 'Отклонить';
+
+  @override
+  String get teamsCreateTitle => 'Новая команда';
+
+  @override
+  String get teamsCreateBody =>
+      'Название, цвет и всё, что хранит команда, зашифровано сквозным шифрованием. Сервер видит только состав участников.';
+
+  @override
+  String get teamsNameLabel => 'Название команды';
+
+  @override
+  String get teamsDescriptionLabel => 'Описание (необязательно)';
+
+  @override
+  String get teamsColorLabel => 'Цвет';
+
+  @override
+  String get teamsColorNone => 'Цвет команды';
+
+  @override
+  String get teamsColorCustom => 'Свой…';
+
+  @override
+  String teamsCreated(String name) {
+    return 'Команда «$name» создана';
+  }
+
+  @override
+  String get teamsJoinCodeTitle => 'Сверьте код';
+
+  @override
+  String teamsJoinCodeBody(String email) {
+    return 'Продиктуйте этот код $email (лично, по телефону или в мессенджере). У администратора на экране тот же код — он подтвердит совпадение.';
+  }
+
+  @override
+  String get teamsJoinCodeWait => 'Команда откроется на ваших устройствах, как только администратор подтвердит.';
+
+  @override
+  String teamsJoinRequest(String email, String role) {
+    return '$email принял(а) приглашение (роль «$role»). Сверьте код, прежде чем добавлять.';
+  }
+
+  @override
+  String get teamsCompareCode => 'Сверить код';
+
+  @override
+  String teamsCompareTitle(String email) {
+    return 'Добавить $email?';
+  }
+
+  @override
+  String teamsCompareRole(String role) {
+    return 'Роль: $role';
+  }
+
+  @override
+  String teamsCompareBody(String email) {
+    return 'Попросите $email продиктовать код со своего экрана. Добавляйте, только если совпадают все группы.';
+  }
+
+  @override
+  String teamsCodesMatchCheckbox(String email) {
+    return 'Код на экране $email совпадает';
+  }
+
+  @override
+  String get teamsCompareWarning =>
+      'Другой код означает, что приглашение могут перехватывать. Не добавляйте участника.';
+
+  @override
+  String get teamsCodesDontMatch => 'Коды не совпадают';
+
+  @override
+  String get teamsAddMember => 'Добавить в команду';
+
+  @override
+  String teamsMemberAdded(String email) {
+    return '$email добавлен(а) в команду';
+  }
+
+  @override
+  String get teamsCodeRejectedTitle => 'Вступление отклонено';
+
+  @override
+  String get teamsCodeRejectedBody =>
+      'Никто не добавлен. Пригласите человека снова и сверьте код по каналу, которому доверяете.';
+
+  @override
+  String get teamsTabMembers => 'Участники';
+
+  @override
+  String get teamsTabSettings => 'Настройки';
+
+  @override
+  String get teamsTabHistory => 'История';
+
+  @override
+  String get teamsWarningInvalidLog =>
+      'Сервер показал изменение состава, которое никто не подписал. Команда на паузе (только чтение), ключи никому не передаются.';
+
+  @override
+  String get teamsWarningRollback =>
+      'Сервер показал более старый или другой состав команды, чем раньше. Команда на паузе (только чтение).';
+
+  @override
+  String get teamsRotationRequired =>
+      'Участник покинул команду. Смените ключ, чтобы он не смог прочитать то, что будет добавлено дальше.';
+
+  @override
+  String get teamsRotateKey => 'Сменить ключ';
+
+  @override
+  String get teamsKeyRotated => 'Ключ команды сменён';
+
+  @override
+  String teamsMemberYou(String email) {
+    return '$email (вы)';
+  }
+
+  @override
+  String get teamsPendingInvitations => 'Отправленные приглашения';
+
+  @override
+  String get teamsCancelInvitation => 'Отменить';
+
+  @override
+  String get teamsInvite => 'Пригласить участника';
+
+  @override
+  String get teamsTransferOwner => 'Сделать владельцем';
+
+  @override
+  String teamsTransferOwnerConfirm(String email) {
+    return '$email станет владельцем команды, вы останетесь администратором.';
+  }
+
+  @override
+  String get teamsRemoveMember => 'Удалить из команды';
+
+  @override
+  String teamsRemoveMemberConfirm(String email) {
+    return '$email потеряет доступ к команде. Ключ команды будет сменён, чтобы новое было им недоступно.';
+  }
+
+  @override
+  String teamsInviteTitle(String name) {
+    return 'Пригласить в «$name»';
+  }
+
+  @override
+  String get teamsInviteBody =>
+      'Нужна учётная запись ConsoleCrypt на этом сервере. После принятия приглашения вы сверите с человеком код — только после этого он получит доступ.';
+
+  @override
+  String get teamsInviteEmail => 'Почта';
+
+  @override
+  String get teamsRoleLabel => 'Роль';
+
+  @override
+  String get teamsInviteNote => 'Комментарий к приглашению (необязательно)';
+
+  @override
+  String get teamsInviteNoteWarning => 'Комментарий не шифруется: сервер может его прочитать.';
+
+  @override
+  String get teamsInviteSend => 'Отправить приглашение';
+
+  @override
+  String teamsInvited(String email) {
+    return 'Приглашение отправлено: $email';
+  }
+
+  @override
+  String get teamsSettingsReadOnly => 'Настройки команды меняют только владелец и администраторы.';
+
+  @override
+  String get teamsPoliciesTitle => 'Политики';
+
+  @override
+  String get teamsPolicyProduction => 'Отмечать новые контексты Kubernetes и базы данных как рабочие (прод)';
+
+  @override
+  String get teamsPolicyBlockAi => 'Не отправлять эти ресурсы ИИ-помощникам';
+
+  @override
+  String get teamsPolicyConfirmRisky => 'Спрашивать перед опасными командами';
+
+  @override
+  String get teamsPolicyClipboard => 'Очищать скопированные секреты через';
+
+  @override
+  String get teamsPolicyClipboardDefault => 'Как в приложении';
+
+  @override
+  String teamsPolicySeconds(int seconds) {
+    return '$seconds с';
+  }
+
+  @override
+  String get teamsSettingsSaved => 'Настройки команды сохранены';
+
+  @override
+  String get teamsMyColorTitle => 'Мой цвет для этой команды';
+
+  @override
+  String get teamsMyColorBody => 'Меняет цвет только на ваших устройствах.';
+
+  @override
+  String get teamsLeave => 'Покинуть команду';
+
+  @override
+  String teamsLeaveConfirm(String name) {
+    return 'Вы потеряете доступ к «$name» на всех своих устройствах.';
+  }
+
+  @override
+  String teamsKeyEpoch(int epoch) {
+    return 'Поколение ключа: $epoch';
+  }
+
+  @override
+  String teamsLogGenesis(String actor) {
+    return '$actor создал(а) команду';
+  }
+
+  @override
+  String teamsLogAdd(String actor, String member, String role) {
+    return '$actor добавил(а) $member с ролью «$role»';
+  }
+
+  @override
+  String teamsLogRole(String actor, String member, String role) {
+    return '$actor изменил(а) роль $member на «$role»';
+  }
+
+  @override
+  String teamsLogRemove(String actor, String member) {
+    return '$actor удалил(а) $member';
+  }
+
+  @override
+  String teamsLogLeave(String actor) {
+    return '$actor покинул(а) команду';
+  }
+
+  @override
+  String teamsLogTransfer(String actor, String member) {
+    return '$actor передал(а) владение $member';
+  }
+
+  @override
+  String teamsLogRotate(String actor, int epoch) {
+    return '$actor сменил(а) ключ (поколение $epoch)';
+  }
+
+  @override
+  String get teamsRoleOwner => 'Владелец';
+
+  @override
+  String get teamsRoleAdmin => 'Администратор';
+
+  @override
+  String get teamsRoleEditor => 'Редактор';
+
+  @override
+  String get teamsRoleViewer => 'Наблюдатель';
+
+  @override
+  String get teamsErrorReadOnly => 'Ресурсы этой команды доступны вам только для просмотра.';
+
+  @override
+  String get teamsErrorUntrusted => 'Команда на паузе: не удалось проверить её состав.';
+
+  @override
+  String get teamsErrorCrossVault =>
+      'Ресурс команды может использовать только ресурсы той же команды. Сначала скопируйте учётные данные или промежуточный хост в команду.';
+
+  @override
+  String get teamsErrorPersonalOnly => 'Этот тип данных хранится только в личном хранилище.';
+
+  @override
+  String get teamsErrorAiBlocked => 'Политика команды запрещает отправлять этот ресурс ИИ-помощникам.';
+
+  @override
+  String get teamsErrorOwnerCannotLeave => 'Перед выходом передайте владение другому участнику.';
+
+  @override
+  String get teamsFilterAll => 'Все';
+
+  @override
+  String get teamsFilterPersonal => 'Личное';
+
+  @override
+  String get teamsCopyTo => 'Копировать в команду…';
+
+  @override
+  String get teamsMoveTo => 'Переместить в команду…';
+
+  @override
+  String get teamsMoveToPersonal => 'Переместить в личное';
+
+  @override
+  String get teamsPickTitle => 'Выберите команду';
+
+  @override
+  String teamsCopied(String name) {
+    return 'Скопировано в «$name»';
+  }
+
+  @override
+  String teamsMoved(String name) {
+    return 'Перемещено в «$name»';
+  }
+
+  @override
+  String get teamsNewGroup => 'Новая группа команды';
+
+  @override
+  String get teamsNewGroupHint => 'Хосты, созданные в группе команды, принадлежат команде.';
+
+  @override
+  String teamsPolicyAck(String host) {
+    return 'Я проверил(а) эту команду для $host (политика команды)';
   }
 }
