@@ -473,7 +473,17 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   void runInTab(TerminalTab tab, String command) {
     // Local generated/snippet execution needs its own native approval target.
     // Typing and explicit Insert remain ordinary terminal input.
-    if (!tab.isLocal && _open.contains(tab)) _sendOrQueue(tab, '$command\r');
+    if (tab.isLocal || !_open.contains(tab)) return;
+    if (tab.isConnected && command.contains('\n') && tab.terminal.bracketedPasteMode && !command.contains('\x1b')) {
+      // One bracketed paste, then Enter: an interactive client (psql, mysql,
+      // clickhouse-client, a shell) receives the multi-line statement as a
+      // whole instead of executing it line by line. Line breaks are sent as
+      // CR, like a paste from a real terminal.
+      tab.terminal.paste(command.replaceAll('\r\n', '\n').replaceAll('\n', '\r'));
+      _send(tab, '\r');
+    } else {
+      _sendOrQueue(tab, '$command\r');
+    }
   }
 
   void _disposeAll() {
