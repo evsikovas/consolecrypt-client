@@ -3470,15 +3470,6 @@
   "@settingsClearClipboardLabel": {
     "description": "Settings > Appearance & security: label of the clipboard clearing dropdown."
   },
-  "settingsClearClipboardAfter": "{seconds} s after copying a secret",
-  "@settingsClearClipboardAfter": {
-    "description": "Settings > Appearance & security: clipboard clearing dropdown item.",
-    "placeholders": {
-      "seconds": {
-        "type": "int"
-      }
-    }
-  },
   "settingsKnownHostsTitle": "Known hosts",
   "@settingsKnownHostsTitle": {
     "description": "Known hosts page title and sidebar label."
@@ -13360,5 +13351,41 @@
   "dbExportEscapeFormulas": "Escape formulas (for Excel)",
   "@dbExportEscapeFormulas": {
     "description": "Database export dialog checkbox (CSV/TSV): prefix text cells starting with =, +, -, @ with an apostrophe so spreadsheets do not run them as formulas. Excel is a product name, not translated."
+  },
+  "settingsClearClipboardSeconds": "{count, plural, one{{count} second} other{{count} seconds}} after copying a secret",
+  "@settingsClearClipboardSeconds": {
+    "description": "Settings > Security: clipboard auto-clear choice in seconds.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsClearClipboardMinutes": "{count, plural, one{{count} minute} other{{count} minutes}} after copying a secret",
+  "@settingsClearClipboardMinutes": {
+    "description": "Settings > Security: clipboard auto-clear choice in minutes.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsClearClipboardHours": "{count, plural, one{{count} hour} other{{count} hours}} after copying a secret",
+  "@settingsClearClipboardHours": {
+    "description": "Settings > Security: clipboard auto-clear choice in hours.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsClearClipboardDays": "{count, plural, one{{count} day} other{{count} days}} after copying a secret",
+  "@settingsClearClipboardDays": {
+    "description": "Settings > Security: clipboard auto-clear choice in days.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

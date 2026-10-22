@@ -736,7 +736,6 @@
   "settingsThemeLight": "Светлая",
   "settingsThemeDark": "Тёмная",
   "settingsClearClipboardLabel": "Очищать буфер обмена",
-  "settingsClearClipboardAfter": "{seconds} с после копирования секрета",
   "settingsKnownHostsTitle": "Известные хосты",
   "settingsKnownHostsSubtitle": "Ключи хостов, которым вы доверяете. Изменённый ключ всегда блокирует подключение, пока вы не удалите здесь старый.",
   "settingsKnownHostsEmpty": "Известных хостов пока нет.",
@@ -5528,5 +5527,9 @@
   "dbCellEditHint": "Enter — сохранить, Esc — отменить, Tab — следующая ячейка",
   "dbPendingEdit": "Изменено, ещё не применено",
   "dbSelectedRows": "{count, plural, one{Выбрано строк: {count}} few{Выбрано строк: {count}} many{Выбрано строк: {count}} other{Выбрано строк: {count}}}",
-  "dbExportEscapeFormulas": "Экранировать формулы (для Excel)"
+  "dbExportEscapeFormulas": "Экранировать формулы (для Excel)",
+  "settingsClearClipboardSeconds": "Через {count, plural, one{{count} секунду} few{{count} секунды} many{{count} секунд} other{{count} секунды}} после копирования секрета",
+  "settingsClearClipboardMinutes": "Через {count, plural, one{{count} минуту} few{{count} минуты} many{{count} минут} other{{count} минуты}} после копирования секрета",
+  "settingsClearClipboardHours": "Через {count, plural, one{{count} час} few{{count} часа} many{{count} часов} other{{count} часа}} после копирования секрета",
+  "settingsClearClipboardDays": "Через {count, plural, one{{count} день} few{{count} дня} many{{count} дней} other{{count} дня}} после копирования секрета"
 }

@@ -2624,11 +2624,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsClearClipboardLabel => 'Очищать буфер обмена';
 
   @override
-  String settingsClearClipboardAfter(int seconds) {
-    return '$seconds с после копирования секрета';
-  }
-
-  @override
   String get settingsKnownHostsTitle => 'Известные хосты';
 
   @override
@@ -9976,4 +9971,56 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbExportEscapeFormulas => 'Экранировать формулы (для Excel)';
+
+  @override
+  String settingsClearClipboardSeconds(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count секунды',
+      many: '$count секунд',
+      few: '$count секунды',
+      one: '$count секунду',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String settingsClearClipboardMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count минуты',
+      many: '$count минут',
+      few: '$count минуты',
+      one: '$count минуту',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String settingsClearClipboardHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count часа',
+      many: '$count часов',
+      few: '$count часа',
+      one: '$count час',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String settingsClearClipboardDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count дня',
+      many: '$count дней',
+      few: '$count дня',
+      one: '$count день',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
 }

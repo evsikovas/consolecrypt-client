@@ -14,6 +14,7 @@ import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/core/models/sftp_browser.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/models/terminal_colors.dart';
+import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/src/rust/api/error.dart';
 
@@ -798,7 +799,7 @@ LocalSettings localSettingsFromJson(Json j) {
           if (entry.value case final String value when value.length <= 64) entry.key: value,
     },
     terminalScrollback: _int(j['terminal_scrollback']) ?? d.terminalScrollback,
-    clipboardClearSeconds: _int(j['clipboard_clear_seconds']) ?? d.clipboardClearSeconds,
+    clipboardClearSeconds: clipboardClearSeconds(_int(j['clipboard_clear_seconds']) ?? d.clipboardClearSeconds),
     autoLockMinutes: _int(j['auto_lock_minutes']) ?? d.autoLockMinutes,
     appLocale: AppLocale.fromWire(_str(j['app_locale'])),
     glassMode: GlassMode.fromWire(_str(j['glass_mode'])),

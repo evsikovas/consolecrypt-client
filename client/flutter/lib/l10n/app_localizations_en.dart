@@ -2499,11 +2499,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsClearClipboardLabel => 'Clear clipboard';
 
   @override
-  String settingsClearClipboardAfter(int seconds) {
-    return '$seconds s after copying a secret';
-  }
-
-  @override
   String get settingsKnownHostsTitle => 'Known hosts';
 
   @override
@@ -9739,4 +9734,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbExportEscapeFormulas => 'Escape formulas (for Excel)';
+
+  @override
+  String settingsClearClipboardSeconds(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count seconds', one: '$count second');
+    return '$_temp0 after copying a secret';
+  }
+
+  @override
+  String settingsClearClipboardMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count minutes', one: '$count minute');
+    return '$_temp0 after copying a secret';
+  }
+
+  @override
+  String settingsClearClipboardHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count hours', one: '$count hour');
+    return '$_temp0 after copying a secret';
+  }
+
+  @override
+  String settingsClearClipboardDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count days', one: '$count day');
+    return '$_temp0 after copying a secret';
+  }
 }

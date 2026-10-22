@@ -6,6 +6,7 @@ import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// `--dart-define=CC_MOCK=true`: run the UI on the in-memory mock backend
@@ -99,13 +100,27 @@ final groupByIdProvider = Provider<Map<ObjectId, Group>>(
   (ref) => {for (final g in ref.watch(groupsProvider).value ?? const <Group>[]) g.id: g},
 );
 
-/// Clipboard with auto-clear duration from settings.
+/// Device-local record of a pending clipboard clear (native backend only).
+final clipboardClearStoreProvider = Provider<ClipboardClearStore?>(
+  (ref) => useMockBackend ? null : RustAppServices.current?.clipboardClearStore,
+);
+
+/// Clipboard with auto-clear duration from settings (30 s … 1 day). A clear
+/// still pending from before a restart is finished on start and on resume.
 final secureClipboardProvider = Provider<SecureClipboard>((ref) {
   final seconds = ref.read(localSettingsProvider).value?.clipboardClearSeconds ?? 30;
-  final clipboard = SecureClipboard(clearAfter: Duration(seconds: seconds));
+  final clipboard = SecureClipboard(
+    clearAfter: Duration(seconds: clipboardClearSeconds(seconds)),
+    store: ref.read(clipboardClearStoreProvider),
+  );
   ref.listen(localSettingsProvider.select((s) => s.value?.clipboardClearSeconds), (_, seconds) {
-    if (seconds != null) clipboard.updateClearAfter(Duration(seconds: seconds));
+    if (seconds != null) clipboard.updateClearAfter(Duration(seconds: clipboardClearSeconds(seconds)));
   });
-  ref.onDispose(clipboard.dispose);
+  final lifecycle = AppLifecycleListener(onResume: () => unawaited(clipboard.clearExpired()));
+  unawaited(clipboard.clearExpired());
+  ref.onDispose(() {
+    lifecycle.dispose();
+    clipboard.dispose();
+  });
   return clipboard;
 });

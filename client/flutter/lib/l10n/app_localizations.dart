@@ -4508,12 +4508,6 @@ abstract class AppLocalizations {
   /// **'Clear clipboard'**
   String get settingsClearClipboardLabel;
 
-  /// Settings > Appearance & security: clipboard clearing dropdown item.
-  ///
-  /// In en, this message translates to:
-  /// **'{seconds} s after copying a secret'**
-  String settingsClearClipboardAfter(int seconds);
-
   /// Known hosts page title and sidebar label.
   ///
   /// In en, this message translates to:
@@ -17395,6 +17389,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Escape formulas (for Excel)'**
   String get dbExportEscapeFormulas;
+
+  /// Settings > Security: clipboard auto-clear choice in seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} second} other{{count} seconds}} after copying a secret'**
+  String settingsClearClipboardSeconds(int count);
+
+  /// Settings > Security: clipboard auto-clear choice in minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} minute} other{{count} minutes}} after copying a secret'**
+  String settingsClearClipboardMinutes(int count);
+
+  /// Settings > Security: clipboard auto-clear choice in hours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} hour} other{{count} hours}} after copying a secret'**
+  String settingsClearClipboardHours(int count);
+
+  /// Settings > Security: clipboard auto-clear choice in days.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} day} other{{count} days}} after copying a secret'**
+  String settingsClearClipboardDays(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
