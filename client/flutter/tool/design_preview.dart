@@ -18,6 +18,7 @@ import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
+import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -234,8 +235,14 @@ void main() {
                 : null,
           ),
         );
+        if (_guide && screen == 'vault-settings') {
+          await backend.vault.setDeviceUnlockEnabled(true, reason: 'guide');
+        }
+        if (_guide && screen == 'devices') {
+          backend.devices.debugAnnounceNewDevice('Linux workstation');
+        }
         final key = GlobalKey();
-        final sharing = GuideSharingService();
+        final sharing = GuideSharingService(databases: screen == 'db-shared');
         await tester.pumpWidget(
           RepaintBoundary(
             key: key,
@@ -720,17 +727,39 @@ Future<void> _databaseScreen(WidgetTester tester, String screen, AppLocalization
     await tester.tap(find.byKey(const ValueKey('db-route')));
     await settle(tester);
   }
-  if (const ['db-workspace', 'db-explain', 'db-ai'].contains(screen)) {
+  if (screen == 'db-share') {
+    await tapKey(tester, 'db-menu-pg');
+    await tester.tap(find.text(l10n.sharingTitle).last);
+    await settle(tester);
+    await tester.enterText(find.byKey(const ValueKey('sharing-email')), 'colleague@example.test');
+    await tapKey(tester, 'sharing-find');
+    await tapKey(tester, 'sharing-verify-${guideRecipient.deviceId}');
+    // Back to the top: the preview shows what the colleague receives.
+    await Scrollable.ensureVisible(tester.element(find.text(l10n.sharingPreview)));
+    await settle(tester);
+  }
+  if (const [
+    'db-workspace',
+    'db-explain',
+    'db-ai',
+    'db-prod-unlock',
+    'db-prod-write',
+    'db-row-selection',
+    'db-ddl',
+  ].contains(screen)) {
     await tapKey(tester, 'db-connection-pg');
     await tester.tap(find.text('public').first);
     await settle(tester);
     await tester.tap(find.text('orders').first);
     await settle(tester);
+    final plain = screen == 'db-prod-write';
     await tester.enterText(
       find.byKey(const ValueKey('db-query-editor')),
-      'SELECT o.id, c.name AS customer, c.email, o.total, o.status, o.created_at\n'
-      'FROM orders o\nJOIN customers c ON c.id = o.customer_id\n'
-      "WHERE o.created_at >= now() - interval '7 days'\nORDER BY o.created_at DESC\nLIMIT 100;",
+      plain
+          ? 'SELECT id, customer_id, total, status, created_at\nFROM orders\nORDER BY created_at DESC\nLIMIT 100;'
+          : 'SELECT o.id, c.name AS customer, c.email, o.total, o.status, o.created_at\n'
+                'FROM orders o\nJOIN customers c ON c.id = o.customer_id\n'
+                "WHERE o.created_at >= now() - interval '7 days'\nORDER BY o.created_at DESC\nLIMIT 100;",
     );
     await tester.pump();
     await tapKey(tester, 'db-run');
@@ -738,6 +767,49 @@ Future<void> _databaseScreen(WidgetTester tester, String screen, AppLocalization
       await tapKey(tester, 'db-explain');
       await tester.tap(find.text(l10n.dbExplain).last);
       await settle(tester);
+    }
+    if (screen == 'db-ddl') {
+      final menu = find.byWidgetPredicate(
+        (w) =>
+            w.key is ValueKey<String> &&
+            RegExp(r'^db-object-menu-.*:table6:orders').hasMatch((w.key! as ValueKey<String>).value),
+      );
+      await tester.tap(menu.first);
+      await settle(tester);
+      await tester.tap(find.text(l10n.dbDdl).last);
+      await settle(tester);
+    }
+    if (screen == 'db-row-selection') {
+      await tapKey(tester, 'db-row-number-1');
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tapKey(tester, 'db-row-number-3');
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await settle(tester);
+    }
+    if (screen == 'db-prod-unlock' || screen == 'db-prod-write') {
+      await tapKey(tester, 'db-prod-unlock');
+      await tester.enterText(find.byKey(const ValueKey('db-prod-passphrase')).first, MockCloud.demoPassphrase);
+      await tester.enterText(find.byKey(const ValueKey('db-prod-name')), 'shop-prod');
+      await tester.pump();
+      await tester.tap(find.text(l10n.dbMinutes(15)).last);
+      await settle(tester);
+      if (screen == 'db-prod-write') {
+        await tapKey(tester, 'db-prod-unlock-submit');
+        Future<void> doubleClick(String key) async {
+          await tester.tap(find.byKey(ValueKey(key)));
+          await tester.pump(const Duration(milliseconds: 60));
+          await tester.tap(find.byKey(ValueKey(key)));
+          await settle(tester, steps: 4);
+        }
+
+        await doubleClick('db-cell-1-3');
+        await tester.enterText(find.byKey(const ValueKey('db-cell-editor')), 'delivered');
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await settle(tester);
+        await doubleClick('db-cell-5-3');
+        await tester.enterText(find.byKey(const ValueKey('db-cell-editor')), 'paid');
+        await settle(tester);
+      }
     }
     if (screen == 'db-ai') {
       await tapKey(tester, 'db-toggle-ai');
@@ -858,6 +930,7 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(find.byKey(const ValueKey('workspace-panel-expanded')), findsOneWidget);
     case 'vault-settings':
       expect(find.byKey(const ValueKey('device-unlock-switch')), findsOneWidget);
+      expect(find.byKey(const ValueKey('device-unlock-protected')), findsOneWidget);
       expect(find.byKey(const ValueKey('auto-lock')), findsOneWidget);
     case 'security-settings':
       expect(find.byKey(const ValueKey('screen-capture-macos-info')), findsOneWidget);
@@ -874,6 +947,9 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(texts, contains('•'));
     case 'devices':
       expect(find.byKey(const ValueKey('review-request')), findsOneWidget);
+      expect(find.byKey(const ValueKey('new-device-banner')), findsOneWidget);
+      expect(find.byKey(const ValueKey('quarantine-Linux workstation')), findsOneWidget);
+      expect(texts, contains(l10n.devicesStatusUnconfirmed));
     case 'tunnels':
       expect(find.byKey(const ValueKey('add-tunnel')), findsOneWidget);
       expect(texts, contains('service.example.test'));
@@ -901,6 +977,25 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(texts, contains('Hash Join'));
     case 'db-ai':
       expect(find.byKey(const ValueKey('db-ai-accept')), findsOneWidget);
+    case 'db-shared':
+      expect(find.byKey(const ValueKey('db-shared-header')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-shared-badge-guide-share-db-shop')), findsOneWidget);
+    case 'db-share':
+      expect(find.byKey(const ValueKey('sharing-db-route-notice')), findsOneWidget);
+      expect(find.byKey(const ValueKey('sharing-db-production')), findsOneWidget);
+    case 'db-prod-unlock':
+      expect(find.byKey(const ValueKey('db-prod-unlock-dialog')), findsOneWidget);
+      expect(tester.widget<GlassButton>(find.byKey(const ValueKey('db-prod-unlock-submit'))).onPressed, isNotNull);
+    case 'db-prod-write':
+      expect(find.byKey(const ValueKey('db-prod-write-badge')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-prod-role-read-only')), findsNothing);
+      expect(find.byKey(const ValueKey('db-apply-edits')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-cell-editor')), findsOneWidget);
+    case 'db-row-selection':
+      expect(texts, contains(l10n.dbSelectedRows(3)));
+    case 'db-ddl':
+      expect(find.byKey(const ValueKey('db-ddl-dialog')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-ddl-open')), findsOneWidget);
     case 'docker-hosts':
       expect(find.byKey(const ValueKey('docker-host-local')), findsOneWidget);
     case 'docker-containers':
