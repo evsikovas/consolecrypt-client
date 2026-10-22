@@ -497,11 +497,36 @@ async fn local_profile_lifecycle_backup_and_recovery() {
                 object_kind: cc_models::note::NoteObjectKind::Host,
                 id: db.id.parse().unwrap(),
             }),
+            target_label: Some(" db ".into()),
             ..NoteDto::default()
         })
         .await
         .unwrap();
     assert_eq!(task.tags, ["ops"]);
+    assert_eq!(task.target_label.as_deref(), Some("db"));
+    // A target written by a later client is kept verbatim through an edit.
+    let later = r#"{"id":"0b8f6a3e-2d6f-4f55-9a70-2b8e6c1d7f10","kind":"tunnel"}"#;
+    let foreign = app
+        .save_note(NoteDto {
+            title: "Tunnel to billing".into(),
+            target: Some(cc_models::note::NoteTarget::Unknown { json: later.into() }),
+            target_label: Some("billing".into()),
+            ..NoteDto::default()
+        })
+        .await
+        .unwrap();
+    let edited = app
+        .save_note(NoteDto {
+            body: "edited here".into(),
+            ..foreign.clone()
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        edited.target,
+        Some(cc_models::note::NoteTarget::Unknown { json: later.into() })
+    );
+    app.delete_note(foreign.id.clone()).await.unwrap();
     let done_at = task.task.as_ref().unwrap().done_at_ms.unwrap();
     let again = app
         .save_note(NoteDto {
@@ -530,8 +555,10 @@ async fn local_profile_lifecycle_backup_and_recovery() {
             .await
             .unwrap()
             .iter()
-            .any(|note| note.id == task.id && note.target.is_some()),
-        "notes are not cascaded with their object"
+            .any(|note| note.id == task.id
+                && note.target.is_some()
+                && note.target_label.as_deref() == Some("db")),
+        "notes are not cascaded with their object and keep its name"
     );
     assert!(
         app.list_tunnels().await.unwrap().is_empty(),

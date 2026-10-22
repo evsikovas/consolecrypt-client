@@ -9,10 +9,12 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_providers.dart';
+import 'package:consolecrypt/hosts/host_picker.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/notes/note_models.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/notes/shared_notes_section.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
@@ -31,12 +33,18 @@ class NotesPanel extends ConsumerStatefulWidget {
 
 class _NotesPanelState extends ConsumerState<NotesPanel> {
   _NotesMode? _mode;
+  bool _notLinkedOnly = false;
   String _query = '';
   Note? _editing;
 
-  _NotesMode _effectiveMode(NoteContext? context) => _mode == null || (_mode == _NotesMode.object && context == null)
-      ? (context == null ? _NotesMode.all : _NotesMode.object)
-      : _mode!;
+  _NotesMode _effectiveMode(NoteContext? context) => _mode ?? (context == null ? _NotesMode.all : _NotesMode.object);
+
+  /// Shows the notes of a host picked from the inventory in the Object tab.
+  Future<void> _chooseHost() async {
+    final host = await showHostPicker(context, title: context.l10n.notesChooseHost, protocol: null);
+    if (host == null || !mounted) return;
+    ref.read(notesChosenObjectProvider.notifier).choose(hostNoteContext(host));
+  }
 
   bool _matches(Note note) {
     final query = _query.trim().toLowerCase();
@@ -65,7 +73,12 @@ class _NotesPanelState extends ConsumerState<NotesPanel> {
         if (note != null) setState(() => _editing = note);
       });
     }
-    final current = ref.watch(noteContextProvider(widget.branch));
+    // A host card's "Notes" opens the Object tab on that host.
+    ref.listen(notesChosenObjectProvider, (_, chosen) {
+      if (chosen != null) setState(() => _mode = _NotesMode.object);
+    });
+    final chosen = ref.watch(notesChosenObjectProvider);
+    final current = chosen ?? ref.watch(noteContextProvider(widget.branch));
     final editing = _editing;
     if (editing != null) {
       return _NoteEditor(
@@ -88,7 +101,10 @@ class _NotesPanelState extends ConsumerState<NotesPanel> {
         visible = all.where((n) => n.target == current?.target).toList()..sort(compareNotes);
         done = const [];
       case _NotesMode.all:
-        visible = [...all]..sort(compareNotes);
+        visible = [
+          for (final note in all)
+            if (!_notLinkedOnly || noteNotLinked(ref, note)) note,
+        ]..sort(compareNotes);
         done = const [];
       case _NotesMode.tasks:
         visible = all.where((n) => n.task?.done == false).toList()..sort(compareTasks);
@@ -97,6 +113,9 @@ class _NotesPanelState extends ConsumerState<NotesPanel> {
     final hostNotes = mode == _NotesMode.object ? _hostNotes(current) : null;
     final shareId = mode == _NotesMode.object && current != null ? ref.watch(noteShareProvider(current.target)) : null;
     final empty = visible.isEmpty && done.isEmpty && hostNotes == null && shareId == null;
+    final notLinked = mode == _NotesMode.all
+        ? (notes.value ?? const <Note>[]).where((note) => noteNotLinked(ref, note)).length
+        : 0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       child: Column(
@@ -108,12 +127,11 @@ class _NotesPanelState extends ConsumerState<NotesPanel> {
             expand: true,
             semanticLabel: l.navNotes,
             segments: [
-              if (current != null)
-                GlassSegment(
-                  key: const ValueKey('notes-mode-object'),
-                  value: _NotesMode.object,
-                  label: l.notesThisObject,
-                ),
+              GlassSegment(
+                key: const ValueKey('notes-mode-object'),
+                value: _NotesMode.object,
+                label: l.notesThisObject,
+              ),
               GlassSegment(key: const ValueKey('notes-mode-all'), value: _NotesMode.all, label: l.notesAll),
               GlassSegment(key: const ValueKey('notes-mode-tasks'), value: _NotesMode.tasks, label: l.notesTasks),
             ],
@@ -121,21 +139,36 @@ class _NotesPanelState extends ConsumerState<NotesPanel> {
             onChanged: (value) => setState(() => _mode = value),
           ),
           const SizedBox(height: GlassSpacing.s8),
-          if (mode == _NotesMode.object && current != null)
+          if (mode == _NotesMode.object)
             Padding(
               padding: const EdgeInsets.only(bottom: GlassSpacing.s8),
               child: Row(
                 children: [
-                  Icon(current.icon, size: 15, color: tokens.secondaryLabel),
+                  Icon(current?.icon ?? Icons.dns_outlined, size: 15, color: tokens.secondaryLabel),
                   const SizedBox(width: GlassSpacing.s6),
                   Expanded(
                     child: Text(
-                      current.label,
+                      current?.label ?? l.notesNoObject,
                       key: const ValueKey('notes-context'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
                     ),
+                  ),
+                  if (chosen != null)
+                    GlassIconButton(
+                      key: const ValueKey('notes-object-clear'),
+                      icon: Icons.close_rounded,
+                      tooltip: l.notesChosenClear,
+                      style: GlassIconButtonStyle.plain,
+                      onPressed: () => ref.read(notesChosenObjectProvider.notifier).choose(null),
+                    ),
+                  GlassIconButton(
+                    key: const ValueKey('notes-choose-host'),
+                    icon: Icons.manage_search_rounded,
+                    tooltip: l.notesChooseHost,
+                    style: GlassIconButtonStyle.plain,
+                    onPressed: () => unawaited(_chooseHost()),
                   ),
                 ],
               ),
@@ -160,12 +193,29 @@ class _NotesPanelState extends ConsumerState<NotesPanel> {
                   Note(
                     title: '',
                     target: mode == _NotesMode.object ? current?.target : null,
+                    targetLabel: mode == _NotesMode.object ? current?.label : null,
                     task: mode == _NotesMode.tasks ? const NoteTask() : null,
                   ),
                 ),
               ),
             ],
           ),
+          if (mode == _NotesMode.all && (notLinked > 0 || _notLinkedOnly)) ...[
+            const SizedBox(height: GlassSpacing.s6),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: GlassSelect<bool>(
+                key: const ValueKey('notes-filter'),
+                semanticLabel: l.notesFilter,
+                value: _notLinkedOnly,
+                items: [
+                  GlassSelectItem(value: false, label: l.notesFilterAll),
+                  GlassSelectItem(value: true, label: l.notesFilterNotLinked(notLinked)),
+                ],
+                onChanged: (value) => setState(() => _notLinkedOnly = value),
+              ),
+            ),
+          ],
           const SizedBox(height: GlassSpacing.s8),
           Expanded(
             child: empty
@@ -174,9 +224,21 @@ class _NotesPanelState extends ConsumerState<NotesPanel> {
                     title: _query.trim().isNotEmpty
                         ? l.notesNothingFound
                         : mode == _NotesMode.object
-                        ? l.notesEmptyObject(current!.label)
+                        ? (current == null ? l.notesNoObjectTitle : l.notesEmptyObject(current.label))
                         : l.notesEmptyTitle,
-                    message: _query.trim().isEmpty ? l.notesEmptyMessage : null,
+                    message: _query.trim().isNotEmpty
+                        ? null
+                        : mode == _NotesMode.object && current == null
+                        ? l.notesNoObjectMessage
+                        : l.notesEmptyMessage,
+                    action: mode == _NotesMode.object && current == null
+                        ? GlassButton(
+                            key: const ValueKey('notes-empty-choose-host'),
+                            label: l.notesChooseHost,
+                            icon: Icons.manage_search_rounded,
+                            onPressed: () => unawaited(_chooseHost()),
+                          )
+                        : null,
                   )
                 : ListView(
                     key: const ValueKey('notes-list'),
@@ -303,12 +365,17 @@ class _NoteRow extends ConsumerWidget {
     final preview = note.body.trim().split('\n').first;
     final target = showTarget && note.target != null ? noteTargetLabel(ref, note.target!) : null;
     final facts = <Widget>[
-      if (target != null)
+      if (target != null && target.$1 != null) _Fact(icon: target.$2, text: target.$1!, color: tokens.secondaryLabel),
+      if (target != null && target.$1 == null) ...[
         _Fact(
-          icon: target.$2,
-          text: target.$1 ?? l.notesTargetMissing,
-          color: target.$1 == null ? tokens.palette.warning : tokens.secondaryLabel,
+          key: ValueKey('note-not-linked-${note.id}'),
+          icon: Icons.link_off_rounded,
+          text: l.notesNotLinked,
+          color: tokens.palette.warning,
         ),
+        if (note.targetLabel case final former?)
+          _Fact(icon: target.$2, text: former, color: tokens.palette.tertiary, strike: true),
+      ],
       if (task?.dueAt case final due? when !(task?.done ?? false))
         _Fact(
           icon: Icons.event_rounded,
@@ -401,6 +468,12 @@ class _NoteRow extends ConsumerWidget {
                       label: l.notesAttachHere(current!.label),
                       icon: Icons.link_rounded,
                     ),
+                  GlassMenuItem(
+                    key: ValueKey('note-rebind-${note.id}'),
+                    value: _RowAction.rebind,
+                    label: l.notesAttachTo,
+                    icon: Icons.add_link_rounded,
+                  ),
                   if (note.target != null)
                     GlassMenuItem(value: _RowAction.detach, label: l.notesDetach, icon: Icons.link_off_rounded),
                   const GlassMenuDivider(),
@@ -434,9 +507,14 @@ class _NoteRow extends ConsumerWidget {
       case _RowAction.snooze:
         await onSave(note.copyWith(remindAt: () => DateTime.now().add(const Duration(hours: 1))));
       case _RowAction.attach:
-        await onSave(note.copyWith(target: () => current?.target));
+        await onSave(note.copyWith(target: () => current?.target, targetLabel: () => current?.label));
+      case _RowAction.rebind:
+        final host = await showHostPicker(context, title: context.l10n.notesAttachTo, protocol: null);
+        if (host == null || !context.mounted) return;
+        final to = hostNoteContext(host);
+        await onSave(note.copyWith(target: () => to.target, targetLabel: () => to.label));
       case _RowAction.detach:
-        await onSave(note.copyWith(target: () => null));
+        await onSave(note.copyWith(target: () => null, targetLabel: () => null));
       case _RowAction.delete:
         final l = context.l10n;
         final yes = await showConfirmDialog(
@@ -452,13 +530,16 @@ class _NoteRow extends ConsumerWidget {
   }
 }
 
-enum _RowAction { pin, snooze, attach, detach, delete }
+enum _RowAction { pin, snooze, attach, rebind, detach, delete }
 
 class _Fact extends StatelessWidget {
-  const _Fact({required this.icon, required this.text, required this.color});
+  const _Fact({required this.icon, required this.text, required this.color, this.strike = false, super.key});
   final IconData icon;
   final String text;
   final Color color;
+
+  /// The former name of an object that is gone.
+  final bool strike;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -471,7 +552,8 @@ class _Fact extends StatelessWidget {
           text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GlassTokens.of(context).typography.caption.copyWith(color: color),
+          style: GlassTokens.of(context).typography.caption
+              .copyWith(color: color, decoration: strike ? TextDecoration.lineThrough : null),
         ),
       ),
     ],
@@ -479,7 +561,7 @@ class _Fact extends StatelessWidget {
 }
 
 /// Name and icon of what a note is attached to; a null name means the saved
-/// object no longer exists.
+/// object no longer exists here (an empty one: still loading).
 (String?, IconData) noteTargetLabel(WidgetRef ref, NoteTarget target) => switch (target) {
   NoteObjectTarget(kind: NoteObjectKind.host || NoteObjectKind.rdpHost, :final id) => (
     ref.watch(hostsProvider).value?.where((h) => h.id.value == id).firstOrNull?.name ??
@@ -500,12 +582,23 @@ class _Fact extends StatelessWidget {
       Icons.anchor_rounded,
     );
   }(),
-  NoteKubeTarget(:final namespace, :final kind, :final name) => (
-    noteKubeLabel(kind, namespace, name),
-    Icons.anchor_rounded,
-  ),
-  NoteDockerTarget(:final name) => (name, Icons.view_in_ar_outlined),
+  NoteKubeTarget(:final contextId, :final namespace, :final kind, :final name) => () {
+    final list = ref.watch(kubeConnectionsProvider(ref.watch(kubeScopeProvider)));
+    final gone = list.hasValue && !list.value!.any((c) => c.id == contextId);
+    return (gone ? null : noteKubeLabel(kind, namespace, name), Icons.anchor_rounded);
+  }(),
+  NoteDockerTarget(:final hostId, :final name) => () {
+    final hosts = ref.watch(hostsProvider);
+    final gone = hostId != null && hosts.hasValue && !hosts.value!.any((h) => h.id.value == hostId);
+    return (gone ? null : name, Icons.view_in_ar_outlined);
+  }(),
+  NoteUnknownTarget() => (null, Icons.link_off_rounded),
 };
+
+/// Whether [note] is attached to an object that is gone (deleted, left with
+/// a share or a team, or unknown to this version). Such notes stay, marked
+/// "Not linked", and can be attached again.
+bool noteNotLinked(WidgetRef ref, Note note) => note.target != null && noteTargetLabel(ref, note.target!).$1 == null;
 
 String formatNoteTime(BuildContext context, DateTime time) {
   final locale = Localizations.localeOf(context).toLanguageTag();
@@ -518,8 +611,10 @@ String formatNoteTime(BuildContext context, DateTime time) {
       : DateFormat.yMMMd(locale).add_Hm().format(time);
 }
 
-/// Edits one note in place. Changes are saved after a short pause and when
-/// the editor closes; a note is created once it has a title or text.
+/// Edits one note in place. Changes are saved after a short pause, with
+/// Save (⌘S / Ctrl+S) and when the editor closes; a note is created once it
+/// has a title or text. Leaving with changes that could not be saved asks
+/// first.
 class _NoteEditor extends ConsumerStatefulWidget {
   const _NoteEditor({required this.initial, required this.current, required this.onClose, super.key});
   final Note initial;
@@ -574,13 +669,20 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       task: _note.task,
       remindAt: _note.remindAt,
       target: _note.target,
+      // The live name while the object exists, else the name it had.
+      targetLabel: _note.target == null
+          ? null
+          : switch (noteTargetLabel(ref, _note.target!).$1) {
+              final name? when name.isNotEmpty => name,
+              _ => _note.targetLabel,
+            },
       createdAt: _note.createdAt,
       updatedAt: _note.updatedAt,
     );
   }
 
   void _changed() {
-    _dirty = true;
+    if (!_dirty) setState(() => _dirty = true);
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 800), () => unawaited(_save()));
   }
@@ -614,9 +716,35 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     });
   }
 
+  /// Save now: the button and ⌘S / Ctrl+S.
+  Future<void> _saveNow() async {
+    if (_note.id.isEmpty) _dirty = true;
+    await _save();
+    if (mounted) setState(() {});
+  }
+
   Future<void> _close() async {
     await _save();
-    if (mounted) widget.onClose();
+    if (!mounted) return;
+    if (_dirty && _draft().title.isNotEmpty) {
+      final l = context.l10n;
+      final leave = await showConfirmDialog(
+        context,
+        title: l.notesUnsavedTitle,
+        message: l.notesUnsavedMessage,
+        confirmLabel: l.notesDiscardChanges,
+        destructive: true,
+      );
+      if (!leave || !mounted) return;
+    }
+    widget.onClose();
+  }
+
+  Future<void> _chooseTarget() async {
+    final host = await showHostPicker(context, title: context.l10n.notesChooseHost, protocol: null);
+    if (host == null || !mounted) return;
+    final to = hostNoteContext(host);
+    _update(_note.copyWith(target: () => to.target, targetLabel: () => to.label));
   }
 
   @override
@@ -625,148 +753,191 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     final current = widget.current;
     final task = _note.task;
     final targetLabel = _note.target == null ? null : noteTargetLabel(ref, _note.target!);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 12, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              GlassIconButton(
-                key: const ValueKey('note-back'),
-                icon: Icons.arrow_back_rounded,
-                tooltip: l.notesBack,
-                style: GlassIconButtonStyle.plain,
-                onPressed: () => unawaited(_close()),
-              ),
-              const SizedBox(width: GlassSpacing.s6),
-              Expanded(
-                child: GlassSegmented<bool>(
-                  key: const ValueKey('note-preview'),
-                  inChrome: false,
-                  expand: true,
-                  semanticLabel: l.notesBody,
-                  segments: [
-                    GlassSegment(value: false, label: l.notesEdit),
-                    GlassSegment(value: true, label: l.notesPreview),
-                  ],
-                  selected: _preview,
-                  onChanged: (value) => setState(() => _preview = value),
-                ),
-              ),
-            ],
-          ),
-          if (_failed)
-            Padding(
-              padding: const EdgeInsets.only(top: GlassSpacing.s4),
-              child: Text(l.notesSaveFailed, style: t.caption.copyWith(color: tokens.palette.danger)),
-            ),
-          const SizedBox(height: GlassSpacing.s8),
-          Expanded(
-            child: ListView(
+    final canSave = _draft().title.isNotEmpty && (_dirty || _note.id.isEmpty);
+    final status = _failed
+        ? (l.notesSaveFailed, tokens.palette.danger)
+        : _dirty && _draft().title.isNotEmpty
+        ? (l.notesUnsaved, tokens.palette.warning)
+        : _note.id.isNotEmpty
+        ? (l.notesSaved, tokens.secondaryLabel)
+        : null;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyS, meta: true): () => unawaited(_saveNow()),
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () => unawaited(_saveNow()),
+      },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 4, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               children: [
-                GlassField(
-                  key: const ValueKey('note-title'),
-                  controller: _title,
-                  placeholder: l.notesTitle,
-                  autofocus: widget.initial.id.isEmpty,
-                  onChanged: (_) => _changed(),
+                GlassIconButton(
+                  key: const ValueKey('note-back'),
+                  icon: Icons.arrow_back_rounded,
+                  tooltip: l.notesBack,
+                  style: GlassIconButtonStyle.plain,
+                  onPressed: () => unawaited(_close()),
                 ),
-                const SizedBox(height: GlassSpacing.s8),
-                if (_preview)
-                  ContentSurface(
-                    padding: const EdgeInsets.all(GlassSpacing.s8),
-                    child: _body.text.trim().isEmpty
-                        ? Text(l.notesBodyEmpty, style: t.callout.copyWith(color: tokens.secondaryLabel))
-                        : MarkdownText(_body.text),
-                  )
-                else
-                  GlassField(
-                    key: const ValueKey('note-body'),
-                    controller: _body,
-                    placeholder: l.notesBody,
-                    maxLines: 12,
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.newline,
-                    onChanged: (_) => _changed(),
-                  ),
-                const SizedBox(height: GlassSpacing.s8),
-                GlassField(
-                  key: const ValueKey('note-tags'),
-                  controller: _tags,
-                  placeholder: l.notesTags,
-                  onChanged: (_) => _changed(),
-                ),
-                const SizedBox(height: GlassSpacing.s12),
-                _Line(
-                  label: l.notesTask,
-                  child: Switch.adaptive(
-                    key: const ValueKey('note-task'),
-                    value: task != null,
-                    onChanged: (on) => _update(_note.copyWith(task: () => on ? const NoteTask() : null)),
-                  ),
-                ),
-                if (task != null) ...[
-                  _Line(
-                    label: l.notesDue,
-                    child: _WhenSelect(
-                      key: const ValueKey('note-due'),
-                      value: task.dueAt,
-                      onChanged: (when) => _update(
-                        _note.copyWith(
-                          task: () => NoteTask(done: task.done, dueAt: when),
-                        ),
-                      ),
-                    ),
-                  ),
-                  _Line(
-                    label: l.notesDone,
-                    child: Switch.adaptive(
-                      key: const ValueKey('note-task-done'),
-                      value: task.done,
-                      onChanged: (done) => _update(
-                        _note.copyWith(
-                          task: () => NoteTask(done: done, dueAt: task.dueAt),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-                _Line(
-                  label: l.notesReminder,
-                  child: _WhenSelect(
-                    key: const ValueKey('note-reminder'),
-                    value: _note.remindAt,
-                    onChanged: (when) => _update(_note.copyWith(remindAt: () => when)),
-                  ),
-                ),
-                _Line(
-                  label: l.notesAttachedTo,
-                  child: GlassSelect<int>(
-                    key: const ValueKey('note-target'),
-                    semanticLabel: l.notesAttachedTo,
-                    value: _note.target == null ? 0 : (_note.target == current?.target ? 1 : 2),
-                    items: [
-                      GlassSelectItem(value: 0, label: l.notesNoTarget),
-                      if (current != null) GlassSelectItem(value: 1, label: current.label),
-                      if (_note.target != null && _note.target != current?.target)
-                        GlassSelectItem(value: 2, label: targetLabel?.$1 ?? l.notesTargetMissing),
+                const SizedBox(width: GlassSpacing.s6),
+                Expanded(
+                  child: GlassSegmented<bool>(
+                    key: const ValueKey('note-preview'),
+                    inChrome: false,
+                    expand: true,
+                    semanticLabel: l.notesBody,
+                    segments: [
+                      GlassSegment(value: false, label: l.notesEdit),
+                      GlassSegment(value: true, label: l.notesPreview),
                     ],
-                    onChanged: (value) => _update(
-                      _note.copyWith(
-                        target: () => switch (value) {
-                          0 => null,
-                          1 => current?.target,
-                          _ => _note.target,
-                        },
-                      ),
-                    ),
+                    selected: _preview,
+                    onChanged: (value) => setState(() => _preview = value),
                   ),
+                ),
+                const SizedBox(width: GlassSpacing.s6),
+                GlassButton.prominent(
+                  key: const ValueKey('note-save'),
+                  label: l.commonSave,
+                  icon: Icons.check_rounded,
+                  size: GlassControlSize.sm,
+                  tooltip: l.notesSaveTooltip,
+                  onPressed: canSave ? () => unawaited(_saveNow()) : null,
                 ),
               ],
             ),
-          ),
-        ],
+            if (status case (final text, final color))
+              Padding(
+                padding: const EdgeInsets.only(top: GlassSpacing.s4, left: GlassSpacing.s4),
+                child: Text(
+                  text,
+                  key: const ValueKey('note-status'),
+                  style: t.caption.copyWith(color: color),
+                ),
+              ),
+            const SizedBox(height: GlassSpacing.s8),
+            Expanded(
+              child: ListView(
+                children: [
+                  GlassField(
+                    key: const ValueKey('note-title'),
+                    controller: _title,
+                    placeholder: l.notesTitle,
+                    autofocus: widget.initial.id.isEmpty,
+                    onChanged: (_) => _changed(),
+                  ),
+                  const SizedBox(height: GlassSpacing.s8),
+                  if (_preview)
+                    ContentSurface(
+                      padding: const EdgeInsets.all(GlassSpacing.s8),
+                      child: _body.text.trim().isEmpty
+                          ? Text(l.notesBodyEmpty, style: t.callout.copyWith(color: tokens.secondaryLabel))
+                          : MarkdownText(_body.text),
+                    )
+                  else
+                    GlassField(
+                      key: const ValueKey('note-body'),
+                      controller: _body,
+                      placeholder: l.notesBody,
+                      maxLines: 12,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      onChanged: (_) => _changed(),
+                    ),
+                  const SizedBox(height: GlassSpacing.s8),
+                  GlassField(
+                    key: const ValueKey('note-tags'),
+                    controller: _tags,
+                    placeholder: l.notesTags,
+                    onChanged: (_) => _changed(),
+                  ),
+                  const SizedBox(height: GlassSpacing.s12),
+                  _Line(
+                    label: l.notesTask,
+                    child: Switch.adaptive(
+                      key: const ValueKey('note-task'),
+                      value: task != null,
+                      onChanged: (on) => _update(_note.copyWith(task: () => on ? const NoteTask() : null)),
+                    ),
+                  ),
+                  if (task != null) ...[
+                    _Line(
+                      label: l.notesDue,
+                      child: _WhenSelect(
+                        key: const ValueKey('note-due'),
+                        value: task.dueAt,
+                        onChanged: (when) => _update(
+                          _note.copyWith(
+                            task: () => NoteTask(done: task.done, dueAt: when),
+                          ),
+                        ),
+                      ),
+                    ),
+                    _Line(
+                      label: l.notesDone,
+                      child: Switch.adaptive(
+                        key: const ValueKey('note-task-done'),
+                        value: task.done,
+                        onChanged: (done) => _update(
+                          _note.copyWith(
+                            task: () => NoteTask(done: done, dueAt: task.dueAt),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  _Line(
+                    label: l.notesReminder,
+                    child: _WhenSelect(
+                      key: const ValueKey('note-reminder'),
+                      value: _note.remindAt,
+                      onChanged: (when) => _update(_note.copyWith(remindAt: () => when)),
+                    ),
+                  ),
+                  _Line(
+                    label: l.notesAttachedTo,
+                    child: GlassSelect<int>(
+                      key: const ValueKey('note-target'),
+                      semanticLabel: l.notesAttachedTo,
+                      value: _note.target == null ? 0 : (_note.target == current?.target ? 1 : 2),
+                      items: [
+                        GlassSelectItem(value: 0, label: l.notesNoTarget),
+                        if (current != null) GlassSelectItem(value: 1, label: current.label),
+                        if (_note.target != null && _note.target != current?.target)
+                          GlassSelectItem(
+                            value: 2,
+                            label:
+                                targetLabel?.$1 ??
+                                (_note.targetLabel == null
+                                    ? l.notesNotLinked
+                                    : l.notesNotLinkedWas(_note.targetLabel!)),
+                          ),
+                        GlassSelectItem(value: 3, label: l.notesChooseHostEllipsis),
+                      ],
+                      onChanged: (value) {
+                        if (value == 3) return unawaited(_chooseTarget());
+                        _update(
+                          _note.copyWith(
+                            target: () => switch (value) {
+                              0 => null,
+                              1 => current?.target,
+                              _ => _note.target,
+                            },
+                            targetLabel: () => switch (value) {
+                              0 => null,
+                              1 => current?.label,
+                              _ => _note.targetLabel,
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

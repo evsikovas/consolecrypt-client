@@ -20095,6 +20095,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I checked this command for {host} (team policy)'**
   String teamsPolicyAck(String host);
+
+  /// Notes panel: button and dialog title to show the notes of a host picked from the inventory
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a host'**
+  String get notesChooseHost;
+
+  /// Note editor, Attached to: opens the host picker
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a host…'**
+  String get notesChooseHostEllipsis;
+
+  /// Notes panel, Object tab: clears the host picked from the inventory
+  ///
+  /// In en, this message translates to:
+  /// **'Back to this section\'s object'**
+  String get notesChosenClear;
+
+  /// Notes panel, Object tab: nothing is open and no host was picked
+  ///
+  /// In en, this message translates to:
+  /// **'No object selected'**
+  String get notesNoObject;
+
+  /// Notes panel, Object tab empty state title when no object is open
+  ///
+  /// In en, this message translates to:
+  /// **'Notes about a host'**
+  String get notesNoObjectTitle;
+
+  /// Notes panel, Object tab empty state message when no object is open
+  ///
+  /// In en, this message translates to:
+  /// **'Notes about a host appear here. Open a terminal tab or choose a host.'**
+  String get notesNoObjectMessage;
+
+  /// Note editor status: everything is saved
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get notesSaved;
+
+  /// Note editor status: edits not saved yet
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved changes'**
+  String get notesUnsaved;
+
+  /// Note editor: Save button tooltip with its keyboard shortcut
+  ///
+  /// In en, this message translates to:
+  /// **'Save (⌘S / Ctrl+S)'**
+  String get notesSaveTooltip;
+
+  /// Note editor: confirmation title when closing with changes that could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Leave without saving?'**
+  String get notesUnsavedTitle;
+
+  /// Note editor: confirmation message when closing with changes that could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'The note could not be saved. Your latest changes will be lost.'**
+  String get notesUnsavedMessage;
+
+  /// Note editor: confirm leaving and losing unsaved changes
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes'**
+  String get notesDiscardChanges;
+
+  /// Host card: tooltip of the notes button; opens the host's notes
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 note} other{{count} notes}}'**
+  String hostsNotesCount(int count);
+
+  /// Note whose object is gone (deleted, left with a share or a team, or unknown to this version); the note itself is kept
+  ///
+  /// In en, this message translates to:
+  /// **'Not linked'**
+  String get notesNotLinked;
+
+  /// Note editor, Attached to: the object is gone; name is what it was called
+  ///
+  /// In en, this message translates to:
+  /// **'Not linked (was {name})'**
+  String notesNotLinkedWas(String name);
+
+  /// Note menu: attach the note to a host chosen from the inventory
+  ///
+  /// In en, this message translates to:
+  /// **'Attach to…'**
+  String get notesAttachTo;
+
+  /// Notes panel, All tab: accessibility label of the filter
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get notesFilter;
+
+  /// Notes panel, All tab filter: every note
+  ///
+  /// In en, this message translates to:
+  /// **'All notes'**
+  String get notesFilterAll;
+
+  /// Notes panel, All tab filter: notes whose object is gone
+  ///
+  /// In en, this message translates to:
+  /// **'Not linked ({count})'**
+  String notesFilterNotLinked(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

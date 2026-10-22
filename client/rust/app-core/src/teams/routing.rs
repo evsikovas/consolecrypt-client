@@ -8,6 +8,8 @@
 //! * Personal-only kinds (history, AI conversations and providers, vault
 //!   settings, known hosts, memberships) never enter a team, but may point
 //!   at team objects.
+//! * A new note is personal even when it is about a team object: notes are
+//!   private (shared notes travel separately) and must outlive the team.
 //! * A team object may reference only objects of the same team: other
 //!   members could not resolve anything else.
 //!
@@ -70,7 +72,7 @@ fn cross_vault() -> AppError {
 
 /// Target vault of a **new** object (`None` = personal).
 pub(crate) fn infer_vault(ws: &WorkingSet, object: &VaultObject) -> AppResult<Option<VaultId>> {
-    if !team_capable(object.kind()) {
+    if !team_capable(object.kind()) || object.kind() == ObjectKind::Note {
         return Ok(None);
     }
     let teams: BTreeSet<VaultId> = references(ws, object)

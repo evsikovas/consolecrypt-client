@@ -10,6 +10,8 @@ import 'package:consolecrypt/core/widgets/view_mode_toggle.dart';
 import 'package:consolecrypt/groups/group_dialogs.dart';
 import 'package:consolecrypt/groups/group_tree.dart';
 import 'package:consolecrypt/hosts/inventory_navigation.dart';
+import 'package:consolecrypt/notes/note_models.dart';
+import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/rdp/rdp_launcher.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/sharing/sharing_collections.dart';
@@ -631,6 +633,7 @@ class _GroupCard extends StatelessWidget {
 
 enum _HostAction {
   connect,
+  notes,
   group,
   sftp,
   edit,
@@ -711,9 +714,23 @@ class _HostTile extends ConsumerWidget {
         ],
       ],
     );
+    final noteTarget = hostNoteContext(host).target;
+    final noteCount = (ref.watch(notesProvider).value ?? const <Note>[]).where((n) => n.target == noteTarget).length;
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (noteCount > 0) ...[
+          GlassButton(
+            key: ValueKey('host-notes-${host.name}'),
+            label: '$noteCount',
+            icon: Icons.sticky_note_2_outlined,
+            style: GlassButtonStyle.plain,
+            size: GlassControlSize.sm,
+            tooltip: l10n.hostsNotesCount(noteCount),
+            onPressed: () => showHostNotes(ref, host),
+          ),
+          const SizedBox(width: GlassSpacing.s4),
+        ],
         GlassIconButton(
           key: ValueKey('connect-${host.name}'),
           onPressed: () => connectToHost(context, ref, host),
@@ -728,6 +745,12 @@ class _HostTile extends ConsumerWidget {
               value: _HostAction.connect,
               label: l10n.commonConnect,
               icon: host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
+            ),
+            GlassMenuItem(
+              key: ValueKey('host-notes-menu-${host.name}'),
+              value: _HostAction.notes,
+              label: l10n.navNotes,
+              icon: Icons.sticky_note_2_outlined,
             ),
             if (hasGroups)
               GlassMenuItem(
@@ -796,6 +819,8 @@ class _HostTile extends ConsumerWidget {
             switch (v) {
               case _HostAction.connect:
                 await connectToHost(context, ref, host);
+              case _HostAction.notes:
+                showHostNotes(ref, host);
               case _HostAction.share:
                 await showSharingPublish(context, kind: SharingKind.host, objectId: host.id.value);
               case _HostAction.group:

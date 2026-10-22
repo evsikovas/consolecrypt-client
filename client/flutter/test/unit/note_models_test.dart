@@ -36,7 +36,7 @@ void main() {
     expect(const NoteObjectTarget(NoteObjectKind.rdpHost, 'x').toJson()['object_kind'], 'rdp_host');
   });
 
-  test('notes written by older cores decode; unknown targets are ignored', () {
+  test('notes written by older cores decode; targets of later versions are kept verbatim', () {
     final note = Note.fromJson({
       'id': 'n',
       'title': 't',
@@ -47,14 +47,23 @@ void main() {
     });
     expect(note.task, isNull);
     expect(note.target, isNull);
-    expect(
-      Note.fromJson({
-        'id': 'n',
-        'title': 't',
-        'target': {'kind': 'future_kind'},
-      }).target,
-      isNull,
-    );
+    expect(note.targetLabel, isNull);
+    for (final later in [
+      {'kind': 'tunnel', 'id': 'x', 'port': 5432},
+      {'kind': 'object', 'object_kind': 'sqlite_file', 'id': 'y'},
+    ]) {
+      final decoded = Note.fromJson({'id': 'n', 'title': 't', 'target': later, 'target_label': 'billing'});
+      expect(decoded.target, isA<NoteUnknownTarget>());
+      expect(decoded.targetLabel, 'billing');
+      // An edit here writes the link back unchanged.
+      final edited = decoded.copyWith(title: 'edited').toJson();
+      expect(edited['target'], later);
+      expect(edited['target_label'], 'billing');
+      expect(NoteTarget.fromJson(edited['target']), decoded.target, reason: 'structural equality');
+    }
+    expect(Note.fromJson({'id': 'n', 'title': 't', 'target': 'host'}).target, isNull, reason: 'not a target');
+    // A detached note forgets its old object's name.
+    expect(note.copyWith(targetLabel: () => 'old').toJson()['target_label'], isNull);
   });
 
   test('due states, ordering and typed times', () {

@@ -102,6 +102,20 @@ final class _ToastHostController extends ChangeNotifier {
   List<_ToastItem> get items => _items;
 
   GlassToastHandle add(_ToastItem item) {
+    // The same message already on screen is not stacked again (a repeated
+    // failure shows once). Countdowns and actions always get a fresh toast.
+    final request = item.request;
+    if (request.countdown == null && request.onAction == null) {
+      for (final shown in _items) {
+        if (!shown.leaving &&
+            shown.request.message == request.message &&
+            shown.request.tone == request.tone &&
+            shown.request.countdown == null &&
+            shown.request.onAction == null) {
+          return GlassToastHandle._(this, shown.id);
+        }
+      }
+    }
     _items.add(item);
     while (_items.length > _max) {
       _items.removeAt(0);

@@ -526,7 +526,8 @@ void main() {
       expect(find.text('Rename'), findsNothing);
     }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
-    testWidgets('toasts: auto-dismiss after 4 s, errors stay, at most 3', (tester) async {
+    testWidgets('toasts: auto-dismiss after 4 s, errors stay, repeats do not stack, at most 3', (tester) async {
+      var shown = 0;
       await pumpGlass(
         tester,
         Builder(
@@ -537,7 +538,7 @@ void main() {
                 GlassButton(
                   key: const ValueKey('info'),
                   label: 'Info',
-                  onPressed: () => GlassToast.show(context, const GlassToastRequest(message: 'Saved')),
+                  onPressed: () => GlassToast.show(context, GlassToastRequest(message: 'Saved ${++shown}')),
                 ),
                 GlassButton(
                   key: const ValueKey('error'),
@@ -552,21 +553,25 @@ void main() {
       );
       await tester.tap(find.byKey(const ValueKey('info')));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Saved'), findsOneWidget);
+      expect(find.text('Saved 1'), findsOneWidget);
       await tester.pump(const Duration(seconds: 4));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Saved'), findsNothing);
+      expect(find.text('Saved 1'), findsNothing);
 
       await tester.tap(find.byKey(const ValueKey('error')));
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(seconds: 10));
+      expect(find.text('Failed'), findsOneWidget);
+      // The same failure again is not stacked a second time.
+      await tester.tap(find.byKey(const ValueKey('error')));
+      await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Failed'), findsOneWidget);
       for (var i = 0; i < 4; i++) {
         await tester.tap(find.byKey(const ValueKey('info')));
         await tester.pump(const Duration(milliseconds: 50));
       }
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Saved'), findsNWidgets(3));
+      expect(find.textContaining('Saved '), findsNWidgets(3));
       expect(find.text('Failed'), findsNothing, reason: 'oldest toast dropped');
       await tester.pump(const Duration(seconds: 5));
       await tester.pump(const Duration(milliseconds: 300));

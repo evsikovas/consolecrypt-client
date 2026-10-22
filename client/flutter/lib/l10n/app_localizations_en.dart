@@ -11372,4 +11372,68 @@ class AppLocalizationsEn extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'I checked this command for $host (team policy)';
   }
+
+  @override
+  String get notesChooseHost => 'Choose a host';
+
+  @override
+  String get notesChooseHostEllipsis => 'Choose a host…';
+
+  @override
+  String get notesChosenClear => 'Back to this section\'s object';
+
+  @override
+  String get notesNoObject => 'No object selected';
+
+  @override
+  String get notesNoObjectTitle => 'Notes about a host';
+
+  @override
+  String get notesNoObjectMessage => 'Notes about a host appear here. Open a terminal tab or choose a host.';
+
+  @override
+  String get notesSaved => 'Saved';
+
+  @override
+  String get notesUnsaved => 'Unsaved changes';
+
+  @override
+  String get notesSaveTooltip => 'Save (⌘S / Ctrl+S)';
+
+  @override
+  String get notesUnsavedTitle => 'Leave without saving?';
+
+  @override
+  String get notesUnsavedMessage => 'The note could not be saved. Your latest changes will be lost.';
+
+  @override
+  String get notesDiscardChanges => 'Discard changes';
+
+  @override
+  String hostsNotesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count notes', one: '1 note');
+    return '$_temp0';
+  }
+
+  @override
+  String get notesNotLinked => 'Not linked';
+
+  @override
+  String notesNotLinkedWas(String name) {
+    return 'Not linked (was $name)';
+  }
+
+  @override
+  String get notesAttachTo => 'Attach to…';
+
+  @override
+  String get notesFilter => 'Show';
+
+  @override
+  String get notesFilterAll => 'All notes';
+
+  @override
+  String notesFilterNotLinked(int count) {
+    return 'Not linked ($count)';
+  }
 }
