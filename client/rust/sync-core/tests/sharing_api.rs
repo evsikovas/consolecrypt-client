@@ -188,7 +188,13 @@ async fn handler(State(state): State<Arc<Mock>>, request: Request) -> Response {
             .unwrap(),
         );
     }
-    if path == "/v1/shares/recipients" {
+    if path == RECIPIENT_LOOKUP_PATH {
+        // Protocol 1.8: the address is only in the JSON body.
+        let lookup: RecipientLookupRequest = serde_json::from_slice(&body).unwrap();
+        assert_eq!(parts.method, "POST");
+        assert_eq!(lookup.email, "alice@example.test");
+    }
+    if path == "/v1/shares/recipients" || path == RECIPIENT_LOOKUP_PATH {
         let member = current.access.manifest.members[0].clone();
         return reply(
             StatusCode::OK,
@@ -718,4 +724,28 @@ async fn database_kind_is_requested_only_when_advertised_and_never_unsolicited()
         requests.last().unwrap().1,
         "/v1/shares?limit=10&include_db_connections=true"
     );
+}
+
+#[tokio::test]
+async fn recipient_lookup_keeps_the_address_out_of_the_url_when_supported() {
+    let f = Fixture::new(false).await;
+    let api = f.api.sharing(f.mock.server_instance).await.unwrap();
+    let posted = api
+        .sharing_recipient_lookup(" alice@example.test ", true)
+        .await
+        .unwrap();
+    let legacy = api
+        .sharing_recipient_lookup("alice@example.test", false)
+        .await
+        .unwrap();
+    assert_eq!(posted, legacy);
+    let requests = f.mock.requests.lock().unwrap();
+    let [.., (post_method, post_target, _), (get_method, get_target, _)] = &requests[..] else {
+        panic!("two lookups expected");
+    };
+    assert_eq!(post_method, "POST");
+    assert_eq!(post_target, RECIPIENT_LOOKUP_PATH);
+    assert!(!post_target.contains("alice"));
+    assert_eq!(get_method, "GET");
+    assert!(get_target.contains("email=alice%40example.test"));
 }

@@ -22,6 +22,12 @@
   children (as for `kube_context`, a pre-1.6 client cannot decode such a
   collection). Personal vault objects, encryption format and the `DbRoute`
   model are unchanged.
+- Client (2026-10-22, protocol 1.8 consumer, server 0.1.17): sharing
+  recipient discovery sends the e-mail only in the JSON body of
+  `POST /v1/shares/recipients/lookup` when `/v1/meta` advertises
+  `capabilities.recipient_lookup_post`; older servers keep the deprecated
+  `GET /v1/shares/recipients?email=`. `cc-protocol` pinned to server commit
+  66d1f67. No encrypted payload changes.
 - Client (2026-10-22, protocol 1.8 consumer, server 0.1.17): `cc-protocol`
   pinned to the server commit with owner-only delete, leave and restore.
   Gated on `/v1/meta` `capabilities.share_leave` / `share_restore`:

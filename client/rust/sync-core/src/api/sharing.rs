@@ -443,15 +443,41 @@ impl SharingApi {
 
     /// Exact-email lookup, percent-encoded by url::Url. Returned public keys
     /// are discovery candidates only and must pass a human code comparison.
+    /// Deprecated by protocol 1.8: prefer [`Self::sharing_recipient_lookup`].
     pub async fn sharing_recipient(&self, email: &str) -> Result<SharingRecipient, ApiError> {
+        self.sharing_recipient_lookup(email, false).await
+    }
+
+    /// Exact-email lookup. With `post` (server `capabilities.
+    /// recipient_lookup_post`, protocol 1.8) the address travels only in the
+    /// JSON body of `POST /v1/shares/recipients/lookup`, never in a URL;
+    /// otherwise the legacy `GET ?email=` is used for older servers.
+    pub async fn sharing_recipient_lookup(
+        &self,
+        email: &str,
+        post: bool,
+    ) -> Result<SharingRecipient, ApiError> {
         self.ready()?;
         let email = email.trim();
         if email.is_empty() || email.len() > 320 || email.chars().any(char::is_control) {
             return Err(config_error("invalid sharing recipient email"));
         }
-        let mut url = self.client.endpoint("/v1/shares/recipients");
-        url.query_pairs_mut().append_pair("email", email);
-        let recipient: SharingRecipient = self.client.authed(Method::GET, url, None).await?;
+        let recipient: SharingRecipient = if post {
+            let body = to_json(&sharing::RecipientLookupRequest {
+                email: email.to_owned(),
+            })?;
+            self.client
+                .authed(
+                    Method::POST,
+                    self.client.endpoint(sharing::RECIPIENT_LOOKUP_PATH),
+                    Some(body),
+                )
+                .await?
+        } else {
+            let mut url = self.client.endpoint("/v1/shares/recipients");
+            url.query_pairs_mut().append_pair("email", email);
+            self.client.authed(Method::GET, url, None).await?
+        };
         if recipient.user_id == UserId::NIL || recipient.devices.len() > sharing::MAX_MEMBERS {
             return Err(response_error("invalid sharing recipient"));
         }

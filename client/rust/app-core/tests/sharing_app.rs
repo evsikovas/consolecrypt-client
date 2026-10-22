@@ -175,6 +175,7 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
             let mut meta: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
             meta["capabilities"]["share_leave"] = true.into();
             meta["capabilities"]["share_restore"] = true.into();
+            meta["capabilities"]["recipient_lookup_post"] = true.into();
             bytes = serde_json::to_vec(&meta).unwrap().into();
         }
         if let Ok(auth) = serde_json::from_slice::<AuthResponse>(&bytes) {
@@ -254,11 +255,15 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
         return denied(ErrorCode::NotFound);
     }
     let query: HashMap<String, String> = url_query(&uri);
-    if uri.path() == "/v1/shares/recipients" {
+    if uri.path() == "/v1/shares/recipients" || uri.path() == RECIPIENT_LOOKUP_PATH {
+        // The client must use the body-only lookup when it is advertised.
+        assert_eq!(uri.path(), RECIPIENT_LOOKUP_PATH);
+        assert!(uri.query().is_none());
+        let lookup: RecipientLookupRequest = serde_json::from_slice(&body).unwrap();
         let users = state.users.lock().unwrap();
         let targets: Vec<_> = users
             .iter()
-            .filter(|(_, (_, email, _))| query.get("email") == Some(email))
+            .filter(|(_, (_, email, _))| lookup.email == *email)
             .collect();
         let Some((_, (target_user, _, _))) = targets.first() else {
             return denied(ErrorCode::NotFound);
@@ -1076,7 +1081,7 @@ async fn lock_cancels_inflight_metadata_and_secure_instance_pin_survives_restart
     )
     .await;
     let identity = account.app.sharing_identity().await.unwrap();
-    *server.state.pause.lock().unwrap() = Some("/v1/shares/recipients".into());
+    *server.state.pause.lock().unwrap() = Some(RECIPIENT_LOOKUP_PATH.into());
     let app = account.app.clone();
     let email = account.email.clone();
     let action = tokio::spawn(async move { app.sharing_discover(email).await });

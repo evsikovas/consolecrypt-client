@@ -1496,7 +1496,14 @@ impl AppCore {
         let session = self.session().await?;
         let _gate = self.sharing_gate(&session).await?;
         let env = self.sharing_environment(session.clone(), true).await?;
-        let recipient = env.wait(env.transport()?.sharing_recipient(&email)).await?;
+        // Keep the address out of URLs whenever the server allows it.
+        let post = self
+            .sharing_server_capabilities(&env)
+            .await?
+            .recipient_lookup_post;
+        let recipient = env
+            .wait(env.transport()?.sharing_recipient_lookup(&email, post))
+            .await?;
         self.sharing_check(&env).await?;
         Ok(SharingRecipientDto {
             user_id: recipient.user_id.to_string(),
