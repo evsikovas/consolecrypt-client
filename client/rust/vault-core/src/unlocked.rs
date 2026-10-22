@@ -267,3 +267,47 @@ pub(crate) fn check_new_passphrase(passphrase: &SecretString) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::unlock::unlock_with_passphrase;
+
+    fn vault() -> UnlockedVault {
+        let identity = crate::DeviceIdentity::generate().unwrap();
+        crate::create_vault(
+            &identity,
+            &SecretString::from("correct horse battery"),
+            Argon2Params::for_tests(),
+            None,
+            chrono::Utc::now(),
+        )
+        .unwrap()
+        .unlocked
+    }
+
+    #[test]
+    fn short_passphrases_of_existing_vaults_still_unlock() {
+        let v = vault();
+        // An envelope sealed when the minimum was 8 characters.
+        let legacy = seal_password_envelope(
+            v.vrk(),
+            v.vault_id(),
+            &SecretString::from("8 chars!"),
+            Argon2Params::for_tests(),
+        )
+        .unwrap();
+        let opened =
+            unlock_with_passphrase(v.vault_id(), &legacy, &SecretString::from("8 chars!")).unwrap();
+        assert_eq!(
+            opened.vault_access_key_verifier(),
+            v.vault_access_key_verifier()
+        );
+        // Setting it again is refused.
+        assert_eq!(
+            v.password_envelope(&SecretString::from("8 chars!"), Argon2Params::for_tests())
+                .err(),
+            Some(VaultError::WeakPassphrase)
+        );
+    }
+}
