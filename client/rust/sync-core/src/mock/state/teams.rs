@@ -247,7 +247,7 @@ impl State {
             .cloned()
             .ok_or_else(not_found)?;
         let mut chain = t.chain.clone();
-        chain.sort_by(|a, b| b.key_epoch.cmp(&a.key_epoch));
+        chain.sort_by_key(|l| std::cmp::Reverse(l.key_epoch));
         Ok(TeamKeyMaterial {
             key_epoch: t.key_epoch,
             envelope,

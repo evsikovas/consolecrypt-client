@@ -29,6 +29,7 @@ impl AppCore {
         if report.pulled > 0 || report.resolved > 0 || report.snapshot_pages > 0 {
             u.writer.reload_all().await?;
         }
+        crate::teams::sync_teams(&u.writer).await;
         Ok((&report).into())
     }
 

@@ -3,7 +3,7 @@
 
 use crate::secret::SecretValue;
 use crate::{ObjectId, Timestamp};
-use cc_protocol::VaultId;
+use cc_protocol::{TeamInvitationId, VaultId};
 use serde::{Deserialize, Serialize};
 
 /// Membership of the vault owner in one team.
@@ -31,6 +31,10 @@ pub struct TeamMembership {
     /// Collapsed / hidden in the sidebar.
     #[serde(default)]
     pub hidden: bool,
+    /// Set while the join waits for an admin to compare the member code;
+    /// cleared once the verified log contains this member.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub invitation_id: Option<TeamInvitationId>,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
 }

@@ -1760,6 +1760,27 @@ pub enum AppEvent {
     },
     /// The backup schedule or the list of recent backups changed.
     BackupScheduleChanged,
+    /// Teams were opened, closed or changed (members, roles, settings,
+    /// key): re-read `teams`.
+    TeamsChanged,
+    /// A team is paused: the server showed a membership log this client
+    /// cannot trust (`warning` = `invalid_log` | `log_rollback`).
+    TeamWarning {
+        vault_id: String,
+        warning: String,
+    },
+    /// This member lost a team (removed, or left on another device).
+    TeamRemoved {
+        vault_id: String,
+    },
+    /// Someone invited this account to a team: re-read
+    /// `incoming_team_invitations`.
+    TeamInvitationReceived,
+    /// An invitee accepted: an admin compares the code and confirms
+    /// (`team_join_requests`).
+    TeamJoinRequested {
+        vault_id: String,
+    },
 }
 
 #[cfg(test)]

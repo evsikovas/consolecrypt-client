@@ -254,6 +254,13 @@ pub enum AppError {
     /// Local file system error.
     #[error("io: {0}")]
     Io(String),
+    /// Teams: this member may only read the team (viewer role).
+    #[error("the team is read-only for you")]
+    TeamReadOnly,
+    /// Teams: the server showed a membership log this client cannot trust
+    /// (`invalid_log`, `log_rollback`, `not_member`); the team is paused.
+    #[error("team membership could not be verified: {0}")]
+    TeamUntrusted(String),
     /// Bug or unexpected state.
     #[error("internal error: {0}")]
     Internal(String),
@@ -325,6 +332,8 @@ impl AppError {
             AppError::UnresolvedPlaceholders(_) => "unresolved_placeholders",
             AppError::ApprovalRequired(_) => "approval_required",
             AppError::Io(_) => "io",
+            AppError::TeamReadOnly => "team_read_only",
+            AppError::TeamUntrusted(_) => "team_untrusted",
             AppError::Internal(_) => "internal",
         }
     }
@@ -417,6 +426,7 @@ impl AppError {
                 put("protocol_code", code.clone());
             }
             AppError::DeviceProofRejected(reason) => put("proof", reason.clone()),
+            AppError::TeamUntrusted(reason) => put("reason", reason.clone()),
             AppError::EditorLaunch(detail) => put("detail", detail.chars().take(512).collect()),
             AppError::UnresolvedPlaceholders(names) => put("names", names.join(", ")),
             AppError::ConnectionPlanRejected {

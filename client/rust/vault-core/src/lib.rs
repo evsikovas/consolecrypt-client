@@ -33,6 +33,7 @@ mod device_unlock;
 mod error;
 mod identity;
 mod recovery_kit;
+mod team;
 mod unlock;
 mod unlocked;
 

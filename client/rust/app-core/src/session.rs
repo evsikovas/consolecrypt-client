@@ -9,6 +9,7 @@ use crate::keyfile::{self, KeyFile, LockedHeader, ReofferReason};
 use crate::prompts::PromptBroker;
 use crate::secrets::{self, SecureTokenStore};
 use crate::ssh::SshRuntime;
+use crate::teams::{TeamOpenContext, TeamRegistry};
 use crate::working_set::{Readback, WorkingSet};
 use crate::writer::{EngineSlot, VaultWriter};
 use crate::{AppConfig, KdfPolicy};
@@ -280,6 +281,15 @@ impl Unlocked {
         lock_mutex(&self.tasks).push(t);
     }
 
+    /// A receiver of the account's WebSocket events (background sync only).
+    pub(crate) async fn subscribe_ws(&self) -> Option<broadcast::Receiver<WsEvent>> {
+        self.event_stream
+            .lock()
+            .await
+            .as_ref()
+            .map(EventStream::subscribe)
+    }
+
     /// Stop the sync engine and the WebSocket (keeps the vault unlocked).
     pub(crate) async fn stop_engine(&self) {
         let engine = self
@@ -290,6 +300,16 @@ impl Unlocked {
             .take();
         if let Some(e) = engine {
             e.stop().await;
+        }
+        for team in self.writer.teams.all() {
+            let engine = team
+                .engine
+                .write()
+                .unwrap_or_else(|p| p.into_inner())
+                .take();
+            if let Some(e) = engine {
+                e.stop().await;
+            }
         }
         if let Some(es) = self.event_stream.lock().await.take() {
             es.shutdown().await;
@@ -323,6 +343,7 @@ impl Unlocked {
             t.abort();
         }
         lock_mutex(&self.approvals).clear();
+        self.writer.teams.shutdown().await;
         self.codec.clear();
         self.writer.working.clear();
     }
@@ -925,6 +946,7 @@ impl Session {
             store: store.clone(),
             engine: engine_slot,
             working: Arc::new(WorkingSet::new()),
+            teams: Arc::new(TeamRegistry::default()),
         };
         // Subscribe before loading so no change is missed.
         let rx = store.subscribe();
@@ -1011,6 +1033,13 @@ impl Session {
             if let Err(e) = self.start_engine(&unlocked, true).await {
                 tracing::warn!(error = %e, "sync engine not started");
             }
+            let s = self.clone();
+            let u = unlocked.clone();
+            unlocked.push_task(tokio::spawn(async move {
+                if let Err(e) = s.open_teams(&u).await {
+                    tracing::warn!(error = %e, "teams not opened");
+                }
+            }));
         }
         self.ctx.emit(AppEvent::VaultUnlocked {
             profile_id: self.profile_id.to_string(),
@@ -1086,6 +1115,11 @@ impl Session {
                 self.ctx.clone(),
                 self.device_id(),
             )));
+            tasks.push(tokio::spawn(team_ws_task(
+                es.subscribe(),
+                Arc::downgrade(self),
+                Arc::downgrade(unlocked),
+            )));
             *unlocked.event_stream.lock().await = Some(es);
             engine.start();
         }
@@ -1117,6 +1151,41 @@ impl Session {
             Ok(()) => tracing::info!("device attested for the vault after identity change"),
             Err(e) => tracing::warn!(error = %e, "deferred attestation failed"),
         }
+    }
+
+    /// Open (or re-open) the teams of this synced profile (TZ teams ТР-22).
+    pub(crate) async fn open_teams(self: &Arc<Self>, unlocked: &Arc<Unlocked>) -> AppResult<()> {
+        let Some(user_id) = self.profile().await?.user_id else {
+            return Ok(());
+        };
+        crate::teams::open_teams(&TeamOpenContext {
+            session: self,
+            unlocked,
+            user_id,
+        })
+        .await
+    }
+
+    /// Re-read one team (membership changed, key rotated).
+    pub(crate) async fn refresh_team(
+        self: &Arc<Self>,
+        unlocked: &Arc<Unlocked>,
+        vault_id: VaultId,
+    ) -> AppResult<()> {
+        let user_id = self
+            .profile()
+            .await?
+            .user_id
+            .ok_or(AppError::LocalProfile)?;
+        crate::teams::refresh_team(
+            &TeamOpenContext {
+                session: self,
+                unlocked,
+                user_id,
+            },
+            vault_id,
+        )
+        .await
     }
 
     /// Lock the vault (no-op if locked). A sealed profile closes its
@@ -1357,6 +1426,47 @@ async fn ws_event_task(mut rx: broadcast::Receiver<WsEvent>, ctx: Arc<AppCtx>, o
             Ok(_) => {}
             Err(broadcast::error::RecvError::Lagged(_)) => {}
             Err(broadcast::error::RecvError::Closed) => break,
+        }
+    }
+}
+
+/// Team events of the account's WebSocket (protocol 1.9).
+async fn team_ws_task(
+    mut rx: broadcast::Receiver<WsEvent>,
+    session: std::sync::Weak<Session>,
+    unlocked: std::sync::Weak<Unlocked>,
+) {
+    loop {
+        let ev = match rx.recv().await {
+            Ok(WsEvent::Event(ev)) => ev,
+            Ok(WsEvent::Terminated { .. }) | Err(broadcast::error::RecvError::Closed) => break,
+            Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) => continue,
+        };
+        let (Some(s), Some(u)) = (session.upgrade(), unlocked.upgrade()) else {
+            break;
+        };
+        match ev {
+            ServerEvent::TeamInvitationReceived { .. } => {
+                s.ctx.emit(AppEvent::TeamInvitationReceived)
+            }
+            ServerEvent::TeamJoinRequested { vault_id, .. } => {
+                s.ctx.emit(AppEvent::TeamJoinRequested {
+                    vault_id: vault_id.to_string(),
+                })
+            }
+            ServerEvent::TeamMembershipChanged { vault_id, .. }
+            | ServerEvent::TeamKeyRotated { vault_id, .. } => {
+                // Also completes a pending join once an admin confirmed it.
+                if crate::teams::membership_of(&u.writer, vault_id).is_some() {
+                    if let Err(e) = s.refresh_team(&u, vault_id).await {
+                        tracing::warn!(team = %vault_id, error = %e, "team refresh failed");
+                    }
+                }
+            }
+            ServerEvent::TeamRemoved { vault_id } => {
+                crate::teams::close_team(&s, &u, vault_id, true).await;
+            }
+            _ => {}
         }
     }
 }
