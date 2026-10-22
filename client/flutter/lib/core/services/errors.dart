@@ -104,6 +104,10 @@ enum AppErrorReason {
   secretNotStored('secret_not_stored'),
   sessionClosed('session_closed'),
   editorLaunchFailed('editor_launch_failed'),
+
+  /// A file that can run code opens only as text, and no text editor was
+  /// found (security audit H4): offer "Choose an Editor…".
+  noTextEditor('no_text_editor'),
   applicationPickerFailed('application_picker_failed'),
 
   /// `args['path']`.

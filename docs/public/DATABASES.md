@@ -73,8 +73,10 @@
   ConsoleCrypt, включая их jump-цепочки.
 - **SSH-туннель** — через сохранённый туннель локального проброса. Адрес и
   порт берутся из цели туннеля; если туннель не запущен, он стартует при
-  подключении. Если в форме указан localhost с портом сохранённого туннеля,
-  форма предложит использовать этот туннель.
+  подключении — всегда на 127.0.0.1, даже если в туннеле указан сетевой
+  адрес, чтобы база не стала доступна другим компьютерам. Если в форме указан
+  localhost с портом сохранённого туннеля, форма предложит использовать этот
+  туннель.
 - **Kubernetes** — проброс порта к Pod, Service, Deployment или StatefulSet
   выбранного контекста. Для Service и Deployment выбирается готовый Pod,
   поэтому подключение переживает перезапуск подов.
@@ -105,11 +107,10 @@
 
 Когда изменить прод всё же нужно, кнопка **«Разблокировать прод»** в шапке
 рабочей области открывает временное окно записи. Нужно ввести пароль хранилища
-(он проверяется в ядре приложения), набрать имя подключения и выбрать срок:
-5, 15 или 30 минут. Пока окно открыто, в шапке горит красная метка «Запись в
+(он проверяется в ядре приложения) и выбрать срок: 5, 15 или 30 минут. Пока окно открыто, в шапке горит красная метка «Запись в
 прод до ЧЧ:ММ» с обратным отсчётом и кнопкой «Заблокировать». Каждый
 изменяющий запрос по-прежнему показывается на проверку, и для него нужно
-ввести имя подключения; ячейки результата можно редактировать. Окно
+ввести пароль хранилища; ячейки результата можно редактировать. Окно
 принадлежит только этому сеансу и закрывается само по истечении срока, по
 кнопке «Заблокировать», при отключении, блокировке хранилища или смене
 профиля. Серверная защита снимается только для разрешённых изменений: чтения
@@ -127,11 +128,12 @@ ClickHouse — профиль `readonly=1`, в Redis — ACL `+@read -@write`, �
 
 Непрод-подключение тоже открывается в режиме «Только чтение». Кнопка с замком
 в шапке разрешает запись до закрытия подключения. Изменяющий запрос перед
-выполнением показывается в окне проверки с именем подключения. Для опасных
-запросов (`DROP`, `TRUNCATE`, `UPDATE` или `DELETE` без `WHERE`, `FLUSHALL`,
-удаление коллекции) нужно ввести имя подключения. Команда Redis `KEYS` не
-выполняется никогда: вместо неё предлагается такой же `SCAN`, который можно
-открыть в новой вкладке.
+выполнением показывается в окне проверки целиком, и выполнить его можно только
+после ввода пароля хранилища. Это касается и опасных запросов (`DROP`,
+`TRUNCATE`, `UPDATE` или `DELETE` без `WHERE`, `FLUSHALL`, удаление
+коллекции), и правок ячеек: в проверке правок видны сами новые значения.
+Команда Redis `KEYS` не выполняется никогда: вместо неё предлагается такой же
+`SCAN`, который можно добавить в редактор.
 
 ### Общий доступ
 
@@ -178,13 +180,42 @@ ClickHouse — профиль `readonly=1`, в Redis — ACL `+@read -@write`, �
   TTL. Ключи читаются порциями через `SCAN`.
 - **MongoDB**: базы → коллекции → индексы.
 
+Двойной щелчок по таблице, представлению, коллекции или ключу Redis и пункт
+«Первые 100 строк» сразу показывают данные внизу. Для этого есть одна
+вкладка просмотра («items — данные»): следующий объект открывается в ней же,
+новые вкладки не плодятся. Если изменить текст этой вкладки, она становится
+обычной и больше не перезаписывается.
+
 В меню объекта: «Первые 100 строк», «Показать DDL» (для Redis — описание
 ключа, для MongoDB — параметры коллекции и индексы), «Вставить имя» и
 «Сведения об объекте». DDL показывается блоком кода с номерами строк и
 подсветкой, каждый оператор (`CREATE TABLE`, каждый `CREATE INDEX`) отделён
-чертой, длинные строки прокручиваются вбок; кнопки «Копировать» и «Открыть в
-редакторе» (DDL открывается в новой вкладке). Для коллекций MongoDB есть «Схема по выборке
-документов»: типы полей и доля документов, в которых поле встречается.
+чертой. Окно подстраивается под ширину экрана и по высоте не больше кода.
+Длинные строки по умолчанию переносятся с отступом, номер стоит на первой
+строке; кнопка «Переносить строки» выключает перенос, и тогда код
+прокручивается вбок (настройка запоминается). Кнопки «Копировать» и «Открыть
+в редакторе». Для коллекций MongoDB есть «Схема по выборке документов»: типы
+полей и доля документов, в которых поле встречается.
+
+«Сведения об объекте» показывают факты из системного каталога, только чтением
+и с параметрами вместо подстановки имён: для таблиц и представлений
+PostgreSQL — схему, владельца, вид, оценку числа строк, размеры (всего,
+данные, индексы, TOAST), число колонок, индексов, ограничений и триггеров,
+табличное пространство, комментарий, ключ секционирования и последние
+VACUUM/ANALYZE; для MySQL/MariaDB — движок, формат строк, оценку строк,
+размеры данных и индексов, AUTO_INCREMENT, сопоставление, время создания и
+изменения; для ClickHouse — движок, строки, размер, части, ключи
+секционирования, сортировки и выборки, TTL; для ключа Redis — тип, TTL,
+кодировку, длину и память, для базы Redis — число ключей. Оценки помечены
+«≈», размеры показаны в КиБ/МиБ, кнопка «Копировать» копирует всё окно. Для
+MongoDB описание показывается как JSON. Пункт скрыт у объектов, для которых
+сведений нет.
+
+Сгенерированный текст — DDL из «Открыть в редакторе», запрос из истории,
+черновик помощника, предложенный `SCAN` — добавляется в текущую вкладку
+ниже уже написанного, через пустую строку; курсор встаёт в начало вставки,
+ничего не выполняется. Если открыта вкладка просмотра, текст уходит в
+последнюю вкладку редактора; новая вкладка создаётся, только если других нет.
 
 ### Редактор и выполнение
 
@@ -245,6 +276,14 @@ CSV, TSV, JSON, NDJSON, Markdown или как SQL `INSERT`. «Экспорт р
 прогрессом и отменой. Экспортируются только запросы на чтение: изменяющий
 запрос для экспорта не повторяется.
 
+В CSV и TSV флажок «Экранировать формулы (для Excel)» (включён по умолчанию)
+добавляет апостроф перед текстом, который начинается с `=`, `+`, `-`, `@`,
+табуляции или возврата каретки, чтобы табличный редактор не выполнил его как
+формулу; числа из числовых столбцов не меняются. Строки в SQL `INSERT`
+экранируются удвоением кавычки (`''`); для MySQL, MariaDB и ClickHouse
+обратная косая черта удваивается, для PostgreSQL текст с ней записывается как
+`E'…'`, так что файл читается одинаково при любых настройках экранирования.
+
 ### Редактирование ячеек
 
 На компьютере в сессии с разрешённой записью (непрод-подключение или прод с
@@ -268,6 +307,36 @@ Esc отменяет, Tab переходит к следующей ячейке.
 можно включить в зашифрованную синхронизацию или отключить. Запрос из истории
 можно сохранить как сниппет: переменные `{{name}}` станут переменными
 сниппета.
+
+### Сниппеты для баз данных
+
+В разделе «Сниппеты» → «Базовые наборы» есть готовые наборы диагностических
+запросов: «SQL · PostgreSQL» (20), «SQL · MySQL/MariaDB» (20),
+«SQL · ClickHouse» (20), «Redis» (15) и «MongoDB» (15). Они добавляются в
+хранилище только по нажатию кнопки, после чего их можно править и удалять как
+обычные сниппеты. В наборах: активные и долгие запросы, дерево блокировок,
+размеры таблиц и баз, использование индексов, мёртвые строки и autovacuum,
+репликация и слоты, изменённые настройки, тяжёлые запросы
+(`pg_stat_statements`, дайджесты `performance_schema`, `system.query_log`),
+куски, слияния и мутации ClickHouse, память и медленные команды Redis,
+`currentOp`, статистика и профилировщик MongoDB. Почти все запросы только
+читают; `EXPLAIN ANALYZE` (выполняет запрос), отмена запроса и `KILL`
+помечены как изменяющие, завершение сессии PostgreSQL — как разрушительное, и
+перед запуском требуют подтверждения. В описании каждого сниппета указаны
+клиент (psql, mysql, clickhouse-client, redis-cli, mongosh) и требования к
+версии или расширению.
+
+Тип и диалект сниппета совпадают с теми, что использует история: PostgreSQL —
+`postgresql`, MySQL/MariaDB и ClickHouse — `sql` с диалектом `mysql` /
+`clickhouse`, Redis — `redis_cli`, MongoDB — `shell` с `mongosh`. Поэтому
+сниппеты подходят и для SSH-терминала: запустите в сессии psql, mysql,
+clickhouse-client, redis-cli или mongosh и выберите сниппет — после заполнения
+переменных и подтверждения риска он уйдёт в активную вкладку как текст (не
+через `sh -c`); многострочный запрос отправляется одной вставкой в режиме
+bracketed paste, если клиент его включил. Новую SSH-сессию для такого сниппета
+приложение не открывает. Команды администрирования сервера (например
+`CLIENT LIST`, `SLOWLOG`, `db.currentOp()`, `rs.status()`) рабочая область
+«Базы данных» не разрешает, поэтому они помечены как «только для терминала».
 
 ### ИИ-помощник
 
@@ -298,7 +367,7 @@ Esc отменяет, Tab переходит к следующей ячейке.
 Согласие можно отозвать кнопкой в панели помощника.
 
 Ответ — черновик с пояснением и списком переданного контекста. «Принять
-черновик» открывает его в новой вкладке редактора; сам помощник ничего не
+черновик» добавляет его в текущую вкладку редактора; сам помощник ничего не
 выполняет — запрос запускаете вы, с обычными проверками. Для
 прод-подключений черновики DDL только показываются.
 
@@ -360,8 +429,9 @@ server never sees them.
 - **SSH host** or **SSH jump profile** from your saved inventory, including
   jump chains.
 - **SSH tunnel**: a saved local-forward tunnel, started on connect when it is
-  not running. The form offers a matching tunnel when you type localhost and
-  its port.
+  not running — always on 127.0.0.1, even when the tunnel names a network
+  bind address, so the database is never exposed to other computers. The
+  form offers a matching tunnel when you type localhost and its port.
 - **Kubernetes**: a port forward to a Pod, Service, Deployment or
   StatefulSet. Services and Deployments use a ready Pod, so the connection
   survives Pod restarts.
@@ -382,10 +452,10 @@ statements and attempts to lift the protection.
 
 When production must be changed, **Unlock production** in the workspace
 header opens a temporary write window: enter the vault passphrase (checked by
-the app core), type the connection name and pick 5, 15 or 30 minutes. While it
+the app core) and pick 5, 15 or 30 minutes. While it
 is open the header shows a red “Production writes until HH:MM” badge with a
 countdown and a **Lock** button. Every changing statement is still shown for
-review and needs the connection name typed; result cells can be edited. The
+review and needs the vault passphrase; result cells can be edited. The
 window belongs to that session only and closes when the time runs out, on
 Lock, on disconnect, vault lock or profile change. Server-side protection is
 lifted only for the permitted changes — reads still run in read-only
@@ -399,10 +469,11 @@ in MySQL, a `readonly=1` profile in ClickHouse, ACL `+@read -@write` in Redis
 and the `read` role in MongoDB.
 
 Non-production connections also open read-only; the lock button allows writes
-until the connection closes. Changing statements are shown for review with
-the connection name, and dangerous ones (`DROP`, `TRUNCATE`, `UPDATE` or
-`DELETE` without `WHERE`, `FLUSHALL`, dropping a collection) require typing
-it. Redis `KEYS` never runs; the equivalent `SCAN` is offered in a new tab.
+until the connection closes. Changing statements are shown in full for review
+and run only after the vault passphrase is entered. This covers dangerous ones
+(`DROP`, `TRUNCATE`, `UPDATE` or `DELETE` without `WHERE`, `FLUSHALL`,
+dropping a collection) and cell edits, whose review shows the new values.
+Redis `KEYS` never runs; the equivalent `SCAN` is offered for the editor.
 
 ### Sharing
 
@@ -432,9 +503,34 @@ The structure tree loads lazily and sorts objects into folders (tables,
 views, functions, sequences, dictionaries; columns, indexes, constraints,
 triggers, projections). The expanded table is framed and keys carry icons.
 Object menus offer the first 100 rows, DDL (a numbered, highlighted code
-block per statement, with Copy and Open in editor), the quoted identifier and
+block per statement, with Copy and Open in editor; the dialog follows the
+window width and is only as tall as the code; long lines wrap with an
+indent by default, and "Wrap lines" switches to sideways scrolling,
+remembered on this device), the quoted identifier and
 details; MongoDB collections can infer a schema from a sample. Redis keys are
 grouped by `:` and read with `SCAN`.
+
+Object details are read-only catalogue facts, looked up with bound names:
+for PostgreSQL tables and views the schema, owner, kind, estimated rows,
+sizes (total, data, indexes, TOAST), column/index/constraint/trigger counts,
+tablespace, comment, partition key and the last VACUUM/ANALYZE; for
+MySQL/MariaDB the engine, row format, estimated rows, data and index sizes,
+AUTO_INCREMENT, collation and create/update times; for ClickHouse the engine,
+rows, size, parts, partition/sorting/sampling keys and TTL; for a Redis key
+its type, TTL, encoding, length and memory, and for a Redis database its key
+count. Estimates are marked "≈", sizes are shown in KiB/MiB and Copy copies
+the whole dialog. MongoDB descriptions are shown as JSON. The item is hidden
+for objects without details.
+
+Double-clicking a table, view, collection or Redis key, or choosing the first
+100 rows, shows the data below right away in a single preview tab ("items —
+data"): the next object reuses it instead of adding tabs. Editing the preview
+tab's text turns it into an ordinary tab that is never overwritten. Generated
+text — DDL from Open in editor, a history entry, an AI draft, the suggested
+`SCAN` — is added to the current tab below the existing text after a blank
+line, with the caret at its start, and never runs. While the preview tab is
+shown it goes to the last editor tab; a new tab is created only when there is
+none.
 
 The editor numbers lines, highlights syntax, completes keywords, tables and
 columns at the caret (including aliases), formats, toggles comments and finds
@@ -463,6 +559,14 @@ clipboard automatically. Copy a cell, row, selection or the loaded result as
 CSV, TSV, JSON, NDJSON, Markdown or `INSERT`; file export re-runs read-only
 queries and streams every row with progress and cancellation.
 
+For CSV and TSV, “Escape formulas (for Excel)” (on by default) prefixes text
+starting with `=`, `+`, `-`, `@`, TAB or CR with an apostrophe so a
+spreadsheet does not run it as a formula; numbers from numeric columns are
+left as they are. `INSERT` string literals double the quote (`''`); MySQL,
+MariaDB and ClickHouse literals also double backslashes, and PostgreSQL text
+containing a backslash is written as `E'…'`, so the file reads back the same
+whatever the server's escape settings.
+
 A click focuses a cell (⌘C / Ctrl+C copies its value); a click on the row
 number selects the row, Shift+click extends the selection and ⌘/Ctrl+click
 toggles a row, Esc clears it. The status line counts selected rows, and copy,
@@ -482,6 +586,35 @@ parameter values or data — with filters for successful, failed and favourite
 queries. It is local and encrypted by default, can join encrypted sync or be
 turned off, and any entry can become a snippet.
 
+### Database snippets
+
+Snippets → Starter packages offers diagnostic query packages: “SQL ·
+PostgreSQL” (20), “SQL · MySQL/MariaDB” (20), “SQL · ClickHouse” (20),
+“Redis” (15) and “MongoDB” (15). They are added to the vault only when you
+press the button and are ordinary editable snippets afterwards. They cover
+active and long-running queries, the lock tree, table and database sizes,
+index usage, dead tuples and autovacuum, replication and slots, non-default
+settings, top queries (`pg_stat_statements`, `performance_schema` digests,
+`system.query_log`), ClickHouse parts, merges and mutations, Redis memory and
+slow log, and MongoDB `currentOp`, stats and profiler. Almost all of them only
+read; `EXPLAIN ANALYZE` (it executes the query), cancelling a query and `KILL`
+are marked modifying and terminating a PostgreSQL session destructive, so they
+need confirmation. Each description names the client (psql, mysql,
+clickhouse-client, redis-cli, mongosh) and any version or extension
+requirement.
+
+Snippet type and dialect match what the history saves: PostgreSQL →
+`postgresql`, MySQL/MariaDB and ClickHouse → `sql` with the `mysql` /
+`clickhouse` dialect, Redis → `redis_cli`, MongoDB → `shell` with `mongosh`.
+The same snippets work in an SSH terminal: start psql, mysql,
+clickhouse-client, redis-cli or mongosh in the session and pick a snippet —
+after the variables and the risk confirmation it is typed into the active tab
+as text (never through `sh -c`), and a multi-line query is sent as one
+bracketed paste when the client enabled it. The app never opens a new SSH
+session for such a snippet. Server admin commands (for example `CLIENT LIST`,
+`SLOWLOG`, `db.currentOp()`, `rs.status()`) are not allowed in the Databases
+workspace and are tagged terminal-only.
+
 ### AI assistant
 
 The assistant uses the providers from Settings → AI to compose, explain, fix,
@@ -490,5 +623,5 @@ selected rows. Schema metadata, selected rows, row samples (up to 20) and one
 read-only probe (up to 50 rows) are shared only with per-request consent;
 everything starts off. Passwords, connection strings and server addresses are
 never sent. Strict privacy pseudonymizes identifiers for external providers.
-Drafts open in a new editor tab and never run automatically; production DDL
+Drafts are added to the current editor tab and never run automatically; production DDL
 drafts are shown only.

@@ -207,6 +207,10 @@ pub enum EditError {
     },
     #[error("could not open the file: {0}")]
     Opener(String),
+    /// The file could run code when opened and no text editor was found to
+    /// open it safely; the user should choose an editor.
+    #[error("no text editor found to open this file safely")]
+    NoTextEditor,
     #[error("file watcher failed: {0}")]
     Watch(String),
     #[error("upload failed: {0}")]

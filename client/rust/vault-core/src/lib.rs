@@ -38,8 +38,8 @@ mod unlocked;
 
 pub use approval::{ConfirmedApproval, PendingApproval};
 pub use backup::{
-    decode_backup, encode_backup, restore_backup_with_passphrase, restore_backup_with_recovery,
-    RestoredBackup, MAX_BACKUP_BYTES,
+    decode_backup, decode_backup_from, encode_backup, restore_backup_with_passphrase,
+    restore_backup_with_recovery, RestoredBackup, MAX_BACKUP_BYTES,
 };
 pub use calibrate::{
     calibrate_argon2, calibrate_argon2_with, DEFAULT_CALIBRATION_TARGET, MAX_CALIBRATED_ITERATIONS,
@@ -50,8 +50,8 @@ pub use error::{Result, VaultError, MIN_PASSPHRASE_CHARS};
 pub use identity::DeviceIdentity;
 pub use recovery_kit::{RecoveryKit, RecoveryKitCheck, RECOVERY_CHECK_WORDS};
 pub use unlock::{
-    parse_recovery_input, unlock_with_device, unlock_with_passphrase, unlock_with_recovery,
-    unlock_with_recovery_input, EnvelopeSource,
+    parse_recovery_input, password_envelope_needs_rewrap, unlock_with_device,
+    unlock_with_passphrase, unlock_with_recovery, unlock_with_recovery_input, EnvelopeSource,
 };
 pub use unlocked::UnlockedVault;
 

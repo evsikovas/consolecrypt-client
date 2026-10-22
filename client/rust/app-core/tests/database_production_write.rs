@@ -81,9 +81,9 @@ async fn production_write_window_needs_passphrase_and_name_and_relocks() {
             .as_deref(),
         Some("blocked")
     );
-    // Wrong passphrase, wrong name or an unknown length open nothing.
+    // A wrong passphrase or an unknown length opens nothing.
     let error = app
-        .db_unlock_production(session.clone(), "orders-prod".into(), "wrong".into(), 5)
+        .db_unlock_production(session.clone(), "wrong".into(), 5)
         .await
         .unwrap_err();
     assert!(
@@ -91,11 +91,7 @@ async fn production_write_window_needs_passphrase_and_name_and_relocks() {
         "{error:?}"
     );
     assert!(app
-        .db_unlock_production(session.clone(), "orders".into(), PASSPHRASE.into(), 5)
-        .await
-        .is_err());
-    assert!(app
-        .db_unlock_production(session.clone(), "orders-prod".into(), PASSPHRASE.into(), 60)
+        .db_unlock_production(session.clone(), PASSPHRASE.into(), 60)
         .await
         .is_err());
     assert!(
@@ -107,7 +103,7 @@ async fn production_write_window_needs_passphrase_and_name_and_relocks() {
     // The window opens for the chosen length.
     let before = chrono::Utc::now().timestamp_millis();
     let open = app
-        .db_unlock_production(session.clone(), "orders-prod".into(), PASSPHRASE.into(), 15)
+        .db_unlock_production(session.clone(), PASSPHRASE.into(), 15)
         .await
         .unwrap();
     let expires = open.production_write_expires_at_ms.unwrap();
@@ -160,7 +156,7 @@ async fn production_write_window_needs_passphrase_and_name_and_relocks() {
         Some("blocked")
     );
     // A new session (after disconnect) starts locked again.
-    app.db_unlock_production(session.clone(), "orders-prod".into(), PASSPHRASE.into(), 5)
+    app.db_unlock_production(session.clone(), PASSPHRASE.into(), 5)
         .await
         .unwrap();
     assert_eq!(run(&app, &session, "DROP TABLE cc_app_window").await, None);
@@ -168,14 +164,9 @@ async fn production_write_window_needs_passphrase_and_name_and_relocks() {
     let again = app.db_connect(saved.id.to_string(), None).await.unwrap();
     assert!(!again.writes_allowed && again.production_write_expires_at_ms.is_none());
     // Locking the vault drops the session and with it any window.
-    app.db_unlock_production(
-        again.info.id.clone(),
-        "orders-prod".into(),
-        PASSPHRASE.into(),
-        5,
-    )
-    .await
-    .unwrap();
+    app.db_unlock_production(again.info.id.clone(), PASSPHRASE.into(), 5)
+        .await
+        .unwrap();
     app.lock().await.unwrap();
     app.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
     assert!(app.db_session_state(again.info.id.clone()).await.is_err());

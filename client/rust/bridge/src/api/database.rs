@@ -88,17 +88,16 @@ pub async fn db_session_state(session_id: String) -> Result<String, BridgeError>
 }
 
 /// Opens a temporary production write window after the vault passphrase
-/// (sent as bytes) and the typed connection name check out.
+/// (sent as bytes) checks out.
 pub async fn db_unlock_production(
     session_id: String,
-    typed_connection_name: String,
     passphrase: Vec<u8>,
     minutes: u32,
 ) -> Result<String, BridgeError> {
     let passphrase = secret_string("passphrase", passphrase)?;
     with_core(move |c| async move {
         to_json(
-            &c.db_unlock_production(session_id, typed_connection_name, passphrase, minutes)
+            &c.db_unlock_production(session_id, passphrase, minutes)
                 .await?,
         )
     })

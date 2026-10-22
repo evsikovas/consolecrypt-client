@@ -8,6 +8,8 @@ import 'error.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `link_notes`
+
 Future<String> sharingStatus() => RustLib.instance.api.crateApiSharingSharingStatus();
 
 Future<String> sharingIdentity() => RustLib.instance.api.crateApiSharingSharingIdentity();
@@ -89,6 +91,15 @@ Future<String> sharingRotate({required String id, required String grantsJson}) =
     RustLib.instance.api.crateApiSharingSharingRotate(id: id, grantsJson: grantsJson);
 
 Future<void> sharingDelete({required String id}) => RustLib.instance.api.crateApiSharingSharingDelete(id: id);
+
+/// Protocol 1.8: this account leaves a received item on all its devices.
+Future<void> sharingLeave({required String id}) => RustLib.instance.api.crateApiSharingSharingLeave(id: id);
+
+/// Protocol 1.8: owner-deleted items that are still restorable.
+Future<String> sharingDeleted() => RustLib.instance.api.crateApiSharingSharingDeleted();
+
+/// Protocol 1.8: republish a deleted item; call `sharing_flush` afterwards.
+Future<String> sharingRestore({required String id}) => RustLib.instance.api.crateApiSharingSharingRestore(id: id);
 
 Future<String> sharingOutbox() => RustLib.instance.api.crateApiSharingSharingOutbox();
 

@@ -48,6 +48,8 @@ struct History {
     state: SharedItemState,
     manifests: Vec<SignedAccessManifest>,
     revisions: Vec<SignedSharingMutation>,
+    /// Protocol 1.8: last content kept after an owner delete.
+    retained: Option<SharedRevision>,
 }
 
 struct HttpState {
@@ -63,6 +65,7 @@ struct HttpState {
     tokens: Mutex<HashMap<String, (UserId, DeviceId)>>,
     nonces: Mutex<HashSet<(DeviceId, [u8; 32])>>,
     shares: Mutex<BTreeMap<ShareId, History>>,
+    departed: Mutex<HashSet<(ShareId, UserId)>>,
     posts: AtomicUsize,
     conflict_once: AtomicBool,
     lost_once: AtomicBool,
@@ -104,6 +107,7 @@ impl Harness {
             tokens: Mutex::new(HashMap::new()),
             nonces: Mutex::new(HashSet::new()),
             shares: Mutex::new(BTreeMap::new()),
+            departed: Mutex::new(HashSet::new()),
             posts: AtomicUsize::new(0),
             conflict_once: AtomicBool::new(false),
             lost_once: AtomicBool::new(false),
@@ -165,7 +169,15 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
         }
         let upstream = outgoing.send().await.unwrap();
         let status = upstream.status().as_u16();
-        let bytes = upstream.bytes().await.unwrap();
+        let mut bytes = upstream.bytes().await.unwrap();
+        if uri.path() == "/v1/meta" {
+            // This harness implements protocol 1.8 leave/restore below.
+            let mut meta: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            meta["capabilities"]["share_leave"] = true.into();
+            meta["capabilities"]["share_restore"] = true.into();
+            meta["capabilities"]["recipient_lookup_post"] = true.into();
+            bytes = serde_json::to_vec(&meta).unwrap().into();
+        }
         if let Ok(auth) = serde_json::from_slice::<AuthResponse>(&bytes) {
             state.tokens.lock().unwrap().insert(
                 auth.tokens.access_token.expose_secret().to_owned(),
@@ -244,11 +256,15 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
         return denied(ErrorCode::NotFound);
     }
     let query: HashMap<String, String> = url_query(&uri);
-    if uri.path() == "/v1/shares/recipients" {
+    if uri.path() == "/v1/shares/recipients" || uri.path() == RECIPIENT_LOOKUP_PATH {
+        // The client must use the body-only lookup when it is advertised.
+        assert_eq!(uri.path(), RECIPIENT_LOOKUP_PATH);
+        assert!(uri.query().is_none());
+        let lookup: RecipientLookupRequest = serde_json::from_slice(&body).unwrap();
         let users = state.users.lock().unwrap();
         let targets: Vec<_> = users
             .iter()
-            .filter(|(_, (_, email, _))| query.get("email") == Some(email))
+            .filter(|(_, (_, email, _))| lookup.email == *email)
             .collect();
         let Some((_, (target_user, _, _))) = targets.first() else {
             return denied(ErrorCode::NotFound);
@@ -271,6 +287,45 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
         );
     }
     let mut shares = state.shares.lock().unwrap();
+    let departed = state.departed.lock().unwrap().clone();
+    if uri.path() == cc_protocol::sharing::DELETED_PATH && method == "GET" {
+        let now = chrono::Utc::now();
+        let items = shares
+            .values()
+            .filter(|history| {
+                history.state.access.manifest.owner_user_id == user
+                    && history
+                        .state
+                        .access
+                        .manifest
+                        .members
+                        .iter()
+                        .any(|member| member.device_id == device)
+            })
+            .filter_map(|history| {
+                let id = history.state.access.manifest.share_id;
+                Some(DeletedSharedItem {
+                    state: history.state.clone(),
+                    last_revision: history.retained.clone()?,
+                    deleted_at: now,
+                    restorable_until: now + chrono::Duration::days(30),
+                    departed_user_ids: departed
+                        .iter()
+                        .filter(|(share, _)| *share == id)
+                        .map(|(_, user)| *user)
+                        .collect(),
+                })
+            })
+            .collect();
+        return response(
+            200,
+            DeletedShareListPage {
+                items,
+                next_after: None,
+                has_more: false,
+            },
+        );
+    }
     if uri.path() == "/v1/shares" && method == "GET" {
         let after = query.get("after").map(|id| ShareId::from_str(id).unwrap());
         let items: Vec<_> = shares
@@ -299,8 +354,22 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
                         .members
                         .iter()
                         .any(|member| member.device_id == device)
+                    && !departed.contains(&(**id, user))
             })
             .map(|(_, history)| history.state.clone())
+            .collect::<Vec<_>>();
+        let departures = departed
+            .iter()
+            .filter(|(share, _)| {
+                items.iter().any(|item| {
+                    item.access.manifest.share_id == *share
+                        && item.access.manifest.owner_user_id == user
+                })
+            })
+            .map(|(share_id, user_id)| ShareDeparture {
+                share_id: *share_id,
+                user_id: *user_id,
+            })
             .collect();
         return response(
             200,
@@ -308,12 +377,31 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
                 items,
                 next_after: None,
                 has_more: false,
+                departures,
             },
         );
     }
     if uri.path() == "/v1/shares" && method == "POST" {
         state.posts.fetch_add(1, Ordering::SeqCst);
         let input: CreateShareRequest = serde_json::from_slice(&body).unwrap();
+        if let Some(from) = input.restored_from {
+            let Some(old) = shares.get_mut(&from) else {
+                return denied(ErrorCode::NotFound);
+            };
+            if old.state.access.manifest.owner_user_id != user || old.retained.is_none() {
+                return denied(ErrorCode::Gone);
+            }
+            if input
+                .access
+                .manifest
+                .members
+                .iter()
+                .any(|member| departed.contains(&(from, member.user_id)))
+            {
+                return denied(ErrorCode::Forbidden);
+            }
+            old.retained = None;
+        }
         let created = SharedItemState {
             access: input.access,
             revision: input.revision,
@@ -350,6 +438,7 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
                 manifests: vec![created.access.clone()],
                 revisions: vec![created.revision.signed.clone()],
                 state: created.clone(),
+                retained: None,
             },
         );
         if state.lost_once.swap(false, Ordering::SeqCst) {
@@ -379,6 +468,16 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
     else {
         return denied(ErrorCode::NotFound);
     };
+    if departed.contains(&(id, user)) {
+        return denied(ErrorCode::NotFound);
+    }
+    if segments.get(1) == Some(&"leave") && method == "POST" {
+        if history.state.access.manifest.owner_user_id == user {
+            return denied(ErrorCode::Forbidden);
+        }
+        state.departed.lock().unwrap().insert((id, user));
+        return Response::builder().status(204).body(Body::empty()).unwrap();
+    }
     if segments.len() == 1 && method == "GET" {
         return response(200, &history.state);
     }
@@ -463,6 +562,12 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
                 changed.revision.signed.mutation.body_hash.as_slice()
                     == shared_body_hash(body).unwrap()
             );
+        }
+        if changed.revision.signed.mutation.operation == SharingOperation::Delete {
+            if history.state.access.manifest.owner_user_id != user {
+                return denied(ErrorCode::OwnerOnly);
+            }
+            history.retained = Some(history.state.revision.clone());
         }
         if changed.access != history.state.access {
             history.manifests.push(changed.access.clone());
@@ -977,7 +1082,7 @@ async fn lock_cancels_inflight_metadata_and_secure_instance_pin_survives_restart
     )
     .await;
     let identity = account.app.sharing_identity().await.unwrap();
-    *server.state.pause.lock().unwrap() = Some("/v1/shares/recipients".into());
+    *server.state.pause.lock().unwrap() = Some(RECIPIENT_LOOKUP_PATH.into());
     let app = account.app.clone();
     let email = account.email.clone();
     let action = tokio::spawn(async move { app.sharing_discover(email).await });
@@ -3577,4 +3682,132 @@ async fn live_automatic_enrollment_uses_only_signed_automatic_unfrozen_reader_gr
     Box::pin(owner.app.shutdown()).await.unwrap();
     Box::pin(anchor.app.shutdown()).await.unwrap();
     Box::pin(target.app.shutdown()).await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn recipient_leaves_and_owner_restores_a_deleted_item_as_a_new_share() {
+    let server = Harness::new().await;
+    let directory = tempfile::tempdir().unwrap();
+    let mut accounts = Vec::new();
+    for name in ["owner", "leaver", "stayer"] {
+        accounts.push(
+            account(
+                &server.url,
+                &directory.path().join(name),
+                Arc::new(InMemorySecureStore::new()),
+            )
+            .await,
+        );
+    }
+    let [owner, leaver, stayer] = &accounts[..] else {
+        unreachable!()
+    };
+    let owner_code = owner
+        .app
+        .sharing_identity()
+        .await
+        .unwrap()
+        .verification_code;
+    let leaver_identity = leaver.app.sharing_identity().await.unwrap();
+    let stayer_identity = stayer.app.sharing_identity().await.unwrap();
+    let status = leaver.app.sharing_status().await.unwrap();
+    assert!(status.supports_leave && status.supports_restore);
+    let created = owner
+        .app
+        .sharing_publish(
+            projection("Restorable host"),
+            vec![
+                grant(leaver_identity.clone(), SharingRoleDto::Editor),
+                grant(stayer_identity.clone(), SharingRoleDto::Reader),
+            ],
+        )
+        .await
+        .unwrap();
+    owner.app.sharing_flush().await.unwrap();
+    for recipient in [leaver, stayer] {
+        recipient.app.sharing_list(true).await.unwrap();
+        recipient
+            .app
+            .sharing_accept(created.share_id.clone(), owner_code.clone())
+            .await
+            .unwrap();
+    }
+    // An editor never deletes the owner's item, and the owner cannot leave.
+    assert!(leaver
+        .app
+        .sharing_delete(created.share_id.clone())
+        .await
+        .is_err());
+    assert!(owner
+        .app
+        .sharing_leave(created.share_id.clone())
+        .await
+        .is_err());
+
+    leaver
+        .app
+        .sharing_leave(created.share_id.clone())
+        .await
+        .unwrap();
+    assert!(leaver.app.sharing_list(true).await.unwrap().is_empty());
+    assert!(leaver.app.sharing_list(false).await.unwrap().is_empty());
+    let owned = owner.app.sharing_list(true).await.unwrap();
+    assert_eq!(
+        owned[0].departed_user_ids,
+        vec![leaver_identity.user_id.clone()]
+    );
+    assert!(owned[0]
+        .member_roles
+        .iter()
+        .all(|member| member.identity.user_id != leaver_identity.user_id));
+    assert_eq!(owned[0].member_roles.len(), 2);
+
+    owner
+        .app
+        .sharing_delete(created.share_id.clone())
+        .await
+        .unwrap();
+    owner.app.sharing_flush().await.unwrap();
+    let deleted = owner.app.sharing_deleted().await.unwrap();
+    assert_eq!(deleted.len(), 1);
+    assert_eq!(deleted[0].share_id, created.share_id);
+    assert_eq!(deleted[0].recipients, 1);
+    assert!(deleted[0]
+        .preview_json
+        .as_ref()
+        .unwrap()
+        .contains("Restorable host"));
+    assert!(leaver.app.sharing_deleted().await.unwrap().is_empty());
+    assert!(stayer.app.sharing_deleted().await.unwrap().is_empty());
+
+    let restored = owner
+        .app
+        .sharing_restore(created.share_id.clone())
+        .await
+        .unwrap();
+    assert_ne!(restored.share_id, created.share_id);
+    assert!(owner
+        .app
+        .sharing_restore(created.share_id.clone())
+        .await
+        .is_err());
+    assert!(owner.app.sharing_flush().await.unwrap().entries.is_empty());
+    assert!(owner.app.sharing_deleted().await.unwrap().is_empty());
+    let incoming = stayer.app.sharing_list(true).await.unwrap();
+    let invitation = incoming
+        .iter()
+        .find(|item| item.share_id == restored.share_id)
+        .unwrap();
+    assert_eq!(invitation.trust, SharingTrustDto::Unverified);
+    let accepted = stayer
+        .app
+        .sharing_accept(restored.share_id.clone(), owner_code.clone())
+        .await
+        .unwrap();
+    assert!(accepted
+        .preview_json
+        .as_ref()
+        .unwrap()
+        .contains("Restorable host"));
+    assert!(leaver.app.sharing_list(true).await.unwrap().is_empty());
 }

@@ -659,11 +659,22 @@ final class DbExportOptions {
     this.bom = false,
     this.delimiter = ',',
     this.quote = '"',
+    this.escapeFormulas = true,
   });
   final DbExportFormat format;
-  final bool header, bom;
+
+  /// CSV/TSV: text starting with `=`, `+`, `-`, `@`, TAB or CR gets a leading
+  /// `'` so spreadsheets do not run it as a formula (numbers are kept).
+  final bool header, bom, escapeFormulas;
   final String delimiter, quote;
-  DbJson toJson() => {'format': format.name, 'header': header, 'bom': bom, 'delimiter': delimiter, 'quote': quote};
+  DbJson toJson() => {
+    'format': format.name,
+    'header': header,
+    'bom': bom,
+    'delimiter': delimiter,
+    'quote': quote,
+    'escape_formulas': escapeFormulas,
+  };
 }
 
 final class DbExportProgress {

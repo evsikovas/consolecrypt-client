@@ -6,8 +6,9 @@
 
 use super::{to_json, ApiClient, ApiError, SignerError};
 use cc_protocol::sharing::{
-    self, CreateShareRequest, PutSharedRevisionRequest, RotateShareAccessRequest, ShareHistoryPage,
-    ShareListPage, SharedItemKind, SharedItemState, SharingCapabilities, SharingRecipient,
+    self, CreateShareRequest, DeletedShareListPage, PutSharedRevisionRequest,
+    RotateShareAccessRequest, ShareHistoryPage, ShareListPage, SharedItemKind, SharedItemState,
+    SharingCapabilities, SharingOperation, SharingRecipient,
 };
 use cc_protocol::sharing_notes::{
     self, RekeySharedNotesRequest, SharedNote, SharedNotesKeySet, SharedNotesPage,
@@ -29,6 +30,17 @@ pub struct ShareKinds {
     pub secrets: bool,
     pub kube_contexts: bool,
     pub db_connections: bool,
+}
+
+/// `GET /v1/shares` as received: entries are decoded one by one, so one
+/// malformed entry does not hide the rest of the page.
+#[derive(serde::Deserialize)]
+struct RawShareListPage {
+    items: Vec<serde_json::Value>,
+    next_after: Option<ShareId>,
+    has_more: bool,
+    #[serde(default)]
+    departures: Vec<sharing::ShareDeparture>,
 }
 
 #[derive(Debug, Clone)]
@@ -136,6 +148,21 @@ impl SharingApi {
         limit: u32,
         kinds: ShareKinds,
     ) -> Result<ShareListPage, ApiError> {
+        self.list_shares_checked(after, limit, kinds)
+            .await
+            .map(|(page, _)| page)
+    }
+
+    /// [`SharingApi::list_shares_including`] plus how many entries were
+    /// skipped because they could not be decoded or failed structural
+    /// validation. Ordering, cursors and kinds of the readable entries are
+    /// still enforced for the whole page.
+    pub async fn list_shares_checked(
+        &self,
+        after: Option<ShareId>,
+        limit: u32,
+        kinds: ShareKinds,
+    ) -> Result<(ShareListPage, u32), ApiError> {
         let ShareKinds {
             groups: include_groups,
             secrets: include_secrets,
@@ -174,13 +201,30 @@ impl SharingApi {
                 query.append_pair("include_secrets", "true");
             }
         }
-        let page: ShareListPage = self.client.authed(Method::GET, url, None).await?;
-        if page.items.len() > limit as usize {
+        let raw: RawShareListPage = self.client.authed(Method::GET, url, None).await?;
+        let raw_count = raw.items.len();
+        if raw.items.len() > limit as usize {
             return Err(response_error("sharing page exceeds limit"));
         }
+        let mut skipped = 0u32;
+        let mut items = Vec::with_capacity(raw.items.len());
+        for value in raw.items {
+            match serde_json::from_value::<SharedItemState>(value) {
+                Ok(item) if self.state(&item, None).is_ok() => items.push(item),
+                _ => skipped += 1,
+            }
+        }
+        if skipped > 0 {
+            tracing::warn!(skipped, "unreadable shared entries skipped");
+        }
+        let page = ShareListPage {
+            items,
+            next_after: raw.next_after,
+            has_more: raw.has_more,
+            departures: raw.departures,
+        };
         let mut previous = after;
         for item in &page.items {
-            self.state(item, None)?;
             if (item.access.manifest.kind == SharedItemKind::Group && !include_groups)
                 || (item.access.manifest.kind == SharedItemKind::Secret && !include_secrets)
                 || (item.access.manifest.kind == SharedItemKind::KubeContext
@@ -203,6 +247,92 @@ impl SharingApi {
             if after.is_some_and(|after| next <= after)
                 || previous.is_some_and(|previous| next < previous)
             {
+                return Err(response_error("invalid sharing pagination cursor"));
+            }
+        } else if page.next_after.is_some() {
+            return Err(response_error(
+                "unexpected terminal sharing pagination cursor",
+            ));
+        }
+        // Departures name items of this page; entries skipped above take
+        // their departures with them instead of failing the whole page.
+        if page.departures.len() > raw_count * sharing::MAX_MEMBERS {
+            return Err(response_error("invalid sharing departures"));
+        }
+        let mut page = page;
+        let readable = page
+            .items
+            .iter()
+            .map(|item| item.access.manifest.share_id)
+            .collect::<Vec<_>>();
+        let before = page.departures.len();
+        page.departures
+            .retain(|departure| readable.contains(&departure.share_id));
+        if skipped == 0 && page.departures.len() != before {
+            return Err(response_error("invalid sharing departures"));
+        }
+        Ok((page, skipped))
+    }
+
+    /// Protocol 1.8 (`capabilities.share_leave`): this account leaves a
+    /// shared item on all its devices. Nothing is signed or re-encrypted.
+    pub async fn leave_share(&self, share_id: ShareId) -> Result<(), ApiError> {
+        self.ready()?;
+        self.client
+            .authed_empty(Method::POST, self.item_url(share_id, "/leave")?, None)
+            .await
+    }
+
+    /// Protocol 1.8 (`capabilities.share_restore`): owner-deleted items whose
+    /// last content is still retained. Structural checks only; the caller
+    /// verifies signatures against its accepted tombstone before opening.
+    pub async fn deleted_shares(
+        &self,
+        after: Option<ShareId>,
+        limit: u32,
+    ) -> Result<DeletedShareListPage, ApiError> {
+        self.ready()?;
+        page_limit(limit)?;
+        if after == Some(ShareId::NIL) {
+            return Err(config_error("invalid sharing list cursor"));
+        }
+        let mut url = self.client.endpoint(sharing::DELETED_PATH);
+        {
+            let mut query = url.query_pairs_mut();
+            if let Some(after) = after {
+                query.append_pair("after", &after.to_string());
+            }
+            query.append_pair("limit", &limit.to_string());
+        }
+        let page: DeletedShareListPage = self.client.authed(Method::GET, url, None).await?;
+        if page.items.len() > limit as usize {
+            return Err(response_error("sharing page exceeds limit"));
+        }
+        let mut previous = after;
+        for item in &page.items {
+            let id = item.state.access.manifest.share_id;
+            self.state(&item.state, None)?;
+            self.revision(&item.last_revision, id, false)?;
+            let tombstone = &item.state.revision.signed.mutation;
+            let last = &item.last_revision.signed.mutation;
+            if tombstone.operation != SharingOperation::Delete
+                || last.operation != SharingOperation::Put
+                || last.context.revision.checked_add(1) != Some(tombstone.context.revision)
+                || last.manifest_revision != tombstone.manifest_revision
+                || item.restorable_until <= item.deleted_at
+            {
+                return Err(response_error("invalid deleted sharing item"));
+            }
+            if previous.is_some_and(|previous| id <= previous) {
+                return Err(response_error("sharing page is not ordered"));
+            }
+            previous = Some(id);
+        }
+        if page.has_more {
+            let next = page
+                .next_after
+                .ok_or_else(|| response_error("missing sharing pagination cursor"))?;
+            if after.is_some_and(|after| next <= after) {
                 return Err(response_error("invalid sharing pagination cursor"));
             }
         } else if page.next_after.is_some() {
@@ -466,15 +596,41 @@ impl SharingApi {
 
     /// Exact-email lookup, percent-encoded by url::Url. Returned public keys
     /// are discovery candidates only and must pass a human code comparison.
+    /// Deprecated by protocol 1.8: prefer [`Self::sharing_recipient_lookup`].
     pub async fn sharing_recipient(&self, email: &str) -> Result<SharingRecipient, ApiError> {
+        self.sharing_recipient_lookup(email, false).await
+    }
+
+    /// Exact-email lookup. With `post` (server `capabilities.
+    /// recipient_lookup_post`, protocol 1.8) the address travels only in the
+    /// JSON body of `POST /v1/shares/recipients/lookup`, never in a URL;
+    /// otherwise the legacy `GET ?email=` is used for older servers.
+    pub async fn sharing_recipient_lookup(
+        &self,
+        email: &str,
+        post: bool,
+    ) -> Result<SharingRecipient, ApiError> {
         self.ready()?;
         let email = email.trim();
         if email.is_empty() || email.len() > 320 || email.chars().any(char::is_control) {
             return Err(config_error("invalid sharing recipient email"));
         }
-        let mut url = self.client.endpoint("/v1/shares/recipients");
-        url.query_pairs_mut().append_pair("email", email);
-        let recipient: SharingRecipient = self.client.authed(Method::GET, url, None).await?;
+        let recipient: SharingRecipient = if post {
+            let body = to_json(&sharing::RecipientLookupRequest {
+                email: email.to_owned(),
+            })?;
+            self.client
+                .authed(
+                    Method::POST,
+                    self.client.endpoint(sharing::RECIPIENT_LOOKUP_PATH),
+                    Some(body),
+                )
+                .await?
+        } else {
+            let mut url = self.client.endpoint("/v1/shares/recipients");
+            url.query_pairs_mut().append_pair("email", email);
+            self.client.authed(Method::GET, url, None).await?
+        };
         if recipient.user_id == UserId::NIL || recipient.devices.len() > sharing::MAX_MEMBERS {
             return Err(response_error("invalid sharing recipient"));
         }

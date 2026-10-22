@@ -10,30 +10,41 @@ use crate::secrets::blocking;
 use crate::session::{Session, VAULT_ID_SETTING};
 use cc_storage_core::{local_key_envelope, ExportedObject, Profile, ProfileKind, VaultExport};
 use cc_vault_core::{
-    decode_backup, encode_backup, restore_backup_with_passphrase, restore_backup_with_recovery,
-    BackupObject, SecretString, MAX_BACKUP_BYTES,
+    decode_backup_from, encode_backup, restore_backup_with_passphrase,
+    restore_backup_with_recovery, BackupObject, SecretString, MAX_BACKUP_BYTES,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-/// Write `bytes` to `path` atomically with owner-only permissions.
-fn write_private(path: &PathBuf, bytes: &[u8]) -> std::io::Result<()> {
+/// Write `bytes` to `path` atomically with owner-only permissions. The
+/// temporary file next to it has a random name and is created exclusively
+/// (`create_new`: `O_CREAT | O_EXCL`, plus `O_NOFOLLOW` on Unix;
+/// `CREATE_NEW` on Windows), so a file or symlink planted in a shared backup
+/// folder is never followed or truncated; the final rename replaces a
+/// symlink at `path` instead of writing through it.
+fn write_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
-    let tmp = path.with_extension("ccbackup.tmp");
+    let tmp = path.with_extension(format!("ccbackup.{}.tmp", uuid::Uuid::new_v4().simple()));
+    let mut o = std::fs::OpenOptions::new();
+    o.write(true).create_new(true);
+    #[cfg(unix)]
     {
-        let mut o = std::fs::OpenOptions::new();
-        o.write(true).create(true).truncate(true);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            o.mode(0o600);
-        }
-        let mut f = o.open(&tmp)?;
-        f.write_all(bytes)?;
-        f.sync_all()?;
+        use std::os::unix::fs::OpenOptionsExt;
+        o.mode(0o600).custom_flags(libc::O_NOFOLLOW);
     }
-    std::fs::rename(&tmp, path)
+    let mut f = o.open(&tmp)?;
+    let written = f
+        .write_all(bytes)
+        .and_then(|()| f.sync_all())
+        .and_then(|()| {
+            drop(f);
+            std::fs::rename(&tmp, path)
+        });
+    if written.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    written
 }
 
 /// Settings key of the backup schedule (profile database).
@@ -426,8 +437,7 @@ impl AppCore {
             if meta.len() as usize > MAX_BACKUP_BYTES {
                 return Err(AppError::Backup("file too large".into()));
             }
-            let bytes = std::fs::read(&path)?;
-            let backup = decode_backup(&bytes)?;
+            let backup = decode_backup_from(std::fs::File::open(&path)?)?;
             Ok(match &unlock {
                 BackupUnlock::Passphrase(p) => {
                     restore_backup_with_passphrase(backup, &SecretString::from(p.clone()))?
@@ -520,6 +530,39 @@ impl AppCore {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn backups_are_written_without_following_planted_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vault.ccbackup");
+        write_private(&path, b"first").unwrap();
+        write_private(&path, b"second").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"second");
+        // No temporary files are left behind.
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+                0o600
+            );
+            // Symlinks at the old fixed temporary name and at the target
+            // are replaced, never written through.
+            let victim = dir.path().join("victim");
+            std::fs::write(&victim, b"keep").unwrap();
+            let target = dir.path().join("linked.ccbackup");
+            std::os::unix::fs::symlink(&victim, &target).unwrap();
+            std::os::unix::fs::symlink(&victim, dir.path().join("linked.ccbackup.tmp")).unwrap();
+            write_private(&target, b"backup").unwrap();
+            assert_eq!(std::fs::read(&victim).unwrap(), b"keep");
+            assert!(!std::fs::symlink_metadata(&target)
+                .unwrap()
+                .file_type()
+                .is_symlink());
+            assert_eq!(std::fs::read(&target).unwrap(), b"backup");
+        }
+    }
 
     #[test]
     fn file_names_and_versions() {

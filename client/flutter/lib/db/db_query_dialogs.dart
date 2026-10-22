@@ -1,12 +1,13 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/db/db_ddl_dialog.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
+import 'package:consolecrypt/vault/vault_passphrase_confirmation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -138,76 +139,28 @@ class _DbVariablesDialogState extends ConsumerState<DbVariablesDialog> {
   }
 }
 
-class DbQueryReviewDialog extends ConsumerStatefulWidget {
-  const DbQueryReviewDialog({required this.connectionName, required this.query, required this.review, super.key});
-  final String connectionName, query;
+/// Review of a changing statement: the exact text as a code block and the
+/// vault passphrase. Closes unapproved when the vault scope changes and
+/// refuses approval once the review expires.
+class DbQueryReviewDialog extends StatelessWidget {
+  const DbQueryReviewDialog({required this.query, required this.review, super.key});
+  final String query;
   final DbQueryReview review;
-  @override
-  ConsumerState<DbQueryReviewDialog> createState() => _DbQueryReviewDialogState();
-}
-
-class _DbQueryReviewDialogState extends ConsumerState<DbQueryReviewDialog> {
-  late final _scope = ref.read(dbScopeProvider);
-  final _confirmation = TextEditingController();
-  Timer? _timer;
-  bool get _expired => !DateTime.now().isBefore(widget.review.expiresAt);
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer(widget.review.expiresAt.difference(DateTime.now()), () {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _confirmation.clear();
-    _confirmation.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    ref.listen(dbScopeProvider, (_, next) {
-      if (!identical(next, _scope)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) closeDialog<void>(context);
-        });
-      }
-    });
-    if (!_scope.unlocked || !identical(_scope, ref.watch(dbScopeProvider))) return const SizedBox.shrink();
-    return GlassDialog(
+    return VaultPassphraseConfirmation<DbScope>(
+      key: const ValueKey('db-query-review'),
+      scope: dbScopeProvider,
+      live: (scope) => scope.unlocked,
       title: l.dbReviewQuery,
-      content: SizedBox(
-        width: 760,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(l.dbQueryDangerous),
-              const SizedBox(height: 12),
-              SelectableText(widget.query, style: const TextStyle(fontFamily: 'monospace')),
-              const SizedBox(height: 12),
-              TextField(
-                key: const ValueKey('db-query-confirmation'),
-                controller: _confirmation,
-                decoration: InputDecoration(labelText: widget.connectionName),
-                onChanged: (_) => setState(() {}),
-              ),
-              if (_expired) Text(l.dbReviewExpired),
-            ],
-          ),
-        ),
-      ),
-      secondaryActions: [GlassButton(label: l.commonCancel, onPressed: () => closeDialog<bool>(context, false))],
-      primaryAction: GlassButton.destructive(
-        label: l.dbRun,
-        onPressed: !_expired && _confirmation.text == widget.connectionName
-            ? () => closeDialog<bool>(context, true)
-            : null,
-      ),
+      message: l.dbQueryDangerous,
+      confirmLabel: l.dbRun,
+      details: DbCodeBlock(key: const ValueKey('db-query-review-sql'), text: query),
+      expiresAt: review.expiresAt,
+      expiredMessage: l.dbReviewExpired,
+      width: 760,
     );
   }
 }

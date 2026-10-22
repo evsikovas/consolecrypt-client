@@ -442,18 +442,16 @@ fn production_writes_need_an_open_window_bound_to_the_connection_name() {
             Err(DbError::PolicyDenied)
         ));
         assert_eq!(prod.production_write_remaining(), None);
-        // The typed name must match exactly; only 5/15/30 minutes exist.
-        assert!(prod.open_production_write("orders", five).is_err());
-        assert!(prod.open_production_write("ORDERS-PROD", five).is_err());
+        // Only 5/15/30 minutes exist.
         for minutes in [0, 1, 10, 60, 24 * 60] {
             assert!(prod
-                .open_production_write("orders-prod", Duration::from_secs(minutes * 60))
+                .open_production_write(Duration::from_secs(minutes * 60))
                 .is_err());
         }
         assert!(prod.is_read_only());
         // Within the window the same write gets a permit, marked as a
         // production write; it still goes through review.
-        prod.open_production_write("orders-prod", five).unwrap();
+        prod.open_production_write(five).unwrap();
         assert!(!prod.is_read_only());
         assert!(prod.production_write_remaining().unwrap() <= five);
         let review = prod.review(&request(query)).unwrap();
@@ -466,16 +464,122 @@ fn production_writes_need_an_open_window_bound_to_the_connection_name() {
         assert!(prod.validate_permit(&permit[0]).is_err());
         assert!(prod.prepare(&request(query)).is_err());
         // Closing the session ends the window for good.
-        prod.open_production_write("orders-prod", five).unwrap();
+        prod.open_production_write(five).unwrap();
         prod.close();
         assert!(prod.is_read_only());
-        assert!(prod.open_production_write("orders-prod", five).is_err());
+        assert!(prod.open_production_write(five).is_err());
         // Non-production and mobile production sessions never get a window.
         assert!(guard(engine, false, false)
-            .open_production_write("orders-prod", five)
+            .open_production_write(five)
             .is_err());
         let mobile = guard(engine, true, true);
-        assert!(mobile.open_production_write("orders-prod", five).is_err());
+        assert!(mobile.open_production_write(five).is_err());
         assert!(mobile.prepare(&request(query)).is_err());
+    }
+}
+#[test]
+fn read_only_diagnostic_functions_run_on_production_and_resolve_to_builtins() {
+    let g = guard(DbEngine::Postgresql, true, false);
+    for (query, function) in [
+        ("SELECT format('%I.%I', 'a', 'b')", "format"),
+        ("SELECT version()", "version"),
+        ("SELECT pg_backend_pid()", "pg_backend_pid"),
+        ("SELECT pg_blocking_pids(1)", "pg_blocking_pids"),
+        (
+            "SELECT pg_postmaster_start_time()",
+            "pg_postmaster_start_time",
+        ),
+        ("SELECT inet_server_addr()", "inet_server_addr"),
+        ("SELECT inet_server_port()", "inet_server_port"),
+        ("SELECT pg_database_size('demo')", "pg_database_size"),
+        ("SELECT pg_is_in_recovery()", "pg_is_in_recovery"),
+        ("SELECT pg_current_wal_lsn()", "pg_current_wal_lsn"),
+        (
+            "SELECT pg_last_wal_receive_lsn()",
+            "pg_last_wal_receive_lsn",
+        ),
+        ("SELECT pg_last_wal_replay_lsn()", "pg_last_wal_replay_lsn"),
+        (
+            "SELECT pg_last_xact_replay_timestamp()",
+            "pg_last_xact_replay_timestamp",
+        ),
+        ("SELECT pg_wal_lsn_diff('0/2', '0/1')", "pg_wal_lsn_diff"),
+        ("SELECT col_description(1, 1)", "col_description"),
+        ("SELECT obj_description(1, 'pg_class')", "obj_description"),
+        ("SELECT pg_get_constraintdef(1)", "pg_get_constraintdef"),
+        ("SELECT pg_get_indexdef(1)", "pg_get_indexdef"),
+        ("SELECT pg_catalog.pg_backend_pid()", "pg_backend_pid"),
+    ] {
+        let p = g
+            .prepare(&request(query))
+            .unwrap_or_else(|e| panic!("{query}: {e:?}"));
+        assert!(p[0].is_read_only(), "{query}");
+        // Always the server's own function, never one earlier on the search_path.
+        assert!(
+            sql_text(p[0].parsed()).contains(&format!("pg_catalog.{function}(")),
+            "{}",
+            sql_text(p[0].parsed())
+        );
+    }
+    let g = guard(DbEngine::Clickhouse, true, false);
+    for query in [
+        "SELECT formatReadableSize(1024)",
+        "SELECT formatReadableQuantity(1000)",
+        "SELECT formatReadableTimeDelta(100)",
+        "SELECT uptime()",
+        "SELECT version()",
+        "SELECT hostName()",
+        "SELECT toStartOfMinute(now())",
+        "SELECT toStartOfFiveMinutes(now())",
+        "SELECT toStartOfFifteenMinutes(now())",
+        "SELECT toStartOfWeek(today())",
+        "SELECT toStartOfQuarter(today())",
+    ] {
+        let p = g
+            .prepare(&request(query))
+            .unwrap_or_else(|e| panic!("{query}: {e:?}"));
+        assert!(p[0].is_read_only(), "{query}");
+    }
+}
+#[test]
+fn side_effecting_server_functions_stay_blocked_on_production() {
+    let g = guard(DbEngine::Postgresql, true, false);
+    for query in [
+        "SELECT pg_cancel_backend(1)",
+        "SELECT pg_terminate_backend(1)",
+        "SELECT pg_reload_conf()",
+        "SELECT pg_rotate_logfile()",
+        "SELECT set_config('work_mem', '1GB', false)",
+        "SELECT nextval('s')",
+        "SELECT setval('s', 1)",
+        "SELECT pg_advisory_lock(1)",
+        "SELECT pg_advisory_xact_lock(1)",
+        "SELECT dblink_exec('x', 'x')",
+        "SELECT lo_import('/etc/passwd')",
+        "SELECT lo_export(1, '/tmp/x')",
+        "SELECT pg_read_file('/etc/passwd')",
+        "SELECT pg_ls_dir('.')",
+        "SELECT pg_stat_reset()",
+        "SELECT pg_stat_statements_reset()",
+        "SELECT pg_switch_wal()",
+        "SELECT pg_create_restore_point('x')",
+        "SELECT public.pg_backend_pid()",
+        "SELECT \"PG_BACKEND_PID\"()",
+    ] {
+        assert!(g.prepare(&request(query)).is_err(), "accepted {query}");
+    }
+    let g = guard(DbEngine::Clickhouse, true, false);
+    for query in [
+        "SELECT * FROM file('x.csv')",
+        "SELECT * FROM url('http://example.com', CSV)",
+        "SELECT * FROM s3('http://example.com/x', CSV)",
+        "SELECT * FROM remote('h', system.one)",
+        "SELECT * FROM mysql('h:3306', 'db', 't', 'u', 'p')",
+        "SELECT * FROM postgresql('h:5432', 'db', 't', 'u', 'p')",
+        "SELECT * FROM executable('x.sh', TabSeparated, 'a String')",
+        "SELECT sleep(1)",
+        "SELECT throwIf(1)",
+    ] {
+        assert!(g.prepare(&request(query)).is_err(), "accepted {query}");
     }
 }

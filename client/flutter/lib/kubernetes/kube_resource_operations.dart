@@ -7,6 +7,7 @@ import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_operations_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
+import 'package:consolecrypt/vault/vault_passphrase_confirmation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -32,9 +33,9 @@ Future<bool> reviewKubeRestart(
       !const {'deployments', 'statefulsets', 'daemonsets'}.contains(resource.api.resource)) {
     return false;
   }
-  final approved = await showTypedKubeConfirmation(
+  final approved = await showKubePassphraseConfirmation(
     context,
-    expected: resource.name,
+    subject: resource.name,
     title: context.l10n.kubeRestart,
     message: context.l10n.kubeMutationConfirmHelp,
     confirmLabel: context.l10n.kubeRestart,
@@ -109,9 +110,9 @@ class _KubeResourceOperationsState extends ConsumerState<KubeResourceOperations>
       if (_current && changed == true) widget.onChanged();
       return;
     }
-    final approved = await showTypedKubeConfirmation(
+    final approved = await showKubePassphraseConfirmation(
       context,
-      expected: resource.name,
+      subject: resource.name,
       title: label,
       message: context.l10n.kubeMutationConfirmHelp,
       confirmLabel: label,
@@ -189,10 +190,9 @@ class _OperationDialog extends ConsumerStatefulWidget {
   ConsumerState<_OperationDialog> createState() => _OperationDialogState();
 }
 
-class _OperationDialogState extends ConsumerState<_OperationDialog> {
+class _OperationDialogState extends ConsumerState<_OperationDialog> with VaultPassphraseCheck<_OperationDialog> {
   late final KubeScope _scope = ref.read(kubeScopeProvider);
-  final _confirm = TextEditingController(),
-      _replicas = TextEditingController(),
+  final _replicas = TextEditingController(),
       _image = TextEditingController(),
       _name = TextEditingController(text: 'debugger');
   String? _container;
@@ -213,7 +213,6 @@ class _OperationDialogState extends ConsumerState<_OperationDialog> {
 
   @override
   void dispose() {
-    _confirm.dispose();
     _replicas.dispose();
     _image.dispose();
     _name.dispose();
@@ -233,7 +232,7 @@ class _OperationDialogState extends ConsumerState<_OperationDialog> {
   }
 
   bool get _valid {
-    if (!_canWrite || _busy || _confirm.text != widget.resource.name || _version.isEmpty) return false;
+    if (!_canWrite || _busy || passphraseBusy || !passphraseEntered || _version.isEmpty) return false;
     if (widget.action == 'scale') {
       final replicas = int.tryParse(_replicas.text);
       return replicas != null && replicas >= 0 && replicas <= 1000000;
@@ -250,6 +249,7 @@ class _OperationDialogState extends ConsumerState<_OperationDialog> {
 
   Future<void> _run() async {
     if (!_valid) return;
+    if (!await checkPassphrase() || !_canWrite || _busy) return;
     setState(() {
       _busy = true;
       _failed = false;
@@ -289,7 +289,7 @@ class _OperationDialogState extends ConsumerState<_OperationDialog> {
     ref.listen(kubeScopeProvider, (_, next) {
       if (identical(_scope, next)) return;
       _plan = null;
-      _confirm.clear();
+      passphrase.clear();
       _image.clear();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -383,15 +383,11 @@ class _OperationDialogState extends ConsumerState<_OperationDialog> {
                         ),
                     ],
                     Text(l.kubeMutationConfirmHelp),
-                    TextField(
-                      key: const ValueKey('kube-operation-confirm-name'),
-                      controller: _confirm,
+                    const SizedBox(height: GlassSpacing.s8),
+                    passphraseField(
+                      key: const ValueKey('kube-operation-confirm-passphrase'),
                       enabled: !_busy,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      enableIMEPersonalizedLearning: false,
-                      decoration: InputDecoration(labelText: widget.resource.name),
-                      onChanged: (_) => setState(() {}),
+                      onSubmitted: (_) => unawaited(_run()),
                     ),
                     if (_loading || _busy) const LinearProgressIndicator(),
                     if (_failed)
@@ -403,7 +399,8 @@ class _OperationDialogState extends ConsumerState<_OperationDialog> {
       primaryAction: GlassButton.destructive(
         key: const ValueKey('kube-operation-confirm'),
         label: title,
-        onPressed: _valid ? _run : null,
+        busy: passphraseBusy,
+        onPressed: _valid ? () => unawaited(_run()) : null,
       ),
       secondaryActions: [
         if (_busy && widget.action == 'drain')

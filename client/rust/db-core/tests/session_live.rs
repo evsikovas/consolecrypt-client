@@ -190,6 +190,41 @@ async fn exercise(variable: &str, engine: DbEngine) {
         .clone();
     assert_eq!(table.kind, DbObjectKind::Table);
     let columns = dev.tree(Some(&table), None).await.unwrap();
+    // Object details: grouped, read-only catalogue facts.
+    let details = dev.inspect(&table, None).await.unwrap();
+    let field = |id: &str| {
+        details["sections"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|section| section["fields"].as_array().unwrap().iter())
+            .find(|field| field["id"] == id)
+            .map(|field| field["value"].as_str().unwrap().to_owned())
+    };
+    assert_eq!(field("columns").as_deref(), Some("3"));
+    assert_eq!(field("indexes").as_deref(), Some("2"));
+    assert!(field("table_size").is_some());
+    assert_eq!(field("kind").as_deref(), Some("table"));
+    write(&dev, "CREATE VIEW cc_items_view AS SELECT id FROM cc_items")
+        .await
+        .unwrap();
+    let view = cc_db_core::DbObjectRef {
+        kind: DbObjectKind::View,
+        name: "cc_items_view".into(),
+        ..table.clone()
+    };
+    let details = dev.inspect(&view, None).await.unwrap();
+    let ids: Vec<&str> = details["sections"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|section| section["id"].as_str().unwrap())
+        .collect();
+    assert!(
+        ids.contains(&"structure") && !ids.contains(&"size"),
+        "{ids:?}"
+    );
+    write(&dev, "DROP VIEW cc_items_view").await.unwrap();
     assert!(columns
         .nodes
         .iter()
@@ -239,7 +274,7 @@ async fn exercise(variable: &str, engine: DbEngine) {
         let dev = dev.clone();
         let editable = editable.clone();
         async move {
-            let (mut edit_request, _) = dev.review_cell_edits(&editable, &edits).await?;
+            let mut edit_request = dev.review_cell_edits(&editable, &edits).await?.request;
             let review = dev.guard().review(&edit_request)?;
             dev.guard().approve(&review.ticket)?;
             edit_request.approval_ticket = Some(review.ticket.clone());
@@ -357,14 +392,7 @@ async fn production_window(variable: &str, engine: DbEngine) {
     assert!(write(&session, "CREATE TABLE cc_prod_window (id int)")
         .await
         .is_err());
-    assert!(session
-        .guard()
-        .open_production_write("orders", five)
-        .is_err());
-    session
-        .guard()
-        .open_production_write("orders-prod", five)
-        .unwrap();
+    session.guard().open_production_write(five).unwrap();
     write(&session, "DROP TABLE IF EXISTS cc_prod_window")
         .await
         .unwrap();
@@ -398,10 +426,7 @@ async fn production_window(variable: &str, engine: DbEngine) {
             .unwrap(),
         vec![vec!["1".to_string()]]
     );
-    session
-        .guard()
-        .open_production_write("orders-prod", five)
-        .unwrap();
+    session.guard().open_production_write(five).unwrap();
     write(&session, "DROP TABLE cc_prod_window").await.unwrap();
     session.close();
 }

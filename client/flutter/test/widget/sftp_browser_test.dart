@@ -140,6 +140,7 @@ void main() {
     );
     expect(settings.currentLocal.sftpDefaultEditor, code);
     await _doubleClick(tester, '$_home/deploy.sh');
+    await tapKey(tester, 'sftp-active-content-open'); // a script: opens as text
     expect(container.read(editSessionsProvider).requireValue.where((s) => s.app == code).length, 2);
     expect(b.files.applicationChoices, 1);
     expect(tester.takeException(), isNull);
@@ -490,6 +491,75 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('sftp-column-toggle-owner')));
     await settle(tester);
     expect(find.byKey(const ValueKey('sftp-col-owner')), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('a file that can run code opens as text after a notice shown once per file', (tester) async {
+    final backend = await _openBrowser(tester);
+    await _doubleClick(tester, '$_home/deploy.sh');
+    expect(find.byKey(const ValueKey('sftp-active-content')), findsOneWidget);
+    expect(find.text('“deploy.sh” can run code. It will open as text in an editor.'), findsOneWidget);
+    // No way to run it from ConsoleCrypt: only "Open as Text" or Cancel.
+    final notice = find.byKey(const ValueKey('sftp-active-content'));
+    expect(tester.widget<AlertDialog>(notice).actions, hasLength(2));
+    expect(find.descendant(of: notice, matching: find.text('Cancel')), findsOneWidget);
+    expect(find.descendant(of: notice, matching: find.text('Open as Text')), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('sftp-edit-session-deploy.sh')), findsNothing);
+    // Cancelled: asked again.
+    await _doubleClick(tester, '$_home/deploy.sh');
+    await tapKey(tester, 'sftp-active-content-open');
+    expect(find.byKey(const ValueKey('sftp-edit-session-deploy.sh')), findsOneWidget);
+    await tapKey(tester, 'sftp-edit-stop-deploy.sh');
+    // Shown once per file.
+    await _doubleClick(tester, '$_home/deploy.sh');
+    expect(find.byKey(const ValueKey('sftp-active-content')), findsNothing);
+    expect(find.byKey(const ValueKey('sftp-edit-session-deploy.sh')), findsOneWidget);
+    // Documents open without it.
+    await _doubleClick(tester, '$_home/notes.txt');
+    expect(find.byKey(const ValueKey('sftp-active-content')), findsNothing);
+    expect(backend.files.applicationChoices, 0);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('the notice is localized', (tester) async {
+    await _openBrowser(tester, locale: AppLocale.ru);
+    await _doubleClick(tester, '$_home/deploy.sh');
+    expect(find.text('Файл «deploy.sh» может выполнить код. Он откроется как текст в редакторе.'), findsOneWidget);
+    expect(find.text('Открыть как текст'), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('no text editor found: Choose an Editor… opens the file with the picked application', (tester) async {
+    final backend = await _openBrowser(tester);
+    backend.sftpBrowser.simulateNoTextEditor = true;
+    backend.files.applicationPath = '/usr/bin/gedit';
+    await _doubleClick(tester, '$_home/deploy.sh');
+    await tapKey(tester, 'sftp-active-content-open');
+    expect(find.byKey(const ValueKey('sftp-no-text-editor')), findsOneWidget);
+    expect(find.byKey(const ValueKey('sftp-edit-session-deploy.sh')), findsNothing);
+    await tapKey(tester, 'sftp-no-text-editor-choose');
+    expect(backend.files.applicationChoices, 1);
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    expect(
+      container.read(editSessionsProvider).requireValue.single.app,
+      const AppRef(AppRefKind.path, '/usr/bin/gedit'),
+    );
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
+  testWidgets('Windows Open With on a file that can run code uses the application picker', (tester) async {
+    final backend = await _openBrowser(tester);
+    backend.files.applicationPath = r'C:\Program Files\Notepad++\notepad++.exe';
+    await _click(tester, '$_home/deploy.sh');
+    await tapKey(tester, 'sftp-toolbar-actions');
+    await tapKey(tester, 'sftp-action-openWith');
+    expect(backend.files.applicationChoices, 1, reason: 'never the system "Open with" dialog');
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    expect(
+      container.read(editSessionsProvider).requireValue.single.app,
+      const AppRef(AppRefKind.path, r'C:\Program Files\Notepad++\notepad++.exe'),
+    );
+    expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets('open in editor → Editing panel → simulated save uploads → Synced; Stop editing', (tester) async {

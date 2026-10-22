@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -6,6 +8,7 @@ import 'package:consolecrypt/kubernetes/kube_gitops_monitor.dart';
 import 'package:consolecrypt/kubernetes/kube_insights_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
+import 'package:consolecrypt/vault/vault_passphrase_confirmation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -170,8 +173,9 @@ class _GitOpsConfirmation extends ConsumerStatefulWidget {
   ConsumerState<_GitOpsConfirmation> createState() => _GitOpsConfirmationState();
 }
 
-class _GitOpsConfirmationState extends ConsumerState<_GitOpsConfirmation> {
-  final _name = TextEditingController(), _reason = TextEditingController();
+class _GitOpsConfirmationState extends ConsumerState<_GitOpsConfirmation>
+    with VaultPassphraseCheck<_GitOpsConfirmation> {
+  final _reason = TextEditingController();
   late final KubeScope _scope;
   Duration _reminder = Duration.zero;
   @override
@@ -182,18 +186,26 @@ class _GitOpsConfirmationState extends ConsumerState<_GitOpsConfirmation> {
 
   @override
   void dispose() {
-    _name.clear();
     _reason.clear();
-    _name.dispose();
     _reason.dispose();
     super.dispose();
+  }
+
+  bool get _reasonValid =>
+      !widget.reasonRequired || (_reason.text.trim().isNotEmpty && !RegExp(r'[\x00-\x1f\x7f]').hasMatch(_reason.text));
+
+  Future<void> _submit() async {
+    if (!_reasonValid || !passphraseEntered || passphraseBusy) return;
+    final ok = await checkPassphrase();
+    if (!mounted || !ok || !identical(_scope, ref.read(kubeScopeProvider)) || !_reasonValid) return;
+    closeDialog(context, _GitOpsApproval(_reason.text.trim(), _reminder));
   }
 
   @override
   Widget build(BuildContext context) {
     ref.listen(kubeScopeProvider, (_, next) {
       if (identical(next, _scope)) return;
-      _name.clear();
+      passphrase.clear();
       _reason.clear();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -219,16 +231,8 @@ class _GitOpsConfirmationState extends ConsumerState<_GitOpsConfirmation> {
                 constraints: const BoxConstraints(maxHeight: 200),
                 child: ListView(shrinkWrap: true, children: widget.resources.map((name) => Text(name)).toList()),
               ),
-            const SizedBox(height: 12),
-            SelectableText(widget.resource),
-            TextField(
-              key: const ValueKey('kube-gitops-confirm-name'),
-              controller: _name,
-              decoration: InputDecoration(labelText: l.kubeTypeName),
-              autocorrect: false,
-              enableSuggestions: false,
-              onChanged: (_) => setState(() {}),
-            ),
+            const SizedBox(height: GlassSpacing.s12),
+            SelectableText(widget.resource, style: GlassTokens.of(context).typography.mono),
             if (widget.reasonRequired)
               TextField(
                 key: const ValueKey('kube-gitops-reason'),
@@ -253,19 +257,19 @@ class _GitOpsConfirmationState extends ConsumerState<_GitOpsConfirmation> {
                 ],
                 onChanged: (value) => setState(() => _reminder = value),
               ),
+            const SizedBox(height: GlassSpacing.s12),
+            passphraseField(
+              key: const ValueKey('kube-gitops-confirm-passphrase'),
+              onSubmitted: (_) => unawaited(_submit()),
+            ),
           ],
         ),
       ),
       primaryAction: GlassButton.destructive(
         key: const ValueKey('kube-gitops-confirm-action'),
         label: widget.title,
-        onPressed:
-            _name.text == widget.resource &&
-                widget.resource.isNotEmpty &&
-                (!widget.reasonRequired ||
-                    (_reason.text.trim().isNotEmpty && !RegExp(r'[\x00-\x1f\x7f]').hasMatch(_reason.text)))
-            ? () => closeDialog(context, _GitOpsApproval(_reason.text.trim(), _reminder))
-            : null,
+        busy: passphraseBusy,
+        onPressed: passphraseEntered && !passphraseBusy && _reasonValid ? () => unawaited(_submit()) : null,
       ),
       secondaryActions: [GlassButton(label: l.commonCancel, onPressed: () => closeDialog<_GitOpsApproval>(context))],
     );

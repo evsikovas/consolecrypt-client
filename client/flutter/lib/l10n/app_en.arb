@@ -8712,7 +8712,7 @@
   },
   "kubeAllowChangesHelp": "This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Enter the vault passphrase to continue.",
   "@kubeAllowChangesHelp": {
-    "description": "Kubernetes guarded mutations: This opens a temporary write window for this production context. Changes will be recorded in the local audit log. Type the exact context name to continue."
+    "description": "Kubernetes guarded mutations: opening a production write window; confirmed with the vault passphrase."
   },
   "kubeCloseWriteWindow": "Return to read only",
   "@kubeCloseWriteWindow": {
@@ -8731,10 +8731,6 @@
   "@kubeWriteWindowFailed": {
     "description": "Kubernetes guarded mutations: Could not change the write window. Reconnect and try again."
   },
-  "kubeTypeName": "Type the exact name above",
-  "@kubeTypeName": {
-    "description": "Kubernetes guarded mutations: Type the exact name above"
-  },
   "kubeEditYaml": "Edit YAML",
   "@kubeEditYaml": {
     "description": "Kubernetes guarded mutations: Edit YAML"
@@ -8743,9 +8739,9 @@
   "@kubeApplyYaml": {
     "description": "Kubernetes guarded mutations: Apply changes"
   },
-  "kubeApplyYamlHelp": "Apply the reviewed changes to this resource? Type its exact name to confirm. The server will reject the update if its resource version has changed.",
+  "kubeApplyYamlHelp": "Apply the reviewed changes to this resource? Enter the vault passphrase to confirm. The server will reject the update if its resource version has changed.",
   "@kubeApplyYamlHelp": {
-    "description": "Kubernetes guarded mutations: Apply the reviewed changes to this resource? Type its exact name to confirm. The server will reject the update if its resource version has changed."
+    "description": "Kubernetes guarded mutations: confirmation of a YAML apply with the vault passphrase."
   },
   "kubeApplyFailed": "The change was not accepted. Refresh the object and check permissions, validation errors or ownership conflicts before trying again.",
   "@kubeApplyFailed": {
@@ -8783,9 +8779,9 @@
   "@kubeDeleteResource": {
     "description": "Kubernetes guarded mutations: Delete Kubernetes resource"
   },
-  "kubeDeleteResourceHelp": "This deletes the resource from the cluster and may stop running workloads. Type its exact name to confirm.",
+  "kubeDeleteResourceHelp": "This deletes the resource from the cluster and may stop running workloads. Enter the vault passphrase to confirm.",
   "@kubeDeleteResourceHelp": {
-    "description": "Kubernetes guarded mutations: This deletes the resource from the cluster and may stop running workloads. Type its exact name to confirm."
+    "description": "Kubernetes guarded mutations: confirmation of a resource deletion with the vault passphrase."
   },
   "kubeFollowLogs": "Follow new log lines",
   "@kubeFollowLogs": {
@@ -8907,9 +8903,9 @@
   "@kubeArgoHardRefresh": {
     "description": "Kubernetes cluster interface: Refresh application and manifests"
   },
-  "kubeGitOpsChangeHelp": "This sends a change to the controller and can affect running applications. Review the action and type the exact resource name to continue.",
+  "kubeGitOpsChangeHelp": "This sends a change to the controller and can affect running applications. Review the action and enter the vault passphrase to continue.",
   "@kubeGitOpsChangeHelp": {
-    "description": "Kubernetes cluster interface: This sends a change to the controller and can affect running applications. Review the action and type the exact resource name to continue."
+    "description": "Kubernetes cluster interface: GitOps action confirmation with the vault passphrase."
   },
   "kubeGitOpsReason": "Reason (stored in the resource annotation)",
   "@kubeGitOpsReason": {
@@ -9259,9 +9255,9 @@
   "@kubeDebugContainer": {
     "description": "Kubernetes operations interface."
   },
-  "kubeMutationConfirmHelp": "Review the operation and type the exact resource name to confirm. Kubernetes permissions and production safeguards are checked again before execution.",
+  "kubeMutationConfirmHelp": "Review the operation and enter the vault passphrase to confirm. Kubernetes permissions and production safeguards are checked again before execution.",
   "@kubeMutationConfirmHelp": {
-    "description": "Kubernetes operations interface."
+    "description": "Kubernetes cluster interface: confirmation of a cluster change with the vault passphrase."
   },
   "kubeOperationFailed": "The operation could not complete. Check permissions and resource state, then refresh before trying again.",
   "@kubeOperationFailed": {
@@ -9688,9 +9684,9 @@
   "@kubeHelmRollback": {
     "description": "Explicit desktop Helm rollback."
   },
-  "kubeHelmRollbackHelp": "Review the exact Helm binary, checksum and command. The operation changes cluster resources; Helm hooks are disabled. Type the release name to confirm.",
+  "kubeHelmRollbackHelp": "Review the exact Helm binary, checksum and command. The operation changes cluster resources; Helm hooks are disabled. Enter the vault passphrase to confirm.",
   "@kubeHelmRollbackHelp": {
-    "description": "Explicit desktop Helm rollback."
+    "description": "Helm rollback dialog: review the binary and command, confirm with the vault passphrase."
   },
   "kubeHelmRollbackFailed": "Rollback could not complete. Check the Helm path, permissions and current release revision. Review the command again before retrying.",
   "@kubeHelmRollbackFailed": {
@@ -10028,9 +10024,9 @@
   "@kubeBulkActions": {
     "description": "Guarded bulk Kubernetes operations"
   },
-  "kubeBulkHelp": "Review the exact list and type the context name. Operations run in order; cancellation stops after the current operation. Up to 100 resources.",
+  "kubeBulkHelp": "Review the exact list and enter the vault passphrase. Operations run in order; cancellation stops after the current operation. Up to 100 resources.",
   "@kubeBulkHelp": {
-    "description": "Guarded bulk Kubernetes operations"
+    "description": "Kubernetes bulk actions dialog: review the list, confirm with the vault passphrase."
   },
   "kubeBulkProductionBlocked": "Bulk changes are disabled in production contexts.",
   "@kubeBulkProductionBlocked": {
@@ -10058,10 +10054,6 @@
   },
   "kubeResizePanel": "Resize bottom panel",
   "@kubeResizePanel": {
-    "description": "Kubernetes workspace tools"
-  },
-  "kubeConfirmName": "Type the exact name",
-  "@kubeConfirmName": {
     "description": "Kubernetes workspace tools"
   },
   "kubeAiProposalReview": "Review proposal",
@@ -10104,7 +10096,7 @@
   "kubeGitOpsHistoryEmpty": "No reconciliation history is available.",
   "kubeGitOpsControllerUnavailable": "Controller logs are unavailable. Check resource discovery and permissions.",
   "kubeGitOpsSignatureUnknown": "Not reported by the controller",
-  "kubeGitOpsSourceReconcileHelp": "Request a new reconciliation for this source. Enter its exact name to continue.",
+  "kubeGitOpsSourceReconcileHelp": "Request a new reconciliation for this source. Enter the vault passphrase to continue.",
   "kubeGitOpsMetadataOnly": "Only object references are shown here. Secret values are hidden.",
   "@kubeGitOpsSource": {
     "description": "Kubernetes GitOps resource details label."
@@ -10155,7 +10147,7 @@
     "description": "Kubernetes GitOps resource details label."
   },
   "@kubeGitOpsSourceReconcileHelp": {
-    "description": "Kubernetes GitOps resource details label."
+    "description": "GitOps source reconcile confirmation; the user confirms with the vault passphrase."
   },
   "@kubeGitOpsMetadataOnly": {
     "description": "Kubernetes GitOps resource details label."
@@ -10835,14 +10827,6 @@
   "kubeApplyInvalid": "The server rejected the YAML: check the syntax and fields that cannot be changed (most of a Pod's spec is immutable).",
   "@kubeApplyInvalid": {
     "description": "YAML apply rejected as invalid."
-  },
-  "kubeVaultPasswordConfirm": "Vault passphrase",
-  "@kubeVaultPasswordConfirm": {
-    "description": "Field label: confirm a production write window with the vault passphrase."
-  },
-  "kubeVaultPasswordWrong": "Wrong passphrase.",
-  "@kubeVaultPasswordWrong": {
-    "description": "Error under the vault passphrase field."
   },
   "kubeApplyOwnedBy": "These fields are managed by {managers}. Turn on \"Take ownership of conflicting fields\" to override them; the controller may change them back.",
   "@kubeApplyOwnedBy": {
@@ -11527,9 +11511,9 @@
   "@dbQueryBlocked": {
     "description": "Database interface: This query is blocked by connection policy. Use a non-production connection with appropriate privileges."
   },
-  "dbQueryDangerous": "This query can change or delete data. Review the full query and type the connection name.",
+  "dbQueryDangerous": "This query can change or delete data. Review the query and enter the vault passphrase.",
   "@dbQueryDangerous": {
-    "description": "Database interface: This query can change or delete data. Review the full query and type the connection name."
+    "description": "Database interface: review dialog of a changing query; the user confirms with the vault passphrase."
   },
   "dbReviewExpired": "The review expired. Run the query again to obtain a fresh review.",
   "@dbReviewExpired": {
@@ -13556,22 +13540,9 @@
   "@dbUnlockProductionTitle": {
     "description": "Title of the dialog that opens a temporary production write window."
   },
-  "dbUnlockProductionWarning": "Changes will go straight to the production database “{name}”. Every changing statement is still shown for review with the connection name. Writes lock again when the time runs out, when you lock them, disconnect or lock the vault.",
+  "dbUnlockProductionWarning": "Changes will go straight to the production database “{name}”. Every changing statement is still shown for review and needs the vault passphrase. Writes lock again when the time runs out, when you lock them, disconnect or lock the vault.",
   "@dbUnlockProductionWarning": {
     "description": "Warning in the production unlock dialog; name is the connection name.",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "dbVaultPassphrase": "Vault passphrase",
-  "@dbVaultPassphrase": {
-    "description": "Production unlock dialog: vault passphrase field label."
-  },
-  "dbTypeConnectionName": "Type the connection name: {name}",
-  "@dbTypeConnectionName": {
-    "description": "Production unlock dialog: label of the field where the connection name is typed to confirm.",
     "placeholders": {
       "name": {
         "type": "String"
@@ -13590,10 +13561,6 @@
         "type": "int"
       }
     }
-  },
-  "dbWrongPassphrase": "Wrong vault passphrase.",
-  "@dbWrongPassphrase": {
-    "description": "Production unlock dialog: the vault passphrase did not match."
   },
   "dbProdWriteUntil": "Production writes until {time}",
   "@dbProdWriteUntil": {
@@ -13645,6 +13612,1066 @@
   "@dbSelectedRows": {
     "description": "Result status line: number of selected rows.",
     "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultPassphraseConfirmLabel": "Vault passphrase",
+  "@vaultPassphraseConfirmLabel": {
+    "description": "Label of the vault passphrase field that confirms a dangerous action (database writes, cluster changes)."
+  },
+  "vaultPassphraseConfirmWrong": "Wrong vault passphrase.",
+  "@vaultPassphraseConfirmWrong": {
+    "description": "Error under the vault passphrase confirmation field when the passphrase does not match."
+  },
+  "dbPreviewTabTitle": "{name} — data",
+  "@dbPreviewTabTitle": {
+    "description": "Title of the single reusable query tab that shows the first rows of a table opened from the structure tree; name is the table name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDetailsSection": "{id, select, general{General} size{Size} structure{Structure} partitioning{Partitioning} maintenance{Maintenance} other{{id}}}",
+  "@dbDetailsSection": {
+    "description": "Object details dialog: title of a group of fields; id is a fixed section id.",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDetailsField": "{id, select, kind{Object type} persistence{Storage} schema{Schema} owner{Owner} tablespace{Tablespace} comment{Comment} rows{Rows} live_rows{Live rows} dead_rows{Dead rows} total_size{Total size} table_size{Table data} index_size{Indexes} toast_size{TOAST} columns{Columns} indexes{Indexes} constraints{Constraints} triggers{Triggers} definition_length{Definition length, characters} partition_key{Partition key} partitions{Partitions} partition_of{Partition of} last_vacuum{Last VACUUM} last_autovacuum{Last autovacuum} last_analyze{Last ANALYZE} last_autoanalyze{Last autoanalyze} engine{Engine} row_format{Row format} collation{Collation} definer{Definer} updatable{Updatable} security{Security} average_row{Average row} free_space{Free space} auto_increment{Next AUTO_INCREMENT} created{Created} updated{Updated} uncompressed_size{Uncompressed} parts{Active parts} sorting_key{Sorting key} primary_key{Primary key} sampling_key{Sampling key} ttl{TTL} metadata_modified{Metadata changed} type{Type} encoding{Encoding} database{Database} memory{Memory} keys{Keys} length_bytes{Length, bytes} length_fields{Fields} length_elements{Elements} length_members{Members} length_entries{Entries} other{{id}}}",
+  "@dbDetailsField": {
+    "description": "Object details dialog: label of one catalogue fact about a table, view or key; id is a fixed field id.",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDetailsKeyword": "{id, select, table{Table} partitioned_table{Partitioned table} view{View} materialized_view{Materialized view} foreign_table{Foreign table} unlogged{Unlogged} temporary{Temporary} other{{id}}}",
+  "@dbDetailsKeyword": {
+    "description": "Object details dialog: the kind or storage of a relation; id is a fixed keyword.",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDetailsNoExpiry": "No expiry",
+  "@dbDetailsNoExpiry": {
+    "description": "Object details dialog: a Redis key without TTL."
+  },
+  "dbDetailsJson": "JSON",
+  "@dbDetailsJson": {
+    "description": "Object details dialog: expandable section with the raw description as JSON."
+  },
+  "dbDetailsEmpty": "Nothing to show for this object.",
+  "@dbDetailsEmpty": {
+    "description": "Object details dialog: the server returned no facts."
+  },
+  "copyWhatObjectDetails": "Object details",
+  "@copyWhatObjectDetails": {
+    "description": "Noun for the copied notice: the text of the object details dialog."
+  },
+  "dbWrapLines": "Wrap lines",
+  "@dbWrapLines": {
+    "description": "Database code view (DDL, reviewed query): toggle that wraps long lines instead of scrolling sideways."
+  },
+  "settingsTerminalFontMissing": "Font “{family}” is not installed — using {fallback}.",
+  "@settingsTerminalFontMissing": {
+    "description": "Hint under the terminal font picker when the chosen font (or its Nerd Font alias) is not installed on this computer. {family} is the chosen font family, {fallback} the font used instead.",
+    "placeholders": {
+      "family": {
+        "type": "String"
+      },
+      "fallback": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsCaptureProtectionLabel": "Hide window from screen capture",
+  "@settingsCaptureProtectionLabel": {
+    "description": "Settings → Security: label of the selector that hides the app window from screenshots, screen recording and screen sharing (Windows)."
+  },
+  "settingsCaptureProtectionOff": "Never",
+  "@settingsCaptureProtectionOff": {
+    "description": "Screen capture protection option: the window is never hidden from capture."
+  },
+  "settingsCaptureProtectionSecrets": "While secrets are shown",
+  "@settingsCaptureProtectionSecrets": {
+    "description": "Screen capture protection option (default): the window is hidden from capture only while a password, key or recovery words are shown in plain text."
+  },
+  "settingsCaptureProtectionAlways": "Always",
+  "@settingsCaptureProtectionAlways": {
+    "description": "Screen capture protection option: the window is always hidden from capture. Must match the quoted word in settingsCaptureProtectionHelp."
+  },
+  "settingsCaptureProtectionHelp": "The window is left out of screenshots, recordings and screen sharing (Zoom, Teams). With “Always”, colleagues will not see the ConsoleCrypt window while you share your screen.",
+  "@settingsCaptureProtectionHelp": {
+    "description": "Explanation under the screen capture protection selector in Settings → Security."
+  },
+  "sftpActiveContentTitle": "This file can run code",
+  "@sftpActiveContentTitle": {
+    "description": "SECURITY (audit H4): title of the notice before opening a remote file whose default action would run code (scripts, shortcuts, executables)."
+  },
+  "sftpActiveContentBody": "“{name}” can run code. It will open as text in an editor.",
+  "@sftpActiveContentBody": {
+    "description": "SECURITY (audit H4): notice body; ConsoleCrypt never runs such files, it opens them as text. {name} is the file name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sftpActiveContentNoRun": "ConsoleCrypt never runs downloaded files. To run it, use a terminal on the server.",
+  "@sftpActiveContentNoRun": {
+    "description": "SECURITY (audit H4): notice detail — there is no option to run the file from ConsoleCrypt."
+  },
+  "sftpActiveContentOpenAsText": "Open as Text",
+  "@sftpActiveContentOpenAsText": {
+    "description": "Button in the active-content notice: open the file in a text editor."
+  },
+  "sftpNoTextEditorTitle": "No text editor found",
+  "@sftpNoTextEditorTitle": {
+    "description": "Dialog title: a file that can run code opens only as text, and no text editor was found on this computer."
+  },
+  "sftpNoTextEditorBody": "“{name}” can run code, so it opens only as text, but no text editor was found. Choose an editor to open it with.",
+  "@sftpNoTextEditorBody": {
+    "description": "Dialog body when no text editor was found for a file that can run code. {name} is the file name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sftpChooseEditor": "Choose an Editor…",
+  "@sftpChooseEditor": {
+    "description": "Button: pick a text editor application to open the file with."
+  },
+  "errorNoTextEditor": "No text editor found to open this file safely. Choose an editor using Open With.",
+  "@errorNoTextEditor": {
+    "description": "Error: a file that can run code opens only as text and no text editor was found."
+  },
+  "dbExportEscapeFormulas": "Escape formulas (for Excel)",
+  "@dbExportEscapeFormulas": {
+    "description": "Database export dialog checkbox (CSV/TSV): prefix text cells starting with =, +, -, @ with an apostrophe so spreadsheets do not run them as formulas. Excel is a product name, not translated."
+  },
+  "settingsClearClipboardSeconds": "{count, plural, one{{count} second} other{{count} seconds}} after copying a secret",
+  "@settingsClearClipboardSeconds": {
+    "description": "Settings > Security: clipboard auto-clear choice in seconds.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsClearClipboardMinutes": "{count, plural, one{{count} minute} other{{count} minutes}} after copying a secret",
+  "@settingsClearClipboardMinutes": {
+    "description": "Settings > Security: clipboard auto-clear choice in minutes.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsClearClipboardHours": "{count, plural, one{{count} hour} other{{count} hours}} after copying a secret",
+  "@settingsClearClipboardHours": {
+    "description": "Settings > Security: clipboard auto-clear choice in hours.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsClearClipboardDays": "{count, plural, one{{count} day} other{{count} days}} after copying a secret",
+  "@settingsClearClipboardDays": {
+    "description": "Settings > Security: clipboard auto-clear choice in days.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharingUnreadableEntries": "{count, plural, one{{count} shared entry could not be read and is hidden.} other{{count} shared entries could not be read and are hidden.}}",
+  "@sharingUnreadableEntries": {
+    "description": "Sharing screen warning: the server returned shared entries that are malformed or failed signature/encryption checks; they are skipped and the rest of the list works. {count} is the number of skipped entries.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "snippetPackPostgresql": "SQL · PostgreSQL",
+  "@snippetPackPostgresql": {
+    "description": "Snippet library: name of the SQL · PostgreSQL starter package (product name, keep as is)"
+  },
+  "snippetPackPostgresqlDescription": "Activity, locks, sizes, indexes, vacuum, replication and settings. For psql or the Databases workspace.",
+  "@snippetPackPostgresqlDescription": {
+    "description": "Snippet library: description of the SQL · PostgreSQL starter package"
+  },
+  "snippetPackMysql": "SQL · MySQL/MariaDB",
+  "@snippetPackMysql": {
+    "description": "Snippet library: name of the SQL · MySQL/MariaDB starter package (product name, keep as is)"
+  },
+  "snippetPackMysqlDescription": "Processlist, InnoDB locks, sizes, indexes, replication and statement digests. For the mysql client or the Databases workspace.",
+  "@snippetPackMysqlDescription": {
+    "description": "Snippet library: description of the SQL · MySQL/MariaDB starter package"
+  },
+  "snippetPackClickhouse": "SQL · ClickHouse",
+  "@snippetPackClickhouse": {
+    "description": "Snippet library: name of the SQL · ClickHouse starter package (product name, keep as is)"
+  },
+  "snippetPackClickhouseDescription": "Running and slow queries, parts, merges, mutations, replication and disks. For clickhouse-client or the Databases workspace.",
+  "@snippetPackClickhouseDescription": {
+    "description": "Snippet library: description of the SQL · ClickHouse starter package"
+  },
+  "snippetPackRedis": "Redis",
+  "@snippetPackRedis": {
+    "description": "Snippet library: name of the Redis starter package (product name, keep as is)"
+  },
+  "snippetPackRedisDescription": "Memory, clients, slow log, keyspace and replication. For redis-cli or the Databases workspace.",
+  "@snippetPackRedisDescription": {
+    "description": "Snippet library: description of the Redis starter package"
+  },
+  "snippetPackMongodb": "MongoDB",
+  "@snippetPackMongodb": {
+    "description": "Snippet library: name of the MongoDB starter package (product name, keep as is)"
+  },
+  "snippetPackMongodbDescription": "Operations, server and collection stats, indexes, replica set and profiler. For mongosh; some also run in the Databases workspace.",
+  "@snippetPackMongodbDescription": {
+    "description": "Snippet library: description of the MongoDB starter package"
+  },
+  "snippetDbPgActivity": "Active queries",
+  "@snippetDbPgActivity": {
+    "description": "Snippet library: name of the pg.activity database starter snippet"
+  },
+  "snippetDbPgActivityNote": "Sessions that are not idle, longest first.",
+  "@snippetDbPgActivityNote": {
+    "description": "Snippet library: one-sentence note for the pg.activity database starter snippet"
+  },
+  "snippetDbPgLongRunning": "Long-running queries",
+  "@snippetDbPgLongRunning": {
+    "description": "Snippet library: name of the pg.long_running database starter snippet"
+  },
+  "snippetDbPgLongRunningNote": "Queries running longer than the given number of seconds.",
+  "@snippetDbPgLongRunningNote": {
+    "description": "Snippet library: one-sentence note for the pg.long_running database starter snippet"
+  },
+  "snippetDbPgBlocking": "Lock tree",
+  "@snippetDbPgBlocking": {
+    "description": "Snippet library: name of the pg.blocking database starter snippet"
+  },
+  "snippetDbPgBlockingNote": "Blocking sessions with the sessions waiting on them, indented by depth (PG 9.6+).",
+  "@snippetDbPgBlockingNote": {
+    "description": "Snippet library: one-sentence note for the pg.blocking database starter snippet"
+  },
+  "snippetDbPgTableSizes": "Largest tables",
+  "@snippetDbPgTableSizes": {
+    "description": "Snippet library: name of the pg.table_sizes database starter snippet"
+  },
+  "snippetDbPgTableSizesNote": "Total size with heap, indexes and TOAST; row counts are planner estimates.",
+  "@snippetDbPgTableSizesNote": {
+    "description": "Snippet library: one-sentence note for the pg.table_sizes database starter snippet"
+  },
+  "snippetDbPgDatabaseSizes": "Database sizes",
+  "@snippetDbPgDatabaseSizes": {
+    "description": "Snippet library: name of the pg.database_sizes database starter snippet"
+  },
+  "snippetDbPgDatabaseSizesNote": "Size of every database that accepts connections.",
+  "@snippetDbPgDatabaseSizesNote": {
+    "description": "Snippet library: one-sentence note for the pg.database_sizes database starter snippet"
+  },
+  "snippetDbPgIndexUsage": "Index usage",
+  "@snippetDbPgIndexUsage": {
+    "description": "Snippet library: name of the pg.index_usage database starter snippet"
+  },
+  "snippetDbPgIndexUsageNote": "Least-used indexes first; idx_scan = 0 means unused since the last statistics reset. Check replicas too, and keep unique indexes.",
+  "@snippetDbPgIndexUsageNote": {
+    "description": "Snippet library: one-sentence note for the pg.index_usage database starter snippet"
+  },
+  "snippetDbPgDeadTuples": "Dead tuples and autovacuum",
+  "@snippetDbPgDeadTuples": {
+    "description": "Snippet library: name of the pg.dead_tuples database starter snippet"
+  },
+  "snippetDbPgDeadTuplesNote": "Bloat estimate from dead tuples with the last vacuum and analyze times.",
+  "@snippetDbPgDeadTuplesNote": {
+    "description": "Snippet library: one-sentence note for the pg.dead_tuples database starter snippet"
+  },
+  "snippetDbPgCacheHit": "Cache hit ratio",
+  "@snippetDbPgCacheHit": {
+    "description": "Snippet library: name of the pg.cache_hit database starter snippet"
+  },
+  "snippetDbPgCacheHitNote": "Share of blocks read from shared buffers per database; below 99% on OLTP is worth a look.",
+  "@snippetDbPgCacheHitNote": {
+    "description": "Snippet library: one-sentence note for the pg.cache_hit database starter snippet"
+  },
+  "snippetDbPgReplication": "Replication status",
+  "@snippetDbPgReplication": {
+    "description": "Snippet library: name of the pg.replication database starter snippet"
+  },
+  "snippetDbPgReplicationNote": "Connected replicas with lag in bytes and time. Run on the primary (PG 10+).",
+  "@snippetDbPgReplicationNote": {
+    "description": "Snippet library: one-sentence note for the pg.replication database starter snippet"
+  },
+  "snippetDbPgSlots": "Replication slots",
+  "@snippetDbPgSlots": {
+    "description": "Snippet library: name of the pg.slots database starter snippet"
+  },
+  "snippetDbPgSlotsNote": "Slots and the WAL they retain; an inactive slot keeps WAL forever (PG 13+).",
+  "@snippetDbPgSlotsNote": {
+    "description": "Snippet library: one-sentence note for the pg.slots database starter snippet"
+  },
+  "snippetDbPgConnections": "Connections by user and application",
+  "@snippetDbPgConnections": {
+    "description": "Snippet library: name of the pg.connections database starter snippet"
+  },
+  "snippetDbPgConnectionsNote": "Client connections grouped by database, user, application and state.",
+  "@snippetDbPgConnectionsNote": {
+    "description": "Snippet library: one-sentence note for the pg.connections database starter snippet"
+  },
+  "snippetDbPgSettingsChanged": "Non-default settings",
+  "@snippetDbPgSettingsChanged": {
+    "description": "Snippet library: name of the pg.settings_changed database starter snippet"
+  },
+  "snippetDbPgSettingsChangedNote": "Settings whose source is not the built-in default.",
+  "@snippetDbPgSettingsChangedNote": {
+    "description": "Snippet library: one-sentence note for the pg.settings_changed database starter snippet"
+  },
+  "snippetDbPgColumns": "Table columns",
+  "@snippetDbPgColumns": {
+    "description": "Snippet library: name of the pg.columns database starter snippet"
+  },
+  "snippetDbPgColumnsNote": "Columns with types, defaults and comments.",
+  "@snippetDbPgColumnsNote": {
+    "description": "Snippet library: one-sentence note for the pg.columns database starter snippet"
+  },
+  "snippetDbPgForeignKeys": "Foreign keys of a table",
+  "@snippetDbPgForeignKeys": {
+    "description": "Snippet library: name of the pg.foreign_keys database starter snippet"
+  },
+  "snippetDbPgForeignKeysNote": "Foreign keys of the table and those that reference it.",
+  "@snippetDbPgForeignKeysNote": {
+    "description": "Snippet library: one-sentence note for the pg.foreign_keys database starter snippet"
+  },
+  "snippetDbPgSequences": "Sequences near their limit",
+  "@snippetDbPgSequences": {
+    "description": "Snippet library: name of the pg.sequences database starter snippet"
+  },
+  "snippetDbPgSequencesNote": "Sequences that used more than the given percent of their range; also check the column type (PG 10+).",
+  "@snippetDbPgSequencesNote": {
+    "description": "Snippet library: one-sentence note for the pg.sequences database starter snippet"
+  },
+  "snippetDbPgFkWithoutIndex": "Foreign keys without an index",
+  "@snippetDbPgFkWithoutIndex": {
+    "description": "Snippet library: name of the pg.fk_without_index database starter snippet"
+  },
+  "snippetDbPgFkWithoutIndexNote": "Foreign keys whose columns do not lead any index; deletes and updates on the parent scan the child table.",
+  "@snippetDbPgFkWithoutIndexNote": {
+    "description": "Snippet library: one-sentence note for the pg.fk_without_index database starter snippet"
+  },
+  "snippetDbPgStatements": "Top queries (pg_stat_statements)",
+  "@snippetDbPgStatements": {
+    "description": "Snippet library: name of the pg.statements database starter snippet"
+  },
+  "snippetDbPgStatementsNote": "Needs the pg_stat_statements extension (shared_preload_libraries and CREATE EXTENSION); otherwise it fails with \"relation does not exist\". Column names are for PG 13+.",
+  "@snippetDbPgStatementsNote": {
+    "description": "Snippet library: one-sentence note for the pg.statements database starter snippet"
+  },
+  "snippetDbPgExplainAnalyze": "EXPLAIN ANALYZE",
+  "@snippetDbPgExplainAnalyze": {
+    "description": "Snippet library: name of the pg.explain_analyze database starter snippet"
+  },
+  "snippetDbPgExplainAnalyzeNote": "Runs the query to measure the real plan; put data-changing statements inside BEGIN … ROLLBACK.",
+  "@snippetDbPgExplainAnalyzeNote": {
+    "description": "Snippet library: one-sentence note for the pg.explain_analyze database starter snippet"
+  },
+  "snippetDbPgCancel": "Cancel a query",
+  "@snippetDbPgCancel": {
+    "description": "Snippet library: name of the pg.cancel database starter snippet"
+  },
+  "snippetDbPgCancelNote": "Cancels the current query of the backend; the session stays connected.",
+  "@snippetDbPgCancelNote": {
+    "description": "Snippet library: one-sentence note for the pg.cancel database starter snippet"
+  },
+  "snippetDbPgTerminate": "Terminate a session",
+  "@snippetDbPgTerminate": {
+    "description": "Snippet library: name of the pg.terminate database starter snippet"
+  },
+  "snippetDbPgTerminateNote": "Disconnects the backend and rolls back its open transaction.",
+  "@snippetDbPgTerminateNote": {
+    "description": "Snippet library: one-sentence note for the pg.terminate database starter snippet"
+  },
+  "snippetDbMysqlProcesslist": "Active queries",
+  "@snippetDbMysqlProcesslist": {
+    "description": "Snippet library: name of the mysql.processlist database starter snippet"
+  },
+  "snippetDbMysqlProcesslistNote": "Connections that are not sleeping, longest first.",
+  "@snippetDbMysqlProcesslistNote": {
+    "description": "Snippet library: one-sentence note for the mysql.processlist database starter snippet"
+  },
+  "snippetDbMysqlLongRunning": "Long-running queries",
+  "@snippetDbMysqlLongRunning": {
+    "description": "Snippet library: name of the mysql.long_running database starter snippet"
+  },
+  "snippetDbMysqlLongRunningNote": "Statements running longer than the given number of seconds.",
+  "@snippetDbMysqlLongRunningNote": {
+    "description": "Snippet library: one-sentence note for the mysql.long_running database starter snippet"
+  },
+  "snippetDbMysqlLockWaits": "InnoDB lock waits",
+  "@snippetDbMysqlLockWaits": {
+    "description": "Snippet library: name of the mysql.lock_waits database starter snippet"
+  },
+  "snippetDbMysqlLockWaitsNote": "Who waits for whom, with the blocking statement. Needs the sys schema (MySQL 5.7+, MariaDB 10.6+).",
+  "@snippetDbMysqlLockWaitsNote": {
+    "description": "Snippet library: one-sentence note for the mysql.lock_waits database starter snippet"
+  },
+  "snippetDbMysqlTransactions": "Open transactions",
+  "@snippetDbMysqlTransactions": {
+    "description": "Snippet library: name of the mysql.transactions database starter snippet"
+  },
+  "snippetDbMysqlTransactionsNote": "InnoDB transactions, oldest first, with locked and modified rows.",
+  "@snippetDbMysqlTransactionsNote": {
+    "description": "Snippet library: one-sentence note for the mysql.transactions database starter snippet"
+  },
+  "snippetDbMysqlTableSizes": "Largest tables",
+  "@snippetDbMysqlTableSizes": {
+    "description": "Snippet library: name of the mysql.table_sizes database starter snippet"
+  },
+  "snippetDbMysqlTableSizesNote": "Data, index and free space in MB; information_schema statistics are approximate and cached.",
+  "@snippetDbMysqlTableSizesNote": {
+    "description": "Snippet library: one-sentence note for the mysql.table_sizes database starter snippet"
+  },
+  "snippetDbMysqlDatabaseSizes": "Database sizes",
+  "@snippetDbMysqlDatabaseSizes": {
+    "description": "Snippet library: name of the mysql.database_sizes database starter snippet"
+  },
+  "snippetDbMysqlDatabaseSizesNote": "Total data and index size per schema in MB.",
+  "@snippetDbMysqlDatabaseSizesNote": {
+    "description": "Snippet library: one-sentence note for the mysql.database_sizes database starter snippet"
+  },
+  "snippetDbMysqlIndexUsage": "Index usage",
+  "@snippetDbMysqlIndexUsage": {
+    "description": "Snippet library: name of the mysql.index_usage database starter snippet"
+  },
+  "snippetDbMysqlIndexUsageNote": "Reads and writes per index since server start (performance_schema).",
+  "@snippetDbMysqlIndexUsageNote": {
+    "description": "Snippet library: one-sentence note for the mysql.index_usage database starter snippet"
+  },
+  "snippetDbMysqlUnusedIndexes": "Unused indexes",
+  "@snippetDbMysqlUnusedIndexes": {
+    "description": "Snippet library: name of the mysql.unused_indexes database starter snippet"
+  },
+  "snippetDbMysqlUnusedIndexesNote": "Indexes without reads since server start. Needs the sys schema; check replicas before dropping.",
+  "@snippetDbMysqlUnusedIndexesNote": {
+    "description": "Snippet library: one-sentence note for the mysql.unused_indexes database starter snippet"
+  },
+  "snippetDbMysqlAutoIncrement": "AUTO_INCREMENT near the limit",
+  "@snippetDbMysqlAutoIncrement": {
+    "description": "Snippet library: name of the mysql.auto_increment database starter snippet"
+  },
+  "snippetDbMysqlAutoIncrementNote": "Share of the column type range already used. Needs the sys schema.",
+  "@snippetDbMysqlAutoIncrementNote": {
+    "description": "Snippet library: one-sentence note for the mysql.auto_increment database starter snippet"
+  },
+  "snippetDbMysqlIndexes": "Indexes of a table",
+  "@snippetDbMysqlIndexes": {
+    "description": "Snippet library: name of the mysql.indexes database starter snippet"
+  },
+  "snippetDbMysqlIndexesNote": "Index columns in order with cardinality.",
+  "@snippetDbMysqlIndexesNote": {
+    "description": "Snippet library: one-sentence note for the mysql.indexes database starter snippet"
+  },
+  "snippetDbMysqlColumns": "Table columns",
+  "@snippetDbMysqlColumns": {
+    "description": "Snippet library: name of the mysql.columns database starter snippet"
+  },
+  "snippetDbMysqlColumnsNote": "Columns with types, keys, defaults and comments.",
+  "@snippetDbMysqlColumnsNote": {
+    "description": "Snippet library: one-sentence note for the mysql.columns database starter snippet"
+  },
+  "snippetDbMysqlForeignKeys": "Foreign keys of a table",
+  "@snippetDbMysqlForeignKeys": {
+    "description": "Snippet library: name of the mysql.foreign_keys database starter snippet"
+  },
+  "snippetDbMysqlForeignKeysNote": "Foreign keys of the table and those that reference it.",
+  "@snippetDbMysqlForeignKeysNote": {
+    "description": "Snippet library: one-sentence note for the mysql.foreign_keys database starter snippet"
+  },
+  "snippetDbMysqlReplicaStatus": "Replica status",
+  "@snippetDbMysqlReplicaStatus": {
+    "description": "Snippet library: name of the mysql.replica_status database starter snippet"
+  },
+  "snippetDbMysqlReplicaStatusNote": "MySQL 8.0.22+ and MariaDB 10.5.1+; on older servers use SHOW SLAVE STATUS.",
+  "@snippetDbMysqlReplicaStatusNote": {
+    "description": "Snippet library: one-sentence note for the mysql.replica_status database starter snippet"
+  },
+  "snippetDbMysqlVariables": "Server variables",
+  "@snippetDbMysqlVariables": {
+    "description": "Snippet library: name of the mysql.variables database starter snippet"
+  },
+  "snippetDbMysqlVariablesNote": "Global variables matching a LIKE pattern.",
+  "@snippetDbMysqlVariablesNote": {
+    "description": "Snippet library: one-sentence note for the mysql.variables database starter snippet"
+  },
+  "snippetDbMysqlStatus": "Key status counters",
+  "@snippetDbMysqlStatus": {
+    "description": "Snippet library: name of the mysql.status database starter snippet"
+  },
+  "snippetDbMysqlStatusNote": "Uptime, connections, slow queries, row lock waits and buffer pool reads.",
+  "@snippetDbMysqlStatusNote": {
+    "description": "Snippet library: one-sentence note for the mysql.status database starter snippet"
+  },
+  "snippetDbMysqlConnections": "Connections by user and host",
+  "@snippetDbMysqlConnections": {
+    "description": "Snippet library: name of the mysql.connections database starter snippet"
+  },
+  "snippetDbMysqlConnectionsNote": "Connections grouped by user, client host, schema and command.",
+  "@snippetDbMysqlConnectionsNote": {
+    "description": "Snippet library: one-sentence note for the mysql.connections database starter snippet"
+  },
+  "snippetDbMysqlDigest": "Top queries (statement digests)",
+  "@snippetDbMysqlDigest": {
+    "description": "Snippet library: name of the mysql.digest database starter snippet"
+  },
+  "snippetDbMysqlDigestNote": "Normalized statements by total time from performance_schema (enabled by default in MySQL; off by default in MariaDB).",
+  "@snippetDbMysqlDigestNote": {
+    "description": "Snippet library: one-sentence note for the mysql.digest database starter snippet"
+  },
+  "snippetDbMysqlInnodbStatus": "InnoDB status",
+  "@snippetDbMysqlInnodbStatus": {
+    "description": "Snippet library: name of the mysql.innodb_status database starter snippet"
+  },
+  "snippetDbMysqlInnodbStatusNote": "Engine report with the latest deadlock, semaphores and buffer pool; needs the PROCESS privilege.",
+  "@snippetDbMysqlInnodbStatusNote": {
+    "description": "Snippet library: one-sentence note for the mysql.innodb_status database starter snippet"
+  },
+  "snippetDbMysqlExplainAnalyze": "EXPLAIN ANALYZE",
+  "@snippetDbMysqlExplainAnalyze": {
+    "description": "Snippet library: name of the mysql.explain_analyze database starter snippet"
+  },
+  "snippetDbMysqlExplainAnalyzeNote": "Runs the query to measure the real plan (MySQL 8.0.18+; in MariaDB use ANALYZE SELECT …).",
+  "@snippetDbMysqlExplainAnalyzeNote": {
+    "description": "Snippet library: one-sentence note for the mysql.explain_analyze database starter snippet"
+  },
+  "snippetDbMysqlKillQuery": "Cancel a query",
+  "@snippetDbMysqlKillQuery": {
+    "description": "Snippet library: name of the mysql.kill_query database starter snippet"
+  },
+  "snippetDbMysqlKillQueryNote": "Stops the current statement of the connection; the connection stays open.",
+  "@snippetDbMysqlKillQueryNote": {
+    "description": "Snippet library: one-sentence note for the mysql.kill_query database starter snippet"
+  },
+  "snippetDbClickhouseProcesses": "Running queries",
+  "@snippetDbClickhouseProcesses": {
+    "description": "Snippet library: name of the clickhouse.processes database starter snippet"
+  },
+  "snippetDbClickhouseProcessesNote": "Initial queries with elapsed time, memory and rows read.",
+  "@snippetDbClickhouseProcessesNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.processes database starter snippet"
+  },
+  "snippetDbClickhouseLongRunning": "Long-running queries",
+  "@snippetDbClickhouseLongRunning": {
+    "description": "Snippet library: name of the clickhouse.long_running database starter snippet"
+  },
+  "snippetDbClickhouseLongRunningNote": "Queries running longer than the given number of seconds.",
+  "@snippetDbClickhouseLongRunningNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.long_running database starter snippet"
+  },
+  "snippetDbClickhouseSlowQueries": "Slow queries",
+  "@snippetDbClickhouseSlowQueries": {
+    "description": "Snippet library: name of the clickhouse.slow_queries database starter snippet"
+  },
+  "snippetDbClickhouseSlowQueriesNote": "Slowest finished queries from system.query_log for the last hours.",
+  "@snippetDbClickhouseSlowQueriesNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.slow_queries database starter snippet"
+  },
+  "snippetDbClickhouseFailedQueries": "Failed queries",
+  "@snippetDbClickhouseFailedQueries": {
+    "description": "Snippet library: name of the clickhouse.failed_queries database starter snippet"
+  },
+  "snippetDbClickhouseFailedQueriesNote": "Recent queries that ended with an exception.",
+  "@snippetDbClickhouseFailedQueriesNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.failed_queries database starter snippet"
+  },
+  "snippetDbClickhouseQueryPatterns": "Heaviest query patterns",
+  "@snippetDbClickhouseQueryPatterns": {
+    "description": "Snippet library: name of the clickhouse.query_patterns database starter snippet"
+  },
+  "snippetDbClickhouseQueryPatternsNote": "Finished queries grouped by normalized text, by total duration.",
+  "@snippetDbClickhouseQueryPatternsNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.query_patterns database starter snippet"
+  },
+  "snippetDbClickhouseTableSizes": "Largest tables",
+  "@snippetDbClickhouseTableSizes": {
+    "description": "Snippet library: name of the clickhouse.table_sizes database starter snippet"
+  },
+  "snippetDbClickhouseTableSizesNote": "Compressed and uncompressed size of active parts with the compression ratio.",
+  "@snippetDbClickhouseTableSizesNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.table_sizes database starter snippet"
+  },
+  "snippetDbClickhouseDatabaseSizes": "Database sizes",
+  "@snippetDbClickhouseDatabaseSizes": {
+    "description": "Snippet library: name of the clickhouse.database_sizes database starter snippet"
+  },
+  "snippetDbClickhouseDatabaseSizesNote": "Disk usage of active parts per database.",
+  "@snippetDbClickhouseDatabaseSizesNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.database_sizes database starter snippet"
+  },
+  "snippetDbClickhousePartitions": "Partitions of a table",
+  "@snippetDbClickhousePartitions": {
+    "description": "Snippet library: name of the clickhouse.partitions database starter snippet"
+  },
+  "snippetDbClickhousePartitionsNote": "Parts, rows and size per partition.",
+  "@snippetDbClickhousePartitionsNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.partitions database starter snippet"
+  },
+  "snippetDbClickhousePartsCount": "Partitions with many parts",
+  "@snippetDbClickhousePartsCount": {
+    "description": "Snippet library: name of the clickhouse.parts_count database starter snippet"
+  },
+  "snippetDbClickhousePartsCountNote": "Too many active parts slow down inserts and selects (“Too many parts”).",
+  "@snippetDbClickhousePartsCountNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.parts_count database starter snippet"
+  },
+  "snippetDbClickhouseColumnSizes": "Column sizes of a table",
+  "@snippetDbClickhouseColumnSizes": {
+    "description": "Snippet library: name of the clickhouse.column_sizes database starter snippet"
+  },
+  "snippetDbClickhouseColumnSizesNote": "Compressed size, ratio and codec per column.",
+  "@snippetDbClickhouseColumnSizesNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.column_sizes database starter snippet"
+  },
+  "snippetDbClickhouseMerges": "Running merges",
+  "@snippetDbClickhouseMerges": {
+    "description": "Snippet library: name of the clickhouse.merges database starter snippet"
+  },
+  "snippetDbClickhouseMergesNote": "Merges and mutations in progress.",
+  "@snippetDbClickhouseMergesNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.merges database starter snippet"
+  },
+  "snippetDbClickhouseMutations": "Unfinished mutations",
+  "@snippetDbClickhouseMutations": {
+    "description": "Snippet library: name of the clickhouse.mutations database starter snippet"
+  },
+  "snippetDbClickhouseMutationsNote": "ALTER … UPDATE/DELETE still running, with the latest failure reason.",
+  "@snippetDbClickhouseMutationsNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.mutations database starter snippet"
+  },
+  "snippetDbClickhouseReplicationQueue": "Replication queue",
+  "@snippetDbClickhouseReplicationQueue": {
+    "description": "Snippet library: name of the clickhouse.replication_queue database starter snippet"
+  },
+  "snippetDbClickhouseReplicationQueueNote": "Oldest replication tasks with retries and the last error (Replicated* tables).",
+  "@snippetDbClickhouseReplicationQueueNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.replication_queue database starter snippet"
+  },
+  "snippetDbClickhouseReplicas": "Replica status",
+  "@snippetDbClickhouseReplicas": {
+    "description": "Snippet library: name of the clickhouse.replicas database starter snippet"
+  },
+  "snippetDbClickhouseReplicasNote": "Delay, queue and read-only state of Replicated* tables.",
+  "@snippetDbClickhouseReplicasNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.replicas database starter snippet"
+  },
+  "snippetDbClickhouseDisks": "Disks",
+  "@snippetDbClickhouseDisks": {
+    "description": "Snippet library: name of the clickhouse.disks database starter snippet"
+  },
+  "snippetDbClickhouseDisksNote": "Free and total space of the configured disks.",
+  "@snippetDbClickhouseDisksNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.disks database starter snippet"
+  },
+  "snippetDbClickhouseErrors": "Server errors",
+  "@snippetDbClickhouseErrors": {
+    "description": "Snippet library: name of the clickhouse.errors database starter snippet"
+  },
+  "snippetDbClickhouseErrorsNote": "Error counters since start with the latest message.",
+  "@snippetDbClickhouseErrorsNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.errors database starter snippet"
+  },
+  "snippetDbClickhouseSettingsChanged": "Changed settings",
+  "@snippetDbClickhouseSettingsChanged": {
+    "description": "Snippet library: name of the clickhouse.settings_changed database starter snippet"
+  },
+  "snippetDbClickhouseSettingsChangedNote": "Session settings that differ from the defaults.",
+  "@snippetDbClickhouseSettingsChangedNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.settings_changed database starter snippet"
+  },
+  "snippetDbClickhouseMetrics": "Current metrics",
+  "@snippetDbClickhouseMetrics": {
+    "description": "Snippet library: name of the clickhouse.metrics database starter snippet"
+  },
+  "snippetDbClickhouseMetricsNote": "Non-zero gauges: queries, merges, connections, memory.",
+  "@snippetDbClickhouseMetricsNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.metrics database starter snippet"
+  },
+  "snippetDbClickhouseExplain": "EXPLAIN with indexes",
+  "@snippetDbClickhouseExplain": {
+    "description": "Snippet library: name of the clickhouse.explain database starter snippet"
+  },
+  "snippetDbClickhouseExplainNote": "Plan with the primary key and skip indexes used; the query is not executed.",
+  "@snippetDbClickhouseExplainNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.explain database starter snippet"
+  },
+  "snippetDbClickhouseKillQuery": "Cancel a query",
+  "@snippetDbClickhouseKillQuery": {
+    "description": "Snippet library: name of the clickhouse.kill_query database starter snippet"
+  },
+  "snippetDbClickhouseKillQueryNote": "Stops the query with the given query_id.",
+  "@snippetDbClickhouseKillQueryNote": {
+    "description": "Snippet library: one-sentence note for the clickhouse.kill_query database starter snippet"
+  },
+  "snippetDbRedisInfo": "Server info",
+  "@snippetDbRedisInfo": {
+    "description": "Snippet library: name of the redis.info database starter snippet"
+  },
+  "snippetDbRedisInfoNote": "One INFO section: server, clients, memory, persistence, stats, replication, cpu, keyspace.",
+  "@snippetDbRedisInfoNote": {
+    "description": "Snippet library: one-sentence note for the redis.info database starter snippet"
+  },
+  "snippetDbRedisMemory": "Memory",
+  "@snippetDbRedisMemory": {
+    "description": "Snippet library: name of the redis.memory database starter snippet"
+  },
+  "snippetDbRedisMemoryNote": "Used and peak memory, fragmentation and the maxmemory policy.",
+  "@snippetDbRedisMemoryNote": {
+    "description": "Snippet library: one-sentence note for the redis.memory database starter snippet"
+  },
+  "snippetDbRedisMemoryDoctor": "Memory doctor",
+  "@snippetDbRedisMemoryDoctor": {
+    "description": "Snippet library: name of the redis.memory_doctor database starter snippet"
+  },
+  "snippetDbRedisMemoryDoctorNote": "Redis advice on memory problems.",
+  "@snippetDbRedisMemoryDoctorNote": {
+    "description": "Snippet library: one-sentence note for the redis.memory_doctor database starter snippet"
+  },
+  "snippetDbRedisSlowlog": "Slow log",
+  "@snippetDbRedisSlowlog": {
+    "description": "Snippet library: name of the redis.slowlog database starter snippet"
+  },
+  "snippetDbRedisSlowlogNote": "Latest slow commands with duration in microseconds.",
+  "@snippetDbRedisSlowlogNote": {
+    "description": "Snippet library: one-sentence note for the redis.slowlog database starter snippet"
+  },
+  "snippetDbRedisClients": "Client list",
+  "@snippetDbRedisClients": {
+    "description": "Snippet library: name of the redis.clients database starter snippet"
+  },
+  "snippetDbRedisClientsNote": "Connected clients with address, age, idle time and last command.",
+  "@snippetDbRedisClientsNote": {
+    "description": "Snippet library: one-sentence note for the redis.clients database starter snippet"
+  },
+  "snippetDbRedisDbsize": "Number of keys",
+  "@snippetDbRedisDbsize": {
+    "description": "Snippet library: name of the redis.dbsize database starter snippet"
+  },
+  "snippetDbRedisDbsizeNote": "Keys in the selected database.",
+  "@snippetDbRedisDbsizeNote": {
+    "description": "Snippet library: one-sentence note for the redis.dbsize database starter snippet"
+  },
+  "snippetDbRedisKeyspace": "Keyspace",
+  "@snippetDbRedisKeyspace": {
+    "description": "Snippet library: name of the redis.keyspace database starter snippet"
+  },
+  "snippetDbRedisKeyspaceNote": "Keys and expiring keys per database.",
+  "@snippetDbRedisKeyspaceNote": {
+    "description": "Snippet library: one-sentence note for the redis.keyspace database starter snippet"
+  },
+  "snippetDbRedisScan": "Find keys by pattern",
+  "@snippetDbRedisScan": {
+    "description": "Snippet library: name of the redis.scan database starter snippet"
+  },
+  "snippetDbRedisScanNote": "Incremental SCAN instead of KEYS; repeat with the returned cursor until it is 0.",
+  "@snippetDbRedisScanNote": {
+    "description": "Snippet library: one-sentence note for the redis.scan database starter snippet"
+  },
+  "snippetDbRedisType": "Key type",
+  "@snippetDbRedisType": {
+    "description": "Snippet library: name of the redis.type database starter snippet"
+  },
+  "snippetDbRedisTypeNote": "Data type stored at the key.",
+  "@snippetDbRedisTypeNote": {
+    "description": "Snippet library: one-sentence note for the redis.type database starter snippet"
+  },
+  "snippetDbRedisTtl": "Key TTL",
+  "@snippetDbRedisTtl": {
+    "description": "Snippet library: name of the redis.ttl database starter snippet"
+  },
+  "snippetDbRedisTtlNote": "Seconds to expiry; -1 means no expiry, -2 means the key does not exist.",
+  "@snippetDbRedisTtlNote": {
+    "description": "Snippet library: one-sentence note for the redis.ttl database starter snippet"
+  },
+  "snippetDbRedisMemoryUsage": "Key memory usage",
+  "@snippetDbRedisMemoryUsage": {
+    "description": "Snippet library: name of the redis.memory_usage database starter snippet"
+  },
+  "snippetDbRedisMemoryUsageNote": "Bytes used by the key and its value.",
+  "@snippetDbRedisMemoryUsageNote": {
+    "description": "Snippet library: one-sentence note for the redis.memory_usage database starter snippet"
+  },
+  "snippetDbRedisLatency": "Latency doctor",
+  "@snippetDbRedisLatency": {
+    "description": "Snippet library: name of the redis.latency database starter snippet"
+  },
+  "snippetDbRedisLatencyNote": "Latency report; needs latency-monitor-threshold > 0.",
+  "@snippetDbRedisLatencyNote": {
+    "description": "Snippet library: one-sentence note for the redis.latency database starter snippet"
+  },
+  "snippetDbRedisConfig": "Configuration value",
+  "@snippetDbRedisConfig": {
+    "description": "Snippet library: name of the redis.config database starter snippet"
+  },
+  "snippetDbRedisConfigNote": "Configuration parameters matching a glob pattern.",
+  "@snippetDbRedisConfigNote": {
+    "description": "Snippet library: one-sentence note for the redis.config database starter snippet"
+  },
+  "snippetDbRedisReplication": "Replication",
+  "@snippetDbRedisReplication": {
+    "description": "Snippet library: name of the redis.replication database starter snippet"
+  },
+  "snippetDbRedisReplicationNote": "Role, connected replicas and replication offsets.",
+  "@snippetDbRedisReplicationNote": {
+    "description": "Snippet library: one-sentence note for the redis.replication database starter snippet"
+  },
+  "snippetDbRedisCommandstats": "Command statistics",
+  "@snippetDbRedisCommandstats": {
+    "description": "Snippet library: name of the redis.commandstats database starter snippet"
+  },
+  "snippetDbRedisCommandstatsNote": "Calls and time per command since the last reset.",
+  "@snippetDbRedisCommandstatsNote": {
+    "description": "Snippet library: one-sentence note for the redis.commandstats database starter snippet"
+  },
+  "snippetDbMongodbCurrentOps": "Active operations",
+  "@snippetDbMongodbCurrentOps": {
+    "description": "Snippet library: name of the mongodb.current_ops database starter snippet"
+  },
+  "snippetDbMongodbCurrentOpsNote": "Operations running now (mongosh).",
+  "@snippetDbMongodbCurrentOpsNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.current_ops database starter snippet"
+  },
+  "snippetDbMongodbLongOps": "Long-running operations",
+  "@snippetDbMongodbLongOps": {
+    "description": "Snippet library: name of the mongodb.long_ops database starter snippet"
+  },
+  "snippetDbMongodbLongOpsNote": "Operations running longer than the given number of seconds (mongosh).",
+  "@snippetDbMongodbLongOpsNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.long_ops database starter snippet"
+  },
+  "snippetDbMongodbConnections": "Connections",
+  "@snippetDbMongodbConnections": {
+    "description": "Snippet library: name of the mongodb.connections database starter snippet"
+  },
+  "snippetDbMongodbConnectionsNote": "Current, available and total created connections (mongosh).",
+  "@snippetDbMongodbConnectionsNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.connections database starter snippet"
+  },
+  "snippetDbMongodbOpcounters": "Operation counters",
+  "@snippetDbMongodbOpcounters": {
+    "description": "Snippet library: name of the mongodb.opcounters database starter snippet"
+  },
+  "snippetDbMongodbOpcountersNote": "Inserts, queries, updates, deletes and commands since start (mongosh).",
+  "@snippetDbMongodbOpcountersNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.opcounters database starter snippet"
+  },
+  "snippetDbMongodbMemory": "Memory",
+  "@snippetDbMongodbMemory": {
+    "description": "Snippet library: name of the mongodb.memory database starter snippet"
+  },
+  "snippetDbMongodbMemoryNote": "Resident and virtual memory in MB (mongosh).",
+  "@snippetDbMongodbMemoryNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.memory database starter snippet"
+  },
+  "snippetDbMongodbDbStats": "Database stats",
+  "@snippetDbMongodbDbStats": {
+    "description": "Snippet library: name of the mongodb.db_stats database starter snippet"
+  },
+  "snippetDbMongodbDbStatsNote": "Collections, objects, data and index size in MB.",
+  "@snippetDbMongodbDbStatsNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.db_stats database starter snippet"
+  },
+  "snippetDbMongodbCollectionStats": "Collection stats",
+  "@snippetDbMongodbCollectionStats": {
+    "description": "Snippet library: name of the mongodb.collection_stats database starter snippet"
+  },
+  "snippetDbMongodbCollectionStatsNote": "Documents, storage and per-index size in MB.",
+  "@snippetDbMongodbCollectionStatsNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.collection_stats database starter snippet"
+  },
+  "snippetDbMongodbIndexes": "Indexes of a collection",
+  "@snippetDbMongodbIndexes": {
+    "description": "Snippet library: name of the mongodb.indexes database starter snippet"
+  },
+  "snippetDbMongodbIndexesNote": "Index keys and options.",
+  "@snippetDbMongodbIndexesNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.indexes database starter snippet"
+  },
+  "snippetDbMongodbIndexStats": "Index usage",
+  "@snippetDbMongodbIndexStats": {
+    "description": "Snippet library: name of the mongodb.index_stats database starter snippet"
+  },
+  "snippetDbMongodbIndexStatsNote": "Operations per index since the last restart (mongosh).",
+  "@snippetDbMongodbIndexStatsNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.index_stats database starter snippet"
+  },
+  "snippetDbMongodbExplain": "Query plan with statistics",
+  "@snippetDbMongodbExplain": {
+    "description": "Snippet library: name of the mongodb.explain database starter snippet"
+  },
+  "snippetDbMongodbExplainNote": "Runs the find and reports the plan, keys and documents examined (mongosh).",
+  "@snippetDbMongodbExplainNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.explain database starter snippet"
+  },
+  "snippetDbMongodbRsStatus": "Replica set status",
+  "@snippetDbMongodbRsStatus": {
+    "description": "Snippet library: name of the mongodb.rs_status database starter snippet"
+  },
+  "snippetDbMongodbRsStatusNote": "Members, their state and health (mongosh).",
+  "@snippetDbMongodbRsStatusNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.rs_status database starter snippet"
+  },
+  "snippetDbMongodbRsLag": "Replication lag",
+  "@snippetDbMongodbRsLag": {
+    "description": "Snippet library: name of the mongodb.rs_lag database starter snippet"
+  },
+  "snippetDbMongodbRsLagNote": "How far each secondary is behind the primary (mongosh, MongoDB 4.4+).",
+  "@snippetDbMongodbRsLagNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.rs_lag database starter snippet"
+  },
+  "snippetDbMongodbProfilerStatus": "Profiler level",
+  "@snippetDbMongodbProfilerStatus": {
+    "description": "Snippet library: name of the mongodb.profiler_status database starter snippet"
+  },
+  "snippetDbMongodbProfilerStatusNote": "Profiler level and slowms threshold of the current database (mongosh).",
+  "@snippetDbMongodbProfilerStatusNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.profiler_status database starter snippet"
+  },
+  "snippetDbMongodbSlowOps": "Slow operations (profiler)",
+  "@snippetDbMongodbSlowOps": {
+    "description": "Snippet library: name of the mongodb.slow_ops database starter snippet"
+  },
+  "snippetDbMongodbSlowOpsNote": "Latest profiled operations slower than the threshold; enable with db.setProfilingLevel(1).",
+  "@snippetDbMongodbSlowOpsNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.slow_ops database starter snippet"
+  },
+  "snippetDbMongodbKillOp": "Kill an operation",
+  "@snippetDbMongodbKillOp": {
+    "description": "Snippet library: name of the mongodb.kill_op database starter snippet"
+  },
+  "snippetDbMongodbKillOpNote": "Stops the operation with the given opid from currentOp (mongosh).",
+  "@snippetDbMongodbKillOpNote": {
+    "description": "Snippet library: one-sentence note for the mongodb.kill_op database starter snippet"
+  },
+  "snippetStarterDbOrigin": "{note} For {client} or the Databases workspace. From the {package} starter package.",
+  "@snippetStarterDbOrigin": {
+    "description": "Snippet library: description of a database starter snippet; note is a full sentence, client a CLI name such as psql",
+    "placeholders": {
+      "note": {
+        "type": "String"
+      },
+      "client": {
+        "type": "String"
+      },
+      "package": {
+        "type": "String"
+      }
+    }
+  },
+  "snippetStarterDbTerminalOrigin": "{note} Runs in {client} in a terminal; the Databases workspace does not allow it. From the {package} starter package.",
+  "@snippetStarterDbTerminalOrigin": {
+    "description": "Snippet library: description of a terminal-only database starter snippet; note is a full sentence, client a CLI name such as mongosh",
+    "placeholders": {
+      "note": {
+        "type": "String"
+      },
+      "client": {
+        "type": "String"
+      },
+      "package": {
+        "type": "String"
+      }
+    }
+  },
+  "snippetClientSessionRequired": "Start the database client (psql, mysql, clickhouse-client, redis-cli, mongosh) in a connected terminal tab first, then run the snippet there.",
+  "@snippetClientSessionRequired": {
+    "description": "Snippet run flow: a SQL/redis-cli/mongosh snippet needs an open terminal session running the database client"
+  },
+  "dbSnippetPickerTitle": "Insert a snippet",
+  "@dbSnippetPickerTitle": {
+    "description": "Databases workspace: title of the snippet picker that inserts a saved query into the editor"
+  },
+  "dbSnippetPickerSearch": "Search {engine} snippets",
+  "@dbSnippetPickerSearch": {
+    "description": "Databases workspace: search field hint in the snippet picker; engine is a product name such as PostgreSQL",
+    "placeholders": {
+      "engine": {
+        "type": "String"
+      }
+    }
+  },
+  "dbSnippetPickerEmpty": "No {engine} snippets yet. Add them in Snippets → Starter packages or save a query from the history.",
+  "@dbSnippetPickerEmpty": {
+    "description": "Databases workspace: snippet picker empty state; engine is a product name such as PostgreSQL",
+    "placeholders": {
+      "engine": {
+        "type": "String"
+      }
+    }
+  },
+  "sharingLeave": "Leave share",
+  "@sharingLeave": {
+    "description": "Selective sharing: action for a recipient to leave a shared item or decline an incoming invitation."
+  },
+  "sharingLeaveHelp": "You stop receiving this item on all your devices and it disappears from this list. Personal copies you saved stay. The owner sees that you left.",
+  "@sharingLeaveHelp": {
+    "description": "Selective sharing: confirmation text before a recipient leaves a shared item."
+  },
+  "sharingLeft": "You left the share",
+  "@sharingLeft": {
+    "description": "Selective sharing: notice after a recipient left a shared item."
+  },
+  "sharingStopRestoreHelp": "Recipients lose access immediately. For 30 days you can restore the item from Recently deleted.",
+  "@sharingStopRestoreHelp": {
+    "description": "Selective sharing: owner confirmation before deleting a shared item when the server keeps it restorable."
+  },
+  "sharingMembersLeft": "Left the share: {count}",
+  "@sharingMembersLeft": {
+    "description": "Selective sharing: owner view, number of recipient accounts who left this item; they are removed at the next access change.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharingRecentlyDeleted": "Recently deleted",
+  "@sharingRecentlyDeleted": {
+    "description": "Selective sharing: owner entry and dialog title listing deleted shared items that can still be restored."
+  },
+  "sharingRecentlyDeletedHelp": "Shared items you deleted can be restored for 30 days. A restored item is shared again with the same people except those who left; they accept it again.",
+  "@sharingRecentlyDeletedHelp": {
+    "description": "Selective sharing: explanation in the Recently deleted dialog."
+  },
+  "sharingRecentlyDeletedEmpty": "No recently deleted items",
+  "@sharingRecentlyDeletedEmpty": {
+    "description": "Selective sharing: empty state of the Recently deleted dialog."
+  },
+  "sharingRestore": "Restore",
+  "@sharingRestore": {
+    "description": "Selective sharing: action restoring a deleted shared item."
+  },
+  "sharingRestored": "Item restored and shared again",
+  "@sharingRestored": {
+    "description": "Selective sharing: notice after a deleted shared item was restored."
+  },
+  "sharingRestoreUntil": "Restorable until {date} · recipients: {count}",
+  "@sharingRestoreUntil": {
+    "description": "Selective sharing: subtitle of a deleted item with the restore deadline and the number of recipient devices.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
       "count": {
         "type": "int"
       }

@@ -3,9 +3,11 @@ import 'dart:convert';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
@@ -24,7 +26,12 @@ class KubeSecretDialog extends ConsumerStatefulWidget {
 class _KubeSecretDialogState extends ConsumerState<KubeSecretDialog> with WidgetsBindingObserver {
   late final KubeScope _scope = ref.read(kubeScopeProvider);
   final _values = <String, SecretText>{}, _binary = <String>{};
-  final _clipboard = SecureClipboard(clearAfter: const Duration(seconds: 30));
+  // The configured auto-clear; closing the dialog or locking clears sooner.
+  late final _clipboard = SecureClipboard(
+    clearAfter: Duration(
+      seconds: clipboardClearSeconds(ref.read(localSettingsProvider).value?.clipboardClearSeconds ?? 30),
+    ),
+  );
   Timer? _timer;
   bool _busy = false, _failed = false, _expired = false;
   int _generation = 0;
@@ -169,35 +176,38 @@ class _KubeSecretDialogState extends ConsumerState<KubeSecretDialog> with Widget
                       ),
                     ),
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: keys.length,
-                      itemBuilder: (context, index) {
-                        final key = keys[index];
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      /* l10n-ignore: Secret key identifier with standard Base64 encoding marker. */ '$key${_binary.contains(key) ? ' · Base64' : ''}',
+                    child: RevealedSecret(
+                      visible: keys.isNotEmpty,
+                      child: ListView.builder(
+                        itemCount: keys.length,
+                        itemBuilder: (context, index) {
+                          final key = keys[index];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        /* l10n-ignore: Secret key identifier with standard Base64 encoding marker. */ '$key${_binary.contains(key) ? ' · Base64' : ''}',
+                                      ),
+                                    ), // l10n-ignore: Secret key identifier with standard Base64 encoding marker.
+                                    GlassIconButton(
+                                      key: ValueKey('kube-secret-copy-$key'),
+                                      icon: Icons.copy,
+                                      tooltip: l.commonCopy,
+                                      onPressed: () => _copy(key),
                                     ),
-                                  ), // l10n-ignore: Secret key identifier with standard Base64 encoding marker.
-                                  GlassIconButton(
-                                    key: ValueKey('kube-secret-copy-$key'),
-                                    icon: Icons.copy,
-                                    tooltip: l.commonCopy,
-                                    onPressed: () => _copy(key),
-                                  ),
-                                ],
-                              ),
-                              SelectableText(_values[key]!.expose()),
-                            ],
-                          ),
-                        );
-                      },
+                                  ],
+                                ),
+                                SelectableText(_values[key]!.expose()),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ],

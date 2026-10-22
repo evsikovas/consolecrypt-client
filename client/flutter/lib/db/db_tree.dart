@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_ddl_dialog.dart';
 import 'package:consolecrypt/db/db_models.dart';
+import 'package:consolecrypt/db/db_object_details.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -114,18 +115,34 @@ final class _Row {
   bool blockStart = false, blockEnd = false;
 }
 
+/// Objects whose first rows open in the data preview tab.
+const _previewable = [
+  DbObjectKind.table,
+  DbObjectKind.view,
+  DbObjectKind.materializedView,
+  DbObjectKind.collection,
+  DbObjectKind.redisKey,
+  DbObjectKind.redisDatabase,
+];
+
 class DbObjectTree extends ConsumerStatefulWidget {
   const DbObjectTree({
     required this.session,
     required this.service,
     required this.onDraft,
     required this.onInsert,
+    required this.onPreview,
     this.onSelect,
     super.key,
   });
   final DbSessionInfo session;
   final DbQueryService service;
+
+  /// Generated text for the editor ([onDraft]) or an identifier for the caret.
   final ValueChanged<String> onDraft, onInsert;
+
+  /// The first rows of [object]: [text] is its read query, run at once.
+  final void Function(DbObjectRef object, String text) onPreview;
   final ValueChanged<DbObjectRef>? onSelect;
   @override
   ConsumerState<DbObjectTree> createState() => _DbObjectTreeState();
@@ -199,7 +216,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
           return;
         case 'query':
           final text = await widget.service.objectQuery(widget.session.id, object);
-          if (_current) widget.onDraft(text);
+          if (_current) widget.onPreview(object, text);
           return;
         case 'ddl':
           value = await widget.service.ddl(widget.session.id, object);
@@ -241,17 +258,17 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
             object,
             sampleDocuments: action == 'sample' ? 20 : null,
           );
-          value = SecretText(const JsonEncoder.withIndent('  ').convert(document));
+          value = SecretText(jsonEncode(document));
       }
       if (!mounted || !_current || value == null) return;
       await showAppDialog<void>(
         context,
         secure: true,
-        builder: (_) => DbProtectedTextDialog(title: object.name, value: value!),
+        builder: (_) => DbObjectDetailsDialog(title: object.name, document: value!),
       );
     } catch (_) {
       if (mounted && _current) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.dbOperationFailed)));
+        showSnack(context, context.l10n.dbOperationFailed, error: true);
       }
     } finally {
       value?.wipe();
@@ -330,18 +347,11 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
 
   /// Actions of one object, offered from the row menu and right click.
   List<GlassMenuEntry<String>> _menu(AppLocalizations l, DbObjectRef object) => [
-    if (const [
-      DbObjectKind.table,
-      DbObjectKind.view,
-      DbObjectKind.materializedView,
-      DbObjectKind.collection,
-      DbObjectKind.redisKey,
-      DbObjectKind.redisDatabase,
-    ].contains(object.kind))
+    if (_previewable.contains(object.kind))
       GlassMenuItem(value: 'query', label: l.dbFirstRows, icon: Icons.table_rows_outlined),
     GlassMenuItem(value: 'insert', label: l.dbInsertName, icon: Icons.input_rounded),
     if (_describable.contains(object.kind)) GlassMenuItem(value: 'ddl', label: l.dbDdl, icon: Icons.code_rounded),
-    if (widget.service is DbObjectInspectService) ...[
+    if (widget.service is DbObjectInspectService && dbHasDetails(widget.session.engine, object)) ...[
       GlassMenuItem(value: 'inspect', label: l.dbInspect, icon: Icons.info_outline_rounded),
       if (object.kind == DbObjectKind.collection)
         GlassMenuItem(value: 'sample', label: l.dbSampleSchema, icon: Icons.schema_outlined),
@@ -440,7 +450,12 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
             unawaited(_menuAt(object, Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1))),
         onLongPressStart: (details) =>
             unawaited(_menuAt(object, Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1))),
-        onDoubleTap: node.hasChildren ? () => _toggle(object) : () => unawaited(_action('insert', object)),
+        // Tables and views show their first rows; other branches open.
+        onDoubleTap: _previewable.contains(object.kind)
+            ? () => unawaited(_action('query', object))
+            : node.hasChildren
+            ? () => _toggle(object)
+            : () => unawaited(_action('insert', object)),
         child: GlassInteractive(
           key: ValueKey('db-object-${object.id}'),
           selected: selected,

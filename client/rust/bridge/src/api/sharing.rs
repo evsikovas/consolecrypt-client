@@ -16,7 +16,7 @@ pub async fn sharing_discover(email: String) -> Result<String, BridgeError> {
     with_core(|c| async move { to_json(&c.sharing_discover(email).await?) }).await
 }
 pub async fn sharing_list(refresh: bool) -> Result<String, BridgeError> {
-    with_core(move |c| async move { to_json(&c.sharing_list(refresh).await?) }).await
+    with_core(move |c| async move { to_json(&c.sharing_list_report(refresh).await?) }).await
 }
 pub async fn sharing_inspect(id: String) -> Result<String, BridgeError> {
     with_core(|c| async move { to_json(&c.sharing_inspect(id).await?) }).await
@@ -154,6 +154,22 @@ pub async fn sharing_delete(id: String) -> Result<(), BridgeError> {
         Ok(())
     })
     .await
+}
+/// Protocol 1.8: this account leaves a received item on all its devices.
+pub async fn sharing_leave(id: String) -> Result<(), BridgeError> {
+    with_core(|c| async move {
+        c.sharing_leave(id).await?;
+        Ok(())
+    })
+    .await
+}
+/// Protocol 1.8: owner-deleted items that are still restorable.
+pub async fn sharing_deleted() -> Result<String, BridgeError> {
+    with_core(|c| async move { to_json(&c.sharing_deleted().await?) }).await
+}
+/// Protocol 1.8: republish a deleted item; call `sharing_flush` afterwards.
+pub async fn sharing_restore(id: String) -> Result<String, BridgeError> {
+    with_core(|c| async move { to_json(&c.sharing_restore(id).await?) }).await
 }
 pub async fn sharing_outbox() -> Result<String, BridgeError> {
     with_core(|c| async move { to_json(&c.sharing_outbox().await?) }).await

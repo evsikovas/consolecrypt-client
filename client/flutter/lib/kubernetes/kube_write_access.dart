@@ -3,12 +3,10 @@ import 'dart:async';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
-import 'package:consolecrypt/core/providers.dart';
-import 'package:consolecrypt/core/security/secret_text.dart';
-import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_mutation_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
+import 'package:consolecrypt/vault/vault_passphrase_confirmation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -60,14 +58,14 @@ class _KubeWriteBannerState extends ConsumerState<KubeWriteBanner> {
     final service = ref.read(kubeServiceProvider);
     if (!_current || _busy || service is! KubeMutationService || (open && AppPlatform.isMobile)) return;
     if (open) {
-      final approved =
-          await showAppDialog<bool>(
-            context,
-            secure: true,
-            barrierDismissible: false,
-            builder: (_) => const _PassphraseConfirmation(),
-          ) ??
-          false;
+      final l = context.l10n;
+      final approved = await showVaultPassphraseConfirmation<KubeScope>(
+        context,
+        scope: kubeScopeProvider,
+        title: l.kubeAllowChanges,
+        message: l.kubeAllowChangesHelp,
+        confirmLabel: l.kubeAllowChanges,
+      );
       if (!_current || !approved) return;
     }
     setState(() {
@@ -185,189 +183,26 @@ class _KubeWriteBannerState extends ConsumerState<KubeWriteBanner> {
   }
 }
 
-Future<bool> showTypedKubeConfirmation(
+/// Confirms a cluster change (or the removal of saved data) with the vault
+/// passphrase. [subject] — the resource or context it applies to — is shown
+/// for review. Closes unapproved when the cluster scope changes.
+Future<bool> showKubePassphraseConfirmation(
   BuildContext context, {
-  required String expected,
   required String title,
   required String message,
   required String confirmLabel,
-}) async =>
-    await showAppDialog<bool>(
-      context,
-      secure: true,
-      barrierDismissible: false,
-      builder: (_) =>
-          _TypedConfirmation(expected: expected, title: title, message: message, confirmLabel: confirmLabel),
-    ) ??
-    false;
-
-class _TypedConfirmation extends ConsumerStatefulWidget {
-  const _TypedConfirmation({
-    required this.expected,
-    required this.title,
-    required this.message,
-    required this.confirmLabel,
-  });
-  final String expected, title, message, confirmLabel;
-  @override
-  ConsumerState<_TypedConfirmation> createState() => _TypedConfirmationState();
-}
-
-class _TypedConfirmationState extends ConsumerState<_TypedConfirmation> {
-  final _text = TextEditingController();
-  late final KubeScope _scope;
-  @override
-  void initState() {
-    super.initState();
-    _scope = ref.read(kubeScopeProvider);
-  }
-
-  @override
-  void dispose() {
-    _text.clear();
-    _text.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    ref.listen(kubeScopeProvider, (_, next) {
-      if (identical(next, _scope)) return;
-      _text.clear();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final route = ModalRoute.of(context);
-        if (route?.isActive == true) Navigator.of(context).removeRoute(route!);
-      });
-    });
-    final l = context.l10n;
-    return GlassDialog(
-      key: const ValueKey('kube-typed-confirmation'),
-      title: widget.title,
-      content: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(widget.message),
-            const SizedBox(height: 12),
-            SelectableText(widget.expected, style: GlassTokens.of(context).typography.mono),
-            const SizedBox(height: 12),
-            TextField(
-              key: const ValueKey('kube-confirm-name'),
-              controller: _text,
-              decoration: InputDecoration(labelText: l.kubeTypeName),
-              autocorrect: false,
-              enableSuggestions: false,
-              enableIMEPersonalizedLearning: false,
-              onChanged: (_) => setState(() {}),
-            ),
-          ],
+  String? subject,
+}) => showVaultPassphraseConfirmation<KubeScope>(
+  context,
+  scope: kubeScopeProvider,
+  title: title,
+  message: message,
+  confirmLabel: confirmLabel,
+  details: subject == null || subject.isEmpty
+      ? null
+      : SelectableText(
+          subject,
+          key: const ValueKey('kube-confirm-subject'),
+          style: GlassTokens.of(context).typography.mono,
         ),
-      ),
-      primaryAction: GlassButton.destructive(
-        key: const ValueKey('kube-confirm-action'),
-        label: widget.confirmLabel,
-        onPressed:
-            widget.expected.isNotEmpty &&
-                _text.text == widget.expected &&
-                identical(_scope, ref.read(kubeScopeProvider))
-            ? () => closeDialog(context, true)
-            : null,
-      ),
-      secondaryActions: [GlassButton(label: l.commonCancel, onPressed: () => closeDialog(context, false))],
-    );
-  }
-}
-
-/// Step-up confirmation of a production write window: the vault passphrase
-/// is checked by the core without touching the lock state.
-class _PassphraseConfirmation extends ConsumerStatefulWidget {
-  const _PassphraseConfirmation();
-  @override
-  ConsumerState<_PassphraseConfirmation> createState() => _PassphraseConfirmationState();
-}
-
-class _PassphraseConfirmationState extends ConsumerState<_PassphraseConfirmation> {
-  final _text = TextEditingController();
-  late final KubeScope _scope = ref.read(kubeScopeProvider);
-  bool _busy = false, _wrong = false;
-
-  @override
-  void dispose() {
-    _text.clear();
-    _text.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (_busy || _text.text.isEmpty || !identical(_scope, ref.read(kubeScopeProvider))) return;
-    setState(() {
-      _busy = true;
-      _wrong = false;
-    });
-    final passphrase = SecretText(_text.text);
-    _text.clear();
-    var ok = false;
-    try {
-      ok = await ref.read(vaultServiceProvider).verifyPassphrase(passphrase);
-    } catch (_) {
-      ok = false;
-    } finally {
-      passphrase.wipe();
-    }
-    if (!mounted) return;
-    if (ok && identical(_scope, ref.read(kubeScopeProvider))) {
-      closeDialog(context, true);
-    } else {
-      setState(() {
-        _busy = false;
-        _wrong = true;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    ref.listen(kubeScopeProvider, (_, next) {
-      if (identical(next, _scope)) return;
-      _text.clear();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final route = ModalRoute.of(context);
-        if (route?.isActive == true) Navigator.of(context).removeRoute(route!);
-      });
-    });
-    final l = context.l10n;
-    return GlassDialog(
-      key: const ValueKey('kube-passphrase-confirmation'),
-      title: l.kubeAllowChanges,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(l.kubeAllowChangesHelp),
-          const SizedBox(height: GlassSpacing.s12),
-          GlassField(
-            key: const ValueKey('kube-confirm-passphrase'),
-            controller: _text,
-            fieldKey: const ValueKey('kube-confirm-passphrase-input'),
-            placeholder: l.kubeVaultPasswordConfirm,
-            semanticLabel: l.kubeVaultPasswordConfirm,
-            secret: true,
-            autofocus: true,
-            enabled: !_busy,
-            errorText: _wrong ? l.kubeVaultPasswordWrong : null,
-            onSubmitted: (_) => unawaited(_submit()),
-            onChanged: (_) => setState(() => _wrong = false),
-          ),
-        ],
-      ),
-      primaryAction: GlassButton.destructive(
-        key: const ValueKey('kube-confirm-action'),
-        label: l.kubeAllowChanges,
-        onPressed: _busy || _text.text.isEmpty ? null : () => unawaited(_submit()),
-      ),
-      secondaryActions: [GlassButton(label: l.commonCancel, onPressed: () => closeDialog(context, false))],
-    );
-  }
-}
+);

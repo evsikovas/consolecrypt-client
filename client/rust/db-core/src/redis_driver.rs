@@ -237,6 +237,29 @@ impl Redis {
         object: &'a DbObjectRef,
     ) -> BoxFuture<'a, Result<String, DbError>> {
         Box::pin(async move {
+            let facts = self.key_facts(object).await?;
+            Ok(describe_text(
+                &object.name,
+                facts.db,
+                &facts.kind,
+                facts.encoding.as_deref(),
+                facts
+                    .length
+                    .map(|(length, unit)| format!("{length} {unit}"))
+                    .as_deref(),
+                facts.ttl,
+                facts.memory,
+            ))
+        })
+    }
+
+    /// Type, TTL, encoding, memory and length of one key, read with
+    /// TYPE/PTTL/OBJECT ENCODING/MEMORY USAGE and the type's length command.
+    pub fn key_facts<'a>(
+        &'a mut self,
+        object: &'a DbObjectRef,
+    ) -> BoxFuture<'a, Result<KeyFacts, DbError>> {
+        Box::pin(async move {
             if object.kind != DbObjectKind::RedisKey || object.name.is_empty() {
                 return Err(DbError::InvalidRequest);
             }
@@ -267,18 +290,42 @@ impl Redis {
                         .query_async::<i64>(&mut live)
                         .await
                         .ok()
-                        .map(|length| format!("{length} {unit}")),
+                        .map(|length| (length, unit)),
                     None => None,
                 };
-                Ok::<_, DbError>(describe_text(
-                    &String::from_utf8_lossy(&key),
+                Ok::<_, DbError>(KeyFacts {
                     db,
-                    &kind,
-                    encoding.as_deref(),
-                    length.as_deref(),
+                    kind,
                     ttl,
+                    encoding,
                     memory,
-                ))
+                    length,
+                })
+            };
+            let timeout = self.timeout.min(TREE_TIMEOUT);
+            let scope = self.scope.clone();
+            let result = bounded(timeout, &scope, operation).await;
+            self.forget_on_failure(db, &result);
+            result
+        })
+    }
+
+    /// Number of keys in one database (`DBSIZE`).
+    pub fn database_size<'a>(
+        &'a mut self,
+        object: &'a DbObjectRef,
+    ) -> BoxFuture<'a, Result<i64, DbError>> {
+        Box::pin(async move {
+            if object.kind != DbObjectKind::RedisDatabase || object.parent_name.is_some() {
+                return Err(DbError::InvalidRequest);
+            }
+            let db = database_index(&object.database)?;
+            let mut live = self.connection(db).await?;
+            let operation = async move {
+                redis::cmd("DBSIZE")
+                    .query_async::<i64>(&mut live)
+                    .await
+                    .map_err(classify)
             };
             let timeout = self.timeout.min(TREE_TIMEOUT);
             let scope = self.scope.clone();
@@ -717,6 +764,20 @@ fn duration_text(milliseconds: i64) -> String {
         parts.push(format!("{seconds}s"));
     }
     parts.join(" ")
+}
+
+/// What [`Redis::key_facts`] found about a key.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeyFacts {
+    pub db: i64,
+    /// `none` when the key does not exist.
+    pub kind: String,
+    /// Milliseconds; negative when the key never expires.
+    pub ttl: Option<i64>,
+    pub encoding: Option<String>,
+    pub memory: Option<i64>,
+    /// Length and its unit (bytes, fields, elements, members, entries).
+    pub length: Option<(i64, &'static str)>,
 }
 
 fn length_command(kind: &str) -> Option<(&'static str, &'static str)> {

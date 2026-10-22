@@ -276,7 +276,6 @@ final class RustDbService
   @override
   Future<DbSessionInfo> unlockProduction(
     String sessionId, {
-    required String typedConnectionName,
     required SecretText passphrase,
     required int minutes,
   }) async {
@@ -284,14 +283,7 @@ final class RustDbService
       return _session(
         await withSecret(
           passphrase,
-          (bytes) => guard(
-            () => native.dbUnlockProduction(
-              sessionId: sessionId,
-              typedConnectionName: typedConnectionName,
-              passphrase: bytes,
-              minutes: minutes,
-            ),
-          ),
+          (bytes) => guard(() => native.dbUnlockProduction(sessionId: sessionId, passphrase: bytes, minutes: minutes)),
         ),
       );
     } on AppException catch (error) {

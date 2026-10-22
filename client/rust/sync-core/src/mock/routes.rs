@@ -129,6 +129,8 @@ fn server_info(s: &Shared, upgrade_required: bool) -> ServerInfo {
         source_code_url: None,
         capabilities: cc_protocol::meta::ServerCapabilities {
             device_protection: st.cfg.device_protection,
+            // The personal-sync mock has no sharing routes.
+            ..Default::default()
         },
     }
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:flutter/foundation.dart';
@@ -60,6 +61,32 @@ class DbEditorController extends TextEditingController {
       selection: TextSelection.collapsed(offset: s.start + value.length),
     );
   }
+
+  bool _reveal = false;
+
+  /// Adds generated [value] below the text after a blank line, closing the
+  /// last SQL statement with `;` first, and puts the caret at the start of
+  /// the added text; the editor scrolls to it. Nothing runs.
+  void appendStatement(String value, {required bool sql}) {
+    var head = text.trimRight();
+    if (sql && head.isNotEmpty && !head.endsWith(';')) {
+      // A trailing line comment would swallow the `;`.
+      head = head.split('\n').last.contains('--') ? '$head\n;' : '$head;';
+    }
+    final prefix = head.isEmpty ? '' : '$head\n\n';
+    _reveal = true;
+    this.value = TextEditingValue(
+      text: '$prefix${value.trim()}',
+      selection: TextSelection.collapsed(offset: prefix.length),
+    );
+  }
+
+  /// Whether the editor should bring the caret into view (once).
+  bool takeReveal() {
+    final reveal = _reveal;
+    _reveal = false;
+    return reveal;
+  }
 }
 
 class DbQueryEditor extends StatefulWidget {
@@ -109,6 +136,8 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
     widget.controller.addListener(_queueMeasure);
     _scroll.addListener(_queueMeasure);
     _focus.addListener(_queueMeasure);
+    // Text appended while this tab was hidden is revealed once shown.
+    _queueMeasure();
   }
 
   @override
@@ -125,6 +154,10 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
     _measureQueued = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _measureQueued = false;
+      if (mounted && widget.controller.takeReveal()) {
+        _focus.requestFocus();
+        _editable()?.bringIntoView(widget.controller.selection.base);
+      }
       _measure();
     });
   }
@@ -203,7 +236,7 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
     }
   }
 
-  void _error() => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.dbOperationFailed)));
+  void _error() => showSnack(context, context.l10n.dbOperationFailed, error: true);
   void _comments() {
     final controller = widget.controller, s = widget.controller.selection;
     if (!s.isValid) return;

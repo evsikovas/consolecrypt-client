@@ -41,6 +41,10 @@ pub struct ExportOptions {
     pub delimiter: String,
     #[serde(default = "double_quote")]
     pub quote: String,
+    /// CSV/TSV: text cells a spreadsheet would run as a formula (`=`, `+`,
+    /// `-`, `@`, TAB, CR first) get a leading `'`. Numeric cells never do.
+    #[serde(default = "yes")]
+    pub escape_formulas: bool,
 }
 
 fn yes() -> bool {
@@ -94,6 +98,19 @@ fn plain(cell: &DbCell) -> Option<&str> {
     }
 }
 
+/// Would a spreadsheet treat `value` as a formula (OWASP CSV injection)?
+fn formula_like(value: &str) -> bool {
+    value.starts_with(['=', '+', '-', '@', '\t', '\r'])
+}
+
+/// Text cells only: a genuinely numeric `-5` stays a number.
+fn textual(cell: &DbCell) -> bool {
+    !matches!(
+        cell,
+        DbCell::Null | DbCell::Bool(_) | DbCell::Int(_) | DbCell::Uint(_) | DbCell::Decimal(_)
+    ) && !matches!(cell, DbCell::Float(v) if v.parse::<f64>().is_ok())
+}
+
 fn json_value(cell: &DbCell) -> serde_json::Value {
     use serde_json::Value;
     match cell {
@@ -119,7 +136,7 @@ fn json_value(cell: &DbCell) -> serde_json::Value {
     }
 }
 
-fn sql_literal(engine: DbEngine, cell: &DbCell) -> String {
+pub(crate) fn sql_literal(engine: DbEngine, cell: &DbCell) -> String {
     match cell {
         DbCell::Null => "NULL".into(),
         DbCell::Bool(value) => if *value { "TRUE" } else { "FALSE" }.into(),
@@ -128,15 +145,26 @@ fn sql_literal(engine: DbEngine, cell: &DbCell) -> String {
         {
             v.clone()
         }
-        other => {
-            let text = plain(other).unwrap_or_default();
-            match engine {
-                DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Clickhouse => {
-                    format!("'{}'", text.replace('\\', "\\\\").replace('\'', "\\'"))
-                }
-                _ => format!("'{}'", text.replace('\'', "''")),
-            }
+        other => string_literal(engine, plain(other).unwrap_or_default()),
+    }
+}
+
+/// A string literal that reads back as `text` whatever the session's escape
+/// mode. Quotes are always doubled (standard SQL, never `\'`):
+///  * MySQL/MariaDB/ClickHouse: backslashes are escapes (unless MySQL's
+///    `NO_BACKSLASH_ESCAPES`, where the doubled backslash only adds a
+///    character and still cannot end the literal);
+///  * PostgreSQL: a plain literal, or an `E'…'` literal when backslashes are
+///    present, which reads the same with or without
+///    `standard_conforming_strings`.
+fn string_literal(engine: DbEngine, text: &str) -> String {
+    let quoted = text.replace('\'', "''");
+    match engine {
+        DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Clickhouse => {
+            format!("'{}'", quoted.replace('\\', "\\\\"))
         }
+        _ if text.contains('\\') => format!("E'{}'", quoted.replace('\\', "\\\\")),
+        _ => format!("'{quoted}'"),
     }
 }
 
@@ -172,6 +200,22 @@ impl Formatter {
             table,
             rows: 0,
         })
+    }
+
+    /// A delimited text field; `formula` marks text a spreadsheet could run.
+    fn field(&self, value: &str, formula: bool) -> String {
+        if formula && self.options.escape_formulas && formula_like(value) {
+            self.delimited(Some(&format!("'{value}")))
+        } else {
+            self.delimited(Some(value))
+        }
+    }
+
+    fn cell(&self, cell: &DbCell) -> String {
+        match plain(cell) {
+            Some(value) => self.field(value, textual(cell)),
+            None => String::new(),
+        }
     }
 
     fn delimited(&self, value: Option<&str>) -> String {
@@ -214,7 +258,7 @@ impl Formatter {
                 let names: Vec<String> = self
                     .columns
                     .iter()
-                    .map(|column| self.delimited(Some(&column.name)))
+                    .map(|column| self.field(&column.name, true))
                     .collect();
                 out.push_str(&names.join(&self.delimiter.to_string()));
                 out.push_str("\r\n");
@@ -242,8 +286,7 @@ impl Formatter {
         self.rows += 1;
         match self.options.format {
             ExportFormat::Csv | ExportFormat::Tsv => {
-                let cells: Vec<String> =
-                    row.iter().map(|cell| self.delimited(plain(cell))).collect();
+                let cells: Vec<String> = row.iter().map(|cell| self.cell(cell)).collect();
                 format!("{}\r\n", cells.join(&self.delimiter.to_string()))
             }
             ExportFormat::Markdown => format!(
@@ -509,6 +552,7 @@ mod tests {
             bom: false,
             delimiter: ",".into(),
             quote: "\"".into(),
+            escape_formulas: true,
         }
     }
 
@@ -570,8 +614,130 @@ mod tests {
                 options(ExportFormat::Insert)
             )
             .unwrap(),
-            "INSERT INTO `shop`.`t` (`id`, `name`, `meta`) VALUES (1, 'it\\'s \\\\ ok', NULL);\n"
+            "INSERT INTO `shop`.`t` (`id`, `name`, `meta`) VALUES (1, 'it''s \\\\ ok', NULL);\n"
         );
+    }
+
+    #[test]
+    fn string_literals_survive_every_escape_mode() {
+        let tricky = [
+            ("plain", "'plain'", "'plain'", "'plain'"),
+            ("it's", "'it''s'", "'it''s'", "'it''s'"),
+            (
+                "\\'; DROP TABLE t; --",
+                "'\\\\''; DROP TABLE t; --'",
+                "E'\\\\''; DROP TABLE t; --'",
+                "'\\\\''; DROP TABLE t; --'",
+            ),
+            ("end\\", "'end\\\\'", "E'end\\\\'", "'end\\\\'"),
+            ("''", "''''''", "''''''", "''''''"),
+            (
+                "line\nbreak",
+                "'line\nbreak'",
+                "'line\nbreak'",
+                "'line\nbreak'",
+            ),
+        ];
+        for (text, mysql, postgres, clickhouse) in tricky {
+            assert_eq!(string_literal(DbEngine::Mysql, text), mysql, "{text}");
+            assert_eq!(string_literal(DbEngine::Mariadb, text), mysql, "{text}");
+            assert_eq!(
+                string_literal(DbEngine::Postgresql, text),
+                postgres,
+                "{text}"
+            );
+            assert_eq!(
+                string_literal(DbEngine::Clickhouse, text),
+                clickhouse,
+                "{text}"
+            );
+        }
+        // Never the backslash-quote form, which NO_BACKSLASH_ESCAPES reads as
+        // the end of the literal.
+        for engine in DbEngine::ALL {
+            assert!(!string_literal(engine, "a'b\\'c").contains("\\'c"));
+        }
+        // Numbers stay bare; non-numeric "numbers" become literals.
+        assert_eq!(
+            sql_literal(DbEngine::Mysql, &DbCell::Int("-5".into())),
+            "-5"
+        );
+        assert_eq!(
+            sql_literal(DbEngine::Mysql, &DbCell::Decimal("1); DROP".into())),
+            "'1); DROP'"
+        );
+        assert_eq!(
+            sql_literal(DbEngine::Postgresql, &DbCell::Float("NaN".into())),
+            "'NaN'"
+        );
+    }
+
+    #[test]
+    fn csv_escapes_formula_text_but_not_numbers() {
+        let columns: Vec<DbColumn> = ["=HEADER", "n", "t"]
+            .into_iter()
+            .map(|name| DbColumn {
+                name: name.into(),
+                type_name: String::new(),
+                nullable: true,
+                sensitive: false,
+                primary_key: false,
+            })
+            .collect();
+        let rows = vec![
+            vec![
+                DbCell::Text("=1+1".into()),
+                DbCell::Int("-5".into()),
+                DbCell::Text("+7".into()),
+            ],
+            vec![
+                DbCell::Text("@SUM(A1)".into()),
+                DbCell::Float("-1.5".into()),
+                DbCell::Text("-2".into()),
+            ],
+            vec![
+                DbCell::Text("\tcmd".into()),
+                DbCell::Decimal("-0.25".into()),
+                DbCell::Text("\r=x".into()),
+            ],
+            vec![
+                DbCell::Json("=\"a,b\"".into()),
+                DbCell::Null,
+                DbCell::Text("safe = text".into()),
+            ],
+        ];
+        let csv = format_rows(
+            DbEngine::Postgresql,
+            &columns,
+            &rows,
+            None,
+            options(ExportFormat::Csv),
+        )
+        .unwrap();
+        assert_eq!(
+            csv,
+            "'=HEADER,n,t\r\n\
+             '=1+1,-5,'+7\r\n\
+             '@SUM(A1),-1.5,'-2\r\n\
+             '\tcmd,-0.25,\"'\r=x\"\r\n\
+             \"'=\"\"a,b\"\"\",,safe = text\r\n"
+        );
+        let tsv = format_rows(
+            DbEngine::Postgresql,
+            &columns,
+            &rows[..1],
+            None,
+            options(ExportFormat::Tsv),
+        )
+        .unwrap();
+        assert_eq!(tsv, "'=HEADER\tn\tt\r\n'=1+1\t-5\t'+7\r\n");
+        let mut raw = options(ExportFormat::Csv);
+        raw.escape_formulas = false;
+        let csv = format_rows(DbEngine::Postgresql, &columns, &rows[..1], None, raw).unwrap();
+        assert_eq!(csv, "=HEADER,n,t\r\n=1+1,-5,+7\r\n");
+        // Older callers that do not send the option get escaping.
+        let parsed: ExportOptions = serde_json::from_str(r#"{"format":"csv"}"#).unwrap();
+        assert!(parsed.escape_formulas);
     }
 
     #[test]

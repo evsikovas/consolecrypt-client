@@ -90,9 +90,9 @@ class _KubeHistoryPanelState extends ConsumerState<KubeHistoryPanel> {
 
   Future<void> _clear() async {
     if (!_current || _loading) return;
-    final approved = await showTypedKubeConfirmation(
+    final approved = await showKubePassphraseConfirmation(
       context,
-      expected: widget.contextName,
+      subject: widget.contextName,
       title: context.l10n.kubeHistoryClear,
       message: context.l10n.kubeHistoryClearHelp,
       confirmLabel: context.l10n.commonDelete,

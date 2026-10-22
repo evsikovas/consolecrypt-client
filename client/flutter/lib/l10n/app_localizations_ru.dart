@@ -6502,9 +6502,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get kubeWriteWindowFailed => 'Не удалось изменить окно записи. Подключитесь заново и повторите попытку.';
 
   @override
-  String get kubeTypeName => 'Введите точное имя выше';
-
-  @override
   String get kubeEditYaml => 'Изменить YAML';
 
   @override
@@ -6512,7 +6509,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeApplyYamlHelp =>
-      'Применить проверенные изменения к ресурсу? Для подтверждения введите его точное имя. Сервер отклонит обновление, если версия ресурса изменилась.';
+      'Применить проверенные изменения к ресурсу? Для подтверждения введите пароль хранилища. Сервер отклонит обновление, если версия ресурса изменилась.';
 
   @override
   String get kubeApplyFailed =>
@@ -6546,7 +6543,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeDeleteResourceHelp =>
-      'Ресурс будет удалён из кластера. Это может остановить работающие приложения. Для подтверждения введите точное имя ресурса.';
+      'Ресурс будет удалён из кластера. Это может остановить работающие приложения. Для подтверждения введите пароль хранилища.';
 
   @override
   String get kubeFollowLogs => 'Следить за новыми записями';
@@ -6641,7 +6638,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeGitOpsChangeHelp =>
-      'Контроллер получит изменение, которое может повлиять на работающие приложения. Проверьте действие и введите точное имя ресурса.';
+      'Контроллер получит изменение, которое может повлиять на работающие приложения. Проверьте действие и введите пароль хранилища.';
 
   @override
   String get kubeGitOpsReason => 'Причина (сохраняется в аннотации ресурса)';
@@ -6907,7 +6904,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeMutationConfirmHelp =>
-      'Проверьте действие и введите точное имя ресурса для подтверждения. Права Kubernetes и защита production будут проверены перед выполнением.';
+      'Проверьте действие и введите пароль хранилища для подтверждения. Права Kubernetes и защита production будут проверены перед выполнением.';
 
   @override
   String get kubeOperationFailed =>
@@ -7239,7 +7236,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeHelmRollbackHelp =>
-      'Проверьте точный путь Helm, контрольную сумму и команду. Операция изменяет ресурсы кластера; хуки Helm отключены. Введите имя релиза для подтверждения.';
+      'Проверьте точный путь Helm, контрольную сумму и команду. Операция изменяет ресурсы кластера; хуки Helm отключены. Введите пароль хранилища для подтверждения.';
 
   @override
   String get kubeHelmRollbackFailed =>
@@ -7500,7 +7497,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeBulkHelp =>
-      'Проверьте список и введите имя контекста. Операции выполняются по очереди; отмена остановит их после текущей операции. Не более 100 ресурсов.';
+      'Проверьте список и введите пароль хранилища. Операции выполняются по очереди; отмена остановит их после текущей операции. Не более 100 ресурсов.';
 
   @override
   String get kubeBulkProductionBlocked => 'Массовые изменения недоступны в прод-контекстах.';
@@ -7524,9 +7521,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeResizePanel => 'Изменить высоту нижней панели';
-
-  @override
-  String get kubeConfirmName => 'Введите точное имя';
 
   @override
   String get kubeAiProposalReview => 'Проверить предложение';
@@ -7597,7 +7591,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kubeGitOpsSourceReconcileHelp =>
-      'Запросить новую сверку источника. Для продолжения введите его точное имя.';
+      'Запросить новую сверку источника. Для продолжения введите пароль хранилища.';
 
   @override
   String get kubeGitOpsMetadataOnly => 'Здесь показаны только ссылки на объекты. Значения секретов скрыты.';
@@ -8115,12 +8109,6 @@ class AppLocalizationsRu extends AppLocalizations {
       'Сервер отклонил YAML: проверьте синтаксис и поля, которые нельзя менять (большая часть spec у Pod неизменяема).';
 
   @override
-  String get kubeVaultPasswordConfirm => 'Пароль хранилища';
-
-  @override
-  String get kubeVaultPasswordWrong => 'Неверный пароль.';
-
-  @override
   String kubeApplyOwnedBy(String managers) {
     return 'Эти поля ведёт $managers. Включите «Передать владение конфликтующими полями», чтобы перезаписать их; контроллер может вернуть значения обратно.';
   }
@@ -8602,7 +8590,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbQueryDangerous =>
-      'Этот запрос может изменить или удалить данные. Проверьте весь запрос и введите имя подключения.';
+      'Этот запрос может изменить или удалить данные. Проверьте запрос и введите пароль хранилища.';
 
   @override
   String get dbReviewExpired => 'Срок подтверждения истёк. Запустите запрос заново для повторной проверки.';
@@ -10113,15 +10101,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String dbUnlockProductionWarning(String name) {
-    return 'Изменения пойдут прямо в прод-базу «$name». Каждый изменяющий запрос по-прежнему показывается на проверку с именем подключения. Запись снова блокируется, когда истечёт время, по кнопке «Заблокировать», при отключении или блокировке хранилища.';
-  }
-
-  @override
-  String get dbVaultPassphrase => 'Пароль хранилища';
-
-  @override
-  String dbTypeConnectionName(String name) {
-    return 'Введите имя подключения: $name';
+    return 'Изменения пойдут прямо в прод-базу «$name». Каждый изменяющий запрос по-прежнему показывается на проверку и требует пароль хранилища. Запись снова блокируется, когда истечёт время, по кнопке «Заблокировать», при отключении или блокировке хранилища.';
   }
 
   @override
@@ -10139,9 +10119,6 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get dbWrongPassphrase => 'Неверный пароль хранилища.';
 
   @override
   String dbProdWriteUntil(String time) {
@@ -10186,5 +10163,909 @@ class AppLocalizationsRu extends AppLocalizations {
       one: 'Выбрано строк: $count',
     );
     return '$_temp0';
+  }
+
+  @override
+  String get vaultPassphraseConfirmLabel => 'Пароль хранилища';
+
+  @override
+  String get vaultPassphraseConfirmWrong => 'Неверный пароль хранилища.';
+
+  @override
+  String dbPreviewTabTitle(String name) {
+    return '$name — данные';
+  }
+
+  @override
+  String dbDetailsSection(String id) {
+    String _temp0 = intl.Intl.selectLogic(id, {
+      'general': 'Общее',
+      'size': 'Размер',
+      'structure': 'Структура',
+      'partitioning': 'Секционирование',
+      'maintenance': 'Обслуживание',
+      'other': '$id',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dbDetailsField(String id) {
+    String _temp0 = intl.Intl.selectLogic(id, {
+      'kind': 'Тип объекта',
+      'persistence': 'Хранение',
+      'schema': 'Схема',
+      'owner': 'Владелец',
+      'tablespace': 'Табличное пространство',
+      'comment': 'Комментарий',
+      'rows': 'Строк',
+      'live_rows': 'Живых строк',
+      'dead_rows': 'Мёртвых строк',
+      'total_size': 'Общий размер',
+      'table_size': 'Данные таблицы',
+      'index_size': 'Индексы',
+      'toast_size': 'TOAST',
+      'columns': 'Колонок',
+      'indexes': 'Индексов',
+      'constraints': 'Ограничений',
+      'triggers': 'Триггеров',
+      'definition_length': 'Длина определения, символов',
+      'partition_key': 'Ключ секционирования',
+      'partitions': 'Секций',
+      'partition_of': 'Секция таблицы',
+      'last_vacuum': 'Последний VACUUM',
+      'last_autovacuum': 'Последний autovacuum',
+      'last_analyze': 'Последний ANALYZE',
+      'last_autoanalyze': 'Последний autoanalyze',
+      'engine': 'Движок',
+      'row_format': 'Формат строк',
+      'collation': 'Сопоставление',
+      'definer': 'Определил',
+      'updatable': 'Обновляемое',
+      'security': 'Права выполнения',
+      'average_row': 'Средняя строка',
+      'free_space': 'Свободно',
+      'auto_increment': 'Следующий AUTO_INCREMENT',
+      'created': 'Создана',
+      'updated': 'Изменена',
+      'uncompressed_size': 'Без сжатия',
+      'parts': 'Активных частей',
+      'sorting_key': 'Ключ сортировки',
+      'primary_key': 'Первичный ключ',
+      'sampling_key': 'Ключ выборки',
+      'ttl': 'TTL',
+      'metadata_modified': 'Метаданные изменены',
+      'type': 'Тип',
+      'encoding': 'Кодировка',
+      'database': 'База',
+      'memory': 'Память',
+      'keys': 'Ключей',
+      'length_bytes': 'Длина, байт',
+      'length_fields': 'Полей',
+      'length_elements': 'Элементов',
+      'length_members': 'Элементов',
+      'length_entries': 'Записей',
+      'other': '$id',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dbDetailsKeyword(String id) {
+    String _temp0 = intl.Intl.selectLogic(id, {
+      'table': 'Таблица',
+      'partitioned_table': 'Секционированная таблица',
+      'view': 'Представление',
+      'materialized_view': 'Материализованное представление',
+      'foreign_table': 'Внешняя таблица',
+      'unlogged': 'Без журнала (UNLOGGED)',
+      'temporary': 'Временная',
+      'other': '$id',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get dbDetailsNoExpiry => 'Без срока';
+
+  @override
+  String get dbDetailsJson => 'JSON';
+
+  @override
+  String get dbDetailsEmpty => 'Для этого объекта сведений нет.';
+
+  @override
+  String get copyWhatObjectDetails => 'Сведения об объекте';
+
+  @override
+  String get dbWrapLines => 'Переносить строки';
+
+  @override
+  String settingsTerminalFontMissing(String family, String fallback) {
+    return 'Шрифт «$family» не установлен — используется $fallback.';
+  }
+
+  @override
+  String get settingsCaptureProtectionLabel => 'Скрывать окно от записи экрана';
+
+  @override
+  String get settingsCaptureProtectionOff => 'Никогда';
+
+  @override
+  String get settingsCaptureProtectionSecrets => 'Когда видны секреты';
+
+  @override
+  String get settingsCaptureProtectionAlways => 'Всегда';
+
+  @override
+  String get settingsCaptureProtectionHelp =>
+      'Окно не попадёт в скриншоты, запись и демонстрацию экрана (Zoom, Teams). В режиме «Всегда» коллеги не увидят окно ConsoleCrypt при показе экрана.';
+
+  @override
+  String get sftpActiveContentTitle => 'Этот файл может выполнить код';
+
+  @override
+  String sftpActiveContentBody(String name) {
+    return 'Файл «$name» может выполнить код. Он откроется как текст в редакторе.';
+  }
+
+  @override
+  String get sftpActiveContentNoRun =>
+      'ConsoleCrypt не запускает загруженные файлы. Чтобы выполнить его, используйте терминал на сервере.';
+
+  @override
+  String get sftpActiveContentOpenAsText => 'Открыть как текст';
+
+  @override
+  String get sftpNoTextEditorTitle => 'Текстовый редактор не найден';
+
+  @override
+  String sftpNoTextEditorBody(String name) {
+    return 'Файл «$name» может выполнить код, поэтому он открывается только как текст, но текстовый редактор не найден. Выберите редактор.';
+  }
+
+  @override
+  String get sftpChooseEditor => 'Выбрать редактор…';
+
+  @override
+  String get errorNoTextEditor =>
+      'Не найден текстовый редактор, чтобы безопасно открыть этот файл. Выберите редактор через «Открыть в программе…».';
+
+  @override
+  String get dbExportEscapeFormulas => 'Экранировать формулы (для Excel)';
+
+  @override
+  String settingsClearClipboardSeconds(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count секунды',
+      many: '$count секунд',
+      few: '$count секунды',
+      one: '$count секунду',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String settingsClearClipboardMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count минуты',
+      many: '$count минут',
+      few: '$count минуты',
+      one: '$count минуту',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String settingsClearClipboardHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count часа',
+      many: '$count часов',
+      few: '$count часа',
+      one: '$count час',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String settingsClearClipboardDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count дня',
+      many: '$count дней',
+      few: '$count дня',
+      one: '$count день',
+    );
+    return 'Через $_temp0 после копирования секрета';
+  }
+
+  @override
+  String sharingUnreadableEntries(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count записи не удалось прочитать, они скрыты.',
+      many: '$count записей не удалось прочитать, они скрыты.',
+      few: '$count записи не удалось прочитать, они скрыты.',
+      one: '$count запись не удалось прочитать, она скрыта.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get snippetPackPostgresql => 'SQL · PostgreSQL';
+
+  @override
+  String get snippetPackPostgresqlDescription =>
+      'Активность, блокировки, размеры, индексы, vacuum, репликация и настройки. Для psql или раздела «Базы данных».';
+
+  @override
+  String get snippetPackMysql => 'SQL · MySQL/MariaDB';
+
+  @override
+  String get snippetPackMysqlDescription =>
+      'Processlist, блокировки InnoDB, размеры, индексы, репликация и дайджесты запросов. Для клиента mysql или раздела «Базы данных».';
+
+  @override
+  String get snippetPackClickhouse => 'SQL · ClickHouse';
+
+  @override
+  String get snippetPackClickhouseDescription =>
+      'Текущие и медленные запросы, куски, слияния, мутации, репликация и диски. Для clickhouse-client или раздела «Базы данных».';
+
+  @override
+  String get snippetPackRedis => 'Redis';
+
+  @override
+  String get snippetPackRedisDescription =>
+      'Память, клиенты, медленные команды, ключи и репликация. Для redis-cli или раздела «Базы данных».';
+
+  @override
+  String get snippetPackMongodb => 'MongoDB';
+
+  @override
+  String get snippetPackMongodbDescription =>
+      'Операции, статистика сервера и коллекций, индексы, набор реплик и профилировщик. Для mongosh; часть работает и в разделе «Базы данных».';
+
+  @override
+  String get snippetDbPgActivity => 'Активные запросы';
+
+  @override
+  String get snippetDbPgActivityNote => 'Сессии не в состоянии idle, самые долгие сверху.';
+
+  @override
+  String get snippetDbPgLongRunning => 'Долгие запросы';
+
+  @override
+  String get snippetDbPgLongRunningNote => 'Запросы, которые выполняются дольше заданного числа секунд.';
+
+  @override
+  String get snippetDbPgBlocking => 'Дерево блокировок';
+
+  @override
+  String get snippetDbPgBlockingNote => 'Блокирующие сессии и ожидающие их сессии с отступом по глубине (PG 9.6+).';
+
+  @override
+  String get snippetDbPgTableSizes => 'Самые большие таблицы';
+
+  @override
+  String get snippetDbPgTableSizesNote =>
+      'Полный размер, а также таблица, индексы и TOAST; число строк — оценка планировщика.';
+
+  @override
+  String get snippetDbPgDatabaseSizes => 'Размеры баз данных';
+
+  @override
+  String get snippetDbPgDatabaseSizesNote => 'Размер каждой базы, к которой разрешено подключение.';
+
+  @override
+  String get snippetDbPgIndexUsage => 'Использование индексов';
+
+  @override
+  String get snippetDbPgIndexUsageNote =>
+      'Сначала редко используемые индексы; idx_scan = 0 — не использовался с последнего сброса статистики. Проверьте и реплики; уникальные индексы не удаляйте.';
+
+  @override
+  String get snippetDbPgDeadTuples => 'Мёртвые строки и autovacuum';
+
+  @override
+  String get snippetDbPgDeadTuplesNote => 'Оценка раздувания по мёртвым строкам и время последних vacuum и analyze.';
+
+  @override
+  String get snippetDbPgCacheHit => 'Попадания в кэш';
+
+  @override
+  String get snippetDbPgCacheHitNote => 'Доля блоков из shared buffers по базам; ниже 99% для OLTP стоит разобраться.';
+
+  @override
+  String get snippetDbPgReplication => 'Состояние репликации';
+
+  @override
+  String get snippetDbPgReplicationNote =>
+      'Подключённые реплики и отставание в байтах и по времени. Выполняйте на primary (PG 10+).';
+
+  @override
+  String get snippetDbPgSlots => 'Слоты репликации';
+
+  @override
+  String get snippetDbPgSlotsNote => 'Слоты и удерживаемый ими WAL; неактивный слот держит WAL бесконечно (PG 13+).';
+
+  @override
+  String get snippetDbPgConnections => 'Подключения по пользователям и приложениям';
+
+  @override
+  String get snippetDbPgConnectionsNote => 'Клиентские подключения по базе, пользователю, приложению и состоянию.';
+
+  @override
+  String get snippetDbPgSettingsChanged => 'Изменённые настройки';
+
+  @override
+  String get snippetDbPgSettingsChangedNote => 'Параметры, значение которых отличается от встроенного по умолчанию.';
+
+  @override
+  String get snippetDbPgColumns => 'Колонки таблицы';
+
+  @override
+  String get snippetDbPgColumnsNote => 'Колонки с типами, значениями по умолчанию и комментариями.';
+
+  @override
+  String get snippetDbPgForeignKeys => 'Внешние ключи таблицы';
+
+  @override
+  String get snippetDbPgForeignKeysNote => 'Внешние ключи таблицы и ключи, которые ссылаются на неё.';
+
+  @override
+  String get snippetDbPgSequences => 'Последовательности у предела';
+
+  @override
+  String get snippetDbPgSequencesNote =>
+      'Последовательности, израсходовавшие больше заданного процента диапазона; проверьте и тип колонки (PG 10+).';
+
+  @override
+  String get snippetDbPgFkWithoutIndex => 'Внешние ключи без индекса';
+
+  @override
+  String get snippetDbPgFkWithoutIndexNote =>
+      'Внешние ключи, колонки которых не стоят в начале ни одного индекса; удаление и изменение родителя сканирует дочернюю таблицу.';
+
+  @override
+  String get snippetDbPgStatements => 'Тяжёлые запросы (pg_stat_statements)';
+
+  @override
+  String get snippetDbPgStatementsNote =>
+      'Нужно расширение pg_stat_statements (shared_preload_libraries и CREATE EXTENSION); без него будет ошибка «relation does not exist». Имена колонок — для PG 13+.';
+
+  @override
+  String get snippetDbPgExplainAnalyze => 'EXPLAIN ANALYZE';
+
+  @override
+  String get snippetDbPgExplainAnalyzeNote =>
+      'Выполняет запрос, чтобы измерить реальный план; изменяющие данные запросы оборачивайте в BEGIN … ROLLBACK.';
+
+  @override
+  String get snippetDbPgCancel => 'Отменить запрос';
+
+  @override
+  String get snippetDbPgCancelNote => 'Отменяет текущий запрос процесса; сессия остаётся подключённой.';
+
+  @override
+  String get snippetDbPgTerminate => 'Завершить сессию';
+
+  @override
+  String get snippetDbPgTerminateNote => 'Отключает процесс и откатывает его открытую транзакцию.';
+
+  @override
+  String get snippetDbMysqlProcesslist => 'Активные запросы';
+
+  @override
+  String get snippetDbMysqlProcesslistNote => 'Подключения не в состоянии Sleep, самые долгие сверху.';
+
+  @override
+  String get snippetDbMysqlLongRunning => 'Долгие запросы';
+
+  @override
+  String get snippetDbMysqlLongRunningNote => 'Запросы, которые выполняются дольше заданного числа секунд.';
+
+  @override
+  String get snippetDbMysqlLockWaits => 'Ожидания блокировок InnoDB';
+
+  @override
+  String get snippetDbMysqlLockWaitsNote =>
+      'Кто кого ждёт и блокирующий запрос. Нужна схема sys (MySQL 5.7+, MariaDB 10.6+).';
+
+  @override
+  String get snippetDbMysqlTransactions => 'Открытые транзакции';
+
+  @override
+  String get snippetDbMysqlTransactionsNote =>
+      'Транзакции InnoDB, самые старые сверху, с числом заблокированных и изменённых строк.';
+
+  @override
+  String get snippetDbMysqlTableSizes => 'Самые большие таблицы';
+
+  @override
+  String get snippetDbMysqlTableSizesNote =>
+      'Данные, индексы и свободное место в МБ; статистика information_schema приблизительная и кэшируется.';
+
+  @override
+  String get snippetDbMysqlDatabaseSizes => 'Размеры баз данных';
+
+  @override
+  String get snippetDbMysqlDatabaseSizesNote => 'Суммарный размер данных и индексов по схемам в МБ.';
+
+  @override
+  String get snippetDbMysqlIndexUsage => 'Использование индексов';
+
+  @override
+  String get snippetDbMysqlIndexUsageNote =>
+      'Чтения и записи по индексам с момента запуска сервера (performance_schema).';
+
+  @override
+  String get snippetDbMysqlUnusedIndexes => 'Неиспользуемые индексы';
+
+  @override
+  String get snippetDbMysqlUnusedIndexesNote =>
+      'Индексы без чтений с момента запуска сервера. Нужна схема sys; перед удалением проверьте реплики.';
+
+  @override
+  String get snippetDbMysqlAutoIncrement => 'AUTO_INCREMENT у предела';
+
+  @override
+  String get snippetDbMysqlAutoIncrementNote => 'Какая доля диапазона типа колонки уже израсходована. Нужна схема sys.';
+
+  @override
+  String get snippetDbMysqlIndexes => 'Индексы таблицы';
+
+  @override
+  String get snippetDbMysqlIndexesNote => 'Колонки индексов по порядку и их кардинальность.';
+
+  @override
+  String get snippetDbMysqlColumns => 'Колонки таблицы';
+
+  @override
+  String get snippetDbMysqlColumnsNote => 'Колонки с типами, ключами, значениями по умолчанию и комментариями.';
+
+  @override
+  String get snippetDbMysqlForeignKeys => 'Внешние ключи таблицы';
+
+  @override
+  String get snippetDbMysqlForeignKeysNote => 'Внешние ключи таблицы и ключи, которые ссылаются на неё.';
+
+  @override
+  String get snippetDbMysqlReplicaStatus => 'Состояние реплики';
+
+  @override
+  String get snippetDbMysqlReplicaStatusNote =>
+      'MySQL 8.0.22+ и MariaDB 10.5.1+; на старых серверах — SHOW SLAVE STATUS.';
+
+  @override
+  String get snippetDbMysqlVariables => 'Переменные сервера';
+
+  @override
+  String get snippetDbMysqlVariablesNote => 'Глобальные переменные по шаблону LIKE.';
+
+  @override
+  String get snippetDbMysqlStatus => 'Основные счётчики';
+
+  @override
+  String get snippetDbMysqlStatusNote =>
+      'Время работы, подключения, медленные запросы, ожидания блокировок строк и чтения buffer pool.';
+
+  @override
+  String get snippetDbMysqlConnections => 'Подключения по пользователям и хостам';
+
+  @override
+  String get snippetDbMysqlConnectionsNote => 'Подключения по пользователю, хосту клиента, схеме и команде.';
+
+  @override
+  String get snippetDbMysqlDigest => 'Тяжёлые запросы (дайджесты)';
+
+  @override
+  String get snippetDbMysqlDigestNote =>
+      'Нормализованные запросы по суммарному времени из performance_schema (в MySQL включена по умолчанию, в MariaDB — выключена).';
+
+  @override
+  String get snippetDbMysqlInnodbStatus => 'Состояние InnoDB';
+
+  @override
+  String get snippetDbMysqlInnodbStatusNote =>
+      'Отчёт движка: последний дедлок, семафоры, buffer pool; нужна привилегия PROCESS.';
+
+  @override
+  String get snippetDbMysqlExplainAnalyze => 'EXPLAIN ANALYZE';
+
+  @override
+  String get snippetDbMysqlExplainAnalyzeNote =>
+      'Выполняет запрос, чтобы измерить реальный план (MySQL 8.0.18+; в MariaDB — ANALYZE SELECT …).';
+
+  @override
+  String get snippetDbMysqlKillQuery => 'Отменить запрос';
+
+  @override
+  String get snippetDbMysqlKillQueryNote => 'Останавливает текущий запрос подключения; само подключение остаётся.';
+
+  @override
+  String get snippetDbClickhouseProcesses => 'Выполняющиеся запросы';
+
+  @override
+  String get snippetDbClickhouseProcessesNote =>
+      'Исходные запросы со временем выполнения, памятью и прочитанными строками.';
+
+  @override
+  String get snippetDbClickhouseLongRunning => 'Долгие запросы';
+
+  @override
+  String get snippetDbClickhouseLongRunningNote => 'Запросы, которые выполняются дольше заданного числа секунд.';
+
+  @override
+  String get snippetDbClickhouseSlowQueries => 'Медленные запросы';
+
+  @override
+  String get snippetDbClickhouseSlowQueriesNote =>
+      'Самые медленные завершённые запросы из system.query_log за последние часы.';
+
+  @override
+  String get snippetDbClickhouseFailedQueries => 'Запросы с ошибками';
+
+  @override
+  String get snippetDbClickhouseFailedQueriesNote => 'Последние запросы, завершившиеся исключением.';
+
+  @override
+  String get snippetDbClickhouseQueryPatterns => 'Самые тяжёлые шаблоны запросов';
+
+  @override
+  String get snippetDbClickhouseQueryPatternsNote =>
+      'Завершённые запросы, сгруппированные по нормализованному тексту, по суммарному времени.';
+
+  @override
+  String get snippetDbClickhouseTableSizes => 'Самые большие таблицы';
+
+  @override
+  String get snippetDbClickhouseTableSizesNote => 'Сжатый и несжатый размер активных кусков и степень сжатия.';
+
+  @override
+  String get snippetDbClickhouseDatabaseSizes => 'Размеры баз данных';
+
+  @override
+  String get snippetDbClickhouseDatabaseSizesNote => 'Место на диске под активные куски по базам.';
+
+  @override
+  String get snippetDbClickhousePartitions => 'Партиции таблицы';
+
+  @override
+  String get snippetDbClickhousePartitionsNote => 'Куски, строки и размер по партициям.';
+
+  @override
+  String get snippetDbClickhousePartsCount => 'Партиции с большим числом кусков';
+
+  @override
+  String get snippetDbClickhousePartsCountNote =>
+      'Слишком много активных кусков замедляет вставки и чтение («Too many parts»).';
+
+  @override
+  String get snippetDbClickhouseColumnSizes => 'Размеры колонок таблицы';
+
+  @override
+  String get snippetDbClickhouseColumnSizesNote => 'Сжатый размер, степень сжатия и кодек по колонкам.';
+
+  @override
+  String get snippetDbClickhouseMerges => 'Текущие слияния';
+
+  @override
+  String get snippetDbClickhouseMergesNote => 'Выполняющиеся слияния и мутации.';
+
+  @override
+  String get snippetDbClickhouseMutations => 'Незавершённые мутации';
+
+  @override
+  String get snippetDbClickhouseMutationsNote => 'Ещё выполняющиеся ALTER … UPDATE/DELETE и причина последней ошибки.';
+
+  @override
+  String get snippetDbClickhouseReplicationQueue => 'Очередь репликации';
+
+  @override
+  String get snippetDbClickhouseReplicationQueueNote =>
+      'Самые старые задачи репликации с повторами и последней ошибкой (таблицы Replicated*).';
+
+  @override
+  String get snippetDbClickhouseReplicas => 'Состояние реплик';
+
+  @override
+  String get snippetDbClickhouseReplicasNote => 'Задержка, очередь и режим только чтения у таблиц Replicated*.';
+
+  @override
+  String get snippetDbClickhouseDisks => 'Диски';
+
+  @override
+  String get snippetDbClickhouseDisksNote => 'Свободное и общее место на настроенных дисках.';
+
+  @override
+  String get snippetDbClickhouseErrors => 'Ошибки сервера';
+
+  @override
+  String get snippetDbClickhouseErrorsNote => 'Счётчики ошибок с момента запуска и последнее сообщение.';
+
+  @override
+  String get snippetDbClickhouseSettingsChanged => 'Изменённые настройки';
+
+  @override
+  String get snippetDbClickhouseSettingsChangedNote => 'Настройки сессии, отличающиеся от значений по умолчанию.';
+
+  @override
+  String get snippetDbClickhouseMetrics => 'Текущие метрики';
+
+  @override
+  String get snippetDbClickhouseMetricsNote => 'Ненулевые текущие показатели: запросы, слияния, подключения, память.';
+
+  @override
+  String get snippetDbClickhouseExplain => 'EXPLAIN с индексами';
+
+  @override
+  String get snippetDbClickhouseExplainNote =>
+      'План с использованными первичным ключом и индексами пропуска; запрос не выполняется.';
+
+  @override
+  String get snippetDbClickhouseKillQuery => 'Отменить запрос';
+
+  @override
+  String get snippetDbClickhouseKillQueryNote => 'Останавливает запрос с указанным query_id.';
+
+  @override
+  String get snippetDbRedisInfo => 'Сведения о сервере';
+
+  @override
+  String get snippetDbRedisInfoNote =>
+      'Один раздел INFO: server, clients, memory, persistence, stats, replication, cpu, keyspace.';
+
+  @override
+  String get snippetDbRedisMemory => 'Память';
+
+  @override
+  String get snippetDbRedisMemoryNote => 'Занятая и пиковая память, фрагментация и политика maxmemory.';
+
+  @override
+  String get snippetDbRedisMemoryDoctor => 'Диагностика памяти';
+
+  @override
+  String get snippetDbRedisMemoryDoctorNote => 'Советы Redis по проблемам с памятью.';
+
+  @override
+  String get snippetDbRedisSlowlog => 'Журнал медленных команд';
+
+  @override
+  String get snippetDbRedisSlowlogNote => 'Последние медленные команды с длительностью в микросекундах.';
+
+  @override
+  String get snippetDbRedisClients => 'Список клиентов';
+
+  @override
+  String get snippetDbRedisClientsNote => 'Подключённые клиенты: адрес, возраст, простой и последняя команда.';
+
+  @override
+  String get snippetDbRedisDbsize => 'Число ключей';
+
+  @override
+  String get snippetDbRedisDbsizeNote => 'Ключи в выбранной базе.';
+
+  @override
+  String get snippetDbRedisKeyspace => 'Пространство ключей';
+
+  @override
+  String get snippetDbRedisKeyspaceNote => 'Число ключей и ключей с TTL по базам.';
+
+  @override
+  String get snippetDbRedisScan => 'Поиск ключей по шаблону';
+
+  @override
+  String get snippetDbRedisScanNote =>
+      'Пошаговый SCAN вместо KEYS; повторяйте с возвращённым курсором, пока он не станет 0.';
+
+  @override
+  String get snippetDbRedisType => 'Тип ключа';
+
+  @override
+  String get snippetDbRedisTypeNote => 'Тип данных, хранящихся в ключе.';
+
+  @override
+  String get snippetDbRedisTtl => 'TTL ключа';
+
+  @override
+  String get snippetDbRedisTtlNote => 'Секунд до истечения; -1 — без срока, -2 — ключа нет.';
+
+  @override
+  String get snippetDbRedisMemoryUsage => 'Память ключа';
+
+  @override
+  String get snippetDbRedisMemoryUsageNote => 'Сколько байт занимают ключ и значение.';
+
+  @override
+  String get snippetDbRedisLatency => 'Диагностика задержек';
+
+  @override
+  String get snippetDbRedisLatencyNote => 'Отчёт о задержках; нужен latency-monitor-threshold > 0.';
+
+  @override
+  String get snippetDbRedisConfig => 'Параметр конфигурации';
+
+  @override
+  String get snippetDbRedisConfigNote => 'Параметры конфигурации по glob-шаблону.';
+
+  @override
+  String get snippetDbRedisReplication => 'Репликация';
+
+  @override
+  String get snippetDbRedisReplicationNote => 'Роль, подключённые реплики и смещения репликации.';
+
+  @override
+  String get snippetDbRedisCommandstats => 'Статистика команд';
+
+  @override
+  String get snippetDbRedisCommandstatsNote => 'Вызовы и время по командам с последнего сброса.';
+
+  @override
+  String get snippetDbMongodbCurrentOps => 'Активные операции';
+
+  @override
+  String get snippetDbMongodbCurrentOpsNote => 'Операции, выполняющиеся сейчас (mongosh).';
+
+  @override
+  String get snippetDbMongodbLongOps => 'Долгие операции';
+
+  @override
+  String get snippetDbMongodbLongOpsNote => 'Операции, которые выполняются дольше заданного числа секунд (mongosh).';
+
+  @override
+  String get snippetDbMongodbConnections => 'Подключения';
+
+  @override
+  String get snippetDbMongodbConnectionsNote => 'Текущие, доступные и всего созданные подключения (mongosh).';
+
+  @override
+  String get snippetDbMongodbOpcounters => 'Счётчики операций';
+
+  @override
+  String get snippetDbMongodbOpcountersNote =>
+      'Вставки, запросы, обновления, удаления и команды с момента запуска (mongosh).';
+
+  @override
+  String get snippetDbMongodbMemory => 'Память';
+
+  @override
+  String get snippetDbMongodbMemoryNote => 'Резидентная и виртуальная память в МБ (mongosh).';
+
+  @override
+  String get snippetDbMongodbDbStats => 'Статистика базы';
+
+  @override
+  String get snippetDbMongodbDbStatsNote => 'Коллекции, документы, размер данных и индексов в МБ.';
+
+  @override
+  String get snippetDbMongodbCollectionStats => 'Статистика коллекции';
+
+  @override
+  String get snippetDbMongodbCollectionStatsNote => 'Документы, место на диске и размер каждого индекса в МБ.';
+
+  @override
+  String get snippetDbMongodbIndexes => 'Индексы коллекции';
+
+  @override
+  String get snippetDbMongodbIndexesNote => 'Ключи и параметры индексов.';
+
+  @override
+  String get snippetDbMongodbIndexStats => 'Использование индексов';
+
+  @override
+  String get snippetDbMongodbIndexStatsNote => 'Число операций по каждому индексу с последнего перезапуска (mongosh).';
+
+  @override
+  String get snippetDbMongodbExplain => 'План запроса со статистикой';
+
+  @override
+  String get snippetDbMongodbExplainNote =>
+      'Выполняет find и показывает план, просмотренные ключи и документы (mongosh).';
+
+  @override
+  String get snippetDbMongodbRsStatus => 'Состояние набора реплик';
+
+  @override
+  String get snippetDbMongodbRsStatusNote => 'Участники набора, их состояние и здоровье (mongosh).';
+
+  @override
+  String get snippetDbMongodbRsLag => 'Отставание репликации';
+
+  @override
+  String get snippetDbMongodbRsLagNote => 'Насколько каждая secondary отстаёт от primary (mongosh, MongoDB 4.4+).';
+
+  @override
+  String get snippetDbMongodbProfilerStatus => 'Уровень профилировщика';
+
+  @override
+  String get snippetDbMongodbProfilerStatusNote => 'Уровень профилировщика и порог slowms текущей базы (mongosh).';
+
+  @override
+  String get snippetDbMongodbSlowOps => 'Медленные операции (профилировщик)';
+
+  @override
+  String get snippetDbMongodbSlowOpsNote =>
+      'Последние операции из профилировщика медленнее порога; включение — db.setProfilingLevel(1).';
+
+  @override
+  String get snippetDbMongodbKillOp => 'Прервать операцию';
+
+  @override
+  String get snippetDbMongodbKillOpNote => 'Останавливает операцию с указанным opid из currentOp (mongosh).';
+
+  @override
+  String snippetStarterDbOrigin(String note, String client, String package) {
+    return '$note Для $client или раздела «Базы данных». Из базового набора «$package».';
+  }
+
+  @override
+  String snippetStarterDbTerminalOrigin(String note, String client, String package) {
+    return '$note Выполняется в $client в терминале; раздел «Базы данных» его не разрешает. Из базового набора «$package».';
+  }
+
+  @override
+  String get snippetClientSessionRequired =>
+      'Сначала запустите клиент базы данных (psql, mysql, clickhouse-client, redis-cli, mongosh) в подключённой вкладке терминала, затем выполните сниппет в ней.';
+
+  @override
+  String get dbSnippetPickerTitle => 'Вставить сниппет';
+
+  @override
+  String dbSnippetPickerSearch(String engine) {
+    return 'Поиск сниппетов $engine';
+  }
+
+  @override
+  String dbSnippetPickerEmpty(String engine) {
+    return 'Сниппетов для $engine пока нет. Добавьте их в разделе «Сниппеты» → «Базовые наборы» или сохраните запрос из истории.';
+  }
+
+  @override
+  String get sharingLeave => 'Выйти из общего доступа';
+
+  @override
+  String get sharingLeaveHelp =>
+      'Элемент перестанет приходить на все ваши устройства и исчезнет из списка. Сохранённые личные копии останутся. Владелец увидит, что вы вышли.';
+
+  @override
+  String get sharingLeft => 'Вы вышли из общего доступа';
+
+  @override
+  String get sharingStopRestoreHelp =>
+      'Получатели сразу потеряют доступ. В течение 30 дней элемент можно восстановить в разделе «Недавно удалённые».';
+
+  @override
+  String sharingMembersLeft(int count) {
+    return 'Вышли из общего доступа: $count';
+  }
+
+  @override
+  String get sharingRecentlyDeleted => 'Недавно удалённые';
+
+  @override
+  String get sharingRecentlyDeletedHelp =>
+      'Удалённые общие элементы можно восстановить в течение 30 дней. Восстановленный элемент снова передаётся тем же людям, кроме вышедших; они принимают его заново.';
+
+  @override
+  String get sharingRecentlyDeletedEmpty => 'Нет недавно удалённых элементов';
+
+  @override
+  String get sharingRestore => 'Восстановить';
+
+  @override
+  String get sharingRestored => 'Элемент восстановлен и снова передан';
+
+  @override
+  String sharingRestoreUntil(String date, int count) {
+    return 'Можно восстановить до $date · получателей: $count';
   }
 }

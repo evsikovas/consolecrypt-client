@@ -191,7 +191,15 @@ void main() {
     for (var b = 0; b < 3; b++) {
       expect(find.byKey(ValueKey('db-code-block-$b')), findsOneWidget);
     }
-    // Long lines scroll instead of wrapping; every line is numbered.
+    // Lines wrap by default; every source line is numbered once.
+    expect(find.byKey(const ValueKey('db-code-horizontal')), findsNothing);
+    for (var n = 1; n <= 6; n++) {
+      expect(find.text('$n'), findsOneWidget);
+    }
+    // The switch turns wrapping off: the code scrolls sideways.
+    await tester.tap(find.byKey(const ValueKey('db-code-wrap')));
+    await settle(tester);
+    expect(backend.services.settings.currentLocal.dbCodeWrap, isFalse, reason: 'remembered locally');
     expect(find.byKey(const ValueKey('db-code-horizontal')), findsOneWidget);
     final block = tester.widget<Text>(find.byKey(const ValueKey('db-code-block-0')));
     expect(block.softWrap, isFalse);
@@ -211,6 +219,65 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('db-ddl-open')));
     await settle(tester);
     expect(opened, isTrue);
+  });
+
+  testWidgets('DDL dialog fits a narrow window: long lines wrap, or scroll sideways when wrapping is off', (
+    tester,
+  ) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    tester.view.physicalSize = const Size(420, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final value = SecretText(
+      'CREATE TABLE public.team (\n    id bigint NOT NULL,\n'
+      '    created_at timestamp(6) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,\n    note text\n);\n'
+      'CREATE UNIQUE INDEX team_access_code_key ON public.team USING btree (access_code) WHERE (deleted_at IS NULL);',
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appServicesProvider.overrideWithValue(backend.services),
+          dbScopeProvider.overrideWithValue(const DbScope('profile', true)),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showDialog<bool>(
+                  context: context,
+                  builder: (_) => DbDdlDialog(title: 'team', value: value, engine: DbEngine.postgresql),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await settle(tester);
+    expect(tester.takeException(), isNull, reason: 'no overflow');
+    // The end of the long column line is on screen, on a continuation line.
+    final tail = find.textContaining('CURRENT_TIMESTAMP NOT NULL', findRichText: true);
+    expect(tail, findsWidgets);
+    expect(tester.getRect(tail.last).right, lessThanOrEqualTo(420));
+    // The code area is as tall as the code: no empty space below it.
+    final code = find.byKey(const ValueKey('db-code-vertical'));
+    final position = Scrollable.of(tester.element(find.descendant(of: code, matching: find.byType(Column)).first))
+        .position;
+    expect(position.maxScrollExtent, 0);
+    expect(tester.getSize(code).height, lessThan(800 * .85));
+    final content = find.descendant(of: code, matching: find.byType(Stack)).first;
+    expect(tester.getSize(code).height, closeTo(tester.getSize(content).height, 1));
+
+    await tester.tap(find.byKey(const ValueKey('db-code-wrap')));
+    await settle(tester);
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('db-code-horizontal')), findsOneWidget);
+    expect(find.byType(Scrollbar), findsWidgets, reason: 'a visible horizontal scrollbar');
   });
 
   group('selection', () {

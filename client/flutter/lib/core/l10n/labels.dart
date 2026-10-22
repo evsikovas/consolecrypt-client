@@ -206,3 +206,11 @@ extension PassphraseStrengthL10n on PassphraseStrength {
     PassphraseHint.addMore => l.strengthHintAddMore,
   };
 }
+
+/// A clipboard auto-clear choice (seconds) as "after 5 minutes" etc.
+String clipboardClearLabel(AppLocalizations l, int seconds) => switch (seconds) {
+  >= 86400 when seconds % 86400 == 0 => l.settingsClearClipboardDays(seconds ~/ 86400),
+  >= 3600 when seconds % 3600 == 0 => l.settingsClearClipboardHours(seconds ~/ 3600),
+  >= 60 when seconds % 60 == 0 => l.settingsClearClipboardMinutes(seconds ~/ 60),
+  _ => l.settingsClearClipboardSeconds(seconds),
+};

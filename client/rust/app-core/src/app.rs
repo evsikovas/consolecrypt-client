@@ -867,7 +867,8 @@ impl AppCore {
             .ok_or_else(|| AppError::Storage("no password envelope stored".into()))?;
         let pass = Arc::new(secret(passphrase));
         let p = pass.clone();
-        let first = blocking(move || Ok(unlock_with_passphrase(vault_id, &env, &p)?)).await;
+        let opened = env.clone();
+        let first = blocking(move || Ok(unlock_with_passphrase(vault_id, &opened, &p)?)).await;
         let (vault, fresh_env) = match first {
             Ok(v) => (v, None),
             Err(AppError::WrongPassphrase) if s.api_opt().is_some() => {
@@ -878,7 +879,8 @@ impl AppCore {
                 match fresh {
                     Some(env) if Some(&env) != cached.as_ref() => {
                         let e2 = env.clone();
-                        let v = blocking(move || Ok(unlock_with_passphrase(vault_id, &e2, &pass)?))
+                        let p = pass.clone();
+                        let v = blocking(move || Ok(unlock_with_passphrase(vault_id, &e2, &p)?))
                             .await?;
                         (v, Some(env))
                     }
@@ -892,7 +894,10 @@ impl AppCore {
             s.cache_envelopes(vault_id, Some(env.clone()), None, None)
                 .await?;
         }
-        self.finish_unlock(&s, vault).await
+        self.finish_unlock(&s, vault).await?;
+        self.rewrap_password_envelope(&s, fresh_env.unwrap_or(env), &pass)
+            .await;
+        Ok(())
     }
 
     /// Unlock with the Recovery Key against the stored recovery envelope.

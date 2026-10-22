@@ -203,13 +203,9 @@ impl DbGuard {
 
     /// Opens a production write window for `duration` (one of
     /// [`PRODUCTION_WRITE_MINUTES`]). Call only after the vault passphrase
-    /// checked out; `typed_connection_name` is what the user typed. Mobile
-    /// sessions and non-production sessions never get one.
-    pub fn open_production_write(
-        &self,
-        typed_connection_name: &str,
-        duration: Duration,
-    ) -> Result<Instant, DbError> {
+    /// checked out. Mobile sessions and non-production sessions never get
+    /// one.
+    pub fn open_production_write(&self, duration: Duration) -> Result<Instant, DbError> {
         self.live()?;
         if !self.policy.production
             || self.policy.mobile
@@ -218,9 +214,6 @@ impl DbGuard {
                 .any(|minutes| Duration::from_secs(minutes * 60) == duration)
         {
             return Err(DbError::PolicyDenied);
-        }
-        if typed_connection_name != self.policy.connection_name {
-            return Err(DbError::InvalidRequest);
         }
         let mut state = self.state.lock().map_err(|_| DbError::SessionClosed)?;
         self.live()?;
@@ -472,7 +465,7 @@ mod tests {
     fn an_expired_production_window_relocks_and_voids_its_permits() {
         let guard = production();
         guard
-            .open_production_write("orders-prod", Duration::from_secs(300))
+            .open_production_write(Duration::from_secs(300))
             .unwrap();
         let review = guard.review(&request("DELETE FROM items")).unwrap();
         let permits = guard
@@ -507,7 +500,7 @@ mod tests {
     fn remaining_time_counts_down_from_the_chosen_length() {
         let guard = production();
         let until = guard
-            .open_production_write("orders-prod", Duration::from_secs(15 * 60))
+            .open_production_write(Duration::from_secs(15 * 60))
             .unwrap();
         let remaining = guard.production_write_remaining().unwrap();
         assert!(remaining <= Duration::from_secs(15 * 60));

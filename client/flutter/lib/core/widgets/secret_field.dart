@@ -1,6 +1,7 @@
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/keyboard_layout.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -20,6 +21,7 @@ class SecretField extends StatefulWidget {
     super.key,
     this.hint,
     this.helper,
+    this.errorText,
     this.validator,
     this.onSubmitted,
     this.onChanged,
@@ -35,6 +37,9 @@ class SecretField extends StatefulWidget {
   final String label;
   final String? hint;
   final String? helper;
+
+  /// Error shown under the field (e.g. a wrong passphrase).
+  final String? errorText;
   final FormFieldValidator<String>? validator;
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
@@ -127,37 +132,41 @@ class _SecretFieldState extends State<SecretField> {
           text: typedScriptHint(l10n, _script!),
         ),
     ];
-    return TextFormField(
-      controller: widget.controller,
-      focusNode: _focus,
-      obscureText: !_revealed,
-      autocorrect: false,
-      enableSuggestions: false,
-      enableIMEPersonalizedLearning: false,
-      keyboardType: TextInputType.visiblePassword,
-      autofocus: widget.autofocus,
-      enabled: widget.enabled,
-      validator: widget.validator,
-      onChanged: widget.onChanged,
-      onFieldSubmitted: widget.onSubmitted,
-      textInputAction: widget.textInputAction,
-      autofillHints: widget.autofillHints,
-      inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
-      style: tokens.typography.mono.copyWith(color: tokens.palette.label),
-      decoration: InputDecoration(
-        labelText: widget.label,
-        hintText: widget.hint,
-        helperText: notes.isEmpty ? widget.helper : null,
-        helper: notes.isEmpty
-            ? null
-            : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: notes),
-        suffixIcon: widget.allowReveal
-            ? IconButton(
-                tooltip: _revealed ? context.l10n.commonHide : context.l10n.commonShow,
-                icon: Icon(_revealed ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 18),
-                onPressed: () => setState(() => _revealed = !_revealed),
-              )
-            : null,
+    return RevealedSecret(
+      visible: _revealed,
+      child: TextFormField(
+        controller: widget.controller,
+        focusNode: _focus,
+        obscureText: !_revealed,
+        autocorrect: false,
+        enableSuggestions: false,
+        enableIMEPersonalizedLearning: false,
+        keyboardType: TextInputType.visiblePassword,
+        autofocus: widget.autofocus,
+        enabled: widget.enabled,
+        validator: widget.validator,
+        onChanged: widget.onChanged,
+        onFieldSubmitted: widget.onSubmitted,
+        textInputAction: widget.textInputAction,
+        autofillHints: widget.autofillHints,
+        inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
+        style: tokens.typography.mono.copyWith(color: tokens.palette.label),
+        decoration: InputDecoration(
+          labelText: widget.label,
+          hintText: widget.hint,
+          errorText: widget.errorText,
+          helperText: notes.isEmpty ? widget.helper : null,
+          helper: notes.isEmpty
+              ? null
+              : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: notes),
+          suffixIcon: widget.allowReveal
+              ? IconButton(
+                  tooltip: _revealed ? context.l10n.commonHide : context.l10n.commonShow,
+                  icon: Icon(_revealed ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 18),
+                  onPressed: () => setState(() => _revealed = !_revealed),
+                )
+              : null,
+        ),
       ),
     );
   }

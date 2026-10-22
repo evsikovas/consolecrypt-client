@@ -14,6 +14,7 @@ import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/core/models/sftp_browser.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/models/terminal_colors.dart';
+import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/src/rust/api/error.dart';
 
@@ -746,6 +747,8 @@ Json localSettingsToJson(LocalSettings s) => {
   'workspace_panel_style': s.workspacePanelStyle.name,
   'databases_view': s.databasesView.name,
   'docker_terminal_hint_shown': s.dockerTerminalHintShown,
+  'db_code_wrap': s.dbCodeWrap,
+  'screen_capture_protection': s.screenCaptureProtection.wireName,
   'sftp_default_editor': s.sftpDefaultEditor == null
       ? null
       : {'kind': s.sftpDefaultEditor!.kind.wireName, 'value': s.sftpDefaultEditor!.value},
@@ -798,7 +801,7 @@ LocalSettings localSettingsFromJson(Json j) {
           if (entry.value case final String value when value.length <= 64) entry.key: value,
     },
     terminalScrollback: _int(j['terminal_scrollback']) ?? d.terminalScrollback,
-    clipboardClearSeconds: _int(j['clipboard_clear_seconds']) ?? d.clipboardClearSeconds,
+    clipboardClearSeconds: clipboardClearSeconds(_int(j['clipboard_clear_seconds']) ?? d.clipboardClearSeconds),
     autoLockMinutes: _int(j['auto_lock_minutes']) ?? d.autoLockMinutes,
     appLocale: AppLocale.fromWire(_str(j['app_locale'])),
     glassMode: GlassMode.fromWire(_str(j['glass_mode'])),
@@ -811,6 +814,13 @@ LocalSettings localSettingsFromJson(Json j) {
     ),
     databasesView: _byWire(CollectionView.values, (view) => view.name, j['databases_view'], d.databasesView),
     dockerTerminalHintShown: j['docker_terminal_hint_shown'] == true,
+    dbCodeWrap: j['db_code_wrap'] != false,
+    screenCaptureProtection: _byWire(
+      ScreenCaptureProtection.values,
+      (e) => e.wireName,
+      j['screen_capture_protection'],
+      d.screenCaptureProtection,
+    ),
   );
 }
 

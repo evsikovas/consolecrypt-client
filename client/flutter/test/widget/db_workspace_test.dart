@@ -1,14 +1,19 @@
 import 'dart:async';
 
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
 import 'package:consolecrypt/db/db_models.dart';
+import 'package:consolecrypt/db/db_object_details.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/db/db_workspace.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,7 +48,7 @@ DbSessionInfo _session({bool production = true, bool readOnly = true}) => DbSess
   transportSecurity: DbTransportSecurity.unverified,
 );
 
-class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiService {
+class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiService, DbObjectInspectService {
   _Service({this.production = true, this.readOnly = true});
   final bool production;
   bool readOnly;
@@ -151,6 +156,32 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiS
     DbQueryEvent(kind: DbQueryEventKind.done),
   ]);
   @override
+  Future<DbJson> inspectObject(String sessionId, DbObjectRef object, {int? sampleDocuments}) async {
+    if (object.name != 'items') throw const DbWrongPassphrase();
+    return {
+      'sections': [
+        {
+          'id': 'general',
+          'fields': [
+            {'id': 'kind', 'value': 'table', 'kind': 'keyword'},
+            {'id': 'owner', 'value': 'app', 'kind': 'code'},
+          ],
+        },
+        {
+          'id': 'size',
+          'fields': [
+            {'id': 'rows', 'value': '1234', 'kind': 'estimate'},
+            {'id': 'total_size', 'value': '81920', 'kind': 'bytes'},
+          ],
+        },
+      ],
+    };
+  }
+
+  @override
+  Future<String> objectQuery(String sessionId, DbObjectRef object, {int limit = 100}) async =>
+      'SELECT * FROM "public"."${object.name}" LIMIT $limit;';
+  @override
   Future<void> cancelQuery(String sessionId, String queryId) async => cancelled.add(queryId);
   @override
   Future<void> releaseQuery(String sessionId, String queryId) async {}
@@ -193,7 +224,7 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiS
 class _ProdService extends _Service implements DbProductionWriteService, DbCellEditService {
   _ProdService() : super(production: true, readOnly: true);
   DateTime? until;
-  final unlocks = <(String, int)>[], locks = <String>[], commits = <String>[];
+  final unlocks = <int>[], locks = <String>[], commits = <String>[];
   List<DbCellEdit> reviewed = const [];
   bool roleCanWrite = false;
 
@@ -216,12 +247,11 @@ class _ProdService extends _Service implements DbProductionWriteService, DbCellE
   @override
   Future<DbSessionInfo> unlockProduction(
     String sessionId, {
-    required String typedConnectionName,
     required SecretText passphrase,
     required int minutes,
   }) async {
     if (passphrase.expose() != 'vault-pass') throw const DbWrongPassphrase();
-    unlocks.add((typedConnectionName, minutes));
+    unlocks.add(minutes);
     until = DateTime.now().add(Duration(minutes: minutes));
     return _live();
   }
@@ -260,9 +290,14 @@ class _ProdService extends _Service implements DbProductionWriteService, DbCellE
   @override
   Future<DbCellEditReview> reviewCellEdits(String sessionId, DbObjectRef table, List<DbCellEdit> edits) async {
     reviewed = edits;
+    // The core writes the values out as literals for the review.
+    final edit = edits.single;
     return DbCellEditReview(
       ticket: 'edits',
-      sql: SecretText('UPDATE "public"."items" SET "name" = {{p0}} WHERE "id" = {{p1}};'),
+      sql: SecretText(
+        'UPDATE "public"."items" SET "${edit.column}" = \'${edit.value.text}\' '
+        'WHERE "id" = ${edit.originalPrimaryKey['id']!.text};',
+      ),
       expiresAt: DateTime.now().add(const Duration(minutes: 5)),
       rows: edits.length,
     );
@@ -283,6 +318,8 @@ Future<ProviderContainer> _pump(
 }) async {
   final backend = testBackend();
   addTearDown(backend.dispose);
+  // Changing statements are confirmed with the vault passphrase.
+  await backend.debugSignInDemoAndUnlock();
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -392,6 +429,144 @@ void main() {
     expect(find.text('orders_view'), findsNothing);
   });
 
+  group('data preview tab', () {
+    Finder tabs() => find.byWidgetPredicate(
+      (w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('db-query-tab-'),
+    );
+    String editorText(WidgetTester tester) =>
+        tester.widget<TextField>(find.byKey(const ValueKey('db-query-editor'))).controller!.text;
+    Future<void> doubleClick(WidgetTester tester, DbObjectRef object) async {
+      final row = find.byKey(ValueKey('db-object-${object.id}'));
+      await tester.tap(row);
+      await tester.pump(const Duration(milliseconds: 60));
+      await tester.tap(row);
+      // Releasing the previous query's stream finishes a few frames later.
+      for (var i = 0; i < 5; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      await settle(tester);
+    }
+
+    const items = DbObjectRef(database: 'fixture', kind: DbObjectKind.table, name: 'items');
+    const view = DbObjectRef(database: 'fixture', kind: DbObjectKind.view, name: 'orders_view');
+
+    testWidgets('double clicks reuse one tab and show the rows at once', (tester) async {
+      final service = _Service()..mixedTree = true;
+      await _pump(tester, service);
+      await tester.tap(find.text('Views'));
+      await settle(tester);
+      expect(tabs(), findsOneWidget);
+
+      await doubleClick(tester, items);
+      expect(tabs(), findsNWidgets(2));
+      expect(find.text('items — data'), findsOneWidget);
+      expect(editorText(tester), 'SELECT * FROM "public"."items" LIMIT 100;');
+      expect(service.executed.single.text, 'SELECT * FROM "public"."items" LIMIT 100;');
+      expect(find.text('42'), findsOneWidget, reason: 'the rows are shown without pressing Run');
+
+      await doubleClick(tester, view);
+      expect(tabs(), findsNWidgets(2), reason: 'the preview tab is replaced, not added');
+      expect(find.text('items — data'), findsNothing);
+      expect(find.text('orders_view — data'), findsOneWidget);
+      expect(service.executed.map((r) => r.text), [
+        'SELECT * FROM "public"."items" LIMIT 100;',
+        'SELECT * FROM "public"."orders_view" LIMIT 100;',
+      ]);
+
+      // Editing the preview turns it into an ordinary tab; the next preview
+      // gets a tab of its own and the typed text stays.
+      await _type(tester, 'SELECT count(*) FROM orders_view');
+      expect(find.text('orders_view — data'), findsNothing);
+      await doubleClick(tester, items);
+      expect(tabs(), findsNWidgets(3));
+      expect(find.text('items — data'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('db-query-tab-2')));
+      await settle(tester);
+      expect(editorText(tester), 'SELECT count(*) FROM orders_view');
+    });
+
+    testWidgets('generated SQL goes below the current text without running', (tester) async {
+      final service = _Service()..mixedTree = true;
+      await _pump(tester, service);
+      await _type(tester, 'SELECT 1');
+      // Showing a table first: the draft returns to the editor tab.
+      await doubleClick(tester, items);
+      expect(service.executed, hasLength(1));
+      await tester.tap(find.byTooltip('AI assistant').first);
+      await settle(tester);
+      await tester.enterText(find.byKey(const ValueKey('db-ai-question')), 'Count rows');
+      await tester.tap(find.text('AI assistant').last);
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('db-ai-consent-submit')));
+      await settle(tester);
+      await tester.ensureVisible(find.byKey(const ValueKey('db-ai-accept')));
+      await tester.tap(find.byKey(const ValueKey('db-ai-accept')));
+      await settle(tester);
+      expect(tabs(), findsNWidgets(2), reason: 'no new tab for generated text');
+      expect(editorText(tester), 'SELECT 1;\n\nSELECT 42');
+      final selection = tester.widget<TextField>(find.byKey(const ValueKey('db-query-editor'))).controller!.selection;
+      expect(selection.baseOffset, 'SELECT 1;\n\n'.length, reason: 'the caret is at the inserted text');
+      expect(service.executed, hasLength(1), reason: 'generated text never runs');
+    });
+  });
+
+  group('object details', () {
+    Future<void> menu(WidgetTester tester, String name) async {
+      await tester.tap(find.text(name), buttons: kSecondaryButton);
+      await settle(tester);
+      await tester.tap(find.text('Object details'));
+      await settle(tester);
+    }
+
+    testWidgets('show grouped, formatted facts with a copy button', (tester) async {
+      final service = _Service()..mixedTree = true;
+      await _pump(tester, service);
+      await menu(tester, 'items');
+      expect(find.byKey(const ValueKey('db-details-dialog')), findsOneWidget);
+      expect(find.text('General'), findsOneWidget);
+      expect(find.text('Size'), findsOneWidget);
+      expect(find.text('Table'), findsOneWidget, reason: 'the relation kind is translated');
+      expect(find.text('≈ 1,234'), findsOneWidget, reason: 'estimates are marked');
+      expect(find.text('80.0 KiB'), findsOneWidget, reason: 'sizes are human-readable');
+      expect(find.byKey(const ValueKey('db-details-copy')), findsOneWidget);
+      expect(find.textContaining('"sections"'), findsNothing, reason: 'no raw JSON');
+    });
+
+    testWidgets('a failure is a glass toast, never a Material snackbar', (tester) async {
+      final service = _Service()..mixedTree = true;
+      await _pump(tester, service);
+      await tester.tap(find.text('Views'));
+      await settle(tester);
+      await menu(tester, 'orders_view');
+      expect(find.byKey(const ValueKey('db-details-dialog')), findsNothing);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.textContaining('The database operation failed'), findsOneWidget, reason: 'shown by the glass toast');
+      expect(find.byWidgetPredicate((w) => '${w.runtimeType}' == '_GlassToastView'), findsOneWidget);
+    });
+
+    testWidgets('a raw MongoDB description is shown as an expandable JSON block', (tester) async {
+      await _pump(tester, _Service());
+      unawaited(
+        showAppDialog<void>(
+          tester.element(find.byType(DbWorkspace)),
+          secure: true,
+          builder: (_) => DbObjectDetailsDialog(
+            title: 'orders',
+            document: SecretText('{"database": "shop", "indexes": [{"name": "_id_"}]}'),
+          ),
+        ),
+      );
+      await settle(tester);
+      final json = find.byKey(const ValueKey('db-details-json'));
+      expect(json, findsOneWidget);
+      expect(find.descendant(of: json, matching: find.textContaining('"database": "shop"')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('db-details-json-toggle')));
+      await settle(tester);
+      expect(json, findsNothing);
+    });
+  });
+
   testWidgets('production blocks write review even if a backend mistakenly offers a ticket', (tester) async {
     final service = _Service()..risk = DbQueryRisk.write;
     await _pump(tester, service);
@@ -400,22 +575,37 @@ void main() {
     await settle(tester);
     expect(service.executed, isEmpty);
     expect(service.discarded, ['review']);
-    expect(find.byKey(const ValueKey('db-query-confirmation')), findsNothing);
+    expect(find.byKey(const ValueKey('db-query-review')), findsNothing);
   });
-  testWidgets('non-production changing query requires exact connection name', (tester) async {
+  testWidgets('non-production changing query requires the vault passphrase, not a typed name', (tester) async {
     final service = _Service(production: false, readOnly: false)..risk = DbQueryRisk.dangerous;
     await _pump(tester, service);
     await _type(tester, 'DROP TABLE items');
     await tester.tap(find.byKey(const ValueKey('db-run')));
     await settle(tester);
     expect(service.executed, isEmpty);
-    await tester.enterText(find.byKey(const ValueKey('db-query-confirmation')), 'wrong');
+    expect(find.byKey(const ValueKey('db-query-review')), findsOneWidget);
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('db-query-review-sql')), matching: find.text('DROP TABLE items')),
+      findsOneWidget,
+      reason: 'the query is shown as a code block',
+    );
+    final field = find.byKey(const ValueKey('vault-passphrase-confirm'));
+    final run = find.byKey(const ValueKey('vault-passphrase-confirm-action'));
+    expect(tester.widget<GlassButton>(run).onPressed, isNull);
+    // The connection name is no longer a confirmation.
+    await tester.enterText(field, 'fixture-db');
     await tester.pump();
-    expect(service.executed, isEmpty);
-    await tester.enterText(find.byKey(const ValueKey('db-query-confirmation')), 'fixture-db');
-    await tester.pump();
-    await tester.tap(find.text('Run').last);
+    await tester.tap(run);
     await settle(tester);
+    expect(service.executed, isEmpty);
+    expect(find.text('Wrong vault passphrase.'), findsOneWidget);
+    expect(tester.widget<TextField>(find.descendant(of: field, matching: find.byType(TextField))).controller!.text, '');
+    // The right passphrase approves with Enter.
+    await tester.enterText(field, MockCloud.demoPassphrase);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-query-review')), findsNothing);
     expect(service.executed, hasLength(1));
   });
   testWidgets('late review and metadata after lock are discarded without executing', (tester) async {
@@ -482,7 +672,7 @@ void main() {
     expect(service.executed, isEmpty);
     expect(tester.widget<TextField>(find.byKey(const ValueKey('db-query-editor'))).controller!.text, 'SELECT 42');
   });
-  testWidgets('production unlock needs the passphrase and the name, then writes go through review', (tester) async {
+  testWidgets('production unlock needs only the passphrase, then writes go through review', (tester) async {
     final service = _ProdService()..risk = DbQueryRisk.write;
     await _pump(tester, service);
     // Locked: changing statements are blocked before any review dialog.
@@ -490,19 +680,14 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('db-run')));
     await settle(tester);
     expect(service.executed, isEmpty);
-    expect(find.byKey(const ValueKey('db-query-confirmation')), findsNothing);
+    expect(find.byKey(const ValueKey('db-query-review')), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('db-prod-unlock')));
     await settle(tester);
     expect(find.byKey(const ValueKey('db-prod-unlock-dialog')), findsOneWidget);
+    expect(find.byKey(const ValueKey('db-prod-name')), findsNothing, reason: 'no typed connection name');
     final submit = find.byKey(const ValueKey('db-prod-unlock-submit'));
     await tester.enterText(find.byKey(const ValueKey('db-prod-passphrase')).first, 'wrong-pass');
-    await tester.enterText(find.byKey(const ValueKey('db-prod-name')), 'fixture');
-    await tester.pump();
-    await tester.tap(submit);
-    await settle(tester);
-    expect(service.unlocks, isEmpty, reason: 'the name must match exactly');
-    await tester.enterText(find.byKey(const ValueKey('db-prod-name')), 'fixture-db');
     await tester.pump();
     await tester.tap(submit);
     await settle(tester);
@@ -513,7 +698,7 @@ void main() {
     await tester.pump();
     await tester.tap(submit);
     await settle(tester);
-    expect(service.unlocks, [('fixture-db', 5)]);
+    expect(service.unlocks, [5]);
     expect(find.byKey(const ValueKey('db-prod-unlock-dialog')), findsNothing);
     expect(find.byKey(const ValueKey('db-prod-write-badge')), findsOneWidget);
     expect(find.textContaining('Production writes until'), findsWidgets);
@@ -521,13 +706,13 @@ void main() {
     // The role cannot write: the privilege check says so.
     expect(find.byKey(const ValueKey('db-prod-role-read-only')), findsOneWidget);
 
-    // A change still needs the review with the connection name typed.
+    // A change still needs the review with the vault passphrase.
     await tester.tap(find.byKey(const ValueKey('db-run')));
     await settle(tester);
-    expect(find.byKey(const ValueKey('db-query-confirmation')), findsOneWidget);
-    await tester.enterText(find.byKey(const ValueKey('db-query-confirmation')), 'fixture-db');
+    expect(find.byKey(const ValueKey('db-query-review')), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), MockCloud.demoPassphrase);
     await tester.pump();
-    await tester.tap(find.text('Run').last);
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.executed, hasLength(1));
 
@@ -560,7 +745,6 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('db-prod-unlock')));
     await settle(tester);
     await tester.enterText(find.byKey(const ValueKey('db-prod-passphrase')).first, 'vault-pass');
-    await tester.enterText(find.byKey(const ValueKey('db-prod-name')), 'fixture-db');
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('db-prod-unlock-submit')));
     await settle(tester);
@@ -583,9 +767,24 @@ void main() {
     expect(service.reviewed.single.value.text, 'bravo');
     expect(service.reviewed.single.originalPrimaryKey['id']!.text, '2');
     expect(service.commits, isEmpty);
-    await tester.enterText(find.byKey(const ValueKey('db-query-confirmation')), 'fixture-db');
+    // The review shows the values, not placeholders.
+    final sql = find.byKey(const ValueKey('db-query-review-sql'));
+    for (final part in ['"name" = \'bravo\'', '"id" = 2;']) {
+      expect(
+        find.descendant(of: sql, matching: find.textContaining(part)),
+        findsOneWidget,
+        reason: part,
+      );
+    }
+    expect(find.descendant(of: sql, matching: find.textContaining('{{p')), findsNothing);
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), 'wrong');
     await tester.pump();
-    await tester.tap(find.text('Run').last);
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
+    await settle(tester);
+    expect(service.commits, isEmpty);
+    await tester.enterText(find.byKey(const ValueKey('vault-passphrase-confirm')), MockCloud.demoPassphrase);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.commits, ['edits']);
     expect(find.byKey(const ValueKey('db-apply-edits')), findsNothing);
