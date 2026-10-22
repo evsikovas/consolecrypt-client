@@ -316,6 +316,23 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('sharing workspace reports entries the core could not read', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final sharing = _Sharing()..items = SharingItemList([], unreadable: 2);
+    await _pump(tester, backend, sharing);
+    await _openSharing(tester);
+    expect(find.byKey(const ValueKey('sharing-unreadable')), findsOneWidget);
+    expect(find.text('2 shared entries could not be read and are hidden.'), findsOneWidget);
+    expect(find.text('Nothing has been shared with you yet'), findsOneWidget);
+    sharing.items = [];
+    expect(sharingUnreadable(sharing.items), 0);
+    expect(SharingItemList.fromJson({'items': <Object>[], 'unreadable': 3}).unreadable, 3);
+    expect(SharingItemList.fromJson(<Object>[]).unreadable, 0);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('sharing workspace groups continuation tools without bypassing device approval', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);

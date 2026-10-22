@@ -10023,4 +10023,17 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return 'Через $_temp0 после копирования секрета';
   }
+
+  @override
+  String sharingUnreadableEntries(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count записи не удалось прочитать, они скрыты.',
+      many: '$count записей не удалось прочитать, они скрыты.',
+      few: '$count записи не удалось прочитать, они скрыты.',
+      one: '$count запись не удалось прочитать, она скрыта.',
+    );
+    return '$_temp0';
+  }
 }

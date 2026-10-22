@@ -16,7 +16,7 @@ pub async fn sharing_discover(email: String) -> Result<String, BridgeError> {
     with_core(|c| async move { to_json(&c.sharing_discover(email).await?) }).await
 }
 pub async fn sharing_list(refresh: bool) -> Result<String, BridgeError> {
-    with_core(move |c| async move { to_json(&c.sharing_list(refresh).await?) }).await
+    with_core(move |c| async move { to_json(&c.sharing_list_report(refresh).await?) }).await
 }
 pub async fn sharing_inspect(id: String) -> Result<String, BridgeError> {
     with_core(|c| async move { to_json(&c.sharing_inspect(id).await?) }).await

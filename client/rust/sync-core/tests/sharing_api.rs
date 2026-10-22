@@ -572,6 +572,45 @@ async fn history_gaps_and_invalid_pagination_are_not_silently_accepted() {
 }
 
 #[tokio::test]
+async fn unreadable_list_entries_are_skipped_and_counted() {
+    let f = Fixture::new(false).await;
+    let api = f.api.sharing(f.mock.server_instance).await.unwrap();
+    let current = f.mock.current.lock().unwrap().clone();
+    // Decodes, but its header and manifest disagree.
+    let mut inconsistent = current.clone();
+    inconsistent.access.manifest.share_id = ShareId::new();
+    inconsistent.revision.signed.mutation.context.item_id = ObjectId::new();
+    f.override_response(
+        "/v1/shares",
+        json!({
+            "items": [
+                {"access": "not a shared item"},
+                serde_json::to_value(&current).unwrap(),
+                serde_json::to_value(&inconsistent).unwrap(),
+            ],
+            "next_after": null,
+            "has_more": false,
+        }),
+    );
+    let (page, skipped) = api
+        .list_shares_checked(None, 100, ShareKinds::default())
+        .await
+        .unwrap();
+    assert_eq!(skipped, 2);
+    assert_eq!(page.items, vec![current.clone()]);
+    assert_eq!(
+        api.list_shares(None, 100).await.unwrap().items,
+        vec![current]
+    );
+    // Malformed pages (not entries) still fail as a whole.
+    f.override_response("/v1/shares", json!({"items": "nope", "has_more": false}));
+    assert!(matches!(
+        api.list_shares(None, 100).await,
+        Err(ApiError::InvalidResponse { .. })
+    ));
+}
+
+#[tokio::test]
 async fn secret_publication_and_mismatched_write_reply_are_rejected() {
     let f = Fixture::new(false).await;
     let api = f.api.sharing(f.mock.server_instance).await.unwrap();

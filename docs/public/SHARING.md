@@ -116,6 +116,10 @@
 обнаруживает откат ниже уже наблюдавшегося состояния, но не обещает мгновенную
 глобальную свежесть при недоступном или недобросовестном сервере.
 
+Если сервер вернул повреждённую запись или запись не прошла проверку подписей
+и шифрования, она скрывается, а остальной список работает; над списком
+появляется «N записей не удалось прочитать».
+
 ## English
 
 In **0.2.2 and later**, **Available to me** lists received items and
@@ -163,3 +167,7 @@ data already read or copied, or rotate credentials on the destination SSH server
 Queued conflicts and restored older local databases fail closed until explicitly
 reviewed. Keep your encrypted backups and recovery kit, and do not reset OS
 secure-storage keys to bypass a verification error.
+
+A shared entry that arrives malformed or fails signature or encryption checks
+is hidden while the rest of the list keeps working; the list then shows how
+many entries could not be read.

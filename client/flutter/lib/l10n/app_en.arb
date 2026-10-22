@@ -13387,5 +13387,14 @@
         "type": "int"
       }
     }
+  },
+  "sharingUnreadableEntries": "{count, plural, one{{count} shared entry could not be read and is hidden.} other{{count} shared entries could not be read and are hidden.}}",
+  "@sharingUnreadableEntries": {
+    "description": "Sharing screen warning: the server returned shared entries that are malformed or failed signature/encryption checks; they are skipped and the rest of the list works. {count} is the number of skipped entries.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

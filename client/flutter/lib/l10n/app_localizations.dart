@@ -17413,6 +17413,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, one{{count} day} other{{count} days}} after copying a secret'**
   String settingsClearClipboardDays(int count);
+
+  /// Sharing screen warning: the server returned shared entries that are malformed or failed signature/encryption checks; they are skipped and the rest of the list works. {count} is the number of skipped entries.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} shared entry could not be read and is hidden.} other{{count} shared entries could not be read and are hidden.}}'**
+  String sharingUnreadableEntries(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -229,6 +229,17 @@ class _SharingScreenState extends ConsumerState<SharingScreen> {
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
               ],
+              if (sharingUnreadable(items.value) case final unreadable when unreadable > 0)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: InfoBanner(
+                      key: const ValueKey('sharing-unreadable'),
+                      message: l.sharingUnreadableEntries(unreadable),
+                      tone: BannerTone.warning,
+                    ),
+                  ),
+                ),
               items.when(
                 loading: () => const SliverToBoxAdapter(
                   child: Padding(

@@ -28,6 +28,15 @@ pub struct ShareKinds {
     pub db_connections: bool,
 }
 
+/// `GET /v1/shares` as received: entries are decoded one by one, so one
+/// malformed entry does not hide the rest of the page.
+#[derive(serde::Deserialize)]
+struct RawShareListPage {
+    items: Vec<serde_json::Value>,
+    next_after: Option<ShareId>,
+    has_more: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct SharingApi {
     client: ApiClient,
@@ -133,6 +142,21 @@ impl SharingApi {
         limit: u32,
         kinds: ShareKinds,
     ) -> Result<ShareListPage, ApiError> {
+        self.list_shares_checked(after, limit, kinds)
+            .await
+            .map(|(page, _)| page)
+    }
+
+    /// [`SharingApi::list_shares_including`] plus how many entries were
+    /// skipped because they could not be decoded or failed structural
+    /// validation. Ordering, cursors and kinds of the readable entries are
+    /// still enforced for the whole page.
+    pub async fn list_shares_checked(
+        &self,
+        after: Option<ShareId>,
+        limit: u32,
+        kinds: ShareKinds,
+    ) -> Result<(ShareListPage, u32), ApiError> {
         let ShareKinds {
             groups: include_groups,
             secrets: include_secrets,
@@ -171,13 +195,28 @@ impl SharingApi {
                 query.append_pair("include_secrets", "true");
             }
         }
-        let page: ShareListPage = self.client.authed(Method::GET, url, None).await?;
-        if page.items.len() > limit as usize {
+        let raw: RawShareListPage = self.client.authed(Method::GET, url, None).await?;
+        if raw.items.len() > limit as usize {
             return Err(response_error("sharing page exceeds limit"));
         }
+        let mut skipped = 0u32;
+        let mut items = Vec::with_capacity(raw.items.len());
+        for value in raw.items {
+            match serde_json::from_value::<SharedItemState>(value) {
+                Ok(item) if self.state(&item, None).is_ok() => items.push(item),
+                _ => skipped += 1,
+            }
+        }
+        if skipped > 0 {
+            tracing::warn!(skipped, "unreadable shared entries skipped");
+        }
+        let page = ShareListPage {
+            items,
+            next_after: raw.next_after,
+            has_more: raw.has_more,
+        };
         let mut previous = after;
         for item in &page.items {
-            self.state(item, None)?;
             if (item.access.manifest.kind == SharedItemKind::Group && !include_groups)
                 || (item.access.manifest.kind == SharedItemKind::Secret && !include_secrets)
                 || (item.access.manifest.kind == SharedItemKind::KubeContext
@@ -207,7 +246,7 @@ impl SharingApi {
                 "unexpected terminal sharing pagination cursor",
             ));
         }
-        Ok(page)
+        Ok((page, skipped))
     }
 
     pub async fn create_share(

@@ -111,6 +111,15 @@ impl Drop for SharingItemDto {
     }
 }
 
+/// The shared list plus how many entries could not be read (malformed, or
+/// their signatures, trust state or ciphertext did not verify). Those are
+/// skipped and never shown or used; the rest of the list stays usable.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SharingListDto {
+    pub items: Vec<SharingItemDto>,
+    pub unreadable: u32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SharingInvitationDto {
     pub item: SharingItemDto,

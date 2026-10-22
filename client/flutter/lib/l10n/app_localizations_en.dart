@@ -9758,4 +9758,15 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count days', one: '$count day');
     return '$_temp0 after copying a secret';
   }
+
+  @override
+  String sharingUnreadableEntries(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count shared entries could not be read and are hidden.',
+      one: '$count shared entry could not be read and is hidden.',
+    );
+    return '$_temp0';
+  }
 }
