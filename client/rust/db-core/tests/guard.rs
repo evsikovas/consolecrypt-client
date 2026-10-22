@@ -16,6 +16,7 @@ fn guard(engine: DbEngine, production: bool, mobile: bool) -> DbGuard {
             connection_name: "orders-prod".into(),
             production,
             mobile,
+            read_only: false,
         },
         CancellationToken::new(),
     )

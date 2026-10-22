@@ -13,7 +13,9 @@ mod mongo;
 mod redis;
 pub(crate) use redis::quote as redis_quote;
 mod sql;
+pub(crate) mod sqlite;
 mod template;
+pub(crate) use template::byte_offset;
 
 pub(crate) use mongo::ordered_json;
 pub use mongo::KeyOrder;
@@ -159,9 +161,11 @@ pub(crate) fn parse(
     let result = match engine {
         DbEngine::Redis => redis::parse(request),
         DbEngine::Mongodb => mongo::parse(request),
-        DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Clickhouse => {
-            sql::parse(engine, default_schema, request)
-        }
+        DbEngine::Postgresql
+        | DbEngine::Mysql
+        | DbEngine::Mariadb
+        | DbEngine::Clickhouse
+        | DbEngine::Sqlite => sql::parse(engine, default_schema, request),
     }?;
     if result.is_empty() || result.len() > MAX_STATEMENTS {
         Err(DbError::InvalidRequest)

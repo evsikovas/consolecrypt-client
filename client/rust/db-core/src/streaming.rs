@@ -299,5 +299,8 @@ pub(crate) fn error_code(error: &DbError) -> &'static str {
         DbError::Cancelled => "cancelled",
         DbError::ResultLimit => "result_limit",
         DbError::SessionClosed => "session_closed",
+        DbError::NotSqlite => "sqlite_not_database",
+        DbError::FileMissing => "sqlite_file_missing",
+        DbError::SqliteCliMissing => "sqlite_cli_missing",
     }
 }

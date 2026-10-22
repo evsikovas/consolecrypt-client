@@ -1119,6 +1119,7 @@ dependencies = [
  "rcgen",
  "redis",
  "reqwest",
+ "rusqlite",
  "rustls",
  "rustls-pemfile",
  "secrecy",

@@ -16,7 +16,7 @@ use cc_models::database::DbEngine;
 use serde::Deserialize;
 use sqlparser::{
     ast::{ObjectNamePart, SetExpr, Statement, TableFactor},
-    dialect::{Dialect, MySqlDialect, PostgreSqlDialect},
+    dialect::{Dialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect},
     parser::Parser,
 };
 use std::collections::BTreeMap;
@@ -89,6 +89,7 @@ pub(crate) fn single_table(engine: DbEngine, sql: &str) -> Option<(Option<String
     let dialect: Box<dyn Dialect> = match engine {
         DbEngine::Postgresql => Box::new(PostgreSqlDialect {}),
         DbEngine::Mysql | DbEngine::Mariadb => Box::new(MySqlDialect {}),
+        DbEngine::Sqlite => Box::new(SQLiteDialect {}),
         _ => return None,
     };
     let statements = Parser::parse_sql(dialect.as_ref(), sql).ok()?;
@@ -269,6 +270,9 @@ impl DbSession {
             value: DbCell::Text(value.into()),
             type_hint: None,
         };
+        if self.info.engine == DbEngine::Sqlite {
+            return self.sqlite_primary_key(table).await;
+        }
         let (sql, bindings) = match self.info.engine {
             DbEngine::Postgresql => (
                 "SELECT a.attname FROM pg_catalog.pg_index i \
@@ -372,6 +376,12 @@ impl DbSession {
                 driver.query_all(&parsed, false, &mut sink, self.scope.child_token())
             }
             Driver::Mysql(driver) => {
+                driver.query_all(&parsed, false, &mut sink, self.scope.child_token())
+            }
+            Driver::Sqlite(driver) => {
+                driver.query_all(&parsed, false, &mut sink, self.scope.child_token())
+            }
+            Driver::SqliteCli(driver) => {
                 driver.query_all(&parsed, false, &mut sink, self.scope.child_token())
             }
             _ => return Err(DbError::InvalidRequest),

@@ -157,6 +157,14 @@ pub enum DbObjectKind {
     RedisDatabase,
     RedisKey,
     Collection,
+    /// A primary key or unique constraint of a table (SQLite).
+    Key,
+    /// A foreign key of a table to another table (SQLite).
+    ForeignKey,
+    /// A foreign key of another table that points at this one (SQLite).
+    Reference,
+    /// A storage class / type affinity of the engine (informational).
+    DataType,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -341,6 +349,15 @@ pub enum DbError {
     ResultLimit,
     #[error("database session is closed")]
     SessionClosed,
+    /// The file exists but is not an SQLite database.
+    #[error("file is not an SQLite database")]
+    NotSqlite,
+    /// The database file does not exist (it is never created implicitly).
+    #[error("database file not found")]
+    FileMissing,
+    /// The remote host, container or Pod has no usable `sqlite3` program.
+    #[error("sqlite3 is not installed on the target")]
+    SqliteCliMissing,
 }
 
 #[cfg(test)]

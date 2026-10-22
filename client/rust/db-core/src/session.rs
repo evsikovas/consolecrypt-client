@@ -9,6 +9,8 @@ use crate::{
     parser::ParsedStatement,
     postgres::Postgres,
     redis_driver::Redis,
+    sqlite::Sqlite,
+    sqlite_cli::{SqliteCli, SqliteCliRunner},
     streaming::{DbQueryStream, QuerySink, RowConsumer},
     transport::{DbConnector, DbCredentials, DbPath},
     DbCell, DbColumn, DbError, DbObjectKind, DbObjectRef, DbParameter, DbQueryRequest,
@@ -30,6 +32,19 @@ pub(crate) enum Driver {
     Redis(Redis),
     ClickHouse(ClickHouse),
     Mongo(Mongo),
+    /// A database file on this computer.
+    Sqlite(Sqlite),
+    /// A database file read through the remote `sqlite3` program.
+    SqliteCli(SqliteCli),
+}
+
+/// Where an SQLite connection's file is opened.
+#[derive(Debug)]
+pub enum SqliteTarget {
+    /// The path is a file on this computer.
+    Local,
+    /// The `sqlite3` program on an SSH host, in a container or a Pod.
+    Cli(Arc<dyn SqliteCliRunner>),
 }
 
 impl Driver {
@@ -48,6 +63,17 @@ impl Driver {
             Self::Redis(driver) => &driver.version,
             Self::ClickHouse(driver) => &driver.version,
             Self::Mongo(driver) => &driver.version,
+            Self::Sqlite(driver) => &driver.version,
+            Self::SqliteCli(driver) => &driver.version,
+        }
+    }
+
+    /// File name of an SQLite database (the root of its structure tree).
+    pub(crate) fn sqlite_file_name(&self) -> Option<&str> {
+        match self {
+            Self::Sqlite(driver) => Some(&driver.file_name),
+            Self::SqliteCli(driver) => Some(&driver.file_name),
+            _ => None,
         }
     }
 
@@ -114,6 +140,10 @@ impl Driver {
                     driver.query(sql, bindings, read_only, sink, cancel).await
                 }
                 Self::Mongo(_) => Err(DbError::InvalidRequest),
+                Self::Sqlite(driver) => driver.query(sql, bindings, read_only, sink, cancel).await,
+                Self::SqliteCli(driver) => {
+                    driver.query(sql, bindings, read_only, sink, cancel).await
+                }
             }
         })
     }
@@ -184,13 +214,67 @@ impl DbSession {
             DbEngine::Mongodb => Driver::Mongo(
                 Mongo::connect(connection, credentials, connector, scope.clone()).await?,
             ),
+            // A file has no socket: see [`Self::open_sqlite`].
+            DbEngine::Sqlite => return Err(DbError::InvalidRequest),
         };
+        Ok(Self::assemble(
+            id,
+            connection,
+            driver,
+            transport_security,
+            mobile,
+            scope,
+        ))
+    }
+
+    /// Opens an SQLite file on this computer or through the remote
+    /// `sqlite3` program. Nothing is created: a missing file fails.
+    pub async fn open_sqlite(
+        id: String,
+        connection: &DbConnection,
+        target: SqliteTarget,
+        mobile: bool,
+    ) -> Result<Self, DbError> {
+        if connection.engine != DbEngine::Sqlite {
+            return Err(DbError::InvalidRequest);
+        }
+        let scope = CancellationToken::new();
+        let result_bytes = (connection.limits.result_memory_bytes as usize)
+            .clamp(1 << 20, DEFAULT_RESULT_BYTES);
+        let driver = match target {
+            SqliteTarget::Local => Driver::Sqlite(Sqlite::open(connection).await?),
+            SqliteTarget::Cli(runner) => Driver::SqliteCli(
+                SqliteCli::connect(connection, runner, result_bytes, scope.clone()).await?,
+            ),
+        };
+        // A file on this computer, or a program reached over SSH or an
+        // authenticated container/Pod exec: no database socket at all.
+        Ok(Self::assemble(
+            id,
+            connection,
+            driver,
+            DbTransportSecurity::Tunnel,
+            mobile,
+            scope,
+        ))
+    }
+
+    fn assemble(
+        id: String,
+        connection: &DbConnection,
+        driver: Driver,
+        transport_security: DbTransportSecurity,
+        mobile: bool,
+        scope: CancellationToken,
+    ) -> Self {
         let server_version = driver.version().to_owned();
         let default_schema = match &connection.options {
             DbOptions::Postgresql { search_path, .. } => search_path
                 .first()
                 .cloned()
                 .unwrap_or_else(|| "public".into()),
+            // The path is not a schema; SQLite names the file "main".
+            DbOptions::Sqlite { .. } => "main".into(),
             _ if connection.database.is_empty() => "public".into(),
             _ => connection.database.clone(),
         };
@@ -204,6 +288,10 @@ impl DbSession {
                 connection_name: connection.name.clone(),
                 production: connection.production,
                 mobile,
+                read_only: matches!(
+                    connection.options,
+                    DbOptions::Sqlite { read_only: true }
+                ),
             },
             scope.clone(),
         );
@@ -218,7 +306,7 @@ impl DbSession {
             _ if read_only => DbServerReadOnly::Enforced,
             _ => DbServerReadOnly::Unverified,
         };
-        Ok(Self {
+        Self {
             info: DbSessionInfo {
                 id,
                 connection_id: connection.id.to_string(),
@@ -236,7 +324,7 @@ impl DbSession {
             max_rows: connection.limits.max_rows.clamp(1, 100_000),
             result_bytes: (connection.limits.result_memory_bytes as usize)
                 .clamp(1 << 20, DEFAULT_RESULT_BYTES),
-        })
+        }
     }
 
     pub fn info(&self) -> &DbSessionInfo {
@@ -300,6 +388,9 @@ impl DbSession {
         parent: Option<&DbObjectRef>,
         cursor: Option<&str>,
     ) -> Result<DbTreePage, DbError> {
+        if self.info.engine == DbEngine::Sqlite {
+            return self.sqlite_tree(parent).await;
+        }
         let mut driver = self.driver.lock().await;
         let engine = self.info.engine;
         let text = |value: &str| DbParameter {

@@ -117,6 +117,7 @@ impl DbSession {
                 Driver::Redis(driver) => driver.describe(object).await,
                 _ => Err(DbError::InvalidRequest),
             },
+            DbEngine::Sqlite => self.sqlite_ddl(object).await,
         }
     }
 
@@ -245,6 +246,13 @@ impl DbSession {
         if statement.is_empty() {
             return Err(DbError::InvalidRequest);
         }
+        if self.info.engine == DbEngine::Sqlite {
+            // No ANALYZE form: SQLite plans only.
+            if analyze {
+                return Err(DbError::InvalidRequest);
+            }
+            return self.sqlite_explain(statement, request).await;
+        }
         let (text, json) = match (self.info.engine, analyze) {
             (DbEngine::Postgresql, false) => (format!("EXPLAIN (FORMAT JSON) {statement}"), true),
             (DbEngine::Postgresql, true) => {
@@ -346,7 +354,11 @@ impl DbSession {
     pub async fn complete(&self, text: &str, cursor: usize) -> Result<Vec<DbCompletion>, DbError> {
         if !matches!(
             self.info.engine,
-            DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Clickhouse
+            DbEngine::Postgresql
+                | DbEngine::Mysql
+                | DbEngine::Mariadb
+                | DbEngine::Clickhouse
+                | DbEngine::Sqlite
         ) {
             return Ok(Vec::new());
         }
@@ -391,6 +403,13 @@ impl DbSession {
                 "SELECT table, name, type FROM system.columns \
                  WHERE database NOT IN ('system', 'INFORMATION_SCHEMA', 'information_schema') \
                  ORDER BY database, table, position LIMIT 15000",
+            ),
+            DbEngine::Sqlite => (
+                "SELECT 'main', name, type FROM sqlite_master WHERE type IN ('table', 'view') \
+                 AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' ORDER BY name LIMIT 5000",
+                "SELECT m.name, c.name, c.type FROM sqlite_master m JOIN pragma_table_info(m.name) c \
+                 WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite\\_%' ESCAPE '\\' \
+                 ORDER BY m.name, c.cid LIMIT 15000",
             ),
             _ => return Ok(CompletionCache::default()),
         };
@@ -487,8 +506,22 @@ impl DbSession {
     pub async fn object_query(&self, object: &DbObjectRef, limit: u32) -> Result<String, DbError> {
         let limit = limit.clamp(1, 10_000);
         match (self.info.engine, object.kind) {
+            // A rowid table without a primary key shows its rowid, so the
+            // rows can be edited.
+            (DbEngine::Sqlite, DbObjectKind::Table) => {
+                let key = self.sqlite_primary_key(object).await?;
+                let columns = if key == ["rowid"] { "rowid, *" } else { "*" };
+                Ok(format!(
+                    "SELECT {columns} FROM {} LIMIT {limit};",
+                    quote_identifier(self.info.engine, object)
+                ))
+            }
             (
-                DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Clickhouse,
+                DbEngine::Postgresql
+                | DbEngine::Mysql
+                | DbEngine::Mariadb
+                | DbEngine::Clickhouse
+                | DbEngine::Sqlite,
                 DbObjectKind::Table | DbObjectKind::View | DbObjectKind::MaterializedView,
             ) => Ok(format!(
                 "SELECT * FROM {} LIMIT {limit};",
@@ -549,6 +582,9 @@ impl DbSession {
         object: &DbObjectRef,
         sample: Option<u32>,
     ) -> Result<serde_json::Value, DbError> {
+        if self.info.engine == DbEngine::Sqlite {
+            return self.sqlite_details(object).await;
+        }
         match &mut *self.driver.lock().await {
             Driver::Mongo(driver) => match sample {
                 Some(sample) => driver.inspect(object, sample.clamp(1, 1000)).await,
