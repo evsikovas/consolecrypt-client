@@ -712,6 +712,68 @@
   "@navSnippets": {
     "description": "Sidebar item."
   },
+  "notesShared": "Shared notes",
+  "@notesShared": {
+    "description": "Notes panel: notes every member of the shared object sees."
+  },
+  "notesSharedRefresh": "Refresh shared notes",
+  "@notesSharedRefresh": {
+    "description": "Notes panel: reload shared notes from the server."
+  },
+  "notesSharedNew": "New shared note",
+  "@notesSharedNew": {
+    "description": "Notes panel: write a note all members see."
+  },
+  "notesSharedFailed": "Shared notes could not be loaded. Check the connection to the sync server.",
+  "@notesSharedFailed": {
+    "description": "Notes panel: shared notes failed to load."
+  },
+  "notesSharedWaiting": "The owner has not opened shared notes for this object yet. They appear once the owner opens the notes panel.",
+  "@notesSharedWaiting": {
+    "description": "Notes panel: the owner has not issued the notes key yet."
+  },
+  "notesSharedPending": "{count, plural, =1{1 note becomes readable after the owner opens the notes panel} other{{count} notes become readable after the owner opens the notes panel}}",
+  "@notesSharedPending": {
+    "description": "Notes panel: notes not yet moved to the current key.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notesSharedEmpty": "No shared notes yet.",
+  "@notesSharedEmpty": {
+    "description": "Notes panel: the shared section is empty."
+  },
+  "notesSharedHint": "Everyone you share this object with sees the note. Only you can change it.",
+  "@notesSharedHint": {
+    "description": "Shared note editor: who sees the note."
+  },
+  "notesSharedReadOnly": "Only the author can change this note.",
+  "@notesSharedReadOnly": {
+    "description": "Shared note view: someone else's note."
+  },
+  "notesSharedDeleteMessage": "“{title}” will be deleted for everyone with access to the object.",
+  "@notesSharedDeleteMessage": {
+    "description": "Delete shared note confirmation.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notesAuthorYou": "You",
+  "@notesAuthorYou": {
+    "description": "Shared note author: this user."
+  },
+  "notesAuthorOwner": "Owner",
+  "@notesAuthorOwner": {
+    "description": "Shared note author: the owner of the shared object."
+  },
+  "notesAuthorMember": "Member",
+  "@notesAuthorMember": {
+    "description": "Shared note author: another member."
+  },
   "navNotes": "Notes",
   "@navNotes": {
     "description": "Right workspace panel tool: notes, tasks and reminders."

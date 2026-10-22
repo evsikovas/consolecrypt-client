@@ -12,6 +12,7 @@ import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/notes/note_models.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
+import 'package:consolecrypt/notes/shared_notes_section.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
@@ -94,7 +95,8 @@ class _NotesPanelState extends ConsumerState<NotesPanel> {
         done = all.where((n) => n.task?.done ?? false).toList()..sort(compareNotes);
     }
     final hostNotes = mode == _NotesMode.object ? _hostNotes(current) : null;
-    final empty = visible.isEmpty && done.isEmpty && hostNotes == null;
+    final shareId = mode == _NotesMode.object && current != null ? ref.watch(noteShareProvider(current.target)) : null;
+    final empty = visible.isEmpty && done.isEmpty && hostNotes == null && shareId == null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       child: Column(
@@ -180,6 +182,14 @@ class _NotesPanelState extends ConsumerState<NotesPanel> {
                     key: const ValueKey('notes-list'),
                     children: [
                       ?hostNotes,
+                      if (shareId != null && current != null && visible.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s8),
+                          child: Text(
+                            l.notesEmptyObject(current.label),
+                            style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel),
+                          ),
+                        ),
                       for (final note in visible)
                         _NoteRow(
                           note: note,
@@ -212,6 +222,8 @@ class _NotesPanelState extends ConsumerState<NotesPanel> {
                             ],
                           ),
                         ),
+                      if (shareId != null && current != null)
+                        SharedNotesSection(shareId: shareId, target: current.target, query: _query),
                     ],
                   ),
           ),

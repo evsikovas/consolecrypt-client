@@ -54,15 +54,16 @@ pub async fn sharing_publish_kube_context(
 ) -> Result<String, BridgeError> {
     let grants = from_json("sharing_grants", &grants_json)?;
     with_core(move |c| async move {
-        to_json(
-            &c.sharing_publish_kube_context(
-                context_id,
+        let item = c
+            .sharing_publish_kube_context(
+                context_id.clone(),
                 include_credentials,
                 expected_stamp,
                 grants,
             )
-            .await?,
-        )
+            .await?;
+        link_notes(&c, "kube_context", &context_id, &item.share_id).await;
+        to_json(&item)
     })
     .await
 }
@@ -73,10 +74,11 @@ pub async fn sharing_copy_kube_context(
 ) -> Result<String, BridgeError> {
     let route: cc_models::kubernetes::KubeRoute = from_json("kube_route", &route_json)?;
     with_core(move |c| async move {
-        to_json(
-            &c.sharing_copy_kube_context(share_id, route, include_credentials)
-                .await?,
-        )
+        let context = c
+            .sharing_copy_kube_context(share_id.clone(), route, include_credentials)
+            .await?;
+        link_notes(&c, "kube_context", &context.id.to_string(), &share_id).await;
+        to_json(&context)
     })
     .await
 }
@@ -100,15 +102,16 @@ pub async fn sharing_publish_db_connection(
 ) -> Result<String, BridgeError> {
     let grants = from_json("sharing_grants", &grants_json)?;
     with_core(move |c| async move {
-        to_json(
-            &c.sharing_publish_db_connection(
-                connection_id,
+        let item = c
+            .sharing_publish_db_connection(
+                connection_id.clone(),
                 include_credentials,
                 expected_stamp,
                 grants,
             )
-            .await?,
-        )
+            .await?;
+        link_notes(&c, "db_connection", &connection_id, &item.share_id).await;
+        to_json(&item)
     })
     .await
 }
@@ -119,10 +122,11 @@ pub async fn sharing_copy_db_connection(
 ) -> Result<String, BridgeError> {
     let route: cc_models::database::DbRoute = from_json("db_route", &route_json)?;
     with_core(move |c| async move {
-        to_json(
-            &c.sharing_copy_db_connection(share_id, route, include_credentials)
-                .await?,
-        )
+        let connection = c
+            .sharing_copy_db_connection(share_id.clone(), route, include_credentials)
+            .await?;
+        link_notes(&c, "db_connection", &connection.id.to_string(), &share_id).await;
+        to_json(&connection)
     })
     .await
 }
@@ -213,7 +217,12 @@ pub async fn sharing_copy_host(
     id: String,
     credential_id: Option<String>,
 ) -> Result<String, BridgeError> {
-    with_core(move |c| async move { to_json(&c.sharing_copy_host(id, credential_id).await?) }).await
+    with_core(move |c| async move {
+        let host = c.sharing_copy_host(id.clone(), credential_id).await?;
+        link_notes(&c, "host", &host.id, &id).await;
+        to_json(&host)
+    })
+    .await
 }
 pub async fn sharing_copy_snippet(id: String) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.sharing_copy_snippet(id).await?) }).await
@@ -254,4 +263,39 @@ pub async fn sharing_refresh_bound_host_expected(
         )
     })
     .await
+}
+
+// ---- notes travelling with shares --------------------------------------------------
+
+/// Remembers which share a local object belongs to, so its notes can be
+/// shared. Best effort: a missing link only hides shared notes.
+async fn link_notes(c: &cc_app_core::AppCore, kind: &str, object_id: &str, share_id: &str) {
+    let _ = c
+        .share_note_link(format!("{kind}:{object_id}"), share_id.to_owned())
+        .await;
+}
+
+/// `Vec<ShareNoteLinkDto>`: local objects linked to shares for notes.
+pub async fn share_note_links() -> Result<String, BridgeError> {
+    with_core(|c| async move { to_json(&c.share_note_links().await?) }).await
+}
+
+/// Links `object` (`host:<id>`…) to a share; an empty `share_id` unlinks it.
+pub async fn share_note_link(object: String, share_id: String) -> Result<(), BridgeError> {
+    with_core(|c| async move { Ok(c.share_note_link(object, share_id).await?) }).await
+}
+
+/// `SharedNotesDto` of one share (the owner device also issues keys and rekeys).
+pub async fn share_notes(share_id: String) -> Result<String, BridgeError> {
+    with_core(|c| async move { to_json(&c.share_notes(share_id).await?) }).await
+}
+
+/// Creates or updates this user's note; returns `SharedNoteDto`.
+pub async fn share_note_save(share_id: String, note_json: String) -> Result<String, BridgeError> {
+    let input: cc_app_core::SharedNoteInputDto = from_json("note", &note_json)?;
+    with_core(|c| async move { to_json(&c.share_note_save(share_id, input).await?) }).await
+}
+
+pub async fn share_note_delete(share_id: String, note_id: String) -> Result<(), BridgeError> {
+    with_core(|c| async move { Ok(c.share_note_delete(share_id, note_id).await?) }).await
 }

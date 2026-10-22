@@ -39,6 +39,7 @@ mod recovery;
 mod rng;
 pub mod sharing;
 pub mod sharing_enrollment;
+pub mod sharing_notes;
 
 #[cfg(test)]
 mod vectors;

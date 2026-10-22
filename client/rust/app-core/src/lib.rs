@@ -137,6 +137,7 @@ pub use rdp_hosts::RdpSavedHostTicket;
 pub use sftp_browser::{
     normalize_remote_path, RemoteFileInfoDto, SftpPreviewDto, MAX_PREVIEW_BYTES,
 };
+pub use sharing_api::{ShareNoteLinkDto, SharedNoteDto, SharedNoteInputDto, SharedNotesDto};
 pub use sharing_dto::*;
 pub use snippets::SnippetSearchHitDto;
 pub use ssh_api::OpenSshCommandDto;

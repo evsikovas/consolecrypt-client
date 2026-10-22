@@ -1,4 +1,5 @@
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/mock/mock_notes.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -177,6 +178,66 @@ void main() {
     await tester.pump(const Duration(seconds: 31));
     await settle(tester);
     expect(find.text(l.notesReminderToast('Call the vendor')), findsNothing);
+  });
+
+  testWidgets('shared notes of a linked object: list, scope, write, read-only others', (tester) async {
+    final service = MockNoteService(seed: const [])
+      ..sharedLinks['host:h1'] = 'share-1'
+      ..shared['share-1'] = [
+        const SharedNote(id: 's1', title: 'Firewall rules', authorUserId: 'colleague', body: 'port 5432 only'),
+        const SharedNote(
+          id: 's2',
+          title: 'Container note',
+          authorUserId: 'colleague',
+          scope: {'docker_container': 'pg'},
+        ),
+      ];
+    await _pump(tester, service);
+    final l = _l(tester);
+    expect(find.text(l.notesShared), findsOneWidget);
+    expect(find.text('Firewall rules'), findsOneWidget);
+    // A note about one container of the host stays with that container.
+    expect(find.text('Container note'), findsNothing);
+    expect(find.text(l.notesAuthorMember), findsOneWidget);
+    await tester.tap(find.text('Firewall rules'));
+    await settle(tester);
+    expect(find.text(l.notesSharedReadOnly), findsOneWidget);
+    expect(find.byKey(const ValueKey('shared-note-save')), findsNothing);
+    await tester.tap(find.text(l.commonClose));
+    await settle(tester);
+    await tapKey(tester, 'shared-notes-new');
+    await enterKey(tester, 'shared-note-title', 'Maintenance window');
+    await tapKey(tester, 'shared-note-save');
+    final saved = service.shared['share-1']!.firstWhere((n) => n.title == 'Maintenance window');
+    expect(saved.scope, isNull);
+    expect(find.text('Maintenance window'), findsOneWidget);
+    expect(find.text(l.notesAuthorYou), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a member waits until the owner opens shared notes', (tester) async {
+    final service = MockNoteService(seed: const [])
+      ..sharedLinks['host:h1'] = 'share-1'
+      ..waitingForOwner = true;
+    await _pump(tester, service);
+    expect(find.text(_l(tester).notesSharedWaiting), findsOneWidget);
+    expect(tester.widget<GlassIconButton>(find.byKey(const ValueKey('shared-notes-new'))).onPressed, isNull);
+  });
+
+  test('links and scopes name the shared object, not local ids', () {
+    expect(noteLinkKey(const NoteDockerTarget(hostId: 'h', name: 'pg')), 'host:h');
+    expect(noteLinkKey(const NoteDockerTarget(name: 'pg')), isNull);
+    expect(
+      noteLinkKey(const NoteKubeTarget(contextId: 'c', resource: 'pods', kind: 'Pod', name: 'p')),
+      'kube_context:c',
+    );
+    expect(noteScope(const NoteDockerTarget(hostId: 'h', name: 'pg')), {'docker_container': 'pg'});
+    expect(
+      sameNoteScope({
+        'kube_resource': {'group': '', 'resource': 'pods', 'namespace': 'a', 'name': 'p'},
+      }, noteScope(const NoteKubeTarget(contextId: 'other', resource: 'pods', kind: 'Pod', namespace: 'a', name: 'p'))),
+      isTrue,
+    );
   });
 
   for (final language in ['en', 'ru']) {

@@ -226,3 +226,102 @@ int compareTasks(Note a, Note b) {
   if (ad != null || bd != null) return ad != null ? -1 : 1;
   return compareNotes(a, b);
 }
+
+/// A note travelling with a share, decrypted and verified by the core.
+final class SharedNote {
+  const SharedNote({
+    required this.id,
+    required this.title,
+    required this.authorUserId,
+    this.body = '',
+    this.tags = const [],
+    this.scope,
+    this.mine = false,
+    this.canDelete = false,
+    this.revision = 0,
+    this.createdAt,
+    this.updatedAt,
+  });
+  final String id, title, body, authorUserId;
+  final List<String> tags;
+
+  /// Narrows the note to a part of the shared object (see [noteScope]).
+  final Map<String, dynamic>? scope;
+  final bool mine, canDelete;
+  final int revision;
+  final DateTime? createdAt, updatedAt;
+
+  factory SharedNote.fromJson(NoteJson json) => SharedNote(
+    id: json['id'] as String,
+    title: json['title'] as String,
+    body: json['body'] as String? ?? '',
+    tags: (json['tags'] as List? ?? const []).cast<String>(),
+    scope: json['scope'] as NoteJson?,
+    authorUserId: json['author_user_id'] as String,
+    mine: json['mine'] as bool? ?? false,
+    canDelete: json['can_delete'] as bool? ?? false,
+    revision: json['revision'] as int? ?? 0,
+    createdAt: _time(json['created_at_ms']),
+    updatedAt: _time(json['updated_at_ms']),
+  );
+}
+
+/// The notes of one share as this device can read them.
+final class SharedNotes {
+  const SharedNotes({
+    required this.shareId,
+    this.enabled = false,
+    this.owner = false,
+    this.ownerUserId = '',
+    this.waitingForOwner = false,
+    this.notes = const [],
+    this.pending = 0,
+  });
+  final String shareId, ownerUserId;
+
+  /// The server offers shared notes.
+  final bool enabled;
+  final bool owner, waitingForOwner;
+  final List<SharedNote> notes;
+
+  /// Notes this device can open only after the owner moves them to the current key.
+  final int pending;
+
+  factory SharedNotes.fromJson(NoteJson json) => SharedNotes(
+    shareId: json['share_id'] as String,
+    enabled: json['enabled'] as bool? ?? false,
+    owner: json['owner'] as bool? ?? false,
+    ownerUserId: json['owner_user_id'] as String? ?? '',
+    waitingForOwner: json['waiting_for_owner'] as bool? ?? false,
+    notes: [for (final note in (json['notes'] as List? ?? const [])) SharedNote.fromJson(note as NoteJson)],
+    pending: json['pending'] as int? ?? 0,
+  );
+}
+
+/// The local object whose share carries notes about [target]: the object
+/// itself, the context of a Kubernetes resource or the SSH host of a Docker
+/// engine (`kind:id`, as the core links them). Null on this computer.
+String? noteLinkKey(NoteTarget target) => switch (target) {
+  NoteObjectTarget(:final kind, :final id) => '${kind.wireName}:$id',
+  NoteKubeTarget(:final contextId) => 'kube_context:$contextId',
+  NoteDockerTarget(:final hostId?) => 'host:$hostId',
+  NoteDockerTarget() => null,
+};
+
+/// The part of the shared object a note is about. It names no local ids,
+/// so it matches on every member's copy.
+NoteJson? noteScope(NoteTarget target) => switch (target) {
+  NoteObjectTarget() => null,
+  NoteKubeTarget(:final group, :final resource, :final namespace, :final name) => {
+    'kube_resource': {'group': group, 'resource': resource, 'namespace': namespace, 'name': name},
+  },
+  NoteDockerTarget(:final name) => {'docker_container': name},
+};
+
+/// Structural equality of two scopes (JSON maps).
+bool sameNoteScope(Object? a, Object? b) {
+  if (a is Map && b is Map) {
+    return a.length == b.length && a.keys.every((key) => b.containsKey(key) && sameNoteScope(a[key], b[key]));
+  }
+  return a == b;
+}

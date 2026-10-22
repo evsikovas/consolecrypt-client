@@ -155,6 +155,68 @@
   "navSftp": "SFTP",
   "navTunnels": "Туннели",
   "navSnippets": "Сниппеты",
+  "notesShared": "Общие заметки",
+  "@notesShared": {
+    "description": "Notes panel: notes every member of the shared object sees."
+  },
+  "notesSharedRefresh": "Обновить общие заметки",
+  "@notesSharedRefresh": {
+    "description": "Notes panel: reload shared notes from the server."
+  },
+  "notesSharedNew": "Новая общая заметка",
+  "@notesSharedNew": {
+    "description": "Notes panel: write a note all members see."
+  },
+  "notesSharedFailed": "Не удалось загрузить общие заметки. Проверьте подключение к серверу синхронизации.",
+  "@notesSharedFailed": {
+    "description": "Notes panel: shared notes failed to load."
+  },
+  "notesSharedWaiting": "Владелец ещё не открыл общие заметки для этого объекта. Они появятся, когда он откроет панель заметок.",
+  "@notesSharedWaiting": {
+    "description": "Notes panel: the owner has not issued the notes key yet."
+  },
+  "notesSharedPending": "{count, plural, one{{count} заметка станет доступна, когда владелец откроет панель заметок} few{{count} заметки станут доступны, когда владелец откроет панель заметок} many{{count} заметок станут доступны, когда владелец откроет панель заметок} other{{count} заметки станут доступны, когда владелец откроет панель заметок}}",
+  "@notesSharedPending": {
+    "description": "Notes panel: notes not yet moved to the current key.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notesSharedEmpty": "Общих заметок пока нет.",
+  "@notesSharedEmpty": {
+    "description": "Notes panel: the shared section is empty."
+  },
+  "notesSharedHint": "Заметку видят все, с кем вы поделились объектом. Изменить её можете только вы.",
+  "@notesSharedHint": {
+    "description": "Shared note editor: who sees the note."
+  },
+  "notesSharedReadOnly": "Изменить заметку может только автор.",
+  "@notesSharedReadOnly": {
+    "description": "Shared note view: someone else's note."
+  },
+  "notesSharedDeleteMessage": "Заметка «{title}» будет удалена у всех, у кого есть доступ к объекту.",
+  "@notesSharedDeleteMessage": {
+    "description": "Delete shared note confirmation.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notesAuthorYou": "Вы",
+  "@notesAuthorYou": {
+    "description": "Shared note author: this user."
+  },
+  "notesAuthorOwner": "Владелец",
+  "@notesAuthorOwner": {
+    "description": "Shared note author: the owner of the shared object."
+  },
+  "notesAuthorMember": "Участник",
+  "@notesAuthorMember": {
+    "description": "Shared note author: another member."
+  },
   "navNotes": "Заметки",
   "@navNotes": {
     "description": "Right workspace panel tool: notes, tasks and reminders."

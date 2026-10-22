@@ -151,3 +151,45 @@ class NotesFocus extends Notifier<String?> {
   void focus(String id) => state = id;
   void clear() => state = null;
 }
+
+/// Notes travelling with shares, when the backend offers them.
+final sharedNoteServiceProvider = Provider<SharedNoteService?>(
+  (ref) => switch (ref.watch(noteServiceProvider)) {
+    final SharedNoteService service => service,
+    _ => null,
+  },
+);
+
+/// Local objects linked to shares (`kind:id` → share id).
+final noteLinksProvider = FutureProvider<Map<String, String>>((ref) async {
+  ref.watch(activeProfileProvider.select((p) => p?.id));
+  final service = ref.watch(sharedNoteServiceProvider);
+  if (!ref.watch(notesUnlockedProvider) || service == null) return const {};
+  ref.watch(_noteChanges);
+  try {
+    return await service.shareLinks();
+  } on Object {
+    return const {};
+  }
+});
+
+/// The share carrying notes about [target], if any: a link recorded when the
+/// object was published or copied, or the binding of a shared host copy.
+final noteShareProvider = Provider.family<String?, NoteTarget>((ref, target) {
+  final key = noteLinkKey(target);
+  if (key == null) return null;
+  final linked = ref.watch(noteLinksProvider).value?[key];
+  if (linked != null) return linked;
+  if (target case NoteObjectTarget(kind: NoteObjectKind.host, :final id)) {
+    final host = ref.watch(hostsProvider).value?.where((h) => h.id.value == id).firstOrNull;
+    return host?.metadata['cc.shared.share'];
+  }
+  return null;
+});
+
+/// Shared notes of one share; reloaded explicitly after changes.
+final sharedNotesProvider = FutureProvider.autoDispose.family<SharedNotes, String>((ref, shareId) async {
+  final service = ref.watch(sharedNoteServiceProvider);
+  if (service == null) return SharedNotes(shareId: shareId);
+  return service.sharedNotes(shareId);
+});

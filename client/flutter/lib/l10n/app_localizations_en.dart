@@ -514,6 +514,56 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navSnippets => 'Snippets';
 
   @override
+  String get notesShared => 'Shared notes';
+
+  @override
+  String get notesSharedRefresh => 'Refresh shared notes';
+
+  @override
+  String get notesSharedNew => 'New shared note';
+
+  @override
+  String get notesSharedFailed => 'Shared notes could not be loaded. Check the connection to the sync server.';
+
+  @override
+  String get notesSharedWaiting =>
+      'The owner has not opened shared notes for this object yet. They appear once the owner opens the notes panel.';
+
+  @override
+  String notesSharedPending(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count notes become readable after the owner opens the notes panel',
+      one: '1 note becomes readable after the owner opens the notes panel',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notesSharedEmpty => 'No shared notes yet.';
+
+  @override
+  String get notesSharedHint => 'Everyone you share this object with sees the note. Only you can change it.';
+
+  @override
+  String get notesSharedReadOnly => 'Only the author can change this note.';
+
+  @override
+  String notesSharedDeleteMessage(String title) {
+    return '“$title” will be deleted for everyone with access to the object.';
+  }
+
+  @override
+  String get notesAuthorYou => 'You';
+
+  @override
+  String get notesAuthorOwner => 'Owner';
+
+  @override
+  String get notesAuthorMember => 'Member';
+
+  @override
   String get navNotes => 'Notes';
 
   @override

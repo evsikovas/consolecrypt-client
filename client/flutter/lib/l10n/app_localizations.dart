@@ -1022,6 +1022,84 @@ abstract class AppLocalizations {
   /// **'Snippets'**
   String get navSnippets;
 
+  /// Notes panel: notes every member of the shared object sees.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared notes'**
+  String get notesShared;
+
+  /// Notes panel: reload shared notes from the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh shared notes'**
+  String get notesSharedRefresh;
+
+  /// Notes panel: write a note all members see.
+  ///
+  /// In en, this message translates to:
+  /// **'New shared note'**
+  String get notesSharedNew;
+
+  /// Notes panel: shared notes failed to load.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared notes could not be loaded. Check the connection to the sync server.'**
+  String get notesSharedFailed;
+
+  /// Notes panel: the owner has not issued the notes key yet.
+  ///
+  /// In en, this message translates to:
+  /// **'The owner has not opened shared notes for this object yet. They appear once the owner opens the notes panel.'**
+  String get notesSharedWaiting;
+
+  /// Notes panel: notes not yet moved to the current key.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 note becomes readable after the owner opens the notes panel} other{{count} notes become readable after the owner opens the notes panel}}'**
+  String notesSharedPending(int count);
+
+  /// Notes panel: the shared section is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No shared notes yet.'**
+  String get notesSharedEmpty;
+
+  /// Shared note editor: who sees the note.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone you share this object with sees the note. Only you can change it.'**
+  String get notesSharedHint;
+
+  /// Shared note view: someone else's note.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the author can change this note.'**
+  String get notesSharedReadOnly;
+
+  /// Delete shared note confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” will be deleted for everyone with access to the object.'**
+  String notesSharedDeleteMessage(String title);
+
+  /// Shared note author: this user.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get notesAuthorYou;
+
+  /// Shared note author: the owner of the shared object.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get notesAuthorOwner;
+
+  /// Shared note author: another member.
+  ///
+  /// In en, this message translates to:
+  /// **'Member'**
+  String get notesAuthorMember;
+
   /// Right workspace panel tool: notes, tasks and reminders.
   ///
   /// In en, this message translates to:

@@ -9,7 +9,10 @@ use cc_protocol::sharing::{
     self, CreateShareRequest, PutSharedRevisionRequest, RotateShareAccessRequest, ShareHistoryPage,
     ShareListPage, SharedItemKind, SharedItemState, SharingCapabilities, SharingRecipient,
 };
-use cc_protocol::{DeviceId, ShareId, UserId};
+use cc_protocol::sharing_notes::{
+    self, RekeySharedNotesRequest, SharedNote, SharedNotesKeySet, SharedNotesPage,
+};
+use cc_protocol::{DeviceId, ObjectId, ShareId, UserId};
 use reqwest::Method;
 use std::collections::HashSet;
 use url::Url;
@@ -300,6 +303,106 @@ impl SharingApi {
             ));
         }
         Ok(state)
+    }
+
+    fn notes(&self) -> Result<(), ApiError> {
+        self.ready()?;
+        if !self.capabilities.supports_notes_v1 {
+            return Err(config_error("shared notes are not offered by this server"));
+        }
+        Ok(())
+    }
+
+    /// Notes of a share and the key sets of their epochs (untrusted until the
+    /// owner and author signatures are verified).
+    pub async fn share_notes(&self, share_id: ShareId) -> Result<SharedNotesPage, ApiError> {
+        self.notes()?;
+        let page: SharedNotesPage = self
+            .client
+            .authed(Method::GET, self.item_url(share_id, "/notes")?, None)
+            .await?;
+        if page
+            .key_sets
+            .iter()
+            .any(|k| sharing_notes::validate_key_set(k).is_err() || k.share_id != share_id)
+            || page
+                .notes
+                .iter()
+                .any(|n| sharing_notes::validate_note(n).is_err())
+            || page.notes.len() > sharing_notes::MAX_NOTES_PER_SHARE
+        {
+            return Err(response_error("invalid shared notes page"));
+        }
+        Ok(page)
+    }
+
+    pub async fn put_share_notes_key(
+        &self,
+        share_id: ShareId,
+        set: &SharedNotesKeySet,
+    ) -> Result<(), ApiError> {
+        self.notes()?;
+        if set.share_id != share_id || sharing_notes::validate_key_set(set).is_err() {
+            return Err(config_error("invalid shared notes key set"));
+        }
+        self.client
+            .authed_empty(
+                Method::PUT,
+                self.item_url(share_id, "/notes/keys")?,
+                Some(to_json(set)?),
+            )
+            .await
+    }
+
+    pub async fn put_share_note(
+        &self,
+        share_id: ShareId,
+        note: &SharedNote,
+    ) -> Result<(), ApiError> {
+        self.notes()?;
+        if sharing_notes::validate_note(note).is_err() {
+            return Err(config_error("invalid shared note"));
+        }
+        self.client
+            .authed_empty(
+                Method::PUT,
+                self.item_url(share_id, &format!("/notes/{}", note.note_id))?,
+                Some(to_json(note)?),
+            )
+            .await
+    }
+
+    pub async fn delete_share_note(
+        &self,
+        share_id: ShareId,
+        note_id: ObjectId,
+    ) -> Result<(), ApiError> {
+        self.notes()?;
+        self.client
+            .authed_empty(
+                Method::DELETE,
+                self.item_url(share_id, &format!("/notes/{note_id}"))?,
+                None,
+            )
+            .await
+    }
+
+    pub async fn rekey_share_notes(
+        &self,
+        share_id: ShareId,
+        request: &RekeySharedNotesRequest,
+    ) -> Result<(), ApiError> {
+        self.notes()?;
+        if sharing_notes::validate_rekey(request).is_err() {
+            return Err(config_error("invalid shared notes rekey"));
+        }
+        self.client
+            .authed_empty(
+                Method::POST,
+                self.item_url(share_id, "/notes/rekey")?,
+                Some(to_json(request)?),
+            )
+            .await
     }
 
     pub async fn share_history(

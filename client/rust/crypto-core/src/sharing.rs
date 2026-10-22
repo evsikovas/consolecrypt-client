@@ -173,6 +173,10 @@ pub fn sharing_identity_code(
 }
 
 impl SharedPlaintext {
+    pub(crate) fn new(plain: Zeroizing<Vec<u8>>) -> Self {
+        Self(plain)
+    }
+
     pub fn as_slice(&self) -> &[u8] {
         &self.0
     }
@@ -642,7 +646,7 @@ fn validate_body(manifest: &VerifiedSharingManifest, body: &SharedEncryptedBody)
     Ok(())
 }
 
-fn member_public_keys(member: &SharingMember) -> Result<DevicePublicKeys> {
+pub(crate) fn member_public_keys(member: &SharingMember) -> Result<DevicePublicKeys> {
     Ok(DevicePublicKeys::from_slices(
         member.encryption_public_key.as_slice(),
         member.signing_public_key.as_slice(),
@@ -661,7 +665,7 @@ fn envelope_key(
     hkdf_sha256_32(shared.expose_secret(), &salt, &[labels::ENVELOPE_KEY, aad])
 }
 
-fn verify_signature(public: &[u8; 32], message: &[u8], signature: &Bytes) -> Result<()> {
+pub(crate) fn verify_signature(public: &[u8; 32], message: &[u8], signature: &Bytes) -> Result<()> {
     if signature.len() != SIGNATURE_BYTES {
         return Err(CryptoError::InvalidSignature.into());
     }
@@ -686,7 +690,7 @@ fn sha256(bytes: &[u8]) -> [u8; HASH_BYTES] {
     Sha256::digest(bytes).into()
 }
 
-fn pad(plain: &[u8]) -> Result<Zeroizing<Vec<u8>>> {
+pub(crate) fn pad(plain: &[u8]) -> Result<Zeroizing<Vec<u8>>> {
     let length = plain
         .len()
         .checked_add(4)
@@ -716,7 +720,7 @@ fn pad(plain: &[u8]) -> Result<Zeroizing<Vec<u8>>> {
     Ok(out)
 }
 
-fn unpad(mut plain: Zeroizing<Vec<u8>>) -> Result<Zeroizing<Vec<u8>>> {
+pub(crate) fn unpad(mut plain: Zeroizing<Vec<u8>>) -> Result<Zeroizing<Vec<u8>>> {
     if plain.len() < 4 || plain.len() > MAX_PADDED_PLAINTEXT {
         return Err(CryptoError::MalformedPlaintext("shared padding length").into());
     }

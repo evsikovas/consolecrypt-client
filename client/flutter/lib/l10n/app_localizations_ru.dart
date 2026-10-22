@@ -559,6 +559,58 @@ class AppLocalizationsRu extends AppLocalizations {
   String get navSnippets => 'Сниппеты';
 
   @override
+  String get notesShared => 'Общие заметки';
+
+  @override
+  String get notesSharedRefresh => 'Обновить общие заметки';
+
+  @override
+  String get notesSharedNew => 'Новая общая заметка';
+
+  @override
+  String get notesSharedFailed => 'Не удалось загрузить общие заметки. Проверьте подключение к серверу синхронизации.';
+
+  @override
+  String get notesSharedWaiting =>
+      'Владелец ещё не открыл общие заметки для этого объекта. Они появятся, когда он откроет панель заметок.';
+
+  @override
+  String notesSharedPending(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count заметки станут доступны, когда владелец откроет панель заметок',
+      many: '$count заметок станут доступны, когда владелец откроет панель заметок',
+      few: '$count заметки станут доступны, когда владелец откроет панель заметок',
+      one: '$count заметка станет доступна, когда владелец откроет панель заметок',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notesSharedEmpty => 'Общих заметок пока нет.';
+
+  @override
+  String get notesSharedHint => 'Заметку видят все, с кем вы поделились объектом. Изменить её можете только вы.';
+
+  @override
+  String get notesSharedReadOnly => 'Изменить заметку может только автор.';
+
+  @override
+  String notesSharedDeleteMessage(String title) {
+    return 'Заметка «$title» будет удалена у всех, у кого есть доступ к объекту.';
+  }
+
+  @override
+  String get notesAuthorYou => 'Вы';
+
+  @override
+  String get notesAuthorOwner => 'Владелец';
+
+  @override
+  String get notesAuthorMember => 'Участник';
+
+  @override
   String get navNotes => 'Заметки';
 
   @override

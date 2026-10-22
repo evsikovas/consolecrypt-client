@@ -236,6 +236,7 @@ async fn route(State(state): State<Arc<HttpState>>, request: Request) -> Respons
                 supports_kube_contexts: state.supports_kube_contexts.load(Ordering::SeqCst),
                 supports_db_connections: state.supports_db_connections.load(Ordering::SeqCst),
                 supports_owner_online_enrollment_v1: false,
+                supports_notes_v1: false,
             },
         );
     }

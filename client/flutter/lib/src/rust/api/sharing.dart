@@ -131,3 +131,21 @@ Future<String> sharingCopySecretCredential({required String id}) =>
 
 Future<String> sharingRefreshBoundHostExpected({required String id, required String address, required int port}) =>
     RustLib.instance.api.crateApiSharingSharingRefreshBoundHostExpected(id: id, address: address, port: port);
+
+/// `Vec<ShareNoteLinkDto>`: local objects linked to shares for notes.
+Future<String> shareNoteLinks() => RustLib.instance.api.crateApiSharingShareNoteLinks();
+
+/// Links `object` (`host:<id>`…) to a share; an empty `share_id` unlinks it.
+Future<void> shareNoteLink({required String object, required String shareId}) =>
+    RustLib.instance.api.crateApiSharingShareNoteLink(object: object, shareId: shareId);
+
+/// `SharedNotesDto` of one share (the owner device also issues keys and rekeys).
+Future<String> shareNotes({required String shareId}) =>
+    RustLib.instance.api.crateApiSharingShareNotes(shareId: shareId);
+
+/// Creates or updates this user's note; returns `SharedNoteDto`.
+Future<String> shareNoteSave({required String shareId, required String noteJson}) =>
+    RustLib.instance.api.crateApiSharingShareNoteSave(shareId: shareId, noteJson: noteJson);
+
+Future<void> shareNoteDelete({required String shareId, required String noteId}) =>
+    RustLib.instance.api.crateApiSharingShareNoteDelete(shareId: shareId, noteId: noteId);

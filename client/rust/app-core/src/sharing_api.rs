@@ -2127,3 +2127,7 @@ impl AppCore {
 
 #[path = "sharing_secret_api.rs"]
 mod sharing_secrets;
+
+#[path = "sharing_notes.rs"]
+mod notes;
+pub use notes::{ShareNoteLinkDto, SharedNoteDto, SharedNoteInputDto, SharedNotesDto};
