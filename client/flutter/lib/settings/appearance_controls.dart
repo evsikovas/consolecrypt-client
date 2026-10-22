@@ -1,4 +1,3 @@
-import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/theme.dart';
 import 'package:consolecrypt/app/theme/terminal_palettes.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
@@ -9,6 +8,7 @@ import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/settings/color_picker.dart';
 import 'package:consolecrypt/settings/terminal_theme_editor.dart';
+import 'package:consolecrypt/terminal/terminal_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -254,6 +254,7 @@ class TerminalAppearanceControls extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final local = ref.watch(localSettingsProvider).value ?? const LocalSettings();
+    final font = ref.watch(terminalFontProvider);
     final settings = ref.read(settingsServiceProvider);
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
@@ -345,8 +346,8 @@ class TerminalAppearanceControls extends ConsumerWidget {
                 ],
               ),
               style: TextStyle(
-                fontFamily: local.terminalFontFamily ?? AppPlatform.monospaceFamily,
-                fontFamilyFallback: [AppPlatform.monospaceFamily, ...AppPlatform.monospaceFallback],
+                fontFamily: font.family,
+                fontFamilyFallback: font.fallback,
                 fontSize: local.terminalFontSize,
                 height: 1.5,
               ),

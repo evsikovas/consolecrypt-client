@@ -16,7 +16,8 @@
 //   effects", a Remote Desktop session or battery saver change.
 // * `consolecrypt/window` — Dart calls `setCaptionColors` with ARGB ints so
 //   the caption blends into the ambient backdrop (Windows 11 22000+; the
-//   HRESULT is ignored on older builds).
+//   HRESULT is ignored on older builds), and `setCaptureExcluded` to hide the
+//   window from screen capture (returns "exclude", "monitor" or "none").
 //
 // Mica / acrylic behind a transparent Flutter surface is deliberately not
 // enabled: it is unverified with Impeller (see the spec's implementation
@@ -51,6 +52,10 @@ class GlassWindowBridge {
   void OnWindowMessage(UINT message);
   bool IsFullscreen() const;
   bool FitFullscreenMonitor();
+
+  // WDA_EXCLUDEFROMCAPTURE (WDA_MONITOR before Windows 10 2004) or WDA_NONE;
+  // returns the applied mode, or nullptr when Windows refused.
+  const char* SetCaptureExcluded(bool excluded);
 
  private:
   static Signals ReadSignals();

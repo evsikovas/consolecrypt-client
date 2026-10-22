@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/docker/docker_compose_yaml.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
@@ -466,13 +467,19 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
       );
     }
     if (_mode == _Mode.edit && _index < _editors.length && _editors[_index] != null) {
-      return DockerYamlEditor(
-        key: ValueKey('docker-compose-editor-$_index'),
-        controller: _editors[_index]!,
-        readOnly: _saving,
+      return RevealedSecret(
+        visible: _revealed,
+        child: DockerYamlEditor(
+          key: ValueKey('docker-compose-editor-$_index'),
+          controller: _editors[_index]!,
+          readOnly: _saving,
+        ),
       );
     }
-    return DockerYamlView(key: ValueKey('docker-compose-view-$_index'), text: text);
+    return RevealedSecret(
+      visible: _revealed,
+      child: DockerYamlView(key: ValueKey('docker-compose-view-$_index'), text: text),
+    );
   }
 
   Widget _unlockPanel(AppLocalizations l) {

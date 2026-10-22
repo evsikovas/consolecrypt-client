@@ -13387,5 +13387,70 @@
   "dbWrapLines": "Wrap lines",
   "@dbWrapLines": {
     "description": "Database code view (DDL, reviewed query): toggle that wraps long lines instead of scrolling sideways."
+  },
+  "kubeTypeName": "Type the exact name above",
+  "@kubeTypeName": {
+    "description": "Kubernetes guarded mutations: Type the exact name above"
+  },
+  "kubeConfirmName": "Type the exact name",
+  "@kubeConfirmName": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubeVaultPasswordConfirm": "Vault passphrase",
+  "@kubeVaultPasswordConfirm": {
+    "description": "Field label: confirm a production write window with the vault passphrase."
+  },
+  "kubeVaultPasswordWrong": "Wrong passphrase.",
+  "@kubeVaultPasswordWrong": {
+    "description": "Error under the vault passphrase field."
+  },
+  "dbVaultPassphrase": "Vault passphrase",
+  "@dbVaultPassphrase": {
+    "description": "Production unlock dialog: vault passphrase field label."
+  },
+  "dbTypeConnectionName": "Type the connection name: {name}",
+  "@dbTypeConnectionName": {
+    "description": "Production unlock dialog: label of the field where the connection name is typed to confirm.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbWrongPassphrase": "Wrong vault passphrase.",
+  "@dbWrongPassphrase": {
+    "description": "Production unlock dialog: the vault passphrase did not match."
+  },
+  "settingsTerminalFontMissing": "Font “{family}” is not installed — using {fallback}.",
+  "@settingsTerminalFontMissing": {
+    "description": "Hint under the terminal font picker when the chosen font (or its Nerd Font alias) is not installed on this computer. {family} is the chosen font family, {fallback} the font used instead.",
+    "placeholders": {
+      "family": {
+        "type": "String"
+      },
+      "fallback": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsCaptureProtectionLabel": "Hide window from screen capture",
+  "@settingsCaptureProtectionLabel": {
+    "description": "Settings → Security: label of the selector that hides the app window from screenshots, screen recording and screen sharing (Windows)."
+  },
+  "settingsCaptureProtectionOff": "Never",
+  "@settingsCaptureProtectionOff": {
+    "description": "Screen capture protection option: the window is never hidden from capture."
+  },
+  "settingsCaptureProtectionSecrets": "While secrets are shown",
+  "@settingsCaptureProtectionSecrets": {
+    "description": "Screen capture protection option (default): the window is hidden from capture only while a password, key or recovery words are shown in plain text."
+  },
+  "settingsCaptureProtectionAlways": "Always",
+  "@settingsCaptureProtectionAlways": {
+    "description": "Screen capture protection option: the window is always hidden from capture. Must match the quoted word in settingsCaptureProtectionHelp."
+  },
+  "settingsCaptureProtectionHelp": "The window is left out of screenshots, recordings and screen sharing (Zoom, Teams). With “Always”, colleagues will not see the ConsoleCrypt window while you share your screen.",
+  "@settingsCaptureProtectionHelp": {
+    "description": "Explanation under the screen capture protection selector in Settings → Security."
   }
 }

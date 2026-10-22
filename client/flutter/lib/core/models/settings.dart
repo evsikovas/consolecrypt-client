@@ -70,6 +70,21 @@ enum TerminalTabSubtitle { name, address, off }
 /// Terminal colours are independent of the interface; system follows it.
 enum TerminalColorScheme { system, dark, light, midnight, ocean, forest, amber, custom }
 
+/// When the window is hidden from screenshots, recordings and screen
+/// sharing (Windows: `WDA_EXCLUDEFROMCAPTURE`).
+enum ScreenCaptureProtection {
+  off('off'),
+
+  /// Only while a secret is shown in plain text (default).
+  whileSecretsVisible('secrets'),
+  always('always');
+
+  const ScreenCaptureProtection(this.wireName);
+
+  /// Persisted value in `local_settings`.
+  final String wireName;
+}
+
 /// UI language (device-local). [system] follows the OS locale and falls
 /// back to English when the OS language is not supported.
 enum AppLocale {
@@ -117,6 +132,7 @@ final class LocalSettings {
     this.databasesView = CollectionView.cards,
     this.dockerTerminalHintShown = false,
     this.dbCodeWrap = true,
+    this.screenCaptureProtection = ScreenCaptureProtection.whileSecretsVisible,
   });
 
   final AppThemeMode themeMode;
@@ -193,6 +209,10 @@ final class LocalSettings {
   /// Database code views (DDL, reviewed statements) wrap long lines.
   final bool dbCodeWrap;
 
+  /// Hide the window from screen capture: never, while secrets are shown, or
+  /// always (only where the OS supports it).
+  final ScreenCaptureProtection screenCaptureProtection;
+
   LocalSettings copyWith({
     AppThemeMode? themeMode,
     double? uiFontScale,
@@ -223,6 +243,7 @@ final class LocalSettings {
     CollectionView? databasesView,
     bool? dockerTerminalHintShown,
     bool? dbCodeWrap,
+    ScreenCaptureProtection? screenCaptureProtection,
   }) => LocalSettings(
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
@@ -250,5 +271,6 @@ final class LocalSettings {
     databasesView: databasesView ?? this.databasesView,
     dockerTerminalHintShown: dockerTerminalHintShown ?? this.dockerTerminalHintShown,
     dbCodeWrap: dbCodeWrap ?? this.dbCodeWrap,
+    screenCaptureProtection: screenCaptureProtection ?? this.screenCaptureProtection,
   );
 }

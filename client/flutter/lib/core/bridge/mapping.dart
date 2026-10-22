@@ -747,6 +747,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'databases_view': s.databasesView.name,
   'docker_terminal_hint_shown': s.dockerTerminalHintShown,
   'db_code_wrap': s.dbCodeWrap,
+  'screen_capture_protection': s.screenCaptureProtection.wireName,
   'sftp_default_editor': s.sftpDefaultEditor == null
       ? null
       : {'kind': s.sftpDefaultEditor!.kind.wireName, 'value': s.sftpDefaultEditor!.value},
@@ -813,6 +814,12 @@ LocalSettings localSettingsFromJson(Json j) {
     databasesView: _byWire(CollectionView.values, (view) => view.name, j['databases_view'], d.databasesView),
     dockerTerminalHintShown: j['docker_terminal_hint_shown'] == true,
     dbCodeWrap: j['db_code_wrap'] != false,
+    screenCaptureProtection: _byWire(
+      ScreenCaptureProtection.values,
+      (e) => e.wireName,
+      j['screen_capture_protection'],
+      d.screenCaptureProtection,
+    ),
   );
 }
 

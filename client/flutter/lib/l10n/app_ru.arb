@@ -5528,5 +5528,21 @@
   "dbDetailsJson": "JSON",
   "dbDetailsEmpty": "Для этого объекта сведений нет.",
   "copyWhatObjectDetails": "Сведения об объекте",
-  "dbWrapLines": "Переносить строки"
+  "dbWrapLines": "Переносить строки",
+  "kubeTypeName": "Введите точное имя выше",
+  "kubeConfirmName": "Введите точное имя",
+  "@kubeConfirmName": {
+    "description": "Kubernetes workspace tools"
+  },
+  "kubeVaultPasswordConfirm": "Пароль хранилища",
+  "kubeVaultPasswordWrong": "Неверный пароль.",
+  "dbVaultPassphrase": "Пароль хранилища",
+  "dbTypeConnectionName": "Введите имя подключения: {name}",
+  "dbWrongPassphrase": "Неверный пароль хранилища.",
+  "settingsTerminalFontMissing": "Шрифт «{family}» не установлен — используется {fallback}.",
+  "settingsCaptureProtectionLabel": "Скрывать окно от записи экрана",
+  "settingsCaptureProtectionOff": "Никогда",
+  "settingsCaptureProtectionSecrets": "Когда видны секреты",
+  "settingsCaptureProtectionAlways": "Всегда",
+  "settingsCaptureProtectionHelp": "Окно не попадёт в скриншоты, запись и демонстрацию экрана (Zoom, Teams). В режиме «Всегда» коллеги не увидят окно ConsoleCrypt при показе экрана."
 }

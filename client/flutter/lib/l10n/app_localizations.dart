@@ -17413,6 +17413,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wrap lines'**
   String get dbWrapLines;
+
+  /// Kubernetes guarded mutations: Type the exact name above
+  ///
+  /// In en, this message translates to:
+  /// **'Type the exact name above'**
+  String get kubeTypeName;
+
+  /// Kubernetes workspace tools
+  ///
+  /// In en, this message translates to:
+  /// **'Type the exact name'**
+  String get kubeConfirmName;
+
+  /// Field label: confirm a production write window with the vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault passphrase'**
+  String get kubeVaultPasswordConfirm;
+
+  /// Error under the vault passphrase field.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong passphrase.'**
+  String get kubeVaultPasswordWrong;
+
+  /// Production unlock dialog: vault passphrase field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault passphrase'**
+  String get dbVaultPassphrase;
+
+  /// Production unlock dialog: label of the field where the connection name is typed to confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Type the connection name: {name}'**
+  String dbTypeConnectionName(String name);
+
+  /// Production unlock dialog: the vault passphrase did not match.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong vault passphrase.'**
+  String get dbWrongPassphrase;
+
+  /// Hint under the terminal font picker when the chosen font (or its Nerd Font alias) is not installed on this computer. {family} is the chosen font family, {fallback} the font used instead.
+  ///
+  /// In en, this message translates to:
+  /// **'Font “{family}” is not installed — using {fallback}.'**
+  String settingsTerminalFontMissing(String family, String fallback);
+
+  /// Settings → Security: label of the selector that hides the app window from screenshots, screen recording and screen sharing (Windows).
+  ///
+  /// In en, this message translates to:
+  /// **'Hide window from screen capture'**
+  String get settingsCaptureProtectionLabel;
+
+  /// Screen capture protection option: the window is never hidden from capture.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get settingsCaptureProtectionOff;
+
+  /// Screen capture protection option (default): the window is hidden from capture only while a password, key or recovery words are shown in plain text.
+  ///
+  /// In en, this message translates to:
+  /// **'While secrets are shown'**
+  String get settingsCaptureProtectionSecrets;
+
+  /// Screen capture protection option: the window is always hidden from capture. Must match the quoted word in settingsCaptureProtectionHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Always'**
+  String get settingsCaptureProtectionAlways;
+
+  /// Explanation under the screen capture protection selector in Settings → Security.
+  ///
+  /// In en, this message translates to:
+  /// **'The window is left out of screenshots, recordings and screen sharing (Zoom, Teams). With “Always”, colleagues will not see the ConsoleCrypt window while you share your screen.'**
+  String get settingsCaptureProtectionHelp;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

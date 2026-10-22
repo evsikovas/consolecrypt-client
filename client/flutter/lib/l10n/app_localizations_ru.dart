@@ -10065,4 +10065,48 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbWrapLines => 'Переносить строки';
+
+  @override
+  String get kubeTypeName => 'Введите точное имя выше';
+
+  @override
+  String get kubeConfirmName => 'Введите точное имя';
+
+  @override
+  String get kubeVaultPasswordConfirm => 'Пароль хранилища';
+
+  @override
+  String get kubeVaultPasswordWrong => 'Неверный пароль.';
+
+  @override
+  String get dbVaultPassphrase => 'Пароль хранилища';
+
+  @override
+  String dbTypeConnectionName(String name) {
+    return 'Введите имя подключения: $name';
+  }
+
+  @override
+  String get dbWrongPassphrase => 'Неверный пароль хранилища.';
+
+  @override
+  String settingsTerminalFontMissing(String family, String fallback) {
+    return 'Шрифт «$family» не установлен — используется $fallback.';
+  }
+
+  @override
+  String get settingsCaptureProtectionLabel => 'Скрывать окно от записи экрана';
+
+  @override
+  String get settingsCaptureProtectionOff => 'Никогда';
+
+  @override
+  String get settingsCaptureProtectionSecrets => 'Когда видны секреты';
+
+  @override
+  String get settingsCaptureProtectionAlways => 'Всегда';
+
+  @override
+  String get settingsCaptureProtectionHelp =>
+      'Окно не попадёт в скриншоты, запись и демонстрацию экрана (Zoom, Teams). В режиме «Всегда» коллеги не увидят окно ConsoleCrypt при показе экрана.';
 }
