@@ -1,10 +1,10 @@
-# ConsoleCrypt 0.8.8
+# ConsoleCrypt 0.9.1
 
 ## Русский
 
 Выпуск доступен для macOS, Windows, Linux и Android. Сборка и проверка iOS отложены.
 
-**Команды** (сервер синхронизации 0.1.18). Команда — общее хранилище
+**Команды** (сервер синхронизации 0.2.1). Команда — общее хранилище
 нескольких аккаунтов на одном сервере: её хосты, группы, учётные данные и
 сниппеты видят все участники, а роль решает, кто может их менять. Названия,
 настройки и ресурсы команды зашифрованы сквозным шифрованием — сервер видит
@@ -37,15 +37,16 @@
 - Команда открывается и без сети — из кэша в зашифрованной базе профиля;
   изменения уходят, когда сеть появится.
 
-Нужен сервер синхронизации 0.1.18 или новее; со старым сервером раздел
-«Команды» не показывается. Личные хранилища, общий доступ и резервные копии
+Нужен сервер синхронизации 0.2.1 или новее; со старым сервером раздел
+«Команды» не показывается. Работает и в обычном, и в корпоративном режиме
+входа. Личные хранилища, общий доступ, общие заметки и резервные копии
 работают как раньше.
 
 ## English
 
 Available for macOS, Windows, Linux and Android. iOS builds and checks are postponed.
 
-**Teams** (sync server 0.1.18). A team is a vault shared by several accounts on
+**Teams** (sync server 0.2.1). A team is a vault shared by several accounts on
 the same server: all members see its hosts, groups, credentials and snippets,
 and roles decide who may change them. Team names, settings and resources are
 end-to-end encrypted — the server only sees who is a member.
@@ -77,5 +78,6 @@ end-to-end encrypted — the server only sees who is a member.
 - Teams open offline from a cache in the encrypted profile database; changes
   are sent when the network is back.
 
-Requires sync server 0.1.18 or later; with an older server Teams is hidden.
-Personal vaults, sharing and backups work as before.
+Requires sync server 0.2.1 or later; with an older server Teams is hidden.
+Works in both the standard and the corporate sign-in mode. Personal vaults,
+sharing, shared notes and backups work as before.
