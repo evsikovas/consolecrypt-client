@@ -286,15 +286,22 @@ impl GuardVisitor<'_> {
             .map(|ident| ident.value.as_str())
             .unwrap_or_default();
         let lower = last.to_ascii_lowercase();
-        let canonical_quote = parts.iter().all(|ident| {
-            ident.quote_style.is_none() || ident.value == ident.value.to_ascii_lowercase()
-        });
+        // ClickHouse names are case-sensitive whether quoted or not, and the
+        // allowlist there matches the exact spelling.
+        let canonical_quote = self.engine == DbEngine::Clickhouse
+            || parts.iter().all(|ident| {
+                ident.quote_style.is_none() || ident.value == ident.value.to_ascii_lowercase()
+            });
         let qualified_builtin = self.engine == DbEngine::Postgresql
             && parts.len() == 2
             && parts[0].value == "pg_catalog";
         let safe = canonical_quote
             && (parts.len() == 1 || qualified_builtin)
-            && safe_function(self.engine, &lower, table);
+            && if self.engine == DbEngine::Clickhouse {
+                clickhouse_function(last, table)
+            } else {
+                safe_function(self.engine, &lower, table)
+            };
         if !safe {
             self.risk(
                 QueryRisk::Destructive,
@@ -615,10 +622,6 @@ fn safe_function(engine: DbEngine, name: &str, table: bool) -> bool {
                     | "jsonb_object_keys"
                     | "regexp_split_to_table"
             ),
-            DbEngine::Clickhouse => matches!(
-                name,
-                "numbers" | "numbers_mt" | "zeros" | "zeros_mt" | "values"
-            ),
             _ => false,
         };
     }
@@ -885,152 +888,244 @@ fn safe_function(engine: DbEngine, name: &str, table: bool) -> bool {
                 | "regexp_replace"
                 | "regexp_substr"
         ),
-        DbEngine::Clickhouse => matches!(
-            name,
-            "countif"
-                | "sumif"
-                | "avgif"
-                | "minif"
-                | "maxif"
-                | "uniq"
-                | "uniqexact"
-                | "uniqcombined"
-                | "uniqhll12"
-                | "quantile"
-                | "quantiles"
-                | "median"
-                | "grouparray"
-                | "groupuniqarray"
-                | "argmin"
-                | "argmax"
-                | "any"
-                | "anylast"
-                | "anyheavy"
-                | "countdistinct"
-                | "tostring"
-                | "toint8"
-                | "toint16"
-                | "toint32"
-                | "toint64"
-                | "touint8"
-                | "touint16"
-                | "touint32"
-                | "touint64"
-                | "tofloat32"
-                | "tofloat64"
-                | "todate"
-                | "todatetime"
-                | "todatetime64"
-                | "todate32"
-                | "todecimal32"
-                | "todecimal64"
-                | "todecimal128"
-                | "toyear"
-                | "tomonth"
-                | "todayofmonth"
-                | "todayofweek"
-                | "tohour"
-                | "tominute"
-                | "tosecond"
-                | "tostartofday"
-                | "tostartofmonth"
-                | "tostartofyear"
-                | "tostartofhour"
-                | "formatdatetime"
-                | "parsedatetimebesteffort"
-                | "datediff"
-                | "dateadd"
-                | "today"
-                | "yesterday"
-                | "now"
-                | "now64"
-                | "arrayjoin"
-                | "arraymap"
-                | "arrayfilter"
-                | "arrayexists"
-                | "arrayall"
-                | "arraycount"
-                | "arrayfirst"
-                | "arrayelement"
-                | "arraylength"
-                | "arraydistinct"
-                | "arraysort"
-                | "arrayreversesort"
-                | "arrayreduce"
-                | "arrayzip"
-                | "arrayenumerate"
-                | "arrayconcat"
-                | "arraypushback"
-                | "arraypushfront"
-                | "arraypopback"
-                | "arraypopfront"
-                | "arrayslice"
-                | "arrayflatten"
-                | "arrayintersect"
-                | "arraydifference"
-                | "arraycumsum"
-                | "has"
-                | "hasall"
-                | "hasany"
-                | "indexof"
-                | "empty"
-                | "notempty"
-                | "splitbychar"
-                | "splitbystring"
-                | "arraystringconcat"
-                | "position"
-                | "positioncaseinsensitive"
-                | "match"
-                | "extract"
-                | "extractall"
-                | "replaceregexpone"
-                | "replaceregexpall"
-                | "replaceall"
-                | "replaceone"
-                | "jsonextract"
-                | "jsonextractstring"
-                | "jsonextractint"
-                | "jsonextractfloat"
-                | "jsonextractbool"
-                | "jsonextractraw"
-                | "jsonhas"
-                | "isvalidjson"
-                | "map"
-                | "mapkeys"
-                | "mapvalues"
-                | "mapcontains"
-                | "tuple"
-                | "tupleelement"
-                | "if"
-                | "multiif"
-                | "isnull"
-                | "ifnull"
-                | "assumenotnull"
-                | "tonullable"
-                | "siphash64"
-                | "cityhash64"
-                | "xxhash64"
-                | "hex"
-                | "unhex"
-                | "base64encode"
-                | "base64decode"
-                | "isfinite"
-                | "isnan"
-                // Pure formatting and server identity (no I/O).
-                | "formatreadablesize"
-                | "formatreadablequantity"
-                | "formatreadabletimedelta"
-                | "uptime"
-                | "version"
-                | "hostname"
-                | "tostartofminute"
-                | "tostartoffiveminutes"
-                | "tostartoffifteenminutes"
-                | "tostartofweek"
-                | "tostartofquarter"
-        ),
         _ => false,
     }
+}
+
+/// Built-in ClickHouse functions that only compute: aggregates, conversions,
+/// date / array / string / JSON / hash helpers, pure formatting and server
+/// identity. ClickHouse resolves function names case-sensitively, so these
+/// are the server's own spellings and match exactly: another spelling is a
+/// different function (possibly a user-defined one) or none at all.
+/// Spellings checked against `system.functions` (ClickHouse 25.8).
+const CLICKHOUSE_FUNCTIONS: &[&str] = &[
+    "any",
+    "anyHeavy",
+    "anyLast",
+    "argMax",
+    "argMin",
+    "countDistinct",
+    "countIf",
+    "sumIf",
+    "avgIf",
+    "minIf",
+    "maxIf",
+    "uniq",
+    "uniqExact",
+    "uniqCombined",
+    "uniqHLL12",
+    "quantile",
+    "quantiles",
+    "median",
+    "groupArray",
+    "groupUniqArray",
+    "lag",
+    "lead",
+    "toString",
+    "toInt8",
+    "toInt16",
+    "toInt32",
+    "toInt64",
+    "toUInt8",
+    "toUInt16",
+    "toUInt32",
+    "toUInt64",
+    "toFloat32",
+    "toFloat64",
+    "toDate",
+    "toDate32",
+    "toDateTime",
+    "toDateTime64",
+    "toDecimal32",
+    "toDecimal64",
+    "toDecimal128",
+    "toNullable",
+    "assumeNotNull",
+    "toYear",
+    "toMonth",
+    "toDayOfMonth",
+    "toDayOfWeek",
+    "toHour",
+    "toMinute",
+    "toSecond",
+    "toStartOfMinute",
+    "toStartOfFiveMinutes",
+    "toStartOfFifteenMinutes",
+    "toStartOfHour",
+    "toStartOfDay",
+    "toStartOfWeek",
+    "toStartOfMonth",
+    "toStartOfQuarter",
+    "toStartOfYear",
+    "formatDateTime",
+    "parseDateTimeBestEffort",
+    "dateAdd",
+    "today",
+    "yesterday",
+    "arrayJoin",
+    "arrayMap",
+    "arrayFilter",
+    "arrayExists",
+    "arrayAll",
+    "arrayCount",
+    "arrayFirst",
+    "arrayElement",
+    "arrayDistinct",
+    "arraySort",
+    "arrayReverseSort",
+    "arrayReduce",
+    "arrayZip",
+    "arrayEnumerate",
+    "arrayConcat",
+    "arrayPushBack",
+    "arrayPushFront",
+    "arrayPopBack",
+    "arrayPopFront",
+    "arraySlice",
+    "arrayFlatten",
+    "arrayIntersect",
+    "arrayDifference",
+    "arrayCumSum",
+    "arrayStringConcat",
+    "has",
+    "hasAll",
+    "hasAny",
+    "indexOf",
+    "empty",
+    "notEmpty",
+    "splitByChar",
+    "splitByString",
+    "trim",
+    "ltrim",
+    "rtrim",
+    "positionCaseInsensitive",
+    "match",
+    "extract",
+    "extractAll",
+    "replaceOne",
+    "replaceAll",
+    "replaceRegexpOne",
+    "replaceRegexpAll",
+    "JSONExtract",
+    "JSONExtractString",
+    "JSONExtractInt",
+    "JSONExtractFloat",
+    "JSONExtractBool",
+    "JSONExtractRaw",
+    "JSONHas",
+    "isValidJSON",
+    "map",
+    "mapKeys",
+    "mapValues",
+    "mapContains",
+    "tuple",
+    "tupleElement",
+    "multiIf",
+    "sipHash64",
+    "cityHash64",
+    "xxHash64",
+    "base64Encode",
+    "base64Decode",
+    "isFinite",
+    "isNaN",
+    "formatReadableSize",
+    "formatReadableQuantity",
+    "formatReadableTimeDelta",
+    "uptime",
+    "hostName",
+    "hostname",
+];
+
+/// Built-in ClickHouse functions the server itself registers as
+/// case-insensitive (`system.functions.case_insensitive = 1`, mostly the
+/// standard SQL ones), so `count`, `COUNT` and `Count` are the same function.
+const CLICKHOUSE_CASE_INSENSITIVE_FUNCTIONS: &[&str] = &[
+    "count",
+    "sum",
+    "avg",
+    "min",
+    "max",
+    "abs",
+    "ceil",
+    "ceiling",
+    "floor",
+    "round",
+    "sqrt",
+    "power",
+    "exp",
+    "ln",
+    "log",
+    "log10",
+    "sign",
+    "mod",
+    "sin",
+    "cos",
+    "tan",
+    "asin",
+    "acos",
+    "atan",
+    "atan2",
+    "pi",
+    "lower",
+    "upper",
+    "length",
+    "CHAR_LENGTH",
+    "CHARACTER_LENGTH",
+    "OCTET_LENGTH",
+    "concat",
+    "concat_ws",
+    "replace",
+    "reverse",
+    "substring",
+    "substr",
+    "left",
+    "right",
+    "lpad",
+    "rpad",
+    "repeat",
+    "ascii",
+    "position",
+    "coalesce",
+    "greatest",
+    "least",
+    "nullIf",
+    "ifNull",
+    "isNull",
+    "if",
+    "row_number",
+    "rank",
+    "dense_rank",
+    "percent_rank",
+    "ntile",
+    "first_value",
+    "last_value",
+    "nth_value",
+    "dateDiff",
+    "now",
+    "now64",
+    "hex",
+    "unhex",
+    "version",
+];
+
+/// Generators that read nothing; `values` is registered case-insensitive.
+const CLICKHOUSE_TABLE_FUNCTIONS: &[&str] = &["numbers", "numbers_mt", "zeros", "zeros_mt"];
+const CLICKHOUSE_CASE_INSENSITIVE_TABLE_FUNCTIONS: &[&str] = &["values"];
+
+/// Whether `name`, spelled as written, is one of the pure built-ins above.
+fn clickhouse_function(name: &str, table: bool) -> bool {
+    let (exact, case_insensitive) = if table {
+        (
+            CLICKHOUSE_TABLE_FUNCTIONS,
+            CLICKHOUSE_CASE_INSENSITIVE_TABLE_FUNCTIONS,
+        )
+    } else {
+        (CLICKHOUSE_FUNCTIONS, CLICKHOUSE_CASE_INSENSITIVE_FUNCTIONS)
+    };
+    exact.contains(&name)
+        || case_insensitive
+            .iter()
+            .any(|builtin| builtin.eq_ignore_ascii_case(name))
 }
 
 fn canonical_ident(ident: &Ident) -> String {

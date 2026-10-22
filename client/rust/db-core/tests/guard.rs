@@ -542,6 +542,128 @@ fn read_only_diagnostic_functions_run_on_production_and_resolve_to_builtins() {
     }
 }
 #[test]
+fn clickhouse_function_names_match_the_servers_spelling() {
+    let g = guard(DbEngine::Clickhouse, true, false);
+    // Case-sensitive built-ins only in their own spelling; the ones the
+    // server registers case-insensitive in any spelling.
+    for query in [
+        "SELECT formatReadableSize(1024)",
+        "SELECT count() FROM system.one",
+        "SELECT COUNT(*) FROM system.one",
+        "SELECT Count(1) FROM system.one",
+        "SELECT `count`(1) FROM system.one",
+        "SELECT nullIf(1, 0), NULLIF(1, 0), ifnull(NULL, 1), char_length('a')",
+        "SELECT toDate(now()), dateDiff('day', today(), today()), DATEDIFF('day', today(), today())",
+        "SELECT hostName(), hostname()",
+        "SELECT countIf(number > 1), uniqExact(number) FROM numbers(3)",
+        "SELECT * FROM numbers_mt(3)",
+        "SELECT * FROM VALUES('x UInt8', 1)",
+    ] {
+        let p = g
+            .prepare(&request(query))
+            .unwrap_or_else(|e| panic!("{query}: {e:?}"));
+        assert!(p[0].is_read_only(), "{query}");
+    }
+    for query in [
+        "SELECT FORMATREADABLESIZE(1024)",
+        "SELECT formatreadablesize(1024)",
+        "SELECT `formatreadablesize`(1024)",
+        "SELECT todate(now())",
+        "SELECT TOSTRING(1)",
+        "SELECT HOSTNAME()",
+        "SELECT countif(number > 1) FROM numbers(3)",
+        "SELECT anylast(1)",
+        // Not a ClickHouse built-in (the array length is `length`).
+        "SELECT arrayLength([1])",
+        "SELECT * FROM NUMBERS(3)",
+        "SELECT * FROM Numbers(3)",
+    ] {
+        assert!(g.prepare(&request(query)).is_err(), "accepted {query}");
+    }
+}
+/// Fills a starter snippet's `{{variables}}` with their defaults, or a
+/// harmless identifier.
+fn fill_snippet(template: &str, defaults: &[(String, String)]) -> String {
+    let mut text = template.to_string();
+    while let Some(start) = text.find("{{") {
+        let end = start + text[start..].find("}}").expect("closed variable");
+        let name = text[start + 2..end].trim().to_string();
+        let value = defaults
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map(|(_, v)| v.clone())
+            .unwrap_or_else(|| "demo".into());
+        text.replace_range(start..end + 2, &value);
+    }
+    text
+}
+/// The ClickHouse starter snippets of the app's catalog
+/// (`client/flutter/lib/snippets/starter_catalog_db.dart`): id, query text
+/// with the variables filled, and whether they are terminal-only.
+fn clickhouse_starter_snippets() -> Vec<(String, String, bool)> {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../flutter/lib/snippets/starter_catalog_db.dart"
+    );
+    let source = std::fs::read_to_string(path).expect("starter catalog");
+    let start = source
+        .find("StarterSnippetPackage('clickhouse'")
+        .expect("clickhouse package");
+    let end = start
+        + source[start..]
+            .find("StarterSnippetPackage('redis'")
+            .expect("next package");
+    let package = &source[start..end];
+    let mut snippets = Vec::new();
+    for entry in package.split("'db.clickhouse.").skip(1) {
+        let id = entry[..entry.find('\'').expect("id")].to_string();
+        let mut lines = Vec::new();
+        for line in entry.lines() {
+            let line = line.trim();
+            for quote in ['\'', '"'] {
+                let open = format!("r{quote}");
+                if let Some(body) = line.strip_prefix(&open) {
+                    let close = body.rfind(&format!("{quote},")).expect("raw line");
+                    lines.push(body[..close].to_string());
+                }
+            }
+        }
+        let mut defaults = Vec::new();
+        for part in entry.split("SnippetVariable(name: '").skip(1) {
+            let name = part[..part.find('\'').expect("name")].to_string();
+            let head = &part[..part.find(')').expect("variable")];
+            if let Some(value) = head.split("defaultValue: '").nth(1) {
+                defaults.push((
+                    name,
+                    value[..value.find('\'').expect("default")].to_string(),
+                ));
+            }
+        }
+        let terminal = entry.contains("terminalOnly: true");
+        snippets.push((id, fill_snippet(&lines.join("\n"), &defaults), terminal));
+    }
+    snippets
+}
+#[test]
+fn clickhouse_starter_snippets_classify_read_only() {
+    let snippets = clickhouse_starter_snippets();
+    assert_eq!(snippets.len(), 20, "{snippets:?}");
+    let g = guard(DbEngine::Clickhouse, true, false);
+    let mut workspace = 0;
+    for (id, query, terminal) in snippets {
+        if terminal {
+            // Server admin commands for the terminal; the workspace refuses them.
+            continue;
+        }
+        workspace += 1;
+        let prepared = g
+            .prepare(&request(&query))
+            .unwrap_or_else(|e| panic!("{id}: {e:?}\n{query}"));
+        assert!(prepared.iter().all(|p| p.is_read_only()), "{id}");
+    }
+    assert_eq!(workspace, 18);
+}
+#[test]
 fn side_effecting_server_functions_stay_blocked_on_production() {
     let g = guard(DbEngine::Postgresql, true, false);
     for query in [
