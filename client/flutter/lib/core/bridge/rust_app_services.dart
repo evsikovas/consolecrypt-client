@@ -17,6 +17,7 @@ import 'package:consolecrypt/core/bridge/rust_prompts.dart';
 import 'package:consolecrypt/core/bridge/rust_sessions.dart';
 import 'package:consolecrypt/core/bridge/rust_sftp_browser.dart';
 import 'package:consolecrypt/core/bridge/rust_sharing.dart';
+import 'package:consolecrypt/core/bridge/rust_teams.dart';
 import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/storage/app_storage_paths.dart';
@@ -155,6 +156,7 @@ final class RustAppServices {
       sftpBrowser: sftpBrowser,
       prompts: prompts,
       sharing: RustSharingService(hub),
+      teams: RustTeamService(hub),
       enrollment: const RustEnrollmentService(),
       kubernetes: RustKubeService(hub),
       databases: RustDbService(hub),

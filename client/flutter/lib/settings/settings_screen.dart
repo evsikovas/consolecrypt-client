@@ -25,6 +25,7 @@ import 'package:consolecrypt/settings/settings_dialogs.dart';
 import 'package:consolecrypt/settings/sftp_settings.dart';
 import 'package:consolecrypt/settings/shortcut_settings.dart';
 import 'package:consolecrypt/sync/enable_sync_dialog.dart';
+import 'package:consolecrypt/teams/teams_settings.dart';
 import 'package:consolecrypt/terminal/terminal_fonts.dart';
 import 'package:consolecrypt/updates/update_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,6 +48,8 @@ class SettingsScreen extends ConsumerWidget {
           _AccountSyncSection(),
           SizedBox(height: GlassSpacing.s16),
           _VaultSection(),
+          SizedBox(height: GlassSpacing.s16),
+          TeamsSettingsSection(),
           SizedBox(height: GlassSpacing.s16),
           _AppearanceSection(),
           SizedBox(height: GlassSpacing.s16),

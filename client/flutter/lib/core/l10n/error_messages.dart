@@ -139,6 +139,8 @@ String? _reasonMessage(AppLocalizations l, AppException e) {
     AppErrorReason.requestNotFound => l.errorReasonRequestNotFound,
     AppErrorReason.secretNotStored => l.errorReasonSecretNotStored,
     AppErrorReason.sessionClosed => l.errorReasonSessionClosed,
+    AppErrorReason.teamReadOnly => l.teamsErrorReadOnly,
+    AppErrorReason.teamUntrusted => l.teamsErrorUntrusted,
     AppErrorReason.editorLaunchFailed => l.errorEditorLaunchFailed(args['detail'] ?? ''),
     AppErrorReason.noTextEditor => l.errorNoTextEditor,
     AppErrorReason.applicationPickerFailed => l.errorApplicationPickerFailed(args['detail'] ?? ''),
@@ -176,6 +178,10 @@ String validationMessage(AppLocalizations l, String field, String rule) {
   if (field == 'shared_host' && rule == 'shared_route_requires_verified_plan') return l.sharingTunnelVerify;
   if (field == 'auto_start' && rule == 'shared_host_requires_verification') return l.sharingTunnelVerify;
   if (field == 'jump_chain') return l.validationJumpChainSelf;
+  if (field == 'vault' && rule == 'cross_vault') return l.teamsErrorCrossVault;
+  if (field == 'vault' && rule == 'personal_only') return l.teamsErrorPersonalOnly;
+  if (field == 'ai_context' && rule == 'blocked_by_team_policy') return l.teamsErrorAiBlocked;
+  if (field == 'role' && rule == 'owner_cannot_leave') return l.teamsErrorOwnerCannotLeave;
   final name = switch (field) {
     'name' => l.validationFieldName,
     'address' => l.validationFieldAddress,

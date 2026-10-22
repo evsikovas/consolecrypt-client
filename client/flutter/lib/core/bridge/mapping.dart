@@ -240,6 +240,12 @@ AppException mapBridgeError(BridgeError e) {
       code = AppErrorCode.cancelled;
     case 'permission_denied':
       code = AppErrorCode.forbidden;
+    case 'team_read_only':
+      code = AppErrorCode.forbidden;
+      reason = AppErrorReason.teamReadOnly;
+    case 'team_untrusted':
+      code = AppErrorCode.forbidden;
+      reason = AppErrorReason.teamUntrusted;
     case 'payload_too_large':
       code = AppErrorCode.payloadTooLarge;
       args = {'size': d['size'] ?? '', 'limit': d['limit'] ?? ''};

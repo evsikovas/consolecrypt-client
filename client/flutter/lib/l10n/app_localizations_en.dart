@@ -10982,4 +10982,389 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorReasonEnterpriseBrowserUnavailable => 'Could not open the browser for signing in.';
+
+  @override
+  String get teamsTitle => 'Teams';
+
+  @override
+  String get teamsSubtitle => 'Resources owned by a team. Every member sees them; roles decide who may change them.';
+
+  @override
+  String get teamsEmpty => 'You are not in any team yet.';
+
+  @override
+  String get teamsCreate => 'Create team';
+
+  @override
+  String get teamsRefresh => 'Refresh';
+
+  @override
+  String get teamsUnnamed => 'Unnamed team';
+
+  @override
+  String get teamsPendingConfirmation => 'Waiting for an admin to compare the code';
+
+  @override
+  String get teamsUnavailable => 'Not available right now';
+
+  @override
+  String teamsRowMeta(String role, int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count members', one: '1 member');
+    return '$role · $_temp0';
+  }
+
+  @override
+  String get teamsWarningBadge => 'Paused';
+
+  @override
+  String get teamsRotationBadge => 'Rotate key';
+
+  @override
+  String get teamsOfflineBadge => 'Offline';
+
+  @override
+  String get teamsReadOnly => 'Read only';
+
+  @override
+  String teamsChipSemantics(String name) {
+    return 'Team $name';
+  }
+
+  @override
+  String teamsInvitationFrom(String email, String role) {
+    return '$email invites you to a team as $role.';
+  }
+
+  @override
+  String teamsInvitationNote(String note) {
+    return 'Note: $note';
+  }
+
+  @override
+  String get teamsAccept => 'Accept';
+
+  @override
+  String get teamsDecline => 'Decline';
+
+  @override
+  String get teamsCreateTitle => 'New team';
+
+  @override
+  String get teamsCreateBody =>
+      'The name, colour and everything the team stores are end-to-end encrypted. The server only sees who is a member.';
+
+  @override
+  String get teamsNameLabel => 'Team name';
+
+  @override
+  String get teamsDescriptionLabel => 'Description (optional)';
+
+  @override
+  String get teamsColorLabel => 'Colour';
+
+  @override
+  String get teamsColorNone => 'Team colour';
+
+  @override
+  String get teamsColorCustom => 'Custom…';
+
+  @override
+  String teamsCreated(String name) {
+    return 'Team \"$name\" created';
+  }
+
+  @override
+  String get teamsJoinCodeTitle => 'Compare the code';
+
+  @override
+  String teamsJoinCodeBody(String email) {
+    return 'Read this code to $email (in person, by phone or in a messenger). They see the same code on their screen and confirm it.';
+  }
+
+  @override
+  String get teamsJoinCodeWait => 'The team opens on your devices as soon as the admin confirms.';
+
+  @override
+  String teamsJoinRequest(String email, String role) {
+    return '$email accepted the invitation ($role). Compare the code before adding them.';
+  }
+
+  @override
+  String get teamsCompareCode => 'Compare code';
+
+  @override
+  String teamsCompareTitle(String email) {
+    return 'Add $email?';
+  }
+
+  @override
+  String teamsCompareRole(String role) {
+    return 'Role: $role';
+  }
+
+  @override
+  String teamsCompareBody(String email) {
+    return 'Ask $email to read the code on their screen. Add them only if every group matches.';
+  }
+
+  @override
+  String teamsCodesMatchCheckbox(String email) {
+    return 'The code on $email\'s screen is the same';
+  }
+
+  @override
+  String get teamsCompareWarning =>
+      'A different code means someone may be intercepting the invitation. Do not add the member.';
+
+  @override
+  String get teamsCodesDontMatch => 'Codes don\'t match';
+
+  @override
+  String get teamsAddMember => 'Add to team';
+
+  @override
+  String teamsMemberAdded(String email) {
+    return '$email added to the team';
+  }
+
+  @override
+  String get teamsCodeRejectedTitle => 'Join rejected';
+
+  @override
+  String get teamsCodeRejectedBody =>
+      'Nobody was added. Invite the person again and compare the code over a channel you trust.';
+
+  @override
+  String get teamsTabMembers => 'Members';
+
+  @override
+  String get teamsTabSettings => 'Settings';
+
+  @override
+  String get teamsTabHistory => 'History';
+
+  @override
+  String get teamsWarningInvalidLog =>
+      'The server showed a membership change nobody signed. The team is paused (read only) and no keys are shared until this is resolved.';
+
+  @override
+  String get teamsWarningRollback =>
+      'The server showed an older or different team membership than before. The team is paused (read only).';
+
+  @override
+  String get teamsRotationRequired =>
+      'A member left the team. Rotate the key so they cannot read anything added from now on.';
+
+  @override
+  String get teamsRotateKey => 'Rotate key';
+
+  @override
+  String get teamsKeyRotated => 'Team key rotated';
+
+  @override
+  String teamsMemberYou(String email) {
+    return '$email (you)';
+  }
+
+  @override
+  String get teamsPendingInvitations => 'Invitations sent';
+
+  @override
+  String get teamsCancelInvitation => 'Cancel';
+
+  @override
+  String get teamsInvite => 'Invite member';
+
+  @override
+  String get teamsTransferOwner => 'Make owner';
+
+  @override
+  String teamsTransferOwnerConfirm(String email) {
+    return '$email becomes the owner of the team; you stay an admin.';
+  }
+
+  @override
+  String get teamsRemoveMember => 'Remove from team';
+
+  @override
+  String teamsRemoveMemberConfirm(String email) {
+    return '$email loses access to the team. The team key is rotated so nothing added later is readable for them.';
+  }
+
+  @override
+  String teamsInviteTitle(String name) {
+    return 'Invite to $name';
+  }
+
+  @override
+  String get teamsInviteBody =>
+      'The person needs a ConsoleCrypt account on this server. After they accept, you compare a code with them before they get access.';
+
+  @override
+  String get teamsInviteEmail => 'Email';
+
+  @override
+  String get teamsRoleLabel => 'Role';
+
+  @override
+  String get teamsInviteNote => 'Note for the invitation (optional)';
+
+  @override
+  String get teamsInviteNoteWarning => 'The note is not encrypted: the server can read it.';
+
+  @override
+  String get teamsInviteSend => 'Send invitation';
+
+  @override
+  String teamsInvited(String email) {
+    return 'Invitation sent to $email';
+  }
+
+  @override
+  String get teamsSettingsReadOnly => 'Only owners and admins change team settings.';
+
+  @override
+  String get teamsPoliciesTitle => 'Policies';
+
+  @override
+  String get teamsPolicyProduction => 'Mark new Kubernetes contexts and databases as production';
+
+  @override
+  String get teamsPolicyBlockAi => 'Never send these resources to AI assistants';
+
+  @override
+  String get teamsPolicyConfirmRisky => 'Ask before running risky commands';
+
+  @override
+  String get teamsPolicyClipboard => 'Clear copied secrets after';
+
+  @override
+  String get teamsPolicyClipboardDefault => 'App default';
+
+  @override
+  String teamsPolicySeconds(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String get teamsSettingsSaved => 'Team settings saved';
+
+  @override
+  String get teamsMyColorTitle => 'My colour for this team';
+
+  @override
+  String get teamsMyColorBody => 'Changes the colour only on your devices.';
+
+  @override
+  String get teamsLeave => 'Leave team';
+
+  @override
+  String teamsLeaveConfirm(String name) {
+    return 'You lose access to \"$name\" on all your devices.';
+  }
+
+  @override
+  String teamsKeyEpoch(int epoch) {
+    return 'Key generation $epoch';
+  }
+
+  @override
+  String teamsLogGenesis(String actor) {
+    return '$actor created the team';
+  }
+
+  @override
+  String teamsLogAdd(String actor, String member, String role) {
+    return '$actor added $member as $role';
+  }
+
+  @override
+  String teamsLogRole(String actor, String member, String role) {
+    return '$actor changed the role of $member to $role';
+  }
+
+  @override
+  String teamsLogRemove(String actor, String member) {
+    return '$actor removed $member';
+  }
+
+  @override
+  String teamsLogLeave(String actor) {
+    return '$actor left the team';
+  }
+
+  @override
+  String teamsLogTransfer(String actor, String member) {
+    return '$actor made $member the owner';
+  }
+
+  @override
+  String teamsLogRotate(String actor, int epoch) {
+    return '$actor rotated the key (generation $epoch)';
+  }
+
+  @override
+  String get teamsRoleOwner => 'Owner';
+
+  @override
+  String get teamsRoleAdmin => 'Admin';
+
+  @override
+  String get teamsRoleEditor => 'Editor';
+
+  @override
+  String get teamsRoleViewer => 'Viewer';
+
+  @override
+  String get teamsErrorReadOnly => 'You can only view this team\'s resources.';
+
+  @override
+  String get teamsErrorUntrusted => 'The team is paused: its membership could not be verified.';
+
+  @override
+  String get teamsErrorCrossVault =>
+      'A team resource can only use resources of the same team. Copy the credential or jump host into the team first.';
+
+  @override
+  String get teamsErrorPersonalOnly => 'This kind of item stays in your personal vault.';
+
+  @override
+  String get teamsErrorAiBlocked => 'The team policy does not allow sending this resource to AI assistants.';
+
+  @override
+  String get teamsErrorOwnerCannotLeave => 'Make another member the owner before leaving.';
+
+  @override
+  String get teamsFilterAll => 'All';
+
+  @override
+  String get teamsFilterPersonal => 'Personal';
+
+  @override
+  String get teamsCopyTo => 'Copy to team…';
+
+  @override
+  String get teamsMoveTo => 'Move to team…';
+
+  @override
+  String get teamsMoveToPersonal => 'Move to personal';
+
+  @override
+  String get teamsPickTitle => 'Choose a team';
+
+  @override
+  String teamsCopied(String name) {
+    return 'Copied to $name';
+  }
+
+  @override
+  String teamsMoved(String name) {
+    return 'Moved to $name';
+  }
+
+  @override
+  String get teamsNewGroup => 'New team group';
+
+  @override
+  String get teamsNewGroupHint => 'Hosts created in a team group belong to the team.';
 }

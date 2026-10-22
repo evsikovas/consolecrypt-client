@@ -11257,4 +11257,397 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get errorReasonEnterpriseBrowserUnavailable => 'Не удалось открыть браузер для входа.';
+
+  @override
+  String get teamsTitle => 'Команды';
+
+  @override
+  String get teamsSubtitle =>
+      'Ресурсы, закреплённые за командой. Их видят все участники; роль определяет, кто может их менять.';
+
+  @override
+  String get teamsEmpty => 'Вы пока не состоите ни в одной команде.';
+
+  @override
+  String get teamsCreate => 'Создать команду';
+
+  @override
+  String get teamsRefresh => 'Обновить';
+
+  @override
+  String get teamsUnnamed => 'Команда без названия';
+
+  @override
+  String get teamsPendingConfirmation => 'Ждём, когда администратор сверит код';
+
+  @override
+  String get teamsUnavailable => 'Сейчас недоступна';
+
+  @override
+  String teamsRowMeta(String role, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count участника',
+      many: '$count участников',
+      few: '$count участника',
+      one: '$count участник',
+    );
+    return '$role · $_temp0';
+  }
+
+  @override
+  String get teamsWarningBadge => 'На паузе';
+
+  @override
+  String get teamsRotationBadge => 'Смените ключ';
+
+  @override
+  String get teamsOfflineBadge => 'Офлайн';
+
+  @override
+  String get teamsReadOnly => 'Только чтение';
+
+  @override
+  String teamsChipSemantics(String name) {
+    return 'Команда $name';
+  }
+
+  @override
+  String teamsInvitationFrom(String email, String role) {
+    return '$email приглашает вас в команду с ролью «$role».';
+  }
+
+  @override
+  String teamsInvitationNote(String note) {
+    return 'Комментарий: $note';
+  }
+
+  @override
+  String get teamsAccept => 'Принять';
+
+  @override
+  String get teamsDecline => 'Отклонить';
+
+  @override
+  String get teamsCreateTitle => 'Новая команда';
+
+  @override
+  String get teamsCreateBody =>
+      'Название, цвет и всё, что хранит команда, зашифровано сквозным шифрованием. Сервер видит только состав участников.';
+
+  @override
+  String get teamsNameLabel => 'Название команды';
+
+  @override
+  String get teamsDescriptionLabel => 'Описание (необязательно)';
+
+  @override
+  String get teamsColorLabel => 'Цвет';
+
+  @override
+  String get teamsColorNone => 'Цвет команды';
+
+  @override
+  String get teamsColorCustom => 'Свой…';
+
+  @override
+  String teamsCreated(String name) {
+    return 'Команда «$name» создана';
+  }
+
+  @override
+  String get teamsJoinCodeTitle => 'Сверьте код';
+
+  @override
+  String teamsJoinCodeBody(String email) {
+    return 'Продиктуйте этот код $email (лично, по телефону или в мессенджере). У администратора на экране тот же код — он подтвердит совпадение.';
+  }
+
+  @override
+  String get teamsJoinCodeWait => 'Команда откроется на ваших устройствах, как только администратор подтвердит.';
+
+  @override
+  String teamsJoinRequest(String email, String role) {
+    return '$email принял(а) приглашение (роль «$role»). Сверьте код, прежде чем добавлять.';
+  }
+
+  @override
+  String get teamsCompareCode => 'Сверить код';
+
+  @override
+  String teamsCompareTitle(String email) {
+    return 'Добавить $email?';
+  }
+
+  @override
+  String teamsCompareRole(String role) {
+    return 'Роль: $role';
+  }
+
+  @override
+  String teamsCompareBody(String email) {
+    return 'Попросите $email продиктовать код со своего экрана. Добавляйте, только если совпадают все группы.';
+  }
+
+  @override
+  String teamsCodesMatchCheckbox(String email) {
+    return 'Код на экране $email совпадает';
+  }
+
+  @override
+  String get teamsCompareWarning =>
+      'Другой код означает, что приглашение могут перехватывать. Не добавляйте участника.';
+
+  @override
+  String get teamsCodesDontMatch => 'Коды не совпадают';
+
+  @override
+  String get teamsAddMember => 'Добавить в команду';
+
+  @override
+  String teamsMemberAdded(String email) {
+    return '$email добавлен(а) в команду';
+  }
+
+  @override
+  String get teamsCodeRejectedTitle => 'Вступление отклонено';
+
+  @override
+  String get teamsCodeRejectedBody =>
+      'Никто не добавлен. Пригласите человека снова и сверьте код по каналу, которому доверяете.';
+
+  @override
+  String get teamsTabMembers => 'Участники';
+
+  @override
+  String get teamsTabSettings => 'Настройки';
+
+  @override
+  String get teamsTabHistory => 'История';
+
+  @override
+  String get teamsWarningInvalidLog =>
+      'Сервер показал изменение состава, которое никто не подписал. Команда на паузе (только чтение), ключи никому не передаются.';
+
+  @override
+  String get teamsWarningRollback =>
+      'Сервер показал более старый или другой состав команды, чем раньше. Команда на паузе (только чтение).';
+
+  @override
+  String get teamsRotationRequired =>
+      'Участник покинул команду. Смените ключ, чтобы он не смог прочитать то, что будет добавлено дальше.';
+
+  @override
+  String get teamsRotateKey => 'Сменить ключ';
+
+  @override
+  String get teamsKeyRotated => 'Ключ команды сменён';
+
+  @override
+  String teamsMemberYou(String email) {
+    return '$email (вы)';
+  }
+
+  @override
+  String get teamsPendingInvitations => 'Отправленные приглашения';
+
+  @override
+  String get teamsCancelInvitation => 'Отменить';
+
+  @override
+  String get teamsInvite => 'Пригласить участника';
+
+  @override
+  String get teamsTransferOwner => 'Сделать владельцем';
+
+  @override
+  String teamsTransferOwnerConfirm(String email) {
+    return '$email станет владельцем команды, вы останетесь администратором.';
+  }
+
+  @override
+  String get teamsRemoveMember => 'Удалить из команды';
+
+  @override
+  String teamsRemoveMemberConfirm(String email) {
+    return '$email потеряет доступ к команде. Ключ команды будет сменён, чтобы новое было им недоступно.';
+  }
+
+  @override
+  String teamsInviteTitle(String name) {
+    return 'Пригласить в «$name»';
+  }
+
+  @override
+  String get teamsInviteBody =>
+      'Нужна учётная запись ConsoleCrypt на этом сервере. После принятия приглашения вы сверите с человеком код — только после этого он получит доступ.';
+
+  @override
+  String get teamsInviteEmail => 'Почта';
+
+  @override
+  String get teamsRoleLabel => 'Роль';
+
+  @override
+  String get teamsInviteNote => 'Комментарий к приглашению (необязательно)';
+
+  @override
+  String get teamsInviteNoteWarning => 'Комментарий не шифруется: сервер может его прочитать.';
+
+  @override
+  String get teamsInviteSend => 'Отправить приглашение';
+
+  @override
+  String teamsInvited(String email) {
+    return 'Приглашение отправлено: $email';
+  }
+
+  @override
+  String get teamsSettingsReadOnly => 'Настройки команды меняют только владелец и администраторы.';
+
+  @override
+  String get teamsPoliciesTitle => 'Политики';
+
+  @override
+  String get teamsPolicyProduction => 'Отмечать новые контексты Kubernetes и базы данных как рабочие (прод)';
+
+  @override
+  String get teamsPolicyBlockAi => 'Не отправлять эти ресурсы ИИ-помощникам';
+
+  @override
+  String get teamsPolicyConfirmRisky => 'Спрашивать перед опасными командами';
+
+  @override
+  String get teamsPolicyClipboard => 'Очищать скопированные секреты через';
+
+  @override
+  String get teamsPolicyClipboardDefault => 'Как в приложении';
+
+  @override
+  String teamsPolicySeconds(int seconds) {
+    return '$seconds с';
+  }
+
+  @override
+  String get teamsSettingsSaved => 'Настройки команды сохранены';
+
+  @override
+  String get teamsMyColorTitle => 'Мой цвет для этой команды';
+
+  @override
+  String get teamsMyColorBody => 'Меняет цвет только на ваших устройствах.';
+
+  @override
+  String get teamsLeave => 'Покинуть команду';
+
+  @override
+  String teamsLeaveConfirm(String name) {
+    return 'Вы потеряете доступ к «$name» на всех своих устройствах.';
+  }
+
+  @override
+  String teamsKeyEpoch(int epoch) {
+    return 'Поколение ключа: $epoch';
+  }
+
+  @override
+  String teamsLogGenesis(String actor) {
+    return '$actor создал(а) команду';
+  }
+
+  @override
+  String teamsLogAdd(String actor, String member, String role) {
+    return '$actor добавил(а) $member с ролью «$role»';
+  }
+
+  @override
+  String teamsLogRole(String actor, String member, String role) {
+    return '$actor изменил(а) роль $member на «$role»';
+  }
+
+  @override
+  String teamsLogRemove(String actor, String member) {
+    return '$actor удалил(а) $member';
+  }
+
+  @override
+  String teamsLogLeave(String actor) {
+    return '$actor покинул(а) команду';
+  }
+
+  @override
+  String teamsLogTransfer(String actor, String member) {
+    return '$actor передал(а) владение $member';
+  }
+
+  @override
+  String teamsLogRotate(String actor, int epoch) {
+    return '$actor сменил(а) ключ (поколение $epoch)';
+  }
+
+  @override
+  String get teamsRoleOwner => 'Владелец';
+
+  @override
+  String get teamsRoleAdmin => 'Администратор';
+
+  @override
+  String get teamsRoleEditor => 'Редактор';
+
+  @override
+  String get teamsRoleViewer => 'Наблюдатель';
+
+  @override
+  String get teamsErrorReadOnly => 'Ресурсы этой команды доступны вам только для просмотра.';
+
+  @override
+  String get teamsErrorUntrusted => 'Команда на паузе: не удалось проверить её состав.';
+
+  @override
+  String get teamsErrorCrossVault =>
+      'Ресурс команды может использовать только ресурсы той же команды. Сначала скопируйте учётные данные или промежуточный хост в команду.';
+
+  @override
+  String get teamsErrorPersonalOnly => 'Этот тип данных хранится только в личном хранилище.';
+
+  @override
+  String get teamsErrorAiBlocked => 'Политика команды запрещает отправлять этот ресурс ИИ-помощникам.';
+
+  @override
+  String get teamsErrorOwnerCannotLeave => 'Перед выходом передайте владение другому участнику.';
+
+  @override
+  String get teamsFilterAll => 'Все';
+
+  @override
+  String get teamsFilterPersonal => 'Личное';
+
+  @override
+  String get teamsCopyTo => 'Копировать в команду…';
+
+  @override
+  String get teamsMoveTo => 'Переместить в команду…';
+
+  @override
+  String get teamsMoveToPersonal => 'Переместить в личное';
+
+  @override
+  String get teamsPickTitle => 'Выберите команду';
+
+  @override
+  String teamsCopied(String name) {
+    return 'Скопировано в «$name»';
+  }
+
+  @override
+  String teamsMoved(String name) {
+    return 'Перемещено в «$name»';
+  }
+
+  @override
+  String get teamsNewGroup => 'Новая группа команды';
+
+  @override
+  String get teamsNewGroupHint => 'Хосты, созданные в группе команды, принадлежат команде.';
 }

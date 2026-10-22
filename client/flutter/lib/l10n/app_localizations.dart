@@ -19453,6 +19453,642 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not open the browser for signing in.'**
   String get errorReasonEnterpriseBrowserUnavailable;
+
+  /// Settings section title: teams (team vaults shared by several accounts).
+  ///
+  /// In en, this message translates to:
+  /// **'Teams'**
+  String get teamsTitle;
+
+  /// Subtitle of the Teams settings section.
+  ///
+  /// In en, this message translates to:
+  /// **'Resources owned by a team. Every member sees them; roles decide who may change them.'**
+  String get teamsSubtitle;
+
+  /// Teams settings: empty state.
+  ///
+  /// In en, this message translates to:
+  /// **'You are not in any team yet.'**
+  String get teamsEmpty;
+
+  /// Button: create a new team.
+  ///
+  /// In en, this message translates to:
+  /// **'Create team'**
+  String get teamsCreate;
+
+  /// Button: re-read teams from the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get teamsRefresh;
+
+  /// Shown when a team name is not readable yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed team'**
+  String get teamsUnnamed;
+
+  /// Team row: the join was accepted on this account, an admin still has to confirm it.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for an admin to compare the code'**
+  String get teamsPendingConfirmation;
+
+  /// Team row: the team could not be opened (server refused or not reachable).
+  ///
+  /// In en, this message translates to:
+  /// **'Not available right now'**
+  String get teamsUnavailable;
+
+  /// Team row subtitle: this member role and the number of members.
+  ///
+  /// In en, this message translates to:
+  /// **'{role} · {count, plural, =1{1 member} other{{count} members}}'**
+  String teamsRowMeta(String role, int count);
+
+  /// Badge on a team whose membership log could not be verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get teamsWarningBadge;
+
+  /// Badge on a team whose key should be rotated (a member left or was removed).
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate key'**
+  String get teamsRotationBadge;
+
+  /// Badge: the team was opened from the local cache.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get teamsOfflineBadge;
+
+  /// Badge on team resources the member may only view.
+  ///
+  /// In en, this message translates to:
+  /// **'Read only'**
+  String get teamsReadOnly;
+
+  /// Screen reader label of a team chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Team {name}'**
+  String teamsChipSemantics(String name);
+
+  /// Incoming team invitation banner.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} invites you to a team as {role}.'**
+  String teamsInvitationFrom(String email, String role);
+
+  /// Incoming invitation: the plain-text note the admin added.
+  ///
+  /// In en, this message translates to:
+  /// **'Note: {note}'**
+  String teamsInvitationNote(String note);
+
+  /// Button: accept a team invitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get teamsAccept;
+
+  /// Button: decline a team invitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get teamsDecline;
+
+  /// Create-team dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'New team'**
+  String get teamsCreateTitle;
+
+  /// Create-team dialog explanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The name, colour and everything the team stores are end-to-end encrypted. The server only sees who is a member.'**
+  String get teamsCreateBody;
+
+  /// Field: team name.
+  ///
+  /// In en, this message translates to:
+  /// **'Team name'**
+  String get teamsNameLabel;
+
+  /// Field: team description.
+  ///
+  /// In en, this message translates to:
+  /// **'Description (optional)'**
+  String get teamsDescriptionLabel;
+
+  /// Label of the team colour chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour'**
+  String get teamsColorLabel;
+
+  /// Swatch that clears the personal colour override (use the team colour).
+  ///
+  /// In en, this message translates to:
+  /// **'Team colour'**
+  String get teamsColorNone;
+
+  /// Button: pick any colour for a team.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom…'**
+  String get teamsColorCustom;
+
+  /// Toast after creating a team.
+  ///
+  /// In en, this message translates to:
+  /// **'Team \"{name}\" created'**
+  String teamsCreated(String name);
+
+  /// Dialog title shown to the invitee after accepting.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare the code'**
+  String get teamsJoinCodeTitle;
+
+  /// Join-code dialog for the invitee. {email} is the inviting admin.
+  ///
+  /// In en, this message translates to:
+  /// **'Read this code to {email} (in person, by phone or in a messenger). They see the same code on their screen and confirm it.'**
+  String teamsJoinCodeBody(String email);
+
+  /// Join-code dialog: what happens next.
+  ///
+  /// In en, this message translates to:
+  /// **'The team opens on your devices as soon as the admin confirms.'**
+  String get teamsJoinCodeWait;
+
+  /// Banner for an admin: a join waits for the code comparison.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} accepted the invitation ({role}). Compare the code before adding them.'**
+  String teamsJoinRequest(String email, String role);
+
+  /// Button: open the code comparison for a join.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare code'**
+  String get teamsCompareCode;
+
+  /// Code-comparison dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {email}?'**
+  String teamsCompareTitle(String email);
+
+  /// Code-comparison dialog: the role the member gets.
+  ///
+  /// In en, this message translates to:
+  /// **'Role: {role}'**
+  String teamsCompareRole(String role);
+
+  /// Code-comparison dialog instructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask {email} to read the code on their screen. Add them only if every group matches.'**
+  String teamsCompareBody(String email);
+
+  /// Checkbox the admin must tick before adding a member.
+  ///
+  /// In en, this message translates to:
+  /// **'The code on {email}\'s screen is the same'**
+  String teamsCodesMatchCheckbox(String email);
+
+  /// Warning in the code-comparison dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'A different code means someone may be intercepting the invitation. Do not add the member.'**
+  String get teamsCompareWarning;
+
+  /// Button: the codes differ; rejects the join.
+  ///
+  /// In en, this message translates to:
+  /// **'Codes don\'t match'**
+  String get teamsCodesDontMatch;
+
+  /// Button: add the member after comparing the code.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to team'**
+  String get teamsAddMember;
+
+  /// Toast after adding a member.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} added to the team'**
+  String teamsMemberAdded(String email);
+
+  /// Title after pressing "codes don't match".
+  ///
+  /// In en, this message translates to:
+  /// **'Join rejected'**
+  String get teamsCodeRejectedTitle;
+
+  /// Body after a rejected join.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody was added. Invite the person again and compare the code over a channel you trust.'**
+  String get teamsCodeRejectedBody;
+
+  /// Team dialog tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get teamsTabMembers;
+
+  /// Team dialog tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get teamsTabSettings;
+
+  /// Team dialog tab: the verified membership log.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get teamsTabHistory;
+
+  /// Team dialog: the membership log contains an entry that failed verification.
+  ///
+  /// In en, this message translates to:
+  /// **'The server showed a membership change nobody signed. The team is paused (read only) and no keys are shared until this is resolved.'**
+  String get teamsWarningInvalidLog;
+
+  /// Team dialog: the membership log was rolled back.
+  ///
+  /// In en, this message translates to:
+  /// **'The server showed an older or different team membership than before. The team is paused (read only).'**
+  String get teamsWarningRollback;
+
+  /// Team dialog banner for admins.
+  ///
+  /// In en, this message translates to:
+  /// **'A member left the team. Rotate the key so they cannot read anything added from now on.'**
+  String get teamsRotationRequired;
+
+  /// Button: rotate the team key.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate key'**
+  String get teamsRotateKey;
+
+  /// Toast after a key rotation.
+  ///
+  /// In en, this message translates to:
+  /// **'Team key rotated'**
+  String get teamsKeyRotated;
+
+  /// Member list: this account.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} (you)'**
+  String teamsMemberYou(String email);
+
+  /// Heading of pending invitations in the team dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitations sent'**
+  String get teamsPendingInvitations;
+
+  /// Button: cancel a pending invitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get teamsCancelInvitation;
+
+  /// Button: invite someone to the team.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite member'**
+  String get teamsInvite;
+
+  /// Action: transfer team ownership to a member.
+  ///
+  /// In en, this message translates to:
+  /// **'Make owner'**
+  String get teamsTransferOwner;
+
+  /// Confirmation of an ownership transfer.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} becomes the owner of the team; you stay an admin.'**
+  String teamsTransferOwnerConfirm(String email);
+
+  /// Action: remove a member.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from team'**
+  String get teamsRemoveMember;
+
+  /// Confirmation of removing a member.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} loses access to the team. The team key is rotated so nothing added later is readable for them.'**
+  String teamsRemoveMemberConfirm(String email);
+
+  /// Invite dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite to {name}'**
+  String teamsInviteTitle(String name);
+
+  /// Invite dialog explanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The person needs a ConsoleCrypt account on this server. After they accept, you compare a code with them before they get access.'**
+  String get teamsInviteBody;
+
+  /// Invite dialog: email field.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get teamsInviteEmail;
+
+  /// Label of a role selector.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get teamsRoleLabel;
+
+  /// Invite dialog: optional note.
+  ///
+  /// In en, this message translates to:
+  /// **'Note for the invitation (optional)'**
+  String get teamsInviteNote;
+
+  /// Invite dialog: warning under the note field.
+  ///
+  /// In en, this message translates to:
+  /// **'The note is not encrypted: the server can read it.'**
+  String get teamsInviteNoteWarning;
+
+  /// Invite dialog primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Send invitation'**
+  String get teamsInviteSend;
+
+  /// Toast after inviting.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation sent to {email}'**
+  String teamsInvited(String email);
+
+  /// Team settings tab for non-admins.
+  ///
+  /// In en, this message translates to:
+  /// **'Only owners and admins change team settings.'**
+  String get teamsSettingsReadOnly;
+
+  /// Heading of team policies.
+  ///
+  /// In en, this message translates to:
+  /// **'Policies'**
+  String get teamsPoliciesTitle;
+
+  /// Team policy switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark new Kubernetes contexts and databases as production'**
+  String get teamsPolicyProduction;
+
+  /// Team policy switch: block AI context.
+  ///
+  /// In en, this message translates to:
+  /// **'Never send these resources to AI assistants'**
+  String get teamsPolicyBlockAi;
+
+  /// Team policy switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask before running risky commands'**
+  String get teamsPolicyConfirmRisky;
+
+  /// Team policy: clipboard clearing delay.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear copied secrets after'**
+  String get teamsPolicyClipboard;
+
+  /// Clipboard policy option: use the app setting.
+  ///
+  /// In en, this message translates to:
+  /// **'App default'**
+  String get teamsPolicyClipboardDefault;
+
+  /// Clipboard policy option in seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s'**
+  String teamsPolicySeconds(int seconds);
+
+  /// Toast after saving team settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Team settings saved'**
+  String get teamsSettingsSaved;
+
+  /// Heading: personal colour override.
+  ///
+  /// In en, this message translates to:
+  /// **'My colour for this team'**
+  String get teamsMyColorTitle;
+
+  /// Explanation of the personal colour override.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes the colour only on your devices.'**
+  String get teamsMyColorBody;
+
+  /// Button: leave the team.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave team'**
+  String get teamsLeave;
+
+  /// Leave-team confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'You lose access to \"{name}\" on all your devices.'**
+  String teamsLeaveConfirm(String name);
+
+  /// Caption: current team key epoch.
+  ///
+  /// In en, this message translates to:
+  /// **'Key generation {epoch}'**
+  String teamsKeyEpoch(int epoch);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} created the team'**
+  String teamsLogGenesis(String actor);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} added {member} as {role}'**
+  String teamsLogAdd(String actor, String member, String role);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} changed the role of {member} to {role}'**
+  String teamsLogRole(String actor, String member, String role);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} removed {member}'**
+  String teamsLogRemove(String actor, String member);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} left the team'**
+  String teamsLogLeave(String actor);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} made {member} the owner'**
+  String teamsLogTransfer(String actor, String member);
+
+  /// Team history entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} rotated the key (generation {epoch})'**
+  String teamsLogRotate(String actor, int epoch);
+
+  /// Team role.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get teamsRoleOwner;
+
+  /// Team role.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get teamsRoleAdmin;
+
+  /// Team role.
+  ///
+  /// In en, this message translates to:
+  /// **'Editor'**
+  String get teamsRoleEditor;
+
+  /// Team role: read only.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewer'**
+  String get teamsRoleViewer;
+
+  /// Error: a viewer tried to change a team resource.
+  ///
+  /// In en, this message translates to:
+  /// **'You can only view this team\'s resources.'**
+  String get teamsErrorReadOnly;
+
+  /// Error: the team membership log is not trusted.
+  ///
+  /// In en, this message translates to:
+  /// **'The team is paused: its membership could not be verified.'**
+  String get teamsErrorUntrusted;
+
+  /// Error: a team object references a personal object.
+  ///
+  /// In en, this message translates to:
+  /// **'A team resource can only use resources of the same team. Copy the credential or jump host into the team first.'**
+  String get teamsErrorCrossVault;
+
+  /// Error: the object kind cannot live in a team.
+  ///
+  /// In en, this message translates to:
+  /// **'This kind of item stays in your personal vault.'**
+  String get teamsErrorPersonalOnly;
+
+  /// Error: AI request about a resource of a team that blocks AI context.
+  ///
+  /// In en, this message translates to:
+  /// **'The team policy does not allow sending this resource to AI assistants.'**
+  String get teamsErrorAiBlocked;
+
+  /// Error: the owner tried to leave.
+  ///
+  /// In en, this message translates to:
+  /// **'Make another member the owner before leaving.'**
+  String get teamsErrorOwnerCannotLeave;
+
+  /// Inventory filter: personal and team resources.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get teamsFilterAll;
+
+  /// Inventory filter / sidebar: personal vault only.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal'**
+  String get teamsFilterPersonal;
+
+  /// Context action: copy a resource into a team.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to team…'**
+  String get teamsCopyTo;
+
+  /// Context action: move a resource into a team.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to team…'**
+  String get teamsMoveTo;
+
+  /// Context action: move a team resource into the personal vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to personal'**
+  String get teamsMoveToPersonal;
+
+  /// Dialog title: choose the target team.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a team'**
+  String get teamsPickTitle;
+
+  /// Toast after copying into a team.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to {name}'**
+  String teamsCopied(String name);
+
+  /// Toast after moving into a team.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved to {name}'**
+  String teamsMoved(String name);
+
+  /// Action: create a group directly in a team.
+  ///
+  /// In en, this message translates to:
+  /// **'New team group'**
+  String get teamsNewGroup;
+
+  /// Hint next to creating a team group.
+  ///
+  /// In en, this message translates to:
+  /// **'Hosts created in a team group belong to the team.'**
+  String get teamsNewGroupHint;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

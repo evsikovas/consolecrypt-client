@@ -17,6 +17,9 @@ import 'package:consolecrypt/sharing/sharing_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_management.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
+import 'package:consolecrypt/teams/team_models.dart';
+import 'package:consolecrypt/teams/team_providers.dart';
+import 'package:consolecrypt/teams/teams_settings.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -108,6 +111,30 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
     group == null ? AppRoutes.newHost : '${AppRoutes.newHost}?group=${Uri.encodeQueryComponent(group.id.value)}',
   );
 
+  Future<Group?> _addTeamGroup(Team team) async {
+    final name = await showTextInputDialog(
+      context,
+      title: context.l10n.teamsNewGroup,
+      label: context.l10n.commonName,
+      confirmLabel: context.l10n.commonCreate,
+    );
+    if (name == null || name.trim().isEmpty || !mounted) return null;
+    final id = await runWithFeedback(
+      context,
+      () => ref.read(teamServiceProvider).createGroup(team.vaultId, name.trim()),
+    );
+    if (id == null || !mounted) return null;
+    return ref.read(groupByIdProvider)[ObjectId(id)];
+  }
+
+  /// A new team host goes into a team group (hosts follow their group).
+  Future<void> _addTeamHost(Team team, Map<ObjectId, Group> groups, String? Function(ObjectId) vaultOf) async {
+    final roots = groups.values.where((g) => vaultOf(g.id) == team.vaultId && !groups.containsKey(g.parentId)).toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final target = roots.firstOrNull ?? await _addTeamGroup(team);
+    if (target != null && mounted) _addHost(target);
+  }
+
   Future<void> _delete(Host host) async {
     final l10n = context.l10n;
     final ok = await showConfirmDialog(
@@ -150,10 +177,32 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
     final groups = ref.watch(groupByIdProvider);
     final allHosts = hostsAsync.value ?? const <Host>[];
     final counts = groupHostCounts(groups, allHosts);
+    final teams = ref.watch(teamsProvider).value?.where((t) => t.open).toList() ?? const <Team>[];
+    final origins = ref.watch(objectTeamsProvider).value ?? const <String, String>{};
+    String? vaultOf(ObjectId id) => origins[id.value];
+    final teamEntries = [
+      for (final t in teams)
+        InventoryTeamEntry(
+          vaultId: t.vaultId,
+          name: t.name,
+          color: teamColor(t.color),
+          count: allHosts.where((h) => vaultOf(h.id) == t.vaultId).length,
+        ),
+    ];
+    final teamLocation = _location.startsWith(inventoryTeamPrefix)
+        ? teams.where((t) => '$inventoryTeamPrefix${t.vaultId}' == _location).firstOrNull
+        : null;
     final group = groups.values.where((g) => g.id.value == _location).firstOrNull;
-    final location = group != null || [inventoryAll, inventoryGroups, inventoryUngrouped].contains(_location)
+    final location =
+        group != null ||
+            teamLocation != null ||
+            (_location == inventoryPersonal && teams.isNotEmpty) ||
+            [inventoryAll, inventoryGroups, inventoryUngrouped].contains(_location)
         ? _location
         : inventoryAll;
+    // Vault filter of a team section (`null` = no filter, '' = personal).
+    final vaultFilter = location == inventoryPersonal ? '' : teamLocation?.vaultId;
+    bool inVault(ObjectId id) => vaultFilter == null || (vaultOf(id) ?? '') == vaultFilter;
     final subtree = group == null ? <ObjectId>{} : groupSubtree(groups, group.id);
     final scoped = allHosts
         .where(
@@ -161,7 +210,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
               ? subtree.contains(h.groupId)
               : location == inventoryUngrouped
               ? !groups.containsKey(h.groupId)
-              : true,
+              : inVault(h.id),
         )
         .toList();
     final allTags = {for (final h in scoped) ...h.tags}.toList()..sort();
@@ -170,6 +219,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
     final query = _search.text.trim().toLowerCase();
     final visibleGroups = groups.values.where((g) {
       if (location == inventoryUngrouped || _tags.isNotEmpty) return false;
+      if (vaultFilter != null) return inVault(g.id) && !(groups.containsKey(g.parentId) && inVault(g.parentId!));
       if (searching) {
         return (group == null || subtree.contains(g.id) && g.id != group.id) &&
             query
@@ -183,7 +233,11 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
     final tokens = GlassTokens.of(context);
     final title =
         group?.name ??
-        (location == inventoryGroups
+        (teamLocation != null
+            ? (teamLocation.name.isEmpty ? l.teamsUnnamed : teamLocation.name)
+            : location == inventoryPersonal
+            ? l.teamsFilterPersonal
+            : location == inventoryGroups
             ? l.groupsTitle
             : location == inventoryUngrouped
             ? l.inventoryUngrouped
@@ -195,14 +249,18 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
         GlassButton(
           key: const ValueKey('add-group'),
           icon: Icons.create_new_folder_rounded,
-          label: l.groupsNewGroup,
-          onPressed: () => showGroupEditor(context, parentId: group?.id),
+          label: teamLocation != null && group == null ? l.teamsNewGroup : l.groupsNewGroup,
+          onPressed: teamLocation != null && group == null
+              ? (teamLocation.canEdit ? () => _addTeamGroup(teamLocation) : null)
+              : () => showGroupEditor(context, parentId: group?.id),
         ),
         GlassButton.prominent(
           key: const ValueKey('add-host'),
           icon: Icons.add_rounded,
           label: l.hostsNewHost,
-          onPressed: () => _addHost(group),
+          onPressed: teamLocation != null && group == null
+              ? (teamLocation.canEdit ? () => _addTeamHost(teamLocation, groups, vaultOf) : null)
+              : () => _addHost(group),
         ),
       ],
       body: LayoutBuilder(
@@ -211,6 +269,8 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
           final navigation = InventoryNavigation(
             groups: groups,
             hosts: allHosts,
+            teams: teamEntries,
+            personalCount: allHosts.where((h) => vaultOf(h.id) == null).length,
             location: location,
             onSelect: _browse,
             collapsed: _collapsed,
@@ -308,6 +368,14 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                   ),
                 ],
               ),
+              if (teamLocation != null && group == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    l.teamsNewGroupHint,
+                    style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                  ),
+                ),
               if (group != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
@@ -561,7 +629,19 @@ class _GroupCard extends StatelessWidget {
   }
 }
 
-enum _HostAction { connect, group, sftp, edit, share, refreshShared, detachShared, delete }
+enum _HostAction {
+  connect,
+  group,
+  sftp,
+  edit,
+  share,
+  refreshShared,
+  detachShared,
+  copyToTeam,
+  moveToTeam,
+  moveToPersonal,
+  delete,
+}
 
 class _HostTile extends ConsumerWidget {
   const _HostTile({required this.host, required this.groupName, required this.onDelete, this.cards = false});
@@ -599,6 +679,9 @@ class _HostTile extends ConsumerWidget {
         ? ''
         : ':${host.port}';
     final connected = ref.watch(terminalTabsProvider).tabs.any((tab) => tab.host?.id == host.id && tab.isConnected);
+    final team = teamOf(ref, host.id);
+    final teams = ref.watch(teamsProvider).value ?? const <Team>[];
+    final writableTeams = teams.where((x) => x.open && x.canEdit && x.vaultId != team?.vaultId).toList();
     final heading = Row(
       children: [
         Flexible(
@@ -608,6 +691,10 @@ class _HostTile extends ConsumerWidget {
             style: t.bodyEmph.copyWith(color: tokens.palette.label),
           ),
         ),
+        if (team != null) ...[
+          const SizedBox(width: GlassSpacing.s6),
+          TeamChip(key: ValueKey('host-team-${host.name}'), team: team),
+        ],
         if (host.jumpChain.isNotEmpty || host.jumpProfileId != null) ...[
           const SizedBox(width: GlassSpacing.s6),
           Tooltip(
@@ -672,6 +759,30 @@ class _HostTile extends ConsumerWidget {
                 icon: Icons.link_off_rounded,
               ),
             ],
+            if (writableTeams.isNotEmpty || team != null) ...[
+              const GlassMenuDivider(),
+              if (writableTeams.isNotEmpty) ...[
+                GlassMenuItem(
+                  key: ValueKey('host-copy-team-${host.name}'),
+                  value: _HostAction.copyToTeam,
+                  label: l10n.teamsCopyTo,
+                  icon: Icons.copy_all_rounded,
+                ),
+                if (team == null || team.canEdit)
+                  GlassMenuItem(
+                    key: ValueKey('host-move-team-${host.name}'),
+                    value: _HostAction.moveToTeam,
+                    label: l10n.teamsMoveTo,
+                    icon: Icons.drive_file_move_rounded,
+                  ),
+              ],
+              if (team != null && team.canEdit)
+                GlassMenuItem(
+                  value: _HostAction.moveToPersonal,
+                  label: l10n.teamsMoveToPersonal,
+                  icon: Icons.person_rounded,
+                ),
+            ],
             const GlassMenuDivider(),
             GlassMenuItem(
               value: _HostAction.delete,
@@ -707,6 +818,24 @@ class _HostTile extends ConsumerWidget {
                 if (ok && context.mounted && sharingSessionCurrent(ref, profile)) {
                   await runWithFeedback(context, () => ref.read(sharingServiceProvider).detachHost(host.id.value));
                 }
+              case _HostAction.copyToTeam || _HostAction.moveToTeam:
+                final target = await pickTeam(context, writableTeams);
+                if (target == null || !context.mounted) return;
+                final move = v == _HostAction.moveToTeam;
+                final service = ref.read(teamServiceProvider);
+                await runWithFeedback(
+                  context,
+                  () => move
+                      ? service.moveObjects([host.id.value], target.vaultId)
+                      : service.copyObjects([host.id.value], target.vaultId),
+                  success: move ? l10n.teamsMoved(target.name) : l10n.teamsCopied(target.name),
+                );
+              case _HostAction.moveToPersonal:
+                await runWithFeedback(
+                  context,
+                  () => ref.read(teamServiceProvider).moveObjects([host.id.value], null),
+                  success: l10n.teamsMoved(l10n.teamsFilterPersonal),
+                );
               case _HostAction.delete:
                 onDelete();
             }

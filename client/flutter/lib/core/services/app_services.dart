@@ -13,6 +13,7 @@ import 'package:consolecrypt/core/services/sftp_service.dart';
 import 'package:consolecrypt/core/services/sharing_service.dart';
 import 'package:consolecrypt/core/services/snippet_service.dart';
 import 'package:consolecrypt/core/services/sync_service.dart';
+import 'package:consolecrypt/core/services/team_service.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/core/services/tunnel_service.dart';
 import 'package:consolecrypt/core/services/vault_service.dart';
@@ -76,6 +77,7 @@ final class AppServices {
     this.sftpBrowser,
     this.prompts,
     this.sharing,
+    this.teams,
     this.enrollment,
     this.kubernetes,
     this.databases,
@@ -109,6 +111,9 @@ final class AppServices {
   /// (SFTP, tunnels, exec). `null`: such prompts are declined.
   final PromptService? prompts;
   final SharingService? sharing;
+
+  /// Team vaults (synced profiles on servers with teams).
+  final TeamService? teams;
   final EnrollmentService? enrollment;
   final KubeService? kubernetes;
 

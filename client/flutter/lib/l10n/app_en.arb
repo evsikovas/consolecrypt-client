@@ -14965,5 +14965,604 @@
   "errorReasonEnterpriseBrowserUnavailable": "Could not open the browser for signing in.",
   "@errorReasonEnterpriseBrowserUnavailable": {
     "description": "Error: the system browser or the redirect listener is unavailable."
+  },
+  "teamsTitle": "Teams",
+  "@teamsTitle": {
+    "description": "Settings section title: teams (team vaults shared by several accounts)."
+  },
+  "teamsSubtitle": "Resources owned by a team. Every member sees them; roles decide who may change them.",
+  "@teamsSubtitle": {
+    "description": "Subtitle of the Teams settings section."
+  },
+  "teamsEmpty": "You are not in any team yet.",
+  "@teamsEmpty": {
+    "description": "Teams settings: empty state."
+  },
+  "teamsCreate": "Create team",
+  "@teamsCreate": {
+    "description": "Button: create a new team."
+  },
+  "teamsRefresh": "Refresh",
+  "@teamsRefresh": {
+    "description": "Button: re-read teams from the server."
+  },
+  "teamsUnnamed": "Unnamed team",
+  "@teamsUnnamed": {
+    "description": "Shown when a team name is not readable yet."
+  },
+  "teamsPendingConfirmation": "Waiting for an admin to compare the code",
+  "@teamsPendingConfirmation": {
+    "description": "Team row: the join was accepted on this account, an admin still has to confirm it."
+  },
+  "teamsUnavailable": "Not available right now",
+  "@teamsUnavailable": {
+    "description": "Team row: the team could not be opened (server refused or not reachable)."
+  },
+  "teamsRowMeta": "{role} · {count, plural, =1{1 member} other{{count} members}}",
+  "@teamsRowMeta": {
+    "description": "Team row subtitle: this member role and the number of members.",
+    "placeholders": {
+      "role": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamsWarningBadge": "Paused",
+  "@teamsWarningBadge": {
+    "description": "Badge on a team whose membership log could not be verified."
+  },
+  "teamsRotationBadge": "Rotate key",
+  "@teamsRotationBadge": {
+    "description": "Badge on a team whose key should be rotated (a member left or was removed)."
+  },
+  "teamsOfflineBadge": "Offline",
+  "@teamsOfflineBadge": {
+    "description": "Badge: the team was opened from the local cache."
+  },
+  "teamsReadOnly": "Read only",
+  "@teamsReadOnly": {
+    "description": "Badge on team resources the member may only view."
+  },
+  "teamsChipSemantics": "Team {name}",
+  "@teamsChipSemantics": {
+    "description": "Screen reader label of a team chip.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsInvitationFrom": "{email} invites you to a team as {role}.",
+  "@teamsInvitationFrom": {
+    "description": "Incoming team invitation banner.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsInvitationNote": "Note: {note}",
+  "@teamsInvitationNote": {
+    "description": "Incoming invitation: the plain-text note the admin added.",
+    "placeholders": {
+      "note": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsAccept": "Accept",
+  "@teamsAccept": {
+    "description": "Button: accept a team invitation."
+  },
+  "teamsDecline": "Decline",
+  "@teamsDecline": {
+    "description": "Button: decline a team invitation."
+  },
+  "teamsCreateTitle": "New team",
+  "@teamsCreateTitle": {
+    "description": "Create-team dialog title."
+  },
+  "teamsCreateBody": "The name, colour and everything the team stores are end-to-end encrypted. The server only sees who is a member.",
+  "@teamsCreateBody": {
+    "description": "Create-team dialog explanation."
+  },
+  "teamsNameLabel": "Team name",
+  "@teamsNameLabel": {
+    "description": "Field: team name."
+  },
+  "teamsDescriptionLabel": "Description (optional)",
+  "@teamsDescriptionLabel": {
+    "description": "Field: team description."
+  },
+  "teamsColorLabel": "Colour",
+  "@teamsColorLabel": {
+    "description": "Label of the team colour chooser."
+  },
+  "teamsColorNone": "Team colour",
+  "@teamsColorNone": {
+    "description": "Swatch that clears the personal colour override (use the team colour)."
+  },
+  "teamsColorCustom": "Custom…",
+  "@teamsColorCustom": {
+    "description": "Button: pick any colour for a team."
+  },
+  "teamsCreated": "Team \"{name}\" created",
+  "@teamsCreated": {
+    "description": "Toast after creating a team.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsJoinCodeTitle": "Compare the code",
+  "@teamsJoinCodeTitle": {
+    "description": "Dialog title shown to the invitee after accepting."
+  },
+  "teamsJoinCodeBody": "Read this code to {email} (in person, by phone or in a messenger). They see the same code on their screen and confirm it.",
+  "@teamsJoinCodeBody": {
+    "description": "Join-code dialog for the invitee. {email} is the inviting admin.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsJoinCodeWait": "The team opens on your devices as soon as the admin confirms.",
+  "@teamsJoinCodeWait": {
+    "description": "Join-code dialog: what happens next."
+  },
+  "teamsJoinRequest": "{email} accepted the invitation ({role}). Compare the code before adding them.",
+  "@teamsJoinRequest": {
+    "description": "Banner for an admin: a join waits for the code comparison.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsCompareCode": "Compare code",
+  "@teamsCompareCode": {
+    "description": "Button: open the code comparison for a join."
+  },
+  "teamsCompareTitle": "Add {email}?",
+  "@teamsCompareTitle": {
+    "description": "Code-comparison dialog title.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsCompareRole": "Role: {role}",
+  "@teamsCompareRole": {
+    "description": "Code-comparison dialog: the role the member gets.",
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsCompareBody": "Ask {email} to read the code on their screen. Add them only if every group matches.",
+  "@teamsCompareBody": {
+    "description": "Code-comparison dialog instructions.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsCodesMatchCheckbox": "The code on {email}'s screen is the same",
+  "@teamsCodesMatchCheckbox": {
+    "description": "Checkbox the admin must tick before adding a member.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsCompareWarning": "A different code means someone may be intercepting the invitation. Do not add the member.",
+  "@teamsCompareWarning": {
+    "description": "Warning in the code-comparison dialog."
+  },
+  "teamsCodesDontMatch": "Codes don't match",
+  "@teamsCodesDontMatch": {
+    "description": "Button: the codes differ; rejects the join."
+  },
+  "teamsAddMember": "Add to team",
+  "@teamsAddMember": {
+    "description": "Button: add the member after comparing the code."
+  },
+  "teamsMemberAdded": "{email} added to the team",
+  "@teamsMemberAdded": {
+    "description": "Toast after adding a member.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsCodeRejectedTitle": "Join rejected",
+  "@teamsCodeRejectedTitle": {
+    "description": "Title after pressing \"codes don't match\"."
+  },
+  "teamsCodeRejectedBody": "Nobody was added. Invite the person again and compare the code over a channel you trust.",
+  "@teamsCodeRejectedBody": {
+    "description": "Body after a rejected join."
+  },
+  "teamsTabMembers": "Members",
+  "@teamsTabMembers": {
+    "description": "Team dialog tab."
+  },
+  "teamsTabSettings": "Settings",
+  "@teamsTabSettings": {
+    "description": "Team dialog tab."
+  },
+  "teamsTabHistory": "History",
+  "@teamsTabHistory": {
+    "description": "Team dialog tab: the verified membership log."
+  },
+  "teamsWarningInvalidLog": "The server showed a membership change nobody signed. The team is paused (read only) and no keys are shared until this is resolved.",
+  "@teamsWarningInvalidLog": {
+    "description": "Team dialog: the membership log contains an entry that failed verification."
+  },
+  "teamsWarningRollback": "The server showed an older or different team membership than before. The team is paused (read only).",
+  "@teamsWarningRollback": {
+    "description": "Team dialog: the membership log was rolled back."
+  },
+  "teamsRotationRequired": "A member left the team. Rotate the key so they cannot read anything added from now on.",
+  "@teamsRotationRequired": {
+    "description": "Team dialog banner for admins."
+  },
+  "teamsRotateKey": "Rotate key",
+  "@teamsRotateKey": {
+    "description": "Button: rotate the team key."
+  },
+  "teamsKeyRotated": "Team key rotated",
+  "@teamsKeyRotated": {
+    "description": "Toast after a key rotation."
+  },
+  "teamsMemberYou": "{email} (you)",
+  "@teamsMemberYou": {
+    "description": "Member list: this account.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsPendingInvitations": "Invitations sent",
+  "@teamsPendingInvitations": {
+    "description": "Heading of pending invitations in the team dialog."
+  },
+  "teamsCancelInvitation": "Cancel",
+  "@teamsCancelInvitation": {
+    "description": "Button: cancel a pending invitation."
+  },
+  "teamsInvite": "Invite member",
+  "@teamsInvite": {
+    "description": "Button: invite someone to the team."
+  },
+  "teamsTransferOwner": "Make owner",
+  "@teamsTransferOwner": {
+    "description": "Action: transfer team ownership to a member."
+  },
+  "teamsTransferOwnerConfirm": "{email} becomes the owner of the team; you stay an admin.",
+  "@teamsTransferOwnerConfirm": {
+    "description": "Confirmation of an ownership transfer.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsRemoveMember": "Remove from team",
+  "@teamsRemoveMember": {
+    "description": "Action: remove a member."
+  },
+  "teamsRemoveMemberConfirm": "{email} loses access to the team. The team key is rotated so nothing added later is readable for them.",
+  "@teamsRemoveMemberConfirm": {
+    "description": "Confirmation of removing a member.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsInviteTitle": "Invite to {name}",
+  "@teamsInviteTitle": {
+    "description": "Invite dialog title.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsInviteBody": "The person needs a ConsoleCrypt account on this server. After they accept, you compare a code with them before they get access.",
+  "@teamsInviteBody": {
+    "description": "Invite dialog explanation."
+  },
+  "teamsInviteEmail": "Email",
+  "@teamsInviteEmail": {
+    "description": "Invite dialog: email field."
+  },
+  "teamsRoleLabel": "Role",
+  "@teamsRoleLabel": {
+    "description": "Label of a role selector."
+  },
+  "teamsInviteNote": "Note for the invitation (optional)",
+  "@teamsInviteNote": {
+    "description": "Invite dialog: optional note."
+  },
+  "teamsInviteNoteWarning": "The note is not encrypted: the server can read it.",
+  "@teamsInviteNoteWarning": {
+    "description": "Invite dialog: warning under the note field."
+  },
+  "teamsInviteSend": "Send invitation",
+  "@teamsInviteSend": {
+    "description": "Invite dialog primary button."
+  },
+  "teamsInvited": "Invitation sent to {email}",
+  "@teamsInvited": {
+    "description": "Toast after inviting.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsSettingsReadOnly": "Only owners and admins change team settings.",
+  "@teamsSettingsReadOnly": {
+    "description": "Team settings tab for non-admins."
+  },
+  "teamsPoliciesTitle": "Policies",
+  "@teamsPoliciesTitle": {
+    "description": "Heading of team policies."
+  },
+  "teamsPolicyProduction": "Mark new Kubernetes contexts and databases as production",
+  "@teamsPolicyProduction": {
+    "description": "Team policy switch."
+  },
+  "teamsPolicyBlockAi": "Never send these resources to AI assistants",
+  "@teamsPolicyBlockAi": {
+    "description": "Team policy switch: block AI context."
+  },
+  "teamsPolicyConfirmRisky": "Ask before running risky commands",
+  "@teamsPolicyConfirmRisky": {
+    "description": "Team policy switch."
+  },
+  "teamsPolicyClipboard": "Clear copied secrets after",
+  "@teamsPolicyClipboard": {
+    "description": "Team policy: clipboard clearing delay."
+  },
+  "teamsPolicyClipboardDefault": "App default",
+  "@teamsPolicyClipboardDefault": {
+    "description": "Clipboard policy option: use the app setting."
+  },
+  "teamsPolicySeconds": "{seconds} s",
+  "@teamsPolicySeconds": {
+    "description": "Clipboard policy option in seconds.",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "teamsSettingsSaved": "Team settings saved",
+  "@teamsSettingsSaved": {
+    "description": "Toast after saving team settings."
+  },
+  "teamsMyColorTitle": "My colour for this team",
+  "@teamsMyColorTitle": {
+    "description": "Heading: personal colour override."
+  },
+  "teamsMyColorBody": "Changes the colour only on your devices.",
+  "@teamsMyColorBody": {
+    "description": "Explanation of the personal colour override."
+  },
+  "teamsLeave": "Leave team",
+  "@teamsLeave": {
+    "description": "Button: leave the team."
+  },
+  "teamsLeaveConfirm": "You lose access to \"{name}\" on all your devices.",
+  "@teamsLeaveConfirm": {
+    "description": "Leave-team confirmation.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsKeyEpoch": "Key generation {epoch}",
+  "@teamsKeyEpoch": {
+    "description": "Caption: current team key epoch.",
+    "placeholders": {
+      "epoch": {
+        "type": "int"
+      }
+    }
+  },
+  "teamsLogGenesis": "{actor} created the team",
+  "@teamsLogGenesis": {
+    "description": "Team history entry.",
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsLogAdd": "{actor} added {member} as {role}",
+  "@teamsLogAdd": {
+    "description": "Team history entry.",
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "member": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsLogRole": "{actor} changed the role of {member} to {role}",
+  "@teamsLogRole": {
+    "description": "Team history entry.",
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "member": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsLogRemove": "{actor} removed {member}",
+  "@teamsLogRemove": {
+    "description": "Team history entry.",
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "member": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsLogLeave": "{actor} left the team",
+  "@teamsLogLeave": {
+    "description": "Team history entry.",
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsLogTransfer": "{actor} made {member} the owner",
+  "@teamsLogTransfer": {
+    "description": "Team history entry.",
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "member": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsLogRotate": "{actor} rotated the key (generation {epoch})",
+  "@teamsLogRotate": {
+    "description": "Team history entry.",
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "epoch": {
+        "type": "int"
+      }
+    }
+  },
+  "teamsRoleOwner": "Owner",
+  "@teamsRoleOwner": {
+    "description": "Team role."
+  },
+  "teamsRoleAdmin": "Admin",
+  "@teamsRoleAdmin": {
+    "description": "Team role."
+  },
+  "teamsRoleEditor": "Editor",
+  "@teamsRoleEditor": {
+    "description": "Team role."
+  },
+  "teamsRoleViewer": "Viewer",
+  "@teamsRoleViewer": {
+    "description": "Team role: read only."
+  },
+  "teamsErrorReadOnly": "You can only view this team's resources.",
+  "@teamsErrorReadOnly": {
+    "description": "Error: a viewer tried to change a team resource."
+  },
+  "teamsErrorUntrusted": "The team is paused: its membership could not be verified.",
+  "@teamsErrorUntrusted": {
+    "description": "Error: the team membership log is not trusted."
+  },
+  "teamsErrorCrossVault": "A team resource can only use resources of the same team. Copy the credential or jump host into the team first.",
+  "@teamsErrorCrossVault": {
+    "description": "Error: a team object references a personal object."
+  },
+  "teamsErrorPersonalOnly": "This kind of item stays in your personal vault.",
+  "@teamsErrorPersonalOnly": {
+    "description": "Error: the object kind cannot live in a team."
+  },
+  "teamsErrorAiBlocked": "The team policy does not allow sending this resource to AI assistants.",
+  "@teamsErrorAiBlocked": {
+    "description": "Error: AI request about a resource of a team that blocks AI context."
+  },
+  "teamsErrorOwnerCannotLeave": "Make another member the owner before leaving.",
+  "@teamsErrorOwnerCannotLeave": {
+    "description": "Error: the owner tried to leave."
+  },
+  "teamsFilterAll": "All",
+  "@teamsFilterAll": {
+    "description": "Inventory filter: personal and team resources."
+  },
+  "teamsFilterPersonal": "Personal",
+  "@teamsFilterPersonal": {
+    "description": "Inventory filter / sidebar: personal vault only."
+  },
+  "teamsCopyTo": "Copy to team…",
+  "@teamsCopyTo": {
+    "description": "Context action: copy a resource into a team."
+  },
+  "teamsMoveTo": "Move to team…",
+  "@teamsMoveTo": {
+    "description": "Context action: move a resource into a team."
+  },
+  "teamsMoveToPersonal": "Move to personal",
+  "@teamsMoveToPersonal": {
+    "description": "Context action: move a team resource into the personal vault."
+  },
+  "teamsPickTitle": "Choose a team",
+  "@teamsPickTitle": {
+    "description": "Dialog title: choose the target team."
+  },
+  "teamsCopied": "Copied to {name}",
+  "@teamsCopied": {
+    "description": "Toast after copying into a team.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsMoved": "Moved to {name}",
+  "@teamsMoved": {
+    "description": "Toast after moving into a team.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsNewGroup": "New team group",
+  "@teamsNewGroup": {
+    "description": "Action: create a group directly in a team."
+  },
+  "teamsNewGroupHint": "Hosts created in a team group belong to the team.",
+  "@teamsNewGroupHint": {
+    "description": "Hint next to creating a team group."
   }
 }

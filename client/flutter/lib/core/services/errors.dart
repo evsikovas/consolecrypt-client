@@ -126,6 +126,12 @@ enum AppErrorReason {
   requestNotFound('request_not_found'),
   secretNotStored('secret_not_stored'),
   sessionClosed('session_closed'),
+
+  /// Teams: this member may only read the team (viewer).
+  teamReadOnly('team_read_only'),
+
+  /// Teams: the server showed a membership log this client cannot trust.
+  teamUntrusted('team_untrusted'),
   editorLaunchFailed('editor_launch_failed'),
 
   /// A file that can run code opens only as text, and no text editor was
