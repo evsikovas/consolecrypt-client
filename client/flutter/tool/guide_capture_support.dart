@@ -3,12 +3,14 @@
 import 'dart:convert';
 
 import 'package:consolecrypt/core/mock/mock_backend.dart';
+import 'package:consolecrypt/core/mock/mock_team_service.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/services/database_sharing_service.dart';
 import 'package:consolecrypt/core/services/enrollment_service.dart';
 import 'package:consolecrypt/core/services/sharing_service.dart';
 import 'package:consolecrypt/sharing/enrollment_models.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
+import 'package:consolecrypt/teams/team_models.dart';
 
 const guideScreens = [
   'welcome',
@@ -90,6 +92,58 @@ const guideScreens = [
   'enterprise-login-ldap',
   'enterprise-settings',
   'enterprise-disabled',
+  'teams-settings',
+  'teams-create',
+  'teams-join-code',
+  'teams-members',
+  'teams-invite',
+  'teams-compare',
+  'teams-policies',
+  'teams-history',
+  'teams-hosts',
+  'teams-hosts-section',
+  'teams-host-menu',
+  'teams-terminal',
+  'teams-run-confirm',
+  ...guideExtraScreens,
+];
+
+/// Cases handled by `_extraScreen` in design_preview.dart.
+const guideExtraScreens = [
+  'login-standard',
+  'restore-backup',
+  'unlock',
+  'recovery',
+  'settings-overview',
+  'account-password',
+  'disconnect',
+  'change-passphrase',
+  'recovery-kit-new',
+  'sync-popover',
+  'profiles-menu',
+  'device-approve',
+  'host-editor',
+  'host-editor-jump',
+  'host-editor-security',
+  'host-effective',
+  'ssh-config-import',
+  'group-editor',
+  'jump-profiles',
+  'credential-chooser',
+  'credential-generate',
+  'tunnel-editor',
+  'snippets-editor',
+  'snippets-variables',
+  'snippets-run-confirm',
+  'terminal-tab-menu',
+  'terminal-settings',
+  'shortcuts-settings',
+  'ai-providers',
+  'ai-provider-dialog',
+  'sftp-actions',
+  'sftp-get-info',
+  'share-accept',
+  'share-access',
 ];
 
 // Explicit synthetic profiles. Capture fixtures never discover or spawn a
@@ -167,7 +221,7 @@ Future<void> prepareGuideInventory(MockBackend backend, String screen) async {
   backend.inventory.onDataChanged(data);
   backend.tunnels.onDataChanged(data);
   await backend.profiles.rename(backend.profiles.currentProfiles.activeId!, 'you@example.test');
-  if (screen != 'devices') {
+  if (screen != 'devices' && screen != 'device-approve') {
     for (final request in backend.devices.currentSnapshot.pendingRequests.toList()) {
       await backend.devices.reject(request.requestId);
     }
@@ -343,6 +397,11 @@ final class GuideSharingService implements SharingService, DatabaseSharingServic
   ];
   @override
   Future<List<SharingIdentity>> discover(String email) async => const [guideRecipient];
+
+  /// An incoming item and its owner (read-only: accepting is never run).
+  @override
+  Future<SharingInvitation> inspect(String id) async =>
+      SharingInvitation((await list()).firstWhere((i) => i.id == id), guideRecipient);
   @override
   Future<List<SharingOutboxEntry>> outbox() async => const [];
   @override
@@ -404,4 +463,161 @@ final class GuideEnrollmentService extends UnavailableEnrollmentService {
   Future<List<EnrollmentRequest>> pendingRequests() async => const [];
   @override
   Future<List<EnrollmentRequest>> processAutomatic() async => const [];
+}
+
+// Synthetic teams: the signed-in demo account owns "Ops" (the Production
+// group and its hosts) and is a viewer of "Support" (the Staging group). One
+// colleague has accepted an invitation and waits for the code comparison,
+// another invitation is pending, and a third team invites this account.
+const guideTeamOps = 'guide-team-ops';
+const guideTeamSupport = 'guide-team-support';
+const guideJoinRequest = 'guide-join-dmitry';
+const guideIncomingInvitation = 'guide-invitation-platform';
+
+MockTeamService guideTeams(MockBackend backend, {required bool en}) {
+  const self = 'you@example.test';
+  final teams = MockTeamService(selfEmail: self, inventory: backend.inventory);
+  final day = DateTime.utc(2026, 10, 12, 9, 30);
+  DateTime at(int days, [int hours = 0]) => day.add(Duration(days: days, hours: hours));
+  teams.seedTeam(
+    vaultId: guideTeamOps,
+    name: en ? 'Ops' : 'Эксплуатация',
+    role: TeamRole.owner,
+    color: 'teal',
+    description: en ? 'Production servers and on-call runbooks' : 'Продуктовые серверы и инструкции дежурных',
+    policies: const TeamPolicies(productionByDefault: true, blockAiContext: true, confirmRiskyCommands: true),
+    keyEpoch: 2,
+    members: [
+      TeamMember(userId: 'guide-self', email: self, role: TeamRole.owner, isSelf: true, joinedAt: at(0)),
+      TeamMember(userId: 'guide-anna', email: 'anna@example.test', role: TeamRole.admin, joinedAt: at(1)),
+      TeamMember(userId: 'guide-boris', email: 'boris@example.test', role: TeamRole.editor, joinedAt: at(1, 2)),
+      TeamMember(userId: 'guide-vera', email: 'vera@example.test', role: TeamRole.viewer, joinedAt: at(3)),
+    ],
+    log: [
+      TeamLogEntry(seq: 1, op: 'genesis', actorEmail: self, issuedAt: at(0)),
+      TeamLogEntry(
+        seq: 2,
+        op: 'add_member',
+        actorEmail: self,
+        issuedAt: at(1),
+        targetEmail: 'anna@example.test',
+        role: TeamRole.editor,
+      ),
+      TeamLogEntry(
+        seq: 3,
+        op: 'add_member',
+        actorEmail: self,
+        issuedAt: at(1, 2),
+        targetEmail: 'boris@example.test',
+        role: TeamRole.editor,
+      ),
+      TeamLogEntry(
+        seq: 4,
+        op: 'change_role',
+        actorEmail: self,
+        issuedAt: at(2),
+        targetEmail: 'anna@example.test',
+        role: TeamRole.admin,
+      ),
+      TeamLogEntry(
+        seq: 5,
+        op: 'add_member',
+        actorEmail: 'anna@example.test',
+        issuedAt: at(3),
+        targetEmail: 'vera@example.test',
+        role: TeamRole.viewer,
+      ),
+      TeamLogEntry(
+        seq: 6,
+        op: 'add_member',
+        actorEmail: 'anna@example.test',
+        issuedAt: at(4),
+        targetEmail: 'gleb@example.test',
+        role: TeamRole.editor,
+      ),
+      TeamLogEntry(seq: 7, op: 'remove_member', actorEmail: self, issuedAt: at(6), targetEmail: 'gleb@example.test'),
+      TeamLogEntry(seq: 8, op: 'rotate_key', actorEmail: self, issuedAt: at(6), keyEpoch: 2),
+    ],
+  );
+  teams.seedTeam(
+    vaultId: guideTeamSupport,
+    name: en ? 'Support' : 'Поддержка',
+    role: TeamRole.viewer,
+    color: 'orange',
+    policies: const TeamPolicies(confirmRiskyCommands: true),
+    members: [
+      TeamMember(userId: 'guide-lead', email: 'lead@example.test', role: TeamRole.owner, joinedAt: at(0)),
+      TeamMember(userId: 'guide-self', email: self, role: TeamRole.viewer, isSelf: true, joinedAt: at(5)),
+    ],
+    log: [
+      TeamLogEntry(seq: 1, op: 'genesis', actorEmail: 'lead@example.test', issuedAt: at(0)),
+      TeamLogEntry(
+        seq: 2,
+        op: 'add_member',
+        actorEmail: 'lead@example.test',
+        issuedAt: at(5),
+        targetEmail: self,
+        role: TeamRole.viewer,
+      ),
+    ],
+  );
+  teams
+    ..seedJoinRequest(
+      const TeamJoinRequest(
+        invitationId: guideJoinRequest,
+        vaultId: guideTeamOps,
+        inviteeEmail: 'dmitry@example.test',
+        role: TeamRole.editor,
+        code: '48291 07536 91802 36415 70284 15937',
+      ),
+    )
+    ..seedInvitation(
+      TeamInvitation(
+        invitationId: 'guide-invitation-kate',
+        vaultId: guideTeamOps,
+        inviterEmail: self,
+        inviteeEmail: 'kate@example.test',
+        role: TeamRole.viewer,
+        status: 'pending',
+        createdAt: at(7),
+        expiresAt: at(14),
+      ),
+    )
+    ..seedIncoming(
+      TeamInvitation(
+        invitationId: guideIncomingInvitation,
+        vaultId: 'guide-team-platform',
+        inviterEmail: 'lead@example.test',
+        inviteeEmail: self,
+        role: TeamRole.editor,
+        status: 'pending',
+        note: en ? 'Access to the test benches for the release' : 'Доступ к стендам на время релиза',
+        createdAt: at(8),
+        expiresAt: at(15),
+      ),
+    );
+  final data = backend.cloud.activeData!;
+  Set<String> subtree(String name) {
+    final root = data.groups.firstWhere((g) => g.name == name).id;
+    final ids = {root};
+    var grew = true;
+    while (grew) {
+      grew = false;
+      for (final g in data.groups) {
+        if (g.parentId != null && ids.contains(g.parentId) && ids.add(g.id)) grew = true;
+      }
+    }
+    return {for (final id in ids) id.value};
+  }
+
+  for (final (group, vault) in [('Production', guideTeamOps), ('Staging', guideTeamSupport)]) {
+    final groups = subtree(group);
+    for (final id in groups) {
+      teams.objects[id] = vault;
+    }
+    for (final host in data.hosts) {
+      if (host.groupId != null && groups.contains(host.groupId!.value)) teams.objects[host.id.value] = vault;
+    }
+  }
+  return teams;
 }
