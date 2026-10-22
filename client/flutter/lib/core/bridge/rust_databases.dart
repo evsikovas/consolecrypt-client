@@ -25,6 +25,7 @@ final class RustDbService
         DbQueryService,
         DbHistoryService,
         DbPgpassFileService,
+        DbSqliteFileService,
         DbExportService,
         DbCellEditService,
         DbObjectInspectService,
@@ -71,7 +72,10 @@ final class RustDbService
   @override
   Future<List<DbConnection>> connections() async {
     final list = jsonDecode(await guard(native.dbConnections)) as List;
-    return List.unmodifiable(list.cast<DbJson>().map(DbConnection.fromJson));
+    // A connection of an engine from a newer version is left out.
+    return List.unmodifiable(
+      list.cast<DbJson>().where((json) => DbEngine.tryParse(json['engine']) != null).map(DbConnection.fromJson),
+    );
   }
 
   @override
@@ -221,6 +225,17 @@ final class RustDbService
     final contents = SecretText.fromBytes(bytes);
     bytes.fillRange(0, bytes.length, 0);
     return importPgpass(contents);
+  }
+
+  @override
+  Future<String?> pickSqliteFile() async => (await openFile())?.path;
+
+  @override
+  Future<String?> createSqliteFile() async {
+    final location = await getSaveLocation(suggestedName: 'database.sqlite'); // l10n-ignore: file name
+    if (location == null) return null;
+    await guard(() => native.dbSqliteCreateFile(path: location.path));
+    return location.path;
   }
 
   @override
@@ -482,6 +497,7 @@ final class RustDbService
     return DbHistoryPage(
       entries: [
         for (final entry in (json['entries'] as List).cast<DbJson>())
+          if (DbEngine.tryParse(entry['engine']) != null)
           DbHistoryEntry(
             id: entry['id'] as String,
             connectionId: entry['connection_id'] as String,

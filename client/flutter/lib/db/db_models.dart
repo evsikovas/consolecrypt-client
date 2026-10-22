@@ -10,13 +10,24 @@ enum DbEngine {
   mariadb('mariadb', 'MariaDB', 3306),
   clickhouse('clickhouse', 'ClickHouse', 8443),
   redis('redis', 'Redis', 6379),
-  mongodb('mongodb', 'MongoDB', 27017);
+  mongodb('mongodb', 'MongoDB', 27017),
+  sqlite('sqlite', 'SQLite', 0); // l10n-ignore: product name
 
   const DbEngine(this.wireName, this.label, this.port);
   final String wireName, label;
   final int port;
   bool get sql => this != redis && this != mongodb;
+
+  /// A database file instead of a server socket (no host, port, TLS or password).
+  bool get file => this == sqlite;
+
+  /// Engines added after 0.9.1: their connections stay on this device (never
+  /// synced or shared) because older versions cannot read them.
+  bool get localOnly => this == sqlite;
   static DbEngine parse(String value) => values.firstWhere((e) => e.wireName == value);
+
+  /// Null for an engine of a newer version (such connections are skipped).
+  static DbEngine? tryParse(Object? value) => values.where((e) => e.wireName == value).firstOrNull;
 }
 
 enum DbTlsMode { disable, prefer, require, verify }
@@ -209,8 +220,12 @@ final class DbDriverOptions {
     this.replicaSet,
     this.srv = false,
     this.readPreference = DbMongoReadPreference.secondaryPreferred,
+    this.readOnly = true,
   });
   final DbEngine engine;
+
+  /// SQLite: the file opens read-only and no statement can change it.
+  final bool readOnly;
   final String applicationName, charset;
   final List<String> searchPath;
   final Map<String, int> settings;
@@ -230,6 +245,7 @@ final class DbDriverOptions {
     readPreference: DbMongoReadPreference.values.firstWhere(
       (e) => e.wireName == (json['read_preference'] ?? 'secondary_preferred'),
     ),
+    readOnly: json['read_only'] as bool? ?? true,
   );
   DbJson toJson() => {
     'kind': engine.wireName,
@@ -244,6 +260,7 @@ final class DbDriverOptions {
         'srv': srv,
         'read_preference': readPreference.wireName,
       },
+      DbEngine.sqlite => {'read_only': readOnly},
     },
   };
 }
@@ -512,7 +529,11 @@ enum DbObjectKind {
   projection('projection'),
   redisDatabase('redis_database'),
   redisKey('redis_key'),
-  collection('collection');
+  collection('collection'),
+  key('key'),
+  foreignKey('foreign_key'),
+  reference('reference'),
+  dataType('data_type');
 
   const DbObjectKind(this.wireName);
   final String wireName;

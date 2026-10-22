@@ -51,6 +51,12 @@ pub async fn db_save_connection(
     .await
 }
 
+/// Creates a new, empty SQLite database file on this computer (the editor's
+/// "create a new database"). Refuses an existing file.
+pub async fn db_sqlite_create_file(path: String) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.db_sqlite_create_file(path).await?) }).await
+}
+
 pub async fn db_delete_connection(id: String) -> Result<(), BridgeError> {
     with_core(move |c| async move { Ok(c.db_delete_connection(id).await?) }).await
 }

@@ -199,23 +199,7 @@ fn invalid(reason: &'static str) -> AppError {
 }
 
 fn db_error(error: DbError) -> AppError {
-    let code = match error {
-        DbError::InvalidRequest => "invalid_request",
-        DbError::PolicyDenied => "policy_denied",
-        DbError::ApprovalRequired => "approval_required",
-        DbError::ConnectionFailed => "connection_failed",
-        DbError::AuthenticationFailed => "authentication_failed",
-        DbError::TlsFailed => "tls_failed",
-        DbError::TlsUnavailable => "tls_unavailable",
-        DbError::ChannelBindingUnsupported => "channel_binding_unsupported",
-        DbError::CleartextRefused => "cleartext_refused",
-        DbError::QueryFailed => "query_failed",
-        DbError::Timeout => "timeout",
-        DbError::Cancelled => "cancelled",
-        DbError::ResultLimit => "result_limit",
-        DbError::SessionClosed => "session_closed",
-    };
-    AppError::invalid("database", code)
+    AppError::invalid("database", cc_db_core::streaming::error_code(&error))
 }
 
 /// Session metadata plus the live write state (non-production sessions can
@@ -320,8 +304,12 @@ impl AppCore {
                 | DbEngine::Clickhouse
                 | DbEngine::Redis
                 | DbEngine::Mongodb
+                | DbEngine::Sqlite
         ) {
             return Err(invalid("engine_unavailable"));
+        }
+        if connection.engine == DbEngine::Sqlite {
+            return self.db_open_sqlite(connection).await;
         }
         let (owner, unlocked) = self.unlocked().await?;
         let credentials = self.db_credentials(connection, password).await?;
@@ -352,6 +340,28 @@ impl AppCore {
         Ok(Arc::new(session))
     }
 
+    /// Opens an SQLite file here or through the route's `sqlite3` program.
+    async fn db_open_sqlite(&self, connection: &DbConnection) -> AppResult<Arc<DbSession>> {
+        let (_, unlocked) = self.unlocked().await?;
+        let cancel = unlocked.db.shutdown.child_token();
+        let target: futures::future::BoxFuture<'_, AppResult<_>> =
+            Box::pin(self.db_sqlite_target(connection, &cancel));
+        let target = target.await?;
+        let mobile = cfg!(any(target_os = "android", target_os = "ios"));
+        let timeout = Duration::from_secs(u64::from(
+            connection.limits.connect_timeout_seconds.clamp(1, 120),
+        ));
+        let id = uuid::Uuid::new_v4().to_string();
+        let open: futures::future::BoxFuture<'_, Result<DbSession, DbError>> =
+            Box::pin(DbSession::open_sqlite(id, connection, target, mobile));
+        let session = tokio::select! {
+            biased;
+            _ = cancel.cancelled() => return Err(AppError::VaultLocked),
+            result = tokio::time::timeout(timeout, open) => result.map_err(|_| db_error(DbError::Timeout))?.map_err(db_error)?,
+        };
+        Ok(Arc::new(session))
+    }
+
     /// Opens a session for a saved connection. `password` is used once when
     /// the connection keeps no stored password.
     pub async fn db_connect(
@@ -361,9 +371,9 @@ impl AppCore {
     ) -> AppResult<DbLiveSession> {
         let (_, unlocked) = self.unlocked().await?;
         let id = crate::dto::parse_id("connection_id", &connection_id)?;
-        let connection = unlocked
-            .working()
-            .db_connection(id)
+        let connection = self
+            .db_saved_connection(id)
+            .await?
             .ok_or_else(|| invalid("connection_unavailable"))?;
         let session = self.db_open(&connection, password).await?;
         let mut sessions = unlocked

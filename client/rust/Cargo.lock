@@ -1004,6 +1004,7 @@ dependencies = [
  "pem 3.0.6",
  "rcgen",
  "reqwest",
+ "rusqlite",
  "rustls",
  "secrecy",
  "semver",

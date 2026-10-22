@@ -220,6 +220,7 @@ final class MockDbService
         DbEngine.clickhouse => '25.8.2',
         DbEngine.redis => '7.4.1',
         DbEngine.mongodb => '7.0.14',
+        DbEngine.sqlite => '3.50.4',
       },
       production: connection.production,
       readOnly: connection.production,

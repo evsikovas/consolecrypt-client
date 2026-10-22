@@ -68,6 +68,7 @@ impl AppCore {
     pub async fn db_connections(&self) -> AppResult<Vec<DbConnection>> {
         let (_, unlocked) = self.unlocked().await?;
         let mut connections = unlocked.working().db_connections();
+        connections.extend(self.db_local_connections().await?);
         connections.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
         Ok(connections)
     }
@@ -82,6 +83,23 @@ impl AppCore {
     ) -> AppResult<DbConnection> {
         let (owner, unlocked) = self.unlocked().await?;
         let creating = connection.id == ObjectId::NIL;
+        // Engines added after 0.9.1 stay on this device (see database_local).
+        let local = !creating
+            && unlocked.working().db_connection(connection.id).is_none()
+            && self.db_saved_connection(connection.id).await?.is_some();
+        if connection.engine.local_only() || local {
+            if !connection.engine.local_only() || (!creating && !local) {
+                // An engine never moves between the vault and this device.
+                return Err(invalid("engine_changed"));
+            }
+            if password.is_some() || private_key.is_some() {
+                return Err(invalid("credential_unavailable"));
+            }
+            if creating {
+                connection.id = ObjectId::new();
+            }
+            return self.db_save_local_connection(connection, creating).await;
+        }
         let existing = if creating {
             connection.id = ObjectId::new();
             None
@@ -122,6 +140,9 @@ impl AppCore {
         let (owner, unlocked) = self.unlocked().await?;
         let id = crate::dto::parse_id("connection_id", &id)?;
         if unlocked.working().db_connection(id).is_none() {
+            if self.db_delete_local_connection(id).await? {
+                return Ok(());
+            }
             return Err(invalid("connection_unavailable"));
         }
         let _profile = self.hold_session(&owner).await?;

@@ -38,6 +38,7 @@ mod database_ai;
 mod database_forward_route;
 mod database_history;
 mod database_import;
+mod database_local;
 pub mod database_inventory;
 mod database_route;
 mod database_runtime;
