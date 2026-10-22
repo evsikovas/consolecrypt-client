@@ -15,6 +15,7 @@ pub mod parser;
 mod postgres;
 mod postgres_value;
 mod redis_driver;
+pub mod row_changes;
 pub mod session;
 pub mod streaming;
 pub mod transport;

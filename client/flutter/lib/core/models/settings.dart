@@ -116,6 +116,7 @@ final class LocalSettings {
     this.rdpMobile = const RdpMobileSettings(),
     this.databasesView = CollectionView.cards,
     this.dockerTerminalHintShown = false,
+    this.dbFetchSizes = const {},
   });
 
   final AppThemeMode themeMode;
@@ -189,6 +190,9 @@ final class LocalSettings {
   /// (environment included) was shown in this profile.
   final bool dockerTerminalHintShown;
 
+  /// Rows the result panel loads per "load more", by database connection id.
+  final Map<String, int> dbFetchSizes;
+
   LocalSettings copyWith({
     AppThemeMode? themeMode,
     double? uiFontScale,
@@ -218,6 +222,7 @@ final class LocalSettings {
     RdpMobileSettings? rdpMobile,
     CollectionView? databasesView,
     bool? dockerTerminalHintShown,
+    Map<String, int>? dbFetchSizes,
   }) => LocalSettings(
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
@@ -244,5 +249,6 @@ final class LocalSettings {
     rdpMobile: rdpMobile ?? this.rdpMobile,
     databasesView: databasesView ?? this.databasesView,
     dockerTerminalHintShown: dockerTerminalHintShown ?? this.dockerTerminalHintShown,
+    dbFetchSizes: dbFetchSizes ?? this.dbFetchSizes,
   );
 }

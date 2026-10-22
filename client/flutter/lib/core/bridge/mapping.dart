@@ -746,6 +746,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'workspace_panel_style': s.workspacePanelStyle.name,
   'databases_view': s.databasesView.name,
   'docker_terminal_hint_shown': s.dockerTerminalHintShown,
+  'db_fetch_sizes': s.dbFetchSizes,
   'sftp_default_editor': s.sftpDefaultEditor == null
       ? null
       : {'kind': s.sftpDefaultEditor!.kind.wireName, 'value': s.sftpDefaultEditor!.value},
@@ -811,6 +812,11 @@ LocalSettings localSettingsFromJson(Json j) {
     ),
     databasesView: _byWire(CollectionView.values, (view) => view.name, j['databases_view'], d.databasesView),
     dockerTerminalHintShown: j['docker_terminal_hint_shown'] == true,
+    dbFetchSizes: {
+      if (j['db_fetch_sizes'] case final Map<String, dynamic> sizes)
+        for (final entry in sizes.entries.take(200))
+          if (entry.value case final int rows when rows >= 1 && rows <= 1000 && entry.key.length <= 64) entry.key: rows,
+    },
   );
 }
 
