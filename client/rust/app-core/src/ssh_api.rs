@@ -238,6 +238,16 @@ impl AppCore {
             .working()
             .tunnel(id)
             .ok_or_else(|| AppError::not_found("tunnel", id))?;
+        self.start_tunnel_spec(tunnel).await
+    }
+
+    /// Start `tunnel` (a saved tunnel, possibly with an adjusted bind
+    /// address) over a (shared) connection to its host.
+    pub(crate) async fn start_tunnel_spec(
+        &self,
+        tunnel: cc_models::tunnel::Tunnel,
+    ) -> AppResult<TunnelStatusDto> {
+        let (_, u) = self.unlocked().await?;
         let current = self
             .sharing_prepare_connection(&tunnel.host_id.to_string())
             .await?;

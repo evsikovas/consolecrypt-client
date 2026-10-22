@@ -73,8 +73,10 @@
   ConsoleCrypt, включая их jump-цепочки.
 - **SSH-туннель** — через сохранённый туннель локального проброса. Адрес и
   порт берутся из цели туннеля; если туннель не запущен, он стартует при
-  подключении. Если в форме указан localhost с портом сохранённого туннеля,
-  форма предложит использовать этот туннель.
+  подключении — всегда на 127.0.0.1, даже если в туннеле указан сетевой
+  адрес, чтобы база не стала доступна другим компьютерам. Если в форме указан
+  localhost с портом сохранённого туннеля, форма предложит использовать этот
+  туннель.
 - **Kubernetes** — проброс порта к Pod, Service, Deployment или StatefulSet
   выбранного контекста. Для Service и Deployment выбирается готовый Pod,
   поэтому подключение переживает перезапуск подов.
@@ -360,8 +362,9 @@ server never sees them.
 - **SSH host** or **SSH jump profile** from your saved inventory, including
   jump chains.
 - **SSH tunnel**: a saved local-forward tunnel, started on connect when it is
-  not running. The form offers a matching tunnel when you type localhost and
-  its port.
+  not running — always on 127.0.0.1, even when the tunnel names a network
+  bind address, so the database is never exposed to other computers. The
+  form offers a matching tunnel when you type localhost and its port.
 - **Kubernetes**: a port forward to a Pod, Service, Deployment or
   StatefulSet. Services and Deployments use a ready Pod, so the connection
   survives Pod restarts.
