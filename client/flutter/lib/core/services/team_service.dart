@@ -6,6 +6,8 @@ abstract interface class TeamService {
   /// Bumps whenever teams, members or invitations may have changed.
   Stream<void> get changes;
 
+  /// The server offers teams (or the profile already has some).
+  Future<bool> supported();
   Future<List<Team>> list();
   Future<List<Team>> refresh();
 
@@ -47,6 +49,8 @@ final class UnavailableTeamService implements TeamService {
 
   @override
   Stream<void> get changes => const Stream.empty();
+  @override
+  Future<bool> supported() async => false;
   @override
   Future<List<Team>> list() async => const [];
   @override

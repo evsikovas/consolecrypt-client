@@ -102,6 +102,7 @@ async fn teams_lifecycle() {
     )
     .await;
     alice.create_vault(PASSPHRASE.into()).await.unwrap();
+    assert!(alice.teams_supported().await.unwrap());
     let team = alice
         .create_team(
             "Ops".into(),

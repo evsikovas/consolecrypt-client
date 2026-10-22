@@ -18,6 +18,17 @@ bool _teamsAvailable(Ref ref) {
   return profile != null && !profile.isLocal && phase == VaultPhase.unlocked;
 }
 
+/// The server offers teams; the Teams UI stays hidden otherwise.
+final teamsSupportedProvider = FutureProvider<bool>((ref) async {
+  ref.watch(teamChangesProvider);
+  if (!_teamsAvailable(ref)) return false;
+  try {
+    return await ref.watch(teamServiceProvider).supported();
+  } on Object {
+    return false;
+  }
+});
+
 /// Teams of the open synced profile (sidebar order).
 final teamsProvider = FutureProvider<List<Team>>((ref) async {
   ref.watch(teamChangesProvider);

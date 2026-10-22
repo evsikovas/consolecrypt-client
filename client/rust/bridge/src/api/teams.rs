@@ -21,6 +21,11 @@ fn role(s: &str) -> Result<TeamRoleDto, BridgeError> {
     })
 }
 
+/// Whether the server offers teams (hide the Teams UI otherwise).
+pub async fn teams_supported() -> Result<bool, BridgeError> {
+    with_core(move |c| async move { Ok(c.teams_supported().await?) }).await
+}
+
 /// `Vec<TeamDto>` of the open profile (sidebar order).
 pub async fn teams_list() -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.teams().await?) }).await

@@ -10,6 +10,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `role`
 
+/// Whether the server offers teams (hide the Teams UI otherwise).
+Future<bool> teamsSupported() => RustLib.instance.api.crateApiTeamsTeamsSupported();
+
 /// `Vec<TeamDto>` of the open profile (sidebar order).
 Future<String> teamsList() => RustLib.instance.api.crateApiTeamsTeamsList();
 

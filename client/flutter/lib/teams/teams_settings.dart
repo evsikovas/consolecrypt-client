@@ -74,6 +74,7 @@ class TeamsSettingsSection extends ConsumerWidget {
     final l10n = context.l10n;
     final profile = ref.watch(activeProfileProvider);
     if (profile == null || profile.isLocal) return const SizedBox.shrink();
+    if (ref.watch(teamsSupportedProvider).value != true) return const SizedBox.shrink();
     final teams = ref.watch(teamsProvider);
     final incoming = ref.watch(incomingTeamInvitationsProvider).value ?? const <TeamInvitation>[];
     return SectionCard(

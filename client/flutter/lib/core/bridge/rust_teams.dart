@@ -46,6 +46,9 @@ final class RustTeamService implements TeamService {
   Stream<void> get changes => _changes.stream;
 
   @override
+  Future<bool> supported() => guard(rs.teamsSupported);
+
+  @override
   Future<List<Team>> list() async => decodeList(await guard(rs.teamsList)).map(Team.fromJson).toList();
 
   @override

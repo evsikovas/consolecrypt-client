@@ -103,6 +103,28 @@ impl AppCore {
 
     // ---- listing ---------------------------------------------------------------
 
+    /// Whether the profile's server offers teams (`capabilities.teams`).
+    /// Offline, a profile that already has teams keeps them visible.
+    pub async fn teams_supported(&self) -> AppResult<bool> {
+        let (s, u) = self.unlocked().await?;
+        if s.kind().await? == ProfileKind::Local {
+            return Ok(false);
+        }
+        let has_teams = u
+            .writer
+            .working
+            .objects()
+            .iter()
+            .any(|o| matches!(o, VaultObject::TeamMembership(_)));
+        match s.api_opt() {
+            Some(api) => match api.meta().await {
+                Ok(m) => Ok(m.capabilities.teams || has_teams),
+                Err(_) => Ok(has_teams),
+            },
+            None => Ok(has_teams),
+        }
+    }
+
     /// Teams of the profile (open ones and joins waiting for confirmation).
     pub async fn teams(&self) -> AppResult<Vec<TeamDto>> {
         let (_, u) = self.unlocked().await?;
