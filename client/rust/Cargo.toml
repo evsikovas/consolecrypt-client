@@ -39,7 +39,7 @@ publish = false
 
 [workspace.dependencies]
 # shared contract
-cc-protocol = { git = "https://github.com/evsikovas/consolecrypt-server.git", rev = "ca1b0774640e1a92d0d40d57ea296055feef6805" }
+cc-protocol = { git = "https://github.com/evsikovas/consolecrypt-server.git", rev = "33460082b929667f24548725b8405731d57e883f" }
 cc-models = { path = "../../crates/models" }
 
 # internal crates

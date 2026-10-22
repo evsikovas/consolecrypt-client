@@ -40,6 +40,7 @@ mod rng;
 pub mod sharing;
 pub mod sharing_enrollment;
 pub mod sharing_notes;
+pub mod teams;
 
 #[cfg(test)]
 mod vectors;
