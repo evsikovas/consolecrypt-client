@@ -147,11 +147,17 @@ Tests that need a native library, a system keyring, or a real SSH/RDP server hav
 additional prerequisites. Do not run Flutter tests alongside a native build
 in the same working directory.
 
+## Release 0.9.1
+
+Teams: vaults shared by several accounts with roles, a compared member code on join, team colours, policies and key rotation (sync server 0.2.1). Sync servers 0.2.0 and later can admit accounts only through a corporate identity provider (OIDC: Entra ID, AD FS, Keycloak, Google Workspace, Okta) or Active Directory (LDAP); the app names the corporate server and remembers how you signed in, while the vault passphrase still alone opens your data. Notes, tasks and reminders live in the right panel and can be shared. Dangerous actions are confirmed with the vault passphrase; databases get object details, a reusable preview tab and starter snippets; only owners delete shared items (restorable for 30 days); SFTP never runs files that can execute code. See the [0.9.1 notes](docs/public/RELEASE_0_9_1.md).
+
+[Release 0.9.1](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.9.1) provides six packages for macOS, Windows, Linux and Android; iOS is deferred. Verify downloads against [the SHA-256 manifest](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.9.1/SHA256SUMS-0.9.1.txt).
+
 ## Release 0.8.6
 
 Saved database connections can be shared with a colleague's verified device, like hosts and Kubernetes contexts. "Unlock production" allows writes to a production database for 5, 15 or 30 minutes. Cells are edited in the grid by double-click, Run executes the statement on the caret's line, DDL opens as code with Copy, and PostgreSQL never falls back to plaintext on a direct network route. Every new device is reported by e-mail with a "This wasn't me" link, Docker hides secrets beyond environment variables, compose saves are protected against file swaps, and device unlock keys are protected by the system (Touch ID, Windows Hello, fingerprint). Windows: install 0.8.6 once manually, later updates install in place. See the [0.8.6 notes](docs/public/RELEASE_0_8_6.md).
 
-[Release 0.8.6](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.8.6) provides six packages for macOS, Windows, Linux and Android; iOS is deferred. Verify downloads against [the SHA-256 manifest](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.8.6/SHA256SUMS-0.8.6.txt).
+[Release 0.8.6](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.8.6) provided six packages for macOS, Windows, Linux and Android; iOS is deferred. Verify downloads against [the SHA-256 manifest](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.8.6/SHA256SUMS-0.8.6.txt).
 
 ## Release 0.8.5
 
