@@ -46,6 +46,14 @@ final class MockSftpBrowserService implements SftpBrowserService, SftpBrowserDeb
 
   static const _editRoot = '/Users/demo/Library/Caches/ConsoleCrypt/profiles/demo/edit';
 
+  /// Demo subset of the core's active-content list
+  /// (`platform_core::active`, the only authoritative one).
+  static const _activeExtensions = {'sh', 'command', 'desktop', 'js', 'vbs', 'hta', 'lnk', 'bat', 'cmd', 'ps1', 'exe'};
+
+  /// Tests / demo: "Open" of a file that can run code finds no text editor
+  /// (like Linux without a `text/plain` application) → `noTextEditor`.
+  bool simulateNoTextEditor = false;
+
   // Browsing -------------------------------------------------------------------
 
   MockFsNode _root(SftpSessionId session) => _sftp.connection(session).root;
@@ -251,6 +259,13 @@ final class MockSftpBrowserService implements SftpBrowserService, SftpBrowserDeb
         .where((e) => e.info.isActive && e.info.hostId == connection.hostId && e.targetPath == target)
         .firstOrNull;
     if (existing != null) return existing.info; // reopened in the editor
+    if (simulateNoTextEditor && openWith is OpenWithDefault && opensAsText(node.name)) {
+      throw const AppException(
+        AppErrorCode.internal,
+        'No text editor found', // l10n-ignore: diagnostic
+        reason: AppErrorReason.noTextEditor,
+      );
+    }
     final id = EditSessionId.generate();
     final app = switch (openWith) {
       OpenWithApp(:final app) => app,
@@ -345,6 +360,12 @@ final class MockSftpBrowserService implements SftpBrowserService, SftpBrowserDeb
 
   @override
   Future<void> revealEditSession(EditSessionId id) async => _edit(id);
+
+  @override
+  bool opensAsText(String fileName) {
+    final dot = fileName.lastIndexOf('.');
+    return dot > 0 && _activeExtensions.contains(fileName.substring(dot + 1).toLowerCase());
+  }
 
   @override
   Future<void> resolveEditConflict(EditSessionId id, EditConflictResolution resolution) async {

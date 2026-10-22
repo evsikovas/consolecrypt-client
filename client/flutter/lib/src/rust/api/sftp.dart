@@ -68,6 +68,14 @@ Future<void> editReopen({required String sessionId, String? openWithJson}) =>
 Future<void> editReveal({required String sessionId}) =>
     RustLib.instance.api.crateApiSftpEditReveal(sessionId: sessionId);
 
+/// Whether "Open" shows `file_name` as text because its OS default action
+/// would run code (`.js`, `.lnk`, `.command`, `.desktop`, …; security audit
+/// H4). By name only — for remote files before download; the core decides
+/// again on the downloaded copy (content, permissions) and never hands such
+/// files to the default handler.
+bool editOpensAsText({required String fileName}) =>
+    RustLib.instance.api.crateApiSftpEditOpensAsText(fileName: fileName);
+
 /// Resolve a conflict; the saved remote copy's path for
 /// `KeepRemoteCopyLocally`.
 Future<String?> editResolve({required String sessionId, required EditConflictChoice resolution}) =>

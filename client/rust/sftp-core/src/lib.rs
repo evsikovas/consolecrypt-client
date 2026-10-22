@@ -637,6 +637,11 @@ impl SftpClient {
                     }
                 }
                 let _ = &src;
+                // Mark-of-the-Web / quarantine: the OS warns before running
+                // a downloaded program (security audit H4). Best effort.
+                if let Err(e) = cc_platform_core::mark_downloaded(local) {
+                    tracing::debug!(path = %lp, error = %e, "cannot mark the download");
+                }
                 Ok(s)
             }
             Err(e) => {

@@ -200,6 +200,11 @@ pub enum AppError {
     /// The OS failed to hand a working copy to its external editor.
     #[error("could not open editor: {0}")]
     EditorLaunch(String),
+    /// The file could run code when opened and no text editor was found to
+    /// open it safely (code `io`, reason `no_text_editor`): the user should
+    /// choose an editor.
+    #[error("no text editor found to open this file safely")]
+    NoTextEditor,
     /// Backup file invalid / unreadable.
     #[error("backup: {0}")]
     Backup(String),
@@ -298,7 +303,7 @@ impl AppError {
             AppError::PermissionDenied(_) => "permission_denied",
             AppError::TooLarge { .. } => "payload_too_large",
             AppError::Terminal(_) => "terminal",
-            AppError::EditorLaunch(_) => "io",
+            AppError::EditorLaunch(_) | AppError::NoTextEditor => "io",
             AppError::Backup(_) => "backup",
             AppError::Storage(_) => "storage",
             AppError::SecureStore(_) => "secure_store",
@@ -350,6 +355,7 @@ impl AppError {
             AppError::Backup(_) => "not_a_backup",
             AppError::SshPassphraseRequired(_) => "key_passphrase_required",
             AppError::EditorLaunch(_) => "editor_launch_failed",
+            AppError::NoTextEditor => "no_text_editor",
             AppError::UnresolvedPlaceholders(_) => "missing_variables",
             AppError::AiNotConfigured => "provider_not_found",
             _ => return None,
@@ -813,6 +819,7 @@ impl From<EditError> for AppError {
             }
             EditError::Cancelled => AppError::Cancelled,
             EditError::Opener(detail) => AppError::EditorLaunch(detail),
+            EditError::NoTextEditor => AppError::NoTextEditor,
             EditError::Upload(m) => AppError::Sftp(m),
             EditError::Busy(path) => AppError::InUse {
                 what: "file".into(),
@@ -859,6 +866,9 @@ mod tests {
         let e: AppError = EditError::Opener("я".repeat(600)).into();
         assert_eq!(e.args()["detail"].chars().count(), 512);
         assert_eq!(AppError::from(EditError::Cancelled), AppError::Cancelled);
+        let e = AppError::from(EditError::NoTextEditor);
+        assert_eq!(e, AppError::NoTextEditor);
+        assert_eq!((e.code(), e.reason()), ("io", Some("no_text_editor")));
     }
 
     #[test]

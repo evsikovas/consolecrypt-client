@@ -5544,5 +5544,13 @@
   "settingsCaptureProtectionOff": "Никогда",
   "settingsCaptureProtectionSecrets": "Когда видны секреты",
   "settingsCaptureProtectionAlways": "Всегда",
-  "settingsCaptureProtectionHelp": "Окно не попадёт в скриншоты, запись и демонстрацию экрана (Zoom, Teams). В режиме «Всегда» коллеги не увидят окно ConsoleCrypt при показе экрана."
+  "settingsCaptureProtectionHelp": "Окно не попадёт в скриншоты, запись и демонстрацию экрана (Zoom, Teams). В режиме «Всегда» коллеги не увидят окно ConsoleCrypt при показе экрана.",
+  "sftpActiveContentTitle": "Этот файл может выполнить код",
+  "sftpActiveContentBody": "Файл «{name}» может выполнить код. Он откроется как текст в редакторе.",
+  "sftpActiveContentNoRun": "ConsoleCrypt не запускает загруженные файлы. Чтобы выполнить его, используйте терминал на сервере.",
+  "sftpActiveContentOpenAsText": "Открыть как текст",
+  "sftpNoTextEditorTitle": "Текстовый редактор не найден",
+  "sftpNoTextEditorBody": "Файл «{name}» может выполнить код, поэтому он открывается только как текст, но текстовый редактор не найден. Выберите редактор.",
+  "sftpChooseEditor": "Выбрать редактор…",
+  "errorNoTextEditor": "Не найден текстовый редактор, чтобы безопасно открыть этот файл. Выберите редактор через «Открыть в программе…»."
 }

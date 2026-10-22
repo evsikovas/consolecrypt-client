@@ -716,6 +716,11 @@ void main() {
       expect(dockerLocalPath('/host_mnt/Users/me/app'), '/Users/me/app');
       expect(dockerLocalPath('/run/desktop/mnt/host/c/Users/me/app', windows: true), r'C:\Users\me\app');
       expect(dockerLocalPath('/opt/x/postgres-init.sql', windows: false), '/opt/x/postgres-init.sql');
+      // Bundles are revealed in Finder, never opened (`open` would launch them).
+      expect(macOSRevealsInstead('/Users/me/Downloads/Tool.app'), isTrue);
+      expect(macOSRevealsInstead('/Users/me/Downloads/Run.workflow/'), isTrue);
+      expect(macOSRevealsInstead('/Users/me/app'), isFalse);
+      expect(macOSRevealsInstead('/Users/me/.config'), isFalse);
     });
   });
 

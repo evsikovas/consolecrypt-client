@@ -13452,5 +13452,47 @@
   "settingsCaptureProtectionHelp": "The window is left out of screenshots, recordings and screen sharing (Zoom, Teams). With “Always”, colleagues will not see the ConsoleCrypt window while you share your screen.",
   "@settingsCaptureProtectionHelp": {
     "description": "Explanation under the screen capture protection selector in Settings → Security."
+  },
+  "sftpActiveContentTitle": "This file can run code",
+  "@sftpActiveContentTitle": {
+    "description": "SECURITY (audit H4): title of the notice before opening a remote file whose default action would run code (scripts, shortcuts, executables)."
+  },
+  "sftpActiveContentBody": "“{name}” can run code. It will open as text in an editor.",
+  "@sftpActiveContentBody": {
+    "description": "SECURITY (audit H4): notice body; ConsoleCrypt never runs such files, it opens them as text. {name} is the file name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sftpActiveContentNoRun": "ConsoleCrypt never runs downloaded files. To run it, use a terminal on the server.",
+  "@sftpActiveContentNoRun": {
+    "description": "SECURITY (audit H4): notice detail — there is no option to run the file from ConsoleCrypt."
+  },
+  "sftpActiveContentOpenAsText": "Open as Text",
+  "@sftpActiveContentOpenAsText": {
+    "description": "Button in the active-content notice: open the file in a text editor."
+  },
+  "sftpNoTextEditorTitle": "No text editor found",
+  "@sftpNoTextEditorTitle": {
+    "description": "Dialog title: a file that can run code opens only as text, and no text editor was found on this computer."
+  },
+  "sftpNoTextEditorBody": "“{name}” can run code, so it opens only as text, but no text editor was found. Choose an editor to open it with.",
+  "@sftpNoTextEditorBody": {
+    "description": "Dialog body when no text editor was found for a file that can run code. {name} is the file name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sftpChooseEditor": "Choose an Editor…",
+  "@sftpChooseEditor": {
+    "description": "Button: pick a text editor application to open the file with."
+  },
+  "errorNoTextEditor": "No text editor found to open this file safely. Choose an editor using Open With.",
+  "@errorNoTextEditor": {
+    "description": "Error: a file that can run code opens only as text and no text editor was found."
   }
 }

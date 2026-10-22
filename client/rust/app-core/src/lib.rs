@@ -153,10 +153,10 @@ pub use cc_protocol::version::Platform;
 pub mod platform {
     pub use cc_platform_core::open::{LaunchOutput, LaunchSpec};
     pub use cc_platform_core::{
-        platform_device_keys, AppRef, DeviceKeyProtector, DeviceKeyStatus, ExternalDeviceKeys,
-        FakePrompt, FileOpener, InMemoryDeviceKeys, InMemorySecureStore, Launcher, OpenError,
-        OsAuthError, OsAuthKind, OsFamily, SecureStore, SecureStoreError, StoreBackedDeviceKeys,
-        UnlockProtection, UnsupportedDeviceKeys,
+        is_active_name, platform_device_keys, AppRef, DeviceKeyProtector, DeviceKeyStatus,
+        ExternalDeviceKeys, FakePrompt, FileOpener, InMemoryDeviceKeys, InMemorySecureStore,
+        Launcher, OpenError, OsAuthError, OsAuthKind, OsFamily, SecureStore, SecureStoreError,
+        StoreBackedDeviceKeys, UnlockProtection, UnsupportedDeviceKeys,
     };
 }
 
