@@ -12,6 +12,7 @@ import 'package:consolecrypt/sharing/enrollment_owner.dart';
 import 'package:consolecrypt/sharing/enrollment_pairing.dart';
 import 'package:consolecrypt/sharing/sharing_collections.dart';
 import 'package:consolecrypt/sharing/sharing_database.dart';
+import 'package:consolecrypt/sharing/sharing_deleted.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_kubernetes.dart';
 import 'package:consolecrypt/sharing/sharing_management.dart';
@@ -194,6 +195,18 @@ class _SharingScreenState extends ConsumerState<SharingScreen> {
                       style: GlassTokens.of(context).typography.body
                           .copyWith(color: GlassTokens.of(context).secondaryLabel),
                     ),
+                    if (_owned && status.value?.supportsRestore == true) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: GlassButton.plain(
+                          key: const ValueKey('sharing-recently-deleted'),
+                          label: l.sharingRecentlyDeleted,
+                          icon: Icons.restore_from_trash_outlined,
+                          onPressed: () => showSharingRecentlyDeleted(context),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 20),
                     if (status.value?.supportsOwnerOnlineEnrollment == true) ...[
                       const _SharingDeviceActions(),
@@ -467,7 +480,7 @@ class _SharingTile extends ConsumerWidget {
     final ok = await showConfirmDialog(
       context,
       title: context.l10n.sharingStop,
-      message: context.l10n.sharingStopHelp,
+      message: status.supportsRestore ? context.l10n.sharingStopRestoreHelp : context.l10n.sharingStopHelp,
       confirmLabel: context.l10n.sharingStop,
       destructive: true,
     );
@@ -477,6 +490,24 @@ class _SharingTile extends ConsumerWidget {
       await ref.read(sharingServiceProvider).flush();
       return true;
     });
+    if (context.mounted) refreshSharing(ref);
+  }
+
+  /// Recipients only (protocol 1.8); the owner deletes instead.
+  Future<void> _leave(BuildContext context, WidgetRef ref) async {
+    final profile = ref.read(sharingSessionScopeProvider);
+    final ok = await showConfirmDialog(
+      context,
+      title: context.l10n.sharingLeave,
+      message: context.l10n.sharingLeaveHelp,
+      confirmLabel: context.l10n.sharingLeave,
+      destructive: true,
+    );
+    if (!ok || !context.mounted || !sharingSessionCurrent(ref, profile)) return;
+    await runWithFeedback(context, () async {
+      await ref.read(sharingServiceProvider).leave(item.id);
+      return true;
+    }, success: context.l10n.sharingLeft);
     if (context.mounted) refreshSharing(ref);
   }
 
@@ -611,6 +642,12 @@ class _SharingTile extends ConsumerWidget {
                 onPressed: pending ? null : () => showEnrollmentOwner(context, item),
               ),
               Text(l.sharingMembers),
+              if (item.departedUserIds.isNotEmpty)
+                Text(
+                  l.sharingMembersLeft(item.departedUserIds.length),
+                  style: GlassTokens.of(context).typography.callout
+                      .copyWith(color: GlassTokens.of(context).secondaryLabel),
+                ),
               for (final member in item.memberRoles)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -626,6 +663,18 @@ class _SharingTile extends ConsumerWidget {
                 ),
             ],
             if (item.owned && !manages) Text(l.sharingOwnerDeviceOnly),
+          ],
+          if (!item.owned && status.supportsLeave && item.trust != SharingTrust.deleted) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: GlassButton.plain(
+                key: ValueKey('sharing-leave-${item.id}'),
+                label: l.sharingLeave,
+                icon: Icons.logout_rounded,
+                onPressed: pending ? null : () => _leave(context, ref),
+              ),
+            ),
           ],
         ],
       ),

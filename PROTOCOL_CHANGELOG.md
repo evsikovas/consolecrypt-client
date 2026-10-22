@@ -22,6 +22,21 @@
   children (as for `kube_context`, a pre-1.6 client cannot decode such a
   collection). Personal vault objects, encryption format and the `DbRoute`
   model are unchanged.
+- Client (2026-10-22, protocol 1.8 consumer, server 0.1.17): `cc-protocol`
+  pinned to the server commit with owner-only delete, leave and restore.
+  Gated on `/v1/meta` `capabilities.share_leave` / `share_restore`:
+  recipients get "Leave share" (all their devices lose server access; the
+  local cached record, its OS checkpoint mark and queued changes for that
+  item are removed, personal copies stay); owners see departed accounts
+  (`ShareListPage.departures`) hidden from the member list so the next access
+  change drops them, and "Recently deleted" lists `GET /v1/shares/deleted`.
+  A restore verifies the retained revision against the accepted tombstone's
+  `previous_revision_hash`, opens it on the owner device and republishes it
+  as a new item (`CreateShareRequest.restored_from`) with the previous
+  recipients except departed ones; a tombstone is never resurrected and
+  recipients accept the new item again. The outbox entry gains an optional
+  `restored_from` (omitted when absent). No encrypted payload changes.
+
 - Client (2026-10-21, protocol 1.7 consumer, server 0.1.16): `cc-protocol`
   pinned to the server commit with new-device protection. Gated on
   `/v1/meta` `capabilities.device_protection`: `device_registered` events

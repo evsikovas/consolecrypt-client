@@ -5527,5 +5527,16 @@
   "dbSetNull": "Установить NULL",
   "dbCellEditHint": "Enter — сохранить, Esc — отменить, Tab — следующая ячейка",
   "dbPendingEdit": "Изменено, ещё не применено",
-  "dbSelectedRows": "{count, plural, one{Выбрано строк: {count}} few{Выбрано строк: {count}} many{Выбрано строк: {count}} other{Выбрано строк: {count}}}"
+  "dbSelectedRows": "{count, plural, one{Выбрано строк: {count}} few{Выбрано строк: {count}} many{Выбрано строк: {count}} other{Выбрано строк: {count}}}",
+  "sharingLeave": "Выйти из общего доступа",
+  "sharingLeaveHelp": "Элемент перестанет приходить на все ваши устройства и исчезнет из списка. Сохранённые личные копии останутся. Владелец увидит, что вы вышли.",
+  "sharingLeft": "Вы вышли из общего доступа",
+  "sharingStopRestoreHelp": "Получатели сразу потеряют доступ. В течение 30 дней элемент можно восстановить в разделе «Недавно удалённые».",
+  "sharingMembersLeft": "Вышли из общего доступа: {count}",
+  "sharingRecentlyDeleted": "Недавно удалённые",
+  "sharingRecentlyDeletedHelp": "Удалённые общие элементы можно восстановить в течение 30 дней. Восстановленный элемент снова передаётся тем же людям, кроме вышедших; они принимают его заново.",
+  "sharingRecentlyDeletedEmpty": "Нет недавно удалённых элементов",
+  "sharingRestore": "Восстановить",
+  "sharingRestored": "Элемент восстановлен и снова передан",
+  "sharingRestoreUntil": "Можно восстановить до {date} · получателей: {count}"
 }

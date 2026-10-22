@@ -13,6 +13,7 @@ import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/services/enrollment_service.dart';
 import 'package:consolecrypt/sharing/enrollment_models.dart';
 import 'package:consolecrypt/sharing/enrollment_pairing.dart';
+import 'package:consolecrypt/sharing/sharing_deleted.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
@@ -84,7 +85,9 @@ String _snippetPreview() => jsonEncode({
 
 class _Sharing implements SharingService {
   int publications = 0, accepts = 0, flushes = 0, discoveries = 0, edits = 0;
-  bool failFlush = false, enabled = true, enrollmentEnabled = false;
+  bool failFlush = false, enabled = true, enrollmentEnabled = false, membershipEnabled = false;
+  final List<String> left = [], deletes = [], restores = [];
+  List<SharingDeletedItem> deletedItems = [];
   AppException? statusError;
   int statusCalls = 0, onlineLists = 0;
   SharingIdentity currentIdentity = _owner;
@@ -99,7 +102,22 @@ class _Sharing implements SharingService {
   }
 
   @override
-  Future<void> delete(String id) async {}
+  Future<void> delete(String id) async => deletes.add(id);
+  @override
+  Future<void> leave(String id) async {
+    left.add(id);
+    items = items.where((i) => i.id != id).toList();
+  }
+
+  @override
+  Future<List<SharingDeletedItem>> deleted() async => deletedItems;
+  @override
+  Future<SharingItem> restore(String id) async {
+    restores.add(id);
+    deletedItems = deletedItems.where((i) => i.id != id).toList();
+    return _item(owned: true, preview: _snippetPreview());
+  }
+
   @override
   Future<List<SharingOutboxEntry>> outbox() async => [];
   @override
@@ -111,6 +129,8 @@ class _Sharing implements SharingService {
       instance: enabled ? 'instance' : null,
       identity: enabled ? currentIdentity : null,
       supportsOwnerOnlineEnrollment: enrollmentEnabled,
+      supportsLeave: membershipEnabled,
+      supportsRestore: membershipEnabled,
     );
   }
 
@@ -207,7 +227,12 @@ class _Enrollment extends UnavailableEnrollmentService {
   }
 }
 
-SharingItem _item({bool owned = false, String? preview, SharingRole role = SharingRole.reader}) => SharingItem(
+SharingItem _item({
+  bool owned = false,
+  String? preview,
+  SharingRole role = SharingRole.reader,
+  List<String> departed = const [],
+}) => SharingItem(
   id: 'share',
   itemId: 'item',
   kind: SharingKind.snippet,
@@ -225,6 +250,7 @@ SharingItem _item({bool owned = false, String? preview, SharingRole role = Shari
     SharingGrant(_reader, SharingRole.reader, _reader.code),
     SharingGrant(_editor, SharingRole.editor, _editor.code),
   ],
+  departedUserIds: departed,
 );
 
 Future<void> _pump(
@@ -474,6 +500,78 @@ void main() {
     expect(sharing.rotatedGrants!.single.identity.deviceId, _editor.deviceId);
     expect(sharing.rotatedGrants!.single.role, SharingRole.editor);
     expect(sharing.rotatedGrants!.single.confirmedCode, _editor.code);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('recipient leaves a received or pending share only after confirmation', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final sharing = _Sharing()
+      ..currentIdentity = _editor
+      ..items = [_item(preview: _snippetPreview(), role: SharingRole.editor)];
+    await _pump(tester, backend, sharing);
+    await _openSharing(tester);
+    // Older servers: no leave action at all, and editors never get Delete.
+    expect(find.byKey(const ValueKey('sharing-leave-share')), findsNothing);
+    expect(find.text('Delete shared item'), findsNothing);
+    sharing.membershipEnabled = true;
+    await tester.tap(find.byWidgetPredicate((w) => w is GlassIconButton && w.tooltip == 'Refresh shared data'));
+    await settle(tester);
+    expect(find.text('Delete shared item'), findsNothing);
+    await tapKey(tester, 'sharing-leave-share');
+    expect(find.textContaining('Personal copies you saved stay'), findsOneWidget);
+    await tapKey(tester, 'confirm-cancel');
+    expect(sharing.left, isEmpty);
+    await tapKey(tester, 'sharing-leave-share');
+    await tapKey(tester, 'confirm-ok');
+    expect(sharing.left, ['share']);
+    expect(find.byKey(const ValueKey('sharing-leave-share')), findsNothing);
+    expect(sharing.deletes, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('owner delete mentions restore; recently deleted restores and departures are shown', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final sharing = _Sharing()
+      ..membershipEnabled = true
+      ..items = [
+        _item(owned: true, preview: _snippetPreview(), role: SharingRole.editor, departed: ['reader']),
+      ]
+      ..deletedItems = [
+        SharingDeletedItem(
+          id: 'gone',
+          kind: SharingKind.snippet,
+          restorableUntil: DateTime(2026, 11, 21),
+          previewJson: _snippetPreview(),
+          recipients: 2,
+        ),
+      ];
+    await _pump(tester, backend, sharing);
+    await _openSharing(tester);
+    await tapKey(tester, 'sharing-owned');
+    expect(find.text('Left the share: 1'), findsOneWidget);
+    expect(find.byKey(const ValueKey('sharing-leave-share')), findsNothing);
+    final delete = find.widgetWithText(GlassButton, 'Delete shared item');
+    await tester.ensureVisible(delete);
+    await tester.tap(delete);
+    await settle(tester);
+    expect(find.textContaining('restore the item from Recently deleted'), findsOneWidget);
+    await tapKey(tester, 'confirm-cancel');
+    expect(sharing.deletes, isEmpty);
+    await tapKey(tester, 'sharing-recently-deleted');
+    expect(find.byType(SharingRecentlyDeletedDialog), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(SharingRecentlyDeletedDialog), matching: find.text('Received command')),
+      findsOneWidget,
+    );
+    await tester.tap(_buttonIn(SharingRecentlyDeletedDialog, 'Restore'));
+    await settle(tester);
+    expect(sharing.restores, ['gone']);
+    expect(sharing.flushes, 1);
+    expect(find.text('No recently deleted items'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

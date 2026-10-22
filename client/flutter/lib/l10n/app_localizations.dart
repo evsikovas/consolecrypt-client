@@ -17389,6 +17389,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, one{Selected: {count} row} other{Selected: {count} rows}}'**
   String dbSelectedRows(int count);
+
+  /// Selective sharing: action for a recipient to leave a shared item or decline an incoming invitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave share'**
+  String get sharingLeave;
+
+  /// Selective sharing: confirmation text before a recipient leaves a shared item.
+  ///
+  /// In en, this message translates to:
+  /// **'You stop receiving this item on all your devices and it disappears from this list. Personal copies you saved stay. The owner sees that you left.'**
+  String get sharingLeaveHelp;
+
+  /// Selective sharing: notice after a recipient left a shared item.
+  ///
+  /// In en, this message translates to:
+  /// **'You left the share'**
+  String get sharingLeft;
+
+  /// Selective sharing: owner confirmation before deleting a shared item when the server keeps it restorable.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipients lose access immediately. For 30 days you can restore the item from Recently deleted.'**
+  String get sharingStopRestoreHelp;
+
+  /// Selective sharing: owner view, number of recipient accounts who left this item; they are removed at the next access change.
+  ///
+  /// In en, this message translates to:
+  /// **'Left the share: {count}'**
+  String sharingMembersLeft(int count);
+
+  /// Selective sharing: owner entry and dialog title listing deleted shared items that can still be restored.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently deleted'**
+  String get sharingRecentlyDeleted;
+
+  /// Selective sharing: explanation in the Recently deleted dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared items you deleted can be restored for 30 days. A restored item is shared again with the same people except those who left; they accept it again.'**
+  String get sharingRecentlyDeletedHelp;
+
+  /// Selective sharing: empty state of the Recently deleted dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'No recently deleted items'**
+  String get sharingRecentlyDeletedEmpty;
+
+  /// Selective sharing: action restoring a deleted shared item.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get sharingRestore;
+
+  /// Selective sharing: notice after a deleted shared item was restored.
+  ///
+  /// In en, this message translates to:
+  /// **'Item restored and shared again'**
+  String get sharingRestored;
+
+  /// Selective sharing: subtitle of a deleted item with the restore deadline and the number of recipient devices.
+  ///
+  /// In en, this message translates to:
+  /// **'Restorable until {date} · recipients: {count}'**
+  String sharingRestoreUntil(String date, int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

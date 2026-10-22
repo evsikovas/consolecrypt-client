@@ -145,6 +145,15 @@ final class RustSharingService implements SharingService, KubernetesSharingServi
   );
   @override
   Future<void> delete(String id) => guard(() => rs.sharingDelete(id: id));
+  @override
+  Future<void> leave(String id) => guard(() => rs.sharingLeave(id: id));
+  @override
+  Future<List<SharingDeletedItem>> deleted() async => (jsonDecode(await guard(rs.sharingDeleted)) as List)
+      .map((v) => SharingDeletedItem.fromJson(v as Map<String, dynamic>))
+      .toList();
+  @override
+  Future<SharingItem> restore(String id) async =>
+      SharingItem.fromJson(decodeObject(await guard(() => rs.sharingRestore(id: id))));
   List<SharingOutboxEntry> _outbox(String raw) => (decodeObject(raw)['entries'] as List)
       .map((v) => SharingOutboxEntry.fromJson(v as Map<String, dynamic>))
       .toList();

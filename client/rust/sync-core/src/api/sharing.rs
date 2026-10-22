@@ -6,8 +6,9 @@
 
 use super::{to_json, ApiClient, ApiError, SignerError};
 use cc_protocol::sharing::{
-    self, CreateShareRequest, PutSharedRevisionRequest, RotateShareAccessRequest, ShareHistoryPage,
-    ShareListPage, SharedItemKind, SharedItemState, SharingCapabilities, SharingRecipient,
+    self, CreateShareRequest, DeletedShareListPage, PutSharedRevisionRequest,
+    RotateShareAccessRequest, ShareHistoryPage, ShareListPage, SharedItemKind, SharedItemState,
+    SharingCapabilities, SharingOperation, SharingRecipient,
 };
 use cc_protocol::{DeviceId, ShareId, UserId};
 use reqwest::Method;
@@ -200,6 +201,85 @@ impl SharingApi {
             if after.is_some_and(|after| next <= after)
                 || previous.is_some_and(|previous| next < previous)
             {
+                return Err(response_error("invalid sharing pagination cursor"));
+            }
+        } else if page.next_after.is_some() {
+            return Err(response_error(
+                "unexpected terminal sharing pagination cursor",
+            ));
+        }
+        if page.departures.len() > page.items.len() * sharing::MAX_MEMBERS
+            || page.departures.iter().any(|departure| {
+                !page
+                    .items
+                    .iter()
+                    .any(|item| item.access.manifest.share_id == departure.share_id)
+            })
+        {
+            return Err(response_error("invalid sharing departures"));
+        }
+        Ok(page)
+    }
+
+    /// Protocol 1.8 (`capabilities.share_leave`): this account leaves a
+    /// shared item on all its devices. Nothing is signed or re-encrypted.
+    pub async fn leave_share(&self, share_id: ShareId) -> Result<(), ApiError> {
+        self.ready()?;
+        self.client
+            .authed_empty(Method::POST, self.item_url(share_id, "/leave")?, None)
+            .await
+    }
+
+    /// Protocol 1.8 (`capabilities.share_restore`): owner-deleted items whose
+    /// last content is still retained. Structural checks only; the caller
+    /// verifies signatures against its accepted tombstone before opening.
+    pub async fn deleted_shares(
+        &self,
+        after: Option<ShareId>,
+        limit: u32,
+    ) -> Result<DeletedShareListPage, ApiError> {
+        self.ready()?;
+        page_limit(limit)?;
+        if after == Some(ShareId::NIL) {
+            return Err(config_error("invalid sharing list cursor"));
+        }
+        let mut url = self.client.endpoint(sharing::DELETED_PATH);
+        {
+            let mut query = url.query_pairs_mut();
+            if let Some(after) = after {
+                query.append_pair("after", &after.to_string());
+            }
+            query.append_pair("limit", &limit.to_string());
+        }
+        let page: DeletedShareListPage = self.client.authed(Method::GET, url, None).await?;
+        if page.items.len() > limit as usize {
+            return Err(response_error("sharing page exceeds limit"));
+        }
+        let mut previous = after;
+        for item in &page.items {
+            let id = item.state.access.manifest.share_id;
+            self.state(&item.state, None)?;
+            self.revision(&item.last_revision, id, false)?;
+            let tombstone = &item.state.revision.signed.mutation;
+            let last = &item.last_revision.signed.mutation;
+            if tombstone.operation != SharingOperation::Delete
+                || last.operation != SharingOperation::Put
+                || last.context.revision.checked_add(1) != Some(tombstone.context.revision)
+                || last.manifest_revision != tombstone.manifest_revision
+                || item.restorable_until <= item.deleted_at
+            {
+                return Err(response_error("invalid deleted sharing item"));
+            }
+            if previous.is_some_and(|previous| id <= previous) {
+                return Err(response_error("sharing page is not ordered"));
+            }
+            previous = Some(id);
+        }
+        if page.has_more {
+            let next = page
+                .next_after
+                .ok_or_else(|| response_error("missing sharing pagination cursor"))?;
+            if after.is_some_and(|after| next <= after) {
                 return Err(response_error("invalid sharing pagination cursor"));
             }
         } else if page.next_after.is_some() {

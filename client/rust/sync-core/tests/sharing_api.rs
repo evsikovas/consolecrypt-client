@@ -215,6 +215,7 @@ async fn handler(State(state): State<Arc<Mock>>, request: Request) -> Response {
                 items: vec![current],
                 next_after: None,
                 has_more: false,
+                departures: vec![],
             })
             .unwrap(),
         );
@@ -375,6 +376,7 @@ async fn every_sharing_route_uses_exact_signed_target_query_and_body() {
     api.create_share(&CreateShareRequest {
         access: current.access.clone(),
         revision: current.revision.clone(),
+        restored_from: None,
     })
     .await
     .unwrap();
@@ -562,6 +564,7 @@ async fn history_gaps_and_invalid_pagination_are_not_silently_accepted() {
             items: vec![current.clone(), current],
             next_after: None,
             has_more: false,
+            departures: vec![],
         })
         .unwrap(),
     );
@@ -583,7 +586,8 @@ async fn secret_publication_and_mismatched_write_reply_are_rejected() {
     assert!(api
         .create_share(&CreateShareRequest {
             access: secret.access,
-            revision: secret.revision
+            revision: secret.revision,
+            restored_from: None,
         })
         .await
         .is_err());
@@ -659,6 +663,7 @@ async fn unadvertised_kind_request_never_sends_http_and_unsolicited_kind_is_reje
             items: vec![state],
             next_after: None,
             has_more: false,
+            departures: vec![],
         })
         .unwrap(),
     );
@@ -695,6 +700,7 @@ async fn database_kind_is_requested_only_when_advertised_and_never_unsolicited()
             items: vec![state],
             next_after: None,
             has_more: false,
+            departures: vec![],
         })
         .unwrap(),
     );

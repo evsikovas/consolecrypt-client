@@ -9973,4 +9973,44 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get sharingLeave => 'Выйти из общего доступа';
+
+  @override
+  String get sharingLeaveHelp =>
+      'Элемент перестанет приходить на все ваши устройства и исчезнет из списка. Сохранённые личные копии останутся. Владелец увидит, что вы вышли.';
+
+  @override
+  String get sharingLeft => 'Вы вышли из общего доступа';
+
+  @override
+  String get sharingStopRestoreHelp =>
+      'Получатели сразу потеряют доступ. В течение 30 дней элемент можно восстановить в разделе «Недавно удалённые».';
+
+  @override
+  String sharingMembersLeft(int count) {
+    return 'Вышли из общего доступа: $count';
+  }
+
+  @override
+  String get sharingRecentlyDeleted => 'Недавно удалённые';
+
+  @override
+  String get sharingRecentlyDeletedHelp =>
+      'Удалённые общие элементы можно восстановить в течение 30 дней. Восстановленный элемент снова передаётся тем же людям, кроме вышедших; они принимают его заново.';
+
+  @override
+  String get sharingRecentlyDeletedEmpty => 'Нет недавно удалённых элементов';
+
+  @override
+  String get sharingRestore => 'Восстановить';
+
+  @override
+  String get sharingRestored => 'Элемент восстановлен и снова передан';
+
+  @override
+  String sharingRestoreUntil(String date, int count) {
+    return 'Можно восстановить до $date · получателей: $count';
+  }
 }

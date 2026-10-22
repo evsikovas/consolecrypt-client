@@ -96,6 +96,26 @@
 После перезапуска владельца может потребоваться новая проверка владения ключом.
 Отключение разрешения сохраняется локально даже при недоступном сервере.
 
+## Удаление, выход и восстановление
+
+Удалить общий элемент может только его владелец: начиная с сервера **0.1.17**
+сервер отклоняет удаление от редактора (`owner_only`), в том числе от старых
+клиентов, поэтому данные владельца не теряются. Получатели теряют доступ сразу.
+Сервер хранит последнее зашифрованное содержимое удалённого элемента
+**30 дней**: в клиенте **0.8.7** и новее откройте **Я поделился → Недавно
+удалённые** и нажмите **Восстановить**. Элемент публикуется заново с теми же
+устройствами, кроме вышедших из доступа; получатели снова принимают его, сравнив
+код владельца. Через 30 дней остаётся только подписанная отметка удаления.
+Удалённые элементы в пределах этого срока учитываются в лимите общих элементов.
+
+Получатель может в любой момент выбрать **Выйти из общего доступа** в карточке
+элемента или во входящем приглашении. Все его устройства сразу теряют доступ на
+сервере, элемент исчезает из списка, а сохранённые личные копии остаются.
+Владелец видит, что участник вышел; при следующем изменении прав этот участник
+исключается из подписанного списка. Повторно добавить его можно только новым
+приглашением. Эти действия доступны, если сервер сообщает о поддержке; на
+старом сервере кнопки скрыты.
+
 ## Отзыв, конфликты и восстановление
 
 В **Я поделился → Управление доступом** исходное устройство владельца может
@@ -157,6 +177,19 @@ encrypted possession challenge and rotate the item key. Optional automatic
 acceptance processes only already endorsed requests covered by an explicit
 Automatic grant. Public pairing packets contain no private keys or item values;
 import alone does not establish trust.
+
+Only the owner can delete a shared item: from server **0.1.17** an editor's
+delete is rejected (`owner_only`), including from older clients, so the owner's
+data is never lost. Recipients lose access immediately. The server keeps the
+last encrypted content of a deleted item for **30 days**; in client **0.8.7**
+and later use **Shared by me → Recently deleted → Restore**. The item is shared
+again with the same devices except those who left, and recipients accept it
+again after comparing the owner code. Restorable items count toward the shared
+item quota. A recipient can **Leave share** from the item or an incoming
+invitation at any time: all their devices lose server access, the item leaves
+their list and saved personal copies stay. The owner sees that the member left;
+the next access change drops them from the signed manifest. Both actions appear
+only when the server advertises support.
 
 Revocation prevents access to future keys and server requests. It cannot erase
 data already read or copied, or rotate credentials on the destination SSH server.
