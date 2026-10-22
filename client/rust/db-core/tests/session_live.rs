@@ -239,7 +239,7 @@ async fn exercise(variable: &str, engine: DbEngine) {
         let dev = dev.clone();
         let editable = editable.clone();
         async move {
-            let (mut edit_request, _) = dev.review_cell_edits(&editable, &edits).await?;
+            let mut edit_request = dev.review_cell_edits(&editable, &edits).await?.request;
             let review = dev.guard().review(&edit_request)?;
             dev.guard().approve(&review.ticket)?;
             edit_request.approval_ticket = Some(review.ticket.clone());

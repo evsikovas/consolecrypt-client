@@ -2,8 +2,10 @@
 //! learns its source table and primary key from the native session; edits
 //! become parameterized `UPDATE … WHERE <primary key>` statements that are
 //! reviewed like any write and applied in one transaction, each changing
-//! exactly one row.
+//! exactly one row. The review shows the same statements with the values
+//! written out as SQL literals; that text is never executed.
 use crate::{
+    export::sql_literal,
     introspect::quote_identifier,
     session::{Collect, DbSession, Driver},
     streaming::RowConsumer,
@@ -18,9 +20,59 @@ use sqlparser::{
     parser::Parser,
 };
 use std::collections::BTreeMap;
+use zeroize::Zeroize;
 
 /// Most cell edits applied in one review.
 pub const MAX_CELL_EDITS: usize = 1000;
+
+/// Longest value written out in a review preview, in characters.
+pub const PREVIEW_VALUE_CHARS: usize = 200;
+
+/// Generated edit statements: the parameterized request that runs, the
+/// preview the user reviews and the number of rows they change.
+#[derive(Debug, Clone)]
+pub struct CellEditRequest {
+    pub request: DbQueryRequest,
+    /// The same statements with every value as an SQL literal (`NULL` for
+    /// null, long values shortened with `…`). Display only.
+    pub preview: String,
+    pub rows: usize,
+}
+
+/// How a bound value reads in the review preview.
+fn preview_literal(engine: DbEngine, cell: &DbCell) -> String {
+    let mut shown = cell.clone();
+    match &mut shown {
+        DbCell::Null | DbCell::Bool(_) => {}
+        DbCell::Int(v)
+        | DbCell::Uint(v)
+        | DbCell::Decimal(v)
+        | DbCell::Float(v)
+        | DbCell::Text(v)
+        | DbCell::Date(v)
+        | DbCell::Time(v)
+        | DbCell::Timestamp(v)
+        | DbCell::Binary(v)
+        | DbCell::Json(v) => {
+            if v.chars().count() > PREVIEW_VALUE_CHARS {
+                let mut short: String = v.chars().take(PREVIEW_VALUE_CHARS).collect();
+                short.push('…');
+                v.zeroize();
+                *v = short;
+            }
+        }
+    }
+    let literal = sql_literal(engine, &shown);
+    let literal = match (&shown, engine) {
+        (DbCell::Binary(_), DbEngine::Postgresql) => format!("decode({literal}, 'base64')"),
+        (DbCell::Binary(_), DbEngine::Mysql | DbEngine::Mariadb) => {
+            format!("FROM_BASE64({literal})")
+        }
+        _ => literal,
+    };
+    shown.zeroize();
+    literal
+}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -91,7 +143,7 @@ pub fn cell_edit_request(
     table: &DbObjectRef,
     primary_key: &[String],
     edits: &[DbCellEdit],
-) -> Result<(DbQueryRequest, usize), DbError> {
+) -> Result<CellEditRequest, DbError> {
     if edits.is_empty() || edits.len() > MAX_CELL_EDITS || primary_key.is_empty() {
         return Err(DbError::InvalidRequest);
     }
@@ -134,6 +186,9 @@ pub fn cell_edit_request(
     let target = quote_identifier(engine, table);
     let mut parameters = Vec::new();
     let mut statements = Vec::new();
+    let mut previews = Vec::new();
+    // Each value becomes a `{{pN}}` placeholder in the request and a literal
+    // in the preview.
     let bind = |value: &DbCell, parameters: &mut Vec<DbParameter>| {
         let name = format!("p{}", parameters.len());
         parameters.push(DbParameter {
@@ -141,32 +196,43 @@ pub fn cell_edit_request(
             value: value.clone(),
             type_hint: None,
         });
-        format!("{{{{{name}}}}}")
+        (format!("{{{{{name}}}}}"), preview_literal(engine, value))
     };
     for (key, changes) in &rows {
-        let set: Vec<String> = changes
-            .iter()
-            .map(|(column, value)| format!("{} = {}", quote(column), bind(value, &mut parameters)))
-            .collect();
-        let condition: Vec<String> = primary_key
-            .iter()
-            .zip(key)
-            .map(|(column, value)| format!("{} = {}", quote(column), bind(value, &mut parameters)))
-            .collect();
+        let mut set = (Vec::new(), Vec::new());
+        for (column, value) in changes {
+            let (placeholder, literal) = bind(value, &mut parameters);
+            set.0.push(format!("{} = {placeholder}", quote(column)));
+            set.1.push(format!("{} = {literal}", quote(column)));
+        }
+        let mut condition = (Vec::new(), Vec::new());
+        for (column, value) in primary_key.iter().zip(key) {
+            let (placeholder, literal) = bind(value, &mut parameters);
+            condition
+                .0
+                .push(format!("{} = {placeholder}", quote(column)));
+            condition.1.push(format!("{} = {literal}", quote(column)));
+        }
         statements.push(format!(
             "UPDATE {target} SET {} WHERE {}",
-            set.join(", "),
-            condition.join(" AND ")
+            set.0.join(", "),
+            condition.0.join(" AND ")
+        ));
+        previews.push(format!(
+            "UPDATE {target} SET {} WHERE {}",
+            set.1.join(", "),
+            condition.1.join(" AND ")
         ));
     }
-    Ok((
-        DbQueryRequest {
+    Ok(CellEditRequest {
+        request: DbQueryRequest {
             text: statements.join(";\n") + ";",
             parameters,
             approval_ticket: None,
         },
-        rows.len(),
-    ))
+        preview: previews.join(";\n") + ";",
+        rows: rows.len(),
+    })
 }
 
 /// Rejects a statement that changed anything but exactly one row, which
@@ -272,7 +338,7 @@ impl DbSession {
         &self,
         table: &DbObjectRef,
         edits: &[DbCellEdit],
-    ) -> Result<(DbQueryRequest, usize), DbError> {
+    ) -> Result<CellEditRequest, DbError> {
         if self.guard.is_read_only() || table.kind != DbObjectKind::Table {
             return Err(DbError::PolicyDenied);
         }
@@ -372,9 +438,9 @@ mod tests {
                 value: DbCell::Text("y".into()),
             },
         ];
-        let (request, rows) =
-            cell_edit_request(DbEngine::Postgresql, &table, &["id".into()], &edits).unwrap();
-        assert_eq!(rows, 2);
+        let edit = cell_edit_request(DbEngine::Postgresql, &table, &["id".into()], &edits).unwrap();
+        let request = &edit.request;
+        assert_eq!(edit.rows, 2);
         assert_eq!(
             request.text,
             "UPDATE \"public\".\"items\" SET \"name\" = {{p0}}, \"note\" = {{p1}} WHERE \"id\" = {{p2}};\n\
@@ -382,10 +448,61 @@ mod tests {
         );
         assert_eq!(request.parameters.len(), 5);
         assert!(!request.text.contains("DROP"));
+        // The review shows the values; only the parameterized text runs.
+        assert_eq!(
+            edit.preview,
+            "UPDATE \"public\".\"items\" SET \"name\" = 'x''; DROP', \"note\" = NULL WHERE \"id\" = 1;\n\
+             UPDATE \"public\".\"items\" SET \"name\" = 'y' WHERE \"id\" = 2;"
+        );
         // A key that does not match the table's primary key is refused.
         let mut wrong = edits[0].clone();
         wrong.original_primary_key =
             BTreeMap::from([("name".to_string(), DbCell::Text("a".into()))]);
         assert!(cell_edit_request(DbEngine::Postgresql, &table, &["id".into()], &[wrong]).is_err());
+    }
+
+    #[test]
+    fn previews_quote_shorten_and_encode_values() {
+        let table = DbObjectRef {
+            database: "shop".into(),
+            schema: None,
+            kind: DbObjectKind::Table,
+            name: "items".into(),
+            parent_name: None,
+        };
+        let long = "ж".repeat(PREVIEW_VALUE_CHARS + 50);
+        let edits = [
+            DbCellEdit {
+                original_primary_key: BTreeMap::from([(
+                    "code".to_string(),
+                    DbCell::Text("a\\b".into()),
+                )]),
+                column: "body".into(),
+                value: DbCell::Text(long.clone()),
+            },
+            DbCellEdit {
+                original_primary_key: BTreeMap::from([(
+                    "code".to_string(),
+                    DbCell::Text("a\\b".into()),
+                )]),
+                column: "blob".into(),
+                value: DbCell::Binary("AP8=".into()),
+            },
+        ];
+        let edit = cell_edit_request(DbEngine::Mysql, &table, &["code".into()], &edits).unwrap();
+        let shown = format!("'{}…'", "ж".repeat(PREVIEW_VALUE_CHARS));
+        assert_eq!(
+            edit.preview,
+            format!(
+                "UPDATE `shop`.`items` SET `blob` = FROM_BASE64('AP8='), `body` = {shown} WHERE `code` = 'a\\\\b';"
+            )
+        );
+        // The full value still travels as a parameter.
+        assert!(edit
+            .request
+            .parameters
+            .iter()
+            .any(|p| p.value == DbCell::Text(long.clone())));
+        assert!(!edit.request.text.contains('ж'));
     }
 }

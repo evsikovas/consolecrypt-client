@@ -246,7 +246,8 @@ pub struct DbQueryReviewDto {
 #[derive(Debug, Clone, Serialize)]
 pub struct DbCellEditReviewDto {
     pub ticket: String,
-    /// Statement text with `{{p0}}` placeholders; values stay bound.
+    /// The statements with the values written out as SQL literals (long
+    /// values shortened) for review; what runs keeps them bound.
     pub sql: String,
     pub rows: usize,
     pub expires_in_seconds: u64,
@@ -947,7 +948,11 @@ impl AppCore {
     ) -> AppResult<DbCellEditReviewDto> {
         let (_, unlocked) = self.unlocked().await?;
         let session = unlocked.db.session(&session_id)?;
-        let (request, rows) = session
+        let cc_db_core::edit::CellEditRequest {
+            request,
+            preview: sql,
+            rows,
+        } = session
             .review_cell_edits(&table, &edits)
             .await
             .map_err(db_error)?;
@@ -957,7 +962,6 @@ impl AppCore {
         if pending.len() >= MAX_QUERIES {
             pending.clear();
         }
-        let sql = request.text.clone();
         pending.insert(ticket.clone(), (session_id, request));
         Ok(DbCellEditReviewDto {
             ticket,

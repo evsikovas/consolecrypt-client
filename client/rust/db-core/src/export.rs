@@ -119,7 +119,7 @@ fn json_value(cell: &DbCell) -> serde_json::Value {
     }
 }
 
-fn sql_literal(engine: DbEngine, cell: &DbCell) -> String {
+pub(crate) fn sql_literal(engine: DbEngine, cell: &DbCell) -> String {
     match cell {
         DbCell::Null => "NULL".into(),
         DbCell::Bool(value) => if *value { "TRUE" } else { "FALSE" }.into(),
