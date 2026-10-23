@@ -78,12 +78,27 @@ pub(crate) struct DbRuntime {
     exports: Mutex<HashMap<String, RunningExport>>,
     /// Reviewed cell edits by ticket: (session id, generated request).
     edits: Mutex<HashMap<String, (String, DbQueryRequest)>>,
+    /// Reviewed CSV imports by ticket, and running ones by id.
+    pub(crate) pending_imports: Mutex<HashMap<String, crate::database_csv_import::PendingImport>>,
+    pub(crate) imports: Mutex<HashMap<String, crate::database_csv_import::RunningImport>>,
 }
 
 impl DbRuntime {
     pub(crate) fn close(&self) {
         self.shutdown.cancel();
         self.edits.lock().unwrap_or_else(|e| e.into_inner()).clear();
+        self.pending_imports
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
+        for (_, import) in self
+            .imports
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .drain()
+        {
+            import.cancel();
+        }
         {
             let mut results = self.results.lock().unwrap_or_else(|e| e.into_inner());
             results.0.clear();

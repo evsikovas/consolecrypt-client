@@ -20461,6 +20461,414 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Leave to the server (default)'**
   String get dbUseDefault;
+
+  /// File size in megabytes
+  ///
+  /// In en, this message translates to:
+  /// **'{size} MB'**
+  String dbSizeMb(String size);
+
+  /// File size in kilobytes
+  ///
+  /// In en, this message translates to:
+  /// **'{size} KB'**
+  String dbSizeKb(int size);
+
+  /// CSV import wizard title
+  ///
+  /// In en, this message translates to:
+  /// **'Import CSV into {table}'**
+  String dbCsvTitle(String table);
+
+  /// CSV import wizard step line
+  ///
+  /// In en, this message translates to:
+  /// **'Step {step} of {count}: {title}'**
+  String dbCsvStep(int step, int count, String title);
+
+  /// CSV wizard step
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get dbCsvStepFile;
+
+  /// CSV wizard step
+  ///
+  /// In en, this message translates to:
+  /// **'Reading settings'**
+  String get dbCsvStepRead;
+
+  /// CSV wizard step
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get dbCsvStepMap;
+
+  /// CSV wizard step
+  ///
+  /// In en, this message translates to:
+  /// **'Import options'**
+  String get dbCsvStepOptions;
+
+  /// CSV wizard step: running
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get dbCsvStepRun;
+
+  /// CSV wizard file step help
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a CSV, TSV or text file up to {size}. It is read as a stream on this device.'**
+  String dbCsvFileHelp(String size);
+
+  /// CSV wizard: pick a file
+  ///
+  /// In en, this message translates to:
+  /// **'Choose file…'**
+  String get dbCsvChooseFile;
+
+  /// CSV file too large
+  ///
+  /// In en, this message translates to:
+  /// **'The file is larger than {size} MB and cannot be imported here.'**
+  String dbCsvTooLarge(int size);
+
+  /// CSV preview failed
+  ///
+  /// In en, this message translates to:
+  /// **'The file could not be read with these settings.'**
+  String get dbCsvUnreadable;
+
+  /// CSV wizard privacy note
+  ///
+  /// In en, this message translates to:
+  /// **'The file\'s content goes only to this database.'**
+  String get dbCsvPrivacy;
+
+  /// Delimiter: auto-detect
+  ///
+  /// In en, this message translates to:
+  /// **'Detect'**
+  String get dbCsvAuto;
+
+  /// Delimiter
+  ///
+  /// In en, this message translates to:
+  /// **'Comma ,'**
+  String get dbCsvComma;
+
+  /// Delimiter
+  ///
+  /// In en, this message translates to:
+  /// **'Semicolon ;'**
+  String get dbCsvSemicolon;
+
+  /// Delimiter
+  ///
+  /// In en, this message translates to:
+  /// **'Tab'**
+  String get dbCsvTab;
+
+  /// Delimiter
+  ///
+  /// In en, this message translates to:
+  /// **'Bar |'**
+  String get dbCsvPipe;
+
+  /// CSV option
+  ///
+  /// In en, this message translates to:
+  /// **'Encoding'**
+  String get dbCsvEncoding;
+
+  /// Encoding: UTF-8 with BOM/1251 detection
+  ///
+  /// In en, this message translates to:
+  /// **'UTF-8 (detect)'**
+  String get dbCsvEncodingAuto;
+
+  /// CSV option
+  ///
+  /// In en, this message translates to:
+  /// **'Delimiter'**
+  String get dbCsvDelimiter;
+
+  /// CSV option
+  ///
+  /// In en, this message translates to:
+  /// **'Quote character'**
+  String get dbCsvQuote;
+
+  /// CSV option
+  ///
+  /// In en, this message translates to:
+  /// **'Lines to skip at the start'**
+  String get dbCsvSkipRows;
+
+  /// CSV option: NULL marker
+  ///
+  /// In en, this message translates to:
+  /// **'NULL is'**
+  String get dbCsvNull;
+
+  /// NULL marker
+  ///
+  /// In en, this message translates to:
+  /// **'An empty field'**
+  String get dbCsvNullEmpty;
+
+  /// NULL marker: no NULLs
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing'**
+  String get dbCsvNullNever;
+
+  /// CSV option
+  ///
+  /// In en, this message translates to:
+  /// **'Decimal separator'**
+  String get dbCsvDecimal;
+
+  /// Decimal separator
+  ///
+  /// In en, this message translates to:
+  /// **'Dot 1.5'**
+  String get dbCsvDecimalDot;
+
+  /// Decimal separator
+  ///
+  /// In en, this message translates to:
+  /// **'Comma 1,5'**
+  String get dbCsvDecimalComma;
+
+  /// CSV option: date order
+  ///
+  /// In en, this message translates to:
+  /// **'Dates'**
+  String get dbCsvDates;
+
+  /// CSV option
+  ///
+  /// In en, this message translates to:
+  /// **'The first row holds column names'**
+  String get dbCsvHeader;
+
+  /// CSV preview caption
+  ///
+  /// In en, this message translates to:
+  /// **'Read as: delimiter {delimiter}, {encoding}'**
+  String dbCsvDetected(String delimiter, String encoding);
+
+  /// CSV mapping help
+  ///
+  /// In en, this message translates to:
+  /// **'Each file column goes to a table column or is skipped. The first 1000 rows are checked against the column types.'**
+  String get dbCsvMapHelp;
+
+  /// CSV mapping: do not import this column
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get dbCsvSkipColumn;
+
+  /// CSV mapping error
+  ///
+  /// In en, this message translates to:
+  /// **'Two file columns go to the same table column.'**
+  String get dbCsvDuplicateTarget;
+
+  /// CSV mapping warning
+  ///
+  /// In en, this message translates to:
+  /// **'Required columns without values: {columns}'**
+  String dbCsvMissingRequired(String columns);
+
+  /// CSV type check warning with sample values
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 value does not fit: {samples}} other{{count} values do not fit: {samples}}}'**
+  String dbCsvBadValues(int count, String samples);
+
+  /// CSV insert mode label
+  ///
+  /// In en, this message translates to:
+  /// **'Rows'**
+  String get dbCsvMode;
+
+  /// CSV insert mode
+  ///
+  /// In en, this message translates to:
+  /// **'Insert'**
+  String get dbCsvModeInsert;
+
+  /// CSV insert mode
+  ///
+  /// In en, this message translates to:
+  /// **'Insert, skip existing keys'**
+  String get dbCsvModeSkip;
+
+  /// CSV insert mode
+  ///
+  /// In en, this message translates to:
+  /// **'Insert or update by key'**
+  String get dbCsvModeUpsert;
+
+  /// CSV options note
+  ///
+  /// In en, this message translates to:
+  /// **'The table has no key: rows can only be inserted.'**
+  String get dbCsvNoKey;
+
+  /// CSV batch size
+  ///
+  /// In en, this message translates to:
+  /// **'Rows per batch (1–5000)'**
+  String get dbCsvBatch;
+
+  /// CSV batch size invalid
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a batch size from 1 to 5000'**
+  String get dbCsvBatchInvalid;
+
+  /// CSV error handling
+  ///
+  /// In en, this message translates to:
+  /// **'On a bad row'**
+  String get dbCsvOnError;
+
+  /// CSV error handling
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the import'**
+  String get dbCsvStop;
+
+  /// CSV error handling
+  ///
+  /// In en, this message translates to:
+  /// **'Skip it and write an error report'**
+  String get dbCsvSkipBad;
+
+  /// CSV transaction scope
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction'**
+  String get dbCsvTransaction;
+
+  /// CSV transaction scope
+  ///
+  /// In en, this message translates to:
+  /// **'One for the whole file (all or nothing)'**
+  String get dbCsvWhole;
+
+  /// CSV transaction scope
+  ///
+  /// In en, this message translates to:
+  /// **'One per batch'**
+  String get dbCsvPerBatch;
+
+  /// CSV option: empty the table (dangerous)
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all rows of the table first'**
+  String get dbCsvTruncate;
+
+  /// CSV truncate help
+  ///
+  /// In en, this message translates to:
+  /// **'Runs DELETE FROM in the import transaction; the review shows it.'**
+  String get dbCsvTruncateHelp;
+
+  /// CSV wizard final button
+  ///
+  /// In en, this message translates to:
+  /// **'Review and import…'**
+  String get dbCsvImport;
+
+  /// CSV import counters
+  ///
+  /// In en, this message translates to:
+  /// **'Read: {read} · imported: {imported} · skipped: {skipped} · failed: {failed}'**
+  String dbCsvCounts(int read, int imported, int skipped, int failed);
+
+  /// CSV import speed
+  ///
+  /// In en, this message translates to:
+  /// **'{rows} rows/s'**
+  String dbCsvRate(int rows);
+
+  /// CSV import speed and time left
+  ///
+  /// In en, this message translates to:
+  /// **'{rows} rows/s · about {left} left'**
+  String dbCsvRateEta(int rows, String left);
+
+  /// CSV import summary
+  ///
+  /// In en, this message translates to:
+  /// **'Done: {imported} imported, {skipped} skipped, {failed} with errors.'**
+  String dbCsvDone(int imported, int skipped, int failed);
+
+  /// CSV import cancelled summary
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled. Rows kept: {imported} (committed batches only).'**
+  String dbCsvCancelled(int imported);
+
+  /// CSV import failed
+  ///
+  /// In en, this message translates to:
+  /// **'The import failed; the open transaction was rolled back.'**
+  String get dbCsvFailed;
+
+  /// CSV import stopped on a bad row
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: a value does not fit its column. Nothing of the open transaction was kept.'**
+  String dbCsvRowType(int line);
+
+  /// CSV import stopped on a bad row
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: a required column is empty. Nothing of the open transaction was kept.'**
+  String dbCsvRowRequired(int line);
+
+  /// CSV import stopped on a bad row
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line} cannot be read (encoding or size). Nothing of the open transaction was kept.'**
+  String dbCsvRowUnreadable(int line);
+
+  /// CSV error report label
+  ///
+  /// In en, this message translates to:
+  /// **'Error report'**
+  String get dbCsvReport;
+
+  /// CSV error report: reveal
+  ///
+  /// In en, this message translates to:
+  /// **'Show in folder'**
+  String get dbCsvShowReport;
+
+  /// Hook: create a new table typed from a CSV file
+  ///
+  /// In en, this message translates to:
+  /// **'Create table from CSV…'**
+  String get dbCsvCreateTable;
+
+  /// Create table from CSV: name
+  ///
+  /// In en, this message translates to:
+  /// **'New table name'**
+  String get dbCsvNewTableName;
+
+  /// Tree menu on a table
+  ///
+  /// In en, this message translates to:
+  /// **'Import from CSV…'**
+  String get dbImportCsv;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

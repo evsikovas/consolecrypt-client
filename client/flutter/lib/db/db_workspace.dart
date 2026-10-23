@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/db/db_ai_panel.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
+import 'package:consolecrypt/db/db_csv_import.dart';
 import 'package:consolecrypt/db/db_editor.dart';
 import 'package:consolecrypt/db/db_errors.dart';
 import 'package:consolecrypt/db/db_export_dialog.dart';
@@ -617,6 +618,35 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     );
   }
 
+  /// CSV import, when the backend and the engine support it.
+  DbCsvImportService? get _csv {
+    final backend = _backend, session = _session;
+    return backend is DbCsvImportService && session != null && dbCsvImportSupported(session.engine) ? backend : null;
+  }
+
+  /// The CSV import wizard for [table]; the tab's result refreshes after.
+  Future<void> _importCsv(DbObjectRef table, {_QueryTab? tab}) async {
+    final service = _csv, session = _session;
+    if (service == null || session == null || !_current) return;
+    if (!session.writable) {
+      showSnack(context, session.production ? context.l10n.dbEditProductionLocked : context.l10n.dbEditReadOnly);
+      return;
+    }
+    final imported = await showAppDialog<bool>(
+      context,
+      secure: true,
+      barrierDismissible: false,
+      builder: (_) => DbCsvImportDialog(service: service, session: session, table: table),
+    );
+    if (imported == true && tab != null && _tabCurrent(tab)) {
+      var refreshed = false;
+      try {
+        refreshed = await tab.result.refresh();
+      } catch (_) {}
+      if (!refreshed && _tabCurrent(tab)) setState(() => tab.stale = true);
+    }
+  }
+
   bool get _hasHistory => _backend is DbHistoryService;
   bool get _hasAi => _backend is DbAiService;
 
@@ -890,6 +920,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
         preparing: tab.preparing,
         stale: tab.stale,
         actions: actions,
+        onImport: _csv == null ? null : (result) => unawaited(_importCsv(result.editableTable!, tab: tab)),
       ),
     );
   }
@@ -1094,6 +1125,19 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
                 if (_current) _tab?.controller.insert(value);
               },
               onSelect: (object) => setState(() => _selectedObject = object),
+              onImportCsv: _csv == null ? null : (object) => unawaited(_importCsv(object)),
+              onCreateFromCsv: _csv == null
+                  ? null
+                  : (object) => unawaited(
+                      showCsvCreateTable(
+                        context,
+                        service: _csv!,
+                        session: session,
+                        container: object,
+                        onDraft: _draft,
+                        ref: ref,
+                      ),
+                    ),
             );
             final side = switch (_side) {
               'history' when _hasHistory => 'history',

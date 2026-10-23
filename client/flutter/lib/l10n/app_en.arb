@@ -15876,5 +15876,392 @@
   "dbUseDefault": "Leave to the server (default)",
   "@dbUseDefault": {
     "description": "Record view: clear a new row's value so the default applies"
+  },
+  "dbSizeMb": "{size} MB",
+  "@dbSizeMb": {
+    "description": "File size in megabytes",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "dbSizeKb": "{size} KB",
+  "@dbSizeKb": {
+    "description": "File size in kilobytes",
+    "placeholders": {
+      "size": {
+        "type": "int"
+      }
+    }
+  },
+  "dbCsvTitle": "Import CSV into {table}",
+  "@dbCsvTitle": {
+    "description": "CSV import wizard title",
+    "placeholders": {
+      "table": {
+        "type": "String"
+      }
+    }
+  },
+  "dbCsvStep": "Step {step} of {count}: {title}",
+  "@dbCsvStep": {
+    "description": "CSV import wizard step line",
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "dbCsvStepFile": "File",
+  "@dbCsvStepFile": {
+    "description": "CSV wizard step"
+  },
+  "dbCsvStepRead": "Reading settings",
+  "@dbCsvStepRead": {
+    "description": "CSV wizard step"
+  },
+  "dbCsvStepMap": "Columns",
+  "@dbCsvStepMap": {
+    "description": "CSV wizard step"
+  },
+  "dbCsvStepOptions": "Import options",
+  "@dbCsvStepOptions": {
+    "description": "CSV wizard step"
+  },
+  "dbCsvStepRun": "Import",
+  "@dbCsvStepRun": {
+    "description": "CSV wizard step: running"
+  },
+  "dbCsvFileHelp": "Choose a CSV, TSV or text file up to {size}. It is read as a stream on this device.",
+  "@dbCsvFileHelp": {
+    "description": "CSV wizard file step help",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "dbCsvChooseFile": "Choose file…",
+  "@dbCsvChooseFile": {
+    "description": "CSV wizard: pick a file"
+  },
+  "dbCsvTooLarge": "The file is larger than {size} MB and cannot be imported here.",
+  "@dbCsvTooLarge": {
+    "description": "CSV file too large",
+    "placeholders": {
+      "size": {
+        "type": "int"
+      }
+    }
+  },
+  "dbCsvUnreadable": "The file could not be read with these settings.",
+  "@dbCsvUnreadable": {
+    "description": "CSV preview failed"
+  },
+  "dbCsvPrivacy": "The file's content goes only to this database.",
+  "@dbCsvPrivacy": {
+    "description": "CSV wizard privacy note"
+  },
+  "dbCsvAuto": "Detect",
+  "@dbCsvAuto": {
+    "description": "Delimiter: auto-detect"
+  },
+  "dbCsvComma": "Comma ,",
+  "@dbCsvComma": {
+    "description": "Delimiter"
+  },
+  "dbCsvSemicolon": "Semicolon ;",
+  "@dbCsvSemicolon": {
+    "description": "Delimiter"
+  },
+  "dbCsvTab": "Tab",
+  "@dbCsvTab": {
+    "description": "Delimiter"
+  },
+  "dbCsvPipe": "Bar |",
+  "@dbCsvPipe": {
+    "description": "Delimiter"
+  },
+  "dbCsvEncoding": "Encoding",
+  "@dbCsvEncoding": {
+    "description": "CSV option"
+  },
+  "dbCsvEncodingAuto": "UTF-8 (detect)",
+  "@dbCsvEncodingAuto": {
+    "description": "Encoding: UTF-8 with BOM/1251 detection"
+  },
+  "dbCsvDelimiter": "Delimiter",
+  "@dbCsvDelimiter": {
+    "description": "CSV option"
+  },
+  "dbCsvQuote": "Quote character",
+  "@dbCsvQuote": {
+    "description": "CSV option"
+  },
+  "dbCsvSkipRows": "Lines to skip at the start",
+  "@dbCsvSkipRows": {
+    "description": "CSV option"
+  },
+  "dbCsvNull": "NULL is",
+  "@dbCsvNull": {
+    "description": "CSV option: NULL marker"
+  },
+  "dbCsvNullEmpty": "An empty field",
+  "@dbCsvNullEmpty": {
+    "description": "NULL marker"
+  },
+  "dbCsvNullNever": "Nothing",
+  "@dbCsvNullNever": {
+    "description": "NULL marker: no NULLs"
+  },
+  "dbCsvDecimal": "Decimal separator",
+  "@dbCsvDecimal": {
+    "description": "CSV option"
+  },
+  "dbCsvDecimalDot": "Dot 1.5",
+  "@dbCsvDecimalDot": {
+    "description": "Decimal separator"
+  },
+  "dbCsvDecimalComma": "Comma 1,5",
+  "@dbCsvDecimalComma": {
+    "description": "Decimal separator"
+  },
+  "dbCsvDates": "Dates",
+  "@dbCsvDates": {
+    "description": "CSV option: date order"
+  },
+  "dbCsvHeader": "The first row holds column names",
+  "@dbCsvHeader": {
+    "description": "CSV option"
+  },
+  "dbCsvDetected": "Read as: delimiter {delimiter}, {encoding}",
+  "@dbCsvDetected": {
+    "description": "CSV preview caption",
+    "placeholders": {
+      "delimiter": {
+        "type": "String"
+      },
+      "encoding": {
+        "type": "String"
+      }
+    }
+  },
+  "dbCsvMapHelp": "Each file column goes to a table column or is skipped. The first 1000 rows are checked against the column types.",
+  "@dbCsvMapHelp": {
+    "description": "CSV mapping help"
+  },
+  "dbCsvSkipColumn": "Skip",
+  "@dbCsvSkipColumn": {
+    "description": "CSV mapping: do not import this column"
+  },
+  "dbCsvDuplicateTarget": "Two file columns go to the same table column.",
+  "@dbCsvDuplicateTarget": {
+    "description": "CSV mapping error"
+  },
+  "dbCsvMissingRequired": "Required columns without values: {columns}",
+  "@dbCsvMissingRequired": {
+    "description": "CSV mapping warning",
+    "placeholders": {
+      "columns": {
+        "type": "String"
+      }
+    }
+  },
+  "dbCsvBadValues": "{count, plural, =1{1 value does not fit: {samples}} other{{count} values do not fit: {samples}}}",
+  "@dbCsvBadValues": {
+    "description": "CSV type check warning with sample values",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "samples": {
+        "type": "String"
+      }
+    }
+  },
+  "dbCsvMode": "Rows",
+  "@dbCsvMode": {
+    "description": "CSV insert mode label"
+  },
+  "dbCsvModeInsert": "Insert",
+  "@dbCsvModeInsert": {
+    "description": "CSV insert mode"
+  },
+  "dbCsvModeSkip": "Insert, skip existing keys",
+  "@dbCsvModeSkip": {
+    "description": "CSV insert mode"
+  },
+  "dbCsvModeUpsert": "Insert or update by key",
+  "@dbCsvModeUpsert": {
+    "description": "CSV insert mode"
+  },
+  "dbCsvNoKey": "The table has no key: rows can only be inserted.",
+  "@dbCsvNoKey": {
+    "description": "CSV options note"
+  },
+  "dbCsvBatch": "Rows per batch (1–5000)",
+  "@dbCsvBatch": {
+    "description": "CSV batch size"
+  },
+  "dbCsvBatchInvalid": "Enter a batch size from 1 to 5000",
+  "@dbCsvBatchInvalid": {
+    "description": "CSV batch size invalid"
+  },
+  "dbCsvOnError": "On a bad row",
+  "@dbCsvOnError": {
+    "description": "CSV error handling"
+  },
+  "dbCsvStop": "Stop the import",
+  "@dbCsvStop": {
+    "description": "CSV error handling"
+  },
+  "dbCsvSkipBad": "Skip it and write an error report",
+  "@dbCsvSkipBad": {
+    "description": "CSV error handling"
+  },
+  "dbCsvTransaction": "Transaction",
+  "@dbCsvTransaction": {
+    "description": "CSV transaction scope"
+  },
+  "dbCsvWhole": "One for the whole file (all or nothing)",
+  "@dbCsvWhole": {
+    "description": "CSV transaction scope"
+  },
+  "dbCsvPerBatch": "One per batch",
+  "@dbCsvPerBatch": {
+    "description": "CSV transaction scope"
+  },
+  "dbCsvTruncate": "Delete all rows of the table first",
+  "@dbCsvTruncate": {
+    "description": "CSV option: empty the table (dangerous)"
+  },
+  "dbCsvTruncateHelp": "Runs DELETE FROM in the import transaction; the review shows it.",
+  "@dbCsvTruncateHelp": {
+    "description": "CSV truncate help"
+  },
+  "dbCsvImport": "Review and import…",
+  "@dbCsvImport": {
+    "description": "CSV wizard final button"
+  },
+  "dbCsvCounts": "Read: {read} · imported: {imported} · skipped: {skipped} · failed: {failed}",
+  "@dbCsvCounts": {
+    "description": "CSV import counters",
+    "placeholders": {
+      "read": {
+        "type": "int"
+      },
+      "imported": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "dbCsvRate": "{rows} rows/s",
+  "@dbCsvRate": {
+    "description": "CSV import speed",
+    "placeholders": {
+      "rows": {
+        "type": "int"
+      }
+    }
+  },
+  "dbCsvRateEta": "{rows} rows/s · about {left} left",
+  "@dbCsvRateEta": {
+    "description": "CSV import speed and time left",
+    "placeholders": {
+      "rows": {
+        "type": "int"
+      },
+      "left": {
+        "type": "String"
+      }
+    }
+  },
+  "dbCsvDone": "Done: {imported} imported, {skipped} skipped, {failed} with errors.",
+  "@dbCsvDone": {
+    "description": "CSV import summary",
+    "placeholders": {
+      "imported": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "dbCsvCancelled": "Cancelled. Rows kept: {imported} (committed batches only).",
+  "@dbCsvCancelled": {
+    "description": "CSV import cancelled summary",
+    "placeholders": {
+      "imported": {
+        "type": "int"
+      }
+    }
+  },
+  "dbCsvFailed": "The import failed; the open transaction was rolled back.",
+  "@dbCsvFailed": {
+    "description": "CSV import failed"
+  },
+  "dbCsvRowType": "Line {line}: a value does not fit its column. Nothing of the open transaction was kept.",
+  "@dbCsvRowType": {
+    "description": "CSV import stopped on a bad row",
+    "placeholders": {
+      "line": {
+        "type": "int"
+      }
+    }
+  },
+  "dbCsvRowRequired": "Line {line}: a required column is empty. Nothing of the open transaction was kept.",
+  "@dbCsvRowRequired": {
+    "description": "CSV import stopped on a bad row",
+    "placeholders": {
+      "line": {
+        "type": "int"
+      }
+    }
+  },
+  "dbCsvRowUnreadable": "Line {line} cannot be read (encoding or size). Nothing of the open transaction was kept.",
+  "@dbCsvRowUnreadable": {
+    "description": "CSV import stopped on a bad row",
+    "placeholders": {
+      "line": {
+        "type": "int"
+      }
+    }
+  },
+  "dbCsvReport": "Error report",
+  "@dbCsvReport": {
+    "description": "CSV error report label"
+  },
+  "dbCsvShowReport": "Show in folder",
+  "@dbCsvShowReport": {
+    "description": "CSV error report: reveal"
+  },
+  "dbCsvCreateTable": "Create table from CSV…",
+  "@dbCsvCreateTable": {
+    "description": "Hook: create a new table typed from a CSV file"
+  },
+  "dbCsvNewTableName": "New table name",
+  "@dbCsvNewTableName": {
+    "description": "Create table from CSV: name"
+  },
+  "dbImportCsv": "Import from CSV…",
+  "@dbImportCsv": {
+    "description": "Tree menu on a table"
   }
 }

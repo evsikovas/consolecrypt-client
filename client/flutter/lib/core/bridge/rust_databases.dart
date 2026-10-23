@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/bridge/rust_backend.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
+import 'package:consolecrypt/db/db_csv_import.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_result_edits.dart';
@@ -29,6 +30,7 @@ final class RustDbService
         DbExportService,
         DbCellEditService,
         DbRowEditService,
+        DbCsvImportService,
         DbObjectInspectService,
         DbProductionWriteService,
         DbAiService {
@@ -633,6 +635,86 @@ final class RustDbService
       deleted: json['deleted'] as int? ?? 0,
     );
   }
+
+  // CSV import (PostgreSQL, MySQL, MariaDB).
+
+  @override
+  Future<DbCsvPreview> csvPreview(String path, DbCsvOptions options) async => DbCsvPreview.fromJson(
+    jsonDecode(await guard(() => native.dbCsvPreview(path: path, optionsJson: jsonEncode(options.toJson())))) as DbJson,
+  );
+
+  @override
+  Future<List<DbCsvCheck>> csvCheck(
+    String sessionId,
+    DbObjectRef table,
+    String path,
+    DbCsvOptions options,
+    List<DbCsvMapping> mapping,
+  ) async {
+    final json = jsonDecode(
+      await guard(
+        () => native.dbCsvCheck(
+          sessionId: sessionId,
+          tableJson: jsonEncode(table.toJson()),
+          path: path,
+          optionsJson: jsonEncode(options.toJson()),
+          mappingJson: jsonEncode([for (final m in mapping) m.toJson()]),
+        ),
+      ),
+    ) as List;
+    return [for (final check in json.cast<DbJson>()) DbCsvCheck.fromJson(check)];
+  }
+
+  @override
+  Future<DbCsvReview> reviewCsvImport(String sessionId, String path, DbCsvPlan plan) async {
+    final json = jsonDecode(
+      await guard(
+        () => native.dbCsvImportReview(sessionId: sessionId, path: path, planJson: jsonEncode(plan.toJson())),
+      ),
+    ) as DbJson;
+    return DbCsvReview(
+      ticket: json['ticket'] as String,
+      sql: SecretText(json['sql'] as String),
+      risk: switch (json['risk']) {
+        'read_only' => DbQueryRisk.read,
+        'write' => DbQueryRisk.write,
+        _ => DbQueryRisk.dangerous,
+      },
+      expiresAt: DateTime.now().add(Duration(seconds: json['expires_in_seconds'] as int? ?? 60)),
+    );
+  }
+
+  @override
+  Future<void> discardCsvImport(String ticket) => guard(() => native.dbCsvImportDiscard(ticket: ticket));
+
+  @override
+  Future<String> startCsvImport(String sessionId, String ticket) =>
+      guard(() => native.dbCsvImportStart(sessionId: sessionId, ticket: ticket));
+
+  @override
+  Stream<DbCsvProgress> watchCsvImport(String importId) async* {
+    while (true) {
+      final progress = DbCsvProgress.fromJson(
+        jsonDecode(await guard(() => native.dbCsvImportProgress(importId: importId))) as DbJson,
+      );
+      yield progress;
+      if (progress.done) return;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    }
+  }
+
+  @override
+  Future<void> cancelCsvImport(String importId) => guard(() => native.dbCsvImportCancel(importId: importId));
+
+  @override
+  Future<String> csvCreateTable(String path, DbCsvOptions options, DbEngine engine, DbObjectRef table) => guard(
+    () => native.dbCsvCreateTable(
+      path: path,
+      optionsJson: jsonEncode(options.toJson()),
+      engineJson: jsonEncode(engine.wireName),
+      tableJson: jsonEncode(table.toJson()),
+    ),
+  );
 
   @override
   Future<void> commitCellEdits(String sessionId, String ticket) =>

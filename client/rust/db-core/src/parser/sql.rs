@@ -810,7 +810,10 @@ fn safe_function(engine: DbEngine, name: &str, table: bool) -> bool {
         }
         DbEngine::Mysql | DbEngine::Mariadb => matches!(
             name,
-            "if" | "ifnull"
+            // `VALUES(col)`: the inserted value in ON DUPLICATE KEY UPDATE.
+            "values"
+                | "if"
+                | "ifnull"
                 | "isnull"
                 | "group_concat"
                 | "json_object"

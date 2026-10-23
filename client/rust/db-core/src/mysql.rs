@@ -260,6 +260,134 @@ impl Mysql {
         })
     }
 
+    /// Opens a write transaction driven statement by statement (CSV
+    /// import); a production session leaves READ ONLY only for it (the
+    /// guard permits each statement) and returns to it in [`Self::end_write`].
+    pub(crate) fn begin_write(&mut self) -> futures::future::BoxFuture<'_, Result<(), DbError>> {
+        Box::pin(async move {
+            let production = self.production;
+            let client = self.connection.as_mut().ok_or(DbError::SessionClosed)?;
+            if production {
+                client
+                    .query_drop(String::from("SET SESSION TRANSACTION READ WRITE"))
+                    .await
+                    .map_err(classify)?;
+            }
+            if let Err(error) = client
+                .query_drop(String::from("START TRANSACTION READ WRITE"))
+                .await
+            {
+                if production
+                    && client
+                        .query_drop(String::from("SET SESSION TRANSACTION READ ONLY"))
+                        .await
+                        .is_err()
+                {
+                    // Never keep a production connection writable.
+                    self.connection.take();
+                }
+                return Err(classify(error));
+            }
+            Ok(())
+        })
+    }
+
+    /// A fixed transaction-control statement (savepoints).
+    pub(crate) fn control(
+        &mut self,
+        sql: &'static str,
+    ) -> futures::future::BoxFuture<'_, Result<(), DbError>> {
+        Box::pin(async move {
+            let client = self.connection.as_mut().ok_or(DbError::SessionClosed)?;
+            client.query_drop(String::from(sql)).await.map_err(classify)
+        })
+    }
+
+    /// One guarded statement inside the open write transaction, within the
+    /// session timeout; returns the affected rows.
+    pub(crate) fn step<'a>(
+        &'a mut self,
+        sql: &'a str,
+        bindings: &'a [DbParameter],
+        cancel: CancellationToken,
+    ) -> futures::future::BoxFuture<'a, Result<u64, DbError>> {
+        Box::pin(async move {
+            let timeout = self.timeout;
+            let options = self.options.clone();
+            let client = self.connection.as_mut().ok_or(DbError::SessionClosed)?;
+            let id = client.id();
+            let mut sink = crate::csv_import::Affected::default();
+            let result = tokio::select! {
+                biased;
+                _ = cancel.cancelled() => Err(DbError::Cancelled),
+                result = tokio::time::timeout(timeout, Self::stream(&mut *client, sql.to_owned(), bindings, &mut sink)) =>
+                    result.unwrap_or(Err(DbError::Timeout)),
+            };
+            if matches!(result, Err(DbError::Cancelled | DbError::Timeout)) {
+                let _ = tokio::time::timeout(Duration::from_secs(2), async move {
+                    let mut control = Conn::new(options).await.map_err(classify)?;
+                    control
+                        .query_drop(format!("KILL QUERY {id}"))
+                        .await
+                        .map_err(classify)?;
+                    control.disconnect().await.map_err(classify)
+                })
+                .await;
+            }
+            result
+        })
+    }
+
+    /// Commits or rolls back the write transaction and returns a production
+    /// session to READ ONLY.
+    pub(crate) fn end_write(
+        &mut self,
+        commit: bool,
+    ) -> futures::future::BoxFuture<'_, Result<(), DbError>> {
+        Box::pin(async move {
+            let production = self.production;
+            let Some(client) = self.connection.as_mut() else {
+                return Err(DbError::SessionClosed);
+            };
+            let result = if commit {
+                client
+                    .query_drop(String::from("COMMIT"))
+                    .await
+                    .map_err(classify)
+            } else {
+                let rolled = tokio::time::timeout(
+                    Duration::from_secs(5),
+                    client.query_drop(String::from("ROLLBACK")),
+                )
+                .await;
+                if !matches!(rolled, Ok(Ok(()))) {
+                    self.connection.take();
+                    return Ok(());
+                }
+                Ok(())
+            };
+            if production {
+                let restored = match self.connection.as_mut() {
+                    Some(client) => client
+                        .query_drop(String::from("SET SESSION TRANSACTION READ ONLY"))
+                        .await
+                        .is_ok(),
+                    None => true,
+                };
+                if !restored {
+                    self.connection.take();
+                }
+            }
+            if result.is_err() {
+                // A failed COMMIT leaves nothing to keep.
+                if let Some(client) = self.connection.as_mut() {
+                    let _ = client.query_drop(String::from("ROLLBACK")).await;
+                }
+            }
+            result
+        })
+    }
+
     async fn stream(
         client: &mut Conn,
         sql: String,

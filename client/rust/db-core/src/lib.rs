@@ -4,6 +4,7 @@
 pub mod types;
 pub use types::*;
 mod clickhouse;
+pub mod csv_import;
 pub mod details;
 pub mod edit;
 pub mod export;

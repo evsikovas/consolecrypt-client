@@ -133,6 +133,8 @@ class DbObjectTree extends ConsumerStatefulWidget {
     required this.onInsert,
     required this.onPreview,
     this.onSelect,
+    this.onImportCsv,
+    this.onCreateFromCsv,
     super.key,
   });
   final DbSessionInfo session;
@@ -144,6 +146,10 @@ class DbObjectTree extends ConsumerStatefulWidget {
   /// The first rows of [object]: [text] is its read query, run at once.
   final void Function(DbObjectRef object, String text) onPreview;
   final ValueChanged<DbObjectRef>? onSelect;
+
+  /// CSV import into a table, and a new table typed from a CSV file in a
+  /// schema or database (null hides them).
+  final ValueChanged<DbObjectRef>? onImportCsv, onCreateFromCsv;
   @override
   ConsumerState<DbObjectTree> createState() => _DbObjectTreeState();
 }
@@ -210,6 +216,12 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
     SecretText? value;
     try {
       switch (action) {
+        case 'import-csv':
+          widget.onImportCsv?.call(object);
+          return;
+        case 'create-from-csv':
+          widget.onCreateFromCsv?.call(object);
+          return;
         case 'insert':
           final identifier = await widget.service.identifier(widget.session.id, object);
           if (_current) widget.onInsert(identifier);
@@ -356,6 +368,12 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
       if (object.kind == DbObjectKind.collection)
         GlassMenuItem(value: 'sample', label: l.dbSampleSchema, icon: Icons.schema_outlined),
     ],
+    if (widget.onImportCsv != null && object.kind == DbObjectKind.table)
+      GlassMenuItem(value: 'import-csv', label: l.dbImportCsv, icon: Icons.file_upload_outlined),
+    if (widget.onCreateFromCsv != null &&
+        (object.kind == DbObjectKind.schema ||
+            (object.kind == DbObjectKind.database && widget.session.engine != DbEngine.postgresql)))
+      GlassMenuItem(value: 'create-from-csv', label: l.dbCsvCreateTable, icon: Icons.table_chart_outlined),
   ];
 
   Future<void> _menuAt(DbObjectRef object, Rect anchor) async {

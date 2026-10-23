@@ -353,6 +353,46 @@ Redis и MongoDB, а также на телефоне кнопки измене�
 результатов, закрытии вкладки или выходе из подключения есть несохранённые
 изменения, приложение спрашивает: сохранить, отменить или остаться.
 
+### Импорт из CSV
+
+Для PostgreSQL, MySQL и MariaDB на компьютере данные из CSV можно загрузить в
+таблицу: «Импорт данных…» на панели результата (в таблицу результата, если
+это запрос к одной таблице с ключом) или «Импорт из CSV…» в меню таблицы в
+дереве. Нужна разрешённая запись (на проде — открытое окно записи). Мастер:
+
+1. **Файл** — CSV, TSV или текст до 200 МБ; файл читается потоком и никуда,
+   кроме этой базы, не передаётся.
+2. **Параметры чтения** с живым просмотром первых 100 строк: кодировка (UTF-8
+   по умолчанию, BOM распознаётся; Windows-1251, Latin-1), разделитель
+   (определяется автоматически: `,` `;` TAB `|`), символ кавычки, строка
+   заголовка, пропуск строк в начале, что считать NULL (пустое поле, `NULL`,
+   `\N`), десятичный разделитель и порядок дня, месяца и года в датах.
+3. **Столбцы** — каждый столбец файла попадает в столбец таблицы (по имени
+   без учёта регистра) или пропускается; первые 1000 строк проверяются на
+   соответствие типам, проблемные значения показаны примерами, а
+   обязательные столбцы без значений — предупреждением.
+4. **Параметры импорта** — добавлять; добавлять, пропуская существующие
+   ключи; добавлять или обновлять по ключу (PostgreSQL `ON CONFLICT`,
+   MySQL `ON DUPLICATE KEY UPDATE`); размер пакета; при ошибочной строке —
+   остановить импорт или пропустить её и записать отчёт
+   `<файл>.errors.csv`; одна транзакция на весь файл или по пакету;
+   «Сначала удалить все строки таблицы» (выключено по умолчанию; это
+   `DELETE FROM` в той же транзакции, и он виден при проверке).
+5. **Проверка и запуск** — как любое изменение: операторы с одной строкой
+   параметров, пароль хранилища, защита прода. Затем идёт загрузка
+   параметризованными многострочными `INSERT` с прогрессом (строк в секунду,
+   оставшееся время) и отменой — открытая транзакция откатывается. В конце —
+   итог: импортировано, пропущено, с ошибками, и ссылка на отчёт.
+
+Значения, похожие на формулы, импортируются как есть (экранирование формул —
+задача экспорта). Пока идёт импорт, другие запросы этого подключения ждут.
+ClickHouse, MongoDB и Redis импорт из CSV пока не поддерживают.
+
+В меню схемы (PostgreSQL) или базы (MySQL) есть «Создать таблицу из CSV…»:
+по первым строкам файла строится простой `CREATE TABLE` (целые, десятичные,
+даты, дата и время, да/нет, иначе текст), который можно скопировать или
+открыть в редакторе и выполнить через обычную проверку.
+
 ### История
 
 История запросов ведётся по каждому подключению: текст, время,
@@ -684,6 +724,36 @@ the result refreshes. **Show SQL** opens the statements as code to copy or add
 to the current editor tab. Running again, refreshing, switching result sets,
 closing the tab or leaving the connection with pending changes asks whether to
 save, discard or stay.
+
+**CSV import.** On desktop, PostgreSQL, MySQL and MariaDB tables can be
+loaded from CSV: **Import data…** on the result toolbar (into the result's
+table when it is a single keyed table) or **Import from CSV…** on a table in
+the tree. Writes must be allowed (production: an open write window). The
+wizard has five steps: the **file** (CSV, TSV or text up to 200 MB, read as a
+stream and sent nowhere but this database); **reading settings** with a live
+preview of the first 100 rows — encoding (UTF-8 by default with BOM
+detection, Windows-1251, Latin-1), delimiter (detected: `,` `;` TAB `|`),
+quote character, header row, lines to skip, what NULL is (empty field,
+`NULL`, `\N`), decimal separator and date order; **columns** — each file
+column goes to a table column (matched by name, ignoring case) or is
+skipped, and the first 1,000 rows are checked against the column types with
+sample bad values and a warning for required columns without values;
+**options** — insert, insert skipping existing keys, or insert-or-update by
+key (PostgreSQL `ON CONFLICT`, MySQL `ON DUPLICATE KEY UPDATE`), batch size,
+stop on a bad row or skip it into `<file>.errors.csv`, one transaction for
+the whole file or one per batch, and “Delete all rows of the table first”
+(off by default; a `DELETE FROM` in the same transaction, shown in the
+review); and the **review and run** — the usual review with the vault
+passphrase and the production guard, then parameterized multi-row `INSERT`
+batches with progress (rows per second, time left) and Cancel, which rolls
+the open transaction back, ending with imported / skipped / failed counts
+and the report. Formula-looking values are imported as they are (escaping
+them is an export concern). Other queries of the connection wait while an
+import runs. ClickHouse, MongoDB and Redis do not import CSV yet.
+**Create table from CSV…** on a schema (PostgreSQL) or database (MySQL)
+builds a simple `CREATE TABLE` typed from the file's first rows (whole
+numbers, decimals, dates, timestamps, true/false, else text) to copy or open
+in the editor and run through the usual review.
 
 History is kept per connection — text, time, duration, rows and error, never
 parameter values or data — with filters for successful, failed and favourite
