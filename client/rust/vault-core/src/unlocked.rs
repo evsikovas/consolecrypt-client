@@ -48,6 +48,13 @@ impl UnlockedVault {
         &self.keys
     }
 
+    /// Key commitment `C = HKDF(VRK, vault_id, "cc-vrk-commit-v1")`
+    /// (protocol 1.11): not secret; pin it and compare every VRK obtained
+    /// later against it.
+    pub fn key_commitment(&self) -> [u8; 32] {
+        self.keys.key_commitment()
+    }
+
     pub(crate) fn vrk(&self) -> &Vrk {
         &self.vrk
     }

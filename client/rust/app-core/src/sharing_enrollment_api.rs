@@ -1167,15 +1167,10 @@ impl AppCore {
         let transport = self
             .enrollment_transport(&env, record.value.scope.clone(), true)
             .await?;
+        // TR-15: trust in the anchor rests on the locally verified signed
+        // manifest below (it must already be an explicit member with these
+        // exact keys), not on a code passed back by the caller.
         let anchor = owner_from(&create.anchor, env.pin.instance)?;
-        if !code_matches(
-            &create.anchor.verification_code,
-            &create.confirmed_identity_code,
-        ) {
-            return Err(invalid(
-                "confirm the complete independently compared anchor identity code",
-            ));
-        }
         let access = trusted_manifest(&snapshot)?;
         let member = access
             .member(anchor.device_id)
@@ -1507,10 +1502,7 @@ impl AppCore {
             || request.signed().request.target.user_id != env.pin.user
             || request.signed().request.target.encryption_public_key != env.pin.encryption
             || request.signed().request.target.signing_public_key != env.pin.signing
-            || !code_matches(
-                &enrollment_pairing_code(request).map_err(enrollment_error)?,
-                &confirmed_whole_code,
-            )
+            || !enrollment_pairing_code_matches(request, &confirmed_whole_code)
         {
             return Err(invalid(
                 "confirm this device's whole-request code with the trusted anchor",
@@ -3093,22 +3085,23 @@ impl AppCore {
             .retain(|(share, _), _| *share != id);
         Ok(())
     }
-    /// Explicit forward-only reconstruction. The complete independent owner
-    /// code is required again; server directory keys cannot create or replace
-    /// a pin. Missing OS marks and unresolved lost ciphertext remain blocked.
+    /// Explicit forward-only reconstruction. The owner's keys must match
+    /// the pin `verification_id` (TR-16); server directory keys cannot
+    /// create or replace an owner anchor. Missing OS marks and unresolved
+    /// lost ciphertext remain blocked.
     pub async fn enrollment_reconcile(
         &self,
         share_id: String,
-        confirmed_owner_code: String,
+        verification_id: String,
     ) -> AppResult<Vec<EnrollmentGrantDto>> {
         let session = self.session().await?;
-        Box::pin(self.enrollment_reconcile_in(session, share_id, confirmed_owner_code)).await
+        Box::pin(self.enrollment_reconcile_in(session, share_id, verification_id)).await
     }
     async fn enrollment_reconcile_in(
         &self,
         session: Arc<Session>,
         share_id: String,
-        confirmed_owner_code: String,
+        verification_id: String,
     ) -> AppResult<Vec<EnrollmentGrantDto>> {
         let _gate = self.sharing_gate(&session).await?;
         let env = self.sharing_environment(session.clone(), true).await?;
@@ -3161,18 +3154,9 @@ impl AppCore {
             }))
             .await?;
         self.sharing_check(&env).await?;
-        let code = sharing_identity_code(
-            env.pin.instance,
-            retained.owner.user_id,
-            retained.owner.device_id,
-            &retained.owner.public_keys,
-        )
-        .map_err(enrollment_error)?;
-        if !code_matches(&code, &confirmed_owner_code) {
-            return Err(invalid(
-                "independently compared owner verification code is required",
-            ));
-        }
+        // TR-16: the owner's keys must be the ones this user pinned.
+        let pins = super::peer_pins::Pins::load(&env).await?;
+        super::peer_pins::require_owner_pin(&env, &pins, &retained.owner, &verification_id)?;
         env.require_kind(retained.scope.kind)?;
         let transport = self
             .enrollment_transport(&env, retained.scope.clone(), true)
@@ -3470,10 +3454,9 @@ impl AppCore {
         verified.endorsement.as_ref().ok_or_else(|| {
             invalid("restoration requires the independently paired anchor endorsement")
         })?;
-        let code = enrollment_pairing_code(request).map_err(enrollment_error)?;
-        if !code_matches(&code, &confirmed_whole_code) {
+        if !enrollment_pairing_code_matches(request, &confirmed_whole_code) {
             return Err(invalid(
-                "confirm the complete independently compared pairing code",
+                "type the complete pairing code shown on the other device",
             ));
         }
         let target = &request.signed().request.target;

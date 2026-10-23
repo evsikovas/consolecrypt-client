@@ -25,6 +25,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import '../helpers/fake_peer_pins.dart';
 
 import '../helpers/test_app.dart';
 
@@ -128,7 +129,7 @@ Credential _credential() {
   );
 }
 
-class _Sharing implements SharingService, KubernetesSharingService {
+class _Sharing with FakePeerPins implements SharingService, KubernetesSharingService {
   _Sharing({SecretText? source}) : source = source ?? SecretText('runtime-${ObjectId.generate().value}');
   final SecretText source;
   bool supportsGroups = true, supportsSecrets = true, denyReveals = false;
@@ -325,7 +326,7 @@ BuildContext _context(WidgetTester tester) => tester.element(find.byType(Navigat
 Future<void> _recipientSelection(WidgetTester tester) async {
   await enterKey(tester, 'sharing-email', 'recipient@example.test');
   await tapKey(tester, 'sharing-find');
-  await tapKey(tester, 'sharing-verify-recipient-device');
+  await tapKey(tester, 'sharing-give-access-recipient-device');
 }
 
 void main() {
@@ -347,7 +348,7 @@ void main() {
     expect(sharing.kubePublishedCredentials, true);
     expect(sharing.kubeStamp, 'stamp-true');
     expect(sharing.genericPublications, 0);
-    expect(sharing.grants!.single.confirmedCode, _recipient.code);
+    expect(sharing.grants!.single.verificationId, 'pin-${_recipient.deviceId}');
     expect(tester.takeException(), isNull);
   });
   testWidgets('Kubernetes copy defaults to no credentials and uses the recipient local route', (tester) async {
@@ -600,7 +601,7 @@ void main() {
     expect(sharing.genericPublications, 0);
     expect(sharing.credentialId, source.id.value);
     expect(sharing.passphrase, false);
-    expect(sharing.grants!.single.confirmedCode, _recipient.code);
+    expect(sharing.grants!.single.verificationId, 'pin-${_recipient.deviceId}');
     expect(tester.takeException(), isNull);
   });
 

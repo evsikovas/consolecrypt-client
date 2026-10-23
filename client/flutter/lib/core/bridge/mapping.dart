@@ -15,6 +15,7 @@ import 'package:consolecrypt/core/models/sftp_browser.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/models/terminal_colors.dart';
 import 'package:consolecrypt/core/security/secure_clipboard.dart';
+import 'package:consolecrypt/core/security/vault_key_alarm.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/src/rust/api/error.dart';
 
@@ -108,10 +109,15 @@ AppException toAppException(Object error) {
 Future<T> guard<T>(Future<T> Function() call) async {
   try {
     return await call();
-  } on AppException {
+  } on AppException catch (e) {
+    reportVaultKeyMismatch(e);
     rethrow;
   } catch (e) {
-    throw toAppException(e);
+    final mapped = toAppException(e);
+    // TR-9: a vault key mismatch raises the blocking screen wherever it
+    // surfaces (unlock, approval, enable sync).
+    reportVaultKeyMismatch(mapped);
+    throw mapped;
   }
 }
 
@@ -211,6 +217,20 @@ AppException mapBridgeError(BridgeError e) {
       code = _serverCode(d['protocol_code']);
     case 'approval':
       code = AppErrorCode.verificationMismatch;
+    case 'vault_key_mismatch':
+      code = AppErrorCode.vaultKeyMismatch;
+      args = {
+        for (final k in const ['vault_id', 'reason', 'pinned', 'received'])
+          if (d[k] != null) k: d[k]!,
+      };
+    case 'recipient_unverified':
+      code = AppErrorCode.recipientUnverified;
+      args = {
+        for (final k in const ['device_id', 'reason'])
+          if (d[k] != null) k: d[k]!,
+      };
+    case 'peer_verification_failed':
+      code = AppErrorCode.peerVerificationFailed;
     case 'connection_plan' || 'confirmation_required':
       code = AppErrorCode.validation;
     case 'unresolved_placeholders':
@@ -716,7 +736,13 @@ DevicesSnapshot devicesFromJson(Json j, {VaultId? vaultId}) {
         expiresAt: fromMs(r['expires_at_ms']),
       ),
   ];
-  return DevicesSnapshot(devices: devices, pendingRequests: requests, deviceProtection: j['device_protection'] == true);
+  return DevicesSnapshot(
+    devices: devices,
+    pendingRequests: requests,
+    deviceProtection: j['device_protection'] == true,
+    vaultKeyUnconfirmed: j['vault_key_unconfirmed'] == true,
+    vaultKeyConflicts: [for (final id in j['vault_key_conflicts'] as List? ?? const []) DeviceId(id as String)],
+  );
 }
 
 /// `device_registered` app event → [NewDeviceNotice] (`null` if malformed).

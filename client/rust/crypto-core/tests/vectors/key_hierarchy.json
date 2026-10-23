@@ -30,6 +30,10 @@
             "okm": "149c4d3961b7d36b039094c493c5666df33398cdf92897370784b09a59f34a33"
           }
         },
+        "key_commitment": {
+          "hkdf_info_utf8": "cc-vrk-commit-v1",
+          "okm": "bc2b2316625a1d4dc0e7e61d2fab104de8dc36c1308b3981405dda8ece00922a"
+        },
         "vault_access_key": {
           "hkdf_info_utf8": "consolecrypt/v1/vault-access-key",
           "okm": "3bc515dc31bbe0ccdf77ac6c9350e7beae930fbce75bcd3f6a63c7782e2fc053"
@@ -67,6 +71,10 @@
             "okm": "2b12d08b624d72aeb06094f00a64acf389312f9f5a13b14d7c5bf210827be367"
           }
         },
+        "key_commitment": {
+          "hkdf_info_utf8": "cc-vrk-commit-v1",
+          "okm": "ce9a5d7e22c37a3d214ffcdc18857b99dacd47360a40c176ffe2f77b5f085930"
+        },
         "vault_access_key": {
           "hkdf_info_utf8": "consolecrypt/v1/vault-access-key",
           "okm": "166baaf4e805d29802a0519bdc44bf69c5c1c2cf4c083fcd9c0a525749fad1a3"
@@ -75,5 +83,5 @@
       }
     }
   ],
-  "description": "KEKs and VAK: HKDF-SHA256(ikm = VRK, salt = vault_id (16 raw bytes), info = label), 32-byte output; verifier = SHA-256(VAK)"
+  "description": "KEKs, VAK and key commitment: HKDF-SHA256(ikm = VRK, salt = vault_id (16 raw bytes), info = label), 32-byte output; verifier = SHA-256(VAK)"
 }

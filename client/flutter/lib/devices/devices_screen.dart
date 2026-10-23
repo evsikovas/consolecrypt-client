@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/devices/approve_device_dialog.dart';
+import 'package:consolecrypt/vault/vault_key_trust.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -98,6 +99,8 @@ class DevicesScreen extends ConsumerWidget {
               ),
               const SizedBox(height: GlassSpacing.s12),
             ],
+            const VaultKeyUnconfirmedBanner(),
+            VaultKeyConflictBanners(snapshot: snapshot, onRevoke: (d) => _revoke(context, ref, d)),
             for (final r in snapshot.pendingRequests) ...[
               _PendingRequestCard(request: r),
               const SizedBox(height: GlassSpacing.s12),

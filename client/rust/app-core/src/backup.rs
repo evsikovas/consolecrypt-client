@@ -498,6 +498,10 @@ impl AppCore {
                 .await?;
             let session =
                 Session::with_storage(self.inner.ctx.clone(), pid, storage.clone()).await?;
+            let pin = session
+                .check_vault_key(&restored.unlocked, crate::key_trust::KeySource::Backup)
+                .await?;
+            session.store_pin(pin).await?;
             // The database key moves under the vault key (S5).
             session.seal_storage(&restored.unlocked).await?;
             session.install_unlocked(restored.unlocked).await?;

@@ -18,6 +18,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/sharing/enrollment_automation.dart';
 import 'package:consolecrypt/updates/update_settings.dart';
+import 'package:consolecrypt/vault/vault_key_mismatch.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -65,8 +66,11 @@ class ConsoleCryptApp extends ConsumerWidget {
               color: AppPlatform.isMobile ? GlassTokens.of(context).ambient.base : Colors.transparent,
               child: UpdateNoticeScope(
                 navigatorKey: rootNavigatorKey,
-                child: EnrollmentAutomationScope(
-                  child: DesignGalleryShortcut(child: AppCommandsScope(child: child ?? const SizedBox.shrink())),
+                child: VaultKeyAlarmScope(
+                  navigatorKey: rootNavigatorKey,
+                  child: EnrollmentAutomationScope(
+                    child: DesignGalleryShortcut(child: AppCommandsScope(child: child ?? const SizedBox.shrink())),
+                  ),
                 ),
               ),
             ),

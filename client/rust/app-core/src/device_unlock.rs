@@ -21,6 +21,7 @@
 use crate::app::AppCore;
 use crate::dto::DeviceUnlockDto;
 use crate::error::{AppError, AppResult};
+use crate::key_trust::KeySource;
 use crate::keyfile::{self, DeviceUnlockRecord, KeyFile, ReofferReason};
 use crate::secrets::blocking;
 use crate::session::Session;
@@ -259,7 +260,7 @@ impl AppCore {
             return Ok(());
         }
         let vault = self.device_unlock(&s, reason).await?;
-        self.finish_unlock(&s, vault).await
+        self.finish_unlock(&s, vault, KeySource::DeviceUnlock).await
     }
 
     /// Android: the handle the app's `BiometricPrompt` decrypts with
@@ -282,7 +283,7 @@ impl AppCore {
         }
         let (kf, record) = enabled_record(&s)?;
         let vault = self.open_with_material(&s, &kf, &record, &material).await?;
-        self.finish_unlock(&s, vault).await
+        self.finish_unlock(&s, vault, KeySource::DeviceUnlock).await
     }
 
     /// Android: the Keystore key was permanently invalidated (new

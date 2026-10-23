@@ -181,9 +181,13 @@ pub(crate) struct Session {
     pub profile_id: ProfileId,
     storage: RwLock<Option<Storage>>,
     /// Profile directory (`None` for in-memory test storage).
-    dir: Option<PathBuf>,
+    pub(crate) dir: Option<PathBuf>,
     /// Cached key file (`None` = legacy or vault-less profile).
     keyfile: Mutex<Option<KeyFile>>,
+    /// Serializes key-file writes (change + write as one step), so
+    /// concurrent updates never race on the temporary file or land out of
+    /// order.
+    keyfile_write: tokio::sync::Mutex<()>,
     /// Search index key derived from the database key (sealed profiles).
     index_key: Mutex<Option<Zeroizing<[u8; 32]>>>,
     /// Serializes database open / seal / close transitions.
@@ -234,6 +238,21 @@ pub(crate) struct Unlocked {
     tasks: Mutex<Vec<JoinHandle<()>>>,
     engine_tasks: Mutex<Vec<JoinHandle<()>>>,
     pub approvals: Mutex<HashMap<DeviceRequestId, PendingApproval>>,
+    /// Requests whose approval uses the pairing code v2 (protocol 1.11).
+    pub approvals_v2: Mutex<std::collections::HashSet<DeviceRequestId>>,
+    /// Devices of the account that reported a different vault key
+    /// (protocol 1.11 key-commitment records), refreshed after unlock.
+    key_conflicts: Mutex<Vec<crate::dto::VaultKeyConflictDto>>,
+}
+
+impl Unlocked {
+    pub(crate) fn key_conflicts(&self) -> Vec<crate::dto::VaultKeyConflictDto> {
+        lock_mutex(&self.key_conflicts).clone()
+    }
+
+    pub(crate) fn set_key_conflicts(&self, conflicts: Vec<crate::dto::VaultKeyConflictDto>) {
+        *lock_mutex(&self.key_conflicts) = conflicts;
+    }
 }
 
 impl std::fmt::Debug for Unlocked {
@@ -397,6 +416,7 @@ impl Session {
             storage: RwLock::new(None),
             dir: Some(dir),
             keyfile: Mutex::new(Some(kf)),
+            keyfile_write: tokio::sync::Mutex::new(()),
             index_key: Mutex::new(None),
             transition: tokio::sync::Mutex::new(()),
             identity,
@@ -445,6 +465,7 @@ impl Session {
             storage: RwLock::new(Some(storage)),
             dir,
             keyfile: Mutex::new(kf),
+            keyfile_write: tokio::sync::Mutex::new(()),
             index_key: Mutex::new(None),
             transition: tokio::sync::Mutex::new(()),
             identity,
@@ -486,6 +507,7 @@ impl Session {
     where
         F: FnOnce(&mut KeyFile),
     {
+        let _w = self.keyfile_write.lock().await;
         let (dir, kf) = {
             let mut g = lock_mutex(&self.keyfile);
             let Some(kf) = g.as_mut() else {
@@ -499,6 +521,7 @@ impl Session {
     }
 
     async fn write_keyfile(&self, kf: KeyFile) -> AppResult<()> {
+        let _w = self.keyfile_write.lock().await;
         let dir = self
             .dir
             .clone()
@@ -616,6 +639,9 @@ impl Session {
             .setting_get(LEGACY_DEVICE_UNLOCK_SETTING)
             .await?
             .unwrap_or(false);
+        let vault_key: Option<keyfile::PinnedVaultKey> = storage
+            .setting_get(crate::key_trust::VAULT_KEY_SETTING)
+            .await?;
         let mut kf = KeyFile::new(
             vault_id,
             LockedHeader::from_profile(&profile),
@@ -628,6 +654,7 @@ impl Session {
         }
         kf.flags.kit_pending = kit_pending;
         kf.flags.needs_attest = needs_attest;
+        kf.vault_key = vault_key;
         if legacy_device_unlock {
             kf.flags.reoffer_device_unlock = Some(ReofferReason::Migrated);
         }
@@ -993,6 +1020,8 @@ impl Session {
             tasks: Mutex::new(Vec::new()),
             engine_tasks: Mutex::new(Vec::new()),
             approvals: Mutex::new(HashMap::new()),
+            approvals_v2: Mutex::new(std::collections::HashSet::new()),
+            key_conflicts: Mutex::new(Vec::new()),
         });
         unlocked.push_task(tokio::spawn(object_event_task(
             writer,
@@ -1028,6 +1057,17 @@ impl Session {
         }
         if self.kind().await? == ProfileKind::Synced {
             self.attest_if_needed(&unlocked).await;
+        }
+        if self.kind().await? == ProfileKind::Synced {
+            // TR-5: publish this device's key commitment and compare the
+            // records of the account's other devices (best effort).
+            let s = self.clone();
+            let u = unlocked.clone();
+            unlocked.push_task(tokio::spawn(async move {
+                if let Err(e) = crate::key_trust::reconcile_key_commitments(&s, &u).await {
+                    tracing::debug!(error = %e, "key commitments not compared");
+                }
+            }));
         }
         if self.kind().await? == ProfileKind::Synced && self.ctx.config.background_sync {
             if let Err(e) = self.start_engine(&unlocked, true).await {
@@ -1140,9 +1180,8 @@ impl Session {
             let vault = unlocked.vault()?;
             let identity = self.identity();
             let req = vault.attest_device_request(&identity)?;
-            let env = api.attest_device(identity.device_id(), &req).await?;
-            self.cache_envelopes(unlocked.vault_id, None, None, Some(env))
-                .await?;
+            // TR-4: the response is only a confirmation; nothing is cached.
+            api.attest_device(identity.device_id(), &req).await?;
             self.set_needs_attest(false).await?;
             Ok::<_, AppError>(())
         }

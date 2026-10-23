@@ -48,10 +48,31 @@ final sharingOutboxProvider = FutureProvider.autoDispose<List<SharingOutboxEntry
   return ref.watch(sharingServiceProvider).outbox();
 });
 
+/// TR-18 one-time banner: unverified recipients of secrets (after the list
+/// pinned the participants of existing shares).
+final sharingVerificationBannerProvider = FutureProvider.autoDispose<List<PeerPin>>((ref) async {
+  ref.watch(activeProfileProvider);
+  if (ref.watch(vaultStatusProvider).value?.phase != VaultPhase.unlocked) return const [];
+  await ref.watch(sharingItemsProvider.future);
+  try {
+    return await ref.watch(sharingServiceProvider).verificationBanner();
+  } on Object {
+    return const [];
+  }
+});
+
+/// "Only verified recipients" vault setting (TR-14).
+final sharingPolicyProvider = FutureProvider.autoDispose<SharingPolicy>((ref) async {
+  ref.watch(activeProfileProvider);
+  if (ref.watch(vaultStatusProvider).value?.phase != VaultPhase.unlocked) return const SharingPolicy();
+  return ref.watch(sharingServiceProvider).policy();
+});
+
 void refreshSharing(WidgetRef ref) {
   ref.invalidate(sharingStatusProvider);
   ref.invalidate(sharingItemsProvider);
   ref.invalidate(sharingOutboxProvider);
+  ref.invalidate(sharingVerificationBannerProvider);
 }
 
 final enrollmentServiceProvider = Provider<EnrollmentService>(

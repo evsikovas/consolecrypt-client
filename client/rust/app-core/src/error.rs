@@ -146,6 +146,27 @@ pub enum AppError {
     /// Device approval precondition failed.
     #[error("device approval: {0}")]
     Approval(String),
+    /// A new sharing recipient (or the owner to accept) has no usable pin:
+    /// not chosen, keys changed, or not verified under the "only verified
+    /// recipients" policy (audit H3, `reason` = `not_chosen` |
+    /// `keys_changed` | `unverified`).
+    #[error("the recipient's keys are not verified ({reason})")]
+    RecipientUnverified { device_id: String, reason: String },
+    /// The safety number or QR code did not match the keys (audit H3).
+    #[error("the verification code does not match")]
+    PeerVerificationFailed,
+    /// The server handed out a vault key that differs from the key this
+    /// device trusts, or a signed approval that does not vouch for it
+    /// (protocol 1.11, audit H2). Nothing was decrypted or encrypted with
+    /// it and sync is stopped; only a profile reset changes the pinned key.
+    /// `pinned` / `received`: key commitments (hex) for the diagnostics.
+    #[error("the server sent a different vault key ({reason})")]
+    VaultKeyMismatch {
+        vault_id: String,
+        reason: String,
+        pinned: Option<String>,
+        received: Option<String>,
+    },
     /// No connection plan could be built for the host.
     #[error("connection plan: {0}")]
     ConnectionPlan(String),
@@ -280,6 +301,9 @@ impl AppError {
             AppError::WrongRecoveryKey(_) => "wrong_recovery_key",
             AppError::WeakPassphrase(_) => "weak_passphrase",
             AppError::DeviceNotAuthorized => "device_not_authorized",
+            AppError::VaultKeyMismatch { .. } => "vault_key_mismatch",
+            AppError::RecipientUnverified { .. } => "recipient_unverified",
+            AppError::PeerVerificationFailed => "peer_verification_failed",
             AppError::OsAuth(_) => "os_auth_failed",
             AppError::OsAuthInvalidated => "os_auth_invalidated",
             AppError::LocalProfile => "local_profile",
@@ -427,6 +451,25 @@ impl AppError {
             }
             AppError::DeviceProofRejected(reason) => put("proof", reason.clone()),
             AppError::TeamUntrusted(reason) => put("reason", reason.clone()),
+            AppError::RecipientUnverified { device_id, reason } => {
+                put("device_id", device_id.clone());
+                put("reason", reason.clone());
+            }
+            AppError::VaultKeyMismatch {
+                vault_id,
+                reason,
+                pinned,
+                received,
+            } => {
+                put("vault_id", vault_id.clone());
+                put("reason", reason.clone());
+                if let Some(p) = pinned {
+                    put("pinned", p.clone());
+                }
+                if let Some(r) = received {
+                    put("received", r.clone());
+                }
+            }
             AppError::EditorLaunch(detail) => put("detail", detail.chars().take(512).collect()),
             AppError::UnresolvedPlaceholders(names) => put("names", names.join(", ")),
             AppError::ConnectionPlanRejected {
@@ -538,6 +581,12 @@ impl From<VaultError> for AppError {
             VaultError::DeviceNotAuthorized => AppError::DeviceNotAuthorized,
             VaultError::WeakPassphrase => AppError::WeakPassphrase(e.to_string()),
             VaultError::Approval(m) => AppError::Approval(m.to_string()),
+            VaultError::KeyMismatch { reason, received } => AppError::VaultKeyMismatch {
+                vault_id: String::new(),
+                reason: reason.to_owned(),
+                pinned: None,
+                received: received.map(|c| crate::key_trust::hex(&c)),
+            },
             VaultError::InvalidDeviceName => AppError::invalid("device_name", e.to_string()),
             VaultError::OsAuth(a) => a.into(),
             VaultError::SecureStore(s) => s.into(),

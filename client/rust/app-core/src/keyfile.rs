@@ -132,6 +132,28 @@ pub(crate) struct KeyFileFlags {
     pub reoffer_device_unlock: Option<ReofferReason>,
 }
 
+/// The vault key this profile trusts (protocol 1.11, audit H2): its key
+/// commitment `C = HKDF(VRK, vault_id, "cc-vrk-commit-v1")`. Not secret.
+/// Changed only by an explicit profile reset (remove and reconnect).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct PinnedVaultKey {
+    pub commitment: Bytes,
+    /// Pinned on first use from a device unlock or an approval that could
+    /// not be verified (older server or approver): the next passphrase or
+    /// Recovery Key unlock confirms it.
+    #[serde(default)]
+    pub unconfirmed: bool,
+    /// The signed key-commitment record was published to the server.
+    #[serde(default)]
+    pub published: bool,
+}
+
+impl PinnedVaultKey {
+    pub(crate) fn commitment(&self) -> Option<[u8; 32]> {
+        self.commitment.to_array()
+    }
+}
+
 /// The key file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct KeyFile {
@@ -149,6 +171,9 @@ pub(crate) struct KeyFile {
     pub device_unlock: Option<DeviceUnlockRecord>,
     #[serde(default)]
     pub flags: KeyFileFlags,
+    /// Pinned vault key commitment (protocol 1.11).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vault_key: Option<PinnedVaultKey>,
 }
 
 impl KeyFile {
@@ -163,6 +188,7 @@ impl KeyFile {
             db_key_next: None,
             device_unlock: None,
             flags: KeyFileFlags::default(),
+            vault_key: None,
         }
     }
 }

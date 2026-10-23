@@ -9,6 +9,7 @@ import 'package:consolecrypt/sharing/enrollment_models.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -55,7 +56,11 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
   String _lastInput = '';
   EnrollmentPairing? _preview;
   SharingRole _role = SharingRole.reader;
-  bool _confirmed = false, _busy = false, _working = false, _failed = false;
+
+  /// TR-15: the code from the other device's screen, typed by the user.
+  final _code = TextEditingController();
+  bool _busy = false, _working = false, _failed = false;
+  bool get _confirmed => _code.text.replaceAll(RegExp(r'\D'), '').length == 30;
   int _generation = 0;
 
   @override
@@ -75,7 +80,7 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
     _generation++;
     setState(() {
       _preview = null;
-      _confirmed = false;
+      _code.clear();
       _failed = false;
       if (!_working) _busy = false;
     });
@@ -86,6 +91,7 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
     _input.removeListener(_changed);
     _input.clear();
     _input.dispose();
+    _code.dispose();
     super.dispose();
   }
 
@@ -127,7 +133,7 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
     setState(() {
       _busy = true;
       _preview = null;
-      _confirmed = false;
+      _code.clear();
       _failed = false;
     });
     try {
@@ -176,7 +182,7 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
       final service = ref.read(enrollmentServiceProvider);
       if (widget.flow == EnrollmentPairingFlow.restore) {
         final restored = await runWithFeedback(context, () async {
-          await service.restorePairing(preview.bundle, preview.code!);
+          await service.restorePairing(preview.bundle, _code.text);
           return true;
         });
         if (!mounted || !sharingSessionCurrent(ref, _scope) || restored == null) return;
@@ -185,7 +191,7 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
         refreshSharing(ref);
         closeDialog<void>(context);
       } else if (widget.flow == EnrollmentPairingFlow.submit) {
-        final request = await runWithFeedback(context, () => service.submitTarget(preview.bundle, preview.code!));
+        final request = await runWithFeedback(context, () => service.submitTarget(preview.bundle, _code.text));
         if (!mounted || !sharingSessionCurrent(ref, _scope) || request == null) return;
         // Submission alone does not authorize or import any shared content.
         showSnack(context, context.l10n.enrollmentWait);
@@ -195,7 +201,7 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
           context,
           () => widget.flow == EnrollmentPairingFlow.prepare
               ? service.prepareTarget(preview.bundle, _role)
-              : service.endorseTarget(preview.bundle, preview.code!),
+              : service.endorseTarget(preview.bundle, _code.text),
         );
         if (!mounted || !sharingSessionCurrent(ref, _scope) || result == null) return;
         // Clear the completed composer before opening an output dialog: closing
@@ -282,12 +288,24 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
                 _EnrollmentPreview(preview),
                 if (widget.flow != EnrollmentPairingFlow.prepare) ...[
                   Text(l.enrollmentCodeHelp),
-                  CheckboxListTile(
-                    key: const ValueKey('enrollment-code-confirmed'),
-                    contentPadding: EdgeInsets.zero,
-                    value: _confirmed,
-                    title: Text(l.sharingConfirmed),
-                    onChanged: _busy ? null : (value) => setState(() => _confirmed = value == true),
+                  const SizedBox(height: 8),
+                  // Typed from the other screen; never filled in, never pasted.
+                  Actions(
+                    actions: {PasteTextIntent: DoNothingAction(consumesKey: true)},
+                    child: TextField(
+                      key: const ValueKey('enrollment-code-typed'),
+                      controller: _code,
+                      enabled: !_busy,
+                      enableInteractiveSelection: false,
+                      contextMenuBuilder: null,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9 \-]'))],
+                      decoration: InputDecoration(
+                        labelText: l.enrollmentTypeCode,
+                        helperText: l.enrollmentTypeCodeHelp,
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
                   ),
                 ],
               ],
@@ -384,7 +402,10 @@ class _EnrollmentPackageDialogState extends ConsumerState<EnrollmentPackageDialo
               Text(l.enrollmentPackageHelp),
               if (_busy) const LinearProgressIndicator(),
               if (_failed) Text(l.enrollmentBlocked),
-              if (_verified case final verified?) ...[const SizedBox(height: 12), _EnrollmentPreview(verified)],
+              if (_verified case final verified?) ...[
+                const SizedBox(height: 12),
+                _EnrollmentPreview(verified, showCode: true),
+              ],
             ],
           ),
         ),
@@ -515,8 +536,12 @@ class _EnrollmentPendingDialogState extends ConsumerState<EnrollmentPendingDialo
 }
 
 class _EnrollmentPreview extends StatelessWidget {
-  const _EnrollmentPreview(this.pairing);
+  const _EnrollmentPreview(this.pairing, {this.showCode = false});
   final EnrollmentPairing pairing;
+
+  /// Only the device that shows a package displays its code; the device
+  /// that reviews one must type the code from the other screen (TR-15).
+  final bool showCode;
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -526,7 +551,7 @@ class _EnrollmentPreview extends StatelessWidget {
       if (pairing.target case final target?) Text(target.deviceId),
       if (pairing.requestedRole case final role?)
         Text(role == SharingRole.reader ? context.l10n.sharingReader : context.l10n.sharingEditor),
-      if (pairing.code case final code?)
+      if (pairing.code case final code? when showCode)
         SelectableText(
           code,
           key: const ValueKey('enrollment-full-code'),

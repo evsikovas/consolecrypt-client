@@ -62,6 +62,7 @@ pub mod enterprise_auth;
 pub mod error;
 mod host_auth;
 mod inventory;
+mod key_trust;
 mod keyfile;
 mod kubernetes;
 pub mod kubernetes_ai;

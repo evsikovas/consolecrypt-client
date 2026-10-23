@@ -46,6 +46,17 @@ pub enum VaultError {
     #[error("device approval: {0}")]
     Approval(&'static str),
 
+    /// The vault key (or the signed approval that should vouch for it)
+    /// does not match what this device trusts (protocol 1.11, audit H2).
+    /// Nothing may be decrypted or encrypted with the received key.
+    /// `received` is the commitment of the key that was offered, when one
+    /// could be computed.
+    #[error("vault key mismatch: {reason}")]
+    KeyMismatch {
+        reason: &'static str,
+        received: Option<[u8; 32]>,
+    },
+
     /// Device name empty, too long or containing control characters.
     #[error("invalid device name")]
     InvalidDeviceName,

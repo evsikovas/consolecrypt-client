@@ -47,6 +47,31 @@ Future<String> devicesOwnCode() => RustLib.instance.api.crateApiSyncDevicesOwnCo
 Future<String> devicesRequestApproval({String? vaultId}) =>
     RustLib.instance.api.crateApiSyncDevicesRequestApproval(vaultId: vaultId);
 
+/// New device (protocol 1.11): approval progress → `ApprovalProgressDto`
+/// (the pairing code once an approver announced itself).
+Future<String> devicesApprovalStatus({required String requestId}) =>
+    RustLib.instance.api.crateApiSyncDevicesApprovalStatus(requestId: requestId);
+
+/// New device, only after the user confirmed that `shown_code` matches the
+/// code on the approving device: pin that device's keys.
+Future<void> devicesConfirmApprover({
+  required String requestId,
+  required String approverDeviceId,
+  required String shownCode,
+}) => RustLib.instance.api.crateApiSyncDevicesConfirmApprover(
+  requestId: requestId,
+  approverDeviceId: approverDeviceId,
+  shownCode: shownCode,
+);
+
+/// Vault key trust of the open profile → `VaultKeyStatusDto` (audit H2).
+Future<String> vaultKeyStatus() => RustLib.instance.api.crateApiSyncVaultKeyStatus();
+
+/// Confirm an unconfirmed vault key with the passphrase; `false` = wrong
+/// passphrase, `vault_key_mismatch` = another key.
+Future<bool> vaultKeyConfirm({required List<int> passphrase}) =>
+    RustLib.instance.api.crateApiSyncVaultKeyConfirm(passphrase: passphrase);
+
 /// New device, after approval: open the vault with the device key.
 /// `false` = not approved yet.
 Future<bool> devicesFinishApproval({String? vaultId}) =>

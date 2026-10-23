@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/core/bridge/local_auth_channel.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/security/vault_key_alarm.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
@@ -75,6 +76,9 @@ final class RustBackend {
 
   /// This (new) device asked a trusted device for approval.
   bool awaitingApproval = false;
+
+  /// The trust request this (new) device created (protocol 1.11 progress).
+  String? approvalRequestId;
 
   /// Vaults of the signed-in account while the synced profile has none.
   List<Json> remoteVaults = const [];
@@ -530,13 +534,20 @@ final class RustBackend {
 
   void stopApprovalPoll() => _stopApprovalPoll();
 
-  /// `true` once this device was approved and the vault is open.
+  /// `true` once this device was approved and the vault is open. A vault
+  /// key mismatch (audit H2) stops the poll and is reported, never retried
+  /// silently.
   Future<bool> tryFinishApproval() async {
     if (!awaitingApproval) return false;
     try {
       final done = await guard(() => rs_sync.devicesFinishApproval(vaultId: activeVaultId?.value));
       if (!done) return false;
-    } on AppException {
+    } on AppException catch (e) {
+      if (e.code == AppErrorCode.vaultKeyMismatch) {
+        awaitingApproval = false;
+        _stopApprovalPoll();
+        await refreshState();
+      }
       return false;
     }
     awaitingApproval = false;
@@ -593,6 +604,19 @@ final class RustBackend {
           }
           await _refreshDevicesQuietly();
         case 'device_approval_requested':
+          await _refreshDevicesQuietly();
+        case 'vault_key_mismatch':
+          reportVaultKeyMismatch(
+            AppException(
+              AppErrorCode.vaultKeyMismatch,
+              'The server sent a different vault key', // l10n-ignore: diagnostic
+              args: {
+                if (e['vault_id'] is String) 'vault_id': e['vault_id']! as String,
+                if (e['reason'] is String) 'reason': e['reason']! as String,
+              },
+            ),
+          );
+        case 'vault_key_conflict':
           await _refreshDevicesQuietly();
         case 'device_approved':
           if (e['is_self'] == true) {

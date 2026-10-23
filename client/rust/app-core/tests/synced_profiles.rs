@@ -145,11 +145,35 @@ async fn devices_join_approve_revoke_and_offline_sync() {
         .start_device_approval(own.request_id.clone())
         .await
         .unwrap();
-    assert_eq!(pending.verification_code, own.verification_code);
+    // Protocol 1.11: both devices show the pairing code over both keys.
+    assert_eq!(pending.code_version, 2);
+    assert_ne!(pending.verification_code, own.verification_code);
+    let progress = c
+        .device_approval_status(own.request_id.clone())
+        .await
+        .unwrap();
+    assert_eq!(
+        progress.pairing_code.as_deref(),
+        Some(pending.verification_code.as_str())
+    );
     a.confirm_device_approval(own.request_id.clone())
         .await
         .unwrap();
+    assert_eq!(
+        c.finish_device_approval(None).await.unwrap_err().code(),
+        "approval",
+        "the new device must confirm the pairing code too"
+    );
+    c.confirm_device_approver(
+        own.request_id.clone(),
+        progress.approver_device_id.clone().unwrap(),
+        progress.pairing_code.clone().unwrap(),
+    )
+    .await
+    .unwrap();
     assert!(c.finish_device_approval(None).await.unwrap());
+    let status = c.vault_key_status().await.unwrap();
+    assert!(status.pinned && !status.unconfirmed, "{status:?}");
     wait_until!(
         10,
         "host synced to C",

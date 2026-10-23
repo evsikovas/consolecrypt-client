@@ -289,7 +289,7 @@ final class GuideSharingService implements SharingService, DatabaseSharingServic
     trust: SharingTrust.verified,
     role: SharingRole.editor,
     members: const [guideOwner, guideRecipient],
-    memberRoles: [SharingGrant(guideRecipient, SharingRole.editor, guideRecipient.code)],
+    memberRoles: [const SharingGrant(guideRecipient, SharingRole.editor)],
     previewJson: hostPreview,
   );
 

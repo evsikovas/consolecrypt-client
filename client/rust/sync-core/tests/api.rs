@@ -495,6 +495,7 @@ async fn device_trust_request_approval_rejection_rename_revoke() {
             vault_id: v1.vault_id,
             envelope: device_envelope(kb.device_id),
         }],
+        v2: None,
     };
     // A signature by the wrong key is rejected.
     let good_sig = approve.signature.clone();

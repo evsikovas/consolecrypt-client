@@ -270,6 +270,7 @@ impl AppCore {
             icon: None,
             description: None,
             policies: Default::default(),
+            sharing_policy: Default::default(),
             created_at: now,
             updated_at: now,
         });

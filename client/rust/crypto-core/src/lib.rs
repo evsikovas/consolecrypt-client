@@ -40,6 +40,7 @@ mod rng;
 pub mod sharing;
 pub mod sharing_enrollment;
 pub mod sharing_notes;
+pub mod sharing_verification;
 pub mod teams;
 
 #[cfg(test)]
@@ -49,9 +50,12 @@ pub use backup::{
     BackupObject, VaultBackup, BACKUP_FORMAT_V1, BACKUP_MANIFEST_KEY_LABEL, BACKUP_MANIFEST_PREFIX,
     MAX_BACKUP_APP_VERSION_LEN,
 };
+pub use cc_protocol::canonical::ApprovedVaultKey;
 pub use device::{
-    request_body_sha256, verification_code, verify_device_approval, verify_device_login,
-    verify_request_proof, DeviceApproval, DevicePublicKeys, DeviceSecretKeys, VerificationCode,
+    device_envelope_sha256, pairing_code_v2, request_body_sha256, verification_code,
+    verify_device_approval, verify_device_approval_v2, verify_device_login, verify_key_commitment,
+    verify_request_proof, DeviceApproval, DeviceApprovalV2, DevicePublicKeys, DeviceSecretKeys,
+    VerificationCode,
 };
 pub use envelope::{
     open_device_envelope, open_password_envelope, open_recovery_envelope, password_envelope_params,
@@ -61,7 +65,9 @@ pub use envelope::{
 };
 pub use error::{CryptoError, MnemonicError, Result};
 pub use kdf::{normalize_passphrase, Argon2Params};
-pub use keys::{generate_vrk, vault_access_key_verifier, Dek, Kek, KeyHierarchy, Vak, Vrk};
+pub use keys::{
+    generate_vrk, vault_access_key_verifier, vrk_commitment, Dek, Kek, KeyHierarchy, Vak, Vrk,
+};
 pub use local::{
     derive_local_subkey, open_local_secret, open_unlock_envelope, seal_local_secret,
     seal_unlock_envelope, LocalSealed, UnlockKey, AAD_LOCAL, LOCAL_DEVICE_UNLOCK_LABEL,

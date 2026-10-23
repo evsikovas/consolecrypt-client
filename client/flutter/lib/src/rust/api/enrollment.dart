@@ -52,8 +52,8 @@ Future<String> enrollmentAccept({required String id, required String requestId, 
 
 Future<String> enrollmentProcessAutomatic() => RustLib.instance.api.crateApiEnrollmentEnrollmentProcessAutomatic();
 
-Future<String> enrollmentReconcile({required String id, required String confirmedOwnerCode}) =>
-    RustLib.instance.api.crateApiEnrollmentEnrollmentReconcile(id: id, confirmedOwnerCode: confirmedOwnerCode);
+Future<String> enrollmentReconcile({required String id, required String verificationId}) =>
+    RustLib.instance.api.crateApiEnrollmentEnrollmentReconcile(id: id, verificationId: verificationId);
 
 Future<String> enrollmentRestorePairing({required String bundle, required String confirmedCode}) =>
     RustLib.instance.api.crateApiEnrollmentEnrollmentRestorePairing(bundle: bundle, confirmedCode: confirmedCode);

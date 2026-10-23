@@ -68,5 +68,6 @@ pub fn trust_request(reg: &DeviceRegistration, vault_ids: Vec<VaultId>) -> Devic
         created_at: now(),
         expires_at: now() + chrono::Duration::hours(24),
         approved_by_device_id: None,
+        approver: None,
     }
 }

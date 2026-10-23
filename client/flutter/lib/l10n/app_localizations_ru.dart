@@ -5287,11 +5287,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sharingRefresh => 'Обновить общие данные';
 
   @override
-  String get sharingIdentity => 'Код моего устройства';
+  String get sharingIdentity => 'Отпечаток ключей моего устройства';
 
   @override
   String get sharingVerifyHelp =>
-      'Сравните этот код с кодом коллеги по независимому каналу. Вход в аккаунт и электронная почта не подтверждают ключи устройства.';
+      'Это отпечаток ключей вашего устройства. Чтобы проверить ключи с коллегой, нажмите «Проверить» рядом с его устройством: сверьте код безопасности голосом или отсканируйте QR-код лично. Вход и почта не подтверждают ключи устройства.';
 
   @override
   String get sharingCode => 'Код проверки';
@@ -5448,7 +5448,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sharingWorking => 'Подготовка защищённого обмена…';
 
   @override
-  String get sharingCopyCode => 'Копировать код';
+  String get sharingCopyCode => 'Скопировать отпечаток';
 
   @override
   String get sharingAddRecipient => 'Добавить получателя';
@@ -5478,7 +5478,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get sharingReconcileHelp =>
-      'Локальная копия отстаёт от сохранённой защищённой отметки. Сверьте код владельца. Приложение проверит полную подписанную историю; пропуски или другая ветка будут отклонены.';
+      'Локальная копия отстаёт от защищённой контрольной точки. Ключи владельца должны совпадать с закреплёнными на этом устройстве; приложение проверит всю подписанную историю и отклонит пропущенные или конфликтующие ревизии.';
 
   @override
   String get sharingEndpointChanged =>
@@ -5595,7 +5595,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get enrollmentCodeHelp =>
-      'Сравните весь код на новом и уже проверенном устройстве лично или по независимому каналу. Подтвердите только полное совпадение. Код относится именно к этому запросу.';
+      'Оба устройства показывают один и тот же код этого запроса. Введите код с экрана другого устройства — это подтверждает, что вы его сверили.';
 
   @override
   String get enrollmentCopyPackage => 'Скопировать пакет';
@@ -11655,4 +11655,211 @@ class AppLocalizationsRu extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'Я проверил(а) эту команду для $host (политика команды)';
   }
+
+  @override
+  String get errorVaultKeyMismatch =>
+      'Сервер передал другой ключ хранилища. Им ничего не открыто, синхронизация остановлена.';
+
+  @override
+  String get errorRecipientUnverified =>
+      'Сначала проверьте ключи этого устройства: такой доступ можно выдать только проверенным получателям.';
+
+  @override
+  String get errorRecipientKeysChanged =>
+      'Ключи этого устройства изменились. Проверьте его заново, прежде чем выдавать доступ.';
+
+  @override
+  String get errorPeerVerificationFailed =>
+      'Код не совпадает. Ключи могли быть подменены — не выдавайте доступ и свяжитесь с коллегой другим способом.';
+
+  @override
+  String get vaultKeyMismatchTitle => 'Другой ключ хранилища';
+
+  @override
+  String get vaultKeyMismatchMessage =>
+      'Сервер передал другой ключ хранилища. Это может означать подмену на сервере. Данные на этом устройстве не изменены, синхронизация остановлена. Не вводите секреты на этом устройстве и сообщите администратору сервера.';
+
+  @override
+  String get vaultKeyMismatchLock => 'Заблокировать';
+
+  @override
+  String get vaultKeyMismatchCopy => 'Скопировать диагностику';
+
+  @override
+  String get vaultKeyMismatchMore => 'Подробнее';
+
+  @override
+  String get vaultKeyMismatchDetails =>
+      'Это устройство помнит отпечаток ключа своего хранилища и сверяет с ним каждый полученный ключ. Другой ключ никогда не принимается, ничего не перешифровывается. Выход только один — сбросить профиль на этом устройстве (удалить и подключить заново) после проверки сервера.';
+
+  @override
+  String approvalWaitPairingTitle(String device) {
+    return 'Сравните код с «$device»';
+  }
+
+  @override
+  String approvalWaitPairingHelp(String device) {
+    return '«$device» подтверждает это устройство. На обоих экранах должен быть один и тот же код — он вычисляется из ключей обоих устройств.';
+  }
+
+  @override
+  String approvalWaitPairingCheckbox(String device) {
+    return 'Код совпадает с кодом на «$device»';
+  }
+
+  @override
+  String get approvalWaitPairingConfirm => 'Коды совпадают';
+
+  @override
+  String get approvalWaitPairingConfirmed => 'Подтверждено. Ожидание завершения подтверждения…';
+
+  @override
+  String get approveDeviceCodeV2Hint =>
+      'Этот код зависит от ключей обоих устройств; новое устройство покажет его, как только вы откроете этот запрос.';
+
+  @override
+  String get devicesVaultKeyUnconfirmedTitle => 'Ключ хранилища не подтверждён';
+
+  @override
+  String get devicesVaultKeyUnconfirmedMessage =>
+      'Это устройство получило ключ хранилища без независимой проверки (старый сервер или подтверждающее устройство). Введите пароль хранилища один раз, чтобы подтвердить ключ.';
+
+  @override
+  String get devicesVaultKeyConfirm => 'Подтвердить паролем';
+
+  @override
+  String get vaultKeyConfirmTitle => 'Подтверждение ключа хранилища';
+
+  @override
+  String get vaultKeyConfirmed => 'Ключ хранилища подтверждён';
+
+  @override
+  String get devicesVaultKeyConflictTitle => 'Устройство получило другой ключ хранилища';
+
+  @override
+  String devicesVaultKeyConflictMessage(String device) {
+    return '«$device» сообщило другой ключ хранилища. Возможно, тот, кто управляет сервером, подсунул ему свой ключ. Это устройство продолжает работать со своим ключом. Отзовите «$device», если не знаете причины.';
+  }
+
+  @override
+  String get devicesRevokeConflicting => 'Отозвать';
+
+  @override
+  String get sharingTrustChosen => 'Выбран (не проверен)';
+
+  @override
+  String sharingTrustVerified(String date) {
+    return 'Проверен $date';
+  }
+
+  @override
+  String get sharingTrustVerifiedNoDate => 'Проверен';
+
+  @override
+  String get sharingTrustKeysChanged => 'Ключи изменились';
+
+  @override
+  String get sharingTrustNew => 'Ещё не выбран';
+
+  @override
+  String get sharingVerifyAction => 'Проверить';
+
+  @override
+  String get sharingGiveAccess => 'Дать доступ этому устройству';
+
+  @override
+  String sharingKeysChangedWarning(String device, String email) {
+    return 'Ключи устройства $device пользователя $email изменились. Новый доступ невозможен до повторной проверки; существующие share для новых ключей не перешифровываются.';
+  }
+
+  @override
+  String get sharingVerifiedOnlyHint =>
+      'Секреты, kube-доступы и подключения к БД можно выдать только проверенным получателям.';
+
+  @override
+  String get sharingFingerprint => 'Отпечаток ключей';
+
+  @override
+  String get peerVerifyTitle => 'Проверка устройства коллеги';
+
+  @override
+  String peerVerifyDevice(String device) {
+    return 'Устройство $device';
+  }
+
+  @override
+  String get peerVerifySafetyNumber => 'Код безопасности';
+
+  @override
+  String get peerVerifyQr => 'QR-код';
+
+  @override
+  String get peerVerifySafetyNumberHelp =>
+      'Попросите коллегу открыть такую же проверку для вашего устройства и продиктовать свой код — по телефону или лично, не через ConsoleCrypt. Введите его ниже: он должен в точности совпасть с кодом на этом экране.';
+
+  @override
+  String get peerVerifyOwnNumber => 'Код на этом устройстве';
+
+  @override
+  String get peerVerifyEnterNumber => 'Код, продиктованный коллегой';
+
+  @override
+  String get peerVerifyNoPaste => 'Введите код вручную — вставка намеренно отключена.';
+
+  @override
+  String get peerVerifyQrHelp =>
+      'Лично: покажите коллеге этот QR-код и отсканируйте его код телефоном. На компьютере без камеры введите текст QR-кода коллеги.';
+
+  @override
+  String get peerVerifyQrInput => 'Текст QR-кода коллеги';
+
+  @override
+  String get peerVerifyConfirm => 'Проверить';
+
+  @override
+  String get peerVerifySuccess => 'Устройство проверено';
+
+  @override
+  String get sharingAcceptOwnerHelp =>
+      'Принятие закрепляет ключи владельца на этом устройстве. Проверьте их вместе с владельцем, чтобы отметить элемент как проверенный.';
+
+  @override
+  String get sharingOwnerUnverified => 'Владелец не проверен';
+
+  @override
+  String get sharingOwnerUnverifiedNote =>
+      'Хосты из этого элемента никогда не подключаются автоматически, у сниппетов показан источник.';
+
+  @override
+  String get sharingVerifyBannerTitle => 'Проверьте коллег, у которых есть доступ к секретам';
+
+  @override
+  String get sharingVerifyBannerMessage =>
+      'Эти получатели секретов, kube-доступов и подключений к БД добавлены до появления проверки ключей. Их доступ не изменился.';
+
+  @override
+  String get sharingVerifyBannerDismiss => 'Скрыть';
+
+  @override
+  String get sharingPolicyTitle => 'Совместный доступ: только проверенным';
+
+  @override
+  String get sharingPolicySensitive => 'Секреты, kube-доступы и подключения к БД';
+
+  @override
+  String get sharingPolicyOther => 'Хосты, группы и сниппеты';
+
+  @override
+  String get sharingPolicyHelp =>
+      'Новый доступ и новые устройства требуют проверенных ключей. У существующих получателей доступ сохраняется.';
+
+  @override
+  String get enrollmentTypeCode => 'Код с экрана другого устройства';
+
+  @override
+  String get enrollmentTypeCodeHelp =>
+      'Введите шесть групп цифр с экрана другого устройства. Код никогда не подставляется автоматически.';
+
+  @override
+  String get vaultKeyMismatchDiagnostics => 'Диагностика';
 }

@@ -1037,6 +1037,8 @@ impl EditableDto for VaultSettingsDto {
             icon,
             description,
             policies: self.policies.clone(),
+            // Edited through `set_sharing_policy` only; kept as it is.
+            sharing_policy: existing.map(|e| e.sharing_policy).unwrap_or_default(),
             created_at,
             updated_at,
         })
@@ -1305,6 +1307,20 @@ pub struct DeviceListDto {
     /// `capabilities.device_protection`): `trusted` / quarantine are
     /// meaningful. `false` for older servers — keep the old UI.
     pub device_protection: bool,
+    /// The server supports approval v2 and key commitments (protocol 1.11
+    /// `capabilities.vrk_commitment`).
+    #[serde(default)]
+    pub vrk_commitment: bool,
+    /// This device pinned the vault key without an independent check
+    /// (older server or approver; device unlock after the update): enter
+    /// the vault passphrase once to confirm it ("Vault key not confirmed").
+    #[serde(default)]
+    pub vault_key_unconfirmed: bool,
+    /// Devices of the account that reported a **different** vault key
+    /// (signed key-commitment records): "Device X received a different
+    /// vault key" — offer to revoke them. This device keeps its own key.
+    #[serde(default)]
+    pub vault_key_conflicts: Vec<String>,
 }
 
 /// Result of "sign out on all devices".
@@ -1325,8 +1341,58 @@ pub struct PendingApprovalDto {
     pub device_id: String,
     pub device_name: String,
     /// 6 groups of 5 digits, computed from the keys the server reports.
+    /// With `code_version` 2 it is the mutual pairing code over both
+    /// devices' keys (protocol 1.11), otherwise the new device's own code.
     pub verification_code: String,
     pub requested_vault_ids: Vec<String>,
+    /// `1` (older server: the new device's code) or `2` (pairing code v2).
+    #[serde(default = "code_version_1")]
+    pub code_version: u8,
+}
+
+fn code_version_1() -> u8 {
+    1
+}
+
+/// The new device's view of its pending approval (protocol 1.11).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ApprovalProgressDto {
+    pub request_id: String,
+    /// The server supports approval v2 (`capabilities.vrk_commitment`).
+    pub vrk_commitment: bool,
+    /// This device's own code (shown until an approver announces itself,
+    /// and the only code with an older server or approver).
+    pub own_code: String,
+    /// The device that announced it is approving this request.
+    pub approver_device_id: Option<String>,
+    pub approver_name: Option<String>,
+    pub approver_platform: Option<String>,
+    /// Pairing code v2 over both devices' keys; must match the code on the
+    /// approving device.
+    pub pairing_code: Option<String>,
+    /// The user confirmed the pairing code on this device.
+    pub approver_confirmed: bool,
+}
+
+/// Vault key trust of the open profile (protocol 1.11, audit H2).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VaultKeyStatusDto {
+    /// A key commitment is pinned on this device.
+    pub pinned: bool,
+    /// Pinned without an independent check: confirm with the passphrase.
+    pub unconfirmed: bool,
+    /// First 8 bytes of the pinned commitment (hex), for support.
+    pub fingerprint: Option<String>,
+    /// Devices of the account that reported a different vault key.
+    pub conflicts: Vec<VaultKeyConflictDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VaultKeyConflictDto {
+    pub device_id: String,
+    pub device_name: String,
+    /// First 8 bytes of the commitment the device reported (hex).
+    pub fingerprint: String,
 }
 
 /// The trust request this (new) device created.
@@ -1336,6 +1402,11 @@ pub struct OwnTrustRequestDto {
     /// This device's code; the approving device must show the same one.
     pub verification_code: String,
     pub expires_at_ms: i64,
+    /// The server supports approval v2 (protocol 1.11): wait for the
+    /// approver to announce itself and compare the pairing code instead
+    /// ([`ApprovalProgressDto`]).
+    #[serde(default)]
+    pub vrk_commitment: bool,
 }
 
 // ---- ssh -------------------------------------------------------------------------
@@ -1692,6 +1763,19 @@ pub enum AppEvent {
     DeviceApproved {
         device_id: String,
         is_self: bool,
+    },
+    /// The server handed out a vault key that differs from the pinned one
+    /// (protocol 1.11, audit H2): the vault was not opened with it, sync is
+    /// stopped. Show the `vault_key_mismatch` screen.
+    VaultKeyMismatch {
+        vault_id: String,
+        reason: String,
+    },
+    /// A device of the account reported a different vault key (signed
+    /// key-commitment record): "Device X received a different vault key".
+    VaultKeyConflict {
+        device_id: String,
+        device_name: String,
     },
     /// Password or recovery envelope replaced on another device.
     RecoveryChanged,

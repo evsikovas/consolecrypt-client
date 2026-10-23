@@ -37,6 +37,9 @@ pub struct VaultSettings {
     /// Policies the client enforces for this vault's resources (teams).
     #[serde(default)]
     pub policies: VaultPolicies,
+    /// "Only verified recipients" for new sharing access (audit H3, TR-14).
+    #[serde(default)]
+    pub sharing_policy: SharingVerificationPolicy,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
 }
@@ -56,6 +59,33 @@ pub struct VaultPolicies {
     /// Ask before running risky commands on these resources.
     #[serde(default)]
     pub confirm_risky_commands: bool,
+}
+
+/// "Only verified recipients" (audit H3, TR-14): when on, new sharing
+/// access and new devices in an access rotation need recipients whose keys
+/// the user verified (QR code or safety number). Existing recipients keep
+/// their access. On by default for secrets, Kubernetes contexts and
+/// database connections (and collections carrying secrets), off for hosts,
+/// groups and snippets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SharingVerificationPolicy {
+    #[serde(default = "default_true")]
+    pub sensitive_verified_only: bool,
+    #[serde(default)]
+    pub other_verified_only: bool,
+}
+
+impl Default for SharingVerificationPolicy {
+    fn default() -> Self {
+        Self {
+            sensitive_verified_only: true,
+            other_verified_only: false,
+        }
+    }
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// Validate a colour: a palette name (`[a-z]{1,16}`) or `#rrggbb`.

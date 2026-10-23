@@ -22,6 +22,7 @@ pub mod host;
 pub mod known_host;
 pub mod kubernetes;
 pub mod note;
+pub mod peer_pin;
 pub mod rdp;
 pub mod secret;
 pub mod settings;

@@ -69,6 +69,10 @@ pub struct MockServerConfig {
     /// Protocol 1.8 `capabilities.auth` (default: standard). In enterprise
     /// mode password register/login answer `enterprise_auth_required`.
     pub auth: cc_protocol::meta::AuthCapability,
+    /// Protocol 1.11 vault key trust (default on): approval intents, approval
+    /// v2 (kept for the new device) and key-commitment records. Off = a
+    /// pre-1.11 server: the routes answer `404` and `v2` is ignored.
+    pub vrk_commitment: bool,
 }
 
 impl Default for MockServerConfig {
@@ -82,6 +86,7 @@ impl Default for MockServerConfig {
             require_request_proof: false,
             device_protection: false,
             auth: Default::default(),
+            vrk_commitment: true,
         }
     }
 }
@@ -112,6 +117,12 @@ pub enum FaultAction {
     Rewrite(Arc<dyn Fn(&mut serde_json::Value) + Send + Sync>),
     /// Run the handler, then replace the body with truncated JSON.
     InvalidJson,
+    /// A hostile server: answer `status` with `body` without running the
+    /// handler (nothing is committed).
+    Respond {
+        status: u16,
+        body: serde_json::Value,
+    },
 }
 
 impl std::fmt::Debug for FaultAction {
@@ -126,6 +137,7 @@ impl std::fmt::Debug for FaultAction {
             FaultAction::LoseResponse => f.write_str("LoseResponse"),
             FaultAction::Rewrite(_) => f.write_str("Rewrite(..)"),
             FaultAction::InvalidJson => f.write_str("InvalidJson"),
+            FaultAction::Respond { status, .. } => write!(f, "Respond({status})"),
         }
     }
 }
@@ -321,6 +333,11 @@ impl MockServer {
         self.shared.lock().device_trusted(device_id, vault_id)
     }
 
+    /// The registered public keys of a device (X25519, Ed25519).
+    pub fn device_public_keys(&self, device_id: DeviceId) -> Option<(Vec<u8>, Vec<u8>)> {
+        self.shared.lock().device_public_keys(device_id)
+    }
+
     /// The device's live device envelope for the vault (what the server
     /// would hand that device), if any.
     pub fn device_envelope(&self, device_id: DeviceId, vault_id: VaultId) -> Option<KeyEnvelope> {
@@ -338,6 +355,26 @@ impl MockServer {
     }
 
     /// Revoke a device as if from another trusted device (admin hook).
+    /// Test hook (protocol 1.11): plant a key-commitment record for
+    /// `vault_id` as if its device had published it (no signature check;
+    /// clients must not trust records anyway).
+    pub fn plant_key_commitment(
+        &self,
+        vault_id: VaultId,
+        record: cc_protocol::vaults::VaultKeyCommitment,
+    ) {
+        self.shared.lock().plant_key_commitment(vault_id, record);
+    }
+
+    /// The key-commitment record a device published for a vault.
+    pub fn key_commitment(
+        &self,
+        vault_id: VaultId,
+        device_id: DeviceId,
+    ) -> Option<cc_protocol::vaults::VaultKeyCommitment> {
+        self.shared.lock().key_commitment(vault_id, device_id)
+    }
+
     pub fn revoke_device(&self, device_id: DeviceId) -> bool {
         self.shared.lock().revoke_device_internal(device_id)
     }

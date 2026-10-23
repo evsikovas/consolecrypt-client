@@ -10,6 +10,7 @@ import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/sharing/enrollment_owner.dart';
 import 'package:consolecrypt/sharing/enrollment_pairing.dart';
+import 'package:consolecrypt/sharing/peer_verification.dart';
 import 'package:consolecrypt/sharing/sharing_collections.dart';
 import 'package:consolecrypt/sharing/sharing_database.dart';
 import 'package:consolecrypt/sharing/sharing_deleted.dart';
@@ -242,6 +243,29 @@ class _SharingScreenState extends ConsumerState<SharingScreen> {
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
               ],
+              if (ref.watch(sharingVerificationBannerProvider).value case final pins? when pins.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: InfoBanner(
+                      key: const ValueKey('sharing-verify-banner'),
+                      title: l.sharingVerifyBannerTitle,
+                      message: [
+                        l.sharingVerifyBannerMessage,
+                        for (final p in pins) '• ${p.email ?? p.userId} · ${p.deviceId}',
+                      ].join('\n'),
+                      tone: BannerTone.warning,
+                      action: GlassButton(
+                        key: const ValueKey('sharing-verify-banner-dismiss'),
+                        label: l.sharingVerifyBannerDismiss,
+                        onPressed: () async {
+                          await ref.read(sharingServiceProvider).dismissVerificationBanner();
+                          ref.invalidate(sharingVerificationBannerProvider);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
               if (sharingUnreadable(items.value) case final unreadable when unreadable > 0)
                 SliverToBoxAdapter(
                   child: Padding(
@@ -556,6 +580,32 @@ class _SharingTile extends ConsumerWidget {
             ),
             trailing: Icon(item.trust == SharingTrust.verified ? Icons.verified_user_outlined : Icons.shield_outlined),
           ),
+          // Received from an owner whose keys were never verified (TR-14).
+          if (!item.owned && item.trust == SharingTrust.verified && item.ownerTrust != PeerTrust.verified) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                GlassBadge(
+                  key: ValueKey('sharing-owner-unverified-${item.id}'),
+                  tone: GlassTone.warning,
+                  icon: Icons.help_outline_rounded,
+                  label: l.sharingOwnerUnverified,
+                ),
+                if (item.members.where((m) => m.deviceId == item.ownerDeviceId).firstOrNull case final owner?)
+                  GlassButton(
+                    label: l.sharingVerifyAction,
+                    icon: Icons.verified_user_outlined,
+                    onPressed: () async {
+                      final pin = await showPeerVerification(context, owner);
+                      if (pin != null && context.mounted) refreshSharing(ref);
+                    },
+                  ),
+              ],
+            ),
+            Text(l.sharingOwnerUnverifiedNote),
+          ],
           if (item.trust == SharingTrust.unverified)
             GlassButton.prominent(label: l.sharingAccept, onPressed: () => showSharingAccept(context, item)),
           if (item.trust == SharingTrust.blocked) ...[

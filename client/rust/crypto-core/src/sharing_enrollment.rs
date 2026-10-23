@@ -474,17 +474,30 @@ pub fn sign_device_request(
     verify_device_request(&signed, grant, current, now)?;
     Ok(signed)
 }
+/// Whole-request pairing code (TR-15, audit H3): 6 groups of 5 digits
+/// from `SHA-256(enrollment_pairing_message(request_hash))`, like the device
+/// code. The anchor and the target **type** the code shown on the other
+/// screen; it is never passed back from data the device received.
 pub fn enrollment_pairing_code(request: &VerifiedEnrollmentRequest) -> Result<String> {
     let hash = digest(&structure(enrollment_pairing_message(&request.hash))?);
-    let mut result = String::with_capacity(71);
-    for (i, byte) in hash.iter().enumerate() {
-        if i > 0 && i % 4 == 0 {
-            result.push('-');
+    Ok(crate::VerificationCode::from_hash(&hash).to_string())
+}
+
+/// Whether `typed` spells the pairing code of `request` (digits only;
+/// spaces and dashes ignored, anything else fails).
+pub fn enrollment_pairing_code_matches(request: &VerifiedEnrollmentRequest, typed: &str) -> bool {
+    let Ok(code) = enrollment_pairing_code(request) else {
+        return false;
+    };
+    let mut digits = String::with_capacity(30);
+    for c in typed.chars() {
+        if c.is_ascii_digit() {
+            digits.push(c);
+        } else if !(c.is_whitespace() || c == '-') {
+            return false;
         }
-        use std::fmt::Write as _;
-        write!(result, "{byte:02X}").expect("String formatting cannot fail");
     }
-    Ok(result)
+    digits.len() == 30 && digits == code.replace(' ', "")
 }
 pub fn verify_anchor_endorsement(
     signed: &SignedSharingAnchorEndorsement,
@@ -518,7 +531,7 @@ pub fn endorse_device_request(
     now: i64,
 ) -> Result<SignedSharingAnchorEndorsement> {
     require(
-        !confirmed_code.is_empty() && confirmed_code == enrollment_pairing_code(request)?,
+        enrollment_pairing_code_matches(request, confirmed_code),
         EnrollmentCryptoError::PairingRequired,
     )?;
     let anchor = &request.grant.signed.grant.anchor;

@@ -87,6 +87,19 @@ enum AppErrorCode {
 
   /// The organisation's IdP / directory is unreachable (retry later).
   idpUnavailable,
+
+  /// The server sent a vault key that differs from the key this device
+  /// trusts (audit H2). Nothing was opened with it; sync is stopped.
+  /// `args`: `vault_id`, `reason`, `pinned`, `received`.
+  vaultKeyMismatch,
+
+  /// A sharing recipient (or the owner to accept) has no usable key pin
+  /// (audit H3). `args['reason']` = `not_chosen` | `keys_changed` |
+  /// `unverified`, `args['device_id']`.
+  recipientUnverified,
+
+  /// The safety number / QR code did not match the colleague's keys.
+  peerVerificationFailed,
 }
 
 /// Optional refinement of an [AppErrorCode] so the UI can show a precise,

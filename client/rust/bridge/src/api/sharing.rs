@@ -21,11 +21,71 @@ pub async fn sharing_list(refresh: bool) -> Result<String, BridgeError> {
 pub async fn sharing_inspect(id: String) -> Result<String, BridgeError> {
     with_core(|c| async move { to_json(&c.sharing_inspect(id).await?) }).await
 }
-pub async fn sharing_accept(
-    id: String,
-    confirmed_owner_code: String,
+/// Accept with the pin of the owner's keys (`verification_id` from
+/// `sharing_choose_peer` / `sharing_verify_peer`); Rust checks it (TR-16).
+pub async fn sharing_accept(id: String, verification_id: String) -> Result<String, BridgeError> {
+    with_core(|c| async move { to_json(&c.sharing_accept(id, verification_id).await?) }).await
+}
+
+/// Pin a colleague device chosen by the user (audit H3, TR-12) →
+/// `PeerPinDto` (`keys_changed` when known with other keys).
+pub async fn sharing_choose_peer(
+    identity_json: String,
+    email: Option<String>,
 ) -> Result<String, BridgeError> {
-    with_core(|c| async move { to_json(&c.sharing_accept(id, confirmed_owner_code).await?) }).await
+    let identity = from_json("sharing_identity", &identity_json)?;
+    with_core(move |c| async move { to_json(&c.sharing_choose_peer(identity, email).await?) }).await
+}
+
+/// Safety number with a colleague device and this device's QR payload →
+/// `SafetyNumberDto` (TR-11).
+pub async fn sharing_safety_number(identity_json: String) -> Result<String, BridgeError> {
+    let identity = from_json("sharing_identity", &identity_json)?;
+    with_core(move |c| async move { to_json(&c.sharing_safety_number(identity).await?) }).await
+}
+
+/// Verify a colleague device: `method` = `safety_number` (typed) or
+/// `qr_code` (scanned / entered payload) → `PeerPinDto`;
+/// `peer_verification_failed` when it does not match.
+pub async fn sharing_verify_peer(
+    identity_json: String,
+    method: String,
+    input: String,
+    email: Option<String>,
+) -> Result<String, BridgeError> {
+    let identity = from_json("sharing_identity", &identity_json)?;
+    let input = Zeroizing::new(input);
+    with_core(move |c| async move {
+        to_json(
+            &c.sharing_verify_peer(identity, method, input.to_string(), email)
+                .await?,
+        )
+    })
+    .await
+}
+
+/// Pinned colleague devices → `[PeerPinDto]`.
+pub async fn sharing_peer_pins() -> Result<String, BridgeError> {
+    with_core(|c| async move { to_json(&c.sharing_peer_pins().await?) }).await
+}
+
+/// TR-18 one-time banner: unverified recipients of secrets → `[PeerPinDto]`.
+pub async fn sharing_verification_banner() -> Result<String, BridgeError> {
+    with_core(|c| async move { to_json(&c.sharing_verification_banner().await?) }).await
+}
+
+pub async fn sharing_dismiss_verification_banner() -> Result<(), BridgeError> {
+    with_core(|c| async move { Ok(c.sharing_dismiss_verification_banner().await?) }).await
+}
+
+/// "Only verified recipients" (TR-14) → `SharingPolicyDto`.
+pub async fn sharing_policy() -> Result<String, BridgeError> {
+    with_core(|c| async move { to_json(&c.sharing_policy().await?) }).await
+}
+
+pub async fn sharing_set_policy(policy_json: String) -> Result<String, BridgeError> {
+    let policy = from_json("sharing_policy", &policy_json)?;
+    with_core(move |c| async move { to_json(&c.sharing_set_policy(policy).await?) }).await
 }
 pub async fn sharing_preview_host(id: String, include_notes: bool) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.sharing_preview_host(id, include_notes).await?) })
@@ -178,14 +238,9 @@ pub async fn sharing_flush() -> Result<String, BridgeError> {
     with_core(|c| async move { to_json(&c.sharing_flush().await?) }).await
 }
 
-pub async fn sharing_reconcile(
-    id: String,
-    confirmed_owner_code: String,
-) -> Result<String, BridgeError> {
-    with_core(
-        move |c| async move { to_json(&c.sharing_reconcile(id, confirmed_owner_code).await?) },
-    )
-    .await
+pub async fn sharing_reconcile(id: String, verification_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.sharing_reconcile(id, verification_id).await?) })
+        .await
 }
 pub async fn sharing_discard_pending(id: String) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.sharing_discard_pending(id).await?) }).await

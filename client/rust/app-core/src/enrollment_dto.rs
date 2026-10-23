@@ -79,7 +79,6 @@ pub struct EnrollmentPairingDto {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EnrollmentGrantCreateDto {
     pub anchor: SharingIdentityDto,
-    pub confirmed_identity_code: String,
     pub role_ceiling: SharingRoleDto,
     pub mode: EnrollmentModeDto,
     pub expires_at: i64,

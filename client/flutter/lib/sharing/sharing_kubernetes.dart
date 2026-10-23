@@ -136,6 +136,7 @@ class _SharingKubePublishDialogState extends ConsumerState<SharingKubePublishDia
                     const SizedBox(height: 16),
                     SharingRecipients(
                       key: const ValueKey('sharing-kube-recipients'),
+                      sensitive: true,
                       initialGrants: _grants,
                       onChanged: (grants) => setState(() => _grants = grants),
                     ),

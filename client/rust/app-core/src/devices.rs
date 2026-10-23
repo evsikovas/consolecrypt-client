@@ -6,17 +6,69 @@
 use crate::app::{parse_vault_id, pick_envelopes, AppCore};
 use crate::dto::*;
 use crate::error::{AppError, AppResult};
+use crate::key_trust::KeySource;
 use crate::secrets::blocking;
+use crate::session::Session;
+use cc_crypto_core::{pairing_code_v2, DevicePublicKeys};
 use cc_protocol::devices::{
-    CreateDeviceTrustRequest, DeviceInfo, DeviceStatus, DeviceTrustRequest, RejectDeviceRequest,
-    RevokeDeviceRequest, UpdateDeviceRequest,
+    ApprovalIntentRequest, CreateDeviceTrustRequest, DeviceInfo, DeviceStatus, DeviceTrustRequest,
+    RejectDeviceRequest, RevokeDeviceRequest, UpdateDeviceRequest,
 };
-use cc_protocol::{DeviceId, DeviceRequestId, VaultId};
-use cc_vault_core::{unlock_with_device, PendingApproval};
+use cc_protocol::{Bytes, DeviceId, DeviceRequestId, VaultId};
+use cc_vault_core::{unlock_approved_device, unlock_with_device, PendingApproval, PinnedApprover};
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 /// Local setting: vault this device asked to be approved for.
 const PENDING_TRUST_VAULT: &str = "app_core.pending_trust_vault";
+/// Local setting (new device, protocol 1.11): the approver whose pairing
+/// code v2 the user confirmed on this device. Never taken from the server
+/// without that confirmation.
+const PINNED_APPROVER: &str = "app_core.pinned_approver";
+
+/// Local setting (new device): the approver last announced for this
+/// device's request, shown until the user confirmed or rejected the code.
+const SEEN_APPROVER: &str = "app_core.seen_approver";
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct SeenApprover {
+    request_id: DeviceRequestId,
+    device_id: DeviceId,
+    name: String,
+    platform: String,
+    encryption_public_key: Bytes,
+    signing_public_key: Bytes,
+}
+
+impl SeenApprover {
+    fn keys(&self) -> AppResult<DevicePublicKeys> {
+        Ok(DevicePublicKeys::from_slices(
+            self.encryption_public_key.as_slice(),
+            self.signing_public_key.as_slice(),
+        )?)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct StoredApprover {
+    request_id: DeviceRequestId,
+    device_id: DeviceId,
+    encryption_public_key: Bytes,
+    signing_public_key: Bytes,
+}
+
+impl StoredApprover {
+    fn pinned(&self) -> AppResult<PinnedApprover> {
+        Ok(PinnedApprover {
+            request_id: self.request_id,
+            device_id: self.device_id,
+            keys: DevicePublicKeys::from_slices(
+                self.encryption_public_key.as_slice(),
+                self.signing_public_key.as_slice(),
+            )?,
+        })
+    }
+}
 
 fn parse_device_id(s: &str) -> AppResult<DeviceId> {
     DeviceId::from_str(s.trim()).map_err(|_| AppError::invalid("device_id", "not a valid id"))
@@ -66,16 +118,26 @@ impl AppCore {
         let s = self.session().await?;
         let api = s.api()?;
         let r = api.list_devices().await?;
-        // Capability gate (protocol 1.7); an unreachable meta keeps the old UI.
-        let device_protection = api
-            .meta()
-            .await
-            .is_ok_and(|m| m.capabilities.device_protection);
+        // Capability gates (protocol 1.7, 1.11); an unreachable meta keeps
+        // the old UI.
+        let meta = api.meta().await.ok();
+        let device_protection = meta
+            .as_ref()
+            .is_some_and(|m| m.capabilities.device_protection);
+        let vrk_commitment = meta.as_ref().is_some_and(|m| m.capabilities.vrk_commitment);
         let vault = s.vault_id();
+        let pin = s.pinned_vault_key().await;
+        let vault_key_conflicts = match s.unlocked_opt().await {
+            Some(u) => u.key_conflicts().into_iter().map(|c| c.device_id).collect(),
+            None => Vec::new(),
+        };
         Ok(DeviceListDto {
             devices: r.devices.iter().map(|d| device_dto(d, vault)).collect(),
             pending_requests: r.pending_requests.iter().map(request_dto).collect(),
             device_protection,
+            vrk_commitment,
+            vault_key_unconfirmed: pin.is_some_and(|p| p.unconfirmed),
+            vault_key_conflicts,
         })
     }
 
@@ -109,17 +171,176 @@ impl AppCore {
         let r = api
             .create_trust_request(&CreateDeviceTrustRequest { vault_ids })
             .await?;
+        // A new request starts without a confirmed approver.
+        s.storage()?
+            .write(|tx| {
+                tx.setting_delete(PINNED_APPROVER)?;
+                tx.setting_delete(SEEN_APPROVER).map(|_| ())
+            })
+            .await?;
+        let vrk_commitment = api
+            .meta()
+            .await
+            .is_ok_and(|m| m.capabilities.vrk_commitment);
         Ok(OwnTrustRequestDto {
             request_id: r.request_id.to_string(),
             verification_code: s.identity().verification_code().to_string(),
             expires_at_ms: ms(&r.expires_at),
+            vrk_commitment,
         })
     }
 
-    /// New device, after approval: fetch this device's envelope, open the
-    /// vault with the device key, replace that envelope with this device's
-    /// trust marker (S5: the server keeps no VRK this device's plain key can
-    /// open; the attestation also proves the received VRK), seal the local
+    /// New device (protocol 1.11): the approval progress of `request_id` —
+    /// once a trusted device announced itself, the pairing code v2 over both
+    /// devices' keys to compare with the code on the approving device. The
+    /// announced approver is remembered, so the code stays available after
+    /// the approving device already approved.
+    pub async fn device_approval_status(
+        &self,
+        request_id: String,
+    ) -> AppResult<ApprovalProgressDto> {
+        let s = self.session().await?;
+        let api = s.api()?;
+        let rid = parse_request_id(&request_id)?;
+        let vrk_commitment = api
+            .meta()
+            .await
+            .is_ok_and(|m| m.capabilities.vrk_commitment);
+        let own = s.identity();
+        let approver = self.announced_approver(&s, rid).await?;
+        let pairing_code = approver
+            .as_ref()
+            .map(|a| -> AppResult<String> {
+                Ok(pairing_code_v2(
+                    rid,
+                    own.device_id(),
+                    &own.public_keys(),
+                    a.device_id,
+                    &a.keys()?,
+                )
+                .to_string())
+            })
+            .transpose()?;
+        let stored: Option<StoredApprover> = s.storage()?.setting_get(PINNED_APPROVER).await?;
+        Ok(ApprovalProgressDto {
+            request_id: rid.to_string(),
+            vrk_commitment,
+            own_code: own.verification_code().to_string(),
+            approver_device_id: approver.as_ref().map(|a| a.device_id.to_string()),
+            approver_name: approver.as_ref().map(|a| a.name.clone()),
+            approver_platform: approver.as_ref().map(|a| a.platform.clone()),
+            pairing_code,
+            approver_confirmed: stored.is_some_and(|p| {
+                p.request_id == rid
+                    && approver.as_ref().is_some_and(|a| {
+                        a.device_id == p.device_id
+                            && a.encryption_public_key == p.encryption_public_key
+                            && a.signing_public_key == p.signing_public_key
+                    })
+            }),
+        })
+    }
+
+    /// The approver announced for this device's request `rid`: from the
+    /// pending request, or — once it is no longer pending — the device
+    /// remembered from it, with the keys the server lists for that device.
+    async fn announced_approver(
+        &self,
+        s: &Session,
+        rid: DeviceRequestId,
+    ) -> AppResult<Option<SeenApprover>> {
+        let own = s.identity().device_id();
+        let list = s.api()?.list_devices().await?;
+        if let Some(a) = list
+            .pending_requests
+            .iter()
+            .find(|r| r.request_id == rid && r.device.device_id == own)
+            .and_then(|r| r.approver.as_ref())
+        {
+            let seen = SeenApprover {
+                request_id: rid,
+                device_id: a.device_id,
+                name: a.name.clone(),
+                platform: a.platform.as_str().to_owned(),
+                encryption_public_key: a.encryption_public_key.clone(),
+                signing_public_key: a.signing_public_key.clone(),
+            };
+            s.storage()?
+                .setting_set(SEEN_APPROVER, seen.clone())
+                .await?;
+            return Ok(Some(seen));
+        }
+        let remembered: Option<SeenApprover> = s.storage()?.setting_get(SEEN_APPROVER).await?;
+        Ok(remembered.filter(|r| r.request_id == rid).and_then(|r| {
+            let d = list
+                .devices
+                .iter()
+                .find(|d| d.device_id == r.device_id && d.status == DeviceStatus::Active)?;
+            Some(SeenApprover {
+                encryption_public_key: d.encryption_public_key.clone(),
+                signing_public_key: d.signing_public_key.clone(),
+                ..r
+            })
+        }))
+    }
+
+    /// New device (protocol 1.11), ONLY after the user confirmed that the
+    /// pairing code on this screen matches the one on `approver_device_id`:
+    /// pin that device's keys for verifying its signed approval.
+    /// `shown_code` is the code the user compared; it is recomputed from the
+    /// keys being pinned and must match, so the confirmation is bound to
+    /// what was on the screen.
+    pub async fn confirm_device_approver(
+        &self,
+        request_id: String,
+        approver_device_id: String,
+        shown_code: String,
+    ) -> AppResult<()> {
+        let s = self.session().await?;
+        let rid = parse_request_id(&request_id)?;
+        let approver_id = parse_device_id(&approver_device_id)?;
+        let approver = self
+            .announced_approver(&s, rid)
+            .await?
+            .filter(|a| a.device_id == approver_id)
+            .ok_or_else(|| AppError::Approval("the approving device changed".into()))?;
+        let own = s.identity();
+        let code = pairing_code_v2(
+            rid,
+            own.device_id(),
+            &own.public_keys(),
+            approver.device_id,
+            &approver.keys()?,
+        );
+        if !code.matches_str(&shown_code) {
+            return Err(AppError::Approval(
+                "the pairing code changed; compare it again".into(),
+            ));
+        }
+        s.storage()?
+            .setting_set(
+                PINNED_APPROVER,
+                StoredApprover {
+                    request_id: rid,
+                    device_id: approver.device_id,
+                    encryption_public_key: approver.encryption_public_key,
+                    signing_public_key: approver.signing_public_key,
+                },
+            )
+            .await?;
+        tracing::info!(approver = %approver_id, "approver pinned after the pairing code matched");
+        Ok(())
+    }
+
+    /// New device, after approval: fetch this device's envelope and open
+    /// the vault with the device key — on a 1.11 server only after the
+    /// signed approval v2 verified with the approver key pinned when the
+    /// pairing code matched (envelope hash, vault id from the signed list,
+    /// `HKDF(VRK)` against the signed commitment). Older servers and
+    /// approvers: trust on first use, marked "vault key not confirmed" until
+    /// the next passphrase unlock (TR-7). Any mismatch → `vault_key_mismatch`
+    /// before anything is attested, stored or synced. Then: replace the
+    /// envelope with this device's trust marker (S5), seal the local
     /// database and start syncing. `Ok(false)` = not approved yet.
     pub async fn finish_device_approval(&self, vault_id: Option<String>) -> AppResult<bool> {
         let s = self.session().await?;
@@ -155,33 +376,93 @@ impl AppCore {
         let Some(dev) = material.device_envelope.clone() else {
             return Ok(false);
         };
+        let pinned: Option<StoredApprover> = s.storage()?.setting_get(PINNED_APPROVER).await?;
         let identity = s.identity();
-        let vault = match blocking(move || Ok(unlock_with_device(vault_id, &dev, &identity)?)).await
-        {
-            Ok(v) => v,
-            Err(AppError::DeviceNotAuthorized) => return Ok(false),
-            Err(e) => return Err(e),
+        let (vault, source) = match (&material.device_approval, &pinned) {
+            // Approval v2 checked with the key the user confirmed.
+            (Some(record), Some(approver)) => {
+                let approver = approver.pinned()?;
+                let record = record.clone();
+                let id = identity.clone();
+                match blocking(move || {
+                    Ok(unlock_approved_device(
+                        vault_id, &dev, &record, &approver, &id,
+                    )?)
+                })
+                .await
+                {
+                    Ok((v, _)) => (v, KeySource::ApprovalVerified),
+                    Err(AppError::DeviceNotAuthorized) => return Ok(false),
+                    Err(AppError::VaultKeyMismatch {
+                        reason, received, ..
+                    }) => {
+                        let pinned = s.pinned_vault_key().await.and_then(|p| p.commitment());
+                        let received = received.as_deref().and_then(unhex32);
+                        return Err(s.key_mismatch(vault_id, pinned, received, &reason).await);
+                    }
+                    Err(e) => return Err(e),
+                }
+            }
+            // A v2 approval exists but the pairing code was not confirmed
+            // on this device yet.
+            (Some(_), None) => {
+                return Err(AppError::Approval("confirm_pairing_code".into()));
+            }
+            // The user confirmed an approver that signs v2, but the server
+            // shows no v2 approval: it was withheld.
+            (None, Some(_)) => {
+                let pinned = s.pinned_vault_key().await.and_then(|p| p.commitment());
+                return Err(s
+                    .key_mismatch(vault_id, pinned, None, "approval_missing")
+                    .await);
+            }
+            // Older server or approver (TR-7): trust on first use.
+            (None, None) => {
+                let id = identity.clone();
+                match blocking(move || Ok(unlock_with_device(vault_id, &dev, &id)?)).await {
+                    Ok(v) => (v, KeySource::ApprovalUnverified),
+                    Err(AppError::DeviceNotAuthorized) => return Ok(false),
+                    Err(e) => return Err(e),
+                }
+            }
         };
+        // TR-3 against an existing pin (re-joining profile) before anything
+        // is sent or stored.
+        let pin = s.check_vault_key(&vault, source).await?;
         let attest = vault.attest_device_request(&s.identity())?;
-        let marker = api.attest_device(s.device_id(), &attest).await?;
+        // TR-4: the attest response is a confirmation only, never cached.
+        api.attest_device(s.device_id(), &attest).await?;
         let info = api.get_vault(vault_id).await?;
         s.storage()?.upsert_vault_info(info.clone()).await?;
         let (pw, rec, _) = match api.list_envelopes(vault_id).await {
             Ok(l) => pick_envelopes(&l.envelopes, s.device_id()),
             Err(_) => (None, None, None),
         };
+        // Password / recovery envelopes are cached for offline unlock; every
+        // later use checks the key they yield against the pin (TR-3).
         s.cache_envelopes(
             vault_id,
             pw.or(material.password_envelope),
             rec.or(material.recovery_envelope),
-            Some(marker),
+            None,
         )
         .await?;
         s.set_vault_id(vault_id).await?;
+        s.store_pin(pin).await?;
+        s.storage()?
+            .write(|tx| {
+                tx.setting_delete(PINNED_APPROVER)?;
+                tx.setting_delete(SEEN_APPROVER).map(|_| ())
+            })
+            .await?;
         s.seal_storage(&vault).await?;
         let u = s.install_unlocked(vault).await?;
         u.observe_vault_info(std::slice::from_ref(&info)).await;
-        tracing::info!(vault_id = %vault_id, "device approval completed");
+        tracing::info!(
+            vault_id = %vault_id,
+            verified = source == KeySource::ApprovalVerified,
+            "device approval completed"
+        );
         Ok(true)
     }
 
@@ -205,21 +486,47 @@ impl AppCore {
                 "the request is for another vault".into(),
             ));
         }
+        // Protocol 1.11: announce this device as the approver; both devices
+        // then show the pairing code v2 over both devices' keys.
+        let api = s.api()?;
+        let v2 = api
+            .meta()
+            .await
+            .is_ok_and(|m| m.capabilities.vrk_commitment);
+        if v2 {
+            api.approval_intent(
+                pending.new_device_id(),
+                &ApprovalIntentRequest { request_id: rid },
+            )
+            .await?;
+        }
+        let code = if v2 {
+            pending.pairing_code_v2(&s.identity())
+        } else {
+            pending.verification_code()
+        };
         let dto = PendingApprovalDto {
             request_id: rid.to_string(),
             device_id: pending.new_device_id().to_string(),
             device_name: pending.new_device_name().to_owned(),
-            verification_code: pending.verification_code().to_string(),
+            verification_code: code.to_string(),
             requested_vault_ids: pending
                 .requested_vault_ids()
                 .iter()
                 .map(ToString::to_string)
                 .collect(),
+            code_version: if v2 { 2 } else { 1 },
         };
         u.approvals
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .insert(rid, pending);
+        let mut v2_set = u.approvals_v2.lock().unwrap_or_else(|p| p.into_inner());
+        if v2 {
+            v2_set.insert(rid);
+        } else {
+            v2_set.remove(&rid);
+        }
         Ok(dto)
     }
 
@@ -238,9 +545,18 @@ impl AppCore {
                 AppError::Approval("call start_device_approval and compare codes first".into())
             })?;
         let new_device = pending.new_device_id();
+        let v2 = u
+            .approvals_v2
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .remove(&rid);
         let confirmed = pending.confirm_verification_code();
         let vault = u.vault()?;
-        let req = confirmed.build_request(&s.identity(), &[vault.as_ref()], chrono::Utc::now())?;
+        let req = if v2 {
+            confirmed.build_request_v2(&s.identity(), &[vault.as_ref()], chrono::Utc::now())?
+        } else {
+            confirmed.build_request(&s.identity(), &[vault.as_ref()], chrono::Utc::now())?
+        };
         s.api()?.approve_device(new_device, &req).await?;
         tracing::info!(device_id = %new_device, "device approved");
         Ok(())
@@ -304,4 +620,15 @@ impl AppCore {
             .await?;
         Ok(device_dto(&d, s.vault_id()))
     }
+}
+
+fn unhex32(s: &str) -> Option<[u8; 32]> {
+    if s.len() != 64 {
+        return None;
+    }
+    let mut out = [0u8; 32];
+    for (i, b) in out.iter_mut().enumerate() {
+        *b = u8::from_str_radix(s.get(2 * i..2 * i + 2)?, 16).ok()?;
+    }
+    Some(out)
 }

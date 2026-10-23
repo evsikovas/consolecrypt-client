@@ -10,7 +10,10 @@
 //! All key material here is fixed, public test data (byte sequences), never
 //! real secrets.
 
-use crate::device::{x25519, x25519_public, x25519_secret_from, DeviceApproval, DeviceSecretKeys};
+use crate::device::{
+    device_envelope_sha256, pairing_code_v2, x25519, x25519_public, x25519_secret_from,
+    DeviceApproval, DeviceApprovalV2, DeviceSecretKeys,
+};
 use crate::envelope::{
     device_envelope_key, open_device_envelope, open_password_envelope, open_recovery_envelope,
     recovery_kek, seal_device_envelope_with, seal_password_envelope_with,
@@ -153,6 +156,10 @@ fn compute_hierarchy(input: &Value) -> Value {
             "okm": h(vak),
         },
         "vault_access_key_sha256": h(&vault_access_key_verifier(vak)),
+        "key_commitment": {
+            "hkdf_info_utf8": utf8(labels::VRK_COMMITMENT),
+            "okm": h(&keys.key_commitment()),
+        },
     })
 }
 
@@ -160,7 +167,7 @@ fn compute_hierarchy(input: &Value) -> Value {
 fn key_hierarchy_vectors() {
     run(
         "key_hierarchy.json",
-        "KEKs and VAK: HKDF-SHA256(ikm = VRK, salt = vault_id (16 raw bytes), info = label), 32-byte output; verifier = SHA-256(VAK)",
+        "KEKs, VAK and key commitment: HKDF-SHA256(ikm = VRK, salt = vault_id (16 raw bytes), info = label), 32-byte output; verifier = SHA-256(VAK)",
         vec![
             ("sequential", json!({ "vault_id": VAULT_ID, "vrk": h(&seq::<32>(0x00)) })),
             (
@@ -537,6 +544,140 @@ fn device_vectors() {
             ),
         ],
         compute_device_case,
+    );
+}
+
+// ---------------------------------------------------------------------------
+// key trust (protocol 1.11): pairing code v2, approval v2, commitment record
+// ---------------------------------------------------------------------------
+
+fn compute_key_trust_case(input: &Value) -> Value {
+    let approver = DeviceSecretKeys::from_test_seeds(
+        &arr(&input["approver_x25519_secret"]),
+        &arr(&input["approver_ed25519_seed"]),
+    );
+    let approver_keys = approver.public_keys();
+    let new_keys = DeviceSecretKeys::from_test_seeds(
+        &arr(&input["new_x25519_secret"]),
+        &arr(&input["new_ed25519_seed"]),
+    )
+    .public_keys();
+    let request_id: DeviceRequestId = id(&input["request_id"]);
+    let approver_id: DeviceId = id(&input["approver_device_id"]);
+    let new_id: DeviceId = id(&input["new_device_id"]);
+    match input["type"].as_str() {
+        Some("pairing_code_v2") => {
+            let code = pairing_code_v2(request_id, new_id, &new_keys, approver_id, &approver_keys);
+            let input_bytes = cc_protocol::canonical::device_pairing_code_v2_input(
+                request_id,
+                new_id,
+                &new_keys.encryption,
+                &new_keys.signing,
+                approver_id,
+                &approver_keys.encryption,
+                &approver_keys.signing,
+            );
+            json!({
+                "input": h(&input_bytes),
+                "input_sha256": sha(&input_bytes),
+                "code": code.to_string(),
+            })
+        }
+        Some("approval_v2") => {
+            let vault_id: VaultId = id(&input["vault_id"]);
+            let vrk = Vrk::from_bytes(&arr(&input["vrk"]));
+            let commitment = KeyHierarchy::derive(&vrk, vault_id).key_commitment();
+            let envelope = seal_device_envelope_with(
+                &vrk,
+                vault_id,
+                new_id,
+                &new_keys.encryption,
+                &x25519_secret_from(&arr(&input["ephemeral_x25519_secret"])),
+                &arr(&input["nonce"]),
+            )
+            .expect("seal");
+            let envelope_sha256 = device_envelope_sha256(&envelope).expect("hash");
+            let vaults = [cc_protocol::canonical::ApprovedVaultKey {
+                vault_id,
+                commitment,
+                envelope_sha256,
+            }];
+            let approval = DeviceApprovalV2 {
+                request_id,
+                approver_device_id: approver_id,
+                approver_keys: &approver_keys,
+                new_device_id: new_id,
+                new_device_keys: &new_keys,
+                issued_at: input["issued_at"].as_i64().expect("issued_at"),
+                vaults: &vaults,
+            };
+            let sig = approver.sign_device_approval_v2(&approval);
+            crate::verify_device_approval_v2(&approver_keys.signing, &approval, &sig)
+                .expect("verify");
+            let issued_at = input["issued_at"].as_i64().expect("issued_at");
+            let record_sig =
+                approver.sign_key_commitment(vault_id, &commitment, approver_id, issued_at);
+            crate::verify_key_commitment(
+                &approver_keys.signing,
+                vault_id,
+                &commitment,
+                approver_id,
+                issued_at,
+                &record_sig,
+            )
+            .expect("verify record");
+            json!({
+                "key_commitment": h(&commitment),
+                "envelope_ciphertext": h(envelope.ciphertext.as_slice()),
+                "envelope_sha256": h(&envelope_sha256),
+                "message": h(&approval.message()),
+                "signature_v2": h(&sig),
+                "key_commitment_record_message": h(&cc_protocol::canonical::vault_key_commitment_message(
+                    vault_id, &commitment, approver_id, issued_at,
+                )),
+                "key_commitment_record_signature": h(&record_sig),
+            })
+        }
+        other => panic!("unknown key trust case {other:?}"),
+    }
+}
+
+#[test]
+fn key_trust_vectors() {
+    let base = json!({
+        "approver_x25519_secret": h(&seq::<32>(0x80)),
+        "approver_ed25519_seed": h(&seq::<32>(0xa0)),
+        "new_x25519_secret": h(&seq::<32>(0x11)),
+        "new_ed25519_seed": h(&seq::<32>(0x22)),
+        "request_id": "00000000-0000-7000-8000-0000000000a1",
+        "approver_device_id": "00000000-0000-7000-8000-0000000000d1",
+        "new_device_id": "00000000-0000-7000-8000-0000000000d2",
+    });
+    let with = |extra: Value| {
+        let mut v = base.clone();
+        for (k, x) in extra.as_object().expect("object") {
+            v[k] = x.clone();
+        }
+        v
+    };
+    run(
+        "key_trust.json",
+        "Protocol 1.11 key trust. Key commitment C = HKDF-SHA256(ikm = VRK, salt = vault_id, info = \"cc-vrk-commit-v1\"). Pairing code v2: SHA-256(device_pairing_code_v2_input) → 6 groups of 5 digits. Approval v2: Ed25519 over device_approval_message_v2 with per-vault vault_id ‖ C ‖ SHA-256(ephemeral_pub ‖ nonce ‖ ciphertext). Key-commitment record: Ed25519 over vault_key_commitment_message.",
+        vec![
+            ("pairing_code_v2", with(json!({ "type": "pairing_code_v2" }))),
+            (
+                "approval_v2",
+                with(json!({
+                    "type": "approval_v2",
+                    "vault_id": VAULT_ID,
+                    "vrk": h(&seq::<32>(0x00)),
+                    "ephemeral_x25519_secret": h(&seq::<32>(0x40)),
+                    "nonce": h(&seq::<24>(0x60)),
+                    "issued_at": 1_800_000_000i64,
+                })),
+            ),
+        ],
+        compute_key_trust_case,
     );
 }
 

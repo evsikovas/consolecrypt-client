@@ -845,6 +845,21 @@ impl ApiClient {
         .await
     }
 
+    /// `POST /v1/devices/{id}/approval-intent` (protocol 1.11): announce
+    /// this device as the approver of a pending request.
+    pub async fn approval_intent(
+        &self,
+        device_id: DeviceId,
+        req: &cc_protocol::devices::ApprovalIntentRequest,
+    ) -> Result<(), ApiError> {
+        self.authed_empty(
+            Method::POST,
+            self.device_url(paths::DEVICE_APPROVAL_INTENT, device_id),
+            Some(to_json(req)?),
+        )
+        .await
+    }
+
     /// `POST /v1/devices/{id}/reject`.
     pub async fn reject_device(
         &self,
@@ -977,6 +992,33 @@ impl ApiClient {
         ));
         self.authed_empty(Method::DELETE, url, Some(to_json(req)?))
             .await
+    }
+
+    /// `PUT /v1/vaults/{id}/key-commitments` (protocol 1.11).
+    pub async fn put_key_commitment(
+        &self,
+        vault_id: VaultId,
+        req: &cc_protocol::vaults::VaultKeyCommitment,
+    ) -> Result<(), ApiError> {
+        self.authed_empty(
+            Method::PUT,
+            self.vault_url(paths::VAULT_KEY_COMMITMENTS, vault_id),
+            Some(to_json(req)?),
+        )
+        .await
+    }
+
+    /// `GET /v1/vaults/{id}/key-commitments` (protocol 1.11).
+    pub async fn list_key_commitments(
+        &self,
+        vault_id: VaultId,
+    ) -> Result<cc_protocol::vaults::VaultKeyCommitmentsResponse, ApiError> {
+        self.authed(
+            Method::GET,
+            self.vault_url(paths::VAULT_KEY_COMMITMENTS, vault_id),
+            None,
+        )
+        .await
     }
 
     fn vault_url(&self, template: &str, vault_id: VaultId) -> Url {

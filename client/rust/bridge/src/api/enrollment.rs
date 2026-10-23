@@ -86,10 +86,9 @@ pub async fn enrollment_process_automatic() -> Result<String, BridgeError> {
 
 pub async fn enrollment_reconcile(
     id: String,
-    confirmed_owner_code: String,
+    verification_id: String,
 ) -> Result<String, BridgeError> {
-    with_core(|c| async move { to_json(&c.enrollment_reconcile(id, confirmed_owner_code).await?) })
-        .await
+    with_core(|c| async move { to_json(&c.enrollment_reconcile(id, verification_id).await?) }).await
 }
 
 pub async fn enrollment_restore_pairing(

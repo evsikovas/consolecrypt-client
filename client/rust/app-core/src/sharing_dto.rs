@@ -35,8 +35,20 @@ pub struct SharingIdentityDto {
     /// Hexadecimal public keys, not secret material.
     pub encryption_public_key: String,
     pub signing_public_key: String,
-    /// SHA-256 code binds the instance, account, device and both public keys.
+    /// SHA-256 fingerprint of the instance, account, device and both public
+    /// keys. Shown in details only: it is not a comparison code (audit H3);
+    /// keys are verified with the safety number or the QR code.
     pub verification_code: String,
+    /// Output only: this device's pin of these keys (audit H3, TR-12):
+    /// `chosen` | `verified` | `keys_changed`; `None` = never chosen.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trust: Option<String>,
+    /// Output only: the pin id to pass as `verification_id`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verification_id: Option<String>,
+    /// Output only: when the keys were verified (ms).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verified_at_ms: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -49,8 +61,50 @@ pub struct SharingRecipientDto {
 pub struct SharingGrantDto {
     pub identity: SharingIdentityDto,
     pub role: SharingRoleDto,
-    /// Entered/confirmed by the human after an independent comparison.
-    pub confirmed_code: String,
+    /// The pin of the recipient's keys (`PeerPinDto.verification_id`, from
+    /// `sharing_choose_peer` / `sharing_verify_peer`). Required for devices
+    /// that are not yet in the share; Rust checks the pin's status and the
+    /// "only verified recipients" policy (TR-16). Existing members with
+    /// unchanged keys keep their access without one.
+    #[serde(default)]
+    pub verification_id: Option<String>,
+}
+
+/// A pinned colleague device (audit H3, TR-12).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PeerPinDto {
+    pub verification_id: String,
+    pub server_instance_id: String,
+    pub user_id: String,
+    pub device_id: String,
+    /// `chosen` | `verified` | `keys_changed` | `unknown`.
+    pub status: String,
+    /// `qr_code` | `safety_number` when verified.
+    pub method: Option<String>,
+    pub verified_at_ms: Option<i64>,
+    pub first_seen_ms: i64,
+    pub email: Option<String>,
+}
+
+/// What to compare with a colleague (audit H3, TR-11).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SafetyNumberDto {
+    /// 12 groups of 5 digits; the same on both devices.
+    pub safety_number: String,
+    /// This device's QR payload (full keys) for an in-person check.
+    pub own_qr_payload: String,
+    /// The pin status of the colleague's keys, if chosen before.
+    pub trust: Option<String>,
+}
+
+/// "Only verified recipients" (TR-14).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SharingPolicyDto {
+    /// Secrets, Kubernetes contexts, database connections (and collections
+    /// that carry secrets). Default on.
+    pub sensitive_verified_only: bool,
+    /// Hosts, groups and snippets. Default off.
+    pub other_verified_only: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -104,6 +158,11 @@ pub struct SharingItemDto {
     /// change drops them from the signed manifest.
     #[serde(default)]
     pub departed_user_ids: Vec<String>,
+    /// Received items: the pin status of the owner's keys (`chosen` =
+    /// accepted without verification — mark the item, never connect its
+    /// hosts or run its snippets automatically).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner_trust: Option<String>,
 }
 
 impl std::fmt::Debug for SharingItemDto {

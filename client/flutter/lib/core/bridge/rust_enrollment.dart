@@ -14,8 +14,8 @@ final class RustEnrollmentService implements EnrollmentService {
   }
 
   @override
-  Future<void> reconcile(String shareId, String confirmedOwnerCode) async {
-    await guard(() => rs.enrollmentReconcile(id: shareId, confirmedOwnerCode: confirmedOwnerCode));
+  Future<void> reconcile(String shareId, String verificationId) async {
+    await guard(() => rs.enrollmentReconcile(id: shareId, verificationId: verificationId));
   }
 
   @override

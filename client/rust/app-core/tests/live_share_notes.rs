@@ -76,10 +76,26 @@ async fn verify_email(url: &str, email: &str) {
 
 fn grant(identity: SharingIdentityDto) -> SharingGrantDto {
     SharingGrantDto {
-        confirmed_code: identity.verification_code.clone(),
+        verification_id: identity.verification_id.clone(),
         identity,
         role: SharingRoleDto::Reader,
     }
+}
+
+/// `app` verifies `identity` with the safety number and returns it pinned.
+async fn pin(app: &AppCore, identity: &SharingIdentityDto) -> SharingIdentityDto {
+    let number = app
+        .sharing_safety_number(identity.clone())
+        .await
+        .unwrap()
+        .safety_number;
+    let pinned = app
+        .sharing_verify_peer(identity.clone(), "safety_number".into(), number, None)
+        .await
+        .unwrap();
+    let mut out = identity.clone();
+    out.verification_id = Some(pinned.verification_id);
+    out
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -94,6 +110,7 @@ async fn shared_notes_against_live_server() {
     let owner_identity = owner.sharing_identity().await.unwrap();
     let reader_identity = reader.sharing_identity().await.unwrap();
     owner.sharing_discover(reader_email).await.unwrap();
+    let reader_identity = pin(&owner, &reader_identity).await;
     let created = owner
         .sharing_publish(
             SharedProjection::Host(SharedHostProjection {
@@ -114,7 +131,7 @@ async fn shared_notes_against_live_server() {
     reader
         .sharing_accept(
             created.share_id.clone(),
-            owner_identity.verification_code.clone(),
+            pin(&reader, &owner_identity).await.verification_id.unwrap(),
         )
         .await
         .unwrap();
