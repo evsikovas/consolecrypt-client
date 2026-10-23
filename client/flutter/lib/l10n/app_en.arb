@@ -15760,5 +15760,25 @@
   "dbErrorKubeExecBlocked": "Running commands in this production Kubernetes context is turned off in its settings.",
   "@dbErrorKubeExecBlocked": {
     "description": "Database error: a production Kubernetes context does not allow exec."
+  },
+  "clipboardSecureCopyFailed": "Couldn't copy securely. Nothing was placed on the clipboard.",
+  "@clipboardSecureCopyFailed": {
+    "description": "Error toast when the protected native clipboard is unavailable; the app never falls back to an ordinary copy."
+  },
+  "copiedSecretPrivateNote": "It won't appear in clipboard history or on other devices.",
+  "@copiedSecretPrivateNote": {
+    "description": "Desktop only: second sentence of the toast after copying a secret (macOS, Windows, Linux)."
+  },
+  "settingsClipboardBackgroundClear": "Clear the clipboard in the background even if the secret can't be verified",
+  "@settingsClipboardBackgroundClear": {
+    "description": "Settings > Security, Android only: switch title for clearing the clipboard without an ownership check."
+  },
+  "settingsClipboardBackgroundClearHelp": "Android doesn't let an app in the background read the clipboard. When this is on, the clipboard is emptied at the deadline without a check, so text you copied in another app during that time may be erased too. When it's off, the secret stays on the clipboard until you return to ConsoleCrypt.",
+  "@settingsClipboardBackgroundClearHelp": {
+    "description": "Settings > Security, Android only: help under the background clipboard clearing switch."
+  },
+  "settingsClipboardBackgroundClearError": "Couldn't read or save this setting.",
+  "@settingsClipboardBackgroundClearError": {
+    "description": "Settings > Security, Android only: error under the background clipboard clearing switch."
   }
 }

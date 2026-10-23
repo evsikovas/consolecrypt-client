@@ -5,6 +5,7 @@
 #include <gdk/gdkx.h>
 #endif
 
+#include "clipboard_bridge.h"
 #include "flutter/generated_plugin_registrant.h"
 
 struct _MyApplication {
@@ -133,6 +134,9 @@ static void my_application_activate(GApplication* application) {
   fl_method_channel_set_method_call_handler(window_channel, window_method_call,
       fullscreen, [](gpointer data) { delete static_cast<FullscreenState*>(data); });
   g_object_set_data_full(G_OBJECT(window), "consolecrypt-window-channel", window_channel, g_object_unref);
+  // Protected clipboard for secrets (S9): CLIPBOARD only, password-manager
+  // hint, no hand-over to a clipboard manager on exit.
+  clipboard_bridge_register(fl_engine_get_binary_messenger(fl_view_get_engine(view)), G_OBJECT(window));
 
 
   gtk_widget_grab_focus(GTK_WIDGET(view));

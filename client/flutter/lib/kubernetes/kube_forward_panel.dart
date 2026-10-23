@@ -5,6 +5,7 @@ import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -489,7 +490,7 @@ class _KubeForwardsPanelState extends ConsumerState<KubeForwardsPanel> with Widg
             icon: Icons.content_copy_rounded,
             tooltip: l.kubeForwardCopyAddress,
             style: GlassIconButtonStyle.plain,
-            onPressed: () => unawaited(Clipboard.setData(ClipboardData(text: _local(f.address)))),
+            onPressed: () => unawaited(ref.read(secureClipboardProvider).copyPlain(_local(f.address))),
           ),
           GlassIconButton(
             key: ValueKey('kube-forward-stop-${f.id}'),

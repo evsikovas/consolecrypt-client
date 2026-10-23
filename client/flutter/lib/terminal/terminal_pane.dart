@@ -270,6 +270,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
               keyboardType: TextInputType.text,
               theme: AppTheme.terminalTheme(Theme.of(context).brightness, scheme: scheme, custom: custom),
               textStyle: TerminalStyle(fontSize: fontSize, fontFamily: font.family, fontFamilyFallback: font.fallback),
+              onCopy: (text) => copyTerminalSelection(context, ref, text),
               onSecondaryTapUp: (details, _) {
                 _focus.requestFocus();
                 unawaited(showTerminalContextMenu(context, ref, tab, details.globalPosition & const Size(1, 1)));

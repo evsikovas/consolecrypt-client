@@ -304,16 +304,21 @@ class _GlassToastViewState extends State<_GlassToastView> with TickerProviderSta
         ),
         if (countdown != null) ...[
           const SizedBox(width: GlassSpacing.s8),
-          AnimatedBuilder(
-            animation: countdown,
-            builder: (context, _) {
-              final total = request.countdown!.inSeconds;
-              final left = (total * (1 - countdown.value)).ceil();
-              return Text(
-                GlassStrings.of(context).clearsIn(left),
-                style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
-              );
-            },
+          // Flexible: a narrow window with large text must not overflow.
+          Flexible(
+            child: AnimatedBuilder(
+              animation: countdown,
+              builder: (context, _) {
+                final total = request.countdown!.inSeconds;
+                final left = (total * (1 - countdown.value)).ceil();
+                return Text(
+                  GlassStrings.of(context).clearsIn(left),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                );
+              },
+            ),
           ),
         ],
         if (request.actionLabel != null) ...[

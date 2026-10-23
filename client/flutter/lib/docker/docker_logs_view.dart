@@ -53,7 +53,7 @@ class _DockerLogsViewState extends ConsumerState<DockerLogsView> with WidgetsBin
     if (widget.service.containsSecret(text)) {
       await copySecretWithNotice(context, ref, text, what: context.l10n.copyWhatText);
     } else {
-      await copyPlainWithNotice(context, ref, text);
+      await copyPrivateWithNotice(context, ref, text);
     }
   }
 

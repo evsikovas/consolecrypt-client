@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
-import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_selectable_text.dart';
 import 'package:consolecrypt/db/db_document_view.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
@@ -43,6 +43,13 @@ class _DbValueDialogState extends ConsumerState<DbValueDialog> {
   }
 
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(dbScopeProvider));
+
+  /// The value or a selection of it, always through the secret clipboard.
+  Future<void> _copy(String text) async {
+    if (!_current) return;
+    await copySecretWithNotice(context, ref, text, what: context.l10n.copyWhatValue, isCurrent: () => _current);
+  }
+
   String _display() {
     final cell = widget.cell;
     if (_hex && cell.kind == DbCellKind.binary) {
@@ -83,22 +90,20 @@ class _DbValueDialogState extends ConsumerState<DbValueDialog> {
               if (_decoded)
                 SizedBox(
                   height: MediaQuery.sizeOf(context).height * .5,
-                  child: DbDocumentView(document: _document, rawText: widget.cell.text),
+                  child: DbDocumentView(document: _document, rawText: widget.cell.text, onCopySecret: _copy),
                 )
               else
-                SelectableText(_display(), style: const TextStyle(fontFamily: 'monospace')),
+                SecretSelectableText(
+                  _display(),
+                  style: const TextStyle(fontFamily: 'monospace'),
+                  onCopy: _copy,
+                ),
             ],
           ),
         ),
       ),
       secondaryActions: [GlassButton(label: l.commonClose, onPressed: () => closeDialog<void>(context))],
-      primaryAction: GlassButton(
-        label: l.commonCopy,
-        onPressed: () async {
-          if (!_current) return;
-          await ref.read(secureClipboardProvider).copySecret(widget.cell.text, isCurrent: () => _current);
-        },
-      ),
+      primaryAction: GlassButton(label: l.commonCopy, onPressed: () => _copy(widget.cell.text)),
     );
   }
 }

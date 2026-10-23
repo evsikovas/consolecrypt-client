@@ -29,6 +29,8 @@ bool FlutterWindow::OnCreate() {
       flutter_controller_->engine()->messenger(), GetHandle());
   fonts_bridge_ =
       std::make_unique<FontsBridge>(flutter_controller_->engine()->messenger());
+  clipboard_bridge_ = std::make_unique<ClipboardBridge>(
+      flutter_controller_->engine()->messenger(), GetHandle());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -44,7 +46,12 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
-  // The bridge's channel handlers must go before the engine.
+  // A copied secret does not outlive the window (S9, ТР-8). The bridge's
+  // channel handlers must go before the engine.
+  if (clipboard_bridge_) {
+    clipboard_bridge_->ClearOnExit();
+    clipboard_bridge_ = nullptr;
+  }
   glass_bridge_ = nullptr;
   fonts_bridge_ = nullptr;
   if (flutter_controller_) {

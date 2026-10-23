@@ -14,6 +14,8 @@
         android:icon="@mipmap/ic_launcher">
         <service android:name=".KubeForwardService" android:exported="false"
             android:foregroundServiceType="dataSync" android:stopWithTask="true" />
+        <!-- Clears a copied secret at its deadline (S8); only our own alarm. -->
+        <receiver android:name=".ClipboardClearReceiver" android:exported="false" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.updates"

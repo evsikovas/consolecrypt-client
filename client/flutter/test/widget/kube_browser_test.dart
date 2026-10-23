@@ -44,6 +44,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../helpers/fake_native_clipboard.dart';
 import '../helpers/test_app.dart';
 
 final _scope = NotifierProvider<_Scope, KubeScope>(_Scope.new);
@@ -659,9 +660,20 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('kube-secret-reveal')));
     await settle(tester);
     expect(find.text('private-value'), findsOneWidget);
+    // Copy goes through the app clipboard (configured deadline, protected
+    // native copy); locking clears the value copied here.
+    final native = FakeNativeClipboard()..install();
+    await tester.tap(find.byKey(const ValueKey('kube-secret-copy-password')));
+    await settle(tester);
+    expect(native.calls, ['copySecret']);
+    expect(native.lastSecret!['clearAfterMilliseconds'], 30000);
+    expect(native.text, 'private-value');
     container.read(_scope.notifier).lock();
     await settle(tester);
     expect(find.text('private-value'), findsNothing);
+    expect(native.calls, ['copySecret', 'clearIfOwned']);
+    expect(native.text, isNull);
+    expect(native.dartReads, 0);
     expect(tester.takeException(), isNull);
   });
   testWidgets('create resource requires dry run and exact-name confirmation, then wipes manifest', (tester) async {

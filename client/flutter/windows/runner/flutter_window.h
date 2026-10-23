@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "clipboard_bridge.h"
 #include "fonts_bridge.h"
 #include "glass_window_bridge.h"
 #include "win32_window.h"
@@ -36,6 +37,9 @@ class FlutterWindow : public Win32Window {
 
   // Installed font families for the terminal font picker.
   std::unique_ptr<FontsBridge> fonts_bridge_;
+
+  // Protected clipboard for secrets (history/cloud exclusion, clear by token).
+  std::unique_ptr<ClipboardBridge> clipboard_bridge_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

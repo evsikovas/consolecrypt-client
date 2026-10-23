@@ -29,6 +29,20 @@ void selectTerminalBuffer(TerminalTab tab) {
   );
 }
 
+/// Copies a terminal selection (context menu and Ctrl+Shift+C / Cmd+C):
+/// kept out of clipboard history and other devices, not cleared — unless it
+/// looks like a secret (the log detector), then it is a secret copy that
+/// clears itself.
+Future<void> copyTerminalSelection(BuildContext context, WidgetRef ref, String text) async {
+  if (text.isEmpty) return;
+  final detector = ref.read(appServicesProvider).docker;
+  if (detector != null && detector.containsSecret(text)) {
+    await copySecretWithNotice(context, ref, text, what: context.l10n.copyWhatText);
+  } else {
+    await copyPrivateWithNotice(context, ref, text, notify: false);
+  }
+}
+
 Future<void> pasteIntoTerminal(BuildContext context, WidgetRef ref, TerminalTab tab) async {
   if (_pastePending[tab] ?? false) return;
   _pastePending[tab] = true;
@@ -148,7 +162,7 @@ Future<void> showTerminalContextMenu(BuildContext context, WidgetRef ref, Termin
     if (action == null || !context.mounted || !_validOrigin(ref, tab, profile)) return;
     switch (action) {
       case _TerminalAction.copy:
-        if (selection != null) await Clipboard.setData(ClipboardData(text: selection));
+        if (selection != null && context.mounted) await copyTerminalSelection(context, ref, selection);
       case _TerminalAction.paste:
         await pasteIntoTerminal(context, ref, tab);
       case _TerminalAction.selectAll:

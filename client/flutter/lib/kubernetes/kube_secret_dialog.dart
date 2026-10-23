@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
+import 'package:consolecrypt/core/widgets/secret_selectable_text.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
@@ -26,12 +27,10 @@ class KubeSecretDialog extends ConsumerStatefulWidget {
 class _KubeSecretDialogState extends ConsumerState<KubeSecretDialog> with WidgetsBindingObserver {
   late final KubeScope _scope = ref.read(kubeScopeProvider);
   final _values = <String, SecretText>{}, _binary = <String>{};
-  // The configured auto-clear; closing the dialog or locking clears sooner.
-  late final _clipboard = SecureClipboard(
-    clearAfter: Duration(
-      seconds: clipboardClearSeconds(ref.read(localSettingsProvider).value?.clipboardClearSeconds ?? 30),
-    ),
-  );
+  // The app clipboard with the configured auto-clear; closing the dialog,
+  // locking or leaving the app clears a value copied here sooner.
+  late final SecureClipboard _clipboard;
+  bool _copied = false;
   Timer? _timer;
   bool _busy = false, _failed = false, _expired = false;
   int _generation = 0;
@@ -39,6 +38,7 @@ class _KubeSecretDialogState extends ConsumerState<KubeSecretDialog> with Widget
   @override
   void initState() {
     super.initState();
+    _clipboard = ref.read(secureClipboardProvider);
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -53,11 +53,17 @@ class _KubeSecretDialogState extends ConsumerState<KubeSecretDialog> with Widget
     _binary.clear();
   }
 
+  void _clearCopied() {
+    if (!_copied) return;
+    _copied = false;
+    unawaited(_clipboard.clearNow());
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _wipe();
-    _clipboard.dispose();
+    _clearCopied();
     super.dispose();
   }
 
@@ -65,7 +71,7 @@ class _KubeSecretDialogState extends ConsumerState<KubeSecretDialog> with Widget
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden || state == AppLifecycleState.detached) {
       _wipe();
-      _clipboard.dispose();
+      _clearCopied();
       if (mounted) closeDialog<void>(context);
     }
   }
@@ -119,12 +125,15 @@ class _KubeSecretDialogState extends ConsumerState<KubeSecretDialog> with Widget
   Future<void> _copy(String key) async {
     final value = _values[key];
     if (!_current || value == null || value.isWiped) return;
+    await _copyText(value.expose(), key);
+  }
+
+  /// The whole value (copy button) or a selection of it (its Copy menu).
+  Future<void> _copyText(String text, String key) async {
+    if (!_current) return;
     final generation = _generation;
-    try {
-      await _clipboard.copySecret(value.expose(), isCurrent: () => _current && generation == _generation);
-    } catch (_) {
-      if (_current) setState(() => _failed = true);
-    }
+    _copied = true;
+    await copySecretWithNotice(context, ref, text, what: key, isCurrent: () => _current && generation == _generation);
   }
 
   @override
@@ -132,7 +141,7 @@ class _KubeSecretDialogState extends ConsumerState<KubeSecretDialog> with Widget
     ref.listen(kubeScopeProvider, (_, next) {
       if (identical(_scope, next)) return;
       _wipe();
-      _clipboard.dispose();
+      _clearCopied();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final route = ModalRoute.of(context);
@@ -202,7 +211,10 @@ class _KubeSecretDialogState extends ConsumerState<KubeSecretDialog> with Widget
                                     ),
                                   ],
                                 ),
-                                SelectableText(_values[key]!.expose()),
+                                SecretSelectableText(
+                                  _values[key]!.expose(),
+                                  onCopy: (selected) => _copyText(selected, key),
+                                ),
                               ],
                             ),
                           );

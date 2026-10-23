@@ -62,8 +62,7 @@ import 'app_localizations_ru.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -71,8 +70,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -84,19 +82,15 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[
-    Locale('en'),
-    Locale('ru'),
-  ];
+  static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru')];
 
   /// Button: dismiss a dialog without changes.
   ///
@@ -2130,19 +2124,13 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · registration open'**
-  String loginServerInfoRegistrationOpen(
-    String serverVersion,
-    String protocolVersion,
-  );
+  String loginServerInfoRegistrationOpen(String serverVersion, String protocolVersion);
 
   /// Login screen: result of a successful server check when registration is invite-only.
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · invite only'**
-  String loginServerInfoInviteOnly(
-    String serverVersion,
-    String protocolVersion,
-  );
+  String loginServerInfoInviteOnly(String serverVersion, String protocolVersion);
 
   /// Login screen: segmented button option to sign in to an existing account.
   ///
@@ -3438,10 +3426,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion}'**
-  String enableSyncDialogServerInfo(
-    String serverVersion,
-    String protocolVersion,
-  );
+  String enableSyncDialogServerInfo(String serverVersion, String protocolVersion);
 
   /// Enable-sync wizard segment: register a new account.
   ///
@@ -19071,11 +19056,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{note} Runs in {client} in a terminal; the Databases workspace does not allow it. From the {package} starter package.'**
-  String snippetStarterDbTerminalOrigin(
-    String note,
-    String client,
-    String package,
-  );
+  String snippetStarterDbTerminalOrigin(String note, String client, String package);
 
   /// Snippet run flow: a SQL/redis-cli/mongosh snippet needs an open terminal session running the database client
   ///
@@ -20372,10 +20353,39 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Running commands in this production Kubernetes context is turned off in its settings.'**
   String get dbErrorKubeExecBlocked;
+
+  /// Error toast when the protected native clipboard is unavailable; the app never falls back to an ordinary copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t copy securely. Nothing was placed on the clipboard.'**
+  String get clipboardSecureCopyFailed;
+
+  /// Desktop only: second sentence of the toast after copying a secret (macOS, Windows, Linux).
+  ///
+  /// In en, this message translates to:
+  /// **'It won\'t appear in clipboard history or on other devices.'**
+  String get copiedSecretPrivateNote;
+
+  /// Settings > Security, Android only: switch title for clearing the clipboard without an ownership check.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the clipboard in the background even if the secret can\'t be verified'**
+  String get settingsClipboardBackgroundClear;
+
+  /// Settings > Security, Android only: help under the background clipboard clearing switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Android doesn\'t let an app in the background read the clipboard. When this is on, the clipboard is emptied at the deadline without a check, so text you copied in another app during that time may be erased too. When it\'s off, the secret stays on the clipboard until you return to ConsoleCrypt.'**
+  String get settingsClipboardBackgroundClearHelp;
+
+  /// Settings > Security, Android only: error under the background clipboard clearing switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read or save this setting.'**
+  String get settingsClipboardBackgroundClearError;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -20384,8 +20394,7 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'ru'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'ru'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

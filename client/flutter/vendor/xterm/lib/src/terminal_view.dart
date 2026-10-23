@@ -49,10 +49,16 @@ class TerminalView extends StatefulWidget {
     this.readOnly = false,
     this.hardwareKeyboardOnly = false,
     this.simulateScroll = true,
+    this.onCopy,
   });
 
   /// The underlying terminal that this widget renders.
   final Terminal terminal;
+
+  /// Receives the selected text for the copy shortcut (Ctrl+Shift+C / Cmd+C).
+  /// ConsoleCrypt: the app owns the clipboard write (protected clipboard,
+  /// secret detection); without this callback the shortcut copies nothing.
+  final Future<void> Function(String text)? onCopy;
 
   final TerminalController? controller;
 
@@ -288,6 +294,7 @@ class TerminalViewState extends State<TerminalView> {
     child = TerminalActions(
       terminal: widget.terminal,
       controller: _controller,
+      onCopy: widget.onCopy,
       child: child,
     );
 
