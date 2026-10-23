@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:consolecrypt/core/glass/glass.dart';
+import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -55,7 +56,9 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
   String _lastInput = '';
   EnrollmentPairing? _preview;
   SharingRole _role = SharingRole.reader;
-  bool _confirmed = false, _busy = false, _working = false, _failed = false;
+  bool _confirmed = false, _busy = false, _working = false;
+  Object? _failure;
+  bool get _failed => _failure != null;
   int _generation = 0;
 
   @override
@@ -76,7 +79,7 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
     setState(() {
       _preview = null;
       _confirmed = false;
-      _failed = false;
+      _failure = null;
       if (!_working) _busy = false;
     });
   }
@@ -109,9 +112,9 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
       if (!mounted || !sharingSessionCurrent(ref, _scope) || generation != _generation) return;
       if (!_boundedPublicJson(contents)) throw const FormatException('Invalid public packet');
       _input.text = contents;
-    } catch (_) {
+    } catch (e) {
       if (mounted && sharingSessionCurrent(ref, _scope) && generation == _generation) {
-        setState(() => _failed = true);
+        setState(() => _failure = e);
       }
     } finally {
       if (mounted && sharingSessionCurrent(ref, _scope) && generation == _generation) {
@@ -128,7 +131,7 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
       _busy = true;
       _preview = null;
       _confirmed = false;
-      _failed = false;
+      _failure = null;
     });
     try {
       if (!_boundedPublicJson(input)) throw const FormatException('Invalid public packet');
@@ -147,9 +150,9 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
         throw const FormatException('Expected a source grant');
       }
       setState(() => _preview = preview);
-    } catch (_) {
+    } catch (e) {
       if (mounted && sharingSessionCurrent(ref, _scope) && generation == _generation) {
-        setState(() => _failed = true);
+        setState(() => _failure = e);
       }
     } finally {
       if (mounted && sharingSessionCurrent(ref, _scope) && generation == _generation) {
@@ -170,7 +173,7 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
     setState(() {
       _working = true;
       _busy = true;
-      _failed = false;
+      _failure = null;
     });
     try {
       final service = ref.read(enrollmentServiceProvider);
@@ -204,8 +207,8 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
         await showEnrollmentPackage(context, result);
         if (mounted && sharingSessionCurrent(ref, _scope)) closeDialog<void>(context);
       }
-    } catch (_) {
-      if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _failed = true);
+    } catch (e) {
+      if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _failure = e);
     } finally {
       if (mounted && sharingSessionCurrent(ref, _scope)) {
         setState(() {
@@ -276,7 +279,7 @@ class _EnrollmentPairingDialogState extends ConsumerState<EnrollmentPairingDialo
                 onPressed: _busy || _input.text.trim().isEmpty ? null : _review,
               ),
               if (_busy) const LinearProgressIndicator(),
-              if (_failed) Text(l.enrollmentBlocked),
+              if (_failed) Text(rateLimitedMessage(l, _failure) ?? l.enrollmentBlocked),
               if (_preview case final preview?) ...[
                 const SizedBox(height: 12),
                 _EnrollmentPreview(preview),
@@ -317,7 +320,9 @@ class EnrollmentPackageDialog extends ConsumerStatefulWidget {
 class _EnrollmentPackageDialogState extends ConsumerState<EnrollmentPackageDialog> {
   late final Object? _scope;
   EnrollmentPairing? _verified;
-  bool _busy = true, _failed = false;
+  bool _busy = true;
+  Object? _failure;
+  bool get _failed => _failure != null;
   @override
   void initState() {
     super.initState();
@@ -334,8 +339,8 @@ class _EnrollmentPackageDialogState extends ConsumerState<EnrollmentPackageDialo
         throw const FormatException('Expired public packet');
       }
       setState(() => _verified = result);
-    } catch (_) {
-      if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _failed = true);
+    } catch (e) {
+      if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _failure = e);
     } finally {
       if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _busy = false);
     }
@@ -361,8 +366,8 @@ class _EnrollmentPackageDialogState extends ConsumerState<EnrollmentPackageDialo
       await File(path).writeAsString(verified.bundle, flush: true);
       if (!mounted || !sharingSessionCurrent(ref, _scope)) return;
       await files.finishSaveFile(path);
-    } catch (_) {
-      if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _failed = true);
+    } catch (e) {
+      if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _failure = e);
     } finally {
       if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _busy = false);
     }
@@ -383,7 +388,7 @@ class _EnrollmentPackageDialogState extends ConsumerState<EnrollmentPackageDialo
             children: [
               Text(l.enrollmentPackageHelp),
               if (_busy) const LinearProgressIndicator(),
-              if (_failed) Text(l.enrollmentBlocked),
+              if (_failed) Text(rateLimitedMessage(l, _failure) ?? l.enrollmentBlocked),
               if (_verified case final verified?) ...[const SizedBox(height: 12), _EnrollmentPreview(verified)],
             ],
           ),
@@ -415,7 +420,9 @@ class EnrollmentPendingDialog extends ConsumerStatefulWidget {
 class _EnrollmentPendingDialogState extends ConsumerState<EnrollmentPendingDialog> {
   late final Object? _scope;
   List<EnrollmentRequest> _requests = [];
-  bool _busy = false, _failed = false;
+  bool _busy = false;
+  Object? _failure;
+  bool get _failed => _failure != null;
   @override
   void initState() {
     super.initState();
@@ -427,13 +434,13 @@ class _EnrollmentPendingDialogState extends ConsumerState<EnrollmentPendingDialo
     if (!sharingSessionCurrent(ref, _scope)) return;
     setState(() {
       _busy = true;
-      _failed = false;
+      _failure = null;
     });
     try {
       final requests = await ref.read(enrollmentServiceProvider).pendingRequests();
       if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _requests = requests);
-    } catch (_) {
-      if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _failed = true);
+    } catch (e) {
+      if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _failure = e);
     } finally {
       if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _busy = false);
     }
@@ -448,8 +455,8 @@ class _EnrollmentPendingDialogState extends ConsumerState<EnrollmentPendingDialo
         refreshSharing(ref);
         await _load();
       }
-    } catch (_) {
-      if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _failed = true);
+    } catch (e) {
+      if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _failure = e);
     } finally {
       if (mounted && sharingSessionCurrent(ref, _scope)) setState(() => _busy = false);
     }
@@ -470,7 +477,7 @@ class _EnrollmentPendingDialogState extends ConsumerState<EnrollmentPendingDialo
             children: [
               Text(l.enrollmentWait),
               if (_busy) const LinearProgressIndicator(),
-              if (_failed) Text(l.enrollmentBlocked),
+              if (_failed) Text(rateLimitedMessage(l, _failure) ?? l.enrollmentBlocked),
               for (final request in _requests)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),

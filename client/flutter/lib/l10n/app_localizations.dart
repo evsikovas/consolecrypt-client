@@ -20095,6 +20095,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I checked this command for {host} (team policy)'**
   String teamsPolicyAck(String host);
+
+  /// Sync indicator and status when the server rate-limited this account for more than a minute; {time} is when sync resumes (HH:MM, with the date if not today).
+  ///
+  /// In en, this message translates to:
+  /// **'The server temporarily limited sync; resuming at {time}'**
+  String syncStateThrottled(String time);
+
+  /// Sync page, value of the State field: the server temporarily limited requests (lower-case).
+  ///
+  /// In en, this message translates to:
+  /// **'paused by the server'**
+  String get syncScreenStateThrottled;
+
+  /// Sync page banner body under the 'resuming at' title when the server rate-limited sync.
+  ///
+  /// In en, this message translates to:
+  /// **'The server received too many requests from this account. Changes stay on this device and are sent automatically — nothing is lost.'**
+  String get syncScreenThrottledBody;
+
+  /// Sync page section title for changes the server rejected for good (they stay on this device).
+  ///
+  /// In en, this message translates to:
+  /// **'Changes not accepted by the server'**
+  String get syncScreenRejectedTitle;
+
+  /// Sync page: number of changes the server rejected for a reason other than a vault quota.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change was not accepted by the server. It is kept on this device; choose Retry once the problem is fixed.} other{{count} changes were not accepted by the server. They are kept on this device; choose Retry once the problem is fixed.}}'**
+  String syncScreenRejectedBody(int count);
+
+  /// Error/sync page: the server's per-vault object limit was reached; {limit} is the formatted number of objects.
+  ///
+  /// In en, this message translates to:
+  /// **'The vault has too many objects (limit {limit}). Delete items you no longer need, then choose Retry.'**
+  String errorObjectLimit(String limit);
+
+  /// Error/sync page: the server's per-vault storage quota was reached; {size} is a formatted size such as 100 MiB.
+  ///
+  /// In en, this message translates to:
+  /// **'The vault has used up its server storage (limit {size}). Delete items you no longer need, then choose Retry.'**
+  String errorVaultQuota(String size);
+
+  /// Sign-in error: the account already has the maximum number of active devices; {limit} is that number.
+  ///
+  /// In en, this message translates to:
+  /// **'Device limit ({limit}) reached — revoke devices you no longer use, then sign in again.'**
+  String errorDeviceLimit(String limit);
+
+  /// Sign-in error: too many new devices were added to the account in 24 hours; {time} is a formatted date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many new devices today. Try again after {time}.'**
+  String errorDeviceDailyLimit(String time);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

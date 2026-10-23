@@ -109,6 +109,33 @@ void main() {
       final limited = mapBridgeError(_e('rate_limited', {'retry_after_seconds': '30'}));
       expect(limited.code, AppErrorCode.rateLimited);
       expect(limited.args['retry_after_seconds'], '30');
+      // Protocol 1.11: the limit name travels with the code.
+      final named = mapBridgeError(_e('rate_limited', {'retry_after_seconds': '90', 'limit': 'push_device'}));
+      expect(named.args, {'retry_after_seconds': '90', 'limit': 'push_device'});
+      expect(mapBridgeError(_e('rate_limited')).args, isEmpty);
+
+      // Quotas: code from the protocol code, reason + limits from the core.
+      final objects = mapBridgeError(
+        _e('server', {'status': '413', 'protocol_code': 'payload_too_large', 'limit': '5000'}, 'object_limit'),
+      );
+      expect(objects.code, AppErrorCode.payloadTooLarge);
+      expect(objects.reason, AppErrorReason.objectLimit);
+      expect(objects.args['limit'], '5000');
+      final devices = mapBridgeError(
+        _e('server', {
+          'status': '403',
+          'protocol_code': 'forbidden',
+          'limit': '3',
+          'until_ms': '1792830600000',
+        }, 'device_daily_limit'),
+      );
+      expect(devices.code, AppErrorCode.forbidden);
+      expect(devices.reason, AppErrorReason.deviceDailyLimit);
+      expect(devices.args['until_ms'], '1792830600000');
+      expect(
+        mapBridgeError(_e('server', {'protocol_code': 'forbidden', 'limit': '10'}, 'device_limit')).reason,
+        AppErrorReason.deviceLimit,
+      );
 
       expect(mapBridgeError(_e('vault_locked')).reason, AppErrorReason.vaultLocked);
       expect(mapBridgeError(_e('no_active_profile')).reason, AppErrorReason.noActiveProfile);
@@ -332,6 +359,43 @@ void main() {
       expect(status.pendingChanges, 4);
       expect(status.nextRetryAt, now.add(const Duration(seconds: 5)));
       expect(status.issues.single.message, 'dns');
+      expect(status.failedChanges, 0);
+      expect(status.pushQuota, isNull);
+
+      // Protocol 1.11: a long Retry-After is a pause, not an error.
+      final throttled = syncStatusFromJson({
+        'phase': 'error',
+        'pending': 1,
+        'last_error': 'rate limited',
+        'rate_limited': true,
+        'next_retry_in_ms': 600000,
+        'next_retry_at_ms': now.add(const Duration(minutes: 9)).millisecondsSinceEpoch,
+      }, now: now);
+      expect(throttled.state, SyncState.throttled);
+      expect(throttled.nextRetryAt, now.add(const Duration(minutes: 9)), reason: 'absolute time wins');
+      expect(throttled.issues, isEmpty);
+      // A short one stays a retrying error.
+      final brief = syncStatusFromJson({
+        'phase': 'error',
+        'last_error': 'rate limited',
+        'rate_limited': true,
+        'next_retry_in_ms': 20000,
+      }, now: now);
+      expect(brief.state, SyncState.error);
+      expect(brief.issues.single.message, 'rate limited');
+      // Not rate limited: a long backoff is still an error.
+      expect(
+        syncStatusFromJson({'phase': 'error', 'last_error': 'boom', 'next_retry_in_ms': 600000}, now: now).state,
+        SyncState.error,
+      );
+
+      final rejected = syncStatusFromJson({
+        'phase': 'idle',
+        'failed': 3,
+        'push_quota': {'reason': 'object_limit', 'limit': 5000},
+      }, now: now);
+      expect(rejected.failedChanges, 3);
+      expect(rejected.pushQuota, const SyncQuota(reason: 'object_limit', limit: 5000));
       expect(syncStatusFromJson({'phase': 'local_only'}).state, SyncState.localOnly);
       expect(syncStatusFromJson({'phase': 'not_running'}).state, SyncState.paused);
 

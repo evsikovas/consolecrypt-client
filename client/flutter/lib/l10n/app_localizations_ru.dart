@@ -11655,4 +11655,56 @@ class AppLocalizationsRu extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'Я проверил(а) эту команду для $host (политика команды)';
   }
+
+  @override
+  String syncStateThrottled(String time) {
+    return 'Сервер временно ограничил синхронизацию, продолжим в $time';
+  }
+
+  @override
+  String get syncScreenStateThrottled => 'приостановлена сервером';
+
+  @override
+  String get syncScreenThrottledBody =>
+      'Сервер получил слишком много запросов от этой учётной записи. Изменения сохранены на этом устройстве и будут отправлены автоматически — ничего не потеряется.';
+
+  @override
+  String get syncScreenRejectedTitle => 'Сервер не принял изменения';
+
+  @override
+  String syncScreenRejectedBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Сервер не принял $count изменения. Они сохранены на этом устройстве — нажмите «Повторить», когда проблема будет устранена.',
+      many:
+          'Сервер не принял $count изменений. Они сохранены на этом устройстве — нажмите «Повторить», когда проблема будет устранена.',
+      few:
+          'Сервер не принял $count изменения. Они сохранены на этом устройстве — нажмите «Повторить», когда проблема будет устранена.',
+      one:
+          'Сервер не принял $count изменение. Оно сохранено на этом устройстве — нажмите «Повторить», когда проблема будет устранена.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String errorObjectLimit(String limit) {
+    return 'В хранилище слишком много объектов (предел $limit). Удалите ненужные записи и нажмите «Повторить».';
+  }
+
+  @override
+  String errorVaultQuota(String size) {
+    return 'Хранилище исчерпало место на сервере (предел $size). Удалите ненужные записи и нажмите «Повторить».';
+  }
+
+  @override
+  String errorDeviceLimit(String limit) {
+    return 'Достигнут предел устройств ($limit) — отзовите неиспользуемые устройства и войдите снова.';
+  }
+
+  @override
+  String errorDeviceDailyLimit(String time) {
+    return 'Сегодня подключено слишком много новых устройств. Повторите после $time.';
+  }
 }

@@ -36,6 +36,16 @@ String formatDate(AppLocalizations l10n, DateTime time) => DateFormat.yMMMd(l10n
 String formatDateTime(AppLocalizations l10n, DateTime time) =>
     DateFormat.yMMMd(l10n.localeName).add_Hm().format(time.toLocal());
 
+/// Time of day "14:05" for a moment today, otherwise date + time.
+String formatClock(AppLocalizations l10n, DateTime time, {DateTime? now}) {
+  final t = time.toLocal();
+  final n = (now ?? DateTime.now()).toLocal();
+  if (t.year == n.year && t.month == n.month && t.day == n.day) {
+    return DateFormat.Hm(l10n.localeName).format(t);
+  }
+  return formatDateTime(l10n, time);
+}
+
 /// Human-readable byte size: `512 B`, `1.4 KiB`, `3,2 МиБ`.
 String formatBytes(AppLocalizations l10n, int bytes) {
   final units = [l10n.unitBytes, l10n.unitKibibytes, l10n.unitMebibytes, l10n.unitGibibytes, l10n.unitTebibytes];

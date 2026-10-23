@@ -11372,4 +11372,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'I checked this command for $host (team policy)';
   }
+
+  @override
+  String syncStateThrottled(String time) {
+    return 'The server temporarily limited sync; resuming at $time';
+  }
+
+  @override
+  String get syncScreenStateThrottled => 'paused by the server';
+
+  @override
+  String get syncScreenThrottledBody =>
+      'The server received too many requests from this account. Changes stay on this device and are sent automatically — nothing is lost.';
+
+  @override
+  String get syncScreenRejectedTitle => 'Changes not accepted by the server';
+
+  @override
+  String syncScreenRejectedBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count changes were not accepted by the server. They are kept on this device; choose Retry once the problem is fixed.',
+      one:
+          '1 change was not accepted by the server. It is kept on this device; choose Retry once the problem is fixed.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String errorObjectLimit(String limit) {
+    return 'The vault has too many objects (limit $limit). Delete items you no longer need, then choose Retry.';
+  }
+
+  @override
+  String errorVaultQuota(String size) {
+    return 'The vault has used up its server storage (limit $size). Delete items you no longer need, then choose Retry.';
+  }
+
+  @override
+  String errorDeviceLimit(String limit) {
+    return 'Device limit ($limit) reached — revoke devices you no longer use, then sign in again.';
+  }
+
+  @override
+  String errorDeviceDailyLimit(String time) {
+    return 'Too many new devices today. Try again after $time.';
+  }
 }

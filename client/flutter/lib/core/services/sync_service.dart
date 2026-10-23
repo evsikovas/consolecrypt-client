@@ -11,6 +11,11 @@ abstract interface class SyncService {
   /// Push the outbox and pull changes now (otherwise automatic).
   Future<void> syncNow();
 
+  /// Put changes the server rejected for good (e.g. a vault object limit,
+  /// after the user cleaned up) back into the queue and sync. Returns how
+  /// many were re-queued.
+  Future<int> retryFailed();
+
   /// Local → Synced (ADR-0106): sign in / register, `POST /v1/vaults` with
   /// the existing vault id + envelopes, upload every object as a create.
   /// Falls back to the reconnect/merge path if the vault already exists.

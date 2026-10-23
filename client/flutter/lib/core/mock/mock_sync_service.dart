@@ -131,6 +131,12 @@ final class MockSyncService implements SyncService {
   Future<void> syncNow() => _sync();
 
   @override
+  Future<int> retryFailed() async {
+    await _sync();
+    return 0;
+  }
+
+  @override
   Stream<EnableSyncProgress> enableSync({
     required Uri serverUrl,
     required String email,

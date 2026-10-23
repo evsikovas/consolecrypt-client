@@ -197,8 +197,11 @@ AppException mapBridgeError(BridgeError e) {
       code = AppErrorCode.incompatibleServer;
     case 'rate_limited':
       code = AppErrorCode.rateLimited;
-      final retry = d['retry_after_seconds'];
-      if (retry != null) args = {'retry_after_seconds': retry};
+      args = {
+        'retry_after_seconds': ?d['retry_after_seconds'],
+        // Protocol 1.11: which server limit was hit (unknown names pass).
+        'limit': ?d['limit'],
+      };
     case 'envelope_rate_limited':
       code = AppErrorCode.envelopeRateLimited;
       final retry = d['retry_after_seconds'];
@@ -663,16 +666,33 @@ SyncStatus syncStatusFromJson(Json j, {DateTime? now}) {
   };
   final at = now ?? DateTime.now().toUtc();
   final retryMs = _int(j['next_retry_in_ms']);
+  final retryAtMs = _int(j['next_retry_at_ms']);
+  final nextRetryAt = retryAtMs != null
+      ? fromMs(retryAtMs)
+      : (retryMs == null ? null : at.add(Duration(milliseconds: retryMs)));
+  // Protocol 1.11: a `429` with a long Retry-After is a pause the server
+  // asked for, not an error ("resuming at HH:MM").
+  final throttled =
+      state == SyncState.error &&
+      j['rate_limited'] == true &&
+      nextRetryAt != null &&
+      (retryMs ?? 0) > syncThrottleNoticeAfter.inMilliseconds;
+  final quota = j['push_quota'];
   final issues = <SyncIssue>[
-    if (_str(j['last_error']) case final message?) SyncIssue(at: at, message: message),
+    if (!throttled)
+      if (_str(j['last_error']) case final message?) SyncIssue(at: at, message: message),
     if (_str(j['stop_reason']) case final reason?) SyncIssue(at: at, message: reason, retryable: false),
   ];
   return SyncStatus(
-    state: state,
+    state: throttled ? SyncState.throttled : state,
     pendingChanges: _int(j['pending']) ?? 0,
+    failedChanges: _int(j['failed']) ?? 0,
+    pushQuota: quota is Map && quota['reason'] is String
+        ? SyncQuota(reason: quota['reason']! as String, limit: _int(quota['limit']))
+        : null,
     lastSyncAt: fromMsOrNull(j['last_sync_at_ms']),
     lastServerSequence: _int(j['last_sequence']),
-    nextRetryAt: retryMs == null ? null : at.add(Duration(milliseconds: retryMs)),
+    nextRetryAt: nextRetryAt,
     issues: issues,
   );
 }

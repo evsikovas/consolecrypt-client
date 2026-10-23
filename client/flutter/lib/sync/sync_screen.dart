@@ -106,6 +106,7 @@ class SyncScreen extends ConsumerWidget {
                         SyncState.syncing => l10n.syncScreenStateSyncing,
                         SyncState.offline => l10n.syncScreenStateOffline,
                         SyncState.error => l10n.syncScreenStateError,
+                        SyncState.throttled => l10n.syncScreenStateThrottled,
                         SyncState.paused => l10n.syncScreenStatePaused,
                         SyncState.localOnly => l10n.syncStateLocalOnly,
                       }),
@@ -143,6 +144,19 @@ class SyncScreen extends ConsumerWidget {
           if (status.isOffline) ...[
             const SizedBox(height: GlassSpacing.s16),
             InfoBanner(tone: BannerTone.warning, title: l10n.syncStateOffline, message: l10n.syncScreenOfflineMessage),
+          ],
+          if (status.state == SyncState.throttled) ...[
+            const SizedBox(height: GlassSpacing.s16),
+            InfoBanner(
+              key: const ValueKey('sync-throttled'),
+              tone: BannerTone.info,
+              title: label,
+              message: l10n.syncScreenThrottledBody,
+            ),
+          ],
+          if (status.failedChanges > 0) ...[
+            const SizedBox(height: GlassSpacing.s16),
+            _RejectedChangesCard(status: status),
           ],
           if (status.issues.isNotEmpty) ...[
             const SizedBox(height: GlassSpacing.s16),
@@ -194,6 +208,44 @@ class SyncScreen extends ConsumerWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Changes the server rejected for good (outbox `failed`), e.g. over the
+/// vault object limit (protocol 1.11): what happened, and «Retry» after the
+/// user cleaned up.
+class _RejectedChangesCard extends ConsumerWidget {
+  const _RejectedChangesCard({required this.status});
+
+  final SyncStatus status;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final quota = status.pushQuota;
+    final limit = quota?.limit;
+    final message = switch (quota?.reason) {
+      SyncQuota.objectLimitReason when limit != null => l10n.errorObjectLimit(formatCount(l10n, limit)),
+      SyncQuota.vaultQuotaReason when limit != null => l10n.errorVaultQuota(formatBytes(l10n, limit)),
+      _ => l10n.syncScreenRejectedBody(status.failedChanges),
+    };
+    return SectionCard(
+      key: const ValueKey('sync-rejected'),
+      title: l10n.syncScreenRejectedTitle,
+      icon: Icons.cloud_off_rounded,
+      child: Row(
+        children: [
+          Expanded(child: Text(message, key: const ValueKey('sync-rejected-message'))),
+          const SizedBox(width: GlassSpacing.s12),
+          GlassButton(
+            key: const ValueKey('sync-retry-failed'),
+            icon: Icons.refresh_rounded,
+            label: l10n.commonRetry,
+            onPressed: () => runWithFeedback(context, () => ref.read(syncServiceProvider).retryFailed()),
+          ),
         ],
       ),
     );
