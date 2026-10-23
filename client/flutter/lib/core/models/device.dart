@@ -90,7 +90,13 @@ final class DeviceTrustRequest {
 
 /// `GET /v1/devices` snapshot.
 final class DevicesSnapshot {
-  const DevicesSnapshot({required this.devices, required this.pendingRequests, this.deviceProtection = false});
+  const DevicesSnapshot({
+    required this.devices,
+    required this.pendingRequests,
+    this.deviceProtection = false,
+    this.vaultKeyUnconfirmed = false,
+    this.vaultKeyConflicts = const [],
+  });
 
   static const empty = DevicesSnapshot(devices: [], pendingRequests: []);
 
@@ -101,18 +107,48 @@ final class DevicesSnapshot {
   /// the UI behaves as before: no "unconfirmed"/quarantine marks.
   final bool deviceProtection;
 
+  /// This device pinned the vault key without an independent check
+  /// (audit H2): confirm it with the vault passphrase.
+  final bool vaultKeyUnconfirmed;
+
+  /// Devices that reported a different vault key (signed records).
+  final List<DeviceId> vaultKeyConflicts;
+
   DeviceInfo? get current => devices.where((d) => d.isCurrent).firstOrNull;
+}
+
+/// The new device's view of its approval (protocol 1.11): once a trusted
+/// device announced itself, the pairing code over both devices' keys.
+final class ApprovalProgress {
+  const ApprovalProgress({
+    required this.requestId,
+    required this.ownCode,
+    this.vrkCommitment = false,
+    this.approverDeviceId,
+    this.approverName,
+    this.pairingCode,
+    this.approverConfirmed = false,
+  });
+  final DeviceRequestId requestId;
+  final VerificationCode ownCode;
+  final bool vrkCommitment;
+  final DeviceId? approverDeviceId;
+  final String? approverName;
+  final VerificationCode? pairingCode;
+  final bool approverConfirmed;
+}
+
+/// Vault key trust of the open profile (audit H2).
+final class VaultKeyStatus {
+  const VaultKeyStatus({this.pinned = false, this.unconfirmed = false, this.fingerprint});
+  final bool pinned, unconfirmed;
+  final String? fingerprint;
 }
 
 /// "A new device signed in to the account" (protocol 1.7 `device_registered`),
 /// shown on trusted devices until answered with "Revoke" or "It's me".
 final class NewDeviceNotice {
-  const NewDeviceNotice({
-    required this.deviceId,
-    required this.name,
-    required this.platform,
-    required this.createdAt,
-  });
+  const NewDeviceNotice({required this.deviceId, required this.name, required this.platform, required this.createdAt});
 
   final DeviceId deviceId;
   final String name;

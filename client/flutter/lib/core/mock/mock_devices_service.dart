@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/mock/mock_config.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 
@@ -325,6 +326,24 @@ final class MockDevicesService implements DevicesService {
     _newDevices.value = [..._newDevices.value, notice];
     _changed();
     return notice;
+  }
+
+  /// Mock: the demo cloud has no approver announcements (protocol 1.11);
+  /// approvals use the device's own code.
+  @override
+  Future<ApprovalProgress?> approvalProgress() async => null;
+
+  @override
+  Future<void> confirmApprover(ApprovalProgress progress, VerificationCode shown) async {}
+
+  /// Mock: the vault key is pinned and confirmed.
+  @override
+  Future<VaultKeyStatus> vaultKeyStatus() async => const VaultKeyStatus(pinned: true);
+
+  @override
+  Future<bool> confirmVaultKey(SecretText passphrase) async {
+    passphrase.wipe();
+    return true;
   }
 
   Future<void> dispose() async {

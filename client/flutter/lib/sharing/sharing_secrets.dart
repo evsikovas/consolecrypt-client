@@ -148,7 +148,7 @@ class _SharingSecretPublishDialogState extends ConsumerState<SharingSecretPublis
                     onChanged: _busy ? null : (value) => setState(() => _confirmed = value == true),
                   ),
                   const SizedBox(height: 16),
-                  SharingRecipients(onChanged: (grants) => setState(() => _grants = grants)),
+                  SharingRecipients(sensitive: true, onChanged: (grants) => setState(() => _grants = grants)),
                 ],
               ],
             ),

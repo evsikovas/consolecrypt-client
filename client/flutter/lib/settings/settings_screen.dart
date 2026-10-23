@@ -24,11 +24,13 @@ import 'package:consolecrypt/settings/rdp_mobile_settings.dart';
 import 'package:consolecrypt/settings/screen_capture_settings.dart';
 import 'package:consolecrypt/settings/settings_dialogs.dart';
 import 'package:consolecrypt/settings/sftp_settings.dart';
+import 'package:consolecrypt/settings/sharing_policy_settings.dart';
 import 'package:consolecrypt/settings/shortcut_settings.dart';
 import 'package:consolecrypt/sync/enable_sync_dialog.dart';
 import 'package:consolecrypt/teams/teams_settings.dart';
 import 'package:consolecrypt/terminal/terminal_fonts.dart';
 import 'package:consolecrypt/updates/update_settings.dart';
+import 'package:consolecrypt/vault/vault_key_trust.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -287,7 +289,9 @@ class _VaultSection extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: GlassSpacing.s8),
+          const VaultKeyUnconfirmedBanner(),
           const DeviceUnlockSettings(),
+          const SharingPolicySettings(),
           const SizedBox(height: GlassSpacing.s12),
           Wrap(
             spacing: GlassSpacing.s8,

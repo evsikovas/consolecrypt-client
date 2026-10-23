@@ -58,6 +58,32 @@ impl DeviceIdentity {
         self.keys.sign_device_approval(approval)
     }
 
+    pub(crate) fn sign_approval_v2(
+        &self,
+        approval: &cc_crypto_core::DeviceApprovalV2<'_>,
+    ) -> [u8; ED25519_SIGNATURE_LEN] {
+        self.keys.sign_device_approval_v2(approval)
+    }
+
+    /// This device's signed key-commitment record for `vault_id`
+    /// (protocol 1.11, `PUT /v1/vaults/{id}/key-commitments`).
+    pub fn key_commitment_record(
+        &self,
+        vault_id: cc_protocol::VaultId,
+        commitment: &[u8; 32],
+        issued_at: i64,
+    ) -> cc_protocol::vaults::VaultKeyCommitment {
+        let signature =
+            self.keys
+                .sign_key_commitment(vault_id, commitment, self.device_id, issued_at);
+        cc_protocol::vaults::VaultKeyCommitment {
+            device_id: self.device_id,
+            commitment: cc_protocol::Bytes::new(commitment.to_vec()),
+            issued_at,
+            signature: cc_protocol::Bytes::new(signature.to_vec()),
+        }
+    }
+
     /// Registration DTO for register/login. `name` is trimmed; it must be
     /// 1..=128 characters without control characters.
     pub fn registration(

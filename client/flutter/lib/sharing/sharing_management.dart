@@ -66,6 +66,7 @@ class _SharingAccessDialogState extends ConsumerState<SharingAccessDialog> {
                 AbsorbPointer(
                   absorbing: _busy,
                   child: SharingRecipients(
+                    sensitive: sharingKindSensitive(widget.item.kind),
                     initialGrants: _grants,
                     excludedDeviceIds: {widget.item.ownerDeviceId},
                     onChanged: (g) => setState(() => _grants = g),

@@ -141,6 +141,15 @@ pub struct KeyHierarchy {
     history: Kek,
     settings: Kek,
     vak: Vak,
+    commitment: [u8; 32],
+}
+
+/// Key commitment of a VRK (protocol 1.11, audit H2):
+/// `HKDF-SHA256(ikm = VRK, salt = vault_id, info = "cc-vrk-commit-v1")`.
+/// Not secret: devices pin it and compare every VRK they obtain with it.
+pub fn vrk_commitment(vrk: &Vrk, vault_id: VaultId) -> [u8; 32] {
+    let okm = hkdf_sha256_32(vrk.expose(), vault_id.as_bytes(), &[labels::VRK_COMMITMENT]);
+    *okm.expose_secret()
 }
 
 impl KeyHierarchy {
@@ -161,7 +170,13 @@ impl KeyHierarchy {
                 salt,
                 &[labels::VAULT_ACCESS_KEY],
             )),
+            commitment: vrk_commitment(vrk, vault_id),
         }
+    }
+
+    /// Key commitment of the VRK these keys came from ([`vrk_commitment`]).
+    pub fn key_commitment(&self) -> [u8; 32] {
+        self.commitment
     }
 
     /// The vault these keys belong to.

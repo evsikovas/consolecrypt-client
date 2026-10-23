@@ -8966,16 +8966,16 @@ abstract class AppLocalizations {
   /// **'Refresh shared data'**
   String get sharingRefresh;
 
-  /// Selective sharing: Identity
+  /// Sharing: title of the own identity (fingerprint) dialog.
   ///
   /// In en, this message translates to:
-  /// **'My device verification code'**
+  /// **'My device key fingerprint'**
   String get sharingIdentity;
 
-  /// Selective sharing: VerifyHelp
+  /// Sharing: own identity dialog explaining the fingerprint and how keys are verified.
   ///
   /// In en, this message translates to:
-  /// **'Compare this code with your colleague using an independent channel. Login and email do not verify device keys.'**
+  /// **'This is your device\'s key fingerprint. To check keys with a colleague, use “Verify” next to their device: compare the safety number by voice or scan the QR code in person. Login and e-mail do not verify device keys.'**
   String get sharingVerifyHelp;
 
   /// Selective sharing: Code
@@ -9272,10 +9272,10 @@ abstract class AppLocalizations {
   /// **'Preparing secure sharing…'**
   String get sharingWorking;
 
-  /// Selective sharing: CopyCode
+  /// Sharing: copy the own key fingerprint.
   ///
   /// In en, this message translates to:
-  /// **'Copy verification code'**
+  /// **'Copy fingerprint'**
   String get sharingCopyCode;
 
   /// Selective sharing: AddRecipient
@@ -9326,10 +9326,10 @@ abstract class AppLocalizations {
   /// **'Verify history'**
   String get sharingReconcile;
 
-  /// Selective sharing interface.
+  /// Sharing: reconcile explanation.
   ///
   /// In en, this message translates to:
-  /// **'The local copy is behind the protected checkpoint. Compare the owner’s code. The app will verify the complete signed history and reject missing or conflicting revisions.'**
+  /// **'The local copy is behind the protected checkpoint. The owner\'s keys must be the ones pinned on this device; the app will verify the complete signed history and reject missing or conflicting revisions.'**
   String get sharingReconcileHelp;
 
   /// Selective sharing interface.
@@ -9542,10 +9542,10 @@ abstract class AppLocalizations {
   /// **'Review package'**
   String get enrollmentPreview;
 
-  /// Verified own-device enrollment interface.
+  /// Enrollment: explanation of the request code, typed from the other device.
   ///
   /// In en, this message translates to:
-  /// **'Compare the full code on the new and trusted device in person or through an independent channel. Confirm only an exact match. The code identifies this specific request.'**
+  /// **'Both devices show the same code for this request. Type the code from the other device\'s screen to confirm that you compared it.'**
   String get enrollmentCodeHelp;
 
   /// Verified own-device enrollment interface.
@@ -22615,6 +22615,360 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Too many new devices today. Try again after {time}.'**
   String errorDeviceDailyLimit(String time);
+
+  /// Error text: the vault key received from the server differs from the key this device trusts (security).
+  ///
+  /// In en, this message translates to:
+  /// **'The server sent a different vault key. Nothing was opened with it and sync is stopped.'**
+  String get errorVaultKeyMismatch;
+
+  /// Error text: granting sharing access needs a verified (or at least chosen) recipient device.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify this device\'s keys first: only verified recipients may get this kind of access.'**
+  String get errorRecipientUnverified;
+
+  /// Error text: the recipient device reported other keys than the pinned ones.
+  ///
+  /// In en, this message translates to:
+  /// **'The keys of this device changed. Verify it again before giving access.'**
+  String get errorRecipientKeysChanged;
+
+  /// Error text: the safety number or QR code did not match the colleague's keys.
+  ///
+  /// In en, this message translates to:
+  /// **'The code does not match. The keys may have been replaced — do not give access and contact your colleague another way.'**
+  String get errorPeerVerificationFailed;
+
+  /// Title of the blocking screen shown when the server sent a different vault key.
+  ///
+  /// In en, this message translates to:
+  /// **'Different vault key'**
+  String get vaultKeyMismatchTitle;
+
+  /// Body of the vault key mismatch screen (security warning).
+  ///
+  /// In en, this message translates to:
+  /// **'The server sent a different vault key. This may mean the server was tampered with. Data on this device is unchanged and sync is stopped. Do not enter secrets on this device and tell the server administrator.'**
+  String get vaultKeyMismatchMessage;
+
+  /// Vault key mismatch screen: lock the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock'**
+  String get vaultKeyMismatchLock;
+
+  /// Vault key mismatch screen: copy non-secret diagnostics (vault id, key fingerprints, time, server address).
+  ///
+  /// In en, this message translates to:
+  /// **'Copy diagnostics'**
+  String get vaultKeyMismatchCopy;
+
+  /// Vault key mismatch screen: show more details.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get vaultKeyMismatchMore;
+
+  /// Vault key mismatch screen: expanded explanation.
+  ///
+  /// In en, this message translates to:
+  /// **'This device remembers the fingerprint of its vault key and checks every key it receives against it. A different key is never accepted and nothing is re-encrypted with it. The only way out is resetting the profile on this device (remove it and connect again) after the server is checked.'**
+  String get vaultKeyMismatchDetails;
+
+  /// New device: title when a trusted device announced it is approving; both show a pairing code.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare the code with “{device}”'**
+  String approvalWaitPairingTitle(String device);
+
+  /// New device: explanation of the pairing code v2.
+  ///
+  /// In en, this message translates to:
+  /// **'“{device}” is approving this device. Both screens must show exactly the same code — it is computed from the keys of both devices.'**
+  String approvalWaitPairingHelp(String device);
+
+  /// New device: mandatory checkbox confirming the pairing code matches.
+  ///
+  /// In en, this message translates to:
+  /// **'The code matches the one on “{device}”'**
+  String approvalWaitPairingCheckbox(String device);
+
+  /// New device: button confirming the pairing code.
+  ///
+  /// In en, this message translates to:
+  /// **'Codes match'**
+  String get approvalWaitPairingConfirm;
+
+  /// New device: after the user confirmed the pairing code.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed. Waiting for the approval to finish…'**
+  String get approvalWaitPairingConfirmed;
+
+  /// Approving device: hint under the pairing code v2.
+  ///
+  /// In en, this message translates to:
+  /// **'This code depends on the keys of both devices; the new device shows it as soon as you open this request.'**
+  String get approveDeviceCodeV2Hint;
+
+  /// Devices screen banner title: this device pinned the vault key without an independent check.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault key not confirmed'**
+  String get devicesVaultKeyUnconfirmedTitle;
+
+  /// Devices screen banner body for an unconfirmed vault key.
+  ///
+  /// In en, this message translates to:
+  /// **'This device received the vault key without an independent check (older server or approving device). Enter the vault passphrase once to confirm it.'**
+  String get devicesVaultKeyUnconfirmedMessage;
+
+  /// Button: confirm the vault key with the vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm with passphrase'**
+  String get devicesVaultKeyConfirm;
+
+  /// Dialog title: confirm the vault key with the passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm the vault key'**
+  String get vaultKeyConfirmTitle;
+
+  /// Snack after the vault key was confirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault key confirmed'**
+  String get vaultKeyConfirmed;
+
+  /// Devices screen warning title: another device of the account reported a different vault key.
+  ///
+  /// In en, this message translates to:
+  /// **'A device received a different vault key'**
+  String get devicesVaultKeyConflictTitle;
+
+  /// Devices screen warning body for a vault key conflict.
+  ///
+  /// In en, this message translates to:
+  /// **'“{device}” reported a different vault key. Someone who controls the server may have given it their own key. This device keeps its key. Revoke “{device}” unless you know why.'**
+  String devicesVaultKeyConflictMessage(String device);
+
+  /// Button: revoke the device that reported a different vault key.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke'**
+  String get devicesRevokeConflicting;
+
+  /// Sharing: status of a colleague device whose keys were pinned but not verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Chosen (not verified)'**
+  String get sharingTrustChosen;
+
+  /// Sharing: status of a verified colleague device.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified {date}'**
+  String sharingTrustVerified(String date);
+
+  /// Sharing: status of a verified colleague device (date unknown).
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get sharingTrustVerifiedNoDate;
+
+  /// Sharing: status of a colleague device whose keys changed.
+  ///
+  /// In en, this message translates to:
+  /// **'Keys changed'**
+  String get sharingTrustKeysChanged;
+
+  /// Sharing: status of a colleague device never chosen on this device.
+  ///
+  /// In en, this message translates to:
+  /// **'Not chosen yet'**
+  String get sharingTrustNew;
+
+  /// Sharing: button opening the key verification of a colleague device.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get sharingVerifyAction;
+
+  /// Sharing: checkbox selecting a recipient device.
+  ///
+  /// In en, this message translates to:
+  /// **'Give access to this device'**
+  String get sharingGiveAccess;
+
+  /// Sharing: warning when a known colleague device reports other keys.
+  ///
+  /// In en, this message translates to:
+  /// **'The keys of device {device} of {email} have changed. No new access until it is verified again; existing shares are not re-encrypted for the new keys.'**
+  String sharingKeysChangedWarning(String device, String email);
+
+  /// Sharing: hint about the verified-only policy for sensitive kinds.
+  ///
+  /// In en, this message translates to:
+  /// **'Only verified recipients can receive secrets, Kubernetes contexts and database connections.'**
+  String get sharingVerifiedOnlyHint;
+
+  /// Sharing: label of the 64-hex key fingerprint (details only, not a comparison code).
+  ///
+  /// In en, this message translates to:
+  /// **'Key fingerprint'**
+  String get sharingFingerprint;
+
+  /// Title of the key verification dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify the colleague\'s device'**
+  String get peerVerifyTitle;
+
+  /// Key verification dialog: which device is verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Device {device}'**
+  String peerVerifyDevice(String device);
+
+  /// Key verification dialog: tab with the long safety number.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety number'**
+  String get peerVerifySafetyNumber;
+
+  /// Key verification dialog: tab with the QR code.
+  ///
+  /// In en, this message translates to:
+  /// **'QR code'**
+  String get peerVerifyQr;
+
+  /// Key verification dialog: how to compare the safety number.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask your colleague to open the same check for your device and read out their number — by phone or in person, not through ConsoleCrypt. Type it below: it must match the number on this screen exactly.'**
+  String get peerVerifySafetyNumberHelp;
+
+  /// Key verification dialog: label of the locally computed safety number.
+  ///
+  /// In en, this message translates to:
+  /// **'Number on this device'**
+  String get peerVerifyOwnNumber;
+
+  /// Key verification dialog: input for the safety number typed by the user.
+  ///
+  /// In en, this message translates to:
+  /// **'Number read out by the colleague'**
+  String get peerVerifyEnterNumber;
+
+  /// Key verification dialog: why paste is disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Type the number — pasting is disabled on purpose.'**
+  String get peerVerifyNoPaste;
+
+  /// Key verification dialog: how to use the QR code.
+  ///
+  /// In en, this message translates to:
+  /// **'In person: show this QR code to your colleague and scan theirs with a phone. On a computer without a camera, enter the text of the colleague\'s QR code.'**
+  String get peerVerifyQrHelp;
+
+  /// Key verification dialog: input for the scanned QR text.
+  ///
+  /// In en, this message translates to:
+  /// **'Text of the colleague\'s QR code'**
+  String get peerVerifyQrInput;
+
+  /// Key verification dialog: primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get peerVerifyConfirm;
+
+  /// Snack after a successful key verification.
+  ///
+  /// In en, this message translates to:
+  /// **'Device verified'**
+  String get peerVerifySuccess;
+
+  /// Accept dialog: explanation of pinning the owner's keys.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepting pins the owner\'s keys on this device. Verify them with the owner to mark the item as verified.'**
+  String get sharingAcceptOwnerHelp;
+
+  /// Badge on received shared items whose owner keys were not verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner not verified'**
+  String get sharingOwnerUnverified;
+
+  /// Note on received items from an unverified owner.
+  ///
+  /// In en, this message translates to:
+  /// **'Hosts from this item are never connected automatically, snippets show their source.'**
+  String get sharingOwnerUnverifiedNote;
+
+  /// One-time banner after the update: unverified recipients of secrets.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify colleagues who have access to secrets'**
+  String get sharingVerifyBannerTitle;
+
+  /// One-time banner body.
+  ///
+  /// In en, this message translates to:
+  /// **'These recipients of secrets, Kubernetes contexts and database connections were added before keys could be verified. Their access is unchanged.'**
+  String get sharingVerifyBannerMessage;
+
+  /// One-time banner: dismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get sharingVerifyBannerDismiss;
+
+  /// Vault setting section title for the verified-only sharing policy.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing: verified recipients only'**
+  String get sharingPolicyTitle;
+
+  /// Policy switch for sensitive kinds.
+  ///
+  /// In en, this message translates to:
+  /// **'Secrets, Kubernetes contexts and database connections'**
+  String get sharingPolicySensitive;
+
+  /// Policy switch for the other kinds.
+  ///
+  /// In en, this message translates to:
+  /// **'Hosts, groups and snippets'**
+  String get sharingPolicyOther;
+
+  /// Policy explanation.
+  ///
+  /// In en, this message translates to:
+  /// **'New access and new devices need verified keys. Existing recipients keep their access.'**
+  String get sharingPolicyHelp;
+
+  /// Enrollment: input for the 30-digit pairing code typed by the user.
+  ///
+  /// In en, this message translates to:
+  /// **'Code shown on the other device'**
+  String get enrollmentTypeCode;
+
+  /// Enrollment: explanation of the typed pairing code.
+  ///
+  /// In en, this message translates to:
+  /// **'Type the six groups of digits from the other device\'s screen. The code is never filled in for you.'**
+  String get enrollmentTypeCodeHelp;
+
+  /// Noun inserted into '{what} copied' after copying the vault key mismatch diagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics'**
+  String get vaultKeyMismatchDiagnostics;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

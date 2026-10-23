@@ -187,6 +187,10 @@ struct TrustReq {
     created_at: Timestamp,
     expires_at: Timestamp,
     approved_by: Option<DeviceId>,
+    /// Protocol 1.11: the announced approver and when.
+    intent: Option<(DeviceId, Timestamp)>,
+    /// Protocol 1.11: the v2 approval as signed (for the new device).
+    approval_v2: Option<cc_protocol::devices::DeviceApprovalRecord>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -229,6 +233,8 @@ pub(crate) struct State {
     pub(crate) proof_stats: RequestProofStats,
     /// Teams (protocol 1.9).
     team_invitations: HashMap<cc_protocol::TeamInvitationId, TeamInvitationRec>,
+    /// Protocol 1.11 key-commitment records, one per (vault, device).
+    key_commitments: HashMap<(VaultId, DeviceId), cc_protocol::vaults::VaultKeyCommitment>,
     events: broadcast::Sender<Outgoing>,
     /// Protocol 1.8 enterprise sign-in (see `mock/enterprise.rs`).
     pub(crate) enterprise: super::enterprise::Enterprise,
@@ -340,6 +346,7 @@ impl State {
             request_nonces: HashSet::new(),
             proof_stats: RequestProofStats::default(),
             team_invitations: HashMap::new(),
+            key_commitments: HashMap::new(),
             events,
             enterprise: Default::default(),
         }
@@ -1045,6 +1052,23 @@ impl State {
             created_at: r.created_at,
             expires_at: r.expires_at,
             approved_by_device_id: r.approved_by,
+            approver: if self.cfg.vrk_commitment {
+                r.intent.and_then(|(id, at)| {
+                    let a = self.devices.get(&id)?;
+                    (a.status != DeviceStatus::Revoked).then(|| {
+                        cc_protocol::devices::DeviceApprover {
+                            device_id: id,
+                            name: a.reg.name.clone(),
+                            platform: a.reg.platform,
+                            encryption_public_key: a.reg.encryption_public_key.clone(),
+                            signing_public_key: a.reg.signing_public_key.clone(),
+                            announced_at: at,
+                        }
+                    })
+                })
+            } else {
+                None
+            },
         })
     }
 
@@ -1112,6 +1136,8 @@ impl State {
             created_at: now,
             expires_at: now + chrono::Duration::hours(24),
             approved_by: None,
+            intent: None,
+            approval_v2: None,
         };
         let dto = self
             .trust_request_dto(&r, p.device_id)
@@ -1221,12 +1247,19 @@ impl State {
         if verified.is_none() {
             return Err(err(ErrorCode::InvalidProof, "approval signature rejected"));
         }
+        let approval_v2 = match (&req.v2, self.cfg.vrk_commitment) {
+            (Some(v2), true) => {
+                Some(self.check_approval_v2(&req, v2, p.device_id, new_device_id, &enc, &sig_pk)?)
+            }
+            _ => None,
+        };
         for ve in req.envelopes {
             self.store_envelope(ve.vault_id, ve.envelope, p.device_id);
         }
         if let Some(r) = self.requests.get_mut(&req.request_id) {
             r.status = DeviceRequestStatus::Approved;
             r.approved_by = Some(p.device_id);
+            r.approval_v2 = approval_v2;
         }
         self.emit_to(
             Audience::User(p.user_id),
@@ -1237,6 +1270,250 @@ impl State {
         );
         let r = self.requests.get(&req.request_id).ok_or_else(not_found)?;
         self.trust_request_dto(r, p.device_id).ok_or_else(not_found)
+    }
+
+    /// Protocol 1.11 approval v2 checks (as the real server): one entry per
+    /// envelope with matching envelope hash, signature by the approver over
+    /// both devices' keys.
+    fn check_approval_v2(
+        &self,
+        req: &ApproveDeviceRequest,
+        v2: &cc_protocol::devices::ApprovalV2,
+        approver_id: DeviceId,
+        new_device_id: DeviceId,
+        enc: &[u8; 32],
+        sig_pk: &[u8; 32],
+    ) -> MResult<cc_protocol::devices::DeviceApprovalRecord> {
+        use cc_protocol::canonical::{
+            device_approval_message_v2, device_envelope_hash_input, ApprovedVaultKey,
+        };
+        if v2.vault_commitments.len() != req.envelopes.len() {
+            return Err(bad("approval v2 must cover exactly the approved vaults"));
+        }
+        let mut keys: Vec<ApprovedVaultKey> = Vec::new();
+        for c in &v2.vault_commitments {
+            let env = req
+                .envelopes
+                .iter()
+                .find(|e| e.vault_id == c.vault_id)
+                .ok_or_else(|| bad("approval v2 names a vault without an envelope"))?;
+            if keys.iter().any(|k| k.vault_id == c.vault_id) {
+                return Err(bad("duplicate vault in approval v2"));
+            }
+            let eph = env
+                .envelope
+                .metadata
+                .ephemeral_public_key
+                .as_ref()
+                .ok_or_else(|| bad("device envelope without ephemeral key"))?;
+            let actual: [u8; 32] = Sha256::digest(device_envelope_hash_input(
+                eph.as_slice(),
+                env.envelope.nonce.as_slice(),
+                env.envelope.ciphertext.as_slice(),
+            ))
+            .into();
+            let claimed = c
+                .envelope_sha256
+                .to_array::<32>()
+                .ok_or_else(|| bad("invalid envelope_sha256"))?;
+            if actual != claimed {
+                return Err(bad("envelope_sha256 does not match the envelope"));
+            }
+            keys.push(ApprovedVaultKey {
+                vault_id: c.vault_id,
+                commitment: c
+                    .commitment
+                    .to_array::<32>()
+                    .ok_or_else(|| bad("invalid commitment"))?,
+                envelope_sha256: claimed,
+            });
+        }
+        let approver = self.devices.get(&approver_id).ok_or_else(not_found)?;
+        let (Some(a_enc), Some(a_sig)) = (
+            approver.reg.encryption_public_key.to_array::<32>(),
+            approver.reg.signing_public_key.to_array::<32>(),
+        ) else {
+            return Err(bad("stored device keys malformed"));
+        };
+        let msg = device_approval_message_v2(
+            req.request_id,
+            approver_id,
+            &a_enc,
+            &a_sig,
+            new_device_id,
+            enc,
+            sig_pk,
+            req.issued_at,
+            &keys,
+        );
+        let ok = (|| {
+            let vk = ed25519_dalek::VerifyingKey::from_bytes(&a_sig).ok()?;
+            let sig = ed25519_dalek::Signature::from_bytes(
+                &v2.signature_v2.to_array::<ED25519_SIGNATURE_LEN>()?,
+            );
+            vk.verify_strict(&msg, &sig).ok()
+        })();
+        if ok.is_none() {
+            return Err(err(
+                ErrorCode::InvalidProof,
+                "approval v2 signature rejected",
+            ));
+        }
+        Ok(cc_protocol::devices::DeviceApprovalRecord {
+            request_id: req.request_id,
+            approver_device_id: approver_id,
+            issued_at: req.issued_at,
+            vault_commitments: v2.vault_commitments.clone(),
+            signature_v2: v2.signature_v2.clone(),
+        })
+    }
+
+    /// `POST /v1/devices/{id}/approval-intent` (protocol 1.11).
+    pub(crate) fn approval_intent(
+        &mut self,
+        p: Principal,
+        device_id: DeviceId,
+        req: cc_protocol::devices::ApprovalIntentRequest,
+    ) -> MResult<()> {
+        if !self.cfg.vrk_commitment {
+            return Err(not_found());
+        }
+        if device_id == p.device_id {
+            return Err(err(ErrorCode::Forbidden, "a device cannot approve itself"));
+        }
+        let now = Utc::now();
+        let r = self.requests.get(&req.request_id).ok_or_else(not_found)?;
+        if r.user_id != p.user_id || r.device_id != device_id {
+            return Err(not_found());
+        }
+        if r.status != DeviceRequestStatus::Pending || r.expires_at <= now {
+            return Err(err(ErrorCode::Gone, "request is no longer pending"));
+        }
+        if !r
+            .vault_ids
+            .iter()
+            .any(|v| self.trusted_vault(&p, *v).is_ok())
+        {
+            return Err(err(
+                ErrorCode::DeviceNotTrusted,
+                "not trusted for any requested vault",
+            ));
+        }
+        if let Some(r) = self.requests.get_mut(&req.request_id) {
+            r.intent = Some((p.device_id, now));
+        }
+        self.emit_to(
+            Audience::User(p.user_id),
+            ServerEvent::DeviceApprovalIntent {
+                request_id: req.request_id,
+                device_id,
+                approver_device_id: p.device_id,
+            },
+        );
+        Ok(())
+    }
+
+    /// `PUT /v1/vaults/{id}/key-commitments` (protocol 1.11).
+    pub(crate) fn put_key_commitment(
+        &mut self,
+        p: Principal,
+        vault_id: VaultId,
+        req: cc_protocol::vaults::VaultKeyCommitment,
+    ) -> MResult<()> {
+        if !self.cfg.vrk_commitment {
+            return Err(not_found());
+        }
+        if req.device_id != p.device_id {
+            return Err(err(ErrorCode::Forbidden, "only the own record"));
+        }
+        self.trusted_vault(&p, vault_id)?;
+        let commitment = req
+            .commitment
+            .to_array::<32>()
+            .ok_or_else(|| bad("commitment must be 32 bytes"))?;
+        if (req.issued_at - Utc::now().timestamp()).abs() > MAX_SIGNATURE_SKEW_SECONDS {
+            return Err(err(
+                ErrorCode::InvalidProof,
+                "issued_at outside allowed skew",
+            ));
+        }
+        let dev = self.devices.get(&p.device_id).ok_or_else(not_found)?;
+        let msg = cc_protocol::canonical::vault_key_commitment_message(
+            vault_id,
+            &commitment,
+            p.device_id,
+            req.issued_at,
+        );
+        let ok = (|| {
+            let vk = ed25519_dalek::VerifyingKey::from_bytes(
+                &dev.reg.signing_public_key.to_array::<32>()?,
+            )
+            .ok()?;
+            let sig = ed25519_dalek::Signature::from_bytes(
+                &req.signature.to_array::<ED25519_SIGNATURE_LEN>()?,
+            );
+            vk.verify_strict(&msg, &sig).ok()
+        })();
+        if ok.is_none() {
+            return Err(err(
+                ErrorCode::InvalidProof,
+                "key commitment signature rejected",
+            ));
+        }
+        let key = (vault_id, p.device_id);
+        if self
+            .key_commitments
+            .get(&key)
+            .is_none_or(|old| old.issued_at <= req.issued_at)
+        {
+            self.key_commitments.insert(key, req);
+        }
+        Ok(())
+    }
+
+    /// `GET /v1/vaults/{id}/key-commitments` (protocol 1.11).
+    pub(crate) fn list_key_commitments(
+        &self,
+        p: Principal,
+        vault_id: VaultId,
+    ) -> MResult<cc_protocol::vaults::VaultKeyCommitmentsResponse> {
+        if !self.cfg.vrk_commitment {
+            return Err(not_found());
+        }
+        self.member_vault(&p, vault_id)?;
+        let mut commitments: Vec<_> = self
+            .key_commitments
+            .iter()
+            .filter(|((v, d), _)| {
+                *v == vault_id
+                    && self
+                        .devices
+                        .get(d)
+                        .is_some_and(|dev| dev.status != DeviceStatus::Revoked)
+            })
+            .map(|(_, c)| c.clone())
+            .collect();
+        commitments.sort_by_key(|c| c.device_id);
+        Ok(cc_protocol::vaults::VaultKeyCommitmentsResponse { commitments })
+    }
+
+    pub(crate) fn key_commitment(
+        &self,
+        vault_id: VaultId,
+        device_id: DeviceId,
+    ) -> Option<cc_protocol::vaults::VaultKeyCommitment> {
+        self.key_commitments.get(&(vault_id, device_id)).cloned()
+    }
+
+    /// Test hook: plant a key-commitment record as if `device_id` had
+    /// published it (bypasses the signature check).
+    pub(crate) fn plant_key_commitment(
+        &mut self,
+        vault_id: VaultId,
+        record: cc_protocol::vaults::VaultKeyCommitment,
+    ) {
+        self.key_commitments
+            .insert((vault_id, record.device_id), record);
     }
 
     pub(crate) fn reject(
@@ -1507,11 +1784,24 @@ impl State {
                 .find(|e| e.revoked_at.is_none() && e.recipient_type == t && e.recipient_id == id)
                 .cloned()
         };
+        let device_envelope = find(RecipientType::Device, Some(p.device_id.0));
+        let device_approval = if self.cfg.vrk_commitment && device_envelope.is_some() {
+            self.requests
+                .values()
+                .filter(|r| r.device_id == p.device_id && r.status == DeviceRequestStatus::Approved)
+                .filter_map(|r| r.approval_v2.as_ref().map(|a| (r.created_at, a)))
+                .filter(|(_, a)| a.vault_commitments.iter().any(|c| c.vault_id == vault_id))
+                .max_by_key(|(at, _)| *at)
+                .map(|(_, a)| a.clone())
+        } else {
+            None
+        };
         Ok(VaultRecoveryMaterial {
             vault_id,
             password_envelope: find(RecipientType::Password, None),
             recovery_envelope: find(RecipientType::Recovery, None),
-            device_envelope: find(RecipientType::Device, Some(p.device_id.0)),
+            device_envelope,
+            device_approval,
         })
     }
 
@@ -1807,6 +2097,14 @@ impl State {
                     && e.recipient_id == Some(device_id.0)
             })
             .cloned()
+    }
+
+    pub(crate) fn device_public_keys(&self, device_id: DeviceId) -> Option<(Vec<u8>, Vec<u8>)> {
+        let d = self.devices.get(&device_id)?;
+        Some((
+            d.reg.encryption_public_key.as_slice().to_vec(),
+            d.reg.signing_public_key.as_slice().to_vec(),
+        ))
     }
 
     pub(crate) fn device_trusted(&self, device_id: DeviceId, vault_id: VaultId) -> bool {

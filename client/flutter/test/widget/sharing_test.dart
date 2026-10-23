@@ -22,6 +22,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../helpers/fake_peer_pins.dart';
+
 import '../helpers/test_app.dart';
 
 // Synthetic public identities only. Actual cryptographic proofs are tested by
@@ -83,7 +85,7 @@ String _snippetPreview() => jsonEncode({
   },
 });
 
-class _Sharing implements SharingService {
+class _Sharing with FakePeerPins implements SharingService {
   int publications = 0, accepts = 0, flushes = 0, discoveries = 0, edits = 0;
   bool failFlush = false, enabled = true, enrollmentEnabled = false, membershipEnabled = false;
   final List<String> left = [], deletes = [], restores = [];
@@ -134,10 +136,11 @@ class _Sharing implements SharingService {
     );
   }
 
+  List<SharingIdentity>? discovered;
   @override
   Future<List<SharingIdentity>> discover(String email) async {
     discoveries++;
-    return [_reader, _editor];
+    return discovered ?? [_reader, _editor];
   }
 
   @override
@@ -168,8 +171,8 @@ class _Sharing implements SharingService {
   @override
   Future<SharingInvitation> inspect(String id) async => SharingInvitation(_item(), _owner);
   @override
-  Future<SharingItem> accept(String id, String confirmedOwnerCode) async {
-    expect(confirmedOwnerCode, _owner.code);
+  Future<SharingItem> accept(String id, String verificationId) async {
+    expect(verificationId, 'pin-${_owner.deviceId}');
     accepts++;
     items = [_item(preview: _snippetPreview())];
     return items.single;
@@ -184,7 +187,7 @@ class _Sharing implements SharingService {
   }
 
   @override
-  Future<SharingItem> reconcile(String id, String confirmedOwnerCode) => accept(id, confirmedOwnerCode);
+  Future<SharingItem> reconcile(String id, String verificationId) => accept(id, verificationId);
   @override
   Future<List<SharingOutboxEntry>> discardPending(String mutationId) async => [];
   @override
@@ -246,9 +249,9 @@ SharingItem _item({
   previewJson: preview,
   members: [_owner, _reader, _editor],
   memberRoles: [
-    SharingGrant(_owner, SharingRole.editor, _owner.code),
-    SharingGrant(_reader, SharingRole.reader, _reader.code),
-    SharingGrant(_editor, SharingRole.editor, _editor.code),
+    const SharingGrant(_owner, SharingRole.editor),
+    const SharingGrant(_reader, SharingRole.reader),
+    const SharingGrant(_editor, SharingRole.editor),
   ],
   departedUserIds: departed,
 );
@@ -375,7 +378,7 @@ void main() {
       EnrollmentPairingFlow.submit,
     );
     expect(isEnabled(tester, 'enrollment-continue'), false);
-    expect(find.byKey(const ValueKey('enrollment-code-confirmed')), findsNothing);
+    expect(find.byKey(const ValueKey('enrollment-code-typed')), findsNothing);
     final close = find.descendant(of: find.byType(EnrollmentPairingDialog), matching: find.text('Cancel'));
     await tester.tap(close);
     await settle(tester);
@@ -436,14 +439,80 @@ void main() {
     await enterKey(tester, 'sharing-email', 'colleague@example.test');
     await tapKey(tester, 'sharing-find');
     expect(isEnabled(tester, 'sharing-publish-confirm'), false);
-    await tapKey(tester, 'sharing-verify-reader-device');
+    await tapKey(tester, 'sharing-give-access-reader-device');
     expect(isEnabled(tester, 'sharing-publish-confirm'), true);
     await tapKey(tester, 'sharing-publish-confirm');
     expect(sharing.publications, 1);
     expect(sharing.flushes, 1);
     expect(sharing.publishedGrants!.single.role, SharingRole.reader);
-    expect(sharing.publishedGrants!.single.confirmedCode, _reader.code);
+    expect(sharing.publishedGrants!.single.verificationId, 'pin-${_reader.deviceId}');
     expect(find.byType(SharingPublishDialog), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a device with changed keys cannot be chosen; a QR-verified one is granted with its pin', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    const changed = SharingIdentity(
+      instance: 'instance',
+      userId: 'reader',
+      deviceId: 'reader-device',
+      encryptionKey: 'public-x-substituted',
+      signingKey: 'public-ed-substituted',
+      code: 'SUBSTITUTED FINGERPRINT',
+      trust: PeerTrust.keysChanged,
+      verificationId: 'pin-reader-device',
+    );
+    final sharing = _Sharing()..discovered = [changed, _editor];
+    await _pump(tester, backend, sharing);
+    await _openPublish(tester);
+    await enterKey(tester, 'sharing-email', 'colleague@example.test');
+    await tapKey(tester, 'sharing-find');
+    expect(find.byKey(const ValueKey('sharing-keys-changed-reader-device')), findsOneWidget);
+    expect(find.byKey(const ValueKey('peer-trust-keys-changed')), findsOneWidget);
+    final blocked = tester.widget<CheckboxListTile>(find.byKey(const ValueKey('sharing-give-access-reader-device')));
+    expect(blocked.onChanged, isNull, reason: 'no new access until verified again');
+    // In person: the colleague's QR text verifies the editor device.
+    await tapKey(tester, 'sharing-verify-peer-editor-device');
+    await tester.tap(find.text('QR code').last);
+    await settle(tester);
+    expect(find.byKey(const ValueKey('peer-verify-qr')), findsOneWidget);
+    await enterKey(tester, 'peer-verify-qr-input', 'qr:someone-else');
+    await tapKey(tester, 'peer-verify-confirm');
+    expect(find.byKey(const ValueKey('peer-verify-error')), findsOneWidget);
+    await enterKey(tester, 'peer-verify-qr-input', 'qr:editor-device');
+    await tapKey(tester, 'peer-verify-confirm');
+    expect(sharing.pins['editor-device']!.status, PeerTrust.verified);
+    await tapKey(tester, 'sharing-give-access-editor-device');
+    await tapKey(tester, 'sharing-publish-confirm');
+    expect(sharing.publishedGrants!.single.identity.deviceId, _editor.deviceId);
+    expect(sharing.publishedGrants!.single.identity.trust, PeerTrust.verified);
+    expect(sharing.publishedGrants!.single.verificationId, 'pin-editor-device');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('existing secret recipients are listed once in the verification banner', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final sharing = _Sharing()
+      ..items = [_item(owned: true, preview: _snippetPreview())]
+      ..banner = const [
+        PeerPin(
+          verificationId: 'pin-reader-device',
+          deviceId: 'reader-device',
+          userId: 'reader',
+          status: PeerTrust.chosen,
+        ),
+      ];
+    await _pump(tester, backend, sharing);
+    await _openSharing(tester);
+    expect(find.byKey(const ValueKey('sharing-verify-banner')), findsOneWidget);
+    expect(find.textContaining('reader-device'), findsWidgets);
+    await tapKey(tester, 'sharing-verify-banner-dismiss');
+    expect(find.byKey(const ValueKey('sharing-verify-banner')), findsNothing);
+    expect(sharing.banner, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -456,7 +525,7 @@ void main() {
     await _openPublish(tester);
     await enterKey(tester, 'sharing-email', 'colleague@example.test');
     await tapKey(tester, 'sharing-find');
-    await tapKey(tester, 'sharing-verify-editor-device');
+    await tapKey(tester, 'sharing-give-access-editor-device');
     final picker = find.byType(GlassSelect<SharingRole>);
     await tester.ensureVisible(picker);
     await tester.tap(picker);
@@ -466,7 +535,7 @@ void main() {
     await tapKey(tester, 'sharing-publish-confirm');
     expect(sharing.publishedGrants!.single.identity.deviceId, _editor.deviceId);
     expect(sharing.publishedGrants!.single.role, SharingRole.editor);
-    expect(sharing.publishedGrants!.single.confirmedCode, _editor.code);
+    expect(sharing.publishedGrants!.single.verificationId, 'pin-${_editor.deviceId}');
     expect(tester.takeException(), isNull);
   });
 
@@ -485,13 +554,17 @@ void main() {
     await tester.tap(find.text('Verify and accept'));
     await settle(tester);
     expect(sharing.accepts, 0);
-    expect(find.text(_owner.code), findsOneWidget);
+    // The 64-hex code is only a fingerprint now; no "codes match" checkbox.
+    expect(find.textContaining(_owner.code), findsOneWidget);
+    expect(find.byKey(const ValueKey('sharing-owner-confirmed')), findsNothing);
+    expect(find.byKey(const ValueKey('peer-trust-none')), findsOneWidget);
     final accept = _buttonIn(SharingAcceptDialog, 'Verify and accept');
-    expect(_enabled(tester, accept), false);
-    await tapKey(tester, 'sharing-owner-confirmed');
+    expect(_enabled(tester, accept), true);
     await tester.tap(accept);
     await settle(tester);
     expect(sharing.accepts, 1);
+    // Accepting pinned the owner's keys as chosen (not verified).
+    expect(sharing.pins[_owner.deviceId]!.status, PeerTrust.chosen);
     expect(find.text('echo explicit-only'), findsOneWidget);
     expect(backend.snippets.currentSnippets.length, count);
     expect(find.text('Edit shared item'), findsNothing);
@@ -516,7 +589,8 @@ void main() {
     expect(sharing.rotatedGrants, isNotNull);
     expect(sharing.rotatedGrants!.single.identity.deviceId, _editor.deviceId);
     expect(sharing.rotatedGrants!.single.role, SharingRole.editor);
-    expect(sharing.rotatedGrants!.single.confirmedCode, _editor.code);
+    // An existing member keeps access without a new pin (decision 1).
+    expect(sharing.rotatedGrants!.single.identity.code, _editor.code);
     expect(tester.takeException(), isNull);
   });
 
@@ -651,7 +725,7 @@ void main() {
     await _openPublish(tester);
     await enterKey(tester, 'sharing-email', 'colleague@example.test');
     await tapKey(tester, 'sharing-find');
-    await tapKey(tester, 'sharing-verify-reader-device');
+    await tapKey(tester, 'sharing-give-access-reader-device');
     final oldProfile = backend.profiles.currentProfiles.activeId;
     // Both lifecycle transitions occur before the next Flutter frame. The
     // profile UUID remains unchanged, but its old trust decision must expire.
@@ -675,7 +749,7 @@ void main() {
     await _openPublish(tester);
     await enterKey(tester, 'sharing-email', 'colleague@example.test');
     await tapKey(tester, 'sharing-find');
-    await tapKey(tester, 'sharing-verify-reader-device');
+    await tapKey(tester, 'sharing-give-access-reader-device');
     await backend.debugCreateUnlockedLocalProfile(name: 'Separate profile');
     await settle(tester);
     expect(backend.profiles.currentProfiles.activeId, isNot(oldProfile));
@@ -712,12 +786,12 @@ void main() {
     await _openPublish(tester);
     await enterKey(tester, 'sharing-email', 'colleague@example.test');
     await tapKey(tester, 'sharing-find');
-    await tapKey(tester, 'sharing-verify-reader-device');
+    await tapKey(tester, 'sharing-give-access-reader-device');
     final notes = find.widgetWithText(CheckboxListTile, 'Include host notes');
     await tester.ensureVisible(notes);
     await tester.tap(notes);
     await settle(tester);
-    final verification = find.byKey(const ValueKey('sharing-verify-reader-device'));
+    final verification = find.byKey(const ValueKey('sharing-give-access-reader-device'));
     if (verification.evaluate().isEmpty) {
       expect(isEnabled(tester, 'sharing-publish-confirm'), false);
     } else {
@@ -758,12 +832,21 @@ void main() {
     await _openSharing(tester);
     await tester.tap(find.text('Проверить и принять'));
     await settle(tester);
+    // Verify the owner with the safety number read out by the owner.
+    await tapKey(tester, 'sharing-verify-owner');
+    expect(find.byKey(const ValueKey('peer-safety-number')), findsOneWidget);
+    expect(isEnabled(tester, 'peer-verify-confirm'), false);
+    await enterKey(tester, 'peer-verify-number', '00000 ' * 12);
+    await tapKey(tester, 'peer-verify-confirm');
+    expect(find.byKey(const ValueKey('peer-verify-error')), findsOneWidget, reason: 'a wrong number never verifies');
+    await enterKey(tester, 'peer-verify-number', fakeSafetyGroups.join(' '));
+    await tapKey(tester, 'peer-verify-confirm');
+    expect(find.byKey(const ValueKey('peer-trust-verified')), findsOneWidget);
     final accept = _buttonIn(SharingAcceptDialog, 'Проверить и принять');
-    expect(_enabled(tester, accept), false);
-    await tapKey(tester, 'sharing-owner-confirmed');
     await tester.tap(accept);
     await settle(tester);
     expect(sharing.accepts, 1);
+    expect(sharing.pins[_owner.deviceId]!.status, PeerTrust.verified);
     expect(find.text('echo explicit-only'), findsOneWidget);
     expect(tester.takeException(), isNull);
   }, variant: const TargetPlatformVariant({TargetPlatform.android}));

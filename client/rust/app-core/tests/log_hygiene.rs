@@ -199,6 +199,18 @@ async fn full_flows_at_trace_leak_no_secrets() {
     a.start_device_approval(req.request_id.clone())
         .await
         .unwrap();
+    // Protocol 1.11: B confirms the pairing code shown on both screens.
+    let progress = b
+        .device_approval_status(req.request_id.clone())
+        .await
+        .unwrap();
+    b.confirm_device_approver(
+        req.request_id.clone(),
+        progress.approver_device_id.unwrap(),
+        progress.pairing_code.unwrap(),
+    )
+    .await
+    .unwrap();
     a.confirm_device_approval(req.request_id).await.unwrap();
     assert!(b.finish_device_approval(None).await.unwrap());
     b.sync_now().await.unwrap();

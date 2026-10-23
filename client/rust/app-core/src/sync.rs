@@ -5,6 +5,7 @@
 use crate::app::{account_email, authenticate, pick_envelopes, sign_in, AppCore, Credential};
 use crate::dto::*;
 use crate::error::{AppError, AppResult};
+use crate::key_trust::{adopt_own, KeySource};
 use crate::secrets;
 use cc_protocol::devices::RevokeDeviceRequest;
 use cc_storage_core::{Profile, ProfileKind};
@@ -121,6 +122,11 @@ impl AppCore {
         let re = rec
             .recovery_envelope
             .ok_or_else(|| AppError::Storage("no recovery envelope stored".into()))?;
+        // TR-3: the vault that goes online is the one this profile pinned.
+        let pin = s.check_vault_key(&vault, KeySource::Passphrase).await?;
+        s.store_pin(pin).await?;
+        let own_pw = pw.to_new();
+        let own_re = re.to_new();
         let create_vault = vault.enable_sync_request(&pw, &re, &identity)?;
         let attest = Some(vault.attest_device_request(&identity)?);
         let mut profile = Profile::new_synced(
@@ -185,8 +191,17 @@ impl AppCore {
         s.set_api(Some(api.clone()));
         u.writer.reload_all().await?;
         if let Ok(l) = api.list_envelopes(u.vault_id).await {
-            let (p, r, d) = pick_envelopes(&l.envelopes, identity.device_id());
-            s.cache_envelopes(u.vault_id, p, r, d).await?;
+            // TR-4: keep this profile's own envelopes; a server copy only
+            // lends its envelope id when it is byte-identical.
+            let (p, r, _) = pick_envelopes(&l.envelopes, identity.device_id());
+            let did = identity.device_id();
+            s.cache_envelopes(
+                u.vault_id,
+                Some(adopt_own(u.vault_id, &own_pw, p, did)),
+                Some(adopt_own(u.vault_id, &own_re, r, did)),
+                None,
+            )
+            .await?;
         }
         s.install_engine(&u, engine, self.inner.ctx.config.background_sync)
             .await?;
@@ -321,8 +336,8 @@ impl AppCore {
                 if !trusted {
                     let vault = u.vault()?;
                     let req = vault.attest_device_request(&s.identity())?;
-                    let env = api.attest_device(s.device_id(), &req).await?;
-                    s.cache_envelopes(vault_id, None, None, Some(env)).await?;
+                    // TR-4: a confirmation only, nothing is cached.
+                    api.attest_device(s.device_id(), &req).await?;
                     s.set_needs_attest(false).await?;
                     trusted = true;
                 }

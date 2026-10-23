@@ -659,8 +659,9 @@ final class RustVaultService implements VaultService {
         reason: AppErrorReason.syncedProfileRequired,
       );
     }
-    await guard(() => rs_sync.devicesRequestApproval(vaultId: _hub.activeVaultId?.value));
+    final own = decodeObject(await guard(() => rs_sync.devicesRequestApproval(vaultId: _hub.activeVaultId?.value)));
     _hub
+      ..approvalRequestId = own['request_id'] as String?
       ..awaitingApproval = true
       ..startApprovalPoll();
     await _hub.refreshState();
@@ -868,6 +869,55 @@ final class RustDevicesService implements DevicesService {
   @override
   void dismissNewDevice(DeviceId deviceId) =>
       _hub.newDevices.value = ([..._hub.newDevices.value.where((n) => n.deviceId != deviceId)]);
+
+  @override
+  Future<ApprovalProgress?> approvalProgress() async {
+    final id = _hub.approvalRequestId;
+    if (id == null) return null;
+    final j = decodeObject(await guard(() => rs_sync.devicesApprovalStatus(requestId: id)));
+    final pairing = j['pairing_code'] as String?;
+    final approver = j['approver_device_id'] as String?;
+    return ApprovalProgress(
+      requestId: DeviceRequestId(j['request_id']! as String),
+      ownCode: verificationCodeFrom(j['own_code']! as String),
+      vrkCommitment: j['vrk_commitment'] == true,
+      approverDeviceId: approver == null ? null : DeviceId(approver),
+      approverName: j['approver_name'] as String?,
+      pairingCode: pairing == null ? null : verificationCodeFrom(pairing),
+      approverConfirmed: j['approver_confirmed'] == true,
+    );
+  }
+
+  @override
+  Future<void> confirmApprover(ApprovalProgress progress, VerificationCode shown) async {
+    final approver = progress.approverDeviceId;
+    if (approver == null) return;
+    await guard(
+      () => rs_sync.devicesConfirmApprover(
+        requestId: progress.requestId.value,
+        approverDeviceId: approver.value,
+        shownCode: shown.display,
+      ),
+    );
+    unawaited(_hub.tryFinishApproval());
+  }
+
+  @override
+  Future<VaultKeyStatus> vaultKeyStatus() async {
+    final j = decodeObject(await guard(rs_sync.vaultKeyStatus));
+    return VaultKeyStatus(
+      pinned: j['pinned'] == true,
+      unconfirmed: j['unconfirmed'] == true,
+      fingerprint: j['fingerprint'] as String?,
+    );
+  }
+
+  @override
+  Future<bool> confirmVaultKey(SecretText passphrase) async {
+    final ok = await withSecret(passphrase, (p) => guard(() => rs_sync.vaultKeyConfirm(passphrase: p)));
+    await _quietRefresh();
+    return ok;
+  }
 }
 
 // ---- sync ---------------------------------------------------------------------------------

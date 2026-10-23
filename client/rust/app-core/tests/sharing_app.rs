@@ -849,10 +849,27 @@ fn projection(name: &str) -> SharedProjection {
 
 fn grant(identity: SharingIdentityDto, role: SharingRoleDto) -> SharingGrantDto {
     SharingGrantDto {
-        confirmed_code: identity.verification_code.clone(),
+        verification_id: identity.verification_id.clone(),
         identity,
         role,
     }
+}
+
+/// `app` verifies `identity` with the safety number (as the user would
+/// after the colleague read it out) and returns it with its pin id.
+async fn pin(app: &AppCore, identity: &SharingIdentityDto) -> SharingIdentityDto {
+    let number = Box::pin(app.sharing_safety_number(identity.clone()))
+        .await
+        .unwrap()
+        .safety_number;
+    let pinned =
+        Box::pin(app.sharing_verify_peer(identity.clone(), "safety_number".into(), number, None))
+            .await
+            .unwrap();
+    let mut out = identity.clone();
+    out.verification_id = Some(pinned.verification_id);
+    out.trust = Some(pinned.status);
+    out
 }
 
 /// A second connection to the profile database. Its key is sealed under
@@ -903,14 +920,19 @@ async fn facade_trust_permissions_history_revoke_cas_and_exact_response_recovery
         .await
         .unwrap();
     assert!(discovered.devices == vec![identity.clone()]);
-    let mut unconfirmed = grant(identity.clone(), SharingRoleDto::Reader);
-    unconfirmed.confirmed_code = String::new();
-    assert!(owner
-        .app
-        .sharing_publish(projection("Public host"), vec![unconfirmed])
-        .await
-        .is_err());
+    // A directory identity that was never chosen or verified is refused.
+    let unconfirmed = grant(identity.clone(), SharingRoleDto::Reader);
+    assert_eq!(
+        owner
+            .app
+            .sharing_publish(projection("Public host"), vec![unconfirmed])
+            .await
+            .unwrap_err()
+            .code(),
+        "recipient_unverified"
+    );
     assert!(owner.app.sharing_outbox().await.unwrap().entries.is_empty());
+    let identity = pin(&owner.app, &identity).await;
     let created = owner
         .app
         .sharing_publish(
@@ -932,7 +954,10 @@ async fn facade_trust_permissions_history_revoke_cas_and_exact_response_recovery
         .app
         .sharing_accept(
             created.share_id.clone(),
-            owner_identity.verification_code.clone(),
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
         )
         .await
         .unwrap();
@@ -978,7 +1003,10 @@ async fn facade_trust_permissions_history_revoke_cas_and_exact_response_recovery
         .app
         .sharing_accept(
             created.share_id.clone(),
-            owner_identity.verification_code.clone(),
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
         )
         .await
         .unwrap();
@@ -1195,7 +1223,7 @@ async fn older_database_restore_is_blocked_then_explicit_signed_history_reconcil
         Arc::new(InMemorySecureStore::new()),
     )
     .await;
-    let identity = account.app.sharing_identity().await.unwrap();
+    let _identity = account.app.sharing_identity().await.unwrap();
     let created = account
         .app
         .sharing_publish(projection("Initial accepted state"), vec![])
@@ -1229,12 +1257,9 @@ async fn older_database_restore_is_blocked_then_explicit_signed_history_reconcil
         Some("sharing_reconciliation_required")
     );
     assert!(cache[0].preview_json.is_none());
-    assert!(restored
-        .sharing_reconcile(created.share_id.clone(), "wrong code".into())
-        .await
-        .is_err());
+    // Own items need no pin of this device itself (TR-16).
     let recovered = restored
-        .sharing_reconcile(created.share_id.clone(), identity.verification_code.clone())
+        .sharing_reconcile(created.share_id.clone(), String::new())
         .await
         .unwrap();
     assert!(recovered
@@ -1321,6 +1346,7 @@ async fn secret_publication_is_capability_gated_and_metadata_is_always_masked() 
     owner.app.sharing_status().await.unwrap();
     let owner_identity = owner.app.sharing_identity().await.unwrap();
     let recipient_identity = recipient.app.sharing_identity().await.unwrap();
+    let recipient_identity = pin(&owner.app, &recipient_identity).await;
     assert!(
         owner
             .app
@@ -1357,7 +1383,13 @@ async fn secret_publication_is_capability_gated_and_metadata_is_always_masked() 
     );
     let accepted = recipient
         .app
-        .sharing_accept(created.share_id.clone(), owner_identity.verification_code)
+        .sharing_accept(
+            created.share_id.clone(),
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert!(!accepted
@@ -1476,6 +1508,7 @@ async fn kubernetes_sharing_requires_capability_trust_and_explicit_credentials()
     );
     let owner_identity = owner.app.sharing_identity().await.unwrap();
     let recipient_identity = recipient.app.sharing_identity().await.unwrap();
+    let recipient_identity = pin(&owner.app, &recipient_identity).await;
     let grant = grant(recipient_identity, SharingRoleDto::Reader);
     let metadata_share = owner
         .app
@@ -1504,7 +1537,10 @@ async fn kubernetes_sharing_requires_capability_trust_and_explicit_credentials()
         .app
         .sharing_accept(
             metadata_share.share_id.clone(),
-            owner_identity.verification_code.clone(),
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
         )
         .await
         .unwrap();
@@ -1590,7 +1626,13 @@ async fn kubernetes_sharing_requires_capability_trust_and_explicit_credentials()
     }
     recipient
         .app
-        .sharing_accept(shared.share_id.clone(), owner_identity.verification_code)
+        .sharing_accept(
+            shared.share_id.clone(),
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
+        )
         .await
         .unwrap();
     let without_auth = recipient
@@ -1706,6 +1748,7 @@ async fn database_sharing_requires_capability_trust_route_and_explicit_credentia
     assert!(status.supports_db_connections && !status.supports_kube_contexts);
     let owner_identity = owner.app.sharing_identity().await.unwrap();
     let recipient_identity = recipient.app.sharing_identity().await.unwrap();
+    let recipient_identity = pin(&owner.app, &recipient_identity).await;
     let grant = grant(recipient_identity, SharingRoleDto::Reader);
     let metadata_share = owner
         .app
@@ -1738,7 +1781,10 @@ async fn database_sharing_requires_capability_trust_route_and_explicit_credentia
         .app
         .sharing_accept(
             metadata_share.share_id.clone(),
-            owner_identity.verification_code.clone(),
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
         )
         .await
         .unwrap();
@@ -1844,7 +1890,13 @@ async fn database_sharing_requires_capability_trust_route_and_explicit_credentia
     }
     recipient
         .app
-        .sharing_accept(shared.share_id.clone(), owner_identity.verification_code)
+        .sharing_accept(
+            shared.share_id.clone(),
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
+        )
         .await
         .unwrap();
     let with_auth = recipient
@@ -2112,7 +2164,26 @@ async fn live_approved_own_device(server: &str, directory: &Path, anchor: &Accou
         .start_device_approval(own.request_id.clone())
         .await
         .unwrap();
-    assert_eq!(pending.verification_code, own.verification_code);
+    if own.vrk_commitment {
+        // Protocol 1.11: compare the pairing code on both devices.
+        let progress = app
+            .device_approval_status(own.request_id.clone())
+            .await
+            .unwrap();
+        assert_eq!(
+            progress.pairing_code.as_deref(),
+            Some(pending.verification_code.as_str())
+        );
+        app.confirm_device_approver(
+            own.request_id.clone(),
+            progress.approver_device_id.unwrap(),
+            progress.pairing_code.unwrap(),
+        )
+        .await
+        .unwrap();
+    } else {
+        assert_eq!(pending.verification_code, own.verification_code);
+    }
     anchor
         .app
         .confirm_device_approval(own.request_id)
@@ -2201,6 +2272,7 @@ async fn live_facade_verified_accounts_hosts_snippets_groups_secrets_and_revoke(
     assert!(status.enabled && status.supports_groups && status.supports_secrets);
     let owner_identity = owner.app.sharing_identity().await.unwrap();
     let recipient_identity = recipient.app.sharing_identity().await.unwrap();
+    let recipient_identity = pin(&owner.app, &recipient_identity).await;
     let discovery = owner
         .app
         .sharing_discover(recipient.email.clone())
@@ -2208,7 +2280,11 @@ async fn live_facade_verified_accounts_hosts_snippets_groups_secrets_and_revoke(
         .unwrap();
     assert!(
         discovery.user_id == recipient_identity.user_id
-            && discovery.devices == vec![recipient_identity.clone()]
+            && discovery.devices.len() == 1
+            && discovery.devices[0].device_id == recipient_identity.device_id
+            && discovery.devices[0].encryption_public_key
+                == recipient_identity.encryption_public_key
+            && discovery.devices[0].trust.as_deref() == Some("verified")
     );
     let grant_reader = || vec![grant(recipient_identity.clone(), SharingRoleDto::Reader)];
     let host = owner
@@ -2286,7 +2362,10 @@ async fn live_facade_verified_accounts_hosts_snippets_groups_secrets_and_revoke(
             .app
             .sharing_accept(
                 item.share_id.clone(),
-                owner_identity.verification_code.clone(),
+                pin(&recipient.app, &owner_identity)
+                    .await
+                    .verification_id
+                    .unwrap(),
             )
             .await
             .unwrap();
@@ -2462,6 +2541,7 @@ async fn secret_reader_editor_copy_and_revocation_use_only_explicit_private_cred
         .unwrap();
     let owner_identity = owner.app.sharing_identity().await.unwrap();
     let recipient_identity = recipient.app.sharing_identity().await.unwrap();
+    let recipient_identity = pin(&owner.app, &recipient_identity).await;
     let created = owner
         .app
         .sharing_publish_secret(
@@ -2483,7 +2563,13 @@ async fn secret_reader_editor_copy_and_revocation_use_only_explicit_private_cred
     assert!(recipient.app.list_credentials().await.unwrap().is_empty());
     recipient
         .app
-        .sharing_accept(created.share_id.clone(), owner_identity.verification_code)
+        .sharing_accept(
+            created.share_id.clone(),
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert!(
@@ -2651,6 +2737,7 @@ async fn protected_private_key_copy_preserves_exact_original_and_never_auto_atta
     assert!(cc_ssh_core::keys::is_private_key_encrypted(&original_bytes.value).unwrap());
     let owner_identity = owner.app.sharing_identity().await.unwrap();
     let recipient_identity = recipient.app.sharing_identity().await.unwrap();
+    let recipient_identity = pin(&owner.app, &recipient_identity).await;
     let grant_reader = || vec![grant(recipient_identity.clone(), SharingRoleDto::Reader)];
     let key_share = owner
         .app
@@ -2662,7 +2749,10 @@ async fn protected_private_key_copy_preserves_exact_original_and_never_auto_atta
         .app
         .sharing_accept(
             key_share.share_id.clone(),
-            owner_identity.verification_code.clone(),
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
         )
         .await
         .unwrap();
@@ -2704,7 +2794,10 @@ async fn protected_private_key_copy_preserves_exact_original_and_never_auto_atta
         .app
         .sharing_accept(
             phrase_share.share_id.clone(),
-            owner_identity.verification_code,
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
         )
         .await
         .unwrap();
@@ -2755,6 +2848,7 @@ async fn bound_copy_endpoint_confirmation_is_exact_and_verified_before_connectio
     .await;
     let owner_identity = owner.app.sharing_identity().await.unwrap();
     let recipient_identity = recipient.app.sharing_identity().await.unwrap();
+    let recipient_identity = pin(&owner.app, &recipient_identity).await;
     let initial = SharedProjection::Host(SharedHostProjection {
         name: "Shared target".into(),
         address: "old.example.test".into(),
@@ -2775,7 +2869,13 @@ async fn bound_copy_endpoint_confirmation_is_exact_and_verified_before_connectio
     owner.app.sharing_flush().await.unwrap();
     recipient
         .app
-        .sharing_accept(share.share_id.clone(), owner_identity.verification_code)
+        .sharing_accept(
+            share.share_id.clone(),
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
+        )
         .await
         .unwrap();
     let copied = recipient
@@ -2908,7 +3008,9 @@ async fn live_owner_online_enrollment_pairs_exact_keys_rotates_and_preserves_ter
     assert!(status.enabled && status.supports_owner_online_enrollment_v1);
     let owner_identity = Box::pin(owner.app.sharing_identity()).await.unwrap();
     let anchor_identity = Box::pin(anchor.app.sharing_identity()).await.unwrap();
+    let anchor_identity = pin(&owner.app, &anchor_identity).await;
     let late_identity = Box::pin(late_anchor.app.sharing_identity()).await.unwrap();
+    let late_identity = pin(&owner.app, &late_identity).await;
     let target_identity = Box::pin(target.app.sharing_identity()).await.unwrap();
     assert_eq!(anchor_identity.user_id, target_identity.user_id);
     assert_ne!(anchor_identity.device_id, target_identity.device_id);
@@ -2930,15 +3032,19 @@ async fn live_owner_online_enrollment_pairs_exact_keys_rotates_and_preserves_ter
     .await
     .unwrap();
     Box::pin(owner.app.sharing_flush()).await.unwrap();
-    Box::pin(anchor.app.sharing_accept(
-        share.share_id.clone(),
-        owner_identity.verification_code.clone(),
-    ))
+    Box::pin(
+        anchor.app.sharing_accept(
+            share.share_id.clone(),
+            pin(&anchor.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
+        ),
+    )
     .await
     .unwrap();
     let create = || EnrollmentGrantCreateDto {
         anchor: anchor_identity.clone(),
-        confirmed_identity_code: anchor_identity.verification_code.clone(),
         role_ceiling: SharingRoleDto::Reader,
         mode: EnrollmentModeDto::Manual,
         expires_at: chrono::Utc::now().timestamp() + 3600,
@@ -2954,8 +3060,10 @@ async fn live_owner_online_enrollment_pairs_exact_keys_rotates_and_preserves_ter
         .is_err(),
         "only the exact original owner device may sign a grant"
     );
+    // TR-15: the anchor must already be an explicit member with these keys;
+    // a device outside the signed manifest is refused.
     let mut wrong_identity = create();
-    wrong_identity.confirmed_identity_code = "unverified public directory identity".into();
+    wrong_identity.anchor = target_identity.clone();
     assert!(Box::pin(
         owner
             .app
@@ -2972,7 +3080,6 @@ async fn live_owner_online_enrollment_pairs_exact_keys_rotates_and_preserves_ter
     .unwrap();
     let mut other_create = create();
     other_create.anchor = late_identity.clone();
-    other_create.confirmed_identity_code = late_identity.verification_code.clone();
     let other_grant = Box::pin(
         owner
             .app
@@ -3190,7 +3297,8 @@ async fn live_owner_online_enrollment_pairs_exact_keys_rotates_and_preserves_ter
     ));
     let frozen_forward = Box::pin(owner.app.enrollment_reconcile(
         share.share_id.clone(),
-        owner_identity.verification_code.clone(),
+        // The owner's own item needs no pin of itself.
+        String::new(),
     ))
     .await
     .unwrap();
@@ -3264,10 +3372,15 @@ async fn live_owner_online_enrollment_pairs_exact_keys_rotates_and_preserves_ter
     // This independently verified participant has never opened enrollment
     // locally. Its first grant access must reconstruct the older signed
     // manifest used by the grant genesis, not begin at only today's head.
-    Box::pin(late_anchor.app.sharing_accept(
-        share.share_id.clone(),
-        owner_identity.verification_code.clone(),
-    ))
+    Box::pin(
+        late_anchor.app.sharing_accept(
+            share.share_id.clone(),
+            pin(&late_anchor.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
+        ),
+    )
     .await
     .unwrap();
     let late_source = Box::pin(
@@ -3287,10 +3400,15 @@ async fn live_owner_online_enrollment_pairs_exact_keys_rotates_and_preserves_ter
     .await
     .unwrap();
     assert_eq!(completed.status, EnrollmentRequestStatusDto::Accepted);
-    let received = Box::pin(target.app.sharing_accept(
-        share.share_id.clone(),
-        owner_identity.verification_code.clone(),
-    ))
+    let received = Box::pin(
+        target.app.sharing_accept(
+            share.share_id.clone(),
+            pin(&target.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
+        ),
+    )
     .await
     .unwrap();
     assert_eq!(received.role, Some(SharingRoleDto::Reader));
@@ -3373,18 +3491,12 @@ async fn live_owner_online_enrollment_pairs_exact_keys_rotates_and_preserves_ter
         ),
         "SQLCipher transcript rollback must fail closed against the independent OS marker"
     );
-    assert!(Box::pin(rolled_back.enrollment_reconcile(
-        share.share_id.clone(),
-        "incorrect independently compared owner identity".into(),
-    ))
-    .await
-    .is_err());
-    let recovered = Box::pin(rolled_back.enrollment_reconcile(
-        share.share_id.clone(),
-        owner_identity.verification_code.clone(),
-    ))
-    .await
-    .unwrap();
+    // The owner's own item: reconciliation needs no pin of itself; the
+    // signed history and OS markers are what is checked.
+    let recovered =
+        Box::pin(rolled_back.enrollment_reconcile(share.share_id.clone(), String::new()))
+            .await
+            .unwrap();
     assert_eq!(recovered.len(), 2);
     let terminal = recovered
         .iter()
@@ -3435,12 +3547,10 @@ async fn live_owner_online_enrollment_pairs_exact_keys_rotates_and_preserves_ter
         .unwrap());
     storage.close().await;
     let missing_row = Box::pin(reopened(&owner)).await;
-    let recovered_row = Box::pin(missing_row.enrollment_reconcile(
-        share.share_id.clone(),
-        owner_identity.verification_code.clone(),
-    ))
-    .await
-    .unwrap();
+    let recovered_row =
+        Box::pin(missing_row.enrollment_reconcile(share.share_id.clone(), String::new()))
+            .await
+            .unwrap();
     assert_eq!(recovered_row.len(), 2);
     assert!(recovered_row.iter().any(|g| g.grant_id == revoked.grant_id
         && g.frozen
@@ -3465,11 +3575,7 @@ async fn live_owner_online_enrollment_pairs_exact_keys_rotates_and_preserves_ter
         Err(AppError::SharingReconciliationRequired)
     ));
     assert!(matches!(
-        Box::pin(
-            missing_marker
-                .enrollment_reconcile(share.share_id.clone(), owner_identity.verification_code,)
-        )
-        .await,
+        Box::pin(missing_marker.enrollment_reconcile(share.share_id.clone(), String::new(),)).await,
         Err(AppError::SharingReconciliationRequired)
     ));
     Box::pin(missing_marker.shutdown()).await.unwrap();
@@ -3518,6 +3624,7 @@ async fn live_automatic_enrollment_uses_only_signed_automatic_unfrozen_reader_gr
     .await;
     let owner_identity = Box::pin(owner.app.sharing_identity()).await.unwrap();
     let anchor_identity = Box::pin(anchor.app.sharing_identity()).await.unwrap();
+    let anchor_identity = pin(&owner.app, &anchor_identity).await;
     let mut automatic = None;
     let mut manual = None;
     let mut frozen = None;
@@ -3541,17 +3648,21 @@ async fn live_automatic_enrollment_uses_only_signed_automatic_unfrozen_reader_gr
         .await
         .unwrap();
         Box::pin(owner.app.sharing_flush()).await.unwrap();
-        Box::pin(anchor.app.sharing_accept(
-            share.share_id.clone(),
-            owner_identity.verification_code.clone(),
-        ))
+        Box::pin(
+            anchor.app.sharing_accept(
+                share.share_id.clone(),
+                pin(&anchor.app, &owner_identity)
+                    .await
+                    .verification_id
+                    .unwrap(),
+            ),
+        )
         .await
         .unwrap();
         let grant = Box::pin(owner.app.enrollment_create_grant(
             share.share_id.clone(),
             EnrollmentGrantCreateDto {
                 anchor: anchor_identity.clone(),
-                confirmed_identity_code: anchor_identity.verification_code.clone(),
                 role_ceiling: SharingRoleDto::Reader,
                 mode,
                 expires_at: chrono::Utc::now().timestamp() + 3600,
@@ -3659,10 +3770,15 @@ async fn live_automatic_enrollment_uses_only_signed_automatic_unfrozen_reader_gr
     .await
     .unwrap();
     assert_eq!(complete.status, EnrollmentRequestStatusDto::Accepted);
-    let received = Box::pin(target.app.sharing_accept(
-        auto_share.share_id.clone(),
-        owner_identity.verification_code,
-    ))
+    let received = Box::pin(
+        target.app.sharing_accept(
+            auto_share.share_id.clone(),
+            pin(&target.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
+        ),
+    )
     .await
     .unwrap();
     assert_eq!(received.role, Some(SharingRoleDto::Reader));
@@ -3702,14 +3818,11 @@ async fn recipient_leaves_and_owner_restores_a_deleted_item_as_a_new_share() {
     let [owner, leaver, stayer] = &accounts[..] else {
         unreachable!()
     };
-    let owner_code = owner
-        .app
-        .sharing_identity()
-        .await
-        .unwrap()
-        .verification_code;
+    let owner_identity = owner.app.sharing_identity().await.unwrap();
     let leaver_identity = leaver.app.sharing_identity().await.unwrap();
+    let leaver_identity = pin(&owner.app, &leaver_identity).await;
     let stayer_identity = stayer.app.sharing_identity().await.unwrap();
+    let stayer_identity = pin(&owner.app, &stayer_identity).await;
     let status = leaver.app.sharing_status().await.unwrap();
     assert!(status.supports_leave && status.supports_restore);
     let created = owner
@@ -3728,7 +3841,13 @@ async fn recipient_leaves_and_owner_restores_a_deleted_item_as_a_new_share() {
         recipient.app.sharing_list(true).await.unwrap();
         recipient
             .app
-            .sharing_accept(created.share_id.clone(), owner_code.clone())
+            .sharing_accept(
+                created.share_id.clone(),
+                pin(&recipient.app, &owner_identity)
+                    .await
+                    .verification_id
+                    .unwrap(),
+            )
             .await
             .unwrap();
     }
@@ -3801,7 +3920,13 @@ async fn recipient_leaves_and_owner_restores_a_deleted_item_as_a_new_share() {
     assert_eq!(invitation.trust, SharingTrustDto::Unverified);
     let accepted = stayer
         .app
-        .sharing_accept(restored.share_id.clone(), owner_code.clone())
+        .sharing_accept(
+            restored.share_id.clone(),
+            pin(&stayer.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert!(accepted
@@ -3810,4 +3935,343 @@ async fn recipient_leaves_and_owner_restores_a_deleted_item_as_a_new_share() {
         .unwrap()
         .contains("Restorable host"));
     assert!(leaver.app.sharing_list(true).await.unwrap().is_empty());
+}
+
+/// Audit H3 (TR-11…TR-16): colleagues' keys are pinned when chosen, verified
+/// only by a safety number or QR code computed locally, "only verified
+/// recipients" blocks secrets for merely chosen devices, and other keys for
+/// a known device block new access until verified again.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn colleague_keys_are_pinned_verified_and_changed_keys_block_access() {
+    let server = Harness::new().await;
+    server.state.supports_secrets.store(true, Ordering::SeqCst);
+    let directory = tempfile::tempdir().unwrap();
+    let owner = account(
+        &server.url,
+        &directory.path().join("owner"),
+        Arc::new(InMemorySecureStore::new()),
+    )
+    .await;
+    let recipient = account(
+        &server.url,
+        &directory.path().join("recipient"),
+        Arc::new(InMemorySecureStore::new()),
+    )
+    .await;
+    owner.app.sharing_status().await.unwrap();
+    let owner_identity = owner.app.sharing_identity().await.unwrap();
+    let real = recipient.app.sharing_identity().await.unwrap();
+    let found = owner
+        .app
+        .sharing_discover(recipient.email.clone())
+        .await
+        .unwrap();
+    assert_eq!(found.devices[0].trust, None, "never chosen yet");
+
+    // Chosen (TOFU): enough for a host, not for a secret (default policy).
+    let chosen = owner
+        .app
+        .sharing_choose_peer(found.devices[0].clone(), Some(recipient.email.clone()))
+        .await
+        .unwrap();
+    assert_eq!(chosen.status, "chosen");
+    let mut with_pin = real.clone();
+    with_pin.verification_id = Some(chosen.verification_id.clone());
+    owner
+        .app
+        .sharing_publish(
+            projection("Chosen host"),
+            vec![grant(with_pin.clone(), SharingRoleDto::Reader)],
+        )
+        .await
+        .unwrap();
+    let credential = owner
+        .app
+        .add_password_credential("Team secret".into(), None, "s3cr3t-value-123".into())
+        .await
+        .unwrap();
+    let e = owner
+        .app
+        .sharing_publish_secret(
+            credential.id.clone(),
+            false,
+            vec![grant(with_pin.clone(), SharingRoleDto::Reader)],
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(e.code(), "recipient_unverified");
+    assert_eq!(
+        e.args().get("reason").map(String::as_str),
+        Some("unverified")
+    );
+    // The policy is a vault setting; "other" kinds can be tightened too.
+    let policy = owner.app.sharing_policy().await.unwrap();
+    assert!(policy.sensitive_verified_only && !policy.other_verified_only);
+
+    // A hostile server shows the owner other keys for the recipient: the
+    // safety numbers on the two devices differ, the comparison fails.
+    let substitute = cc_crypto_core::DeviceSecretKeys::generate()
+        .unwrap()
+        .public_keys();
+    let mut fake = real.clone();
+    fake.encryption_public_key = hex_lower(&substitute.encryption);
+    fake.signing_public_key = hex_lower(&substitute.signing);
+    let on_owner = owner
+        .app
+        .sharing_safety_number(fake.clone())
+        .await
+        .unwrap()
+        .safety_number;
+    let on_recipient = recipient
+        .app
+        .sharing_safety_number(owner_identity.clone())
+        .await
+        .unwrap();
+    assert_ne!(on_owner, on_recipient.safety_number);
+    assert_eq!(
+        owner
+            .app
+            .sharing_verify_peer(
+                fake.clone(),
+                "safety_number".into(),
+                on_recipient.safety_number.clone(),
+                None
+            )
+            .await
+            .unwrap_err()
+            .code(),
+        "peer_verification_failed"
+    );
+    // The substituted keys for the known device turn the pin into
+    // keys_changed: no new access, not even for a host.
+    let changed = owner
+        .app
+        .sharing_choose_peer(fake.clone(), None)
+        .await
+        .unwrap();
+    assert_eq!(changed.status, "keys_changed");
+    for identity in [with_pin.clone(), {
+        let mut f = fake.clone();
+        f.verification_id = Some(changed.verification_id.clone());
+        f
+    }] {
+        let e = owner
+            .app
+            .sharing_publish(
+                projection("Blocked host"),
+                vec![grant(identity, SharingRoleDto::Reader)],
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(e.code(), "recipient_unverified");
+        assert_eq!(
+            e.args().get("reason").map(String::as_str),
+            Some("keys_changed")
+        );
+    }
+    let found = owner
+        .app
+        .sharing_discover(recipient.email.clone())
+        .await
+        .unwrap();
+    assert_eq!(found.devices[0].trust.as_deref(), Some("keys_changed"));
+
+    // The real keys verified in person (the recipient's QR code): verified,
+    // the secret may be shared.
+    let verified = owner
+        .app
+        .sharing_verify_peer(
+            real.clone(),
+            "qr_code".into(),
+            on_recipient.own_qr_payload.clone(),
+            None,
+        )
+        .await
+        .unwrap();
+    assert_eq!(verified.status, "verified");
+    assert_eq!(verified.method.as_deref(), Some("qr_code"));
+    assert_eq!(verified.verification_id, chosen.verification_id);
+    let mut verified_identity = real.clone();
+    verified_identity.verification_id = Some(verified.verification_id.clone());
+    let secret = owner
+        .app
+        .sharing_publish_secret(
+            credential.id.clone(),
+            false,
+            vec![grant(verified_identity, SharingRoleDto::Reader)],
+        )
+        .await
+        .unwrap();
+    owner.app.sharing_flush().await.unwrap();
+    let listed = owner.app.sharing_list(false).await.unwrap();
+    let item = listed
+        .iter()
+        .find(|i| i.share_id == secret.share_id)
+        .unwrap();
+    let member = item
+        .members
+        .iter()
+        .find(|m| m.device_id == real.device_id)
+        .unwrap();
+    assert_eq!(member.trust.as_deref(), Some("verified"));
+
+    // The recipient accepts after choosing the owner (unverified): the item
+    // is marked, never trusted silently.
+    recipient.app.sharing_list(true).await.unwrap();
+    assert_eq!(
+        recipient
+            .app
+            .sharing_accept(secret.share_id.clone(), "not-a-pin".into())
+            .await
+            .unwrap_err()
+            .code(),
+        "recipient_unverified"
+    );
+    let owner_pin = recipient
+        .app
+        .sharing_choose_peer(owner_identity.clone(), None)
+        .await
+        .unwrap();
+    recipient
+        .app
+        .sharing_accept(secret.share_id.clone(), owner_pin.verification_id)
+        .await
+        .unwrap();
+    let received = recipient.app.sharing_list(false).await.unwrap();
+    let item = received
+        .iter()
+        .find(|i| i.share_id == secret.share_id)
+        .unwrap();
+    assert_eq!(item.owner_trust.as_deref(), Some("chosen"));
+}
+
+/// TR-18: shares from before the update — participants and owners are
+/// pinned `chosen` once, access keeps working, one banner lists unverified
+/// recipients of secrets.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn existing_shares_are_pinned_chosen_once_with_one_banner() {
+    let server = Harness::new().await;
+    server.state.supports_secrets.store(true, Ordering::SeqCst);
+    let directory = tempfile::tempdir().unwrap();
+    let owner = account(
+        &server.url,
+        &directory.path().join("owner"),
+        Arc::new(InMemorySecureStore::new()),
+    )
+    .await;
+    let recipient = account(
+        &server.url,
+        &directory.path().join("recipient"),
+        Arc::new(InMemorySecureStore::new()),
+    )
+    .await;
+    owner.app.sharing_status().await.unwrap();
+    let recipient_identity = recipient.app.sharing_identity().await.unwrap();
+    let recipient_identity = pin(&owner.app, &recipient_identity).await;
+    let credential = owner
+        .app
+        .add_password_credential("Old secret".into(), None, "old-secret-value-1".into())
+        .await
+        .unwrap();
+    let secret = owner
+        .app
+        .sharing_publish_secret(
+            credential.id,
+            false,
+            vec![grant(recipient_identity.clone(), SharingRoleDto::Reader)],
+        )
+        .await
+        .unwrap();
+    owner.app.sharing_flush().await.unwrap();
+    owner.app.sharing_list(false).await.unwrap();
+    assert!(owner
+        .app
+        .sharing_verification_banner()
+        .await
+        .unwrap()
+        .is_empty());
+
+    // As written by 0.9.1: no pins, never migrated.
+    owner.app.lock().await.unwrap();
+    let storage = local_storage(&owner).await;
+    storage
+        .write(|tx| {
+            tx.setting_delete("cc.sharing.peer_pins.v1")?;
+            tx.setting_delete("cc.sharing.peer_pins.migrated.v1")?;
+            Ok::<_, cc_storage_core::StorageError>(())
+        })
+        .await
+        .unwrap();
+    storage.close().await;
+    owner
+        .app
+        .unlock_with_passphrase(owner.passphrase.clone())
+        .await
+        .unwrap();
+
+    let listed = owner.app.sharing_list(true).await.unwrap();
+    let item = listed
+        .iter()
+        .find(|i| i.share_id == secret.share_id)
+        .unwrap();
+    let member = item
+        .members
+        .iter()
+        .find(|m| m.device_id == recipient_identity.device_id)
+        .unwrap();
+    assert_eq!(
+        member.trust.as_deref(),
+        Some("chosen"),
+        "pinned, unverified"
+    );
+    let banner = owner.app.sharing_verification_banner().await.unwrap();
+    assert_eq!(banner.len(), 1);
+    assert_eq!(banner[0].device_id, recipient_identity.device_id);
+    owner
+        .app
+        .sharing_dismiss_verification_banner()
+        .await
+        .unwrap();
+    assert!(owner
+        .app
+        .sharing_verification_banner()
+        .await
+        .unwrap()
+        .is_empty());
+    // Not migrated again: the banner stays dismissed.
+    owner.app.sharing_list(false).await.unwrap();
+    assert!(owner
+        .app
+        .sharing_verification_banner()
+        .await
+        .unwrap()
+        .is_empty());
+    // Access is not revoked: the recipient still accepts and opens it.
+    recipient.app.sharing_list(true).await.unwrap();
+    let owner_identity = owner.app.sharing_identity().await.unwrap();
+    let owner_pin = recipient
+        .app
+        .sharing_choose_peer(owner_identity, None)
+        .await
+        .unwrap();
+    recipient
+        .app
+        .sharing_accept(secret.share_id.clone(), owner_pin.verification_id)
+        .await
+        .unwrap();
+    // Rotating the existing share keeps the existing (unverified) member.
+    let mut kept = recipient_identity.clone();
+    kept.verification_id = None;
+    owner
+        .app
+        .sharing_rotate(
+            secret.share_id.clone(),
+            vec![grant(kept, SharingRoleDto::Reader)],
+        )
+        .await
+        .unwrap();
+}
+
+fn hex_lower(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
 }

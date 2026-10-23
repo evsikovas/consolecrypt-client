@@ -37,7 +37,7 @@ mod team;
 mod unlock;
 mod unlocked;
 
-pub use approval::{ConfirmedApproval, PendingApproval};
+pub use approval::{unlock_approved_device, ConfirmedApproval, PendingApproval, PinnedApprover};
 pub use backup::{
     decode_backup, decode_backup_from, encode_backup, restore_backup_with_passphrase,
     restore_backup_with_recovery, RestoredBackup, MAX_BACKUP_BYTES,

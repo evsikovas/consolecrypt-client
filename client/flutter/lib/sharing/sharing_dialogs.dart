@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
+import 'package:consolecrypt/sharing/peer_verification.dart';
 import 'package:consolecrypt/sharing/sharing_database.dart';
 import 'package:consolecrypt/sharing/sharing_kubernetes.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
@@ -117,11 +118,16 @@ class SharingRecipients extends ConsumerStatefulWidget {
     required this.onChanged,
     this.initialGrants = const [],
     this.excludedDeviceIds = const {},
+    this.sensitive = false,
     super.key,
   });
   final ValueChanged<List<SharingGrant>> onChanged;
   final List<SharingGrant> initialGrants;
   final Set<String> excludedDeviceIds;
+
+  /// Secrets, Kubernetes contexts, database connections: the default policy
+  /// admits only verified recipients (enforced in the core).
+  final bool sensitive;
   @override
   ConsumerState<SharingRecipients> createState() => _SharingRecipientsState();
 }
@@ -130,6 +136,7 @@ class _SharingRecipientsState extends ConsumerState<SharingRecipients> {
   final _email = TextEditingController();
   final Map<String, SharingGrant> _grants = {};
   List<SharingIdentity> _devices = [];
+  String _foundEmail = '';
   bool _busy = false;
   String? _error;
   @override
@@ -161,9 +168,10 @@ class _SharingRecipientsState extends ConsumerState<SharingRecipients> {
         setState(() {
           for (final d in devices) {
             final old = _grants[d.deviceId];
-            if (old != null && old.identity.code != d.code) _grants.remove(d.deviceId);
+            if (old != null && !old.identity.sameKeys(d)) _grants.remove(d.deviceId);
           }
           _devices = devices;
+          _foundEmail = email;
           widget.onChanged(_grants.values.toList(growable: false));
           _error = devices.isEmpty ? context.l10n.sharingNoDevices : null;
         });
@@ -176,14 +184,44 @@ class _SharingRecipientsState extends ConsumerState<SharingRecipients> {
     }
   }
 
-  void _choose(SharingIdentity identity, bool selected, [SharingRole? role]) {
-    setState(() {
-      if (!selected) {
-        _grants.remove(identity.deviceId);
-      } else {
-        _grants[identity.deviceId] = SharingGrant(identity, role ?? SharingRole.reader, identity.code);
-      }
-    });
+  void _replace(SharingIdentity identity) {
+    _devices = [for (final d in _devices) d.deviceId == identity.deviceId ? identity : d];
+    final old = _grants[identity.deviceId];
+    if (old != null) _grants[identity.deviceId] = SharingGrant(identity, old.role);
+  }
+
+  /// TR-12: choosing a device pins its keys; a known device with other
+  /// keys is never selected.
+  Future<void> _choose(SharingIdentity identity, bool selected, [SharingRole? role]) async {
+    final profile = ref.read(sharingSessionScopeProvider);
+    if (!selected) {
+      setState(() => _grants.remove(identity.deviceId));
+      widget.onChanged(_grants.values.toList(growable: false));
+      return;
+    }
+    var chosen = identity;
+    if (chosen.verificationId == null || chosen.trust == PeerTrust.none) {
+      setState(() => _busy = true);
+      final pin = await runWithFeedback(
+        context,
+        () => ref.read(sharingServiceProvider).choosePeer(identity, email: _foundEmail.isEmpty ? null : _foundEmail),
+      );
+      if (!mounted || !sharingSessionCurrent(ref, profile)) return;
+      setState(() => _busy = false);
+      if (pin == null) return;
+      chosen = identity.withPin(pin);
+      setState(() => _replace(chosen));
+    }
+    if (chosen.trust == PeerTrust.keysChanged) return;
+    setState(() => _grants[chosen.deviceId] = SharingGrant(chosen, role ?? SharingRole.reader));
+    widget.onChanged(_grants.values.toList(growable: false));
+  }
+
+  Future<void> _verify(SharingIdentity identity) async {
+    final profile = ref.read(sharingSessionScopeProvider);
+    final pin = await showPeerVerification(context, identity, email: _foundEmail.isEmpty ? null : _foundEmail);
+    if (pin == null || !mounted || !sharingSessionCurrent(ref, profile)) return;
+    setState(() => _replace(identity.withPin(pin)));
     widget.onChanged(_grants.values.toList(growable: false));
   }
 
@@ -217,7 +255,7 @@ class _SharingRecipientsState extends ConsumerState<SharingRecipients> {
         if (_devices.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text(l.sharingSelectDevice),
-          Text(l.sharingVerifyHelp),
+          if (widget.sensitive) Text(l.sharingVerifiedOnlyHint, key: const ValueKey('sharing-verified-only-hint')),
         ],
         for (final d in devices)
           Padding(
@@ -227,13 +265,37 @@ class _SharingRecipientsState extends ConsumerState<SharingRecipients> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text('${l.sharingDevice}: ${d.deviceId}'),
-                  SelectableText(d.code, style: const TextStyle(fontFamily: 'monospace')),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      PeerTrustBadge(d.trust, verifiedAt: d.verifiedAt),
+                      if (d.trust != PeerTrust.verified)
+                        GlassButton(
+                          key: ValueKey('sharing-verify-peer-${d.deviceId}'),
+                          label: l.sharingVerifyAction,
+                          icon: Icons.verified_user_outlined,
+                          onPressed: _busy ? null : () => _verify(d),
+                        ),
+                    ],
+                  ),
+                  if (d.trust == PeerTrust.keysChanged)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        l.sharingKeysChangedWarning(d.deviceId, _foundEmail.isEmpty ? d.userId : _foundEmail),
+                        key: ValueKey('sharing-keys-changed-${d.deviceId}'),
+                      ),
+                    ),
+                  Text('${l.sharingFingerprint}: ${d.code}', style: Theme.of(context).textTheme.bodySmall),
                   CheckboxListTile(
-                    key: ValueKey('sharing-verify-${d.deviceId}'),
+                    key: ValueKey('sharing-give-access-${d.deviceId}'),
                     contentPadding: EdgeInsets.zero,
-                    title: Text(l.sharingConfirmed),
+                    title: Text(l.sharingGiveAccess),
                     value: _grants.containsKey(d.deviceId),
-                    onChanged: (v) => _choose(d, v == true),
+                    onChanged: _busy || d.trust == PeerTrust.keysChanged ? null : (v) => _choose(d, v == true),
                   ),
                   if (_grants[d.deviceId] case final grant?)
                     GlassSelect<SharingRole>(
@@ -242,7 +304,7 @@ class _SharingRecipientsState extends ConsumerState<SharingRecipients> {
                         GlassSelectItem(value: SharingRole.reader, label: l.sharingReader),
                         GlassSelectItem(value: SharingRole.editor, label: l.sharingEditor),
                       ],
-                      onChanged: (role) => _choose(d, true, role),
+                      onChanged: (role) => _choose(grant.identity, true, role),
                     ),
                   Text(_grants[d.deviceId]?.role == SharingRole.editor ? l.sharingEditorHelp : l.sharingReaderHelp),
                 ],
@@ -379,6 +441,7 @@ class _SharingPublishDialogState extends ConsumerState<SharingPublishDialog> {
                     const SizedBox(height: 16),
                     SharingRecipients(
                       key: const ValueKey('sharing-recipients'),
+                      sensitive: sharingKindSensitive(widget.kind),
                       onChanged: (g) => setState(() => _grants = g),
                     ),
                   ],
@@ -416,8 +479,9 @@ class SharingAcceptDialog extends ConsumerStatefulWidget {
 
 class _SharingAcceptDialogState extends ConsumerState<SharingAcceptDialog> {
   Object? _profile;
-  late final Future<SharingInvitation> _invitation;
-  bool _confirmed = false, _busy = false;
+  late Future<SharingInvitation> _invitation;
+  SharingIdentity? _owner;
+  bool _busy = false;
   @override
   void initState() {
     super.initState();
@@ -425,17 +489,31 @@ class _SharingAcceptDialogState extends ConsumerState<SharingAcceptDialog> {
     _invitation = ref.read(sharingServiceProvider).inspect(widget.item.id);
   }
 
+  Future<void> _verify(SharingIdentity owner) async {
+    final pin = await showPeerVerification(context, owner);
+    if (pin == null || !mounted || !sharingSessionCurrent(ref, _profile)) return;
+    setState(() => _owner = owner.withPin(pin));
+  }
+
+  /// TR-16: the owner's keys are pinned (chosen on first use, or verified)
+  /// and the core accepts only with that pin.
   Future<void> _accept(SharingInvitation invitation) async {
-    if (!_confirmed || !sharingSessionCurrent(ref, _profile)) return;
+    if (!sharingSessionCurrent(ref, _profile)) return;
     setState(() => _busy = true);
     final accepted = await runWithFeedback(context, () async {
+      var owner = _owner ?? invitation.owner;
+      if (owner.verificationId == null || owner.trust == PeerTrust.none) {
+        owner = owner.withPin(await ref.read(sharingServiceProvider).choosePeer(owner));
+      }
+      if (mounted) setState(() => _owner = owner);
+      final pinId = owner.verificationId!;
       if (widget.enrollmentRecovery) {
-        await ref.read(enrollmentServiceProvider).reconcile(invitation.item.id, invitation.owner.code);
+        await ref.read(enrollmentServiceProvider).reconcile(invitation.item.id, pinId);
         return true;
       }
       return widget.reconcile
-          ? ref.read(sharingServiceProvider).reconcile(invitation.item.id, invitation.owner.code)
-          : ref.read(sharingServiceProvider).accept(invitation.item.id, invitation.owner.code);
+          ? ref.read(sharingServiceProvider).reconcile(invitation.item.id, pinId)
+          : ref.read(sharingServiceProvider).accept(invitation.item.id, pinId);
     });
     if (!mounted) return;
     if (accepted != null && sharingSessionCurrent(ref, _profile)) {
@@ -453,45 +531,64 @@ class _SharingAcceptDialogState extends ConsumerState<SharingAcceptDialog> {
       profile: _profile,
       child: FutureBuilder<SharingInvitation>(
         future: _invitation,
-        builder: (context, snapshot) => GlassDialog(
-          title: widget.reconcile ? l.sharingReconcile : l.sharingAccept,
-          icon: Icons.verified_user_outlined,
-          content: SizedBox(
-            width: 500,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (!snapshot.hasData && !snapshot.hasError) const LinearProgressIndicator(),
-                if (snapshot.hasError) Text(l.sharingUnavailable),
-                if (snapshot.data case final inv?) ...[
-                  Text(widget.reconcile ? l.sharingReconcileHelp : l.sharingVerifyHelp),
-                  const SizedBox(height: 12),
-                  Text('${l.sharingOwner}: ${inv.owner.userId}'),
-                  Text('${l.sharingDevice}: ${inv.owner.deviceId}'),
-                  const SizedBox(height: 12),
-                  SelectableText(inv.owner.code, style: const TextStyle(fontFamily: 'monospace')),
-                  CheckboxListTile(
-                    key: const ValueKey('sharing-owner-confirmed'),
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(l.sharingConfirmed),
-                    value: _confirmed,
-                    onChanged: _busy ? null : (v) => setState(() => _confirmed = v == true),
-                  ),
-                  Text(l.sharingNoAutoRun),
+        builder: (context, snapshot) {
+          final owner = _owner ?? snapshot.data?.owner;
+          final blocked = owner?.trust == PeerTrust.keysChanged;
+          return GlassDialog(
+            title: widget.reconcile ? l.sharingReconcile : l.sharingAccept,
+            icon: Icons.verified_user_outlined,
+            content: SizedBox(
+              width: 500,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!snapshot.hasData && !snapshot.hasError) const LinearProgressIndicator(),
+                  if (snapshot.hasError) Text(l.sharingUnavailable),
+                  if (owner != null) ...[
+                    Text(widget.reconcile ? l.sharingReconcileHelp : l.sharingAcceptOwnerHelp),
+                    const SizedBox(height: 12),
+                    Text('${l.sharingOwner}: ${owner.userId}'),
+                    Text('${l.sharingDevice}: ${owner.deviceId}'),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        PeerTrustBadge(owner.trust, verifiedAt: owner.verifiedAt),
+                        if (owner.trust != PeerTrust.verified)
+                          GlassButton(
+                            key: const ValueKey('sharing-verify-owner'),
+                            label: l.sharingVerifyAction,
+                            icon: Icons.verified_user_outlined,
+                            onPressed: _busy ? null : () => _verify(owner),
+                          ),
+                      ],
+                    ),
+                    if (blocked)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(l.sharingKeysChangedWarning(owner.deviceId, owner.userId)),
+                      ),
+                    const SizedBox(height: 8),
+                    Text('${l.sharingFingerprint}: ${owner.code}', style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 8),
+                    Text(l.sharingNoAutoRun),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          secondaryActions: [
-            GlassButton(label: l.commonCancel, onPressed: _busy ? null : () => closeDialog<void>(context)),
-          ],
-          primaryAction: GlassButton.prominent(
-            key: const ValueKey('sharing-accept-confirm'),
-            label: l.sharingAccept,
-            onPressed: !_confirmed || _busy || snapshot.data == null ? null : () => _accept(snapshot.data!),
-          ),
-        ),
+            secondaryActions: [
+              GlassButton(label: l.commonCancel, onPressed: _busy ? null : () => closeDialog<void>(context)),
+            ],
+            primaryAction: GlassButton.prominent(
+              key: const ValueKey('sharing-accept-confirm'),
+              label: l.sharingAccept,
+              onPressed: _busy || snapshot.data == null || blocked ? null : () => _accept(snapshot.data!),
+            ),
+          );
+        },
       ),
     );
   }

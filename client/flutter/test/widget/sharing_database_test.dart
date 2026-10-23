@@ -17,6 +17,7 @@ import 'package:consolecrypt/sharing/sharing_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import '../helpers/fake_peer_pins.dart';
 
 import '../helpers/test_app.dart';
 
@@ -72,7 +73,7 @@ SharingItem _item(
   previewJson: jsonEncode({'kind': 'db_connection', 'data': _data(routeKind, credentials: credentials)}),
 );
 
-class _Sharing implements SharingService, DatabaseSharingService {
+class _Sharing with FakePeerPins implements SharingService, DatabaseSharingService {
   bool supportsDbConnections = true, supportsSecrets = true;
   String routeKind = 'relay';
   final previews = <bool>[];
@@ -201,7 +202,7 @@ BuildContext _context(WidgetTester tester) => tester.element(find.byType(Navigat
 Future<void> _recipientSelection(WidgetTester tester) async {
   await enterKey(tester, 'sharing-email', 'recipient@example.test');
   await tapKey(tester, 'sharing-find');
-  await tapKey(tester, 'sharing-verify-recipient-device');
+  await tapKey(tester, 'sharing-give-access-recipient-device');
 }
 
 Future<void> _pickRoute(WidgetTester tester, String option) async {
@@ -231,7 +232,7 @@ void main() {
     await tapKey(tester, 'sharing-db-publish-confirm');
     expect(sharing.publishedCredentials, true);
     expect(sharing.stamp, 'stamp-true');
-    expect(sharing.grants!.single.confirmedCode, _recipient.code);
+    expect(sharing.grants!.single.verificationId, 'pin-${_recipient.deviceId}');
     expect(tester.takeException(), isNull);
   });
 

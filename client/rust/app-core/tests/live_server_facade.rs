@@ -91,11 +91,35 @@ async fn facade_flows_against_live_server() {
         .start_device_approval(own.request_id.clone())
         .await
         .unwrap();
-    assert_eq!(pending.verification_code, own.verification_code);
+    if own.vrk_commitment {
+        // Protocol 1.11: both devices show the pairing code over both keys;
+        // C pins A's keys only after confirming it.
+        assert_eq!(pending.code_version, 2);
+        let progress = c
+            .device_approval_status(own.request_id.clone())
+            .await
+            .unwrap();
+        assert_eq!(
+            progress.pairing_code.as_deref(),
+            Some(pending.verification_code.as_str())
+        );
+        c.confirm_device_approver(
+            own.request_id.clone(),
+            progress.approver_device_id.unwrap(),
+            progress.pairing_code.unwrap(),
+        )
+        .await
+        .unwrap();
+    } else {
+        assert_eq!(pending.verification_code, own.verification_code);
+    }
     a.confirm_device_approval(own.request_id.clone())
         .await
         .unwrap();
     assert!(c.finish_device_approval(None).await.unwrap());
+    let status = c.vault_key_status().await.unwrap();
+    assert!(status.pinned);
+    assert_eq!(status.unconfirmed, !own.vrk_commitment, "{status:?}");
     c.sync_now().await.unwrap();
     assert!(c
         .list_hosts()

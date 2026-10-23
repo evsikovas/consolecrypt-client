@@ -3,6 +3,7 @@
 
 use crate::dto::*;
 use crate::error::{AppError, AppResult};
+use crate::key_trust::{adopt_own, KeySource};
 use crate::prompts::PromptBroker;
 use crate::secrets::{self, blocking};
 use crate::session::{AppCtx, PendingKit, Session, Unlocked, VAULT_ID_SETTING};
@@ -57,7 +58,7 @@ impl std::fmt::Debug for AppCore {
     }
 }
 
-fn secret(s: String) -> SecretString {
+pub(crate) fn secret(s: String) -> SecretString {
     SecretString::from(s)
 }
 
@@ -585,6 +586,10 @@ impl AppCore {
                 .await?;
             let session =
                 Session::with_storage(self.inner.ctx.clone(), pid, storage.clone()).await?;
+            let pin = session
+                .check_vault_key(&created.unlocked, KeySource::Created)
+                .await?;
+            session.store_pin(pin).await?;
             // The database key moves under the vault key (S5).
             session.seal_storage(&created.unlocked).await?;
             let unlocked = session.install_unlocked(created.unlocked).await?;
@@ -754,22 +759,28 @@ impl AppCore {
         })
         .await?;
         let vault_id = created.create_request.vault_id;
+        let pin = s
+            .check_vault_key(&created.unlocked, KeySource::Created)
+            .await?;
         let info = api.create_vault(&created.create_request).await?;
         s.storage()?.upsert_vault_info(info).await?;
-        let (pw, rec, dev) = match api.list_envelopes(vault_id).await {
+        let (pw, rec, _) = match api.list_envelopes(vault_id).await {
             Ok(l) => pick_envelopes(&l.envelopes, s.device_id()),
             Err(_) => (None, None, None),
         };
+        // TR-4: cache this device's own envelopes (the server copy only when
+        // it is byte-identical, for its envelope id); no device envelope.
         let envs = created.local_envelopes();
-        let did = Some(s.device_id());
+        let did = s.device_id();
         s.cache_envelopes(
             vault_id,
-            Some(pw.unwrap_or_else(|| local_key_envelope(vault_id, envs.password.clone(), did))),
-            Some(rec.unwrap_or_else(|| local_key_envelope(vault_id, envs.recovery.clone(), did))),
-            dev,
+            Some(adopt_own(vault_id, &envs.password, pw, did)),
+            Some(adopt_own(vault_id, &envs.recovery, rec, did)),
+            None,
         )
         .await?;
         s.set_vault_id(vault_id).await?;
+        s.store_pin(pin).await?;
         s.seal_storage(&created.unlocked).await?;
         let unlocked = s.install_unlocked(created.unlocked).await?;
         let name = profile.display_name.unwrap_or_else(|| "Vault".into());
@@ -802,7 +813,8 @@ impl AppCore {
             .ok_or_else(|| AppError::not_found("password envelope", vault_id))?;
         let pass = secret(passphrase);
         let vault = blocking(move || Ok(unlock_with_passphrase(vault_id, &env, &pass)?)).await?;
-        self.attest_and_install(&s, &api, vault, material).await?;
+        self.attest_and_install(&s, &api, vault, material, KeySource::Passphrase)
+            .await?;
         self.active_profile()
             .await?
             .ok_or(AppError::NoActiveProfile)
@@ -827,7 +839,8 @@ impl AppCore {
         let input = secret(recovery_input);
         let vault =
             blocking(move || Ok(unlock_with_recovery_input(vault_id, &env, &input)?)).await?;
-        self.attest_and_install(&s, &api, vault, material).await?;
+        self.attest_and_install(&s, &api, vault, material, KeySource::RecoveryKey)
+            .await?;
         if let Some(p) = new_passphrase {
             self.set_new_passphrase(p).await?;
         }
@@ -842,21 +855,26 @@ impl AppCore {
         api: &ApiClient,
         vault: UnlockedVault,
         material: VaultRecoveryMaterial,
+        source: KeySource,
     ) -> AppResult<Arc<Unlocked>> {
         let vault_id = vault.vault_id();
+        // TR-3 before anything is sent or stored.
+        let pin = s.check_vault_key(&vault, source).await?;
         let identity = s.identity();
         let attest = vault.attest_device_request(&identity)?;
-        let device_env = api.attest_device(identity.device_id(), &attest).await?;
+        // TR-4: the attest response is a confirmation only, never cached.
+        api.attest_device(identity.device_id(), &attest).await?;
         let info = api.get_vault(vault_id).await?;
         s.storage()?.upsert_vault_info(info.clone()).await?;
         s.cache_envelopes(
             vault_id,
             material.password_envelope,
             material.recovery_envelope,
-            Some(device_env),
+            None,
         )
         .await?;
         s.set_vault_id(vault_id).await?;
+        s.store_pin(pin).await?;
         s.seal_storage(&vault).await?;
         tracing::info!(vault_id = %vault_id, "device attested for vault");
         let u = s.install_unlocked(vault).await?;
@@ -875,18 +893,27 @@ impl AppCore {
         &self,
         s: &Arc<Session>,
         vault: UnlockedVault,
+        source: KeySource,
     ) -> AppResult<()> {
         if s.unlocked_opt().await.is_some() {
             return Ok(());
         }
+        // TR-3 / TR-17: compare with the pinned key before the database is
+        // opened with it; the first unlock after the update pins it.
+        let pin = s.check_vault_key(&vault, source).await?;
         if s.has_keyfile() {
             s.open_sealed_storage(&vault).await?;
             s.reconcile_header().await?;
+            s.store_pin(pin).await?;
         } else if s.vault_id().is_some() {
+            // Into the database first: sealing copies it into the key file.
+            s.store_pin(pin).await?;
             s.seal_storage(&vault).await?;
             if s.kind().await? == ProfileKind::Synced {
                 s.set_needs_attest(true).await?;
             }
+        } else {
+            s.store_pin(pin).await?;
         }
         s.install_unlocked(vault).await?;
         Ok(())
@@ -928,12 +955,14 @@ impl AppCore {
             }
             Err(e) => return Err(e),
         };
-        // Before the database opens only the key file can take it.
+        // TR-3: the key (also from a fresh server envelope) is checked
+        // against the pin before anything is opened or cached; a fresh
+        // envelope is cached only after its key passed.
+        self.finish_unlock(&s, vault, KeySource::Passphrase).await?;
         if let Some(env) = &fresh_env {
             s.cache_envelopes(vault_id, Some(env.clone()), None, None)
                 .await?;
         }
-        self.finish_unlock(&s, vault).await?;
         self.rewrap_password_envelope(&s, fresh_env.unwrap_or(env), &pass)
             .await;
         Ok(())
@@ -946,7 +975,7 @@ impl AppCore {
             return Ok(());
         }
         let vault = self.recovery_unlock(&s, recovery_input).await?;
-        self.finish_unlock(&s, vault).await
+        self.finish_unlock(&s, vault, KeySource::RecoveryKey).await
     }
 
     pub(crate) async fn recovery_unlock(
@@ -1274,6 +1303,7 @@ async fn seed_vault_settings(u: &Unlocked, name: &str) -> AppResult<()> {
             icon: None,
             description: None,
             policies: Default::default(),
+            sharing_policy: Default::default(),
             created_at: now,
             updated_at: now,
         }))

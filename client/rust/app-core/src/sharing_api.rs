@@ -36,6 +36,8 @@ const MAX_HISTORY_PAGES: usize = 100;
 
 #[path = "sharing_enrollment_api.rs"]
 pub(crate) mod enrollment;
+#[path = "peer_pins.rs"]
+pub(crate) mod peer_pins;
 
 async fn wait_generation<T, E: Into<AppError>>(
     unlocked: &Unlocked,
@@ -345,6 +347,9 @@ fn identity_dto(instance: Uuid, member: &SharingMember) -> AppResult<SharingIden
         signing_public_key: hex(member.signing_public_key.as_slice()),
         verification_code: sharing_identity_code(instance, member.user_id, member.device_id, &keys)
             .map_err(integrity)?,
+        trust: None,
+        verification_id: None,
+        verified_at_ms: None,
     })
 }
 
@@ -383,14 +388,12 @@ fn grants(
                 SharingRoleDto::Editor => SharingRole::Editor,
             },
         };
-        let computed = identity_dto(instance, &member)?;
-        if !code_matches(&computed.verification_code, &identity.verification_code)
-            || !code_matches(&computed.verification_code, &grant.confirmed_code)
-        {
-            return Err(invalid(
-                "independently compared recipient verification code is required",
-            ));
-        }
+        // Keys must be well-formed; trust in them is the pin's
+        // (`peer_pins::check_grants`, TR-16), never a code echoed back.
+        DevicePublicKeys::from_slices(
+            member.encryption_public_key.as_slice(),
+            member.signing_public_key.as_slice(),
+        )?;
         if members.insert(member.device_id, member).is_some() {
             return Err(invalid("a recipient device was supplied more than once"));
         }
@@ -487,6 +490,7 @@ fn item_dto(
             })
             .collect::<AppResult<_>>()?,
         departed_user_ids: vec![],
+        owner_trust: None,
     })
 }
 
@@ -669,6 +673,7 @@ impl AppCore {
             members: vec![],
             member_roles: vec![],
             departed_user_ids: vec![],
+            owner_trust: None,
         })
     }
     async fn sharing_gate<'a>(
@@ -984,6 +989,8 @@ impl AppCore {
             }
         }
         apply_departures(&mut items, &departed);
+        self.sharing_check(&env).await?;
+        self.sharing_apply_pins(&env, &mut items).await?;
         self.sharing_check(&env).await?;
         if unreadable > 0 {
             tracing::warn!(unreadable, "unreadable shared entries skipped");
@@ -1558,13 +1565,20 @@ impl AppCore {
             .wait(env.transport()?.sharing_recipient_lookup(&email, post))
             .await?;
         self.sharing_check(&env).await?;
+        let mut devices = recipient
+            .devices
+            .iter()
+            .map(|member| identity_dto(env.pin.instance, member))
+            .collect::<AppResult<Vec<_>>>()?;
+        // TR-12: known devices show their pin; a known device with other
+        // keys shows `keys_changed` (the pin itself changes when chosen).
+        let pins = peer_pins::Pins::load(&env).await?;
+        for d in &mut devices {
+            pins.annotate(env.pin.instance, d);
+        }
         Ok(SharingRecipientDto {
             user_id: recipient.user_id.to_string(),
-            devices: recipient
-                .devices
-                .iter()
-                .map(|member| identity_dto(env.pin.instance, member))
-                .collect::<AppResult<_>>()?,
+            devices,
         })
     }
 
@@ -1574,7 +1588,7 @@ impl AppCore {
     pub async fn sharing_reconcile(
         &self,
         share_id: String,
-        confirmed_owner_code: String,
+        verification_id: String,
     ) -> AppResult<SharingItemDto> {
         let session = self.session().await?;
         let _gate = self.sharing_gate(&session).await?;
@@ -1585,18 +1599,9 @@ impl AppCore {
         let binding = binding_of(&observed);
         env.require_kind(binding.kind)?;
         let owner = owner_from(&observed)?;
-        let code = sharing_identity_code(
-            env.pin.instance,
-            owner.user_id,
-            owner.device_id,
-            &owner.public_keys,
-        )
-        .map_err(integrity)?;
-        if !code_matches(&code, &confirmed_owner_code) {
-            return Err(invalid(
-                "independently compared owner verification code is required",
-            ));
-        }
+        // TR-16: the owner's keys must be the ones this user pinned.
+        let pins = peer_pins::Pins::load(&env).await?;
+        peer_pins::require_owner_pin(&env, &pins, &owner, &verification_id)?;
         let store = env.store()?;
         let base = env
             .wait(async { store.reconciliation_base(&binding).await.map_err(integrity) })
@@ -1691,16 +1696,20 @@ impl AppCore {
             signing_public_key: anchor.public_keys.signing_bytes(),
             role: SharingRole::Editor,
         };
+        let mut owner = identity_dto(env.pin.instance, &owner)?;
+        peer_pins::Pins::load(&env)
+            .await?
+            .annotate(env.pin.instance, &mut owner);
         Ok(SharingInvitationDto {
             item: item_dto(&env, &state, SharingTrustDto::Unverified, None)?,
-            owner: identity_dto(env.pin.instance, &owner)?,
+            owner,
         })
     }
 
     pub async fn sharing_accept(
         &self,
         share_id: String,
-        confirmed_owner_code: String,
+        verification_id: String,
     ) -> AppResult<SharingItemDto> {
         let session = self.session().await?;
         let _gate = self.sharing_gate(&session).await?;
@@ -1709,18 +1718,10 @@ impl AppCore {
         let state = env.wait(env.transport()?.get_share(id)).await?;
         self.sharing_check(&env).await?;
         let anchor = owner_from(&state)?;
-        let code = sharing_identity_code(
-            env.pin.instance,
-            anchor.user_id,
-            anchor.device_id,
-            &anchor.public_keys,
-        )
-        .map_err(integrity)?;
-        if !code_matches(&code, &confirmed_owner_code) {
-            return Err(invalid(
-                "independently compared owner verification code is required",
-            ));
-        }
+        // TR-16: the owner's keys must be the ones this user pinned
+        // (`sharing_choose_peer` / `sharing_verify_peer`).
+        let pins = peer_pins::Pins::load(&env).await?;
+        peer_pins::require_owner_pin(&env, &pins, &anchor, &verification_id)?;
         let binding = binding_of(&state);
         env.require_kind(binding.kind)?;
         let store = env.store()?;
@@ -1978,6 +1979,14 @@ impl AppCore {
         projection: SharedProjection,
         recipients: Vec<SharingGrantDto>,
     ) -> AppResult<SharingItemDto> {
+        let pins = peer_pins::Pins::load(env).await?;
+        peer_pins::check_grants(
+            env,
+            &pins,
+            peer_pins::is_sensitive(projection.kind(), projection.carries_secrets()),
+            &recipients,
+            &[],
+        )?;
         let members = grants(env.pin.instance, env.own_member(), recipients)?;
         self.sharing_publish_members(env, projection, members, None)
             .await
@@ -2144,6 +2153,16 @@ impl AppCore {
             .checked_add(1)
             .ok_or_else(|| invalid("access epoch limit reached"))?;
         manifest.previous_manifest_hash = Bytes::from(previous.manifest_checkpoint().hash);
+        // TR-14/16: new devices need a usable pin; existing members keep
+        // their access (decision of 22.10.2026).
+        let pins = peer_pins::Pins::load(&env).await?;
+        peer_pins::check_grants(
+            &env,
+            &pins,
+            peer_pins::is_sensitive(binding.kind, projection.carries_secrets()),
+            &recipients,
+            &manifest.members,
+        )?;
         let next_members = grants(env.pin.instance, env.own_member(), recipients)?;
         for next in &next_members {
             if let Some(old) = manifest

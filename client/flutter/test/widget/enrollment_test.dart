@@ -42,7 +42,10 @@ const _editor = SharingIdentity(
   code: 'PUBLIC EDITOR CODE',
 );
 
-SharingItem _ownedItem() => SharingItem(
+/// Whole-request code of the fixture (6 groups of 5 digits, TR-15).
+const _code = '12345 67890 13579 24680 11223 34455';
+
+SharingItem _ownedItem() => const SharingItem(
   id: 'shared-item',
   itemId: 'item',
   kind: SharingKind.host,
@@ -53,8 +56,8 @@ SharingItem _ownedItem() => SharingItem(
   owned: true,
   trust: SharingTrust.verified,
   memberRoles: [
-    SharingGrant(_target, SharingRole.reader, _target.code),
-    SharingGrant(_editor, SharingRole.editor, _editor.code),
+    SharingGrant(_target, SharingRole.reader),
+    SharingGrant(_editor, SharingRole.editor),
   ],
 );
 
@@ -80,7 +83,7 @@ EnrollmentPairing _pairing(String packet, {bool expired = false, bool missingTar
     bundle: packet,
     expires: DateTime.now().toUtc().add(Duration(hours: expired ? -1 : 1)),
     requestId: source ? null : 'request',
-    code: source ? null : 'PUBLIC FULL REQUEST COMPARISON CODE',
+    code: source ? null : _code,
     target: source || missingTarget ? null : _target,
     requestedRole: source ? null : SharingRole.reader,
   );
@@ -92,7 +95,7 @@ EnrollmentRequest _request(EnrollmentRequestState state) => EnrollmentRequest(
   id: 'request',
   target: _target,
   role: SharingRole.reader,
-  code: 'PUBLIC FULL REQUEST COMPARISON CODE',
+  code: _code,
   state: state,
   expires: DateTime.now().toUtc().add(const Duration(hours: 1)),
 );
@@ -265,9 +268,10 @@ void main() {
     showEnrollmentPairing(_context(tester), EnrollmentPairingFlow.restore).ignore();
     await settle(tester);
     await _review(tester, packet);
-    expect(find.text('PUBLIC FULL REQUEST COMPARISON CODE'), findsOneWidget);
+    // TR-15: the reviewing device never shows the code; it is typed.
+    expect(find.text(_code), findsNothing);
     expect(isEnabled(tester, 'enrollment-continue'), false);
-    await tapKey(tester, 'enrollment-code-confirmed');
+    await enterKey(tester, 'enrollment-code-typed', _code);
     await backend.services.vault.lock();
     await backend.services.vault.unlockWithPassphrase(SecretText(MockCloud.demoPassphrase));
     await settle(tester);
@@ -277,10 +281,10 @@ void main() {
     await settle(tester);
     await _review(tester, packet);
     expect(isEnabled(tester, 'enrollment-continue'), false);
-    await tapKey(tester, 'enrollment-code-confirmed');
+    await enterKey(tester, 'enrollment-code-typed', _code);
     await tapKey(tester, 'enrollment-continue');
     expect(enrollment.restorations, 1);
-    expect(enrollment.confirmedCode, 'PUBLIC FULL REQUEST COMPARISON CODE');
+    expect(enrollment.confirmedCode, _code);
     expect(enrollment.creations + enrollment.preparations + enrollment.endorsements + enrollment.submissions, 0);
     expect(find.byType(EnrollmentPairingDialog), findsNothing);
     expect(tester.takeException(), isNull);
@@ -401,7 +405,7 @@ void main() {
     await settle(tester);
     expect(isEnabled(tester, 'enrollment-continue'), false);
     await _review(tester, _packet('source'));
-    expect(find.byKey(const ValueKey('enrollment-code-confirmed')), findsNothing);
+    expect(find.byKey(const ValueKey('enrollment-code-typed')), findsNothing);
     await tapKey(tester, 'enrollment-continue');
     expect(enrollment.preparations, 1);
     expect(enrollment.requestedRole, SharingRole.reader);
@@ -417,13 +421,14 @@ void main() {
     showEnrollmentPairing(_context(tester), EnrollmentPairingFlow.endorse).ignore();
     await settle(tester);
     await _review(tester, _packet('target'));
-    expect(find.text('PUBLIC FULL REQUEST COMPARISON CODE'), findsOneWidget);
+    // TR-15: the reviewing device never shows the code; it is typed.
+    expect(find.text(_code), findsNothing);
     expect(find.text(_target.deviceId), findsOneWidget);
     expect(isEnabled(tester, 'enrollment-continue'), false);
-    await tapKey(tester, 'enrollment-code-confirmed');
+    await enterKey(tester, 'enrollment-code-typed', _code);
     await tapKey(tester, 'enrollment-continue');
     expect(enrollment.endorsements, 1);
-    expect(enrollment.confirmedCode, 'PUBLIC FULL REQUEST COMPARISON CODE');
+    expect(enrollment.confirmedCode, _code);
     expect(enrollment.submissions, 0);
     expect(find.byType(EnrollmentPackageDialog), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -436,10 +441,10 @@ void main() {
     await settle(tester);
     await _review(tester, _packet('endorsed'));
     expect(isEnabled(tester, 'enrollment-continue'), false);
-    await tapKey(tester, 'enrollment-code-confirmed');
+    await enterKey(tester, 'enrollment-code-typed', _code);
     await tapKey(tester, 'enrollment-continue');
     expect(enrollment.submissions, 1);
-    expect(enrollment.confirmedCode, 'PUBLIC FULL REQUEST COMPARISON CODE');
+    expect(enrollment.confirmedCode, _code);
     expect(enrollment.preparations + enrollment.endorsements, 0);
     expect(find.byType(EnrollmentPairingDialog), findsNothing);
     expect(tester.takeException(), isNull);
@@ -451,7 +456,7 @@ void main() {
     showEnrollmentPairing(_context(tester), EnrollmentPairingFlow.submit).ignore();
     await settle(tester);
     await _review(tester, _packet('endorsed'));
-    await tapKey(tester, 'enrollment-code-confirmed');
+    await enterKey(tester, 'enrollment-code-typed', _code);
     expect(isEnabled(tester, 'enrollment-continue'), true);
     final input = tester.widget<TextField>(find.byKey(const ValueKey('enrollment-packet'))).controller!;
     input.selection = const TextSelection.collapsed(offset: 3);
@@ -461,7 +466,7 @@ void main() {
     expect(isEnabled(tester, 'enrollment-continue'), false);
     expect(find.byKey(const ValueKey('enrollment-full-code')), findsNothing);
     await tapKey(tester, 'enrollment-review');
-    expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('enrollment-code-confirmed'))).value, false);
+    expect(tester.widget<TextField>(find.byKey(const ValueKey('enrollment-code-typed'))).controller!.text, isEmpty);
     expect(enrollment.submissions, 0);
   });
 
@@ -511,7 +516,7 @@ void main() {
     enrollment.expired = false;
     enrollment.missingTarget = true;
     await _review(tester, _packet('endorsed'));
-    expect(find.byKey(const ValueKey('enrollment-code-confirmed')), findsNothing);
+    expect(find.byKey(const ValueKey('enrollment-code-typed')), findsNothing);
     expect(isEnabled(tester, 'enrollment-continue'), false);
     expect(enrollment.submissions, 0);
   });
@@ -557,7 +562,7 @@ void main() {
     expect(enrollment.reviews, 0);
     expect(isEnabled(tester, 'enrollment-continue'), false);
     await tapKey(tester, 'enrollment-review');
-    await tapKey(tester, 'enrollment-code-confirmed');
+    await enterKey(tester, 'enrollment-code-typed', _code);
     await _io(tester, () => file.writeAsBytes(List.filled(maxEnrollmentPacketBytes + 1, 32)));
     await _tapFile(tester, 'enrollment-open');
     // A rejected file leaves the original input unchanged and grants nothing.
@@ -596,7 +601,7 @@ void main() {
     showEnrollmentPairing(_context(tester), EnrollmentPairingFlow.submit).ignore();
     await settle(tester);
     await _review(tester, _packet('endorsed'));
-    await tapKey(tester, 'enrollment-code-confirmed');
+    await enterKey(tester, 'enrollment-code-typed', _code);
     await tapKey(tester, 'enrollment-continue');
     expect(enrollment.submissions, 1);
     expect(tester.takeException(), isNull);

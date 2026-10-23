@@ -2,6 +2,52 @@
 
 ## Unreleased
 
+- Client 0.9.2 (2026-10-23, protocol 1.11 consumer — vault key trust,
+  audit H2; `cc-protocol` pinned to server commit b4bfd4a). Full wire
+  description in the server repository's changelog ("Protocol 1.11").
+  - Every profile pins its key commitment `C = HKDF-SHA256(VRK, salt =
+    vault_id, info = "cc-vrk-commit-v1")` in `vault-keys.json`
+    (`vault_key: { commitment, unconfirmed, published }`) and in the profile
+    database (`app_core.vault_key`), and checks every VRK against it before
+    the vault is installed: passphrase (also the retry with a fresh server
+    envelope), Recovery Key, device unlock, approval, backup restore, enable
+    sync. A mismatch is `vault_key_mismatch` (args `vault_id`, `reason`,
+    `pinned`, `received`), journalled in `security-journal.jsonl` of the
+    profile; nothing is decrypted, attested or synced.
+  - Approval: on a 1.11 server the approver sends an approval intent and
+    both devices show the pairing code v2; the new device pins the
+    approver's keys only after the user confirmed the code there, then
+    verifies `VaultRecoveryMaterial.device_approval` (signature, vault id
+    from the signed list, envelope hash, commitment). Older servers or
+    approvers: v1, key pinned "unconfirmed" until the next passphrase /
+    Recovery Key unlock.
+  - Own envelopes are cached: nothing from an `attest` response; on vault
+    creation, passphrase change, kit regeneration and enable sync the
+    device's own password / recovery envelopes (a server copy only when
+    byte-identical).
+  - Signed key-commitment records are published and compared after unlock;
+    another `C` from a device of the account raises `vault_key_conflict`.
+- Client 0.9.2 (2026-10-23, sharing key verification, audit H3; no wire
+  change): `SharingGrantDto.confirmed_code` is replaced by
+  `verification_id` (a pin), `sharing_accept` / `sharing_reconcile` /
+  `enrollment_reconcile` take a `verification_id`,
+  `EnrollmentGrantCreateDto.confirmed_identity_code` is removed, and the
+  enrollment pairing code is 6 groups of 5 digits typed by the user. New
+  plaintext model `cc_models::peer_pin::PeerPin` (pinned colleague keys:
+  `chosen` / `verified` / `keys_changed`), kept in the encrypted profile
+  database in 0.9.2 (not yet a synced vault object: clients up to 0.9.1
+  would report it as an integrity warning). `VaultSettings.sharing_policy`
+  (`sensitive_verified_only`, default on; `other_verified_only`, default
+  off) is a new optional field; older clients that rewrite the settings
+  drop it and the defaults apply. Safety number:
+  `SHA-512("consolecrypt/v1/sharing-safety-number\0" ‖ instance ‖ the two
+  parties sorted, each user ‖ device ‖ X25519 ‖ Ed25519)` → 12 groups of 5
+  digits; QR payload `consolecrypt-verify:v1:<base64url(instance ‖ user ‖
+  device ‖ X25519 ‖ Ed25519)>`.
+- Protocol 1.7 (server 0.1.16): see the server changelog; the client entry
+  "Client (2026-10-21, protocol 1.7 consumer …)" below covers what the
+  client relies on.
+
 - Protocol 1.6 (2026-10-21, server 0.1.15, additive): selective sharing of
   database connections. New `SharedItemKind::DbConnection` (`db_connection`,
   signed domain byte 6), advertised as `supports_db_connections` and listed

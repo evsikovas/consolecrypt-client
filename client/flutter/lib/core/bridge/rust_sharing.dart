@@ -29,8 +29,41 @@ final class RustSharingService implements SharingService, KubernetesSharingServi
   Future<SharingInvitation> inspect(String id) async =>
       SharingInvitation.fromJson(decodeObject(await guard(() => rs.sharingInspect(id: id))));
   @override
-  Future<SharingItem> accept(String id, String confirmedOwnerCode) async => SharingItem.fromJson(
-    decodeObject(await guard(() => rs.sharingAccept(id: id, confirmedOwnerCode: confirmedOwnerCode))),
+  Future<SharingItem> accept(String id, String verificationId) async =>
+      SharingItem.fromJson(decodeObject(await guard(() => rs.sharingAccept(id: id, verificationId: verificationId))));
+  @override
+  Future<PeerPin> choosePeer(SharingIdentity identity, {String? email}) async => PeerPin.fromJson(
+    decodeObject(await guard(() => rs.sharingChoosePeer(identityJson: jsonEncode(identity.toJson()), email: email))),
+  );
+  @override
+  Future<SafetyNumber> safetyNumber(SharingIdentity identity) async => SafetyNumber.fromJson(
+    decodeObject(await guard(() => rs.sharingSafetyNumber(identityJson: jsonEncode(identity.toJson())))),
+  );
+  @override
+  Future<PeerPin> verifyPeer(SharingIdentity identity, String method, String input, {String? email}) async =>
+      PeerPin.fromJson(
+        decodeObject(
+          await guard(
+            () => rs.sharingVerifyPeer(
+              identityJson: jsonEncode(identity.toJson()),
+              method: method,
+              input: input,
+              email: email,
+            ),
+          ),
+        ),
+      );
+  @override
+  Future<List<PeerPin>> verificationBanner() async => (jsonDecode(await guard(rs.sharingVerificationBanner)) as List)
+      .map((v) => PeerPin.fromJson(v as Map<String, dynamic>))
+      .toList(growable: false);
+  @override
+  Future<void> dismissVerificationBanner() => guard(rs.sharingDismissVerificationBanner);
+  @override
+  Future<SharingPolicy> policy() async => SharingPolicy.fromJson(decodeObject(await guard(rs.sharingPolicy)));
+  @override
+  Future<SharingPolicy> setPolicy(SharingPolicy policy) async => SharingPolicy.fromJson(
+    decodeObject(await guard(() => rs.sharingSetPolicy(policyJson: jsonEncode(policy.toJson())))),
   );
   @override
   Future<String> preview(SharingKind kind, String objectId, {bool includeNotes = false}) => switch (kind) {
@@ -160,8 +193,8 @@ final class RustSharingService implements SharingService, KubernetesSharingServi
   @override
   Future<List<SharingOutboxEntry>> flush() async => _outbox(await guard(rs.sharingFlush));
   @override
-  Future<SharingItem> reconcile(String id, String confirmedOwnerCode) async => SharingItem.fromJson(
-    decodeObject(await guard(() => rs.sharingReconcile(id: id, confirmedOwnerCode: confirmedOwnerCode))),
+  Future<SharingItem> reconcile(String id, String verificationId) async => SharingItem.fromJson(
+    decodeObject(await guard(() => rs.sharingReconcile(id: id, verificationId: verificationId))),
   );
   @override
   Future<List<SharingOutboxEntry>> discardPending(String mutationId) async =>

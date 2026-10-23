@@ -58,6 +58,7 @@ pub(crate) fn router(shared: Arc<Shared>) -> Router {
         .route(paths::DEVICES, get(list_devices).post(create_trust_request))
         .route(paths::DEVICE, patch(update_device))
         .route(paths::DEVICE_APPROVE, post(approve))
+        .route(paths::DEVICE_APPROVAL_INTENT, post(approval_intent))
         .route(paths::DEVICE_REJECT, post(reject))
         .route(paths::DEVICE_ATTEST, post(attest))
         .route(paths::DEVICE_REVOKE, post(revoke))
@@ -68,6 +69,10 @@ pub(crate) fn router(shared: Arc<Shared>) -> Router {
             get(list_envelopes).post(create_envelope),
         )
         .route(paths::VAULT_ENVELOPE, delete(delete_envelope))
+        .route(
+            paths::VAULT_KEY_COMMITMENTS,
+            get(list_key_commitments).put(put_key_commitment),
+        )
         .route(paths::TEAMS, get(list_teams).post(create_team))
         .route(paths::TEAM_INVITATIONS_INBOX, get(incoming_invitations))
         .route(paths::TEAM_INVITATION, delete(close_invitation))
@@ -142,6 +147,7 @@ fn server_info(s: &Shared, upgrade_required: bool) -> ServerInfo {
             device_protection: st.cfg.device_protection,
             auth: st.cfg.auth.clone(),
             teams: true,
+            vrk_commitment: st.cfg.vrk_commitment,
             // The personal-sync mock has no sharing routes.
             ..Default::default()
         },
@@ -186,6 +192,9 @@ async fn gate(State(s): S, req: Request, next: Next) -> Response {
     match s.take_fault(&path) {
         None => next.run(req).await,
         Some(FaultAction::Error(code)) => err(code, "injected fault").into_response(),
+        Some(FaultAction::Respond { status, body }) => {
+            json(StatusCode::from_u16(status).unwrap_or(StatusCode::OK), body)
+        }
         Some(FaultAction::RateLimit {
             retry_after_seconds,
         }) => {
@@ -407,6 +416,45 @@ async fn approve(
     let device_id: DeviceId = id(&device)?;
     let req: ApproveDeviceRequest = parse(&body)?;
     Ok(json(StatusCode::OK, s.lock().approve(p, device_id, req)?))
+}
+
+async fn approval_intent(
+    State(s): S,
+    headers: HeaderMap,
+    Path(device): Path<String>,
+    body: Bytes,
+) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    let device_id: DeviceId = id(&device)?;
+    let req: cc_protocol::devices::ApprovalIntentRequest = parse(&body)?;
+    s.lock().approval_intent(p, device_id, req)?;
+    Ok(no_content())
+}
+
+async fn put_key_commitment(
+    State(s): S,
+    headers: HeaderMap,
+    Path(vault): Path<String>,
+    body: Bytes,
+) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    let vault_id: VaultId = id(&vault)?;
+    let req: cc_protocol::vaults::VaultKeyCommitment = parse(&body)?;
+    s.lock().put_key_commitment(p, vault_id, req)?;
+    Ok(no_content())
+}
+
+async fn list_key_commitments(
+    State(s): S,
+    headers: HeaderMap,
+    Path(vault): Path<String>,
+) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    let vault_id: VaultId = id(&vault)?;
+    Ok(json(
+        StatusCode::OK,
+        s.lock().list_key_commitments(p, vault_id)?,
+    ))
 }
 
 async fn reject(

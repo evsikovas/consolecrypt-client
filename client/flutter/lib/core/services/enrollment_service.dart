@@ -4,7 +4,7 @@ import 'package:consolecrypt/sharing/sharing_models.dart';
 
 abstract interface class EnrollmentService {
   Future<void> restorePairing(String bundle, String confirmedCode);
-  Future<void> reconcile(String shareId, String confirmedOwnerCode);
+  Future<void> reconcile(String shareId, String verificationId);
   Future<List<EnrollmentRequest>> processAutomatic();
   Future<List<EnrollmentGrant>> grants(String shareId);
   Future<EnrollmentGrant> createGrant(String shareId, EnrollmentGrantCreate create);
@@ -30,7 +30,7 @@ class UnavailableEnrollmentService implements EnrollmentService {
   @override
   Future<void> restorePairing(String bundle, String confirmedCode) async => _unavailable();
   @override
-  Future<void> reconcile(String shareId, String confirmedOwnerCode) async => _unavailable();
+  Future<void> reconcile(String shareId, String verificationId) async => _unavailable();
   @override
   Future<List<EnrollmentRequest>> processAutomatic() async => _unavailable();
   @override

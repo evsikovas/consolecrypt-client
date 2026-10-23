@@ -28,21 +28,46 @@
 устройства, **Подтвердить устройство** используется на уже проверенном.
 **Запросы устройств** открывают ожидающие действия; продолжение добавления и
 проверка подписанной истории находятся в **Других действиях**.
-**Код моего устройства** доступен в заголовке раздела. Переход между вкладками
+**Отпечаток ключей моего устройства** доступен в заголовке раздела. Переход между вкладками
 или импорт пакета сам по себе не выдаёт доступ.
 
 ## Начать совместную работу
 
-1. Коллега входит на тот же сервер и открывает **Совместный доступ → Код моего устройства**.
+1. Коллега входит на тот же сервер.
 2. В меню своего хоста или сниппета выберите **Поделиться**. Посмотрите,
-   какие именно поля будут отправлены, и выберите устройство коллеги.
-3. Сравните весь код устройства лично или по независимому каналу. Отметьте
-   подтверждение только при полном совпадении. Адрес почты и список устройств
-   с сервера сами по себе не подтверждают подлинность ключей.
+   какие именно поля будут отправлены, найдите коллегу по почте и отметьте
+   **Дать доступ этому устройству**. Ключи устройства закрепляются на вашем
+   устройстве со статусом «Выбран (не проверен)».
+3. Нажмите **Проверить** рядом с устройством (клиент 0.9.2 и новее): сверьте
+   с коллегой **код безопасности** — 12 групп цифр, вычисленных из ключей
+   обоих устройств. Коллега открывает такую же проверку для вашего устройства и
+   диктует свой код по телефону или лично, вы вводите его (вставка отключена).
+   Лично можно отсканировать **QR-код** с экрана коллеги. Адрес почты и список
+   устройств с сервера сами по себе не подтверждают подлинность ключей.
 4. Выберите права: **Читатель** по умолчанию; **Редактор** может изменять общий
    элемент. Нажмите **Поделиться** и отправьте очередь.
-5. Коллега открывает **Совместный доступ → Доступно мне**, сравнивает код владельца
-   и принимает элемент. Получение сниппета никогда не запускает команду.
+5. Коллега открывает **Совместный доступ → Доступно мне**, при желании проверяет
+   владельца тем же способом и принимает элемент. Получение сниппета никогда не
+   запускает команду.
+
+### Проверка ключей коллег (клиент 0.9.2)
+
+- Статусы устройства коллеги: **Выбран (не проверен)**, **Проверен <дата>** и
+  **Ключи изменились**. Если сервер сообщает для известного устройства другие
+  ключи, новый доступ этому устройству невозможен до повторной проверки;
+  существующие элементы для новых ключей не перешифровываются.
+- Настройка хранилища **Совместный доступ: только проверенным** (Настройки →
+  Хранилище): по умолчанию секреты, kube-доступы и подключения к БД выдаются
+  только проверенным устройствам, хосты, группы и сниппеты — и выбранным.
+  Политика действует на новые выдачи и новые устройства при изменении доступа;
+  у существующих получателей доступ сохраняется.
+- После обновления все участники существующих элементов отмечены как «Выбран
+  (не проверен)». Один раз показывается список получателей секретов, kube-доступов
+  и БД, которых стоит проверить.
+- Элементы от непроверенного владельца помечены «Владелец не проверен»: их хосты
+  не подключаются автоматически, у сниппетов показан источник.
+- Закрепления хранятся в зашифрованной базе профиля на каждом устройстве
+  (синхронизация между своими устройствами — в следующих версиях).
 
 Хост отправляется без пароля, приватного ключа, личных ссылок на учётные данные
 и локальных команд. При создании личной копии получатель выбирает свои учётные
@@ -99,9 +124,11 @@
 1. Передайте публичный пакет разрешения на новое устройство коллеги.
 2. Там выберите **Добавить это устройство**, откройте пакет и создайте запрос.
 3. Передайте запрос на уже проверенное устройство коллеги, выберите
-   **Подтвердить устройство** и сравните полный код на обоих устройствах.
+   **Подтвердить устройство** и введите код (6 групп по 5 цифр) с экрана нового
+   устройства — сам код на этом шаге не показывается и не подставляется.
 4. Верните подтверждённый пакет новому устройству и выберите
-   **Другие действия → Продолжить добавление устройства**. Повторно подтвердите совпадение кода.
+   **Другие действия → Продолжить добавление устройства**. Введите код с экрана
+   подтверждающего устройства.
 5. Владелец начинает проверку, новое устройство отвечает из **Запросов устройств**,
    затем владелец принимает запрос. В автоматическом режиме приложение владельца
    выполняет эти действия для уже подтверждённого запроса. Проверка кода остаётся
@@ -163,7 +190,7 @@ In **0.2.2 and later**, **Available to me** lists received items and
 **Shared by me** lists items whose access you manage. A separate device card
 offers **Add this device**, **Confirm another device** and **Device requests**.
 **More actions** contains **Continue adding a device** and signed history
-verification. **My device verification code** remains available in the page header.
+verification. **My device key fingerprint** remains available in the page header.
 Switching tabs or importing a packet does not grant access by itself.
 
 The public server at `https://sync.consolecrypt.dev` enables selective sharing,
@@ -174,8 +201,18 @@ connection fails. Connection and authentication errors are shown separately from
 unavailable support. Upgrade an older client if its refresh button stays disabled.
 
 Share selected hosts, snippets, collections or individual secrets with verified
-devices on the same compatible server. Compare the entire device code over an
-independent channel before approving it. Reader is the default; editors may
+devices on the same compatible server. Choosing a colleague's device pins its
+keys on your device ("Chosen (not verified)"). In client **0.9.2** and later,
+**Verify** compares a 12-group **safety number** computed from both devices'
+keys: your colleague opens the same check and reads their number out by phone
+or in person, you type it (pasting is disabled); in person you may scan their
+**QR code** instead. Other keys reported later for a known device show
+**Keys changed** and block new access until verified again. The vault setting
+**Sharing: verified recipients only** (on by default for secrets, Kubernetes
+contexts and database connections) applies to new access and new devices;
+existing recipients keep theirs, and a one-time banner lists unverified
+recipients of secrets after the update. Items from an unverified owner are
+marked; their hosts never connect automatically. Reader is the default; editors may
 change the item. Receiving a snippet never executes it. Your personal vault key
 is never shared. Hosts exclude passwords, private keys and personal credential
 references; recipients use their own credentials.
@@ -203,8 +240,8 @@ is shared separately and is never attached automatically.
 
 An item's original owner may explicitly allow a verified colleague's device to
 endorse that colleague's new devices, within a role ceiling, expiry and quota.
-Manual acceptance is the default. Both devices must compare the full signed
-request code. The original owner must stay online and unlocked to complete the
+Manual acceptance is the default. The full signed request code (6 groups of 5
+digits since 0.9.2) is typed on each device from the other device's screen. The original owner must stay online and unlocked to complete the
 encrypted possession challenge and rotate the item key. Optional automatic
 acceptance processes only already endorsed requests covered by an explicit
 Automatic grant. Public pairing packets contain no private keys or item values;

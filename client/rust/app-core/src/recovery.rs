@@ -7,6 +7,7 @@
 use crate::app::AppCore;
 use crate::dto::RecoveryKitDto;
 use crate::error::{AppError, AppResult};
+use crate::key_trust::{adopt_own, KeySource};
 use crate::secrets::blocking;
 use crate::session::{PendingKit, Session, Unlocked};
 use cc_protocol::envelopes::KeyEnvelope;
@@ -38,7 +39,9 @@ impl AppCore {
         let req = blocking(move || Ok(vault.change_passphrase(&pass, kdf)?)).await?;
         match s.kind().await? {
             ProfileKind::Synced => {
-                let env = s.api()?.replace_password_envelope(&req).await?;
+                let echo = s.api()?.replace_password_envelope(&req).await?;
+                // TR-4: cache our own envelope; the echo only lends its id.
+                let env = adopt_own(u.vault_id, &req.envelope, Some(echo), s.device_id());
                 s.cache_envelopes(u.vault_id, Some(env), None, None).await?;
             }
             ProfileKind::Local => {
@@ -106,7 +109,8 @@ impl AppCore {
                 if server.password_envelope.map(|env| env.envelope_id) != Some(opened.envelope_id) {
                     return Ok(false);
                 }
-                let env = api.replace_password_envelope(&req).await?;
+                let echo = api.replace_password_envelope(&req).await?;
+                let env = adopt_own(u.vault_id, &req.envelope, Some(echo), s.device_id());
                 s.cache_envelopes(u.vault_id, Some(env), None, None).await?;
             }
             ProfileKind::Local => {
@@ -148,7 +152,8 @@ impl AppCore {
         let s = self.session().await?;
         if s.unlocked_opt().await.is_none() {
             let vault = self.device_unlock(&s, reason).await?;
-            self.finish_unlock(&s, vault).await?;
+            self.finish_unlock(&s, vault, KeySource::DeviceUnlock)
+                .await?;
         }
         self.set_new_passphrase(new_passphrase).await
     }
@@ -163,7 +168,8 @@ impl AppCore {
         let s = self.session().await?;
         if s.unlocked_opt().await.is_none() {
             let vault = self.recovery_unlock(&s, recovery_input).await?;
-            self.finish_unlock(&s, vault).await?;
+            self.finish_unlock(&s, vault, KeySource::RecoveryKey)
+                .await?;
         }
         self.set_new_passphrase(new_passphrase).await
     }
@@ -176,7 +182,8 @@ async fn replace_recovery(
 ) -> AppResult<()> {
     match s.kind().await? {
         ProfileKind::Synced => {
-            let env = s.api()?.replace_recovery_envelope(&req).await?;
+            let echo = s.api()?.replace_recovery_envelope(&req).await?;
+            let env = adopt_own(u.vault_id, &req.envelope, Some(echo), s.device_id());
             s.cache_envelopes(u.vault_id, None, Some(env), None).await
         }
         ProfileKind::Local => {

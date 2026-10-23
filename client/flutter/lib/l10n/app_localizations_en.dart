@@ -5095,11 +5095,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharingRefresh => 'Refresh shared data';
 
   @override
-  String get sharingIdentity => 'My device verification code';
+  String get sharingIdentity => 'My device key fingerprint';
 
   @override
   String get sharingVerifyHelp =>
-      'Compare this code with your colleague using an independent channel. Login and email do not verify device keys.';
+      'This is your device\'s key fingerprint. To check keys with a colleague, use “Verify” next to their device: compare the safety number by voice or scan the QR code in person. Login and e-mail do not verify device keys.';
 
   @override
   String get sharingCode => 'Verification code';
@@ -5254,7 +5254,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharingWorking => 'Preparing secure sharing…';
 
   @override
-  String get sharingCopyCode => 'Copy verification code';
+  String get sharingCopyCode => 'Copy fingerprint';
 
   @override
   String get sharingAddRecipient => 'Add recipient';
@@ -5284,7 +5284,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sharingReconcileHelp =>
-      'The local copy is behind the protected checkpoint. Compare the owner’s code. The app will verify the complete signed history and reject missing or conflicting revisions.';
+      'The local copy is behind the protected checkpoint. The owner\'s keys must be the ones pinned on this device; the app will verify the complete signed history and reject missing or conflicting revisions.';
 
   @override
   String get sharingEndpointChanged =>
@@ -5401,7 +5401,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enrollmentCodeHelp =>
-      'Compare the full code on the new and trusted device in person or through an independent channel. Confirm only an exact match. The code identifies this specific request.';
+      'Both devices show the same code for this request. Type the code from the other device\'s screen to confirm that you compared it.';
 
   @override
   String get enrollmentCopyPackage => 'Copy package';
@@ -12878,4 +12878,210 @@ class AppLocalizationsEn extends AppLocalizations {
   String errorDeviceDailyLimit(String time) {
     return 'Too many new devices today. Try again after $time.';
   }
+
+  @override
+  String get errorVaultKeyMismatch =>
+      'The server sent a different vault key. Nothing was opened with it and sync is stopped.';
+
+  @override
+  String get errorRecipientUnverified =>
+      'Verify this device\'s keys first: only verified recipients may get this kind of access.';
+
+  @override
+  String get errorRecipientKeysChanged => 'The keys of this device changed. Verify it again before giving access.';
+
+  @override
+  String get errorPeerVerificationFailed =>
+      'The code does not match. The keys may have been replaced — do not give access and contact your colleague another way.';
+
+  @override
+  String get vaultKeyMismatchTitle => 'Different vault key';
+
+  @override
+  String get vaultKeyMismatchMessage =>
+      'The server sent a different vault key. This may mean the server was tampered with. Data on this device is unchanged and sync is stopped. Do not enter secrets on this device and tell the server administrator.';
+
+  @override
+  String get vaultKeyMismatchLock => 'Lock';
+
+  @override
+  String get vaultKeyMismatchCopy => 'Copy diagnostics';
+
+  @override
+  String get vaultKeyMismatchMore => 'More';
+
+  @override
+  String get vaultKeyMismatchDetails =>
+      'This device remembers the fingerprint of its vault key and checks every key it receives against it. A different key is never accepted and nothing is re-encrypted with it. The only way out is resetting the profile on this device (remove it and connect again) after the server is checked.';
+
+  @override
+  String approvalWaitPairingTitle(String device) {
+    return 'Compare the code with “$device”';
+  }
+
+  @override
+  String approvalWaitPairingHelp(String device) {
+    return '“$device” is approving this device. Both screens must show exactly the same code — it is computed from the keys of both devices.';
+  }
+
+  @override
+  String approvalWaitPairingCheckbox(String device) {
+    return 'The code matches the one on “$device”';
+  }
+
+  @override
+  String get approvalWaitPairingConfirm => 'Codes match';
+
+  @override
+  String get approvalWaitPairingConfirmed => 'Confirmed. Waiting for the approval to finish…';
+
+  @override
+  String get approveDeviceCodeV2Hint =>
+      'This code depends on the keys of both devices; the new device shows it as soon as you open this request.';
+
+  @override
+  String get devicesVaultKeyUnconfirmedTitle => 'Vault key not confirmed';
+
+  @override
+  String get devicesVaultKeyUnconfirmedMessage =>
+      'This device received the vault key without an independent check (older server or approving device). Enter the vault passphrase once to confirm it.';
+
+  @override
+  String get devicesVaultKeyConfirm => 'Confirm with passphrase';
+
+  @override
+  String get vaultKeyConfirmTitle => 'Confirm the vault key';
+
+  @override
+  String get vaultKeyConfirmed => 'Vault key confirmed';
+
+  @override
+  String get devicesVaultKeyConflictTitle => 'A device received a different vault key';
+
+  @override
+  String devicesVaultKeyConflictMessage(String device) {
+    return '“$device” reported a different vault key. Someone who controls the server may have given it their own key. This device keeps its key. Revoke “$device” unless you know why.';
+  }
+
+  @override
+  String get devicesRevokeConflicting => 'Revoke';
+
+  @override
+  String get sharingTrustChosen => 'Chosen (not verified)';
+
+  @override
+  String sharingTrustVerified(String date) {
+    return 'Verified $date';
+  }
+
+  @override
+  String get sharingTrustVerifiedNoDate => 'Verified';
+
+  @override
+  String get sharingTrustKeysChanged => 'Keys changed';
+
+  @override
+  String get sharingTrustNew => 'Not chosen yet';
+
+  @override
+  String get sharingVerifyAction => 'Verify';
+
+  @override
+  String get sharingGiveAccess => 'Give access to this device';
+
+  @override
+  String sharingKeysChangedWarning(String device, String email) {
+    return 'The keys of device $device of $email have changed. No new access until it is verified again; existing shares are not re-encrypted for the new keys.';
+  }
+
+  @override
+  String get sharingVerifiedOnlyHint =>
+      'Only verified recipients can receive secrets, Kubernetes contexts and database connections.';
+
+  @override
+  String get sharingFingerprint => 'Key fingerprint';
+
+  @override
+  String get peerVerifyTitle => 'Verify the colleague\'s device';
+
+  @override
+  String peerVerifyDevice(String device) {
+    return 'Device $device';
+  }
+
+  @override
+  String get peerVerifySafetyNumber => 'Safety number';
+
+  @override
+  String get peerVerifyQr => 'QR code';
+
+  @override
+  String get peerVerifySafetyNumberHelp =>
+      'Ask your colleague to open the same check for your device and read out their number — by phone or in person, not through ConsoleCrypt. Type it below: it must match the number on this screen exactly.';
+
+  @override
+  String get peerVerifyOwnNumber => 'Number on this device';
+
+  @override
+  String get peerVerifyEnterNumber => 'Number read out by the colleague';
+
+  @override
+  String get peerVerifyNoPaste => 'Type the number — pasting is disabled on purpose.';
+
+  @override
+  String get peerVerifyQrHelp =>
+      'In person: show this QR code to your colleague and scan theirs with a phone. On a computer without a camera, enter the text of the colleague\'s QR code.';
+
+  @override
+  String get peerVerifyQrInput => 'Text of the colleague\'s QR code';
+
+  @override
+  String get peerVerifyConfirm => 'Verify';
+
+  @override
+  String get peerVerifySuccess => 'Device verified';
+
+  @override
+  String get sharingAcceptOwnerHelp =>
+      'Accepting pins the owner\'s keys on this device. Verify them with the owner to mark the item as verified.';
+
+  @override
+  String get sharingOwnerUnverified => 'Owner not verified';
+
+  @override
+  String get sharingOwnerUnverifiedNote =>
+      'Hosts from this item are never connected automatically, snippets show their source.';
+
+  @override
+  String get sharingVerifyBannerTitle => 'Verify colleagues who have access to secrets';
+
+  @override
+  String get sharingVerifyBannerMessage =>
+      'These recipients of secrets, Kubernetes contexts and database connections were added before keys could be verified. Their access is unchanged.';
+
+  @override
+  String get sharingVerifyBannerDismiss => 'Hide';
+
+  @override
+  String get sharingPolicyTitle => 'Sharing: verified recipients only';
+
+  @override
+  String get sharingPolicySensitive => 'Secrets, Kubernetes contexts and database connections';
+
+  @override
+  String get sharingPolicyOther => 'Hosts, groups and snippets';
+
+  @override
+  String get sharingPolicyHelp =>
+      'New access and new devices need verified keys. Existing recipients keep their access.';
+
+  @override
+  String get enrollmentTypeCode => 'Code shown on the other device';
+
+  @override
+  String get enrollmentTypeCodeHelp =>
+      'Type the six groups of digits from the other device\'s screen. The code is never filled in for you.';
+
+  @override
+  String get vaultKeyMismatchDiagnostics => 'Diagnostics';
 }

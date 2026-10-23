@@ -7146,8 +7146,8 @@
   "sharingInvitation": "Invitation — verify the owner",
   "sharingAccept": "Verify and accept",
   "sharingRefresh": "Refresh shared data",
-  "sharingIdentity": "My device verification code",
-  "sharingVerifyHelp": "Compare this code with your colleague using an independent channel. Login and email do not verify device keys.",
+  "sharingIdentity": "My device key fingerprint",
+  "sharingVerifyHelp": "This is your device's key fingerprint. To check keys with a colleague, use “Verify” next to their device: compare the safety number by voice or scan the QR code in person. Login and e-mail do not verify device keys.",
   "sharingCode": "Verification code",
   "sharingConfirmed": "The code matches the code on my colleague’s device",
   "sharingEmail": "Colleague’s email",
@@ -7197,7 +7197,7 @@
   "sharingNoAutoRun": "Received commands never run automatically.",
   "sharingOwnerDeviceOnly": "Manage access on the owner device that created this item.",
   "sharingWorking": "Preparing secure sharing…",
-  "sharingCopyCode": "Copy verification code",
+  "sharingCopyCode": "Copy fingerprint",
   "sharingAddRecipient": "Add recipient",
   "sharingRefreshCopy": "Refresh personal copy",
   "@sharingTitle": {
@@ -7237,10 +7237,10 @@
     "description": "Selective sharing: Refresh"
   },
   "@sharingIdentity": {
-    "description": "Selective sharing: Identity"
+    "description": "Sharing: title of the own identity (fingerprint) dialog."
   },
   "@sharingVerifyHelp": {
-    "description": "Selective sharing: VerifyHelp"
+    "description": "Sharing: own identity dialog explaining the fingerprint and how keys are verified."
   },
   "@sharingCode": {
     "description": "Selective sharing: Code"
@@ -7390,7 +7390,7 @@
     "description": "Selective sharing: Working"
   },
   "@sharingCopyCode": {
-    "description": "Selective sharing: CopyCode"
+    "description": "Sharing: copy the own key fingerprint."
   },
   "@sharingAddRecipient": {
     "description": "Selective sharing: AddRecipient"
@@ -7422,9 +7422,9 @@
   "@sharingReconcile": {
     "description": "Selective sharing interface."
   },
-  "sharingReconcileHelp": "The local copy is behind the protected checkpoint. Compare the owner’s code. The app will verify the complete signed history and reject missing or conflicting revisions.",
+  "sharingReconcileHelp": "The local copy is behind the protected checkpoint. The owner's keys must be the ones pinned on this device; the app will verify the complete signed history and reject missing or conflicting revisions.",
   "@sharingReconcileHelp": {
-    "description": "Selective sharing interface."
+    "description": "Sharing: reconcile explanation."
   },
   "sharingEndpointChanged": "The shared host address or port changed. Review and confirm the new endpoint before connecting with your credentials.",
   "@sharingEndpointChanged": {
@@ -7566,9 +7566,9 @@
   "@enrollmentPreview": {
     "description": "Verified own-device enrollment interface."
   },
-  "enrollmentCodeHelp": "Compare the full code on the new and trusted device in person or through an independent channel. Confirm only an exact match. The code identifies this specific request.",
+  "enrollmentCodeHelp": "Both devices show the same code for this request. Type the code from the other device's screen to confirm that you compared it.",
   "@enrollmentCodeHelp": {
-    "description": "Verified own-device enrollment interface."
+    "description": "Enrollment: explanation of the request code, typed from the other device."
   },
   "enrollmentCopyPackage": "Copy package",
   "@enrollmentCopyPackage": {
@@ -17670,5 +17670,279 @@
         "type": "String"
       }
     }
+  },
+  "errorVaultKeyMismatch": "The server sent a different vault key. Nothing was opened with it and sync is stopped.",
+  "@errorVaultKeyMismatch": {
+    "description": "Error text: the vault key received from the server differs from the key this device trusts (security)."
+  },
+  "errorRecipientUnverified": "Verify this device's keys first: only verified recipients may get this kind of access.",
+  "@errorRecipientUnverified": {
+    "description": "Error text: granting sharing access needs a verified (or at least chosen) recipient device."
+  },
+  "errorRecipientKeysChanged": "The keys of this device changed. Verify it again before giving access.",
+  "@errorRecipientKeysChanged": {
+    "description": "Error text: the recipient device reported other keys than the pinned ones."
+  },
+  "errorPeerVerificationFailed": "The code does not match. The keys may have been replaced — do not give access and contact your colleague another way.",
+  "@errorPeerVerificationFailed": {
+    "description": "Error text: the safety number or QR code did not match the colleague's keys."
+  },
+  "vaultKeyMismatchTitle": "Different vault key",
+  "@vaultKeyMismatchTitle": {
+    "description": "Title of the blocking screen shown when the server sent a different vault key."
+  },
+  "vaultKeyMismatchMessage": "The server sent a different vault key. This may mean the server was tampered with. Data on this device is unchanged and sync is stopped. Do not enter secrets on this device and tell the server administrator.",
+  "@vaultKeyMismatchMessage": {
+    "description": "Body of the vault key mismatch screen (security warning)."
+  },
+  "vaultKeyMismatchLock": "Lock",
+  "@vaultKeyMismatchLock": {
+    "description": "Vault key mismatch screen: lock the vault."
+  },
+  "vaultKeyMismatchCopy": "Copy diagnostics",
+  "@vaultKeyMismatchCopy": {
+    "description": "Vault key mismatch screen: copy non-secret diagnostics (vault id, key fingerprints, time, server address)."
+  },
+  "vaultKeyMismatchMore": "More",
+  "@vaultKeyMismatchMore": {
+    "description": "Vault key mismatch screen: show more details."
+  },
+  "vaultKeyMismatchDetails": "This device remembers the fingerprint of its vault key and checks every key it receives against it. A different key is never accepted and nothing is re-encrypted with it. The only way out is resetting the profile on this device (remove it and connect again) after the server is checked.",
+  "@vaultKeyMismatchDetails": {
+    "description": "Vault key mismatch screen: expanded explanation."
+  },
+  "approvalWaitPairingTitle": "Compare the code with “{device}”",
+  "@approvalWaitPairingTitle": {
+    "description": "New device: title when a trusted device announced it is approving; both show a pairing code.",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "approvalWaitPairingHelp": "“{device}” is approving this device. Both screens must show exactly the same code — it is computed from the keys of both devices.",
+  "@approvalWaitPairingHelp": {
+    "description": "New device: explanation of the pairing code v2.",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "approvalWaitPairingCheckbox": "The code matches the one on “{device}”",
+  "@approvalWaitPairingCheckbox": {
+    "description": "New device: mandatory checkbox confirming the pairing code matches.",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "approvalWaitPairingConfirm": "Codes match",
+  "@approvalWaitPairingConfirm": {
+    "description": "New device: button confirming the pairing code."
+  },
+  "approvalWaitPairingConfirmed": "Confirmed. Waiting for the approval to finish…",
+  "@approvalWaitPairingConfirmed": {
+    "description": "New device: after the user confirmed the pairing code."
+  },
+  "approveDeviceCodeV2Hint": "This code depends on the keys of both devices; the new device shows it as soon as you open this request.",
+  "@approveDeviceCodeV2Hint": {
+    "description": "Approving device: hint under the pairing code v2."
+  },
+  "devicesVaultKeyUnconfirmedTitle": "Vault key not confirmed",
+  "@devicesVaultKeyUnconfirmedTitle": {
+    "description": "Devices screen banner title: this device pinned the vault key without an independent check."
+  },
+  "devicesVaultKeyUnconfirmedMessage": "This device received the vault key without an independent check (older server or approving device). Enter the vault passphrase once to confirm it.",
+  "@devicesVaultKeyUnconfirmedMessage": {
+    "description": "Devices screen banner body for an unconfirmed vault key."
+  },
+  "devicesVaultKeyConfirm": "Confirm with passphrase",
+  "@devicesVaultKeyConfirm": {
+    "description": "Button: confirm the vault key with the vault passphrase."
+  },
+  "vaultKeyConfirmTitle": "Confirm the vault key",
+  "@vaultKeyConfirmTitle": {
+    "description": "Dialog title: confirm the vault key with the passphrase."
+  },
+  "vaultKeyConfirmed": "Vault key confirmed",
+  "@vaultKeyConfirmed": {
+    "description": "Snack after the vault key was confirmed."
+  },
+  "devicesVaultKeyConflictTitle": "A device received a different vault key",
+  "@devicesVaultKeyConflictTitle": {
+    "description": "Devices screen warning title: another device of the account reported a different vault key."
+  },
+  "devicesVaultKeyConflictMessage": "“{device}” reported a different vault key. Someone who controls the server may have given it their own key. This device keeps its key. Revoke “{device}” unless you know why.",
+  "@devicesVaultKeyConflictMessage": {
+    "description": "Devices screen warning body for a vault key conflict.",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "devicesRevokeConflicting": "Revoke",
+  "@devicesRevokeConflicting": {
+    "description": "Button: revoke the device that reported a different vault key."
+  },
+  "sharingTrustChosen": "Chosen (not verified)",
+  "@sharingTrustChosen": {
+    "description": "Sharing: status of a colleague device whose keys were pinned but not verified."
+  },
+  "sharingTrustVerified": "Verified {date}",
+  "@sharingTrustVerified": {
+    "description": "Sharing: status of a verified colleague device.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "sharingTrustVerifiedNoDate": "Verified",
+  "@sharingTrustVerifiedNoDate": {
+    "description": "Sharing: status of a verified colleague device (date unknown)."
+  },
+  "sharingTrustKeysChanged": "Keys changed",
+  "@sharingTrustKeysChanged": {
+    "description": "Sharing: status of a colleague device whose keys changed."
+  },
+  "sharingTrustNew": "Not chosen yet",
+  "@sharingTrustNew": {
+    "description": "Sharing: status of a colleague device never chosen on this device."
+  },
+  "sharingVerifyAction": "Verify",
+  "@sharingVerifyAction": {
+    "description": "Sharing: button opening the key verification of a colleague device."
+  },
+  "sharingGiveAccess": "Give access to this device",
+  "@sharingGiveAccess": {
+    "description": "Sharing: checkbox selecting a recipient device."
+  },
+  "sharingKeysChangedWarning": "The keys of device {device} of {email} have changed. No new access until it is verified again; existing shares are not re-encrypted for the new keys.",
+  "@sharingKeysChangedWarning": {
+    "description": "Sharing: warning when a known colleague device reports other keys.",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      },
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "sharingVerifiedOnlyHint": "Only verified recipients can receive secrets, Kubernetes contexts and database connections.",
+  "@sharingVerifiedOnlyHint": {
+    "description": "Sharing: hint about the verified-only policy for sensitive kinds."
+  },
+  "sharingFingerprint": "Key fingerprint",
+  "@sharingFingerprint": {
+    "description": "Sharing: label of the 64-hex key fingerprint (details only, not a comparison code)."
+  },
+  "peerVerifyTitle": "Verify the colleague's device",
+  "@peerVerifyTitle": {
+    "description": "Title of the key verification dialog."
+  },
+  "peerVerifyDevice": "Device {device}",
+  "@peerVerifyDevice": {
+    "description": "Key verification dialog: which device is verified.",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "peerVerifySafetyNumber": "Safety number",
+  "@peerVerifySafetyNumber": {
+    "description": "Key verification dialog: tab with the long safety number."
+  },
+  "peerVerifyQr": "QR code",
+  "@peerVerifyQr": {
+    "description": "Key verification dialog: tab with the QR code."
+  },
+  "peerVerifySafetyNumberHelp": "Ask your colleague to open the same check for your device and read out their number — by phone or in person, not through ConsoleCrypt. Type it below: it must match the number on this screen exactly.",
+  "@peerVerifySafetyNumberHelp": {
+    "description": "Key verification dialog: how to compare the safety number."
+  },
+  "peerVerifyOwnNumber": "Number on this device",
+  "@peerVerifyOwnNumber": {
+    "description": "Key verification dialog: label of the locally computed safety number."
+  },
+  "peerVerifyEnterNumber": "Number read out by the colleague",
+  "@peerVerifyEnterNumber": {
+    "description": "Key verification dialog: input for the safety number typed by the user."
+  },
+  "peerVerifyNoPaste": "Type the number — pasting is disabled on purpose.",
+  "@peerVerifyNoPaste": {
+    "description": "Key verification dialog: why paste is disabled."
+  },
+  "peerVerifyQrHelp": "In person: show this QR code to your colleague and scan theirs with a phone. On a computer without a camera, enter the text of the colleague's QR code.",
+  "@peerVerifyQrHelp": {
+    "description": "Key verification dialog: how to use the QR code."
+  },
+  "peerVerifyQrInput": "Text of the colleague's QR code",
+  "@peerVerifyQrInput": {
+    "description": "Key verification dialog: input for the scanned QR text."
+  },
+  "peerVerifyConfirm": "Verify",
+  "@peerVerifyConfirm": {
+    "description": "Key verification dialog: primary button."
+  },
+  "peerVerifySuccess": "Device verified",
+  "@peerVerifySuccess": {
+    "description": "Snack after a successful key verification."
+  },
+  "sharingAcceptOwnerHelp": "Accepting pins the owner's keys on this device. Verify them with the owner to mark the item as verified.",
+  "@sharingAcceptOwnerHelp": {
+    "description": "Accept dialog: explanation of pinning the owner's keys."
+  },
+  "sharingOwnerUnverified": "Owner not verified",
+  "@sharingOwnerUnverified": {
+    "description": "Badge on received shared items whose owner keys were not verified."
+  },
+  "sharingOwnerUnverifiedNote": "Hosts from this item are never connected automatically, snippets show their source.",
+  "@sharingOwnerUnverifiedNote": {
+    "description": "Note on received items from an unverified owner."
+  },
+  "sharingVerifyBannerTitle": "Verify colleagues who have access to secrets",
+  "@sharingVerifyBannerTitle": {
+    "description": "One-time banner after the update: unverified recipients of secrets."
+  },
+  "sharingVerifyBannerMessage": "These recipients of secrets, Kubernetes contexts and database connections were added before keys could be verified. Their access is unchanged.",
+  "@sharingVerifyBannerMessage": {
+    "description": "One-time banner body."
+  },
+  "sharingVerifyBannerDismiss": "Hide",
+  "@sharingVerifyBannerDismiss": {
+    "description": "One-time banner: dismiss."
+  },
+  "sharingPolicyTitle": "Sharing: verified recipients only",
+  "@sharingPolicyTitle": {
+    "description": "Vault setting section title for the verified-only sharing policy."
+  },
+  "sharingPolicySensitive": "Secrets, Kubernetes contexts and database connections",
+  "@sharingPolicySensitive": {
+    "description": "Policy switch for sensitive kinds."
+  },
+  "sharingPolicyOther": "Hosts, groups and snippets",
+  "@sharingPolicyOther": {
+    "description": "Policy switch for the other kinds."
+  },
+  "sharingPolicyHelp": "New access and new devices need verified keys. Existing recipients keep their access.",
+  "@sharingPolicyHelp": {
+    "description": "Policy explanation."
+  },
+  "enrollmentTypeCode": "Code shown on the other device",
+  "@enrollmentTypeCode": {
+    "description": "Enrollment: input for the 30-digit pairing code typed by the user."
+  },
+  "enrollmentTypeCodeHelp": "Type the six groups of digits from the other device's screen. The code is never filled in for you.",
+  "@enrollmentTypeCodeHelp": {
+    "description": "Enrollment: explanation of the typed pairing code."
+  },
+  "vaultKeyMismatchDiagnostics": "Diagnostics",
+  "@vaultKeyMismatchDiagnostics": {
+    "description": "Noun inserted into '{what} copied' after copying the vault key mismatch diagnostics."
   }
 }

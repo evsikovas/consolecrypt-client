@@ -334,7 +334,19 @@ fn reader_and_editor_admission_preserves_content_exact_acl_and_rekeys() {
 fn whole_request_pairing_rejects_oracle_and_binds_target_role_nonce_and_deadline() {
     let f = Fixture::new(SharingRole::Editor, 2);
     let code = enrollment_pairing_code(&f.request).unwrap();
-    assert_eq!(code.len(), 71);
+    // 6 groups of 5 digits (TR-15), typed by the user.
+    assert_eq!(code.len(), 35);
+    assert!(code
+        .split(' ')
+        .all(|g| g.len() == 5 && g.bytes().all(|b| b.is_ascii_digit())));
+    assert!(endorse_device_request(
+        &f.anchor,
+        &f.request,
+        &f.access,
+        &format!("{}x", code),
+        f.now
+    )
+    .is_err());
     assert!(matches!(
         endorse_device_request(&f.anchor, &f.request, &f.access, "", f.now),
         Err(EnrollmentCryptoError::PairingRequired)

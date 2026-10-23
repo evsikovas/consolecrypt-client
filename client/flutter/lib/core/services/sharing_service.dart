@@ -8,7 +8,28 @@ abstract interface class SharingService {
   Future<List<SharingIdentity>> discover(String email);
   Future<List<SharingItem>> list({bool refresh = false});
   Future<SharingInvitation> inspect(String id);
-  Future<SharingItem> accept(String id, String confirmedOwnerCode);
+
+  /// Accept with the pin of the owner's keys ([choosePeer] / [verifyPeer]).
+  Future<SharingItem> accept(String id, String verificationId);
+
+  /// Pin a colleague device the user chose (TR-12): `chosen` on first use,
+  /// `keysChanged` when known with other keys.
+  Future<PeerPin> choosePeer(SharingIdentity identity, {String? email});
+
+  /// Safety number with [identity] and this device's QR payload (TR-11).
+  Future<SafetyNumber> safetyNumber(SharingIdentity identity);
+
+  /// Verify [identity] with the typed safety number (`safety_number`) or
+  /// the colleague's QR text (`qr_code`).
+  Future<PeerPin> verifyPeer(SharingIdentity identity, String method, String input, {String? email});
+
+  /// TR-18 one-time banner: unverified recipients of secrets.
+  Future<List<PeerPin>> verificationBanner();
+  Future<void> dismissVerificationBanner();
+
+  /// "Only verified recipients" vault setting (TR-14).
+  Future<SharingPolicy> policy();
+  Future<SharingPolicy> setPolicy(SharingPolicy policy);
   Future<String> preview(SharingKind kind, String objectId, {bool includeNotes = false});
   Future<SharingItem> publish(String projectionJson, List<SharingGrant> grants);
   Future<List<SharingOutboxEntry>> edit(String id, String projectionJson);
@@ -25,7 +46,7 @@ abstract interface class SharingService {
   Future<SharingItem> restore(String id);
   Future<List<SharingOutboxEntry>> outbox();
   Future<List<SharingOutboxEntry>> flush();
-  Future<SharingItem> reconcile(String id, String confirmedOwnerCode);
+  Future<SharingItem> reconcile(String id, String verificationId);
   Future<List<SharingOutboxEntry>> discardPending(String mutationId);
   Future<String> previewGroup(String groupId, String childrenJson);
   Future<String> previewSecret(String credentialId, {bool passphrase = false});
@@ -57,7 +78,22 @@ final class UnavailableSharingService implements SharingService {
   @override
   Future<SharingInvitation> inspect(String id) async => _unavailable();
   @override
-  Future<SharingItem> accept(String id, String confirmedOwnerCode) async => _unavailable();
+  Future<SharingItem> accept(String id, String verificationId) async => _unavailable();
+  @override
+  Future<PeerPin> choosePeer(SharingIdentity identity, {String? email}) async => _unavailable();
+  @override
+  Future<SafetyNumber> safetyNumber(SharingIdentity identity) async => _unavailable();
+  @override
+  Future<PeerPin> verifyPeer(SharingIdentity identity, String method, String input, {String? email}) async =>
+      _unavailable();
+  @override
+  Future<List<PeerPin>> verificationBanner() async => const [];
+  @override
+  Future<void> dismissVerificationBanner() async {}
+  @override
+  Future<SharingPolicy> policy() async => const SharingPolicy();
+  @override
+  Future<SharingPolicy> setPolicy(SharingPolicy policy) async => _unavailable();
   @override
   Future<String> preview(SharingKind kind, String objectId, {bool includeNotes = false}) async => _unavailable();
   @override
@@ -79,7 +115,7 @@ final class UnavailableSharingService implements SharingService {
   @override
   Future<List<SharingOutboxEntry>> flush() async => _unavailable();
   @override
-  Future<SharingItem> reconcile(String id, String confirmedOwnerCode) async => _unavailable();
+  Future<SharingItem> reconcile(String id, String verificationId) async => _unavailable();
   @override
   Future<List<SharingOutboxEntry>> discardPending(String mutationId) async => _unavailable();
   @override

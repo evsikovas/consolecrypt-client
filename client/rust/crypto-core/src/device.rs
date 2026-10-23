@@ -6,9 +6,12 @@ use crate::error::{CryptoError, Result};
 use crate::keys::{secret32_from, Secret32};
 use crate::rng::fill_random;
 use cc_protocol::canonical::{
-    device_approval_message, device_fingerprint_input, device_login_message, request_proof_message,
+    device_approval_message, device_approval_message_v2, device_envelope_hash_input,
+    device_fingerprint_input, device_login_message, device_pairing_code_v2_input,
+    request_proof_message, vault_key_commitment_message, ApprovedVaultKey,
 };
 use cc_protocol::devices::DeviceInfo;
+use cc_protocol::envelopes::NewEnvelope;
 use cc_protocol::limits::{ED25519_PUBLIC_KEY_LEN, ED25519_SIGNATURE_LEN, X25519_PUBLIC_KEY_LEN};
 use cc_protocol::{Bytes, DeviceId, DeviceRequestId, VaultId};
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
@@ -105,6 +108,33 @@ impl DeviceSecretKeys {
         approval: &DeviceApproval<'_>,
     ) -> [u8; ED25519_SIGNATURE_LEN] {
         self.signing.sign(&approval.message()).to_bytes()
+    }
+
+    /// Ed25519-sign a v2 device approval (protocol 1.11): covers the
+    /// approver's own keys and, per vault, the key commitment and the
+    /// envelope sealed for the new device. Call only after the user
+    /// confirmed the pairing code v2 on both screens.
+    pub fn sign_device_approval_v2(
+        &self,
+        approval: &DeviceApprovalV2<'_>,
+    ) -> [u8; ED25519_SIGNATURE_LEN] {
+        self.signing.sign(&approval.message()).to_bytes()
+    }
+
+    /// Ed25519-sign this device's key-commitment record (protocol 1.11,
+    /// [`vault_key_commitment_message`]).
+    pub fn sign_key_commitment(
+        &self,
+        vault_id: VaultId,
+        commitment: &[u8; 32],
+        device_id: DeviceId,
+        issued_at: i64,
+    ) -> [u8; ED25519_SIGNATURE_LEN] {
+        self.signing
+            .sign(&vault_key_commitment_message(
+                vault_id, commitment, device_id, issued_at,
+            ))
+            .to_bytes()
     }
 
     /// Proof of possession for login/register of `device_id` (protocol 1.4,
@@ -355,6 +385,126 @@ pub fn verify_device_approval(
     let sig = Signature::from_slice(signature).map_err(|_| CryptoError::InvalidSignature)?;
     vk.verify_strict(&approval.message(), &sig)
         .map_err(|_| CryptoError::InvalidSignature)
+}
+
+/// Fields of a v2 device approval (protocol 1.11);
+/// [`DeviceApprovalV2::message`] is
+/// `cc_protocol::canonical::device_approval_message_v2`.
+#[derive(Debug, Clone, Copy)]
+pub struct DeviceApprovalV2<'a> {
+    pub request_id: DeviceRequestId,
+    pub approver_device_id: DeviceId,
+    pub approver_keys: &'a DevicePublicKeys,
+    pub new_device_id: DeviceId,
+    pub new_device_keys: &'a DevicePublicKeys,
+    /// Unix seconds (the same as the v1 signature's).
+    pub issued_at: i64,
+    /// One entry per approved vault (sorted by the message).
+    pub vaults: &'a [ApprovedVaultKey],
+}
+
+impl DeviceApprovalV2<'_> {
+    /// Canonical bytes to sign/verify.
+    pub fn message(&self) -> Vec<u8> {
+        device_approval_message_v2(
+            self.request_id,
+            self.approver_device_id,
+            &self.approver_keys.encryption,
+            &self.approver_keys.signing,
+            self.new_device_id,
+            &self.new_device_keys.encryption,
+            &self.new_device_keys.signing,
+            self.issued_at,
+            self.vaults,
+        )
+    }
+}
+
+/// Verify a v2 approval with the approver key **the verifier pinned**
+/// (never one taken from the same server response). Strict verification;
+/// duplicate vault ids are rejected.
+pub fn verify_device_approval_v2(
+    approver_signing_key: &[u8; ED25519_PUBLIC_KEY_LEN],
+    approval: &DeviceApprovalV2<'_>,
+    signature: &[u8],
+) -> Result<()> {
+    let mut ids: Vec<VaultId> = approval.vaults.iter().map(|v| v.vault_id).collect();
+    ids.sort();
+    ids.dedup();
+    if ids.len() != approval.vaults.len() || approval.vaults.is_empty() {
+        return Err(CryptoError::InvalidSignature);
+    }
+    if approval.approver_keys.signing != *approver_signing_key {
+        return Err(CryptoError::InvalidSignature);
+    }
+    let vk =
+        VerifyingKey::from_bytes(approver_signing_key).map_err(|_| CryptoError::InvalidKey {
+            what: "Ed25519 public key",
+        })?;
+    let sig = Signature::from_slice(signature).map_err(|_| CryptoError::InvalidSignature)?;
+    vk.verify_strict(&approval.message(), &sig)
+        .map_err(|_| CryptoError::InvalidSignature)
+}
+
+/// Verify a key-commitment record signature (protocol 1.11).
+pub fn verify_key_commitment(
+    device_signing_key: &[u8; ED25519_PUBLIC_KEY_LEN],
+    vault_id: VaultId,
+    commitment: &[u8; 32],
+    device_id: DeviceId,
+    issued_at: i64,
+    signature: &[u8],
+) -> Result<()> {
+    let vk = VerifyingKey::from_bytes(device_signing_key).map_err(|_| CryptoError::InvalidKey {
+        what: "Ed25519 public key",
+    })?;
+    let sig = Signature::from_slice(signature).map_err(|_| CryptoError::InvalidSignature)?;
+    vk.verify_strict(
+        &vault_key_commitment_message(vault_id, commitment, device_id, issued_at),
+        &sig,
+    )
+    .map_err(|_| CryptoError::InvalidSignature)
+}
+
+/// `SHA-256(ephemeral_pub ‖ nonce ‖ ciphertext)` of a device envelope, as
+/// bound into v2 approvals (protocol 1.11).
+pub fn device_envelope_sha256(envelope: &NewEnvelope) -> Result<[u8; 32]> {
+    let eph = envelope
+        .metadata
+        .ephemeral_public_key
+        .as_ref()
+        .ok_or(CryptoError::InvalidKey {
+            what: "ephemeral X25519 public key",
+        })?;
+    Ok(Sha256::digest(device_envelope_hash_input(
+        eph.as_slice(),
+        envelope.nonce.as_slice(),
+        envelope.ciphertext.as_slice(),
+    ))
+    .into())
+}
+
+/// Mutual pairing code v2 (protocol 1.11): 6 groups of 5 digits from
+/// `SHA-256(device_pairing_code_v2_input(..))` over the keys of **both**
+/// devices. The new and the approving device must show the same code.
+pub fn pairing_code_v2(
+    request_id: DeviceRequestId,
+    new_device_id: DeviceId,
+    new_device_keys: &DevicePublicKeys,
+    approver_device_id: DeviceId,
+    approver_keys: &DevicePublicKeys,
+) -> VerificationCode {
+    let h: [u8; 32] = Sha256::digest(device_pairing_code_v2_input(
+        request_id,
+        new_device_id,
+        &new_device_keys.encryption,
+        &new_device_keys.signing,
+        approver_device_id,
+        &approver_keys.encryption,
+        &approver_keys.signing,
+    ))
+    .into();
+    VerificationCode::from_hash(&h)
 }
 
 /// Device verification code ("safety number", ADR-0004): 6 groups of 5
@@ -610,5 +760,105 @@ mod request_proof_tests {
             &sig
         )
         .is_err());
+    }
+}
+
+#[cfg(test)]
+mod key_trust_tests {
+    use super::*;
+
+    fn entry(vault: VaultId, c: u8, e: u8) -> ApprovedVaultKey {
+        ApprovedVaultKey {
+            vault_id: vault,
+            commitment: [c; 32],
+            envelope_sha256: [e; 32],
+        }
+    }
+
+    #[test]
+    fn approval_v2_verifies_only_with_the_pinned_key_and_exact_fields() {
+        let approver = DeviceSecretKeys::generate().unwrap();
+        let new = DeviceSecretKeys::generate().unwrap();
+        let a_keys = approver.public_keys();
+        let n_keys = new.public_keys();
+        let (r, a, n) = (DeviceRequestId::new(), DeviceId::new(), DeviceId::new());
+        let vaults = [entry(VaultId::new(), 1, 2)];
+        let approval = DeviceApprovalV2 {
+            request_id: r,
+            approver_device_id: a,
+            approver_keys: &a_keys,
+            new_device_id: n,
+            new_device_keys: &n_keys,
+            issued_at: 5,
+            vaults: &vaults,
+        };
+        let sig = approver.sign_device_approval_v2(&approval);
+        verify_device_approval_v2(&a_keys.signing, &approval, &sig).unwrap();
+        // Another key (e.g. one a server substituted) does not verify.
+        let other = DeviceSecretKeys::generate().unwrap().public_keys();
+        assert!(verify_device_approval_v2(&other.signing, &approval, &sig).is_err());
+        // A different commitment, envelope hash or vault does not verify.
+        for changed in [
+            entry(vaults[0].vault_id, 9, 2),
+            entry(vaults[0].vault_id, 1, 9),
+            entry(VaultId::new(), 1, 2),
+        ] {
+            let v = [changed];
+            let tampered = DeviceApprovalV2 {
+                vaults: &v,
+                ..approval
+            };
+            assert!(verify_device_approval_v2(&a_keys.signing, &tampered, &sig).is_err());
+        }
+        // Duplicate or empty vault lists are refused.
+        let dup = [vaults[0], vaults[0]];
+        assert!(verify_device_approval_v2(
+            &a_keys.signing,
+            &DeviceApprovalV2 {
+                vaults: &dup,
+                ..approval
+            },
+            &sig
+        )
+        .is_err());
+        assert!(verify_device_approval_v2(
+            &a_keys.signing,
+            &DeviceApprovalV2 {
+                vaults: &[],
+                ..approval
+            },
+            &sig
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn pairing_code_v2_depends_on_both_devices() {
+        let a = DeviceSecretKeys::generate().unwrap().public_keys();
+        let n = DeviceSecretKeys::generate().unwrap().public_keys();
+        let x = DeviceSecretKeys::generate().unwrap().public_keys();
+        let (r, ai, ni) = (DeviceRequestId::new(), DeviceId::new(), DeviceId::new());
+        let code = pairing_code_v2(r, ni, &n, ai, &a);
+        assert_eq!(code, pairing_code_v2(r, ni, &n, ai, &a));
+        // A substituted approver key or new-device key changes the code.
+        assert_ne!(code, pairing_code_v2(r, ni, &n, ai, &x));
+        assert_ne!(code, pairing_code_v2(r, ni, &x, ai, &a));
+        assert_ne!(
+            code,
+            pairing_code_v2(DeviceRequestId::new(), ni, &n, ai, &a)
+        );
+        // It is not the plain v1 device code.
+        assert_ne!(code, n.verification_code(ni));
+    }
+
+    #[test]
+    fn key_commitment_record_roundtrip() {
+        let keys = DeviceSecretKeys::generate().unwrap();
+        let pk = keys.public_keys().signing;
+        let (v, d) = (VaultId::new(), DeviceId::new());
+        let sig = keys.sign_key_commitment(v, &[4; 32], d, 9);
+        verify_key_commitment(&pk, v, &[4; 32], d, 9, &sig).unwrap();
+        assert!(verify_key_commitment(&pk, v, &[5; 32], d, 9, &sig).is_err());
+        assert!(verify_key_commitment(&pk, v, &[4; 32], d, 10, &sig).is_err());
     }
 }

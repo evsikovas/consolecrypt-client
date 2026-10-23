@@ -1249,7 +1249,7 @@ dependencies = [
 [[package]]
 name = "cc-protocol"
 version = "0.1.0"
-source = "git+https://github.com/evsikovas/consolecrypt-server.git?rev=2cb6630f02cb9a68262887705c33f0fbbe3b93f9#2cb6630f02cb9a68262887705c33f0fbbe3b93f9"
+source = "git+https://github.com/evsikovas/consolecrypt-server.git?rev=b4bfd4a91cbe7f72b0897e26c06d5a4592efa55c#b4bfd4a91cbe7f72b0897e26c06d5a4592efa55c"
 dependencies = [
  "base64 0.22.1",
  "chrono",

@@ -155,6 +155,7 @@ class _SharingDbPublishDialogState extends ConsumerState<SharingDbPublishDialog>
                     const SizedBox(height: 16),
                     SharingRecipients(
                       key: const ValueKey('sharing-db-recipients'),
+                      sensitive: true,
                       initialGrants: _grants,
                       onChanged: (grants) => setState(() => _grants = grants),
                     ),

@@ -127,7 +127,6 @@ final class EnrollmentGrantCreate {
   final int maxAdmissions;
   Map<String, Object?> toJson() => {
     'anchor': anchor.toJson(),
-    'confirmed_identity_code': anchor.code,
     'role_ceiling': roleCeiling == SharingRole.reader ? 'Reader' : 'Editor',
     'mode': mode == EnrollmentMode.manual ? 'Manual' : 'Automatic',
     'expires_at': expires.toUtc().millisecondsSinceEpoch ~/ 1000,

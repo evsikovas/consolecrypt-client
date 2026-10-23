@@ -80,6 +80,40 @@ pub async fn devices_request_approval(vault_id: Option<String>) -> Result<String
     with_core(move |c| async move { to_json(&c.request_device_approval(vault_id).await?) }).await
 }
 
+/// New device (protocol 1.11): approval progress → `ApprovalProgressDto`
+/// (the pairing code once an approver announced itself).
+pub async fn devices_approval_status(request_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.device_approval_status(request_id).await?) }).await
+}
+
+/// New device, only after the user confirmed that `shown_code` matches the
+/// code on the approving device: pin that device's keys.
+pub async fn devices_confirm_approver(
+    request_id: String,
+    approver_device_id: String,
+    shown_code: String,
+) -> Result<(), BridgeError> {
+    with_core(move |c| async move {
+        Ok(
+            c.confirm_device_approver(request_id, approver_device_id, shown_code)
+                .await?,
+        )
+    })
+    .await
+}
+
+/// Vault key trust of the open profile → `VaultKeyStatusDto` (audit H2).
+pub async fn vault_key_status() -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.vault_key_status().await?) }).await
+}
+
+/// Confirm an unconfirmed vault key with the passphrase; `false` = wrong
+/// passphrase, `vault_key_mismatch` = another key.
+pub async fn vault_key_confirm(passphrase: Vec<u8>) -> Result<bool, BridgeError> {
+    let passphrase = secret_string("passphrase", passphrase)?;
+    with_core(move |c| async move { Ok(c.confirm_vault_key(passphrase).await?) }).await
+}
+
 /// New device, after approval: open the vault with the device key.
 /// `false` = not approved yet.
 pub async fn devices_finish_approval(vault_id: Option<String>) -> Result<bool, BridgeError> {

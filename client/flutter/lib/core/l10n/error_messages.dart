@@ -119,6 +119,12 @@ String errorCodeMessage(AppLocalizations l, AppErrorCode code, {Map<String, Stri
   AppErrorCode.groupRequired => l.errorGroupRequired,
   AppErrorCode.mfaRequired => l.errorMfaRequired,
   AppErrorCode.idpUnavailable => l.errorIdpUnavailable,
+  AppErrorCode.vaultKeyMismatch => l.errorVaultKeyMismatch,
+  AppErrorCode.recipientUnverified => switch (args['reason']) {
+    'keys_changed' => l.errorRecipientKeysChanged,
+    _ => l.errorRecipientUnverified,
+  },
+  AppErrorCode.peerVerificationFailed => l.errorPeerVerificationFailed,
 };
 
 String? _reasonMessage(AppLocalizations l, AppException e) {

@@ -310,6 +310,7 @@ async fn settings_conflict_is_last_writer_wins() {
         icon: None,
         description: None,
         policies: Default::default(),
+        sharing_policy: Default::default(),
         created_at: now,
         updated_at: now,
     };

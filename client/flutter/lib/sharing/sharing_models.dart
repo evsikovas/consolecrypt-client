@@ -18,6 +18,29 @@ enum SharingTrust { unverified, verified, blocked, deleted }
 T _enum<T extends Enum>(List<T> values, Object? value) =>
     values.firstWhere((v) => v.name.toLowerCase() == value.toString().replaceAll('_', '').toLowerCase());
 
+/// This device's pin of a colleague device's keys (audit H3, TR-12).
+enum PeerTrust {
+  /// Never chosen on this device.
+  none,
+
+  /// Chosen; keys pinned on first use, not verified.
+  chosen,
+
+  /// Verified outside the server (safety number or QR code).
+  verified,
+
+  /// The server reported other keys than the pinned ones: no new access
+  /// until verified again.
+  keysChanged;
+
+  static PeerTrust fromWire(Object? v) => switch (v) {
+    'chosen' => PeerTrust.chosen,
+    'verified' => PeerTrust.verified,
+    'keys_changed' => PeerTrust.keysChanged,
+    _ => PeerTrust.none,
+  };
+}
+
 final class SharingIdentity {
   const SharingIdentity({
     required this.instance,
@@ -26,8 +49,31 @@ final class SharingIdentity {
     required this.encryptionKey,
     required this.signingKey,
     required this.code,
+    this.trust = PeerTrust.none,
+    this.verificationId,
+    this.verifiedAt,
   });
+
+  /// [code] is the key fingerprint (details only) — never a comparison code.
   final String instance, userId, deviceId, encryptionKey, signingKey, code;
+  final PeerTrust trust;
+
+  /// The pin to pass when granting / accepting (checked in Rust).
+  final String? verificationId;
+  final DateTime? verifiedAt;
+  bool sameKeys(SharingIdentity o) =>
+      o.deviceId == deviceId && o.encryptionKey == encryptionKey && o.signingKey == signingKey;
+  SharingIdentity withPin(PeerPin pin) => SharingIdentity(
+    instance: instance,
+    userId: userId,
+    deviceId: deviceId,
+    encryptionKey: encryptionKey,
+    signingKey: signingKey,
+    code: code,
+    trust: pin.status,
+    verificationId: pin.verificationId,
+    verifiedAt: pin.verifiedAt,
+  );
   factory SharingIdentity.fromJson(Map<String, dynamic> j) => SharingIdentity(
     instance: j['server_instance_id'] as String,
     userId: j['user_id'] as String,
@@ -35,6 +81,11 @@ final class SharingIdentity {
     encryptionKey: j['encryption_public_key'] as String,
     signingKey: j['signing_public_key'] as String,
     code: j['verification_code'] as String,
+    trust: PeerTrust.fromWire(j['trust']),
+    verificationId: j['verification_id'] as String?,
+    verifiedAt: j['verified_at_ms'] == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch((j['verified_at_ms'] as num).toInt()),
   );
   Map<String, Object?> toJson() => {
     'server_instance_id': instance,
@@ -47,16 +98,78 @@ final class SharingIdentity {
 }
 
 final class SharingGrant {
-  const SharingGrant(this.identity, this.role, this.confirmedCode);
+  const SharingGrant(this.identity, this.role);
   final SharingIdentity identity;
   final SharingRole role;
-  final String confirmedCode;
+
+  /// The pin of [identity]'s keys; Rust checks status and policy (TR-16).
+  /// Existing members with unchanged keys need none.
+  String? get verificationId => identity.verificationId;
   Map<String, Object?> toJson() => {
     'identity': identity.toJson(),
     'role': role == SharingRole.reader ? 'Reader' : 'Editor',
-    'confirmed_code': confirmedCode,
+    'verification_id': verificationId,
   };
 }
+
+/// A pinned colleague device (`PeerPinDto`).
+final class PeerPin {
+  const PeerPin({
+    required this.verificationId,
+    required this.deviceId,
+    required this.userId,
+    required this.status,
+    this.method,
+    this.verifiedAt,
+    this.email,
+  });
+  final String verificationId, deviceId, userId;
+  final PeerTrust status;
+  final String? method, email;
+  final DateTime? verifiedAt;
+  factory PeerPin.fromJson(Map<String, dynamic> j) => PeerPin(
+    verificationId: j['verification_id'] as String,
+    deviceId: j['device_id'] as String,
+    userId: j['user_id'] as String,
+    status: PeerTrust.fromWire(j['status']),
+    method: j['method'] as String?,
+    verifiedAt: j['verified_at_ms'] == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch((j['verified_at_ms'] as num).toInt()),
+    email: j['email'] as String?,
+  );
+}
+
+/// What to compare with a colleague (`SafetyNumberDto`).
+final class SafetyNumber {
+  const SafetyNumber({required this.groups, required this.ownQrPayload, this.trust = PeerTrust.none});
+  final List<String> groups;
+  final String ownQrPayload;
+  final PeerTrust trust;
+  factory SafetyNumber.fromJson(Map<String, dynamic> j) => SafetyNumber(
+    groups: (j['safety_number'] as String).split(' '),
+    ownQrPayload: j['own_qr_payload'] as String,
+    trust: PeerTrust.fromWire(j['trust']),
+  );
+}
+
+/// "Only verified recipients" (`SharingPolicyDto`, TR-14).
+final class SharingPolicy {
+  const SharingPolicy({this.sensitiveVerifiedOnly = true, this.otherVerifiedOnly = false});
+  final bool sensitiveVerifiedOnly, otherVerifiedOnly;
+  factory SharingPolicy.fromJson(Map<String, dynamic> j) => SharingPolicy(
+    sensitiveVerifiedOnly: j['sensitive_verified_only'] != false,
+    otherVerifiedOnly: j['other_verified_only'] == true,
+  );
+  Map<String, Object?> toJson() => {
+    'sensitive_verified_only': sensitiveVerifiedOnly,
+    'other_verified_only': otherVerifiedOnly,
+  };
+}
+
+/// Secrets, Kubernetes contexts and database connections (TR-14).
+bool sharingKindSensitive(SharingKind kind) =>
+    kind == SharingKind.secret || kind == SharingKind.kubeContext || kind == SharingKind.dbConnection;
 
 final class SharingStatus {
   const SharingStatus({
@@ -121,8 +234,12 @@ final class SharingItem {
     this.members = const [],
     this.memberRoles = const [],
     this.departedUserIds = const [],
+    this.ownerTrust = PeerTrust.none,
   });
   final String id, itemId, ownerUserId, ownerDeviceId;
+
+  /// Received items: the pin of the owner's keys (chosen = not verified).
+  final PeerTrust ownerTrust;
   final SharingKind kind;
   final int revision, epoch;
   final bool owned;
@@ -161,10 +278,11 @@ final class SharingItem {
         .map((v) {
           final m = v as Map<String, dynamic>;
           final identity = SharingIdentity.fromJson(m['identity'] as Map<String, dynamic>);
-          return SharingGrant(identity, _enum(SharingRole.values, m['role']), identity.code);
+          return SharingGrant(identity, _enum(SharingRole.values, m['role']));
         })
         .toList(growable: false),
     departedUserIds: ((j['departed_user_ids'] as List?) ?? const []).cast<String>().toList(growable: false),
+    ownerTrust: PeerTrust.fromWire(j['owner_trust']),
   );
   @override
   String toString() => 'SharingItem(<redacted>)';

@@ -22,8 +22,50 @@ Future<String> sharingList({required bool refresh}) =>
 
 Future<String> sharingInspect({required String id}) => RustLib.instance.api.crateApiSharingSharingInspect(id: id);
 
-Future<String> sharingAccept({required String id, required String confirmedOwnerCode}) =>
-    RustLib.instance.api.crateApiSharingSharingAccept(id: id, confirmedOwnerCode: confirmedOwnerCode);
+/// Accept with the pin of the owner's keys (`verification_id` from
+/// `sharing_choose_peer` / `sharing_verify_peer`); Rust checks it (TR-16).
+Future<String> sharingAccept({required String id, required String verificationId}) =>
+    RustLib.instance.api.crateApiSharingSharingAccept(id: id, verificationId: verificationId);
+
+/// Pin a colleague device chosen by the user (audit H3, TR-12) →
+/// `PeerPinDto` (`keys_changed` when known with other keys).
+Future<String> sharingChoosePeer({required String identityJson, String? email}) =>
+    RustLib.instance.api.crateApiSharingSharingChoosePeer(identityJson: identityJson, email: email);
+
+/// Safety number with a colleague device and this device's QR payload →
+/// `SafetyNumberDto` (TR-11).
+Future<String> sharingSafetyNumber({required String identityJson}) =>
+    RustLib.instance.api.crateApiSharingSharingSafetyNumber(identityJson: identityJson);
+
+/// Verify a colleague device: `method` = `safety_number` (typed) or
+/// `qr_code` (scanned / entered payload) → `PeerPinDto`;
+/// `peer_verification_failed` when it does not match.
+Future<String> sharingVerifyPeer({
+  required String identityJson,
+  required String method,
+  required String input,
+  String? email,
+}) => RustLib.instance.api.crateApiSharingSharingVerifyPeer(
+  identityJson: identityJson,
+  method: method,
+  input: input,
+  email: email,
+);
+
+/// Pinned colleague devices → `[PeerPinDto]`.
+Future<String> sharingPeerPins() => RustLib.instance.api.crateApiSharingSharingPeerPins();
+
+/// TR-18 one-time banner: unverified recipients of secrets → `[PeerPinDto]`.
+Future<String> sharingVerificationBanner() => RustLib.instance.api.crateApiSharingSharingVerificationBanner();
+
+Future<void> sharingDismissVerificationBanner() =>
+    RustLib.instance.api.crateApiSharingSharingDismissVerificationBanner();
+
+/// "Only verified recipients" (TR-14) → `SharingPolicyDto`.
+Future<String> sharingPolicy() => RustLib.instance.api.crateApiSharingSharingPolicy();
+
+Future<String> sharingSetPolicy({required String policyJson}) =>
+    RustLib.instance.api.crateApiSharingSharingSetPolicy(policyJson: policyJson);
 
 Future<String> sharingPreviewHost({required String id, required bool includeNotes}) =>
     RustLib.instance.api.crateApiSharingSharingPreviewHost(id: id, includeNotes: includeNotes);
@@ -105,8 +147,8 @@ Future<String> sharingOutbox() => RustLib.instance.api.crateApiSharingSharingOut
 
 Future<String> sharingFlush() => RustLib.instance.api.crateApiSharingSharingFlush();
 
-Future<String> sharingReconcile({required String id, required String confirmedOwnerCode}) =>
-    RustLib.instance.api.crateApiSharingSharingReconcile(id: id, confirmedOwnerCode: confirmedOwnerCode);
+Future<String> sharingReconcile({required String id, required String verificationId}) =>
+    RustLib.instance.api.crateApiSharingSharingReconcile(id: id, verificationId: verificationId);
 
 Future<String> sharingDiscardPending({required String id}) =>
     RustLib.instance.api.crateApiSharingSharingDiscardPending(id: id);
