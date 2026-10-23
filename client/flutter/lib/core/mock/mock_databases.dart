@@ -1,12 +1,16 @@
 import 'dart:async';
 
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
+import 'package:consolecrypt/core/mock/mock_db_extras.dart';
 import 'package:consolecrypt/core/mock/mock_presence.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
+import 'package:consolecrypt/db/db_csv_import.dart';
+import 'package:consolecrypt/db/db_designer_models.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
+import 'package:consolecrypt/db/db_result_edits.dart';
 import 'package:consolecrypt/db/db_service.dart';
 
 // Demo data of the mock backend; nothing here is shown in release builds.
@@ -23,6 +27,10 @@ final class MockDbService
         DbAiService,
         DbProductionWriteService,
         DbCellEditService,
+        DbRowEditService,
+        DbCsvImportService,
+        DbTableDesignService,
+        DbSqliteFileService,
         DbObjectInspectService {
   final _changes = StreamController<void>.broadcast();
   final _history = <DbHistoryEntry>[];
@@ -85,6 +93,30 @@ final class MockDbService
       route: const DbRoute(kind: DbRouteKind.jump, reference: _jump),
       color: '#30A46C',
     ),
+    // Engines added in 0.9.2 stay on this device (never synced or shared).
+    _connection(
+      'sqlite',
+      'warehouse',
+      DbEngine.sqlite,
+      '',
+      production: false,
+      database: '/Users/demo/data/inventory.db',
+      color: '#0091FF',
+    ),
+    _connection(
+      'cassandra',
+      'telemetry',
+      DbEngine.cassandra,
+      'scylla-1.internal',
+      production: true,
+      database: 'telemetry',
+      route: const DbRoute(kind: DbRouteKind.ssh, reference: _bastion),
+      options: const DbDriverOptions(
+        engine: DbEngine.cassandra,
+        contactPoints: ['scylla-2.internal', 'scylla-3.internal'],
+        localDatacenter: 'dc1',
+      ),
+    ),
   ];
 
   // Route targets offered by the connection form (demo names only).
@@ -103,6 +135,7 @@ final class MockDbService
     required String database,
     DbRoute route = const DbRoute(),
     String? color,
+    DbDriverOptions? options,
   }) => DbConnection(
     id: id,
     name: name,
@@ -110,12 +143,12 @@ final class MockDbService
     host: host,
     port: engine.port,
     database: database,
-    username: 'app',
+    username: engine.file ? '' : 'app',
     // A saved (demo) password: the workspace opens without asking.
     auth: const DbAuth(passwordSecretId: 'mock-db-password'),
     route: route,
     production: production,
-    options: DbDriverOptions(engine: engine),
+    options: options ?? DbDriverOptions(engine: engine),
     tags: [if (production) 'prod' else 'dev'],
     color: color,
   );
@@ -226,9 +259,13 @@ final class MockDbService
         DbEngine.cassandra => 'ScyllaDB 6.2.3', // l10n-ignore: server version
       },
       production: connection.production,
-      readOnly: connection.production,
-      serverReadOnly: connection.production ? DbServerReadOnly.enforced : DbServerReadOnly.unverified,
-      transportSecurity: DbTransportSecurity.expected(connection, loopback: false) ?? DbTransportSecurity.tunnel,
+      readOnly: connection.production || (connection.engine.file && connection.options.readOnly),
+      serverReadOnly: connection.production || connection.engine.file
+          ? DbServerReadOnly.enforced
+          : DbServerReadOnly.unverified,
+      transportSecurity: connection.engine.file
+          ? null
+          : DbTransportSecurity.expected(connection, loopback: false) ?? DbTransportSecurity.tunnel,
       canUnlockProduction: connection.production,
     );
     return _sessions[session.id] = session;
@@ -361,6 +398,10 @@ final class MockDbService
   @override
   Future<DbTreePage> tree(String sessionId, {DbObjectRef? parent, String? cursor, bool refresh = false}) async {
     final engine = _sessions[sessionId]?.engine ?? DbEngine.postgresql;
+    if (engine == DbEngine.sqlite) {
+      return mockSqliteTree(parent, file: _byId(_sessions[sessionId]!.connectionId).database.split('/').last);
+    }
+    if (engine == DbEngine.cassandra) return mockCassandraTree(parent);
     DbTreeNode node(DbObjectRef ref, {bool children = true, String? detail, bool pk = false, DbObjectRef? fk}) =>
         DbTreeNode(reference: ref, hasChildren: children, detail: detail, primaryKey: pk, foreignKey: fk);
     if (engine == DbEngine.redis) {
@@ -492,6 +533,7 @@ final class MockDbService
 
   @override
   Future<SecretText> ddl(String sessionId, DbObjectRef object) async {
+    if (_sessions[sessionId]?.engine == DbEngine.sqlite) return SecretText(mockSqliteDdl(object));
     final name = object.name;
     final columns = _tables[name] ?? const [];
     final keys = [
@@ -634,6 +676,10 @@ final class MockDbService
 
   @override
   Stream<DbQueryEvent> watchQuery(String sessionId, String queryId) async* {
+    if (_sessions[sessionId]?.engine == DbEngine.sqlite) {
+      yield* _sqliteItems();
+      return;
+    }
     // A join reads customers too; a plain SELECT from orders is editable.
     final join = _queries[queryId]?.text.toUpperCase().contains('JOIN') ?? true;
     final columns = [
@@ -680,6 +726,44 @@ final class MockDbService
       ],
     );
     yield const DbQueryEvent(kind: DbQueryEventKind.statementDone, elapsedMs: 14);
+    yield const DbQueryEvent(kind: DbQueryEventKind.done);
+  }
+
+  /// SQLite demo result: warehouse items (editable by primary key).
+  Stream<DbQueryEvent> _sqliteItems() async* {
+    yield const DbQueryEvent(
+      kind: DbQueryEventKind.started,
+      columns: [
+        DbColumn(name: 'id', typeName: 'INTEGER', nullable: false, primaryKey: true),
+        DbColumn(name: 'sku', typeName: 'TEXT', nullable: false),
+        DbColumn(name: 'title', typeName: 'TEXT', nullable: false),
+        DbColumn(name: 'supplier_id', typeName: 'INTEGER'),
+        DbColumn(name: 'price', typeName: 'NUMERIC'),
+      ],
+      editableTable: DbObjectRef(database: 'main', kind: DbObjectKind.table, name: 'items'),
+    );
+    const titles = [
+      'Pallet jack',
+      'Shelf bracket',
+      'Label printer',
+      'Barcode scanner',
+      'Stretch film',
+      'Safety gloves',
+    ];
+    yield DbQueryEvent(
+      kind: DbQueryEventKind.rows,
+      rows: [
+        for (var i = 0; i < titles.length; i++)
+          [
+            _int(1001 + i),
+            _text('WH-${(4100 + i * 13).toString()}'),
+            _text(titles[i]),
+            i == 3 ? const DbCell.nullValue() : _int(10 + i % 3),
+            DbCell(DbCellKind.decimal, (19.9 + i * 42.5).toStringAsFixed(2)),
+          ],
+      ],
+    );
+    yield const DbQueryEvent(kind: DbQueryEventKind.statementDone, elapsedMs: 3);
     yield const DbQueryEvent(kind: DbQueryEventKind.done);
   }
 
@@ -845,4 +929,101 @@ final class MockDbService
 
   @override
   Future<void> revokeAiConsent(String sessionId) async {}
+
+  // Rows: add, duplicate and delete (0.9.2).
+
+  @override
+  Future<List<DbEditColumn>> editColumns(String sessionId, DbObjectRef table) async =>
+      mockEditColumns(_tables[table.name] ?? const []);
+
+  @override
+  Future<DbRowChangeReview> reviewRowChanges(String sessionId, DbObjectRef table, List<DbRowChange> changes) async =>
+      DbRowChangeReview(
+        ticket: 'rows-${_next++}',
+        sql: SecretText(mockRowChangesSql(table, changes)),
+        expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+        inserted: changes.where((c) => c.kind == DbRowChangeKind.insert).length,
+        updated: changes.where((c) => c.kind == DbRowChangeKind.update).length,
+        deleted: changes.where((c) => c.kind == DbRowChangeKind.delete).length,
+        risk: changes.any((c) => c.kind == DbRowChangeKind.delete) ? DbQueryRisk.dangerous : DbQueryRisk.write,
+      );
+
+  // CSV import (0.9.2): a canned preview; nothing is read or written.
+
+  @override
+  Future<DbCsvPreview> csvPreview(String path, DbCsvOptions options) async => mockCsvPreview(options);
+
+  @override
+  Future<List<DbCsvCheck>> csvCheck(
+    String sessionId,
+    DbObjectRef table,
+    String path,
+    DbCsvOptions options,
+    List<DbCsvMapping> mapping,
+  ) async => mockCsvChecks(mapping);
+
+  @override
+  Future<DbCsvReview> reviewCsvImport(String sessionId, String path, DbCsvPlan plan) async => DbCsvReview(
+    ticket: 'csv-${_next++}',
+    sql: SecretText(
+      'INSERT INTO "${plan.table.schema ?? 'public'}"."${plan.table.name}" '
+      '(${plan.mapping.map((m) => '"${m.target}"').join(', ')}) VALUES (${plan.mapping.map((_) => '?').join(', ')});',
+    ),
+    risk: DbQueryRisk.write,
+    expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+  );
+
+  @override
+  Future<void> discardCsvImport(String ticket) async {}
+
+  @override
+  Future<String> startCsvImport(String sessionId, String ticket) async => 'csv-import-${_next++}';
+
+  @override
+  Stream<DbCsvProgress> watchCsvImport(String importId) => Stream.value(
+    const DbCsvProgress(
+      bytesRead: 48 * 1024,
+      totalBytes: 48 * 1024,
+      rowsRead: 1240,
+      imported: 1238,
+      failed: 2,
+      done: true,
+    ),
+  );
+
+  @override
+  Future<void> cancelCsvImport(String importId) async {}
+
+  @override
+  Future<String> csvCreateTable(String path, DbCsvOptions options, DbEngine engine, DbObjectRef table) async =>
+      'CREATE TABLE "${table.schema ?? 'public'}"."${table.name}" (\n    "id" bigint,\n    "total" numeric,\n    "status" text\n);';
+
+  // Table designer (0.9.2): a PostgreSQL-style planner; applying succeeds.
+
+  @override
+  Future<DbDesignDialect> designDialect(DbEngine engine) async => mockDesignDialect(engine);
+
+  @override
+  Future<DbDesignPlan> planDesign(DbEngine engine, DbTableDesign? original, DbTableDesign design) async =>
+      mockPlanDesign(engine, original, design);
+
+  @override
+  Future<DbTableDesign> loadTableDesign(String sessionId, DbObjectRef table) async =>
+      mockTableDesign(table, _tables[table.name] ?? const []);
+
+  @override
+  Future<DbDesignApplyResult> applyDesign(String sessionId, DbQueryRequest request) async => DbDesignApplyResult(
+    committed: true,
+    statements: [
+      for (final _ in request.text.split(';\n\n')) const DbDesignStatementResult(status: DbDesignStatementStatus.done),
+    ],
+  );
+
+  // SQLite files on this computer (demo paths only).
+
+  @override
+  Future<String?> pickSqliteFile() async => '/Users/demo/data/inventory.db';
+
+  @override
+  Future<String?> createSqliteFile() async => '/Users/demo/data/new.db';
 }

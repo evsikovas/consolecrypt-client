@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/mock/mock_team_service.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/services/database_sharing_service.dart';
 import 'package:consolecrypt/core/services/enrollment_service.dart';
+import 'package:consolecrypt/core/services/file_dialog_service.dart';
 import 'package:consolecrypt/core/services/sharing_service.dart';
 import 'package:consolecrypt/sharing/enrollment_models.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
@@ -76,6 +77,9 @@ const guideScreens = [
   'db-query-review',
   'db-preview-tab',
   'db-details',
+  ...guideDb092Screens,
+  'step-up-biometric',
+  'clipboard-settings',
   'docker-hosts',
   'docker-containers',
   'docker-details',
@@ -89,6 +93,9 @@ const guideScreens = [
   'notes-tasks',
   'notes-editor',
   'notes-menu',
+  'notes-editor-save',
+  'notes-host',
+  'notes-not-linked',
   'enterprise-login-sso',
   'enterprise-login-ldap',
   'enterprise-settings',
@@ -115,6 +122,38 @@ const guideScreens = [
   'kube-ai',
   ...guideExtraScreens,
 ];
+
+/// 0.9.2 database cases handled by `_database092Screen` in design_preview.dart.
+const guideDb092Screens = [
+  'db-sqlite-connection',
+  'db-cassandra-connection',
+  'db-sqlite-tree',
+  'db-designer',
+  'db-designer-save',
+  'db-result-toolbar',
+  'db-result-record',
+  'db-csv-read',
+  'db-snippets-picker',
+];
+
+/// CSV import picks a demo path; the mock service never opens it.
+final class GuideCsvFiles implements FileDialogService {
+  @override
+  Future<String?> chooseOpenFile({List<String> extensions = const []}) async =>
+      '/Users/demo/Downloads/orders-2026-10.csv';
+
+  @override
+  Future<String?> chooseSaveFile({required String suggestedName, List<String> extensions = const []}) async => null;
+
+  @override
+  Future<bool> finishSaveFile(String path) async => false;
+
+  @override
+  Future<String?> chooseDirectory() async => null;
+
+  @override
+  Future<String?> chooseApplication({required String label, required String confirmButtonText}) async => null;
+}
 
 /// Cases handled by `_extraScreen` in design_preview.dart.
 const guideExtraScreens = [
