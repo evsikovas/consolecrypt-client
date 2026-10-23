@@ -500,7 +500,7 @@ class _DbCsvImportDialogState extends ConsumerState<DbCsvImportDialog> {
             if (path != null)
               Expanded(
                 child: Text(
-                  '${path.split(Platform.pathSeparator).last} · ${_bytes(l, _size)}', // l10n-ignore: name · size
+                  '${path.split(RegExp(r'[\\/]')).last} · ${_bytes(l, _size)}', // l10n-ignore: name · size
                   key: const ValueKey('db-csv-file'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

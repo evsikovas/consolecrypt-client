@@ -13,9 +13,10 @@ import 'package:material_ui/material_ui.dart';
 void main() {
   List<(String, int, String)> lines(String root) => [
     for (final file in Directory(root).listSync(recursive: true).whereType<File>())
-      if (file.path.endsWith('.dart') && !file.path.contains('/l10n/') && !file.path.contains('/src/rust/'))
+      if (_posix(file.path) case final path
+          when path.endsWith('.dart') && !path.contains('/l10n/') && !path.contains('/src/rust/'))
         for (final (index, line) in file.readAsLinesSync().indexed)
-          if (!line.trimLeft().startsWith('//')) (file.path, index + 1, line),
+          if (!line.trimLeft().startsWith('//')) (path, index + 1, line),
   ];
 
   test('no direct clipboard writes outside SecureClipboard', () {
@@ -34,9 +35,9 @@ void main() {
   });
 
   test('the terminal copy shortcut is routed through the app', () {
-    final pane = File('lib/terminal/terminal_pane.dart').readAsStringSync();
+    final pane = File('lib/terminal/terminal_pane.dart').readAsStringSync().replaceAll('\r\n', '\n');
     expect(pane, contains('onCopy: (text) => copyTerminalSelection(context, ref, text)'));
-    final actions = File('vendor/xterm/lib/src/ui/shortcut/actions.dart').readAsStringSync();
+    final actions = File('vendor/xterm/lib/src/ui/shortcut/actions.dart').readAsStringSync().replaceAll('\r\n', '\n');
     expect(actions, contains('await onCopy?.call(text);'));
   });
 
@@ -56,7 +57,7 @@ void main() {
     expect(offenders, isEmpty);
     // Revealed Docker environment and inspect JSON switch to the protected
     // widget while shown unmasked.
-    final docker = File('lib/docker/docker_container_details.dart').readAsStringSync();
+    final docker = File('lib/docker/docker_container_details.dart').readAsStringSync().replaceAll('\r\n', '\n');
     expect(
       docker,
       contains('''_revealed != null
@@ -107,3 +108,6 @@ void main() {
     expect(platformWrites, 0);
   }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.macOS, TargetPlatform.windows}));
 }
+
+/// Paths with forward slashes on every platform (Windows lists `lib\\x`).
+String _posix(String path) => path.replaceAll(r'\', '/');
