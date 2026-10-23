@@ -10,7 +10,7 @@ authors.workspace = true
 publish = false
 
 [dependencies]
-cc-protocol = { git = "https://github.com/evsikovas/consolecrypt-server.git", rev = "b4bfd4a91cbe7f72b0897e26c06d5a4592efa55c" }
+cc-protocol = { git = "https://github.com/evsikovas/consolecrypt-server.git", rev = "62171c7efe003660661a16514f0cfb95cefcf4c0" }
 url = "2"
 pem = "3"
 serde.workspace = true
