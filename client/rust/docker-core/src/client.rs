@@ -71,6 +71,27 @@ pub struct LogLine {
     pub timestamp: Option<String>,
 }
 
+/// What a non-interactive exec printed and how it ended.
+#[derive(Default, Clone)]
+pub struct ExecOutput {
+    pub stdout: Vec<u8>,
+    pub stderr: Vec<u8>,
+    /// Exit code; None while the engine does not report one.
+    pub exit_code: Option<i64>,
+    /// Standard output was cut at the caller's limit.
+    pub truncated: bool,
+}
+
+impl fmt::Debug for ExecOutput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExecOutput")
+            .field("stdout_bytes", &self.stdout.len())
+            .field("stderr_bytes", &self.stderr.len())
+            .field("exit_code", &self.exit_code)
+            .finish()
+    }
+}
+
 /// An interactive exec: the hijacked stream carries terminal bytes both ways.
 pub struct ExecSession {
     pub exec_id: String,
@@ -529,6 +550,110 @@ impl DockerClient {
             exec_id,
             io: Box::new(TokioIo::new(upgraded)),
         })
+    }
+
+    /// Runs `command` in the container without a terminal: writes `stdin`,
+    /// closes it, and collects standard output (up to `stdout_limit` bytes)
+    /// and error, then the exit code. Cancellation drops the stream.
+    pub async fn exec_collect(
+        &self,
+        id: &str,
+        command: &[String],
+        stdin: &[u8],
+        stdout_limit: usize,
+        cancel: CancellationToken,
+    ) -> Result<ExecOutput, DockerError> {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let id = checked(id)?;
+        if command.is_empty() || command.len() > 64 {
+            return Err(DockerError::InvalidRequest);
+        }
+        let created = self
+            .json(
+                Method::POST,
+                &format!("/containers/{id}/exec"),
+                Some(json!({
+                    "AttachStdin": true,
+                    "AttachStdout": true,
+                    "AttachStderr": true,
+                    "Tty": false,
+                    "Cmd": command,
+                })),
+            )
+            .await?;
+        let exec_id = created["Id"]
+            .as_str()
+            .ok_or(DockerError::Protocol)?
+            .to_owned();
+        checked(&exec_id)?;
+        let response = tokio::time::timeout(
+            REQUEST_TIMEOUT,
+            self.send(
+                Method::POST,
+                &format!("/exec/{exec_id}/start"),
+                Some(json!({"Detach": false, "Tty": false})),
+                true,
+            ),
+        )
+        .await
+        .map_err(|_| DockerError::Connection)??;
+        let upgraded = hyper::upgrade::on(response)
+            .await
+            .map_err(|_| DockerError::Protocol)?;
+        let mut io = TokioIo::new(upgraded);
+        let collect = async {
+            io.write_all(stdin)
+                .await
+                .map_err(|_| DockerError::Connection)?;
+            // Closing the write half ends the program's standard input.
+            io.shutdown().await.map_err(|_| DockerError::Connection)?;
+            let mut output = ExecOutput::default();
+            let mut header = [0u8; 8];
+            loop {
+                match io.read_exact(&mut header).await {
+                    Ok(_) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::UnexpectedEof => break,
+                    Err(_) => return Err(DockerError::Connection),
+                }
+                let size =
+                    u32::from_be_bytes([header[4], header[5], header[6], header[7]]) as usize;
+                if size > MAX_BODY {
+                    return Err(DockerError::Protocol);
+                }
+                let mut frame = vec![0u8; size];
+                io.read_exact(&mut frame)
+                    .await
+                    .map_err(|_| DockerError::Connection)?;
+                match header[0] {
+                    1 => {
+                        let room = stdout_limit.saturating_sub(output.stdout.len());
+                        if frame.len() > room {
+                            output.truncated = true;
+                        }
+                        output
+                            .stdout
+                            .extend_from_slice(&frame[..frame.len().min(room)]);
+                        if output.truncated {
+                            break;
+                        }
+                    }
+                    2 if output.stderr.len() < 64 * 1024 => output.stderr.extend_from_slice(&frame),
+                    _ => {}
+                }
+            }
+            Ok(output)
+        };
+        let mut output = tokio::select! {
+            biased;
+            _ = cancel.cancelled() => return Err(DockerError::Connection),
+            output = collect => output?,
+        };
+        drop(io);
+        let inspected = self
+            .json(Method::GET, &format!("/exec/{exec_id}/json"), None)
+            .await?;
+        output.exit_code = inspected["ExitCode"].as_i64();
+        Ok(output)
     }
 
     pub async fn resize_exec(

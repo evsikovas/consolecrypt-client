@@ -89,7 +89,7 @@ pub(super) fn sql_templates(
     Ok((output, bindings))
 }
 
-pub(super) fn byte_offset(text: &str, location: Location) -> Result<usize, DbError> {
+pub(crate) fn byte_offset(text: &str, location: Location) -> Result<usize, DbError> {
     let mut line = 1;
     let mut column = 1;
     for (index, character) in text.char_indices() {

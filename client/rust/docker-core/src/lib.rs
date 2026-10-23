@@ -13,7 +13,8 @@ mod compose_mask;
 mod logs;
 pub mod secrets;
 pub use client::{
-    ContainerSummary, DockerClient, EngineInfo, ExecSession, LogLine, PortMapping, VolumeSummary,
+    ContainerSummary, DockerClient, EngineInfo, ExecOutput, ExecSession, LogLine, PortMapping,
+    VolumeSummary,
 };
 pub use compose_mask::mask_compose;
 pub use secrets::{contains_secret, mask_inspect, mask_secrets, sensitive_key, MASK};

@@ -137,6 +137,15 @@ fn json_value(cell: &DbCell) -> serde_json::Value {
 }
 
 pub(crate) fn sql_literal(engine: DbEngine, cell: &DbCell) -> String {
+    if engine == DbEngine::Sqlite {
+        // INTEGER for booleans, X'..' for blobs, '' doubling; never backslashes.
+        return crate::sqlite_cli::sqlite_literal(cell).unwrap_or_else(|_| match cell {
+            DbCell::Int(v) | DbCell::Uint(v) | DbCell::Decimal(v) => {
+                format!("'{}'", v.replace('\'', "''"))
+            }
+            _ => "NULL".into(),
+        });
+    }
     match cell {
         DbCell::Null => "NULL".into(),
         DbCell::Bool(value) => if *value { "TRUE" } else { "FALSE" }.into(),

@@ -10,10 +10,26 @@ import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_object_details.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
+import 'package:consolecrypt/db/db_sqlite_dialect.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-IconData _kindIcon(DbTreeNode node) => switch (node.reference.kind) {
+/// A column's icon by its declared SQLite type (type affinity rules).
+IconData _sqliteTypeIcon(String type) {
+  final t = type.toUpperCase();
+  if (t.contains('BOOL')) return Icons.toggle_on_outlined;
+  if (t.contains('DATE') || t.contains('TIME')) return Icons.event_outlined;
+  return switch (DbSqliteDialect.affinity(t)) {
+    'TEXT' => Icons.text_fields_rounded,
+    'BLOB' => Icons.data_object_rounded,
+    _ => Icons.onetwothree_rounded,
+  };
+}
+
+IconData _kindIcon(DbTreeNode node, DbEngine engine) => switch (node.reference.kind) {
+  DbObjectKind.column when engine == DbEngine.sqlite && !node.primaryKey && node.foreignKey == null => _sqliteTypeIcon(
+    node.detail ?? '',
+  ),
   DbObjectKind.database => Icons.storage_rounded,
   DbObjectKind.redisDatabase => node.reference.parentName == null ? Icons.storage_rounded : Icons.folder_outlined,
   DbObjectKind.schema => Icons.account_tree_outlined,
@@ -29,7 +45,17 @@ IconData _kindIcon(DbTreeNode node) => switch (node.reference.kind) {
   DbObjectKind.dictionary => Icons.menu_book_outlined,
   DbObjectKind.projection => Icons.layers_outlined,
   DbObjectKind.redisKey => Icons.vpn_key_outlined,
+  DbObjectKind.key => Icons.key_outlined,
+  DbObjectKind.foreignKey => Icons.link,
+  DbObjectKind.reference => Icons.call_received_rounded,
+  DbObjectKind.dataType => Icons.category_outlined,
 };
+
+/// Indexes and triggers show their statement on engines that keep it
+/// (SQLite stores every `CREATE` statement).
+bool _describes(DbEngine engine, DbObjectKind kind) =>
+    _describable.contains(kind) ||
+    (engine == DbEngine.sqlite && (kind == DbObjectKind.indexObject || kind == DbObjectKind.trigger));
 
 /// Objects whose creation statement or description can be shown.
 const _describable = {
@@ -55,7 +81,25 @@ final class _Branch {
 
 /// Client-side groups of a node's children, like the folders of the classic
 /// SQL clients' navigators. Only shown when a node has several kinds.
-enum _Folder { tables, views, functions, sequences, dictionaries, columns, indexes, constraints, triggers, projections }
+/// Declaration order is display order: a table's columns, keys, foreign
+/// keys, indexes, references and triggers; a file's tables, views, indexes,
+/// sequences, triggers and data types.
+enum _Folder {
+  tables,
+  views,
+  functions,
+  dictionaries,
+  columns,
+  keys,
+  foreignKeys,
+  indexes,
+  references,
+  sequences,
+  constraints,
+  triggers,
+  projections,
+  dataTypes,
+}
 
 _Folder? _folderOf(DbObjectKind kind) => switch (kind) {
   DbObjectKind.table || DbObjectKind.collection => _Folder.tables,
@@ -68,10 +112,16 @@ _Folder? _folderOf(DbObjectKind kind) => switch (kind) {
   DbObjectKind.constraint => _Folder.constraints,
   DbObjectKind.trigger => _Folder.triggers,
   DbObjectKind.projection => _Folder.projections,
+  DbObjectKind.key => _Folder.keys,
+  DbObjectKind.foreignKey => _Folder.foreignKeys,
+  DbObjectKind.reference => _Folder.references,
+  DbObjectKind.dataType => _Folder.dataTypes,
   _ => null,
 };
 
-String _folderLabel(AppLocalizations l, _Folder folder) => switch (folder) {
+String _folderLabel(AppLocalizations l, _Folder folder, {DbObjectRef? parent}) => switch (folder) {
+  // All triggers of a database file, next to its tables.
+  _Folder.triggers when parent?.kind == DbObjectKind.database => l.dbFolderTableTriggers,
   _Folder.tables => l.dbFolderTables,
   _Folder.views => l.dbFolderViews,
   _Folder.functions => l.dbFolderFunctions,
@@ -82,6 +132,10 @@ String _folderLabel(AppLocalizations l, _Folder folder) => switch (folder) {
   _Folder.constraints => l.dbFolderConstraints,
   _Folder.triggers => l.dbFolderTriggers,
   _Folder.projections => l.dbFolderProjections,
+  _Folder.keys => l.dbFolderKeys,
+  _Folder.foreignKeys => l.dbFolderForeignKeys,
+  _Folder.references => l.dbFolderReferences,
+  _Folder.dataTypes => l.dbFolderDataTypes,
 };
 
 /// Folders that start open: the ones people reach for first.
@@ -350,7 +404,8 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
     if (_previewable.contains(object.kind))
       GlassMenuItem(value: 'query', label: l.dbFirstRows, icon: Icons.table_rows_outlined),
     GlassMenuItem(value: 'insert', label: l.dbInsertName, icon: Icons.input_rounded),
-    if (_describable.contains(object.kind)) GlassMenuItem(value: 'ddl', label: l.dbDdl, icon: Icons.code_rounded),
+    if (_describes(widget.session.engine, object.kind))
+      GlassMenuItem(value: 'ddl', label: l.dbDdl, icon: Icons.code_rounded),
     if (widget.service is DbObjectInspectService && dbHasDetails(widget.session.engine, object)) ...[
       GlassMenuItem(value: 'inspect', label: l.dbInspect, icon: Icons.info_outline_rounded),
       if (object.kind == DbObjectKind.collection)
@@ -394,7 +449,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
       return decorated(
         GlassInteractive(
           key: ValueKey('db-folder-$id'),
-          semanticLabel: _folderLabel(l, folder),
+          semanticLabel: _folderLabel(l, folder, parent: row.parent),
           onPressed: () => setState(() => _folders[id] = !open),
           builder: (context, state) => DecoratedBox(
             decoration: ShapeDecoration(
@@ -414,7 +469,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    _folderLabel(l, folder),
+                    _folderLabel(l, folder, parent: row.parent),
                     style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
                   ),
                   const SizedBox(width: 6),
@@ -444,6 +499,11 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
       );
     }
     final object = node.reference, expanded = _expanded.contains(object.id), selected = _selected == object.id;
+    // SQLite columns read «name (TYPE)» next to their type icon.
+    final sqliteColumn =
+        widget.session.engine == DbEngine.sqlite &&
+        object.kind == DbObjectKind.column &&
+        (node.detail?.isNotEmpty ?? false);
     return decorated(
       GestureDetector(
         onSecondaryTapUp: (details) =>
@@ -481,7 +541,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
                   if (node.hasChildren) chevron(expanded) else const SizedBox(width: 16),
                   const SizedBox(width: 4),
                   Icon(
-                    _kindIcon(node),
+                    _kindIcon(node, widget.session.engine),
                     size: 15,
                     color: node.primaryKey
                         ? p.warning
@@ -494,7 +554,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
-                      object.name,
+                      sqliteColumn ? '${object.name} (${node.detail})' : object.name, // l10n-ignore: name (type)
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style:
@@ -504,7 +564,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
                               .copyWith(color: selected ? p.accent : p.label),
                     ),
                   ),
-                  if (node.detail case final detail? when detail.isNotEmpty) ...[
+                  if (node.detail case final detail? when detail.isNotEmpty && !sqliteColumn) ...[
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(

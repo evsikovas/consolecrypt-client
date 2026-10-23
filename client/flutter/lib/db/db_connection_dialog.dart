@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/db/db_errors.dart';
+import 'package:consolecrypt/db/db_local_only_badge.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_service.dart';
@@ -40,6 +41,9 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
   late DbAuthMechanism _mechanism;
   late DbMongoReadPreference _readPreference;
   late bool _production, _resp3, _srv;
+
+  /// SQLite: open the file read-only (on by default).
+  late bool _sqliteReadOnly;
   bool _savePassword = true, _clearPassword = false, _busy = false, _failed = false, _disposing = false;
   String? _group;
   DbRoute _route = const DbRoute();
@@ -102,6 +106,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
     _resp3 = c?.options.resp3 ?? false;
     _srv = c?.options.srv ?? false;
     _readPreference = c?.options.readPreference ?? DbMongoReadPreference.secondaryPreferred;
+    _sqliteReadOnly = c?.options.readOnly ?? true;
     _route = c?.route ?? const DbRoute();
     _kubeKind = _route.targetKind;
     _tlsChosen = c != null;
@@ -197,18 +202,20 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
         id: old?.id ?? '',
         name: _value('name'),
         engine: _engine,
-        // A Kubernetes forward always listens on loopback.
-        host: _forwarded ? '127.0.0.1' : _value('host'),
-        port: number('port'),
-        database: _value('database'),
-        username: _value('username'),
+        // A Kubernetes forward always listens on loopback; a file has no host.
+        host: _engine.file ? 'localhost' : (_forwarded ? '127.0.0.1' : _value('host')),
+        port: _engine.file ? 0 : number('port'),
+        database: _engine.file ? _field('database').text.trim() : _value('database'),
+        username: _engine.file ? '' : _value('username'),
         production: _production,
-        auth: DbAuth(
-          passwordSecretId: _clearPassword ? null : old?.auth.passwordSecretId,
-          certificatePem: nullable('certificate'),
-          keySecretId: old?.auth.keySecretId,
-          mechanism: _mechanism,
-        ),
+        auth: _engine.file
+            ? const DbAuth()
+            : DbAuth(
+                passwordSecretId: _clearPassword ? null : old?.auth.passwordSecretId,
+                certificatePem: nullable('certificate'),
+                keySecretId: old?.auth.keySecretId,
+                mechanism: _mechanism,
+              ),
         tls: DbTls(
           mode: _tls,
           certificateAuthorityPem: nullable('ca'),
@@ -239,12 +246,13 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
           replicaSet: nullable('replicaSet'),
           srv: _srv,
           readPreference: _readPreference,
+          readOnly: _sqliteReadOnly,
         ),
         createdAt: old?.createdAt,
         updatedAt: old?.updatedAt,
       ),
-      password: password.isEmpty ? null : SecretText(password),
-      privateKey: key.isEmpty ? null : SecretText(key),
+      password: password.isEmpty || _engine.file ? null : SecretText(password),
+      privateKey: key.isEmpty || _engine.file ? null : SecretText(key),
       savePassword: _savePassword,
       clearPassword: _clearPassword,
       clearCertificate: old?.auth.certificatePem != null && nullable('certificate') == null,
@@ -307,6 +315,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
               (value.contains(':') && InternetAddress.tryParse(value) == null))) {
         return l.dbInvalid;
       }
+      if (key == 'database' && _engine.file && (value.startsWith('-') || value.length > 1024)) return l.dbInvalid;
       if (key == 'kubeNamespace' && !_kubeName(value, 63, dots: false)) return l.dbInvalid;
       if (key == 'kubeTarget' && !_kubeName(value, 253, dots: true)) return l.dbInvalid;
       if (key == 'dockerContainer' &&
@@ -378,6 +387,169 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
     }
   });
 
+  static bool get _mobile => Platform.isAndroid || Platform.isIOS;
+
+  Future<void> _pickFile({required bool create}) async {
+    final service = _service;
+    if (service is! DbSqliteFileService || _busy) return;
+    try {
+      final files = service as DbSqliteFileService;
+      final path = create ? await files.createSqliteFile() : await files.pickSqliteFile();
+      if (path != null && _current) setState(() => _field('database').text = path);
+    } catch (error) {
+      if (_current) {
+        setState(() {
+          _failed = true;
+          _error = error;
+        });
+      }
+    }
+  }
+
+  /// SQLite: where the file is, its path, read-only and production.
+  List<Widget> _sqliteSection(AppLocalizations l, DbConnectionChoices? choices) {
+    final kind = _route.kind;
+    final hosts = [
+      for (final r in choices?.routes ?? const <DbRouteChoice>[])
+        if (r.route.kind == DbRouteKind.ssh) r,
+    ];
+    final contexts = [
+      for (final r in choices?.routes ?? const <DbRouteChoice>[])
+        if (r.route.kind == DbRouteKind.kubernetes) r,
+    ];
+    String? pick(String? value, List<DbRouteChoice> options) =>
+        options.any((r) => r.route.reference == value) ? value : null;
+    return [
+      GlassDropdownField<DbRouteKind>(
+        key: const ValueKey('db-sqlite-location'),
+        value: kind,
+        label: l.dbSqliteLocation,
+        items: [
+          if (!_mobile || kind == DbRouteKind.direct)
+            GlassSelectItem(value: DbRouteKind.direct, label: l.dbSqliteThisComputer),
+          GlassSelectItem(value: DbRouteKind.ssh, label: l.dbSqliteSshHost),
+          GlassSelectItem(value: DbRouteKind.docker, label: l.dbSqliteDocker),
+          GlassSelectItem(value: DbRouteKind.kubernetes, label: l.dbSqliteKubernetes),
+        ],
+        validator: (_) => kind == DbRouteKind.direct && _mobile ? l.dbSqliteLocalUnavailable : null,
+        onChanged: _busy ? null : (value) => setState(() => _route = DbRoute(kind: value)),
+      ),
+      const SizedBox(height: 12),
+      if (kind == DbRouteKind.ssh) ...[
+        if (choices == null)
+          const LinearProgressIndicator()
+        else
+          GlassDropdownField<String>(
+            key: const ValueKey('db-sqlite-host'),
+            value: pick(_route.reference, hosts) ?? '',
+            label: l.dbSqliteSshHost,
+            items: [
+              const GlassSelectItem(value: '', label: '—'), // l10n-ignore: nothing chosen
+              for (final r in hosts) GlassSelectItem(value: r.route.reference!, label: r.label),
+            ],
+            validator: (_) => pick(_route.reference, hosts) == null ? l.dbRequired : null,
+            onChanged: _busy
+                ? null
+                : (v) => setState(() => _route = DbRoute(kind: DbRouteKind.ssh, reference: v.isEmpty ? null : v)),
+          ),
+        const SizedBox(height: 12),
+      ],
+      if (kind == DbRouteKind.docker && choices != null) ...[
+        GlassDropdownField<String>(
+          key: const ValueKey('db-docker-engine'),
+          value: pick(_route.reference, hosts) ?? '',
+          label: l.dbDockerEngine,
+          items: [
+            GlassSelectItem(value: '', label: l.dockerLocalHost),
+            for (final r in hosts) GlassSelectItem(value: r.route.reference!, label: r.label),
+          ],
+          onChanged: _busy
+              ? null
+              : (v) => setState(() => _route = DbRoute(kind: DbRouteKind.docker, reference: v.isEmpty ? null : v)),
+        ),
+        const SizedBox(height: 12),
+        _input('dockerContainer', l.dbDockerContainer, required: true),
+      ],
+      if (kind == DbRouteKind.kubernetes) ...[
+        if (choices == null)
+          const LinearProgressIndicator()
+        else
+          GlassDropdownField<String>(
+            key: const ValueKey('db-sqlite-kube-context'),
+            value: pick(_route.reference, contexts) ?? '',
+            label: l.dbSqliteKubeContext,
+            items: [
+              const GlassSelectItem(value: '', label: '—'), // l10n-ignore: nothing chosen
+              for (final r in contexts) GlassSelectItem(value: r.route.reference!, label: r.label),
+            ],
+            validator: (_) => pick(_route.reference, contexts) == null ? l.dbRequired : null,
+            onChanged: _busy
+                ? null
+                : (v) =>
+                      setState(() => _route = DbRoute(kind: DbRouteKind.kubernetes, reference: v.isEmpty ? null : v)),
+          ),
+        const SizedBox(height: 12),
+        _input('kubeNamespace', l.kubeNamespace, required: true),
+        GlassDropdownField<DbKubeTargetKind>(
+          key: const ValueKey('db-kube-kind'),
+          value: _kubeKind,
+          label: l.dbKubeTarget,
+          items: [for (final kind in DbKubeTargetKind.values) GlassSelectItem(value: kind, label: kind.label)],
+          onChanged: _busy ? null : (v) => setState(() => _kubeKind = v),
+        ),
+        const SizedBox(height: 12),
+        _input('kubeTarget', l.dbKubeTargetName, required: true),
+      ],
+      _input('database', l.dbSqlitePath, required: true),
+      if (kind == DbRouteKind.direct && _service is DbSqliteFileService)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              GlassButton(
+                key: const ValueKey('db-sqlite-choose'),
+                label: l.dbSqliteChooseFile,
+                onPressed: _busy ? null : () => unawaited(_pickFile(create: false)),
+              ),
+              GlassButton(
+                key: const ValueKey('db-sqlite-create'),
+                label: l.dbSqliteCreateFile,
+                onPressed: _busy ? null : () => unawaited(_pickFile(create: true)),
+              ),
+            ],
+          ),
+        ),
+      if (kind != DbRouteKind.direct) Text(l.dbSqliteRemoteHelp, key: const ValueKey('db-sqlite-remote-help')),
+      CheckboxListTile(
+        key: const ValueKey('db-sqlite-read-only'),
+        value: _sqliteReadOnly,
+        title: Text(l.dbSqliteReadOnly),
+        subtitle: Text(l.dbSqliteReadOnlyHelp),
+        onChanged: _busy ? null : (v) => setState(() => _sqliteReadOnly = v!),
+      ),
+      CheckboxListTile(
+        key: const ValueKey('db-production'),
+        value: _production,
+        title: Text(l.dbProduction),
+        subtitle: Text(l.dbProductionHelp),
+        onChanged: _busy ? null : (v) => setState(() => _production = v!),
+      ),
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const DbLocalOnlyBadge(key: ValueKey('db-sqlite-local-only')),
+            const SizedBox(width: 8),
+            Expanded(child: Text(l.dbLocalOnlyHelp)),
+          ],
+        ),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -431,209 +603,224 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                             _field('port').text = '${value.port}';
                             _field('database').text = value == DbEngine.redis ? '0' : '';
                             _mechanism = DbAuthMechanism.defaultAuth;
+                            if (value.file) {
+                              // Phones have no file paths: a file there is remote.
+                              _route = DbRoute(kind: _mobile ? DbRouteKind.ssh : DbRouteKind.direct);
+                            } else if (!const {
+                              DbRouteKind.direct,
+                              DbRouteKind.ssh,
+                              DbRouteKind.jump,
+                              DbRouteKind.proxy,
+                            }.contains(_route.kind)) {
+                              _route = const DbRoute();
+                            }
                           });
                         },
                 ),
                 const SizedBox(height: 12),
-                if (!_forwarded && !_tunnel) _input('host', l.dbHost, required: true),
-                if (!_tunnel) _input('port', _forwarded ? l.dbContainerPort : l.dbPort, min: 1, max: 65535),
-                ListenableBuilder(
-                  listenable: Listenable.merge([_field('host'), _field('port')]),
-                  builder: (context, _) => switch (_matchingTunnel) {
-                    final tunnel? => Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: TextButton.icon(
-                        key: const ValueKey('db-use-tunnel'),
-                        icon: const Icon(Icons.swap_horiz_rounded),
-                        label: Text(l.dbUseTunnel(tunnel.label)),
-                        onPressed: _busy ? null : () => _selectRoute(tunnel),
+                if (_engine.file)
+                  ..._sqliteSection(l, choices)
+                else ...[
+                  if (!_forwarded && !_tunnel) _input('host', l.dbHost, required: true),
+                  if (!_tunnel) _input('port', _forwarded ? l.dbContainerPort : l.dbPort, min: 1, max: 65535),
+                  ListenableBuilder(
+                    listenable: Listenable.merge([_field('host'), _field('port')]),
+                    builder: (context, _) => switch (_matchingTunnel) {
+                      final tunnel? => Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: TextButton.icon(
+                          key: const ValueKey('db-use-tunnel'),
+                          icon: const Icon(Icons.swap_horiz_rounded),
+                          label: Text(l.dbUseTunnel(tunnel.label)),
+                          onPressed: _busy ? null : () => _selectRoute(tunnel),
+                        ),
                       ),
-                    ),
-                    null => const SizedBox.shrink(),
-                  },
-                ),
-                _input('database', l.dbDatabase, required: _engine == DbEngine.redis),
-                _input('username', l.dbUsername),
-                _input('password', l.dbPassword, secret: true),
-                if (widget.connection?.auth.passwordSecretId != null) ...[
-                  Text(l.dbSavedPassword),
-                  CheckboxListTile(
-                    value: _clearPassword,
-                    title: Text(l.dbClearPassword),
-                    onChanged: _busy ? null : (v) => setState(() => _clearPassword = v!),
+                      null => const SizedBox.shrink(),
+                    },
                   ),
-                ],
-                CheckboxListTile(
-                  value: _savePassword,
-                  title: Text(l.dbSavePassword),
-                  onChanged: _busy ? null : (v) => setState(() => _savePassword = v!),
-                ),
-                CheckboxListTile(
-                  key: const ValueKey('db-production'),
-                  value: _production,
-                  title: Text(l.dbProduction),
-                  subtitle: Text(l.dbProductionHelp),
-                  onChanged: _busy ? null : (v) => setState(() => _production = v!),
-                ),
-                ExpansionTile(
-                  title: Text(l.dbTls),
-                  initiallyExpanded: false,
-                  children: [
-                    GlassDropdownField<DbTlsMode>(
-                      key: const ValueKey('db-tls'),
-                      value: _tls,
-                      items: [
-                        for (final mode in DbTlsMode.values)
-                          GlassSelectItem(
-                            value: mode,
-                            label: switch (mode) {
-                              DbTlsMode.verify => l.dbTlsVerify,
-                              DbTlsMode.require => l.dbTlsRequire,
-                              DbTlsMode.prefer => l.dbTlsPrefer,
-                              DbTlsMode.disable => l.dbTlsDisable,
-                            },
-                          ),
-                      ],
-                      onChanged: _busy
-                          ? null
-                          : (v) => setState(() {
-                              _tls = v;
-                              _tlsChosen = true;
-                              _tlsAuto = false;
-                            }),
+                  _input('database', l.dbDatabase, required: _engine == DbEngine.redis),
+                  _input('username', l.dbUsername),
+                  _input('password', l.dbPassword, secret: true),
+                  if (widget.connection?.auth.passwordSecretId != null) ...[
+                    Text(l.dbSavedPassword),
+                    CheckboxListTile(
+                      value: _clearPassword,
+                      title: Text(l.dbClearPassword),
+                      onChanged: _busy ? null : (v) => setState(() => _clearPassword = v!),
                     ),
-                    if (_tls == DbTlsMode.prefer) Text(l.dbTlsPreferHelp, key: const ValueKey('db-tls-help')),
-                    if (_tls == DbTlsMode.require) Text(l.dbTlsRequireHelp, key: const ValueKey('db-tls-help')),
-                    if (_tlsAuto) Text(l.dbTlsLocalHint),
-                    if (_tls != DbTlsMode.verify && !_tlsAuto) Text(l.dbTlsWarning),
-                    if (_unboundChoice)
-                      CheckboxListTile(
-                        key: const ValueKey('db-tls-unbound'),
-                        value: _allowUnbound,
-                        title: Text(l.dbTlsAllowUnbound),
-                        subtitle: Text(l.dbTlsAllowUnboundHelp),
-                        onChanged: _busy ? null : (v) => setState(() => _allowUnbound = v!),
-                      ),
-                    _input('serverName', l.dbTlsServerName),
-                    _input('ca', l.dbTlsCa, lines: 3),
-                    _input('certificate', l.dbClientCertificate, lines: 3),
-                    _input('key', l.dbPrivateKey, secret: true),
-                    if (_engine == DbEngine.mongodb)
-                      GlassDropdownField<DbAuthMechanism>(
-                        value: _mechanism,
-                        label: l.dbAuthMechanism,
-                        items: [
-                          for (final mechanism in DbAuthMechanism.values)
-                            GlassSelectItem(
-                              value: mechanism,
-                              label: mechanism == DbAuthMechanism.defaultAuth ? l.dbAuthDefault : mechanism.wireName,
-                            ),
-                        ],
-                        onChanged: _busy ? null : (v) => setState(() => _mechanism = v),
-                      ),
                   ],
-                ),
-                ExpansionTile(
-                  title: Text(l.dbRoute),
-                  initiallyExpanded: _route.restorable,
-                  children: [
-                    if (choices == null)
-                      const LinearProgressIndicator()
-                    else
-                      GlassDropdownField<int>(
-                        key: const ValueKey('db-route'),
-                        // -1: direct, -2: a Docker container (engine chosen below).
-                        value: switch (_route.kind) {
-                          DbRouteKind.direct => -1,
-                          DbRouteKind.docker => -2,
-                          _ => choices.routes.indexWhere(
-                            (r) => r.route.kind == _route.kind && r.route.reference == _route.reference,
-                          ),
-                        },
-                        label: l.dbRoute,
+                  CheckboxListTile(
+                    value: _savePassword,
+                    title: Text(l.dbSavePassword),
+                    onChanged: _busy ? null : (v) => setState(() => _savePassword = v!),
+                  ),
+                  CheckboxListTile(
+                    key: const ValueKey('db-production'),
+                    value: _production,
+                    title: Text(l.dbProduction),
+                    subtitle: Text(l.dbProductionHelp),
+                    onChanged: _busy ? null : (v) => setState(() => _production = v!),
+                  ),
+                  ExpansionTile(
+                    title: Text(l.dbTls),
+                    initiallyExpanded: false,
+                    children: [
+                      GlassDropdownField<DbTlsMode>(
+                        key: const ValueKey('db-tls'),
+                        value: _tls,
                         items: [
-                          GlassSelectItem(value: -1, label: l.dbDirect),
-                          for (var i = 0; i < choices.routes.length; i++)
+                          for (final mode in DbTlsMode.values)
                             GlassSelectItem(
-                              value: i,
-                              label: switch (choices.routes[i].route.kind) {
-                                DbRouteKind.kubernetes => l.dbRouteKubernetes(choices.routes[i].label),
-                                DbRouteKind.tunnel => l.dbRouteTunnel(choices.routes[i].label),
-                                _ => choices.routes[i].label,
+                              value: mode,
+                              label: switch (mode) {
+                                DbTlsMode.verify => l.dbTlsVerify,
+                                DbTlsMode.require => l.dbTlsRequire,
+                                DbTlsMode.prefer => l.dbTlsPrefer,
+                                DbTlsMode.disable => l.dbTlsDisable,
                               },
                             ),
-                          GlassSelectItem(value: -2, label: l.dbRouteDocker),
                         ],
-                        validator: (_) =>
-                            !const {DbRouteKind.direct, DbRouteKind.docker}.contains(_route.kind) &&
-                                !choices.routes.any(
-                                  (r) => r.route.kind == _route.kind && r.route.reference == _route.reference,
-                                )
-                            ? l.dbInvalid
-                            : null,
                         onChanged: _busy
                             ? null
-                            : (i) => _selectRoute(switch (i) {
-                                -1 => null,
-                                -2 => DbRouteChoice(
-                                  route: DbRoute(
-                                    kind: DbRouteKind.docker,
-                                    reference: _docker ? _route.reference : null,
-                                  ),
-                                  label: '',
-                                ),
-                                _ => choices.routes[i],
+                            : (v) => setState(() {
+                                _tls = v;
+                                _tlsChosen = true;
+                                _tlsAuto = false;
                               }),
                       ),
-                    if (_kube) ...[
-                      const SizedBox(height: 12),
-                      _input('kubeNamespace', l.kubeNamespace, required: true),
-                      GlassDropdownField<DbKubeTargetKind>(
-                        key: const ValueKey('db-kube-kind'),
-                        value: _kubeKind,
-                        label: l.dbKubeTarget,
-                        items: [
-                          for (final kind in DbKubeTargetKind.values) GlassSelectItem(value: kind, label: kind.label),
-                        ],
-                        onChanged: _busy ? null : (v) => setState(() => _kubeKind = v),
-                      ),
-                      const SizedBox(height: 12),
-                      _input('kubeTarget', l.dbKubeTargetName, required: true),
-                      Text(l.dbKubeRouteHelp),
-                    ] else if (_docker && choices != null) ...[
-                      const SizedBox(height: 12),
-                      GlassDropdownField<String>(
-                        key: const ValueKey('db-docker-engine'),
-                        value: _route.reference ?? '',
-                        label: l.dbDockerEngine,
-                        items: [
-                          GlassSelectItem(value: '', label: l.dockerLocalHost),
-                          for (final r in choices.routes)
-                            if (r.route.kind == DbRouteKind.ssh)
-                              GlassSelectItem(value: r.route.reference!, label: r.label),
-                        ],
-                        validator: (_) =>
-                            _route.reference != null &&
-                                !choices.routes.any(
-                                  (r) => r.route.kind == DbRouteKind.ssh && r.route.reference == _route.reference,
-                                )
-                            ? l.dbInvalid
-                            : null,
-                        onChanged: _busy
-                            ? null
-                            : (v) => setState(
-                                () => _route = DbRoute(kind: DbRouteKind.docker, reference: v.isEmpty ? null : v),
+                      if (_tls == DbTlsMode.prefer) Text(l.dbTlsPreferHelp, key: const ValueKey('db-tls-help')),
+                      if (_tls == DbTlsMode.require) Text(l.dbTlsRequireHelp, key: const ValueKey('db-tls-help')),
+                      if (_tlsAuto) Text(l.dbTlsLocalHint),
+                      if (_tls != DbTlsMode.verify && !_tlsAuto) Text(l.dbTlsWarning),
+                      if (_unboundChoice)
+                        CheckboxListTile(
+                          key: const ValueKey('db-tls-unbound'),
+                          value: _allowUnbound,
+                          title: Text(l.dbTlsAllowUnbound),
+                          subtitle: Text(l.dbTlsAllowUnboundHelp),
+                          onChanged: _busy ? null : (v) => setState(() => _allowUnbound = v!),
+                        ),
+                      _input('serverName', l.dbTlsServerName),
+                      _input('ca', l.dbTlsCa, lines: 3),
+                      _input('certificate', l.dbClientCertificate, lines: 3),
+                      _input('key', l.dbPrivateKey, secret: true),
+                      if (_engine == DbEngine.mongodb)
+                        GlassDropdownField<DbAuthMechanism>(
+                          value: _mechanism,
+                          label: l.dbAuthMechanism,
+                          items: [
+                            for (final mechanism in DbAuthMechanism.values)
+                              GlassSelectItem(
+                                value: mechanism,
+                                label: mechanism == DbAuthMechanism.defaultAuth ? l.dbAuthDefault : mechanism.wireName,
                               ),
-                      ),
-                      const SizedBox(height: 12),
-                      _input('dockerContainer', l.dbDockerContainer, required: true),
-                      Text(l.dbDockerRouteHelp),
-                    ] else if (_tunnel)
-                      Text(l.dbTunnelRouteHelp)
-                    else
-                      Text(l.dbRouteHelp),
-                  ],
-                ),
+                          ],
+                          onChanged: _busy ? null : (v) => setState(() => _mechanism = v),
+                        ),
+                    ],
+                  ),
+                  ExpansionTile(
+                    title: Text(l.dbRoute),
+                    initiallyExpanded: _route.restorable,
+                    children: [
+                      if (choices == null)
+                        const LinearProgressIndicator()
+                      else
+                        GlassDropdownField<int>(
+                          key: const ValueKey('db-route'),
+                          // -1: direct, -2: a Docker container (engine chosen below).
+                          value: switch (_route.kind) {
+                            DbRouteKind.direct => -1,
+                            DbRouteKind.docker => -2,
+                            _ => choices.routes.indexWhere(
+                              (r) => r.route.kind == _route.kind && r.route.reference == _route.reference,
+                            ),
+                          },
+                          label: l.dbRoute,
+                          items: [
+                            GlassSelectItem(value: -1, label: l.dbDirect),
+                            for (var i = 0; i < choices.routes.length; i++)
+                              GlassSelectItem(
+                                value: i,
+                                label: switch (choices.routes[i].route.kind) {
+                                  DbRouteKind.kubernetes => l.dbRouteKubernetes(choices.routes[i].label),
+                                  DbRouteKind.tunnel => l.dbRouteTunnel(choices.routes[i].label),
+                                  _ => choices.routes[i].label,
+                                },
+                              ),
+                            GlassSelectItem(value: -2, label: l.dbRouteDocker),
+                          ],
+                          validator: (_) =>
+                              !const {DbRouteKind.direct, DbRouteKind.docker}.contains(_route.kind) &&
+                                  !choices.routes.any(
+                                    (r) => r.route.kind == _route.kind && r.route.reference == _route.reference,
+                                  )
+                              ? l.dbInvalid
+                              : null,
+                          onChanged: _busy
+                              ? null
+                              : (i) => _selectRoute(switch (i) {
+                                  -1 => null,
+                                  -2 => DbRouteChoice(
+                                    route: DbRoute(
+                                      kind: DbRouteKind.docker,
+                                      reference: _docker ? _route.reference : null,
+                                    ),
+                                    label: '',
+                                  ),
+                                  _ => choices.routes[i],
+                                }),
+                        ),
+                      if (_kube) ...[
+                        const SizedBox(height: 12),
+                        _input('kubeNamespace', l.kubeNamespace, required: true),
+                        GlassDropdownField<DbKubeTargetKind>(
+                          key: const ValueKey('db-kube-kind'),
+                          value: _kubeKind,
+                          label: l.dbKubeTarget,
+                          items: [
+                            for (final kind in DbKubeTargetKind.values) GlassSelectItem(value: kind, label: kind.label),
+                          ],
+                          onChanged: _busy ? null : (v) => setState(() => _kubeKind = v),
+                        ),
+                        const SizedBox(height: 12),
+                        _input('kubeTarget', l.dbKubeTargetName, required: true),
+                        Text(l.dbKubeRouteHelp),
+                      ] else if (_docker && choices != null) ...[
+                        const SizedBox(height: 12),
+                        GlassDropdownField<String>(
+                          key: const ValueKey('db-docker-engine'),
+                          value: _route.reference ?? '',
+                          label: l.dbDockerEngine,
+                          items: [
+                            GlassSelectItem(value: '', label: l.dockerLocalHost),
+                            for (final r in choices.routes)
+                              if (r.route.kind == DbRouteKind.ssh)
+                                GlassSelectItem(value: r.route.reference!, label: r.label),
+                          ],
+                          validator: (_) =>
+                              _route.reference != null &&
+                                  !choices.routes.any(
+                                    (r) => r.route.kind == DbRouteKind.ssh && r.route.reference == _route.reference,
+                                  )
+                              ? l.dbInvalid
+                              : null,
+                          onChanged: _busy
+                              ? null
+                              : (v) => setState(
+                                  () => _route = DbRoute(kind: DbRouteKind.docker, reference: v.isEmpty ? null : v),
+                                ),
+                        ),
+                        const SizedBox(height: 12),
+                        _input('dockerContainer', l.dbDockerContainer, required: true),
+                        Text(l.dbDockerRouteHelp),
+                      ] else if (_tunnel)
+                        Text(l.dbTunnelRouteHelp)
+                      else
+                        Text(l.dbRouteHelp),
+                    ],
+                  ),
+                ],
                 ExpansionTile(
                   title: Text(l.dbLimits),
                   children: [
@@ -643,50 +830,51 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                     _input('memory', l.dbMemoryLimit, min: 1, max: 256),
                   ],
                 ),
-                ExpansionTile(
-                  title: Text(l.dbOptions),
-                  children: [
-                    if (_engine == DbEngine.postgresql) ...[
-                      _input('application', l.dbApplicationName, required: true),
-                      _input('searchPath', l.dbSearchPath),
+                if (!_engine.file)
+                  ExpansionTile(
+                    title: Text(l.dbOptions),
+                    children: [
+                      if (_engine == DbEngine.postgresql) ...[
+                        _input('application', l.dbApplicationName, required: true),
+                        _input('searchPath', l.dbSearchPath),
+                      ],
+                      if (_engine == DbEngine.mysql || _engine == DbEngine.mariadb)
+                        _input('charset', l.dbCharset, required: true),
+                      if (_engine == DbEngine.clickhouse)
+                        for (final key in const [
+                          'max_threads',
+                          'max_memory_usage',
+                          'max_bytes_to_read',
+                          'max_rows_to_read',
+                        ])
+                          _input(key, key),
+                      if (_engine == DbEngine.redis)
+                        CheckboxListTile(
+                          value: _resp3,
+                          title: const Text('RESP3'), // l10n-ignore: Redis protocol version.
+                          onChanged: _busy ? null : (v) => setState(() => _resp3 = v!),
+                        ),
+                      if (_engine == DbEngine.mongodb) ...[
+                        _input('authSource', l.dbMongoAuthSource),
+                        _input('replicaSet', l.dbMongoReplicaSet),
+                        CheckboxListTile(
+                          value: _srv,
+                          title: Text(l.dbMongoSrv),
+                          onChanged: _busy ? null : (v) => setState(() => _srv = v!),
+                        ),
+                        GlassDropdownField<DbMongoReadPreference>(
+                          value: _readPreference,
+                          label: l.dbMongoReadPreference,
+                          items: [
+                            for (final preference in DbMongoReadPreference.values)
+                              GlassSelectItem(value: preference, label: preference.wireName),
+                          ],
+                          onChanged: _busy ? null : (v) => setState(() => _readPreference = v),
+                        ),
+                        Text(l.dbMongoReadHelp),
+                      ],
                     ],
-                    if (_engine == DbEngine.mysql || _engine == DbEngine.mariadb)
-                      _input('charset', l.dbCharset, required: true),
-                    if (_engine == DbEngine.clickhouse)
-                      for (final key in const [
-                        'max_threads',
-                        'max_memory_usage',
-                        'max_bytes_to_read',
-                        'max_rows_to_read',
-                      ])
-                        _input(key, key),
-                    if (_engine == DbEngine.redis)
-                      CheckboxListTile(
-                        value: _resp3,
-                        title: const Text('RESP3'), // l10n-ignore: Redis protocol version.
-                        onChanged: _busy ? null : (v) => setState(() => _resp3 = v!),
-                      ),
-                    if (_engine == DbEngine.mongodb) ...[
-                      _input('authSource', l.dbMongoAuthSource),
-                      _input('replicaSet', l.dbMongoReplicaSet),
-                      CheckboxListTile(
-                        value: _srv,
-                        title: Text(l.dbMongoSrv),
-                        onChanged: _busy ? null : (v) => setState(() => _srv = v!),
-                      ),
-                      GlassDropdownField<DbMongoReadPreference>(
-                        value: _readPreference,
-                        label: l.dbMongoReadPreference,
-                        items: [
-                          for (final preference in DbMongoReadPreference.values)
-                            GlassSelectItem(value: preference, label: preference.wireName),
-                        ],
-                        onChanged: _busy ? null : (v) => setState(() => _readPreference = v),
-                      ),
-                      Text(l.dbMongoReadHelp),
-                    ],
-                  ],
-                ),
+                  ),
                 ExpansionTile(
                   title: Text(l.dbGroup),
                   children: [

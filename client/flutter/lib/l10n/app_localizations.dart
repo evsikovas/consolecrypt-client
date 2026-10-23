@@ -62,7 +62,8 @@ import 'app_localizations_ru.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -70,7 +71,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -82,15 +84,19 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('ru'),
+  ];
 
   /// Button: dismiss a dialog without changes.
   ///
@@ -2124,13 +2130,19 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · registration open'**
-  String loginServerInfoRegistrationOpen(String serverVersion, String protocolVersion);
+  String loginServerInfoRegistrationOpen(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Login screen: result of a successful server check when registration is invite-only.
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · invite only'**
-  String loginServerInfoInviteOnly(String serverVersion, String protocolVersion);
+  String loginServerInfoInviteOnly(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Login screen: segmented button option to sign in to an existing account.
   ///
@@ -3426,7 +3438,10 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion}'**
-  String enableSyncDialogServerInfo(String serverVersion, String protocolVersion);
+  String enableSyncDialogServerInfo(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Enable-sync wizard segment: register a new account.
   ///
@@ -17747,13 +17762,13 @@ abstract class AppLocalizations {
   /// Object details dialog: label of one catalogue fact about a table, view or key; id is a fixed field id.
   ///
   /// In en, this message translates to:
-  /// **'{id, select, kind{Object type} persistence{Storage} schema{Schema} owner{Owner} tablespace{Tablespace} comment{Comment} rows{Rows} live_rows{Live rows} dead_rows{Dead rows} total_size{Total size} table_size{Table data} index_size{Indexes} toast_size{TOAST} columns{Columns} indexes{Indexes} constraints{Constraints} triggers{Triggers} definition_length{Definition length, characters} partition_key{Partition key} partitions{Partitions} partition_of{Partition of} last_vacuum{Last VACUUM} last_autovacuum{Last autovacuum} last_analyze{Last ANALYZE} last_autoanalyze{Last autoanalyze} engine{Engine} row_format{Row format} collation{Collation} definer{Definer} updatable{Updatable} security{Security} average_row{Average row} free_space{Free space} auto_increment{Next AUTO_INCREMENT} created{Created} updated{Updated} uncompressed_size{Uncompressed} parts{Active parts} sorting_key{Sorting key} primary_key{Primary key} sampling_key{Sampling key} ttl{TTL} metadata_modified{Metadata changed} type{Type} encoding{Encoding} database{Database} memory{Memory} keys{Keys} length_bytes{Length, bytes} length_fields{Fields} length_elements{Elements} length_members{Members} length_entries{Entries} other{{id}}}'**
+  /// **'{id, select, kind{Object type} persistence{Storage} schema{Schema} owner{Owner} tablespace{Tablespace} comment{Comment} rows{Rows} live_rows{Live rows} dead_rows{Dead rows} total_size{Total size} table_size{Table data} index_size{Indexes} toast_size{TOAST} columns{Columns} indexes{Indexes} constraints{Constraints} triggers{Triggers} definition_length{Definition length, characters} partition_key{Partition key} partitions{Partitions} partition_of{Partition of} last_vacuum{Last VACUUM} last_autovacuum{Last autovacuum} last_analyze{Last ANALYZE} last_autoanalyze{Last autoanalyze} engine{Engine} row_format{Row format} collation{Collation} definer{Definer} updatable{Updatable} security{Security} average_row{Average row} free_space{Free space} auto_increment{Next AUTO_INCREMENT} created{Created} updated{Updated} uncompressed_size{Uncompressed} parts{Active parts} sorting_key{Sorting key} primary_key{Primary key} sampling_key{Sampling key} ttl{TTL} metadata_modified{Metadata changed} type{Type} encoding{Encoding} database{Database} memory{Memory} keys{Keys} length_bytes{Length, bytes} length_fields{Fields} length_elements{Elements} length_members{Members} length_entries{Entries} page_size{Page size} page_count{Pages} freelist_count{Free pages} foreign_keys{Foreign keys} strict{STRICT} without_rowid{WITHOUT ROWID} autoincrement{AUTOINCREMENT} version{Version} table{Table} other{{id}}}'**
   String dbDetailsField(String id);
 
   /// Object details dialog: the kind or storage of a relation; id is a fixed keyword.
   ///
   /// In en, this message translates to:
-  /// **'{id, select, table{Table} partitioned_table{Partitioned table} view{View} materialized_view{Materialized view} foreign_table{Foreign table} unlogged{Unlogged} temporary{Temporary} other{{id}}}'**
+  /// **'{id, select, table{Table} partitioned_table{Partitioned table} view{View} materialized_view{Materialized view} foreign_table{Foreign table} unlogged{Unlogged} temporary{Temporary} index{Index} yes{Yes} no{No} other{{id}}}'**
   String dbDetailsKeyword(String id);
 
   /// Object details dialog: a Redis key without TTL.
@@ -19056,7 +19071,11 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{note} Runs in {client} in a terminal; the Databases workspace does not allow it. From the {package} starter package.'**
-  String snippetStarterDbTerminalOrigin(String note, String client, String package);
+  String snippetStarterDbTerminalOrigin(
+    String note,
+    String client,
+    String package,
+  );
 
   /// Snippet run flow: a SQL/redis-cli/mongosh snippet needs an open terminal session running the database client
   ///
@@ -20209,9 +20228,154 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not linked ({count})'**
   String notesFilterNotLinked(int count);
+
+  /// Database structure tree: folder of a table's primary key and unique constraints.
+  ///
+  /// In en, this message translates to:
+  /// **'Keys'**
+  String get dbFolderKeys;
+
+  /// Database structure tree: folder of a table's foreign keys to other tables.
+  ///
+  /// In en, this message translates to:
+  /// **'Foreign keys'**
+  String get dbFolderForeignKeys;
+
+  /// Database structure tree: folder of foreign keys of other tables that point at this table.
+  ///
+  /// In en, this message translates to:
+  /// **'References'**
+  String get dbFolderReferences;
+
+  /// Database structure tree: folder of the engine's storage classes / type affinities (informational).
+  ///
+  /// In en, this message translates to:
+  /// **'Data types'**
+  String get dbFolderDataTypes;
+
+  /// Database structure tree: folder of all table triggers of a database file.
+  ///
+  /// In en, this message translates to:
+  /// **'Table triggers'**
+  String get dbFolderTableTriggers;
+
+  /// Badge on a database connection that is stored on this device only (not synced or shared).
+  ///
+  /// In en, this message translates to:
+  /// **'This device only'**
+  String get dbLocalOnly;
+
+  /// Explanation of the 'this device only' badge for database connections.
+  ///
+  /// In en, this message translates to:
+  /// **'Stored on this device only: not synced, backed up to the vault or shared, because older app versions cannot open this connection type.'**
+  String get dbLocalOnlyHelp;
+
+  /// SQLite connection form: path of the database file.
+  ///
+  /// In en, this message translates to:
+  /// **'Database file path'**
+  String get dbSqlitePath;
+
+  /// SQLite connection form: where the database file is (this computer, SSH host, container, Pod).
+  ///
+  /// In en, this message translates to:
+  /// **'File location'**
+  String get dbSqliteLocation;
+
+  /// SQLite connection form: the file is on this computer.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer'**
+  String get dbSqliteThisComputer;
+
+  /// SQLite connection form: the file is on a saved SSH host.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH host'**
+  String get dbSqliteSshHost;
+
+  /// SQLite connection form: the file is inside a Docker container.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker container'**
+  String get dbSqliteDocker;
+
+  /// SQLite connection form: the file is inside a Kubernetes Pod.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes Pod'**
+  String get dbSqliteKubernetes;
+
+  /// SQLite connection form: saved Kubernetes context of the Pod.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes context'**
+  String get dbSqliteKubeContext;
+
+  /// SQLite connection form: button that opens a file chooser for an existing database file.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose file…'**
+  String get dbSqliteChooseFile;
+
+  /// SQLite connection form: button that creates a new empty database file at a chosen location.
+  ///
+  /// In en, this message translates to:
+  /// **'Create new database…'**
+  String get dbSqliteCreateFile;
+
+  /// SQLite connection form: open the file read-only (on by default).
+  ///
+  /// In en, this message translates to:
+  /// **'Read only'**
+  String get dbSqliteReadOnly;
+
+  /// SQLite connection form: help under the read-only switch.
+  ///
+  /// In en, this message translates to:
+  /// **'The file opens read-only: no query can change it.'**
+  String get dbSqliteReadOnlyHelp;
+
+  /// SQLite connection form: how remote files are read.
+  ///
+  /// In en, this message translates to:
+  /// **'Queries run with the sqlite3 program (3.16 or newer) on the host, in the container or Pod; the file is not copied.'**
+  String get dbSqliteRemoteHelp;
+
+  /// SQLite connection form/error on phones: local files are not supported.
+  ///
+  /// In en, this message translates to:
+  /// **'Files on this device open in the desktop app only. Choose an SSH host, a container or a Pod.'**
+  String get dbSqliteLocalUnavailable;
+
+  /// Database error: the chosen file is not an SQLite database.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is not an SQLite database (or it is encrypted).'**
+  String get dbErrorSqliteNotDatabase;
+
+  /// Database error: the SQLite file does not exist (it is never created implicitly).
+  ///
+  /// In en, this message translates to:
+  /// **'The database file was not found. A new file is created only with “Create new database”.'**
+  String get dbErrorSqliteMissing;
+
+  /// Database error: the remote sqlite3 program is missing or too old.
+  ///
+  /// In en, this message translates to:
+  /// **'sqlite3 (3.16 or newer) is not installed on the host, in the container or Pod. Install it and try again.'**
+  String get dbErrorSqliteCli;
+
+  /// Database error: a production Kubernetes context does not allow exec.
+  ///
+  /// In en, this message translates to:
+  /// **'Running commands in this production Kubernetes context is turned off in its settings.'**
+  String get dbErrorKubeExecBlocked;
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -20220,7 +20384,8 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'ru'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'ru'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

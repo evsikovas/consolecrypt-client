@@ -95,6 +95,7 @@ void main() {
             DbEngine.clickhouse => 'clickhouse-client',
             DbEngine.redis => 'redis-cli',
             DbEngine.mongodb => 'mongosh',
+            DbEngine.sqlite => 'sqlite3',
           }),
         );
       }

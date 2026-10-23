@@ -2,8 +2,8 @@
 
 ## Русский
 
-Раздел «Базы данных» работает с PostgreSQL, MySQL и MariaDB, ClickHouse, Redis
-и MongoDB. В нём структура базы, редактор запросов с вкладками и историей,
+Раздел «Базы данных» работает с PostgreSQL, MySQL и MariaDB, ClickHouse, Redis,
+MongoDB и файлами SQLite. В нём структура базы, редактор запросов с вкладками и историей,
 таблица результатов, EXPLAIN, правка ячеек, копирование и экспорт, а также
 ИИ-помощник. Драйверы встроены в приложение, поэтому `psql`, `mysql`,
 `clickhouse-client`, `redis-cli` и `mongosh` устанавливать не нужно. Раздел
@@ -92,6 +92,45 @@
 подов Kubernetes и контейнеров Docker со стандартными портами баз данных. Если
 подключение с таким маршрутом уже сохранено, оно открывается сразу; иначе
 открывается форма с заполненными движком, портом и маршрутом.
+
+### SQLite
+
+SQLite — это файл, а не сервер. В форме подключения выберите движок «SQLite»,
+затем «Где находится файл»:
+
+- **Этот компьютер** (macOS, Windows, Linux) — путь к файлу или кнопка
+  «Выбрать файл…». Новый пустой файл создаётся только кнопкой «Создать новую
+  базу…»; подключение к несуществующему файлу не создаёт его, а сообщает,
+  что файл не найден. Перед открытием проверяется заголовок: другой файл
+  (или зашифрованная база) не открывается. Поддерживается режим WAL.
+- **SSH-хост**, **Docker-контейнер** или **Под Kubernetes** — запросы
+  выполняет программа `sqlite3` (версии 3.16 или новее) на хосте, в
+  контейнере или поде; файл никуда не копируется. Запрос передаётся через
+  стандартный ввод, а не в командной строке. Если `sqlite3` нет, приложение
+  так и скажет. Для продакшн-контекста Kubernetes нужно разрешение на
+  выполнение команд в его настройках.
+
+«Только чтение» включено по умолчанию: файл открывается только для чтения, и
+ни один запрос не может его изменить. Без этого флажка действуют обычные
+правила: на непродовом подключении изменения проходят проверку, на продовом
+нужно временное окно записи. Даже разрешённое чтение выполняется с
+`PRAGMA query_only`; `ATTACH`/`DETACH`, `VACUUM INTO`, `load_extension`,
+`readfile`/`writefile` и изменяющие PRAGMA (ключи шифрования, `query_only`,
+`writable_schema`) запрещены; удалённая программа запускается с `-readonly`
+и `-safe`.
+
+Структура: файл → «Таблицы», «Представления», «Индексы», «Последовательности»
+(счётчики AUTOINCREMENT), «Триггеры таблиц» и «Типы данных»; таблица →
+«Колонки» («имя (ТИП)»), «Ключи», «Внешние ключи», «Индексы», «Ссылки»
+(внешние ключи других таблиц на эту) и «Триггеры». Доступны DDL, сведения об
+объекте (размер файла, оценка строк из `sqlite_stat1`, STRICT, WITHOUT
+ROWID), план `EXPLAIN QUERY PLAN` деревом, подсказки, экспорт (в т. ч.
+INSERT с литералами SQLite) и правка ячеек по первичному ключу или `rowid`.
+
+Подключения SQLite хранятся **только на этом устройстве** (значок «Только на
+этом устройстве»): они не синхронизируются, не попадают в хранилище и
+резервные копии и не передаются другим — версии приложения до 0.9.1 не умеют
+их читать. История их запросов тоже остаётся локальной.
 
 ### Режим «Прод»
 
@@ -374,7 +413,7 @@ bracketed paste, если клиент его включил. Новую SSH-с�
 ## English
 
 The Databases section works with PostgreSQL, MySQL and MariaDB, ClickHouse,
-Redis and MongoDB. It offers the structure tree, a tabbed query editor with
+Redis, MongoDB and SQLite files. It offers the structure tree, a tabbed query editor with
 history, a result grid, EXPLAIN, cell editing, copy and export, and an AI
 assistant. Drivers are built into the app; no external command-line clients
 are needed. The section is available on macOS, Windows, Linux and Android;
@@ -442,6 +481,43 @@ Kubernetes and Docker forwards are restored on every connect, and running
 ones are reused. Kubernetes Pods and Docker containers with a standard
 database port have a “Connect to database” button that opens a saved
 connection with the same route or a prefilled form.
+
+### SQLite
+
+SQLite is a file, not a server. Choose the “SQLite” engine, then where the
+file is:
+
+- **This computer** (macOS, Windows, Linux): type the path or use “Choose
+  file…”. A new empty file is created only with “Create new database…”;
+  connecting to a missing file reports it instead of creating one. The header
+  is checked before opening, so another file (or an encrypted database) is
+  refused. WAL mode is supported.
+- **SSH host**, **Docker container** or **Kubernetes Pod**: the `sqlite3`
+  program (3.16 or newer) there runs the queries; the file is not copied.
+  Queries travel on standard input, not on the command line. A missing
+  `sqlite3` is reported as such. A production Kubernetes context must allow
+  running commands.
+
+“Read only” is on by default: the file opens read-only and no query can
+change it. Without it the usual rules apply: changes are reviewed on
+non-production connections and need a temporary write window on production
+ones. Every read still runs under `PRAGMA query_only`; `ATTACH`/`DETACH`,
+`VACUUM INTO`, `load_extension`, `readfile`/`writefile` and changing pragmas
+(encryption keys, `query_only`, `writable_schema`) are refused, and the remote
+program runs with `-readonly` and `-safe`.
+
+Structure: the file → Tables, Views, Indexes, Sequences (AUTOINCREMENT
+counters), Table triggers and Data types; a table → Columns (“name (TYPE)”),
+Keys, Foreign keys, Indexes, References (foreign keys of other tables that
+point here) and Triggers. DDL, object details (file size, row estimate from
+`sqlite_stat1`, STRICT, WITHOUT ROWID), an `EXPLAIN QUERY PLAN` tree,
+completion, export (including INSERT with SQLite literals) and cell editing by
+primary key or `rowid` work as for the other engines.
+
+SQLite connections are kept **on this device only** (“This device only”
+badge): they are not synced, stored in the vault or its backups, or shared,
+because app versions up to 0.9.1 cannot read them. Their query history stays
+local too.
 
 ### Production
 

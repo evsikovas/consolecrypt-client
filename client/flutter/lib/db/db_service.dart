@@ -91,6 +91,16 @@ abstract interface class DbService {
   Future<void> discardImport(String ticket);
 }
 
+/// Optional platform capability (desktop): SQLite files on this computer.
+abstract interface class DbSqliteFileService {
+  /// An existing file the user picked; null when cancelled.
+  Future<String?> pickSqliteFile();
+
+  /// A new, empty database at a location the user chose; null when cancelled.
+  /// Fails when the file exists.
+  Future<String?> createSqliteFile();
+}
+
 /// Optional platform capability. Reads the user's explicitly selected local
 /// .pgpass file natively; returns only an opaque preview ticket and safe metadata.
 abstract interface class DbPgpassFileService {

@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/widgets/view_mode_toggle.dart';
 import 'package:consolecrypt/db/db_connection_dialog.dart';
 import 'package:consolecrypt/db/db_errors.dart';
 import 'package:consolecrypt/db/db_import_dialog.dart';
+import 'package:consolecrypt/db/db_local_only_badge.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_transport_badge.dart';
@@ -291,6 +292,7 @@ IconData _engineIcon(DbEngine engine) => switch (engine.wireName) {
   'redis' => Icons.memory_rounded,
   'mongodb' => Icons.data_object_rounded,
   'clickhouse' => Icons.view_column_rounded,
+  'sqlite' => Icons.insert_drive_file_outlined,
   _ => Icons.storage_rounded,
 };
 
@@ -342,8 +344,9 @@ class _DbConnectionEntry extends StatelessWidget {
     final tint = _connectionColor(c.color);
     final caption = [
       c.engine.label,
-      '${c.host}:${c.port}', // l10n-ignore: Saved endpoint metadata.
-      if (c.database.isNotEmpty) c.database,
+      // A database file has a path instead of an endpoint.
+      if (c.engine.file) c.database else '${c.host}:${c.port}', // l10n-ignore: Saved endpoint metadata.
+      if (c.database.isNotEmpty && !c.engine.file) c.database,
     ].join(' · ');
     final route = _routeHint(context, tokens);
     final avatarSize = cards ? 36.0 : 28.0;
@@ -374,6 +377,10 @@ class _DbConnectionEntry extends StatelessWidget {
           const SizedBox(width: GlassSpacing.s6),
           DbTransportBadge(security, compact: true, key: ValueKey('db-transport-${connection.id}')),
         ],
+        if (c.engine.localOnly) ...[
+          const SizedBox(width: GlassSpacing.s6),
+          DbLocalOnlyBadge(compact: true, key: ValueKey('db-local-only-${connection.id}')),
+        ],
       ],
     );
     final captionText = Text(
@@ -386,7 +393,8 @@ class _DbConnectionEntry extends StatelessWidget {
       entries: [
         GlassMenuItem(value: _DbAction.open, label: l.commonConnect, icon: Icons.play_arrow_rounded),
         GlassMenuItem(value: _DbAction.edit, label: l.commonEdit, icon: Icons.edit_rounded),
-        if (canShare) GlassMenuItem(value: _DbAction.share, label: l.sharingTitle, icon: Icons.share_outlined),
+        if (canShare && !c.engine.localOnly)
+          GlassMenuItem(value: _DbAction.share, label: l.sharingTitle, icon: Icons.share_outlined),
         const GlassMenuDivider(),
         GlassMenuItem(value: _DbAction.delete, label: l.commonDelete, icon: Icons.delete_rounded, destructive: true),
       ],

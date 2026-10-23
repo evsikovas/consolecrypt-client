@@ -83,9 +83,25 @@ DbPlanNode _mysqlNode(String name, Object? value) {
   );
 }
 
+/// SQLite `EXPLAIN QUERY PLAN` steps: `{"detail", "children"}`.
+DbPlanNode _sqliteNode(Object? value) {
+  final step = value is Map ? value : const <String, Object?>{};
+  return DbPlanNode(
+    label: '${step['detail'] ?? ''}', // l10n-ignore: plan text
+    children: [for (final child in (step['children'] as List? ?? const [])) _sqliteNode(child)],
+  );
+}
+
 /// The plan tree of a native EXPLAIN document, or null for text/unknown plans.
 DbPlanNode? parsePlan(DbJson document) {
   final plan = document['plan'] ?? document;
+  const sqlite = 'sqlite_plan'; // l10n-ignore: plan key
+  if (plan is Map && plan[sqlite] is List) {
+    return DbPlanNode(
+      label: 'QUERY PLAN', // l10n-ignore: SQL keyword
+      children: [for (final step in plan[sqlite] as List) _sqliteNode(step)],
+    );
+  }
   if (plan is List && plan.isNotEmpty) return _pgNode(plan.first);
   if (plan is Map && plan['Plan'] != null) return _pgNode(plan); // l10n-ignore: plan key
   const block = 'query_block'; // l10n-ignore: plan key

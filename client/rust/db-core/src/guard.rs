@@ -34,6 +34,9 @@ pub struct GuardPolicy {
     pub connection_name: String,
     pub production: bool,
     pub mobile: bool,
+    /// The connection is read-only by its own setting (a SQLite file opened
+    /// read-only): nothing can allow writes, not even a production window.
+    pub read_only: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -158,7 +161,7 @@ impl GuardedStatement {
 
 impl DbGuard {
     pub fn new(policy: GuardPolicy, cancel: CancellationToken) -> Self {
-        let writes_allowed = !policy.production && !policy.mobile;
+        let writes_allowed = !policy.production && !policy.mobile && !policy.read_only;
         Self {
             policy,
             identity: Uuid::new_v4(),
@@ -190,7 +193,7 @@ impl DbGuard {
     /// Whether changing statements may run now: a production session only
     /// inside its write window, any other session after the user allowed it.
     fn writable(&self, state: &mut GuardState) -> bool {
-        if self.cancel.is_cancelled() {
+        if self.cancel.is_cancelled() || self.policy.read_only {
             return false;
         }
         if self.policy.production {
@@ -209,6 +212,7 @@ impl DbGuard {
         self.live()?;
         if !self.policy.production
             || self.policy.mobile
+            || self.policy.read_only
             || !PRODUCTION_WRITE_MINUTES
                 .iter()
                 .any(|minutes| Duration::from_secs(minutes * 60) == duration)
@@ -263,7 +267,7 @@ impl DbGuard {
 
     pub fn allow_session_write(&self) -> Result<(), DbError> {
         self.live()?;
-        if self.policy.production {
+        if self.policy.production || self.policy.read_only {
             return Err(DbError::PolicyDenied);
         }
         let mut state = self.state.lock().map_err(|_| DbError::SessionClosed)?;
@@ -448,6 +452,7 @@ mod tests {
                 connection_name: "orders-prod".into(),
                 production: true,
                 mobile: false,
+                read_only: false,
             },
             CancellationToken::new(),
         )

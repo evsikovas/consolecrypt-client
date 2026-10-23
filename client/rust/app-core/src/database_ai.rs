@@ -147,6 +147,8 @@ fn dialect(engine: DbEngine) -> &'static str {
         DbEngine::Clickhouse => "ClickHouse SQL",
         DbEngine::Redis => "Redis commands (one command per line, redis-cli syntax)",
         DbEngine::Mongodb => "MongoDB shell syntax (db.collection.find(...) / aggregate([...]))",
+        DbEngine::Sqlite => "SQLite SQL (double-quoted identifiers, no stored procedures)",
+        DbEngine::Unknown => "SQL",
     }
 }
 
@@ -498,9 +500,9 @@ impl AppCore {
             })
             .collect();
         let connection_id = crate::dto::parse_id("connection_id", &session.info().connection_id)?;
-        let connection_name = unlocked
-            .working()
-            .db_connection(connection_id)
+        let connection_name = self
+            .db_saved_connection(connection_id)
+            .await?
             .map(|connection| connection.name)
             .unwrap_or_default();
         let history_messages = request

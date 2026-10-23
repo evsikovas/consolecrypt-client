@@ -18,6 +18,11 @@ Future<String> dbSaveConnection({required String connectionJson, Uint8List? pass
     .api
     .crateApiDatabaseDbSaveConnection(connectionJson: connectionJson, password: password, privateKey: privateKey);
 
+/// Creates a new, empty SQLite database file on this computer (the editor's
+/// "create a new database"). Refuses an existing file.
+Future<void> dbSqliteCreateFile({required String path}) =>
+    RustLib.instance.api.crateApiDatabaseDbSqliteCreateFile(path: path);
+
 Future<void> dbDeleteConnection({required String id}) =>
     RustLib.instance.api.crateApiDatabaseDbDeleteConnection(id: id);
 

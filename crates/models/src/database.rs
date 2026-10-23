@@ -14,16 +14,27 @@ pub enum DbEngine {
     Clickhouse,
     Redis,
     Mongodb,
+    /// A database file: on this computer (device-local, never synced) or
+    /// reached through the `sqlite3` program on an SSH host, in a Docker
+    /// container or a Kubernetes Pod. `database` holds the file path; `host`
+    /// and `port` are unused.
+    Sqlite,
+    /// An engine added by a newer version. Decoding tolerates it so a vault
+    /// object of a future engine does not fail the whole object; nothing can
+    /// open, create or edit such a connection here.
+    #[serde(other)]
+    Unknown,
 }
 
 impl DbEngine {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::Postgresql,
         Self::Mysql,
         Self::Mariadb,
         Self::Clickhouse,
         Self::Redis,
         Self::Mongodb,
+        Self::Sqlite,
     ];
 
     pub const fn default_port(self, tls: bool) -> u16 {
@@ -34,7 +45,30 @@ impl DbEngine {
             Self::Clickhouse => 8123,
             Self::Redis => 6379,
             Self::Mongodb => 27017,
+            Self::Sqlite | Self::Unknown => 0,
         }
+    }
+
+    /// Engines reached over a network socket (SQLite opens a file).
+    pub const fn networked(self) -> bool {
+        !matches!(self, Self::Sqlite | Self::Unknown)
+    }
+
+    /// Engines that clients up to 0.9.1 decode. A vault object with any other
+    /// engine fails to decode there (one unreadable object; a backup that
+    /// holds one cannot be restored), so connections of later engines stay on
+    /// this device: never synced, backed up into the vault or shared. Syncing
+    /// them is enabled in a later release.
+    pub const fn local_only(self) -> bool {
+        !matches!(
+            self,
+            Self::Postgresql
+                | Self::Mysql
+                | Self::Mariadb
+                | Self::Clickhouse
+                | Self::Redis
+                | Self::Mongodb
+        )
     }
 }
 
@@ -280,6 +314,16 @@ pub enum DbOptions {
         #[serde(default)]
         read_preference: MongoReadPreference,
     },
+    Sqlite {
+        /// Open the file read-only (the default): no statement can change
+        /// it, whatever the production setting.
+        #[serde(default = "production_default")]
+        read_only: bool,
+    },
+    /// Options of an engine added by a newer version (see
+    /// [`DbEngine::Unknown`]); their fields are not kept.
+    #[serde(other)]
+    Unknown,
 }
 
 impl DbOptions {
@@ -301,6 +345,8 @@ impl DbOptions {
                 srv: false,
                 read_preference: MongoReadPreference::default(),
             },
+            DbEngine::Sqlite => Self::Sqlite { read_only: true },
+            DbEngine::Unknown => Self::Unknown,
         }
     }
 
@@ -312,6 +358,8 @@ impl DbOptions {
             Self::Clickhouse { .. } => DbEngine::Clickhouse,
             Self::Redis { .. } => DbEngine::Redis,
             Self::Mongodb { .. } => DbEngine::Mongodb,
+            Self::Sqlite { .. } => DbEngine::Sqlite,
+            Self::Unknown => DbEngine::Unknown,
         }
     }
 }
@@ -396,13 +444,19 @@ impl DbConnection {
         {
             return Err(invalid("reference", "invalid object reference"));
         }
+        if self.engine == DbEngine::Unknown {
+            return Err(invalid("engine", "engine of a newer version"));
+        }
         self.route.validate()?;
         text(&self.name, 256, false, "name")?;
         host(&self.host, "host")?;
-        if self.port == 0 {
+        if self.port == 0 && self.engine.networked() {
             return Err(invalid("port", "must be positive"));
         }
         text(&self.database, 1024, true, "database")?;
+        if self.engine == DbEngine::Sqlite {
+            validate_sqlite(self)?;
+        }
         text(&self.username, 1024, true, "username")?;
         if self.engine == DbEngine::Redis && self.database.parse::<u16>().is_err() {
             return Err(invalid(
@@ -480,7 +534,7 @@ impl DbConnection {
                     }
                 }
             }
-            DbOptions::Redis { .. } => {}
+            DbOptions::Redis { .. } | DbOptions::Sqlite { .. } | DbOptions::Unknown => {}
             DbOptions::Mongodb {
                 auth_source,
                 replica_set,
@@ -518,6 +572,29 @@ impl DbConnection {
         }
         Ok(())
     }
+}
+
+/// A SQLite file path: on this computer, or on the SSH host, container or
+/// Pod the route names. It never starts with `-` (no command-line option),
+/// holds no NUL and the connection keeps no secrets, TLS or socket route.
+fn validate_sqlite(connection: &DbConnection) -> Result<(), ValidationError> {
+    let path = connection.database.as_str();
+    if path.trim().is_empty() || path.starts_with('-') || path.trim() != path {
+        return Err(invalid("database", "invalid SQLite file path"));
+    }
+    if !matches!(
+        connection.route,
+        DbRoute::Direct | DbRoute::Ssh { .. } | DbRoute::Docker { .. } | DbRoute::Kubernetes { .. }
+    ) {
+        return Err(invalid(
+            "route",
+            "SQLite opens a file on this computer, an SSH host, a container or a Pod",
+        ));
+    }
+    if connection.auth != DbAuth::default() || !connection.username.is_empty() {
+        return Err(invalid("auth", "SQLite files have no credentials"));
+    }
+    Ok(())
 }
 
 fn invalid(field: &'static str, reason: &'static str) -> ValidationError {
@@ -560,7 +637,10 @@ mod tests {
 
     #[test]
     fn typed_engine_defaults_and_references_roundtrip_without_secrets() {
-        for engine in DbEngine::ALL {
+        for engine in DbEngine::ALL
+            .into_iter()
+            .filter(|engine| engine.networked())
+        {
             let mut value = DbConnection::new("fixture", "db.example.test", engine);
             value.auth.password_secret_id = Some(ObjectId::new());
             value.validate().unwrap();
@@ -571,6 +651,101 @@ mod tests {
             assert_eq!(restored.tls.mode, DbTlsMode::Verify);
             assert_eq!(restored.auth.secret_ids().len(), 1);
         }
+    }
+
+    #[test]
+    fn sqlite_files_roundtrip_read_only_by_default_and_reject_unsafe_shapes() {
+        let mut value = DbConnection::new("orders", "localhost", DbEngine::Sqlite);
+        assert_eq!(value.port, 0);
+        assert_eq!(value.options, DbOptions::Sqlite { read_only: true });
+        assert!(value.validate().is_err(), "a path is required");
+        value.database = "/data/orders.db".into();
+        value.validate().unwrap();
+        let json = serde_json::to_value(&value).unwrap();
+        assert_eq!(json["engine"], "sqlite");
+        assert_eq!(
+            json["options"],
+            serde_json::json!({"kind": "sqlite", "read_only": true})
+        );
+        assert_eq!(
+            serde_json::from_value::<DbConnection>(json.clone()).unwrap(),
+            value
+        );
+        // Omitted read_only stays read-only.
+        let mut legacy = json.clone();
+        legacy["options"] = serde_json::json!({"kind": "sqlite"});
+        assert_eq!(
+            serde_json::from_value::<DbConnection>(legacy)
+                .unwrap()
+                .options,
+            DbOptions::Sqlite { read_only: true }
+        );
+        for route in [
+            DbRoute::Ssh {
+                host_id: ObjectId::new(),
+            },
+            DbRoute::Docker {
+                host_id: None,
+                container: "app".into(),
+            },
+            DbRoute::Kubernetes {
+                context_id: ObjectId::new(),
+                namespace: "data".into(),
+                target_kind: DbKubeTargetKind::Pod,
+                target_name: "app-0".into(),
+            },
+        ] {
+            let mut remote = value.clone();
+            remote.route = route;
+            remote.validate().unwrap();
+        }
+        for route in [
+            DbRoute::Proxy {
+                proxy_id: ObjectId::new(),
+            },
+            DbRoute::Jump {
+                jump_profile_id: ObjectId::new(),
+            },
+            DbRoute::Tunnel {
+                tunnel_id: ObjectId::new(),
+            },
+        ] {
+            let mut socket = value.clone();
+            socket.route = route;
+            assert!(socket.validate().is_err());
+        }
+        for path in ["-readonly", " /x.db", "/x.db\n", "a\u{0}b"] {
+            let mut bad = value.clone();
+            bad.database = path.into();
+            assert!(bad.validate().is_err(), "{path}");
+        }
+        let mut secret = value.clone();
+        secret.auth.password_secret_id = Some(ObjectId::new());
+        assert!(secret.validate().is_err());
+    }
+
+    #[test]
+    fn engines_of_newer_versions_decode_as_unknown_and_never_validate() {
+        let mut json = serde_json::to_value(DbConnection::new(
+            "future",
+            "db.example.test",
+            DbEngine::Postgresql,
+        ))
+        .unwrap();
+        json["engine"] = serde_json::json!("cassandra");
+        json["options"] = serde_json::json!({"kind": "cassandra", "page_size": 500});
+        let decoded: DbConnection = serde_json::from_value(json).unwrap();
+        assert_eq!(decoded.engine, DbEngine::Unknown);
+        assert_eq!(decoded.options, DbOptions::Unknown);
+        assert!(decoded.validate().is_err());
+        assert!(DbEngine::Unknown.local_only() && DbEngine::Sqlite.local_only());
+        assert!(!DbEngine::Postgresql.local_only() && !DbEngine::Mongodb.local_only());
+        // Known shapes stay strict.
+        let mut strict =
+            serde_json::to_value(DbConnection::new("x", "db.example.test", DbEngine::Redis))
+                .unwrap();
+        strict["options"]["local_infile"] = serde_json::json!(true);
+        assert!(serde_json::from_value::<DbConnection>(strict).is_err());
     }
 
     #[test]

@@ -5,7 +5,7 @@ use crate::types::{DbCell, DbError, DbParameter, MAX_QUERY_BYTES};
 use cc_models::database::DbEngine;
 use serde::Serialize;
 use sqlparser::{
-    dialect::{ClickHouseDialect, Dialect, MySqlDialect, PostgreSqlDialect},
+    dialect::{ClickHouseDialect, Dialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect},
     parser::Parser,
     tokenizer::{Token, Tokenizer},
 };
@@ -272,6 +272,7 @@ fn dialect(engine: DbEngine) -> Result<Box<dyn Dialect>, DbError> {
         DbEngine::Postgresql => Ok(Box::new(PostgreSqlDialect {})),
         DbEngine::Mysql | DbEngine::Mariadb => Ok(Box::new(MySqlDialect {})),
         DbEngine::Clickhouse => Ok(Box::new(ClickHouseDialect {})),
+        DbEngine::Sqlite => Ok(Box::new(SQLiteDialect {})),
         _ => Err(DbError::InvalidRequest),
     }
 }

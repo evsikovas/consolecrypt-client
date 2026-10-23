@@ -7,7 +7,9 @@ use sqlparser::ast::{
     EnumMember, Expr, Ident, ObjectName, ObjectNamePart, Query, Select, Statement, TableFactor,
     Value, ValueWithSpan, VisitMut, VisitorMut,
 };
-use sqlparser::dialect::{ClickHouseDialect, Dialect, MySqlDialect, PostgreSqlDialect};
+use sqlparser::dialect::{
+    ClickHouseDialect, Dialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect,
+};
 use sqlparser::parser::Parser;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::ControlFlow;
@@ -25,10 +27,16 @@ pub(super) fn parse(
         DbEngine::Postgresql => Box::new(PostgreSqlDialect {}),
         DbEngine::Mysql | DbEngine::Mariadb => Box::new(MySqlDialect {}),
         DbEngine::Clickhouse => Box::new(ClickHouseDialect {}),
+        DbEngine::Sqlite => Box::new(SQLiteDialect {}),
         _ => return Err(DbError::InvalidRequest),
     };
     let (text, bindings) =
         template::sql_templates(dialect.as_ref(), &request.text, &request.parameters)?;
+    let text = if engine == DbEngine::Sqlite {
+        super::sqlite::pragma_arguments(&text)?
+    } else {
+        text
+    };
     let text = Zeroizing::new(text);
     let mut statements = Parser::new(dialect.as_ref())
         .with_recursion_limit(64)
@@ -315,6 +323,16 @@ impl VisitorMut for GuardVisitor<'_> {
     type Break = DbError;
 
     fn pre_visit_statement(&mut self, statement: &mut Statement) -> ControlFlow<DbError> {
+        if self.engine == DbEngine::Sqlite {
+            match super::sqlite::statement(statement) {
+                Some(Ok((risk, reason))) => {
+                    self.risk(risk, reason);
+                    return ControlFlow::Continue(());
+                }
+                Some(Err(error)) => return ControlFlow::Break(error),
+                None => {}
+            }
+        }
         match statement {
             Statement::Query(_)
             | Statement::ExplainTable { .. }
@@ -465,6 +483,19 @@ impl VisitorMut for GuardVisitor<'_> {
     }
 
     fn pre_visit_table_factor(&mut self, table: &mut TableFactor) -> ControlFlow<DbError> {
+        if self.engine == DbEngine::Sqlite {
+            if let TableFactor::Table {
+                name,
+                args: Some(_),
+                ..
+            }
+            | TableFactor::Function { name, .. } = table
+            {
+                if super::sqlite::denied_function(name) {
+                    return ControlFlow::Break(DbError::PolicyDenied);
+                }
+            }
+        }
         match table {
             TableFactor::Table {
                 name,
@@ -487,6 +518,12 @@ impl VisitorMut for GuardVisitor<'_> {
             return ControlFlow::Break(DbError::ResultLimit);
         }
         match expr {
+            Expr::Function(function)
+                if self.engine == DbEngine::Sqlite
+                    && super::sqlite::denied_function(&function.name) =>
+            {
+                return ControlFlow::Break(DbError::PolicyDenied)
+            }
             Expr::Function(function) => self.function(&mut function.name, false),
             Expr::BinaryOp {
                 op: BinaryOperator::Assignment,
@@ -531,6 +568,7 @@ impl VisitorMut for GuardVisitor<'_> {
         *marker = match self.engine {
             DbEngine::Postgresql => format!("${index}"),
             DbEngine::Mysql | DbEngine::Mariadb => "?".into(),
+            DbEngine::Sqlite => format!("?{index}"),
             DbEngine::Clickhouse => {
                 let Some(kind) = clickhouse_type(&parameter) else {
                     return ControlFlow::Break(DbError::InvalidRequest);
@@ -619,8 +657,12 @@ fn safe_function(engine: DbEngine, name: &str, table: bool) -> bool {
                 name,
                 "numbers" | "numbers_mt" | "zeros" | "zeros_mt" | "values"
             ),
+            DbEngine::Sqlite => super::sqlite::safe_table_function(name),
             _ => false,
         };
+    }
+    if engine == DbEngine::Sqlite {
+        return super::sqlite::safe_function(name);
     }
     if matches!(
         name,

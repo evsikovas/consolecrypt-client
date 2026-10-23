@@ -54,7 +54,7 @@ pub struct ObjectDetails {
 }
 
 impl ObjectDetails {
-    fn section(&mut self, id: &'static str) -> &mut Self {
+    pub(crate) fn section(&mut self, id: &'static str) -> &mut Self {
         self.sections.push(DetailSection {
             id,
             fields: Vec::new(),
@@ -63,11 +63,11 @@ impl ObjectDetails {
     }
 
     /// Adds a field to the last section; empty values are left out.
-    fn field(&mut self, id: &'static str, value: &str, kind: DetailKind) -> &mut Self {
+    pub(crate) fn field(&mut self, id: &'static str, value: &str, kind: DetailKind) -> &mut Self {
         self.field_with_unit(id, value, kind, None)
     }
 
-    fn field_with_unit(
+    pub(crate) fn field_with_unit(
         &mut self,
         id: &'static str,
         value: &str,
@@ -89,7 +89,7 @@ impl ObjectDetails {
     }
 
     /// Drops sections that ended up without fields.
-    fn done(mut self) -> Self {
+    pub(crate) fn done(mut self) -> Self {
         self.sections.retain(|section| !section.fields.is_empty());
         self
     }
@@ -125,6 +125,11 @@ pub fn has_details(engine: DbEngine, object: &DbObjectRef) -> bool {
             object.kind,
             DbObjectKind::Database | DbObjectKind::Collection | DbObjectKind::View
         ),
+        DbEngine::Sqlite => matches!(
+            object.kind,
+            DbObjectKind::Database | DbObjectKind::Table | DbObjectKind::View | DbObjectKind::Index
+        ),
+        DbEngine::Unknown => false,
     }
 }
 
@@ -424,6 +429,9 @@ impl DbSession {
         let engine = self.info.engine;
         if !has_details(engine, object) || engine == DbEngine::Mongodb {
             return Err(DbError::InvalidRequest);
+        }
+        if engine == DbEngine::Sqlite {
+            return self.sqlite_details(object).await;
         }
         if engine == DbEngine::Redis {
             return match &mut *self.driver.lock().await {
