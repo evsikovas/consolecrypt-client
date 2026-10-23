@@ -24,7 +24,9 @@ import 'package:consolecrypt/core/mock/mock_notes.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/security/vault_key_alarm.dart';
 import 'package:consolecrypt/core/services/app_services.dart' show DeviceLocalAiBridge;
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_designer_models.dart';
 import 'package:consolecrypt/db/db_designer_view.dart';
@@ -40,6 +42,7 @@ import 'package:consolecrypt/settings/settings_dialogs.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/sftp/widgets/sftp_activity.dart';
 import 'package:consolecrypt/sharing/enrollment_owner.dart';
+import 'package:consolecrypt/sharing/enrollment_pairing.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_management.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
@@ -61,6 +64,7 @@ import 'package:xterm/xterm.dart';
 import '../test/helpers/fake_local_ai_runtime.dart';
 import '../test/helpers/test_app.dart' show tapKey, settle, pickHost;
 import 'guide_capture_support.dart';
+import 'key_trust_capture_support.dart';
 import 'kube_capture_support.dart';
 
 const _guide = bool.fromEnvironment('CC_GUIDE_CAPTURE');
@@ -266,7 +270,10 @@ void main() {
           backend.devices.debugAnnounceNewDevice('Linux workstation');
         }
         final key = GlobalKey();
-        final sharing = GuideSharingService(databases: screen == 'db-shared');
+        final sharing = GuideSharingService(
+          databases: screen == 'db-shared',
+          banner: screen == 'sharing-verify-banner' ? guideBannerPins() : const [],
+        );
         final teams = _guide && screen.startsWith('teams-') ? guideTeams(backend, en: locale == AppLocale.en) : null;
         final kube = _guide && screen.startsWith('kube-') ? GuideKubeService(en: locale == AppLocale.en) : null;
         if (kube != null) addTearDown(kube.dispose);
@@ -279,7 +286,19 @@ void main() {
                 if (screen == 'host-import') knownHostsImportServiceProvider.overrideWithValue(_GuideKnownHosts()),
                 if (_guide) developerControlsProvider.overrideWithValue(null),
                 if (_guide) sharingServiceProvider.overrideWithValue(sharing),
-                if (_guide) enrollmentServiceProvider.overrideWithValue(GuideEnrollmentService()),
+                if (_guide)
+                  enrollmentServiceProvider.overrideWithValue(
+                    screen == 'enrollment-endorse' ? GuideEndorseEnrollment() : GuideEnrollmentService(),
+                  ),
+                if (screen == 'devices-key-unconfirmed' || screen == 'approval-pairing')
+                  devicesServiceProvider.overrideWithValue(
+                    GuideKeyTrustDevices(
+                      backend.services.devices,
+                      unconfirmed: screen == 'devices-key-unconfirmed',
+                      pairing: screen == 'approval-pairing',
+                    ),
+                  ),
+                if (screen == 'sync-limits') syncStatusProvider.overrideWith((ref) => Stream.value(guideLimitedSync())),
                 if (teams != null) teamServiceProvider.overrideWithValue(teams),
                 if (kube != null) kubeServiceProvider.overrideWithValue(kube),
                 if (screen == 'kube-shell') terminalServiceProvider.overrideWithValue(GuideKubeTerminal()),
@@ -720,7 +739,11 @@ void main() {
           expect(find.byKey(const ValueKey('pick-Windows demo')), findsOneWidget);
           expect(find.byKey(const ValueKey('host-picker')), findsOneWidget);
         }
-        if (_guide && screen.startsWith('sharing-') && screen != 'sharing-main' && screen != 'sharing-deleted') {
+        if (_guide &&
+            screen.startsWith('sharing-') &&
+            screen != 'sharing-main' &&
+            screen != 'sharing-deleted' &&
+            !guideKeyTrustScreens.contains(screen)) {
           final context = tester.element(find.byType(Navigator).first);
           if (screen == 'sharing-secret') {
             showSharingSecretPublish(context, credential: backend.cloud.activeData!.credentials.first).ignore();
@@ -735,8 +758,12 @@ void main() {
           if (screen == 'sharing-recipient' || screen == 'sharing-roles') {
             await tester.enterText(find.byKey(const ValueKey('sharing-email')), 'colleague@example.test');
             await tapKey(tester, 'sharing-find');
-            await tapKey(tester, 'sharing-verify-${guideRecipient.deviceId}');
-            await Scrollable.ensureVisible(tester.element(find.text(guideRecipient.code)), alignment: .15);
+            // Choosing the device pins its keys ("Chosen (not verified)").
+            await tapKey(tester, 'sharing-give-access-${guideRecipient.deviceId}');
+            await Scrollable.ensureVisible(
+              tester.element(find.byKey(const ValueKey('peer-trust-chosen'))),
+              alignment: .1,
+            );
             await settle(tester);
             if (screen == 'sharing-roles') {
               final role = find.byType(GlassSelect<SharingRole>);
@@ -763,6 +790,7 @@ void main() {
         if (_guide && screen.startsWith('db-')) await _databaseScreen(tester, screen, l10n);
         if (_guide && screen.startsWith('docker-')) await _dockerScreen(tester, screen, l10n);
         if (_guide && screen.startsWith('notes-')) await _notesScreen(tester, screen, backend);
+        if (_guide && guideKeyTrustScreens.contains(screen)) await _keyTrustScreen(tester, screen, backend, l10n);
         if (_guide && (screen == 'step-up-biometric' || screen == 'clipboard-settings')) {
           await _securityScreen(tester, screen, l10n);
         }
@@ -1371,7 +1399,7 @@ Future<void> _databaseScreen(WidgetTester tester, String screen, AppLocalization
     await settle(tester);
     await tester.enterText(find.byKey(const ValueKey('sharing-email')), 'colleague@example.test');
     await tapKey(tester, 'sharing-find');
-    await tapKey(tester, 'sharing-verify-${guideRecipient.deviceId}');
+    await tapKey(tester, 'sharing-give-access-${guideRecipient.deviceId}');
     // Back to the top: the preview shows what the colleague receives.
     await Scrollable.ensureVisible(tester.element(find.text(l10n.sharingPreview)));
     await settle(tester);
@@ -1599,18 +1627,85 @@ Future<void> _database092Screen(WidgetTester tester, String screen, AppLocalizat
       await shopDev();
       await tapKey(tester, 'db-cell-2-3');
       await tapKey(tester, 'db-view-record');
-    case 'db-csv-read':
-      // Step 2 of 5. The column mapping step (3) is not captured: its rows
-      // are wider than the 480 px dialog and overflow.
+    case 'db-csv-read' || 'db-csv-map':
+      // Step 2 (reading settings) and step 3 (column mapping) of 5.
       await shopDev();
       await tapKey(tester, 'db-import');
       await tapKey(tester, 'db-csv-choose');
       await tapKey(tester, 'db-csv-next');
+      if (screen == 'db-csv-map') await tapKey(tester, 'db-csv-next');
     case 'db-snippets-picker':
       await shopDev(orders: false);
       await tapKey(tester, 'db-snippets');
       await tester.enterText(find.byKey(const ValueKey('db-snippet-search')), en ? 'index' : 'индекс');
       await settle(tester);
+  }
+}
+
+/// 0.9.2 key trust and sync limits on synthetic data: a vault key mismatch
+/// (raised in the UI only), an unconfirmed vault key, a new device's pairing
+/// code, colleague key verification, the verified-recipients setting, a
+/// typed own-device enrollment code and a server-limited sync.
+Future<void> _keyTrustScreen(WidgetTester tester, String screen, MockBackend backend, AppLocalizations l10n) async {
+  BuildContext context() => tester.element(find.byType(Navigator).first);
+  switch (screen) {
+    case 'vault-key-mismatch':
+      addTearDown(() => vaultKeyAlarm.value = null);
+      vaultKeyAlarm.value = AppException(
+        AppErrorCode.vaultKeyMismatch,
+        'mismatch',
+        args: {
+          'vault_id': '1c429229-5be1-4f8e-9368-2dc466a8ff81',
+          'reason': 'commitment',
+          'pinned': '7f3a91c2d4e85b06' * 4,
+          'received': 'c05e2b77a1d94f38' * 4,
+        },
+      );
+      await settle(tester);
+      await tapKey(tester, 'vault-key-mismatch-more');
+    case 'devices-key-unconfirmed':
+      await tapKey(tester, 'nav-devices');
+    case 'approval-pairing':
+      await backend.vault.requestDeviceApproval();
+      await settle(tester);
+      await tapKey(tester, 'approval-pairing-matches');
+    case 'sharing-verify':
+      showSharingPublish(
+        context(),
+        kind: SharingKind.host,
+        objectId: backend.inventory.currentHosts.first.id.value,
+      ).ignore();
+      await settle(tester);
+      await tester.enterText(find.byKey(const ValueKey('sharing-email')), 'colleague@example.test');
+      await tapKey(tester, 'sharing-find');
+      await tapKey(tester, 'sharing-give-access-${guideRecipient.deviceId}');
+      await tapKey(tester, 'sharing-verify-peer-${guideRecipient.deviceId}');
+      // The colleague reads their number aloud; it is typed, never pasted.
+      await tester.enterText(find.byKey(const ValueKey('peer-verify-number')), guideSafetyNumberGroups.join(' '));
+      await settle(tester);
+    case 'sharing-verify-banner':
+      await tapKey(tester, 'nav-sharing');
+    case 'sharing-policy':
+      await tapKey(tester, 'nav-settings');
+      await Scrollable.ensureVisible(
+        tester.element(find.byKey(const ValueKey('sharing-policy-settings'))),
+        alignment: .45,
+      );
+      await settle(tester);
+    case 'enrollment-endorse':
+      showEnrollmentPairing(context(), EnrollmentPairingFlow.endorse).ignore();
+      await settle(tester);
+      await tester.enterText(find.byKey(const ValueKey('enrollment-packet')), guideEnrollmentPacket);
+      await settle(tester);
+      await tapKey(tester, 'enrollment-review');
+      // Typed from the other device's screen: three of six groups so far.
+      await tester.enterText(
+        find.byKey(const ValueKey('enrollment-code-typed')),
+        guideCode(23).groups.take(3).join(' '),
+      );
+      await settle(tester);
+    case 'sync-limits':
+      await tapKey(tester, 'nav-sync');
   }
 }
 
@@ -1908,11 +2003,30 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(texts, contains('Deployment credential'));
       expect(find.byKey(const ValueKey('sharing-leave-guide-share-snippet')), findsOneWidget);
     case 'sharing-recipient' || 'sharing-roles':
-      expect(find.text(guideRecipient.code), findsOneWidget);
+      expect(find.byKey(const ValueKey('peer-trust-chosen')), findsOneWidget);
       expect(
-        tester.widget<CheckboxListTile>(find.byKey(ValueKey('sharing-verify-${guideRecipient.deviceId}'))).value,
+        tester.widget<CheckboxListTile>(find.byKey(ValueKey('sharing-give-access-${guideRecipient.deviceId}'))).value,
         isTrue,
       );
+    case 'sharing-verify':
+      expect(find.byKey(const ValueKey('peer-safety-number')), findsOneWidget);
+      expect(tester.widget<GlassButton>(find.byKey(const ValueKey('peer-verify-confirm'))).onPressed, isNotNull);
+    case 'sharing-verify-banner':
+      expect(find.byKey(const ValueKey('sharing-verify-banner')), findsOneWidget);
+    case 'sharing-policy':
+      expect(find.byKey(const ValueKey('sharing-policy-sensitive')), findsOneWidget);
+    case 'vault-key-mismatch':
+      expect(find.byKey(const ValueKey('vault-key-mismatch-diagnostics')), findsOneWidget);
+    case 'devices-key-unconfirmed':
+      expect(find.byKey(const ValueKey('vault-key-unconfirmed')), findsOneWidget);
+    case 'approval-pairing':
+      expect(find.byKey(const ValueKey('approval-pairing-code')), findsOneWidget);
+    case 'enrollment-endorse':
+      expect(find.byKey(const ValueKey('enrollment-code-typed')), findsOneWidget);
+      expect(find.byKey(const ValueKey('enrollment-full-code')), findsNothing, reason: 'the code is never shown here');
+    case 'sync-limits':
+      expect(find.byKey(const ValueKey('sync-throttled')), findsOneWidget);
+      expect(find.byKey(const ValueKey('sync-rejected')), findsOneWidget);
     case 'sharing-secret':
       expect(find.text('••••••••'), findsOneWidget);
       expect(tester.widget<GlassButton>(find.byKey(const ValueKey('sharing-secret-publish'))).onPressed, isNull);
