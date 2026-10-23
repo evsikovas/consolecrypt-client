@@ -17,6 +17,7 @@ import 'package:consolecrypt/app/app.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
+import 'package:consolecrypt/core/l10n/labels.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/mock/mock_notes.dart';
@@ -24,16 +25,27 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/app_services.dart' show DeviceLocalAiBridge;
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
+import 'package:consolecrypt/hosts/inventory_navigation.dart';
 import 'package:consolecrypt/hosts/known_hosts_import.dart';
+import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
+import 'package:consolecrypt/kubernetes/kube_providers.dart';
+import 'package:consolecrypt/kubernetes/kube_rollout_panel.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
 import 'package:consolecrypt/notes/note_models.dart';
+import 'package:consolecrypt/settings/settings_dialogs.dart';
+import 'package:consolecrypt/sftp/sftp_controller.dart';
+import 'package:consolecrypt/sftp/widgets/sftp_activity.dart';
 import 'package:consolecrypt/sharing/enrollment_owner.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
+import 'package:consolecrypt/sharing/sharing_management.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
 import 'package:consolecrypt/sharing/sharing_secrets.dart';
+import 'package:consolecrypt/snippets/snippet_editor.dart';
 import 'package:consolecrypt/snippets/starter_catalog.dart';
+import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:consolecrypt/terminal/terminal_target_picker.dart';
 import 'package:flutter/gestures.dart';
@@ -47,6 +59,7 @@ import 'package:xterm/xterm.dart';
 import '../test/helpers/fake_local_ai_runtime.dart';
 import '../test/helpers/test_app.dart' show tapKey, settle, pickHost;
 import 'guide_capture_support.dart';
+import 'kube_capture_support.dart';
 
 const _guide = bool.fromEnvironment('CC_GUIDE_CAPTURE');
 const _guideLanguage = String.fromEnvironment('CC_GUIDE_LOCALE', defaultValue: 'ru');
@@ -147,7 +160,11 @@ void main() {
                 'glass-solid',
               ]) {
       // Corporate sign-in starts like a first launch: no profile yet.
-      final welcome = screen == 'welcome' || screen.startsWith('enterprise-login-');
+      final welcome =
+          screen == 'welcome' ||
+          screen.startsWith('enterprise-login-') ||
+          screen == 'login-standard' ||
+          screen == 'restore-backup';
       const locale = _guide && _guideLanguage == 'en' ? AppLocale.en : AppLocale.ru;
       final l10n = lookupAppLocalizations(Locale(locale.wireName));
       final glass = screen.startsWith('glass-');
@@ -248,6 +265,9 @@ void main() {
         }
         final key = GlobalKey();
         final sharing = GuideSharingService(databases: screen == 'db-shared');
+        final teams = _guide && screen.startsWith('teams-') ? guideTeams(backend, en: locale == AppLocale.en) : null;
+        final kube = _guide && screen.startsWith('kube-') ? GuideKubeService(en: locale == AppLocale.en) : null;
+        if (kube != null) addTearDown(kube.dispose);
         await tester.pumpWidget(
           RepaintBoundary(
             key: key,
@@ -258,6 +278,9 @@ void main() {
                 if (_guide) developerControlsProvider.overrideWithValue(null),
                 if (_guide) sharingServiceProvider.overrideWithValue(sharing),
                 if (_guide) enrollmentServiceProvider.overrideWithValue(GuideEnrollmentService()),
+                if (teams != null) teamServiceProvider.overrideWithValue(teams),
+                if (kube != null) kubeServiceProvider.overrideWithValue(kube),
+                if (screen == 'kube-shell') terminalServiceProvider.overrideWithValue(GuideKubeTerminal()),
                 if (localAi != null) ...[
                   deviceLocalAiAvailableProvider.overrideWithValue(true),
                   localAiRuntimeProvider.overrideWithValue(localAi),
@@ -738,6 +761,9 @@ void main() {
         if (_guide && screen.startsWith('docker-')) await _dockerScreen(tester, screen, l10n);
         if (_guide && screen.startsWith('notes-')) await _notesScreen(tester, screen, backend);
         if (_guide && screen.startsWith('enterprise-')) await _enterpriseScreen(tester, screen, backend, l10n);
+        if (teams != null) await _teamsScreen(tester, screen, backend, l10n);
+        if (kube != null) await _kubeScreen(tester, screen, kube, l10n);
+        if (_guide && guideExtraScreens.contains(screen)) await _extraScreen(tester, screen, backend, sharing, l10n);
         expect(tester.takeException(), isNull);
         if (_guide) _assertGuideScreen(tester, screen, l10n);
         final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
@@ -824,10 +850,389 @@ Future<void> _notesScreen(WidgetTester tester, String screen, MockBackend backen
   await tapKey(tester, 'accept-host-key');
   await tapKey(tester, 'nav-notes');
   if (screen == 'notes-tasks') await tapKey(tester, 'notes-mode-tasks');
+  if (screen == 'notes-menu') {
+    final menu = find.byWidgetPredicate(
+      (w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('note-menu-'),
+    );
+    await tester.tap(menu.first);
+    await settle(tester);
+  }
   if (screen == 'notes-editor') {
     await tapKey(tester, 'notes-mode-all');
     await tester.tap(find.text(en ? 'Ask the vendor about the licence' : 'Спросить поставщика о лицензии'));
     await settle(tester);
+  }
+}
+
+/// Additional guide cases for 0.9.1: sign-in and vault gates, account and
+/// vault dialogs, editors (hosts, groups, credentials, tunnels, snippets),
+/// SFTP menus, terminal tab menu, settings close-ups and sharing dialogs.
+Future<void> _extraScreen(
+  WidgetTester tester,
+  String screen,
+  MockBackend backend,
+  GuideSharingService sharing,
+  AppLocalizations l10n,
+) async {
+  const en = _guideLanguage == 'en';
+  BuildContext context() => tester.element(find.byType(Navigator).first);
+  ProviderContainer container() => ProviderScope.containerOf(context());
+  Host host(String name) => backend.inventory.currentHosts.firstWhere((h) => h.name == name);
+  Future<void> go(String route) async {
+    container().read(routerProvider).go(route);
+    await settle(tester);
+  }
+
+  Future<void> settings(String key, {double alignment = .1}) async {
+    await tapKey(tester, 'nav-settings');
+    await Scrollable.ensureVisible(tester.element(find.byKey(ValueKey(key))), alignment: alignment);
+    await settle(tester);
+  }
+
+  Future<void> segment(String key, String label) async {
+    await tester.tap(find.descendant(of: find.byKey(ValueKey(key)), matching: find.text(label)));
+    await settle(tester);
+  }
+
+  Future<void> connectStaging() async {
+    await tester.enterText(find.byKey(const ValueKey('hosts-search')), 'staging-web');
+    await settle(tester);
+    await tapKey(tester, 'connect-staging-web');
+    await tapKey(tester, 'accept-host-key');
+  }
+
+  switch (screen) {
+    case 'login-standard':
+      await tester.tap(find.text(l10n.welcomeServerAction));
+      await settle(tester);
+      await tester.enterText(find.byKey(const ValueKey('server-url')), 'https://sync.example.test');
+      await tester.tap(find.text(l10n.loginCheckServer));
+      await settle(tester);
+      await tester.enterText(find.byKey(const ValueKey('email')), 'you@example.test');
+      await settle(tester);
+    case 'restore-backup':
+      await go(AppRoutes.restore);
+      await tester.enterText(
+        find.byKey(const ValueKey('restore-path')),
+        '/Users/demo/Backups/Workspace-2026-10-01.ccbackup',
+      );
+      await settle(tester);
+    case 'unlock':
+      await tapKey(tester, 'lock-vault');
+    case 'recovery':
+      await tapKey(tester, 'lock-vault');
+      await tapKey(tester, 'forgot-passphrase');
+    case 'settings-overview':
+      await tapKey(tester, 'nav-settings');
+    case 'account-password':
+      await tapKey(tester, 'nav-settings');
+      showChangeAccountPasswordDialog(context()).ignore();
+      await settle(tester);
+    case 'disconnect':
+      await settings('settings-disconnect', alignment: .5);
+      await tapKey(tester, 'settings-disconnect');
+    case 'change-passphrase':
+      await tapKey(tester, 'nav-settings');
+      showChangePassphraseDialog(context()).ignore();
+      await settle(tester);
+    case 'recovery-kit-new':
+      await tapKey(tester, 'nav-settings');
+      showRegenerateKitDialog(context()).ignore();
+      await settle(tester);
+    case 'sync-popover':
+      await tapKey(tester, 'sync-indicator');
+    case 'profiles-menu':
+      await tapKey(tester, 'profile-switcher');
+    case 'device-approve':
+      await tapKey(tester, 'nav-devices');
+      await tapKey(tester, 'review-request');
+    case 'host-editor':
+      await go(AppRoutes.newHost);
+      await tester.enterText(find.byKey(const ValueKey('host-name')), 'web-02');
+      await tester.enterText(find.byKey(const ValueKey('host-address')), 'web-02.example.test');
+      await tester.enterText(find.byKey(const ValueKey('host-username')), 'deploy');
+      await settle(tester);
+    case 'host-editor-jump':
+      await go(AppRoutes.editHost(host('prod-web-1').id));
+      await Scrollable.ensureVisible(tester.element(find.byKey(const ValueKey('jump-mode'))), alignment: .15);
+      await settle(tester);
+      await segment('jump-mode', l10n.hostEditorJumpCustom);
+      await tapKey(tester, 'add-hop');
+      await tapKey(tester, 'add-hop-bastion-a');
+      await tapKey(tester, 'add-hop');
+      await tapKey(tester, 'add-hop-bastion-b');
+      await Scrollable.ensureVisible(tester.element(find.byKey(const ValueKey('jump-mode'))), alignment: .15);
+      await settle(tester);
+    case 'host-editor-security':
+      await go(AppRoutes.editHost(host('prod-web-1').id));
+      await Scrollable.ensureVisible(tester.element(find.byKey(const ValueKey('host-key-policy'))), alignment: .3);
+      await settle(tester);
+    case 'host-effective':
+      await go(AppRoutes.editHost(host('prod-web-1').id));
+      await Scrollable.ensureVisible(tester.element(find.byKey(const ValueKey('effective-panel'))), alignment: .1);
+      await settle(tester);
+    case 'ssh-config-import':
+      await go(AppRoutes.newHost);
+      await tapKey(tester, 'host-editor-import-ssh-config');
+    case 'group-editor':
+      await tapKey(tester, 'add-group');
+      await tester.enterText(find.byKey(const ValueKey('group-name')), en ? 'Monitoring' : 'Мониторинг');
+      await settle(tester);
+    case 'jump-profiles':
+      await tapKey(tester, 'inventory-jump-profiles');
+    case 'credential-chooser':
+      await tapKey(tester, 'nav-credentials');
+      await tapKey(tester, 'add-credential');
+    case 'credential-generate':
+      await tapKey(tester, 'nav-credentials');
+      await tapKey(tester, 'add-credential');
+      await tapKey(tester, 'new-generate');
+    case 'tunnel-editor':
+      await tapKey(tester, 'nav-tunnels');
+      await tapKey(tester, 'add-tunnel');
+      await tester.enterText(find.byKey(const ValueKey('tunnel-name')), en ? 'Webhook preview' : 'Просмотр вебхуков');
+      await segment('tunnel-kind', TunnelKind.remote.localized(l10n));
+      await tester.enterText(find.byKey(const ValueKey('tunnel-bind-host')), '0.0.0.0');
+      await tester.enterText(find.byKey(const ValueKey('tunnel-bind-port')), '8443');
+      await tester.enterText(find.byKey(const ValueKey('tunnel-target-host')), 'localhost');
+      await tester.enterText(find.byKey(const ValueKey('tunnel-target-port')), '3000');
+      await settle(tester);
+    case 'snippets-editor':
+      await tapKey(tester, 'nav-hosts');
+      final snippet = backend.cloud.activeData!.snippets.firstWhere((s) => s.name == 'Clean old compressed logs');
+      showSnippetEditor(context(), snippet: snippet).ignore();
+      await settle(tester);
+    case 'snippets-variables' || 'snippets-run-confirm':
+      await connectStaging();
+      await tapKey(tester, 'nav-snippets');
+      await tester.enterText(find.byKey(const ValueKey('snippet-search')), 'Clean old');
+      await settle(tester);
+      await tapKey(tester, 'run-Clean old compressed logs');
+      if (screen == 'snippets-run-confirm') await tapKey(tester, 'variables-continue');
+    case 'terminal-tab-menu':
+      final tabs = container().read(terminalTabsProvider.notifier);
+      for (final name in ['prod-web-1', 'staging-web', 'raspberry-pi']) {
+        await tabs.open(host(name));
+      }
+      await go(AppRoutes.terminal);
+      final tab = find.byWidgetPredicate(
+        (w) =>
+            w.key is ValueKey<String> &&
+            (w.key! as ValueKey<String>).value.startsWith('tab-') &&
+            (w.key! as ValueKey<String>).value.endsWith('-1'),
+      );
+      await tester.tapAt(tester.getCenter(tab.first), buttons: kSecondaryMouseButton, kind: PointerDeviceKind.mouse);
+      await settle(tester);
+    case 'terminal-settings':
+      await settings('settings-terminal-section', alignment: 0);
+    case 'shortcuts-settings':
+      await settings('settings-shortcuts', alignment: .5);
+    case 'ai-providers':
+      await settings('add-provider', alignment: .2);
+    case 'ai-provider-dialog':
+      await settings('add-provider', alignment: .55);
+      await tapKey(tester, 'add-provider');
+    case 'sftp-local-pane' || 'sftp-transfers':
+      // The mock local disk (/Users/demo) is synthetic: no file of this computer is listed.
+      await tapKey(tester, 'nav-sftp');
+      await tapKey(tester, 'sftp-connect');
+      await pickHost(tester, 'prod-web-1');
+      await tapKey(tester, 'sftp-toolbar-local-pane');
+      if (screen == 'sftp-transfers') {
+        final sftp = container().read(sftpControllerProvider.notifier);
+        await sftp.download(['/home/deploy/deploy.sh', '/home/deploy/notes.txt'], '/Users/demo/Downloads');
+        await sftp.upload(['/Users/demo/Documents/runbook.md'], '/home/deploy');
+        backend.sftpBrowser.debugFailNextTransfer();
+        await sftp.download(['/home/deploy/latest.log'], '/Users/demo/Downloads');
+        await settle(tester);
+        container().read(sftpActivityProvider.notifier).show(SftpActivityTab.transfers);
+        await settle(tester);
+      }
+    case 'sftp-actions' || 'sftp-get-info':
+      await tapKey(tester, 'nav-sftp');
+      await tapKey(tester, 'sftp-connect');
+      await pickHost(tester, 'prod-web-1');
+      await tapKey(tester, 'sftp-row-/home/deploy/deploy.sh');
+      await tapKey(tester, 'sftp-toolbar-actions');
+      if (screen == 'sftp-get-info') await tapKey(tester, 'sftp-action-getInfo');
+    case 'share-accept':
+      await tapKey(tester, 'nav-sharing');
+      final item = (await sharing.list()).firstWhere((i) => i.kind == SharingKind.snippet);
+      showSharingAccept(context(), item).ignore();
+      await settle(tester);
+    case 'share-access':
+      await tapKey(tester, 'nav-sharing');
+      showSharingAccess(context(), sharing.ownedHost).ignore();
+      await settle(tester);
+  }
+}
+
+/// Kubernetes on [GuideKubeService]: a synthetic staging cluster with a
+/// crash-looping Pod, its logs, shell, port forward, YAML review, rollout
+/// diff, a scripted local-AI answer and the kubeconfig import preview.
+Future<void> _kubeScreen(WidgetTester tester, String screen, GuideKubeService kube, AppLocalizations l10n) async {
+  const en = _guideLanguage == 'en';
+  await tapKey(tester, 'nav-kubernetes');
+  if (screen == 'kube-import') {
+    await tapKey(tester, 'kube-import');
+    await tester.enterText(find.byKey(const ValueKey('kube-import-yaml')), 'apiVersion: v1\nkind: Config\n');
+    await tapKey(tester, 'kube-import-submit');
+    return;
+  }
+  await tapKey(tester, 'kube-connect-$guideKubeContext');
+  if (screen == 'kube-ai') {
+    await tapKey(tester, 'kube-open-ai');
+    await tester.enterText(
+      find.byKey(const ValueKey('kube-ai-question')),
+      en ? 'Why does $guideKubePod keep restarting?' : 'Почему $guideKubePod постоянно перезапускается?',
+    );
+    await tapKey(tester, 'kube-ai-send');
+    if (find.byKey(const ValueKey('kube-ai-consent')).evaluate().isNotEmpty) await tapKey(tester, 'kube-ai-consent');
+    await settle(tester);
+    return;
+  }
+  if (screen == 'kube-rollout') {
+    showAppDialog<void>(
+      tester.element(find.byType(Navigator).first),
+      secure: true,
+      builder: (_) => KubeRolloutDialog(
+        sessionId: GuideKubeService.session.id,
+        resource: const KubeResourceRef(
+          api: KubeResourceKind(
+            group: 'apps',
+            version: 'v1',
+            resource: 'deployments',
+            kind: 'Deployment',
+            namespaced: true,
+            verbs: ['get', 'list'],
+          ),
+          name: 'payments',
+          namespace: 'shop',
+        ),
+        service: kube,
+      ),
+    ).ignore();
+    await settle(tester);
+    await tapKey(tester, 'kube-rollout-compare');
+    return;
+  }
+  await tapKey(tester, 'kube-resource-$guideKubePod');
+  switch (screen) {
+    case 'kube-logs':
+      await tapKey(tester, 'kube-logs-tab');
+    case 'kube-shell':
+      await tapKey(tester, 'kube-pod-terminal');
+      await tapKey(tester, 'kube-terminal-open');
+      final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+      final tab = container.read(terminalTabsProvider).tabs.last;
+      tab.terminal.write(
+        '/app \$ env | grep PAYMENTS\r\nPAYMENTS_DB=orders-db.shop.svc:5432\r\n/app \$ ls\r\n'
+        'config.yaml  payments  static\r\n/app \$ ',
+      );
+      await settle(tester);
+    case 'kube-forward':
+      await tapKey(tester, 'kube-pod-forward');
+      await tester.enterText(find.byKey(const ValueKey('kube-forward-remote')), '8080');
+      await settle(tester);
+      await tapKey(tester, 'kube-forward-start');
+    case 'kube-yaml':
+      await tapKey(tester, 'kube-edit-yaml');
+      final detail = await kube.getResource(
+        GuideKubeService.session.id,
+        const KubeResourceRef(
+          api: KubeResourceKind(group: '', version: 'v1', resource: 'pods', kind: 'Pod', namespaced: true, verbs: []),
+          name: guideKubePod,
+          namespace: 'shop',
+        ),
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('kube-yaml-input')),
+        detail.yaml.replaceFirst('    app: payments\n', '    app: payments\n    tier: backend\n'),
+      );
+      await settle(tester);
+      await tapKey(tester, 'kube-yaml-validate');
+  }
+}
+
+/// Teams on [guideTeams]: Settings → Teams, the team window and its dialogs,
+/// team sections in Hosts and team colours on terminal tabs.
+Future<void> _teamsScreen(WidgetTester tester, String screen, MockBackend backend, AppLocalizations l10n) async {
+  const en = _guideLanguage == 'en';
+  Finder inDialog(String key, Finder matching) => find.descendant(of: find.byKey(ValueKey(key)), matching: matching);
+  switch (screen) {
+    case 'teams-hosts':
+      await tester.enterText(find.byKey(const ValueKey('hosts-search')), 'web');
+      await settle(tester);
+      return;
+    case 'teams-run-confirm':
+      await tester.enterText(find.byKey(const ValueKey('hosts-search')), 'staging-web');
+      await settle(tester);
+      await tapKey(tester, 'connect-staging-web');
+      await tapKey(tester, 'accept-host-key');
+      await tapKey(tester, 'nav-snippets');
+      await tester.enterText(find.byKey(const ValueKey('snippet-search')), 'Disk usage');
+      await settle(tester);
+      await tapKey(tester, 'run-Disk usage');
+      return;
+    case 'teams-hosts-section':
+      await tapKey(tester, 'inventory-nav-$inventoryTeamPrefix$guideTeamOps');
+      return;
+    case 'teams-host-menu':
+      await tester.enterText(find.byKey(const ValueKey('hosts-search')), 'raspberry-pi');
+      await settle(tester);
+      await tapKey(tester, 'host-menu-raspberry-pi');
+      return;
+    case 'teams-terminal':
+      final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+      final tabs = container.read(terminalTabsProvider.notifier);
+      TerminalTab? first;
+      for (final name in ['prod-web-1', 'prod-db-1', 'staging-web', 'raspberry-pi']) {
+        final tab = await tabs.open(backend.inventory.currentHosts.firstWhere((h) => h.name == name));
+        first ??= tab;
+      }
+      tabs.activate(0);
+      container.read(routerProvider).go(AppRoutes.terminal);
+      await settle(tester);
+      first!.terminal.write('\x1b[2J\x1b[H');
+      first.terminal.write('deploy@prod-web-1:~\$ systemctl is-active nginx\r\nactive\r\ndeploy@prod-web-1:~\$ ');
+      await settle(tester);
+      return;
+  }
+  await tapKey(tester, 'nav-settings');
+  await Scrollable.ensureVisible(tester.element(find.byKey(const ValueKey('settings-teams'))), alignment: .05);
+  await settle(tester);
+  switch (screen) {
+    case 'teams-create':
+      await tapKey(tester, 'teams-create');
+      await tester.enterText(find.byKey(const ValueKey('team-name')), en ? 'Databases' : 'Базы данных');
+      await tester.enterText(
+        inDialog('create-team-dialog', find.byType(TextField)).at(1),
+        en ? 'Database servers, replicas and backups' : 'Серверы баз данных, реплики и резервные копии',
+      );
+      await tapKey(tester, 'team-color-purple');
+    case 'teams-join-code':
+      await tapKey(tester, 'team-accept-$guideIncomingInvitation');
+    case 'teams-members' || 'teams-invite' || 'teams-compare' || 'teams-policies' || 'teams-history':
+      await tapKey(tester, 'team-row-$guideTeamOps');
+      if (screen == 'teams-invite') {
+        await tapKey(tester, 'team-invite');
+        await tester.enterText(find.byKey(const ValueKey('team-invite-email')), 'oleg@example.test');
+        await tester.enterText(
+          inDialog('team-invite-dialog', find.byType(TextField)).at(1),
+          en ? 'On-call rotation from November' : 'Дежурства с ноября',
+        );
+        await settle(tester);
+      }
+      if (screen == 'teams-compare') {
+        await tapKey(tester, 'team-compare-$guideJoinRequest');
+        await tapKey(tester, 'team-codes-match');
+      }
+      if (screen == 'teams-policies' || screen == 'teams-history') {
+        await tester.tap(
+          inDialog('team-dialog', find.text(screen == 'teams-policies' ? l10n.teamsTabSettings : l10n.teamsTabHistory)),
+        );
+        await settle(tester);
+      }
   }
 }
 
@@ -1051,6 +1456,105 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
   expect(texts, isNot(contains('demo-password-1')));
   expect(find.byType(ConsoleCryptApp), findsOneWidget);
   switch (screen) {
+    case 'login-standard':
+      expect(find.byKey(const ValueKey('password')), findsOneWidget);
+    case 'restore-backup':
+      expect(find.byKey(const ValueKey('restore-submit')), findsOneWidget);
+    case 'unlock':
+      expect(find.byKey(const ValueKey('unlock-passphrase')), findsOneWidget);
+    case 'recovery':
+      expect(find.byKey(const ValueKey('recovery-method')), findsOneWidget);
+    case 'account-password':
+      expect(find.byKey(const ValueKey('change-account-password-dialog')), findsOneWidget);
+    case 'disconnect':
+      expect(find.byKey(const ValueKey('disconnect-dialog')), findsOneWidget);
+    case 'change-passphrase':
+      expect(find.byKey(const ValueKey('change-passphrase-dialog')), findsOneWidget);
+    case 'recovery-kit-new':
+      expect(find.byKey(const ValueKey('regenerate-kit-dialog')), findsOneWidget);
+      expect(texts, isNot(contains(MockCloud.demoRecoveryWords.first)));
+    case 'device-approve':
+      expect(find.byKey(const ValueKey('approve-device-dialog')), findsOneWidget);
+    case 'host-editor-jump':
+      expect(find.byKey(const ValueKey('route-preview')), findsOneWidget);
+    case 'host-effective':
+      expect(find.byKey(const ValueKey('effective-panel')), findsOneWidget);
+    case 'ssh-config-import':
+      expect(find.byKey(const ValueKey('ssh-config-import')), findsOneWidget);
+    case 'group-editor':
+      expect(find.byKey(const ValueKey('group-dialog')), findsOneWidget);
+    case 'jump-profiles':
+      expect(texts, contains(l10n.groupsJumpProfilesSection));
+    case 'credential-generate':
+      expect(find.byKey(const ValueKey('key-algorithm')), findsOneWidget);
+    case 'tunnel-editor':
+      expect(find.byKey(const ValueKey('public-bind-warning')), findsOneWidget);
+    case 'snippets-editor':
+      expect(find.byKey(const ValueKey('snippet-risk')), findsOneWidget);
+    case 'snippets-variables':
+      expect(find.byKey(const ValueKey('variables-continue')), findsOneWidget);
+    case 'snippets-run-confirm':
+      expect(find.byKey(const ValueKey('run-acknowledge')), findsOneWidget);
+    case 'terminal-tab-menu':
+      expect(find.byKey(const ValueKey('terminal-tab-rename')), findsOneWidget);
+    case 'shortcuts-settings':
+      expect(find.byKey(const ValueKey('settings-shortcuts')), findsOneWidget);
+    case 'ai-provider-dialog':
+      expect(find.byKey(const ValueKey('provider-dialog')), findsOneWidget);
+    case 'sftp-local-pane':
+      expect(find.byKey(const ValueKey('sftp-local-pane')), findsOneWidget);
+      expect(texts, contains('/Users/demo'));
+    case 'sftp-transfers':
+      expect(texts, contains('runbook.md'));
+    case 'notes-menu':
+      expect(find.byKey(const ValueKey('notes-list')), findsOneWidget);
+    case 'sftp-actions':
+      expect(find.byKey(const ValueKey('sftp-action-getInfo')), findsOneWidget);
+    case 'sftp-get-info':
+      expect(find.byType(Dialog), findsWidgets);
+    case 'share-accept':
+      expect(find.byKey(const ValueKey('sharing-accept-confirm')), findsOneWidget);
+    case 'share-access':
+      expect(find.byKey(const ValueKey('sharing-access-save')), findsOneWidget);
+    case 'kube-logs':
+      expect(texts, contains('PAYMENTS_API_URL'));
+    case 'kube-shell':
+      expect(find.byKey(const ValueKey('kube-terminal-open')), findsNothing);
+    case 'kube-forward':
+      expect(texts, contains('127.0.0.1:18080'));
+    case 'kube-yaml':
+      expect(find.byKey(const ValueKey('kube-yaml-diff')), findsOneWidget);
+    case 'kube-rollout':
+      expect(texts, contains('/spec/template/spec/containers/0/image'));
+    case 'kube-ai':
+      expect(texts, contains('PAYMENTS_API_URL'));
+    case 'kube-import':
+      expect(find.byKey(const ValueKey('kube-import-approve-files')), findsOneWidget);
+    case 'teams-settings':
+      expect(find.byKey(const ValueKey('team-invitation-$guideIncomingInvitation')), findsOneWidget);
+      expect(find.byKey(const ValueKey('team-row-$guideTeamOps')), findsOneWidget);
+    case 'teams-create':
+      expect(find.byKey(const ValueKey('create-team-dialog')), findsOneWidget);
+    case 'teams-join-code':
+      expect(find.byKey(const ValueKey('team-join-code')), findsOneWidget);
+    case 'teams-members':
+      expect(find.byKey(const ValueKey('team-join-request-$guideJoinRequest')), findsOneWidget);
+      expect(find.byKey(const ValueKey('team-member-guide-anna')), findsOneWidget);
+    case 'teams-invite':
+      expect(find.byKey(const ValueKey('team-invite-dialog')), findsOneWidget);
+    case 'teams-compare':
+      expect(find.byKey(const ValueKey('team-code-compare')), findsOneWidget);
+      expect(tester.widget<GlassButton>(find.byKey(const ValueKey('team-add-member'))).onPressed, isNotNull);
+    case 'teams-policies':
+      expect(find.byKey(const ValueKey('team-policy-ai')), findsOneWidget);
+    case 'teams-history':
+      expect(texts, contains('gleb@example.test'));
+    case 'teams-hosts' || 'teams-hosts-section':
+      expect(find.byKey(const ValueKey('inventory-nav-$inventoryTeamPrefix$guideTeamOps')), findsOneWidget);
+    case 'teams-run-confirm':
+      expect(texts, contains(l10n.teamsPolicyAck('x').split('x').first));
+    case 'teams-host-menu':
+      expect(find.byKey(const ValueKey('host-move-team-raspberry-pi')), findsOneWidget);
     case 'notes-object':
       expect(find.byKey(const ValueKey('notes-list')), findsOneWidget);
       expect(texts, contains(l10n.notesShared));
