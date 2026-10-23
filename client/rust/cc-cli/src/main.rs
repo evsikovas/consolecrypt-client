@@ -386,6 +386,22 @@ enum DeviceCmd {
         #[arg(long)]
         vault: Option<String>,
     },
+    /// Trusted device: announce itself as the approver of a request and show
+    /// the pairing code (protocol 1.11; older servers: the new device's code).
+    /// Approves nothing.
+    Announce {
+        request_id: String,
+    },
+    /// New device: show the pairing code once a trusted device announced
+    /// itself; with `--confirm` (the code shown on the approving device),
+    /// pin that device's keys for verifying its signed approval.
+    Pairing {
+        request_id: String,
+        /// The code shown on the approving device (compared with the one
+        /// computed here from both devices' keys).
+        #[arg(long)]
+        confirm: Option<String>,
+    },
     /// Trusted device: approve a request after comparing verification codes.
     Approve {
         request_id: String,
@@ -768,11 +784,31 @@ async fn init(cli: &Cli, app: &AppCore, a: &InitArgs, out: &Out) -> R {
         let r = app.request_device_approval(a.vault.clone()).await?;
         out.value(&r, || {
             println!("Approval requested (request {}).", r.request_id);
-            println!("Verification code of this device: {}", r.verification_code);
-            println!(
-                "On a trusted device run: cc device approve {} --code \"{}\"",
-                r.request_id, r.verification_code
-            );
+            if r.vrk_commitment {
+                // Protocol 1.11: the code depends on both devices' keys.
+                println!(
+                    "1. On a trusted device run: cc device announce {}",
+                    r.request_id
+                );
+                println!(
+                    "2. Here run: cc device pairing {} — compare the pairing code with the one",
+                    r.request_id
+                );
+                println!(
+                    "   on the trusted device, then: cc device pairing {} --confirm \"<code>\"",
+                    r.request_id
+                );
+                println!(
+                    "3. On the trusted device: cc device approve {} --code \"<code>\"",
+                    r.request_id
+                );
+            } else {
+                println!("Verification code of this device: {}", r.verification_code);
+                println!(
+                    "On a trusted device run: cc device approve {} --code \"{}\"",
+                    r.request_id, r.verification_code
+                );
+            }
             println!("Then here: cc device finish");
         });
         return Ok(());
@@ -1224,6 +1260,68 @@ async fn device(cli: &Cli, app: &AppCore, cmd: &DeviceCmd, out: &Out) -> R {
             });
             if !done {
                 return Err(CliError::Usage("the device is not approved yet".into()));
+            }
+        }
+        DeviceCmd::Announce { request_id } => {
+            unlocked(cli, app).await?;
+            let p = app.start_device_approval(request_id.clone()).await?;
+            out.value(&p, || {
+                println!(
+                    "pairing code with '{}': {}",
+                    p.device_name, p.verification_code
+                );
+                if p.code_version >= 2 {
+                    println!("On the new device run: cc device pairing {request_id} and compare.");
+                }
+            });
+        }
+        DeviceCmd::Pairing {
+            request_id,
+            confirm,
+        } => {
+            open(cli, app).await?;
+            let p = app.device_approval_status(request_id.clone()).await?;
+            let Some(code) = p.pairing_code.clone() else {
+                out.value(&p, || {
+                    if p.vrk_commitment {
+                        println!("no approving device has announced itself yet");
+                    } else {
+                        println!("this server compares this device's code: {}", p.own_code);
+                    }
+                });
+                if confirm.is_some() {
+                    return Err(CliError::Usage(
+                        "no pairing code yet: run `cc device announce` on the trusted device"
+                            .into(),
+                    ));
+                }
+                return Ok(());
+            };
+            match confirm {
+                None => out.value(&p, || {
+                    println!(
+                        "pairing code with '{}': {code}",
+                        p.approver_name.as_deref().unwrap_or("?")
+                    );
+                    println!(
+                        "If it matches the trusted device: cc device pairing {request_id} --confirm \"<code>\""
+                    );
+                }),
+                Some(typed) => {
+                    if digits(typed) != digits(&code) {
+                        return Err(CliError::Usage(
+                            "pairing codes do not match — approver NOT trusted (possible key substitution)"
+                                .into(),
+                        ));
+                    }
+                    let approver = p
+                        .approver_device_id
+                        .clone()
+                        .ok_or_else(|| CliError::Usage("no approving device".into()))?;
+                    app.confirm_device_approver(request_id.clone(), approver, typed.clone())
+                        .await?;
+                    out.ok("pairing code confirmed; run `cc device finish` after the approval");
+                }
             }
         }
         DeviceCmd::Approve { request_id, code } => {

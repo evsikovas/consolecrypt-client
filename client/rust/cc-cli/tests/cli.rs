@@ -1,7 +1,8 @@
 //! End-to-end tests of the `cc` binary: local-only profile (init → hosts →
 //! list → backup export/import) and synced profiles against the in-process
 //! mock server (register + create vault, second device joins with the
-//! passphrase, third device joins by approval with the verification code).
+//! passphrase, third device joins by approval with the pairing code v2 of
+//! protocol 1.11; an older server keeps the device's own code).
 //! A live-server smoke test runs when `CC_E2E_SERVER` is set.
 
 use cc_sync_core::mock::MockServer;
@@ -324,23 +325,38 @@ async fn synced_profiles_against_mock_server() {
         .await,
     );
     let request_id = req["request_id"].as_str().unwrap().to_owned();
-    let code = req["verification_code"].as_str().unwrap().to_owned();
+    assert_eq!(req["vrk_commitment"], true);
     let not_yet = run(&c, &[], &["--json", "device", "finish"]).await;
     assert!(!not_yet.status.success());
-    // A wrong code is refused (nothing is approved).
+    // Protocol 1.11: A announces itself; both show the same pairing code.
+    let announced = json(run(&a, &[], &["--json", "device", "announce", &request_id]).await);
+    assert_eq!(announced["code_version"], 2);
+    let code = announced["verification_code"].as_str().unwrap().to_owned();
+    assert_ne!(code, req["verification_code"].as_str().unwrap());
+    let pairing = json(run(&c, &[], &["--json", "device", "pairing", &request_id]).await);
+    assert_eq!(pairing["pairing_code"].as_str(), Some(code.as_str()));
+    // A wrong code is refused on both devices (nothing is trusted or approved).
+    let wrong_code = "00000 00000 00000 00000 00000 00000";
+    let wrong_pin = run(
+        &c,
+        &[],
+        &["device", "pairing", &request_id, "--confirm", wrong_code],
+    )
+    .await;
+    assert_eq!(wrong_pin.status.code(), Some(2));
     let wrong = run(
         &a,
         &[],
-        &[
-            "device",
-            "approve",
-            &request_id,
-            "--code",
-            "00000 00000 00000 00000 00000 00000",
-        ],
+        &["device", "approve", &request_id, "--code", wrong_code],
     )
     .await;
     assert_eq!(wrong.status.code(), Some(2));
+    ok(run(
+        &c,
+        &[],
+        &["device", "pairing", &request_id, "--confirm", &code],
+    )
+    .await);
     ok(run(
         &a,
         &[],
@@ -442,4 +458,78 @@ fn live_server_smoke() {
     let devices = json(cc(&b, &[], &["--json", "device", "list"]));
     assert_eq!(devices["devices"].as_array().unwrap().len(), 2);
     println!("live server CLI smoke against {url}: OK");
+}
+
+/// A server without vault key commitments (before protocol 1.11): the new
+/// device's own code is compared, as before; the key is pinned unconfirmed.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn approval_against_a_server_without_key_commitments() {
+    let server = MockServer::start_with(cc_sync_core::mock::MockServerConfig {
+        vrk_commitment: false,
+        ..Default::default()
+    })
+    .await;
+    let url = server.url().to_string();
+    let tmp = tempfile::tempdir().unwrap();
+    let (a, c) = (tmp.path().join("a"), tmp.path().join("c"));
+    let email = "cli-old@example.org";
+    json(
+        run(
+            &a,
+            &[],
+            &[
+                "--json",
+                "init",
+                "--server",
+                &url,
+                "--register",
+                "--email",
+                email,
+            ],
+        )
+        .await,
+    );
+    let req = json(
+        run(
+            &c,
+            &[],
+            &[
+                "--json",
+                "init",
+                "--server",
+                &url,
+                "--login",
+                "--email",
+                email,
+                "--request-approval",
+            ],
+        )
+        .await,
+    );
+    assert_eq!(req["vrk_commitment"], false);
+    let request_id = req["request_id"].as_str().unwrap().to_owned();
+    let code = req["verification_code"].as_str().unwrap().to_owned();
+    let pairing = json(run(&c, &[], &["--json", "device", "pairing", &request_id]).await);
+    assert!(pairing["pairing_code"].is_null());
+    let wrong = run(
+        &a,
+        &[],
+        &[
+            "device",
+            "approve",
+            &request_id,
+            "--code",
+            "00000 00000 00000 00000 00000 00000",
+        ],
+    )
+    .await;
+    assert_eq!(wrong.status.code(), Some(2));
+    ok(run(
+        &a,
+        &[],
+        &["device", "approve", &request_id, "--code", &code],
+    )
+    .await);
+    let fin = json(run(&c, &[], &["--json", "device", "finish"]).await);
+    assert_eq!(fin["joined"], true);
 }
