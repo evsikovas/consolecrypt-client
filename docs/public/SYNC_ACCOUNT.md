@@ -24,6 +24,27 @@
 серверы с меткой способа — «Email», «SSO: …», «AD». Подсказку можно удалить
 кнопкой **Забыть**.
 
+### Одобрение нового устройства и ключ хранилища (0.9.2)
+
+Каждое устройство помнит отпечаток ключа своего хранилища и сверяет с ним любой
+полученный ключ — при разблокировке паролем, ключом восстановления, отпечатком
+или Windows Hello, при одобрении и при включении синхронизации. Если сервер
+передал другой ключ, приложение показывает экран «Другой ключ хранилища»:
+данные на устройстве не меняются, синхронизация остановлена, принять «новый»
+ключ нельзя. Не вводите секреты на этом устройстве, скопируйте диагностику и
+сообщите администратору сервера.
+
+С сервером 0.2.2 и новее одобрение проходит так: на доверенном устройстве
+откройте запрос в **Устройствах** — новое устройство сразу показывает имя
+одобряющего и **код пары**. Код вычисляется из ключей обоих устройств и должен
+совпадать на обоих экранах; отметьте совпадение на обоих. Подпись одобрения
+охватывает ключ хранилища, и новое устройство проверяет её ключом, который вы
+подтвердили. Со старым сервером одобрение работает как раньше, а ключ
+хранилища помечается «не подтверждён» — один раз введите пароль хранилища
+(**Устройства** или **Настройки → Хранилище → Подтвердить паролем**). Если
+другое устройство аккаунта сообщило иной ключ, в **Устройствах** появится
+предупреждение с предложением отозвать его.
+
 ### Корпоративный вход (Enterprise)
 
 Сервер синхронизации 0.2.0 и новее (протокол 1.8) может работать в
@@ -103,6 +124,25 @@ and the login (never a password or tokens). Next time that method is
 preselected, the login is filled in, and recent servers are listed under the
 address with a method badge — "Email", "SSO: …", "AD". **Forget** removes the
 hint.
+
+### Approving a new device and the vault key (0.9.2)
+
+Every device remembers the fingerprint of its vault key and checks every key it
+receives against it — on passphrase, Recovery Key or biometric unlock, approval
+and enabling sync. If the server sends a different key, the app shows
+"Different vault key": data on the device is unchanged, sync stops, and there
+is no way to accept the "new" key. Do not enter secrets on that device; copy
+the diagnostics and tell the server administrator.
+
+With server 0.2.2 and later, open the request under **Devices** on a trusted
+device: the new device then shows the approver's name and a **pairing code**
+computed from both devices' keys. Confirm that the codes match on both screens.
+The approval signature covers the vault key and the new device verifies it with
+the key you confirmed. With an older server approval works as before and the
+vault key is marked "not confirmed" until you enter the vault passphrase once
+(**Devices** or **Settings → Vault → Confirm with passphrase**). If another
+device of the account reports a different key, **Devices** warns and offers to
+revoke it.
 
 ### Corporate sign-in (Enterprise)
 
