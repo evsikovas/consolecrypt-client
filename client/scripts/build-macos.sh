@@ -61,8 +61,20 @@ if [[ -d "$SRC/client/rust/rdp-core" ]]; then
 fi
 if [[ "$MODE" == release ]]; then
   export FLUTTER_MACOS_ARM64_ONLY=false
-  # Release apps are universal (Apple Silicon + Intel).
-  rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
+  # Release apps are universal (Apple Silicon + Intel). Install both targets
+  # up front for the pinned toolchain and for "stable", which Cargokit uses
+  # for the bridge; retry, since a dropped download otherwise fails the build.
+  toolchains=("")
+  rustup toolchain list | grep -q '^stable' && toolchains+=(stable)
+  for toolchain in "${toolchains[@]}"; do
+    for attempt in 1 2 3 4 5; do
+      if rustup target add ${toolchain:+--toolchain "$toolchain"} aarch64-apple-darwin x86_64-apple-darwin >/dev/null; then
+        break
+      fi
+      [[ $attempt == 5 ]] && { echo "rustup target add failed ($toolchain)" >&2; exit 1; }
+      sleep $((attempt * 15))
+    done
+  done
 fi
 
 OUT="$REPO/dist/macos"
