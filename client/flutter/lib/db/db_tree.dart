@@ -51,13 +51,17 @@ IconData _kindIcon(DbTreeNode node, DbEngine engine) => switch (node.reference.k
   DbObjectKind.foreignKey => Icons.link,
   DbObjectKind.reference => Icons.call_received_rounded,
   DbObjectKind.dataType => Icons.category_outlined,
+  DbObjectKind.userType => Icons.category_outlined,
+  DbObjectKind.aggregate => Icons.functions,
 };
 
 /// Indexes and triggers show their statement on engines that keep it
-/// (SQLite stores every `CREATE` statement).
+/// (SQLite stores every `CREATE` statement); CQL also describes keyspaces
+/// and secondary indexes.
 bool _describes(DbEngine engine, DbObjectKind kind) =>
     _describable.contains(kind) ||
-    (engine == DbEngine.sqlite && (kind == DbObjectKind.indexObject || kind == DbObjectKind.trigger));
+    (engine == DbEngine.sqlite && (kind == DbObjectKind.indexObject || kind == DbObjectKind.trigger)) ||
+    (engine == DbEngine.cassandra && _describableCql.contains(kind));
 
 /// Objects whose creation statement or description can be shown.
 const _describable = {
@@ -70,7 +74,12 @@ const _describable = {
   DbObjectKind.dictionary,
   DbObjectKind.collection,
   DbObjectKind.redisKey,
+  DbObjectKind.userType,
+  DbObjectKind.aggregate,
 };
+
+/// Also describable on CQL: keyspaces and secondary indexes.
+const _describableCql = {DbObjectKind.database, DbObjectKind.indexObject};
 
 final class _Branch {
   final nodes = <DbTreeNode>[];
@@ -85,10 +94,12 @@ final class _Branch {
 /// SQL clients' navigators. Only shown when a node has several kinds.
 /// Declaration order is display order: a table's columns, keys, foreign
 /// keys, indexes, references and triggers; a file's tables, views, indexes,
-/// sequences, triggers and data types.
+/// sequences, triggers and data types; a keyspace's tables, views, types and
+/// functions.
 enum _Folder {
   tables,
   views,
+  types,
   functions,
   dictionaries,
   columns,
@@ -106,7 +117,8 @@ enum _Folder {
 _Folder? _folderOf(DbObjectKind kind) => switch (kind) {
   DbObjectKind.table || DbObjectKind.collection => _Folder.tables,
   DbObjectKind.view || DbObjectKind.materializedView => _Folder.views,
-  DbObjectKind.function || DbObjectKind.procedure => _Folder.functions,
+  DbObjectKind.function || DbObjectKind.procedure || DbObjectKind.aggregate => _Folder.functions,
+  DbObjectKind.userType => _Folder.types,
   DbObjectKind.sequence => _Folder.sequences,
   DbObjectKind.dictionary => _Folder.dictionaries,
   DbObjectKind.column => _Folder.columns,
@@ -126,6 +138,7 @@ String _folderLabel(AppLocalizations l, _Folder folder, {DbObjectRef? parent}) =
   _Folder.triggers when parent?.kind == DbObjectKind.database => l.dbFolderTableTriggers,
   _Folder.tables => l.dbFolderTables,
   _Folder.views => l.dbFolderViews,
+  _Folder.types => l.dbFolderTypes,
   _Folder.functions => l.dbFolderFunctions,
   _Folder.sequences => l.dbFolderSequences,
   _Folder.dictionaries => l.dbFolderDictionaries,
@@ -341,7 +354,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
             builder: (_) => DbDdlDialog(title: object.name, value: value!, engine: widget.session.engine),
           );
           if (open == true && _current && !value.isWiped) {
-            final blocks = widget.session.engine.sql ? splitSqlStatements(value.expose()) : [value.expose()];
+            final blocks = widget.session.engine.semicolons ? splitSqlStatements(value.expose()) : [value.expose()];
             widget.onDraft(blocks.join('\n\n'));
           }
           return;

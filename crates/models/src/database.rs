@@ -19,6 +19,8 @@ pub enum DbEngine {
     /// container or a Kubernetes Pod. `database` holds the file path; `host`
     /// and `port` are unused.
     Sqlite,
+    /// Apache Cassandra and ScyllaDB (CQL native protocol).
+    Cassandra,
     /// An engine added by a newer version. Decoding tolerates it so a vault
     /// object of a future engine does not fail the whole object; nothing can
     /// open, create or edit such a connection here.
@@ -27,7 +29,7 @@ pub enum DbEngine {
 }
 
 impl DbEngine {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Postgresql,
         Self::Mysql,
         Self::Mariadb,
@@ -35,6 +37,7 @@ impl DbEngine {
         Self::Redis,
         Self::Mongodb,
         Self::Sqlite,
+        Self::Cassandra,
     ];
 
     pub const fn default_port(self, tls: bool) -> u16 {
@@ -45,6 +48,7 @@ impl DbEngine {
             Self::Clickhouse => 8123,
             Self::Redis => 6379,
             Self::Mongodb => 27017,
+            Self::Cassandra => 9042,
             Self::Sqlite | Self::Unknown => 0,
         }
     }
@@ -69,6 +73,28 @@ impl DbEngine {
                 | Self::Redis
                 | Self::Mongodb
         )
+    }
+}
+
+/// CQL consistency levels a connection may choose.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CqlConsistency {
+    Any,
+    One,
+    Two,
+    Three,
+    Quorum,
+    All,
+    LocalQuorum,
+    EachQuorum,
+    LocalOne,
+}
+
+impl CqlConsistency {
+    /// ANY and EACH_QUORUM only apply to writes.
+    pub const fn readable(self) -> bool {
+        !matches!(self, Self::Any | Self::EachQuorum)
     }
 }
 
@@ -320,6 +346,23 @@ pub enum DbOptions {
         #[serde(default = "production_default")]
         read_only: bool,
     },
+    /// Cassandra / ScyllaDB. `host` is the first contact point; the session
+    /// uses one coordinator at a time (see the driver).
+    Cassandra {
+        /// More contact points on the connection port, tried in order.
+        #[serde(default)]
+        contact_points: Vec<String>,
+        /// Expected data center of the coordinator (LOCAL_* consistency).
+        #[serde(default)]
+        local_datacenter: Option<String>,
+        #[serde(default = "cql_read_consistency")]
+        read_consistency: CqlConsistency,
+        #[serde(default = "cql_write_consistency")]
+        write_consistency: CqlConsistency,
+        /// Rows per CQL page.
+        #[serde(default = "cql_page_size")]
+        page_size: u32,
+    },
     /// Options of an engine added by a newer version (see
     /// [`DbEngine::Unknown`]); their fields are not kept.
     #[serde(other)]
@@ -346,6 +389,13 @@ impl DbOptions {
                 read_preference: MongoReadPreference::default(),
             },
             DbEngine::Sqlite => Self::Sqlite { read_only: true },
+            DbEngine::Cassandra => Self::Cassandra {
+                contact_points: Vec::new(),
+                local_datacenter: None,
+                read_consistency: cql_read_consistency(),
+                write_consistency: cql_write_consistency(),
+                page_size: cql_page_size(),
+            },
             DbEngine::Unknown => Self::Unknown,
         }
     }
@@ -359,9 +409,20 @@ impl DbOptions {
             Self::Redis { .. } => DbEngine::Redis,
             Self::Mongodb { .. } => DbEngine::Mongodb,
             Self::Sqlite { .. } => DbEngine::Sqlite,
+            Self::Cassandra { .. } => DbEngine::Cassandra,
             Self::Unknown => DbEngine::Unknown,
         }
     }
+}
+
+fn cql_read_consistency() -> CqlConsistency {
+    CqlConsistency::LocalOne
+}
+fn cql_write_consistency() -> CqlConsistency {
+    CqlConsistency::LocalQuorum
+}
+fn cql_page_size() -> u32 {
+    500
 }
 
 fn application_name() -> String {
@@ -535,6 +596,39 @@ impl DbConnection {
                 }
             }
             DbOptions::Redis { .. } | DbOptions::Sqlite { .. } | DbOptions::Unknown => {}
+            DbOptions::Cassandra {
+                contact_points,
+                local_datacenter,
+                read_consistency,
+                page_size,
+                ..
+            } => {
+                if contact_points.len() > 15 {
+                    return Err(invalid("contact_points", "too many contact points"));
+                }
+                for point in contact_points {
+                    host(point, "contact_points")?;
+                }
+                if let Some(datacenter) = local_datacenter {
+                    text(datacenter, 256, false, "local_datacenter")?;
+                }
+                if !read_consistency.readable() {
+                    return Err(invalid("read_consistency", "not a read consistency"));
+                }
+                if !(1..=10_000).contains(page_size) {
+                    return Err(invalid("page_size", "outside supported bounds"));
+                }
+                // The keyspace is an exact (case-sensitive) CQL name.
+                if !self.database.is_empty()
+                    && (self.database.len() > 48
+                        || !self
+                            .database
+                            .bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || b == b'_'))
+                {
+                    return Err(invalid("database", "invalid keyspace name"));
+                }
+            }
             DbOptions::Mongodb {
                 auth_source,
                 replica_set,
@@ -732,13 +826,17 @@ mod tests {
             DbEngine::Postgresql,
         ))
         .unwrap();
-        json["engine"] = serde_json::json!("cassandra");
-        json["options"] = serde_json::json!({"kind": "cassandra", "page_size": 500});
+        json["engine"] = serde_json::json!("future_engine");
+        json["options"] = serde_json::json!({"kind": "future_engine", "page_size": 500});
         let decoded: DbConnection = serde_json::from_value(json).unwrap();
         assert_eq!(decoded.engine, DbEngine::Unknown);
         assert_eq!(decoded.options, DbOptions::Unknown);
         assert!(decoded.validate().is_err());
-        assert!(DbEngine::Unknown.local_only() && DbEngine::Sqlite.local_only());
+        assert!(
+            DbEngine::Unknown.local_only()
+                && DbEngine::Sqlite.local_only()
+                && DbEngine::Cassandra.local_only()
+        );
         assert!(!DbEngine::Postgresql.local_only() && !DbEngine::Mongodb.local_only());
         // Known shapes stay strict.
         let mut strict =
@@ -908,6 +1006,80 @@ mod tests {
             tunnel_id: ObjectId::NIL,
         };
         assert!(value.validate().is_err());
+    }
+
+    #[test]
+    fn cassandra_options_roundtrip_with_defaults_and_validate() {
+        let mut value = DbConnection::new("ring", "cass-1.example.test", DbEngine::Cassandra);
+        assert_eq!(value.port, 9042);
+        assert!(DbEngine::Cassandra.local_only());
+        assert!(DbEngine::ALL
+            .iter()
+            .filter(|engine| !matches!(engine, DbEngine::Cassandra | DbEngine::Sqlite))
+            .all(|engine| !engine.local_only()));
+        value.database = "shop_events".into();
+        value.options = DbOptions::Cassandra {
+            contact_points: vec!["cass-2.example.test".into(), "10.0.0.3".into()],
+            local_datacenter: Some("dc1".into()),
+            read_consistency: CqlConsistency::LocalOne,
+            write_consistency: CqlConsistency::EachQuorum,
+            page_size: 200,
+        };
+        value.validate().unwrap();
+        let json = serde_json::to_value(&value).unwrap();
+        assert_eq!(json["engine"], "cassandra");
+        assert_eq!(json["options"]["kind"], "cassandra");
+        assert_eq!(json["options"]["write_consistency"], "each_quorum");
+        assert_eq!(serde_json::from_value::<DbConnection>(json).unwrap(), value);
+        // Omitted options take the documented defaults.
+        let defaults: DbOptions =
+            serde_json::from_value(serde_json::json!({"kind": "cassandra"})).unwrap();
+        assert_eq!(defaults, DbOptions::for_engine(DbEngine::Cassandra));
+        for (field, options) in [
+            (
+                "contact",
+                DbOptions::Cassandra {
+                    contact_points: vec!["db/x".into()],
+                    local_datacenter: None,
+                    read_consistency: CqlConsistency::LocalOne,
+                    write_consistency: CqlConsistency::LocalQuorum,
+                    page_size: 500,
+                },
+            ),
+            (
+                "read any",
+                DbOptions::Cassandra {
+                    contact_points: vec![],
+                    local_datacenter: None,
+                    read_consistency: CqlConsistency::Any,
+                    write_consistency: CqlConsistency::LocalQuorum,
+                    page_size: 500,
+                },
+            ),
+            (
+                "page",
+                DbOptions::Cassandra {
+                    contact_points: vec![],
+                    local_datacenter: Some(String::new()),
+                    read_consistency: CqlConsistency::One,
+                    write_consistency: CqlConsistency::One,
+                    page_size: 0,
+                },
+            ),
+        ] {
+            let mut invalid = value.clone();
+            invalid.options = options;
+            assert!(invalid.validate().is_err(), "{field}");
+        }
+        for keyspace in ["bad-name", "a.b", &"k".repeat(49)] {
+            let mut invalid = value.clone();
+            invalid.database = keyspace.to_string();
+            assert!(invalid.validate().is_err(), "{keyspace}");
+        }
+        // Unknown option keys stay rejected like for every engine.
+        let mut json = serde_json::to_value(&value).unwrap();
+        json["options"]["ssl_context"] = serde_json::json!("insecure");
+        assert!(serde_json::from_value::<DbConnection>(json).is_err());
     }
 
     #[test]

@@ -148,4 +148,51 @@ void main() {
       containsPair('escape_formulas', false),
     );
   });
+
+  test('Cassandra options round-trip; unknown engines parse to null; device-local engines', () {
+    const options = DbDriverOptions(
+      engine: DbEngine.cassandra,
+      contactPoints: ['10.0.0.2', 'cass-3'],
+      localDatacenter: 'dc1',
+      writeConsistency: DbCqlConsistency.eachQuorum,
+      pageSize: 200,
+    );
+    final json = options.toJson();
+    expect(json, {
+      'kind': 'cassandra',
+      'contact_points': ['10.0.0.2', 'cass-3'],
+      'local_datacenter': 'dc1',
+      'read_consistency': 'local_one',
+      'write_consistency': 'each_quorum',
+      'page_size': 200,
+    });
+    final back = DbDriverOptions.fromJson(json);
+    expect(back.contactPoints, options.contactPoints);
+    expect(back.writeConsistency, DbCqlConsistency.eachQuorum);
+    expect(DbDriverOptions.fromJson({'kind': 'cassandra'}).readConsistency, DbCqlConsistency.localOne);
+    expect(DbEngine.tryParse('cassandra'), DbEngine.cassandra);
+    expect(DbEngine.tryParse('engine_of_a_newer_version'), isNull);
+    expect(
+      [
+        for (final e in DbEngine.values)
+          if (e.localOnly) e,
+      ],
+      [DbEngine.sqlite, DbEngine.cassandra],
+    );
+    expect(DbEngine.cassandra.sql, isFalse);
+    expect(DbEngine.cassandra.semicolons, isTrue);
+    expect(DbCqlConsistency.any.readable, isFalse);
+  });
+
+  test('CQL column types bind as JSON, integers and text', () {
+    DbCellKind kind(String type) => dbColumnKind(DbColumn(name: 'c', typeName: type, nullable: true));
+    expect(kind('map<text, int>'), DbCellKind.json);
+    expect(kind('frozen<address>'), DbCellKind.json);
+    expect(kind('list<frozen<tuple<int, text>>>'), DbCellKind.json);
+    expect(kind('varint'), DbCellKind.intValue);
+    expect(kind('counter'), DbCellKind.intValue);
+    expect(kind('timeuuid'), DbCellKind.text);
+    expect(kind('duration'), DbCellKind.text);
+    expect(kind('timestamp'), DbCellKind.timestamp);
+  });
 }

@@ -239,7 +239,7 @@ void main() {
 
   test('unknown engines of newer versions are recognized and skipped', () {
     expect(DbEngine.tryParse('sqlite'), DbEngine.sqlite);
-    expect(DbEngine.tryParse('cassandra'), isNull);
+    expect(DbEngine.tryParse('future_engine'), isNull);
     expect(DbEngine.sqlite.localOnly, isTrue);
     expect(DbEngine.postgresql.localOnly, isFalse);
     final json = _file.toJson();

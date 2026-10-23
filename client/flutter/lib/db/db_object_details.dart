@@ -34,6 +34,11 @@ bool dbHasDetails(DbEngine engine, DbObjectRef object) => switch (engine) {
     DbObjectKind.view,
     DbObjectKind.indexObject,
   ].contains(object.kind),
+  DbEngine.cassandra => const [
+    DbObjectKind.database,
+    DbObjectKind.table,
+    DbObjectKind.materializedView,
+  ].contains(object.kind),
 };
 
 /// One catalogue fact as the core sent it.

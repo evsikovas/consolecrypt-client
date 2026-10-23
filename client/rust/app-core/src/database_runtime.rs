@@ -84,6 +84,35 @@ pub(crate) struct DbRuntime {
 }
 
 impl DbRuntime {
+    /// Closes every live session (and its queries) of one connection.
+    pub(crate) fn close_connection(&self, connection_id: &str) {
+        let closed: Vec<Arc<DbSession>> = {
+            let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+            let ids: Vec<String> = sessions
+                .iter()
+                .filter(|(_, session)| session.info().connection_id == connection_id)
+                .map(|(id, _)| id.clone())
+                .collect();
+            ids.iter().filter_map(|id| sessions.remove(id)).collect()
+        };
+        if closed.is_empty() {
+            return;
+        }
+        self.queries
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .retain(|_, query| {
+                !closed
+                    .iter()
+                    .any(|session| session.info().id == query.session_id)
+            });
+        for session in closed {
+            session.close();
+        }
+    }
+}
+
+impl DbRuntime {
     pub(crate) fn close(&self) {
         self.shutdown.cancel();
         self.edits.lock().unwrap_or_else(|e| e.into_inner()).clear();
@@ -300,24 +329,25 @@ impl AppCore {
         password: Option<SecretString>,
     ) -> AppResult<DbCredentials> {
         let (_, unlocked) = self.unlocked().await?;
+        // Device-local connections keep their secrets on this device too.
+        let read = |id: cc_models::ObjectId| {
+            let unlocked = unlocked.clone();
+            async move {
+                match self.db_local_secret(id).await? {
+                    Some(secret) => Ok::<_, AppError>(secret),
+                    None => unlocked.writer.read_secret(id).await,
+                }
+            }
+        };
         let password = match (password, connection.auth.password_secret_id) {
             (Some(password), _) => Some(password),
-            (None, Some(id)) => Some(SecretString::from(
-                unlocked.writer.read_secret(id).await?.value.expose_secret(),
-            )),
+            (None, Some(id)) => Some(SecretString::from(read(id).await?.value.expose_secret())),
             (None, None) => None,
         };
         let client_key_pem = match &connection.auth.client_certificate {
-            Some(certificate) if certificate.key_secret_id != cc_models::ObjectId::NIL => {
-                Some(SecretString::from(
-                    unlocked
-                        .writer
-                        .read_secret(certificate.key_secret_id)
-                        .await?
-                        .value
-                        .expose_secret(),
-                ))
-            }
+            Some(certificate) if certificate.key_secret_id != cc_models::ObjectId::NIL => Some(
+                SecretString::from(read(certificate.key_secret_id).await?.value.expose_secret()),
+            ),
             _ => None,
         };
         Ok(DbCredentials {
@@ -340,6 +370,7 @@ impl AppCore {
                 | DbEngine::Redis
                 | DbEngine::Mongodb
                 | DbEngine::Sqlite
+                | DbEngine::Cassandra
         ) {
             return Err(invalid("engine_unavailable"));
         }

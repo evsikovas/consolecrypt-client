@@ -8,6 +8,7 @@ use cc_models::database::DbEngine;
 use std::collections::BTreeSet;
 use zeroize::{Zeroize, Zeroizing};
 
+pub mod cql;
 pub mod editor;
 mod mongo;
 mod redis;
@@ -35,6 +36,13 @@ pub enum ParsedStatement {
         /// Written key order of `command`; see [`KeyOrder`].
         order: KeyOrder,
     },
+    /// One CQL statement rebuilt from inspected tokens; `?` markers take
+    /// `parameters` in order. `keyspace` is set for `USE`.
+    Cql {
+        text: String,
+        parameters: Vec<DbParameter>,
+        keyspace: Option<String>,
+    },
 }
 
 impl std::fmt::Debug for ParsedStatement {
@@ -43,6 +51,7 @@ impl std::fmt::Debug for ParsedStatement {
             Self::Sql { .. } => "sql",
             Self::Redis { .. } => "redis",
             Self::Mongo { .. } => "mongo",
+            Self::Cql { .. } => "cql",
         };
         f.debug_struct("ParsedStatement")
             .field("kind", &kind)
@@ -63,6 +72,17 @@ impl Drop for ParsedStatement {
             Self::Mongo { command, order } => {
                 wipe_json(command);
                 order.zeroize();
+            }
+            Self::Cql {
+                text,
+                parameters,
+                keyspace,
+            } => {
+                text.zeroize();
+                keyspace.zeroize();
+                for parameter in parameters {
+                    wipe_parameter(parameter);
+                }
             }
         }
     }
@@ -161,6 +181,7 @@ pub(crate) fn parse(
     let result = match engine {
         DbEngine::Redis => redis::parse(request),
         DbEngine::Mongodb => mongo::parse(request),
+        DbEngine::Cassandra => cql::parse(request),
         DbEngine::Postgresql
         | DbEngine::Mysql
         | DbEngine::Mariadb

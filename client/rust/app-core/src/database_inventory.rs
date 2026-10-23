@@ -92,13 +92,15 @@ impl AppCore {
                 // An engine never moves between the vault and this device.
                 return Err(invalid("engine_changed"));
             }
-            if password.is_some() || private_key.is_some() {
+            // An SQLite file has no password or client key.
+            if connection.engine == cc_models::database::DbEngine::Sqlite
+                && (password.is_some() || private_key.is_some())
+            {
                 return Err(invalid("credential_unavailable"));
             }
-            if creating {
-                connection.id = ObjectId::new();
-            }
-            return self.db_save_local_connection(connection, creating).await;
+            return self
+                .db_save_local_with_credentials(connection, creating, password, private_key)
+                .await;
         }
         let existing = if creating {
             connection.id = ObjectId::new();
@@ -141,6 +143,8 @@ impl AppCore {
         let id = crate::dto::parse_id("connection_id", &id)?;
         if unlocked.working().db_connection(id).is_none() {
             if self.db_delete_local_connection(id).await? {
+                unlocked.db.close_connection(&id.to_string());
+                self.db_prune_local_secrets().await?;
                 return Ok(());
             }
             return Err(invalid("connection_unavailable"));
@@ -151,6 +155,40 @@ impl AppCore {
         // Credentials may be shared with other objects and are retained.
         unlocked.writer.delete(id).await?;
         Ok(())
+    }
+}
+
+impl AppCore {
+    /// Saves a device-local connection; a new password or client key is
+    /// sealed on this device too (`database_local_secrets`), never in the
+    /// vault. Live sessions of the connection close.
+    async fn db_save_local_with_credentials(
+        &self,
+        mut connection: DbConnection,
+        creating: bool,
+        password: Option<SecretValue>,
+        private_key: Option<SecretValue>,
+    ) -> AppResult<DbConnection> {
+        let existing = if creating {
+            connection.id = ObjectId::new();
+            None
+        } else {
+            self.db_saved_connection(connection.id).await?
+        };
+        let secrets =
+            prepare_credentials(&mut connection, existing.as_ref(), password, private_key)?;
+        let fresh: std::collections::HashSet<_> = secrets.iter().map(|secret| secret.id).collect();
+        for id in connection.auth.secret_ids() {
+            if !fresh.contains(&id) && !self.db_has_local_secret(id).await? {
+                return Err(invalid("credential_unavailable"));
+            }
+        }
+        self.db_save_local_secrets(secrets).await?;
+        let saved = self.db_save_local_connection(connection, creating).await?;
+        self.db_prune_local_secrets().await?;
+        let (_, unlocked) = self.unlocked().await?;
+        unlocked.db.close_connection(&saved.id.to_string());
+        Ok(saved)
     }
 }
 

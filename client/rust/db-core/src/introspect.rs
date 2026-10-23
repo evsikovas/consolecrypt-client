@@ -18,6 +18,14 @@ const MAX_COMPLETIONS: usize = 200;
 /// Quoted, qualified identifier: PostgreSQL/ClickHouse `"schema"."name"`
 /// (ClickHouse uses the database), MySQL `` `db`.`name` ``.
 pub fn quote_identifier(engine: DbEngine, object: &DbObjectRef) -> String {
+    if engine == DbEngine::Cassandra {
+        // CQL: keyspace-qualified, quoted only where a name needs it.
+        return if object.kind == DbObjectKind::Database {
+            crate::parser::cql::quote_name(&object.name)
+        } else {
+            crate::parser::cql::qualified(&object.database, &object.name)
+        };
+    }
     let quote = |name: &str| match engine {
         DbEngine::Mysql | DbEngine::Mariadb => format!("`{}`", name.replace('`', "``")),
         DbEngine::Clickhouse => format!("`{}`", name.replace('\\', "\\\\").replace('`', "\\`")),
@@ -118,7 +126,21 @@ impl DbSession {
                 _ => Err(DbError::InvalidRequest),
             },
             DbEngine::Sqlite => self.sqlite_ddl(object).await,
+            DbEngine::Cassandra => match &*self.driver.lock().await {
+                Driver::Cassandra(driver) => driver.ddl(object, &self.scope.child_token()).await,
+                _ => Err(DbError::InvalidRequest),
+            },
             DbEngine::Unknown => Err(DbError::InvalidRequest),
+        }
+    }
+
+    /// The CQL creation statement built from `system_schema`, the fallback
+    /// for servers without `DESCRIBE` (exercised by the live tests).
+    #[doc(hidden)]
+    pub async fn cassandra_schema_ddl(&self, object: &DbObjectRef) -> Result<String, DbError> {
+        match &*self.driver.lock().await {
+            Driver::Cassandra(driver) => driver.built_ddl(object, &self.scope.child_token()).await,
+            _ => Err(DbError::InvalidRequest),
         }
     }
 
@@ -360,6 +382,7 @@ impl DbSession {
                 | DbEngine::Mariadb
                 | DbEngine::Clickhouse
                 | DbEngine::Sqlite
+                | DbEngine::Cassandra
         ) {
             return Ok(Vec::new());
         }
@@ -372,10 +395,24 @@ impl DbSession {
             *cache = Some(self.load_completion().await?);
         }
         let cache = cache.as_ref().expect("loaded above");
-        Ok(complete_from(cache, text, qualifier.as_deref(), &prefix))
+        let keywords = if self.info.engine == DbEngine::Cassandra {
+            CQL_KEYWORDS
+        } else {
+            KEYWORDS
+        };
+        Ok(complete_from(
+            cache,
+            keywords,
+            text,
+            qualifier.as_deref(),
+            &prefix,
+        ))
     }
 
     async fn load_completion(&self) -> Result<CompletionCache, DbError> {
+        if self.info.engine == DbEngine::Cassandra {
+            return self.cassandra_completion().await;
+        }
         let (tables, columns) = match self.info.engine {
             DbEngine::Postgresql => (
                 "SELECT n.nspname, c.relname, CASE c.relkind WHEN 'v' THEN 'view' WHEN 'm' THEN 'materialized view' ELSE 'table' END \
@@ -555,6 +592,12 @@ impl DbSession {
                     "stream" => format!("XRANGE {key} - + COUNT {limit}"),
                     _ => format!("GET {key}"),
                 })
+            }
+            (DbEngine::Cassandra, DbObjectKind::Table | DbObjectKind::MaterializedView) => {
+                Ok(format!(
+                    "SELECT * FROM {} LIMIT {limit};",
+                    quote_identifier(self.info.engine, object)
+                ))
             }
             (DbEngine::Mongodb, DbObjectKind::Collection) => Ok(format!(
                 "db.getCollection({}).find({{}}).limit({limit})",
@@ -821,6 +864,120 @@ const KEYWORDS: &[&str] = &[
     "FALSE",
 ];
 
+/// CQL statements and clauses offered by completion.
+const CQL_KEYWORDS: &[&str] = &[
+    "SELECT",
+    "FROM",
+    "WHERE",
+    "AND",
+    "IN",
+    "CONTAINS",
+    "CONTAINS KEY",
+    "ORDER BY",
+    "GROUP BY",
+    "PER PARTITION LIMIT",
+    "LIMIT",
+    "ALLOW FILTERING",
+    "DISTINCT",
+    "JSON",
+    "TOKEN",
+    "WRITETIME",
+    "TTL",
+    "COUNT",
+    "INSERT INTO",
+    "VALUES",
+    "IF NOT EXISTS",
+    "IF EXISTS",
+    "USING TTL",
+    "USING TIMESTAMP",
+    "UPDATE",
+    "SET",
+    "DELETE FROM",
+    "BEGIN BATCH",
+    "BEGIN UNLOGGED BATCH",
+    "APPLY BATCH",
+    "TRUNCATE",
+    "CREATE TABLE",
+    "CREATE KEYSPACE",
+    "CREATE INDEX",
+    "CREATE MATERIALIZED VIEW",
+    "CREATE TYPE",
+    "ALTER TABLE",
+    "DROP TABLE",
+    "PRIMARY KEY",
+    "CLUSTERING ORDER BY",
+    "WITH",
+    "USE",
+    "DESCRIBE",
+    "ASC",
+    "DESC",
+    "NULL",
+    "TRUE",
+    "FALSE",
+    "frozen",
+    "list",
+    "set",
+    "map",
+    "tuple",
+    "text",
+    "int",
+    "bigint",
+    "uuid",
+    "timeuuid",
+    "timestamp",
+    "boolean",
+    "decimal",
+    "double",
+    "blob",
+    "counter",
+    "now()",
+    "toTimestamp",
+    "toJson",
+    "fromJson",
+];
+
+impl DbSession {
+    /// Tables and views of every application keyspace with their columns.
+    async fn cassandra_completion(&self) -> Result<CompletionCache, DbError> {
+        let driver = self.driver.lock().await;
+        let Driver::Cassandra(driver) = &*driver else {
+            return Err(DbError::InvalidRequest);
+        };
+        let cancel = self.scope.child_token();
+        let user = |keyspace: &str| !keyspace.starts_with("system");
+        let mut tables = Vec::new();
+        for (cql, kind) in [
+            (
+                "SELECT keyspace_name, table_name FROM system_schema.tables",
+                "table",
+            ),
+            (
+                "SELECT keyspace_name, view_name FROM system_schema.views",
+                "materialized view",
+            ),
+        ] {
+            for row in driver.catalogue(cql, &[], &cancel).await? {
+                if user(&row[0]) && tables.len() < MAX_COMPLETION_OBJECTS {
+                    tables.push((row[0].clone(), row[1].clone(), kind.to_owned()));
+                }
+            }
+        }
+        let columns = driver
+            .catalogue(
+                "SELECT keyspace_name, table_name, column_name, type FROM system_schema.columns",
+                &[],
+                &cancel,
+            )
+            .await?
+            .into_iter()
+            .filter(|row| user(&row[0]))
+            .map(|row| (row[1].clone(), row[2].clone(), row[3].clone()))
+            .take(MAX_COMPLETION_OBJECTS)
+            .collect();
+        Ok(CompletionCache { tables, columns })
+    }
+}
+
 /// Table of an alias declared anywhere in the statement (`table alias`,
 /// `table AS alias`).
 fn alias_table(before: &str, alias: &str) -> Option<String> {
@@ -866,6 +1023,7 @@ fn alias_table(before: &str, alias: &str) -> Option<String> {
 
 fn complete_from(
     cache: &CompletionCache,
+    keywords: &[&str],
     statement: &str,
     qualifier: Option<&str>,
     prefix: &str,
@@ -913,7 +1071,7 @@ fn complete_from(
     if prefix.is_empty() {
         return out;
     }
-    for keyword in KEYWORDS {
+    for keyword in keywords {
         if keyword.to_lowercase().starts_with(&lower) && keyword.len() > prefix.len() {
             let keyword = if prefix.chars().all(|c| !c.is_uppercase()) {
                 keyword.to_lowercase()
@@ -975,7 +1133,7 @@ mod tests {
     fn completes_keywords_tables_and_columns() {
         let labels =
             |items: Vec<DbCompletion>| items.into_iter().map(|c| c.label).collect::<Vec<_>>();
-        let found = complete_from(&cache(), "SELECT * FROM ord", None, "ord");
+        let found = complete_from(&cache(), KEYWORDS, "SELECT * FROM ord", None, "ord");
         assert_eq!(
             labels(found.clone()),
             ["order by", "orders", "order_items", "ordered_at"]
@@ -984,6 +1142,7 @@ mod tests {
         assert_eq!(
             labels(complete_from(
                 &cache(),
+                KEYWORDS,
                 "SELECT * FROM sales.",
                 Some("sales"),
                 ""
@@ -992,12 +1151,13 @@ mod tests {
         );
         let before = "SELECT o. FROM orders o";
         assert_eq!(
-            labels(complete_from(&cache(), before, Some("o"), "")),
+            labels(complete_from(&cache(), KEYWORDS, before, Some("o"), "")),
             ["id", "ordered_at"]
         );
         assert_eq!(
             labels(complete_from(
                 &cache(),
+                KEYWORDS,
                 "SELECT c.n FROM customers AS c",
                 Some("c"),
                 "n"
@@ -1022,6 +1182,10 @@ mod tests {
         assert_eq!(
             quote_identifier(DbEngine::Mysql, &table),
             "`shop`.`or\"de``rs`"
+        );
+        assert_eq!(
+            quote_identifier(DbEngine::Cassandra, &table),
+            "shop.\"or\"\"de`rs\""
         );
         assert_eq!(
             quote_identifier(DbEngine::Clickhouse, &table),

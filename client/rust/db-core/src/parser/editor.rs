@@ -91,6 +91,7 @@ pub fn format_query(engine: DbEngine, text: &str) -> Result<String, DbError> {
                 .collect::<Vec<_>>()
                 .join("\n"))
         }
+        DbEngine::Cassandra => super::cql::format(text),
         DbEngine::Mongodb => {
             let commands = super::mongo::split(text)?
                 .into_iter()
@@ -162,6 +163,7 @@ pub fn parameter_names(engine: DbEngine, text: &str) -> Result<Vec<String>, DbEr
                 }
             }
         }
+        DbEngine::Cassandra => names.extend(super::cql::parameter_names(text)?),
         DbEngine::Mongodb => {
             for part in super::mongo::split(text)? {
                 let command = if part.trim_start().starts_with('{') {
@@ -425,6 +427,16 @@ fn statements(engine: DbEngine, text: &str) -> Result<Vec<Statement>, DbError> {
                 if !comment {
                     group.finish(&mut statements);
                 }
+            }
+        }
+        DbEngine::Cassandra => {
+            for (comment, delimiter, start, end) in super::cql::pieces(text)? {
+                let kind = match (comment, delimiter) {
+                    (true, _) => Piece::Comment,
+                    (_, true) => Piece::Delimiter,
+                    _ => Piece::Code,
+                };
+                token(kind, start, end, &mut group, &mut statements);
             }
         }
         DbEngine::Mongodb => {

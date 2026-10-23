@@ -11,7 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 final _highlightTokens = RegExp(
-  r'''(--[^\n]*|//[^\n]*|/\*[\s\S]*?\*/|'(?:''|[^'])*'|\"(?:\\.|[^\"])*\"|\b(?:SELECT|FROM|WHERE|JOIN|LEFT|RIGHT|GROUP|BY|ORDER|LIMIT|OFFSET|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH|AS|AND|OR|NOT|NULL|TRUE|FALSE|SET|GET|SCAN|HGETALL|ZRANGE|FIND|AGGREGATE|MATCH|PROJECT|SORT|TABLE|INDEX|UNIQUE|PRIMARY|KEY|FOREIGN|REFERENCES|CONSTRAINT|DEFAULT|CHECK|ON|USING|VIEW|SEQUENCE|FUNCTION|PROCEDURE|TRIGGER|RETURNS|BEGIN|END|IF|EXISTS|ENGINE|PARTITION|INTO|VALUES)\b|\{\{[A-Za-z_][A-Za-z0-9_]*\}\}|\b\d+(?:\.\d+)?\b)''',
+  r'''(--[^\n]*|//[^\n]*|/\*[\s\S]*?\*/|'(?:''|[^'])*'|\"(?:\\.|[^\"])*\"|\b(?:SELECT|FROM|WHERE|JOIN|LEFT|RIGHT|GROUP|BY|ORDER|LIMIT|OFFSET|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH|AS|AND|OR|NOT|NULL|TRUE|FALSE|SET|GET|SCAN|HGETALL|ZRANGE|FIND|AGGREGATE|MATCH|PROJECT|SORT|TABLE|INDEX|UNIQUE|PRIMARY|KEY|FOREIGN|REFERENCES|CONSTRAINT|DEFAULT|CHECK|ON|USING|VIEW|SEQUENCE|FUNCTION|PROCEDURE|TRIGGER|RETURNS|BEGIN|END|IF|EXISTS|ENGINE|PARTITION|INTO|VALUES|KEYSPACE|BATCH|APPLY|TRUNCATE|USE|ALLOW|FILTERING|CLUSTERING|TTL|WRITETIME|TOKEN|CONTAINS|DESCRIBE)\b|\{\{[A-Za-z_][A-Za-z0-9_]*\}\}|\b\d+(?:\.\d+)?\b)''',
   caseSensitive: false,
 );
 
@@ -403,7 +403,8 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
             ),
             tool('db-cancel', Icons.stop_rounded, l.dbCancelQuery, widget.running ? widget.onCancel : null),
             divider(),
-            if (widget.onExplain != null && sql)
+            // CQL has no EXPLAIN.
+            if (widget.onExplain != null && sql && widget.session.engine != DbEngine.cassandra)
               GlassMenuButton<bool>(
                 key: const ValueKey('db-explain-menu'),
                 entries: [

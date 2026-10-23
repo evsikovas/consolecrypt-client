@@ -290,6 +290,7 @@ impl AppCore {
             DbEngine::Redis => (SnippetType::RedisCli, None),
             DbEngine::Mongodb => (SnippetType::Shell, Some("mongosh")),
             DbEngine::Sqlite => (SnippetType::Sql, Some("sqlite")),
+            DbEngine::Cassandra => (SnippetType::Cql, None),
             DbEngine::Unknown => (SnippetType::Sql, None),
         };
         let template = row.text.expose_secret().to_owned();

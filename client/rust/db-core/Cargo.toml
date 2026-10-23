@@ -45,6 +45,10 @@ percent-encoding = "2"
 csv = "1"
 encoding_rs = "0.8"
 hex.workspace = true
+# CQL (Cassandra / ScyllaDB). No driver TLS feature: the local relay performs
+# rustls TLS with the connection's own policy, so no OpenSSL is linked.
+scylla = { version = "1.9.0", default-features = false }
+num-bigint = "0.4"
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -37,11 +37,24 @@ const _cache = DbConnection(
   options: DbDriverOptions(engine: DbEngine.redis),
 );
 
+const _ring = DbConnection(
+  id: 'ring',
+  name: 'events ring',
+  engine: DbEngine.cassandra,
+  host: 'cass-1.internal',
+  port: 9042,
+  database: 'events',
+  production: false,
+  options: DbDriverOptions(engine: DbEngine.cassandra, contactPoints: ['cass-2.internal'], localDatacenter: 'dc1'),
+);
+
 class _Service implements DbService {
+  _Service([this.items = const [_prod, _cache]]);
+  final List<DbConnection> items;
   @override
   Stream<void> changes() => const Stream.empty();
   @override
-  Future<List<DbConnection>> connections() async => const [_prod, _cache];
+  Future<List<DbConnection>> connections() async => items;
   @override
   Future<DbConnectionChoices> connectionChoices() async => const DbConnectionChoices();
   @override
@@ -60,7 +73,7 @@ class _Service implements DbService {
   Future<void> discardImport(String ticket) async {}
 }
 
-Future<List<DbConnection>> _pump(WidgetTester tester, MockBackend backend) async {
+Future<List<DbConnection>> _pump(WidgetTester tester, MockBackend backend, [_Service? service]) async {
   final opened = <DbConnection>[];
   tester.view.physicalSize = const Size(1100, 900);
   tester.view.devicePixelRatio = 1;
@@ -69,7 +82,7 @@ Future<List<DbConnection>> _pump(WidgetTester tester, MockBackend backend) async
     ProviderScope(
       overrides: [
         appServicesProvider.overrideWithValue(backend.services),
-        dbServiceProvider.overrideWithValue(_Service()),
+        dbServiceProvider.overrideWithValue(service ?? _Service()),
         dbScopeProvider.overrideWithValue(const DbScope('profile', true)),
       ],
       child: MaterialApp(
@@ -152,6 +165,20 @@ void main() {
     await tester.tap(find.widgetWithText(FilterChip, 'staging'));
     await settle(tester);
     expect(find.byKey(const ValueKey('db-connection-prod')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Cassandra connections are marked "This device only" and open the CQL options', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await _pump(tester, backend, _Service(const [_ring]));
+    expect(find.byKey(const ValueKey('db-local-only-ring')), findsOneWidget);
+    expect(find.text('Cassandra / ScyllaDB · cass-1.internal:9042 · events'), findsOneWidget);
+    await tapKey(tester, 'db-menu-ring');
+    await tester.tap(find.text('Edit'));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-local-only')), findsOneWidget);
+    expect(find.text('Keyspace'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

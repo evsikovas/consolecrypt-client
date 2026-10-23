@@ -17741,19 +17741,19 @@ abstract class AppLocalizations {
   /// Object details dialog: title of a group of fields; id is a fixed section id.
   ///
   /// In en, this message translates to:
-  /// **'{id, select, general{General} size{Size} structure{Structure} partitioning{Partitioning} maintenance{Maintenance} other{{id}}}'**
+  /// **'{id, select, general{General} size{Size} structure{Structure} partitioning{Partitioning} maintenance{Maintenance} replication{Replication} storage{Storage} other{{id}}}'**
   String dbDetailsSection(String id);
 
   /// Object details dialog: label of one catalogue fact about a table, view or key; id is a fixed field id.
   ///
   /// In en, this message translates to:
-  /// **'{id, select, kind{Object type} persistence{Storage} schema{Schema} owner{Owner} tablespace{Tablespace} comment{Comment} rows{Rows} live_rows{Live rows} dead_rows{Dead rows} total_size{Total size} table_size{Table data} index_size{Indexes} toast_size{TOAST} columns{Columns} indexes{Indexes} constraints{Constraints} triggers{Triggers} definition_length{Definition length, characters} partition_key{Partition key} partitions{Partitions} partition_of{Partition of} last_vacuum{Last VACUUM} last_autovacuum{Last autovacuum} last_analyze{Last ANALYZE} last_autoanalyze{Last autoanalyze} engine{Engine} row_format{Row format} collation{Collation} definer{Definer} updatable{Updatable} security{Security} average_row{Average row} free_space{Free space} auto_increment{Next AUTO_INCREMENT} created{Created} updated{Updated} uncompressed_size{Uncompressed} parts{Active parts} sorting_key{Sorting key} primary_key{Primary key} sampling_key{Sampling key} ttl{TTL} metadata_modified{Metadata changed} type{Type} encoding{Encoding} database{Database} memory{Memory} keys{Keys} length_bytes{Length, bytes} length_fields{Fields} length_elements{Elements} length_members{Members} length_entries{Entries} page_size{Page size} page_count{Pages} freelist_count{Free pages} foreign_keys{Foreign keys} strict{STRICT} without_rowid{WITHOUT ROWID} autoincrement{AUTOINCREMENT} version{Version} table{Table} other{{id}}}'**
+  /// **'{id, select, kind{Object type} persistence{Storage} schema{Schema} owner{Owner} tablespace{Tablespace} comment{Comment} rows{Rows} live_rows{Live rows} dead_rows{Dead rows} total_size{Total size} table_size{Table data} index_size{Indexes} toast_size{TOAST} columns{Columns} indexes{Indexes} constraints{Constraints} triggers{Triggers} definition_length{Definition length, characters} partition_key{Partition key} partitions{Partitions} partition_of{Partition of} last_vacuum{Last VACUUM} last_autovacuum{Last autovacuum} last_analyze{Last ANALYZE} last_autoanalyze{Last autoanalyze} engine{Engine} row_format{Row format} collation{Collation} definer{Definer} updatable{Updatable} security{Security} average_row{Average row} free_space{Free space} auto_increment{Next AUTO_INCREMENT} created{Created} updated{Updated} uncompressed_size{Uncompressed} parts{Active parts} sorting_key{Sorting key} primary_key{Primary key} sampling_key{Sampling key} ttl{TTL} metadata_modified{Metadata changed} type{Type} encoding{Encoding} database{Database} memory{Memory} keys{Keys} length_bytes{Length, bytes} length_fields{Fields} length_elements{Elements} length_members{Members} length_entries{Entries} page_size{Page size} page_count{Pages} freelist_count{Free pages} foreign_keys{Foreign keys} strict{STRICT} without_rowid{WITHOUT ROWID} autoincrement{AUTOINCREMENT} version{Version} table{Table} keyspace{Keyspace} base_table{Base table} id{ID} cql_partition_key{Partition key} clustering_key{Clustering key} compaction{Compaction} compression{Compression} gc_grace_seconds{GC grace, seconds} default_ttl{Default TTL, seconds} caching{Caching} bloom_filter{Bloom filter false positives} speculative_retry{Speculative retry} cql_partitions{Partitions} mean_partition_size{Mean partition size} strategy{Replication strategy} replication{Replicas} durable_writes{Durable writes} tables{Tables} views{Materialized views} types{User types} functions{Functions} other{{id}}}'**
   String dbDetailsField(String id);
 
   /// Object details dialog: the kind or storage of a relation; id is a fixed keyword.
   ///
   /// In en, this message translates to:
-  /// **'{id, select, table{Table} partitioned_table{Partitioned table} view{View} materialized_view{Materialized view} foreign_table{Foreign table} unlogged{Unlogged} temporary{Temporary} index{Index} yes{Yes} no{No} other{{id}}}'**
+  /// **'{id, select, table{Table} partitioned_table{Partitioned table} view{View} materialized_view{Materialized view} foreign_table{Foreign table} unlogged{Unlogged} temporary{Temporary} index{Index} yes{Yes} no{No} keyspace{Keyspace} other{{id}}}'**
   String dbDetailsKeyword(String id);
 
   /// Object details dialog: a Redis key without TTL.
@@ -22261,6 +22261,306 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{method} instead of the vault passphrase for risky actions on this device. Changing the passphrase, a new Recovery Kit, turning off device unlock, backups, approving devices and account security always ask for the passphrase.'**
   String confirmActionsWithPresenceHelp(String method);
+
+  /// Databases: connection dialog field for the default CQL keyspace (Cassandra / ScyllaDB).
+  ///
+  /// In en, this message translates to:
+  /// **'Keyspace'**
+  String get dbKeyspace;
+
+  /// Databases: Cassandra option, extra contact point hosts on the same port.
+  ///
+  /// In en, this message translates to:
+  /// **'More contact points (hosts, comma-separated)'**
+  String get dbCassandraContactPoints;
+
+  /// Databases: Cassandra option, the data center the coordinator node must be in.
+  ///
+  /// In en, this message translates to:
+  /// **'Local data center'**
+  String get dbCassandraLocalDc;
+
+  /// Databases: Cassandra option, consistency level for reads.
+  ///
+  /// In en, this message translates to:
+  /// **'Read consistency'**
+  String get dbCassandraReadConsistency;
+
+  /// Databases: Cassandra option, consistency level for writes.
+  ///
+  /// In en, this message translates to:
+  /// **'Write consistency'**
+  String get dbCassandraWriteConsistency;
+
+  /// Databases: Cassandra option, rows fetched per CQL page.
+  ///
+  /// In en, this message translates to:
+  /// **'Rows per page'**
+  String get dbCassandraPageSize;
+
+  /// Databases: help text under the Cassandra options about the single coordinator.
+  ///
+  /// In en, this message translates to:
+  /// **'The session works through one coordinator node: the first contact point that answers. Through SSH, a tunnel, Kubernetes or Docker only that endpoint is used and other cluster nodes are never contacted directly. With a local data center set, the coordinator must be in it.'**
+  String get dbCassandraRouteHelp;
+
+  /// Databases: error when the Cassandra coordinator is in another data center.
+  ///
+  /// In en, this message translates to:
+  /// **'The node that answered is in another data center than the configured local one. Check the contact points or the local data center.'**
+  String get dbErrorDatacenter;
+
+  /// Databases: error when editing a connection would move it between the vault and the device-local store.
+  ///
+  /// In en, this message translates to:
+  /// **'This connection cannot switch to that engine: synced connections and connections kept on this device are stored separately. Create a new connection instead.'**
+  String get dbErrorEngineChange;
+
+  /// Databases: error when sharing or syncing a device-local connection is attempted.
+  ///
+  /// In en, this message translates to:
+  /// **'This connection is kept on this device only and cannot be shared or synced.'**
+  String get dbErrorDeviceOnly;
+
+  /// Databases: structure tree folder of user-defined types (CQL).
+  ///
+  /// In en, this message translates to:
+  /// **'Types'**
+  String get dbFolderTypes;
+
+  /// Databases: title of the confirmation before a CQL query that scans a whole table.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole-table read'**
+  String get dbScanWarningTitle;
+
+  /// Databases: confirmation text before running a CQL query with ALLOW FILTERING.
+  ///
+  /// In en, this message translates to:
+  /// **'ALLOW FILTERING makes the cluster read and filter rows of the whole table, which can be slow and load every node. Run it anyway?'**
+  String get dbScanAllowFiltering;
+
+  /// Databases: confirmation text before running a CQL SELECT without WHERE and LIMIT.
+  ///
+  /// In en, this message translates to:
+  /// **'This query has no WHERE and no LIMIT: it reads the whole table page by page across the cluster. Run it anyway?'**
+  String get dbScanFullTable;
+
+  /// Snippet library: name of the Cassandra / ScyllaDB starter package.
+  ///
+  /// In en, this message translates to:
+  /// **'Cassandra / ScyllaDB'**
+  String get snippetPackCassandra;
+
+  /// Snippet library: description of the Cassandra / ScyllaDB starter package.
+  ///
+  /// In en, this message translates to:
+  /// **'Schema, cluster nodes, size estimates, partitions, TTLs and roles in CQL. For cqlsh or the Databases workspace.'**
+  String get snippetPackCassandraDescription;
+
+  /// Snippet library: name of the cql.keyspaces database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Keyspaces and replication'**
+  String get snippetDbCqlKeyspaces;
+
+  /// Snippet library: note of the cql.keyspaces database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Every keyspace with its replication strategy and durable writes.'**
+  String get snippetDbCqlKeyspacesNote;
+
+  /// Snippet library: name of the cql.tables database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Tables of a keyspace'**
+  String get snippetDbCqlTables;
+
+  /// Snippet library: note of the cql.tables database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Tables with their comment, default TTL and gc_grace_seconds.'**
+  String get snippetDbCqlTablesNote;
+
+  /// Snippet library: name of the cql.columns database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Columns and primary key'**
+  String get snippetDbCqlColumns;
+
+  /// Snippet library: note of the cql.columns database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Columns of a table: partition key, clustering columns with their order, static and regular columns.'**
+  String get snippetDbCqlColumnsNote;
+
+  /// Snippet library: name of the cql.indexes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary indexes'**
+  String get snippetDbCqlIndexes;
+
+  /// Snippet library: note of the cql.indexes database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary indexes of a keyspace with their targets.'**
+  String get snippetDbCqlIndexesNote;
+
+  /// Snippet library: name of the cql.views database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Materialized views'**
+  String get snippetDbCqlViews;
+
+  /// Snippet library: note of the cql.views database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Materialized views of a keyspace with their base table and filter.'**
+  String get snippetDbCqlViewsNote;
+
+  /// Snippet library: name of the cql.types database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'User-defined types'**
+  String get snippetDbCqlTypes;
+
+  /// Snippet library: note of the cql.types database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'User-defined types of a keyspace with their fields.'**
+  String get snippetDbCqlTypesNote;
+
+  /// Snippet library: name of the cql.local_node database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'This node'**
+  String get snippetDbCqlLocalNode;
+
+  /// Snippet library: note of the cql.local_node database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster name, data center, rack and version of the coordinator.'**
+  String get snippetDbCqlLocalNodeNote;
+
+  /// Snippet library: name of the cql.peers database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster peers'**
+  String get snippetDbCqlPeers;
+
+  /// Snippet library: note of the cql.peers database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Other nodes as the coordinator sees them: address, data center, rack, version.'**
+  String get snippetDbCqlPeersNote;
+
+  /// Snippet library: name of the cql.size_estimates database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Table size estimates'**
+  String get snippetDbCqlSizeEstimates;
+
+  /// Snippet library: note of the cql.size_estimates database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated partitions and mean partition size per token range on the coordinator.'**
+  String get snippetDbCqlSizeEstimatesNote;
+
+  /// Snippet library: name of the cql.partition database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Rows of one partition'**
+  String get snippetDbCqlPartition;
+
+  /// Snippet library: note of the cql.partition database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Reads one partition by a text partition key — the efficient way to read in CQL.'**
+  String get snippetDbCqlPartitionNote;
+
+  /// Snippet library: name of the cql.ttl database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'TTL and write time of a column'**
+  String get snippetDbCqlTtl;
+
+  /// Snippet library: note of the cql.ttl database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining TTL and write timestamp of a column within one partition.'**
+  String get snippetDbCqlTtlNote;
+
+  /// Snippet library: name of the cql.count_partition database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Rows in a partition'**
+  String get snippetDbCqlCountPartition;
+
+  /// Snippet library: note of the cql.count_partition database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Counts the rows of one partition (counting a whole table scans the cluster).'**
+  String get snippetDbCqlCountPartitionNote;
+
+  /// Snippet library: name of the cql.tokens database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Partition tokens'**
+  String get snippetDbCqlTokens;
+
+  /// Snippet library: note of the cql.tokens database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'First partition keys with their token, to see how data spreads over the ring.'**
+  String get snippetDbCqlTokensNote;
+
+  /// Snippet library: name of the cql.roles database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Roles'**
+  String get snippetDbCqlRoles;
+
+  /// Snippet library: note of the cql.roles database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Roles with their login and superuser flags.'**
+  String get snippetDbCqlRolesNote;
+
+  /// Snippet library: name of the cql.permissions database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions of a role'**
+  String get snippetDbCqlPermissions;
+
+  /// Snippet library: note of the cql.permissions database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Every permission granted to a role, directly or through other roles.'**
+  String get snippetDbCqlPermissionsNote;
+
+  /// Snippet library: name of the cql.create_table database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Create a time-series table'**
+  String get snippetDbCqlCreateTable;
+
+  /// Snippet library: note of the cql.create_table database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Partition per key, newest rows first (clustering order), rows expire after a default TTL.'**
+  String get snippetDbCqlCreateTableNote;
+
+  /// Snippet library: name of the cql.insert_json database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Insert a row from JSON with a TTL'**
+  String get snippetDbCqlInsertJson;
+
+  /// Snippet library: note of the cql.insert_json database starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'INSERT … JSON maps JSON fields to columns of any type; the row expires after the TTL.'**
+  String get snippetDbCqlInsertJsonNote;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

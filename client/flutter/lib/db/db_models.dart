@@ -11,23 +11,51 @@ enum DbEngine {
   clickhouse('clickhouse', 'ClickHouse', 8443),
   redis('redis', 'Redis', 6379),
   mongodb('mongodb', 'MongoDB', 27017),
-  sqlite('sqlite', 'SQLite', 0); // l10n-ignore: product name
+  sqlite('sqlite', 'SQLite', 0), // l10n-ignore: product name
+  cassandra('cassandra', 'Cassandra / ScyllaDB', 9042); // l10n-ignore: product names
 
   const DbEngine(this.wireName, this.label, this.port);
   final String wireName, label;
   final int port;
-  bool get sql => this != redis && this != mongodb;
+
+  /// The SQL family (generic SQL snippets, SQL formatting).
+  bool get sql => this != redis && this != mongodb && this != cassandra;
+
+  /// Scripts are statements ending with `;` (SQL and CQL).
+  bool get semicolons => sql || this == cassandra;
 
   /// A database file instead of a server socket (no host, port, TLS or password).
   bool get file => this == sqlite;
 
   /// Engines added after 0.9.1: their connections stay on this device (never
   /// synced or shared) because older versions cannot read them.
-  bool get localOnly => this == sqlite;
+  bool get localOnly => this == sqlite || this == cassandra;
+
   static DbEngine parse(String value) => values.firstWhere((e) => e.wireName == value);
 
   /// Null for an engine of a newer version (such connections are skipped).
   static DbEngine? tryParse(Object? value) => values.where((e) => e.wireName == value).firstOrNull;
+}
+
+/// CQL consistency levels (wire names of `CqlConsistency`).
+enum DbCqlConsistency {
+  any('any', 'ANY'), // l10n-ignore: CQL keyword
+  one('one', 'ONE'), // l10n-ignore: CQL keyword
+  two('two', 'TWO'), // l10n-ignore: CQL keyword
+  three('three', 'THREE'), // l10n-ignore: CQL keyword
+  quorum('quorum', 'QUORUM'), // l10n-ignore: CQL keyword
+  all('all', 'ALL'), // l10n-ignore: CQL keyword
+  localQuorum('local_quorum', 'LOCAL_QUORUM'), // l10n-ignore: CQL keyword
+  eachQuorum('each_quorum', 'EACH_QUORUM'), // l10n-ignore: CQL keyword
+  localOne('local_one', 'LOCAL_ONE'); // l10n-ignore: CQL keyword
+
+  const DbCqlConsistency(this.wireName, this.label);
+  final String wireName, label;
+
+  /// ANY and EACH_QUORUM apply to writes only.
+  bool get readable => this != any && this != eachQuorum;
+  static DbCqlConsistency parse(String? value, DbCqlConsistency fallback) =>
+      values.where((e) => e.wireName == value).firstOrNull ?? fallback;
 }
 
 enum DbTlsMode { disable, prefer, require, verify }
@@ -221,6 +249,11 @@ final class DbDriverOptions {
     this.srv = false,
     this.readPreference = DbMongoReadPreference.secondaryPreferred,
     this.readOnly = true,
+    this.contactPoints = const [],
+    this.localDatacenter,
+    this.readConsistency = DbCqlConsistency.localOne,
+    this.writeConsistency = DbCqlConsistency.localQuorum,
+    this.pageSize = 500,
   });
   final DbEngine engine;
 
@@ -232,6 +265,13 @@ final class DbDriverOptions {
   final bool resp3, srv;
   final String? authSource, replicaSet;
   final DbMongoReadPreference readPreference;
+
+  /// Cassandra / ScyllaDB: more contact points (same port), the expected
+  /// data center, consistency levels and rows per CQL page.
+  final List<String> contactPoints;
+  final String? localDatacenter;
+  final DbCqlConsistency readConsistency, writeConsistency;
+  final int pageSize;
   factory DbDriverOptions.fromJson(DbJson json) => DbDriverOptions(
     engine: DbEngine.parse(json['kind'] as String),
     applicationName: json['application_name'] as String? ?? 'ConsoleCrypt',
@@ -246,6 +286,11 @@ final class DbDriverOptions {
       (e) => e.wireName == (json['read_preference'] ?? 'secondary_preferred'),
     ),
     readOnly: json['read_only'] as bool? ?? true,
+    contactPoints: (json['contact_points'] as List? ?? const []).cast<String>(),
+    localDatacenter: json['local_datacenter'] as String?,
+    readConsistency: DbCqlConsistency.parse(json['read_consistency'] as String?, DbCqlConsistency.localOne),
+    writeConsistency: DbCqlConsistency.parse(json['write_consistency'] as String?, DbCqlConsistency.localQuorum),
+    pageSize: json['page_size'] as int? ?? 500,
   );
   DbJson toJson() => {
     'kind': engine.wireName,
@@ -261,6 +306,13 @@ final class DbDriverOptions {
         'read_preference': readPreference.wireName,
       },
       DbEngine.sqlite => {'read_only': readOnly},
+      DbEngine.cassandra => {
+        'contact_points': contactPoints,
+        'local_datacenter': localDatacenter,
+        'read_consistency': readConsistency.wireName,
+        'write_consistency': writeConsistency.wireName,
+        'page_size': pageSize,
+      },
     },
   };
 }
@@ -533,7 +585,9 @@ enum DbObjectKind {
   key('key'),
   foreignKey('foreign_key'),
   reference('reference'),
-  dataType('data_type');
+  dataType('data_type'),
+  userType('user_type'),
+  aggregate('aggregate');
 
   const DbObjectKind(this.wireName);
   final String wireName;
@@ -737,6 +791,9 @@ DbCellKind dbColumnKind(DbColumn column, {DbCell? sample}) {
   if (type.endsWith('[]') || base.startsWith('_') || const {'array', 'map', 'tuple'}.contains(base)) {
     return DbCellKind.text;
   }
+  // CQL collections, tuples, vectors and frozen user types are JSON.
+  if (type.contains('<')) return DbCellKind.json;
+  if (base == 'timeuuid') return DbCellKind.text;
   if (base.contains('blob')) return fallback == DbCellKind.binary ? DbCellKind.binary : DbCellKind.text;
   if (base.contains('interval')) return DbCellKind.text;
   if (const {'bool', 'boolean'}.contains(base)) return DbCellKind.boolValue;
@@ -747,7 +804,7 @@ DbCellKind dbColumnKind(DbColumn column, {DbCell? sample}) {
   if (base.startsWith('uint') || type.contains('unsigned')) return DbCellKind.uint;
   if (RegExp(
     r'^(int\d*|integer|bigint|smallint|tinyint|mediumint|tiny|short|long|longlong|int24|year|'
-    r'serial\d?|bigserial|smallserial)$',
+    r'serial\d?|bigserial|smallserial|varint|counter)$',
   ).hasMatch(base)) {
     return DbCellKind.intValue;
   }
@@ -768,6 +825,10 @@ DbCellKind dbColumnKind(DbColumn column, {DbCell? sample}) {
     'var_string',
     'enum',
     'set',
+    'ascii',
+    'timeuuid',
+    'inet',
+    'duration',
   }.contains(base)) {
     return DbCellKind.text;
   }

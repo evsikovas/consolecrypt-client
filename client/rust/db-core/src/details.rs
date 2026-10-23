@@ -129,6 +129,10 @@ pub fn has_details(engine: DbEngine, object: &DbObjectRef) -> bool {
             object.kind,
             DbObjectKind::Database | DbObjectKind::Table | DbObjectKind::View | DbObjectKind::Index
         ),
+        DbEngine::Cassandra => matches!(
+            object.kind,
+            DbObjectKind::Database | DbObjectKind::Table | DbObjectKind::MaterializedView
+        ),
         DbEngine::Unknown => false,
     }
 }
@@ -445,6 +449,9 @@ impl DbSession {
                 _ => Err(DbError::InvalidRequest),
             };
         }
+        if engine == DbEngine::Cassandra {
+            return self.cassandra_details(object).await;
+        }
         let default = self.guard.policy().default_schema.clone();
         let (sql, bindings) =
             details_query(engine, object, &default).ok_or(DbError::InvalidRequest)?;
@@ -455,6 +462,307 @@ impl DbSession {
             DbEngine::Clickhouse => clickhouse_details(row),
             _ => mysql_details(row),
         })
+    }
+}
+
+/// The last dotted part of a Java class name (`…SizeTieredCompactionStrategy`).
+fn short_class(name: &str) -> &str {
+    name.rsplit('.').next().unwrap_or(name)
+}
+
+/// `{"class": …, "dc1": "3"}` as (strategy, `dc1: 3, dc2: 2` or the factor).
+fn replication_fields(json: &str) -> (String, String) {
+    let Ok(serde_json::Value::Object(map)) = serde_json::from_str::<serde_json::Value>(json) else {
+        return (String::new(), String::new());
+    };
+    let strategy = map
+        .get("class")
+        .and_then(|value| value.as_str())
+        .map(short_class)
+        .unwrap_or_default()
+        .to_owned();
+    let factors = map
+        .iter()
+        .filter(|(key, _)| key.as_str() != "class")
+        .map(|(key, value)| {
+            let value = value
+                .as_str()
+                .map_or_else(|| value.to_string(), str::to_owned);
+            if key == "replication_factor" {
+                value
+            } else {
+                format!("{key}: {value}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    (strategy, factors)
+}
+
+/// Details of a keyspace from its `system_schema.keyspaces` row
+/// (replication JSON, durable_writes) and object counts.
+pub fn cassandra_keyspace_details(
+    replication: &str,
+    durable: &str,
+    counts: [usize; 4],
+) -> ObjectDetails {
+    let (strategy, factors) = replication_fields(replication);
+    let mut details = ObjectDetails::default();
+    details
+        .section("general")
+        .field("kind", "keyspace", DetailKind::Keyword);
+    details
+        .section("replication")
+        .field("strategy", &strategy, DetailKind::Code)
+        .field("replication", &factors, DetailKind::Code)
+        .field("durable_writes", durable, DetailKind::Code);
+    details
+        .section("structure")
+        .field("tables", &counts[0].to_string(), DetailKind::Count)
+        .field("views", &counts[1].to_string(), DetailKind::Count)
+        .field("types", &counts[2].to_string(), DetailKind::Count)
+        .field("functions", &counts[3].to_string(), DetailKind::Count);
+    details.done()
+}
+
+/// Facts of a CQL table or view.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct CassandraTableFacts {
+    pub view: bool,
+    pub keyspace: String,
+    pub base_table: String,
+    pub id: String,
+    pub comment: String,
+    pub columns: usize,
+    pub partition_key: String,
+    pub clustering_key: String,
+    pub indexes: Option<usize>,
+    pub compaction: String,
+    pub compression: String,
+    pub gc_grace_seconds: String,
+    pub default_ttl: String,
+    pub caching: String,
+    pub bloom_filter: String,
+    pub speculative_retry: String,
+    /// From `system.size_estimates` (local token ranges of the coordinator).
+    pub partitions: Option<i64>,
+    pub mean_partition_size: Option<i64>,
+}
+
+pub fn cassandra_table_details(facts: &CassandraTableFacts) -> ObjectDetails {
+    let mut details = ObjectDetails::default();
+    details
+        .section("general")
+        .field(
+            "kind",
+            if facts.view {
+                "materialized_view"
+            } else {
+                "table"
+            },
+            DetailKind::Keyword,
+        )
+        .field("keyspace", &facts.keyspace, DetailKind::Code)
+        .field("base_table", &facts.base_table, DetailKind::Code)
+        .field("comment", &facts.comment, DetailKind::Text)
+        .field("id", &facts.id, DetailKind::Code);
+    details
+        .section("structure")
+        .field("columns", &facts.columns.to_string(), DetailKind::Count)
+        .field("cql_partition_key", &facts.partition_key, DetailKind::Code)
+        .field("clustering_key", &facts.clustering_key, DetailKind::Code)
+        .field(
+            "indexes",
+            &facts.indexes.map(|n| n.to_string()).unwrap_or_default(),
+            DetailKind::Count,
+        );
+    details
+        .section("storage")
+        .field("compaction", &facts.compaction, DetailKind::Code)
+        .field("compression", &facts.compression, DetailKind::Code)
+        .field(
+            "gc_grace_seconds",
+            &facts.gc_grace_seconds,
+            DetailKind::Count,
+        )
+        .field("default_ttl", &facts.default_ttl, DetailKind::Count)
+        .field("caching", &facts.caching, DetailKind::Code)
+        .field("bloom_filter", &facts.bloom_filter, DetailKind::Code)
+        .field(
+            "speculative_retry",
+            &facts.speculative_retry,
+            DetailKind::Code,
+        );
+    details
+        .section("size")
+        .field(
+            "cql_partitions",
+            &facts.partitions.map(|n| n.to_string()).unwrap_or_default(),
+            DetailKind::Estimate,
+        )
+        .field(
+            "mean_partition_size",
+            &facts
+                .mean_partition_size
+                .map(|n| n.to_string())
+                .unwrap_or_default(),
+            DetailKind::Bytes,
+        );
+    details.done()
+}
+
+impl DbSession {
+    async fn cassandra_details(&self, object: &DbObjectRef) -> Result<ObjectDetails, DbError> {
+        use crate::cassandra::{option_literal, CqlColumnKind};
+        let driver = self.driver.lock().await;
+        let Driver::Cassandra(driver) = &*driver else {
+            return Err(DbError::InvalidRequest);
+        };
+        let cancel = self.scope.child_token();
+        let keyspace = object.database.as_str();
+        if object.kind == DbObjectKind::Database {
+            let rows = driver
+                .catalogue(
+                    "SELECT replication, durable_writes FROM system_schema.keyspaces WHERE keyspace_name = ?",
+                    &[keyspace],
+                    &cancel,
+                )
+                .await?;
+            let row = rows.first().ok_or(DbError::QueryFailed)?;
+            let mut counts = [0; 4];
+            for (index, cql) in [
+                "SELECT table_name FROM system_schema.tables WHERE keyspace_name = ?",
+                "SELECT view_name FROM system_schema.views WHERE keyspace_name = ?",
+                "SELECT type_name FROM system_schema.types WHERE keyspace_name = ?",
+                "SELECT function_name FROM system_schema.functions WHERE keyspace_name = ?",
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                counts[index] = driver.catalogue(cql, &[keyspace], &cancel).await?.len();
+            }
+            return Ok(cassandra_keyspace_details(&row[0], &row[1], counts));
+        }
+        let view = object.kind == DbObjectKind::MaterializedView;
+        let cql = if view {
+            "SELECT * FROM system_schema.views WHERE keyspace_name = ? AND view_name = ?"
+        } else {
+            "SELECT * FROM system_schema.tables WHERE keyspace_name = ? AND table_name = ?"
+        };
+        let (names, rows) = driver
+            .catalogue_values(cql, &[keyspace, &object.name], &cancel)
+            .await?;
+        let row = rows.first().ok_or(DbError::QueryFailed)?;
+        let value = |name: &str| {
+            names
+                .iter()
+                .position(|column| column == name)
+                .and_then(|index| row.get(index).cloned().flatten())
+        };
+        let plain = |name: &str| {
+            value(name)
+                .map(|value| match value {
+                    scylla::value::CqlValue::Text(text) | scylla::value::CqlValue::Ascii(text) => {
+                        text
+                    }
+                    other => option_literal(&other),
+                })
+                .unwrap_or_default()
+        };
+        let map_class = |name: &str| {
+            let text = option_literal(&value(name).unwrap_or(scylla::value::CqlValue::Empty));
+            let class = ["'class': '", "'sstable_compression': '"]
+                .iter()
+                .find_map(|marker| {
+                    text.find(marker).map(|start| {
+                        let rest = &text[start + marker.len()..];
+                        rest[..rest.find('\'').unwrap_or(rest.len())].to_owned()
+                    })
+                })
+                .unwrap_or_default();
+            short_class(&class).to_owned()
+        };
+        let columns = driver.columns(keyspace, &object.name, &cancel).await?;
+        let partition_key = columns
+            .iter()
+            .filter(|c| c.kind == CqlColumnKind::PartitionKey)
+            .map(|c| c.name.clone())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let clustering_key = columns
+            .iter()
+            .filter_map(|c| match c.kind {
+                CqlColumnKind::Clustering { descending } => Some(format!(
+                    "{} {}",
+                    c.name,
+                    if descending { "DESC" } else { "ASC" }
+                )),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let indexes = if view {
+            None
+        } else {
+            Some(
+                driver
+                    .catalogue(
+                        "SELECT index_name FROM system_schema.indexes WHERE keyspace_name = ? AND table_name = ?",
+                        &[keyspace, &object.name],
+                        &cancel,
+                    )
+                    .await?
+                    .len(),
+            )
+        };
+        // Estimates are optional: the table is missing on some versions.
+        let (partitions, mean) = match driver
+            .catalogue(
+                "SELECT partitions_count, mean_partition_size FROM system.size_estimates \
+                 WHERE keyspace_name = ? AND table_name = ?",
+                &[keyspace, &object.name],
+                &cancel,
+            )
+            .await
+        {
+            Ok(rows) if !rows.is_empty() => {
+                let mut partitions = 0i64;
+                let mut weighted = 0i128;
+                for row in &rows {
+                    let count: i64 = row[0].parse().unwrap_or(0);
+                    let size: i64 = row[1].parse().unwrap_or(0);
+                    partitions = partitions.saturating_add(count);
+                    weighted += i128::from(count) * i128::from(size);
+                }
+                let mean = (partitions > 0).then(|| (weighted / i128::from(partitions)) as i64);
+                (Some(partitions), mean)
+            }
+            _ => (None, None),
+        };
+        Ok(cassandra_table_details(&CassandraTableFacts {
+            view,
+            keyspace: keyspace.to_owned(),
+            base_table: if view {
+                plain("base_table_name")
+            } else {
+                String::new()
+            },
+            id: plain("id"),
+            comment: plain("comment"),
+            columns: columns.len(),
+            partition_key,
+            clustering_key,
+            indexes,
+            compaction: map_class("compaction"),
+            compression: map_class("compression"),
+            gc_grace_seconds: plain("gc_grace_seconds"),
+            default_ttl: plain("default_time_to_live"),
+            caching: plain("caching"),
+            bloom_filter: plain("bloom_filter_fp_chance"),
+            speculative_retry: plain("speculative_retry"),
+            partitions,
+            mean_partition_size: mean,
+        }))
     }
 }
 
@@ -474,6 +782,46 @@ mod tests {
             name: "o'rders; DROP TABLE x".into(),
             parent_name: None,
         }
+    }
+
+    #[test]
+    fn cassandra_details_name_replication_storage_and_estimates() {
+        let details = cassandra_keyspace_details(
+            r#"{"class":"org.apache.cassandra.locator.NetworkTopologyStrategy","dc1":"3"}"#,
+            "true",
+            [2, 1, 0, 0],
+        );
+        let json = serde_json::to_value(&details).unwrap();
+        assert_eq!(
+            json["sections"][1]["fields"][0]["value"],
+            "NetworkTopologyStrategy"
+        );
+        assert_eq!(json["sections"][1]["fields"][1]["value"], "dc1: 3");
+        let details = cassandra_table_details(&CassandraTableFacts {
+            keyspace: "shop".into(),
+            columns: 4,
+            partition_key: "id".into(),
+            clustering_key: "ts DESC".into(),
+            indexes: Some(1),
+            compaction: "SizeTieredCompactionStrategy".into(),
+            gc_grace_seconds: "864000".into(),
+            default_ttl: "0".into(),
+            partitions: Some(1200),
+            mean_partition_size: Some(310),
+            ..Default::default()
+        });
+        let ids: Vec<&str> = details.sections.iter().map(|s| s.id).collect();
+        assert_eq!(ids, ["general", "structure", "storage", "size"]);
+        assert!(has_details(
+            DbEngine::Cassandra,
+            &DbObjectRef {
+                database: "shop".into(),
+                schema: None,
+                kind: DbObjectKind::MaterializedView,
+                name: "v".into(),
+                parent_name: None,
+            }
+        ));
     }
 
     #[test]

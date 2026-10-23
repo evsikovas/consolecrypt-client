@@ -293,6 +293,7 @@ IconData _engineIcon(DbEngine engine) => switch (engine.wireName) {
   'mongodb' => Icons.data_object_rounded,
   'clickhouse' => Icons.view_column_rounded,
   'sqlite' => Icons.insert_drive_file_outlined,
+  'cassandra' => Icons.hub_outlined,
   _ => Icons.storage_rounded,
 };
 

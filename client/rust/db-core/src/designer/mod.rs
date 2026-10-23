@@ -556,7 +556,8 @@ pub trait Dialect: Sync {
     }
 }
 
-/// The designer of `engine`; None where tables cannot be designed (Redis).
+/// The designer of `engine`; None where tables cannot be designed (Redis)
+/// or no designer exists yet (SQLite, Cassandra / ScyllaDB).
 pub fn dialect(engine: DbEngine) -> Option<&'static dyn Dialect> {
     match engine {
         DbEngine::Postgresql => Some(&postgres::Postgres),
@@ -564,7 +565,7 @@ pub fn dialect(engine: DbEngine) -> Option<&'static dyn Dialect> {
         DbEngine::Mariadb => Some(&mysql::MARIADB),
         DbEngine::Clickhouse => Some(&clickhouse::ClickHouse),
         DbEngine::Mongodb => Some(&mongo::Mongo),
-        _ => None,
+        DbEngine::Redis | DbEngine::Sqlite | DbEngine::Cassandra | DbEngine::Unknown => None,
     }
 }
 
@@ -625,8 +626,9 @@ fn engine_name(engine: DbEngine) -> &'static str {
         DbEngine::Clickhouse => "clickhouse",
         DbEngine::Mongodb => "mongodb",
         DbEngine::Redis => "redis",
-        #[allow(unreachable_patterns)]
-        _ => "unknown",
+        DbEngine::Sqlite => "sqlite",
+        DbEngine::Cassandra => "cassandra",
+        DbEngine::Unknown => "unknown",
     }
 }
 
@@ -1240,6 +1242,8 @@ mod tests {
     #[test]
     fn redis_has_no_designer() {
         assert!(dialect(DbEngine::Redis).is_none());
+        assert!(dialect(DbEngine::Sqlite).is_none());
+        assert!(dialect(DbEngine::Cassandra).is_none());
         let plan = plan(DbEngine::Redis, None, &TableDesign::default());
         assert_eq!(plan.issues[0].code, "engine_unsupported");
     }

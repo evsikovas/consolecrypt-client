@@ -13634,7 +13634,7 @@
       }
     }
   },
-  "dbDetailsSection": "{id, select, general{General} size{Size} structure{Structure} partitioning{Partitioning} maintenance{Maintenance} other{{id}}}",
+  "dbDetailsSection": "{id, select, general{General} size{Size} structure{Structure} partitioning{Partitioning} maintenance{Maintenance} replication{Replication} storage{Storage} other{{id}}}",
   "@dbDetailsSection": {
     "description": "Object details dialog: title of a group of fields; id is a fixed section id.",
     "placeholders": {
@@ -13643,7 +13643,7 @@
       }
     }
   },
-  "dbDetailsField": "{id, select, kind{Object type} persistence{Storage} schema{Schema} owner{Owner} tablespace{Tablespace} comment{Comment} rows{Rows} live_rows{Live rows} dead_rows{Dead rows} total_size{Total size} table_size{Table data} index_size{Indexes} toast_size{TOAST} columns{Columns} indexes{Indexes} constraints{Constraints} triggers{Triggers} definition_length{Definition length, characters} partition_key{Partition key} partitions{Partitions} partition_of{Partition of} last_vacuum{Last VACUUM} last_autovacuum{Last autovacuum} last_analyze{Last ANALYZE} last_autoanalyze{Last autoanalyze} engine{Engine} row_format{Row format} collation{Collation} definer{Definer} updatable{Updatable} security{Security} average_row{Average row} free_space{Free space} auto_increment{Next AUTO_INCREMENT} created{Created} updated{Updated} uncompressed_size{Uncompressed} parts{Active parts} sorting_key{Sorting key} primary_key{Primary key} sampling_key{Sampling key} ttl{TTL} metadata_modified{Metadata changed} type{Type} encoding{Encoding} database{Database} memory{Memory} keys{Keys} length_bytes{Length, bytes} length_fields{Fields} length_elements{Elements} length_members{Members} length_entries{Entries} page_size{Page size} page_count{Pages} freelist_count{Free pages} foreign_keys{Foreign keys} strict{STRICT} without_rowid{WITHOUT ROWID} autoincrement{AUTOINCREMENT} version{Version} table{Table} other{{id}}}",
+  "dbDetailsField": "{id, select, kind{Object type} persistence{Storage} schema{Schema} owner{Owner} tablespace{Tablespace} comment{Comment} rows{Rows} live_rows{Live rows} dead_rows{Dead rows} total_size{Total size} table_size{Table data} index_size{Indexes} toast_size{TOAST} columns{Columns} indexes{Indexes} constraints{Constraints} triggers{Triggers} definition_length{Definition length, characters} partition_key{Partition key} partitions{Partitions} partition_of{Partition of} last_vacuum{Last VACUUM} last_autovacuum{Last autovacuum} last_analyze{Last ANALYZE} last_autoanalyze{Last autoanalyze} engine{Engine} row_format{Row format} collation{Collation} definer{Definer} updatable{Updatable} security{Security} average_row{Average row} free_space{Free space} auto_increment{Next AUTO_INCREMENT} created{Created} updated{Updated} uncompressed_size{Uncompressed} parts{Active parts} sorting_key{Sorting key} primary_key{Primary key} sampling_key{Sampling key} ttl{TTL} metadata_modified{Metadata changed} type{Type} encoding{Encoding} database{Database} memory{Memory} keys{Keys} length_bytes{Length, bytes} length_fields{Fields} length_elements{Elements} length_members{Members} length_entries{Entries} page_size{Page size} page_count{Pages} freelist_count{Free pages} foreign_keys{Foreign keys} strict{STRICT} without_rowid{WITHOUT ROWID} autoincrement{AUTOINCREMENT} version{Version} table{Table} keyspace{Keyspace} base_table{Base table} id{ID} cql_partition_key{Partition key} clustering_key{Clustering key} compaction{Compaction} compression{Compression} gc_grace_seconds{GC grace, seconds} default_ttl{Default TTL, seconds} caching{Caching} bloom_filter{Bloom filter false positives} speculative_retry{Speculative retry} cql_partitions{Partitions} mean_partition_size{Mean partition size} strategy{Replication strategy} replication{Replicas} durable_writes{Durable writes} tables{Tables} views{Materialized views} types{User types} functions{Functions} other{{id}}}",
   "@dbDetailsField": {
     "description": "Object details dialog: label of one catalogue fact about a table, view or key; id is a fixed field id.",
     "placeholders": {
@@ -13652,7 +13652,7 @@
       }
     }
   },
-  "dbDetailsKeyword": "{id, select, table{Table} partitioned_table{Partitioned table} view{View} materialized_view{Materialized view} foreign_table{Foreign table} unlogged{Unlogged} temporary{Temporary} index{Index} yes{Yes} no{No} other{{id}}}",
+  "dbDetailsKeyword": "{id, select, table{Table} partitioned_table{Partitioned table} view{View} materialized_view{Materialized view} foreign_table{Foreign table} unlogged{Unlogged} temporary{Temporary} index{Index} yes{Yes} no{No} keyspace{Keyspace} other{{id}}}",
   "@dbDetailsKeyword": {
     "description": "Object details dialog: the kind or storage of a relation; id is a fixed keyword.",
     "placeholders": {
@@ -17404,5 +17404,205 @@
         "type": "String"
       }
     }
+  },
+  "dbKeyspace": "Keyspace",
+  "@dbKeyspace": {
+    "description": "Databases: connection dialog field for the default CQL keyspace (Cassandra / ScyllaDB)."
+  },
+  "dbCassandraContactPoints": "More contact points (hosts, comma-separated)",
+  "@dbCassandraContactPoints": {
+    "description": "Databases: Cassandra option, extra contact point hosts on the same port."
+  },
+  "dbCassandraLocalDc": "Local data center",
+  "@dbCassandraLocalDc": {
+    "description": "Databases: Cassandra option, the data center the coordinator node must be in."
+  },
+  "dbCassandraReadConsistency": "Read consistency",
+  "@dbCassandraReadConsistency": {
+    "description": "Databases: Cassandra option, consistency level for reads."
+  },
+  "dbCassandraWriteConsistency": "Write consistency",
+  "@dbCassandraWriteConsistency": {
+    "description": "Databases: Cassandra option, consistency level for writes."
+  },
+  "dbCassandraPageSize": "Rows per page",
+  "@dbCassandraPageSize": {
+    "description": "Databases: Cassandra option, rows fetched per CQL page."
+  },
+  "dbCassandraRouteHelp": "The session works through one coordinator node: the first contact point that answers. Through SSH, a tunnel, Kubernetes or Docker only that endpoint is used and other cluster nodes are never contacted directly. With a local data center set, the coordinator must be in it.",
+  "@dbCassandraRouteHelp": {
+    "description": "Databases: help text under the Cassandra options about the single coordinator."
+  },
+  "dbErrorDatacenter": "The node that answered is in another data center than the configured local one. Check the contact points or the local data center.",
+  "@dbErrorDatacenter": {
+    "description": "Databases: error when the Cassandra coordinator is in another data center."
+  },
+  "dbErrorEngineChange": "This connection cannot switch to that engine: synced connections and connections kept on this device are stored separately. Create a new connection instead.",
+  "@dbErrorEngineChange": {
+    "description": "Databases: error when editing a connection would move it between the vault and the device-local store."
+  },
+  "dbErrorDeviceOnly": "This connection is kept on this device only and cannot be shared or synced.",
+  "@dbErrorDeviceOnly": {
+    "description": "Databases: error when sharing or syncing a device-local connection is attempted."
+  },
+  "dbFolderTypes": "Types",
+  "@dbFolderTypes": {
+    "description": "Databases: structure tree folder of user-defined types (CQL)."
+  },
+  "dbScanWarningTitle": "Whole-table read",
+  "@dbScanWarningTitle": {
+    "description": "Databases: title of the confirmation before a CQL query that scans a whole table."
+  },
+  "dbScanAllowFiltering": "ALLOW FILTERING makes the cluster read and filter rows of the whole table, which can be slow and load every node. Run it anyway?",
+  "@dbScanAllowFiltering": {
+    "description": "Databases: confirmation text before running a CQL query with ALLOW FILTERING."
+  },
+  "dbScanFullTable": "This query has no WHERE and no LIMIT: it reads the whole table page by page across the cluster. Run it anyway?",
+  "@dbScanFullTable": {
+    "description": "Databases: confirmation text before running a CQL SELECT without WHERE and LIMIT."
+  },
+  "snippetPackCassandra": "Cassandra / ScyllaDB",
+  "@snippetPackCassandra": {
+    "description": "Snippet library: name of the Cassandra / ScyllaDB starter package."
+  },
+  "snippetPackCassandraDescription": "Schema, cluster nodes, size estimates, partitions, TTLs and roles in CQL. For cqlsh or the Databases workspace.",
+  "@snippetPackCassandraDescription": {
+    "description": "Snippet library: description of the Cassandra / ScyllaDB starter package."
+  },
+  "snippetDbCqlKeyspaces": "Keyspaces and replication",
+  "@snippetDbCqlKeyspaces": {
+    "description": "Snippet library: name of the cql.keyspaces database starter snippet"
+  },
+  "snippetDbCqlKeyspacesNote": "Every keyspace with its replication strategy and durable writes.",
+  "@snippetDbCqlKeyspacesNote": {
+    "description": "Snippet library: note of the cql.keyspaces database starter snippet"
+  },
+  "snippetDbCqlTables": "Tables of a keyspace",
+  "@snippetDbCqlTables": {
+    "description": "Snippet library: name of the cql.tables database starter snippet"
+  },
+  "snippetDbCqlTablesNote": "Tables with their comment, default TTL and gc_grace_seconds.",
+  "@snippetDbCqlTablesNote": {
+    "description": "Snippet library: note of the cql.tables database starter snippet"
+  },
+  "snippetDbCqlColumns": "Columns and primary key",
+  "@snippetDbCqlColumns": {
+    "description": "Snippet library: name of the cql.columns database starter snippet"
+  },
+  "snippetDbCqlColumnsNote": "Columns of a table: partition key, clustering columns with their order, static and regular columns.",
+  "@snippetDbCqlColumnsNote": {
+    "description": "Snippet library: note of the cql.columns database starter snippet"
+  },
+  "snippetDbCqlIndexes": "Secondary indexes",
+  "@snippetDbCqlIndexes": {
+    "description": "Snippet library: name of the cql.indexes database starter snippet"
+  },
+  "snippetDbCqlIndexesNote": "Secondary indexes of a keyspace with their targets.",
+  "@snippetDbCqlIndexesNote": {
+    "description": "Snippet library: note of the cql.indexes database starter snippet"
+  },
+  "snippetDbCqlViews": "Materialized views",
+  "@snippetDbCqlViews": {
+    "description": "Snippet library: name of the cql.views database starter snippet"
+  },
+  "snippetDbCqlViewsNote": "Materialized views of a keyspace with their base table and filter.",
+  "@snippetDbCqlViewsNote": {
+    "description": "Snippet library: note of the cql.views database starter snippet"
+  },
+  "snippetDbCqlTypes": "User-defined types",
+  "@snippetDbCqlTypes": {
+    "description": "Snippet library: name of the cql.types database starter snippet"
+  },
+  "snippetDbCqlTypesNote": "User-defined types of a keyspace with their fields.",
+  "@snippetDbCqlTypesNote": {
+    "description": "Snippet library: note of the cql.types database starter snippet"
+  },
+  "snippetDbCqlLocalNode": "This node",
+  "@snippetDbCqlLocalNode": {
+    "description": "Snippet library: name of the cql.local_node database starter snippet"
+  },
+  "snippetDbCqlLocalNodeNote": "Cluster name, data center, rack and version of the coordinator.",
+  "@snippetDbCqlLocalNodeNote": {
+    "description": "Snippet library: note of the cql.local_node database starter snippet"
+  },
+  "snippetDbCqlPeers": "Cluster peers",
+  "@snippetDbCqlPeers": {
+    "description": "Snippet library: name of the cql.peers database starter snippet"
+  },
+  "snippetDbCqlPeersNote": "Other nodes as the coordinator sees them: address, data center, rack, version.",
+  "@snippetDbCqlPeersNote": {
+    "description": "Snippet library: note of the cql.peers database starter snippet"
+  },
+  "snippetDbCqlSizeEstimates": "Table size estimates",
+  "@snippetDbCqlSizeEstimates": {
+    "description": "Snippet library: name of the cql.size_estimates database starter snippet"
+  },
+  "snippetDbCqlSizeEstimatesNote": "Estimated partitions and mean partition size per token range on the coordinator.",
+  "@snippetDbCqlSizeEstimatesNote": {
+    "description": "Snippet library: note of the cql.size_estimates database starter snippet"
+  },
+  "snippetDbCqlPartition": "Rows of one partition",
+  "@snippetDbCqlPartition": {
+    "description": "Snippet library: name of the cql.partition database starter snippet"
+  },
+  "snippetDbCqlPartitionNote": "Reads one partition by a text partition key — the efficient way to read in CQL.",
+  "@snippetDbCqlPartitionNote": {
+    "description": "Snippet library: note of the cql.partition database starter snippet"
+  },
+  "snippetDbCqlTtl": "TTL and write time of a column",
+  "@snippetDbCqlTtl": {
+    "description": "Snippet library: name of the cql.ttl database starter snippet"
+  },
+  "snippetDbCqlTtlNote": "Remaining TTL and write timestamp of a column within one partition.",
+  "@snippetDbCqlTtlNote": {
+    "description": "Snippet library: note of the cql.ttl database starter snippet"
+  },
+  "snippetDbCqlCountPartition": "Rows in a partition",
+  "@snippetDbCqlCountPartition": {
+    "description": "Snippet library: name of the cql.count_partition database starter snippet"
+  },
+  "snippetDbCqlCountPartitionNote": "Counts the rows of one partition (counting a whole table scans the cluster).",
+  "@snippetDbCqlCountPartitionNote": {
+    "description": "Snippet library: note of the cql.count_partition database starter snippet"
+  },
+  "snippetDbCqlTokens": "Partition tokens",
+  "@snippetDbCqlTokens": {
+    "description": "Snippet library: name of the cql.tokens database starter snippet"
+  },
+  "snippetDbCqlTokensNote": "First partition keys with their token, to see how data spreads over the ring.",
+  "@snippetDbCqlTokensNote": {
+    "description": "Snippet library: note of the cql.tokens database starter snippet"
+  },
+  "snippetDbCqlRoles": "Roles",
+  "@snippetDbCqlRoles": {
+    "description": "Snippet library: name of the cql.roles database starter snippet"
+  },
+  "snippetDbCqlRolesNote": "Roles with their login and superuser flags.",
+  "@snippetDbCqlRolesNote": {
+    "description": "Snippet library: note of the cql.roles database starter snippet"
+  },
+  "snippetDbCqlPermissions": "Permissions of a role",
+  "@snippetDbCqlPermissions": {
+    "description": "Snippet library: name of the cql.permissions database starter snippet"
+  },
+  "snippetDbCqlPermissionsNote": "Every permission granted to a role, directly or through other roles.",
+  "@snippetDbCqlPermissionsNote": {
+    "description": "Snippet library: note of the cql.permissions database starter snippet"
+  },
+  "snippetDbCqlCreateTable": "Create a time-series table",
+  "@snippetDbCqlCreateTable": {
+    "description": "Snippet library: name of the cql.create_table database starter snippet"
+  },
+  "snippetDbCqlCreateTableNote": "Partition per key, newest rows first (clustering order), rows expire after a default TTL.",
+  "@snippetDbCqlCreateTableNote": {
+    "description": "Snippet library: note of the cql.create_table database starter snippet"
+  },
+  "snippetDbCqlInsertJson": "Insert a row from JSON with a TTL",
+  "@snippetDbCqlInsertJson": {
+    "description": "Snippet library: name of the cql.insert_json database starter snippet"
+  },
+  "snippetDbCqlInsertJsonNote": "INSERT … JSON maps JSON fields to columns of any type; the row expires after the TTL.",
+  "@snippetDbCqlInsertJsonNote": {
+    "description": "Snippet library: note of the cql.insert_json database starter snippet"
   }
 }

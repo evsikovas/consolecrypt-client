@@ -400,7 +400,7 @@ class _DbDdlDialogState extends ConsumerState<DbDdlDialog> {
       return const SizedBox.shrink();
     }
     final l = context.l10n, text = widget.value.expose(), window = MediaQuery.sizeOf(context);
-    final blocks = widget.engine.sql ? splitSqlStatements(text) : [text];
+    final blocks = widget.engine.semicolons ? splitSqlStatements(text) : [text];
     return GlassDialog(
       key: const ValueKey('db-ddl-dialog'),
       title: widget.title,

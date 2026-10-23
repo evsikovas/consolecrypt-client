@@ -223,6 +223,7 @@ final class MockDbService
         DbEngine.redis => '7.4.1',
         DbEngine.mongodb => '7.0.14',
         DbEngine.sqlite => '3.50.4',
+        DbEngine.cassandra => 'ScyllaDB 6.2.3', // l10n-ignore: server version
       },
       production: connection.production,
       readOnly: connection.production,

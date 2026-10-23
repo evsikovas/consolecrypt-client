@@ -148,6 +148,10 @@ fn dialect(engine: DbEngine) -> &'static str {
         DbEngine::Redis => "Redis commands (one command per line, redis-cli syntax)",
         DbEngine::Mongodb => "MongoDB shell syntax (db.collection.find(...) / aggregate([...]))",
         DbEngine::Sqlite => "SQLite SQL (double-quoted identifiers, no stored procedures)",
+        DbEngine::Cassandra => {
+            "CQL for Apache Cassandra / ScyllaDB (restrict the full partition key, no joins, \
+             avoid ALLOW FILTERING; batches as BEGIN BATCH … APPLY BATCH)"
+        }
         DbEngine::Unknown => "SQL",
     }
 }
@@ -156,6 +160,7 @@ fn fence(engine: DbEngine) -> &'static str {
     match engine {
         DbEngine::Redis => "redis",
         DbEngine::Mongodb => "javascript",
+        DbEngine::Cassandra => "cql",
         _ => "sql",
     }
 }

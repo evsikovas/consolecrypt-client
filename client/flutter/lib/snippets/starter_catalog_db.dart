@@ -1,5 +1,5 @@
 // Query text was checked against PostgreSQL 17, MySQL 8.4, ClickHouse 25.8,
-// Redis 7.4 and MongoDB 7.0 (mongosh); keep the per-package counts in
+// Redis 7.4, MongoDB 7.0 (mongosh), Cassandra 5.0 and ScyllaDB 6.2; keep the per-package counts in
 // test/unit/snippet_catalog_test.dart in sync when adding entries.
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
@@ -17,7 +17,7 @@ typedef _Pack = ({String name, SnippetType type, String? shell, String client});
 /// Database starter packages. Type and dialect (`shell`) follow
 /// `db_save_history_snippet`: PostgreSQL → postgresql; MySQL / MariaDB /
 /// ClickHouse → sql + "mysql" / "clickhouse"; Redis → redis_cli; MongoDB →
-/// shell + "mongosh". Query text is never localized.
+/// shell + "mongosh"; Cassandra / ScyllaDB → cql. Query text is never localized.
 List<StarterSnippetPackage> databaseStarterPackages(AppLocalizations l, StarterEntry entry) {
   Snippet db(
     _Pack pack,
@@ -53,6 +53,7 @@ List<StarterSnippetPackage> databaseStarterPackages(AppLocalizations l, StarterE
   );
   final _Pack redis = (name: l.snippetPackRedis, type: SnippetType.redisCli, shell: null, client: 'redis-cli');
   final _Pack mongodb = (name: l.snippetPackMongodb, type: SnippetType.shell, shell: 'mongosh', client: 'mongosh');
+  final _Pack cassandra = (name: l.snippetPackCassandra, type: SnippetType.cql, shell: null, client: 'cqlsh');
   return [
     StarterSnippetPackage('postgresql', postgresql.name, l.snippetPackPostgresqlDescription, [
       db(postgresql, 'db.pg.activity', l.snippetDbPgActivity, l.snippetDbPgActivityNote, [
@@ -1023,6 +1024,189 @@ List<StarterSnippetPackage> databaseStarterPackages(AppLocalizations l, StarterE
         variables: const [SnippetVariable(name: 'opid')],
         risk: RiskLevel.modifying,
         terminalOnly: true,
+      ),
+    ]),
+    StarterSnippetPackage('cassandra', cassandra.name, l.snippetPackCassandraDescription, [
+      db(cassandra, 'db.cql.keyspaces', l.snippetDbCqlKeyspaces, l.snippetDbCqlKeyspacesNote, [
+        r'SELECT keyspace_name, replication, durable_writes FROM system_schema.keyspaces;', // l10n-ignore: query text
+      ]),
+      db(
+        cassandra,
+        'db.cql.tables',
+        l.snippetDbCqlTables,
+        l.snippetDbCqlTablesNote,
+        [
+          r"SELECT table_name, comment, default_time_to_live, gc_grace_seconds FROM system_schema.tables WHERE keyspace_name = '{{keyspace}}';", // l10n-ignore: query text
+        ],
+        variables: const [SnippetVariable(name: 'keyspace')],
+      ),
+      db(
+        cassandra,
+        'db.cql.columns',
+        l.snippetDbCqlColumns,
+        l.snippetDbCqlColumnsNote,
+        [
+          r"SELECT column_name, type, kind, position, clustering_order FROM system_schema.columns WHERE keyspace_name = '{{keyspace}}' AND table_name = '{{table}}';", // l10n-ignore: query text
+        ],
+        variables: const [
+          SnippetVariable(name: 'keyspace'),
+          SnippetVariable(name: 'table'),
+        ],
+      ),
+      db(
+        cassandra,
+        'db.cql.indexes',
+        l.snippetDbCqlIndexes,
+        l.snippetDbCqlIndexesNote,
+        [
+          r"SELECT table_name, index_name, kind, options FROM system_schema.indexes WHERE keyspace_name = '{{keyspace}}';", // l10n-ignore: query text
+        ],
+        variables: const [SnippetVariable(name: 'keyspace')],
+      ),
+      db(
+        cassandra,
+        'db.cql.views',
+        l.snippetDbCqlViews,
+        l.snippetDbCqlViewsNote,
+        [
+          r"SELECT view_name, base_table_name, where_clause FROM system_schema.views WHERE keyspace_name = '{{keyspace}}';", // l10n-ignore: query text
+        ],
+        variables: const [SnippetVariable(name: 'keyspace')],
+      ),
+      db(
+        cassandra,
+        'db.cql.types',
+        l.snippetDbCqlTypes,
+        l.snippetDbCqlTypesNote,
+        [
+          r"SELECT type_name, field_names, field_types FROM system_schema.types WHERE keyspace_name = '{{keyspace}}';", // l10n-ignore: query text
+        ],
+        variables: const [SnippetVariable(name: 'keyspace')],
+      ),
+      db(cassandra, 'db.cql.local_node', l.snippetDbCqlLocalNode, l.snippetDbCqlLocalNodeNote, [
+        r"SELECT cluster_name, data_center, rack, release_version, host_id FROM system.local WHERE key = 'local';", // l10n-ignore: query text
+      ]),
+      db(cassandra, 'db.cql.peers', l.snippetDbCqlPeers, l.snippetDbCqlPeersNote, [
+        r'SELECT peer, data_center, rack, release_version, host_id FROM system.peers;', // l10n-ignore: query text
+      ]),
+      db(
+        cassandra,
+        'db.cql.size_estimates',
+        l.snippetDbCqlSizeEstimates,
+        l.snippetDbCqlSizeEstimatesNote,
+        [
+          r"SELECT range_start, range_end, partitions_count, mean_partition_size FROM system.size_estimates WHERE keyspace_name = '{{keyspace}}' AND table_name = '{{table}}';", // l10n-ignore: query text
+        ],
+        variables: const [
+          SnippetVariable(name: 'keyspace'),
+          SnippetVariable(name: 'table'),
+        ],
+      ),
+      db(
+        cassandra,
+        'db.cql.partition',
+        l.snippetDbCqlPartition,
+        l.snippetDbCqlPartitionNote,
+        [
+          r"SELECT * FROM {{keyspace}}.{{table}} WHERE {{key}} = '{{value}}' LIMIT {{limit}};", // l10n-ignore: query text
+        ],
+        variables: const [
+          SnippetVariable(name: 'keyspace'),
+          SnippetVariable(name: 'table'),
+          SnippetVariable(name: 'key'),
+          SnippetVariable(name: 'value'),
+          SnippetVariable(name: 'limit', defaultValue: '100'),
+        ],
+      ),
+      db(
+        cassandra,
+        'db.cql.ttl',
+        l.snippetDbCqlTtl,
+        l.snippetDbCqlTtlNote,
+        [
+          r"SELECT {{column}}, TTL({{column}}), WRITETIME({{column}}) FROM {{keyspace}}.{{table}} WHERE {{key}} = '{{value}}' LIMIT 100;", // l10n-ignore: query text
+        ],
+        variables: const [
+          SnippetVariable(name: 'keyspace'),
+          SnippetVariable(name: 'table'),
+          SnippetVariable(name: 'key'),
+          SnippetVariable(name: 'value'),
+          SnippetVariable(name: 'column'),
+        ],
+      ),
+      db(
+        cassandra,
+        'db.cql.count_partition',
+        l.snippetDbCqlCountPartition,
+        l.snippetDbCqlCountPartitionNote,
+        [
+          r"SELECT count(*) FROM {{keyspace}}.{{table}} WHERE {{key}} = '{{value}}';", // l10n-ignore: query text
+        ],
+        variables: const [
+          SnippetVariable(name: 'keyspace'),
+          SnippetVariable(name: 'table'),
+          SnippetVariable(name: 'key'),
+          SnippetVariable(name: 'value'),
+        ],
+      ),
+      db(
+        cassandra,
+        'db.cql.tokens',
+        l.snippetDbCqlTokens,
+        l.snippetDbCqlTokensNote,
+        [
+          r'SELECT DISTINCT token({{key}}), {{key}} FROM {{keyspace}}.{{table}} LIMIT {{limit}};', // l10n-ignore: query text
+        ],
+        variables: const [
+          SnippetVariable(name: 'keyspace'),
+          SnippetVariable(name: 'table'),
+          SnippetVariable(name: 'key'),
+          SnippetVariable(name: 'limit', defaultValue: '20'),
+        ],
+      ),
+      db(cassandra, 'db.cql.roles', l.snippetDbCqlRoles, l.snippetDbCqlRolesNote, [
+        r'LIST ROLES;', // l10n-ignore: query text
+      ]),
+      db(
+        cassandra,
+        'db.cql.permissions',
+        l.snippetDbCqlPermissions,
+        l.snippetDbCqlPermissionsNote,
+        [
+          r'LIST ALL PERMISSIONS OF {{role}};', // l10n-ignore: query text
+        ],
+        variables: const [SnippetVariable(name: 'role')],
+      ),
+      db(
+        cassandra,
+        'db.cql.create_table',
+        l.snippetDbCqlCreateTable,
+        l.snippetDbCqlCreateTableNote,
+        [
+          r'CREATE TABLE IF NOT EXISTS {{keyspace}}.{{table}} (key text, created timestamp, id timeuuid, payload text, PRIMARY KEY ((key), created, id)) WITH CLUSTERING ORDER BY (created DESC, id ASC) AND default_time_to_live = {{ttl_seconds}};', // l10n-ignore: query text
+        ],
+        variables: const [
+          SnippetVariable(name: 'keyspace'),
+          SnippetVariable(name: 'table'),
+          SnippetVariable(name: 'ttl_seconds', defaultValue: '2592000'),
+        ],
+        risk: RiskLevel.modifying,
+      ),
+      db(
+        cassandra,
+        'db.cql.insert_json',
+        l.snippetDbCqlInsertJson,
+        l.snippetDbCqlInsertJsonNote,
+        [
+          r"INSERT INTO {{keyspace}}.{{table}} JSON '{{json}}' USING TTL {{ttl_seconds}};", // l10n-ignore: query text
+        ],
+        variables: const [
+          SnippetVariable(name: 'keyspace'),
+          SnippetVariable(name: 'table'),
+          SnippetVariable(name: 'json'),
+          SnippetVariable(name: 'ttl_seconds', defaultValue: '86400'),
+        ],
+        risk: RiskLevel.modifying,
       ),
     ]),
   ];

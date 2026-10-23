@@ -1,10 +1,12 @@
 //! Device-local database connections and the SQLite file routes.
 //!
 //! Connections of engines added after 0.9.1 ([`DbEngine::local_only`], today
-//! SQLite) are kept in this profile's encrypted local store, never in the
-//! synced vault: clients up to 0.9.1 cannot decode such a vault object, and a
-//! file path on this computer means nothing on another device. They are not
-//! shared, synced or part of vault backups; the UI says "this device only".
+//! SQLite and Cassandra / ScyllaDB) are kept in this profile's encrypted local
+//! store, never in the synced vault: clients up to 0.9.1 cannot decode such a
+//! vault object, and a file path on this computer means nothing on another
+//! device. They are not shared, synced or part of vault backups; the UI says
+//! "this device only". Their credential secrets live beside them
+//! (`database_local_secrets`).
 //!
 //! SQLite files open on this computer, or through the `sqlite3` program over
 //! the saved SSH host's exec channel, a Docker exec or a Kubernetes Pod exec.
@@ -71,8 +73,9 @@ impl AppCore {
             .find(|connection| connection.id == id))
     }
 
-    /// Creates or replaces a device-local connection. It keeps no secrets;
-    /// its route references (SSH host, Kubernetes context) must exist.
+    /// Creates or replaces a device-local connection. Its secrets are sealed
+    /// separately (`database_local_secrets`); its route references (SSH host,
+    /// Kubernetes context) must exist.
     pub(crate) async fn db_save_local_connection(
         &self,
         mut connection: DbConnection,
@@ -96,9 +99,13 @@ impl AppCore {
         let now = chrono::Utc::now();
         connection.created_at = existing.as_ref().map_or(now, |old| old.created_at);
         connection.updated_at = now;
+        // Credential secrets are sealed on this device (database_local_secrets),
+        // not vault objects: only route and group references are checked here.
+        let mut references = connection.clone();
+        references.auth = Default::default();
         crate::inventory::validate_refs(
             unlocked.working(),
-            &VaultObject::DbConnection(connection.clone()),
+            &VaultObject::DbConnection(references),
         )?;
         let _profile = self.hold_session(&owner).await?;
         let _generation = owner.hold_unlocked(&unlocked).await?;

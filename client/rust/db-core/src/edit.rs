@@ -62,7 +62,11 @@ pub(crate) fn preview_literal(engine: DbEngine, cell: &DbCell) -> String {
             }
         }
     }
-    let literal = sql_literal(engine, &shown);
+    let literal = if engine == DbEngine::Cassandra {
+        crate::cassandra_value::literal(&shown)
+    } else {
+        sql_literal(engine, &shown)
+    };
     let literal = match (&shown, engine) {
         (DbCell::Binary(_), DbEngine::Postgresql) => format!("decode({literal}, 'base64')"),
         (DbCell::Binary(_), DbEngine::Mysql | DbEngine::Mariadb) => {
@@ -214,13 +218,20 @@ pub fn cell_edit_request(
                 .push(format!("{} = {placeholder}", quote(column)));
             condition.1.push(format!("{} = {literal}", quote(column)));
         }
+        // CQL updates are upserts: IF EXISTS keeps an edit of a row that
+        // is gone from creating it again.
+        let guard = if engine == DbEngine::Cassandra {
+            " IF EXISTS"
+        } else {
+            ""
+        };
         statements.push(format!(
-            "UPDATE {target} SET {} WHERE {}",
+            "UPDATE {target} SET {} WHERE {}{guard}",
             set.0.join(", "),
             condition.0.join(" AND ")
         ));
         previews.push(format!(
-            "UPDATE {target} SET {} WHERE {}",
+            "UPDATE {target} SET {} WHERE {}{guard}",
             set.1.join(", "),
             condition.1.join(" AND ")
         ));
@@ -333,6 +344,22 @@ impl DbSession {
                  ORDER BY s.seq_in_index",
                 vec![text(&table.database), text(&table.name)],
             ),
+            DbEngine::Cassandra => {
+                // Partition key then clustering columns of a table (views
+                // cannot be updated).
+                let columns = self.cassandra_columns(table).await?;
+                return Ok(columns
+                    .into_iter()
+                    .filter(|column| {
+                        matches!(
+                            column.kind,
+                            crate::cassandra::CqlColumnKind::PartitionKey
+                                | crate::cassandra::CqlColumnKind::Clustering { .. }
+                        )
+                    })
+                    .map(|column| column.name)
+                    .collect());
+            }
             _ => return Ok(Vec::new()),
         };
         let mut rows = Collect::default();
@@ -348,12 +375,64 @@ impl DbSession {
             .collect())
     }
 
+    /// Columns of a CQL table in definition order; empty for a view or a
+    /// table that does not exist.
+    pub(crate) async fn cassandra_columns(
+        &self,
+        table: &DbObjectRef,
+    ) -> Result<Vec<crate::cassandra::CqlTableColumn>, DbError> {
+        let driver = self.driver.lock().await;
+        let Driver::Cassandra(driver) = &*driver else {
+            return Err(DbError::InvalidRequest);
+        };
+        let cancel = self.scope.child_token();
+        let tables = driver
+            .catalogue(
+                "SELECT table_name FROM system_schema.tables WHERE keyspace_name = ? AND table_name = ?",
+                &[&table.database, &table.name],
+                &cancel,
+            )
+            .await?;
+        if tables.is_empty() {
+            return Ok(Vec::new());
+        }
+        driver.columns(&table.database, &table.name, &cancel).await
+    }
+
+    /// The table and full primary key (partition and clustering columns) a
+    /// plain single-table CQL `SELECT` can edit.
+    async fn cassandra_editable(&self, cql: &str) -> Option<(DbObjectRef, Vec<String>)> {
+        let shape = crate::parser::cql::select_source(cql)?;
+        if !shape.plain {
+            return None;
+        }
+        let keyspace = match shape.keyspace {
+            Some(keyspace) => keyspace,
+            None => match &*self.driver.lock().await {
+                Driver::Cassandra(driver) => driver.keyspace()?,
+                _ => return None,
+            },
+        };
+        let table = DbObjectRef {
+            database: keyspace,
+            schema: None,
+            kind: DbObjectKind::Table,
+            name: shape.table,
+            parent_name: None,
+        };
+        let key = self.primary_key(&table).await.ok()?;
+        (!key.is_empty()).then_some((table, key))
+    }
+
     /// The table and primary key a single-table read can edit, if any.
     pub(crate) async fn editable_source(&self, sql: &str) -> Option<(DbObjectRef, Vec<String>)> {
         // Production results are editable too, but only an open production
         // write window lets the edits through the guard.
         if self.guard.policy().mobile {
             return None;
+        }
+        if self.info.engine == DbEngine::Cassandra {
+            return self.cassandra_editable(sql).await;
         }
         let (qualifier, name) = single_table(self.info.engine, sql)?;
         let default = self.guard.policy().default_schema.clone();
@@ -391,6 +470,20 @@ impl DbSession {
         if key.is_empty() {
             return Err(DbError::InvalidRequest);
         }
+        if self.info.engine == DbEngine::Cassandra {
+            // Key columns cannot be updated and counters only incremented.
+            let columns = self.cassandra_columns(table).await?;
+            let editable = |name: &str| {
+                columns.iter().any(|column| {
+                    column.name == name
+                        && !key.iter().any(|key| key == name)
+                        && column.type_name != "counter"
+                })
+            };
+            if edits.iter().any(|edit| !editable(&edit.column)) {
+                return Err(DbError::InvalidRequest);
+            }
+        }
         cell_edit_request(self.info.engine, table, &key, edits)
     }
 
@@ -412,11 +505,34 @@ impl DbSession {
                 {
                     parsed.push((text.as_str(), parameters.as_slice()));
                 }
+                crate::parser::ParsedStatement::Cql { .. }
+                    if self.info.engine == DbEngine::Cassandra => {}
                 _ => return Err(DbError::InvalidRequest),
             }
         }
         let mut sink = OneRowEach::default();
         let mut driver = self.driver.lock().await;
+        if let Driver::Cassandra(driver) = &*driver {
+            // CQL has no multi-row transaction: rows are updated one by one,
+            // each only if it still exists.
+            let cancel = self.scope.child_token();
+            for statement in &statements {
+                let crate::parser::ParsedStatement::Cql {
+                    text, parameters, ..
+                } = statement.parsed()
+                else {
+                    return Err(DbError::InvalidRequest);
+                };
+                if !text.starts_with("UPDATE ") || !text.ends_with(" IF EXISTS") {
+                    return Err(DbError::InvalidRequest);
+                }
+                if !driver.conditional(text, parameters, &cancel).await? {
+                    return Err(DbError::QueryFailed);
+                }
+                sink.rows += 1;
+            }
+            return Ok(sink.rows);
+        }
         let run = match &mut *driver {
             Driver::Postgres(driver) => {
                 driver.query_all(&parsed, false, &mut sink, self.scope.child_token())

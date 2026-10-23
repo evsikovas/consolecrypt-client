@@ -72,6 +72,10 @@ pub(crate) trait RowConsumer: Send {
         elapsed_ms: u64,
         affected_rows: Option<u64>,
     ) -> Result<(), DbError>;
+    /// A server message about the running statement (CQL warnings).
+    async fn notice(&mut self, _message: String) -> Result<(), DbError> {
+        Ok(())
+    }
 }
 
 pub(crate) struct QuerySink {
@@ -262,6 +266,11 @@ impl RowConsumer for QuerySink {
             .ok_or(DbError::ResultLimit)?;
         Ok(())
     }
+
+    async fn notice(&mut self, message: String) -> Result<(), DbError> {
+        self.flush().await?;
+        self.emit(DbQueryEvent::Notice { message }).await
+    }
 }
 
 fn bounded_size(value: &impl serde::Serialize) -> Result<usize, DbError> {
@@ -302,5 +311,6 @@ pub fn error_code(error: &DbError) -> &'static str {
         DbError::NotSqlite => "sqlite_not_database",
         DbError::FileMissing => "sqlite_file_missing",
         DbError::SqliteCliMissing => "sqlite_cli_missing",
+        DbError::DatacenterMismatch => "datacenter_mismatch",
     }
 }

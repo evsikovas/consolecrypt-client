@@ -165,6 +165,10 @@ pub enum DbObjectKind {
     Reference,
     /// A storage class / type affinity of the engine (informational).
     DataType,
+    /// A CQL user-defined type.
+    UserType,
+    /// A CQL user-defined aggregate.
+    Aggregate,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -358,6 +362,9 @@ pub enum DbError {
     /// The remote host, container or Pod has no usable `sqlite3` program.
     #[error("sqlite3 is not installed on the target")]
     SqliteCliMissing,
+    /// The coordinator is not in the connection's local data center.
+    #[error("database coordinator is in another data center")]
+    DatacenterMismatch,
 }
 
 #[cfg(test)]

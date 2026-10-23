@@ -33,6 +33,9 @@ String dbFailureText(Object error, AppLocalizations l) => switch (dbFailureCode(
   'sqlite_cli_missing' => l.dbErrorSqliteCli,
   'sqlite_local_unavailable' => l.dbSqliteLocalUnavailable,
   'kube_exec_blocked' => l.dbErrorKubeExecBlocked,
+  'datacenter_mismatch' => l.dbErrorDatacenter,
+  'engine_changed' => l.dbErrorEngineChange,
+  'local_only' => l.dbErrorDeviceOnly,
   _ => l.dbFailed,
 };
 

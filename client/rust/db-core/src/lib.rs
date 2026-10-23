@@ -3,6 +3,8 @@
 
 pub mod types;
 pub use types::*;
+pub mod cassandra;
+mod cassandra_value;
 mod clickhouse;
 pub mod csv_import;
 pub mod designer;

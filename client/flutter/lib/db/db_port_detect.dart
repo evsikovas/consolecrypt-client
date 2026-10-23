@@ -16,6 +16,8 @@ const _images = <(String, DbEngine)>[
   ('keydb', DbEngine.redis), // l10n-ignore: image name
   ('redis', DbEngine.redis), // l10n-ignore: image name
   ('mongo', DbEngine.mongodb), // l10n-ignore: image name
+  ('scylla', DbEngine.cassandra), // l10n-ignore: image name
+  ('cassandra', DbEngine.cassandra), // l10n-ignore: image name
 ];
 
 /// Standard database ports → engine.
@@ -25,6 +27,7 @@ const dbStandardPorts = {
   8123: DbEngine.clickhouse,
   6379: DbEngine.redis,
   27017: DbEngine.mongodb,
+  9042: DbEngine.cassandra,
 };
 
 /// Environment variables holding the database name and the user.

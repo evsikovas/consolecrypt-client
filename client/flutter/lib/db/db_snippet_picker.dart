@@ -18,8 +18,8 @@ const _engineDialects = {'mysql', 'mariadb', 'clickhouse', 'sqlite'};
 /// Databases history saves (`db_save_history_snippet`): PostgreSQL →
 /// postgresql; MySQL / MariaDB / ClickHouse → sql + "mysql" / "mariadb" /
 /// "clickhouse" (MySQL and MariaDB share snippets); Redis → redis_cli;
-/// MongoDB → shell + "mongosh"; SQLite → sql + "sqlite". Plain SQL snippets without an engine dialect
-/// match every SQL engine. Snippets tagged [terminalOnlySnippetTag] are
+/// MongoDB → shell + "mongosh"; SQLite → sql + "sqlite"; Cassandra / ScyllaDB →
+/// cql. Plain SQL snippets without an engine dialect match every SQL engine. Snippets tagged [terminalOnlySnippetTag] are
 /// server admin commands the workspace guard refuses, so they are left out.
 bool snippetMatchesEngine(Snippet snippet, DbEngine engine) {
   if (snippet.tags.contains(terminalOnlySnippetTag)) return false;
@@ -33,6 +33,7 @@ bool snippetMatchesEngine(Snippet snippet, DbEngine engine) {
     DbEngine.redis => snippet.snippetType == SnippetType.redisCli,
     DbEngine.mongodb => snippet.snippetType == SnippetType.shell && dialect == 'mongosh',
     DbEngine.sqlite => sql && dialect == 'sqlite' || genericSql,
+    DbEngine.cassandra => snippet.snippetType == SnippetType.cql,
   };
 }
 
