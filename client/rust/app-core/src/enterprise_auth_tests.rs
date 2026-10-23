@@ -172,6 +172,7 @@ fn api_error_mapping_for_enterprise_codes() {
     );
     let e: AppError = ApiError::RateLimited {
         retry_after: Some(Duration::from_secs(42)),
+        limit: None,
     }
     .into();
     assert_eq!(

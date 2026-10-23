@@ -19,6 +19,12 @@ pub async fn sync_now() -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.sync_now().await?) }).await
 }
 
+/// Re-queue changes the server rejected for good (e.g. after a vault
+/// object limit, once cleaned up) → how many were re-queued.
+pub async fn sync_retry_failed() -> Result<u64, BridgeError> {
+    with_core(move |c| async move { Ok(c.sync_retry_failed().await?) }).await
+}
+
 /// Local → Synced (register or log in, upload the vault) → `ProfileInfo`.
 pub async fn sync_enable(
     server_url: String,

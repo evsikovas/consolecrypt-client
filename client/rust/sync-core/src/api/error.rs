@@ -56,6 +56,10 @@ pub enum ApiError {
     RateLimited {
         /// From `retry_after_seconds` or the `Retry-After` header.
         retry_after: Option<Duration>,
+        /// `details.limit` (protocol 1.11): which server limit was hit
+        /// (`push_device`, `recipient_lookup_account`, …). Unknown values
+        /// are kept as sent; `None` from older servers.
+        limit: Option<String>,
     },
     /// Any other structured error response.
     #[error("server error {status}: {error}")]
@@ -152,7 +156,7 @@ impl ApiError {
     /// Server-requested delay before retrying.
     pub fn retry_after(&self) -> Option<Duration> {
         match self {
-            ApiError::RateLimited { retry_after } => *retry_after,
+            ApiError::RateLimited { retry_after, .. } => *retry_after,
             ApiError::Server { error, .. } => error
                 .retry_after_seconds
                 .map(|s| Duration::from_secs(u64::from(s))),
@@ -163,5 +167,101 @@ impl ApiError {
     /// Whether this is a structured error with `code`.
     pub fn is_code(&self, code: ErrorCode) -> bool {
         self.code() == Some(code)
+    }
+
+    /// `details` of a structured error response.
+    pub fn details(&self) -> Option<&serde_json::Value> {
+        match self {
+            ApiError::Server { error, .. } => error.details.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// `details.limit` of a `429 rate_limited` (protocol 1.11).
+    pub fn rate_limit_name(&self) -> Option<&str> {
+        match self {
+            ApiError::RateLimited { limit, .. } => limit.as_deref(),
+            _ => None,
+        }
+    }
+
+    /// A quota refusal (protocol 1.11): `413 payload_too_large` with
+    /// `details.reason` = `object_limit` / `vault_quota`, or `403 forbidden`
+    /// at sign-in with `device_limit` / `device_daily_limit`.
+    pub fn quota(&self) -> Option<QuotaRefusal> {
+        let ApiError::Server { error, .. } = self else {
+            return None;
+        };
+        let details = error.details.as_ref()?;
+        let reason = details.get(quota::DETAILS_REASON)?.as_str()?;
+        let known = match error.code {
+            ErrorCode::PayloadTooLarge => {
+                matches!(reason, quota::OBJECT_LIMIT | quota::VAULT_QUOTA)
+            }
+            ErrorCode::Forbidden => {
+                matches!(reason, quota::DEVICE_LIMIT | quota::DEVICE_DAILY_LIMIT)
+            }
+            _ => false,
+        };
+        if !known {
+            return None;
+        }
+        let number = |key: &str| details.get(key).and_then(serde_json::Value::as_u64);
+        Some(QuotaRefusal {
+            reason: reason.to_owned(),
+            limit: number("limit").or_else(|| number("limit_bytes")),
+            until: details
+                .get("until")
+                .and_then(|v| v.as_str())
+                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                .map(|t| t.with_timezone(&chrono::Utc)),
+        })
+    }
+}
+
+/// Wire names of quota refusals (protocol 1.11, `cc_protocol::quotas` of
+/// server 0.2.2; spelled out here so the client builds against older
+/// protocol crates).
+pub mod quota {
+    /// Key of the quota reason in `details`.
+    pub const DETAILS_REASON: &str = "reason";
+    /// `413`: the vault would hold more than `details.limit` objects.
+    pub const OBJECT_LIMIT: &str = "object_limit";
+    /// `413`: the vault's bytes would exceed `details.limit_bytes`.
+    pub const VAULT_QUOTA: &str = "vault_quota";
+    /// `403` at sign-in: the account already has `details.limit` devices.
+    pub const DEVICE_LIMIT: &str = "device_limit";
+    /// `403` at sign-in: too many new devices in 24 hours (`details.until`).
+    pub const DEVICE_DAILY_LIMIT: &str = "device_daily_limit";
+}
+
+/// A quota the server refused a request for (see [`ApiError::quota`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuotaRefusal {
+    /// One of the [`quota`] reasons.
+    pub reason: String,
+    /// `details.limit` (objects, devices) or `details.limit_bytes`.
+    pub limit: Option<u64>,
+    /// `details.until` (`device_daily_limit`): when the next device is
+    /// accepted.
+    pub until: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl std::fmt::Display for QuotaRefusal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let what = match self.reason.as_str() {
+            quota::OBJECT_LIMIT => "vault object limit reached",
+            quota::VAULT_QUOTA => "vault storage quota exceeded",
+            quota::DEVICE_LIMIT => "device limit reached",
+            quota::DEVICE_DAILY_LIMIT => "too many new devices today",
+            other => other,
+        };
+        f.write_str(what)?;
+        match (self.reason.as_str(), self.limit) {
+            (quota::VAULT_QUOTA, Some(n)) => write!(f, " (limit {n} bytes)"),
+            (quota::OBJECT_LIMIT, Some(n)) => write!(f, " (limit {n} objects)"),
+            (_, Some(n)) => write!(f, " (limit {n})"),
+            (_, None) => Ok(()),
+        }
     }
 }

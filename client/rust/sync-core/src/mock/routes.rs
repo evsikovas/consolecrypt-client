@@ -193,6 +193,7 @@ async fn gate(State(s): S, req: Request, next: Next) -> Response {
             e.retry_after_seconds = Some(retry_after_seconds);
             MockError(e).into_response()
         }
+        Some(FaultAction::Respond(e)) => MockError(*e).into_response(),
         Some(FaultAction::LoseResponse) => {
             // Commit, then cut the connection before the response leaves.
             let resp = next.run(req).await;

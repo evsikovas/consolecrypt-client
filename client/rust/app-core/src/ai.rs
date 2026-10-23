@@ -80,7 +80,10 @@ impl From<AiError> for AppError {
             }
             AiError::Cancelled => AppError::Cancelled,
             AiError::Auth { .. } => AppError::AiAuthFailed(msg),
-            AiError::RateLimited { retry_after_secs } => AppError::RateLimited { retry_after_secs },
+            AiError::RateLimited { retry_after_secs } => AppError::RateLimited {
+                retry_after_secs,
+                limit: None,
+            },
             AiError::ModelNotFound(_)
             | AiError::Http { .. }
             | AiError::Provider(_)

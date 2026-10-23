@@ -214,6 +214,7 @@ pub async fn ai(cli: &Cli, app: &AppCore, cmd: &AiCmd, out: &Out) -> R<i32> {
                             "cancelled" => AppError::Cancelled,
                             "rate_limited" => AppError::RateLimited {
                                 retry_after_secs: None,
+                                limit: None,
                             },
                             _ => AppError::AiProvider(message),
                         }));

@@ -20,7 +20,7 @@ pub(crate) mod conflict;
 mod recovery;
 mod validate;
 
-use crate::api::ApiClient;
+use crate::api::{ApiClient, ApiError, QuotaRefusal};
 use crate::backoff::BackoffConfig;
 use crate::codec::CodecError;
 use crate::error::{Disposition, StopReason, SyncError};
@@ -124,6 +124,17 @@ pub struct SyncStatus {
     pub server_latest_sequence: i64,
     /// Delay until the next automatic retry.
     pub next_retry_in: Option<Duration>,
+    /// When the next automatic retry is due (`next_retry_in` from the
+    /// moment it was scheduled).
+    pub next_retry_at: Option<Timestamp>,
+    /// The last attempt was refused with `429 rate_limited`: the retry waits
+    /// for the server's `Retry-After` (protocol 1.11). Not an error the user
+    /// has to act on.
+    pub rate_limited: bool,
+    /// The server refused pushes for a vault quota (protocol 1.11,
+    /// `object_limit` / `vault_quota`); those mutations are `failed` until
+    /// [`SyncEngine::retry_failed`]. Kept for this engine's lifetime.
+    pub push_quota: Option<QuotaRefusal>,
     /// Set while recovering from a server rollback (restore from an older
     /// backup): the vault is being re-downloaded and local objects the
     /// server lost are re-uploaded. Local work continues meanwhile.
@@ -230,6 +241,9 @@ fn verify_changes(
     (remote, warnings)
 }
 
+/// The server refused the request itself (`400`, `413` incl. the protocol
+/// 1.11 quotas): isolate and fail the offending mutations. `429` is never a
+/// rejection — the batch is retried after `Retry-After`.
 fn is_request_rejected(e: &SyncError) -> bool {
     matches!(e, SyncError::Api(a) if a.is_code(ErrorCode::BadRequest) || a.is_code(ErrorCode::PayloadTooLarge))
 }
@@ -268,6 +282,9 @@ impl SyncEngine {
             last_sequence: 0,
             server_latest_sequence: 0,
             next_retry_in: None,
+            next_retry_at: None,
+            rate_limited: false,
+            push_quota: None,
             rollback_recovery: None,
         });
         let (shutdown, _) = watch::channel(false);
@@ -316,6 +333,25 @@ impl SyncEngine {
         let result = self.inner.store.put_batch(payloads).await?;
         self.refresh_status().await?;
         Ok(result)
+    }
+
+    /// Put mutations the server rejected for good (`failed`, e.g. after a
+    /// vault quota refusal the user has since cleaned up) back into the
+    /// queue and wake the worker. Returns how many were re-queued.
+    pub async fn retry_failed(&self) -> Result<usize, SyncError> {
+        let vault_id = self.vault_id();
+        let n = self
+            .inner
+            .store
+            .storage()
+            .write(move |tx| tx.outbox_requeue_failed(vault_id))
+            .await?;
+        self.inner.status.send_modify(|s| s.push_quota = None);
+        self.refresh_status().await?;
+        if n > 0 {
+            self.inner.urgent.notify_one();
+        }
+        Ok(n)
     }
 
     /// Local delete (see [`ObjectStore::delete`]); wakes the worker.
@@ -407,6 +443,8 @@ impl SyncEngine {
             st.phase = SyncPhase::Stopped;
             st.stop_reason = Some(reason);
             st.next_retry_in = None;
+            st.next_retry_at = None;
+            st.rate_limited = false;
         });
         self.inner.store.emit(SyncEvent::Stopped {
             vault_id: self.vault_id(),
@@ -512,7 +550,13 @@ impl SyncEngine {
                             delay_ms = d.as_millis() as u64,
                             "sync retry scheduled"
                         );
-                        self.inner.status.send_modify(|s| s.next_retry_in = Some(d));
+                        let at = chrono::Utc::now()
+                            + chrono::Duration::from_std(d)
+                                .unwrap_or_else(|_| chrono::Duration::days(1));
+                        self.inner.status.send_modify(|s| {
+                            s.next_retry_in = Some(d);
+                            s.next_retry_at = Some(at);
+                        });
                         wait = Some(d);
                     }
                 },
@@ -538,6 +582,8 @@ impl SyncEngine {
                         s.phase = SyncPhase::Idle;
                         s.last_error = None;
                         s.next_retry_in = None;
+                        s.next_retry_at = None;
+                        s.rate_limited = false;
                     }
                 });
             }
@@ -557,10 +603,13 @@ impl SyncEngine {
                     Disposition::Retry { offline, .. } => {
                         tracing::debug!(error = %e, offline, "sync cycle failed");
                         let msg = e.to_string();
+                        let rate_limited =
+                            matches!(e, SyncError::Api(ApiError::RateLimited { .. }));
                         self.inner.status.send_modify(|s| {
                             if s.phase == SyncPhase::Stopped {
                                 return;
                             }
+                            s.rate_limited = rate_limited;
                             s.phase = if offline {
                                 SyncPhase::Offline
                             } else {
@@ -687,6 +736,9 @@ impl SyncEngine {
             s.pending = counts.queued;
             s.conflicts = counts.conflict;
             s.failed = counts.failed;
+            if counts.failed == 0 {
+                s.push_quota = None;
+            }
             s.last_sequence = cursor.last_sequence;
             s.server_latest_sequence = cursor.server_latest_sequence;
             s.last_sync_at = cursor.last_sync_at;
@@ -740,7 +792,19 @@ impl SyncEngine {
 
     async fn mark_failed(&self, entry: &OutboxEntry, e: &SyncError) -> Result<(), SyncError> {
         let id = entry.mutation_id;
-        let msg = e.to_string();
+        let quota = match e {
+            SyncError::Api(a) => a.quota(),
+            _ => None,
+        };
+        // A quota refusal gets a clear, stable reason ("vault object limit
+        // reached (limit N objects)") instead of the raw server error.
+        let msg = match &quota {
+            Some(q) => format!("rejected by the server: {q}"),
+            None => e.to_string(),
+        };
+        if let Some(q) = quota {
+            self.inner.status.send_modify(|s| s.push_quota = Some(q));
+        }
         tracing::warn!(object_id = %entry.object_id, error = %msg, "mutation rejected by server");
         self.inner
             .store

@@ -60,8 +60,8 @@ pub mod mock;
 pub use cc_storage_core as storage;
 
 pub use api::{
-    ApiClient, ApiConfig, ApiError, MemoryTokenStore, ProofRejection, RequestSigner, SignerError,
-    TokenStore, TokenStoreError,
+    quota, ApiClient, ApiConfig, ApiError, MemoryTokenStore, ProofRejection, QuotaRefusal,
+    RequestSigner, SignerError, TokenStore, TokenStoreError,
 };
 pub use attach::{
     disconnect, enable_sync, DisconnectOptions, DisconnectOutcome, EnableSync, EnableSyncOutcome,

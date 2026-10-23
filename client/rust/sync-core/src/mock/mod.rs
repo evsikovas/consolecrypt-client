@@ -105,6 +105,9 @@ pub enum FaultAction {
     Error(ErrorCode),
     /// `429` with `retry_after_seconds` (and `Retry-After`).
     RateLimit { retry_after_seconds: u32 },
+    /// Answer with this structured error (status from its code; `details`
+    /// and `retry_after_seconds` as given), e.g. a protocol 1.11 quota.
+    Respond(Box<cc_protocol::ApiError>),
     /// Run the handler (state is committed), then drop the connection
     /// before the response is delivered.
     LoseResponse,
@@ -123,6 +126,7 @@ impl std::fmt::Debug for FaultAction {
             } => {
                 write!(f, "RateLimit({retry_after_seconds}s)")
             }
+            FaultAction::Respond(e) => write!(f, "Respond({:?})", e.code),
             FaultAction::LoseResponse => f.write_str("LoseResponse"),
             FaultAction::Rewrite(_) => f.write_str("Rewrite(..)"),
             FaultAction::InvalidJson => f.write_str("InvalidJson"),
