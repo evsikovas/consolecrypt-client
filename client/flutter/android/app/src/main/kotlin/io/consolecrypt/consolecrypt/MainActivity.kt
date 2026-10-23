@@ -2,14 +2,11 @@ package io.consolecrypt.consolecrypt
 
 import android.app.Activity
 import android.content.Intent
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import android.os.Bundle
-import android.os.PersistableBundle
 import android.view.WindowManager
 import android.view.WindowInsets
 import android.view.WindowInsetsController
@@ -49,6 +46,9 @@ class MainActivity : FlutterActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        // Only a focused window may read the clipboard (Android 10+): finish
+        // an expired pending clear with an ownership check (S8, ТР-5).
+        runCatching { SecretClipboard.onFocusChanged(applicationContext, hasFocus) }
         if (hasFocus && rdpFullscreen) {
             // Android can reveal bars while dismissing the IME. Reapply only
             // while this session still owns fullscreen, after its guard delay.
@@ -154,31 +154,51 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        // Protected clipboard (S8): see SecretClipboard. No method ever
+        // returns or logs clipboard content.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/clipboard").setMethodCallHandler { call, result ->
-            if (call.method != "copySecret") {
-                result.notImplemented()
-                return@setMethodCallHandler
-            }
-            val text = call.argument<Any>("text") as? String
-            val milliseconds = when (val value = call.argument<Any>("clearAfterMilliseconds")) {
-                is Int -> value.toLong()
-                is Long -> value
-                else -> null
-            }
-            if (text == null || milliseconds == null || milliseconds !in 1..86_400_000L) {
-                result.error("bad_args", "Invalid secret clipboard request", null)
-                return@setMethodCallHandler
-            }
             try {
-                val clip = ClipData.newPlainText("", text)
-                // The API 33 constant's literal also works on our API 30 minimum.
-                // Android's preview must never show the copied secret. The Dart
-                // owner still clears it on timeout/disposal; Android has no TTL API.
-                clip.description.extras = PersistableBundle().apply {
-                    putBoolean("android.content.extra.IS_SENSITIVE", true)
+                when (call.method) {
+                    "copySecret" -> {
+                        val text = call.argument<Any>("text") as? String
+                        val milliseconds = when (val value = call.argument<Any>("clearAfterMilliseconds")) {
+                            is Int -> value.toLong()
+                            is Long -> value
+                            else -> null
+                        }
+                        if (text == null || milliseconds == null || milliseconds !in 1..86_400_000L) {
+                            result.error("bad_args", "Invalid secret clipboard request", null)
+                        } else {
+                            result.success(SecretClipboard.copy(applicationContext, text, milliseconds))
+                        }
+                    }
+                    "copyPrivate" -> {
+                        val text = call.argument<Any>("text") as? String
+                        if (text == null) result.error("bad_args", "Invalid clipboard request", null)
+                        else {
+                            SecretClipboard.copy(applicationContext, text, null)
+                            result.success(null)
+                        }
+                    }
+                    "clearIfOwned" -> {
+                        val token = call.argument<Any>("token") as? String
+                        if (token.isNullOrEmpty()) result.error("bad_args", "Invalid clipboard token", null)
+                        else result.success(SecretClipboard.clearIfOwned(applicationContext, token))
+                    }
+                    "forget" -> {
+                        SecretClipboard.forget(applicationContext)
+                        result.success(null)
+                    }
+                    "getBackgroundClear" -> result.success(SecretClipboard.backgroundClearEnabled(applicationContext))
+                    "setBackgroundClear" -> {
+                        val enabled = call.argument<Any>("enabled") as? Boolean
+                        if (enabled == null) result.error("bad_args", "Expected a boolean", null)
+                        else if (SecretClipboard.setBackgroundClearEnabled(applicationContext, enabled)) {
+                            result.success(SecretClipboard.backgroundClearEnabled(applicationContext))
+                        } else result.error("storage", "Could not save the clipboard preference", null)
+                    }
+                    else -> result.notImplemented()
                 }
-                getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
-                result.success(null)
             } catch (_: Exception) {
                 result.error("clipboard", "Secret clipboard unavailable", null)
             }

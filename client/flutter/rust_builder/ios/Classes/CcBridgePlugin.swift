@@ -48,6 +48,18 @@ public final class CcBridgePlugin: NSObject, FlutterPlugin {
       exportFile(arguments: call.arguments as? [String: Any], result: result)
     case "copySecret":
       copySecret(arguments: call.arguments as? [String: Any], result: result)
+    case "copyPrivate":
+      guard let text = (call.arguments as? [String: Any])?["text"] as? String else {
+        result(FlutterError(code: "bad_args", message: "Invalid clipboard request", details: nil))
+        return
+      }
+      // Device-local, no expiry: terminal selection and query results.
+      UIPasteboard.general.setItems([["public.utf8-plain-text": text]], options: [.localOnly: true])
+      result(nil)
+    case "clearIfOwned":
+      clearIfOwned(arguments: call.arguments as? [String: Any], result: result)
+    case "forget":
+      result(nil)
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -69,7 +81,24 @@ public final class CcBridgePlugin: NSObject, FlutterPlugin {
       .localOnly: true,
       .expirationDate: Date().addingTimeInterval(milliseconds.doubleValue / 1_000),
     ])
-    result(nil)
+    // Ownership token: the change count right after our write (S8/S9).
+    result(String(UIPasteboard.general.changeCount))
+  }
+
+  /// Clears our items if the pasteboard has not changed since the copy that
+  /// returned [token]; never reads the content (no paste prompt/banner).
+  private func clearIfOwned(arguments: [String: Any]?, result: @escaping FlutterResult) {
+    guard let token = arguments?["token"] as? String, let count = Int(token) else {
+      result(FlutterError(code: "bad_args", message: "Invalid clipboard token", details: nil))
+      return
+    }
+    let pasteboard = UIPasteboard.general
+    if pasteboard.changeCount == count {
+      pasteboard.items = []
+      result("cleared")
+    } else {
+      result(pasteboard.numberOfItems == 0 ? "gone" : "foreign")
+    }
   }
 
   private func privateDataDirectory() throws -> URL {

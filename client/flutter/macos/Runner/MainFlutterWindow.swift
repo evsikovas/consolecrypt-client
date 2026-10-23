@@ -7,6 +7,7 @@ class MainFlutterWindow: NSWindow {
   private var updateBridge: UpdateBridge?
   private var fullscreenBridge: FullscreenBridge?
   private var fontsBridge: FontsBridge?
+  private var pasteboardBridge: SecretPasteboardBridge?
 
   override func awakeFromNib() {
     // macos_window_utils (MIT) hosts the Flutter view so the Dart side can
@@ -36,6 +37,7 @@ class MainFlutterWindow: NSWindow {
 
     fullscreenBridge = FullscreenBridge(messenger: flutterViewController.engine.binaryMessenger, window: self)
     fontsBridge = FontsBridge(messenger: flutterViewController.engine.binaryMessenger)
+    pasteboardBridge = SecretPasteboardBridge(messenger: flutterViewController.engine.binaryMessenger)
 
     super.awakeFromNib()
   }
