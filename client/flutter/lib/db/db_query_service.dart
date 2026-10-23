@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/db/db_models.dart';
 
@@ -125,8 +126,11 @@ abstract interface class DbProductionWriteService {
   /// Live write state of a session (asked again when a window runs out).
   Future<DbSessionInfo> sessionState(String sessionId);
 
-  /// Opens the window for [minutes] (5, 15 or 30); throws [DbWrongPassphrase].
-  Future<DbSessionInfo> unlockProduction(String sessionId, {required SecretText passphrase, required int minutes});
+  /// Opens the window for [minutes] (5, 15 or 30) after the vault
+  /// passphrase or a presence token for [StepUpAction.dbProductionWrite] on
+  /// [sessionId]; throws [DbWrongPassphrase] (or `passphraseRequired` for a
+  /// refused token). Wipes [proof].
+  Future<DbSessionInfo> unlockProduction(String sessionId, {required StepUpProof proof, required int minutes});
   Future<DbSessionInfo> lockProduction(String sessionId);
 }
 

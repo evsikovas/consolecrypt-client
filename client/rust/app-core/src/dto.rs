@@ -248,6 +248,11 @@ pub struct DeviceUnlockDto {
     /// (was on before OS-protected device unlock) or `invalidated`
     /// (fingerprints changed / Windows Hello reset).
     pub reoffer: Option<String>,
+    /// "Confirm actions with biometrics" is on (device unlock on).
+    pub confirm_actions: bool,
+    /// Step-up confirmations can use the OS check now (device unlock on,
+    /// OS-protected, preference on, OS available).
+    pub presence_available: bool,
 }
 
 /// Result of [`crate::AppCore::reauthenticate`].

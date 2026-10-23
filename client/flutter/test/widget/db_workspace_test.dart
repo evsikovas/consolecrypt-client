@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
+import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
 import 'package:consolecrypt/db/db_models.dart';
@@ -13,12 +15,15 @@ import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/db/db_workspace.dart';
+import 'package:consolecrypt/snippets/starter_catalog.dart';
+import 'package:consolecrypt/vault/user_presence.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../helpers/fake_presence.dart';
 import '../helpers/test_app.dart';
 
 final _scope = NotifierProvider<_Scope, DbScope>(_Scope.new);
@@ -58,6 +63,7 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiS
   final consents = <DbAiConsent>[];
   final aiCancelled = <String>[];
   DbQueryRisk risk = DbQueryRisk.read;
+  String? suggestion;
   Completer<DbQueryReview>? pendingReview;
   Completer<DbTreePage>? pendingTree;
   List<String> parameters = [];
@@ -132,7 +138,12 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbAiS
   @override
   Future<DbQueryReview> reviewQuery(String sessionId, DbQueryRequest request) async =>
       pendingReview?.future ??
-      DbQueryReview(ticket: 'review', risk: risk, expiresAt: DateTime.now().add(const Duration(minutes: 2)));
+      DbQueryReview(
+        ticket: 'review',
+        risk: risk,
+        expiresAt: DateTime.now().add(const Duration(minutes: 2)),
+        suggestion: suggestion,
+      );
   @override
   Future<void> discardQueryReview(String sessionId, String ticket) async => discarded.add(ticket);
   @override
@@ -225,6 +236,7 @@ class _ProdService extends _Service implements DbProductionWriteService, DbCellE
   _ProdService() : super(production: true, readOnly: true);
   DateTime? until;
   final unlocks = <int>[], locks = <String>[], commits = <String>[];
+  final proofs = <StepUpProof>[];
   List<DbCellEdit> reviewed = const [];
   bool roleCanWrite = false;
 
@@ -245,12 +257,13 @@ class _ProdService extends _Service implements DbProductionWriteService, DbCellE
   @override
   Future<DbSessionInfo> sessionState(String sessionId) async => _live();
   @override
-  Future<DbSessionInfo> unlockProduction(
-    String sessionId, {
-    required SecretText passphrase,
-    required int minutes,
-  }) async {
-    if (passphrase.expose() != 'vault-pass') throw const DbWrongPassphrase();
+  Future<DbSessionInfo> unlockProduction(String sessionId, {required StepUpProof proof, required int minutes}) async {
+    proofs.add(proof);
+    final ok = switch (proof) {
+      PassphraseProof(:final passphrase) => passphrase.expose() == 'vault-pass',
+      PresenceProof(:final token) => token == 'presence:db_production_write:$sessionId',
+    };
+    if (!ok) throw const DbWrongPassphrase();
     unlocks.add(minutes);
     until = DateTime.now().add(Duration(minutes: minutes));
     return _live();
@@ -315,11 +328,16 @@ Future<ProviderContainer> _pump(
   String language = 'en',
   Size size = const Size(1200, 900),
   double scale = 1,
+  List<Snippet> snippets = const [],
+  UserPresence? presence,
 }) async {
   final backend = testBackend();
   addTearDown(backend.dispose);
   // Changing statements are confirmed with the vault passphrase.
   await backend.debugSignInDemoAndUnlock();
+  for (final snippet in snippets) {
+    await backend.snippets.saveSnippet(snippet);
+  }
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -329,6 +347,7 @@ Future<ProviderContainer> _pump(
         appServicesProvider.overrideWithValue(backend.services),
         dbServiceProvider.overrideWithValue(service),
         dbScopeProvider.overrideWith((ref) => ref.watch(_scope)),
+        if (presence != null) userPresenceProvider.overrideWithValue(presence),
       ],
       child: MaterialApp(
         locale: Locale(language),
@@ -406,6 +425,61 @@ void main() {
     await finish();
     expect(service.preparations.last.$2, DbRunMode.script);
     expect(service.executed, hasLength(3));
+  });
+
+  testWidgets('the snippets button and Ctrl+J put a snippet below the text without running it', (tester) async {
+    final en = lookupAppLocalizations(const Locale('en'));
+    final activity = starterSnippetPackages(en)
+        .firstWhere((p) => p.id == 'postgresql')
+        .snippets
+        .firstWhere((s) => s.catalogId == 'consolecrypt.db.pg.activity.v1');
+    final service = _Service();
+    await _pump(tester, service, snippets: [activity]);
+    final controller = tester.widget<TextField>(find.byKey(const ValueKey('db-query-editor'))).controller!;
+    Finder row() =>
+        find.descendant(of: find.byKey(const ValueKey('db-snippet-picker')), matching: find.text(activity.name));
+    await _type(tester, 'SELECT 1');
+    expect(find.byTooltip('Snippets: insert into the editor (Ctrl+J)'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('db-snippets')));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-snippet-picker')), findsOneWidget);
+    await tester.tap(row());
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-snippet-picker')), findsNothing);
+    final query = activity.template.trim();
+    expect(controller.text, 'SELECT 1;\n\n$query');
+    expect(controller.selection.baseOffset, 'SELECT 1;\n\n'.length, reason: 'the caret is at the inserted text');
+
+    // The shortcut opens the same picker; cancelling leaves the text alone.
+    await tester.tap(find.byKey(const ValueKey('db-query-editor')));
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyJ);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-snippet-picker')), findsOneWidget);
+    await tester.tap(find.text('Cancel').last);
+    await settle(tester);
+    expect(controller.text, 'SELECT 1;\n\n$query');
+    expect(service.preparations, isEmpty, reason: 'an inserted snippet never runs');
+    expect(service.executed, isEmpty);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('a blocked query offers its safe alternative for the editor, never runs it', (tester) async {
+    final service = _Service()
+      ..risk = DbQueryRisk.blocked
+      ..suggestion = 'SCAN 0 MATCH * COUNT 100';
+    await _pump(tester, service);
+    await _type(tester, 'KEYS *');
+    await tester.tap(find.byKey(const ValueKey('db-run')));
+    await settle(tester);
+    expect(find.text('Insert into the editor'), findsOneWidget);
+    await tester.tap(find.text('Insert into the editor'));
+    await settle(tester);
+    final controller = tester.widget<TextField>(find.byKey(const ValueKey('db-query-editor'))).controller!;
+    expect(controller.text, 'KEYS *;\n\nSCAN 0 MATCH * COUNT 100', reason: 'appended to the current tab');
+    expect(find.byKey(const ValueKey('db-query-tabs')), findsOneWidget);
+    expect(service.executed, isEmpty);
   });
 
   testWidgets('structure groups mixed children into folders and frames an expanded table', (tester) async {
@@ -721,6 +795,41 @@ void main() {
     expect(service.locks, ['session']);
     expect(find.byKey(const ValueKey('db-prod-write-badge')), findsNothing);
     expect(find.byKey(const ValueKey('db-prod-unlock')), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('production unlock with Touch ID sends a token bound to the session, never a passphrase', (tester) async {
+    final service = _ProdService();
+    final presence = FakePresence();
+    await _pump(tester, service, presence: presence);
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock')));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('step-up-presence')), findsOneWidget);
+    expect(find.text('You will confirm with Touch ID.'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock-submit')));
+    await settle(tester);
+    final (action, object, reason) = presence.verified.single;
+    expect((action, object), (StepUpAction.dbProductionWrite, 'session'));
+    expect(reason, 'allow changes on fixture-db');
+    expect((service.proofs.single as PresenceProof).token, 'presence:db_production_write:session');
+    expect(service.unlocks, [15]);
+    expect(find.byKey(const ValueKey('db-prod-unlock-dialog')), findsNothing);
+
+    // A refused token (or failed biometry) leaves the passphrase.
+    await tester.tap(find.byKey(const ValueKey('db-prod-lock')));
+    await settle(tester);
+    presence.failure = AppErrorCode.osAuthFailed;
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock')));
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock-submit')));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('step-up-presence-failed')), findsOneWidget);
+    expect(service.proofs, hasLength(1), reason: 'nothing sent after a failed prompt');
+    await tester.enterText(find.byKey(const ValueKey('db-prod-passphrase')).first, 'vault-pass');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock-submit')));
+    await settle(tester);
+    expect(service.proofs.last, isA<PassphraseProof>());
+    expect(service.unlocks, [15, 15]);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('cells of a production result are edited in place only while unlocked', (tester) async {

@@ -8884,7 +8884,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'KEYS перебирает все ключи разом и может остановить сервер. Используйте SCAN — он читает ключи порциями.';
 
   @override
-  String get dbOpenSuggestion => 'Открыть в новой вкладке';
+  String get dbOpenSuggestion => 'Вставить в редактор';
 
   @override
   String get dbPlanByTime => 'Полосы — доля времени выполнения, которую занял сам шаг.';
@@ -12885,5 +12885,60 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String dbDesignIssueOther(String name) {
     return 'Проверьте структуру ($name).';
+  }
+
+  @override
+  String dbInsertSnippetHelp(String shortcut) {
+    return 'Сниппеты: вставить в редактор ($shortcut)';
+  }
+
+  @override
+  String get stepUpOsReason => 'подтвердить защищённое действие';
+
+  @override
+  String stepUpOsReasonFor(String action) {
+    return 'подтвердить «$action»';
+  }
+
+  @override
+  String dbUnlockProductionOsReason(String connection) {
+    return 'разрешить изменения в $connection';
+  }
+
+  @override
+  String get stepUpConfirmTouchId => 'Подтвердить с Touch ID';
+
+  @override
+  String get stepUpConfirmFaceId => 'Подтвердить с Face ID';
+
+  @override
+  String get stepUpConfirmWindowsHello => 'Подтвердить через Windows Hello';
+
+  @override
+  String get stepUpConfirmFingerprint => 'Подтвердить отпечатком';
+
+  @override
+  String get stepUpConfirmDeviceCredential => 'Подтвердить паролем устройства';
+
+  @override
+  String get stepUpUsePassphrase => 'Ввести пароль хранилища';
+
+  @override
+  String stepUpPresenceHint(String method) {
+    return 'Подтверждение — $method.';
+  }
+
+  @override
+  String get stepUpPresenceFailed => 'Не подтверждено. Введите пароль хранилища.';
+
+  @override
+  String get errorPassphraseRequired => 'Подтвердите паролем хранилища.';
+
+  @override
+  String get confirmActionsWithPresence => 'Подтверждать действия биометрией';
+
+  @override
+  String confirmActionsWithPresenceHelp(String method) {
+    return '$method вместо пароля хранилища для рискованных действий на этом устройстве. Смена пароля, новый комплект восстановления, отключение разблокировки, резервные копии, одобрение устройств и безопасность аккаунта всегда требуют пароль.';
   }
 }

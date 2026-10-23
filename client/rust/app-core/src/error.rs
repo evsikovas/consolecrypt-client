@@ -58,6 +58,11 @@ pub enum AppError {
     /// The vault passphrase is wrong.
     #[error("wrong vault passphrase")]
     WrongPassphrase,
+    /// A step-up needs the vault passphrase: no proof, a presence token
+    /// that is unknown, used, expired or for another action, an action
+    /// that is passphrase-only, or the OS check is not offered.
+    #[error("confirm with the vault passphrase")]
+    PassphraseRequired,
     /// The *current* vault passphrase given to a change is wrong (code
     /// `wrong_passphrase`, reason `current_passphrase_wrong`).
     #[error("the current vault passphrase is wrong")]
@@ -277,6 +282,7 @@ impl AppError {
             AppError::VaultLocked => "vault_locked",
             AppError::NoVault => "no_vault",
             AppError::WrongPassphrase | AppError::WrongCurrentPassphrase => "wrong_passphrase",
+            AppError::PassphraseRequired => "passphrase_required",
             AppError::WrongRecoveryKey(_) => "wrong_recovery_key",
             AppError::WeakPassphrase(_) => "weak_passphrase",
             AppError::DeviceNotAuthorized => "device_not_authorized",

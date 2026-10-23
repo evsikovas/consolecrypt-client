@@ -56,6 +56,7 @@ String errorCodeMessage(AppLocalizations l, AppErrorCode code, {Map<String, Stri
   AppErrorCode.registrationClosed => l.errorRegistrationClosed,
   AppErrorCode.emailTaken => l.errorEmailTaken,
   AppErrorCode.wrongPassphrase => l.errorWrongPassphrase,
+  AppErrorCode.passphraseRequired => l.errorPassphraseRequired,
   AppErrorCode.invalidRecoveryKey => l.errorInvalidRecoveryKey,
   AppErrorCode.deviceNotTrusted => l.errorDeviceNotTrusted,
   AppErrorCode.secureStore => l.errorSecureStore,

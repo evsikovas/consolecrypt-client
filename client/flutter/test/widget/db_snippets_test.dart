@@ -9,7 +9,6 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/widgets/risk_badge.dart';
-import 'package:consolecrypt/db/db_editor.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_snippet_picker.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
@@ -72,13 +71,6 @@ void main() {
     expect(text, contains("query_start < now() - interval '1 second' * 5"));
     expect(text, endsWith(';'));
     expect(backend.snippets.currentSnippets.firstWhere((s) => s.id.value == idOf('db.pg.long_running')).usageCount, 1);
-
-    final editor = DbEditorController(text: 'SELECT 1;');
-    editor.appendSnippet(text);
-    expect(editor.text, 'SELECT 1;\n\n$text');
-    expect(editor.selection.baseOffset, editor.text.length);
-    final empty = DbEditorController()..appendSnippet(text);
-    expect(empty.text, text);
 
     // MongoDB: workspace-compatible snippets only (server admin ones are terminal-only).
     final mongo = pickDbSnippet(element, element as WidgetRef, engine: DbEngine.mongodb);

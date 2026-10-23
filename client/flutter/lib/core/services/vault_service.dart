@@ -64,4 +64,20 @@ abstract interface class VaultService {
   /// Checks the passphrase without changing the lock state (step-up
   /// confirmation for risky actions while unlocked). Wipes [passphrase].
   Future<bool> verifyPassphrase(SecretText passphrase);
+
+  /// Step-up with the OS check instead of the passphrase (only when
+  /// `deviceUnlock.presenceAvailable`): the OS prompt (with [reason])
+  /// releases the device unlock key inside the core, which checks it and
+  /// returns a single-use presence token for [action] on [object] (30 s).
+  /// Cancel / failure / lockout → `osAuthFailed`; changed biometrics →
+  /// `osAuthInvalidated`; not offered → `passphraseRequired`.
+  Future<String> verifyUserPresence({required StepUpAction action, required String object, required String reason});
+
+  /// A step-up the app enforces itself: checks [proof] for [action] on
+  /// [object] now (a token is used up). False when it does not check out.
+  Future<bool> confirmStepUp(StepUpProof proof, {required StepUpAction action, required String object});
+
+  /// "Confirm actions with biometrics" on this device for the open profile
+  /// (on by default while device unlock is on).
+  Future<void> setConfirmActionsWithPresence(bool enabled);
 }

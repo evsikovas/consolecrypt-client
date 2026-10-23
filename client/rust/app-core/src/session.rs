@@ -234,6 +234,8 @@ pub(crate) struct Unlocked {
     tasks: Mutex<Vec<JoinHandle<()>>>,
     engine_tasks: Mutex<Vec<JoinHandle<()>>>,
     pub approvals: Mutex<HashMap<DeviceRequestId, PendingApproval>>,
+    /// Single-use presence tokens of this unlock lifetime.
+    pub(crate) presence: crate::presence::PresenceTokens,
 }
 
 impl std::fmt::Debug for Unlocked {
@@ -993,6 +995,7 @@ impl Session {
             tasks: Mutex::new(Vec::new()),
             engine_tasks: Mutex::new(Vec::new()),
             approvals: Mutex::new(HashMap::new()),
+            presence: Default::default(),
         });
         unlocked.push_task(tokio::spawn(object_event_task(
             writer,

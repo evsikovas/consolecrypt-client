@@ -1449,21 +1449,26 @@ impl AppCore {
         Ok(Some(read_project(host.as_ref(), &location, kind).await))
     }
 
-    /// Checks the vault passphrase and returns a grant to edit the project.
+    /// Checks the vault passphrase (or a presence token for
+    /// `docker_compose` on `<session>/<project>`) and returns a grant to
+    /// edit the project.
     pub async fn docker_compose_unlock(
         &self,
         session_id: String,
         project: String,
-        passphrase: String,
+        proof: crate::StepUp,
     ) -> AppResult<String> {
         if !compose::valid_project_name(&project) {
             return Err(AppError::invalid("docker", "compose_project_invalid"));
         }
         let (_, unlocked) = self.unlocked().await?;
         unlocked.docker.compose_target(&session_id)?;
-        if !self.verify_passphrase(passphrase).await? {
-            return Err(AppError::WrongPassphrase);
-        }
+        self.check_step_up(
+            crate::StepUpAction::DockerCompose,
+            &format!("{session_id}/{project}"),
+            proof,
+        )
+        .await?;
         Ok(unlocked.docker.compose.grant(&session_id, &project))
     }
 

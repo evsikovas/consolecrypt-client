@@ -195,8 +195,8 @@ class _GitOpsConfirmationState extends ConsumerState<_GitOpsConfirmation>
       !widget.reasonRequired || (_reason.text.trim().isNotEmpty && !RegExp(r'[\x00-\x1f\x7f]').hasMatch(_reason.text));
 
   Future<void> _submit() async {
-    if (!_reasonValid || !passphraseEntered || passphraseBusy) return;
-    final ok = await checkPassphrase();
+    if (!_reasonValid || !stepUpReady || stepUpBusy) return;
+    final ok = await checkStepUp();
     if (!mounted || !ok || !identical(_scope, ref.read(kubeScopeProvider)) || !_reasonValid) return;
     closeDialog(context, _GitOpsApproval(_reason.text.trim(), _reminder));
   }
@@ -258,7 +258,7 @@ class _GitOpsConfirmationState extends ConsumerState<_GitOpsConfirmation>
                 onChanged: (value) => setState(() => _reminder = value),
               ),
             const SizedBox(height: GlassSpacing.s12),
-            passphraseField(
+            stepUpField(
               key: const ValueKey('kube-gitops-confirm-passphrase'),
               onSubmitted: (_) => unawaited(_submit()),
             ),
@@ -268,8 +268,8 @@ class _GitOpsConfirmationState extends ConsumerState<_GitOpsConfirmation>
       primaryAction: GlassButton.destructive(
         key: const ValueKey('kube-gitops-confirm-action'),
         label: widget.title,
-        busy: passphraseBusy,
-        onPressed: passphraseEntered && !passphraseBusy && _reasonValid ? () => unawaited(_submit()) : null,
+        busy: stepUpBusy,
+        onPressed: stepUpReady && !stepUpBusy && _reasonValid ? () => unawaited(_submit()) : null,
       ),
       secondaryActions: [GlassButton(label: l.commonCancel, onPressed: () => closeDialog<_GitOpsApproval>(context))],
     );

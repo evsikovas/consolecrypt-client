@@ -43,13 +43,19 @@ Future<String> dbSessionState({required String sessionId}) =>
     RustLib.instance.api.crateApiDatabaseDbSessionState(sessionId: sessionId);
 
 /// Opens a temporary production write window after the vault passphrase
-/// (sent as bytes) checks out.
-Future<String> dbUnlockProduction({required String sessionId, required List<int> passphrase, required int minutes}) =>
-    RustLib.instance.api.crateApiDatabaseDbUnlockProduction(
-      sessionId: sessionId,
-      passphrase: passphrase,
-      minutes: minutes,
-    );
+/// (sent as bytes) checks out, or with a presence token for
+/// `db_production_write` on `session_id` (exactly one of the two).
+Future<String> dbUnlockProduction({
+  required String sessionId,
+  Uint8List? passphrase,
+  String? presenceToken,
+  required int minutes,
+}) => RustLib.instance.api.crateApiDatabaseDbUnlockProduction(
+  sessionId: sessionId,
+  passphrase: passphrase,
+  presenceToken: presenceToken,
+  minutes: minutes,
+);
 
 Future<String> dbLockProduction({required String sessionId}) =>
     RustLib.instance.api.crateApiDatabaseDbLockProduction(sessionId: sessionId);

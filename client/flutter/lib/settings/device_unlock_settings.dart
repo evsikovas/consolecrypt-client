@@ -14,7 +14,9 @@ import 'package:material_ui/material_ui.dart';
 /// synced vault settings. Switching it on makes the OS create a key it
 /// releases only after its own check (S5); the core enforces it for unlock
 /// and recovery. On Linux it is a convenience: the warning is shown and
-/// confirmed before enabling.
+/// confirmed before enabling. While it is on (and OS-protected) risky
+/// actions can be confirmed with the OS check instead of the passphrase
+/// ("Confirm actions with biometrics", on by default).
 class DeviceUnlockSettings extends ConsumerStatefulWidget {
   const DeviceUnlockSettings({super.key});
 
@@ -136,6 +138,18 @@ class _DeviceUnlockSettingsState extends ConsumerState<DeviceUnlockSettings> wit
                 ),
               ),
             ],
+          ),
+        if (info.enabled && !convenience)
+          SwitchListTile.adaptive(
+            key: const ValueKey('confirm-actions-switch'),
+            contentPadding: EdgeInsets.zero,
+            secondary: const Icon(Icons.verified_user_outlined),
+            title: Text(l.confirmActionsWithPresence),
+            subtitle: Text(l.confirmActionsWithPresenceHelp(info.authName(l))),
+            value: info.confirmActions,
+            onChanged: !_busy && (status?.isUnlocked ?? false)
+                ? (enabled) => _run(() => ref.read(vaultServiceProvider).setConfirmActionsWithPresence(enabled))
+                : null,
           ),
         Text(l.deviceUnlockLocalOnly, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
         if (_busy) const Padding(padding: EdgeInsets.only(top: 8), child: LinearProgressIndicator()),

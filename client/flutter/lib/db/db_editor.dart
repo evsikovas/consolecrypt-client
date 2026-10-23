@@ -101,6 +101,7 @@ class DbQueryEditor extends StatefulWidget {
     this.onAi,
     this.onExplain,
     this.onHistory,
+    this.onSnippets,
     super.key,
   });
   final DbEditorController controller;
@@ -109,7 +110,7 @@ class DbQueryEditor extends StatefulWidget {
   final ValueChanged<DbRunMode> onRun;
   final bool Function() isCurrent;
   final bool running;
-  final VoidCallback? onCancel, onAi, onHistory;
+  final VoidCallback? onCancel, onAi, onHistory, onSnippets;
   final ValueChanged<bool>? onExplain;
   @override
   State<DbQueryEditor> createState() => _DbQueryEditorState();
@@ -323,6 +324,7 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
 
   static String get _runKeys => AppPlatform.isMacOS ? '⌘↵' : 'Ctrl+Enter'; // l10n-ignore: key names
   static String get _scriptKeys => AppPlatform.isMacOS ? '⌥X' : 'Alt+X'; // l10n-ignore: key names
+  static String get _snippetKeys => AppPlatform.isMacOS ? '⌘J' : 'Ctrl+J'; // l10n-ignore: key names
 
   /// Like the classic SQL clients: the selection if there is one, otherwise
   /// the statement under the cursor.
@@ -416,6 +418,13 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
             tool('db-complete', Icons.auto_fix_high_rounded, l.dbComplete, _busy ? null : _complete),
             if (sql) tool('db-comment', Icons.code_rounded, l.dbComment, _comments),
             tool('db-find', Icons.find_replace_rounded, l.dbFindReplace, () => setState(() => _findOpen = !_findOpen)),
+            if (widget.onSnippets != null)
+              tool(
+                'db-snippets',
+                Icons.integration_instructions_outlined,
+                l.dbInsertSnippetHelp(_snippetKeys),
+                widget.onSnippets,
+              ),
             if (widget.onAi != null) ...[divider(), tool('db-ai', Icons.auto_awesome_rounded, l.dbAi, widget.onAi)],
           ],
         ),
@@ -540,6 +549,8 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
             SingleActivator(LogicalKeyboardKey.keyE, control: !meta, meta: meta): () => widget.onExplain!(false),
           if (widget.onHistory != null)
             SingleActivator(LogicalKeyboardKey.keyH, control: !meta, meta: meta): widget.onHistory!,
+          if (widget.onSnippets != null)
+            SingleActivator(LogicalKeyboardKey.keyJ, control: !meta, meta: meta): widget.onSnippets!,
         },
       },
       child: Column(

@@ -15668,10 +15668,10 @@ abstract class AppLocalizations {
   /// **'KEYS scans every key at once and can stall the server. Use SCAN to read keys page by page.'**
   String get dbScanInsteadOfKeys;
 
-  /// Opens the suggested safe query in a new editor tab.
+  /// Puts the suggested safe query (e.g. SCAN instead of KEYS) below the text of the current editor tab; nothing runs.
   ///
   /// In en, this message translates to:
-  /// **'Open in a new tab'**
+  /// **'Insert into the editor'**
   String get dbOpenSuggestion;
 
   /// Explain plan legend when actual times are known.
@@ -22171,6 +22171,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Check the design ({name}).'**
   String dbDesignIssueOther(String name);
+
+  /// Database editor: tooltip of the toolbar button that picks a saved snippet and inserts it below the text (nothing runs).
+  ///
+  /// In en, this message translates to:
+  /// **'Snippets: insert into the editor ({shortcut})'**
+  String dbInsertSnippetHelp(String shortcut);
+
+  /// Reason shown in the OS biometric prompt (macOS: 'ConsoleCrypt is trying to …') when an action is confirmed with Touch ID / Windows Hello instead of the vault passphrase. Lowercase verb phrase.
+  ///
+  /// In en, this message translates to:
+  /// **'confirm a protected action'**
+  String get stepUpOsReason;
+
+  /// Reason shown in the OS biometric prompt for a specific action (the dialog title). Lowercase verb phrase.
+  ///
+  /// In en, this message translates to:
+  /// **'confirm “{action}”'**
+  String stepUpOsReasonFor(String action);
+
+  /// Reason shown in the OS biometric prompt when the production write window of a database connection is opened. Lowercase verb phrase.
+  ///
+  /// In en, this message translates to:
+  /// **'allow changes on {connection}'**
+  String dbUnlockProductionOsReason(String connection);
+
+  /// Primary button of a step-up confirmation: confirm with Touch ID instead of the vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm with Touch ID'**
+  String get stepUpConfirmTouchId;
+
+  /// Primary button of a step-up confirmation: confirm with Face ID instead of the vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm with Face ID'**
+  String get stepUpConfirmFaceId;
+
+  /// Primary button of a step-up confirmation: confirm with Windows Hello instead of the vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm with Windows Hello'**
+  String get stepUpConfirmWindowsHello;
+
+  /// Primary button of a step-up confirmation: confirm with the fingerprint (Android) instead of the vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm with fingerprint'**
+  String get stepUpConfirmFingerprint;
+
+  /// Primary button of a step-up confirmation: confirm with the device password / PIN (OS prompt) instead of the vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm with the device password'**
+  String get stepUpConfirmDeviceCredential;
+
+  /// Link in a step-up confirmation: type the vault passphrase instead of the biometric check.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the vault passphrase'**
+  String get stepUpUsePassphrase;
+
+  /// Line in a confirmation dialog saying the action is confirmed with the OS check (method: Touch ID, Windows Hello, fingerprint, …).
+  ///
+  /// In en, this message translates to:
+  /// **'You will confirm with {method}.'**
+  String stepUpPresenceHint(String method);
+
+  /// Shown above the passphrase field when the biometric check was cancelled, failed, locked out or refused.
+  ///
+  /// In en, this message translates to:
+  /// **'Not confirmed. Enter the vault passphrase instead.'**
+  String get stepUpPresenceFailed;
+
+  /// Error: a step-up needs the vault passphrase (the biometric confirmation is not available or was refused).
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm with the vault passphrase.'**
+  String get errorPassphraseRequired;
+
+  /// Security settings switch next to device unlock: confirm risky actions with Touch ID / Windows Hello / fingerprint instead of the vault passphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm actions with biometrics'**
+  String get confirmActionsWithPresence;
+
+  /// Help under the 'Confirm actions with biometrics' switch; lists the passphrase-only actions.
+  ///
+  /// In en, this message translates to:
+  /// **'{method} instead of the vault passphrase for risky actions on this device. Changing the passphrase, a new Recovery Kit, turning off device unlock, backups, approving devices and account security always ask for the passphrase.'**
+  String confirmActionsWithPresenceHelp(String method);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

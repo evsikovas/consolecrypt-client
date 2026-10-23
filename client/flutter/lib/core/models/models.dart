@@ -21,6 +21,7 @@ export 'package:consolecrypt/core/models/secret.dart';
 export 'package:consolecrypt/core/models/settings.dart';
 export 'package:consolecrypt/core/models/sftp.dart';
 export 'package:consolecrypt/core/models/snippet.dart';
+export 'package:consolecrypt/core/models/step_up.dart';
 export 'package:consolecrypt/core/models/sync.dart';
 export 'package:consolecrypt/core/models/terminal.dart';
 export 'package:consolecrypt/core/models/tunnel.dart';

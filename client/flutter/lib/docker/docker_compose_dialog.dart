@@ -2,14 +2,16 @@ import 'dart:async';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
-import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/docker/docker_compose_yaml.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
+import 'package:consolecrypt/vault/vault_passphrase_confirmation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -51,7 +53,17 @@ class DockerComposeDialog extends ConsumerStatefulWidget {
   ConsumerState<DockerComposeDialog> createState() => _DockerComposeDialogState();
 }
 
-class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
+class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog>
+    with VaultPassphraseCheck<DockerComposeDialog> {
+  @override
+  StepUpAction get stepUpAction => StepUpAction.dockerCompose;
+
+  @override
+  String get stepUpObject => '${widget.session.id}/${widget.project}';
+
+  @override
+  String get stepUpReason => context.l10n.stepUpOsReasonFor(widget.project);
+
   late final _scope = ref.read(dockerScopeProvider);
   late _Mode _mode = widget.edit ? _Mode.unlock : _Mode.view;
   DockerComposeProject? _project;
@@ -61,7 +73,6 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
   bool _loading = true;
   int _index = 0;
 
-  final _passphrase = TextEditingController();
   String? _grant;
   bool _unlocking = false, _wrong = false, _unlockFailed = false, _expired = false;
 
@@ -100,9 +111,6 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
     _project = null;
     _texts = const [];
     _disposeEditors();
-    _passphrase
-      ..clear()
-      ..dispose();
     super.dispose();
   }
 
@@ -228,16 +236,19 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
   }
 
   Future<void> _unlock() async {
-    if (_unlocking || _passphrase.text.isEmpty) return;
+    if (_unlocking || stepUpBusy || !stepUpReady) return;
     setState(() {
-      _unlocking = true;
       _wrong = false;
       _unlockFailed = false;
     });
-    final secret = SecretText(_passphrase.text);
-    _passphrase.clear();
+    final proof = await obtainStepUp();
+    if (proof == null || !mounted) {
+      proof?.wipe();
+      return;
+    }
+    setState(() => _unlocking = true);
     try {
-      final grant = await widget.service.composeUnlock(widget.session.id, widget.project, secret);
+      final grant = await widget.service.composeUnlock(widget.session.id, widget.project, proof);
       if (!mounted) return;
       _grant = grant;
       final pending = _pendingSave;
@@ -260,10 +271,17 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
       }
     } on DockerWrongPassphrase {
       if (mounted) setState(() => _wrong = true);
+    } on AppException catch (e) {
+      if (!mounted) return;
+      if (e.code == AppErrorCode.passphraseRequired) {
+        stepUpRejected(proof);
+      } else {
+        setState(() => _unlockFailed = true);
+      }
     } catch (_) {
       if (mounted) setState(() => _unlockFailed = true);
     } finally {
-      secret.wipe();
+      proof.wipe();
       if (mounted) setState(() => _unlocking = false);
     }
   }
@@ -392,7 +410,7 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
   }
 
   void _cancelUnlock() {
-    _passphrase.clear();
+    passphrase.clear();
     if (_project == null || (widget.edit && _editors.isEmpty && _result == null && _pendingSave == null)) {
       closeDialog<void>(context);
       return;
@@ -502,11 +520,8 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
               style: tokens.typography.callout.copyWith(color: tokens.palette.label),
             ),
             const SizedBox(height: GlassSpacing.s12),
-            SecretField(
+            stepUpField(
               key: const ValueKey('docker-compose-passphrase'),
-              controller: _passphrase,
-              label: l.dockerVaultPassphrase,
-              autofocus: true,
               enabled: !_unlocking,
               onSubmitted: (_) => unawaited(_unlock()),
             ),
@@ -721,7 +736,7 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
           GlassButton(
             key: const ValueKey('docker-compose-unlock-cancel'),
             label: l.commonCancel,
-            onPressed: _unlocking ? null : _cancelUnlock,
+            onPressed: _unlocking || stepUpBusy ? null : _cancelUnlock,
           ),
         ];
         primary = project == null
@@ -729,8 +744,9 @@ class _DockerComposeDialogState extends ConsumerState<DockerComposeDialog> {
             : GlassButton.prominent(
                 key: const ValueKey('docker-compose-unlock'),
                 label: _unlockForEdit || _expired ? l.dockerComposeUnlock : l.dockerShowFull,
-                busy: _unlocking,
-                onPressed: _unlocking ? null : () => unawaited(_unlock()),
+                icon: presenceKind == null ? null : presenceIcon(presenceKind!),
+                busy: _unlocking || stepUpBusy,
+                onPressed: _unlocking || stepUpBusy ? null : () => unawaited(_unlock()),
               );
       case _Mode.edit:
         final ready = _dirty && !_saving;

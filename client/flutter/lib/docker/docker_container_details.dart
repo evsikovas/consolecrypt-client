@@ -3,11 +3,11 @@ import 'dart:convert';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
-import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/models/step_up.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
-import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/core/widgets/secret_selectable_text.dart';
 import 'package:consolecrypt/db/db_document_view.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
@@ -16,6 +16,7 @@ import 'package:consolecrypt/docker/docker_host_path.dart';
 import 'package:consolecrypt/docker/docker_logs_view.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
+import 'package:consolecrypt/vault/vault_passphrase_confirmation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -94,7 +95,8 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
         dialogKey: 'docker-json-reveal-dialog',
         title: context.l10n.dockerShowFull,
         help: context.l10n.dockerJsonRevealHelp(container.name),
-        reveal: (passphrase) => widget.service.revealInspect(widget.session.id, container.id, passphrase),
+        object: '${widget.session.id}/${container.id}',
+        reveal: (proof) => widget.service.revealInspect(widget.session.id, container.id, proof),
       ),
     );
     if (full != null && mounted && identical(_scope, ref.read(dockerScopeProvider))) {
@@ -616,7 +618,8 @@ class _EnvironmentSectionState extends ConsumerState<_EnvironmentSection> {
         dialogKey: 'docker-reveal-dialog',
         title: context.l10n.dockerRevealSecrets,
         help: context.l10n.dockerRevealHelp(widget.container.name),
-        reveal: (passphrase) => widget.service.revealEnvironment(widget.session.id, widget.container.id, passphrase),
+        object: '${widget.session.id}/${widget.container.id}',
+        reveal: (proof) => widget.service.revealEnvironment(widget.session.id, widget.container.id, proof),
       ),
     );
     if (revealed != null && _current) setState(() => _revealed = revealed);
@@ -710,43 +713,62 @@ class _EnvironmentSectionState extends ConsumerState<_EnvironmentSection> {
 /// Asks for the vault passphrase and returns what [reveal] produced with it
 /// (null on cancel). The passphrase is wiped after the attempt.
 class _RevealDialog<T> extends ConsumerStatefulWidget {
-  const _RevealDialog({required this.dialogKey, required this.title, required this.help, required this.reveal});
+  const _RevealDialog({
+    required this.dialogKey,
+    required this.title,
+    required this.help,
+    required this.object,
+    required this.reveal,
+  });
   final String dialogKey, title, help;
-  final Future<T> Function(SecretText passphrase) reveal;
+
+  /// `<session>/<container>`: what a presence token is bound to.
+  final String object;
+  final Future<T> Function(StepUpProof proof) reveal;
   @override
   ConsumerState<_RevealDialog<T>> createState() => _RevealDialogState<T>();
 }
 
-class _RevealDialogState<T> extends ConsumerState<_RevealDialog<T>> {
-  final _passphrase = TextEditingController();
-  bool _busy = false, _wrong = false, _failed = false;
+class _RevealDialogState<T> extends ConsumerState<_RevealDialog<T>> with VaultPassphraseCheck<_RevealDialog<T>> {
+  bool _busy = false, _failed = false;
 
   @override
-  void dispose() {
-    _passphrase
-      ..clear()
-      ..dispose();
-    super.dispose();
-  }
+  StepUpAction get stepUpAction => StepUpAction.dockerReveal;
+
+  @override
+  String get stepUpObject => widget.object;
+
+  @override
+  String get stepUpReason => context.l10n.stepUpOsReasonFor(widget.title);
 
   Future<void> _submit() async {
-    if (_busy || _passphrase.text.isEmpty) return;
+    if (_busy || stepUpBusy || !stepUpReady) return;
     setState(() {
-      _busy = true;
-      _wrong = false;
       _failed = false;
+      passphraseWrong = false;
     });
-    final secret = SecretText(_passphrase.text);
-    _passphrase.clear();
+    final proof = await obtainStepUp();
+    if (proof == null || !mounted) {
+      proof?.wipe();
+      return;
+    }
+    setState(() => _busy = true);
     try {
-      final revealed = await widget.reveal(secret);
+      final revealed = await widget.reveal(proof);
       if (mounted) closeDialog(context, revealed);
     } on DockerWrongPassphrase {
-      if (mounted) setState(() => _wrong = true);
+      if (mounted) stepUpRejected(proof);
+    } on AppException catch (e) {
+      if (!mounted) return;
+      if (e.code == AppErrorCode.passphraseRequired) {
+        stepUpRejected(proof);
+      } else {
+        setState(() => _failed = true);
+      }
     } catch (_) {
       if (mounted) setState(() => _failed = true);
     } finally {
-      secret.wipe();
+      proof.wipe();
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -754,6 +776,7 @@ class _RevealDialogState<T> extends ConsumerState<_RevealDialog<T>> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final presence = presenceKind;
     return GlassDialog(
       key: ValueKey(widget.dialogKey),
       title: widget.title,
@@ -765,27 +788,24 @@ class _RevealDialogState<T> extends ConsumerState<_RevealDialog<T>> {
           children: [
             Text(widget.help),
             const SizedBox(height: GlassSpacing.s12),
-            SecretField(
+            stepUpField(
               key: const ValueKey('docker-reveal-passphrase'),
-              controller: _passphrase,
-              label: l.dockerVaultPassphrase,
-              autofocus: true,
               enabled: !_busy,
               onSubmitted: (_) => unawaited(_submit()),
             ),
-            if (_wrong) Text(l.dockerWrongPassphrase, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             if (_failed) Text(l.dockerRequestFailed, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ],
         ),
       ),
       secondaryActions: [
-        GlassButton(label: l.commonCancel, onPressed: _busy ? null : () => closeDialog<void>(context)),
+        GlassButton(label: l.commonCancel, onPressed: _busy || stepUpBusy ? null : () => closeDialog<void>(context)),
       ],
       primaryAction: GlassButton(
         key: const ValueKey('docker-reveal-submit'),
         label: widget.title,
-        busy: _busy,
-        onPressed: _busy ? null : () => unawaited(_submit()),
+        icon: presence == null ? null : presenceIcon(presence),
+        busy: _busy || stepUpBusy,
+        onPressed: _busy || stepUpBusy ? null : () => unawaited(_submit()),
       ),
     );
   }

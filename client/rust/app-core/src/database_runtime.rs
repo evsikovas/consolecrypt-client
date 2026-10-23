@@ -485,14 +485,15 @@ impl AppCore {
     }
 
     /// Opens a temporary write window on a production session after the
-    /// vault passphrase checks out.
+    /// vault passphrase checks out, or with a presence token for
+    /// `db_production_write` on this session.
     /// The window belongs to this session only and closes on expiry, on
     /// [`Self::db_lock_production`], on disconnect, vault lock or profile
     /// change. Every changing statement still needs its review.
     pub async fn db_unlock_production(
         &self,
         session_id: String,
-        passphrase: String,
+        proof: crate::StepUp,
         minutes: u32,
     ) -> AppResult<DbLiveSession> {
         let (_, unlocked) = self.unlocked().await?;
@@ -503,9 +504,8 @@ impl AppCore {
         if !cc_db_core::guard::PRODUCTION_WRITE_MINUTES.contains(&u64::from(minutes)) {
             return Err(invalid("production_write_duration"));
         }
-        if !self.verify_passphrase(passphrase).await? {
-            return Err(AppError::WrongPassphrase);
-        }
+        self.check_step_up(crate::StepUpAction::DbProductionWrite, &session_id, proof)
+            .await?;
         // The session may have closed while the passphrase was checked.
         let session = unlocked.db.session(&session_id)?;
         session

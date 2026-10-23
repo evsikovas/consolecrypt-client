@@ -146,6 +146,9 @@ final class MockProfileRecord {
   MockVaultKeys? vault;
   VaultPhase phase = VaultPhase.none;
   bool deviceTrusted = false;
+
+  /// "Confirm actions with biometrics" (on by default with device unlock).
+  bool deviceUnlockConfirmActions = true;
   bool deviceUnlockEnabled = false;
 
   /// Offer to switch device unlock on again after the next passphrase unlock.

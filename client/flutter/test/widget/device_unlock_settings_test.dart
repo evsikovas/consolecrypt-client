@@ -1,6 +1,7 @@
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -30,6 +31,35 @@ void main() {
     await tester.tap(find.text('Это доверенное устройство'));
     await settle(tester);
     expect(find.textContaining('выключена или сейчас недоступна'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('confirming actions with biometrics is on with device unlock and can be turned off', (tester) async {
+    final b = testBackend();
+    addTearDown(b.dispose);
+    await b.debugSignInDemoAndUnlock();
+    await pumpApp(tester, b, locale: AppLocale.ru, size: const Size(1024, 720));
+    await tapKey(tester, 'nav-settings');
+    final confirm = find.byKey(const ValueKey('confirm-actions-switch'));
+    expect(confirm, findsNothing, reason: 'only while device unlock is on');
+    await tapKey(tester, 'device-unlock-switch');
+    expect(tester.widget<SwitchListTile>(confirm).value, isTrue);
+    expect(find.text('Подтверждать действия биометрией'), findsOneWidget);
+    expect(find.textContaining('Смена пароля, новый комплект восстановления'), findsOneWidget);
+    expect(b.vault.currentStatus.deviceUnlock.presenceAvailable, isTrue);
+
+    // The mock core mints and redeems a single-use token.
+    final token = await b.vault.verifyUserPresence(action: StepUpAction.confirm, object: 'k', reason: 'r');
+    expect(await b.vault.confirmStepUp(PresenceProof(token), action: StepUpAction.confirm, object: 'k'), isTrue);
+    expect(await b.vault.confirmStepUp(PresenceProof(token), action: StepUpAction.confirm, object: 'k'), isFalse);
+
+    await tapKey(tester, 'confirm-actions-switch');
+    expect(tester.widget<SwitchListTile>(confirm).value, isFalse);
+    expect(b.vault.currentStatus.deviceUnlock.presenceAvailable, isFalse);
+    await expectLater(
+      b.vault.verifyUserPresence(action: StepUpAction.confirm, object: 'k', reason: 'r'),
+      throwsA(isA<AppException>().having((e) => e.code, 'code', AppErrorCode.passphraseRequired)),
+    );
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 

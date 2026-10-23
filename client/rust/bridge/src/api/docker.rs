@@ -30,16 +30,18 @@ pub async fn docker_inspect(session_id: String, container: String) -> Result<Str
         .await
 }
 
-/// The full `docker inspect` after the vault passphrase (sent as bytes).
+/// The full `docker inspect` after the vault passphrase (sent as bytes) or
+/// a presence token for `docker_reveal` on `<session>/<container>`.
 pub async fn docker_inspect_reveal(
     session_id: String,
     container: String,
-    passphrase: Vec<u8>,
+    passphrase: Option<Vec<u8>>,
+    presence_token: Option<String>,
 ) -> Result<String, BridgeError> {
-    let passphrase = crate::state::secret_string("passphrase", passphrase)?;
+    let proof = crate::state::step_up(passphrase, presence_token)?;
     with_core(move |c| async move {
         to_json(
-            &c.docker_inspect_reveal(session_id, container, passphrase)
+            &c.docker_inspect_reveal(session_id, container, proof)
                 .await?,
         )
     })
@@ -134,16 +136,18 @@ pub async fn docker_volumes(session_id: String) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.docker_volumes(session_id).await?) }).await
 }
 
-/// Environment with secrets after the vault passphrase (sent as bytes).
+/// Environment with secrets after the vault passphrase (sent as bytes) or
+/// a presence token for `docker_reveal` on `<session>/<container>`.
 pub async fn docker_reveal_environment(
     session_id: String,
     container: String,
-    passphrase: Vec<u8>,
+    passphrase: Option<Vec<u8>>,
+    presence_token: Option<String>,
 ) -> Result<String, BridgeError> {
-    let passphrase = crate::state::secret_string("passphrase", passphrase)?;
+    let proof = crate::state::step_up(passphrase, presence_token)?;
     with_core(move |c| async move {
         to_json(
-            &c.docker_reveal_environment(session_id, container, passphrase)
+            &c.docker_reveal_environment(session_id, container, proof)
                 .await?,
         )
     })
@@ -162,18 +166,19 @@ pub async fn docker_compose_project(
     .await
 }
 
-/// Checks the vault passphrase (sent as bytes); returns a grant to edit the
+/// Checks the vault passphrase (sent as bytes) or a presence token for
+/// `docker_compose` on `<session>/<project>`; returns a grant to edit the
 /// project's files.
 pub async fn docker_compose_unlock(
     session_id: String,
     project: String,
-    passphrase: Vec<u8>,
+    passphrase: Option<Vec<u8>>,
+    presence_token: Option<String>,
 ) -> Result<String, BridgeError> {
-    let passphrase = crate::state::secret_string("passphrase", passphrase)?;
-    with_core(move |c| async move {
-        Ok(c.docker_compose_unlock(session_id, project, passphrase)
-            .await?)
-    })
+    let proof = crate::state::step_up(passphrase, presence_token)?;
+    with_core(
+        move |c| async move { Ok(c.docker_compose_unlock(session_id, project, proof).await?) },
+    )
     .await
 }
 

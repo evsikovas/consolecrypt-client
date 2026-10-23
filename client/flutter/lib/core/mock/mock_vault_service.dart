@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/mock/mock_config.dart';
+import 'package:consolecrypt/core/mock/mock_presence.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/passphrase_strength.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
@@ -46,6 +47,7 @@ final class MockVaultService implements VaultService {
       r?.recoveryKitConfirmed,
       r?.deviceTrusted,
       r?.deviceUnlockEnabled,
+      r?.deviceUnlockConfirmActions,
       r?.deviceUnlockReoffer,
       deviceAuthKind,
       deviceAuthNotEnrolled,
@@ -70,6 +72,13 @@ final class MockVaultService implements VaultService {
         notEnrolled: deviceAuthNotEnrolled,
         protection: deviceProtection,
         reoffer: r.deviceUnlockReoffer,
+        confirmActions: r.deviceUnlockEnabled && r.deviceUnlockConfirmActions,
+        presenceAvailable:
+            r.deviceUnlockEnabled &&
+            r.deviceUnlockConfirmActions &&
+            deviceProtection == DeviceUnlockProtection.system &&
+            deviceAuthKind != null &&
+            r.phase == VaultPhase.unlocked,
       ),
     );
   }
@@ -216,7 +225,46 @@ final class MockVaultService implements VaultService {
       throw const AppException(AppErrorCode.validation, 'Confirm unlock without OS protection first');
     }
     r.deviceUnlockEnabled = enabled;
+    // A new device unlock key confirms actions by default.
+    if (enabled) r.deviceUnlockConfirmActions = true;
     r.deviceUnlockReoffer = null;
+    _cloud.notifyChanged();
+  }
+
+  @override
+  Future<String> verifyUserPresence({
+    required StepUpAction action,
+    required String object,
+    required String reason,
+  }) async {
+    if (action.passphraseOnly || !currentStatus.deviceUnlock.presenceAvailable) {
+      throw const AppException(AppErrorCode.passphraseRequired, 'Confirm with the vault passphrase');
+    }
+    await mockDelay(_cloud.config.latency);
+    if (!deviceAuthSucceeds) {
+      throw const AppException(AppErrorCode.osAuthFailed, 'OS authentication cancelled');
+    }
+    return MockPresenceTokens.mint(action, object);
+  }
+
+  @override
+  Future<bool> confirmStepUp(StepUpProof proof, {required StepUpAction action, required String object}) async {
+    final keys = _keys(_active());
+    if (proof is PresenceProof && action.passphraseOnly) return false;
+    try {
+      return MockPresenceTokens.check(proof, keys.passphrase, action, object);
+    } on AppException {
+      return false;
+    }
+  }
+
+  @override
+  Future<void> setConfirmActionsWithPresence(bool enabled) async {
+    final r = _active();
+    if (!r.deviceUnlockEnabled) {
+      throw const AppException(AppErrorCode.unsupported, 'Device unlock is not enabled');
+    }
+    r.deviceUnlockConfirmActions = enabled;
     _cloud.notifyChanged();
   }
 

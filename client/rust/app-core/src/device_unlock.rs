@@ -62,7 +62,7 @@ fn disabled() -> AppError {
     AppError::Unsupported("Device unlock is disabled for this profile".into())
 }
 
-fn reason_or_default(reason: String) -> String {
+pub(crate) fn reason_or_default(reason: String) -> String {
     let r = reason.trim();
     if r.is_empty() || r.chars().any(char::is_control) {
         DEFAULT_UNLOCK_REASON.to_owned()
@@ -71,7 +71,7 @@ fn reason_or_default(reason: String) -> String {
     }
 }
 
-fn check_material(material: &[u8]) -> AppResult<()> {
+pub(crate) fn check_material(material: &[u8]) -> AppResult<()> {
     if !(32..=4096).contains(&material.len()) {
         return Err(AppError::invalid(
             "material",
@@ -93,6 +93,7 @@ impl AppCore {
             Some(r) => Some(r.kind.clone()),
             None => status.kind.map(|k| kind_name(k).to_owned()),
         };
+        let presence_available = self.presence_offered(&s);
         Ok(DeviceUnlockDto {
             enabled: record.is_some(),
             available: record.is_some() && status.available(),
@@ -104,6 +105,8 @@ impl AppCore {
             reoffer: kf
                 .and_then(|k| k.flags.reoffer_device_unlock)
                 .map(|r| reoffer_name(r).to_owned()),
+            confirm_actions: record.as_ref().is_some_and(|r| r.confirm_actions),
+            presence_available,
         })
     }
 
@@ -353,7 +356,7 @@ impl AppCore {
         }
     }
 
-    async fn invalidated(&self, s: &Arc<Session>) {
+    pub(crate) async fn invalidated(&self, s: &Arc<Session>) {
         tracing::warn!(profile_id = %s.profile_id, "device unlock key invalidated");
         if let Err(e) = self
             .forget_device_unlock(s, Some(ReofferReason::Invalidated))
@@ -388,5 +391,6 @@ fn seal_record(
         handle: Bytes::new(handle),
         envelope,
         created_at: chrono::Utc::now(),
+        confirm_actions: true,
     })
 }

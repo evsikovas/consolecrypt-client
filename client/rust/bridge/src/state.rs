@@ -101,6 +101,16 @@ pub(crate) fn opt_secret_string(
     bytes.map(|b| secret_string(field, b)).transpose()
 }
 
+/// A step-up proof from the app: the vault passphrase (bytes) or a
+/// presence token from `vault_verify_user_presence`; exactly one.
+pub(crate) fn step_up(
+    passphrase: Option<Vec<u8>>,
+    presence_token: Option<String>,
+) -> Result<cc_app_core::StepUp, BridgeError> {
+    let passphrase = opt_secret_string("passphrase", passphrase)?;
+    Ok(cc_app_core::StepUp::from_parts(passphrase, presence_token)?)
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;

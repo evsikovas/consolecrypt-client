@@ -27,15 +27,18 @@ Future<String> dockerContainers({required String sessionId, required bool all}) 
 Future<String> dockerInspect({required String sessionId, required String container}) =>
     RustLib.instance.api.crateApiDockerDockerInspect(sessionId: sessionId, container: container);
 
-/// The full `docker inspect` after the vault passphrase (sent as bytes).
+/// The full `docker inspect` after the vault passphrase (sent as bytes) or
+/// a presence token for `docker_reveal` on `<session>/<container>`.
 Future<String> dockerInspectReveal({
   required String sessionId,
   required String container,
-  required List<int> passphrase,
+  Uint8List? passphrase,
+  String? presenceToken,
 }) => RustLib.instance.api.crateApiDockerDockerInspectReveal(
   sessionId: sessionId,
   container: container,
   passphrase: passphrase,
+  presenceToken: presenceToken,
 );
 
 /// Whether `text` holds something the Docker views mask (log selections
@@ -103,15 +106,18 @@ Future<void> dockerForwardStop({required String forwardId}) =>
 Future<String> dockerVolumes({required String sessionId}) =>
     RustLib.instance.api.crateApiDockerDockerVolumes(sessionId: sessionId);
 
-/// Environment with secrets after the vault passphrase (sent as bytes).
+/// Environment with secrets after the vault passphrase (sent as bytes) or
+/// a presence token for `docker_reveal` on `<session>/<container>`.
 Future<String> dockerRevealEnvironment({
   required String sessionId,
   required String container,
-  required List<int> passphrase,
+  Uint8List? passphrase,
+  String? presenceToken,
 }) => RustLib.instance.api.crateApiDockerDockerRevealEnvironment(
   sessionId: sessionId,
   container: container,
   passphrase: passphrase,
+  presenceToken: presenceToken,
 );
 
 /// The compose files of a project, read on the engine host, with secrets
@@ -119,16 +125,19 @@ Future<String> dockerRevealEnvironment({
 Future<String> dockerComposeProject({required String sessionId, required String project}) =>
     RustLib.instance.api.crateApiDockerDockerComposeProject(sessionId: sessionId, project: project);
 
-/// Checks the vault passphrase (sent as bytes); returns a grant to edit the
+/// Checks the vault passphrase (sent as bytes) or a presence token for
+/// `docker_compose` on `<session>/<project>`; returns a grant to edit the
 /// project's files.
 Future<String> dockerComposeUnlock({
   required String sessionId,
   required String project,
-  required List<int> passphrase,
+  Uint8List? passphrase,
+  String? presenceToken,
 }) => RustLib.instance.api.crateApiDockerDockerComposeUnlock(
   sessionId: sessionId,
   project: project,
   passphrase: passphrase,
+  presenceToken: presenceToken,
 );
 
 /// The full compose texts under an edit grant; `null` once it expired.

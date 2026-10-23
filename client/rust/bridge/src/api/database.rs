@@ -94,18 +94,17 @@ pub async fn db_session_state(session_id: String) -> Result<String, BridgeError>
 }
 
 /// Opens a temporary production write window after the vault passphrase
-/// (sent as bytes) checks out.
+/// (sent as bytes) checks out, or with a presence token for
+/// `db_production_write` on `session_id` (exactly one of the two).
 pub async fn db_unlock_production(
     session_id: String,
-    passphrase: Vec<u8>,
+    passphrase: Option<Vec<u8>>,
+    presence_token: Option<String>,
     minutes: u32,
 ) -> Result<String, BridgeError> {
-    let passphrase = secret_string("passphrase", passphrase)?;
+    let proof = crate::state::step_up(passphrase, presence_token)?;
     with_core(move |c| async move {
-        to_json(
-            &c.db_unlock_production(session_id, passphrase, minutes)
-                .await?,
-        )
+        to_json(&c.db_unlock_production(session_id, proof, minutes).await?)
     })
     .await
 }

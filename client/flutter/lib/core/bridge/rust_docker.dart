@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_account.dart';
-import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/src/rust/api/docker.dart' as native;
@@ -58,12 +58,18 @@ final class RustDockerService implements DockerService {
   }
 
   @override
-  Future<DockerJson> revealInspect(String sessionId, String containerId, SecretText passphrase) async {
+  Future<DockerJson> revealInspect(String sessionId, String containerId, StepUpProof proof) async {
     try {
-      final json = await withSecret(
-        passphrase,
-        (bytes) =>
-            guard(() => native.dockerInspectReveal(sessionId: sessionId, container: containerId, passphrase: bytes)),
+      final json = await withStepUp(
+        proof,
+        (passphrase, token) => guard(
+          () => native.dockerInspectReveal(
+            sessionId: sessionId,
+            container: containerId,
+            passphrase: passphrase,
+            presenceToken: token,
+          ),
+        ),
       );
       return jsonDecode(json) as DockerJson;
     } on AppException catch (error) {
@@ -137,12 +143,17 @@ final class RustDockerService implements DockerService {
   ];
 
   @override
-  Future<List<String>> revealEnvironment(String sessionId, String containerId, SecretText passphrase) async {
+  Future<List<String>> revealEnvironment(String sessionId, String containerId, StepUpProof proof) async {
     try {
-      final json = await withSecret(
-        passphrase,
-        (bytes) => guard(
-          () => native.dockerRevealEnvironment(sessionId: sessionId, container: containerId, passphrase: bytes),
+      final json = await withStepUp(
+        proof,
+        (passphrase, token) => guard(
+          () => native.dockerRevealEnvironment(
+            sessionId: sessionId,
+            container: containerId,
+            passphrase: passphrase,
+            presenceToken: token,
+          ),
         ),
       );
       return (jsonDecode(json) as List).cast<String>();
@@ -177,11 +188,18 @@ final class RustDockerService implements DockerService {
   }
 
   @override
-  Future<String> composeUnlock(String sessionId, String project, SecretText passphrase) async {
+  Future<String> composeUnlock(String sessionId, String project, StepUpProof proof) async {
     try {
-      return await withSecret(
-        passphrase,
-        (bytes) => guard(() => native.dockerComposeUnlock(sessionId: sessionId, project: project, passphrase: bytes)),
+      return await withStepUp(
+        proof,
+        (passphrase, token) => guard(
+          () => native.dockerComposeUnlock(
+            sessionId: sessionId,
+            project: project,
+            passphrase: passphrase,
+            presenceToken: token,
+          ),
+        ),
       );
     } on AppException catch (error) {
       if (error.code == AppErrorCode.wrongPassphrase) throw const DockerWrongPassphrase();

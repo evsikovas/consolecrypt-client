@@ -61,8 +61,8 @@ class _DbDesignSaveDialogState extends ConsumerState<DbDesignSaveDialog> with Va
   bool get _current => mounted && identical(_scope, ref.read(dbScopeProvider)) && _scope.unlocked;
 
   Future<void> _run() async {
-    if (_running || _closing || !passphraseEntered || !widget.session.writable) return;
-    if (!await checkPassphrase() || !_current) return;
+    if (_running || _closing || !stepUpReady || !widget.session.writable) return;
+    if (!await checkStepUp() || !_current) return;
     setState(() {
       _running = true;
       _failed = false;
@@ -212,7 +212,7 @@ class _DbDesignSaveDialogState extends ConsumerState<DbDesignSaveDialog> with Va
               const SizedBox(height: GlassSpacing.s12),
               Text(l.dbDesignerConfirm),
               const SizedBox(height: GlassSpacing.s8),
-              passphraseField(
+              stepUpField(
                 key: const ValueKey('db-design-passphrase'),
                 enabled: !_running,
                 onSubmitted: (_) => unawaited(_run()),
@@ -243,8 +243,8 @@ class _DbDesignSaveDialogState extends ConsumerState<DbDesignSaveDialog> with Va
       primaryAction: GlassButton.destructive(
         key: const ValueKey('db-design-run'),
         label: l.dbRun,
-        busy: _running || passphraseBusy,
-        onPressed: !writable || _running || passphraseBusy || !passphraseEntered ? null : () => unawaited(_run()),
+        busy: _running || stepUpBusy,
+        onPressed: !writable || _running || stepUpBusy || !stepUpReady ? null : () => unawaited(_run()),
       ),
     );
   }
