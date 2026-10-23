@@ -122,7 +122,7 @@ pub enum FaultAction {
     InvalidJson,
     /// A hostile server: answer `status` with `body` without running the
     /// handler (nothing is committed).
-    Respond {
+    RawResponse {
         status: u16,
         body: serde_json::Value,
     },
@@ -141,7 +141,7 @@ impl std::fmt::Debug for FaultAction {
             FaultAction::LoseResponse => f.write_str("LoseResponse"),
             FaultAction::Rewrite(_) => f.write_str("Rewrite(..)"),
             FaultAction::InvalidJson => f.write_str("InvalidJson"),
-            FaultAction::Respond { status, .. } => write!(f, "Respond({status})"),
+            FaultAction::RawResponse { status, .. } => write!(f, "RawResponse({status})"),
         }
     }
 }

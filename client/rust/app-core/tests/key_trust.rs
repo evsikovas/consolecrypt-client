@@ -339,7 +339,7 @@ async fn older_server_substitution_is_caught_by_the_passphrase() {
     server.inject(
         &attest_path(c_dev),
         1,
-        FaultAction::Respond {
+        FaultAction::RawResponse {
             status: 200,
             body: marker,
         },

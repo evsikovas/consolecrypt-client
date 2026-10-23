@@ -192,7 +192,7 @@ async fn gate(State(s): S, req: Request, next: Next) -> Response {
     match s.take_fault(&path) {
         None => next.run(req).await,
         Some(FaultAction::Error(code)) => err(code, "injected fault").into_response(),
-        Some(FaultAction::Respond { status, body }) => {
+        Some(FaultAction::RawResponse { status, body }) => {
             json(StatusCode::from_u16(status).unwrap_or(StatusCode::OK), body)
         }
         Some(FaultAction::RateLimit {
