@@ -500,7 +500,7 @@ class _DbCsvImportDialogState extends ConsumerState<DbCsvImportDialog> {
             if (path != null)
               Expanded(
                 child: Text(
-                  '${path.split(RegExp(r'[\\/]')).last} · ${_bytes(l, _size)}', // l10n-ignore: name · size
+                  '${_fileName(path)} · ${_bytes(l, _size)}', // l10n-ignore: name · size
                   key: const ValueKey('db-csv-file'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1113,3 +1113,6 @@ Future<void> showCsvCreateTable(
     if (context.mounted) showSnack(context, l.dbCsvUnreadable, error: true);
   }
 }
+
+/// The last path segment, whichever separator the platform's picker used.
+String _fileName(String path) => path.split(RegExp(r'[\\/]')).last;
