@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/sharing/enrollment_models.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
@@ -554,7 +555,7 @@ class _EnrollmentPreview extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       SelectableText(pairing.shareId),
-      Text('${context.l10n.enrollmentExpiry}: ${pairing.expires.toLocal()}'),
+      Text('${context.l10n.enrollmentExpiry}: ${formatDateTime(context.l10n, pairing.expires)}'),
       if (pairing.target case final target?) Text(target.deviceId),
       if (pairing.requestedRole case final role?)
         Text(role == SharingRole.reader ? context.l10n.sharingReader : context.l10n.sharingEditor),
