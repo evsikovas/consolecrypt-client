@@ -790,7 +790,21 @@ async fn host_auth_modes_adr_0101_6a() {
         .unwrap();
     assert_eq!(i.auth_mode, HostAuthMode::Credential);
     assert!(!i.metadata.contains_key(META_INLINE_CREDENTIAL));
-    assert_eq!(app.list_credentials().await.unwrap().len(), before);
+    let left = app.list_credentials().await.unwrap();
+    assert_eq!(
+        left.len(),
+        before,
+        "inline credential {inline_id} should be gone; left: {:?}; hosts: {:?}",
+        left.iter()
+            .map(|c| (&c.id, &c.name, &c.owner_host_id))
+            .collect::<Vec<_>>(),
+        app.list_hosts()
+            .await
+            .unwrap()
+            .iter()
+            .map(|h| (&h.name, &h.id, &h.credential_id))
+            .collect::<Vec<_>>()
+    );
 
     // Agent: created once, reused afterwards.
     let a1 = app
