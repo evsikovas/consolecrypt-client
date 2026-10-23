@@ -12009,4 +12009,584 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbImportCsv => 'Import from CSV…';
+
+  @override
+  String get dbDesignerCreateTable => 'Create table…';
+
+  @override
+  String get dbDesignerCreateCollection => 'Create collection…';
+
+  @override
+  String get dbDesignerAlterTable => 'Edit structure…';
+
+  @override
+  String dbDesignerTabTitle(String name) {
+    return 'Design: $name';
+  }
+
+  @override
+  String get dbDesignerNewTab => 'New table';
+
+  @override
+  String dbDesignerUnsavedTitle(String name) {
+    return 'Save changes to $name?';
+  }
+
+  @override
+  String get dbDesignerUnsavedMessage => 'The table designer has changes that are not applied to the database yet.';
+
+  @override
+  String get dbDesignerDontSave => 'Don\'t save';
+
+  @override
+  String get dbDesignerSaveButton => 'Save…';
+
+  @override
+  String get dbDesignerLoadFailed => 'Could not load the table structure.';
+
+  @override
+  String dbDesignerSaved(String name) {
+    return '$name: changes applied';
+  }
+
+  @override
+  String get dbDesignerUnsavedMark => 'Unsaved changes';
+
+  @override
+  String get dbDesignerDraftNew => 'New, not saved yet';
+
+  @override
+  String get dbDesignerDraftChanged => 'Changed, not saved yet';
+
+  @override
+  String dbDesignerSaveTitle(String name) {
+    return '$name — save changes';
+  }
+
+  @override
+  String get dbDesignerSqlPreview => 'SQL preview';
+
+  @override
+  String get dbDesignerTransactional => 'Runs in one transaction: all statements apply or none.';
+
+  @override
+  String get dbDesignerNotTransactional =>
+      'DDL is not transactional here: if a statement fails, the ones before it stay applied.';
+
+  @override
+  String get dbDesignerDestructive =>
+      'The script drops data or rewrites the table (dropped columns, type or key changes).';
+
+  @override
+  String get dbDesignerProductionLocked =>
+      'This is a production connection. Unlock production writes in the workspace header to run the script.';
+
+  @override
+  String get dbDesignerReadOnly => 'The session is read-only. Allow writes in the workspace header to run the script.';
+
+  @override
+  String get dbDesignerConfirm => 'Enter the vault passphrase to run the script.';
+
+  @override
+  String get dbDesignerFailedRolledBack => 'A statement failed; nothing was changed.';
+
+  @override
+  String get dbDesignerFailedPartly => 'A statement failed; the statements before it were applied.';
+
+  @override
+  String dbDesignerStatementResult(int index, String status) {
+    return '$index. $status';
+  }
+
+  @override
+  String get dbDesignerStatusDone => 'applied';
+
+  @override
+  String get dbDesignerStatusRolledBack => 'rolled back';
+
+  @override
+  String get dbDesignerStatusSkipped => 'not run';
+
+  @override
+  String get dbDesignerStatementFailed => 'failed on the server';
+
+  @override
+  String get dbDesignFields => 'Fields';
+
+  @override
+  String get dbDesignColumns => 'Columns';
+
+  @override
+  String get dbDesignKeys => 'Keys';
+
+  @override
+  String get dbDesignForeignKeys => 'Foreign keys';
+
+  @override
+  String get dbDesignIndexes => 'Indexes';
+
+  @override
+  String get dbDesignChecks => 'Checks';
+
+  @override
+  String get dbDesignOptions => 'Options';
+
+  @override
+  String get dbDesignDdl => 'DDL';
+
+  @override
+  String get dbDesignHasErrors => 'Has errors';
+
+  @override
+  String get dbDesignNew => 'New';
+
+  @override
+  String get dbDesignChanged => 'Changed';
+
+  @override
+  String get dbDesignPickColumns => 'Choose columns';
+
+  @override
+  String get dbDesignCollectionName => 'Collection name';
+
+  @override
+  String get dbDesignTableName => 'Table name';
+
+  @override
+  String get dbDesignSchema => 'Schema';
+
+  @override
+  String get dbDesignDatabase => 'Database';
+
+  @override
+  String get dbDesignComment => 'Comment';
+
+  @override
+  String get dbDesignDescription => 'Description';
+
+  @override
+  String get dbDesignModeAlter => 'Edit structure';
+
+  @override
+  String get dbDesignModeCreate => 'New table';
+
+  @override
+  String get dbDesignPending => 'Changed';
+
+  @override
+  String get dbDesignUndo => 'Undo';
+
+  @override
+  String get dbDesignRevert => 'Revert all changes';
+
+  @override
+  String get dbDesignSave => 'Save changes';
+
+  @override
+  String get dbDesignSaveShortcut => 'Save changes (⌘S / Ctrl+S)';
+
+  @override
+  String get dbDesignColName => 'Name';
+
+  @override
+  String get dbDesignColType => 'Type';
+
+  @override
+  String get dbDesignBsonType => 'BSON type';
+
+  @override
+  String get dbDesignColLength => 'Length';
+
+  @override
+  String get dbDesignColScale => 'Scale';
+
+  @override
+  String get dbDesignRequired => 'Required';
+
+  @override
+  String get dbDesignNullable => 'Nullable';
+
+  @override
+  String get dbDesignNotNull => 'Not null';
+
+  @override
+  String get dbDesignColDefault => 'Default';
+
+  @override
+  String get dbDesignColIdentity => 'Auto increment';
+
+  @override
+  String get dbDesignPk => 'PK';
+
+  @override
+  String get dbDesignUnique => 'Unique';
+
+  @override
+  String get dbDesignUnsigned => 'Unsigned';
+
+  @override
+  String get dbDesignArray => 'Array';
+
+  @override
+  String get dbDesignLowCardinality => 'LowCard.';
+
+  @override
+  String get dbDesignPickType => 'Choose a type';
+
+  @override
+  String get dbDesignDefaultPresets => 'Default presets';
+
+  @override
+  String get dbDesignNoDefault => 'No default';
+
+  @override
+  String get dbDesignDuplicate => 'Duplicate';
+
+  @override
+  String get dbDesignMoveUp => 'Move up';
+
+  @override
+  String get dbDesignMoveDown => 'Move down';
+
+  @override
+  String get dbDesignRemove => 'Remove';
+
+  @override
+  String get dbDesignColumnActions => 'Column actions';
+
+  @override
+  String get dbDesignWillDrop => 'will be dropped';
+
+  @override
+  String get dbDesignRestore => 'Restore';
+
+  @override
+  String get dbDesignAddField => 'Add field';
+
+  @override
+  String get dbDesignAddColumn => 'Add column';
+
+  @override
+  String get dbDesignPrimaryKey => 'Primary key';
+
+  @override
+  String get dbDesignUniqueKeys => 'Unique constraints';
+
+  @override
+  String get dbDesignAutoName => 'Name (automatic)';
+
+  @override
+  String get dbDesignAddUnique => 'Add unique constraint';
+
+  @override
+  String get dbDesignRefTable => 'Referenced table';
+
+  @override
+  String get dbDesignPickTable => 'Choose a table';
+
+  @override
+  String get dbDesignOnDelete => 'On delete';
+
+  @override
+  String get dbDesignOnUpdate => 'On update';
+
+  @override
+  String get dbDesignDefault => 'Default';
+
+  @override
+  String get dbDesignAddForeignKey => 'Add foreign key';
+
+  @override
+  String get dbDesignAddIndex => 'Add index';
+
+  @override
+  String get dbDesignCheckExpression => 'Condition, e.g. price >= 0';
+
+  @override
+  String get dbDesignAddCheck => 'Add check';
+
+  @override
+  String get dbDesignCreateOnly => 'Set when the table is created';
+
+  @override
+  String get dbDesignClickhouseHint =>
+      'Sorting key: column names or expressions, comma-separated; empty uses the primary key. TTL and SETTINGS can be added in the editor later.';
+
+  @override
+  String get dbDesignFixErrors => 'Fix the errors to see the DDL.';
+
+  @override
+  String get dbDesignNoChanges => 'No changes.';
+
+  @override
+  String get dbDesignNone => '—';
+
+  @override
+  String get dbDesignIdentityByDefault => 'Identity (by default)';
+
+  @override
+  String get dbDesignIdentityAlways => 'Identity (always)';
+
+  @override
+  String get dbDesignIdentitySerial => 'serial';
+
+  @override
+  String get dbDesignIdentityAutoIncrement => 'AUTO_INCREMENT';
+
+  @override
+  String get dbDesignOptEngine => 'Engine';
+
+  @override
+  String get dbDesignOptEngineArgs => 'Engine parameters';
+
+  @override
+  String get dbDesignOptOrderBy => 'ORDER BY (sorting key)';
+
+  @override
+  String get dbDesignOptPartitionBy => 'Partition by';
+
+  @override
+  String get dbDesignOptPartitionKey => 'Partition key';
+
+  @override
+  String get dbDesignOptCharset => 'Character set';
+
+  @override
+  String get dbDesignOptCollation => 'Collation';
+
+  @override
+  String get dbDesignOptAutoIncrement => 'AUTO_INCREMENT start';
+
+  @override
+  String get dbDesignOptCapped => 'Capped';
+
+  @override
+  String get dbDesignOptSize => 'Size, bytes';
+
+  @override
+  String get dbDesignOptMax => 'Max documents';
+
+  @override
+  String get dbDesignOptTimeField => 'Time field (time series)';
+
+  @override
+  String get dbDesignOptMetaField => 'Meta field';
+
+  @override
+  String get dbDesignOptGranularity => 'Granularity';
+
+  @override
+  String get dbDesignOptExpire => 'Expire after, seconds';
+
+  @override
+  String get dbDesignOptValidationLevel => 'Validation level';
+
+  @override
+  String get dbDesignOptValidationAction => 'Validation action';
+
+  @override
+  String get dbDesignOptCollationLocale => 'Collation locale';
+
+  @override
+  String get dbDesignOptCollationStrength => 'Collation strength';
+
+  @override
+  String get dbDesignIssueNameRequired => 'A name is required.';
+
+  @override
+  String dbDesignIssueNameInvalid(String name) {
+    return '“$name” cannot be used as a name here.';
+  }
+
+  @override
+  String dbDesignIssueNameTooLong(String name) {
+    return '“$name” is too long for this database.';
+  }
+
+  @override
+  String dbDesignIssueNameSpaces(String name) {
+    return '“$name” starts or ends with a space.';
+  }
+
+  @override
+  String dbDesignIssueNameDuplicate(String name) {
+    return 'The name “$name” is used twice.';
+  }
+
+  @override
+  String get dbDesignIssueColumnsRequired => 'Add at least one column.';
+
+  @override
+  String dbDesignIssueTypeInvalid(String name) {
+    return '“$name” is not a valid type.';
+  }
+
+  @override
+  String dbDesignIssueLengthRequired(String name) {
+    return '$name: this type needs a length.';
+  }
+
+  @override
+  String dbDesignIssueLengthIgnored(String name) {
+    return '$name: this type takes no length; it is ignored.';
+  }
+
+  @override
+  String dbDesignIssueLengthInvalid(String name) {
+    return '$name: check the length and scale.';
+  }
+
+  @override
+  String dbDesignIssueExpressionInvalid(String name) {
+    return '“$name”: not a single expression (no “;”, comments or unbalanced brackets/quotes).';
+  }
+
+  @override
+  String get dbDesignIssueExpressionRequired => 'Enter the check condition.';
+
+  @override
+  String dbDesignIssueIdentityType(String name) {
+    return '$name: auto increment needs an integer type.';
+  }
+
+  @override
+  String dbDesignIssueIdentityDefault(String name) {
+    return '$name: an auto-increment column cannot have a default.';
+  }
+
+  @override
+  String dbDesignIssueIdentityChange(String name) {
+    return '$name: this auto-increment change cannot be made here; use the editor.';
+  }
+
+  @override
+  String get dbDesignIssueKeyColumns => 'Choose at least one column.';
+
+  @override
+  String dbDesignIssueColumnUnknown(String name) {
+    return 'There is no column “$name”.';
+  }
+
+  @override
+  String dbDesignIssueColumnRepeated(String name) {
+    return 'Column “$name” is listed twice.';
+  }
+
+  @override
+  String get dbDesignIssueRefTable => 'Choose the referenced table.';
+
+  @override
+  String get dbDesignIssueRefColumns => 'Choose as many referenced columns as key columns.';
+
+  @override
+  String dbDesignIssueAutoIncrementKey(String name) {
+    return '$name: AUTO_INCREMENT needs a key that starts with this column.';
+  }
+
+  @override
+  String get dbDesignIssueAutoIncrementSingle => 'Only one column can be AUTO_INCREMENT.';
+
+  @override
+  String dbDesignIssueUnsigned(String name) {
+    return '$name: UNSIGNED applies to numeric types only.';
+  }
+
+  @override
+  String dbDesignIssueForeignKeysEngine(String name) {
+    return 'Foreign keys need the InnoDB engine (now $name).';
+  }
+
+  @override
+  String get dbDesignIssueOrderBy => 'MergeTree tables need a sorting key: set ORDER BY or a primary key.';
+
+  @override
+  String dbDesignIssuePrimaryKeyPrefix(String name) {
+    return 'The primary key ($name) must be the start of ORDER BY.';
+  }
+
+  @override
+  String dbDesignIssueNullableKey(String name) {
+    return '$name: a key column cannot be Nullable.';
+  }
+
+  @override
+  String dbDesignIssueEngineOption(String name) {
+    return 'The $name engine has no keys or partitions.';
+  }
+
+  @override
+  String get dbDesignIssuePartitionKey => 'Enter the partition key.';
+
+  @override
+  String get dbDesignIssuePartitionPrimaryKey =>
+      'The primary key of a partitioned table must include the partition key.';
+
+  @override
+  String get dbDesignIssueCommentQuote => 'This comment cannot contain an apostrophe (\') yet.';
+
+  @override
+  String dbDesignIssueOptionInvalid(String name) {
+    return 'Check the value “$name”.';
+  }
+
+  @override
+  String dbDesignIssueOptionCreateOnly(String name) {
+    return 'Option “$name” is set when the table is created and is not changed here.';
+  }
+
+  @override
+  String get dbDesignIssueCommentChange => 'The table comment is not changed here; use the editor.';
+
+  @override
+  String dbDesignIssueNotNullDefault(String name) {
+    return '$name: NOT NULL without a default fails if the table has rows.';
+  }
+
+  @override
+  String dbDesignIssueColumnOrder(String name) {
+    return '$name is added at the end of the table.';
+  }
+
+  @override
+  String get dbDesignIssueRename => 'Renaming or moving the table is not supported here.';
+
+  @override
+  String get dbDesignIssuePrimaryKeyChange => 'The primary key of this table cannot be changed.';
+
+  @override
+  String dbDesignIssueRemoveDefault(String name) {
+    return '$name: removing a default is not supported here.';
+  }
+
+  @override
+  String dbDesignIssueRemoveComment(String name) {
+    return '$name: removing a comment is not supported here.';
+  }
+
+  @override
+  String get dbDesignIssueCappedSize => 'A capped collection needs a size.';
+
+  @override
+  String get dbDesignIssueCappedTimeSeries => 'A time-series collection cannot be capped.';
+
+  @override
+  String get dbDesignIssueTimeField => 'Set the time field first.';
+
+  @override
+  String get dbDesignIssueCollationLocale => 'Set the collation locale first.';
+
+  @override
+  String dbDesignIssueDefaultIgnored(String name) {
+    return '$name: defaults are not part of a collection and are ignored.';
+  }
+
+  @override
+  String dbDesignIssueNullableTwice(String name) {
+    return '$name: use the Nullable checkbox instead of Nullable(…) in the type.';
+  }
+
+  @override
+  String dbDesignIssueOther(String name) {
+    return 'Check the design ($name).';
+  }
 }

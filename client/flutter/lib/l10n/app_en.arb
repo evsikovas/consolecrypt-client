@@ -16470,5 +16470,854 @@
   "dbImportCsv": "Import from CSV…",
   "@dbImportCsv": {
     "description": "Tree menu on a table"
+  },
+  "dbDesignerCreateTable": "Create table…",
+  "@dbDesignerCreateTable": {
+    "description": "DB tree/toolbar: open the table designer for a new table"
+  },
+  "dbDesignerCreateCollection": "Create collection…",
+  "@dbDesignerCreateCollection": {
+    "description": "DB tree: open the designer for a new MongoDB collection"
+  },
+  "dbDesignerAlterTable": "Edit structure…",
+  "@dbDesignerAlterTable": {
+    "description": "DB tree: open the table designer for an existing table"
+  },
+  "dbDesignerTabTitle": "Design: {name}",
+  "@dbDesignerTabTitle": {
+    "description": "Workspace tab title of a table designer",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignerNewTab": "New table",
+  "@dbDesignerNewTab": {
+    "description": "Tab title of a designer whose table has no name yet"
+  },
+  "dbDesignerUnsavedTitle": "Save changes to {name}?",
+  "@dbDesignerUnsavedTitle": {
+    "description": "Closing a designer with pending changes: dialog title",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignerUnsavedMessage": "The table designer has changes that are not applied to the database yet.",
+  "@dbDesignerUnsavedMessage": {
+    "description": "Closing a designer with pending changes: message"
+  },
+  "dbDesignerDontSave": "Don't save",
+  "@dbDesignerDontSave": {
+    "description": "Closing a designer: discard the draft"
+  },
+  "dbDesignerSaveButton": "Save…",
+  "@dbDesignerSaveButton": {
+    "description": "Closing a designer: open the save dialog"
+  },
+  "dbDesignerLoadFailed": "Could not load the table structure.",
+  "@dbDesignerLoadFailed": {
+    "description": "Snackbar when the current table structure cannot be read"
+  },
+  "dbDesignerSaved": "{name}: changes applied",
+  "@dbDesignerSaved": {
+    "description": "Snackbar after the designer script ran",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignerUnsavedMark": "Unsaved changes",
+  "@dbDesignerUnsavedMark": {
+    "description": "Tooltip/semantic label of the unsaved marker on a designer tab and draft tree nodes"
+  },
+  "dbDesignerDraftNew": "New, not saved yet",
+  "@dbDesignerDraftNew": {
+    "description": "Tooltip of a draft object in the DB tree"
+  },
+  "dbDesignerDraftChanged": "Changed, not saved yet",
+  "@dbDesignerDraftChanged": {
+    "description": "Tooltip of a changed object in the DB tree"
+  },
+  "dbDesignerSaveTitle": "{name} — save changes",
+  "@dbDesignerSaveTitle": {
+    "description": "Save dialog title of the table designer",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignerSqlPreview": "SQL preview",
+  "@dbDesignerSqlPreview": {
+    "description": "Save dialog: caption above the generated script"
+  },
+  "dbDesignerTransactional": "Runs in one transaction: all statements apply or none.",
+  "@dbDesignerTransactional": {
+    "description": "Designer: the script is transactional (PostgreSQL)"
+  },
+  "dbDesignerNotTransactional": "DDL is not transactional here: if a statement fails, the ones before it stay applied.",
+  "@dbDesignerNotTransactional": {
+    "description": "Designer: the script is not transactional (MySQL, ClickHouse, MongoDB)"
+  },
+  "dbDesignerDestructive": "The script drops data or rewrites the table (dropped columns, type or key changes).",
+  "@dbDesignerDestructive": {
+    "description": "Save dialog: risk banner for destructive changes"
+  },
+  "dbDesignerProductionLocked": "This is a production connection. Unlock production writes in the workspace header to run the script.",
+  "@dbDesignerProductionLocked": {
+    "description": "Save dialog: production session without an open write window"
+  },
+  "dbDesignerReadOnly": "The session is read-only. Allow writes in the workspace header to run the script.",
+  "@dbDesignerReadOnly": {
+    "description": "Save dialog: read-only session"
+  },
+  "dbDesignerConfirm": "Enter the vault passphrase to run the script.",
+  "@dbDesignerConfirm": {
+    "description": "Save dialog: passphrase prompt"
+  },
+  "dbDesignerFailedRolledBack": "A statement failed; nothing was changed.",
+  "@dbDesignerFailedRolledBack": {
+    "description": "Save dialog: transactional script failed"
+  },
+  "dbDesignerFailedPartly": "A statement failed; the statements before it were applied.",
+  "@dbDesignerFailedPartly": {
+    "description": "Save dialog: non-transactional script failed"
+  },
+  "dbDesignerStatementResult": "{index}. {status}",
+  "@dbDesignerStatementResult": {
+    "description": "Save dialog: result line of one statement",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignerStatusDone": "applied",
+  "@dbDesignerStatusDone": {
+    "description": "Statement result"
+  },
+  "dbDesignerStatusRolledBack": "rolled back",
+  "@dbDesignerStatusRolledBack": {
+    "description": "Statement result"
+  },
+  "dbDesignerStatusSkipped": "not run",
+  "@dbDesignerStatusSkipped": {
+    "description": "Statement result"
+  },
+  "dbDesignerStatementFailed": "failed on the server",
+  "@dbDesignerStatementFailed": {
+    "description": "Statement result: the server refused it"
+  },
+  "dbDesignFields": "Fields",
+  "@dbDesignFields": {
+    "description": "Designer section: MongoDB fields"
+  },
+  "dbDesignColumns": "Columns",
+  "@dbDesignColumns": {
+    "description": "Designer section"
+  },
+  "dbDesignKeys": "Keys",
+  "@dbDesignKeys": {
+    "description": "Designer section"
+  },
+  "dbDesignForeignKeys": "Foreign keys",
+  "@dbDesignForeignKeys": {
+    "description": "Designer section"
+  },
+  "dbDesignIndexes": "Indexes",
+  "@dbDesignIndexes": {
+    "description": "Designer section"
+  },
+  "dbDesignChecks": "Checks",
+  "@dbDesignChecks": {
+    "description": "Designer section: CHECK constraints"
+  },
+  "dbDesignOptions": "Options",
+  "@dbDesignOptions": {
+    "description": "Designer section: engine options"
+  },
+  "dbDesignDdl": "DDL",
+  "@dbDesignDdl": {
+    "description": "Designer section: live DDL preview"
+  },
+  "dbDesignHasErrors": "Has errors",
+  "@dbDesignHasErrors": {
+    "description": "Designer row marker tooltip"
+  },
+  "dbDesignNew": "New",
+  "@dbDesignNew": {
+    "description": "Designer row marker tooltip: not on the server yet"
+  },
+  "dbDesignChanged": "Changed",
+  "@dbDesignChanged": {
+    "description": "Designer row marker tooltip: differs from the server"
+  },
+  "dbDesignPickColumns": "Choose columns",
+  "@dbDesignPickColumns": {
+    "description": "Designer: columns picker placeholder"
+  },
+  "dbDesignCollectionName": "Collection name",
+  "@dbDesignCollectionName": {
+    "description": "Designer header placeholder"
+  },
+  "dbDesignTableName": "Table name",
+  "@dbDesignTableName": {
+    "description": "Designer header placeholder"
+  },
+  "dbDesignSchema": "Schema",
+  "@dbDesignSchema": {
+    "description": "Designer: schema field"
+  },
+  "dbDesignDatabase": "Database",
+  "@dbDesignDatabase": {
+    "description": "Designer: database field"
+  },
+  "dbDesignComment": "Comment",
+  "@dbDesignComment": {
+    "description": "Designer: comment field"
+  },
+  "dbDesignDescription": "Description",
+  "@dbDesignDescription": {
+    "description": "Designer: MongoDB field description"
+  },
+  "dbDesignModeAlter": "Edit structure",
+  "@dbDesignModeAlter": {
+    "description": "Designer badge: existing table"
+  },
+  "dbDesignModeCreate": "New table",
+  "@dbDesignModeCreate": {
+    "description": "Designer badge: table to create"
+  },
+  "dbDesignPending": "Changed",
+  "@dbDesignPending": {
+    "description": "Designer badge: pending changes"
+  },
+  "dbDesignUndo": "Undo",
+  "@dbDesignUndo": {
+    "description": "Designer: undo the last edit"
+  },
+  "dbDesignRevert": "Revert all changes",
+  "@dbDesignRevert": {
+    "description": "Designer: drop the draft"
+  },
+  "dbDesignSave": "Save changes",
+  "@dbDesignSave": {
+    "description": "Designer: open the save dialog"
+  },
+  "dbDesignSaveShortcut": "Save changes (⌘S / Ctrl+S)",
+  "@dbDesignSaveShortcut": {
+    "description": "Designer: save button tooltip"
+  },
+  "dbDesignColName": "Name",
+  "@dbDesignColName": {
+    "description": "Designer column grid header"
+  },
+  "dbDesignColType": "Type",
+  "@dbDesignColType": {
+    "description": "Designer column grid header"
+  },
+  "dbDesignBsonType": "BSON type",
+  "@dbDesignBsonType": {
+    "description": "Designer field grid header (MongoDB)"
+  },
+  "dbDesignColLength": "Length",
+  "@dbDesignColLength": {
+    "description": "Designer column grid header: length or precision"
+  },
+  "dbDesignColScale": "Scale",
+  "@dbDesignColScale": {
+    "description": "Designer column grid header: numeric scale"
+  },
+  "dbDesignRequired": "Required",
+  "@dbDesignRequired": {
+    "description": "Designer: MongoDB required field"
+  },
+  "dbDesignNullable": "Nullable",
+  "@dbDesignNullable": {
+    "description": "Designer: ClickHouse Nullable(T)"
+  },
+  "dbDesignNotNull": "Not null",
+  "@dbDesignNotNull": {
+    "description": "Designer: NOT NULL checkbox"
+  },
+  "dbDesignColDefault": "Default",
+  "@dbDesignColDefault": {
+    "description": "Designer column grid header"
+  },
+  "dbDesignColIdentity": "Auto increment",
+  "@dbDesignColIdentity": {
+    "description": "Designer column grid header: identity / AUTO_INCREMENT"
+  },
+  "dbDesignPk": "PK",
+  "@dbDesignPk": {
+    "description": "Designer: primary key checkbox (short)"
+  },
+  "dbDesignUnique": "Unique",
+  "@dbDesignUnique": {
+    "description": "Designer: unique checkbox (short)"
+  },
+  "dbDesignUnsigned": "Unsigned",
+  "@dbDesignUnsigned": {
+    "description": "Designer: MySQL UNSIGNED"
+  },
+  "dbDesignArray": "Array",
+  "@dbDesignArray": {
+    "description": "Designer: PostgreSQL array type"
+  },
+  "dbDesignLowCardinality": "LowCard.",
+  "@dbDesignLowCardinality": {
+    "description": "Designer: ClickHouse LowCardinality (short)"
+  },
+  "dbDesignPickType": "Choose a type",
+  "@dbDesignPickType": {
+    "description": "Designer: type list button"
+  },
+  "dbDesignDefaultPresets": "Default presets",
+  "@dbDesignDefaultPresets": {
+    "description": "Designer: default value presets button"
+  },
+  "dbDesignNoDefault": "No default",
+  "@dbDesignNoDefault": {
+    "description": "Designer: clear the default"
+  },
+  "dbDesignDuplicate": "Duplicate",
+  "@dbDesignDuplicate": {
+    "description": "Designer column menu"
+  },
+  "dbDesignMoveUp": "Move up",
+  "@dbDesignMoveUp": {
+    "description": "Designer column menu"
+  },
+  "dbDesignMoveDown": "Move down",
+  "@dbDesignMoveDown": {
+    "description": "Designer column menu"
+  },
+  "dbDesignRemove": "Remove",
+  "@dbDesignRemove": {
+    "description": "Designer: remove an item"
+  },
+  "dbDesignColumnActions": "Column actions",
+  "@dbDesignColumnActions": {
+    "description": "Designer column menu button"
+  },
+  "dbDesignWillDrop": "will be dropped",
+  "@dbDesignWillDrop": {
+    "description": "Designer: a server column the draft drops"
+  },
+  "dbDesignRestore": "Restore",
+  "@dbDesignRestore": {
+    "description": "Designer: bring back a dropped column"
+  },
+  "dbDesignAddField": "Add field",
+  "@dbDesignAddField": {
+    "description": "Designer: add a MongoDB field"
+  },
+  "dbDesignAddColumn": "Add column",
+  "@dbDesignAddColumn": {
+    "description": "Designer: add a column"
+  },
+  "dbDesignPrimaryKey": "Primary key",
+  "@dbDesignPrimaryKey": {
+    "description": "Designer keys section caption"
+  },
+  "dbDesignUniqueKeys": "Unique constraints",
+  "@dbDesignUniqueKeys": {
+    "description": "Designer keys section caption"
+  },
+  "dbDesignAutoName": "Name (automatic)",
+  "@dbDesignAutoName": {
+    "description": "Designer: optional constraint name placeholder"
+  },
+  "dbDesignAddUnique": "Add unique constraint",
+  "@dbDesignAddUnique": {
+    "description": "Designer keys section"
+  },
+  "dbDesignRefTable": "Referenced table",
+  "@dbDesignRefTable": {
+    "description": "Designer foreign key: referenced table"
+  },
+  "dbDesignPickTable": "Choose a table",
+  "@dbDesignPickTable": {
+    "description": "Designer foreign key: table list button"
+  },
+  "dbDesignOnDelete": "On delete",
+  "@dbDesignOnDelete": {
+    "description": "Designer foreign key: ON DELETE"
+  },
+  "dbDesignOnUpdate": "On update",
+  "@dbDesignOnUpdate": {
+    "description": "Designer foreign key: ON UPDATE"
+  },
+  "dbDesignDefault": "Default",
+  "@dbDesignDefault": {
+    "description": "Designer: server default choice"
+  },
+  "dbDesignAddForeignKey": "Add foreign key",
+  "@dbDesignAddForeignKey": {
+    "description": "Designer foreign keys section"
+  },
+  "dbDesignAddIndex": "Add index",
+  "@dbDesignAddIndex": {
+    "description": "Designer indexes section"
+  },
+  "dbDesignCheckExpression": "Condition, e.g. price >= 0",
+  "@dbDesignCheckExpression": {
+    "description": "Designer check expression placeholder"
+  },
+  "dbDesignAddCheck": "Add check",
+  "@dbDesignAddCheck": {
+    "description": "Designer checks section"
+  },
+  "dbDesignCreateOnly": "Set when the table is created",
+  "@dbDesignCreateOnly": {
+    "description": "Designer: option that cannot change in alter mode"
+  },
+  "dbDesignClickhouseHint": "Sorting key: column names or expressions, comma-separated; empty uses the primary key. TTL and SETTINGS can be added in the editor later.",
+  "@dbDesignClickhouseHint": {
+    "description": "Designer ClickHouse options hint"
+  },
+  "dbDesignFixErrors": "Fix the errors to see the DDL.",
+  "@dbDesignFixErrors": {
+    "description": "Designer DDL tab with validation errors"
+  },
+  "dbDesignNoChanges": "No changes.",
+  "@dbDesignNoChanges": {
+    "description": "Designer DDL tab: nothing to run"
+  },
+  "dbDesignNone": "—",
+  "@dbDesignNone": {
+    "description": "Designer: no identity"
+  },
+  "dbDesignIdentityByDefault": "Identity (by default)",
+  "@dbDesignIdentityByDefault": {
+    "description": "PostgreSQL GENERATED BY DEFAULT AS IDENTITY"
+  },
+  "dbDesignIdentityAlways": "Identity (always)",
+  "@dbDesignIdentityAlways": {
+    "description": "PostgreSQL GENERATED ALWAYS AS IDENTITY"
+  },
+  "dbDesignIdentitySerial": "serial",
+  "@dbDesignIdentitySerial": {
+    "description": "PostgreSQL serial pseudo-type"
+  },
+  "dbDesignIdentityAutoIncrement": "AUTO_INCREMENT",
+  "@dbDesignIdentityAutoIncrement": {
+    "description": "MySQL AUTO_INCREMENT"
+  },
+  "dbDesignOptEngine": "Engine",
+  "@dbDesignOptEngine": {
+    "description": "Designer option"
+  },
+  "dbDesignOptEngineArgs": "Engine parameters",
+  "@dbDesignOptEngineArgs": {
+    "description": "Designer option (ClickHouse, e.g. the version column)"
+  },
+  "dbDesignOptOrderBy": "ORDER BY (sorting key)",
+  "@dbDesignOptOrderBy": {
+    "description": "Designer option (ClickHouse)"
+  },
+  "dbDesignOptPartitionBy": "Partition by",
+  "@dbDesignOptPartitionBy": {
+    "description": "Designer option"
+  },
+  "dbDesignOptPartitionKey": "Partition key",
+  "@dbDesignOptPartitionKey": {
+    "description": "Designer option (PostgreSQL)"
+  },
+  "dbDesignOptCharset": "Character set",
+  "@dbDesignOptCharset": {
+    "description": "Designer option (MySQL)"
+  },
+  "dbDesignOptCollation": "Collation",
+  "@dbDesignOptCollation": {
+    "description": "Designer option (MySQL)"
+  },
+  "dbDesignOptAutoIncrement": "AUTO_INCREMENT start",
+  "@dbDesignOptAutoIncrement": {
+    "description": "Designer option (MySQL)"
+  },
+  "dbDesignOptCapped": "Capped",
+  "@dbDesignOptCapped": {
+    "description": "Designer option (MongoDB)"
+  },
+  "dbDesignOptSize": "Size, bytes",
+  "@dbDesignOptSize": {
+    "description": "Designer option (MongoDB capped)"
+  },
+  "dbDesignOptMax": "Max documents",
+  "@dbDesignOptMax": {
+    "description": "Designer option (MongoDB capped)"
+  },
+  "dbDesignOptTimeField": "Time field (time series)",
+  "@dbDesignOptTimeField": {
+    "description": "Designer option (MongoDB)"
+  },
+  "dbDesignOptMetaField": "Meta field",
+  "@dbDesignOptMetaField": {
+    "description": "Designer option (MongoDB)"
+  },
+  "dbDesignOptGranularity": "Granularity",
+  "@dbDesignOptGranularity": {
+    "description": "Designer option (MongoDB)"
+  },
+  "dbDesignOptExpire": "Expire after, seconds",
+  "@dbDesignOptExpire": {
+    "description": "Designer option (MongoDB)"
+  },
+  "dbDesignOptValidationLevel": "Validation level",
+  "@dbDesignOptValidationLevel": {
+    "description": "Designer option (MongoDB)"
+  },
+  "dbDesignOptValidationAction": "Validation action",
+  "@dbDesignOptValidationAction": {
+    "description": "Designer option (MongoDB)"
+  },
+  "dbDesignOptCollationLocale": "Collation locale",
+  "@dbDesignOptCollationLocale": {
+    "description": "Designer option (MongoDB)"
+  },
+  "dbDesignOptCollationStrength": "Collation strength",
+  "@dbDesignOptCollationStrength": {
+    "description": "Designer option (MongoDB)"
+  },
+  "dbDesignIssueNameRequired": "A name is required.",
+  "@dbDesignIssueNameRequired": {
+    "description": "Designer validation"
+  },
+  "dbDesignIssueNameInvalid": "“{name}” cannot be used as a name here.",
+  "@dbDesignIssueNameInvalid": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueNameTooLong": "“{name}” is too long for this database.",
+  "@dbDesignIssueNameTooLong": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueNameSpaces": "“{name}” starts or ends with a space.",
+  "@dbDesignIssueNameSpaces": {
+    "description": "Designer validation warning",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueNameDuplicate": "The name “{name}” is used twice.",
+  "@dbDesignIssueNameDuplicate": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueColumnsRequired": "Add at least one column.",
+  "@dbDesignIssueColumnsRequired": {
+    "description": "Designer validation"
+  },
+  "dbDesignIssueTypeInvalid": "“{name}” is not a valid type.",
+  "@dbDesignIssueTypeInvalid": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueLengthRequired": "{name}: this type needs a length.",
+  "@dbDesignIssueLengthRequired": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueLengthIgnored": "{name}: this type takes no length; it is ignored.",
+  "@dbDesignIssueLengthIgnored": {
+    "description": "Designer validation warning",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueLengthInvalid": "{name}: check the length and scale.",
+  "@dbDesignIssueLengthInvalid": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueExpressionInvalid": "“{name}”: not a single expression (no “;”, comments or unbalanced brackets/quotes).",
+  "@dbDesignIssueExpressionInvalid": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueExpressionRequired": "Enter the check condition.",
+  "@dbDesignIssueExpressionRequired": {
+    "description": "Designer validation"
+  },
+  "dbDesignIssueIdentityType": "{name}: auto increment needs an integer type.",
+  "@dbDesignIssueIdentityType": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueIdentityDefault": "{name}: an auto-increment column cannot have a default.",
+  "@dbDesignIssueIdentityDefault": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueIdentityChange": "{name}: this auto-increment change cannot be made here; use the editor.",
+  "@dbDesignIssueIdentityChange": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueKeyColumns": "Choose at least one column.",
+  "@dbDesignIssueKeyColumns": {
+    "description": "Designer validation"
+  },
+  "dbDesignIssueColumnUnknown": "There is no column “{name}”.",
+  "@dbDesignIssueColumnUnknown": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueColumnRepeated": "Column “{name}” is listed twice.",
+  "@dbDesignIssueColumnRepeated": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueRefTable": "Choose the referenced table.",
+  "@dbDesignIssueRefTable": {
+    "description": "Designer validation"
+  },
+  "dbDesignIssueRefColumns": "Choose as many referenced columns as key columns.",
+  "@dbDesignIssueRefColumns": {
+    "description": "Designer validation"
+  },
+  "dbDesignIssueAutoIncrementKey": "{name}: AUTO_INCREMENT needs a key that starts with this column.",
+  "@dbDesignIssueAutoIncrementKey": {
+    "description": "Designer validation (MySQL)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueAutoIncrementSingle": "Only one column can be AUTO_INCREMENT.",
+  "@dbDesignIssueAutoIncrementSingle": {
+    "description": "Designer validation (MySQL)"
+  },
+  "dbDesignIssueUnsigned": "{name}: UNSIGNED applies to numeric types only.",
+  "@dbDesignIssueUnsigned": {
+    "description": "Designer validation (MySQL)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueForeignKeysEngine": "Foreign keys need the InnoDB engine (now {name}).",
+  "@dbDesignIssueForeignKeysEngine": {
+    "description": "Designer validation (MySQL)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueOrderBy": "MergeTree tables need a sorting key: set ORDER BY or a primary key.",
+  "@dbDesignIssueOrderBy": {
+    "description": "Designer validation (ClickHouse)"
+  },
+  "dbDesignIssuePrimaryKeyPrefix": "The primary key ({name}) must be the start of ORDER BY.",
+  "@dbDesignIssuePrimaryKeyPrefix": {
+    "description": "Designer validation (ClickHouse)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueNullableKey": "{name}: a key column cannot be Nullable.",
+  "@dbDesignIssueNullableKey": {
+    "description": "Designer validation (ClickHouse)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueEngineOption": "The {name} engine has no keys or partitions.",
+  "@dbDesignIssueEngineOption": {
+    "description": "Designer validation (ClickHouse)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssuePartitionKey": "Enter the partition key.",
+  "@dbDesignIssuePartitionKey": {
+    "description": "Designer validation (PostgreSQL)"
+  },
+  "dbDesignIssuePartitionPrimaryKey": "The primary key of a partitioned table must include the partition key.",
+  "@dbDesignIssuePartitionPrimaryKey": {
+    "description": "Designer validation warning (PostgreSQL)"
+  },
+  "dbDesignIssueCommentQuote": "This comment cannot contain an apostrophe (') yet.",
+  "@dbDesignIssueCommentQuote": {
+    "description": "Designer validation"
+  },
+  "dbDesignIssueOptionInvalid": "Check the value “{name}”.",
+  "@dbDesignIssueOptionInvalid": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueOptionCreateOnly": "Option “{name}” is set when the table is created and is not changed here.",
+  "@dbDesignIssueOptionCreateOnly": {
+    "description": "Designer validation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueCommentChange": "The table comment is not changed here; use the editor.",
+  "@dbDesignIssueCommentChange": {
+    "description": "Designer validation warning (MySQL)"
+  },
+  "dbDesignIssueNotNullDefault": "{name}: NOT NULL without a default fails if the table has rows.",
+  "@dbDesignIssueNotNullDefault": {
+    "description": "Designer validation warning",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueColumnOrder": "{name} is added at the end of the table.",
+  "@dbDesignIssueColumnOrder": {
+    "description": "Designer validation warning",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueRename": "Renaming or moving the table is not supported here.",
+  "@dbDesignIssueRename": {
+    "description": "Designer validation"
+  },
+  "dbDesignIssuePrimaryKeyChange": "The primary key of this table cannot be changed.",
+  "@dbDesignIssuePrimaryKeyChange": {
+    "description": "Designer validation (ClickHouse)"
+  },
+  "dbDesignIssueRemoveDefault": "{name}: removing a default is not supported here.",
+  "@dbDesignIssueRemoveDefault": {
+    "description": "Designer validation (ClickHouse)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueRemoveComment": "{name}: removing a comment is not supported here.",
+  "@dbDesignIssueRemoveComment": {
+    "description": "Designer validation (ClickHouse)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueCappedSize": "A capped collection needs a size.",
+  "@dbDesignIssueCappedSize": {
+    "description": "Designer validation (MongoDB)"
+  },
+  "dbDesignIssueCappedTimeSeries": "A time-series collection cannot be capped.",
+  "@dbDesignIssueCappedTimeSeries": {
+    "description": "Designer validation (MongoDB)"
+  },
+  "dbDesignIssueTimeField": "Set the time field first.",
+  "@dbDesignIssueTimeField": {
+    "description": "Designer validation (MongoDB)"
+  },
+  "dbDesignIssueCollationLocale": "Set the collation locale first.",
+  "@dbDesignIssueCollationLocale": {
+    "description": "Designer validation (MongoDB)"
+  },
+  "dbDesignIssueDefaultIgnored": "{name}: defaults are not part of a collection and are ignored.",
+  "@dbDesignIssueDefaultIgnored": {
+    "description": "Designer validation warning (MongoDB)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueNullableTwice": "{name}: use the Nullable checkbox instead of Nullable(…) in the type.",
+  "@dbDesignIssueNullableTwice": {
+    "description": "Designer validation (ClickHouse)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueOther": "Check the design ({name}).",
+  "@dbDesignIssueOther": {
+    "description": "Designer validation: unknown code",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

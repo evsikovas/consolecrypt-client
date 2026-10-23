@@ -679,3 +679,31 @@ fn a_read_only_connection_never_allows_writes() {
     assert!(g.prepare(&request("INSERT INTO t VALUES (1)")).is_err());
     assert!(g.prepare(&request("SELECT 1")).is_ok());
 }
+
+#[test]
+fn designer_ddl_is_reviewed_as_destructive() {
+    let pg = guard(DbEngine::Postgresql, false, false);
+    pg.allow_session_write().unwrap();
+    for text in [
+        r#"COMMENT ON TABLE "application"."t" IS 'Orders'"#,
+        r#"COMMENT ON COLUMN "application"."t"."id" IS NULL"#,
+    ] {
+        let review = pg.review(&request(text)).unwrap();
+        assert_eq!(review.risk, QueryRisk::Destructive, "{text}");
+        assert!(matches!(
+            pg.prepare(&request(text)),
+            Err(DbError::ApprovalRequired)
+        ));
+    }
+    let mongo = guard(DbEngine::Mongodb, false, false);
+    mongo.allow_session_write().unwrap();
+    let series = r#"db.runCommand({"create": "metrics", "timeseries": {"timeField": "ts"}, "expireAfterSeconds": 60})"#;
+    assert_eq!(
+        mongo.review(&request(series)).unwrap().risk,
+        QueryRisk::Destructive
+    );
+    // Other collection options stay refused.
+    assert!(mongo
+        .review(&request(r#"db.runCommand({"create": "x", "viewOn": "y"})"#))
+        .is_err());
+}

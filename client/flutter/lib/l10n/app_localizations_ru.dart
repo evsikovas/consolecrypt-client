@@ -12305,4 +12305,585 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbImportCsv => 'Импорт из CSV…';
+
+  @override
+  String get dbDesignerCreateTable => 'Создать таблицу…';
+
+  @override
+  String get dbDesignerCreateCollection => 'Создать коллекцию…';
+
+  @override
+  String get dbDesignerAlterTable => 'Изменить структуру…';
+
+  @override
+  String dbDesignerTabTitle(String name) {
+    return 'Конструктор: $name';
+  }
+
+  @override
+  String get dbDesignerNewTab => 'Новая таблица';
+
+  @override
+  String dbDesignerUnsavedTitle(String name) {
+    return 'Сохранить изменения в «$name»?';
+  }
+
+  @override
+  String get dbDesignerUnsavedMessage => 'В конструкторе есть изменения, которые ещё не применены к базе данных.';
+
+  @override
+  String get dbDesignerDontSave => 'Не сохранять';
+
+  @override
+  String get dbDesignerSaveButton => 'Сохранить…';
+
+  @override
+  String get dbDesignerLoadFailed => 'Не удалось загрузить структуру таблицы.';
+
+  @override
+  String dbDesignerSaved(String name) {
+    return '«$name»: изменения применены';
+  }
+
+  @override
+  String get dbDesignerUnsavedMark => 'Несохранённые изменения';
+
+  @override
+  String get dbDesignerDraftNew => 'Новый, ещё не сохранён';
+
+  @override
+  String get dbDesignerDraftChanged => 'Изменён, ещё не сохранён';
+
+  @override
+  String dbDesignerSaveTitle(String name) {
+    return '«$name» — сохранить изменения';
+  }
+
+  @override
+  String get dbDesignerSqlPreview => 'Просмотр SQL';
+
+  @override
+  String get dbDesignerTransactional => 'Выполняется в одной транзакции: применятся все операторы или ни один.';
+
+  @override
+  String get dbDesignerNotTransactional =>
+      'DDL здесь не транзакционный: если оператор упадёт, предыдущие останутся применёнными.';
+
+  @override
+  String get dbDesignerDestructive =>
+      'Скрипт удаляет данные или перестраивает таблицу (удалённые столбцы, смена типа или ключа).';
+
+  @override
+  String get dbDesignerProductionLocked =>
+      'Это продакшен-подключение. Чтобы выполнить скрипт, разблокируйте запись в заголовке рабочей области.';
+
+  @override
+  String get dbDesignerReadOnly =>
+      'Сессия только для чтения. Чтобы выполнить скрипт, разрешите запись в заголовке рабочей области.';
+
+  @override
+  String get dbDesignerConfirm => 'Введите парольную фразу хранилища, чтобы выполнить скрипт.';
+
+  @override
+  String get dbDesignerFailedRolledBack => 'Оператор завершился ошибкой; ничего не изменено.';
+
+  @override
+  String get dbDesignerFailedPartly => 'Оператор завершился ошибкой; предыдущие операторы применены.';
+
+  @override
+  String dbDesignerStatementResult(int index, String status) {
+    return '$index. $status';
+  }
+
+  @override
+  String get dbDesignerStatusDone => 'применён';
+
+  @override
+  String get dbDesignerStatusRolledBack => 'откачен';
+
+  @override
+  String get dbDesignerStatusSkipped => 'не выполнялся';
+
+  @override
+  String get dbDesignerStatementFailed => 'ошибка на сервере';
+
+  @override
+  String get dbDesignFields => 'Поля';
+
+  @override
+  String get dbDesignColumns => 'Столбцы';
+
+  @override
+  String get dbDesignKeys => 'Ключи';
+
+  @override
+  String get dbDesignForeignKeys => 'Внешние ключи';
+
+  @override
+  String get dbDesignIndexes => 'Индексы';
+
+  @override
+  String get dbDesignChecks => 'Проверки';
+
+  @override
+  String get dbDesignOptions => 'Параметры';
+
+  @override
+  String get dbDesignDdl => 'DDL';
+
+  @override
+  String get dbDesignHasErrors => 'Есть ошибки';
+
+  @override
+  String get dbDesignNew => 'Новый';
+
+  @override
+  String get dbDesignChanged => 'Изменён';
+
+  @override
+  String get dbDesignPickColumns => 'Выберите столбцы';
+
+  @override
+  String get dbDesignCollectionName => 'Имя коллекции';
+
+  @override
+  String get dbDesignTableName => 'Имя таблицы';
+
+  @override
+  String get dbDesignSchema => 'Схема';
+
+  @override
+  String get dbDesignDatabase => 'База данных';
+
+  @override
+  String get dbDesignComment => 'Комментарий';
+
+  @override
+  String get dbDesignDescription => 'Описание';
+
+  @override
+  String get dbDesignModeAlter => 'Изменение структуры';
+
+  @override
+  String get dbDesignModeCreate => 'Новая таблица';
+
+  @override
+  String get dbDesignPending => 'Изменено';
+
+  @override
+  String get dbDesignUndo => 'Отменить';
+
+  @override
+  String get dbDesignRevert => 'Отменить все изменения';
+
+  @override
+  String get dbDesignSave => 'Сохранить изменения';
+
+  @override
+  String get dbDesignSaveShortcut => 'Сохранить изменения (⌘S / Ctrl+S)';
+
+  @override
+  String get dbDesignColName => 'Имя';
+
+  @override
+  String get dbDesignColType => 'Тип';
+
+  @override
+  String get dbDesignBsonType => 'Тип BSON';
+
+  @override
+  String get dbDesignColLength => 'Длина';
+
+  @override
+  String get dbDesignColScale => 'Масштаб';
+
+  @override
+  String get dbDesignRequired => 'Обяз.';
+
+  @override
+  String get dbDesignNullable => 'Nullable';
+
+  @override
+  String get dbDesignNotNull => 'NOT NULL';
+
+  @override
+  String get dbDesignColDefault => 'По умолчанию';
+
+  @override
+  String get dbDesignColIdentity => 'Автоинкремент';
+
+  @override
+  String get dbDesignPk => 'PK';
+
+  @override
+  String get dbDesignUnique => 'Уник.';
+
+  @override
+  String get dbDesignUnsigned => 'Unsigned';
+
+  @override
+  String get dbDesignArray => 'Массив';
+
+  @override
+  String get dbDesignLowCardinality => 'LowCard.';
+
+  @override
+  String get dbDesignPickType => 'Выбрать тип';
+
+  @override
+  String get dbDesignDefaultPresets => 'Готовые значения';
+
+  @override
+  String get dbDesignNoDefault => 'Без значения по умолчанию';
+
+  @override
+  String get dbDesignDuplicate => 'Дублировать';
+
+  @override
+  String get dbDesignMoveUp => 'Переместить выше';
+
+  @override
+  String get dbDesignMoveDown => 'Переместить ниже';
+
+  @override
+  String get dbDesignRemove => 'Удалить';
+
+  @override
+  String get dbDesignColumnActions => 'Действия со столбцом';
+
+  @override
+  String get dbDesignWillDrop => 'будет удалён';
+
+  @override
+  String get dbDesignRestore => 'Вернуть';
+
+  @override
+  String get dbDesignAddField => 'Добавить поле';
+
+  @override
+  String get dbDesignAddColumn => 'Добавить столбец';
+
+  @override
+  String get dbDesignPrimaryKey => 'Первичный ключ';
+
+  @override
+  String get dbDesignUniqueKeys => 'Ограничения уникальности';
+
+  @override
+  String get dbDesignAutoName => 'Имя (автоматически)';
+
+  @override
+  String get dbDesignAddUnique => 'Добавить ограничение уникальности';
+
+  @override
+  String get dbDesignRefTable => 'Связанная таблица';
+
+  @override
+  String get dbDesignPickTable => 'Выбрать таблицу';
+
+  @override
+  String get dbDesignOnDelete => 'При удалении';
+
+  @override
+  String get dbDesignOnUpdate => 'При изменении';
+
+  @override
+  String get dbDesignDefault => 'По умолчанию';
+
+  @override
+  String get dbDesignAddForeignKey => 'Добавить внешний ключ';
+
+  @override
+  String get dbDesignAddIndex => 'Добавить индекс';
+
+  @override
+  String get dbDesignCheckExpression => 'Условие, например price >= 0';
+
+  @override
+  String get dbDesignAddCheck => 'Добавить проверку';
+
+  @override
+  String get dbDesignCreateOnly => 'Задаётся при создании таблицы';
+
+  @override
+  String get dbDesignClickhouseHint =>
+      'Ключ сортировки: имена столбцов или выражения через запятую; если пусто — берётся первичный ключ. TTL и SETTINGS можно добавить позже в редакторе.';
+
+  @override
+  String get dbDesignFixErrors => 'Исправьте ошибки, чтобы увидеть DDL.';
+
+  @override
+  String get dbDesignNoChanges => 'Изменений нет.';
+
+  @override
+  String get dbDesignNone => '—';
+
+  @override
+  String get dbDesignIdentityByDefault => 'Identity (BY DEFAULT)';
+
+  @override
+  String get dbDesignIdentityAlways => 'Identity (ALWAYS)';
+
+  @override
+  String get dbDesignIdentitySerial => 'serial';
+
+  @override
+  String get dbDesignIdentityAutoIncrement => 'AUTO_INCREMENT';
+
+  @override
+  String get dbDesignOptEngine => 'Движок';
+
+  @override
+  String get dbDesignOptEngineArgs => 'Параметры движка';
+
+  @override
+  String get dbDesignOptOrderBy => 'ORDER BY (ключ сортировки)';
+
+  @override
+  String get dbDesignOptPartitionBy => 'Секционирование';
+
+  @override
+  String get dbDesignOptPartitionKey => 'Ключ секционирования';
+
+  @override
+  String get dbDesignOptCharset => 'Кодировка';
+
+  @override
+  String get dbDesignOptCollation => 'Сортировка (COLLATE)';
+
+  @override
+  String get dbDesignOptAutoIncrement => 'Начальное AUTO_INCREMENT';
+
+  @override
+  String get dbDesignOptCapped => 'Ограниченная (capped)';
+
+  @override
+  String get dbDesignOptSize => 'Размер, байт';
+
+  @override
+  String get dbDesignOptMax => 'Макс. документов';
+
+  @override
+  String get dbDesignOptTimeField => 'Поле времени (time series)';
+
+  @override
+  String get dbDesignOptMetaField => 'Поле метаданных';
+
+  @override
+  String get dbDesignOptGranularity => 'Гранулярность';
+
+  @override
+  String get dbDesignOptExpire => 'Удалять через, секунд';
+
+  @override
+  String get dbDesignOptValidationLevel => 'Уровень проверки';
+
+  @override
+  String get dbDesignOptValidationAction => 'Действие при ошибке проверки';
+
+  @override
+  String get dbDesignOptCollationLocale => 'Локаль сортировки';
+
+  @override
+  String get dbDesignOptCollationStrength => 'Строгость сортировки';
+
+  @override
+  String get dbDesignIssueNameRequired => 'Нужно имя.';
+
+  @override
+  String dbDesignIssueNameInvalid(String name) {
+    return '«$name» нельзя использовать как имя.';
+  }
+
+  @override
+  String dbDesignIssueNameTooLong(String name) {
+    return '«$name» слишком длинное для этой базы данных.';
+  }
+
+  @override
+  String dbDesignIssueNameSpaces(String name) {
+    return '«$name» начинается или заканчивается пробелом.';
+  }
+
+  @override
+  String dbDesignIssueNameDuplicate(String name) {
+    return 'Имя «$name» используется дважды.';
+  }
+
+  @override
+  String get dbDesignIssueColumnsRequired => 'Добавьте хотя бы один столбец.';
+
+  @override
+  String dbDesignIssueTypeInvalid(String name) {
+    return '«$name» — недопустимый тип.';
+  }
+
+  @override
+  String dbDesignIssueLengthRequired(String name) {
+    return '$name: для этого типа нужна длина.';
+  }
+
+  @override
+  String dbDesignIssueLengthIgnored(String name) {
+    return '$name: у этого типа нет длины; она не учитывается.';
+  }
+
+  @override
+  String dbDesignIssueLengthInvalid(String name) {
+    return '$name: проверьте длину и масштаб.';
+  }
+
+  @override
+  String dbDesignIssueExpressionInvalid(String name) {
+    return '«$name»: это не одно выражение (без «;», комментариев и непарных скобок/кавычек).';
+  }
+
+  @override
+  String get dbDesignIssueExpressionRequired => 'Введите условие проверки.';
+
+  @override
+  String dbDesignIssueIdentityType(String name) {
+    return '$name: автоинкременту нужен целочисленный тип.';
+  }
+
+  @override
+  String dbDesignIssueIdentityDefault(String name) {
+    return '$name: у столбца с автоинкрементом не бывает значения по умолчанию.';
+  }
+
+  @override
+  String dbDesignIssueIdentityChange(String name) {
+    return '$name: такое изменение автоинкремента здесь недоступно; используйте редактор.';
+  }
+
+  @override
+  String get dbDesignIssueKeyColumns => 'Выберите хотя бы один столбец.';
+
+  @override
+  String dbDesignIssueColumnUnknown(String name) {
+    return 'Нет столбца «$name».';
+  }
+
+  @override
+  String dbDesignIssueColumnRepeated(String name) {
+    return 'Столбец «$name» указан дважды.';
+  }
+
+  @override
+  String get dbDesignIssueRefTable => 'Выберите связанную таблицу.';
+
+  @override
+  String get dbDesignIssueRefColumns => 'Выберите столько же связанных столбцов, сколько столбцов в ключе.';
+
+  @override
+  String dbDesignIssueAutoIncrementKey(String name) {
+    return '$name: для AUTO_INCREMENT нужен ключ, начинающийся с этого столбца.';
+  }
+
+  @override
+  String get dbDesignIssueAutoIncrementSingle => 'AUTO_INCREMENT может быть только у одного столбца.';
+
+  @override
+  String dbDesignIssueUnsigned(String name) {
+    return '$name: UNSIGNED применим только к числовым типам.';
+  }
+
+  @override
+  String dbDesignIssueForeignKeysEngine(String name) {
+    return 'Внешним ключам нужен движок InnoDB (сейчас $name).';
+  }
+
+  @override
+  String get dbDesignIssueOrderBy => 'Таблицам MergeTree нужен ключ сортировки: задайте ORDER BY или первичный ключ.';
+
+  @override
+  String dbDesignIssuePrimaryKeyPrefix(String name) {
+    return 'Первичный ключ ($name) должен быть началом ORDER BY.';
+  }
+
+  @override
+  String dbDesignIssueNullableKey(String name) {
+    return '$name: столбец ключа не может быть Nullable.';
+  }
+
+  @override
+  String dbDesignIssueEngineOption(String name) {
+    return 'У движка $name нет ключей и секций.';
+  }
+
+  @override
+  String get dbDesignIssuePartitionKey => 'Введите ключ секционирования.';
+
+  @override
+  String get dbDesignIssuePartitionPrimaryKey =>
+      'Первичный ключ секционированной таблицы должен включать ключ секционирования.';
+
+  @override
+  String get dbDesignIssueCommentQuote => 'Этот комментарий пока не может содержать апостроф (\').';
+
+  @override
+  String dbDesignIssueOptionInvalid(String name) {
+    return 'Проверьте значение «$name».';
+  }
+
+  @override
+  String dbDesignIssueOptionCreateOnly(String name) {
+    return 'Параметр «$name» задаётся при создании таблицы и здесь не меняется.';
+  }
+
+  @override
+  String get dbDesignIssueCommentChange => 'Комментарий таблицы здесь не меняется; используйте редактор.';
+
+  @override
+  String dbDesignIssueNotNullDefault(String name) {
+    return '$name: NOT NULL без значения по умолчанию не сработает, если в таблице есть строки.';
+  }
+
+  @override
+  String dbDesignIssueColumnOrder(String name) {
+    return '$name будет добавлен в конец таблицы.';
+  }
+
+  @override
+  String get dbDesignIssueRename => 'Переименование или перенос таблицы здесь не поддерживается.';
+
+  @override
+  String get dbDesignIssuePrimaryKeyChange => 'Первичный ключ этой таблицы изменить нельзя.';
+
+  @override
+  String dbDesignIssueRemoveDefault(String name) {
+    return '$name: удаление значения по умолчанию здесь не поддерживается.';
+  }
+
+  @override
+  String dbDesignIssueRemoveComment(String name) {
+    return '$name: удаление комментария здесь не поддерживается.';
+  }
+
+  @override
+  String get dbDesignIssueCappedSize => 'Для ограниченной коллекции нужен размер.';
+
+  @override
+  String get dbDesignIssueCappedTimeSeries => 'Коллекция time series не может быть ограниченной.';
+
+  @override
+  String get dbDesignIssueTimeField => 'Сначала задайте поле времени.';
+
+  @override
+  String get dbDesignIssueCollationLocale => 'Сначала задайте локаль сортировки.';
+
+  @override
+  String dbDesignIssueDefaultIgnored(String name) {
+    return '$name: значения по умолчанию не входят в коллекцию и не учитываются.';
+  }
+
+  @override
+  String dbDesignIssueNullableTwice(String name) {
+    return '$name: вместо Nullable(…) в типе используйте флажок Nullable.';
+  }
+
+  @override
+  String dbDesignIssueOther(String name) {
+    return 'Проверьте структуру ($name).';
+  }
 }

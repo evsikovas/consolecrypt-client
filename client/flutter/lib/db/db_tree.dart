@@ -12,6 +12,7 @@ import 'package:consolecrypt/db/db_object_details.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_sqlite_dialect.dart';
+import 'package:consolecrypt/db/db_tree_overlay.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -190,6 +191,9 @@ class DbObjectTree extends ConsumerStatefulWidget {
     this.onSelect,
     this.onImportCsv,
     this.onCreateFromCsv,
+    this.overlay,
+    this.extraMenu,
+    this.onExtra,
     super.key,
   });
   final DbSessionInfo session;
@@ -205,6 +209,14 @@ class DbObjectTree extends ConsumerStatefulWidget {
   /// CSV import into a table, and a new table typed from a CSV file in a
   /// schema or database (null hides them).
   final ValueChanged<DbObjectRef>? onImportCsv, onCreateFromCsv;
+
+  /// Unsaved designer drafts shown among the loaded objects.
+  final DbTreeOverlay? overlay;
+
+  /// More actions for an object (or, for a folder, its parent) and their
+  /// handler (the table designer).
+  final List<GlassMenuEntry<String>> Function(DbObjectRef object)? extraMenu;
+  final void Function(String action, DbObjectRef object)? onExtra;
   @override
   ConsumerState<DbObjectTree> createState() => _DbObjectTreeState();
 }
@@ -213,13 +225,44 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
   late final DbScope _scope = ref.read(dbScopeProvider);
   final _branches = <String, _Branch>{}, _expanded = <String>{};
   final _folders = <String, bool>{};
+
+  /// Draft states of the rows being built (from [DbObjectTree.overlay]).
+  final _draftStates = <String, DbDraftState>{};
   String _filter = '';
   String? _selected;
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(dbScopeProvider));
   @override
   void initState() {
     super.initState();
+    widget.overlay?.addListener(_overlayChanged);
     unawaited(_load(null));
+  }
+
+  @override
+  void didUpdateWidget(DbObjectTree old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.overlay, widget.overlay)) {
+      old.overlay?.removeListener(_overlayChanged);
+      widget.overlay?.addListener(_overlayChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.overlay?.removeListener(_overlayChanged);
+    super.dispose();
+  }
+
+  /// Drafts changed: rebuild; saved designs reload their parents.
+  void _overlayChanged() {
+    if (!_current) return;
+    setState(() {});
+    for (final parent in widget.overlay?.takeReloads() ?? const <DbObjectRef>[]) {
+      if (_branches.containsKey(parent.id)) unawaited(_load(parent, refresh: true));
+    }
+    for (final parent in widget.overlay?.takeReveals() ?? const <DbObjectRef>[]) {
+      if (_expanded.add(parent.id)) unawaited(_load(parent));
+    }
   }
 
   Future<void> _load(DbObjectRef? parent, {bool more = false, bool refresh = false}) async {
@@ -268,6 +311,10 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
 
   Future<void> _action(String action, DbObjectRef object) async {
     if (!_current) return;
+    if (widget.onExtra != null && !const {'insert', 'query', 'ddl', 'inspect', 'sample'}.contains(action)) {
+      widget.onExtra!(action, object);
+      return;
+    }
     SecretText? value;
     try {
       switch (action) {
@@ -344,10 +391,12 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
 
   List<_Row> _visible() {
     final rows = <_Row>[];
+    _draftStates.clear();
     bool matches(DbTreeNode node) => _filter.isEmpty || node.reference.name.toLowerCase().contains(_filter);
     void walk(DbObjectRef? parent, int depth, String? block, int blockDepth) {
       final branch = _branches[parent?.id ?? ''];
-      if (branch == null || depth > 16) return;
+      final drafts = widget.overlay?.childrenOf(parent) ?? const <DbDraftNode>[];
+      if ((branch == null && drafts.isEmpty) || depth > 16) return;
       _Row add(_Row row) {
         row
           ..block = block
@@ -373,7 +422,16 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
       }
 
       final groups = <_Folder?, List<DbTreeNode>>{};
-      for (final node in branch.nodes) {
+      final loaded = branch?.nodes ?? const <DbTreeNode>[];
+      for (final d in drafts) {
+        _draftStates[d.node.reference.id] = d.state;
+      }
+      final ids = {for (final node in loaded) node.reference.id};
+      for (final node in [
+        ...loaded,
+        for (final d in drafts)
+          if (!ids.contains(d.node.reference.id)) d.node,
+      ]) {
         groups.putIfAbsent(_folderOf(node.reference.kind), () => []).add(node);
       }
       final folders = groups.keys.whereType<_Folder>().toList()..sort((a, b) => a.index.compareTo(b.index));
@@ -398,7 +456,9 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
           }
         }
       }
-      if (branch.loading || branch.failed || branch.cursor != null) add(_Row(depth: depth, parent: parent));
+      if (branch != null && (branch.loading || branch.failed || branch.cursor != null)) {
+        add(_Row(depth: depth, parent: parent));
+      }
     }
 
     walk(null, 0, null, 0);
@@ -430,6 +490,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
         (object.kind == DbObjectKind.schema ||
             (object.kind == DbObjectKind.database && widget.session.engine != DbEngine.postgresql)))
       GlassMenuItem(value: 'create-from-csv', label: l.dbCsvCreateTable, icon: Icons.table_chart_outlined),
+    ...?widget.extraMenu?.call(object),
   ];
 
   Future<void> _menuAt(DbObjectRef object, Rect anchor) async {
@@ -440,7 +501,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
   void _toggle(DbObjectRef object) {
     final expanded = _expanded.contains(object.id);
     setState(() => expanded ? _expanded.remove(object.id) : _expanded.add(object.id));
-    if (!expanded) unawaited(_load(object));
+    if (!expanded && !(widget.overlay?.isDraft(object) ?? false)) unawaited(_load(object));
   }
 
   Widget _line(BuildContext context, _Row row) {
@@ -465,35 +526,52 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
     );
     if (row.folder case final folder?) {
       final id = row.folderId!, open = _filter.isNotEmpty || (_folders[id] ?? _openByDefault.contains(folder));
+      final parent = row.parent;
+      final extra = parent == null || folder != _Folder.tables
+          ? const <GlassMenuEntry<String>>[]
+          : widget.extraMenu?.call(parent) ?? const <GlassMenuEntry<String>>[];
+      void folderMenu(Offset at) {
+        if (extra.isEmpty || parent == null) return;
+        unawaited(
+          showGlassMenu<String>(context: context, anchor: Rect.fromLTWH(at.dx, at.dy, 1, 1), entries: extra).then((v) {
+            if (v != null && _current) widget.onExtra?.call(v, parent);
+          }),
+        );
+      }
+
       return decorated(
-        GlassInteractive(
-          key: ValueKey('db-folder-$id'),
-          semanticLabel: _folderLabel(l, folder, parent: row.parent),
-          onPressed: () => setState(() => _folders[id] = !open),
-          builder: (context, state) => DecoratedBox(
-            decoration: ShapeDecoration(
-              color: state.hovered ? tokens.surfaces.fillHover : Colors.transparent,
-              shape: GlassRadii.shape(tokens.radii.row),
-            ),
-            child: Padding(
-              padding: EdgeInsets.only(left: indent, right: GlassSpacing.s6),
-              child: Row(
-                children: [
-                  chevron(open),
-                  const SizedBox(width: 4),
-                  Icon(
-                    open ? Icons.folder_open_outlined : Icons.folder_outlined,
-                    size: 15,
-                    color: tokens.secondaryLabel,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _folderLabel(l, folder, parent: row.parent),
-                    style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
-                  ),
-                  const SizedBox(width: 6),
-                  Text('${row.count}', style: tokens.typography.caption.copyWith(color: p.tertiary)),
-                ],
+        GestureDetector(
+          onSecondaryTapUp: (details) => folderMenu(details.globalPosition),
+          onLongPressStart: (details) => folderMenu(details.globalPosition),
+          child: GlassInteractive(
+            key: ValueKey('db-folder-$id'),
+            semanticLabel: _folderLabel(l, folder, parent: row.parent),
+            onPressed: () => setState(() => _folders[id] = !open),
+            builder: (context, state) => DecoratedBox(
+              decoration: ShapeDecoration(
+                color: state.hovered ? tokens.surfaces.fillHover : Colors.transparent,
+                shape: GlassRadii.shape(tokens.radii.row),
+              ),
+              child: Padding(
+                padding: EdgeInsets.only(left: indent, right: GlassSpacing.s6),
+                child: Row(
+                  children: [
+                    chevron(open),
+                    const SizedBox(width: 4),
+                    Icon(
+                      open ? Icons.folder_open_outlined : Icons.folder_outlined,
+                      size: 15,
+                      color: tokens.secondaryLabel,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _folderLabel(l, folder, parent: row.parent),
+                      style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                    ),
+                    const SizedBox(width: 6),
+                    Text('${row.count}', style: tokens.typography.caption.copyWith(color: p.tertiary)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -523,6 +601,12 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
         widget.session.engine == DbEngine.sqlite &&
         object.kind == DbObjectKind.column &&
         (node.detail?.isNotEmpty ?? false);
+    final draft = _draftStates[object.id] ?? widget.overlay?.stateOf(object);
+    final draftColor = switch (draft) {
+      DbDraftState.added => p.success,
+      DbDraftState.changed => p.warning,
+      null => null,
+    };
     return decorated(
       GestureDetector(
         onSecondaryTapUp: (details) =>
@@ -542,6 +626,7 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
           onPressed: () {
             setState(() => _selected = object.id);
             widget.onSelect?.call(object);
+            if (draft != null) widget.overlay?.focus(object);
             if (node.hasChildren) _toggle(object);
           },
           builder: (context, state) => DecoratedBox(
@@ -580,9 +665,24 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
                           (selected || (expanded && _blockKinds.contains(object.kind))
                                   ? tokens.typography.bodyEmph
                                   : tokens.typography.body)
-                              .copyWith(color: selected ? p.accent : p.label),
+                              .copyWith(color: draftColor ?? (selected ? p.accent : p.label)),
                     ),
                   ),
+                  if (draftColor != null) ...[
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: draft == DbDraftState.added ? l.dbDesignerDraftNew : l.dbDesignerDraftChanged,
+                      child: Semantics(
+                        label: l.dbDesignerUnsavedMark,
+                        child: Container(
+                          key: ValueKey('db-draft-${object.id}'),
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(color: draftColor, shape: BoxShape.circle),
+                        ),
+                      ),
+                    ),
+                  ],
                   if (node.detail case final detail? when detail.isNotEmpty && !sqliteColumn) ...[
                     const SizedBox(width: 6),
                     Expanded(

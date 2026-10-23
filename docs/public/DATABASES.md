@@ -4,8 +4,8 @@
 
 Раздел «Базы данных» работает с PostgreSQL, MySQL и MariaDB, ClickHouse, Redis,
 MongoDB и файлами SQLite. В нём структура базы, редактор запросов с вкладками и историей,
-таблица результатов, EXPLAIN, правка ячеек, копирование и экспорт, а также
-ИИ-помощник. Драйверы встроены в приложение, поэтому `psql`, `mysql`,
+таблица результатов, EXPLAIN, правка ячеек, конструктор таблиц, копирование и
+экспорт, а также ИИ-помощник. Драйверы встроены в приложение, поэтому `psql`, `mysql`,
 `clickhouse-client`, `redis-cli` и `mongosh` устанавливать не нужно. Раздел
 доступен на macOS, Windows, Linux и Android; сборка и проверка iOS отложены.
 
@@ -432,6 +432,68 @@ ClickHouse, MongoDB и Redis импорт из CSV пока не поддерж�
 даты, дата и время, да/нет, иначе текст), который можно скопировать или
 открыть в редакторе и выполнить через обычную проверку.
 
+### Конструктор таблиц
+
+Таблицу можно создать или изменить без ручного SQL. «Создать таблицу…» есть в
+меню схемы (PostgreSQL), базы данных (MySQL/MariaDB, ClickHouse) и папки
+«Таблицы», а также кнопкой в заголовке рабочей области; для MongoDB пункт
+называется «Создать коллекцию…» и доступен у базы данных подключения.
+«Изменить структуру…» в меню таблицы загружает её текущую структуру. Для Redis
+конструктора нет.
+
+Конструктор открывается вкладкой рядом с вкладками редактора: имя, схема или
+база данных, комментарий и разделы «Столбцы», «Ключи», «Внешние ключи»,
+«Индексы», «Проверки», «Параметры» и «DDL». В таблице столбцов задаются имя,
+тип (список типов движка с поиском или свой тип), длина и масштаб, NOT NULL,
+значение по умолчанию (с готовыми вариантами вроде `now()`,
+`CURRENT_TIMESTAMP`, `gen_random_uuid()`), автоинкремент (identity или
+`serial` в PostgreSQL, `AUTO_INCREMENT` в MySQL), первичный ключ, уникальность
+и комментарий; столбцы перетаскиваются, дублируются и удаляются. Обычный
+текст в поле значения по умолчанию становится строкой (`active` →
+`'active'`), выражения и числа остаются как есть. Внешние ключи выбирают
+таблицу и столбцы из структуры базы и действия ON DELETE/ON UPDATE; у
+индексов PostgreSQL есть методы btree/hash/gin/gist/brin/spgist. Для
+ClickHouse вместо NOT NULL используется `Nullable(T)`, есть
+`LowCardinality(T)`, движок (семейство MergeTree, Memory, Log), обязательный
+ключ сортировки ORDER BY, PRIMARY KEY и PARTITION BY; внешних ключей,
+уникальности и проверок там нет. Для MongoDB поля с BSON-типом и
+обязательностью превращаются в валидатор `$jsonSchema`, доступны capped,
+time series, уровень и действие проверки, collation и индексы.
+
+Пока таблица проектируется, на сервере ничего не выполняется: изменения
+копятся в черновике. Вкладка, новые и изменённые строки помечаются, новая
+таблица и её столбцы сразу видны в дереве зелёным, изменённые — оранжевым
+(с точкой-меткой); щелчок по ним возвращает к конструктору. Есть отмена
+последнего шага и отмена всех изменений. Проверка идёт на лету: пустые и
+повторяющиеся имена, неизвестные столбцы в ключах, типы без нужной длины,
+ORDER BY для MergeTree, AUTO_INCREMENT без ключа и т. п.; идентификаторы
+всегда берутся в кавычки, поэтому зарезервированные слова и любые символы
+безопасны. Раздел «DDL» показывает итоговый скрипт; его можно скопировать или
+дописать в текущую вкладку редактора.
+
+«Сохранить изменения» (⌘S / Ctrl+S) открывает окно «‹таблица› — сохранить
+изменения» с полным скриптом (подсветка, номера строк, перенос строк),
+кнопками «Открыть в редакторе», «Копировать», «Отмена» и «Выполнить». Это и
+есть подтверждение: окно предупреждает об удалении данных или перестройке
+таблицы, просит парольную фразу хранилища, а выполнение проходит обычную
+проверку запроса и защиту продакшена (для прод-подключения нужно открыть окно
+записи). В PostgreSQL скрипт выполняется одной транзакцией: при ошибке не
+меняется ничего. В MySQL/MariaDB, ClickHouse и MongoDB DDL не транзакционный —
+окно предупреждает об этом, и при ошибке показывает, какие операторы уже
+применены. После успеха дерево обновляется, а конструктор продолжает работать
+с таблицей на сервере. При закрытии вкладки с несохранёнными изменениями
+конструктор спрашивает «Сохранить / Не сохранять / Отмена».
+
+При изменении существующей таблицы конструктор сравнивает черновик со
+структурой на сервере и строит ALTER: добавление, удаление и переименование
+столбцов, смена типа, NULL и значения по умолчанию, ключи, индексы и
+проверки. Ограничения: параметры, задаваемые при создании (движок, ключ
+сортировки ClickHouse, секционирование), здесь не меняются; в ClickHouse
+нельзя переименовать таблицу и убрать значение по умолчанию; в PostgreSQL
+нельзя снять identity; комментарий с апострофом пока не поддерживается;
+TTL и SETTINGS ClickHouse, а также UNLOGGED в PostgreSQL добавляются
+вручную в редакторе.
+
 ### История
 
 История запросов ведётся по каждому подключению: текст, время,
@@ -509,8 +571,8 @@ bracketed paste, если клиент его включил. Новую SSH-с�
 
 The Databases section works with PostgreSQL, MySQL and MariaDB, ClickHouse,
 Redis, MongoDB and SQLite files. It offers the structure tree, a tabbed query editor with
-history, a result grid, EXPLAIN, cell editing, copy and export, and an AI
-assistant. Drivers are built into the app; no external command-line clients
+history, a result grid, EXPLAIN, cell editing, a table designer, copy and
+export, and an AI assistant. Drivers are built into the app; no external command-line clients
 are needed. The section is available on macOS, Windows, Linux and Android;
 the iOS build and testing are deferred.
 
@@ -835,6 +897,64 @@ History is kept per connection — text, time, duration, rows and error, never
 parameter values or data — with filters for successful, failed and favourite
 queries. It is local and encrypted by default, can join encrypted sync or be
 turned off, and any entry can become a snippet.
+
+### Table designer
+
+Tables can be created and changed without writing SQL. «Create table…» is in
+the menu of a schema (PostgreSQL), a database (MySQL/MariaDB, ClickHouse) and
+the Tables folder, and in the workspace header; for MongoDB it is «Create
+collection…» on the connection's database. «Edit structure…» on a table loads
+its current structure. Redis has no designer.
+
+The designer opens as a tab next to the editor tabs: name, schema or
+database, comment, and the sections Columns, Keys, Foreign keys, Indexes,
+Checks, Options and DDL. Columns have a name, a type (the engine's type list
+with search, or any type typed in), length and scale, NOT NULL, a default
+(with presets such as `now()`, `CURRENT_TIMESTAMP`, `gen_random_uuid()`),
+auto increment (identity or `serial` in PostgreSQL, `AUTO_INCREMENT` in
+MySQL), primary key, unique and comment; rows can be dragged, duplicated and
+removed. Plain text in the default field becomes a string (`active` →
+`'active'`); expressions and numbers stay as written. Foreign keys pick the
+referenced table and columns from the database structure plus ON DELETE/ON
+UPDATE; PostgreSQL indexes offer btree/hash/gin/gist/brin/spgist. ClickHouse
+uses `Nullable(T)` instead of NOT NULL, offers `LowCardinality(T)`, the table
+engine (MergeTree family, Memory, Log), the required ORDER BY sorting key,
+PRIMARY KEY and PARTITION BY, and hides foreign keys, unique keys and checks.
+For MongoDB, fields with a BSON type and «required» become a `$jsonSchema`
+validator; capped and time-series collections, validation level/action,
+collation and indexes are available.
+
+Nothing runs on the server while you design: changes stay in a draft. The
+tab, new and changed rows are marked; a new table and its columns appear in
+the tree right away in green, changed ones in orange (with a dot marker), and
+clicking them returns to the designer. Undo and «Revert all» are there.
+Validation runs as you type: empty or duplicate names, unknown key columns,
+types that need a length, ORDER BY for MergeTree, AUTO_INCREMENT without a
+key and more. Identifiers are always quoted, so reserved words and any
+characters are safe. The DDL section shows the resulting script; copy it or
+append it to the current editor tab.
+
+«Save changes» (⌘S / Ctrl+S) opens «‹table› — save changes» with the whole
+script (highlighting, line numbers, wrap switch) and «Open in editor»,
+«Copy», «Cancel» and «Run». This dialog is the confirmation: it warns when
+data is dropped or the table is rewritten, asks for the vault passphrase, and
+the run goes through the usual query review and production guard (a
+production connection needs an open write window). PostgreSQL applies the
+script in one transaction, so a failure changes nothing. DDL in
+MySQL/MariaDB, ClickHouse and MongoDB is not transactional: the dialog says
+so and, on failure, shows which statements were already applied. After a
+successful run the tree refreshes and the designer keeps working on the
+table on the server. Closing a tab with unsaved changes asks «Save / Don't
+save / Cancel».
+
+When editing an existing table the designer compares the draft with the
+server structure and generates ALTER statements: added, dropped and renamed
+columns, type, NULL and default changes, keys, indexes and checks. Limits:
+options set at creation (engine, ClickHouse sorting key, partitioning) are
+not changed here; ClickHouse cannot rename the table or remove a default;
+PostgreSQL identity cannot be removed; comments with an apostrophe are not
+supported yet; ClickHouse TTL and SETTINGS and PostgreSQL UNLOGGED are added
+in the editor.
 
 ### Database snippets
 
