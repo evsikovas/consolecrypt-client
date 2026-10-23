@@ -13,6 +13,8 @@ import 'package:consolecrypt/sharing/enrollment_models.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/teams/team_models.dart';
 
+import 'key_trust_capture_support.dart';
+
 const guideScreens = [
   'welcome',
   'hosts',
@@ -78,6 +80,7 @@ const guideScreens = [
   'db-preview-tab',
   'db-details',
   ...guideDb092Screens,
+  ...guideKeyTrustScreens,
   'step-up-biometric',
   'clipboard-settings',
   'docker-hosts',
@@ -133,6 +136,7 @@ const guideDb092Screens = [
   'db-result-toolbar',
   'db-result-record',
   'db-csv-read',
+  'db-csv-map',
   'db-snippets-picker',
 ];
 
@@ -299,11 +303,61 @@ const guideRecipient = SharingIdentity(
 );
 const guideUnexpectedMetadata = 'UNEXPECTED_FIELD_MUST_NOT_RENDER';
 
+/// Twelve synthetic groups of a safety number (not computed from keys).
+const guideSafetyNumberGroups = [
+  '30517',
+  '88214',
+  '06639',
+  '41902',
+  '57260',
+  '19384',
+  '72045',
+  '63118',
+  '95471',
+  '20836',
+  '48593',
+  '11760',
+];
+
 final class GuideSharingService implements SharingService, DatabaseSharingService {
-  GuideSharingService({this.databases = false});
+  GuideSharingService({this.databases = false, this.banner = const []});
 
   /// Databases screens list shared database connections as well.
   final bool databases;
+
+  /// Unverified recipients of existing secrets (the one-time banner).
+  final List<PeerPin> banner;
+
+  // Key pins (0.9.2): choosing pins on first use, verifying marks the pin
+  // verified. Synthetic: no key is compared or stored.
+  PeerPin _pin(SharingIdentity identity, PeerTrust status, String? email) => PeerPin(
+    verificationId: 'guide-pin-${identity.deviceId}',
+    deviceId: identity.deviceId,
+    userId: identity.userId,
+    status: status,
+    verifiedAt: status == PeerTrust.verified ? DateTime(2026, 10, 23, 11, 40) : null,
+    email: email,
+  );
+  @override
+  Future<PeerPin> choosePeer(SharingIdentity identity, {String? email}) async =>
+      _pin(identity, PeerTrust.chosen, email);
+  @override
+  Future<SafetyNumber> safetyNumber(SharingIdentity identity) async => SafetyNumber(
+    groups: guideSafetyNumberGroups,
+    ownQrPayload: 'consolecrypt-peer:v1:synthetic-guide-example',
+    trust: identity.trust,
+  );
+  @override
+  Future<PeerPin> verifyPeer(SharingIdentity identity, String method, String input, {String? email}) async =>
+      _pin(identity, PeerTrust.verified, email);
+  @override
+  Future<List<PeerPin>> verificationBanner() async => banner;
+  @override
+  Future<void> dismissVerificationBanner() async {}
+  @override
+  Future<SharingPolicy> policy() async => const SharingPolicy();
+  @override
+  Future<SharingPolicy> setPolicy(SharingPolicy policy) async => policy;
 
   static Map<String, Object?> _db(
     String name,
