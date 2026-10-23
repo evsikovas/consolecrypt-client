@@ -6207,5 +6207,19 @@
   "teamsNewGroup": "Новая группа команды",
   "teamsNewGroupHint": "Хосты, созданные в группе команды, принадлежат команде.",
   "teamsPolicyAck": "Я проверил(а) эту команду для {host} (политика команды)",
-  "dbInsertSnippetHelp": "Сниппеты: вставить в редактор ({shortcut})"
+  "dbInsertSnippetHelp": "Сниппеты: вставить в редактор ({shortcut})",
+  "stepUpOsReason": "подтвердить защищённое действие",
+  "stepUpOsReasonFor": "подтвердить «{action}»",
+  "dbUnlockProductionOsReason": "разрешить изменения в {connection}",
+  "stepUpConfirmTouchId": "Подтвердить с Touch ID",
+  "stepUpConfirmFaceId": "Подтвердить с Face ID",
+  "stepUpConfirmWindowsHello": "Подтвердить через Windows Hello",
+  "stepUpConfirmFingerprint": "Подтвердить отпечатком",
+  "stepUpConfirmDeviceCredential": "Подтвердить паролем устройства",
+  "stepUpUsePassphrase": "Ввести пароль хранилища",
+  "stepUpPresenceHint": "Подтверждение — {method}.",
+  "stepUpPresenceFailed": "Не подтверждено. Введите пароль хранилища.",
+  "errorPassphraseRequired": "Подтвердите паролем хранилища.",
+  "confirmActionsWithPresence": "Подтверждать действия биометрией",
+  "confirmActionsWithPresenceHelp": "{method} вместо пароля хранилища для рискованных действий на этом устройстве. Смена пароля, новый комплект восстановления, отключение разблокировки, резервные копии, одобрение устройств и безопасность аккаунта всегда требуют пароль."
 }

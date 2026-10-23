@@ -11377,4 +11377,54 @@ class AppLocalizationsEn extends AppLocalizations {
   String dbInsertSnippetHelp(String shortcut) {
     return 'Snippets: insert into the editor ($shortcut)';
   }
+
+  @override
+  String get stepUpOsReason => 'confirm a protected action';
+
+  @override
+  String stepUpOsReasonFor(String action) {
+    return 'confirm “$action”';
+  }
+
+  @override
+  String dbUnlockProductionOsReason(String connection) {
+    return 'allow changes on $connection';
+  }
+
+  @override
+  String get stepUpConfirmTouchId => 'Confirm with Touch ID';
+
+  @override
+  String get stepUpConfirmFaceId => 'Confirm with Face ID';
+
+  @override
+  String get stepUpConfirmWindowsHello => 'Confirm with Windows Hello';
+
+  @override
+  String get stepUpConfirmFingerprint => 'Confirm with fingerprint';
+
+  @override
+  String get stepUpConfirmDeviceCredential => 'Confirm with the device password';
+
+  @override
+  String get stepUpUsePassphrase => 'Enter the vault passphrase';
+
+  @override
+  String stepUpPresenceHint(String method) {
+    return 'You will confirm with $method.';
+  }
+
+  @override
+  String get stepUpPresenceFailed => 'Not confirmed. Enter the vault passphrase instead.';
+
+  @override
+  String get errorPassphraseRequired => 'Confirm with the vault passphrase.';
+
+  @override
+  String get confirmActionsWithPresence => 'Confirm actions with biometrics';
+
+  @override
+  String confirmActionsWithPresenceHelp(String method) {
+    return '$method instead of the vault passphrase for risky actions on this device. Changing the passphrase, a new Recovery Kit, turning off device unlock, backups, approving devices and account security always ask for the passphrase.';
+  }
 }

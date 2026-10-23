@@ -232,7 +232,7 @@ class _OperationDialogState extends ConsumerState<_OperationDialog> with VaultPa
   }
 
   bool get _valid {
-    if (!_canWrite || _busy || passphraseBusy || !passphraseEntered || _version.isEmpty) return false;
+    if (!_canWrite || _busy || stepUpBusy || !stepUpReady || _version.isEmpty) return false;
     if (widget.action == 'scale') {
       final replicas = int.tryParse(_replicas.text);
       return replicas != null && replicas >= 0 && replicas <= 1000000;
@@ -249,7 +249,7 @@ class _OperationDialogState extends ConsumerState<_OperationDialog> with VaultPa
 
   Future<void> _run() async {
     if (!_valid) return;
-    if (!await checkPassphrase() || !_canWrite || _busy) return;
+    if (!await checkStepUp() || !_canWrite || _busy) return;
     setState(() {
       _busy = true;
       _failed = false;
@@ -384,7 +384,7 @@ class _OperationDialogState extends ConsumerState<_OperationDialog> with VaultPa
                     ],
                     Text(l.kubeMutationConfirmHelp),
                     const SizedBox(height: GlassSpacing.s8),
-                    passphraseField(
+                    stepUpField(
                       key: const ValueKey('kube-operation-confirm-passphrase'),
                       enabled: !_busy,
                       onSubmitted: (_) => unawaited(_run()),
@@ -399,7 +399,7 @@ class _OperationDialogState extends ConsumerState<_OperationDialog> with VaultPa
       primaryAction: GlassButton.destructive(
         key: const ValueKey('kube-operation-confirm'),
         label: title,
-        busy: passphraseBusy,
+        busy: stepUpBusy,
         onPressed: _valid ? () => unawaited(_run()) : null,
       ),
       secondaryActions: [

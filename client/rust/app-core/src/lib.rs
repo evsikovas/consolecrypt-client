@@ -86,6 +86,8 @@ mod kubernetes_wsl;
 pub mod logging;
 mod loopback;
 mod plan;
+mod presence;
+pub use presence::{StepUp, StepUpAction, PASSPHRASE_ONLY};
 mod profile_hints;
 mod prompts;
 mod rdp;

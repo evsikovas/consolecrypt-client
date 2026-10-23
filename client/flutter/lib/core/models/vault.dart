@@ -32,6 +32,8 @@ final class DeviceUnlockInfo {
     this.protection = DeviceUnlockProtection.system,
     this.external = false,
     this.reoffer,
+    this.confirmActions = false,
+    this.presenceAvailable = false,
   });
 
   final bool enabled;
@@ -46,6 +48,13 @@ final class DeviceUnlockInfo {
   /// The app performs the OS step (Android `BiometricPrompt`).
   final bool external;
   final DeviceUnlockReoffer? reoffer;
+
+  /// "Confirm actions with biometrics" is on (only while [enabled]).
+  final bool confirmActions;
+
+  /// Step-up confirmations can use the OS check now (device unlock on and
+  /// OS-protected, [confirmActions] on, the OS check available).
+  final bool presenceAvailable;
   bool get canEnable => kind != null && hasVault;
   bool get available => enabled && canEnable;
 }

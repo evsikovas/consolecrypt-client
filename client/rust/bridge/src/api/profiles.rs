@@ -148,7 +148,8 @@ pub async fn vault_reset_passphrase_with_device(
 
 /// Device unlock state of the open profile → `DeviceUnlockDto`
 /// (`enabled`, `available`, `kind`, `has_vault`, `not_enrolled`,
-/// `protection`, `external`, `reoffer`).
+/// `protection`, `external`, `reoffer`, `confirm_actions`,
+/// `presence_available`).
 pub async fn vault_device_unlock_info() -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.device_unlock_info().await?) }).await
 }
@@ -226,6 +227,57 @@ pub async fn vault_reset_passphrase_with_device_material(
 pub async fn vault_unlock_with_recovery_key(recovery_input: Vec<u8>) -> Result<(), BridgeError> {
     let recovery_input = secret_string("recovery_input", recovery_input)?;
     with_core(move |c| async move { Ok(c.unlock_with_recovery_key(recovery_input).await?) }).await
+}
+
+// ---- step-up confirmations with the OS check (0.9.2) ---------------------------
+
+/// The OS (Touch ID / Windows Hello) releases the device unlock key after
+/// its prompt with `reason`; the core checks it and returns a single-use
+/// presence token for `action` on `object` (30 s). The key never leaves the
+/// core. `passphrase_required` when the OS check is not offered (device
+/// unlock off or unprotected, preference off, passphrase-only action).
+/// Android uses [`vault_verify_user_presence_with_material`].
+pub async fn vault_verify_user_presence(
+    action: String,
+    object: String,
+    reason: String,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move { Ok(c.verify_user_presence(action, object, reason).await?) })
+        .await
+}
+
+/// Android: [`vault_verify_user_presence`] with the material the app's
+/// `BiometricPrompt` `CryptoObject` decrypted.
+pub async fn vault_verify_user_presence_with_material(
+    action: String,
+    object: String,
+    material: Vec<u8>,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move {
+        Ok(
+            c.verify_user_presence_with_material(action, object, material)
+                .await?,
+        )
+    })
+    .await
+}
+
+/// A step-up the app enforces itself: the passphrase (bytes) or a presence
+/// token for `action` on `object`, redeemed now. `wrong_passphrase` /
+/// `passphrase_required` when it does not check out.
+pub async fn vault_confirm_step_up(
+    action: String,
+    object: String,
+    passphrase: Option<Vec<u8>>,
+    presence_token: Option<String>,
+) -> Result<(), BridgeError> {
+    let proof = crate::state::step_up(passphrase, presence_token)?;
+    with_core(move |c| async move { Ok(c.confirm_step_up(action, object, proof).await?) }).await
+}
+
+/// "Confirm actions with biometrics" on this device for the open profile.
+pub async fn vault_set_confirm_actions_with_presence(enabled: bool) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.set_confirm_actions_with_presence(enabled).await?) }).await
 }
 
 pub async fn vault_verify_passphrase(passphrase: Vec<u8>) -> Result<bool, BridgeError> {

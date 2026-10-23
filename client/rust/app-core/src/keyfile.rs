@@ -118,6 +118,14 @@ pub(crate) struct DeviceUnlockRecord {
     pub handle: Bytes,
     pub envelope: LocalSealed,
     pub created_at: Timestamp,
+    /// Step-up confirmations may use the OS check instead of the
+    /// passphrase (`presence.rs`); on unless the user turned it off.
+    #[serde(default = "confirm_actions_default")]
+    pub confirm_actions: bool,
+}
+
+fn confirm_actions_default() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_account.dart';
 import 'package:consolecrypt/core/bridge/rust_backend.dart';
+import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
@@ -274,16 +275,19 @@ final class RustDbService
       _session(await guard(() => native.dbSessionState(sessionId: sessionId)));
 
   @override
-  Future<DbSessionInfo> unlockProduction(
-    String sessionId, {
-    required SecretText passphrase,
-    required int minutes,
-  }) async {
+  Future<DbSessionInfo> unlockProduction(String sessionId, {required StepUpProof proof, required int minutes}) async {
     try {
       return _session(
-        await withSecret(
-          passphrase,
-          (bytes) => guard(() => native.dbUnlockProduction(sessionId: sessionId, passphrase: bytes, minutes: minutes)),
+        await withStepUp(
+          proof,
+          (passphrase, token) => guard(
+            () => native.dbUnlockProduction(
+              sessionId: sessionId,
+              passphrase: passphrase,
+              presenceToken: token,
+              minutes: minutes,
+            ),
+          ),
         ),
       );
     } on AppException catch (error) {

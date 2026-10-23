@@ -83,7 +83,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 1650210110;
+  int get rustContentHash => 731677931;
 
   static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
     stem: 'cc_bridge',
@@ -379,7 +379,8 @@ abstract class RustLibApi extends BaseApi {
 
   Future<String> crateApiDatabaseDbUnlockProduction({
     required String sessionId,
-    required List<int> passphrase,
+    Uint8List? passphrase,
+    String? presenceToken,
     required int minutes,
   });
 
@@ -429,7 +430,8 @@ abstract class RustLibApi extends BaseApi {
   Future<String> crateApiDockerDockerComposeUnlock({
     required String sessionId,
     required String project,
-    required List<int> passphrase,
+    Uint8List? passphrase,
+    String? presenceToken,
   });
 
   Future<String> crateApiDockerDockerConnect({required String hostId});
@@ -460,7 +462,8 @@ abstract class RustLibApi extends BaseApi {
   Future<String> crateApiDockerDockerInspectReveal({
     required String sessionId,
     required String container,
-    required List<int> passphrase,
+    Uint8List? passphrase,
+    String? presenceToken,
   });
 
   Future<String> crateApiDockerDockerLogsPoll({required String streamId, required int waitMs});
@@ -478,7 +481,8 @@ abstract class RustLibApi extends BaseApi {
   Future<String> crateApiDockerDockerRevealEnvironment({
     required String sessionId,
     required String container,
-    required List<int> passphrase,
+    Uint8List? passphrase,
+    String? presenceToken,
   });
 
   Future<String> crateApiDockerDockerTerminalOpen({
@@ -1344,6 +1348,13 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiProfilesVaultChangePassphrase({required List<int> current, required List<int> next});
 
+  Future<void> crateApiProfilesVaultConfirmStepUp({
+    required String action,
+    required String object,
+    Uint8List? passphrase,
+    String? presenceToken,
+  });
+
   Future<String> crateApiProfilesVaultCreate({required List<int> passphrase});
 
   Future<Uint8List?> crateApiProfilesVaultDeviceUnlockHandle();
@@ -1390,6 +1401,8 @@ abstract class RustLibApi extends BaseApi {
     required List<int> next,
   });
 
+  Future<void> crateApiProfilesVaultSetConfirmActionsWithPresence({required bool enabled});
+
   Future<void> crateApiProfilesVaultSetDeviceUnlockEnabled({
     required bool enabled,
     required String reason,
@@ -1409,6 +1422,18 @@ abstract class RustLibApi extends BaseApi {
   Future<void> crateApiProfilesVaultUnlockWithRecoveryKey({required List<int> recoveryInput});
 
   Future<bool> crateApiProfilesVaultVerifyPassphrase({required List<int> passphrase});
+
+  Future<String> crateApiProfilesVaultVerifyUserPresence({
+    required String action,
+    required String object,
+    required String reason,
+  });
+
+  Future<String> crateApiProfilesVaultVerifyUserPresenceWithMaterial({
+    required String action,
+    required String object,
+    required List<int> material,
+  });
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -3450,7 +3475,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @override
   Future<String> crateApiDatabaseDbUnlockProduction({
     required String sessionId,
-    required List<int> passphrase,
+    Uint8List? passphrase,
+    String? presenceToken,
     required int minutes,
   }) {
     return handler.executeNormal(
@@ -3458,20 +3484,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          sse_encode_list_prim_u_8_loose(passphrase, serializer);
+          sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
+          sse_encode_opt_String(presenceToken, serializer);
           sse_encode_u_32(minutes, serializer);
           pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 92, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbUnlockProductionConstMeta,
-        argValues: [sessionId, passphrase, minutes],
+        argValues: [sessionId, passphrase, presenceToken, minutes],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiDatabaseDbUnlockProductionConstMeta =>
-      const TaskConstMeta(debugName: "db_unlock_production", argNames: ["sessionId", "passphrase", "minutes"]);
+  TaskConstMeta get kCrateApiDatabaseDbUnlockProductionConstMeta => const TaskConstMeta(
+    debugName: "db_unlock_production",
+    argNames: ["sessionId", "passphrase", "presenceToken", "minutes"],
+  );
 
   @override
   Future<void> crateApiSyncDevicesConfirmApproval({required String requestId, required String confirmedCode}) {
@@ -3785,7 +3814,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Future<String> crateApiDockerDockerComposeUnlock({
     required String sessionId,
     required String project,
-    required List<int> passphrase,
+    Uint8List? passphrase,
+    String? presenceToken,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -3793,19 +3823,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(project, serializer);
-          sse_encode_list_prim_u_8_loose(passphrase, serializer);
+          sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
+          sse_encode_opt_String(presenceToken, serializer);
           pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 107, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerComposeUnlockConstMeta,
-        argValues: [sessionId, project, passphrase],
+        argValues: [sessionId, project, passphrase, presenceToken],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiDockerDockerComposeUnlockConstMeta =>
-      const TaskConstMeta(debugName: "docker_compose_unlock", argNames: ["sessionId", "project", "passphrase"]);
+  TaskConstMeta get kCrateApiDockerDockerComposeUnlockConstMeta => const TaskConstMeta(
+    debugName: "docker_compose_unlock",
+    argNames: ["sessionId", "project", "passphrase", "presenceToken"],
+  );
 
   @override
   Future<String> crateApiDockerDockerConnect({required String hostId}) {
@@ -4020,7 +4053,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Future<String> crateApiDockerDockerInspectReveal({
     required String sessionId,
     required String container,
-    required List<int> passphrase,
+    Uint8List? passphrase,
+    String? presenceToken,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -4028,19 +4062,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(container, serializer);
-          sse_encode_list_prim_u_8_loose(passphrase, serializer);
+          sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
+          sse_encode_opt_String(presenceToken, serializer);
           pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 118, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerInspectRevealConstMeta,
-        argValues: [sessionId, container, passphrase],
+        argValues: [sessionId, container, passphrase, presenceToken],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiDockerDockerInspectRevealConstMeta =>
-      const TaskConstMeta(debugName: "docker_inspect_reveal", argNames: ["sessionId", "container", "passphrase"]);
+  TaskConstMeta get kCrateApiDockerDockerInspectRevealConstMeta => const TaskConstMeta(
+    debugName: "docker_inspect_reveal",
+    argNames: ["sessionId", "container", "passphrase", "presenceToken"],
+  );
 
   @override
   Future<String> crateApiDockerDockerLogsPoll({required String streamId, required int waitMs}) {
@@ -4119,7 +4156,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Future<String> crateApiDockerDockerRevealEnvironment({
     required String sessionId,
     required String container,
-    required List<int> passphrase,
+    Uint8List? passphrase,
+    String? presenceToken,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -4127,19 +4165,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(container, serializer);
-          sse_encode_list_prim_u_8_loose(passphrase, serializer);
+          sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
+          sse_encode_opt_String(presenceToken, serializer);
           pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 122, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerRevealEnvironmentConstMeta,
-        argValues: [sessionId, container, passphrase],
+        argValues: [sessionId, container, passphrase, presenceToken],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiDockerDockerRevealEnvironmentConstMeta =>
-      const TaskConstMeta(debugName: "docker_reveal_environment", argNames: ["sessionId", "container", "passphrase"]);
+  TaskConstMeta get kCrateApiDockerDockerRevealEnvironmentConstMeta => const TaskConstMeta(
+    debugName: "docker_reveal_environment",
+    argNames: ["sessionId", "container", "passphrase", "presenceToken"],
+  );
 
   @override
   Future<String> crateApiDockerDockerTerminalOpen({
@@ -10707,13 +10748,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "vault_change_passphrase", argNames: ["current", "next"]);
 
   @override
+  Future<void> crateApiProfilesVaultConfirmStepUp({
+    required String action,
+    required String object,
+    Uint8List? passphrase,
+    String? presenceToken,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(action, serializer);
+          sse_encode_String(object, serializer);
+          sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
+          sse_encode_opt_String(presenceToken, serializer);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 424, port: port_);
+        },
+        codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
+        constMeta: kCrateApiProfilesVaultConfirmStepUpConstMeta,
+        argValues: [action, object, passphrase, presenceToken],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiProfilesVaultConfirmStepUpConstMeta => const TaskConstMeta(
+    debugName: "vault_confirm_step_up",
+    argNames: ["action", "object", "passphrase", "presenceToken"],
+  );
+
+  @override
   Future<String> crateApiProfilesVaultCreate({required List<int> passphrase}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 424, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 425, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultCreateConstMeta,
@@ -10732,7 +10803,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 425, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 426, port: port_);
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_opt_list_prim_u_8_strict,
@@ -10754,7 +10825,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 426, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 427, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultDeviceUnlockInfoConstMeta,
@@ -10773,7 +10844,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 427, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 428, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultDeviceUnlockInvalidatedConstMeta,
@@ -10792,7 +10863,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 428, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 429, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultDismissDeviceUnlockOfferConstMeta,
@@ -10818,7 +10889,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_list_prim_u_8_loose(material, serializer);
           sse_encode_list_prim_u_8_loose(handle, serializer);
           sse_encode_String(kind, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 429, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 430, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultEnableDeviceUnlockWithMaterialConstMeta,
@@ -10839,7 +10910,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 430, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 431, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultHasPendingRecoveryKitConstMeta,
@@ -10858,7 +10929,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 431, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 432, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultIsUnlockedConstMeta,
@@ -10879,7 +10950,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
           sse_encode_list_prim_u_8_loose(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 432, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 433, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultJoinWithPassphraseConstMeta,
@@ -10905,7 +10976,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(vaultId, serializer);
           sse_encode_list_prim_u_8_loose(recoveryInput, serializer);
           sse_encode_opt_list_prim_u_8_strict(newPassphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 433, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 434, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultJoinWithRecoveryKeyConstMeta,
@@ -10926,7 +10997,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 434, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 435, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultLockConstMeta,
@@ -10944,7 +11015,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 435, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 436, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultRecoveryKitAvailableConstMeta,
@@ -10963,7 +11034,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 436, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 437, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultRegenerateRecoveryKitConstMeta,
@@ -10984,7 +11055,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(next, serializer);
           sse_encode_String(reason, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 437, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 438, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultResetPassphraseWithDeviceConstMeta,
@@ -11008,7 +11079,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(material, serializer);
           sse_encode_list_prim_u_8_loose(next, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 438, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 439, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultResetPassphraseWithDeviceMaterialConstMeta,
@@ -11032,7 +11103,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(recoveryInput, serializer);
           sse_encode_list_prim_u_8_loose(next, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 439, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 440, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultResetPassphraseWithRecoveryKeyConstMeta,
@@ -11044,6 +11115,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiProfilesVaultResetPassphraseWithRecoveryKeyConstMeta =>
       const TaskConstMeta(debugName: "vault_reset_passphrase_with_recovery_key", argNames: ["recoveryInput", "next"]);
+
+  @override
+  Future<void> crateApiProfilesVaultSetConfirmActionsWithPresence({required bool enabled}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_bool(enabled, serializer);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 441, port: port_);
+        },
+        codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
+        constMeta: kCrateApiProfilesVaultSetConfirmActionsWithPresenceConstMeta,
+        argValues: [enabled],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiProfilesVaultSetConfirmActionsWithPresenceConstMeta =>
+      const TaskConstMeta(debugName: "vault_set_confirm_actions_with_presence", argNames: ["enabled"]);
 
   @override
   Future<void> crateApiProfilesVaultSetDeviceUnlockEnabled({
@@ -11058,7 +11149,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_bool(enabled, serializer);
           sse_encode_String(reason, serializer);
           sse_encode_bool(allowUnprotected, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 440, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 442, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultSetDeviceUnlockEnabledConstMeta,
@@ -11079,7 +11170,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 441, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 443, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryVaultSettingsGetConstMeta,
@@ -11099,7 +11190,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(settingsJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 442, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 444, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryVaultSettingsSaveConstMeta,
@@ -11119,7 +11210,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(reason, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 443, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 445, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultUnlockWithDeviceConstMeta,
@@ -11139,7 +11230,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(material, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 444, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 446, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultUnlockWithDeviceMaterialConstMeta,
@@ -11159,7 +11250,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 445, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 447, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultUnlockWithPassphraseConstMeta,
@@ -11179,7 +11270,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(recoveryInput, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 446, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 448, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultUnlockWithRecoveryKeyConstMeta,
@@ -11199,7 +11290,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 447, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 449, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultVerifyPassphraseConstMeta,
@@ -11211,6 +11302,60 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiProfilesVaultVerifyPassphraseConstMeta =>
       const TaskConstMeta(debugName: "vault_verify_passphrase", argNames: ["passphrase"]);
+
+  @override
+  Future<String> crateApiProfilesVaultVerifyUserPresence({
+    required String action,
+    required String object,
+    required String reason,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(action, serializer);
+          sse_encode_String(object, serializer);
+          sse_encode_String(reason, serializer);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 450, port: port_);
+        },
+        codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
+        constMeta: kCrateApiProfilesVaultVerifyUserPresenceConstMeta,
+        argValues: [action, object, reason],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiProfilesVaultVerifyUserPresenceConstMeta =>
+      const TaskConstMeta(debugName: "vault_verify_user_presence", argNames: ["action", "object", "reason"]);
+
+  @override
+  Future<String> crateApiProfilesVaultVerifyUserPresenceWithMaterial({
+    required String action,
+    required String object,
+    required List<int> material,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(action, serializer);
+          sse_encode_String(object, serializer);
+          sse_encode_list_prim_u_8_loose(material, serializer);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 451, port: port_);
+        },
+        codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
+        constMeta: kCrateApiProfilesVaultVerifyUserPresenceWithMaterialConstMeta,
+        argValues: [action, object, material],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiProfilesVaultVerifyUserPresenceWithMaterialConstMeta => const TaskConstMeta(
+    debugName: "vault_verify_user_presence_with_material",
+    argNames: ["action", "object", "material"],
+  );
 
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {

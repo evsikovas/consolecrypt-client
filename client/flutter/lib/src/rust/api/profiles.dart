@@ -89,7 +89,8 @@ Future<void> vaultResetPassphraseWithDevice({required List<int> next, required S
 
 /// Device unlock state of the open profile → `DeviceUnlockDto`
 /// (`enabled`, `available`, `kind`, `has_vault`, `not_enrolled`,
-/// `protection`, `external`, `reoffer`).
+/// `protection`, `external`, `reoffer`, `confirm_actions`,
+/// `presence_available`).
 Future<String> vaultDeviceUnlockInfo() => RustLib.instance.api.crateApiProfilesVaultDeviceUnlockInfo();
 
 /// Switch device unlock on (the OS may prompt with `reason`) or off. Needs
@@ -140,6 +141,46 @@ Future<void> vaultResetPassphraseWithDeviceMaterial({required List<int> material
 
 Future<void> vaultUnlockWithRecoveryKey({required List<int> recoveryInput}) =>
     RustLib.instance.api.crateApiProfilesVaultUnlockWithRecoveryKey(recoveryInput: recoveryInput);
+
+/// The OS (Touch ID / Windows Hello) releases the device unlock key after
+/// its prompt with `reason`; the core checks it and returns a single-use
+/// presence token for `action` on `object` (30 s). The key never leaves the
+/// core. `passphrase_required` when the OS check is not offered (device
+/// unlock off or unprotected, preference off, passphrase-only action).
+/// Android uses [`vault_verify_user_presence_with_material`].
+Future<String> vaultVerifyUserPresence({required String action, required String object, required String reason}) =>
+    RustLib.instance.api.crateApiProfilesVaultVerifyUserPresence(action: action, object: object, reason: reason);
+
+/// Android: [`vault_verify_user_presence`] with the material the app's
+/// `BiometricPrompt` `CryptoObject` decrypted.
+Future<String> vaultVerifyUserPresenceWithMaterial({
+  required String action,
+  required String object,
+  required List<int> material,
+}) => RustLib.instance.api.crateApiProfilesVaultVerifyUserPresenceWithMaterial(
+  action: action,
+  object: object,
+  material: material,
+);
+
+/// A step-up the app enforces itself: the passphrase (bytes) or a presence
+/// token for `action` on `object`, redeemed now. `wrong_passphrase` /
+/// `passphrase_required` when it does not check out.
+Future<void> vaultConfirmStepUp({
+  required String action,
+  required String object,
+  Uint8List? passphrase,
+  String? presenceToken,
+}) => RustLib.instance.api.crateApiProfilesVaultConfirmStepUp(
+  action: action,
+  object: object,
+  passphrase: passphrase,
+  presenceToken: presenceToken,
+);
+
+/// "Confirm actions with biometrics" on this device for the open profile.
+Future<void> vaultSetConfirmActionsWithPresence({required bool enabled}) =>
+    RustLib.instance.api.crateApiProfilesVaultSetConfirmActionsWithPresence(enabled: enabled);
 
 Future<bool> vaultVerifyPassphrase({required List<int> passphrase}) =>
     RustLib.instance.api.crateApiProfilesVaultVerifyPassphrase(passphrase: passphrase);

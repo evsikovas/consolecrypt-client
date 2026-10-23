@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:consolecrypt/core/mock/mock_config.dart';
+import 'package:consolecrypt/core/mock/mock_presence.dart';
+import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 
@@ -82,9 +84,11 @@ class MockDockerService implements DockerService {
   }
 
   @override
-  Future<DockerJson> revealInspect(String sessionId, String containerId, SecretText passphrase) async {
+  Future<DockerJson> revealInspect(String sessionId, String containerId, StepUpProof proof) async {
     await mockDelay(latency);
-    if (passphrase.expose() != demoPassphrase) throw const DockerWrongPassphrase();
+    if (!MockPresenceTokens.check(proof, demoPassphrase, StepUpAction.dockerReveal, '$sessionId/$containerId')) {
+      throw const DockerWrongPassphrase();
+    }
     return _inspect(_find(sessionId, containerId), full: true);
   }
 
@@ -311,9 +315,11 @@ class MockDockerService implements DockerService {
   }
 
   @override
-  Future<List<String>> revealEnvironment(String sessionId, String containerId, SecretText passphrase) async {
+  Future<List<String>> revealEnvironment(String sessionId, String containerId, StepUpProof proof) async {
     await mockDelay(latency);
-    if (passphrase.expose() != demoPassphrase) throw const DockerWrongPassphrase();
+    if (!MockPresenceTokens.check(proof, demoPassphrase, StepUpAction.dockerReveal, '$sessionId/$containerId')) {
+      throw const DockerWrongPassphrase();
+    }
     final full = _inspect(_find(sessionId, containerId), full: true);
     return ((full['Config'] as Map)['Env'] as List).cast<String>();
   }
@@ -394,11 +400,11 @@ class MockDockerService implements DockerService {
       _composeSecrets.entries.fold(text, (masked, entry) => masked.replaceAll(entry.key, entry.value));
 
   @override
-  Future<String> composeUnlock(String sessionId, String project, SecretText passphrase) async {
+  Future<String> composeUnlock(String sessionId, String project, StepUpProof proof) async {
     await mockDelay(latency);
-    final ok = passphrase.expose() == demoPassphrase;
-    passphrase.wipe();
-    if (!ok) throw const DockerWrongPassphrase();
+    if (!MockPresenceTokens.check(proof, demoPassphrase, StepUpAction.dockerCompose, '$sessionId/$project')) {
+      throw const DockerWrongPassphrase();
+    }
     final grant = 'compose-grant-${++_next}';
     _grants.add('$sessionId/$project/$grant');
     return grant;

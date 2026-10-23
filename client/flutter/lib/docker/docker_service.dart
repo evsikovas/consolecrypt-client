@@ -3,6 +3,7 @@
 /// The native core does all networking; this file is the UI contract.
 library;
 
+import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 
 typedef DockerJson = Map<String, dynamic>;
@@ -437,9 +438,11 @@ abstract interface class DockerService {
   Future<DockerContainerDetail> inspect(String sessionId, String containerId);
 
   /// The full `docker inspect`, secrets included; the core checks the vault
-  /// [passphrase] first (throws [DockerWrongPassphrase]). The caller wipes
-  /// [passphrase] and drops the result on close, lock and profile change.
-  Future<DockerJson> revealInspect(String sessionId, String containerId, SecretText passphrase);
+  /// passphrase or a presence token for [StepUpAction.dockerReveal] on
+  /// `<session>/<container>` first (throws [DockerWrongPassphrase], or
+  /// `passphraseRequired` for a refused token). Wipes [proof]; the caller
+  /// drops the result on close, lock and profile change.
+  Future<DockerJson> revealInspect(String sessionId, String containerId, StepUpProof proof);
 
   /// Whether [text] holds something the core would mask (copied log lines
   /// then go to the clipboard as a secret).
@@ -459,9 +462,10 @@ abstract interface class DockerService {
   Future<List<DockerVolume>> volumes(String sessionId);
 
   /// The container's environment with secret values; the core checks the
-  /// vault [passphrase] first and throws [DockerWrongPassphrase] if wrong.
-  /// The caller wipes [passphrase].
-  Future<List<String>> revealEnvironment(String sessionId, String containerId, SecretText passphrase);
+  /// vault passphrase or a presence token for [StepUpAction.dockerReveal]
+  /// on `<session>/<container>` first (throws [DockerWrongPassphrase], or
+  /// `passphraseRequired` for a refused token). Wipes [proof].
+  Future<List<String>> revealEnvironment(String sessionId, String containerId, StepUpProof proof);
 
   /// The project's compose files, read on the engine host, with secrets
   /// masked. Throws [DockerComposeException] when they cannot be located.
@@ -471,9 +475,11 @@ abstract interface class DockerService {
   /// grant expired (ask for the passphrase again).
   Future<DockerComposeProject?> composeReveal(String sessionId, String project, String grant);
 
-  /// Checks the vault [passphrase] (throws [DockerWrongPassphrase]) and
-  /// returns a short-lived grant to edit [project]. Wipes [passphrase].
-  Future<String> composeUnlock(String sessionId, String project, SecretText passphrase);
+  /// Checks the vault passphrase (throws [DockerWrongPassphrase]) or a
+  /// presence token for [StepUpAction.dockerCompose] on
+  /// `<session>/<project>` and returns a short-lived grant to edit
+  /// [project]. Wipes [proof].
+  Future<String> composeUnlock(String sessionId, String project, StepUpProof proof);
 
   /// Validates the edited files on the host, then writes them (keeping
   /// backups); with [apply] runs `up -d` as a job. Wipes the edits' content.

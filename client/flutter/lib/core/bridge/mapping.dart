@@ -41,6 +41,8 @@ DeviceUnlockInfo deviceUnlockFromJson(Json json) => DeviceUnlockInfo(
     'invalidated' => DeviceUnlockReoffer.invalidated,
     _ => null,
   },
+  confirmActions: json['confirm_actions'] == true,
+  presenceAvailable: json['presence_available'] == true,
 );
 
 // ---- JSON helpers ------------------------------------------------------------------
@@ -154,6 +156,8 @@ AppException mapBridgeError(BridgeError e) {
       reason = AppErrorReason.noVault;
     case 'wrong_passphrase':
       code = AppErrorCode.wrongPassphrase;
+    case 'passphrase_required':
+      code = AppErrorCode.passphraseRequired;
     case 'wrong_recovery_key':
       code = AppErrorCode.invalidRecoveryKey;
     case 'weak_passphrase':

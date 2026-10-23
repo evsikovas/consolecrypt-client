@@ -228,12 +228,16 @@ async fn docker_on_this_computer() {
                 .docker_reveal_environment(
                     session.id.clone(),
                     name.into(),
-                    "wrong passphrase".into(),
+                    StepUp::Passphrase("wrong passphrase".into()),
                 )
                 .await;
             assert!(matches!(wrong, Err(AppError::WrongPassphrase)), "{wrong:?}");
             let env = app
-                .docker_reveal_environment(session.id.clone(), name.into(), PASSPHRASE.into())
+                .docker_reveal_environment(
+                    session.id.clone(),
+                    name.into(),
+                    StepUp::Passphrase(PASSPHRASE.into()),
+                )
                 .await
                 .unwrap();
             assert!(env.iter().any(|e| e == "API_TOKEN=s3cr3t"));

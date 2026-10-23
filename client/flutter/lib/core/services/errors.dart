@@ -11,6 +11,10 @@ enum AppErrorCode {
   registrationClosed,
   emailTaken,
   wrongPassphrase,
+
+  /// A step-up needs the vault passphrase (the OS check is not offered or
+  /// its presence token was refused).
+  passphraseRequired,
   invalidRecoveryKey,
   deviceNotTrusted,
   osAuthFailed,

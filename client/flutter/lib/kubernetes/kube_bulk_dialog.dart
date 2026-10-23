@@ -51,12 +51,12 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> with VaultPassp
   }
 
   Future<void> _run() async {
-    if (!_canWrite || _busy || passphraseBusy || !passphraseEntered || widget.rows.length > 100) {
+    if (!_canWrite || _busy || stepUpBusy || !stepUpReady || widget.rows.length > 100) {
       return;
     }
     final replicas = int.tryParse(_replicas.text);
     if (_action == 'scale' && (replicas == null || replicas < 0 || replicas > 1000000)) return;
-    if (!await checkPassphrase() || !_canWrite || _busy) return;
+    if (!await checkStepUp() || !_canWrite || _busy) return;
     setState(() {
       _busy = true;
       _failed = null;
@@ -160,7 +160,7 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> with VaultPassp
                     Text('${_completed.length}/${widget.rows.length}'),
                     if (_failed != null) Text(_failed!),
                     SelectableText(widget.contextName, style: GlassTokens.of(context).typography.mono),
-                    passphraseField(
+                    stepUpField(
                       key: const ValueKey('kube-bulk-confirm'),
                       enabled: !_busy,
                       onSubmitted: (_) => unawaited(_run()),
@@ -172,9 +172,8 @@ class _KubeBulkDialogState extends ConsumerState<KubeBulkDialog> with VaultPassp
         primaryAction: GlassButton.destructive(
           key: const ValueKey('kube-bulk-run'),
           label: l.commonContinue,
-          busy: passphraseBusy,
-          onPressed:
-              !_canWrite || _busy || passphraseBusy || !passphraseEntered || _completed.length == widget.rows.length
+          busy: stepUpBusy,
+          onPressed: !_canWrite || _busy || stepUpBusy || !stepUpReady || _completed.length == widget.rows.length
               ? null
               : () => unawaited(_run()),
         ),

@@ -93,7 +93,11 @@ async fn exercise(
     let digest = file.digest.clone().unwrap();
 
     let wrong = app
-        .docker_compose_unlock(session.into(), project.into(), "wrong passphrase".into())
+        .docker_compose_unlock(
+            session.into(),
+            project.into(),
+            StepUp::Passphrase("wrong passphrase".into()),
+        )
         .await;
     assert!(matches!(wrong, Err(AppError::WrongPassphrase)), "{wrong:?}");
     // Without a grant nothing is written.
@@ -115,7 +119,11 @@ async fn exercise(
         .unwrap()
         .is_none());
     let grant = app
-        .docker_compose_unlock(session.into(), project.into(), PASSPHRASE.into())
+        .docker_compose_unlock(
+            session.into(),
+            project.into(),
+            StepUp::Passphrase(PASSPHRASE.into()),
+        )
         .await
         .unwrap();
     let full = app
@@ -220,7 +228,11 @@ async fn shared_directory(
         .clone();
     let digest = file.digest.clone().unwrap();
     let grant = app
-        .docker_compose_unlock(session.into(), project.into(), PASSPHRASE.into())
+        .docker_compose_unlock(
+            session.into(),
+            project.into(),
+            StepUp::Passphrase(PASSPHRASE.into()),
+        )
         .await
         .unwrap();
     let asked = app
@@ -387,7 +399,11 @@ async fn compose_files_over_ssh() {
 
     // Validation runs as the SSH user and cannot read the root-only file.
     let grant = app
-        .docker_compose_unlock(session.id.clone(), project.into(), PASSPHRASE.into())
+        .docker_compose_unlock(
+            session.id.clone(),
+            project.into(),
+            StepUp::Passphrase(PASSPHRASE.into()),
+        )
         .await
         .unwrap();
     let digest = files.files[0].digest.clone().unwrap();

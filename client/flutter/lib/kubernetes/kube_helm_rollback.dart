@@ -82,8 +82,8 @@ class _KubeHelmRollbackDialogState extends ConsumerState<KubeHelmRollbackDialog>
 
   Future<void> _apply() async {
     final review = _review;
-    if (!_reviewUsable(review) || !passphraseEntered || passphraseBusy) return;
-    if (!await checkPassphrase() || !_reviewUsable(review)) return;
+    if (!_reviewUsable(review) || !stepUpReady || stepUpBusy) return;
+    if (!await checkStepUp() || !_reviewUsable(review)) return;
     setState(() {
       _busy = true;
       _failed = false;
@@ -155,7 +155,7 @@ class _KubeHelmRollbackDialogState extends ConsumerState<KubeHelmRollbackDialog>
                         /* l10n-ignore: Reviewed executable path, SHA-256 digest, revision numbers and exact JSON argv. */ '${review.path}\nSHA-256: ${review.sha256}\n${review.currentRevision} → ${review.revision}\n${jsonEncode(review.arguments)}',
                       ),
                       const SizedBox(height: GlassSpacing.s12),
-                      passphraseField(
+                      stepUpField(
                         key: const ValueKey('kube-helm-rollback-passphrase'),
                         enabled: !_busy,
                         onSubmitted: (_) => unawaited(_apply()),
@@ -179,8 +179,8 @@ class _KubeHelmRollbackDialogState extends ConsumerState<KubeHelmRollbackDialog>
           : GlassButton.destructive(
               key: const ValueKey('kube-helm-rollback-apply'),
               label: l.kubeHelmRollback,
-              busy: passphraseBusy,
-              onPressed: _canWrite && !_busy && !passphraseBusy && passphraseEntered ? () => unawaited(_apply()) : null,
+              busy: stepUpBusy,
+              onPressed: _canWrite && !_busy && !stepUpBusy && stepUpReady ? () => unawaited(_apply()) : null,
             ),
       secondaryActions: _output != null
           ? const []

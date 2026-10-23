@@ -1,6 +1,7 @@
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/mock/mock_docker.dart';
+import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/docker/docker_compose_yaml.dart';
@@ -388,7 +389,11 @@ void main() {
     final docker = MockDockerService();
     final session = await docker.connect(DockerHost.localId);
     expect(await docker.composeReveal(session.id, 'shop', 'forged'), isNull);
-    final grant = await docker.composeUnlock(session.id, 'shop', SecretText(MockDockerService.demoPassphrase));
+    final grant = await docker.composeUnlock(
+      session.id,
+      'shop',
+      PassphraseProof(SecretText(MockDockerService.demoPassphrase)),
+    );
     final full = await docker.composeReveal(session.id, 'shop', grant);
     expect(full!.files.first.content!.expose(), contains('demo-redis-pass'));
     expect(full.files.first.masked, isFalse);
@@ -400,7 +405,11 @@ void main() {
   test('mock compose save wipes the edited text', () async {
     final docker = MockDockerService();
     final session = await docker.connect(DockerHost.localId);
-    final grant = await docker.composeUnlock(session.id, 'shop', SecretText(MockDockerService.demoPassphrase));
+    final grant = await docker.composeUnlock(
+      session.id,
+      'shop',
+      PassphraseProof(SecretText(MockDockerService.demoPassphrase)),
+    );
     final project = await docker.composeProject(session.id, 'shop');
     final content = SecretText('services: {}\n');
     final result = await docker.composeSave(session.id, 'shop', grant, [

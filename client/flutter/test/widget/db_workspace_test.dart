@@ -6,6 +6,7 @@ import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
 import 'package:consolecrypt/db/db_models.dart';
@@ -15,12 +16,14 @@ import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/db/db_workspace.dart';
 import 'package:consolecrypt/snippets/starter_catalog.dart';
+import 'package:consolecrypt/vault/user_presence.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../helpers/fake_presence.dart';
 import '../helpers/test_app.dart';
 
 final _scope = NotifierProvider<_Scope, DbScope>(_Scope.new);
@@ -233,6 +236,7 @@ class _ProdService extends _Service implements DbProductionWriteService, DbCellE
   _ProdService() : super(production: true, readOnly: true);
   DateTime? until;
   final unlocks = <int>[], locks = <String>[], commits = <String>[];
+  final proofs = <StepUpProof>[];
   List<DbCellEdit> reviewed = const [];
   bool roleCanWrite = false;
 
@@ -253,12 +257,13 @@ class _ProdService extends _Service implements DbProductionWriteService, DbCellE
   @override
   Future<DbSessionInfo> sessionState(String sessionId) async => _live();
   @override
-  Future<DbSessionInfo> unlockProduction(
-    String sessionId, {
-    required SecretText passphrase,
-    required int minutes,
-  }) async {
-    if (passphrase.expose() != 'vault-pass') throw const DbWrongPassphrase();
+  Future<DbSessionInfo> unlockProduction(String sessionId, {required StepUpProof proof, required int minutes}) async {
+    proofs.add(proof);
+    final ok = switch (proof) {
+      PassphraseProof(:final passphrase) => passphrase.expose() == 'vault-pass',
+      PresenceProof(:final token) => token == 'presence:db_production_write:$sessionId',
+    };
+    if (!ok) throw const DbWrongPassphrase();
     unlocks.add(minutes);
     until = DateTime.now().add(Duration(minutes: minutes));
     return _live();
@@ -324,6 +329,7 @@ Future<ProviderContainer> _pump(
   Size size = const Size(1200, 900),
   double scale = 1,
   List<Snippet> snippets = const [],
+  UserPresence? presence,
 }) async {
   final backend = testBackend();
   addTearDown(backend.dispose);
@@ -341,6 +347,7 @@ Future<ProviderContainer> _pump(
         appServicesProvider.overrideWithValue(backend.services),
         dbServiceProvider.overrideWithValue(service),
         dbScopeProvider.overrideWith((ref) => ref.watch(_scope)),
+        if (presence != null) userPresenceProvider.overrideWithValue(presence),
       ],
       child: MaterialApp(
         locale: Locale(language),
@@ -788,6 +795,41 @@ void main() {
     expect(service.locks, ['session']);
     expect(find.byKey(const ValueKey('db-prod-write-badge')), findsNothing);
     expect(find.byKey(const ValueKey('db-prod-unlock')), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('production unlock with Touch ID sends a token bound to the session, never a passphrase', (tester) async {
+    final service = _ProdService();
+    final presence = FakePresence();
+    await _pump(tester, service, presence: presence);
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock')));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('step-up-presence')), findsOneWidget);
+    expect(find.text('You will confirm with Touch ID.'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock-submit')));
+    await settle(tester);
+    final (action, object, reason) = presence.verified.single;
+    expect((action, object), (StepUpAction.dbProductionWrite, 'session'));
+    expect(reason, 'allow changes on fixture-db');
+    expect((service.proofs.single as PresenceProof).token, 'presence:db_production_write:session');
+    expect(service.unlocks, [15]);
+    expect(find.byKey(const ValueKey('db-prod-unlock-dialog')), findsNothing);
+
+    // A refused token (or failed biometry) leaves the passphrase.
+    await tester.tap(find.byKey(const ValueKey('db-prod-lock')));
+    await settle(tester);
+    presence.failure = AppErrorCode.osAuthFailed;
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock')));
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock-submit')));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('step-up-presence-failed')), findsOneWidget);
+    expect(service.proofs, hasLength(1), reason: 'nothing sent after a failed prompt');
+    await tester.enterText(find.byKey(const ValueKey('db-prod-passphrase')).first, 'vault-pass');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('db-prod-unlock-submit')));
+    await settle(tester);
+    expect(service.proofs.last, isA<PassphraseProof>());
+    expect(service.unlocks, [15, 15]);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('cells of a production result are edited in place only while unlocked', (tester) async {

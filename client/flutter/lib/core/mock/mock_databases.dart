@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
+import 'package:consolecrypt/core/mock/mock_presence.dart';
+import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
 import 'package:consolecrypt/db/db_models.dart';
@@ -278,14 +280,9 @@ final class MockDbService
   }
 
   @override
-  Future<DbSessionInfo> unlockProduction(
-    String sessionId, {
-    required SecretText passphrase,
-    required int minutes,
-  }) async {
+  Future<DbSessionInfo> unlockProduction(String sessionId, {required StepUpProof proof, required int minutes}) async {
     final s = _sessions[sessionId]!;
-    final ok = passphrase.expose() == MockCloud.demoPassphrase;
-    passphrase.wipe();
+    final ok = MockPresenceTokens.check(proof, MockCloud.demoPassphrase, StepUpAction.dbProductionWrite, sessionId);
     if (!ok) throw const DbWrongPassphrase();
     if (!s.production || ![5, 15, 30].contains(minutes)) {
       throw StateError('Production unlock refused');

@@ -26,6 +26,14 @@ Future<T> withSecret<T>(SecretText secret, Future<T> Function(Uint8List bytes) c
   }
 }
 
+/// Passes a step-up proof as the passphrase bytes (wiped afterwards) or the
+/// presence token; the other one is null.
+Future<T> withStepUp<T>(StepUpProof proof, Future<T> Function(Uint8List? passphrase, String? token) call) =>
+    switch (proof) {
+      PassphraseProof(:final passphrase) => withSecret(passphrase, (bytes) => call(bytes, null)),
+      PresenceProof(:final token) => call(null, token),
+    };
+
 Future<T> withSecrets<T>(SecretText a, SecretText b, Future<T> Function(Uint8List a, Uint8List b) call) =>
     withSecret(a, (x) => withSecret(b, (y) => call(x, y)));
 
@@ -726,6 +734,60 @@ final class RustVaultService implements VaultService {
   @override
   Future<bool> verifyPassphrase(SecretText passphrase) =>
       withSecret(passphrase, (p) => guard(() => rs_prof.vaultVerifyPassphrase(passphrase: p)));
+
+  @override
+  Future<String> verifyUserPresence({
+    required StepUpAction action,
+    required String object,
+    required String reason,
+  }) async {
+    try {
+      if (_externalDeviceUnlock) {
+        // Android: BiometricPrompt decrypts the material; the core checks it.
+        final material = await _releaseExternal(reason);
+        try {
+          return await guard(
+            () => rs_prof.vaultVerifyUserPresenceWithMaterial(action: action.wire, object: object, material: material),
+          );
+        } finally {
+          material.fillRange(0, material.length, 0);
+        }
+      }
+      // The core asks the OS (Touch ID / Windows Hello) to release the key.
+      return await guard(() => rs_prof.vaultVerifyUserPresence(action: action.wire, object: object, reason: reason));
+    } on AppException catch (e) {
+      // A dropped key changes what the app offers.
+      if (e.code == AppErrorCode.osAuthInvalidated) await _hub.refreshState();
+      rethrow;
+    }
+  }
+
+  @override
+  Future<bool> confirmStepUp(StepUpProof proof, {required StepUpAction action, required String object}) async {
+    try {
+      await withStepUp(
+        proof,
+        (passphrase, token) => guard(
+          () => rs_prof.vaultConfirmStepUp(
+            action: action.wire,
+            object: object,
+            passphrase: passphrase,
+            presenceToken: token,
+          ),
+        ),
+      );
+      return true;
+    } on AppException catch (e) {
+      if (e.code == AppErrorCode.wrongPassphrase || e.code == AppErrorCode.passphraseRequired) return false;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> setConfirmActionsWithPresence(bool enabled) async {
+    await guard(() => rs_prof.vaultSetConfirmActionsWithPresence(enabled: enabled));
+    await _hub.refreshState();
+  }
 
   @override
   Future<void> changePassphrase({required SecretText current, required SecretText next}) async {

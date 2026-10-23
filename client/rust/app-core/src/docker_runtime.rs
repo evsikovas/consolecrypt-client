@@ -513,18 +513,23 @@ impl AppCore {
     }
 
     /// The container's environment with secret values, only after the vault
-    /// passphrase checks out (a step-up like the production write window).
+    /// passphrase checks out (a step-up like the production write window)
+    /// or with a presence token for `docker_reveal` on
+    /// `<session>/<container>`.
     pub async fn docker_reveal_environment(
         &self,
         session_id: String,
         container: String,
-        passphrase: String,
+        proof: crate::StepUp,
     ) -> AppResult<Vec<String>> {
         let (_, unlocked) = self.unlocked().await?;
         let live = unlocked.docker.session(&session_id)?;
-        if !self.verify_passphrase(passphrase).await? {
-            return Err(AppError::WrongPassphrase);
-        }
+        self.check_step_up(
+            crate::StepUpAction::DockerReveal,
+            &format!("{session_id}/{container}"),
+            proof,
+        )
+        .await?;
         live.client
             .environment(&container)
             .await
@@ -549,13 +554,16 @@ impl AppCore {
         &self,
         session_id: String,
         container: String,
-        passphrase: String,
+        proof: crate::StepUp,
     ) -> AppResult<serde_json::Value> {
         let (_, unlocked) = self.unlocked().await?;
         let live = unlocked.docker.session(&session_id)?;
-        if !self.verify_passphrase(passphrase).await? {
-            return Err(AppError::WrongPassphrase);
-        }
+        self.check_step_up(
+            crate::StepUpAction::DockerReveal,
+            &format!("{session_id}/{container}"),
+            proof,
+        )
+        .await?;
         live.client
             .inspect_unmasked(&container)
             .await
