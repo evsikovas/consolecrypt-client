@@ -11655,4 +11655,75 @@ class AppLocalizationsRu extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'Я проверил(а) эту команду для $host (политика команды)';
   }
+
+  @override
+  String get notesChooseHost => 'Выбрать хост';
+
+  @override
+  String get notesChooseHostEllipsis => 'Выбрать хост…';
+
+  @override
+  String get notesChosenClear => 'Вернуться к объекту раздела';
+
+  @override
+  String get notesNoObject => 'Объект не выбран';
+
+  @override
+  String get notesNoObjectTitle => 'Заметки к хосту';
+
+  @override
+  String get notesNoObjectMessage => 'Здесь появятся заметки к хосту. Откройте вкладку терминала или выберите хост.';
+
+  @override
+  String get notesSaved => 'Сохранено';
+
+  @override
+  String get notesUnsaved => 'Есть несохранённые изменения';
+
+  @override
+  String get notesSaveTooltip => 'Сохранить (⌘S / Ctrl+S)';
+
+  @override
+  String get notesUnsavedTitle => 'Выйти без сохранения?';
+
+  @override
+  String get notesUnsavedMessage => 'Заметку не удалось сохранить. Последние изменения будут потеряны.';
+
+  @override
+  String get notesDiscardChanges => 'Отменить изменения';
+
+  @override
+  String hostsNotesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count заметки',
+      many: '$count заметок',
+      few: '$count заметки',
+      one: '$count заметка',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notesNotLinked => 'Не привязана';
+
+  @override
+  String notesNotLinkedWas(String name) {
+    return 'Не привязана (была: $name)';
+  }
+
+  @override
+  String get notesAttachTo => 'Привязать к…';
+
+  @override
+  String get notesFilter => 'Показать';
+
+  @override
+  String get notesFilterAll => 'Все заметки';
+
+  @override
+  String notesFilterNotLinked(int count) {
+    return 'Не привязанные ($count)';
+  }
 }

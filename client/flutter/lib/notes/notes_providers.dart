@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/notes/note_models.dart';
@@ -141,6 +142,37 @@ final noteContextProvider = Provider.family<NoteContext?, ShellBranch>((ref, bra
     _ => null,
   };
 });
+
+/// The notes object of a saved host (SSH or RDP).
+NoteContext hostNoteContext(Host host) => host.isRdp
+    ? NoteContext(
+        target: NoteObjectTarget(NoteObjectKind.rdpHost, host.id.value),
+        label: host.name,
+        icon: Icons.desktop_windows_outlined,
+      )
+    : NoteContext(target: NoteObjectTarget(NoteObjectKind.host, host.id.value), label: host.name);
+
+/// An object chosen for the "Object" tab (a host card's "Notes" or the
+/// panel's host chooser). It replaces the section's own object until
+/// cleared; a profile switch or lock clears it.
+final notesChosenObjectProvider = NotifierProvider<NotesChosenObject, NoteContext?>(NotesChosenObject.new);
+
+class NotesChosenObject extends Notifier<NoteContext?> {
+  @override
+  NoteContext? build() {
+    ref.watch(activeProfileProvider.select((p) => p?.id));
+    ref.watch(notesUnlockedProvider);
+    return null;
+  }
+
+  void choose(NoteContext? context) => state = context;
+}
+
+/// Opens the notes panel on [host]'s notes.
+void showHostNotes(WidgetRef ref, Host host) {
+  ref.read(notesChosenObjectProvider.notifier).choose(hostNoteContext(host));
+  ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.notes);
+}
 
 /// Asks the notes panel to open one note (a reminder's "Open").
 final notesFocusProvider = NotifierProvider<NotesFocus, String?>(NotesFocus.new);

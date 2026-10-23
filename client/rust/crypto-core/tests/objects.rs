@@ -32,6 +32,7 @@ fn note_payload(body: String) -> (ObjectId, ObjectPayload) {
         task: None,
         remind_at: None,
         target: None,
+        target_label: None,
         created_at: now,
         updated_at: now,
     };

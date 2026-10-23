@@ -15573,5 +15573,96 @@
         "type": "String"
       }
     }
+  },
+  "notesChooseHost": "Choose a host",
+  "@notesChooseHost": {
+    "description": "Notes panel: button and dialog title to show the notes of a host picked from the inventory"
+  },
+  "notesChooseHostEllipsis": "Choose a host…",
+  "@notesChooseHostEllipsis": {
+    "description": "Note editor, Attached to: opens the host picker"
+  },
+  "notesChosenClear": "Back to this section's object",
+  "@notesChosenClear": {
+    "description": "Notes panel, Object tab: clears the host picked from the inventory"
+  },
+  "notesNoObject": "No object selected",
+  "@notesNoObject": {
+    "description": "Notes panel, Object tab: nothing is open and no host was picked"
+  },
+  "notesNoObjectTitle": "Notes about a host",
+  "@notesNoObjectTitle": {
+    "description": "Notes panel, Object tab empty state title when no object is open"
+  },
+  "notesNoObjectMessage": "Notes about a host appear here. Open a terminal tab or choose a host.",
+  "@notesNoObjectMessage": {
+    "description": "Notes panel, Object tab empty state message when no object is open"
+  },
+  "notesSaved": "Saved",
+  "@notesSaved": {
+    "description": "Note editor status: everything is saved"
+  },
+  "notesUnsaved": "Unsaved changes",
+  "@notesUnsaved": {
+    "description": "Note editor status: edits not saved yet"
+  },
+  "notesSaveTooltip": "Save (⌘S / Ctrl+S)",
+  "@notesSaveTooltip": {
+    "description": "Note editor: Save button tooltip with its keyboard shortcut"
+  },
+  "notesUnsavedTitle": "Leave without saving?",
+  "@notesUnsavedTitle": {
+    "description": "Note editor: confirmation title when closing with changes that could not be saved"
+  },
+  "notesUnsavedMessage": "The note could not be saved. Your latest changes will be lost.",
+  "@notesUnsavedMessage": {
+    "description": "Note editor: confirmation message when closing with changes that could not be saved"
+  },
+  "notesDiscardChanges": "Discard changes",
+  "@notesDiscardChanges": {
+    "description": "Note editor: confirm leaving and losing unsaved changes"
+  },
+  "hostsNotesCount": "{count, plural, one{1 note} other{{count} notes}}",
+  "@hostsNotesCount": {
+    "description": "Host card: tooltip of the notes button; opens the host's notes",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notesNotLinked": "Not linked",
+  "@notesNotLinked": {
+    "description": "Note whose object is gone (deleted, left with a share or a team, or unknown to this version); the note itself is kept"
+  },
+  "notesNotLinkedWas": "Not linked (was {name})",
+  "@notesNotLinkedWas": {
+    "description": "Note editor, Attached to: the object is gone; name is what it was called",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notesAttachTo": "Attach to…",
+  "@notesAttachTo": {
+    "description": "Note menu: attach the note to a host chosen from the inventory"
+  },
+  "notesFilter": "Show",
+  "@notesFilter": {
+    "description": "Notes panel, All tab: accessibility label of the filter"
+  },
+  "notesFilterAll": "All notes",
+  "@notesFilterAll": {
+    "description": "Notes panel, All tab filter: every note"
+  },
+  "notesFilterNotLinked": "Not linked ({count})",
+  "@notesFilterNotLinked": {
+    "description": "Notes panel, All tab filter: notes whose object is gone",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

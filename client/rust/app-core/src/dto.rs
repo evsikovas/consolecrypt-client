@@ -847,6 +847,9 @@ pub struct NoteDto {
     pub remind_at_ms: Option<i64>,
     #[serde(default)]
     pub target: Option<NoteTarget>,
+    /// The target's name when attached; kept for a note whose object is gone.
+    #[serde(default)]
+    pub target_label: Option<String>,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
 }
@@ -882,6 +885,7 @@ impl EditableDto for NoteDto {
             }),
             remind_at_ms: n.remind_at.as_ref().map(ms),
             target: n.target.clone(),
+            target_label: n.target_label.clone(),
             created_at_ms: ms(&n.created_at),
             updated_at_ms: ms(&n.updated_at),
         }
@@ -914,6 +918,20 @@ impl EditableDto for NoteDto {
             task,
             remind_at: self.remind_at_ms.and_then(from_ms),
             target: self.target.clone(),
+            // A detached note forgets its old object; the name is trimmed
+            // like the title and dropped when blank.
+            target_label: self
+                .target
+                .as_ref()
+                .and(self.target_label.as_deref())
+                .map(str::trim)
+                .filter(|label| !label.is_empty())
+                .map(|label| {
+                    label
+                        .chars()
+                        .take(cc_models::note::MAX_TITLE_CHARS)
+                        .collect()
+                }),
             created_at,
             updated_at,
         };

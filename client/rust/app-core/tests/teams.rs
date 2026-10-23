@@ -345,10 +345,46 @@ async fn teams_lifecycle() {
     assert_eq!(log[1].op, "remove_member");
     assert_eq!(log.last().unwrap().op, "genesis");
 
+    // A note about a team host is personal (other members never see it)
+    // and outlives the team.
+    let note = carol
+        .save_note(NoteDto {
+            title: "web: reload only".into(),
+            target: Some(cc_models::note::NoteTarget::Object {
+                object_kind: cc_models::note::NoteObjectKind::Host,
+                id: web.id.parse().unwrap(),
+            }),
+            target_label: Some("web".into()),
+            ..NoteDto::default()
+        })
+        .await
+        .unwrap();
+    assert!(
+        !carol
+            .object_vaults()
+            .await
+            .unwrap()
+            .iter()
+            .any(|o| o.object_id == note.id),
+        "notes never enter a team vault"
+    );
+
     // ── leave ───────────────────────────────────────────────────────────
     carol.leave_team(tid.clone()).await.unwrap();
     assert!(team_of(&carol, &tid).await.is_none());
     assert!(!host_names(&carol).await.contains(&"web".to_string()));
+    let kept = carol
+        .list_notes()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|n| n.id == note.id)
+        .expect("the note outlives the team");
+    assert!(
+        kept.target.is_some(),
+        "kept with its old target, shown as not linked"
+    );
+    assert_eq!(kept.target_label.as_deref(), Some("web"));
 
     // ── criterion 4: a member added by the server alone is refused ──────
     let forged = TeamIdentity::generate().unwrap().member_keys(UserId::new());

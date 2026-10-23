@@ -52,6 +52,7 @@ final class MockNoteService implements NoteService, SharedNoteService {
           : NoteTask(done: task.done, dueAt: task.dueAt, doneAt: task.done ? (existing?.task?.doneAt ?? now) : null),
       remindAt: note.remindAt,
       target: note.target,
+      targetLabel: note.target == null ? null : note.targetLabel,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     );

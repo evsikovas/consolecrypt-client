@@ -1,6 +1,8 @@
 /// Mirrors `cc_models::note` through `NoteDto` (synced E2EE vault objects).
 library;
 
+import 'dart:convert';
+
 typedef NoteJson = Map<String, dynamic>;
 
 /// Inventory objects a note can be attached to (wire names of the core).
@@ -21,12 +23,12 @@ sealed class NoteTarget {
   const NoteTarget();
 
   static NoteTarget? fromJson(Object? json) {
-    if (json is! NoteJson) return null;
+    if (json is! NoteJson || json['kind'] is! String) return null;
     switch (json['kind']) {
       case 'object':
         final kind = NoteObjectKind.parse(json['object_kind']);
         final id = json['id'];
-        return kind == null || id is! String ? null : NoteObjectTarget(kind, id);
+        if (kind != null && id is String) return NoteObjectTarget(kind, id);
       case 'kube_resource':
         return NoteKubeTarget(
           contextId: json['context_id'] as String,
@@ -39,7 +41,8 @@ sealed class NoteTarget {
       case 'docker_container':
         return NoteDockerTarget(hostId: json['host_id'] as String?, name: json['name'] as String);
     }
-    return null;
+    // A later version's target: kept as is, shown as not linked.
+    return NoteUnknownTarget(json);
   }
 
   NoteJson toJson();
@@ -97,6 +100,29 @@ final class NoteKubeTarget extends NoteTarget {
   int get hashCode => Object.hash(contextId, group, resource, namespace, name);
 }
 
+/// A target this version does not know (written by a later version). It is
+/// written back unchanged so editing the note here keeps the link.
+final class NoteUnknownTarget extends NoteTarget {
+  NoteUnknownTarget(NoteJson json) : json = Map.unmodifiable(json), _key = jsonEncode(_sorted(json));
+  final NoteJson json;
+  final String _key;
+
+  static Object? _sorted(Object? value) => switch (value) {
+    final Map<dynamic, dynamic> map => {
+      for (final key in (map.keys.map((k) => '$k').toList()..sort())) key: _sorted(map[key]),
+    },
+    final List<dynamic> list => [for (final item in list) _sorted(item)],
+    _ => value,
+  };
+
+  @override
+  NoteJson toJson() => Map.of(json);
+  @override
+  bool operator ==(Object other) => other is NoteUnknownTarget && other._key == _key;
+  @override
+  int get hashCode => _key.hashCode;
+}
+
 /// A Docker container by name on an SSH host's engine (null: this computer).
 final class NoteDockerTarget extends NoteTarget {
   const NoteDockerTarget({required this.name, this.hostId});
@@ -138,6 +164,7 @@ final class Note {
     this.task,
     this.remindAt,
     this.target,
+    this.targetLabel,
     this.createdAt,
     this.updatedAt,
   });
@@ -150,6 +177,9 @@ final class Note {
   final NoteTask? task;
   final DateTime? remindAt;
   final NoteTarget? target;
+
+  /// The target's name when it was attached; shown once the object is gone.
+  final String? targetLabel;
   final DateTime? createdAt, updatedAt;
 
   bool get isTask => task != null;
@@ -171,6 +201,7 @@ final class Note {
     task: json['task'] is NoteJson ? NoteTask.fromJson(json['task'] as NoteJson) : null,
     remindAt: _time(json['remind_at_ms']),
     target: NoteTarget.fromJson(json['target']),
+    targetLabel: json['target_label'] as String?,
     createdAt: _time(json['created_at_ms']),
     updatedAt: _time(json['updated_at_ms']),
   );
@@ -184,6 +215,7 @@ final class Note {
     'task': task?.toJson(),
     'remind_at_ms': remindAt?.millisecondsSinceEpoch,
     'target': target?.toJson(),
+    'target_label': target == null ? null : targetLabel,
     'created_at_ms': createdAt?.millisecondsSinceEpoch ?? 0,
     'updated_at_ms': updatedAt?.millisecondsSinceEpoch ?? 0,
   };
@@ -196,6 +228,7 @@ final class Note {
     NoteTask? Function()? task,
     DateTime? Function()? remindAt,
     NoteTarget? Function()? target,
+    String? Function()? targetLabel,
   }) => Note(
     id: id,
     title: title ?? this.title,
@@ -205,6 +238,7 @@ final class Note {
     task: task == null ? this.task : task(),
     remindAt: remindAt == null ? this.remindAt : remindAt(),
     target: target == null ? this.target : target(),
+    targetLabel: targetLabel == null ? this.targetLabel : targetLabel(),
     createdAt: createdAt,
     updatedAt: updatedAt,
   );
@@ -305,13 +339,13 @@ String? noteLinkKey(NoteTarget target) => switch (target) {
   NoteObjectTarget(:final kind, :final id) => '${kind.wireName}:$id',
   NoteKubeTarget(:final contextId) => 'kube_context:$contextId',
   NoteDockerTarget(:final hostId?) => 'host:$hostId',
-  NoteDockerTarget() => null,
+  NoteDockerTarget() || NoteUnknownTarget() => null,
 };
 
 /// The part of the shared object a note is about. It names no local ids,
 /// so it matches on every member's copy.
 NoteJson? noteScope(NoteTarget target) => switch (target) {
-  NoteObjectTarget() => null,
+  NoteObjectTarget() || NoteUnknownTarget() => null,
   NoteKubeTarget(:final group, :final resource, :final namespace, :final name) => {
     'kube_resource': {'group': group, 'resource': resource, 'namespace': namespace, 'name': name},
   },

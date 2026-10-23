@@ -1,6 +1,8 @@
 //! Notes, tasks and reminders (synced E2EE, indexed locally). A note may be
 //! attached to one inventory object or to a Kubernetes/Docker resource that
-//! lives outside the vault; a missing target leaves the note in place.
+//! lives outside the vault. A missing target leaves the note in place (shown
+//! as not linked, with the name it had), and a target kind this client does
+//! not know is kept verbatim so a later client's link survives an edit here.
 
 use crate::{ObjectId, Timestamp, ValidationError};
 use serde::{Deserialize, Serialize};
@@ -9,6 +11,8 @@ pub const MAX_TITLE_CHARS: usize = 256;
 pub const MAX_BODY_BYTES: usize = 256 * 1024;
 pub const MAX_TAGS: usize = 32;
 pub const MAX_TAG_CHARS: usize = 64;
+/// Bound of a target this client cannot read, kept verbatim.
+pub const MAX_UNKNOWN_TARGET_BYTES: usize = 4 * 1024;
 
 /// New fields default so notes written by older clients still decode, and are
 /// omitted when empty so an unattached plain note serializes as before.
@@ -27,6 +31,9 @@ pub struct Note {
     pub remind_at: Option<Timestamp>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub target: Option<NoteTarget>,
+    /// The target's name when it was attached, shown once the object is gone.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_label: Option<String>,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
 }
@@ -54,9 +61,34 @@ pub enum NoteObjectKind {
 /// What a note is about. Kubernetes resources omit the API version so a note
 /// survives a version change; Docker containers are named so a note survives
 /// re-creation (like the Docker database route).
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum NoteTarget {
+    Object {
+        object_kind: NoteObjectKind,
+        id: ObjectId,
+    },
+    KubeResource {
+        context_id: ObjectId,
+        group: String,
+        resource: String,
+        object_kind: String,
+        namespace: Option<String>,
+        name: String,
+    },
+    DockerContainer {
+        /// The SSH host of the Docker engine; None is this computer.
+        host_id: Option<ObjectId>,
+        name: String,
+    },
+    /// A target a later client wrote (a new kind, or an object kind this
+    /// client does not know): the compact JSON object, written back as is.
+    Unknown { json: String },
+}
+
+/// The wire form of the known targets.
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum KnownTarget {
     Object {
         object_kind: NoteObjectKind,
         id: ObjectId,
@@ -72,11 +104,75 @@ pub enum NoteTarget {
         name: String,
     },
     DockerContainer {
-        /// The SSH host of the Docker engine; None is this computer.
         #[serde(default)]
         host_id: Option<ObjectId>,
         name: String,
     },
+}
+
+impl Serialize for NoteTarget {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let known = match self.clone() {
+            Self::Object { object_kind, id } => KnownTarget::Object { object_kind, id },
+            Self::KubeResource {
+                context_id,
+                group,
+                resource,
+                object_kind,
+                namespace,
+                name,
+            } => KnownTarget::KubeResource {
+                context_id,
+                group,
+                resource,
+                object_kind,
+                namespace,
+                name,
+            },
+            Self::DockerContainer { host_id, name } => {
+                KnownTarget::DockerContainer { host_id, name }
+            }
+            Self::Unknown { json } => {
+                let value: serde_json::Value =
+                    serde_json::from_str(&json).map_err(serde::ser::Error::custom)?;
+                return value.serialize(serializer);
+            }
+        };
+        known.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for NoteTarget {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        if !value.get("kind").is_some_and(serde_json::Value::is_string) {
+            return Err(serde::de::Error::custom("note target without a kind"));
+        }
+        Ok(match KnownTarget::deserialize(&value) {
+            Ok(KnownTarget::Object { object_kind, id }) => Self::Object { object_kind, id },
+            Ok(KnownTarget::KubeResource {
+                context_id,
+                group,
+                resource,
+                object_kind,
+                namespace,
+                name,
+            }) => Self::KubeResource {
+                context_id,
+                group,
+                resource,
+                object_kind,
+                namespace,
+                name,
+            },
+            Ok(KnownTarget::DockerContainer { host_id, name }) => {
+                Self::DockerContainer { host_id, name }
+            }
+            Err(_) => Self::Unknown {
+                json: value.to_string(),
+            },
+        })
+    }
 }
 
 impl Note {
@@ -102,6 +198,14 @@ impl Note {
         }
         if let Some(target) = &self.target {
             target.validate()?;
+        }
+        if let Some(label) = &self.target_label {
+            if label.trim().is_empty()
+                || label.chars().count() > MAX_TITLE_CHARS
+                || label.chars().any(char::is_control)
+            {
+                return Err(invalid("target_label", "invalid target name"));
+            }
         }
         Ok(())
     }
@@ -160,6 +264,11 @@ impl NoteTarget {
                     return Err(invalid("target", "invalid Docker container"));
                 }
             }
+            Self::Unknown { json } => {
+                if json.len() > MAX_UNKNOWN_TARGET_BYTES {
+                    return Err(invalid("target", "target is too long"));
+                }
+            }
         }
         Ok(())
     }
@@ -184,6 +293,7 @@ mod tests {
             task: None,
             remind_at: None,
             target: None,
+            target_label: None,
             created_at: now,
             updated_at: now,
         }
@@ -234,6 +344,49 @@ mod tests {
                 .contains(&json["target"]["kind"].as_str().unwrap()));
             assert_eq!(serde_json::from_value::<Note>(json).unwrap(), value);
         }
+    }
+
+    #[test]
+    fn unknown_targets_survive_a_roundtrip_verbatim() {
+        // A later client: a new target kind, and a known kind with a new
+        // object kind. Both decode, validate and are written back unchanged.
+        for target in [
+            serde_json::json!({"kind": "tunnel", "id": ObjectId::new(), "port": 5432}),
+            serde_json::json!({"kind": "object", "object_kind": "sqlite_file", "id": ObjectId::new()}),
+        ] {
+            let mut json = serde_json::to_value(note()).unwrap();
+            json["target"] = target.clone();
+            json["target_label"] = "billing-db".into();
+            let decoded: Note = serde_json::from_value(json).unwrap();
+            assert!(matches!(decoded.target, Some(NoteTarget::Unknown { .. })));
+            assert_eq!(decoded.target_label.as_deref(), Some("billing-db"));
+            decoded.validate().unwrap();
+            let again = serde_json::to_value(&decoded).unwrap();
+            assert_eq!(again["target"], target);
+        }
+        // Not an object with a kind: still an error (never silently dropped).
+        let mut json = serde_json::to_value(note()).unwrap();
+        json["target"] = serde_json::json!("host");
+        assert!(serde_json::from_value::<Note>(json).is_err());
+    }
+
+    #[test]
+    fn target_labels_are_bounded() {
+        let mut bad = note();
+        bad.target_label = Some("line\u{7}".into());
+        assert!(bad.validate().is_err());
+        bad.target_label = Some(" ".into());
+        assert!(bad.validate().is_err());
+        bad.target_label = Some("db-prod".into());
+        bad.validate().unwrap();
+        let mut unknown = note();
+        unknown.target = Some(NoteTarget::Unknown {
+            json: format!(
+                "{{\"kind\":\"x\",\"pad\":\"{}\"}}",
+                "x".repeat(MAX_UNKNOWN_TARGET_BYTES)
+            ),
+        });
+        assert!(unknown.validate().is_err());
     }
 
     #[test]

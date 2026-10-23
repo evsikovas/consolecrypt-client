@@ -60,6 +60,7 @@ fn fixture() -> Fixture {
         task: None,
         remind_at: None,
         target: None,
+        target_label: None,
         created_at: t,
         updated_at: t,
     };
