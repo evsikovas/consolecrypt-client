@@ -88,6 +88,7 @@ const guideScreens = [
   'notes-object',
   'notes-tasks',
   'notes-editor',
+  'notes-menu',
   'enterprise-login-sso',
   'enterprise-login-ldap',
   'enterprise-settings',
@@ -105,6 +106,13 @@ const guideScreens = [
   'teams-host-menu',
   'teams-terminal',
   'teams-run-confirm',
+  'kube-import',
+  'kube-logs',
+  'kube-shell',
+  'kube-forward',
+  'kube-yaml',
+  'kube-rollout',
+  'kube-ai',
   ...guideExtraScreens,
 ];
 
@@ -142,6 +150,8 @@ const guideExtraScreens = [
   'ai-provider-dialog',
   'sftp-actions',
   'sftp-get-info',
+  'sftp-local-pane',
+  'sftp-transfers',
   'share-accept',
   'share-access',
 ];

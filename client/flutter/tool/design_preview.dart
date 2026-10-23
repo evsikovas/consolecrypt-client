@@ -25,12 +25,18 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/app_services.dart' show DeviceLocalAiBridge;
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/hosts/inventory_navigation.dart';
 import 'package:consolecrypt/hosts/known_hosts_import.dart';
+import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
+import 'package:consolecrypt/kubernetes/kube_providers.dart';
+import 'package:consolecrypt/kubernetes/kube_rollout_panel.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
 import 'package:consolecrypt/notes/note_models.dart';
 import 'package:consolecrypt/settings/settings_dialogs.dart';
+import 'package:consolecrypt/sftp/sftp_controller.dart';
+import 'package:consolecrypt/sftp/widgets/sftp_activity.dart';
 import 'package:consolecrypt/sharing/enrollment_owner.dart';
 import 'package:consolecrypt/sharing/sharing_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_management.dart';
@@ -53,6 +59,7 @@ import 'package:xterm/xterm.dart';
 import '../test/helpers/fake_local_ai_runtime.dart';
 import '../test/helpers/test_app.dart' show tapKey, settle, pickHost;
 import 'guide_capture_support.dart';
+import 'kube_capture_support.dart';
 
 const _guide = bool.fromEnvironment('CC_GUIDE_CAPTURE');
 const _guideLanguage = String.fromEnvironment('CC_GUIDE_LOCALE', defaultValue: 'ru');
@@ -259,6 +266,8 @@ void main() {
         final key = GlobalKey();
         final sharing = GuideSharingService(databases: screen == 'db-shared');
         final teams = _guide && screen.startsWith('teams-') ? guideTeams(backend, en: locale == AppLocale.en) : null;
+        final kube = _guide && screen.startsWith('kube-') ? GuideKubeService(en: locale == AppLocale.en) : null;
+        if (kube != null) addTearDown(kube.dispose);
         await tester.pumpWidget(
           RepaintBoundary(
             key: key,
@@ -270,6 +279,8 @@ void main() {
                 if (_guide) sharingServiceProvider.overrideWithValue(sharing),
                 if (_guide) enrollmentServiceProvider.overrideWithValue(GuideEnrollmentService()),
                 if (teams != null) teamServiceProvider.overrideWithValue(teams),
+                if (kube != null) kubeServiceProvider.overrideWithValue(kube),
+                if (screen == 'kube-shell') terminalServiceProvider.overrideWithValue(GuideKubeTerminal()),
                 if (localAi != null) ...[
                   deviceLocalAiAvailableProvider.overrideWithValue(true),
                   localAiRuntimeProvider.overrideWithValue(localAi),
@@ -751,6 +762,7 @@ void main() {
         if (_guide && screen.startsWith('notes-')) await _notesScreen(tester, screen, backend);
         if (_guide && screen.startsWith('enterprise-')) await _enterpriseScreen(tester, screen, backend, l10n);
         if (teams != null) await _teamsScreen(tester, screen, backend, l10n);
+        if (kube != null) await _kubeScreen(tester, screen, kube, l10n);
         if (_guide && guideExtraScreens.contains(screen)) await _extraScreen(tester, screen, backend, sharing, l10n);
         expect(tester.takeException(), isNull);
         if (_guide) _assertGuideScreen(tester, screen, l10n);
@@ -838,6 +850,13 @@ Future<void> _notesScreen(WidgetTester tester, String screen, MockBackend backen
   await tapKey(tester, 'accept-host-key');
   await tapKey(tester, 'nav-notes');
   if (screen == 'notes-tasks') await tapKey(tester, 'notes-mode-tasks');
+  if (screen == 'notes-menu') {
+    final menu = find.byWidgetPredicate(
+      (w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('note-menu-'),
+    );
+    await tester.tap(menu.first);
+    await settle(tester);
+  }
   if (screen == 'notes-editor') {
     await tapKey(tester, 'notes-mode-all');
     await tester.tap(find.text(en ? 'Ask the vendor about the licence' : 'Спросить поставщика о лицензии'));
@@ -1013,6 +1032,22 @@ Future<void> _extraScreen(
     case 'ai-provider-dialog':
       await settings('add-provider', alignment: .55);
       await tapKey(tester, 'add-provider');
+    case 'sftp-local-pane' || 'sftp-transfers':
+      // The mock local disk (/Users/demo) is synthetic: no file of this computer is listed.
+      await tapKey(tester, 'nav-sftp');
+      await tapKey(tester, 'sftp-connect');
+      await pickHost(tester, 'prod-web-1');
+      await tapKey(tester, 'sftp-toolbar-local-pane');
+      if (screen == 'sftp-transfers') {
+        final sftp = container().read(sftpControllerProvider.notifier);
+        await sftp.download(['/home/deploy/deploy.sh', '/home/deploy/notes.txt'], '/Users/demo/Downloads');
+        await sftp.upload(['/Users/demo/Documents/runbook.md'], '/home/deploy');
+        backend.sftpBrowser.debugFailNextTransfer();
+        await sftp.download(['/home/deploy/latest.log'], '/Users/demo/Downloads');
+        await settle(tester);
+        container().read(sftpActivityProvider.notifier).show(SftpActivityTab.transfers);
+        await settle(tester);
+      }
     case 'sftp-actions' || 'sftp-get-info':
       await tapKey(tester, 'nav-sftp');
       await tapKey(tester, 'sftp-connect');
@@ -1029,6 +1064,93 @@ Future<void> _extraScreen(
       await tapKey(tester, 'nav-sharing');
       showSharingAccess(context(), sharing.ownedHost).ignore();
       await settle(tester);
+  }
+}
+
+/// Kubernetes on [GuideKubeService]: a synthetic staging cluster with a
+/// crash-looping Pod, its logs, shell, port forward, YAML review, rollout
+/// diff, a scripted local-AI answer and the kubeconfig import preview.
+Future<void> _kubeScreen(WidgetTester tester, String screen, GuideKubeService kube, AppLocalizations l10n) async {
+  const en = _guideLanguage == 'en';
+  await tapKey(tester, 'nav-kubernetes');
+  if (screen == 'kube-import') {
+    await tapKey(tester, 'kube-import');
+    await tester.enterText(find.byKey(const ValueKey('kube-import-yaml')), 'apiVersion: v1\nkind: Config\n');
+    await tapKey(tester, 'kube-import-submit');
+    return;
+  }
+  await tapKey(tester, 'kube-connect-$guideKubeContext');
+  if (screen == 'kube-ai') {
+    await tapKey(tester, 'kube-open-ai');
+    await tester.enterText(
+      find.byKey(const ValueKey('kube-ai-question')),
+      en ? 'Why does $guideKubePod keep restarting?' : 'Почему $guideKubePod постоянно перезапускается?',
+    );
+    await tapKey(tester, 'kube-ai-send');
+    if (find.byKey(const ValueKey('kube-ai-consent')).evaluate().isNotEmpty) await tapKey(tester, 'kube-ai-consent');
+    await settle(tester);
+    return;
+  }
+  if (screen == 'kube-rollout') {
+    showAppDialog<void>(
+      tester.element(find.byType(Navigator).first),
+      secure: true,
+      builder: (_) => KubeRolloutDialog(
+        sessionId: GuideKubeService.session.id,
+        resource: const KubeResourceRef(
+          api: KubeResourceKind(
+            group: 'apps',
+            version: 'v1',
+            resource: 'deployments',
+            kind: 'Deployment',
+            namespaced: true,
+            verbs: ['get', 'list'],
+          ),
+          name: 'payments',
+          namespace: 'shop',
+        ),
+        service: kube,
+      ),
+    ).ignore();
+    await settle(tester);
+    await tapKey(tester, 'kube-rollout-compare');
+    return;
+  }
+  await tapKey(tester, 'kube-resource-$guideKubePod');
+  switch (screen) {
+    case 'kube-logs':
+      await tapKey(tester, 'kube-logs-tab');
+    case 'kube-shell':
+      await tapKey(tester, 'kube-pod-terminal');
+      await tapKey(tester, 'kube-terminal-open');
+      final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+      final tab = container.read(terminalTabsProvider).tabs.last;
+      tab.terminal.write(
+        '/app \$ env | grep PAYMENTS\r\nPAYMENTS_DB=orders-db.shop.svc:5432\r\n/app \$ ls\r\n'
+        'config.yaml  payments  static\r\n/app \$ ',
+      );
+      await settle(tester);
+    case 'kube-forward':
+      await tapKey(tester, 'kube-pod-forward');
+      await tester.enterText(find.byKey(const ValueKey('kube-forward-remote')), '8080');
+      await settle(tester);
+      await tapKey(tester, 'kube-forward-start');
+    case 'kube-yaml':
+      await tapKey(tester, 'kube-edit-yaml');
+      final detail = await kube.getResource(
+        GuideKubeService.session.id,
+        const KubeResourceRef(
+          api: KubeResourceKind(group: '', version: 'v1', resource: 'pods', kind: 'Pod', namespaced: true, verbs: []),
+          name: guideKubePod,
+          namespace: 'shop',
+        ),
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('kube-yaml-input')),
+        detail.yaml.replaceFirst('    app: payments\n', '    app: payments\n    tier: backend\n'),
+      );
+      await settle(tester);
+      await tapKey(tester, 'kube-yaml-validate');
   }
 }
 
@@ -1379,6 +1501,13 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(find.byKey(const ValueKey('settings-shortcuts')), findsOneWidget);
     case 'ai-provider-dialog':
       expect(find.byKey(const ValueKey('provider-dialog')), findsOneWidget);
+    case 'sftp-local-pane':
+      expect(find.byKey(const ValueKey('sftp-local-pane')), findsOneWidget);
+      expect(texts, contains('/Users/demo'));
+    case 'sftp-transfers':
+      expect(texts, contains('runbook.md'));
+    case 'notes-menu':
+      expect(find.byKey(const ValueKey('notes-list')), findsOneWidget);
     case 'sftp-actions':
       expect(find.byKey(const ValueKey('sftp-action-getInfo')), findsOneWidget);
     case 'sftp-get-info':
@@ -1387,6 +1516,20 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(find.byKey(const ValueKey('sharing-accept-confirm')), findsOneWidget);
     case 'share-access':
       expect(find.byKey(const ValueKey('sharing-access-save')), findsOneWidget);
+    case 'kube-logs':
+      expect(texts, contains('PAYMENTS_API_URL'));
+    case 'kube-shell':
+      expect(find.byKey(const ValueKey('kube-terminal-open')), findsNothing);
+    case 'kube-forward':
+      expect(texts, contains('127.0.0.1:18080'));
+    case 'kube-yaml':
+      expect(find.byKey(const ValueKey('kube-yaml-diff')), findsOneWidget);
+    case 'kube-rollout':
+      expect(texts, contains('/spec/template/spec/containers/0/image'));
+    case 'kube-ai':
+      expect(texts, contains('PAYMENTS_API_URL'));
+    case 'kube-import':
+      expect(find.byKey(const ValueKey('kube-import-approve-files')), findsOneWidget);
     case 'teams-settings':
       expect(find.byKey(const ValueKey('team-invitation-$guideIncomingInvitation')), findsOneWidget);
       expect(find.byKey(const ValueKey('team-row-$guideTeamOps')), findsOneWidget);
