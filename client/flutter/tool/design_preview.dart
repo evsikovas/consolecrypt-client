@@ -26,6 +26,8 @@ import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/app_services.dart' show DeviceLocalAiBridge;
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/db/db_designer_models.dart';
+import 'package:consolecrypt/db/db_designer_view.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/hosts/inventory_navigation.dart';
 import 'package:consolecrypt/hosts/known_hosts_import.dart';
@@ -223,7 +225,7 @@ void main() {
             totalBytes: screen == 'local-ai-progress' ? LocalAiCatalog.model.bytes : 0,
           );
         }
-        if (screen.startsWith('snippet-')) {
+        if (screen.startsWith('snippet-') || screen == 'db-snippets-picker') {
           for (final package in starterSnippetPackages(l10n)) {
             for (final snippet in package.snippets) {
               await backend.snippets.saveSnippet(snippet);
@@ -257,7 +259,7 @@ void main() {
                 : null,
           ),
         );
-        if (_guide && screen == 'vault-settings') {
+        if (_guide && (screen == 'vault-settings' || screen == 'step-up-biometric')) {
           await backend.vault.setDeviceUnlockEnabled(true, reason: 'guide');
         }
         if (_guide && screen == 'devices') {
@@ -281,6 +283,7 @@ void main() {
                 if (teams != null) teamServiceProvider.overrideWithValue(teams),
                 if (kube != null) kubeServiceProvider.overrideWithValue(kube),
                 if (screen == 'kube-shell') terminalServiceProvider.overrideWithValue(GuideKubeTerminal()),
+                if (screen.startsWith('db-csv-')) fileDialogServiceProvider.overrideWithValue(GuideCsvFiles()),
                 if (localAi != null) ...[
                   deviceLocalAiAvailableProvider.overrideWithValue(true),
                   localAiRuntimeProvider.overrideWithValue(localAi),
@@ -760,6 +763,9 @@ void main() {
         if (_guide && screen.startsWith('db-')) await _databaseScreen(tester, screen, l10n);
         if (_guide && screen.startsWith('docker-')) await _dockerScreen(tester, screen, l10n);
         if (_guide && screen.startsWith('notes-')) await _notesScreen(tester, screen, backend);
+        if (_guide && (screen == 'step-up-biometric' || screen == 'clipboard-settings')) {
+          await _securityScreen(tester, screen, l10n);
+        }
         if (_guide && screen.startsWith('enterprise-')) await _enterpriseScreen(tester, screen, backend, l10n);
         if (teams != null) await _teamsScreen(tester, screen, backend, l10n);
         if (kube != null) await _kubeScreen(tester, screen, kube, l10n);
@@ -844,8 +850,27 @@ Future<void> _notesScreen(WidgetTester tester, String screen, MockBackend backen
     ),
   ];
   await notes.linkShare('host:${host.id.value}', 'guide-share-notes');
+  if (screen == 'notes-not-linked') {
+    // A host removed since: the note keeps the name it was attached to.
+    await notes.save(
+      const Note(
+        title: en ? 'Disk layout of the old database server' : 'Разметка дисков старого сервера БД',
+        body: en
+            ? 'RAID 10, 4 × 1.92 TB; /var/lib/postgresql on md0.'
+            : 'RAID 10, 4 × 1,92 ТБ; /var/lib/postgresql на md0.',
+        tags: ['hardware'],
+        target: NoteObjectTarget(NoteObjectKind.host, 'guide-removed-host'),
+        targetLabel: 'old-db-1',
+      ),
+    );
+  }
   await tester.enterText(find.byKey(const ValueKey('hosts-search')), 'staging-web');
   await settle(tester);
+  if (screen == 'notes-host') {
+    // The note count on the host card opens its notes without connecting.
+    await tapKey(tester, 'host-notes-staging-web');
+    return;
+  }
   await tapKey(tester, 'connect-staging-web');
   await tapKey(tester, 'accept-host-key');
   await tapKey(tester, 'nav-notes');
@@ -857,11 +882,60 @@ Future<void> _notesScreen(WidgetTester tester, String screen, MockBackend backen
     await tester.tap(menu.first);
     await settle(tester);
   }
-  if (screen == 'notes-editor') {
+  if (screen == 'notes-editor' || screen == 'notes-editor-save') {
     await tapKey(tester, 'notes-mode-all');
     await tester.tap(find.text(en ? 'Ask the vendor about the licence' : 'Спросить поставщика о лицензии'));
     await settle(tester);
   }
+  if (screen == 'notes-editor-save') {
+    // Typed but not saved yet: the status reads "Unsaved changes" until the
+    // autosave or Save (Cmd/Ctrl+S).
+    await tester.tap(
+      find.descendant(of: find.byKey(const ValueKey('note-preview')), matching: find.text(l10nOf(tester).notesEdit)),
+    );
+    await settle(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('note-body')),
+      en
+          ? '## Questions\n\n- How many **seats** are left?\n- Renewal price for 2027\n- Is a test licence possible?'
+          : '## Вопросы\n\n- Сколько **мест** осталось?\n- Цена продления на 2027 год\n- Можно ли тестовую лицензию?',
+    );
+    await settle(tester, steps: 3);
+  }
+  if (screen == 'notes-not-linked') {
+    await tapKey(tester, 'notes-mode-all');
+    await tester.tap(find.byKey(const ValueKey('notes-filter')));
+    await settle(tester);
+    await tester.tap(find.text(l10nOf(tester).notesFilterNotLinked(1)).last);
+    await settle(tester);
+    final menu = find.byWidgetPredicate(
+      (w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('note-menu-'),
+    );
+    await tester.tap(menu.first);
+    await settle(tester);
+  }
+}
+
+AppLocalizations l10nOf(WidgetTester tester) => lookupAppLocalizations(const Locale(_guideLanguage));
+
+/// Security close-ups: a step-up confirmation offered with Touch ID (the
+/// mock vault's simulated OS check; nothing is unlocked) and the clipboard
+/// clearing choices.
+Future<void> _securityScreen(WidgetTester tester, String screen, AppLocalizations l10n) async {
+  if (screen == 'step-up-biometric') {
+    await tapKey(tester, 'nav-databases');
+    await tapKey(tester, 'db-connection-pg');
+    await tapKey(tester, 'db-prod-unlock');
+    await tester.tap(find.text(l10n.dbMinutes(15)).last);
+    await settle(tester);
+    return;
+  }
+  await tapKey(tester, 'nav-settings');
+  await Scrollable.ensureVisible(tester.element(find.byKey(const ValueKey('clipboard-clear'))), alignment: .25);
+  await settle(tester);
+  // A plain tap: tapKey would scroll the select to the top edge.
+  await tester.tap(find.byKey(const ValueKey('clipboard-clear')));
+  await settle(tester);
 }
 
 /// Additional guide cases for 0.9.1: sign-in and vault gates, account and
@@ -1280,6 +1354,7 @@ Future<void> _enterpriseScreen(WidgetTester tester, String screen, MockBackend b
 /// schema, canned results, plan and assistant draft. Nothing leaves the test.
 Future<void> _databaseScreen(WidgetTester tester, String screen, AppLocalizations l10n) async {
   await tapKey(tester, 'nav-databases');
+  if (guideDb092Screens.contains(screen)) return _database092Screen(tester, screen, l10n);
   if (screen == 'db-connections-list') await tapKey(tester, 'db-view-list');
   if (screen == 'db-connection-form') {
     await tapKey(tester, 'db-menu-ch');
@@ -1399,6 +1474,143 @@ Future<void> _databaseScreen(WidgetTester tester, String screen, AppLocalization
       await tester.pump();
       await tapKey(tester, 'db-ai-consent-submit');
     }
+  }
+}
+
+/// 0.9.2 database screens on the mock backend: SQLite and Cassandra /
+/// ScyllaDB connections (this device only), a SQLite file tree, the table
+/// designer, row changes under the result, the record view, CSV import and
+/// the snippet picker. Nothing is run, written or read from disk.
+Future<void> _database092Screen(WidgetTester tester, String screen, AppLocalizations l10n) async {
+  final en = l10n.localeName == 'en';
+  Future<void> edit(String id) async {
+    await tapKey(tester, 'db-menu-$id');
+    await tester.tap(find.text(l10n.commonEdit).last);
+    await settle(tester);
+  }
+
+  Future<void> doubleClick(String key) async {
+    await tester.tap(find.byKey(ValueKey(key)));
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.tap(find.byKey(ValueKey(key)));
+    await settle(tester, steps: 4);
+  }
+
+  Future<void> typeCell(String key, String value) async {
+    await doubleClick(key);
+    await tester.enterText(find.byKey(const ValueKey('db-cell-editor')), value);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+  }
+
+  Future<void> query(String text) async {
+    await tester.enterText(find.byKey(const ValueKey('db-query-editor')), text);
+    await tester.pump();
+    await tapKey(tester, 'db-run');
+  }
+
+  /// shop-dev (not production); the demo session allows writes.
+  Future<void> shopDev({bool orders = true}) async {
+    await tapKey(tester, 'db-connection-pg-dev');
+    await tester.tap(find.text('public').first);
+    await settle(tester);
+    if (orders) {
+      await tester.tap(find.text('orders').first);
+      await settle(tester);
+      await query(
+        'SELECT id, customer_id, total, status, created_at\nFROM orders\nORDER BY created_at DESC\nLIMIT 100;',
+      );
+    }
+  }
+
+  switch (screen) {
+    case 'db-sqlite-connection':
+      await edit('sqlite');
+    case 'db-cassandra-connection':
+      await edit('cassandra');
+      await tester.ensureVisible(find.text(l10n.dbOptions).last);
+      await settle(tester, steps: 3);
+      await tester.tap(find.text(l10n.dbOptions).last);
+      await settle(tester);
+      await tester.ensureVisible(find.byKey(const ValueKey('db-cql-write')));
+      await settle(tester);
+    case 'db-sqlite-tree':
+      await tapKey(tester, 'db-connection-sqlite');
+      await tester.tap(find.text('inventory.db').last);
+      await settle(tester);
+      await tester.tap(find.text('items').first);
+      await settle(tester);
+      await tester.drag(find.byKey(const ValueKey('db-navigator-splitter')), const Offset(70, 0));
+      await settle(tester, steps: 3);
+      for (final folder in [l10n.dbFolderForeignKeys, l10n.dbFolderReferences, l10n.dbFolderTriggers]) {
+        await tester.tap(find.text(folder).last);
+        await settle(tester, steps: 4);
+      }
+      await query('SELECT id, sku, title, supplier_id, price\nFROM items\nORDER BY id\nLIMIT 100;');
+    case 'db-designer' || 'db-designer-save':
+      await shopDev(orders: false);
+      await tapKey(tester, 'db-design-new');
+      final designer = tester.widget<DbTableDesignerView>(find.byType(DbTableDesignerView)).designer;
+      designer.edit((d) {
+        d
+          ..name = 'invoices'
+          ..comment = en ? 'Invoices for paid orders' : 'Счета по оплаченным заказам'
+          ..columns = [
+            DbDesignColumn(name: 'id', dataType: 'bigint', nullable: false, identity: 'by_default'),
+            DbDesignColumn(name: 'order_id', dataType: 'bigint', nullable: false),
+            DbDesignColumn(name: 'number', dataType: 'varchar', length: 32, nullable: false),
+            DbDesignColumn(name: 'amount', dataType: 'numeric', length: 12, scale: 2, nullable: false),
+            DbDesignColumn(name: 'status', dataType: 'text', nullable: false, defaultValue: 'draft'),
+            DbDesignColumn(name: 'issued_at', dataType: 'timestamptz', defaultValue: 'now()'),
+          ]
+          ..primaryKey = DbDesignKey(columns: ['id'])
+          ..uniques = [
+            DbDesignKey(columns: ['number']),
+          ]
+          ..foreignKeys = [
+            DbDesignForeignKey(
+              columns: ['order_id'],
+              refSchema: 'public',
+              refTable: 'orders',
+              refColumns: ['id'],
+              onDelete: 'CASCADE',
+            ),
+          ]
+          ..indexes = [
+            DbDesignIndex(columns: ['issued_at']),
+          ];
+      });
+      await settle(tester);
+      await tester.drag(find.byKey(const ValueKey('db-navigator-splitter')), const Offset(-50, 0));
+      await settle(tester, steps: 3);
+      // The draft table and its columns show in the tree, marked new.
+      await tester.tap(find.text('invoices').first);
+      await settle(tester);
+      if (screen == 'db-designer-save') await tapKey(tester, 'db-design-save');
+    case 'db-result-toolbar':
+      await shopDev();
+      await typeCell('db-cell-1-3', 'delivered');
+      await tapKey(tester, 'db-cell-4-2');
+      await tapKey(tester, 'db-row-delete');
+      await tapKey(tester, 'db-row-add');
+      await typeCell('db-cell-8-1', '512');
+      await typeCell('db-cell-8-2', '149.90');
+    case 'db-result-record':
+      await shopDev();
+      await tapKey(tester, 'db-cell-2-3');
+      await tapKey(tester, 'db-view-record');
+    case 'db-csv-read':
+      // Step 2 of 5. The column mapping step (3) is not captured: its rows
+      // are wider than the 480 px dialog and overflow.
+      await shopDev();
+      await tapKey(tester, 'db-import');
+      await tapKey(tester, 'db-csv-choose');
+      await tapKey(tester, 'db-csv-next');
+    case 'db-snippets-picker':
+      await shopDev(orders: false);
+      await tapKey(tester, 'db-snippets');
+      await tester.enterText(find.byKey(const ValueKey('db-snippet-search')), en ? 'index' : 'индекс');
+      await settle(tester);
   }
 }
 
@@ -1563,6 +1775,53 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
     case 'notes-editor':
       expect(find.byKey(const ValueKey('note-due')), findsOneWidget);
       expect(find.byKey(const ValueKey('note-reminder')), findsOneWidget);
+    case 'notes-editor-save':
+      expect(tester.widget<Text>(find.byKey(const ValueKey('note-status'))).data, l10n.notesUnsaved);
+      expect(find.byKey(const ValueKey('note-save')), findsOneWidget);
+    case 'notes-host':
+      expect(tester.widget<GlassButton>(find.byKey(const ValueKey('host-notes-staging-web'))).label, '2');
+      expect(find.byKey(const ValueKey('notes-list')), findsOneWidget);
+      expect(find.byKey(const ValueKey('accept-host-key')), findsNothing, reason: 'choosing a host never connects');
+    case 'notes-not-linked':
+      expect(texts, contains(l10n.notesNotLinked));
+      expect(texts, contains(l10n.notesAttachTo));
+    case 'db-sqlite-connection':
+      expect(find.byKey(const ValueKey('db-sqlite-local-only')), findsOneWidget);
+      expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('db-sqlite-read-only'))).value, isTrue);
+    case 'db-cassandra-connection':
+      expect(find.byKey(const ValueKey('db-local-only')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-cql-read')), findsOneWidget);
+    case 'db-sqlite-tree':
+      for (final folder in [
+        l10n.dbFolderKeys,
+        l10n.dbFolderForeignKeys,
+        l10n.dbFolderReferences,
+        l10n.dbFolderTriggers,
+        l10n.dbFolderSequences,
+        l10n.dbFolderTableTriggers,
+        l10n.dbFolderDataTypes,
+      ]) {
+        expect(texts, contains(folder));
+      }
+      expect(find.byKey(const ValueKey('db-result-grid')), findsOneWidget);
+    case 'db-designer':
+      expect(find.byKey(const ValueKey('db-design-save')), findsOneWidget);
+    case 'db-designer-save':
+      expect(find.byKey(const ValueKey('db-design-save-dialog')), findsOneWidget);
+      expect(find.byKey(const ValueKey('db-design-transaction-note')), findsOneWidget);
+    case 'db-result-toolbar':
+      expect(find.byKey(const ValueKey('db-result-toolbar')), findsOneWidget);
+      expect(texts, contains(l10n.dbPendingChanges(3)));
+    case 'db-result-record':
+      expect(find.byKey(const ValueKey('db-result-record')), findsOneWidget);
+    case 'db-csv-read':
+      expect(find.byKey(const ValueKey('db-csv-preview')), findsOneWidget);
+    case 'db-snippets-picker':
+      expect(find.byKey(const ValueKey('db-snippet-picker')), findsOneWidget);
+    case 'step-up-biometric':
+      expect(find.byKey(const ValueKey('step-up-presence')), findsOneWidget);
+    case 'clipboard-settings':
+      expect(texts, contains(l10n.settingsClearClipboardDays(1)));
     case 'enterprise-login-sso':
       expect(find.byKey(const ValueKey('corporate-auth-notice')), findsOneWidget);
       expect(find.byKey(const ValueKey('oidc-login-hint')), findsOneWidget);

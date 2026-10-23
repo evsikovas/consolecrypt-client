@@ -53,6 +53,14 @@ void main() {
             return allowed;
           });
           addTearDown(() => messenger.setMockMethodCallHandler(captureChannel, null));
+          // The Android clipboard preference (clear in the background, on by
+          // default) is a native device setting; nothing is copied here.
+          const clipboardChannel = MethodChannel('consolecrypt/clipboard');
+          messenger.setMockMethodCallHandler(
+            clipboardChannel,
+            (call) async => call.method == 'getBackgroundClear' ? true : null,
+          );
+          addTearDown(() => messenger.setMockMethodCallHandler(clipboardChannel, null));
         }
         tester.view.physicalSize = const Size(412, 915);
         tester.view.devicePixelRatio = 1;
@@ -109,6 +117,17 @@ void main() {
           await settle();
           await tester.ensureVisible(find.byKey(const ValueKey('screen-capture-settings')));
           if (_guide) {
+            // Clipboard clearing, the Android background option and the
+            // screenshot switch together.
+            await Scrollable.ensureVisible(
+              tester.element(find.byKey(const ValueKey('clipboard-clear'))),
+              alignment: .05,
+            );
+            await settle();
+            expect(
+              tester.widget<SwitchListTile>(find.byKey(const ValueKey('clipboard-background-clear'))).value,
+              isTrue,
+            );
             await settle();
             final toggle = find.byKey(const ValueKey('screen-capture-switch'));
             expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
