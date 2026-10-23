@@ -1003,6 +1003,7 @@ class _DbCsvImportDialogState extends ConsumerState<DbCsvImportDialog> {
     };
     return GlassDialog(
       key: const ValueKey('db-csv-dialog'),
+      width: 900,
       title: l.dbCsvTitle(widget.table.name),
       content: SizedBox(
         width: 900,

@@ -8140,7 +8140,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbProductionHelp =>
-      'Production connections open read-only. “Unlock production” in the workspace allows writes for 5–30 minutes after the vault passphrase and the connection name; every change is still reviewed. Prefer a database account with read-only privileges for everyday work.';
+      'Production connections open read-only. “Unlock production” in the workspace allows writes for 5–30 minutes after confirming with the vault passphrase (or biometrics); every change is still reviewed. Prefer a database account with read-only privileges for everyday work.';
 
   @override
   String get dbProd => 'PROD';
