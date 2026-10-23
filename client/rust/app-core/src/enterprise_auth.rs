@@ -198,7 +198,11 @@ pub(crate) fn callback_error(code: &str, description: &str) -> AppError {
         .take(200)
         .collect();
     match serde_json::from_value::<ErrorCode>(serde_json::Value::String(code.to_owned())) {
-        Ok(ErrorCode::RateLimited) => ApiError::RateLimited { retry_after: None }.into(),
+        Ok(ErrorCode::RateLimited) => ApiError::RateLimited {
+            retry_after: None,
+            limit: None,
+        }
+        .into(),
         Ok(code) => ApiError::Server {
             status: code.http_status(),
             error: Box::new(cc_protocol::ApiError::new(code, message)),

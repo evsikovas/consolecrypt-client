@@ -33,6 +33,19 @@ impl AppCore {
         Ok((&report).into())
     }
 
+    /// Put changes the server rejected for good (e.g. after a vault object
+    /// limit, protocol 1.11, once the user has cleaned up) back into the
+    /// outbox; the running worker pushes them right away. Returns how many
+    /// were re-queued.
+    pub async fn sync_retry_failed(&self) -> AppResult<u64> {
+        let (s, u) = self.unlocked().await?;
+        if s.kind().await? == ProfileKind::Local {
+            return Err(AppError::LocalProfile);
+        }
+        let engine = s.start_engine(&u, false).await?;
+        Ok(engine.retry_failed().await? as u64)
+    }
+
     /// Start the background engine + WebSocket events (no-op if running).
     pub async fn start_background_sync(&self) -> AppResult<()> {
         let (s, u) = self.unlocked().await?;

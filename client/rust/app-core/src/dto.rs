@@ -1213,6 +1213,23 @@ pub struct SyncStatusDto {
     pub last_sequence: i64,
     pub server_latest_sequence: i64,
     pub next_retry_in_ms: Option<u64>,
+    /// When the next automatic retry is due (absolute; protocol 1.11 rate
+    /// limits can be minutes or hours away).
+    pub next_retry_at_ms: Option<i64>,
+    /// The last attempt was refused with `429`: waiting for `Retry-After`.
+    pub rate_limited: bool,
+    /// Pushes refused for a vault quota; those changes are `failed` until
+    /// `sync_retry_failed`.
+    pub push_quota: Option<SyncQuotaDto>,
+}
+
+/// A vault quota the server refused pushes for (protocol 1.11).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SyncQuotaDto {
+    /// `object_limit` | `vault_quota` (unknown values pass through).
+    pub reason: String,
+    /// Objects (`object_limit`) or bytes (`vault_quota`).
+    pub limit: Option<u64>,
 }
 
 impl SyncStatusDto {
@@ -1232,6 +1249,9 @@ impl SyncStatusDto {
             last_sequence: 0,
             server_latest_sequence: 0,
             next_retry_in_ms: None,
+            next_retry_at_ms: None,
+            rate_limited: false,
+            push_quota: None,
         }
     }
 
@@ -1254,6 +1274,12 @@ impl SyncStatusDto {
             last_sequence: s.last_sequence,
             server_latest_sequence: s.server_latest_sequence,
             next_retry_in_ms: s.next_retry_in.map(|d| d.as_millis() as u64),
+            next_retry_at_ms: opt_ms(&s.next_retry_at),
+            rate_limited: s.rate_limited,
+            push_quota: s.push_quota.as_ref().map(|q| SyncQuotaDto {
+                reason: q.reason.clone(),
+                limit: q.limit,
+            }),
         }
     }
 }

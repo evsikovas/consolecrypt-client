@@ -48,7 +48,8 @@ enum AppErrorCode {
   /// Server `Forbidden`.
   forbidden,
 
-  /// Server `RateLimited` (`args['retry_after_seconds']` when known).
+  /// Server `RateLimited` (`args['retry_after_seconds']` when known;
+  /// protocol 1.11: `args['limit']` names the server limit).
   rateLimited,
 
   /// Server `PayloadTooLarge`.
@@ -175,7 +176,23 @@ enum AppErrorReason {
   enterpriseSignInTimeout('enterprise_sign_in_timeout'),
 
   /// The system browser / redirect listener could not be used.
-  enterpriseBrowserUnavailable('enterprise_browser_unavailable');
+  enterpriseBrowserUnavailable('enterprise_browser_unavailable'),
+
+  /// Protocol 1.11 quota (`413`): the vault would hold more than
+  /// `args['limit']` objects.
+  objectLimit('object_limit'),
+
+  /// Protocol 1.11 quota (`413`): the vault's server storage
+  /// (`args['limit']` bytes) is full.
+  vaultQuota('vault_quota'),
+
+  /// Protocol 1.11 quota at sign-in (`403`): the account already has
+  /// `args['limit']` devices.
+  deviceLimit('device_limit'),
+
+  /// Protocol 1.11 quota at sign-in (`403`): too many new devices in 24 h;
+  /// `args['until_ms']` is when the next one is accepted.
+  deviceDailyLimit('device_daily_limit');
 
   const AppErrorReason(this.wireName);
 

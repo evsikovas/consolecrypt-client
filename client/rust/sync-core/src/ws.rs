@@ -1,7 +1,8 @@
 //! Realtime events: WebSocket client for `GET /v1/events/ws` (rustls,
 //! platform certificate verifier) with Bearer auth, a device proof on the
 //! upgrade request (protocol 1.5, when the [`ApiClient`] has a signer),
-//! token refresh on `401`, keep-alive pings and reconnect with backoff.
+//! token refresh on `401`, keep-alive pings and reconnect with backoff
+//! (never earlier than a `429`'s `Retry-After`, protocol 1.11).
 //! Events are hints; the [`crate::SyncEngine`] pulls after `vault_changed`.
 
 use crate::api::{ApiClient, ApiError, ProofRejection};
@@ -71,9 +72,27 @@ pub struct EventStream {
     task: JoinHandle<()>,
 }
 
+#[derive(Debug)]
 enum ConnectError {
     Retry(String),
+    /// `429 rate_limited` (e.g. `ws_connect_account`, `ws_connections`):
+    /// reconnect no earlier than `after`.
+    RateLimited {
+        after: Option<Duration>,
+        limit: Option<String>,
+    },
     Terminal(StopReason),
+}
+
+#[cfg(test)]
+impl ConnectError {
+    /// Server-requested minimum delay before the next attempt.
+    fn retry_after(&self) -> Option<Duration> {
+        match self {
+            ConnectError::RateLimited { after, .. } => *after,
+            _ => None,
+        }
+    }
 }
 
 enum PumpEnd {
@@ -128,6 +147,7 @@ async fn run(
             return;
         }
         let mut reconnect_now = false;
+        let mut retry_after = None;
         match connect(&api).await {
             Ok(ws) => {
                 attempt = 0;
@@ -160,6 +180,12 @@ async fn run(
                                 None
                             }
                             Err(ConnectError::Terminal(r)) => Some(r),
+                            // Throttled after authentication: the session
+                            // is alive; reconnect when the server allows.
+                            Err(ConnectError::RateLimited { after, .. }) => {
+                                retry_after = after;
+                                None
+                            }
                             Err(ConnectError::Retry(_)) => Some(StopReason::ReauthRequired),
                         };
                         if let Some(reason) = reason {
@@ -178,12 +204,23 @@ async fn run(
             Err(ConnectError::Retry(reason)) => {
                 let _ = tx.send(WsEvent::Disconnected { reason });
             }
+            Err(ConnectError::RateLimited { after, limit }) => {
+                retry_after = after;
+                tracing::info!(
+                    retry_after_s = retry_after.map(|d| d.as_secs()),
+                    limit = limit.as_deref().unwrap_or("-"),
+                    "event stream rate limited"
+                );
+                let _ = tx.send(WsEvent::Disconnected {
+                    reason: "rate limited".into(),
+                });
+            }
         }
         if reconnect_now {
             continue;
         }
         attempt = attempt.saturating_add(1);
-        let delay = cfg.backoff.delay(attempt, None);
+        let delay = reconnect_delay(&cfg.backoff, attempt, retry_after);
         tokio::select! {
             _ = tokio::time::sleep(delay) => {}
             r = shutdown.changed() => {
@@ -193,8 +230,50 @@ async fn run(
     }
 }
 
+/// Delay before reconnect attempt `attempt`: exponential backoff with
+/// jitter, never shorter than the server's `Retry-After`.
+fn reconnect_delay(
+    backoff: &BackoffConfig,
+    attempt: u32,
+    retry_after: Option<Duration>,
+) -> Duration {
+    backoff.delay(attempt, retry_after)
+}
+
+/// A `429` answer to the upgrade request → [`ConnectError::RateLimited`]
+/// with the delay from `retry_after_seconds` (body) or `Retry-After`.
+fn rate_limited(resp: &tungstenite::http::Response<Option<Vec<u8>>>) -> ConnectError {
+    let error = resp
+        .body()
+        .as_ref()
+        .and_then(|b| serde_json::from_slice::<cc_protocol::ApiError>(b).ok());
+    let header = resp
+        .headers()
+        .get(tungstenite::http::header::RETRY_AFTER)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .map(Duration::from_secs);
+    let after = error
+        .as_ref()
+        .and_then(|e| e.retry_after_seconds)
+        .map(|s| Duration::from_secs(u64::from(s)))
+        .or(header);
+    let limit = error
+        .as_ref()
+        .and_then(|e| e.details.as_ref())
+        .and_then(|d| d.get("limit"))
+        .and_then(|l| l.as_str())
+        .filter(|l| crate::api::is_limit_name(l))
+        .map(str::to_owned);
+    ConnectError::RateLimited { after, limit }
+}
+
 fn classify_api(e: ApiError) -> ConnectError {
     match e {
+        ApiError::RateLimited { retry_after, limit } => ConnectError::RateLimited {
+            after: retry_after,
+            limit,
+        },
         ApiError::DeviceRevoked => ConnectError::Terminal(StopReason::DeviceRevoked),
         ApiError::AccountDisabled => ConnectError::Terminal(StopReason::AccountDisabled),
         ApiError::UpgradeRequired { .. } => ConnectError::Terminal(StopReason::UpgradeRequired),
@@ -308,6 +387,7 @@ async fn connect(api: &ApiClient) -> Result<Ws, ConnectError> {
                         return Err(ConnectError::Terminal(StopReason::AccountDisabled))
                     }
                     (426, _) => return Err(ConnectError::Terminal(StopReason::UpgradeRequired)),
+                    (429, _) => return Err(rate_limited(&resp)),
                     _ => {
                         return Err(ConnectError::Retry(format!(
                             "websocket upgrade refused ({status})"
@@ -380,5 +460,85 @@ async fn pump(
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tungstenite::http::Response;
+
+    fn response(
+        retry_after_header: Option<&str>,
+        body: Option<serde_json::Value>,
+    ) -> Response<Option<Vec<u8>>> {
+        let mut b = Response::builder().status(429);
+        if let Some(v) = retry_after_header {
+            b = b.header("retry-after", v);
+        }
+        b.body(body.map(|j| serde_json::to_vec(&j).unwrap()))
+            .unwrap()
+    }
+
+    fn after_of(e: &ConnectError) -> Option<Duration> {
+        assert!(matches!(e, ConnectError::RateLimited { .. }), "{e:?}");
+        e.retry_after()
+    }
+
+    #[test]
+    fn upgrade_429_reads_retry_after_from_body_then_header() {
+        let body = serde_json::json!({
+            "code": "rate_limited",
+            "message": "too many requests",
+            "retry_after_seconds": 120,
+            "details": { "limit": "ws_connect_account" }
+        });
+        let e = rate_limited(&response(Some("7"), Some(body)));
+        assert_eq!(after_of(&e), Some(Duration::from_secs(120)));
+        let ConnectError::RateLimited { limit, .. } = e else {
+            unreachable!()
+        };
+        assert_eq!(limit.as_deref(), Some("ws_connect_account"));
+
+        // Header only (no or unparsable body).
+        let e = rate_limited(&response(Some("45"), None));
+        assert_eq!(after_of(&e), Some(Duration::from_secs(45)));
+        let e = rate_limited(&response(Some(" 9 "), Some(serde_json::json!("garbage"))));
+        assert_eq!(after_of(&e), Some(Duration::from_secs(9)));
+
+        // Nothing usable: plain backoff.
+        let e = rate_limited(&response(Some("Wed, 21 Oct 2026 07:28:00 GMT"), None));
+        assert_eq!(after_of(&e), None);
+    }
+
+    #[test]
+    fn rate_limited_token_refresh_keeps_its_delay() {
+        let e = classify_api(ApiError::RateLimited {
+            retry_after: Some(Duration::from_secs(30)),
+            limit: Some("auth_ip".into()),
+        });
+        assert_eq!(after_of(&e), Some(Duration::from_secs(30)));
+        assert!(matches!(
+            classify_api(ApiError::Network("down".into())),
+            ConnectError::Retry(_)
+        ));
+    }
+
+    #[test]
+    fn reconnect_waits_at_least_retry_after() {
+        let backoff = EventStreamConfig::default().backoff;
+        for attempt in [1, 2, 5, 30] {
+            // Longer than the backoff cap: exactly Retry-After.
+            assert_eq!(
+                reconnect_delay(&backoff, attempt, Some(Duration::from_secs(600))),
+                Duration::from_secs(600)
+            );
+            // Never below Retry-After, never above the cap without one.
+            let d = reconnect_delay(&backoff, attempt, Some(Duration::from_secs(3)));
+            assert!(d >= Duration::from_secs(3), "{d:?}");
+            assert!(reconnect_delay(&backoff, attempt, None) <= backoff.max);
+        }
+        // Without Retry-After the first attempt is quick.
+        assert!(reconnect_delay(&backoff, 1, None) <= Duration::from_secs(1));
     }
 }

@@ -1,4 +1,5 @@
 import 'package:consolecrypt/core/glass/glass.dart';
+import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/sharing/enrollment_models.dart';
@@ -23,7 +24,9 @@ class _EnrollmentOwnerDialogState extends ConsumerState<EnrollmentOwnerDialog> {
   late final Object? _scope;
   List<EnrollmentGrant> _grants = [];
   List<EnrollmentRequest> _requests = [];
-  bool _busy = false, _failed = false;
+  bool _busy = false;
+  Object? _failure;
+  bool get _failed => _failure != null;
   @override
   void initState() {
     super.initState();
@@ -35,7 +38,7 @@ class _EnrollmentOwnerDialogState extends ConsumerState<EnrollmentOwnerDialog> {
     if (!sharingSessionCurrent(ref, _scope)) return;
     setState(() {
       _busy = true;
-      _failed = false;
+      _failure = null;
     });
     try {
       final service = ref.read(enrollmentServiceProvider);
@@ -47,8 +50,8 @@ class _EnrollmentOwnerDialogState extends ConsumerState<EnrollmentOwnerDialog> {
         _grants = grants;
         _requests = requests;
       });
-    } catch (_) {
-      if (mounted) setState(() => _failed = true);
+    } catch (e) {
+      if (mounted) setState(() => _failure = e);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -125,7 +128,7 @@ class _EnrollmentOwnerDialogState extends ConsumerState<EnrollmentOwnerDialog> {
                   Text(l.enrollmentHelp),
                   if (_busy) const LinearProgressIndicator(),
                   if (_failed) ...[
-                    Text(l.enrollmentBlocked),
+                    Text(rateLimitedMessage(l, _failure) ?? l.enrollmentBlocked),
                     GlassButton(
                       label: l.sharingReconcile,
                       icon: Icons.verified_user_outlined,

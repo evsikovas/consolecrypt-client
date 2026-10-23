@@ -17604,5 +17604,71 @@
   "snippetDbCqlInsertJsonNote": "INSERT … JSON maps JSON fields to columns of any type; the row expires after the TTL.",
   "@snippetDbCqlInsertJsonNote": {
     "description": "Snippet library: note of the cql.insert_json database starter snippet"
+  },
+  "syncStateThrottled": "The server temporarily limited sync; resuming at {time}",
+  "@syncStateThrottled": {
+    "description": "Sync indicator and status when the server rate-limited this account for more than a minute; {time} is when sync resumes (HH:MM, with the date if not today).",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "syncScreenStateThrottled": "paused by the server",
+  "@syncScreenStateThrottled": {
+    "description": "Sync page, value of the State field: the server temporarily limited requests (lower-case)."
+  },
+  "syncScreenThrottledBody": "The server received too many requests from this account. Changes stay on this device and are sent automatically — nothing is lost.",
+  "@syncScreenThrottledBody": {
+    "description": "Sync page banner body under the 'resuming at' title when the server rate-limited sync."
+  },
+  "syncScreenRejectedTitle": "Changes not accepted by the server",
+  "@syncScreenRejectedTitle": {
+    "description": "Sync page section title for changes the server rejected for good (they stay on this device)."
+  },
+  "syncScreenRejectedBody": "{count, plural, =1{1 change was not accepted by the server. It is kept on this device; choose Retry once the problem is fixed.} other{{count} changes were not accepted by the server. They are kept on this device; choose Retry once the problem is fixed.}}",
+  "@syncScreenRejectedBody": {
+    "description": "Sync page: number of changes the server rejected for a reason other than a vault quota.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "errorObjectLimit": "The vault has too many objects (limit {limit}). Delete items you no longer need, then choose Retry.",
+  "@errorObjectLimit": {
+    "description": "Error/sync page: the server's per-vault object limit was reached; {limit} is the formatted number of objects.",
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "errorVaultQuota": "The vault has used up its server storage (limit {size}). Delete items you no longer need, then choose Retry.",
+  "@errorVaultQuota": {
+    "description": "Error/sync page: the server's per-vault storage quota was reached; {size} is a formatted size such as 100 MiB.",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "errorDeviceLimit": "Device limit ({limit}) reached — revoke devices you no longer use, then sign in again.",
+  "@errorDeviceLimit": {
+    "description": "Sign-in error: the account already has the maximum number of active devices; {limit} is that number.",
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "errorDeviceDailyLimit": "Too many new devices today. Try again after {time}.",
+  "@errorDeviceDailyLimit": {
+    "description": "Sign-in error: too many new devices were added to the account in 24 hours; {time} is a formatted date and time.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
   }
 }

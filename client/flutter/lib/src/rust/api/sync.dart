@@ -15,6 +15,10 @@ Future<String> syncStatus() => RustLib.instance.api.crateApiSyncSyncStatus();
 /// Push the outbox and pull now → `SyncReportDto`.
 Future<String> syncNow() => RustLib.instance.api.crateApiSyncSyncNow();
 
+/// Re-queue changes the server rejected for good (e.g. after a vault
+/// object limit, once cleaned up) → how many were re-queued.
+Future<int> syncRetryFailed() => RustLib.instance.api.crateApiSyncSyncRetryFailed();
+
 /// Local → Synced (register or log in, upload the vault) → `ProfileInfo`.
 Future<String> syncEnable({
   required String serverUrl,

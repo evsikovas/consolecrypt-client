@@ -21,7 +21,9 @@
 /// | PayloadTooLarge | payloadTooLarge |
 /// | InvalidProof | invalidProof |
 /// | UpgradeRequired | incompatibleServer |
-/// | RateLimited | rateLimited (`args.retry_after_seconds`) |
+/// | RateLimited | rateLimited (`args.retry_after_seconds`, 1.11: `args.limit`) |
+/// | PayloadTooLarge + `object_limit` / `vault_quota` (1.11) | payloadTooLarge + reason (`args.limit`) |
+/// | Forbidden + `device_limit` / `device_daily_limit` (1.11) | forbidden + reason (`args.limit`, `args.until_ms`) |
 /// | DeviceInQuarantine (1.7) | deviceInQuarantine (`args.until_ms`) |
 /// | EnvelopeRateLimited (1.7) | envelopeRateLimited (`args.retry_after_seconds`) |
 /// | Internal | internal |
@@ -46,6 +48,18 @@ String errorMessage(AppLocalizations l, Object error) => switch (error) {
   AppException() => _reasonMessage(l, error) ?? errorCodeMessage(l, error.code, args: error.args),
   ValidationError() => validationMessage(l, error.field, error.reason),
   _ => l.errorUnknown,
+};
+
+/// The "too many attempts, try again in N s" text for a rate-limited
+/// request (protocol 1.11), or `null` for any other error. For dialogs that
+/// otherwise show their own generic failure text.
+String? rateLimitedMessage(AppLocalizations l, Object? error) => switch (error) {
+  AppException(code: AppErrorCode.rateLimited, :final args) => errorCodeMessage(
+    l,
+    AppErrorCode.rateLimited,
+    args: args,
+  ),
+  _ => null,
 };
 
 /// Code-level text (used when no specific reason is known).
@@ -167,6 +181,22 @@ String? _reasonMessage(AppLocalizations l, AppException e) {
     AppErrorReason.enterpriseCallbackInvalid => l.errorReasonEnterpriseCallbackInvalid,
     AppErrorReason.enterpriseSignInTimeout => l.errorReasonEnterpriseSignInTimeout,
     AppErrorReason.enterpriseBrowserUnavailable => l.errorReasonEnterpriseBrowserUnavailable,
+    AppErrorReason.objectLimit => switch (int.tryParse(args['limit'] ?? '')) {
+      final n? => l.errorObjectLimit(formatCount(l, n)),
+      _ => null,
+    },
+    AppErrorReason.vaultQuota => switch (int.tryParse(args['limit'] ?? '')) {
+      final n? => l.errorVaultQuota(formatBytes(l, n)),
+      _ => null,
+    },
+    AppErrorReason.deviceLimit => switch (int.tryParse(args['limit'] ?? '')) {
+      final n? => l.errorDeviceLimit(formatCount(l, n)),
+      _ => null,
+    },
+    AppErrorReason.deviceDailyLimit => switch (int.tryParse(args['until_ms'] ?? '')) {
+      final ms? => l.errorDeviceDailyLimit(formatDateTime(l, DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true))),
+      _ => null,
+    },
   };
 }
 

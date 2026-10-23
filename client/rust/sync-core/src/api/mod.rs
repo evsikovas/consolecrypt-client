@@ -22,7 +22,7 @@ pub(crate) mod signer;
 mod teams;
 mod tokens;
 
-pub use error::ApiError;
+pub use error::{quota, ApiError, QuotaRefusal};
 pub use sharing::{ShareKinds, SharingApi};
 pub use sharing_enrollment::OwnDeviceEnrollmentApi;
 pub use signer::{ProofRejection, RequestSigner, SignerError};
@@ -1183,12 +1183,28 @@ pub(crate) fn map_error(raw: &Raw) -> ApiError {
                 .retry_after_seconds
                 .map(|s| Duration::from_secs(u64::from(s)))
                 .or(header_retry),
+            limit: err
+                .details
+                .as_ref()
+                .and_then(|d| d.get("limit"))
+                .and_then(|l| l.as_str())
+                .filter(|l| is_limit_name(l))
+                .map(str::to_owned),
         },
         _ => ApiError::Server {
             status,
             error: Box::new(err),
         },
     }
+}
+
+/// A `details.limit` name worth passing on: short snake_case ASCII.
+pub(crate) fn is_limit_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 64
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
 }
 
 fn code_for_status(status: u16) -> ErrorCode {
@@ -1307,5 +1323,139 @@ mod response_limit_tests {
         .await;
         let resp = client.get(url).send().await.unwrap();
         assert_eq!(read_body(resp, limit).await.unwrap().len(), limit);
+    }
+}
+
+#[cfg(test)]
+mod quota_error_tests {
+    use super::*;
+    use crate::api::error::quota;
+
+    fn raw(status: u16, retry_after_header: Option<&str>, body: serde_json::Value) -> Raw {
+        let mut headers = HeaderMap::new();
+        if let Some(v) = retry_after_header {
+            headers.insert(RETRY_AFTER, HeaderValue::from_str(v).unwrap());
+        }
+        Raw {
+            status: StatusCode::from_u16(status).unwrap(),
+            headers,
+            body: bytes::Bytes::from(serde_json::to_vec(&body).unwrap()),
+        }
+    }
+
+    #[test]
+    fn rate_limited_carries_retry_after_and_limit_name() {
+        let e = map_error(&raw(
+            429,
+            Some("30"),
+            serde_json::json!({
+                "code": "rate_limited",
+                "message": "too many requests",
+                "retry_after_seconds": 90,
+                "details": { "limit": "push_device" }
+            }),
+        ));
+        assert!(matches!(e, ApiError::RateLimited { .. }));
+        // The body wins over the header.
+        assert_eq!(e.retry_after(), Some(Duration::from_secs(90)));
+        assert_eq!(e.rate_limit_name(), Some("push_device"));
+        assert!(e.is_retryable());
+
+        // Header only, unknown and hostile limit names.
+        let e = map_error(&raw(
+            429,
+            Some("12"),
+            serde_json::json!({
+                "code": "rate_limited",
+                "message": "slow down",
+                "details": { "limit": "Push Device\n<b>" }
+            }),
+        ));
+        assert_eq!(e.retry_after(), Some(Duration::from_secs(12)));
+        assert_eq!(e.rate_limit_name(), None);
+        let e = map_error(&raw(
+            429,
+            None,
+            serde_json::json!({
+                "code": "rate_limited",
+                "message": "slow down",
+                "retry_after_seconds": 5,
+                "details": { "limit": "something_new_2" }
+            }),
+        ));
+        assert_eq!(e.rate_limit_name(), Some("something_new_2"));
+    }
+
+    #[test]
+    fn quota_refusals_are_parsed_from_details() {
+        let e = map_error(&raw(
+            413,
+            None,
+            serde_json::json!({
+                "code": "payload_too_large",
+                "message": "vault object limit reached",
+                "details": { "reason": "object_limit", "limit": 5000 }
+            }),
+        ));
+        let q = e.quota().expect("object limit");
+        assert_eq!(q.reason, quota::OBJECT_LIMIT);
+        assert_eq!(q.limit, Some(5000));
+        assert_eq!(
+            q.to_string(),
+            "vault object limit reached (limit 5000 objects)"
+        );
+        assert!(!e.is_retryable());
+
+        let e = map_error(&raw(
+            413,
+            None,
+            serde_json::json!({
+                "code": "payload_too_large",
+                "message": "vault storage quota exceeded",
+                "details": { "reason": "vault_quota", "limit_bytes": 1048576 }
+            }),
+        ));
+        assert_eq!(e.quota().unwrap().limit, Some(1_048_576));
+
+        let e = map_error(&raw(
+            403,
+            None,
+            serde_json::json!({
+                "code": "forbidden",
+                "message": "device limit reached for this account",
+                "details": { "reason": "device_limit", "limit": 10 }
+            }),
+        ));
+        let q = e.quota().unwrap();
+        assert_eq!(
+            (q.reason.as_str(), q.limit),
+            (quota::DEVICE_LIMIT, Some(10))
+        );
+
+        let e = map_error(&raw(
+            403,
+            None,
+            serde_json::json!({
+                "code": "forbidden",
+                "message": "too many new devices for this account today",
+                "details": {
+                    "reason": "device_daily_limit",
+                    "limit": 3,
+                    "until": "2026-10-24T08:30:00Z"
+                }
+            }),
+        ));
+        let q = e.quota().unwrap();
+        assert_eq!(q.reason, quota::DEVICE_DAILY_LIMIT);
+        assert_eq!(q.until.unwrap().timestamp(), 1_792_830_600);
+
+        // Other refusals are not quotas.
+        for body in [
+            serde_json::json!({"code": "forbidden", "message": "x", "details": {"reason": "team_role"}}),
+            serde_json::json!({"code": "payload_too_large", "message": "body too large"}),
+            serde_json::json!({"code": "bad_request", "message": "x", "details": {"reason": "object_limit"}}),
+        ] {
+            assert_eq!(map_error(&raw(413, None, body)).quota(), None);
+        }
     }
 }

@@ -536,6 +536,12 @@ SyncPresentation describeSyncStatus(SyncStatus status, AppLocalizations l10n) =>
     label: status.pendingChanges > 0 ? l10n.syncStateOfflinePending(status.pendingChanges) : l10n.syncStateOffline,
     pulsing: false,
   ),
+  SyncState.throttled => (
+    icon: Icons.hourglass_top_rounded,
+    tone: GlassTone.warning,
+    label: l10n.syncStateThrottled(formatClock(l10n, status.nextRetryAt ?? DateTime.now())),
+    pulsing: false,
+  ),
   SyncState.error => (
     icon: Icons.sync_problem_rounded,
     tone: GlassTone.danger,

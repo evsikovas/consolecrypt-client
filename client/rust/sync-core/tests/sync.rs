@@ -802,7 +802,7 @@ async fn rate_limit_and_server_errors_back_off_then_recover() {
     );
     let err = a.engine.sync_now().await.unwrap_err();
     match &err {
-        SyncError::Api(ApiError::RateLimited { retry_after }) => {
+        SyncError::Api(ApiError::RateLimited { retry_after, .. }) => {
             assert_eq!(*retry_after, Some(Duration::from_secs(1)))
         }
         e => panic!("{e}"),
@@ -914,4 +914,124 @@ async fn gone_cursor_triggers_resnapshot() {
     assert!(evs
         .iter()
         .any(|e| matches!(e, SyncEvent::SnapshotCompleted { .. })));
+}
+
+fn quota_error(code: ErrorCode, details: serde_json::Value) -> FaultAction {
+    FaultAction::Respond(Box::new(
+        cc_protocol::ApiError::new(code, "quota").with_details(details),
+    ))
+}
+
+#[tokio::test]
+async fn object_limit_fails_mutations_until_retried() {
+    let server = MockServer::start().await;
+    let (a, _b, vault) = two_devices(&server).await;
+    let first = host("first", "10.0.0.1");
+    let second = host("second", "10.0.0.2");
+    a.engine
+        .put(p(VaultObject::Host(first.clone())))
+        .await
+        .unwrap();
+    a.engine
+        .put(p(VaultObject::Host(second.clone())))
+        .await
+        .unwrap();
+    // The batch and both isolated retries are refused.
+    server.inject(
+        paths::SYNC_PUSH,
+        3,
+        quota_error(
+            ErrorCode::PayloadTooLarge,
+            serde_json::json!({ "reason": "object_limit", "limit": 2 }),
+        ),
+    );
+    let report = sync_ok(&a.engine).await;
+    assert_eq!(report.failed, 2);
+    let st = a.engine.status();
+    assert_eq!((st.pending, st.failed), (0, 2));
+    let q = st.push_quota.expect("object limit surfaced");
+    assert_eq!((q.reason.as_str(), q.limit), (quota::OBJECT_LIMIT, Some(2)));
+    assert!(!st.rate_limited);
+    assert!(server.live_objects(vault.vault_id).is_empty());
+
+    // After cleanup the user retries: everything goes through.
+    assert_eq!(a.engine.retry_failed().await.unwrap(), 2);
+    let st = a.engine.status();
+    assert_eq!((st.pending, st.failed, st.push_quota), (2, 0, None));
+    sync_ok(&a.engine).await;
+    assert_eq!(a.engine.status().failed, 0);
+    assert_eq!(server.live_objects(vault.vault_id).len(), 2);
+    assert_eq!(a.engine.retry_failed().await.unwrap(), 0);
+}
+
+#[tokio::test]
+async fn rate_limited_push_waits_for_retry_after_and_fails_nothing() {
+    let server = MockServer::start().await;
+    let (a, _b, _vault) = two_devices(&server).await;
+    a.engine
+        .put(p(VaultObject::Host(host("x", "10.0.0.1"))))
+        .await
+        .unwrap();
+    let mut limited = cc_protocol::ApiError::new(ErrorCode::RateLimited, "too many requests")
+        .with_details(serde_json::json!({ "limit": "push_device" }));
+    limited.retry_after_seconds = Some(600);
+    server.inject(paths::SYNC_PUSH, 2, FaultAction::Respond(Box::new(limited)));
+    let err = a.engine.sync_now().await.unwrap_err();
+    match &err {
+        SyncError::Api(e @ ApiError::RateLimited { .. }) => {
+            assert_eq!(e.rate_limit_name(), Some("push_device"));
+            assert_eq!(e.retry_after(), Some(Duration::from_secs(600)));
+        }
+        e => panic!("{e}"),
+    }
+    let st = a.engine.status();
+    assert!(st.rate_limited);
+    assert_eq!((st.pending, st.failed), (1, 0), "429 never fails mutations");
+
+    // The worker schedules the retry no earlier than Retry-After.
+    let before = chrono::Utc::now();
+    a.engine.start();
+    eventually(5, || async { a.engine.status().next_retry_in.is_some() }).await;
+    let st = a.engine.status();
+    assert!(st.rate_limited);
+    assert!(st.next_retry_in.unwrap() >= Duration::from_secs(600));
+    assert!(st.next_retry_at.unwrap() >= before + chrono::Duration::seconds(600));
+    assert_eq!((st.pending, st.failed), (1, 0));
+    a.engine.stop().await;
+}
+
+#[tokio::test]
+async fn websocket_reconnect_honours_retry_after() {
+    let server = MockServer::start().await;
+    let (_a, b, _vault) = two_devices(&server).await;
+    let mut limited = cc_protocol::ApiError::new(ErrorCode::RateLimited, "too many requests")
+        .with_details(serde_json::json!({ "limit": "ws_connect_account" }));
+    limited.retry_after_seconds = Some(2);
+    server.inject(paths::EVENTS_WS, 1, FaultAction::Respond(Box::new(limited)));
+    let mut cfg = EventStreamConfig::default();
+    cfg.backoff.initial = Duration::from_millis(10);
+    cfg.backoff.max = Duration::from_millis(50);
+    let started = tokio::time::Instant::now();
+    let events = EventStream::spawn(b.api.clone(), cfg);
+    let mut rx = events.subscribe();
+    tokio::time::timeout(Duration::from_secs(10), async {
+        let mut limited = false;
+        loop {
+            match rx.recv().await.unwrap() {
+                WsEvent::Disconnected { reason } if reason == "rate limited" => limited = true,
+                WsEvent::Event(cc_protocol::events::ServerEvent::Hello { .. }) => break,
+                WsEvent::Terminated { reason } => panic!("terminated: {reason}"),
+                _ => {}
+            }
+        }
+        assert!(limited, "first upgrade was refused with 429");
+    })
+    .await
+    .unwrap();
+    assert!(
+        started.elapsed() >= Duration::from_millis(1900),
+        "reconnected after {:?}, before Retry-After",
+        started.elapsed()
+    );
+    events.shutdown().await;
 }

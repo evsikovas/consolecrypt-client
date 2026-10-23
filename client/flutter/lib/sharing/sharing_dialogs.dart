@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:consolecrypt/core/glass/glass.dart';
+import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_models.dart';
@@ -167,8 +168,9 @@ class _SharingRecipientsState extends ConsumerState<SharingRecipients> {
           _error = devices.isEmpty ? context.l10n.sharingNoDevices : null;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _error = context.l10n.sharingNoDevices);
+    } catch (e) {
+      // Recipient lookups are rate limited (protocol 1.11): say when to retry.
+      if (mounted) setState(() => _error = rateLimitedMessage(context.l10n, e) ?? context.l10n.sharingNoDevices);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -274,7 +276,9 @@ class SharingPublishDialog extends ConsumerStatefulWidget {
 class _SharingPublishDialogState extends ConsumerState<SharingPublishDialog> {
   Object? _profile;
   String? _preview;
-  bool _notes = false, _busy = false, _failed = false, _secretConfirmed = false, _ready = false;
+  bool _notes = false, _busy = false, _secretConfirmed = false, _ready = false;
+  Object? _failure;
+  bool get _failed => _failure != null;
   List<SharingGrant> _grants = [];
   @override
   void initState() {
@@ -287,7 +291,7 @@ class _SharingPublishDialogState extends ConsumerState<SharingPublishDialog> {
     setState(() {
       _busy = true;
       _preview = null;
-      _failed = false;
+      _failure = null;
     });
     try {
       final status = await ref.read(sharingServiceProvider).status();
@@ -296,8 +300,8 @@ class _SharingPublishDialogState extends ConsumerState<SharingPublishDialog> {
       setState(() => _ready = true);
       final p = await ref.read(sharingServiceProvider).preview(widget.kind, widget.objectId, includeNotes: _notes);
       if (mounted && sharingSessionCurrent(ref, _profile)) setState(() => _preview = p);
-    } catch (_) {
-      if (mounted) setState(() => _failed = true);
+    } catch (e) {
+      if (mounted) setState(() => _failure = e);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -343,7 +347,7 @@ class _SharingPublishDialogState extends ConsumerState<SharingPublishDialog> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (_busy) const LinearProgressIndicator(),
-                  if (_failed) Text(l.sharingUnavailable),
+                  if (_failed) Text(rateLimitedMessage(l, _failure) ?? l.sharingUnavailable),
                   if (_preview != null) ...[
                     Text(l.sharingPreview, style: Theme.of(context).textTheme.titleSmall),
                     const SizedBox(height: 8),

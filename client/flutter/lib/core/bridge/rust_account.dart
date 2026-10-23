@@ -896,6 +896,14 @@ final class RustSyncService implements SyncService {
   }
 
   @override
+  Future<int> retryFailed() async {
+    if (_hub.activeInfo?['kind'] != 'synced') return 0;
+    final count = await guard(rs_sync.syncRetryFailed);
+    await _hub.refreshSyncStatus();
+    return count;
+  }
+
+  @override
   Stream<EnableSyncProgress> enableSync({
     required Uri serverUrl,
     required String email,

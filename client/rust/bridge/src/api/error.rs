@@ -108,10 +108,26 @@ mod tests {
 
         let e: BridgeError = AppError::RateLimited {
             retry_after_secs: Some(30),
+            limit: Some("recipient_lookup_account".into()),
         }
         .into();
         assert_eq!(e.code, "rate_limited");
         assert_eq!(e.details["retry_after_seconds"], "30");
+        assert_eq!(e.details["limit"], "recipient_lookup_account");
+
+        let e: BridgeError = AppError::Quota {
+            status: 403,
+            code: "forbidden".into(),
+            quota: "device_daily_limit".into(),
+            limit: Some(3),
+            until_ms: Some(1_792_830_600_000),
+        }
+        .into();
+        assert_eq!(e.code, "server");
+        assert_eq!(e.reason.as_deref(), Some("device_daily_limit"));
+        assert_eq!(e.details["protocol_code"], "forbidden");
+        assert_eq!(e.details["limit"], "3");
+        assert_eq!(e.details["until_ms"], "1792830600000");
 
         let e: BridgeError = AppError::Server {
             status: 410,

@@ -130,9 +130,24 @@ pub enum AppError {
     /// The server requires a newer client.
     #[error("client upgrade required")]
     UpgradeRequired,
-    /// Rate limited by the server.
+    /// Rate limited by the server. `limit` = `details.limit` (protocol
+    /// 1.11: which server limit, e.g. `push_device`), passed to the UI.
     #[error("rate limited")]
-    RateLimited { retry_after_secs: Option<u64> },
+    RateLimited {
+        retry_after_secs: Option<u64>,
+        limit: Option<String>,
+    },
+    /// A server quota (protocol 1.11; code `server`, reason = the quota):
+    /// `413` `object_limit` / `vault_quota` or `403` at sign-in
+    /// `device_limit` / `device_daily_limit` (`until_ms`).
+    #[error("server error {status} ({code}): {quota}")]
+    Quota {
+        status: u16,
+        code: String,
+        quota: String,
+        limit: Option<u64>,
+        until_ms: Option<i64>,
+    },
     /// This device is new (protocol 1.7 quarantine) and may not act on
     /// trusted devices until `until_ms`.
     #[error("this device is new and cannot act on trusted devices yet")]
@@ -303,7 +318,7 @@ impl AppError {
             AppError::RateLimited { .. } => "rate_limited",
             AppError::DeviceInQuarantine { .. } => "device_in_quarantine",
             AppError::EnvelopeRateLimited { .. } => "envelope_rate_limited",
-            AppError::Server { .. } => "server",
+            AppError::Server { .. } | AppError::Quota { .. } => "server",
             AppError::Approval(_) => "approval",
             AppError::ConnectionPlan(_) | AppError::ConnectionPlanRejected { .. } => {
                 "connection_plan"
@@ -379,6 +394,7 @@ impl AppError {
             AppError::NoTextEditor => "no_text_editor",
             AppError::UnresolvedPlaceholders(_) => "missing_variables",
             AppError::AiNotConfigured => "provider_not_found",
+            AppError::Quota { quota, .. } => return quota_reason(quota),
             _ => return None,
         })
     }
@@ -419,11 +435,36 @@ impl AppError {
                 put("limit", limit.to_string());
             }
             AppError::RateLimited {
-                retry_after_secs: Some(s),
+                retry_after_secs,
+                limit,
+            } => {
+                if let Some(s) = retry_after_secs {
+                    put("retry_after_seconds", s.to_string());
+                }
+                if let Some(l) = limit {
+                    put("limit", l.clone());
+                }
             }
-            | AppError::EnvelopeRateLimited {
+            AppError::EnvelopeRateLimited {
                 retry_after_secs: Some(s),
             } => put("retry_after_seconds", s.to_string()),
+            AppError::Quota {
+                status,
+                code,
+                quota,
+                limit,
+                until_ms,
+            } => {
+                put("status", status.to_string());
+                put("protocol_code", code.clone());
+                put("quota", quota.clone());
+                if let Some(n) = limit {
+                    put("limit", n.to_string());
+                }
+                if let Some(t) = until_ms {
+                    put("until_ms", t.to_string());
+                }
+            }
             AppError::DeviceInQuarantine {
                 until_ms: Some(until),
             } => put("until_ms", until.to_string()),
@@ -495,6 +536,18 @@ fn invalid_reason(field: &str, rule: &str) -> &'static str {
         "enterprise_auth" if rule == "browser_unavailable" => "enterprise_browser_unavailable",
         _ => "invalid_field",
     }
+}
+
+/// Reason (wire name) of a known protocol 1.11 quota.
+fn quota_reason(quota: &str) -> Option<&'static str> {
+    use cc_sync_core::quota;
+    Some(match quota {
+        quota::OBJECT_LIMIT => quota::OBJECT_LIMIT,
+        quota::VAULT_QUOTA => quota::VAULT_QUOTA,
+        quota::DEVICE_LIMIT => quota::DEVICE_LIMIT,
+        quota::DEVICE_DAILY_LIMIT => quota::DEVICE_DAILY_LIMIT,
+        _ => return None,
+    })
 }
 
 /// Reason of a `NotFound` by object kind.
@@ -663,9 +716,20 @@ impl From<ApiError> for AppError {
                 AppError::NewDeviceIdentityRequired
             }
             ApiError::UpgradeRequired { .. } => AppError::UpgradeRequired,
-            ApiError::RateLimited { retry_after } => AppError::RateLimited {
+            ApiError::RateLimited { retry_after, limit } => AppError::RateLimited {
                 retry_after_secs: retry_after.map(|d| d.as_secs()),
+                limit,
             },
+            ApiError::Server { status, ref error } if e.quota().is_some() => {
+                let q = e.quota().unwrap_or_else(|| unreachable!());
+                AppError::Quota {
+                    status,
+                    code: protocol_code_name(error.code),
+                    quota: q.reason,
+                    limit: q.limit,
+                    until_ms: q.until.map(|t| t.timestamp_millis()),
+                }
+            }
             ApiError::InvalidConfig(m) => AppError::invalid("server_url", m),
             ApiError::TokenStore(m) => AppError::SecureStore(m),
             // Protocol 1.5 request proofs: the server rejected our proof
@@ -939,6 +1003,63 @@ mod tests {
         .into();
         assert_eq!(e.code(), "envelope_rate_limited");
         assert_eq!(e.args()["retry_after_seconds"], "120");
+    }
+
+    #[test]
+    fn quotas_and_rate_limits_keep_their_details() {
+        let e: AppError = ApiError::RateLimited {
+            retry_after: Some(std::time::Duration::from_secs(90)),
+            limit: Some("share_write_account".into()),
+        }
+        .into();
+        assert_eq!(e.code(), "rate_limited");
+        assert_eq!(e.args()["retry_after_seconds"], "90");
+        assert_eq!(e.args()["limit"], "share_write_account");
+
+        let server = |status: u16, code: ErrorCode, details: serde_json::Value| -> AppError {
+            ApiError::Server {
+                status,
+                error: Box::new(cc_protocol::ApiError::new(code, "refused").with_details(details)),
+            }
+            .into()
+        };
+        let e = server(
+            413,
+            ErrorCode::PayloadTooLarge,
+            serde_json::json!({"reason": "object_limit", "limit": 5000}),
+        );
+        assert_eq!((e.code(), e.reason()), ("server", Some("object_limit")));
+        assert_eq!(e.args()["protocol_code"], "payload_too_large");
+        assert_eq!(e.args()["limit"], "5000");
+
+        let e = server(
+            403,
+            ErrorCode::Forbidden,
+            serde_json::json!({"reason": "device_limit", "limit": 10}),
+        );
+        assert_eq!((e.code(), e.reason()), ("server", Some("device_limit")));
+        assert_eq!(e.args()["limit"], "10");
+
+        let e = server(
+            403,
+            ErrorCode::Forbidden,
+            serde_json::json!({
+                "reason": "device_daily_limit",
+                "limit": 3,
+                "until": "2026-10-24T08:30:00Z"
+            }),
+        );
+        assert_eq!(e.reason(), Some("device_daily_limit"));
+        assert_eq!(e.args()["until_ms"], "1792830600000");
+
+        // Other 403s stay plain server errors.
+        let e = server(
+            403,
+            ErrorCode::Forbidden,
+            serde_json::json!({"reason": "team_role"}),
+        );
+        assert!(matches!(e, AppError::Server { .. }));
+        assert_eq!(e.reason(), None);
     }
 
     #[test]
