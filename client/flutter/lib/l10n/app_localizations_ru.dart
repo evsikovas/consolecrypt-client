@@ -10184,6 +10184,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'structure': 'Структура',
       'partitioning': 'Секционирование',
       'maintenance': 'Обслуживание',
+      'replication': 'Репликация',
+      'storage': 'Хранение',
       'other': '$id',
     });
     return '$_temp0';
@@ -10245,6 +10247,27 @@ class AppLocalizationsRu extends AppLocalizations {
       'length_elements': 'Элементов',
       'length_members': 'Элементов',
       'length_entries': 'Записей',
+      'keyspace': 'Keyspace',
+      'base_table': 'Базовая таблица',
+      'id': 'ID',
+      'cql_partition_key': 'Ключ партиции',
+      'clustering_key': 'Кластерный ключ',
+      'compaction': 'Уплотнение (compaction)',
+      'compression': 'Сжатие',
+      'gc_grace_seconds': 'GC grace, секунд',
+      'default_ttl': 'TTL по умолчанию, секунд',
+      'caching': 'Кэширование',
+      'bloom_filter': 'Ложные срабатывания фильтра Блума',
+      'speculative_retry': 'Спекулятивный повтор',
+      'cql_partitions': 'Партиций',
+      'mean_partition_size': 'Средний размер партиции',
+      'strategy': 'Стратегия репликации',
+      'replication': 'Реплики',
+      'durable_writes': 'Durable writes',
+      'tables': 'Таблиц',
+      'views': 'Материализованных представлений',
+      'types': 'Пользовательских типов',
+      'functions': 'Функций',
       'other': '$id',
     });
     return '$_temp0';
@@ -10260,6 +10283,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'foreign_table': 'Внешняя таблица',
       'unlogged': 'Без журнала (UNLOGGED)',
       'temporary': 'Временная',
+      'keyspace': 'Keyspace',
       'other': '$id',
     });
     return '$_temp0';
@@ -11655,4 +11679,175 @@ class AppLocalizationsRu extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'Я проверил(а) эту команду для $host (политика команды)';
   }
+
+  @override
+  String get dbKeyspace => 'Keyspace (пространство ключей)';
+
+  @override
+  String get dbCassandraContactPoints => 'Дополнительные контактные узлы (хосты через запятую)';
+
+  @override
+  String get dbCassandraLocalDc => 'Локальный дата-центр';
+
+  @override
+  String get dbCassandraReadConsistency => 'Уровень согласованности чтения';
+
+  @override
+  String get dbCassandraWriteConsistency => 'Уровень согласованности записи';
+
+  @override
+  String get dbCassandraPageSize => 'Строк на страницу';
+
+  @override
+  String get dbCassandraRouteHelp =>
+      'Сеанс работает через один узел-координатор — первый ответивший контактный узел. Через SSH, туннель, Kubernetes или Docker используется только эта точка, к остальным узлам кластера приложение напрямую не подключается. Если указан локальный дата-центр, координатор должен находиться в нём.';
+
+  @override
+  String get dbErrorDatacenter =>
+      'Ответивший узел находится не в указанном локальном дата-центре. Проверьте контактные узлы или название дата-центра.';
+
+  @override
+  String get dbErrorEngineChange =>
+      'Это подключение нельзя перевести на выбранный движок: синхронизируемые подключения и подключения только на этом устройстве хранятся раздельно. Создайте новое подключение.';
+
+  @override
+  String get dbErrorDeviceOnly =>
+      'Это подключение хранится только на этом устройстве, им нельзя поделиться и его нельзя синхронизировать.';
+
+  @override
+  String get dbFolderTypes => 'Типы';
+
+  @override
+  String get dbScanWarningTitle => 'Чтение всей таблицы';
+
+  @override
+  String get dbScanAllowFiltering =>
+      'С ALLOW FILTERING кластер читает и фильтрует строки всей таблицы — это может быть долго и нагружает все узлы. Всё равно выполнить?';
+
+  @override
+  String get dbScanFullTable =>
+      'У запроса нет WHERE и LIMIT: он постранично читает всю таблицу со всех узлов кластера. Всё равно выполнить?';
+
+  @override
+  String get snippetPackCassandra => 'Cassandra / ScyllaDB';
+
+  @override
+  String get snippetPackCassandraDescription =>
+      'Схема, узлы кластера, оценки размера, партиции, TTL и роли на CQL. Для cqlsh или раздела «Базы данных».';
+
+  @override
+  String get snippetDbCqlKeyspaces => 'Keyspace и репликация';
+
+  @override
+  String get snippetDbCqlKeyspacesNote => 'Все keyspace со стратегией репликации и признаком durable writes.';
+
+  @override
+  String get snippetDbCqlTables => 'Таблицы keyspace';
+
+  @override
+  String get snippetDbCqlTablesNote => 'Таблицы с комментарием, TTL по умолчанию и gc_grace_seconds.';
+
+  @override
+  String get snippetDbCqlColumns => 'Колонки и первичный ключ';
+
+  @override
+  String get snippetDbCqlColumnsNote =>
+      'Колонки таблицы: ключ партиции, кластерные колонки с порядком сортировки, статические и обычные колонки.';
+
+  @override
+  String get snippetDbCqlIndexes => 'Вторичные индексы';
+
+  @override
+  String get snippetDbCqlIndexesNote => 'Вторичные индексы keyspace и их целевые колонки.';
+
+  @override
+  String get snippetDbCqlViews => 'Материализованные представления';
+
+  @override
+  String get snippetDbCqlViewsNote => 'Материализованные представления keyspace с базовой таблицей и условием.';
+
+  @override
+  String get snippetDbCqlTypes => 'Пользовательские типы';
+
+  @override
+  String get snippetDbCqlTypesNote => 'Пользовательские типы keyspace и их поля.';
+
+  @override
+  String get snippetDbCqlLocalNode => 'Текущий узел';
+
+  @override
+  String get snippetDbCqlLocalNodeNote => 'Имя кластера, дата-центр, стойка и версия узла-координатора.';
+
+  @override
+  String get snippetDbCqlPeers => 'Узлы кластера';
+
+  @override
+  String get snippetDbCqlPeersNote => 'Остальные узлы глазами координатора: адрес, дата-центр, стойка, версия.';
+
+  @override
+  String get snippetDbCqlSizeEstimates => 'Оценка размера таблицы';
+
+  @override
+  String get snippetDbCqlSizeEstimatesNote =>
+      'Оценка числа партиций и среднего размера партиции по диапазонам токенов на координаторе.';
+
+  @override
+  String get snippetDbCqlPartition => 'Строки одной партиции';
+
+  @override
+  String get snippetDbCqlPartitionNote =>
+      'Читает одну партицию по текстовому ключу партиции — эффективный способ чтения в CQL.';
+
+  @override
+  String get snippetDbCqlTtl => 'TTL и время записи колонки';
+
+  @override
+  String get snippetDbCqlTtlNote => 'Оставшийся TTL и время записи колонки в одной партиции.';
+
+  @override
+  String get snippetDbCqlCountPartition => 'Строк в партиции';
+
+  @override
+  String get snippetDbCqlCountPartitionNote =>
+      'Считает строки одной партиции (подсчёт по всей таблице сканирует кластер).';
+
+  @override
+  String get snippetDbCqlTokens => 'Токены партиций';
+
+  @override
+  String get snippetDbCqlTokensNote =>
+      'Первые ключи партиций с их токенами — видно, как данные распределены по кольцу.';
+
+  @override
+  String get snippetDbCqlRoles => 'Роли';
+
+  @override
+  String get snippetDbCqlRolesNote => 'Роли с признаками входа и суперпользователя.';
+
+  @override
+  String get snippetDbCqlPermissions => 'Права роли';
+
+  @override
+  String get snippetDbCqlPermissionsNote => 'Все права роли — выданные напрямую и через другие роли.';
+
+  @override
+  String get snippetDbCqlCreateTable => 'Создать таблицу временного ряда';
+
+  @override
+  String get snippetDbCqlCreateTableNote =>
+      'Партиция на ключ, новые строки первыми (кластерный порядок), строки истекают по TTL по умолчанию.';
+
+  @override
+  String get snippetDbCqlInsertJson => 'Вставить строку из JSON с TTL';
+
+  @override
+  String get snippetDbCqlInsertJsonNote =>
+      'INSERT … JSON сопоставляет поля JSON колонкам любого типа; строка истечёт через TTL.';
+
+  @override
+  String get dbLocalOnly => 'Только на этом устройстве';
+
+  @override
+  String get dbLocalOnlyHelp =>
+      'Хранится только на этом устройстве: не синхронизируется, не попадает в хранилище и не передаётся другим, потому что старые версии приложения не умеют открывать такие подключения.';
 }

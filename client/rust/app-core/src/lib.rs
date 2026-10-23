@@ -40,6 +40,7 @@ mod database_history;
 mod database_import;
 pub mod database_inventory;
 mod database_local;
+mod database_local_secrets;
 mod database_route;
 mod database_runtime;
 mod docker_compose;

@@ -15578,14 +15578,6 @@
   "@dbKeyspace": {
     "description": "Databases: connection dialog field for the default CQL keyspace (Cassandra / ScyllaDB)."
   },
-  "dbDeviceOnly": "This device only",
-  "@dbDeviceOnly": {
-    "description": "Databases: badge and banner title for a connection that is kept on this device and never synced or shared."
-  },
-  "dbDeviceOnlyHelp": "Cassandra / ScyllaDB connections stay on this device for now: they are not synced, shared or included in vault backups, because ConsoleCrypt 0.9.1 and earlier cannot read them. Their passwords are kept encrypted on this device as well.",
-  "@dbDeviceOnlyHelp": {
-    "description": "Databases: explanation shown in the connection dialog for engines whose connections stay on this device."
-  },
   "dbCassandraContactPoints": "More contact points (hosts, comma-separated)",
   "@dbCassandraContactPoints": {
     "description": "Databases: Cassandra option, extra contact point hosts on the same port."
@@ -15781,5 +15773,13 @@
   "snippetDbCqlInsertJsonNote": "INSERT … JSON maps JSON fields to columns of any type; the row expires after the TTL.",
   "@snippetDbCqlInsertJsonNote": {
     "description": "Snippet library: note of the cql.insert_json database starter snippet"
+  },
+  "dbLocalOnly": "This device only",
+  "@dbLocalOnly": {
+    "description": "Badge on a database connection that is stored on this device only (not synced or shared)."
+  },
+  "dbLocalOnlyHelp": "Stored on this device only: not synced, backed up to the vault or shared, because older app versions cannot open this connection type.",
+  "@dbLocalOnlyHelp": {
+    "description": "Explanation of the 'this device only' badge for database connections."
   }
 }

@@ -23,6 +23,7 @@ void main() {
       'clickhouse',
       'redis',
       'mongodb',
+      'cassandra',
     ]);
     expect(
       {for (final p in packages) p.id: p.snippets.length},
@@ -35,6 +36,7 @@ void main() {
         'clickhouse': 20,
         'redis': 15,
         'mongodb': 15,
+        'cassandra': 17,
       },
     );
     final snippets = packages.expand((p) => p.snippets).toList();
@@ -68,6 +70,7 @@ void main() {
       'clickhouse': (DbEngine.clickhouse, SnippetType.sql, 'clickhouse'),
       'redis': (DbEngine.redis, SnippetType.redisCli, null),
       'mongodb': (DbEngine.mongodb, SnippetType.shell, 'mongosh'),
+      'cassandra': (DbEngine.cassandra, SnippetType.cql, null),
     };
     for (final MapEntry(key: id, value: (engine, type, shell)) in engines.entries) {
       for (final s in byId[id]!) {
@@ -95,6 +98,7 @@ void main() {
             DbEngine.clickhouse => 'clickhouse-client',
             DbEngine.redis => 'redis-cli',
             DbEngine.mongodb => 'mongosh',
+            DbEngine.cassandra => 'cqlsh',
           }),
         );
       }
@@ -121,6 +125,8 @@ void main() {
       'consolecrypt.db.mysql.kill_query.v1': RiskLevel.modifying,
       'consolecrypt.db.clickhouse.kill_query.v1': RiskLevel.modifying,
       'consolecrypt.db.mongodb.kill_op.v1': RiskLevel.modifying,
+      'consolecrypt.db.cql.create_table.v1': RiskLevel.modifying,
+      'consolecrypt.db.cql.insert_json.v1': RiskLevel.modifying,
     });
   });
 

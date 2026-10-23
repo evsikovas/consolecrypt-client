@@ -174,10 +174,10 @@ pub(crate) async fn prepare(
     id: ObjectId,
     include_credentials: bool,
 ) -> AppResult<(SharedDbProjection, String)> {
-    // A device-local connection (`DbEngine::device_local`) is never shared;
+    // A device-local connection (`DbEngine::local_only`) is never shared;
     // it is not in the vault working set either.
     let connection = u.working().db_connection(id).ok_or_else(invalid)?;
-    if connection.engine.device_local() {
+    if connection.engine.local_only() {
         return Err(AppError::invalid("database", "local_only"));
     }
     let mut ids = vec![connection.id];
@@ -269,7 +269,7 @@ async fn persist(
     secrets: Vec<Secret>,
 ) -> AppResult<DbConnection> {
     // Engines kept on one device are never received into the vault.
-    if connection.engine.device_local() {
+    if connection.engine.local_only() {
         return Err(AppError::invalid("database", "local_only"));
     }
     let mut references = connection.clone();

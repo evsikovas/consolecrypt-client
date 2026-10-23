@@ -5,6 +5,18 @@ use cc_models::{history::DbHistoryEntry, ObjectId, VaultObject};
 use serde::{Deserialize, Serialize};
 
 const RECORDS: &str = "database.history.v1";
+/// History of connections that stay on this device (engines added after
+/// 0.9.1): its own record so an older version still reads `RECORDS`.
+const LOCAL_ENGINE_RECORDS: &str = "database.history.local_engines.v1";
+const RECORD_KEYS: [&str; 2] = [RECORDS, LOCAL_ENGINE_RECORDS];
+
+fn records_key(engine: cc_models::database::DbEngine) -> &'static str {
+    if engine.local_only() {
+        LOCAL_ENGINE_RECORDS
+    } else {
+        RECORDS
+    }
+}
 const POLICIES: &str = "database.history.policies.v1";
 const MAX_ENTRIES: usize = 5000;
 const MAX_BYTES: usize = 8 * 1024 * 1024;
@@ -58,12 +70,9 @@ fn retain(
 
 impl AppCore {
     pub async fn db_history_policy(&self, connection_id: String) -> AppResult<DbHistoryPolicy> {
-        let (owner, unlocked) = self.unlocked().await?;
+        let (owner, _) = self.unlocked().await?;
         let id = crate::dto::parse_id("connection_id", &connection_id)?;
-        if crate::database_local::connection(&owner, &unlocked, id)
-            .await?
-            .is_none()
-        {
+        if self.db_saved_connection(id).await?.is_none() {
             return Err(invalid("connection_unavailable"));
         }
         let policies: Policies = owner
@@ -81,14 +90,8 @@ impl AppCore {
     ) -> AppResult<()> {
         let (owner, unlocked) = self.unlocked().await?;
         let id = crate::dto::parse_id("connection_id", &connection_id)?;
-        if unlocked.working().db_connection(id).is_none() {
-            // A device-local connection keeps its history on this device.
-            if !crate::database_local::is_local(&owner, &unlocked, id).await? {
-                return Err(invalid("connection_unavailable"));
-            }
-            if policy == DbHistoryPolicy::EncryptedSync {
-                return Err(invalid("local_only"));
-            }
+        if self.db_saved_connection(id).await?.is_none() {
+            return Err(invalid("connection_unavailable"));
         }
         let _gate = unlocked.db_history_lock.lock().await;
         let _profile = self.hold_session(&owner).await?;
@@ -115,46 +118,39 @@ impl AppCore {
         if row.text.len() > MAX_TEXT || row.id == ObjectId::NIL {
             return Ok(());
         }
+        if self.db_saved_connection(row.connection_id).await?.is_none() {
+            return Ok(());
+        }
         let _gate = unlocked.db_history_lock.lock().await;
         let _profile = self.hold_session(owner).await?;
         let _generation = owner.hold_unlocked(unlocked).await?;
-        let synced = unlocked
-            .working()
-            .db_connection(row.connection_id)
-            .is_some();
-        if !synced && !crate::database_local::is_local(owner, unlocked, row.connection_id).await? {
-            return Ok(());
-        }
         let policies: Policies = owner
             .storage()?
             .setting_get(POLICIES)
             .await?
             .unwrap_or_default();
-        let policy = policies
+        match policies
             .get(&row.connection_id.to_string())
             .copied()
-            .unwrap_or_default();
-        // History of a device-local connection never becomes a vault object.
-        let policy = match policy {
-            DbHistoryPolicy::EncryptedSync if !synced => DbHistoryPolicy::Local,
-            policy => policy,
-        };
-        match policy {
+            .unwrap_or_default()
+        {
             DbHistoryPolicy::Disabled => {}
-            DbHistoryPolicy::EncryptedSync => {
+            // Their connection is not in the vault, so neither is history.
+            DbHistoryPolicy::EncryptedSync if !row.engine.local_only() => {
                 unlocked
                     .writer
                     .put(VaultObject::DbHistoryEntry(row))
                     .await?;
             }
-            DbHistoryPolicy::Local => {
+            DbHistoryPolicy::Local | DbHistoryPolicy::EncryptedSync => {
+                let key = records_key(row.engine);
                 owner
                     .storage()?
                     .write(move |tx| {
                         let mut rows: Vec<DbHistoryEntry> =
-                            tx.setting_get(RECORDS)?.unwrap_or_default();
+                            tx.setting_get(key)?.unwrap_or_default();
                         rows.push(row);
-                        tx.setting_set(RECORDS, &retain(rows, chrono::Utc::now()))
+                        tx.setting_set(key, &retain(rows, chrono::Utc::now()))
                     })
                     .await?;
             }
@@ -179,11 +175,16 @@ impl AppCore {
         let _gate = unlocked.db_history_lock.lock().await;
         let _profile = self.hold_session(&owner).await?;
         let _generation = owner.hold_unlocked(&unlocked).await?;
-        let mut rows: Vec<DbHistoryEntry> = owner
-            .storage()?
-            .setting_get(RECORDS)
-            .await?
-            .unwrap_or_default();
+        let mut rows: Vec<DbHistoryEntry> = Vec::new();
+        for key in RECORD_KEYS {
+            rows.extend(
+                owner
+                    .storage()?
+                    .setting_get::<Vec<DbHistoryEntry>>(key)
+                    .await?
+                    .unwrap_or_default(),
+            );
+        }
         rows.extend(unlocked.working().db_history_entries());
         let query = query.to_lowercase();
         let mut rows: Vec<_> = retain(rows, chrono::Utc::now())
@@ -230,14 +231,16 @@ impl AppCore {
             let found = owner
                 .storage()?
                 .write(move |tx| {
-                    let mut rows: Vec<DbHistoryEntry> =
-                        tx.setting_get(RECORDS)?.unwrap_or_default();
-                    let Some(row) = rows.iter_mut().find(|row| row.id == id) else {
-                        return Ok::<_, cc_storage_core::StorageError>(false);
-                    };
-                    row.favorite = favorite;
-                    tx.setting_set(RECORDS, &rows)?;
-                    Ok(true)
+                    for key in RECORD_KEYS {
+                        let mut rows: Vec<DbHistoryEntry> =
+                            tx.setting_get(key)?.unwrap_or_default();
+                        if let Some(row) = rows.iter_mut().find(|row| row.id == id) {
+                            row.favorite = favorite;
+                            tx.setting_set(key, &rows)?;
+                            return Ok::<_, cc_storage_core::StorageError>(true);
+                        }
+                    }
+                    Ok(false)
                 })
                 .await?;
             if !found {
@@ -267,14 +270,16 @@ impl AppCore {
         let row = match unlocked.working().db_history_entry(id) {
             Some(row) => row,
             None => {
-                let rows: Vec<DbHistoryEntry> = owner
-                    .storage()?
-                    .setting_get(RECORDS)
-                    .await?
-                    .unwrap_or_default();
-                rows.into_iter()
-                    .find(|row| row.id == id)
-                    .ok_or_else(|| invalid("history_unavailable"))?
+                let mut found = None;
+                for key in RECORD_KEYS {
+                    let rows: Vec<DbHistoryEntry> =
+                        owner.storage()?.setting_get(key).await?.unwrap_or_default();
+                    if let Some(row) = rows.into_iter().find(|row| row.id == id) {
+                        found = Some(row);
+                        break;
+                    }
+                }
+                found.ok_or_else(|| invalid("history_unavailable"))?
             }
         };
         let (snippet_type, shell) = match row.engine {
@@ -285,7 +290,7 @@ impl AppCore {
             DbEngine::Redis => (SnippetType::RedisCli, None),
             DbEngine::Mongodb => (SnippetType::Shell, Some("mongosh")),
             DbEngine::Cassandra => (SnippetType::Cql, None),
-            DbEngine::Unknown => return Err(invalid("engine_unavailable")),
+            DbEngine::Unknown => (SnippetType::Sql, None),
         };
         let template = row.text.expose_secret().to_owned();
         let now = chrono::Utc::now();
@@ -337,9 +342,12 @@ impl AppCore {
         owner
             .storage()?
             .write(move |tx| {
-                let mut rows: Vec<DbHistoryEntry> = tx.setting_get(RECORDS)?.unwrap_or_default();
-                rows.retain(|row| row.connection_id != id);
-                tx.setting_set(RECORDS, &rows)
+                for key in RECORD_KEYS {
+                    let mut rows: Vec<DbHistoryEntry> = tx.setting_get(key)?.unwrap_or_default();
+                    rows.retain(|row| row.connection_id != id);
+                    tx.setting_set(key, &rows)?;
+                }
+                Ok::<_, cc_storage_core::StorageError>(())
             })
             .await?;
         Ok(())

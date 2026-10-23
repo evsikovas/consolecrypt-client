@@ -151,7 +151,7 @@ fn dialect(engine: DbEngine) -> &'static str {
             "CQL for Apache Cassandra / ScyllaDB (restrict the full partition key, no joins, \
              avoid ALLOW FILTERING; batches as BEGIN BATCH … APPLY BATCH)"
         }
-        DbEngine::Unknown => "the database's own query language",
+        DbEngine::Unknown => "SQL",
     }
 }
 
@@ -475,7 +475,7 @@ impl AppCore {
         provider_id: String,
         request: DbAiRequest,
     ) -> AppResult<DbAiReviewDto> {
-        let (owner, unlocked) = self.unlocked().await?;
+        let (_, unlocked) = self.unlocked().await?;
         let session = unlocked.db.session(&session_id)?;
         crate::teams::check_ai_allowed(unlocked.working(), &session.info().connection_id)?;
         if request.question.len() > MAX_TEXT
@@ -504,7 +504,8 @@ impl AppCore {
             })
             .collect();
         let connection_id = crate::dto::parse_id("connection_id", &session.info().connection_id)?;
-        let connection_name = crate::database_local::connection(&owner, &unlocked, connection_id)
+        let connection_name = self
+            .db_saved_connection(connection_id)
             .await?
             .map(|connection| connection.name)
             .unwrap_or_default();

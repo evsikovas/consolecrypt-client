@@ -2,11 +2,11 @@
 
 ## Русский
 
-Раздел «Базы данных» работает с PostgreSQL, MySQL и MariaDB, ClickHouse, Redis
-и MongoDB. В нём структура базы, редактор запросов с вкладками и историей,
+Раздел «Базы данных» работает с PostgreSQL, MySQL и MariaDB, ClickHouse, Redis,
+MongoDB, Apache Cassandra и ScyllaDB. В нём структура базы, редактор запросов с вкладками и историей,
 таблица результатов, EXPLAIN, правка ячеек, копирование и экспорт, а также
 ИИ-помощник. Драйверы встроены в приложение, поэтому `psql`, `mysql`,
-`clickhouse-client`, `redis-cli` и `mongosh` устанавливать не нужно. Раздел
+`clickhouse-client`, `redis-cli`, `mongosh` и `cqlsh` устанавливать не нужно. Раздел
 доступен на macOS, Windows, Linux и Android; сборка и проверка iOS отложены.
 
 ### Подключения
@@ -65,6 +65,73 @@
 Подключения и пароли хранятся в зашифрованном хранилище и синхронизируются
 через сервер ConsoleCrypt в зашифрованном виде. Запросы идут с устройства к
 базе по выбранному маршруту; сервер синхронизации их не видит.
+
+### Cassandra и ScyllaDB
+
+Движок «Cassandra / ScyllaDB» говорит на CQL (нативный протокол, порт 9042)
+и работает с Apache Cassandra 3.11+, 4.x, 5.x и ScyllaDB.
+
+- **Только на этом устройстве.** В версии 0.9.2 подключения Cassandra /
+  ScyllaDB хранятся только на устройстве, где их создали: они не
+  синхронизируются, ими нельзя поделиться, они не попадают в резервную копию
+  хранилища, а история запросов к ним остаётся локальной. Причина — версии
+  ConsoleCrypt до 0.9.1 включительно не умеют читать такие подключения.
+  Подключение и его пароль хранятся в локальной базе профиля, зашифрованные
+  ключами хранилища. На карточке видна метка «Только на этом устройстве».
+  Синхронизация появится в следующих версиях.
+- **Поля.** «Хост» — первый контактный узел; в параметрах можно добавить
+  другие контактные узлы (через запятую, тот же порт), локальный дата-центр,
+  уровни согласованности чтения (по умолчанию `LOCAL_ONE`) и записи
+  (`LOCAL_QUORUM`) и размер страницы CQL (500 строк). «Keyspace» — keyspace по
+  умолчанию (точное имя). Тайм-аут запроса — «Тайм-аут запроса» из лимитов.
+- **Один координатор.** Сеанс работает через один узел — первый ответивший
+  контактный узел; адреса остальных узлов из `system.peers` приложение не
+  использует и напрямую к ним не подключается, shard-aware порт ScyllaDB
+  отключён. Поэтому подключение одинаково работает напрямую и через SSH,
+  jump-профиль, прокси, SSH-туннель, проброс Kubernetes или Docker (через
+  проброс доступна только одна точка). Напрямую при недоступности узла
+  используется следующий контактный узел. Если указан локальный дата-центр,
+  координатор должен быть в нём, иначе — ошибка «узел в другом дата-центре»
+  (уровни `LOCAL_*` считаются по дата-центру координатора).
+- **TLS.** Шифрование выполняет само приложение (rustls) с теми же режимами:
+  «Проверять» — цепочка и имя сервера (можно указать свой CA и клиентский
+  сертификат), «Требовать» — только шифрование, «Предпочитать» — без TLS
+  только через туннель или на этом компьютере, по сети — ошибка «Сервер не
+  поддерживает TLS». Вход по паролю в CQL передаёт пароль как есть, поэтому
+  без TLS по сети пароль не отправляется (ошибка про пароль открытым текстом).
+- **Только чтение.** У CQL нет сеанса «только чтение», поэтому защита прода —
+  разбор каждого запроса в приложении: SELECT, `DESCRIBE`, `LIST …` и `USE` —
+  чтение; INSERT/UPDATE/DELETE и `BEGIN … APPLY BATCH` — изменение;
+  CREATE/ALTER — изменение схемы; TRUNCATE, DROP, `ALTER TABLE … DROP`,
+  `ALTER KEYSPACE` и функции/триггеры — опасные (с подтверждением); GRANT,
+  REVOKE и управление ролями — опасные и на проде запрещены даже в окне
+  записи. Неизвестные команды не выполняются. Комментарии не доходят до
+  сервера: выполняется текст, собранный из проверенных токенов. Для прода
+  используйте роль только с правом SELECT.
+- **Предупреждения о сканировании.** Перед SELECT с `ALLOW FILTERING` и перед
+  SELECT без WHERE и LIMIT появляется подтверждение. Предупреждения сервера
+  (например, о tombstones) видны в «Сообщениях».
+- **Результаты.** Данные читаются страницами CQL: следующая страница
+  запрашивается только при «Загрузить ещё». Коллекции (list/set/map),
+  кортежи, векторы и UDT показываются как JSON, blob — как двоичные данные
+  (hex в просмотре), varint/decimal без потери точности, uuid/timeuuid, inet,
+  duration — текстом. Остановка запроса прерывает чтение.
+- **Структура и DDL.** Keyspace (с репликацией) → таблицы, материализованные
+  представления, пользовательские типы, функции и агрегаты → колонки с
+  пометками PARTITION KEY / CLUSTERING ASC|DESC / STATIC и вторичные индексы.
+  DDL — серверный `DESCRIBE` (Cassandra 4+, новые ScyllaDB), иначе собирается
+  из `system_schema`. «Сведения об объекте»: репликация, уплотнение, сжатие,
+  `gc_grace_seconds`, TTL по умолчанию, оценка числа партиций и среднего
+  размера (`system.size_estimates`). Автодополнение — keyspace, таблицы,
+  колонки и ключевые слова CQL.
+- **Правка ячеек** доступна для результата SELECT одной таблицы, в котором
+  есть весь первичный ключ (ключ партиции и кластерные колонки). Каждая
+  строка обновляется отдельным `UPDATE … IF EXISTS` (лёгкая транзакция):
+  удалённая строка не будет создана заново, а изменения разных строк не
+  атомарны. Колонки ключа и счётчики не редактируются. Для keyspace ScyllaDB
+  с tablets лёгкие транзакции поддерживаются не во всех версиях.
+- **Экспорт** в CSV/JSON и «INSERT» — как `INSERT INTO … JSON '…';`, что
+  сохраняет все типы CQL.
 
 ### Маршруты
 
@@ -312,7 +379,9 @@ Esc отменяет, Tab переходит к следующей ячейке.
 
 В разделе «Сниппеты» → «Базовые наборы» есть готовые наборы диагностических
 запросов: «SQL · PostgreSQL» (20), «SQL · MySQL/MariaDB» (20),
-«SQL · ClickHouse» (20), «Redis» (15) и «MongoDB» (15). Они добавляются в
+«SQL · ClickHouse» (20), «Redis» (15), «MongoDB» (15) и «Cassandra / ScyllaDB»
+(17: схема из `system_schema`, узлы кластера, оценки размера, партиции, TTL,
+токены, роли и права, создание таблицы временного ряда и `INSERT … JSON`). Они добавляются в
 хранилище только по нажатию кнопки, после чего их можно править и удалять как
 обычные сниппеты. В наборах: активные и долгие запросы, дерево блокировок,
 размеры таблиц и баз, использование индексов, мёртвые строки и autovacuum,
@@ -374,7 +443,7 @@ bracketed paste, если клиент его включил. Новую SSH-с�
 ## English
 
 The Databases section works with PostgreSQL, MySQL and MariaDB, ClickHouse,
-Redis and MongoDB. It offers the structure tree, a tabbed query editor with
+Redis, MongoDB, Apache Cassandra and ScyllaDB. It offers the structure tree, a tabbed query editor with
 history, a result grid, EXPLAIN, cell editing, copy and export, and an AI
 assistant. Drivers are built into the app; no external command-line clients
 are needed. The section is available on macOS, Windows, Linux and Android;
@@ -422,6 +491,69 @@ each entry — production flag, route, whether to keep the password — before
 saving. Connections and passwords live in the encrypted vault and sync
 end-to-end encrypted. Queries go from the device to the database; the sync
 server never sees them.
+
+### Cassandra and ScyllaDB
+
+The “Cassandra / ScyllaDB” engine speaks CQL (native protocol, port 9042) and
+works with Apache Cassandra 3.11+, 4.x, 5.x and ScyllaDB.
+
+- **This device only.** In 0.9.2, Cassandra / ScyllaDB connections stay on the
+  device that created them: they are not synced, cannot be shared, are not in
+  vault backups, and their query history stays local, because ConsoleCrypt
+  0.9.1 and earlier cannot read them. The connection and its password are
+  kept in the profile's local database, encrypted with the vault's keys; the
+  card shows “This device only”. Syncing comes in a later release.
+- **Fields.** “Host” is the first contact point; the options add more contact
+  points (comma-separated, same port), the local data center, read
+  (`LOCAL_ONE` by default) and write (`LOCAL_QUORUM`) consistency and the CQL
+  page size (500 rows). “Keyspace” is the default keyspace (exact name). The
+  request timeout is the statement timeout from the limits.
+- **One coordinator.** A session works through one node: the first contact
+  point that answers. Node addresses from `system.peers` are never dialled
+  and the ScyllaDB shard-aware port is off, so the connection behaves the same
+  directly and through an SSH host, jump profile, proxy, SSH tunnel,
+  Kubernetes or Docker forward (a forward reaches one endpoint). Directly, the
+  next contact point takes over when a node is down. With a local data center
+  set, the coordinator must be in it (`LOCAL_*` levels follow the
+  coordinator's data center).
+- **TLS** is done by the app (rustls) with the usual modes: “Verify” checks the
+  chain and name (custom CA and client certificates supported), “Require” only
+  encrypts, “Prefer” goes without TLS only through a tunnel or on this
+  computer and fails with “The server does not support TLS” over the network.
+  CQL password authentication sends the password as is, so it is never sent
+  without TLS over the network.
+- **Read-only.** CQL has no read-only session, so production is protected by
+  the app's own statement classification: SELECT, `DESCRIBE`, `LIST …` and
+  `USE` read; INSERT/UPDATE/DELETE and `BEGIN … APPLY BATCH` write;
+  CREATE/ALTER change the schema; TRUNCATE, DROP, `ALTER TABLE … DROP`, `ALTER
+  KEYSPACE` and functions/triggers are destructive (confirmed); GRANT, REVOKE
+  and role management are destructive and refused on production even in a
+  write window. Unknown statements never run, and comments never reach the
+  server: the executed text is rebuilt from the inspected tokens. Use a
+  SELECT-only role for production.
+- **Scan warnings.** A SELECT with `ALLOW FILTERING`, or without WHERE and
+  LIMIT, asks for confirmation first. Server warnings (tombstones and the
+  like) appear under “Messages”.
+- **Results** are read page by page; the next CQL page is fetched only on
+  “Load more”. Collections, tuples, vectors and UDTs show as JSON, blobs as
+  binary (hex in the viewer), varint/decimal keep every digit, uuid/timeuuid,
+  inet and duration are text. Stopping a query stops the reading.
+- **Structure and DDL.** Keyspaces (with replication) → tables, materialized
+  views, user types, functions and aggregates → columns marked PARTITION KEY /
+  CLUSTERING ASC|DESC / STATIC, and secondary indexes. DDL comes from the
+  server's `DESCRIBE` (Cassandra 4+, recent ScyllaDB) or is built from
+  `system_schema`. Object details: replication, compaction, compression,
+  `gc_grace_seconds`, default TTL, estimated partitions and mean partition
+  size (`system.size_estimates`). Completion covers keyspaces, tables, columns
+  and CQL keywords.
+- **Cell editing** works on a single-table SELECT that returns the whole
+  primary key (partition and clustering columns). Each row is updated with
+  its own `UPDATE … IF EXISTS` (a lightweight transaction): a deleted row is
+  not recreated, and edits of several rows are not atomic. Key columns and
+  counters are not editable. ScyllaDB keyspaces with tablets support
+  lightweight transactions only in recent versions.
+- **Export** to CSV/JSON, and “INSERT” as `INSERT INTO … JSON '…';`, which
+  keeps every CQL type.
 
 ### Routes
 
@@ -590,7 +722,9 @@ turned off, and any entry can become a snippet.
 
 Snippets → Starter packages offers diagnostic query packages: “SQL ·
 PostgreSQL” (20), “SQL · MySQL/MariaDB” (20), “SQL · ClickHouse” (20),
-“Redis” (15) and “MongoDB” (15). They are added to the vault only when you
+“Redis” (15), “MongoDB” (15) and “Cassandra / ScyllaDB” (17: `system_schema`
+schema, cluster nodes, size estimates, partitions, TTLs, tokens, roles and
+permissions, a time-series table and `INSERT … JSON`). They are added to the vault only when you
 press the button and are ordinary editable snippets afterwards. They cover
 active and long-running queries, the lock tree, table and database sizes,
 index usage, dead tuples and autovacuum, replication and slots, non-default

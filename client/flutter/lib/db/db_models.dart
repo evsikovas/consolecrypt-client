@@ -23,15 +23,14 @@ enum DbEngine {
   /// Scripts are statements ending with `;` (SQL and CQL).
   bool get semicolons => sql || this == cassandra;
 
-  /// Connections stay on this device (mirrors `DbEngine::device_local`):
-  /// versions up to 0.9.1 cannot read them, so they are never synced or
-  /// shared.
-  bool get deviceLocal => this == cassandra;
+  /// Engines added after 0.9.1: their connections stay on this device (never
+  /// synced or shared) because older versions cannot read them.
+  bool get localOnly => this == cassandra;
 
   static DbEngine parse(String value) => values.firstWhere((e) => e.wireName == value);
 
-  /// Null for an engine of a newer version (skipped by the lists).
-  static DbEngine? tryParse(String? value) => values.where((e) => e.wireName == value).firstOrNull;
+  /// Null for an engine of a newer version (such connections are skipped).
+  static DbEngine? tryParse(Object? value) => values.where((e) => e.wireName == value).firstOrNull;
 }
 
 /// CQL consistency levels (wire names of `CqlConsistency`).
@@ -780,6 +779,7 @@ DbCellKind dbColumnKind(DbColumn column, {DbCell? sample}) {
   }
   // CQL collections, tuples, vectors and frozen user types are JSON.
   if (type.contains('<')) return DbCellKind.json;
+  if (base == 'timeuuid') return DbCellKind.text;
   if (base.contains('blob')) return fallback == DbCellKind.binary ? DbCellKind.binary : DbCellKind.text;
   if (base.contains('interval')) return DbCellKind.text;
   if (const {'bool', 'boolean'}.contains(base)) return DbCellKind.boolValue;

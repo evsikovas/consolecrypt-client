@@ -84,21 +84,16 @@ async fn cassandra_connections_stay_on_this_device() {
         before + 2
     );
 
-    // No sharing, no synced history, no engine change across the stores.
+    // No sharing and no engine change across the stores.
     let shared = app
         .sharing_preview_db_connection(saved.id.to_string(), false)
         .await;
     assert!(shared.is_err());
-    assert!(app
-        .db_set_history_policy(
-            saved.id.to_string(),
-            serde_json::from_str("\"encrypted_sync\"").unwrap()
-        )
-        .await
-        .is_err());
+    // The history of a device-local connection stays here whatever the
+    // policy says (`database.history.local_engines.v1`).
     app.db_set_history_policy(
         saved.id.to_string(),
-        serde_json::from_str("\"local\"").unwrap(),
+        serde_json::from_str("\"encrypted_sync\"").unwrap(),
     )
     .await
     .unwrap();
@@ -106,10 +101,7 @@ async fn cassandra_connections_stay_on_this_device() {
     moved.engine = DbEngine::Postgresql;
     moved.options = cc_models::database::DbOptions::for_engine(DbEngine::Postgresql);
     let error = app.db_save_connection(moved, None, None).await.unwrap_err();
-    assert!(
-        format!("{error:?}").contains("engine_change_unsupported"),
-        "{error:?}"
-    );
+    assert!(format!("{error:?}").contains("engine_changed"), "{error:?}");
     let mut moved = postgres.clone();
     moved.engine = DbEngine::Cassandra;
     moved.options = cc_models::database::DbOptions::for_engine(DbEngine::Cassandra);

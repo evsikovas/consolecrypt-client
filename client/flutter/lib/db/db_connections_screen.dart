@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/widgets/view_mode_toggle.dart';
 import 'package:consolecrypt/db/db_connection_dialog.dart';
 import 'package:consolecrypt/db/db_errors.dart';
 import 'package:consolecrypt/db/db_import_dialog.dart';
+import 'package:consolecrypt/db/db_local_only_badge.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_transport_badge.dart';
@@ -375,6 +376,10 @@ class _DbConnectionEntry extends StatelessWidget {
           const SizedBox(width: GlassSpacing.s6),
           DbTransportBadge(security, compact: true, key: ValueKey('db-transport-${connection.id}')),
         ],
+        if (c.engine.localOnly) ...[
+          const SizedBox(width: GlassSpacing.s6),
+          DbLocalOnlyBadge(compact: true, key: ValueKey('db-local-only-${connection.id}')),
+        ],
       ],
     );
     final captionText = Text(
@@ -387,8 +392,7 @@ class _DbConnectionEntry extends StatelessWidget {
       entries: [
         GlassMenuItem(value: _DbAction.open, label: l.commonConnect, icon: Icons.play_arrow_rounded),
         GlassMenuItem(value: _DbAction.edit, label: l.commonEdit, icon: Icons.edit_rounded),
-        // Device-local connections are never shared (see DbEngine.deviceLocal).
-        if (canShare && !c.engine.deviceLocal)
+        if (canShare && !c.engine.localOnly)
           GlassMenuItem(value: _DbAction.share, label: l.sharingTitle, icon: Icons.share_outlined),
         const GlassMenuDivider(),
         GlassMenuItem(value: _DbAction.delete, label: l.commonDelete, icon: Icons.delete_rounded, destructive: true),
@@ -402,23 +406,10 @@ class _DbConnectionEntry extends StatelessWidget {
         onPressed: open,
       ),
     );
-    final badge = c.production || c.engine.deviceLocal
+    final badge = c.production
         ? Padding(
             padding: const EdgeInsets.only(left: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (c.engine.deviceLocal)
-                  GlassBadge(
-                    key: ValueKey('db-device-only-${c.id}'),
-                    label: l.dbDeviceOnly,
-                    tone: GlassTone.neutral,
-                    dense: true,
-                  ),
-                if (c.engine.deviceLocal && c.production) const SizedBox(width: 6),
-                if (c.production) GlassBadge(label: l.dbProd, tone: GlassTone.danger, dense: true),
-              ],
-            ),
+            child: GlassBadge(label: l.dbProd, tone: GlassTone.danger, dense: true),
           )
         : null;
     return GlassInteractive(

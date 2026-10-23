@@ -456,13 +456,13 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                           });
                         },
                 ),
-                if (_engine.deviceLocal)
+                if (_engine.localOnly)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: InfoBanner(
-                      key: const ValueKey('db-device-only'),
-                      title: l.dbDeviceOnly,
-                      message: l.dbDeviceOnlyHelp,
+                      key: const ValueKey('db-local-only'),
+                      title: l.dbLocalOnly,
+                      message: l.dbLocalOnlyHelp,
                     ),
                   ),
                 const SizedBox(height: 12),
@@ -720,7 +720,8 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                         value: _writeConsistency,
                         label: l.dbCassandraWriteConsistency,
                         items: [
-                          for (final level in DbCqlConsistency.values) GlassSelectItem(value: level, label: level.label),
+                          for (final level in DbCqlConsistency.values)
+                            GlassSelectItem(value: level, label: level.label),
                         ],
                         onChanged: _busy ? null : (v) => setState(() => _writeConsistency = v),
                       ),

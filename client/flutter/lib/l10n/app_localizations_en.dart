@@ -9944,6 +9944,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'structure': 'Structure',
       'partitioning': 'Partitioning',
       'maintenance': 'Maintenance',
+      'replication': 'Replication',
+      'storage': 'Storage',
       'other': '$id',
     });
     return '$_temp0';
@@ -10005,6 +10007,27 @@ class AppLocalizationsEn extends AppLocalizations {
       'length_elements': 'Elements',
       'length_members': 'Members',
       'length_entries': 'Entries',
+      'keyspace': 'Keyspace',
+      'base_table': 'Base table',
+      'id': 'ID',
+      'cql_partition_key': 'Partition key',
+      'clustering_key': 'Clustering key',
+      'compaction': 'Compaction',
+      'compression': 'Compression',
+      'gc_grace_seconds': 'GC grace, seconds',
+      'default_ttl': 'Default TTL, seconds',
+      'caching': 'Caching',
+      'bloom_filter': 'Bloom filter false positives',
+      'speculative_retry': 'Speculative retry',
+      'cql_partitions': 'Partitions',
+      'mean_partition_size': 'Mean partition size',
+      'strategy': 'Replication strategy',
+      'replication': 'Replicas',
+      'durable_writes': 'Durable writes',
+      'tables': 'Tables',
+      'views': 'Materialized views',
+      'types': 'User types',
+      'functions': 'Functions',
       'other': '$id',
     });
     return '$_temp0';
@@ -10020,6 +10043,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'foreign_table': 'Foreign table',
       'unlogged': 'Unlogged',
       'temporary': 'Temporary',
+      'keyspace': 'Keyspace',
       'other': '$id',
     });
     return '$_temp0';
@@ -11372,4 +11396,173 @@ class AppLocalizationsEn extends AppLocalizations {
   String teamsPolicyAck(String host) {
     return 'I checked this command for $host (team policy)';
   }
+
+  @override
+  String get dbKeyspace => 'Keyspace';
+
+  @override
+  String get dbCassandraContactPoints => 'More contact points (hosts, comma-separated)';
+
+  @override
+  String get dbCassandraLocalDc => 'Local data center';
+
+  @override
+  String get dbCassandraReadConsistency => 'Read consistency';
+
+  @override
+  String get dbCassandraWriteConsistency => 'Write consistency';
+
+  @override
+  String get dbCassandraPageSize => 'Rows per page';
+
+  @override
+  String get dbCassandraRouteHelp =>
+      'The session works through one coordinator node: the first contact point that answers. Through SSH, a tunnel, Kubernetes or Docker only that endpoint is used and other cluster nodes are never contacted directly. With a local data center set, the coordinator must be in it.';
+
+  @override
+  String get dbErrorDatacenter =>
+      'The node that answered is in another data center than the configured local one. Check the contact points or the local data center.';
+
+  @override
+  String get dbErrorEngineChange =>
+      'This connection cannot switch to that engine: synced connections and connections kept on this device are stored separately. Create a new connection instead.';
+
+  @override
+  String get dbErrorDeviceOnly => 'This connection is kept on this device only and cannot be shared or synced.';
+
+  @override
+  String get dbFolderTypes => 'Types';
+
+  @override
+  String get dbScanWarningTitle => 'Whole-table read';
+
+  @override
+  String get dbScanAllowFiltering =>
+      'ALLOW FILTERING makes the cluster read and filter rows of the whole table, which can be slow and load every node. Run it anyway?';
+
+  @override
+  String get dbScanFullTable =>
+      'This query has no WHERE and no LIMIT: it reads the whole table page by page across the cluster. Run it anyway?';
+
+  @override
+  String get snippetPackCassandra => 'Cassandra / ScyllaDB';
+
+  @override
+  String get snippetPackCassandraDescription =>
+      'Schema, cluster nodes, size estimates, partitions, TTLs and roles in CQL. For cqlsh or the Databases workspace.';
+
+  @override
+  String get snippetDbCqlKeyspaces => 'Keyspaces and replication';
+
+  @override
+  String get snippetDbCqlKeyspacesNote => 'Every keyspace with its replication strategy and durable writes.';
+
+  @override
+  String get snippetDbCqlTables => 'Tables of a keyspace';
+
+  @override
+  String get snippetDbCqlTablesNote => 'Tables with their comment, default TTL and gc_grace_seconds.';
+
+  @override
+  String get snippetDbCqlColumns => 'Columns and primary key';
+
+  @override
+  String get snippetDbCqlColumnsNote =>
+      'Columns of a table: partition key, clustering columns with their order, static and regular columns.';
+
+  @override
+  String get snippetDbCqlIndexes => 'Secondary indexes';
+
+  @override
+  String get snippetDbCqlIndexesNote => 'Secondary indexes of a keyspace with their targets.';
+
+  @override
+  String get snippetDbCqlViews => 'Materialized views';
+
+  @override
+  String get snippetDbCqlViewsNote => 'Materialized views of a keyspace with their base table and filter.';
+
+  @override
+  String get snippetDbCqlTypes => 'User-defined types';
+
+  @override
+  String get snippetDbCqlTypesNote => 'User-defined types of a keyspace with their fields.';
+
+  @override
+  String get snippetDbCqlLocalNode => 'This node';
+
+  @override
+  String get snippetDbCqlLocalNodeNote => 'Cluster name, data center, rack and version of the coordinator.';
+
+  @override
+  String get snippetDbCqlPeers => 'Cluster peers';
+
+  @override
+  String get snippetDbCqlPeersNote => 'Other nodes as the coordinator sees them: address, data center, rack, version.';
+
+  @override
+  String get snippetDbCqlSizeEstimates => 'Table size estimates';
+
+  @override
+  String get snippetDbCqlSizeEstimatesNote =>
+      'Estimated partitions and mean partition size per token range on the coordinator.';
+
+  @override
+  String get snippetDbCqlPartition => 'Rows of one partition';
+
+  @override
+  String get snippetDbCqlPartitionNote =>
+      'Reads one partition by a text partition key — the efficient way to read in CQL.';
+
+  @override
+  String get snippetDbCqlTtl => 'TTL and write time of a column';
+
+  @override
+  String get snippetDbCqlTtlNote => 'Remaining TTL and write timestamp of a column within one partition.';
+
+  @override
+  String get snippetDbCqlCountPartition => 'Rows in a partition';
+
+  @override
+  String get snippetDbCqlCountPartitionNote =>
+      'Counts the rows of one partition (counting a whole table scans the cluster).';
+
+  @override
+  String get snippetDbCqlTokens => 'Partition tokens';
+
+  @override
+  String get snippetDbCqlTokensNote => 'First partition keys with their token, to see how data spreads over the ring.';
+
+  @override
+  String get snippetDbCqlRoles => 'Roles';
+
+  @override
+  String get snippetDbCqlRolesNote => 'Roles with their login and superuser flags.';
+
+  @override
+  String get snippetDbCqlPermissions => 'Permissions of a role';
+
+  @override
+  String get snippetDbCqlPermissionsNote => 'Every permission granted to a role, directly or through other roles.';
+
+  @override
+  String get snippetDbCqlCreateTable => 'Create a time-series table';
+
+  @override
+  String get snippetDbCqlCreateTableNote =>
+      'Partition per key, newest rows first (clustering order), rows expire after a default TTL.';
+
+  @override
+  String get snippetDbCqlInsertJson => 'Insert a row from JSON with a TTL';
+
+  @override
+  String get snippetDbCqlInsertJsonNote =>
+      'INSERT … JSON maps JSON fields to columns of any type; the row expires after the TTL.';
+
+  @override
+  String get dbLocalOnly => 'This device only';
+
+  @override
+  String get dbLocalOnlyHelp =>
+      'Stored on this device only: not synced, backed up to the vault or shared, because older app versions cannot open this connection type.';
 }

@@ -211,16 +211,16 @@ class _DbHistoryPanelState extends ConsumerState<DbHistoryPanel> {
                       itemBuilder: (_) => [
                         for (final p in DbHistoryPolicy.values)
                           // History of a device-local connection stays here too.
-                          if (p != DbHistoryPolicy.encryptedSync || !widget.connection.engine.deviceLocal)
-                          CheckedPopupMenuItem(
-                            value: p,
-                            checked: p == _policy,
-                            child: Text(switch (p) {
-                              DbHistoryPolicy.local => l.dbHistoryLocal,
-                              DbHistoryPolicy.encryptedSync => l.dbHistorySync,
-                              DbHistoryPolicy.disabled => l.dbHistoryDisabled,
-                            }),
-                          ),
+                          if (p != DbHistoryPolicy.encryptedSync || !widget.connection.engine.localOnly)
+                            CheckedPopupMenuItem(
+                              value: p,
+                              checked: p == _policy,
+                              child: Text(switch (p) {
+                                DbHistoryPolicy.local => l.dbHistoryLocal,
+                                DbHistoryPolicy.encryptedSync => l.dbHistorySync,
+                                DbHistoryPolicy.disabled => l.dbHistoryDisabled,
+                              }),
+                            ),
                       ],
                     ),
                     IconButton(tooltip: l.dbClearHistory, icon: const Icon(Icons.delete_outline), onPressed: _clear),

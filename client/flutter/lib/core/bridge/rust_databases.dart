@@ -71,9 +71,9 @@ final class RustDbService
   @override
   Future<List<DbConnection>> connections() async {
     final list = jsonDecode(await guard(native.dbConnections)) as List;
-    // Engines of a newer version are skipped (the core never lists them today).
+    // A connection of an engine from a newer version is left out.
     return List.unmodifiable(
-      list.cast<DbJson>().where((json) => DbEngine.tryParse(json['engine'] as String?) != null).map(DbConnection.fromJson),
+      list.cast<DbJson>().where((json) => DbEngine.tryParse(json['engine']) != null).map(DbConnection.fromJson),
     );
   }
 
@@ -485,19 +485,19 @@ final class RustDbService
     return DbHistoryPage(
       entries: [
         for (final entry in (json['entries'] as List).cast<DbJson>())
-          if (DbEngine.tryParse(entry['engine'] as String?) case final engine?)
-          DbHistoryEntry(
-            id: entry['id'] as String,
-            connectionId: entry['connection_id'] as String,
-            engine: engine,
-            text: entry['text'] as String,
-            createdAt: DateTime.parse(entry['created_at'] as String),
-            elapsedMs: entry['elapsed_ms'] as int? ?? 0,
-            rows: entry['rows'] as int? ?? 0,
-            errorCode: entry['error_code'] as String?,
-            favorite: entry['favorite'] as bool? ?? false,
-            productionWrite: entry['production_write'] as bool? ?? false,
-          ),
+          if (DbEngine.tryParse(entry['engine']) != null)
+            DbHistoryEntry(
+              id: entry['id'] as String,
+              connectionId: entry['connection_id'] as String,
+              engine: DbEngine.parse(entry['engine'] as String),
+              text: entry['text'] as String,
+              createdAt: DateTime.parse(entry['created_at'] as String),
+              elapsedMs: entry['elapsed_ms'] as int? ?? 0,
+              rows: entry['rows'] as int? ?? 0,
+              errorCode: entry['error_code'] as String?,
+              favorite: entry['favorite'] as bool? ?? false,
+              productionWrite: entry['production_write'] as bool? ?? false,
+            ),
       ],
       nextCursor: json['next_cursor'] as String?,
     );

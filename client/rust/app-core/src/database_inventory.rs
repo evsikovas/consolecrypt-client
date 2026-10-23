@@ -66,13 +66,9 @@ fn prepare_credentials(
 
 impl AppCore {
     pub async fn db_connections(&self) -> AppResult<Vec<DbConnection>> {
-        let (owner, unlocked) = self.unlocked().await?;
+        let (_, unlocked) = self.unlocked().await?;
         let mut connections = unlocked.working().db_connections();
-        let local = crate::database_local::load(&owner, &unlocked).await?;
-        if let Some(local) = local.as_ref() {
-            connections.extend(local.connections());
-        }
-        drop(local);
+        connections.extend(self.db_local_connections().await?);
         connections.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
         Ok(connections)
     }
@@ -87,26 +83,30 @@ impl AppCore {
     ) -> AppResult<DbConnection> {
         let (owner, unlocked) = self.unlocked().await?;
         let creating = connection.id == ObjectId::NIL;
+        // Engines added after 0.9.1 stay on this device (see database_local).
+        let local = !creating
+            && unlocked.working().db_connection(connection.id).is_none()
+            && self.db_saved_connection(connection.id).await?.is_some();
+        if connection.engine.local_only() || local {
+            if !connection.engine.local_only() || (!creating && !local) {
+                // An engine never moves between the vault and this device.
+                return Err(invalid("engine_changed"));
+            }
+            return self
+                .db_save_local_with_credentials(connection, creating, password, private_key)
+                .await;
+        }
         let existing = if creating {
             connection.id = ObjectId::new();
             None
         } else {
             Some(
-                crate::database_local::connection(&owner, &unlocked, connection.id)
-                    .await?
+                unlocked
+                    .working()
+                    .db_connection(connection.id)
                     .ok_or_else(|| invalid("connection_unavailable"))?,
             )
         };
-        // Device-local and vault connections live in different stores: an
-        // engine change across them would leave a stale copy on older
-        // devices (see `DbEngine::device_local`).
-        let local = connection.engine.device_local();
-        if existing
-            .as_ref()
-            .is_some_and(|old| old.engine.device_local() != local)
-        {
-            return Err(invalid("engine_change_unsupported"));
-        }
         let now = chrono::Utc::now();
         connection.created_at = existing.as_ref().map_or(now, |old| old.created_at);
         connection.updated_at = now;
@@ -119,24 +119,6 @@ impl AppCore {
         let mut references = connection.clone();
         references.auth = DbAuth::default();
         validate_refs(unlocked.working(), &VaultObject::DbConnection(references))?;
-        if local {
-            let _profile = self.hold_session(&owner).await?;
-            let _generation = owner.hold_unlocked(&unlocked).await?;
-            {
-                let store = crate::database_local::load(&owner, &unlocked).await?;
-                let store = store
-                    .as_ref()
-                    .ok_or_else(|| AppError::internal("device-local store not loaded"))?;
-                for id in connection.auth.secret_ids() {
-                    if !fresh.contains(&id) && !store.contains(id) {
-                        return Err(invalid("credential_unavailable"));
-                    }
-                }
-            }
-            crate::database_local::save(&owner, &unlocked, connection.clone(), secrets).await?;
-            crate::database_local::close_sessions(&unlocked, connection.id);
-            return Ok(connection);
-        }
         for id in connection.auth.secret_ids() {
             if !fresh.contains(&id) && unlocked.working().kind_of(id) != Some(ObjectKind::Secret) {
                 return Err(invalid("credential_unavailable"));
@@ -153,14 +135,12 @@ impl AppCore {
     pub async fn db_delete_connection(&self, id: String) -> AppResult<()> {
         let (owner, unlocked) = self.unlocked().await?;
         let id = crate::dto::parse_id("connection_id", &id)?;
-        if crate::database_local::is_local(&owner, &unlocked, id).await? {
-            let _profile = self.hold_session(&owner).await?;
-            let _generation = owner.hold_unlocked(&unlocked).await?;
-            crate::database_local::delete(&owner, &unlocked, id).await?;
-            crate::database_local::close_sessions(&unlocked, id);
-            return Ok(());
-        }
         if unlocked.working().db_connection(id).is_none() {
+            if self.db_delete_local_connection(id).await? {
+                unlocked.db.close_connection(&id.to_string());
+                self.db_prune_local_secrets().await?;
+                return Ok(());
+            }
             return Err(invalid("connection_unavailable"));
         }
         let _profile = self.hold_session(&owner).await?;
@@ -169,6 +149,40 @@ impl AppCore {
         // Credentials may be shared with other objects and are retained.
         unlocked.writer.delete(id).await?;
         Ok(())
+    }
+}
+
+impl AppCore {
+    /// Saves a device-local connection; a new password or client key is
+    /// sealed on this device too (`database_local_secrets`), never in the
+    /// vault. Live sessions of the connection close.
+    async fn db_save_local_with_credentials(
+        &self,
+        mut connection: DbConnection,
+        creating: bool,
+        password: Option<SecretValue>,
+        private_key: Option<SecretValue>,
+    ) -> AppResult<DbConnection> {
+        let existing = if creating {
+            connection.id = ObjectId::new();
+            None
+        } else {
+            self.db_saved_connection(connection.id).await?
+        };
+        let secrets =
+            prepare_credentials(&mut connection, existing.as_ref(), password, private_key)?;
+        let fresh: std::collections::HashSet<_> = secrets.iter().map(|secret| secret.id).collect();
+        for id in connection.auth.secret_ids() {
+            if !fresh.contains(&id) && !self.db_has_local_secret(id).await? {
+                return Err(invalid("credential_unavailable"));
+            }
+        }
+        self.db_save_local_secrets(secrets).await?;
+        let saved = self.db_save_local_connection(connection, creating).await?;
+        self.db_prune_local_secrets().await?;
+        let (_, unlocked) = self.unlocked().await?;
+        unlocked.db.close_connection(&saved.id.to_string());
+        Ok(saved)
     }
 }
 
