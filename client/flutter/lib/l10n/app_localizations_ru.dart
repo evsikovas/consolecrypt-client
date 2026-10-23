@@ -11831,4 +11831,478 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get settingsClipboardBackgroundClearError => 'Не удалось прочитать или сохранить настройку.';
+
+  @override
+  String get dbNullCell => '[NULL]';
+
+  @override
+  String get dbDefaultCell => '[ПО УМОЛЧАНИЮ]';
+
+  @override
+  String get dbRowAddedHint => 'Новая строка, ещё не сохранена';
+
+  @override
+  String get dbRowDeletedHint => 'Будет удалена при сохранении';
+
+  @override
+  String get dbRequiredValue => 'Нужно значение';
+
+  @override
+  String get dbKeyColumn => 'Ключевой столбец';
+
+  @override
+  String get dbTypeNumber => 'Число';
+
+  @override
+  String get dbTypeText => 'Текст';
+
+  @override
+  String get dbTypeDate => 'Дата и время';
+
+  @override
+  String get dbTypeBool => 'Да/нет';
+
+  @override
+  String get dbTypeJson => 'JSON';
+
+  @override
+  String get dbTypeBinary => 'Двоичные данные';
+
+  @override
+  String get dbEditUnsupported => 'Редактирование строк здесь недоступно';
+
+  @override
+  String get dbEditEngineUnsupported => 'Строки этой СУБД здесь не редактируются';
+
+  @override
+  String get dbEditDesktopOnly => 'Строки редактируются на компьютере';
+
+  @override
+  String get dbEditNoKey => 'Для правки нужен запрос к одной таблице с первичным или уникальным ключом';
+
+  @override
+  String get dbEditProductionLocked => 'Продакшен только для чтения: сначала разрешите запись';
+
+  @override
+  String get dbEditReadOnly => 'Сессия только для чтения: сначала разрешите запись';
+
+  @override
+  String dbRequiredMissing(String columns) {
+    return 'Заполните обязательные столбцы: $columns';
+  }
+
+  @override
+  String get dbSaveFailed => 'Изменения не сохранены';
+
+  @override
+  String get dbUnsavedTitle => 'Несохранённые изменения';
+
+  @override
+  String dbUnsavedMessage(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'В $count строки есть несохранённые изменения.',
+      many: 'В $count строках есть несохранённые изменения.',
+      few: 'В $count строках есть несохранённые изменения.',
+      one: 'В $count строке есть несохранённые изменения.',
+    );
+    return '$_temp0 Сохранить их?';
+  }
+
+  @override
+  String get dbSave => 'Сохранить';
+
+  @override
+  String get dbSaveOptions => 'Варианты сохранения';
+
+  @override
+  String get dbShowSql => 'Показать SQL';
+
+  @override
+  String get dbPendingSql => 'Несохранённые изменения в SQL';
+
+  @override
+  String get dbRefreshReadOnly => 'обновляются только результаты читающих запросов';
+
+  @override
+  String get dbRefreshUnavailable => 'Этот результат больше нельзя обновить — запустите запрос снова';
+
+  @override
+  String get dbAutoRefresh => 'Автообновление';
+
+  @override
+  String get dbAutoRefreshOff => 'Выключено';
+
+  @override
+  String dbEverySeconds(int seconds) {
+    return 'Каждые $seconds с';
+  }
+
+  @override
+  String dbEveryMinutes(int minutes) {
+    return 'Каждые $minutes мин';
+  }
+
+  @override
+  String get dbEditRow => 'Редактировать текущую строку';
+
+  @override
+  String get dbAddRow => 'Добавить строку';
+
+  @override
+  String get dbDuplicateRow => 'Дублировать строку';
+
+  @override
+  String get dbDeleteRow => 'Удалить строку';
+
+  @override
+  String get dbFirstRow => 'Первая строка';
+
+  @override
+  String get dbPreviousRow => 'Предыдущая строка';
+
+  @override
+  String get dbNextRow => 'Следующая строка';
+
+  @override
+  String get dbLastRow => 'Последняя строка';
+
+  @override
+  String get dbExportData => 'Экспорт данных…';
+
+  @override
+  String get dbImportData => 'Импорт данных…';
+
+  @override
+  String get dbFetchSize => 'Строк за раз';
+
+  @override
+  String dbFetchRows(int count) {
+    return '$count строк';
+  }
+
+  @override
+  String get dbFetchSizeInvalid => 'Введите число от 1 до 1000';
+
+  @override
+  String get dbLoadNext => 'Загрузить следующую порцию';
+
+  @override
+  String get dbFetchAll => 'Загрузить все строки';
+
+  @override
+  String dbRowsFetched(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'получено $count строки',
+      many: 'получено $count строк',
+      few: 'получено $count строки',
+      one: 'получена $count строка',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dbFetchedTiming(String seconds, String date, String time) {
+    return '$seconds с, $date в $time';
+  }
+
+  @override
+  String get dbMoreAvailable => 'есть ещё';
+
+  @override
+  String dbPendingChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count изменения не сохранены',
+      many: '$count изменений не сохранено',
+      few: '$count изменения не сохранены',
+      one: '$count изменение не сохранено',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbViewTable => 'Таблица';
+
+  @override
+  String get dbViewText => 'Текст';
+
+  @override
+  String get dbViewRecord => 'Запись';
+
+  @override
+  String dbTextMoreRows(int count) {
+    return '… ещё строк: $count (все строки — через экспорт)';
+  }
+
+  @override
+  String get dbNoRows => 'Нет строк';
+
+  @override
+  String get dbNewRow => 'Новая строка';
+
+  @override
+  String dbRecordNumber(int row, int count) {
+    return 'Строка $row из $count';
+  }
+
+  @override
+  String get dbKeepValue => 'Оставить значение';
+
+  @override
+  String get dbRecordEditHint => 'Нажмите, чтобы изменить значение';
+
+  @override
+  String get dbUseDefault => 'Оставить серверу (по умолчанию)';
+
+  @override
+  String dbSizeMb(String size) {
+    return '$size МБ';
+  }
+
+  @override
+  String dbSizeKb(int size) {
+    return '$size КБ';
+  }
+
+  @override
+  String dbCsvTitle(String table) {
+    return 'Импорт CSV в $table';
+  }
+
+  @override
+  String dbCsvStep(int step, int count, String title) {
+    return 'Шаг $step из $count: $title';
+  }
+
+  @override
+  String get dbCsvStepFile => 'Файл';
+
+  @override
+  String get dbCsvStepRead => 'Параметры чтения';
+
+  @override
+  String get dbCsvStepMap => 'Столбцы';
+
+  @override
+  String get dbCsvStepOptions => 'Параметры импорта';
+
+  @override
+  String get dbCsvStepRun => 'Импорт';
+
+  @override
+  String dbCsvFileHelp(String size) {
+    return 'Выберите CSV, TSV или текстовый файл до $size. Он читается потоком на этом устройстве.';
+  }
+
+  @override
+  String get dbCsvChooseFile => 'Выбрать файл…';
+
+  @override
+  String dbCsvTooLarge(int size) {
+    return 'Файл больше $size МБ — его нельзя импортировать здесь.';
+  }
+
+  @override
+  String get dbCsvUnreadable => 'Не удалось прочитать файл с этими параметрами.';
+
+  @override
+  String get dbCsvPrivacy => 'Содержимое файла передаётся только в эту базу данных.';
+
+  @override
+  String get dbCsvAuto => 'Определить';
+
+  @override
+  String get dbCsvComma => 'Запятая ,';
+
+  @override
+  String get dbCsvSemicolon => 'Точка с запятой ;';
+
+  @override
+  String get dbCsvTab => 'Табуляция';
+
+  @override
+  String get dbCsvPipe => 'Черта |';
+
+  @override
+  String get dbCsvEncoding => 'Кодировка';
+
+  @override
+  String get dbCsvEncodingAuto => 'UTF-8 (определить)';
+
+  @override
+  String get dbCsvDelimiter => 'Разделитель';
+
+  @override
+  String get dbCsvQuote => 'Символ кавычки';
+
+  @override
+  String get dbCsvSkipRows => 'Пропустить строк в начале';
+
+  @override
+  String get dbCsvNull => 'NULL — это';
+
+  @override
+  String get dbCsvNullEmpty => 'Пустое поле';
+
+  @override
+  String get dbCsvNullNever => 'Ничего';
+
+  @override
+  String get dbCsvDecimal => 'Десятичный разделитель';
+
+  @override
+  String get dbCsvDecimalDot => 'Точка 1.5';
+
+  @override
+  String get dbCsvDecimalComma => 'Запятая 1,5';
+
+  @override
+  String get dbCsvDates => 'Даты';
+
+  @override
+  String get dbCsvHeader => 'В первой строке — названия столбцов';
+
+  @override
+  String dbCsvDetected(String delimiter, String encoding) {
+    return 'Читается так: разделитель $delimiter, $encoding';
+  }
+
+  @override
+  String get dbCsvMapHelp =>
+      'Каждый столбец файла попадает в столбец таблицы или пропускается. Первые 1000 строк проверяются на соответствие типам.';
+
+  @override
+  String get dbCsvSkipColumn => 'Пропустить';
+
+  @override
+  String get dbCsvDuplicateTarget => 'Два столбца файла указывают на один столбец таблицы.';
+
+  @override
+  String dbCsvMissingRequired(String columns) {
+    return 'Обязательные столбцы без значений: $columns';
+  }
+
+  @override
+  String dbCsvBadValues(int count, String samples) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count значения не подходят: $samples',
+      many: '$count значений не подходят: $samples',
+      few: '$count значения не подходят: $samples',
+      one: '$count значение не подходит: $samples',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbCsvMode => 'Строки';
+
+  @override
+  String get dbCsvModeInsert => 'Добавлять';
+
+  @override
+  String get dbCsvModeSkip => 'Добавлять, пропуская существующие ключи';
+
+  @override
+  String get dbCsvModeUpsert => 'Добавлять или обновлять по ключу';
+
+  @override
+  String get dbCsvNoKey => 'У таблицы нет ключа: строки можно только добавлять.';
+
+  @override
+  String get dbCsvBatch => 'Строк в пакете (1–5000)';
+
+  @override
+  String get dbCsvBatchInvalid => 'Введите размер пакета от 1 до 5000';
+
+  @override
+  String get dbCsvOnError => 'При ошибочной строке';
+
+  @override
+  String get dbCsvStop => 'Остановить импорт';
+
+  @override
+  String get dbCsvSkipBad => 'Пропустить и записать отчёт об ошибках';
+
+  @override
+  String get dbCsvTransaction => 'Транзакция';
+
+  @override
+  String get dbCsvWhole => 'Одна на весь файл (всё или ничего)';
+
+  @override
+  String get dbCsvPerBatch => 'Отдельная на каждый пакет';
+
+  @override
+  String get dbCsvTruncate => 'Сначала удалить все строки таблицы';
+
+  @override
+  String get dbCsvTruncateHelp => 'Выполняется DELETE FROM в транзакции импорта; он виден при проверке.';
+
+  @override
+  String get dbCsvImport => 'Проверить и импортировать…';
+
+  @override
+  String dbCsvCounts(int read, int imported, int skipped, int failed) {
+    return 'Прочитано: $read · импортировано: $imported · пропущено: $skipped · ошибок: $failed';
+  }
+
+  @override
+  String dbCsvRate(int rows) {
+    return '$rows строк/с';
+  }
+
+  @override
+  String dbCsvRateEta(int rows, String left) {
+    return '$rows строк/с · осталось около $left';
+  }
+
+  @override
+  String dbCsvDone(int imported, int skipped, int failed) {
+    return 'Готово: импортировано $imported, пропущено $skipped, с ошибками $failed.';
+  }
+
+  @override
+  String dbCsvCancelled(int imported) {
+    return 'Отменено. Сохранено строк: $imported (только завершённые пакеты).';
+  }
+
+  @override
+  String get dbCsvFailed => 'Импорт не удался; открытая транзакция отменена.';
+
+  @override
+  String dbCsvRowType(int line) {
+    return 'Строка $line: значение не подходит столбцу. Открытая транзакция отменена.';
+  }
+
+  @override
+  String dbCsvRowRequired(int line) {
+    return 'Строка $line: обязательный столбец пуст. Открытая транзакция отменена.';
+  }
+
+  @override
+  String dbCsvRowUnreadable(int line) {
+    return 'Строку $line нельзя прочитать (кодировка или размер). Открытая транзакция отменена.';
+  }
+
+  @override
+  String get dbCsvReport => 'Отчёт об ошибках';
+
+  @override
+  String get dbCsvShowReport => 'Показать в папке';
+
+  @override
+  String get dbCsvCreateTable => 'Создать таблицу из CSV…';
+
+  @override
+  String get dbCsvNewTableName => 'Имя новой таблицы';
+
+  @override
+  String get dbImportCsv => 'Импорт из CSV…';
 }

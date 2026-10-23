@@ -42,6 +42,9 @@ sha2 = "0.11"
 # key). These features are Rust-side only and leave libsqlite3-sys as is.
 rusqlite = { workspace = true, features = ["hooks", "limits", "column_decltype"] }
 percent-encoding = "2"
+csv = "1"
+encoding_rs = "0.8"
+hex.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

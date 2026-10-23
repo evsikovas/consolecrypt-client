@@ -6,6 +6,7 @@ use cc_db_core::{
     export::{format_rows, ExportOptions, ExportProgress},
     introspect::{quote_identifier, DbCompletion},
     parser::editor::{self, QueryScope},
+    row_changes::{DbEditColumn, DbRowChange},
     streaming::DbQueryStream,
     transport::DbCredentials,
     DbCell, DbColumn, DbError, DbObjectRef, DbQueryEvent, DbQueryRequest, DbSession, DbSessionInfo,
@@ -77,12 +78,27 @@ pub(crate) struct DbRuntime {
     exports: Mutex<HashMap<String, RunningExport>>,
     /// Reviewed cell edits by ticket: (session id, generated request).
     edits: Mutex<HashMap<String, (String, DbQueryRequest)>>,
+    /// Reviewed CSV imports by ticket, and running ones by id.
+    pub(crate) pending_imports: Mutex<HashMap<String, crate::database_csv_import::PendingImport>>,
+    pub(crate) imports: Mutex<HashMap<String, crate::database_csv_import::RunningImport>>,
 }
 
 impl DbRuntime {
     pub(crate) fn close(&self) {
         self.shutdown.cancel();
         self.edits.lock().unwrap_or_else(|e| e.into_inner()).clear();
+        self.pending_imports
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
+        for (_, import) in self
+            .imports
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .drain()
+        {
+            import.cancel();
+        }
         {
             let mut results = self.results.lock().unwrap_or_else(|e| e.into_inner());
             results.0.clear();
@@ -194,12 +210,17 @@ fn cell_size(cell: &DbCell) -> usize {
     }
 }
 
-fn invalid(reason: &'static str) -> AppError {
+pub(crate) fn invalid(reason: &'static str) -> AppError {
     AppError::invalid("database", reason)
 }
 
-fn db_error(error: DbError) -> AppError {
-    AppError::invalid("database", cc_db_core::streaming::error_code(&error))
+pub(crate) fn db_error(error: DbError) -> AppError {
+    AppError::invalid("database", db_error_code(&error))
+}
+
+/// The stable code of a database error (no driver detail).
+pub(crate) fn db_error_code(error: &DbError) -> &'static str {
+    cc_db_core::streaming::error_code(error)
 }
 
 /// Session metadata plus the live write state (non-production sessions can
@@ -234,6 +255,20 @@ pub struct DbCellEditReviewDto {
     /// values shortened) for review; what runs keeps them bound.
     pub sql: String,
     pub rows: usize,
+    pub expires_in_seconds: u64,
+}
+
+/// Review of pending row changes: the statements with literal values for
+/// display, how many rows each kind changes and the guard's risk.
+#[derive(Debug, Clone, Serialize)]
+pub struct DbRowChangeReviewDto {
+    pub ticket: String,
+    pub sql: String,
+    pub rows: usize,
+    pub inserted: usize,
+    pub updated: usize,
+    pub deleted: usize,
+    pub risk: cc_db_core::guard::QueryRisk,
     pub expires_in_seconds: u64,
 }
 
@@ -970,6 +1005,60 @@ impl AppCore {
             ticket,
             sql,
             rows,
+            expires_in_seconds: review.expires_in_seconds,
+        })
+    }
+
+    /// Columns of an editable table: NULL, default, generated and key flags
+    /// for adding and duplicating rows in the grid.
+    pub async fn db_edit_columns(
+        &self,
+        session_id: String,
+        table: DbObjectRef,
+    ) -> AppResult<Vec<DbEditColumn>> {
+        let (_, unlocked) = self.unlocked().await?;
+        let session = unlocked.db.session(&session_id)?;
+        session.edit_columns(&table).await.map_err(db_error)
+    }
+
+    /// Generated `DELETE`/`UPDATE`/`INSERT` statements for the pending row
+    /// changes of a result, reviewed like any write and committed with
+    /// [`Self::db_commit_cell_edits`].
+    pub async fn db_review_row_changes(
+        &self,
+        session_id: String,
+        table: DbObjectRef,
+        changes: Vec<DbRowChange>,
+    ) -> AppResult<DbRowChangeReviewDto> {
+        let (_, unlocked) = self.unlocked().await?;
+        let session = unlocked.db.session(&session_id)?;
+        let generated = session
+            .review_row_changes(&table, &changes)
+            .await
+            .map_err(db_error)?;
+        let rows = generated.rows();
+        let cc_db_core::row_changes::RowChangeRequest {
+            request,
+            preview: sql,
+            inserted,
+            updated,
+            deleted,
+        } = generated;
+        let review = session.guard().review(&request).map_err(db_error)?;
+        let ticket = review.ticket.clone();
+        let mut pending = unlocked.db.edits.lock().unwrap_or_else(|e| e.into_inner());
+        if pending.len() >= MAX_QUERIES {
+            pending.clear();
+        }
+        pending.insert(ticket.clone(), (session_id, request));
+        Ok(DbRowChangeReviewDto {
+            ticket,
+            sql,
+            rows,
+            inserted,
+            updated,
+            deleted,
+            risk: review.risk,
             expires_in_seconds: review.expires_in_seconds,
         })
     }

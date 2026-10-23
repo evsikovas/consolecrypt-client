@@ -40,7 +40,7 @@ pub struct CellEditRequest {
 }
 
 /// How a bound value reads in the review preview.
-fn preview_literal(engine: DbEngine, cell: &DbCell) -> String {
+pub(crate) fn preview_literal(engine: DbEngine, cell: &DbCell) -> String {
     let mut shown = cell.clone();
     match &mut shown {
         DbCell::Null | DbCell::Bool(_) => {}
@@ -263,8 +263,22 @@ impl RowConsumer for OneRowEach {
 }
 
 impl DbSession {
-    /// Primary-key columns of a table, in key order (empty when it has none).
+    /// Columns that identify a row, in key order: the primary key, else the
+    /// first unique key whose columns are all NOT NULL (empty when there is
+    /// neither; a physical row address such as `ctid` is not stable).
     pub(crate) async fn primary_key(&self, table: &DbObjectRef) -> Result<Vec<String>, DbError> {
+        let key = self.key_columns(table, true).await?;
+        if !key.is_empty() {
+            return Ok(key);
+        }
+        self.key_columns(table, false).await
+    }
+
+    async fn key_columns(
+        &self,
+        table: &DbObjectRef,
+        primary: bool,
+    ) -> Result<Vec<String>, DbError> {
         let text = |value: &str| DbParameter {
             name: String::new(),
             value: DbCell::Text(value.into()),
@@ -274,7 +288,7 @@ impl DbSession {
             return self.sqlite_primary_key(table).await;
         }
         let (sql, bindings) = match self.info.engine {
-            DbEngine::Postgresql => (
+            DbEngine::Postgresql if primary => (
                 "SELECT a.attname FROM pg_catalog.pg_index i \
                  JOIN pg_catalog.pg_class c ON c.oid = i.indrelid \
                  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
@@ -284,12 +298,39 @@ impl DbSession {
                  ORDER BY k.position",
                 vec![text(table.schema.as_deref().unwrap_or("public")), text(&table.name)],
             ),
-            DbEngine::Mysql | DbEngine::Mariadb => (
+            DbEngine::Postgresql => (
+                "SELECT a.attname FROM pg_catalog.pg_index i \
+                 JOIN pg_catalog.pg_class c ON c.oid = i.indrelid \
+                 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
+                 JOIN LATERAL pg_catalog.unnest(i.indkey) WITH ORDINALITY AS k(attnum, position) ON true \
+                 JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum = k.attnum \
+                 WHERE i.indexrelid = (SELECT u.indexrelid FROM pg_catalog.pg_index u \
+                 WHERE u.indrelid = c.oid AND u.indisunique AND u.indisvalid AND u.indpred IS NULL \
+                 AND u.indexprs IS NULL AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_attribute x \
+                 WHERE x.attrelid = c.oid AND x.attnum = ANY (u.indkey) AND NOT x.attnotnull) \
+                 ORDER BY u.indexrelid LIMIT 1) \
+                 AND n.nspname = $1 AND c.relname = $2 AND c.relkind IN ('r', 'p') \
+                 ORDER BY k.position",
+                vec![text(table.schema.as_deref().unwrap_or("public")), text(&table.name)],
+            ),
+            DbEngine::Mysql | DbEngine::Mariadb if primary => (
                 "SELECT k.column_name FROM information_schema.key_column_usage k \
                  JOIN information_schema.tables t ON t.table_schema = k.table_schema \
                  AND t.table_name = k.table_name AND t.table_type = 'BASE TABLE' \
                  WHERE k.constraint_name = 'PRIMARY' AND k.table_schema = ? AND k.table_name = ? \
                  ORDER BY k.ordinal_position",
+                vec![text(&table.database), text(&table.name)],
+            ),
+            DbEngine::Mysql | DbEngine::Mariadb => (
+                "SELECT s.column_name FROM information_schema.statistics s \
+                 JOIN information_schema.tables t ON t.table_schema = s.table_schema \
+                 AND t.table_name = s.table_name AND t.table_type = 'BASE TABLE' \
+                 WHERE s.table_schema = ? AND s.table_name = ? AND s.index_name = \
+                 (SELECT u.index_name FROM information_schema.statistics u \
+                 WHERE u.table_schema = s.table_schema AND u.table_name = s.table_name AND u.non_unique = 0 \
+                 GROUP BY u.index_name HAVING SUM(u.nullable = 'YES') = 0 AND SUM(u.sub_part IS NOT NULL) = 0 \
+                 AND SUM(u.column_name IS NULL) = 0 ORDER BY u.index_name LIMIT 1) \
+                 ORDER BY s.seq_in_index",
                 vec![text(&table.database), text(&table.name)],
             ),
             _ => return Ok(Vec::new()),
@@ -353,8 +394,9 @@ impl DbSession {
         cell_edit_request(self.info.engine, table, &key, edits)
     }
 
-    /// Applies an approved edit request in one transaction. Every statement
-    /// must change exactly one row, otherwise nothing is kept.
+    /// Applies an approved edit request (generated `UPDATE`, `INSERT` and
+    /// `DELETE` statements) in one transaction. Every statement must change
+    /// exactly one row, otherwise nothing is kept.
     pub async fn apply_cell_edits(&self, request: &DbQueryRequest) -> Result<u64, DbError> {
         let statements = self.guard.prepare(request)?;
         let mut parsed = Vec::with_capacity(statements.len());
@@ -362,7 +404,11 @@ impl DbSession {
             self.guard.validate_permit(statement)?;
             match statement.parsed() {
                 crate::parser::ParsedStatement::Sql { text, parameters }
-                    if text.trim_start().to_ascii_uppercase().starts_with("UPDATE") =>
+                    if ["UPDATE", "INSERT", "DELETE"].iter().any(|verb| {
+                        text.trim_start()
+                            .get(..verb.len())
+                            .is_some_and(|start| start.eq_ignore_ascii_case(verb))
+                    }) =>
                 {
                     parsed.push((text.as_str(), parameters.as_slice()));
                 }

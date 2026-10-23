@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_result_controller.dart';
+import 'package:consolecrypt/db/db_result_edits.dart';
 import 'package:consolecrypt/db/db_value_dialog.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -51,6 +52,8 @@ class DbResultGrid extends StatefulWidget {
     this.onCopyCell,
     this.onCellEdit,
     this.pending = const {},
+    this.edits,
+    this.cursor,
     this.onSelection,
     this.onMore,
     this.loadingMore = false,
@@ -75,6 +78,13 @@ class DbResultGrid extends StatefulWidget {
 
   /// Pending (not yet applied) values by (row, column).
   final Map<(int, int), DbCell> pending;
+
+  /// Pending row changes (typed values, new and deleted rows); when set it
+  /// replaces [pending]. New rows follow the loaded ones.
+  final DbResultEdits? edits;
+
+  /// The current row, shared with the panel toolbar and the record view.
+  final ValueNotifier<int?>? cursor;
   final ValueChanged<List<int>>? onSelection;
   final VoidCallback? onMore;
   @override
@@ -119,6 +129,33 @@ class _DbResultGridState extends State<DbResultGrid> {
   void initState() {
     super.initState();
     _horizontal.addListener(_scroll);
+    widget.cursor?.addListener(_follow);
+  }
+
+  /// Moves the focus to the row the panel chose and scrolls it into view.
+  void _follow() {
+    final row = widget.cursor?.value;
+    if (!mounted || row == null || row == _focused?.$1 || row >= _total) return;
+    setState(() => _focused = (row, _focused?.$2 ?? _displayColumns.firstOrNull ?? 0));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_vertical.hasClients) return;
+      final top = _index(row) * _rowHeight, position = _vertical.position;
+      if (top < position.pixels) {
+        _vertical.jumpTo(top.clamp(0, position.maxScrollExtent));
+      } else if (top + _rowHeight > position.pixels + position.viewportDimension) {
+        _vertical.jumpTo((top + _rowHeight - position.viewportDimension).clamp(0, position.maxScrollExtent));
+      }
+    });
+  }
+
+  void _setFocused((int, int)? focused) {
+    _focused = focused;
+    final cursor = widget.cursor;
+    if (cursor != null && focused != null && cursor.value != focused.$1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _focused?.$1 == focused.$1) cursor.value = focused.$1;
+      });
+    }
   }
 
   void _scroll() {
@@ -128,6 +165,13 @@ class _DbResultGridState extends State<DbResultGrid> {
   @override
   void didUpdateWidget(DbResultGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.cursor != widget.cursor) {
+      oldWidget.cursor?.removeListener(_follow);
+      widget.cursor?.addListener(_follow);
+    }
+    final focused = _focused;
+    if (focused != null && focused.$1 >= _total) _focused = null;
+    if (_editing case (final row, _) when row >= _total || (widget.edits?.isDeleted(row) ?? false)) _editing = null;
     if (!identical(oldWidget.result, widget.result)) {
       _selected.clear();
       _focused = null;
@@ -177,6 +221,7 @@ class _DbResultGridState extends State<DbResultGrid> {
 
   @override
   void dispose() {
+    widget.cursor?.removeListener(_follow);
     _filterTimer?.cancel();
     _horizontal.dispose();
     _vertical.dispose();
@@ -188,9 +233,34 @@ class _DbResultGridState extends State<DbResultGrid> {
     super.dispose();
   }
 
-  int get _count => _order?.length ?? widget.result.rows.length;
-  int _row(int index) => _order?[index] ?? index;
-  int _index(int row) => _order?.indexOf(row) ?? row;
+  int get _loaded => widget.result.rows.length;
+  int get _added => widget.edits?.added.length ?? 0;
+
+  /// Loaded and new rows (new rows always follow, unfiltered and unsorted).
+  int get _total => _loaded + _added;
+  int get _base => _order?.length ?? _loaded;
+  int get _count => _base + _added;
+  int _row(int index) => index >= _base ? _loaded + index - _base : (_order?[index] ?? index);
+  int _index(int row) => row >= _loaded ? _base + row - _loaded : (_order?.indexOf(row) ?? row);
+
+  /// The shown value: pending, new (null while left to the server) or loaded.
+  DbCell? _value(int row, int column) {
+    final edits = widget.edits;
+    if (edits != null) return edits.value(widget.result, row, column);
+    if (row >= _loaded) return null;
+    return widget.pending[(row, column)] ?? widget.result.rows[row][column];
+  }
+
+  bool _changed(int row, int column) =>
+      widget.edits?.changed(widget.result, row, column) ?? widget.pending.containsKey((row, column));
+
+  /// Placeholder of a value a new row leaves to the server.
+  String _placeholder(int column) {
+    final name = widget.result.columns[column].name;
+    final meta = widget.edits?.columns?.where((c) => c.name == name).firstOrNull;
+    final l = context.l10n;
+    return meta != null && (meta.hasDefault || meta.generated) ? l.dbDefaultCell : l.dbNullCell;
+  }
 
   void _notifySelection() => widget.onSelection?.call(_selected.toList()..sort());
 
@@ -239,7 +309,7 @@ class _DbResultGridState extends State<DbResultGrid> {
       _notifySelection();
     }
     setState(() {
-      _focused = (row, column);
+      _setFocused((row, column));
       if (!keys.isShiftPressed) _anchor = _index(row);
     });
     _gridFocus.requestFocus();
@@ -264,15 +334,15 @@ class _DbResultGridState extends State<DbResultGrid> {
   }
 
   void _startEdit(int row, int column) {
-    if (widget.onCellEdit == null) return;
+    if (widget.onCellEdit == null || (widget.edits?.isDeleted(row) ?? false) || row >= _total) return;
     final info = widget.result.columns[column];
-    final current = widget.pending[(row, column)] ?? widget.result.rows[row][column];
+    final current = _value(row, column) ?? const DbCell.nullValue();
     final previous = _editorFocus;
     _editorFocus = FocusNode(debugLabel: 'db-cell-editor');
     WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
     setState(() {
       _editing = (row, column);
-      _focused = (row, column);
+      _setFocused((row, column));
       _editorNull = current.kind == DbCellKind.nullValue;
       _editorInvalid = false;
       // A masked value is never put on screen; it is typed anew.
@@ -300,7 +370,7 @@ class _DbResultGridState extends State<DbResultGrid> {
     final at = _editing, onCellEdit = widget.onCellEdit;
     if (at == null || onCellEdit == null) return true;
     final (row, column) = at;
-    final original = widget.result.rows[row][column];
+    final original = row < _loaded ? widget.result.rows[row][column] : null;
     final kind = dbColumnKind(widget.result.columns[column], sample: original);
     final value = _editorNull ? const DbCell.nullValue() : dbCellFromInput(kind, _editor.text);
     if (value == null) {
@@ -352,11 +422,12 @@ class _DbResultGridState extends State<DbResultGrid> {
   void _show(int row, int column) => showAppDialog<void>(
     context,
     secure: true,
-    builder: (_) => DbValueDialog(column: widget.result.columns[column], cell: widget.result.rows[row][column]),
+    builder: (_) =>
+        DbValueDialog(column: widget.result.columns[column], cell: _value(row, column) ?? const DbCell.nullValue()),
   );
   String _text(DbCell cell, DbColumn column) {
     if (column.sensitive && cell.kind != DbCellKind.nullValue) return '••••';
-    if (cell.kind == DbCellKind.nullValue) return context.l10n.dbNull;
+    if (cell.kind == DbCellKind.nullValue) return context.l10n.dbNullCell;
     if (cell.kind == DbCellKind.timestamp || cell.kind == DbCellKind.date) {
       final date = DateTime.tryParse(cell.text);
       if (date != null) {
@@ -381,7 +452,7 @@ class _DbResultGridState extends State<DbResultGrid> {
     final info = widget.result.columns[column];
     final char = (GlassTokens.of(context).typography.callout.fontSize ?? 12) * .62;
     // Header: bold name, caption type, key icon and the menu arrow.
-    var header = (info.name.length * 1.1 + info.typeName.length * .9) * char + (info.primaryKey ? 16 : 0) + 42;
+    var header = (info.name.length * 1.1 + info.typeName.length * .9) * char + (info.primaryKey ? 15 : 0) + 60;
     var cells = 0.0;
     for (var i = 0; i < sample; i++) {
       cells = math.max(cells, math.min(_text(rows[i][column], info).length, 44).toDouble());
@@ -478,7 +549,11 @@ class _DbResultGridState extends State<DbResultGrid> {
                     enableSuggestions: false,
                     smartDashesType: SmartDashesType.disabled,
                     smartQuotesType: SmartQuotesType.disabled,
-                    textAlign: info.typeName.isNotEmpty && widget.result.rows[row][column].numeric
+                    textAlign:
+                        DbCell(
+                          dbColumnKind(info, sample: row < _loaded ? widget.result.rows[row][column] : null),
+                          '',
+                        ).numeric
                         ? TextAlign.right
                         : TextAlign.left,
                     decoration: InputDecoration(
@@ -545,38 +620,60 @@ class _DbResultGridState extends State<DbResultGrid> {
   Widget _cell(int row, int column, {double? width}) {
     if (_editing == (row, column)) return _editorCell(row, column, width);
     final l = context.l10n, tokens = GlassTokens.of(context);
-    final pending = widget.pending[(row, column)];
-    final cell = pending ?? widget.result.rows[row][column], info = widget.result.columns[column];
+    final added = row >= _loaded, deleted = widget.edits?.isDeleted(row) ?? false;
+    final changed = !added && _changed(row, column);
+    final value = _value(row, column), info = widget.result.columns[column];
+    final cell = value ?? const DbCell.nullValue();
     final empty = cell.kind == DbCellKind.nullValue;
     final focused = _focused == (row, column);
+    final missing = added && value == null && (widget.edits?.missing(widget.result, row).contains(info.name) ?? false);
     Widget content = Container(
       width: width,
       height: _rowHeight,
       alignment: cell.numeric ? Alignment.centerRight : Alignment.centerLeft,
       padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s8),
       decoration: BoxDecoration(
-        color: pending != null ? tokens.palette.warning.withValues(alpha: .18) : null,
+        color: deleted
+            ? tokens.palette.danger.withValues(alpha: .14)
+            : added
+            ? tokens.palette.success.withValues(alpha: .16)
+            : changed
+            ? tokens.palette.warning.withValues(alpha: .18)
+            : null,
         border: focused
             ? Border.all(color: tokens.palette.accent.withValues(alpha: .7), width: 1.5)
+            : missing
+            ? Border.all(color: tokens.palette.danger.withValues(alpha: .6))
             : Border(right: _line, bottom: _line),
       ),
       child: Text(
-        _text(cell, info),
+        value == null && added ? _placeholder(column) : _text(cell, info),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: tokens.typography.callout.copyWith(
           color: empty ? tokens.palette.tertiary : tokens.palette.label,
           fontStyle: empty ? FontStyle.italic : FontStyle.normal,
+          decoration: deleted ? TextDecoration.lineThrough : null,
+          decorationColor: tokens.palette.danger,
           fontFeatures: const [FontFeature.tabularFigures()],
         ),
       ),
     );
-    if (pending != null) content = Tooltip(message: l.dbPendingEdit, child: content);
+    final hint = deleted
+        ? l.dbRowDeletedHint
+        : missing
+        ? l.dbRequiredValue
+        : added
+        ? l.dbRowAddedHint
+        : changed
+        ? l.dbPendingEdit
+        : null;
+    if (hint != null) content = Tooltip(message: hint, child: content);
     return GestureDetector(
       key: ValueKey('db-cell-$row-$column'),
       behavior: HitTestBehavior.opaque,
       onTap: () => _focusCell(row, column),
-      onDoubleTap: () => widget.onCellEdit != null ? _startEdit(row, column) : _show(row, column),
+      onDoubleTap: () => widget.onCellEdit != null && !deleted ? _startEdit(row, column) : _show(row, column),
       onLongPress: () => _show(row, column),
       onSecondaryTapUp: (details) {
         _focusCell(row, column);
@@ -589,7 +686,8 @@ class _DbResultGridState extends State<DbResultGrid> {
   /// Row-number gutter: a click selects the row (Shift extends, ⌘/Ctrl toggles).
   Widget _number(int row, double width) {
     final tokens = GlassTokens.of(context);
-    final selected = _selected.contains(row);
+    final selected = _selected.contains(row) || _focused?.$1 == row;
+    final added = row >= _loaded, deleted = widget.edits?.isDeleted(row) ?? false;
     return GestureDetector(
       key: ValueKey('db-row-number-$row'),
       behavior: HitTestBehavior.opaque,
@@ -604,9 +702,15 @@ class _DbResultGridState extends State<DbResultGrid> {
           border: Border(right: _line, bottom: _line),
         ),
         child: Text(
-          '${row + 1}', // l10n-ignore: Result row number.
+          added ? '+' : '${row + 1}', // l10n-ignore: Result row number (+ marks a new row).
           style: tokens.typography.caption.copyWith(
-            color: selected ? tokens.palette.accent : tokens.palette.tertiary,
+            color: deleted
+                ? tokens.palette.danger
+                : added
+                ? tokens.palette.success
+                : selected
+                ? tokens.palette.accent
+                : tokens.palette.tertiary,
             fontWeight: selected ? FontWeight.w700 : null,
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
@@ -686,9 +790,14 @@ class _DbResultGridState extends State<DbResultGrid> {
                 child: Row(
                   children: [
                     if (info.primaryKey) ...[
-                      Icon(Icons.key_rounded, size: 12, color: tokens.palette.warning),
-                      const SizedBox(width: 4),
+                      Tooltip(
+                        message: context.l10n.dbKeyColumn,
+                        child: Icon(Icons.key_rounded, size: 12, color: tokens.palette.warning),
+                      ),
+                      const SizedBox(width: 3),
                     ],
+                    DbTypeIcon(column: info),
+                    const SizedBox(width: 4),
                     Flexible(
                       flex: 4,
                       child: Text(
@@ -792,12 +901,14 @@ class _DbResultGridState extends State<DbResultGrid> {
               ),
             ),
             const SizedBox(width: GlassSpacing.s4),
-            tool(
-              records ? Icons.grid_on_rounded : Icons.view_agenda_outlined,
-              records ? l.dbGrid : l.dbRecords,
-              () => setState(() => _records = !records),
-              key: const ValueKey('db-result-mode'),
-            ),
+            // Cards suit narrow screens; wide panels switch views on the left.
+            if (records || maxWidth < 700)
+              tool(
+                records ? Icons.grid_on_rounded : Icons.view_agenda_outlined,
+                records ? l.dbGrid : l.dbRecords,
+                () => setState(() => _records = !records),
+                key: const ValueKey('db-result-mode'),
+              ),
             GlassMenuButton<int>(
               entries: [
                 for (var i = 0; i < math.min(widget.result.columns.length, 300); i++)
@@ -850,7 +961,7 @@ class _DbResultGridState extends State<DbResultGrid> {
                     ),
                     const SizedBox(width: GlassSpacing.s8),
                     Text(
-                      '#${row + 1}', // l10n-ignore: Result row number.
+                      row >= _loaded ? '+' : '#${row + 1}', // l10n-ignore: Result row number.
                       style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
                     ),
                   ],
@@ -877,7 +988,9 @@ class _DbResultGridState extends State<DbResultGrid> {
                         style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel),
                       ),
                       Text(
-                        _text(widget.result.rows[row][column], widget.result.columns[column]),
+                        _value(row, column) == null
+                            ? _placeholder(column)
+                            : _text(_value(row, column)!, widget.result.columns[column]),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: tokens.typography.body.copyWith(color: tokens.palette.label),
@@ -1058,7 +1171,7 @@ class _DbResultGridState extends State<DbResultGrid> {
                         ],
                       ),
               ),
-              if (widget.result.hasMore)
+              if (widget.result.hasMore && widget.onMore != null)
                 Align(
                   alignment: Alignment.centerLeft,
                   child: GlassButton.plain(
@@ -1091,6 +1204,20 @@ class _DbResultGridState extends State<DbResultGrid> {
       return KeyEventResult.handled;
     }
     final focused = _focused;
+    final step = key == LogicalKeyboardKey.arrowDown
+        ? 1
+        : key == LogicalKeyboardKey.arrowUp
+        ? -1
+        : 0;
+    if (step != 0 && focused != null && !keys.isMetaPressed && !keys.isControlPressed && !keys.isAltPressed) {
+      final index = _index(focused.$1) + step;
+      if (index >= 0 && index < _count) {
+        setState(() => _setFocused((_row(index), focused.$2)));
+        widget.cursor?.value = _row(index);
+        _follow();
+      }
+      return KeyEventResult.handled;
+    }
     if ((key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.f2) &&
         focused != null &&
         widget.onCellEdit != null) {
@@ -1149,6 +1276,34 @@ class _PinnedRowsState extends State<_PinnedRows> {
       itemExtent: widget.extent,
       itemCount: widget.rowCount,
       itemBuilder: (_, i) => widget.builder(i),
+    );
+  }
+}
+
+/// A compact glyph for the value kind of a column header: numbers, text,
+/// dates and times, true/false, JSON and binary.
+class DbTypeIcon extends StatelessWidget {
+  const DbTypeIcon({required this.column, super.key});
+  final DbColumn column;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = GlassTokens.of(context), l = context.l10n;
+    final kind = dbColumnKind(column);
+    final (icon, label) = switch (kind) {
+      DbCellKind.intValue ||
+      DbCellKind.uint ||
+      DbCellKind.decimal ||
+      DbCellKind.float => (Icons.numbers_rounded, l.dbTypeNumber),
+      DbCellKind.date || DbCellKind.time || DbCellKind.timestamp => (Icons.schedule_rounded, l.dbTypeDate),
+      DbCellKind.boolValue => (Icons.check_box_outlined, l.dbTypeBool),
+      DbCellKind.json => (Icons.data_object_rounded, l.dbTypeJson),
+      DbCellKind.binary => (Icons.memory_rounded, l.dbTypeBinary),
+      _ => (Icons.text_fields_rounded, l.dbTypeText),
+    };
+    return Tooltip(
+      message: column.typeName.isEmpty ? label : '$label · ${column.typeName}', // l10n-ignore: type label and name
+      child: Icon(icon, size: 12, color: tokens.palette.tertiary),
     );
   }
 }

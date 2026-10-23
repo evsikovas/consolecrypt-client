@@ -14930,7 +14930,7 @@ abstract class AppLocalizations {
   /// **'Disconnect'**
   String get dbDisconnect;
 
-  /// Database interface: Refresh
+  /// Run the result's read query again
   ///
   /// In en, this message translates to:
   /// **'Refresh'**
@@ -20383,6 +20383,780 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t read or save this setting.'**
   String get settingsClipboardBackgroundClearError;
+
+  /// A NULL value in a result cell
+  ///
+  /// In en, this message translates to:
+  /// **'[NULL]'**
+  String get dbNullCell;
+
+  /// Placeholder of a new row's cell the server fills (default or identity)
+  ///
+  /// In en, this message translates to:
+  /// **'[DEFAULT]'**
+  String get dbDefaultCell;
+
+  /// Tooltip/badge of a row added in the result grid
+  ///
+  /// In en, this message translates to:
+  /// **'New row, not saved yet'**
+  String get dbRowAddedHint;
+
+  /// Tooltip/badge of a row marked for deletion
+  ///
+  /// In en, this message translates to:
+  /// **'Will be deleted on save'**
+  String get dbRowDeletedHint;
+
+  /// Tooltip of a required empty cell of a new row
+  ///
+  /// In en, this message translates to:
+  /// **'A value is required'**
+  String get dbRequiredValue;
+
+  /// Tooltip of the key icon in a result column header
+  ///
+  /// In en, this message translates to:
+  /// **'Key column'**
+  String get dbKeyColumn;
+
+  /// Column type kind tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Number'**
+  String get dbTypeNumber;
+
+  /// Column type kind tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get dbTypeText;
+
+  /// Column type kind tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Date and time'**
+  String get dbTypeDate;
+
+  /// Column type kind tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'True/false'**
+  String get dbTypeBool;
+
+  /// Column type kind tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'JSON'**
+  String get dbTypeJson;
+
+  /// Column type kind tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Binary'**
+  String get dbTypeBinary;
+
+  /// Why row editing is disabled: backend lacks support
+  ///
+  /// In en, this message translates to:
+  /// **'Row editing is not available here'**
+  String get dbEditUnsupported;
+
+  /// Why row editing is disabled: engine (ClickHouse, Redis, MongoDB)
+  ///
+  /// In en, this message translates to:
+  /// **'Rows of this database type cannot be edited here'**
+  String get dbEditEngineUnsupported;
+
+  /// Why row editing is disabled on mobile
+  ///
+  /// In en, this message translates to:
+  /// **'Rows are edited on a computer'**
+  String get dbEditDesktopOnly;
+
+  /// Why row editing is disabled: no key to identify rows
+  ///
+  /// In en, this message translates to:
+  /// **'Editing needs a query of one table with a primary or unique key'**
+  String get dbEditNoKey;
+
+  /// Why row editing is disabled on a locked production session
+  ///
+  /// In en, this message translates to:
+  /// **'Production is read-only: unlock writes first'**
+  String get dbEditProductionLocked;
+
+  /// Why row editing is disabled on a read-only session
+  ///
+  /// In en, this message translates to:
+  /// **'The session is read-only: allow writes first'**
+  String get dbEditReadOnly;
+
+  /// Save refused: new row lacks required values
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in the required columns: {columns}'**
+  String dbRequiredMissing(String columns);
+
+  /// Toast when saving result changes fails
+  ///
+  /// In en, this message translates to:
+  /// **'The changes were not saved'**
+  String get dbSaveFailed;
+
+  /// Title of the prompt about pending result changes
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved changes'**
+  String get dbUnsavedTitle;
+
+  /// Prompt body about pending result changes
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 row has changes that are not saved.} other{{count} rows have changes that are not saved.}} Save them first?'**
+  String dbUnsavedMessage(int count);
+
+  /// Save pending result changes
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get dbSave;
+
+  /// Tooltip of the save dropdown
+  ///
+  /// In en, this message translates to:
+  /// **'Save options'**
+  String get dbSaveOptions;
+
+  /// Menu item: show the statements of pending changes
+  ///
+  /// In en, this message translates to:
+  /// **'Show SQL'**
+  String get dbShowSql;
+
+  /// Title of the dialog with the statements of pending changes
+  ///
+  /// In en, this message translates to:
+  /// **'Pending changes as SQL'**
+  String get dbPendingSql;
+
+  /// Why refresh is disabled (after a dash)
+  ///
+  /// In en, this message translates to:
+  /// **'only results of read queries refresh'**
+  String get dbRefreshReadOnly;
+
+  /// Toast when refresh is refused
+  ///
+  /// In en, this message translates to:
+  /// **'This result can no longer be refreshed; run the query again'**
+  String get dbRefreshUnavailable;
+
+  /// Auto-refresh menu tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-refresh'**
+  String get dbAutoRefresh;
+
+  /// Auto-refresh off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get dbAutoRefreshOff;
+
+  /// Auto-refresh interval
+  ///
+  /// In en, this message translates to:
+  /// **'Every {seconds} s'**
+  String dbEverySeconds(int seconds);
+
+  /// Auto-refresh interval
+  ///
+  /// In en, this message translates to:
+  /// **'Every {minutes} min'**
+  String dbEveryMinutes(int minutes);
+
+  /// Toolbar: open the record form of the current row
+  ///
+  /// In en, this message translates to:
+  /// **'Edit the current row'**
+  String get dbEditRow;
+
+  /// Toolbar: add a new row
+  ///
+  /// In en, this message translates to:
+  /// **'Add a row'**
+  String get dbAddRow;
+
+  /// Toolbar: copy the current row as a new row
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate the row'**
+  String get dbDuplicateRow;
+
+  /// Toolbar: mark the current (or selected) rows for deletion
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the row'**
+  String get dbDeleteRow;
+
+  /// Navigate to the first row
+  ///
+  /// In en, this message translates to:
+  /// **'First row'**
+  String get dbFirstRow;
+
+  /// Navigate to the previous row
+  ///
+  /// In en, this message translates to:
+  /// **'Previous row'**
+  String get dbPreviousRow;
+
+  /// Navigate to the next row
+  ///
+  /// In en, this message translates to:
+  /// **'Next row'**
+  String get dbNextRow;
+
+  /// Navigate to the last row
+  ///
+  /// In en, this message translates to:
+  /// **'Last row'**
+  String get dbLastRow;
+
+  /// Toolbar: export the result
+  ///
+  /// In en, this message translates to:
+  /// **'Export data…'**
+  String get dbExportData;
+
+  /// Toolbar: import a CSV file into the result's table
+  ///
+  /// In en, this message translates to:
+  /// **'Import data…'**
+  String get dbImportData;
+
+  /// Fetch size field tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Rows per fetch'**
+  String get dbFetchSize;
+
+  /// Fetch size preset
+  ///
+  /// In en, this message translates to:
+  /// **'{count} rows'**
+  String dbFetchRows(int count);
+
+  /// Invalid fetch size
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a number from 1 to 1000'**
+  String get dbFetchSizeInvalid;
+
+  /// Toolbar: fetch the next page
+  ///
+  /// In en, this message translates to:
+  /// **'Load the next rows'**
+  String get dbLoadNext;
+
+  /// Toolbar: fetch every remaining row
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch all rows'**
+  String get dbFetchAll;
+
+  /// Status: rows fetched
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 row fetched} other{{count} rows fetched}}'**
+  String dbRowsFetched(int count);
+
+  /// Status: elapsed seconds and when the query finished
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s, {date} at {time}'**
+  String dbFetchedTiming(String seconds, String date, String time);
+
+  /// Status: more rows can be fetched
+  ///
+  /// In en, this message translates to:
+  /// **'more available'**
+  String get dbMoreAvailable;
+
+  /// Status: pending row changes
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change not saved} other{{count} changes not saved}}'**
+  String dbPendingChanges(int count);
+
+  /// Result view: grid
+  ///
+  /// In en, this message translates to:
+  /// **'Table'**
+  String get dbViewTable;
+
+  /// Result view: plain text table
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get dbViewText;
+
+  /// Result view: one row as a form
+  ///
+  /// In en, this message translates to:
+  /// **'Record'**
+  String get dbViewRecord;
+
+  /// Last line of the text view when rows were cut
+  ///
+  /// In en, this message translates to:
+  /// **'… {count} more rows (use export for all rows)'**
+  String dbTextMoreRows(int count);
+
+  /// Record view without rows
+  ///
+  /// In en, this message translates to:
+  /// **'No rows'**
+  String get dbNoRows;
+
+  /// Record view title of an added row
+  ///
+  /// In en, this message translates to:
+  /// **'New row'**
+  String get dbNewRow;
+
+  /// Record view title
+  ///
+  /// In en, this message translates to:
+  /// **'Row {row} of {count}'**
+  String dbRecordNumber(int row, int count);
+
+  /// Record view: commit the typed value
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the value'**
+  String get dbKeepValue;
+
+  /// Record view value tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Click to change the value'**
+  String get dbRecordEditHint;
+
+  /// Record view: clear a new row's value so the default applies
+  ///
+  /// In en, this message translates to:
+  /// **'Leave to the server (default)'**
+  String get dbUseDefault;
+
+  /// File size in megabytes
+  ///
+  /// In en, this message translates to:
+  /// **'{size} MB'**
+  String dbSizeMb(String size);
+
+  /// File size in kilobytes
+  ///
+  /// In en, this message translates to:
+  /// **'{size} KB'**
+  String dbSizeKb(int size);
+
+  /// CSV import wizard title
+  ///
+  /// In en, this message translates to:
+  /// **'Import CSV into {table}'**
+  String dbCsvTitle(String table);
+
+  /// CSV import wizard step line
+  ///
+  /// In en, this message translates to:
+  /// **'Step {step} of {count}: {title}'**
+  String dbCsvStep(int step, int count, String title);
+
+  /// CSV wizard step
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get dbCsvStepFile;
+
+  /// CSV wizard step
+  ///
+  /// In en, this message translates to:
+  /// **'Reading settings'**
+  String get dbCsvStepRead;
+
+  /// CSV wizard step
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get dbCsvStepMap;
+
+  /// CSV wizard step
+  ///
+  /// In en, this message translates to:
+  /// **'Import options'**
+  String get dbCsvStepOptions;
+
+  /// CSV wizard step: running
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get dbCsvStepRun;
+
+  /// CSV wizard file step help
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a CSV, TSV or text file up to {size}. It is read as a stream on this device.'**
+  String dbCsvFileHelp(String size);
+
+  /// CSV wizard: pick a file
+  ///
+  /// In en, this message translates to:
+  /// **'Choose file…'**
+  String get dbCsvChooseFile;
+
+  /// CSV file too large
+  ///
+  /// In en, this message translates to:
+  /// **'The file is larger than {size} MB and cannot be imported here.'**
+  String dbCsvTooLarge(int size);
+
+  /// CSV preview failed
+  ///
+  /// In en, this message translates to:
+  /// **'The file could not be read with these settings.'**
+  String get dbCsvUnreadable;
+
+  /// CSV wizard privacy note
+  ///
+  /// In en, this message translates to:
+  /// **'The file\'s content goes only to this database.'**
+  String get dbCsvPrivacy;
+
+  /// Delimiter: auto-detect
+  ///
+  /// In en, this message translates to:
+  /// **'Detect'**
+  String get dbCsvAuto;
+
+  /// Delimiter
+  ///
+  /// In en, this message translates to:
+  /// **'Comma ,'**
+  String get dbCsvComma;
+
+  /// Delimiter
+  ///
+  /// In en, this message translates to:
+  /// **'Semicolon ;'**
+  String get dbCsvSemicolon;
+
+  /// Delimiter
+  ///
+  /// In en, this message translates to:
+  /// **'Tab'**
+  String get dbCsvTab;
+
+  /// Delimiter
+  ///
+  /// In en, this message translates to:
+  /// **'Bar |'**
+  String get dbCsvPipe;
+
+  /// CSV option
+  ///
+  /// In en, this message translates to:
+  /// **'Encoding'**
+  String get dbCsvEncoding;
+
+  /// Encoding: UTF-8 with BOM/1251 detection
+  ///
+  /// In en, this message translates to:
+  /// **'UTF-8 (detect)'**
+  String get dbCsvEncodingAuto;
+
+  /// CSV option
+  ///
+  /// In en, this message translates to:
+  /// **'Delimiter'**
+  String get dbCsvDelimiter;
+
+  /// CSV option
+  ///
+  /// In en, this message translates to:
+  /// **'Quote character'**
+  String get dbCsvQuote;
+
+  /// CSV option
+  ///
+  /// In en, this message translates to:
+  /// **'Lines to skip at the start'**
+  String get dbCsvSkipRows;
+
+  /// CSV option: NULL marker
+  ///
+  /// In en, this message translates to:
+  /// **'NULL is'**
+  String get dbCsvNull;
+
+  /// NULL marker
+  ///
+  /// In en, this message translates to:
+  /// **'An empty field'**
+  String get dbCsvNullEmpty;
+
+  /// NULL marker: no NULLs
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing'**
+  String get dbCsvNullNever;
+
+  /// CSV option
+  ///
+  /// In en, this message translates to:
+  /// **'Decimal separator'**
+  String get dbCsvDecimal;
+
+  /// Decimal separator
+  ///
+  /// In en, this message translates to:
+  /// **'Dot 1.5'**
+  String get dbCsvDecimalDot;
+
+  /// Decimal separator
+  ///
+  /// In en, this message translates to:
+  /// **'Comma 1,5'**
+  String get dbCsvDecimalComma;
+
+  /// CSV option: date order
+  ///
+  /// In en, this message translates to:
+  /// **'Dates'**
+  String get dbCsvDates;
+
+  /// CSV option
+  ///
+  /// In en, this message translates to:
+  /// **'The first row holds column names'**
+  String get dbCsvHeader;
+
+  /// CSV preview caption
+  ///
+  /// In en, this message translates to:
+  /// **'Read as: delimiter {delimiter}, {encoding}'**
+  String dbCsvDetected(String delimiter, String encoding);
+
+  /// CSV mapping help
+  ///
+  /// In en, this message translates to:
+  /// **'Each file column goes to a table column or is skipped. The first 1000 rows are checked against the column types.'**
+  String get dbCsvMapHelp;
+
+  /// CSV mapping: do not import this column
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get dbCsvSkipColumn;
+
+  /// CSV mapping error
+  ///
+  /// In en, this message translates to:
+  /// **'Two file columns go to the same table column.'**
+  String get dbCsvDuplicateTarget;
+
+  /// CSV mapping warning
+  ///
+  /// In en, this message translates to:
+  /// **'Required columns without values: {columns}'**
+  String dbCsvMissingRequired(String columns);
+
+  /// CSV type check warning with sample values
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 value does not fit: {samples}} other{{count} values do not fit: {samples}}}'**
+  String dbCsvBadValues(int count, String samples);
+
+  /// CSV insert mode label
+  ///
+  /// In en, this message translates to:
+  /// **'Rows'**
+  String get dbCsvMode;
+
+  /// CSV insert mode
+  ///
+  /// In en, this message translates to:
+  /// **'Insert'**
+  String get dbCsvModeInsert;
+
+  /// CSV insert mode
+  ///
+  /// In en, this message translates to:
+  /// **'Insert, skip existing keys'**
+  String get dbCsvModeSkip;
+
+  /// CSV insert mode
+  ///
+  /// In en, this message translates to:
+  /// **'Insert or update by key'**
+  String get dbCsvModeUpsert;
+
+  /// CSV options note
+  ///
+  /// In en, this message translates to:
+  /// **'The table has no key: rows can only be inserted.'**
+  String get dbCsvNoKey;
+
+  /// CSV batch size
+  ///
+  /// In en, this message translates to:
+  /// **'Rows per batch (1–5000)'**
+  String get dbCsvBatch;
+
+  /// CSV batch size invalid
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a batch size from 1 to 5000'**
+  String get dbCsvBatchInvalid;
+
+  /// CSV error handling
+  ///
+  /// In en, this message translates to:
+  /// **'On a bad row'**
+  String get dbCsvOnError;
+
+  /// CSV error handling
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the import'**
+  String get dbCsvStop;
+
+  /// CSV error handling
+  ///
+  /// In en, this message translates to:
+  /// **'Skip it and write an error report'**
+  String get dbCsvSkipBad;
+
+  /// CSV transaction scope
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction'**
+  String get dbCsvTransaction;
+
+  /// CSV transaction scope
+  ///
+  /// In en, this message translates to:
+  /// **'One for the whole file (all or nothing)'**
+  String get dbCsvWhole;
+
+  /// CSV transaction scope
+  ///
+  /// In en, this message translates to:
+  /// **'One per batch'**
+  String get dbCsvPerBatch;
+
+  /// CSV option: empty the table (dangerous)
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all rows of the table first'**
+  String get dbCsvTruncate;
+
+  /// CSV truncate help
+  ///
+  /// In en, this message translates to:
+  /// **'Runs DELETE FROM in the import transaction; the review shows it.'**
+  String get dbCsvTruncateHelp;
+
+  /// CSV wizard final button
+  ///
+  /// In en, this message translates to:
+  /// **'Review and import…'**
+  String get dbCsvImport;
+
+  /// CSV import counters
+  ///
+  /// In en, this message translates to:
+  /// **'Read: {read} · imported: {imported} · skipped: {skipped} · failed: {failed}'**
+  String dbCsvCounts(int read, int imported, int skipped, int failed);
+
+  /// CSV import speed
+  ///
+  /// In en, this message translates to:
+  /// **'{rows} rows/s'**
+  String dbCsvRate(int rows);
+
+  /// CSV import speed and time left
+  ///
+  /// In en, this message translates to:
+  /// **'{rows} rows/s · about {left} left'**
+  String dbCsvRateEta(int rows, String left);
+
+  /// CSV import summary
+  ///
+  /// In en, this message translates to:
+  /// **'Done: {imported} imported, {skipped} skipped, {failed} with errors.'**
+  String dbCsvDone(int imported, int skipped, int failed);
+
+  /// CSV import cancelled summary
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled. Rows kept: {imported} (committed batches only).'**
+  String dbCsvCancelled(int imported);
+
+  /// CSV import failed
+  ///
+  /// In en, this message translates to:
+  /// **'The import failed; the open transaction was rolled back.'**
+  String get dbCsvFailed;
+
+  /// CSV import stopped on a bad row
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: a value does not fit its column. Nothing of the open transaction was kept.'**
+  String dbCsvRowType(int line);
+
+  /// CSV import stopped on a bad row
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: a required column is empty. Nothing of the open transaction was kept.'**
+  String dbCsvRowRequired(int line);
+
+  /// CSV import stopped on a bad row
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line} cannot be read (encoding or size). Nothing of the open transaction was kept.'**
+  String dbCsvRowUnreadable(int line);
+
+  /// CSV error report label
+  ///
+  /// In en, this message translates to:
+  /// **'Error report'**
+  String get dbCsvReport;
+
+  /// CSV error report: reveal
+  ///
+  /// In en, this message translates to:
+  /// **'Show in folder'**
+  String get dbCsvShowReport;
+
+  /// Hook: create a new table typed from a CSV file
+  ///
+  /// In en, this message translates to:
+  /// **'Create table from CSV…'**
+  String get dbCsvCreateTable;
+
+  /// Create table from CSV: name
+  ///
+  /// In en, this message translates to:
+  /// **'New table name'**
+  String get dbCsvNewTableName;
+
+  /// Tree menu on a table
+  ///
+  /// In en, this message translates to:
+  /// **'Import from CSV…'**
+  String get dbImportCsv;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

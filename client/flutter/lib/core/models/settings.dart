@@ -133,6 +133,7 @@ final class LocalSettings {
     this.dockerTerminalHintShown = false,
     this.dbCodeWrap = true,
     this.screenCaptureProtection = ScreenCaptureProtection.whileSecretsVisible,
+    this.dbFetchSizes = const {},
   });
 
   final AppThemeMode themeMode;
@@ -213,6 +214,9 @@ final class LocalSettings {
   /// always (only where the OS supports it).
   final ScreenCaptureProtection screenCaptureProtection;
 
+  /// Rows the result panel loads per "load more", by database connection id.
+  final Map<String, int> dbFetchSizes;
+
   LocalSettings copyWith({
     AppThemeMode? themeMode,
     double? uiFontScale,
@@ -244,6 +248,7 @@ final class LocalSettings {
     bool? dockerTerminalHintShown,
     bool? dbCodeWrap,
     ScreenCaptureProtection? screenCaptureProtection,
+    Map<String, int>? dbFetchSizes,
   }) => LocalSettings(
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
@@ -272,5 +277,6 @@ final class LocalSettings {
     dockerTerminalHintShown: dockerTerminalHintShown ?? this.dockerTerminalHintShown,
     dbCodeWrap: dbCodeWrap ?? this.dbCodeWrap,
     screenCaptureProtection: screenCaptureProtection ?? this.screenCaptureProtection,
+    dbFetchSizes: dbFetchSizes ?? this.dbFetchSizes,
   );
 }

@@ -192,6 +192,71 @@ Future<String> dbReviewCellEdits({required String sessionId, required String tab
       editsJson: editsJson,
     );
 
+/// Columns of an editable table (NULL, default, generated and key flags).
+Future<String> dbEditColumns({required String sessionId, required String tableJson}) =>
+    RustLib.instance.api.crateApiDatabaseDbEditColumns(sessionId: sessionId, tableJson: tableJson);
+
+/// Reviews pending row changes (changed cells, added and deleted rows) of a
+/// result; commit with `db_commit_cell_edits`.
+Future<String> dbReviewRowChanges({
+  required String sessionId,
+  required String tableJson,
+  required String changesJson,
+}) => RustLib.instance.api.crateApiDatabaseDbReviewRowChanges(
+  sessionId: sessionId,
+  tableJson: tableJson,
+  changesJson: changesJson,
+);
+
+/// First rows of a CSV file for the import wizard (options as JSON).
+Future<String> dbCsvPreview({required String path, required String optionsJson}) =>
+    RustLib.instance.api.crateApiDatabaseDbCsvPreview(path: path, optionsJson: optionsJson);
+
+/// Values of the first CSV rows that do not convert to the mapped columns.
+Future<String> dbCsvCheck({
+  required String sessionId,
+  required String tableJson,
+  required String path,
+  required String optionsJson,
+  required String mappingJson,
+}) => RustLib.instance.api.crateApiDatabaseDbCsvCheck(
+  sessionId: sessionId,
+  tableJson: tableJson,
+  path: path,
+  optionsJson: optionsJson,
+  mappingJson: mappingJson,
+);
+
+/// Reviews a CSV import plan; start it with `db_csv_import_start`.
+Future<String> dbCsvImportReview({required String sessionId, required String path, required String planJson}) =>
+    RustLib.instance.api.crateApiDatabaseDbCsvImportReview(sessionId: sessionId, path: path, planJson: planJson);
+
+/// A simple `CREATE TABLE` typed from a CSV file (a draft for the table
+/// designer; reviewed and run like any statement).
+Future<String> dbCsvCreateTable({
+  required String path,
+  required String optionsJson,
+  required String engineJson,
+  required String tableJson,
+}) => RustLib.instance.api.crateApiDatabaseDbCsvCreateTable(
+  path: path,
+  optionsJson: optionsJson,
+  engineJson: engineJson,
+  tableJson: tableJson,
+);
+
+Future<void> dbCsvImportDiscard({required String ticket}) =>
+    RustLib.instance.api.crateApiDatabaseDbCsvImportDiscard(ticket: ticket);
+
+Future<String> dbCsvImportStart({required String sessionId, required String ticket}) =>
+    RustLib.instance.api.crateApiDatabaseDbCsvImportStart(sessionId: sessionId, ticket: ticket);
+
+Future<String> dbCsvImportProgress({required String importId}) =>
+    RustLib.instance.api.crateApiDatabaseDbCsvImportProgress(importId: importId);
+
+Future<void> dbCsvImportCancel({required String importId}) =>
+    RustLib.instance.api.crateApiDatabaseDbCsvImportCancel(importId: importId);
+
 Future<int> dbCommitCellEdits({required String sessionId, required String ticket}) =>
     RustLib.instance.api.crateApiDatabaseDbCommitCellEdits(sessionId: sessionId, ticket: ticket);
 

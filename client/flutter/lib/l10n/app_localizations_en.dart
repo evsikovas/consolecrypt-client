@@ -11543,4 +11543,470 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsClipboardBackgroundClearError => 'Couldn\'t read or save this setting.';
+
+  @override
+  String get dbNullCell => '[NULL]';
+
+  @override
+  String get dbDefaultCell => '[DEFAULT]';
+
+  @override
+  String get dbRowAddedHint => 'New row, not saved yet';
+
+  @override
+  String get dbRowDeletedHint => 'Will be deleted on save';
+
+  @override
+  String get dbRequiredValue => 'A value is required';
+
+  @override
+  String get dbKeyColumn => 'Key column';
+
+  @override
+  String get dbTypeNumber => 'Number';
+
+  @override
+  String get dbTypeText => 'Text';
+
+  @override
+  String get dbTypeDate => 'Date and time';
+
+  @override
+  String get dbTypeBool => 'True/false';
+
+  @override
+  String get dbTypeJson => 'JSON';
+
+  @override
+  String get dbTypeBinary => 'Binary';
+
+  @override
+  String get dbEditUnsupported => 'Row editing is not available here';
+
+  @override
+  String get dbEditEngineUnsupported => 'Rows of this database type cannot be edited here';
+
+  @override
+  String get dbEditDesktopOnly => 'Rows are edited on a computer';
+
+  @override
+  String get dbEditNoKey => 'Editing needs a query of one table with a primary or unique key';
+
+  @override
+  String get dbEditProductionLocked => 'Production is read-only: unlock writes first';
+
+  @override
+  String get dbEditReadOnly => 'The session is read-only: allow writes first';
+
+  @override
+  String dbRequiredMissing(String columns) {
+    return 'Fill in the required columns: $columns';
+  }
+
+  @override
+  String get dbSaveFailed => 'The changes were not saved';
+
+  @override
+  String get dbUnsavedTitle => 'Unsaved changes';
+
+  @override
+  String dbUnsavedMessage(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rows have changes that are not saved.',
+      one: '1 row has changes that are not saved.',
+    );
+    return '$_temp0 Save them first?';
+  }
+
+  @override
+  String get dbSave => 'Save';
+
+  @override
+  String get dbSaveOptions => 'Save options';
+
+  @override
+  String get dbShowSql => 'Show SQL';
+
+  @override
+  String get dbPendingSql => 'Pending changes as SQL';
+
+  @override
+  String get dbRefreshReadOnly => 'only results of read queries refresh';
+
+  @override
+  String get dbRefreshUnavailable => 'This result can no longer be refreshed; run the query again';
+
+  @override
+  String get dbAutoRefresh => 'Auto-refresh';
+
+  @override
+  String get dbAutoRefreshOff => 'Off';
+
+  @override
+  String dbEverySeconds(int seconds) {
+    return 'Every $seconds s';
+  }
+
+  @override
+  String dbEveryMinutes(int minutes) {
+    return 'Every $minutes min';
+  }
+
+  @override
+  String get dbEditRow => 'Edit the current row';
+
+  @override
+  String get dbAddRow => 'Add a row';
+
+  @override
+  String get dbDuplicateRow => 'Duplicate the row';
+
+  @override
+  String get dbDeleteRow => 'Delete the row';
+
+  @override
+  String get dbFirstRow => 'First row';
+
+  @override
+  String get dbPreviousRow => 'Previous row';
+
+  @override
+  String get dbNextRow => 'Next row';
+
+  @override
+  String get dbLastRow => 'Last row';
+
+  @override
+  String get dbExportData => 'Export data…';
+
+  @override
+  String get dbImportData => 'Import data…';
+
+  @override
+  String get dbFetchSize => 'Rows per fetch';
+
+  @override
+  String dbFetchRows(int count) {
+    return '$count rows';
+  }
+
+  @override
+  String get dbFetchSizeInvalid => 'Enter a number from 1 to 1000';
+
+  @override
+  String get dbLoadNext => 'Load the next rows';
+
+  @override
+  String get dbFetchAll => 'Fetch all rows';
+
+  @override
+  String dbRowsFetched(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rows fetched',
+      one: '1 row fetched',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dbFetchedTiming(String seconds, String date, String time) {
+    return '$seconds s, $date at $time';
+  }
+
+  @override
+  String get dbMoreAvailable => 'more available';
+
+  @override
+  String dbPendingChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes not saved',
+      one: '1 change not saved',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbViewTable => 'Table';
+
+  @override
+  String get dbViewText => 'Text';
+
+  @override
+  String get dbViewRecord => 'Record';
+
+  @override
+  String dbTextMoreRows(int count) {
+    return '… $count more rows (use export for all rows)';
+  }
+
+  @override
+  String get dbNoRows => 'No rows';
+
+  @override
+  String get dbNewRow => 'New row';
+
+  @override
+  String dbRecordNumber(int row, int count) {
+    return 'Row $row of $count';
+  }
+
+  @override
+  String get dbKeepValue => 'Keep the value';
+
+  @override
+  String get dbRecordEditHint => 'Click to change the value';
+
+  @override
+  String get dbUseDefault => 'Leave to the server (default)';
+
+  @override
+  String dbSizeMb(String size) {
+    return '$size MB';
+  }
+
+  @override
+  String dbSizeKb(int size) {
+    return '$size KB';
+  }
+
+  @override
+  String dbCsvTitle(String table) {
+    return 'Import CSV into $table';
+  }
+
+  @override
+  String dbCsvStep(int step, int count, String title) {
+    return 'Step $step of $count: $title';
+  }
+
+  @override
+  String get dbCsvStepFile => 'File';
+
+  @override
+  String get dbCsvStepRead => 'Reading settings';
+
+  @override
+  String get dbCsvStepMap => 'Columns';
+
+  @override
+  String get dbCsvStepOptions => 'Import options';
+
+  @override
+  String get dbCsvStepRun => 'Import';
+
+  @override
+  String dbCsvFileHelp(String size) {
+    return 'Choose a CSV, TSV or text file up to $size. It is read as a stream on this device.';
+  }
+
+  @override
+  String get dbCsvChooseFile => 'Choose file…';
+
+  @override
+  String dbCsvTooLarge(int size) {
+    return 'The file is larger than $size MB and cannot be imported here.';
+  }
+
+  @override
+  String get dbCsvUnreadable => 'The file could not be read with these settings.';
+
+  @override
+  String get dbCsvPrivacy => 'The file\'s content goes only to this database.';
+
+  @override
+  String get dbCsvAuto => 'Detect';
+
+  @override
+  String get dbCsvComma => 'Comma ,';
+
+  @override
+  String get dbCsvSemicolon => 'Semicolon ;';
+
+  @override
+  String get dbCsvTab => 'Tab';
+
+  @override
+  String get dbCsvPipe => 'Bar |';
+
+  @override
+  String get dbCsvEncoding => 'Encoding';
+
+  @override
+  String get dbCsvEncodingAuto => 'UTF-8 (detect)';
+
+  @override
+  String get dbCsvDelimiter => 'Delimiter';
+
+  @override
+  String get dbCsvQuote => 'Quote character';
+
+  @override
+  String get dbCsvSkipRows => 'Lines to skip at the start';
+
+  @override
+  String get dbCsvNull => 'NULL is';
+
+  @override
+  String get dbCsvNullEmpty => 'An empty field';
+
+  @override
+  String get dbCsvNullNever => 'Nothing';
+
+  @override
+  String get dbCsvDecimal => 'Decimal separator';
+
+  @override
+  String get dbCsvDecimalDot => 'Dot 1.5';
+
+  @override
+  String get dbCsvDecimalComma => 'Comma 1,5';
+
+  @override
+  String get dbCsvDates => 'Dates';
+
+  @override
+  String get dbCsvHeader => 'The first row holds column names';
+
+  @override
+  String dbCsvDetected(String delimiter, String encoding) {
+    return 'Read as: delimiter $delimiter, $encoding';
+  }
+
+  @override
+  String get dbCsvMapHelp =>
+      'Each file column goes to a table column or is skipped. The first 1000 rows are checked against the column types.';
+
+  @override
+  String get dbCsvSkipColumn => 'Skip';
+
+  @override
+  String get dbCsvDuplicateTarget => 'Two file columns go to the same table column.';
+
+  @override
+  String dbCsvMissingRequired(String columns) {
+    return 'Required columns without values: $columns';
+  }
+
+  @override
+  String dbCsvBadValues(int count, String samples) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count values do not fit: $samples',
+      one: '1 value does not fit: $samples',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbCsvMode => 'Rows';
+
+  @override
+  String get dbCsvModeInsert => 'Insert';
+
+  @override
+  String get dbCsvModeSkip => 'Insert, skip existing keys';
+
+  @override
+  String get dbCsvModeUpsert => 'Insert or update by key';
+
+  @override
+  String get dbCsvNoKey => 'The table has no key: rows can only be inserted.';
+
+  @override
+  String get dbCsvBatch => 'Rows per batch (1–5000)';
+
+  @override
+  String get dbCsvBatchInvalid => 'Enter a batch size from 1 to 5000';
+
+  @override
+  String get dbCsvOnError => 'On a bad row';
+
+  @override
+  String get dbCsvStop => 'Stop the import';
+
+  @override
+  String get dbCsvSkipBad => 'Skip it and write an error report';
+
+  @override
+  String get dbCsvTransaction => 'Transaction';
+
+  @override
+  String get dbCsvWhole => 'One for the whole file (all or nothing)';
+
+  @override
+  String get dbCsvPerBatch => 'One per batch';
+
+  @override
+  String get dbCsvTruncate => 'Delete all rows of the table first';
+
+  @override
+  String get dbCsvTruncateHelp => 'Runs DELETE FROM in the import transaction; the review shows it.';
+
+  @override
+  String get dbCsvImport => 'Review and import…';
+
+  @override
+  String dbCsvCounts(int read, int imported, int skipped, int failed) {
+    return 'Read: $read · imported: $imported · skipped: $skipped · failed: $failed';
+  }
+
+  @override
+  String dbCsvRate(int rows) {
+    return '$rows rows/s';
+  }
+
+  @override
+  String dbCsvRateEta(int rows, String left) {
+    return '$rows rows/s · about $left left';
+  }
+
+  @override
+  String dbCsvDone(int imported, int skipped, int failed) {
+    return 'Done: $imported imported, $skipped skipped, $failed with errors.';
+  }
+
+  @override
+  String dbCsvCancelled(int imported) {
+    return 'Cancelled. Rows kept: $imported (committed batches only).';
+  }
+
+  @override
+  String get dbCsvFailed => 'The import failed; the open transaction was rolled back.';
+
+  @override
+  String dbCsvRowType(int line) {
+    return 'Line $line: a value does not fit its column. Nothing of the open transaction was kept.';
+  }
+
+  @override
+  String dbCsvRowRequired(int line) {
+    return 'Line $line: a required column is empty. Nothing of the open transaction was kept.';
+  }
+
+  @override
+  String dbCsvRowUnreadable(int line) {
+    return 'Line $line cannot be read (encoding or size). Nothing of the open transaction was kept.';
+  }
+
+  @override
+  String get dbCsvReport => 'Error report';
+
+  @override
+  String get dbCsvShowReport => 'Show in folder';
+
+  @override
+  String get dbCsvCreateTable => 'Create table from CSV…';
+
+  @override
+  String get dbCsvNewTableName => 'New table name';
+
+  @override
+  String get dbImportCsv => 'Import from CSV…';
 }

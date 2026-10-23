@@ -231,6 +231,75 @@ impl Postgres {
         })
     }
 
+    /// Opens a write transaction driven statement by statement (CSV
+    /// import); end it with [`Self::end_write`].
+    pub(crate) fn begin_write(&mut self) -> futures::future::BoxFuture<'_, Result<(), DbError>> {
+        Box::pin(async move {
+            batch(&self.client, "BEGIN READ WRITE")
+                .await
+                .map_err(classify)?;
+            if let Err(error) =
+                batch(&self.client, "SET LOCAL standard_conforming_strings = on").await
+            {
+                let _ = batch(&self.client, "ROLLBACK").await;
+                return Err(classify(error));
+            }
+            Ok(())
+        })
+    }
+
+    /// A fixed transaction-control statement (savepoints) of the open
+    /// write transaction.
+    pub(crate) fn control(
+        &mut self,
+        sql: &'static str,
+    ) -> futures::future::BoxFuture<'_, Result<(), DbError>> {
+        Box::pin(async move { batch(&self.client, sql).await.map_err(classify) })
+    }
+
+    /// One guarded statement inside the open write transaction, within the
+    /// session timeout; returns the affected rows.
+    pub(crate) fn step<'a>(
+        &'a mut self,
+        sql: &'a str,
+        bindings: &'a [DbParameter],
+        cancel: CancellationToken,
+    ) -> futures::future::BoxFuture<'a, Result<u64, DbError>> {
+        Box::pin(async move {
+            let mut sink = crate::csv_import::Affected::default();
+            let result = tokio::select! {
+                biased;
+                _ = cancel.cancelled() => Err(DbError::Cancelled),
+                result = tokio::time::timeout(self.timeout, self.stream(sql, bindings, &mut sink)) =>
+                    result.unwrap_or(Err(DbError::Timeout)),
+            };
+            if matches!(result, Err(DbError::Cancelled | DbError::Timeout)) {
+                let _ = tokio::time::timeout(Duration::from_secs(2), self.cancel_backend()).await;
+            }
+            result.map(|affected| affected.unwrap_or(0))
+        })
+    }
+
+    /// Commits or rolls back the write transaction; a failed rollback
+    /// closes the connection rather than reuse it.
+    pub(crate) fn end_write(
+        &mut self,
+        commit: bool,
+    ) -> futures::future::BoxFuture<'_, Result<(), DbError>> {
+        Box::pin(async move {
+            if commit {
+                return batch(&self.client, "COMMIT").await.map_err(classify);
+            }
+            if !matches!(
+                tokio::time::timeout(Duration::from_secs(5), batch(&self.client, "ROLLBACK")).await,
+                Ok(Ok(()))
+            ) {
+                self.worker.abort();
+            }
+            Ok(())
+        })
+    }
+
     fn stream<'a>(
         &'a self,
         sql: &'a str,

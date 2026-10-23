@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/db/db_ai_panel.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
+import 'package:consolecrypt/db/db_csv_import.dart';
 import 'package:consolecrypt/db/db_editor.dart';
 import 'package:consolecrypt/db/db_errors.dart';
 import 'package:consolecrypt/db/db_export_dialog.dart';
@@ -19,7 +20,7 @@ import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_dialogs.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_result_controller.dart';
-import 'package:consolecrypt/db/db_result_grid.dart';
+import 'package:consolecrypt/db/db_result_panel.dart';
 import 'package:consolecrypt/db/db_transport_badge.dart';
 import 'package:consolecrypt/db/db_tree.dart';
 import 'package:flutter/foundation.dart';
@@ -33,9 +34,8 @@ final class _QueryTab {
   final DbEditorController controller;
   final DbResultController result;
 
-  /// Values typed into cells of the shown result, by (row, column), until
-  /// they are applied (reviewed as UPDATE statements) or discarded.
-  final pending = <(int, int), DbCell>{};
+  /// Pending row changes, current row, view and auto-refresh of the result.
+  final panel = DbResultTabState();
   int resultIndex = 0;
   List<int> selectedRows = [];
   bool preparing = false, stale = false;
@@ -50,7 +50,7 @@ final class _QueryTab {
     controller.clear();
     controller.dispose();
     result.dispose();
-    pending.clear();
+    panel.dispose();
     selectedRows.clear();
   }
 }
@@ -223,6 +223,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
       tab = _tabs.lastOrNull;
       if (tab == null) return;
     }
+    if (!await _resolvePending(tab) || !_tabCurrent(tab)) return;
     if (tab.result.running || tab.result.loadingMore) await tab.result.cancel();
     if (!_tabCurrent(tab) || tab.preparing) return;
     setState(() {
@@ -236,7 +237,43 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     await _run(DbRunMode.script);
   }
 
+  /// Unsaved changes of [tab]'s result: save, discard or stay (false).
+  Future<bool> _resolvePending(_QueryTab tab) async {
+    final session = _session;
+    if (tab.panel.edits.isEmpty) return true;
+    if (session == null || !mounted) return false;
+    if (_tab != tab) setState(() => _select(_tabs.indexOf(tab)));
+    final results = tab.result.results;
+    final result = results.where((r) => r.index == tab.resultIndex).firstOrNull ?? results.firstOrNull;
+    return resolvePendingEdits(
+      context,
+      state: tab.panel,
+      save: () async =>
+          mounted &&
+          result != null &&
+          await saveResultEdits(
+            context,
+            backend: _backend,
+            session: session,
+            result: result,
+            state: tab.panel,
+            controller: tab.result,
+            isCurrent: () => _tabCurrent(tab),
+            onStale: () => setState(() => tab.stale = true),
+          ),
+    );
+  }
+
+  /// Leaves the workspace once every tab's unsaved changes are settled.
+  Future<void> _leave() async {
+    for (final tab in List.of(_tabs)) {
+      if (!_tabs.contains(tab) || !await _resolvePending(tab)) return;
+    }
+    if (mounted) widget.onClose();
+  }
+
   Future<void> _closeTab(_QueryTab tab) async {
+    if (!await _resolvePending(tab) || !mounted || !_tabCurrent(tab)) return;
     if (tab.result.running || tab.result.results.any((r) => r.hasMore)) {
       final l = context.l10n;
       final approved = await showConfirmDialog(
@@ -341,6 +378,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
   Future<void> _run(DbRunMode mode) async {
     final tab = _tab, session = _session;
     if (tab == null || session == null || tab.preparing || tab.result.running || !_current) return;
+    if (!await _resolvePending(tab) || !_tabCurrent(tab) || tab.preparing || tab.result.running) return;
     setState(() => tab.preparing = true);
     String? reviewTicket;
     try {
@@ -381,12 +419,14 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
         if (mounted) showSnack(context, context.l10n.dbReviewExpired, error: true);
         return;
       }
-      tab.pending.clear();
+      tab.panel.edits.clear();
+      tab.panel.cursor.value = null;
       tab.selectedRows.clear();
       tab.resultIndex = 0;
       tab.stale = false;
       await tab.result.execute(
         DbQueryRequest(text: request.text, parameters: request.parameters, approvalTicket: review.ticket),
+        read: review.risk == DbQueryRisk.read,
       );
     } catch (_) {
       if (_tabCurrent(tab)) _error();
@@ -523,9 +563,8 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
 
   /// Copies one result value: masked columns through the clipboard that
   /// clears itself, others kept out of clipboard history (query results).
-  Future<void> _copyCell(DbResultSet result, int row, int column) async {
+  Future<void> _copyCell(DbColumn info, DbCell cell) async {
     if (!_current) return;
-    final info = result.columns[column], cell = result.rows[row][column];
     final l = context.l10n;
     if (info.sensitive) {
       await copySecretWithNotice(context, ref, cell.text, what: l.copyWhatValue, isCurrent: () => _current);
@@ -533,16 +572,6 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
       await copyPrivateWithNotice(context, ref, cell.text, what: l.copyWhatValue);
     }
   }
-
-  /// Cell edits are possible when writes are allowed (a non-production
-  /// session or an open production window) on a single-table result with a
-  /// primary key, on desktop.
-  bool _canEdit(DbSessionInfo session, DbResultSet result) =>
-      !_mobile &&
-      session.writable &&
-      result.editableTable != null &&
-      result.columns.any((c) => c.primaryKey) &&
-      _backend is DbCellEditService;
 
   Future<void> _explain(bool analyze) async {
     final tab = _tab, session = _session;
@@ -589,69 +618,32 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     );
   }
 
-  void _editCell(_QueryTab tab, DbResultSet result, int row, int column, DbCell value) {
-    final session = _session;
-    if (!_tabCurrent(tab) || session == null || !_canEdit(session, result)) return;
-    final original = result.rows[row][column];
-    final same = original.kind == value.kind && original.text == value.text;
-    setState(() {
-      if (same) {
-        tab.pending.remove((row, column));
-      } else {
-        tab.pending[(row, column)] = value;
-      }
-    });
+  /// CSV import, when the backend and the engine support it.
+  DbCsvImportService? get _csv {
+    final backend = _backend, session = _session;
+    return backend is DbCsvImportService && session != null && dbCsvImportSupported(session.engine) ? backend : null;
   }
 
-  Future<void> _applyEdits(_QueryTab tab, DbResultSet result) async {
-    final service = _backend, session = _session;
-    if (!_tabCurrent(tab) ||
-        session == null ||
-        !_canEdit(session, result) ||
-        service is! DbCellEditService ||
-        tab.pending.isEmpty) {
+  /// The CSV import wizard for [table]; the tab's result refreshes after.
+  Future<void> _importCsv(DbObjectRef table, {_QueryTab? tab}) async {
+    final service = _csv, session = _session;
+    if (service == null || session == null || !_current) return;
+    if (!session.writable) {
+      showSnack(context, session.production ? context.l10n.dbEditProductionLocked : context.l10n.dbEditReadOnly);
       return;
     }
-    final edits = [
-      for (final MapEntry(key: (row, column), :value) in tab.pending.entries)
-        DbCellEdit(
-          originalPrimaryKey: {
-            for (var i = 0; i < result.columns.length; i++)
-              if (result.columns[i].primaryKey) result.columns[i].name: result.rows[row][i],
-          },
-          column: result.columns[column].name,
-          value: value,
-        ),
-    ];
-    DbCellEditReview? review;
-    try {
-      review = await service.reviewCellEdits(session.id, result.editableTable!, edits);
-      if (!mounted || !_tabCurrent(tab)) return;
-      final approved = await showAppDialog<bool>(
-        context,
-        secure: true,
-        builder: (_) => DbQueryReviewDialog(
-          query: review!.sql.expose(),
-          review: DbQueryReview(ticket: review.ticket, risk: DbQueryRisk.write, expiresAt: review.expiresAt),
-        ),
-      );
-      if (!_tabCurrent(tab) || approved != true || !DateTime.now().isBefore(review.expiresAt)) return;
-      await service.commitCellEdits(session.id, review.ticket);
-      if (_tabCurrent(tab)) {
-        setState(() {
-          tab.pending.clear();
-          tab.stale = true;
-        });
-      }
-    } catch (_) {
-      if (_tabCurrent(tab)) _error();
-    } finally {
-      review?.sql.wipe();
-      if (review != null) {
-        try {
-          await service.discardCellEdits(session.id, review.ticket);
-        } catch (_) {}
-      }
+    final imported = await showAppDialog<bool>(
+      context,
+      secure: true,
+      barrierDismissible: false,
+      builder: (_) => DbCsvImportDialog(service: service, session: session, table: table),
+    );
+    if (imported == true && tab != null && _tabCurrent(tab)) {
+      var refreshed = false;
+      try {
+        refreshed = await tab.result.refresh();
+      } catch (_) {}
+      if (!refreshed && _tabCurrent(tab)) setState(() => tab.stale = true);
     }
   }
 
@@ -797,7 +789,7 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
       padding: const EdgeInsets.fromLTRB(GlassSpacing.s6, GlassSpacing.s6, GlassSpacing.s8, GlassSpacing.s6),
       child: Row(
         children: [
-          _tool('db-close', Icons.arrow_back_rounded, l.commonClose, widget.onClose),
+          _tool('db-close', Icons.arrow_back_rounded, l.commonClose, () => unawaited(_leave())),
           const SizedBox(width: GlassSpacing.s6),
           Icon(Icons.storage_rounded, size: 20, color: _connectionColor ?? tokens.palette.accent),
           const SizedBox(width: GlassSpacing.s8),
@@ -884,104 +876,9 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     );
   }
 
-  Widget _statusBar(_QueryTab tab, DbSessionInfo session, DbResultSet? result) {
-    final l = context.l10n, tokens = GlassTokens.of(context);
-    final busy = tab.preparing || tab.result.running;
-    final failed = tab.result.errorCode != null;
-    final style = tokens.typography.caption.copyWith(color: tokens.secondaryLabel);
-    final facts = [
-      if (result != null) l.dbRowCount('${result.rows.length}${result.hasMore ? '+' : ''}'),
-      if (result != null && tab.selectedRows.isNotEmpty) l.dbSelectedRows(tab.selectedRows.length),
-      if (result?.affectedRows != null && result!.columns.isEmpty) l.dbRowsAffected(result.affectedRows!),
-      if (result != null) l.dbElapsed(result.elapsedMs),
-    ];
-    return Container(
-      key: const ValueKey('db-status-bar'),
-      height: 26,
-      padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s12),
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: tokens.surfaces.separator)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: busy
-                  ? tokens.palette.accent
-                  : failed
-                  ? tokens.palette.danger
-                  : tokens.palette.success,
-            ),
-          ),
-          const SizedBox(width: GlassSpacing.s6),
-          Expanded(
-            child: Text(
-              [
-                busy
-                    ? l.dbRunning
-                    : failed
-                    ? l.dbOperationFailed
-                    : tab.result.cancelled
-                    ? l.dbCancelled
-                    : l.dbStatusReady,
-                ...facts,
-              ].join('  ·  '), // l10n-ignore: Visual separator between status facts.
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: style,
-            ),
-          ),
-          if (result?.truncated ?? false)
-            Tooltip(
-              message: l.dbTruncated,
-              child: Icon(Icons.warning_amber_rounded, size: 14, color: tokens.palette.warning),
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _results(_QueryTab tab, DbSessionInfo session) {
-    final l = context.l10n, tokens = GlassTokens.of(context), results = tab.result.results;
-    final result = results.where((r) => r.index == tab.resultIndex).firstOrNull ?? results.firstOrNull;
-    final title = [
-      Icon(Icons.table_rows_outlined, size: 15, color: tokens.secondaryLabel),
-      const SizedBox(width: GlassSpacing.s6),
-      Text(
-        l.dbResults,
-        style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel, fontWeight: FontWeight.w600),
-      ),
-      if (results.length > 1) ...[
-        const SizedBox(width: GlassSpacing.s8),
-        GlassSegmented<int>(
-          key: const ValueKey('db-result-sets'),
-          inChrome: false,
-          segments: [for (final item in results) GlassSegment(value: item.index, label: '${item.index + 1}')],
-          selected: result?.index ?? 0,
-          onChanged: (index) => setState(() {
-            tab.resultIndex = index;
-            tab.selectedRows.clear();
-            tab.pending.clear();
-          }),
-        ),
-      ],
-      const SizedBox(width: GlassSpacing.s8),
-    ];
+    final l = context.l10n;
     final actions = [
-      if (result != null && _backend is DbExportService)
-        _tool(
-          'db-export',
-          Icons.file_download_outlined,
-          l.dbExport,
-          () => _export(
-            tab,
-            result,
-            tab.selectedRows.isEmpty ? null : DbResultSelection(rows: List.of(tab.selectedRows)),
-          ),
-        ),
       if (tab.result.notices.isNotEmpty)
         _tool('db-messages', Icons.chat_bubble_outline_rounded, l.dbMessages, () async {
           final value = SecretText(tab.result.notices.join('\n'));
@@ -999,67 +896,31 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
     return _panel(
       const ValueKey('db-results'),
       solid: true,
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (result == null) ...[_panelHeader(Icons.table_rows_outlined, l.dbResults, actions), _separator()],
-          SizedBox(height: 2, child: tab.preparing || tab.result.running ? const LinearProgressIndicator() : null),
-          if (tab.result.errorCode != null || tab.stale)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(GlassSpacing.s8, GlassSpacing.s6, GlassSpacing.s8, 0),
-              child: InfoBanner(
-                tone: tab.result.errorCode != null ? BannerTone.danger : BannerTone.warning,
-                message: tab.result.errorCode != null ? l.dbOperationFailed : l.dbResultStale,
-              ),
-            ),
-          if (tab.pending.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(GlassSpacing.s8, GlassSpacing.s6, GlassSpacing.s8, 0),
-              child: Wrap(
-                spacing: GlassSpacing.s8,
-                runSpacing: GlassSpacing.s6,
-                children: [
-                  GlassButton(
-                    key: const ValueKey('db-apply-edits'),
-                    label: '${l.dbApplyEdits} (${tab.pending.length})',
-                    style: GlassButtonStyle.prominent,
-                    size: GlassControlSize.sm,
-                    onPressed: result == null ? null : () => _applyEdits(tab, result),
-                  ),
-                  GlassButton(
-                    label: l.dbDiscardEdits,
-                    size: GlassControlSize.sm,
-                    onPressed: () => setState(tab.pending.clear),
-                  ),
-                ],
-              ),
-            ),
-          Expanded(
-            child: result == null
-                ? Center(
-                    child: Text(
-                      l.dbNoResults,
-                      style: tokens.typography.caption.copyWith(color: tokens.palette.tertiary),
-                    ),
-                  )
-                : DbResultGrid(
-                    key: ValueKey('${tab.id}:${result.index}'),
-                    result: result,
-                    leading: title,
-                    trailing: actions,
-                    onCopy: _backend is DbExportService ? (selection) => _export(tab, result, selection) : null,
-                    onCopyCell: (row, column) => unawaited(_copyCell(result, row, column)),
-                    onCellEdit: _canEdit(session, result)
-                        ? (row, column, value) => _editCell(tab, result, row, column, value)
-                        : null,
-                    pending: tab.pending,
-                    onSelection: (rows) => setState(() => tab.selectedRows = rows),
-                    onMore: result.hasMore ? () => tab.result.more() : null,
-                    loadingMore: tab.result.loadingMore,
-                  ),
-          ),
-          _statusBar(tab, session, result),
-        ],
+      DbResultPanel(
+        key: ValueKey('results-${tab.id}'),
+        controller: tab.result,
+        state: tab.panel,
+        session: session,
+        connection: widget.connection,
+        backend: _backend,
+        resultIndex: tab.resultIndex,
+        onResultIndex: (index) => setState(() {
+          tab.resultIndex = index;
+          tab.selectedRows.clear();
+        }),
+        selectedRows: tab.selectedRows,
+        onSelection: (rows) => setState(() => tab.selectedRows = rows),
+        isCurrent: () => _tabCurrent(tab),
+        onDraft: _draft,
+        onStale: (stale) {
+          if (_tabCurrent(tab)) setState(() => tab.stale = stale);
+        },
+        onExport: (result, selection) => unawaited(_export(tab, result, selection)),
+        onCopyCell: (column, cell) => unawaited(_copyCell(column, cell)),
+        preparing: tab.preparing,
+        stale: tab.stale,
+        actions: actions,
+        onImport: _csv == null ? null : (result) => unawaited(_importCsv(result.editableTable!, tab: tab)),
       ),
     );
   }
@@ -1264,6 +1125,19 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace> with WidgetsBindingOb
                 if (_current) _tab?.controller.insert(value);
               },
               onSelect: (object) => setState(() => _selectedObject = object),
+              onImportCsv: _csv == null ? null : (object) => unawaited(_importCsv(object)),
+              onCreateFromCsv: _csv == null
+                  ? null
+                  : (object) => unawaited(
+                      showCsvCreateTable(
+                        context,
+                        service: _csv!,
+                        session: session,
+                        container: object,
+                        onDraft: _draft,
+                        ref: ref,
+                      ),
+                    ),
             );
             final side = switch (_side) {
               'history' when _hasHistory => 'history',

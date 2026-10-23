@@ -363,6 +363,104 @@ pub async fn db_review_cell_edits(
     .await
 }
 
+/// Columns of an editable table (NULL, default, generated and key flags).
+pub async fn db_edit_columns(
+    session_id: String,
+    table_json: String,
+) -> Result<String, BridgeError> {
+    let table: DbObjectRef = from_json("table", &table_json)?;
+    with_core(move |c| async move { to_json(&c.db_edit_columns(session_id, table).await?) }).await
+}
+
+/// Reviews pending row changes (changed cells, added and deleted rows) of a
+/// result; commit with `db_commit_cell_edits`.
+pub async fn db_review_row_changes(
+    session_id: String,
+    table_json: String,
+    changes_json: String,
+) -> Result<String, BridgeError> {
+    let table: DbObjectRef = from_json("table", &table_json)?;
+    let changes: Vec<cc_db_core::row_changes::DbRowChange> = from_json("changes", &changes_json)?;
+    with_core(move |c| async move {
+        to_json(&c.db_review_row_changes(session_id, table, changes).await?)
+    })
+    .await
+}
+
+/// First rows of a CSV file for the import wizard (options as JSON).
+pub async fn db_csv_preview(path: String, options_json: String) -> Result<String, BridgeError> {
+    let options = from_json("options", &options_json)?;
+    with_core(move |c| async move { to_json(&c.db_import_preview(path, options).await?) }).await
+}
+
+/// Values of the first CSV rows that do not convert to the mapped columns.
+pub async fn db_csv_check(
+    session_id: String,
+    table_json: String,
+    path: String,
+    options_json: String,
+    mapping_json: String,
+) -> Result<String, BridgeError> {
+    let table: DbObjectRef = from_json("table", &table_json)?;
+    let options = from_json("options", &options_json)?;
+    let mapping = from_json("mapping", &mapping_json)?;
+    with_core(move |c| async move {
+        to_json(
+            &c.db_import_check(session_id, table, path, options, mapping)
+                .await?,
+        )
+    })
+    .await
+}
+
+/// Reviews a CSV import plan; start it with `db_csv_import_start`.
+pub async fn db_csv_import_review(
+    session_id: String,
+    path: String,
+    plan_json: String,
+) -> Result<String, BridgeError> {
+    let plan = from_json("plan", &plan_json)?;
+    with_core(move |c| async move { to_json(&c.db_import_review(session_id, path, plan).await?) })
+        .await
+}
+
+/// A simple `CREATE TABLE` typed from a CSV file (a draft for the table
+/// designer; reviewed and run like any statement).
+pub async fn db_csv_create_table(
+    path: String,
+    options_json: String,
+    engine_json: String,
+    table_json: String,
+) -> Result<String, BridgeError> {
+    let options = from_json("options", &options_json)?;
+    let engine = from_json("engine", &engine_json)?;
+    let table: DbObjectRef = from_json("table", &table_json)?;
+    with_core(move |c| async move {
+        Ok(c.db_import_create_table(path, options, engine, table)
+            .await?)
+    })
+    .await
+}
+
+pub async fn db_csv_import_discard(ticket: String) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.db_import_discard(ticket).await?) }).await
+}
+
+pub async fn db_csv_import_start(
+    session_id: String,
+    ticket: String,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move { Ok(c.db_import_start(session_id, ticket).await?) }).await
+}
+
+pub async fn db_csv_import_progress(import_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.db_import_progress(import_id).await?) }).await
+}
+
+pub async fn db_csv_import_cancel(import_id: String) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.db_import_cancel(import_id).await?) }).await
+}
+
 pub async fn db_commit_cell_edits(session_id: String, ticket: String) -> Result<u64, BridgeError> {
     with_core(move |c| async move { Ok(c.db_commit_cell_edits(session_id, ticket).await?) }).await
 }

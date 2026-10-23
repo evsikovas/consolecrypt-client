@@ -792,6 +792,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'docker_terminal_hint_shown': s.dockerTerminalHintShown,
   'db_code_wrap': s.dbCodeWrap,
   'screen_capture_protection': s.screenCaptureProtection.wireName,
+  'db_fetch_sizes': s.dbFetchSizes,
   'sftp_default_editor': s.sftpDefaultEditor == null
       ? null
       : {'kind': s.sftpDefaultEditor!.kind.wireName, 'value': s.sftpDefaultEditor!.value},
@@ -864,6 +865,11 @@ LocalSettings localSettingsFromJson(Json j) {
       j['screen_capture_protection'],
       d.screenCaptureProtection,
     ),
+    dbFetchSizes: {
+      if (j['db_fetch_sizes'] case final Map<String, dynamic> sizes)
+        for (final entry in sizes.entries.take(200))
+          if (entry.value case final int rows when rows >= 1 && rows <= 1000 && entry.key.length <= 64) entry.key: rows,
+    },
   );
 }
 

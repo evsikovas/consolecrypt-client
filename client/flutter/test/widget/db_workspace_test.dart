@@ -787,7 +787,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('vault-passphrase-confirm-action')));
     await settle(tester);
     expect(service.commits, ['edits']);
-    expect(find.byKey(const ValueKey('db-apply-edits')), findsNothing);
+    // Nothing is pending any more: Save is off until the next change.
+    expect(tester.widget<GlassButton>(find.byKey(const ValueKey('db-apply-edits'))).onPressed, isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   for (final language in ['en', 'ru']) {
