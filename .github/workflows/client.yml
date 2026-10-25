@@ -25,7 +25,7 @@ jobs:
     outputs:
       version: ${{ steps.tag.outputs.version }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -55,7 +55,7 @@ jobs:
     env:
       CC_CODESIGN_IDENTITY: ${{ vars.CC_CODESIGN_IDENTITY }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           clean: false
           persist-credentials: false
@@ -83,7 +83,7 @@ jobs:
           cp dist/macos/ConsoleCrypt.dmg "dist/macos/ConsoleCrypt-$version-macos-universal.dmg"
           cd dist/macos
           shasum -a 256 "ConsoleCrypt-$version-macos-universal.dmg" > SHA256SUMS-macos.txt
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macos
           if-no-files-found: error
@@ -102,7 +102,7 @@ jobs:
       run:
         shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           clean: false
           persist-credentials: false
@@ -114,7 +114,7 @@ jobs:
         run: |
           & client/scripts/ci-windows.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Windows build failed' }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows
           if-no-files-found: error
@@ -131,7 +131,7 @@ jobs:
     runs-on: cc-linux-k3s
     timeout-minutes: 240
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Reserve build number
@@ -140,7 +140,7 @@ jobs:
         run: python3 client/scripts/ci-kubernetes-linux.py --workspace "$GITHUB_WORKSPACE"
       - name: Build and check native Linux DEB and RPM
         run: bash client/scripts/ci-linux.sh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux
           if-no-files-found: error
@@ -155,7 +155,7 @@ jobs:
             dist/linux/acceptance/kubernetes-acceptance.json
             dist/linux/acceptance/kubernetes-acceptance.log
             dist/linux/ConsoleCrypt.version
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: linux-kubernetes-diagnostics
@@ -179,7 +179,7 @@ jobs:
       ANDROID_HOME: ${{ vars.ANDROID_HOME }}
       JAVA_HOME: ${{ vars.JAVA_HOME }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           clean: false
           persist-credentials: false
@@ -191,7 +191,7 @@ jobs:
           python3 client/scripts/github-build-number.py android
       - name: Build APK with the existing runner signer
         run: bash client/scripts/build-android.sh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android
           if-no-files-found: error
@@ -215,10 +215,10 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       RELEASE_VERSION: ${{ needs.validate.outputs.version }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: release-artifacts
       - name: Assemble versioned installers and checksums
@@ -253,7 +253,7 @@ jobs:
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       TELEGRAM_PROXY: ${{ secrets.TELEGRAM_PROXY }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Announce the release in Telegram

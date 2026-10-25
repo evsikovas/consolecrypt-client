@@ -36,7 +36,7 @@ jobs:
       published: ${{ steps.release.outputs.published }}
       commit: ${{ steps.release.outputs.commit }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Check cleanup deletion boundaries
@@ -145,7 +145,7 @@ jobs:
           & $Python -c $Guard
           if ($LASTEXITCODE -ne 0) { throw 'Maintenance preflight refused checkout' }
       # Do not let checkout's git clean erase the previous job before guards run.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: .ci-maintenance-tools
           clean: false
@@ -213,7 +213,7 @@ jobs:
           print('MAINTENANCE_PREFLIGHT_PASS')
           # END_MAINTENANCE_PREFLIGHT
           PY
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: .ci-maintenance-tools
           clean: false
