@@ -55,6 +55,15 @@ dependencies:
   yaml: ^3.1.4
   # Open explicitly selected documentation and GitOps commit links (BSD-3-Clause).
   url_launcher: ^6.3.3
+  # Recovery Kit print / "Save as PDF" through the system print dialog
+  # (Apache-2.0; DavBfr). EXACT pin: its native layoutPdf paths were checked
+  # to print from memory on Android, iOS, macOS, Windows and Linux (memfd) —
+  # re-check before bumping. Never use sharePdf / convertHtml / raster: they
+  # write temporary files. Windows and Linux builds fetch prebuilt PDFium.
+  printing: 5.15.1
+  # Builds the Recovery Kit PDF in memory (Apache-2.0; DavBfr; transitive:
+  # barcode Apache-2.0, bidi MIT, image MIT, path_parsing MIT).
+  pdf: ^3.13.1
 
 dev_dependencies:
   flutter_test:
@@ -77,5 +86,8 @@ flutter:
   # docs/brand/generate_icons.swift). Used only through lib/app/brand.dart.
   assets:
     - assets/brand/
+    # Roboto 2.137 (Apache-2.0, Roboto-LICENSE.txt) for the printed Recovery
+    # Kit only: the PDF standard fonts have no Cyrillic. Not a UI font family.
+    - assets/fonts/
     - assets/licenses/
     - assets/kubernetes/

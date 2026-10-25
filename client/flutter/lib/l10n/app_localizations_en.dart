@@ -4084,6 +4084,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recoveryKitCopyWords => 'Copy words';
 
   @override
+  String get recoveryKitPrint => 'Print / Save as PDF';
+
+  @override
+  String get recoveryKitPrintHint =>
+      'A saved PDF is as secret as the printed sheet — keep it out of cloud-synced folders.';
+
+  @override
+  String get recoveryKitPrintFailed => 'Couldn\'t print the Recovery Kit. Write the words down instead.';
+
+  @override
+  String get recoveryKitSheetTitle => 'ConsoleCrypt Recovery Kit';
+
+  @override
+  String get recoveryKitSheetWarning =>
+      'Anyone who has this sheet can open your vault. Keep it offline, somewhere safe: it is the only way back in if you forget your passphrase and lose your trusted devices.';
+
+  @override
   String get recoveryKitSavedConfirmation => 'I have stored my Recovery Kit somewhere safe';
 
   @override
