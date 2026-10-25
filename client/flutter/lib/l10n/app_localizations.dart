@@ -7160,23 +7160,41 @@ abstract class AppLocalizations {
   /// **'Generate a new Recovery Kit'**
   String get recoveryKitGenerateNew;
 
-  /// Snackbar: printing is not implemented yet (M5 = milestone 5).
-  ///
-  /// In en, this message translates to:
-  /// **'Printing arrives with M5. For now, write the words down.'**
-  String get recoveryKitPrintUnavailable;
-
-  /// Button: print the Recovery Kit or save it as PDF.
-  ///
-  /// In en, this message translates to:
-  /// **'Print / Save as PDF'**
-  String get recoveryKitPrint;
-
   /// Button: copy the recovery words to the clipboard.
   ///
   /// In en, this message translates to:
   /// **'Copy words'**
   String get recoveryKitCopyWords;
+
+  /// Button: open the system print dialog for the Recovery Kit (print it or save it as PDF). Shown only after the words are revealed.
+  ///
+  /// In en, this message translates to:
+  /// **'Print / Save as PDF'**
+  String get recoveryKitPrint;
+
+  /// Caption under the print button: a PDF saved from the print dialog holds the Recovery Key.
+  ///
+  /// In en, this message translates to:
+  /// **'A saved PDF is as secret as the printed sheet — keep it out of cloud-synced folders.'**
+  String get recoveryKitPrintHint;
+
+  /// Error toast: the system print dialog failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t print the Recovery Kit. Write the words down instead.'**
+  String get recoveryKitPrintFailed;
+
+  /// Heading of the printed Recovery Kit; also the print job name and the suggested PDF file name.
+  ///
+  /// In en, this message translates to:
+  /// **'ConsoleCrypt Recovery Kit'**
+  String get recoveryKitSheetTitle;
+
+  /// Warning printed at the top of the Recovery Kit sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone who has this sheet can open your vault. Keep it offline, somewhere safe: it is the only way back in if you forget your passphrase and lose your trusted devices.'**
+  String get recoveryKitSheetWarning;
 
   /// Checkbox the user must tick before continuing.
   ///

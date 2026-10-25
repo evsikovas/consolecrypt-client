@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
 import 'package:consolecrypt/vault/onboarding_controller.dart';
+import 'package:consolecrypt/vault/recovery_kit_print.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -26,6 +27,7 @@ class _RecoveryKitScreenState extends ConsumerState<RecoveryKitScreen> {
   bool _revealed = false;
   bool _saved = false;
   bool _busy = false;
+  bool _printing = false;
 
   Future<void> _regenerate() async {
     setState(() => _busy = true);
@@ -33,9 +35,22 @@ class _RecoveryKitScreenState extends ConsumerState<RecoveryKitScreen> {
     if (mounted) setState(() => _busy = false);
   }
 
+  Future<void> _print(RecoveryKit kit) async {
+    final l10n = context.l10n;
+    setState(() => _printing = true);
+    try {
+      await printRecoveryKit(ref.read(recoveryKitPrinterProvider), kit, l10n);
+    } on Exception {
+      if (mounted) showSnack(context, l10n.recoveryKitPrintFailed, error: true);
+    } finally {
+      if (mounted) setState(() => _printing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final kit = ref.watch(onboardingControllerProvider).kit;
+    final canPrint = ref.watch(recoveryKitCanPrintProvider).value ?? false;
     final tokens = GlassTokens.of(context);
     final l10n = context.l10n;
     // A content page (§4.14): words and QR on opaque paper, rendered only
@@ -70,19 +85,11 @@ class _RecoveryKitScreenState extends ConsumerState<RecoveryKitScreen> {
             else
               RecoveryKitPaper(kit: kit),
             const SizedBox(height: GlassSpacing.s16),
-            Wrap(
-              spacing: GlassSpacing.s8,
-              runSpacing: GlassSpacing.s8,
-              children: [
-                GlassButton(
-                  // TODO(client/ui): native print / "Save as PDF" of the kit — needs a
-                  // printing plugin decision (ADR-0101 keeps deps minimal); next: evaluate
-                  // `printing` (Apache-2.0) at M5 and render the same layout to PDF.
-                  onPressed: () => showSnack(context, l10n.recoveryKitPrintUnavailable),
-                  icon: Icons.print_rounded,
-                  label: l10n.recoveryKitPrint,
-                ),
-                if (_revealed)
+            if (_revealed) ...[
+              Wrap(
+                spacing: GlassSpacing.s8,
+                runSpacing: GlassSpacing.s8,
+                children: [
                   GlassButton(
                     onPressed: () => copySecretWithNotice(
                       context,
@@ -93,9 +100,27 @@ class _RecoveryKitScreenState extends ConsumerState<RecoveryKitScreen> {
                     icon: Icons.copy_rounded,
                     label: l10n.recoveryKitCopyWords,
                   ),
+                  // Printing goes straight to the system print dialog (no
+                  // temp file); offered only where that dialog is available.
+                  if (canPrint)
+                    GlassButton(
+                      key: const ValueKey('kit-print'),
+                      onPressed: _printing ? null : () => _print(kit),
+                      busy: _printing,
+                      icon: Icons.print_rounded,
+                      label: l10n.recoveryKitPrint,
+                    ),
+                ],
+              ),
+              if (canPrint) ...[
+                const SizedBox(height: GlassSpacing.s8),
+                Text(
+                  l10n.recoveryKitPrintHint,
+                  style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                ),
               ],
-            ),
-            const SizedBox(height: GlassSpacing.s16),
+              const SizedBox(height: GlassSpacing.s16),
+            ],
             CheckboxListTile(
               key: const ValueKey('kit-saved'),
               contentPadding: EdgeInsets.zero,

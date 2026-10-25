@@ -4278,13 +4278,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get recoveryKitGenerateNew => 'Создать новый комплект восстановления';
 
   @override
-  String get recoveryKitPrintUnavailable => 'Печать появится в M5. Пока перепишите слова от руки.';
+  String get recoveryKitCopyWords => 'Скопировать слова';
 
   @override
   String get recoveryKitPrint => 'Печать / Сохранить как PDF';
 
   @override
-  String get recoveryKitCopyWords => 'Скопировать слова';
+  String get recoveryKitPrintHint =>
+      'Сохранённый PDF так же секретен, как распечатанный лист, — не храните его в папках, которые синхронизируются с облаком.';
+
+  @override
+  String get recoveryKitPrintFailed => 'Не удалось распечатать комплект восстановления. Перепишите слова от руки.';
+
+  @override
+  String get recoveryKitSheetTitle => 'Комплект восстановления ConsoleCrypt';
+
+  @override
+  String get recoveryKitSheetWarning =>
+      'Любой, у кого есть этот лист, может открыть ваше хранилище. Храните его офлайн в надёжном месте: это единственный способ вернуть доступ, если вы забудете парольную фразу и потеряете доверенные устройства.';
 
   @override
   String get recoveryKitSavedConfirmation => 'Комплект восстановления сохранён в надёжном месте';

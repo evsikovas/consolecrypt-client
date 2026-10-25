@@ -5844,17 +5844,29 @@
   "@recoveryKitGenerateNew": {
     "description": "Button: regenerate the Recovery Kit (invalidates the previous one)."
   },
-  "recoveryKitPrintUnavailable": "Printing arrives with M5. For now, write the words down.",
-  "@recoveryKitPrintUnavailable": {
-    "description": "Snackbar: printing is not implemented yet (M5 = milestone 5)."
-  },
-  "recoveryKitPrint": "Print / Save as PDF",
-  "@recoveryKitPrint": {
-    "description": "Button: print the Recovery Kit or save it as PDF."
-  },
   "recoveryKitCopyWords": "Copy words",
   "@recoveryKitCopyWords": {
     "description": "Button: copy the recovery words to the clipboard."
+  },
+  "recoveryKitPrint": "Print / Save as PDF",
+  "@recoveryKitPrint": {
+    "description": "Button: open the system print dialog for the Recovery Kit (print it or save it as PDF). Shown only after the words are revealed."
+  },
+  "recoveryKitPrintHint": "A saved PDF is as secret as the printed sheet — keep it out of cloud-synced folders.",
+  "@recoveryKitPrintHint": {
+    "description": "Caption under the print button: a PDF saved from the print dialog holds the Recovery Key."
+  },
+  "recoveryKitPrintFailed": "Couldn't print the Recovery Kit. Write the words down instead.",
+  "@recoveryKitPrintFailed": {
+    "description": "Error toast: the system print dialog failed."
+  },
+  "recoveryKitSheetTitle": "ConsoleCrypt Recovery Kit",
+  "@recoveryKitSheetTitle": {
+    "description": "Heading of the printed Recovery Kit; also the print job name and the suggested PDF file name."
+  },
+  "recoveryKitSheetWarning": "Anyone who has this sheet can open your vault. Keep it offline, somewhere safe: it is the only way back in if you forget your passphrase and lose your trusted devices.",
+  "@recoveryKitSheetWarning": {
+    "description": "Warning printed at the top of the Recovery Kit sheet."
   },
   "recoveryKitSavedConfirmation": "I have stored my Recovery Kit somewhere safe",
   "@recoveryKitSavedConfirmation": {
