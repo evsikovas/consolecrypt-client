@@ -4,6 +4,8 @@ import 'package:consolecrypt/ai/command_palette.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/app/sidebar_state.dart';
+import 'package:consolecrypt/app/theme/glass_metrics.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -14,7 +16,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum AppCommandId { commandPalette, newTerminalTab, closeTerminalTab, newHost, lockVault, openSettings, snippets }
+enum AppCommandId {
+  commandPalette,
+  newTerminalTab,
+  closeTerminalTab,
+  newHost,
+  lockVault,
+  openSettings,
+  snippets,
+  toggleSidebar,
+}
 
 /// A key combination: the platform primary modifier (⌘ on macOS, Ctrl
 /// elsewhere) and/or Alt, optionally with Shift.
@@ -157,6 +168,7 @@ final class AppCommand {
     AppCommandId.lockVault => l.commandLockVault,
     AppCommandId.openSettings => l.commandOpenSettings,
     AppCommandId.snippets => l.navSnippets,
+    AppCommandId.toggleSidebar => l.commandToggleSidebar,
   };
 }
 
@@ -169,6 +181,7 @@ const appCommands = [
   AppCommand(AppCommandId.lockVault, ShortcutBinding(LogicalKeyboardKey.keyL)),
   AppCommand(AppCommandId.openSettings, ShortcutBinding(LogicalKeyboardKey.comma)),
   AppCommand(AppCommandId.snippets, ShortcutBinding(LogicalKeyboardKey.period)),
+  AppCommand(AppCommandId.toggleSidebar, ShortcutBinding(LogicalKeyboardKey.keyS, shift: true)),
 ];
 
 /// Commands with the user's overrides (`id → encoded binding`, empty =
@@ -256,6 +269,10 @@ final class AppCommandDispatcher {
         router.go(AppRoutes.settings);
       case AppCommandId.snippets:
         _ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.snippets);
+      case AppCommandId.toggleSidebar:
+        // Phones have no sidebar; narrow windows keep it compact (no toggle).
+        final narrow = context != null && MediaQuery.sizeOf(context).width < GlassSizes.compactBreakpoint;
+        if (!AppPlatform.isMobile && !narrow) _ref.read(sidebarCollapsedProvider.notifier).toggle();
     }
   }
 

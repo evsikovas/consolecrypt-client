@@ -67,6 +67,10 @@ enum CollectionView { cards, list }
 /// local shell), its network address (computer name locally), or nothing.
 enum TerminalTabSubtitle { name, address, off }
 
+/// Terminal tabs as a row above the terminal or as a column at its left
+/// edge (desktop; phones always use the row).
+enum TerminalTabPlacement { top, left }
+
 /// Terminal colours are independent of the interface; system follows it.
 enum TerminalColorScheme { system, dark, light, midnight, ocean, forest, amber, custom }
 
@@ -116,6 +120,11 @@ final class LocalSettings {
     this.terminalFontSize = 13,
     this.terminalFontFamily,
     this.terminalTabSubtitle = TerminalTabSubtitle.name,
+    this.terminalTabPlacement = TerminalTabPlacement.top,
+    this.terminalTabColumnWidth = terminalTabColumnDefault,
+    this.terminalTabColumnCollapsed = false,
+    this.sidebarCollapsed = false,
+    this.sidebarCollapsedBesideTabs,
     this.shortcutOverrides = const {},
     this.terminalScrollback = 5000,
     this.clipboardClearSeconds = 30,
@@ -161,6 +170,25 @@ final class LocalSettings {
 
   /// Second line of terminal tabs: list name, network address, or nothing.
   final TerminalTabSubtitle terminalTabSubtitle;
+
+  /// Row above the terminal or column at its left edge (desktop only).
+  final TerminalTabPlacement terminalTabPlacement;
+
+  /// Width of the expanded tab column, resized by dragging its edge.
+  static const terminalTabColumnMin = 160.0;
+  static const terminalTabColumnMax = 420.0;
+  static const terminalTabColumnDefault = 232.0;
+  final double terminalTabColumnWidth;
+
+  /// The tab column is folded to icons.
+  final bool terminalTabColumnCollapsed;
+
+  /// The user folded the app sidebar to icons (desktop).
+  final bool sidebarCollapsed;
+
+  /// The user's sidebar choice next to the terminal tab column; `null`
+  /// folds it there by default.
+  final bool? sidebarCollapsedBesideTabs;
 
   /// App shortcuts changed by the user: command id → encoded binding, an
   /// empty value turns the shortcut off. Missing ids use the defaults.
@@ -230,6 +258,11 @@ final class LocalSettings {
     String? terminalFontFamily,
     bool resetTerminalFontFamily = false,
     TerminalTabSubtitle? terminalTabSubtitle,
+    TerminalTabPlacement? terminalTabPlacement,
+    double? terminalTabColumnWidth,
+    bool? terminalTabColumnCollapsed,
+    bool? sidebarCollapsed,
+    bool? sidebarCollapsedBesideTabs,
     Map<String, String>? shortcutOverrides,
     int? terminalScrollback,
     int? clipboardClearSeconds,
@@ -260,6 +293,11 @@ final class LocalSettings {
     terminalFontSize: terminalFontSize ?? this.terminalFontSize,
     terminalFontFamily: resetTerminalFontFamily ? null : (terminalFontFamily ?? this.terminalFontFamily),
     terminalTabSubtitle: terminalTabSubtitle ?? this.terminalTabSubtitle,
+    terminalTabPlacement: terminalTabPlacement ?? this.terminalTabPlacement,
+    terminalTabColumnWidth: terminalTabColumnWidth ?? this.terminalTabColumnWidth,
+    terminalTabColumnCollapsed: terminalTabColumnCollapsed ?? this.terminalTabColumnCollapsed,
+    sidebarCollapsed: sidebarCollapsed ?? this.sidebarCollapsed,
+    sidebarCollapsedBesideTabs: sidebarCollapsedBesideTabs ?? this.sidebarCollapsedBesideTabs,
     shortcutOverrides: shortcutOverrides ?? this.shortcutOverrides,
     terminalScrollback: terminalScrollback ?? this.terminalScrollback,
     clipboardClearSeconds: clipboardClearSeconds ?? this.clipboardClearSeconds,

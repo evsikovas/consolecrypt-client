@@ -32,6 +32,9 @@ final class GlassStrings {
   String get dismiss => _l.glassDismiss;
   String get closeTab => _l.glassCloseTab;
   String get newTab => _l.glassNewTab;
+  String get tabColumnResize => _l.glassTabColumnResize;
+  String get tabColumnCollapse => _l.glassTabColumnCollapse;
+  String get tabColumnExpand => _l.glassTabColumnExpand;
   String get scrollTabsLeft => _l.glassScrollTabsLeft;
   String get scrollTabsRight => _l.glassScrollTabsRight;
   String openTerminalTabs(int count) => _l.glassOpenTerminalTabs(count);

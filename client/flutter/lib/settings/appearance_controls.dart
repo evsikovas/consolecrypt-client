@@ -1,3 +1,4 @@
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/theme.dart';
 import 'package:consolecrypt/app/theme/terminal_palettes.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
@@ -247,6 +248,59 @@ String terminalSchemeLabel(TerminalColorScheme scheme, AppLocalizations l) => sw
   TerminalColorScheme.custom => l.settingsTerminalThemeCustom,
   TerminalColorScheme.amber => l.settingsTerminalThemeAmber,
 };
+
+/// Terminal tabs above the terminal or in a column at its left edge
+/// (desktop only; shown under Terminal and Appearance). [id] keys each copy.
+class TerminalTabPlacementSetting extends ConsumerWidget {
+  const TerminalTabPlacementSetting({required this.id, super.key});
+
+  final String id;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (AppPlatform.isMobile) return const SizedBox.shrink();
+    final placement =
+        ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabPlacement)) ?? TerminalTabPlacement.top;
+    final settings = ref.read(settingsServiceProvider);
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    return LabeledValue(
+      label: l.settingsTerminalTabPlacement,
+      value: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GlassSegmented<TerminalTabPlacement>(
+            key: ValueKey(id),
+            inChrome: false,
+            semanticLabel: l.settingsTerminalTabPlacement,
+            segments: [
+              GlassSegment(
+                key: ValueKey('$id-top'),
+                value: TerminalTabPlacement.top,
+                label: l.settingsTerminalTabPlacementTop,
+              ),
+              GlassSegment(
+                key: ValueKey('$id-left'),
+                value: TerminalTabPlacement.left,
+                label: l.settingsTerminalTabPlacementLeft,
+              ),
+            ],
+            selected: placement,
+            onChanged: (value) => runWithFeedback(
+              context,
+              () => settings.updateLocal(settings.currentLocal.copyWith(terminalTabPlacement: value)),
+            ),
+          ),
+          const SizedBox(height: GlassSpacing.s4),
+          Text(
+            l.settingsTerminalTabPlacementHelp,
+            style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class TerminalAppearanceControls extends ConsumerWidget {
   const TerminalAppearanceControls({super.key});

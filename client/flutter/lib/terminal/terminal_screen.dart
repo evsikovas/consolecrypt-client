@@ -5,6 +5,7 @@ import 'package:consolecrypt/ai/command_palette.dart';
 import 'package:consolecrypt/app/commands.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/sidebar_state.dart';
 import 'package:consolecrypt/app/theme.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
@@ -28,14 +29,37 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:xterm/xterm.dart';
 
-class TerminalScreen extends ConsumerWidget {
+class TerminalScreen extends ConsumerStatefulWidget {
   const TerminalScreen({super.key});
 
-  Future<void> _newTab(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<TerminalScreen> createState() => _TerminalScreenState();
+}
+
+class _TerminalScreenState extends ConsumerState<TerminalScreen> {
+  /// Keeps the terminal panes (focus, selection, scroll) when the tabs move
+  /// between the row and the column.
+  final _card = GlobalKey();
+  late final SidebarCollapsed _sidebar;
+
+  @override
+  void initState() {
+    super.initState();
+    _sidebar = ref.read(sidebarCollapsedProvider.notifier);
+  }
+
+  @override
+  void dispose() {
+    final sidebar = _sidebar;
+    scheduleMicrotask(() => sidebar.setBesideTabs(false));
+    super.dispose();
+  }
+
+  Future<void> _newTab() async {
     final profile = ref.read(activeProfileProvider)?.id;
     final target = await showTerminalTargetPicker(context);
     if (target == null ||
-        !context.mounted ||
+        !mounted ||
         profile != ref.read(activeProfileProvider)?.id ||
         ref.read(appStageProvider) != AppStage.unlocked) {
       return;
@@ -44,13 +68,20 @@ class TerminalScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final state = ref.watch(terminalTabsProvider);
     // Offstage shell branches disable tickers: that is "not on screen" for
     // the unseen-activity markers.
     final visible = TickerMode.valuesOf(context).enabled;
+    final placement = AppPlatform.isMobile
+        ? TerminalTabPlacement.top
+        : ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabPlacement)) ?? TerminalTabPlacement.top;
+    final column = placement == TerminalTabPlacement.left && state.tabs.isNotEmpty;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (context.mounted) ref.read(terminalTabsProvider.notifier).setViewing(visible);
+      if (!mounted) return;
+      ref.read(terminalTabsProvider.notifier).setViewing(visible);
+      // The app sidebar folds next to the tab column (the user's choice wins).
+      _sidebar.setBesideTabs(visible && column);
     });
     final l10n = context.l10n;
     final pad = AppPlatform.isMobile ? 6.0 : pagePadding(context);
@@ -69,7 +100,7 @@ class TerminalScreen extends ConsumerWidget {
           action: GlassButton.prominent(
             key: const ValueKey('terminal-connect'),
             size: GlassControlSize.lg,
-            onPressed: () => _newTab(context, ref),
+            onPressed: _newTab,
             icon: Icons.add_rounded,
             label: AppPlatform.isMobile ? l10n.terminalConnectToHost : l10n.terminalLocalOpen,
           ),
@@ -77,24 +108,52 @@ class TerminalScreen extends ConsumerWidget {
       );
     } else {
       final active = state.active!;
-      // Tab strip above the card, banners between them, the terminal card
-      // fully opaque below (§4.9). Context menus are transient user actions.
+      final card = Expanded(
+        child: _TerminalCard(key: _card, state: state, active: active),
+      );
+      // Tab strip above the card (or the tab column beside it), banners
+      // between them, the terminal card fully opaque below (§4.9). Context
+      // menus are transient user actions.
       body = Material(
         type: MaterialType.transparency,
         child: Padding(
           padding: EdgeInsets.fromLTRB(pad, GlassSpacing.s8, pad, pad),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _TabStrip(state: state, active: active, onNewTab: () => _newTab(context, ref)),
-              const SizedBox(height: GlassSpacing.s8),
-              _SessionBanners(tab: active),
-              Expanded(
-                child: _TerminalCard(state: state, active: active),
-              ),
-              if (AppPlatform.isMobile) _MobileTerminalKeys(tab: active),
-            ],
-          ),
+          child: column
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _TerminalTabs(
+                      state: state,
+                      active: active,
+                      onNewTab: _newTab,
+                      placement: placement,
+                      // The terminal keeps at least 360 px beside the column
+                      // (the shell sizes MediaQuery to the content area).
+                      maxColumnWidth: MediaQuery.sizeOf(context).width - 2 * pad - 360 - GlassTabColumn.handleWidth,
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _SessionBar(tab: active),
+                          const SizedBox(height: GlassSpacing.s8),
+                          _SessionBanners(tab: active),
+                          card,
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _TerminalTabs(state: state, active: active, onNewTab: _newTab, placement: placement),
+                    const SizedBox(height: GlassSpacing.s8),
+                    _SessionBanners(tab: active),
+                    card,
+                    if (AppPlatform.isMobile) _MobileTerminalKeys(tab: active),
+                  ],
+                ),
         ),
       );
     }
@@ -104,12 +163,22 @@ class TerminalScreen extends ConsumerWidget {
   }
 }
 
-class _TabStrip extends ConsumerWidget {
-  const _TabStrip({required this.state, required this.active, required this.onNewTab});
+/// The open terminals as the tab strip above the terminal or, on desktop, as
+/// the resizable tab column at its left edge (Settings → Terminal).
+class _TerminalTabs extends ConsumerWidget {
+  const _TerminalTabs({
+    required this.state,
+    required this.active,
+    required this.onNewTab,
+    required this.placement,
+    this.maxColumnWidth = LocalSettings.terminalTabColumnMax,
+  });
 
   final TerminalTabsState state;
   final TerminalTab active;
   final VoidCallback onNewTab;
+  final TerminalTabPlacement placement;
+  final double maxColumnWidth;
 
   static GlassTabState _state(TerminalTab tab) => switch (tab.state) {
     SessionConnectionState.connected => GlassTabState.connected,
@@ -120,54 +189,131 @@ class _TabStrip extends ConsumerWidget {
     SessionConnectionState.disconnected => GlassTabState.disconnected,
   };
 
-  /// Second line of a tab: the host's list name (or its address when it has
-  /// none), its address / this computer's network name, or nothing.
-  static String? _subtitle(BuildContext context, TerminalTab tab, TerminalTabSubtitle mode) {
-    final host = tab.host;
-    String? text = switch (mode) {
-      TerminalTabSubtitle.off => null,
-      TerminalTabSubtitle.name when tab.isLocal => context.l10n.terminalLocalComputer,
-      TerminalTabSubtitle.address when tab.isLocal => Platform.localHostname,
-      TerminalTabSubtitle.name => host == null ? null : (host.name.trim().isEmpty ? host.address : host.name),
-      TerminalTabSubtitle.address => host?.address,
-    };
-    text = text?.trim();
-    return text == null || text.isEmpty || text == tab.displayTitle ? null : text;
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = GlassStrings.of(context);
     final controller = ref.read(terminalTabsProvider.notifier);
     final subtitleMode =
         ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabSubtitle)) ?? TerminalTabSubtitle.name;
+    final tabs = [
+      for (final (i, tab) in state.tabs.indexed)
+        GlassTab(
+          key: ValueKey('tab-${tab.target.label}-$i'),
+          title: tab.displayTitle,
+          teamColor: switch (tab.host) {
+            final host? => teamColor(teamOf(ref, host.id)?.color),
+            null => null,
+          },
+          attention: tab.attention,
+          subtitle: _tabSubtitle(context, tab, subtitleMode),
+          state: _state(tab),
+          tooltip: switch (_state(tab)) {
+            GlassTabState.connected => strings.tabConnected,
+            GlassTabState.reconnecting => strings.tabReconnecting,
+            GlassTabState.disconnected => strings.tabDisconnected,
+            GlassTabState.none => null,
+          },
+        ),
+    ];
+    final activeIndex = state.activeIndex.clamp(0, state.tabs.length - 1);
+    void menu(int i, Offset position) => unawaited(_tabMenu(context, ref, state.tabs[i], i, position));
+    if (placement == TerminalTabPlacement.left) {
+      final layout = ref.watch(
+        localSettingsProvider.select((s) => (s.value?.terminalTabColumnWidth, s.value?.terminalTabColumnCollapsed)),
+      );
+      final settings = ref.read(settingsServiceProvider);
+      return GlassTabColumn(
+        key: const ValueKey('terminal-tab-column'),
+        tabs: tabs,
+        activeIndex: activeIndex,
+        width: layout.$1 ?? LocalSettings.terminalTabColumnDefault,
+        minWidth: LocalSettings.terminalTabColumnMin,
+        maxWidth: maxColumnWidth.clamp(0, LocalSettings.terminalTabColumnMax),
+        collapsed: layout.$2 ?? false,
+        onSelect: controller.activate,
+        onClose: (i) => controller.close(state.tabs[i]),
+        onContextMenu: menu,
+        onAdd: onNewTab,
+        onResize: (width) => runWithFeedback(
+          context,
+          () => settings.updateLocal(settings.currentLocal.copyWith(terminalTabColumnWidth: width)),
+        ),
+        onCollapsedChanged: (collapsed) => runWithFeedback(
+          context,
+          () => settings.updateLocal(settings.currentLocal.copyWith(terminalTabColumnCollapsed: collapsed)),
+        ),
+      );
+    }
     return GlassTabStrip(
-      activeIndex: state.activeIndex.clamp(0, state.tabs.length - 1),
-      tabs: [
-        for (final (i, tab) in state.tabs.indexed)
-          GlassTab(
-            key: ValueKey('tab-${tab.target.label}-$i'),
-            title: tab.displayTitle,
-            teamColor: switch (tab.host) {
-              final host? => teamColor(teamOf(ref, host.id)?.color),
-              null => null,
-            },
-            attention: tab.attention,
-            subtitle: _subtitle(context, tab, subtitleMode),
-            state: _state(tab),
-            tooltip: switch (_state(tab)) {
-              GlassTabState.connected => strings.tabConnected,
-              GlassTabState.reconnecting => strings.tabReconnecting,
-              GlassTabState.disconnected => strings.tabDisconnected,
-              GlassTabState.none => null,
-            },
-          ),
-      ],
+      activeIndex: activeIndex,
+      tabs: tabs,
       onSelect: controller.activate,
       onClose: (i) => controller.close(state.tabs[i]),
-      onContextMenu: (i, position) => unawaited(_tabMenu(context, ref, state.tabs[i], i, position)),
+      onContextMenu: menu,
       onAdd: onNewTab,
       trailing: AppPlatform.isMobile ? null : _SessionToolbar(tab: active),
+    );
+  }
+}
+
+/// Second line of a terminal tab: the host's list name (or its address when
+/// it has none), its address / this computer's network name, or nothing.
+String? _tabSubtitle(BuildContext context, TerminalTab tab, TerminalTabSubtitle mode) {
+  final host = tab.host;
+  String? text = switch (mode) {
+    TerminalTabSubtitle.off => null,
+    TerminalTabSubtitle.name when tab.isLocal => context.l10n.terminalLocalComputer,
+    TerminalTabSubtitle.address when tab.isLocal => Platform.localHostname,
+    TerminalTabSubtitle.name => host == null ? null : (host.name.trim().isEmpty ? host.address : host.name),
+    TerminalTabSubtitle.address => host?.address,
+  };
+  text = text?.trim();
+  return text == null || text.isEmpty || text == tab.displayTitle ? null : text;
+}
+
+/// Thin bar above the terminal next to the tab column: the active tab's
+/// title and subtitle (also while the column is folded to icons) and the
+/// session tools of the tab-strip row.
+class _SessionBar extends ConsumerWidget {
+  const _SessionBar({required this.tab});
+
+  final TerminalTab tab;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = GlassTokens.of(context);
+    final subtitleMode =
+        ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabSubtitle)) ?? TerminalTabSubtitle.name;
+    final subtitle = _tabSubtitle(context, tab, subtitleMode);
+    return SizedBox(
+      key: const ValueKey('terminal-session-bar'),
+      height: GlassSizes.tabTrack,
+      child: Row(
+        children: [
+          const SizedBox(width: GlassSpacing.s4),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: tab.displayTitle,
+                    style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
+                  ),
+                  if (subtitle != null)
+                    TextSpan(
+                      text: '  $subtitle',
+                      style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                    ),
+                ],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: GlassSpacing.toolbarGroupGap),
+          _SessionToolbar(tab: tab),
+        ],
+      ),
     );
   }
 }
@@ -290,7 +436,7 @@ class _SessionToolbar extends ConsumerWidget {
 /// viewport itself is square. Connect-time prompts dock at its top on the
 /// secure (opaque) material — they may overlap the terminal.
 class _TerminalCard extends ConsumerWidget {
-  const _TerminalCard({required this.state, required this.active});
+  const _TerminalCard({required this.state, required this.active, super.key});
 
   final TerminalTabsState state;
   final TerminalTab active;

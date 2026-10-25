@@ -504,6 +504,7 @@ class _TerminalSection extends ConsumerWidget {
             ),
           ),
           const TerminalAppearanceControls(),
+          const TerminalTabPlacementSetting(id: 'terminal-tab-placement'),
           LabeledValue(
             label: l10n.settingsTerminalTabSubtitle,
             value: Align(
@@ -662,6 +663,7 @@ class _AppearanceSection extends ConsumerWidget {
               ),
             ),
           ),
+          const TerminalTabPlacementSetting(id: 'appearance-tab-placement'),
           LabeledValue(
             label: l10n.settingsWorkspacePanel,
             value: Column(

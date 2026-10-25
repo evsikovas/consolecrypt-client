@@ -664,6 +664,10 @@
   "@commandLockVault": {
     "description": "App command."
   },
+  "commandToggleSidebar": "Toggle Sidebar",
+  "@commandToggleSidebar": {
+    "description": "App command (menu bar, shortcut settings): collapse the sidebar to icons or expand it."
+  },
   "commandOpenSettings": "Settings",
   "@commandOpenSettings": {
     "description": "App command: open Settings."
@@ -2730,6 +2734,18 @@
   "glassNewTab": "New tab",
   "@glassNewTab": {
     "description": "Tooltip of the new-tab button in the tab strip."
+  },
+  "glassTabColumnResize": "Tab column width",
+  "@glassTabColumnResize": {
+    "description": "Semantics label of the drag handle that resizes the terminal tab column."
+  },
+  "glassTabColumnCollapse": "Collapse tabs to icons",
+  "@glassTabColumnCollapse": {
+    "description": "Tooltip: fold the terminal tab column to icons."
+  },
+  "glassTabColumnExpand": "Expand tabs",
+  "@glassTabColumnExpand": {
+    "description": "Tooltip: expand the terminal tab column folded to icons."
   },
   "glassTabConnected": "Connected",
   "@glassTabConnected": {
@@ -6098,9 +6114,29 @@
   "@recoveryLostEverythingSynced": {
     "description": "SECURITY: expandable section body for a synced profile."
   },
-  "shellToggleSidebar": "Show or hide the sidebar",
-  "@shellToggleSidebar": {
-    "description": "Tooltip: toolbar button that collapses the sidebar to icons or expands it."
+  "shellCollapseSidebar": "Collapse sidebar to icons",
+  "@shellCollapseSidebar": {
+    "description": "Tooltip: sidebar/toolbar button that folds the expanded sidebar to icons."
+  },
+  "shellExpandSidebar": "Expand sidebar",
+  "@shellExpandSidebar": {
+    "description": "Tooltip: sidebar/toolbar button that expands the sidebar folded to icons."
+  },
+  "shellCollapseSidebarShort": "Collapse",
+  "@shellCollapseSidebarShort": {
+    "description": "Label of the button at the bottom of the expanded sidebar that folds it to icons."
+  },
+  "shellActionWithShortcut": "{action} ({shortcut})",
+  "@shellActionWithShortcut": {
+    "description": "Tooltip: an action followed by its keyboard shortcut, e.g. \"Expand sidebar (⇧⌘S)\".",
+    "placeholders": {
+      "action": {
+        "type": "String"
+      },
+      "shortcut": {
+        "type": "String"
+      }
+    }
   },
   "shellNewConnection": "New connection",
   "@shellNewConnection": {
@@ -10815,6 +10851,22 @@
   "settingsTerminalTabSubtitleOff": "Hidden",
   "@settingsTerminalTabSubtitleOff": {
     "description": "Tab subtitle option: no second line."
+  },
+  "settingsTerminalTabPlacement": "Tab placement",
+  "@settingsTerminalTabPlacement": {
+    "description": "Setting (Terminal and Appearance): terminal tabs above the terminal or in a column at its left edge."
+  },
+  "settingsTerminalTabPlacementTop": "Top",
+  "@settingsTerminalTabPlacementTop": {
+    "description": "Tab placement option: a row of tabs above the terminal."
+  },
+  "settingsTerminalTabPlacementLeft": "Left",
+  "@settingsTerminalTabPlacementLeft": {
+    "description": "Tab placement option: a column of tabs at the left edge of the terminal."
+  },
+  "settingsTerminalTabPlacementHelp": "Left: a column of tabs with names and addresses beside the terminal. Drag its edge to change the width or fold it to icons. The app sidebar folds next to it until you expand it. Saved on this device.",
+  "@settingsTerminalTabPlacementHelp": {
+    "description": "Help under the terminal tab placement setting."
   },
   "kubeApplyConflict": "Another controller owns some of these fields, or the object changed. Turn on \"Take ownership of conflicting fields\" or reload the object.",
   "@kubeApplyConflict": {

@@ -10,7 +10,10 @@ import 'package:consolecrypt/core/glass/glass_scope.dart';
 import 'package:consolecrypt/core/glass/glass_strings.dart';
 import 'package:consolecrypt/core/glass/glass_surface.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
+
+part 'glass_tab_column.dart';
 
 /// Connection state shown by a tab's status dot.
 enum GlassTabState {
@@ -271,8 +274,9 @@ class _TabChip extends StatelessWidget {
 /// Pulsing warning outline of a tab with unseen finished activity. Reduced
 /// motion keeps a steady outline.
 class _AttentionPulse extends StatefulWidget {
-  const _AttentionPulse({required this.child});
+  const _AttentionPulse({required this.child, this.shape = const StadiumBorder()});
   final Widget child;
+  final OutlinedBorder shape;
   @override
   State<_AttentionPulse> createState() => _AttentionPulseState();
 }
@@ -307,7 +311,9 @@ class _AttentionPulseState extends State<_AttentionPulse> with SingleTickerProvi
         position: DecorationPosition.foreground,
         decoration: ShapeDecoration(
           color: color.withValues(alpha: 0.10 + 0.18 * _pulse.value),
-          shape: StadiumBorder(side: BorderSide(color: color.withValues(alpha: 0.45 + 0.55 * _pulse.value), width: 1.5)),
+          shape: widget.shape.copyWith(
+            side: BorderSide(color: color.withValues(alpha: 0.45 + 0.55 * _pulse.value), width: 1.5),
+          ),
         ),
         child: child,
       ),

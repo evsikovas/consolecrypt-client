@@ -54,6 +54,50 @@ void main() {
     expect(localSettingsFromJson({'ui_font_scale': .01}).uiFontScale, .8);
   });
 
+  test('terminal tab layout and sidebar state survive the JSON round trip; bad values fall back', () {
+    const source = LocalSettings(
+      terminalTabPlacement: TerminalTabPlacement.left,
+      terminalTabColumnWidth: 300,
+      terminalTabColumnCollapsed: true,
+      sidebarCollapsed: true,
+      sidebarCollapsedBesideTabs: false,
+    );
+    final restored = localSettingsFromJson(decodeObject(encodeJson(localSettingsToJson(source))));
+    expect(restored.terminalTabPlacement, TerminalTabPlacement.left);
+    expect(restored.terminalTabColumnWidth, 300);
+    expect(restored.terminalTabColumnCollapsed, isTrue);
+    expect(restored.sidebarCollapsed, isTrue);
+    expect(restored.sidebarCollapsedBesideTabs, isFalse);
+    expect(restored.copyWith(terminalFontSize: 15).sidebarCollapsedBesideTabs, isFalse);
+
+    final old = localSettingsFromJson({'theme_mode': 'dark'});
+    expect(old.terminalTabPlacement, TerminalTabPlacement.top);
+    expect(old.terminalTabColumnWidth, LocalSettings.terminalTabColumnDefault);
+    expect(old.terminalTabColumnCollapsed, isFalse);
+    expect(old.sidebarCollapsed, isFalse);
+    expect(old.sidebarCollapsedBesideTabs, isNull);
+    final invalid = localSettingsFromJson({
+      'terminal_tab_placement': 'bottom',
+      'terminal_tab_column_width': double.infinity,
+      'terminal_tab_column_collapsed': 'yes',
+      'sidebar_collapsed': 1,
+      'sidebar_collapsed_beside_tabs': 'no',
+    });
+    expect(invalid.terminalTabPlacement, TerminalTabPlacement.top);
+    expect(invalid.terminalTabColumnWidth, LocalSettings.terminalTabColumnDefault);
+    expect(invalid.terminalTabColumnCollapsed, isFalse);
+    expect(invalid.sidebarCollapsed, isFalse);
+    expect(invalid.sidebarCollapsedBesideTabs, isNull);
+    expect(
+      localSettingsFromJson({'terminal_tab_column_width': 20}).terminalTabColumnWidth,
+      LocalSettings.terminalTabColumnMin,
+    );
+    expect(
+      localSettingsFromJson({'terminal_tab_column_width': 5000}).terminalTabColumnWidth,
+      LocalSettings.terminalTabColumnMax,
+    );
+  });
+
   test('old 90% migrates to the new 100% once and retains visible size', () {
     final migrated = localSettingsFromJson({'ui_font_scale': .9});
     expect(migrated.uiFontScale, 1);

@@ -11,6 +11,7 @@ import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/app/sidebar_state.dart';
 import 'package:consolecrypt/app/symbols.dart';
 import 'package:consolecrypt/app/workspace_tools.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
@@ -104,35 +105,12 @@ const _liveToolbarBranches = {
   ShellBranch.docker,
 };
 
-/// User-collapsed sidebar (session-scoped; windows < 1000 px are always
-/// compact).
-final sidebarCollapsedProvider = NotifierProvider<SidebarCollapsed, bool>(SidebarCollapsed.new);
-
-class SidebarCollapsed extends Notifier<bool> {
-  bool? _beforeAuto;
-
-  @override
-  bool build() => false;
-
-  /// A manual toggle wins over a workspace's automatic collapse.
-  void toggle() {
-    _beforeAuto = null;
-    state = !state;
-  }
-
-  /// Wide workspaces (an open Kubernetes cluster) collapse the sidebar to
-  /// icons; [restore] returns the user's previous choice.
-  void autoCollapse() {
-    if (!ref.mounted) return;
-    _beforeAuto ??= state;
-    state = true;
-  }
-
-  void restore() {
-    if (!ref.mounted || _beforeAuto == null) return;
-    state = _beforeAuto!;
-    _beforeAuto = null;
-  }
+/// "Collapse sidebar to icons (⇧⌘S)" / "Expand sidebar (⇧⌘S)"; without the
+/// shortcut when the user turned it off.
+String sidebarToggleTooltip(AppLocalizations l10n, List<AppCommand> commands, {required bool collapsed}) {
+  final action = collapsed ? l10n.shellExpandSidebar : l10n.shellCollapseSidebar;
+  final shortcut = commandFor(AppCommandId.toggleSidebar, commands).shortcutLabel;
+  return shortcut.isEmpty ? action : l10n.shellActionWithShortcut(action, shortcut);
 }
 
 /// Floating inset or edge-to-edge sidebar (Settings → Appearance).
@@ -451,14 +429,25 @@ class _SidebarFooter extends ConsumerWidget {
     // corner of the sidebar from the lock (windows below the compact
     // breakpoint are always compact and have no toggle).
     final canCollapse = MediaQuery.sizeOf(context).width >= GlassSizes.compactBreakpoint;
-    final toggle = GlassIconButton(
-      key: const ValueKey('sidebar-footer-toggle'),
-      icon: compact ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
-      tooltip: context.l10n.shellToggleSidebar,
-      style: GlassIconButtonStyle.plain,
-      iconSize: GlassSizes.iconRow,
-      onPressed: () => ref.read(sidebarCollapsedProvider.notifier).toggle(),
-    );
+    final tooltip = sidebarToggleTooltip(context.l10n, collapsed: compact, ref.watch(appCommandsProvider));
+    void toggleSidebar() => ref.read(sidebarCollapsedProvider.notifier).toggle();
+    final Widget toggle = compact
+        ? GlassIconButton(
+            key: const ValueKey('sidebar-footer-toggle'),
+            icon: Icons.keyboard_double_arrow_right_rounded,
+            tooltip: tooltip,
+            style: GlassIconButtonStyle.plain,
+            iconSize: GlassSizes.iconRow,
+            onPressed: toggleSidebar,
+          )
+        : GlassButton.plain(
+            key: const ValueKey('sidebar-footer-toggle'),
+            icon: Icons.keyboard_double_arrow_left_rounded,
+            label: context.l10n.shellCollapseSidebarShort,
+            tooltip: tooltip,
+            size: GlassControlSize.sm,
+            onPressed: toggleSidebar,
+          );
     if (compact) {
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -472,7 +461,18 @@ class _SidebarFooter extends ConsumerWidget {
         ],
       );
     }
-    return Row(children: [lockButton, const _AiIndicator(), const Spacer(), if (canCollapse) toggle]);
+    return Row(
+      children: [
+        lockButton,
+        const _AiIndicator(),
+        // Large text shortens the label instead of overflowing the sidebar.
+        Expanded(
+          child: canCollapse
+              ? Align(alignment: AlignmentDirectional.centerEnd, child: toggle)
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
   }
 }
 
@@ -756,7 +756,7 @@ class _ShellToolbar extends ConsumerWidget {
               GlassIconButton(
                 key: const ValueKey('toggle-sidebar'),
                 icon: Icons.view_sidebar_rounded,
-                tooltip: l10n.shellToggleSidebar,
+                tooltip: sidebarToggleTooltip(l10n, collapsed: compact, ref.watch(appCommandsProvider)),
                 style: GlassIconButtonStyle.plain,
                 onPressed: () => ref.read(sidebarCollapsedProvider.notifier).toggle(),
               ),

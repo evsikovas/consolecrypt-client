@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
-import 'package:consolecrypt/app/shell.dart' show SidebarCollapsed, sidebarCollapsedProvider;
+import 'package:consolecrypt/app/sidebar_state.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';

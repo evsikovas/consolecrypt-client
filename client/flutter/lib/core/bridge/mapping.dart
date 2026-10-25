@@ -830,6 +830,11 @@ Json localSettingsToJson(LocalSettings s) => {
   'terminal_font_size': s.terminalFontSize,
   'terminal_font_family': s.terminalFontFamily,
   'terminal_tab_subtitle': s.terminalTabSubtitle.name,
+  'terminal_tab_placement': s.terminalTabPlacement.name,
+  'terminal_tab_column_width': s.terminalTabColumnWidth,
+  'terminal_tab_column_collapsed': s.terminalTabColumnCollapsed,
+  'sidebar_collapsed': s.sidebarCollapsed,
+  'sidebar_collapsed_beside_tabs': s.sidebarCollapsedBesideTabs,
   'shortcut_overrides': s.shortcutOverrides,
   'terminal_scrollback': s.terminalScrollback,
   'clipboard_clear_seconds': s.clipboardClearSeconds,
@@ -889,6 +894,25 @@ LocalSettings localSettingsFromJson(Json j) {
       j['terminal_tab_subtitle'],
       d.terminalTabSubtitle,
     ),
+    terminalTabPlacement: _byWire(
+      TerminalTabPlacement.values,
+      (e) => e.name,
+      j['terminal_tab_placement'],
+      d.terminalTabPlacement,
+    ),
+    terminalTabColumnWidth: switch (j['terminal_tab_column_width']) {
+      final num width when width.isFinite => width.toDouble().clamp(
+        LocalSettings.terminalTabColumnMin,
+        LocalSettings.terminalTabColumnMax,
+      ),
+      _ => d.terminalTabColumnWidth,
+    },
+    terminalTabColumnCollapsed: j['terminal_tab_column_collapsed'] == true,
+    sidebarCollapsed: j['sidebar_collapsed'] == true,
+    sidebarCollapsedBesideTabs: switch (j['sidebar_collapsed_beside_tabs']) {
+      final bool value => value,
+      _ => null,
+    },
     shortcutOverrides: {
       if (j['shortcut_overrides'] case final Map<String, dynamic> overrides)
         for (final entry in overrides.entries.take(64))

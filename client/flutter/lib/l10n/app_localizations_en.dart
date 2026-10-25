@@ -478,6 +478,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commandLockVault => 'Lock Vault';
 
   @override
+  String get commandToggleSidebar => 'Toggle Sidebar';
+
+  @override
   String get commandOpenSettings => 'Settings';
 
   @override
@@ -1960,6 +1963,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get glassNewTab => 'New tab';
+
+  @override
+  String get glassTabColumnResize => 'Tab column width';
+
+  @override
+  String get glassTabColumnCollapse => 'Collapse tabs to icons';
+
+  @override
+  String get glassTabColumnExpand => 'Expand tabs';
 
   @override
   String get glassTabConnected => 'Connected';
@@ -4276,7 +4288,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'The old vault cannot be decrypted by anyone, including your server — by design. You can recover your account by e-mail and start a new, empty vault.';
 
   @override
-  String get shellToggleSidebar => 'Show or hide the sidebar';
+  String get shellCollapseSidebar => 'Collapse sidebar to icons';
+
+  @override
+  String get shellExpandSidebar => 'Expand sidebar';
+
+  @override
+  String get shellCollapseSidebarShort => 'Collapse';
+
+  @override
+  String shellActionWithShortcut(String action, String shortcut) {
+    return '$action ($shortcut)';
+  }
 
   @override
   String get shellNewConnection => 'New connection';
@@ -7893,6 +7916,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsTerminalTabSubtitleOff => 'Hidden';
+
+  @override
+  String get settingsTerminalTabPlacement => 'Tab placement';
+
+  @override
+  String get settingsTerminalTabPlacementTop => 'Top';
+
+  @override
+  String get settingsTerminalTabPlacementLeft => 'Left';
+
+  @override
+  String get settingsTerminalTabPlacementHelp =>
+      'Left: a column of tabs with names and addresses beside the terminal. Drag its edge to change the width or fold it to icons. The app sidebar folds next to it until you expand it. Saved on this device.';
 
   @override
   String get kubeApplyConflict =>

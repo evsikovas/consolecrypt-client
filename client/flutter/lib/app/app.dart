@@ -152,7 +152,10 @@ class AppCommandsScope extends ConsumerWidget {
             label: l10n.menuFile,
             menus: [item(AppCommandId.newHost), item(AppCommandId.newTerminalTab), item(AppCommandId.closeTerminalTab)],
           ),
-          PlatformMenu(label: l10n.menuView, menus: [item(AppCommandId.commandPalette), item(AppCommandId.snippets)]),
+          PlatformMenu(
+            label: l10n.menuView,
+            menus: [item(AppCommandId.commandPalette), item(AppCommandId.snippets), item(AppCommandId.toggleSidebar)],
+          ),
           PlatformMenu(
             label: l10n.menuWindow,
             menus: const [

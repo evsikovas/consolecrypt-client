@@ -523,6 +523,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commandLockVault => 'Заблокировать хранилище';
 
   @override
+  String get commandToggleSidebar => 'Свернуть или развернуть боковую панель';
+
+  @override
   String get commandOpenSettings => 'Настройки';
 
   @override
@@ -2043,6 +2046,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get glassNewTab => 'Новая вкладка';
+
+  @override
+  String get glassTabColumnResize => 'Ширина столбца вкладок';
+
+  @override
+  String get glassTabColumnCollapse => 'Свернуть вкладки до значков';
+
+  @override
+  String get glassTabColumnExpand => 'Развернуть вкладки';
 
   @override
   String get glassTabConnected => 'Подключено';
@@ -4466,7 +4478,18 @@ class AppLocalizationsRu extends AppLocalizations {
       'Старое хранилище не может расшифровать никто, включая ваш сервер, — так задумано. Вы можете восстановить аккаунт по e-mail и начать с нового, пустого хранилища.';
 
   @override
-  String get shellToggleSidebar => 'Показать или скрыть боковую панель';
+  String get shellCollapseSidebar => 'Свернуть боковую панель до значков';
+
+  @override
+  String get shellExpandSidebar => 'Развернуть боковую панель';
+
+  @override
+  String get shellCollapseSidebarShort => 'Свернуть';
+
+  @override
+  String shellActionWithShortcut(String action, String shortcut) {
+    return '$action ($shortcut)';
+  }
 
   @override
   String get shellNewConnection => 'Новое подключение';
@@ -8096,6 +8119,19 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get settingsTerminalTabSubtitleOff => 'Не показывать';
+
+  @override
+  String get settingsTerminalTabPlacement => 'Расположение вкладок';
+
+  @override
+  String get settingsTerminalTabPlacementTop => 'Сверху';
+
+  @override
+  String get settingsTerminalTabPlacementLeft => 'Слева';
+
+  @override
+  String get settingsTerminalTabPlacementHelp =>
+      'Слева — столбец вкладок с названиями и адресами рядом с терминалом. Перетащите его край, чтобы изменить ширину или свернуть до значков. Боковая панель приложения рядом с ним сворачивается, пока вы её не развернёте. Выбор сохраняется на этом устройстве.';
 
   @override
   String get kubeApplyConflict =>

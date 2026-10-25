@@ -950,6 +950,12 @@ abstract class AppLocalizations {
   /// **'Lock Vault'**
   String get commandLockVault;
 
+  /// App command (menu bar, shortcut settings): collapse the sidebar to icons or expand it.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Sidebar'**
+  String get commandToggleSidebar;
+
   /// App command: open Settings.
   ///
   /// In en, this message translates to:
@@ -3559,6 +3565,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New tab'**
   String get glassNewTab;
+
+  /// Semantics label of the drag handle that resizes the terminal tab column.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab column width'**
+  String get glassTabColumnResize;
+
+  /// Tooltip: fold the terminal tab column to icons.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse tabs to icons'**
+  String get glassTabColumnCollapse;
+
+  /// Tooltip: expand the terminal tab column folded to icons.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand tabs'**
+  String get glassTabColumnExpand;
 
   /// Terminal tab state (semantics).
   ///
@@ -7490,11 +7514,29 @@ abstract class AppLocalizations {
   /// **'The old vault cannot be decrypted by anyone, including your server — by design. You can recover your account by e-mail and start a new, empty vault.'**
   String get recoveryLostEverythingSynced;
 
-  /// Tooltip: toolbar button that collapses the sidebar to icons or expands it.
+  /// Tooltip: sidebar/toolbar button that folds the expanded sidebar to icons.
   ///
   /// In en, this message translates to:
-  /// **'Show or hide the sidebar'**
-  String get shellToggleSidebar;
+  /// **'Collapse sidebar to icons'**
+  String get shellCollapseSidebar;
+
+  /// Tooltip: sidebar/toolbar button that expands the sidebar folded to icons.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand sidebar'**
+  String get shellExpandSidebar;
+
+  /// Label of the button at the bottom of the expanded sidebar that folds it to icons.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get shellCollapseSidebarShort;
+
+  /// Tooltip: an action followed by its keyboard shortcut, e.g. "Expand sidebar (⇧⌘S)".
+  ///
+  /// In en, this message translates to:
+  /// **'{action} ({shortcut})'**
+  String shellActionWithShortcut(String action, String shortcut);
 
   /// Toolbar primary button: pick a host and open a terminal tab.
   ///
@@ -14215,6 +14257,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hidden'**
   String get settingsTerminalTabSubtitleOff;
+
+  /// Setting (Terminal and Appearance): terminal tabs above the terminal or in a column at its left edge.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab placement'**
+  String get settingsTerminalTabPlacement;
+
+  /// Tab placement option: a row of tabs above the terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Top'**
+  String get settingsTerminalTabPlacementTop;
+
+  /// Tab placement option: a column of tabs at the left edge of the terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Left'**
+  String get settingsTerminalTabPlacementLeft;
+
+  /// Help under the terminal tab placement setting.
+  ///
+  /// In en, this message translates to:
+  /// **'Left: a column of tabs with names and addresses beside the terminal. Drag its edge to change the width or fold it to icons. The app sidebar folds next to it until you expand it. Saved on this device.'**
+  String get settingsTerminalTabPlacementHelp;
 
   /// YAML apply rejected with a conflict.
   ///
