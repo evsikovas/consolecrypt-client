@@ -4081,12 +4081,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recoveryKitGenerateNew => 'Generate a new Recovery Kit';
 
   @override
-  String get recoveryKitPrintUnavailable => 'Printing arrives with M5. For now, write the words down.';
-
-  @override
-  String get recoveryKitPrint => 'Print / Save as PDF';
-
-  @override
   String get recoveryKitCopyWords => 'Copy words';
 
   @override

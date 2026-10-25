@@ -7136,18 +7136,6 @@ abstract class AppLocalizations {
   /// **'Generate a new Recovery Kit'**
   String get recoveryKitGenerateNew;
 
-  /// Snackbar: printing is not implemented yet (M5 = milestone 5).
-  ///
-  /// In en, this message translates to:
-  /// **'Printing arrives with M5. For now, write the words down.'**
-  String get recoveryKitPrintUnavailable;
-
-  /// Button: print the Recovery Kit or save it as PDF.
-  ///
-  /// In en, this message translates to:
-  /// **'Print / Save as PDF'**
-  String get recoveryKitPrint;
-
   /// Button: copy the recovery words to the clipboard.
   ///
   /// In en, this message translates to:

@@ -4266,12 +4266,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get recoveryKitGenerateNew => 'Создать новый комплект восстановления';
 
   @override
-  String get recoveryKitPrintUnavailable => 'Печать появится в M5. Пока перепишите слова от руки.';
-
-  @override
-  String get recoveryKitPrint => 'Печать / Сохранить как PDF';
-
-  @override
   String get recoveryKitCopyWords => 'Скопировать слова';
 
   @override

@@ -97,6 +97,15 @@ void main() {
       }
     });
 
+    test('user-facing strings never mention internal milestones, ADRs or TODOs', () {
+      final internal = RegExp(r'\bM\d{1,2}\b|milestone|\bADR-\d|\bTODO\b', caseSensitive: false);
+      for (final arb in {'en': en, 'ru': ru}.entries) {
+        for (final key in _messageKeys(arb.value)) {
+          expect(internal.hasMatch(arb.value[key] as String), isFalse, reason: '${arb.key} $key');
+        }
+      }
+    });
+
     test('Russian is actually translated (not a copy of the English template)', () {
       final same = _messageKeys(en).where((k) => en[k] == ru[k] && RegExp('[a-z]{4,}').hasMatch(en[k] as String));
       // Technical/brand-only strings may legitimately be identical.

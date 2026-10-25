@@ -70,32 +70,25 @@ class _RecoveryKitScreenState extends ConsumerState<RecoveryKitScreen> {
             else
               RecoveryKitPaper(kit: kit),
             const SizedBox(height: GlassSpacing.s16),
-            Wrap(
-              spacing: GlassSpacing.s8,
-              runSpacing: GlassSpacing.s8,
-              children: [
-                GlassButton(
-                  // TODO(client/ui): native print / "Save as PDF" of the kit — needs a
-                  // printing plugin decision (ADR-0101 keeps deps minimal); next: evaluate
-                  // `printing` (Apache-2.0) at M5 and render the same layout to PDF.
-                  onPressed: () => showSnack(context, l10n.recoveryKitPrintUnavailable),
-                  icon: Icons.print_rounded,
-                  label: l10n.recoveryKitPrint,
-                ),
-                if (_revealed)
-                  GlassButton(
-                    onPressed: () => copySecretWithNotice(
-                      context,
-                      ref,
-                      kit.exposeWords().join(' '),
-                      what: l10n.copyWhatRecoveryWords,
-                    ),
-                    icon: Icons.copy_rounded,
-                    label: l10n.recoveryKitCopyWords,
+            // TODO(client/ui): print / "Save as PDF" of the kit — not offered until it
+            // renders straight to the system print API (no temp file) on every platform;
+            // next: evaluate `printing` (Apache-2.0) and render the same layout to PDF.
+            if (_revealed) ...[
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: GlassButton(
+                  onPressed: () => copySecretWithNotice(
+                    context,
+                    ref,
+                    kit.exposeWords().join(' '),
+                    what: l10n.copyWhatRecoveryWords,
                   ),
-              ],
-            ),
-            const SizedBox(height: GlassSpacing.s16),
+                  icon: Icons.copy_rounded,
+                  label: l10n.recoveryKitCopyWords,
+                ),
+              ),
+              const SizedBox(height: GlassSpacing.s16),
+            ],
             CheckboxListTile(
               key: const ValueKey('kit-saved'),
               contentPadding: EdgeInsets.zero,
