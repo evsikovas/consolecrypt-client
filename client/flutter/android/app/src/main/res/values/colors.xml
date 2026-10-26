@@ -1,1 +1,5 @@
-<resources><color name="launcher_background">#131D2D</color></resources>
+<resources>
+    <color name="launcher_background">#131D2D</color>
+    <!-- Same as the iOS launch screen (LaunchScreen.storyboard). -->
+    <color name="launch_background">#0E121A</color>
+</resources>

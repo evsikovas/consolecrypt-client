@@ -53,8 +53,45 @@ Future<Uint8List> iconPng(int size, {required bool mac}) async {
   return data;
 }
 
+/// The launch-screen mark: the brand symbol alone on a transparent canvas
+/// (the screen behind it is dark), [points] wide at [scale]x.
+Future<Uint8List> launchPng(int points, int scale) async {
+  final size = points * scale;
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  const BrandSymbolPainter(color: GlassPalette.brandBlue).paint(canvas, Size.square(size.toDouble()));
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(size, size);
+  final data = (await image.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
+  image.dispose();
+  picture.dispose();
+  return data;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('render launch-screen marks from the shared vector', () async {
+    for (final scale in [1, 2, 3]) {
+      final suffix = scale == 1 ? '' : '@${scale}x';
+      await File(
+        'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage$suffix.png',
+      ).writeAsBytes(await launchPng(120, scale));
+    }
+    // Android before 12 (12+ shows the launcher icon itself).
+    for (final entry in {'mdpi': 1.0, 'hdpi': 1.5, 'xhdpi': 2.0, 'xxhdpi': 3.0, 'xxxhdpi': 4.0}.entries) {
+      final dir = Directory('android/app/src/main/res/drawable-${entry.key}')..createSync();
+      final size = (96 * entry.value).round();
+      final recorder = ui.PictureRecorder();
+      const BrandSymbolPainter(color: GlassPalette.brandBlue).paint(Canvas(recorder), Size.square(size.toDouble()));
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(size, size);
+      final bytes = (await image.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
+      image.dispose();
+      picture.dispose();
+      await File('${dir.path}/launch_mark.png').writeAsBytes(bytes);
+    }
+  });
+
   test('render app-icon assets from the shared vector', () async {
     for (final size in [16, 32, 64, 128, 256, 512, 1024]) {
       await File('macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_$size.png')
