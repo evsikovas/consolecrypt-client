@@ -113,6 +113,36 @@ Future<String> sharingPublishDbConnection({
   grantsJson: grantsJson,
 );
 
+/// `RdpSharingPreview` of a saved RDP host card (FEAT-05); the password is
+/// never in the preview.
+Future<String> sharingPreviewRdpHost({
+  required String hostId,
+  required bool includePassword,
+  required bool includeNotes,
+}) => RustLib.instance.api.crateApiSharingSharingPreviewRdpHost(
+  hostId: hostId,
+  includePassword: includePassword,
+  includeNotes: includeNotes,
+);
+
+Future<String> sharingPublishRdpHost({
+  required String hostId,
+  required bool includePassword,
+  required bool includeNotes,
+  required String expectedStamp,
+  required String grantsJson,
+}) => RustLib.instance.api.crateApiSharingSharingPublishRdpHost(
+  hostId: hostId,
+  includePassword: includePassword,
+  includeNotes: includeNotes,
+  expectedStamp: expectedStamp,
+  grantsJson: grantsJson,
+);
+
+/// `HostDto` of the saved copy; the shared password only on request.
+Future<String> sharingCopyRdpHost({required String shareId, required bool includePassword}) =>
+    RustLib.instance.api.crateApiSharingSharingCopyRdpHost(shareId: shareId, includePassword: includePassword);
+
 Future<String> sharingCopyDbConnection({
   required String shareId,
   required String routeJson,

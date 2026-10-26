@@ -64,6 +64,9 @@
   через хранилище» переносит такое подключение с паролем в хранилище, если все устройства
   аккаунта работают на 0.9.2 или новее (с сервером 0.2.4 приложение видит их версии и
   перечислит те, что нужно обновить). Файл SQLite на этом компьютере остаётся только здесь.
+- **Общий доступ к RDP-хостам.** RDP-хостом можно поделиться с проверенным коллегой:
+  адрес, порт, пользователь, домен и метки; заметки и сохранённый пароль — только по
+  отметке. Сервер и протокол не меняются; клиенты до 0.9.3 такую карточку не показывают.
 - **Импорт CSV в ClickHouse, MongoDB и Redis.** ClickHouse — пакетами `INSERT` (и
   «Создать таблицу из CSV…» с MergeTree); MongoDB — в коллекцию, с новыми полями по
   заголовкам, пропуском и обновлением по `_id`; Redis — в базу или папку ключей, строками
@@ -198,6 +201,9 @@ admins and sends invitations only to verified addresses.
   moves such a connection and its password into the vault once every device of the account
   runs 0.9.2 or later (with server 0.2.4 the app sees their versions and lists the ones to
   update). An SQLite file on this computer stays here.
+- **Sharing RDP hosts.** An RDP host can be shared with a verified colleague: address,
+  port, user, domain and tags; notes and the saved password only when ticked. Neither the
+  server nor the protocol changes; clients before 0.9.3 do not show such a card.
 - **CSV import into ClickHouse, MongoDB and Redis.** ClickHouse in `INSERT` batches (and
   “Create table from CSV…” with MergeTree); MongoDB into a collection, with new fields from
   the headers, skip and update by `_id`; Redis into a database or key folder, as strings

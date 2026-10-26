@@ -19,6 +19,7 @@ import 'package:consolecrypt/sharing/sharing_kubernetes.dart';
 import 'package:consolecrypt/sharing/sharing_management.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
+import 'package:consolecrypt/sharing/sharing_rdp.dart';
 import 'package:consolecrypt/sharing/sharing_secrets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -463,6 +464,10 @@ class _SharingTile extends ConsumerWidget {
       await showSharingCopyDbConnection(context, item);
       return;
     }
+    if (item.kind == SharingKind.host && item.isRdp) {
+      await showSharingCopyRdpHost(context, item);
+      return;
+    }
     if (item.kind == SharingKind.host) {
       await showSharingCopyHost(context, item);
       return;
@@ -553,6 +558,7 @@ class _SharingTile extends ConsumerWidget {
       (entry) => entry.shareId == item.id,
     );
     final label = switch (item.kind) {
+      SharingKind.host when item.isRdp => l.sharingRdpHost,
       SharingKind.host => l.sharingHost,
       SharingKind.snippet => l.sharingSnippet,
       SharingKind.group => l.sharingGroup,
@@ -567,6 +573,7 @@ class _SharingTile extends ConsumerWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Icon(switch (item.kind) {
+              SharingKind.host when item.isRdp => Icons.desktop_windows_rounded,
               SharingKind.host => Icons.dns_outlined,
               SharingKind.snippet => Icons.code_rounded,
               SharingKind.group => Icons.folder_shared_outlined,
@@ -679,7 +686,10 @@ class _SharingTile extends ConsumerWidget {
                     icon: Icons.edit_outlined,
                     onPressed: () => showSharingGroupEdit(context, item),
                   ),
-                if (!pending && item.canEdit && (item.kind == SharingKind.host || item.kind == SharingKind.snippet))
+                // An RDP card is shared again rather than edited here.
+                if (!pending &&
+                    item.canEdit &&
+                    ((item.kind == SharingKind.host && !item.isRdp) || item.kind == SharingKind.snippet))
                   GlassButton(
                     label: l.sharingEdit,
                     icon: Icons.edit_outlined,

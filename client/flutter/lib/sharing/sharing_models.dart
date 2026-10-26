@@ -257,6 +257,9 @@ final class SharingItem {
   Map<String, dynamic>? get projection => previewJson == null ? null : jsonDecode(previewJson!) as Map<String, dynamic>;
   Map<String, dynamic>? get data => projection?['data'] as Map<String, dynamic>?;
   String? get name => data?['name'] as String?;
+
+  /// An RDP host card (FEAT-05): a `host` item the server cannot tell apart.
+  bool get isRdp => projection?['kind'] == 'rdp_host';
   bool get canEdit => trust == SharingTrust.verified && role == SharingRole.editor;
   factory SharingItem.fromJson(Map<String, dynamic> j) => SharingItem(
     id: j['share_id'] as String,
