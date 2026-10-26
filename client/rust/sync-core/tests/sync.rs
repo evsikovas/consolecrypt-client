@@ -741,7 +741,12 @@ async fn malformed_responses_do_not_corrupt_local_state() {
     sync_ok(&b.engine).await;
     assert!(std::iter::from_fn(|| events.try_recv().ok())
         .any(|e| matches!(e, SyncEvent::IntegrityWarning { object_id, .. } if object_id == h2.id)));
-    let kept = b.store.get(h2.id).await.unwrap().expect("the good copy is kept");
+    let kept = b
+        .store
+        .get(h2.id)
+        .await
+        .unwrap()
+        .expect("the good copy is kept");
     assert_eq!(kept.revision, before.revision);
     assert_eq!(kept.payload, before.payload);
 }

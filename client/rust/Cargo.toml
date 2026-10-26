@@ -10,6 +10,7 @@ members = [
     "sync-core",
     "ssh-core",
     "ssh-agent-core",
+    "pipe-security",
     "terminal-core",
     "rdp-core",
     "tunnel-core",
@@ -50,6 +51,7 @@ cc-storage-core = { path = "storage-core" }
 cc-sync-core = { path = "sync-core" }
 cc-ssh-core = { path = "ssh-core" }
 cc-ssh-agent-core = { path = "ssh-agent-core" }
+cc-pipe-security = { path = "pipe-security" }
 cc-terminal-core = { path = "terminal-core" }
 cc-rdp-core = { path = "rdp-core" }
 cc-tunnel-core = { path = "tunnel-core" }

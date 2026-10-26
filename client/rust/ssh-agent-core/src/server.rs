@@ -471,22 +471,19 @@ mod platform {
     use super::*;
     use tokio::net::windows::named_pipe::ServerOptions;
 
-    // TODO(ssh): restrict the pipe DACL to the current user explicitly — the
-    // default descriptor grants write access only to the creator/admins/
-    // SYSTEM, but an explicit DACL needs `windows-sys` + unsafe code (denied
-    // workspace-wide); next: add a small audited helper crate. Untested on
-    // Windows so far (no Windows CI runner yet); next: run the unit tests on
-    // `windows-latest`.
+    // Every instance gets a protected DACL for this user and SYSTEM only:
+    // the default descriptor lets Administrators in and gives Everyone and
+    // anonymous read access (security review SEC-13).
     pub async fn start(
         service: Arc<AgentService>,
         _opts: &AgentListenOptions,
     ) -> Result<AgentHandle, AgentError> {
         let id = uuid::Uuid::new_v4().simple().to_string();
         let name = format!(r"\\.\pipe\consolecrypt-agent-{}", &id[..16]);
-        let mut server = ServerOptions::new()
-            .first_pipe_instance(true)
-            .reject_remote_clients(true)
-            .create(&name)?;
+        let mut security = cc_pipe_security::OwnerOnly::current_user()?;
+        let mut first = ServerOptions::new();
+        first.first_pipe_instance(true).reject_remote_clients(true);
+        let mut server = cc_pipe_security::create_owner_only_pipe(&first, &name, &mut security)?;
         let (shutdown, mut rx) = watch::channel(false);
         let pipe = name.clone();
         let handle_service = service.clone();
@@ -500,7 +497,13 @@ mod platform {
                         if connected.is_err() {
                             break;
                         }
-                        let next = match ServerOptions::new().reject_remote_clients(true).create(&pipe) {
+                        let mut options = ServerOptions::new();
+                        options.reject_remote_clients(true);
+                        let next = match cc_pipe_security::create_owner_only_pipe(
+                            &options,
+                            &pipe,
+                            &mut security,
+                        ) {
                             Ok(n) => n,
                             Err(_) => break,
                         };

@@ -1224,6 +1224,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cc-pipe-security"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "cc-platform-core"
 version = "0.1.0"
 dependencies = [
@@ -1328,6 +1336,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "cc-models",
+ "cc-pipe-security",
  "cc-ssh-core",
  "secrecy",
  "tempfile",
