@@ -1,20 +1,11 @@
 import 'package:consolecrypt/core/bridge/mapping.dart';
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/storage/app_storage_paths.dart';
 import 'package:material_ui/material_ui.dart';
 
-const _title = 'ConsoleCrypt could not start its secure core'; // l10n-ignore: shown before localization loads
-const _body =
-    'Your data was not touched. Reinstall the app or rebuild it with the Rust toolchain installed, then try again.'; // l10n-ignore: shown before localization loads
-const _storageBody =
-    'Existing storage could not be opened safely. Your data was not changed. Resolve the storage issue below and try again.'; // l10n-ignore: shown before localization loads
-
 /// Shown instead of the app when the native core cannot be loaded or
-/// initialized (never a silent fallback to the mock backend).
-///
-/// Localization is not available this early (no settings / locale yet), so
-/// the texts are English. // TODO(l10n): move to ARB via
-/// `lookupAppLocalizations(PlatformDispatcher.locale)`; next: add
-/// `startupFailed*` keys.
+/// initialized (never a silent fallback to the mock backend). Settings are not
+/// readable yet, so the texts follow the system language (Russian or English).
 class StartupErrorApp extends StatelessWidget {
   const StartupErrorApp({required this.error, super.key});
 
@@ -29,7 +20,14 @@ class StartupErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
-    home: Scaffold(
+    localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Builder(builder: _page),
+  );
+
+  Widget _page(BuildContext context) {
+    final l10n = context.l10n;
+    return Scaffold(
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
@@ -41,9 +39,9 @@ class StartupErrorApp extends StatelessWidget {
               children: [
                 const Icon(Icons.error_outline, size: 40),
                 const SizedBox(height: 16),
-                const Text(_title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+                Text(l10n.startupFailedTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 12),
-                Text(error is AppStorageException ? _storageBody : _body),
+                Text(error is AppStorageException ? l10n.startupFailedStorageBody : l10n.startupFailedBody),
                 const SizedBox(height: 16),
                 SelectableText(_details, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
               ],
@@ -51,6 +49,6 @@ class StartupErrorApp extends StatelessWidget {
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

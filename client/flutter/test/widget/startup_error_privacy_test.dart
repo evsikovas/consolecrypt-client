@@ -23,4 +23,13 @@ void main() {
       expect(find.textContaining('Reinstall the app'), findsNothing);
     });
   }
+
+  testWidgets('the screen follows the system language', (tester) async {
+    tester.platformDispatcher.localesTestValue = const [Locale('ru')];
+    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+    await tester.pumpWidget(StartupErrorApp(error: StateError('x')));
+    await tester.pumpAndSettle();
+    expect(find.text('ConsoleCrypt не смог запустить защищённое ядро'), findsOneWidget);
+    expect(find.textContaining('Ваши данные не затронуты.'), findsOneWidget);
+  });
 }
