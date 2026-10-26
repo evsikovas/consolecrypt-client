@@ -248,7 +248,7 @@ final class RustInventoryService implements InventoryService, SshConfigImportSer
     if (await file.length() > maxPrivateKeyFileBytes) {
       throw const AppException(
         AppErrorCode.validation,
-        'key file too large',
+        'key file too large', // l10n-ignore: diagnostic
         reason: AppErrorReason.invalidField,
         args: {'field': 'private_key', 'rule': 'too_long'},
       );
@@ -260,7 +260,7 @@ final class RustInventoryService implements InventoryService, SshConfigImportSer
     } on FormatException {
       throw const AppException(
         AppErrorCode.validation,
-        'key file is not text',
+        'key file is not text', // l10n-ignore: diagnostic
         reason: AppErrorReason.invalidField,
         args: {'field': 'private_key', 'rule': 'format'},
       );

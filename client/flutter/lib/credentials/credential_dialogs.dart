@@ -431,12 +431,12 @@ class _ImportKeyDialogState extends ConsumerState<ImportKeyDialog> with _Busy {
               style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
             ),
             const Spacer(),
-            GlassButton.plain(
+            GlassIconButton(
               key: const ValueKey('private-key-choose-file'),
-              size: GlassControlSize.sm,
-              onPressed: busy ? null : () => unawaited(_chooseFile()),
               icon: Icons.file_open_rounded,
-              label: l10n.credentialImportChooseFile,
+              tooltip: l10n.credentialImportChooseFile,
+              style: GlassIconButtonStyle.plain,
+              onPressed: busy ? null : () => unawaited(_chooseFile()),
             ),
             GlassButton.plain(
               size: GlassControlSize.sm,
