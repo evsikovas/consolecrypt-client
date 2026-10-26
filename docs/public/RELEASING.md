@@ -9,6 +9,23 @@
    (для функционального выпуска используйте `--part minor`). Создайте
    `docs/public/RELEASE_X_Y_Z.md` с описанием изменений и ограничений.
 2. Проверьте изменения и отправьте коммит в `main`. Push ветки не собирает пакеты.
+   Перед тегом прогоните live-тесты, которых нет в CI (`#[ignore]`):
+
+   ```sh
+   python3 client/scripts/live-stand.py list
+   python3 client/scripts/live-stand.py sharing
+   python3 client/scripts/live-stand.py fingerprint --host <windows-host>
+   python3 client/scripts/live-stand.py rdp --host <windows-host> --user <user> --certificate-sha256 <hex>
+   ```
+
+   `sharing` поднимает одноразовый PostgreSQL 16 в Docker и соседний
+   `consolecrypt-server` на loopback со всеми флагами общего доступа и FileMailer,
+   запускает тесты sharing и enrollment и всё удаляет. `rdp` пишет приватный
+   конфиг (права 600) для Windows-хоста, на котором владелец разрешил тесты;
+   пароль берётся из `CC_RDP_LIVE_PASSWORD` или `~/.config/consolecrypt-test/rdp.env`
+   и не печатается, сертификат закрепляется по SHA-256. Kubernetes и Linux
+   Secret Service проверяет Linux-задание CI; тесты с системными запросами
+   (связка ключей, Secure Enclave, Windows Hello) запускаются вручную.
 3. Создайте аннотированный тег на этом коммите и отправьте его:
 
    ```sh
@@ -74,6 +91,13 @@ platforms (macOS, Windows, Linux, Android; no iOS) pass and dispatches signed up
 and server deployment are independent tag releases. Preserve signing identities,
 app IDs and the Ed25519 update trust anchor. Old clients still require installer
 bytes on their previously trusted domains.
+
+Before the tag, run the live tests CI cannot (`#[ignore]`) with
+`client/scripts/live-stand.py`: `sharing` starts a disposable PostgreSQL 16 in
+Docker and the sibling `consolecrypt-server` on loopback with every sharing flag
+and a FileMailer, runs the sharing and enrollment tests and removes everything;
+`rdp` writes a private (mode 600) config for an owner-authorized Windows host
+pinned by certificate SHA-256 (`fingerprint` reads it) and runs the RDP tests.
 
 Before the docs and the website point at a release, run
 `verify-client-release.py --tag vX.Y.Z --download > verified-downloads.json` (one

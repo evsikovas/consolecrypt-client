@@ -1289,7 +1289,10 @@ async fn run(files_only: bool, core_only: bool, stable_writable: bool) -> Result
     command_file(&manager,&id,replacement.path(),&format!("$ErrorActionPreference='Stop';$p='\\\\tsclient\\ConsoleCrypt\\';$m=Join-Path $env:TEMP '{replacement_marker}';try{{[IO.File]::WriteAllText($p+'replacement.result',[IO.File]::ReadAllText($m));Copy-Item -LiteralPath ($p+'{revocation_script}') -Destination (Join-Path $env:TEMP '{revocation_script}')}}finally{{Remove-Item -LiteralPath $m -ErrorAction SilentlyContinue}}")).await?;
     wait_marker(&manager, &id, replacement.path(), "replacement.result").await?;
     println!("RDP channel phase: replacement_and_cyrillic_filename_pass");
+    // Revoking the folder revokes writing too: writable without a grant is
+    // an invalid configuration.
     permissions.directory_grant_id = None;
+    permissions.directory_writable = false;
     manager
         .set_permissions(&id, permissions.clone())
         .map_err(|e| e.code())?;
