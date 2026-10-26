@@ -8,7 +8,9 @@
 //! Severity order used for combining: `read_only < modifying < unknown <
 //! destructive`.
 
-use crate::shell::{self, command_name, skip_wrappers, Command, Separator, ShellDialect};
+use crate::shell::{
+    self, command_name, is_assignment, skip_wrappers, Command, Separator, ShellDialect,
+};
 pub use cc_models::snippet::RiskLevel;
 use cc_models::snippet::SnippetType;
 use regex::Regex;
@@ -392,6 +394,11 @@ fn classify_simple(
         }
     }
     let words = c.args();
+    // `env -S 'cmd args'` runs the string as a command line (SEC-07).
+    if let Some(line) = env_split_string(&words) {
+        classify_shell(line, dialect, depth + 1, acc);
+        return;
+    }
     let idx = skip_wrappers(&words);
     if idx >= words.len() {
         if words.iter().any(|w| matches!(*w, "sudo" | "doas")) {
@@ -417,6 +424,10 @@ fn classify_words(words: &[&str], dialect: ShellDialect, depth: u8, acc: &mut Ac
     if words.is_empty() {
         return;
     }
+    if let Some(line) = env_split_string(words) {
+        classify_shell(line, dialect, depth + 1, acc);
+        return;
+    }
     let idx = skip_wrappers(words);
     if idx >= words.len() {
         return;
@@ -429,6 +440,178 @@ fn classify_words(words: &[&str], dialect: ShellDialect, depth: u8, acc: &mut Ac
         None,
         acc,
     );
+}
+
+/// The command line of `env -S STRING` / `env --split-string=STRING` among
+/// the leading wrapper words (everything before the wrapped command), if any.
+fn env_split_string<'a>(words: &[&'a str]) -> Option<&'a str> {
+    let wrapped = skip_wrappers(words).min(words.len());
+    let env = words[..wrapped]
+        .iter()
+        .position(|w| command_name(w) == "env")?;
+    let mut i = env + 1;
+    while i < words.len() {
+        let o = words[i];
+        if !(o.starts_with('-') || is_assignment(o)) {
+            return None;
+        }
+        if o == "-S" || o == "--split-string" {
+            return words.get(i + 1).copied();
+        }
+        if let Some(v) = o.strip_prefix("--split-string=") {
+            return Some(v);
+        }
+        if let Some(v) = o.strip_prefix("-S").filter(|v| !v.is_empty()) {
+            return Some(v);
+        }
+        i += if matches!(o, "-u" | "-C" | "--unset" | "--chdir") {
+            2
+        } else {
+            1
+        };
+    }
+    None
+}
+
+/// Whether a sed script runs commands or writes files: the `e`, `w` and `W`
+/// commands, and `s///` with the `e` or `w` flag (GNU sed). Anything this
+/// scanner does not understand counts as a side effect (SEC-07).
+fn sed_script_has_side_effects(script: &str) -> bool {
+    let c: Vec<char> = script.chars().collect();
+    let mut i = 0;
+    // Skip a delimited part whose opening delimiter is at `i`.
+    let skip = |i: &mut usize, d: char| -> bool {
+        *i += 1;
+        while *i < c.len() {
+            match c[*i] {
+                '\\' => *i += 2,
+                ch if ch == d => {
+                    *i += 1;
+                    return true;
+                }
+                _ => *i += 1,
+            }
+        }
+        false
+    };
+    while i < c.len() {
+        while i < c.len() && matches!(c[i], ' ' | '\t' | '\n' | ';' | '{' | '}') {
+            i += 1;
+        }
+        if i >= c.len() {
+            break;
+        }
+        // Up to two addresses (`3`, `$`, `/re/I`, `\cREc`, `1~2`) and `!`.
+        for _ in 0..2 {
+            match c[i] {
+                '0'..='9' => {
+                    while i < c.len() && (c[i].is_ascii_digit() || c[i] == '~') {
+                        i += 1;
+                    }
+                }
+                '$' => i += 1,
+                '/' => {
+                    if !skip(&mut i, '/') {
+                        return true;
+                    }
+                    while i < c.len() && matches!(c[i], 'I' | 'M') {
+                        i += 1;
+                    }
+                }
+                '\\' if i + 1 < c.len() => {
+                    let d = c[i + 1];
+                    i += 1;
+                    if !skip(&mut i, d) {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+            if i < c.len() && c[i] == ',' {
+                i += 1;
+                continue;
+            }
+            break;
+        }
+        while i < c.len() && matches!(c[i], ' ' | '\t' | '!') {
+            i += 1;
+        }
+        let Some(&cmd) = c.get(i) else {
+            break;
+        };
+        i += 1;
+        match cmd {
+            'e' | 'w' | 'W' => return true,
+            's' | 'y' => {
+                let Some(&d) = c.get(i) else {
+                    return true;
+                };
+                if d == '\\' || d == '\n' || !skip(&mut i, d) {
+                    return true;
+                }
+                i -= 1;
+                if !skip(&mut i, d) {
+                    return true;
+                }
+                if cmd == 's' {
+                    while i < c.len() && !matches!(c[i], ';' | '\n' | '}') {
+                        if matches!(c[i], 'e' | 'w' | 'W') {
+                            return true;
+                        }
+                        i += 1;
+                    }
+                }
+            }
+            // Text, file to read, label or exit code up to the line end.
+            'a' | 'i' | 'c' => {
+                while i < c.len() && c[i] != '\n' {
+                    i += 1;
+                }
+            }
+            'r' | 'R' | 'b' | 't' | 'T' | ':' | 'q' | 'Q' | 'l' | 'L' | '#' => {
+                while i < c.len() && c[i] != '\n' && !(cmd != '#' && cmd != ':' && c[i] == ';') {
+                    i += 1;
+                }
+            }
+            '=' | 'd' | 'D' | 'g' | 'G' | 'h' | 'H' | 'n' | 'N' | 'p' | 'P' | 'x' | 'z' | 'F' => {}
+            _ => return true,
+        }
+    }
+    false
+}
+
+/// The scripts of a sed invocation: `-e`/`--expression` values, or the first
+/// positional word. `None` when the script comes from a file (`-f`).
+fn sed_scripts<'a>(args: &[&'a str]) -> Option<Vec<&'a str>> {
+    let mut scripts = Vec::new();
+    let mut i = 0;
+    let mut first_positional = None;
+    while i < args.len() {
+        let a = args[i];
+        if a == "-f" || a.starts_with("--file") || (a.starts_with("-f") && a.len() > 2) {
+            return None;
+        }
+        if a == "-e" || a == "--expression" {
+            scripts.extend(args.get(i + 1).copied());
+            i += 2;
+            continue;
+        }
+        if let Some(v) = a.strip_prefix("--expression=") {
+            scripts.push(v);
+        } else if let Some(v) = a
+            .strip_prefix("-e")
+            .filter(|v| !v.is_empty() && !a.starts_with("--"))
+        {
+            scripts.push(v);
+        } else if !a.starts_with('-') && first_positional.is_none() {
+            first_positional = Some(a);
+        }
+        i += 1;
+    }
+    if scripts.is_empty() {
+        scripts.extend(first_positional);
+    }
+    Some(scripts)
 }
 
 const READ_ONLY_TOOLS: &[&str] = &[
@@ -447,7 +630,6 @@ const READ_ONLY_TOOLS: &[&str] = &[
     "egrep",
     "fgrep",
     "zgrep",
-    "rg",
     "ag",
     "ack",
     "locate",
@@ -606,7 +788,6 @@ const READ_ONLY_TOOLS: &[&str] = &[
     "exa",
     "eza",
     "lsd",
-    "fd",
     "fzf",
     "tokei",
     "cloc",
@@ -748,8 +929,51 @@ fn classify_tool(
         "sed" => {
             if has_flag(args, &['i'], &["in-place"]) || args.iter().any(|a| a.starts_with("-i")) {
                 acc.md("sed-in-place", "edits files in place");
+            } else if sed_scripts(args)
+                .is_none_or(|scripts| scripts.iter().any(|s| sed_script_has_side_effects(s)))
+            {
+                acc.unk(
+                    "sed-side-effects",
+                    "sed script may run commands or write files (e, w, s///e)",
+                );
             } else {
                 acc.ro("sed", "stream editing to stdout");
+            }
+        }
+        "rg" => {
+            if args
+                .iter()
+                .any(|a| *a == "--pre" || a.starts_with("--pre="))
+            {
+                acc.unk("rg-pre", "rg --pre runs a program on every file");
+            } else {
+                acc.ro("read-only", "rg only reads");
+            }
+        }
+        "fd" | "fdfind" => {
+            let exec = args.iter().position(|a| {
+                matches!(*a, "-x" | "-X" | "--exec" | "--exec-batch")
+                    || a.starts_with("--exec=")
+                    || a.starts_with("--exec-batch=")
+            });
+            match exec {
+                Some(at) => {
+                    let end = args[at + 1..]
+                        .iter()
+                        .position(|a| *a == ";")
+                        .map_or(args.len(), |p| at + 1 + p);
+                    let cmd: Vec<&str> = args[at + 1..end]
+                        .iter()
+                        .copied()
+                        .filter(|a| !a.starts_with('{'))
+                        .collect();
+                    if cmd.is_empty() {
+                        acc.unk("fd-exec", "fd runs a command for every match");
+                    } else {
+                        classify_words(&cmd, dialect, depth, acc);
+                    }
+                }
+                None => acc.ro("read-only", "fd only reads"),
             }
         }
         "perl" | "ruby" if has_flag(args, &['i'], &[]) => {
@@ -761,12 +985,16 @@ fn classify_tool(
                 .find(|a| !a.starts_with('-'))
                 .copied()
                 .unwrap_or("");
+            let compact: String = prog.chars().filter(|c| !c.is_whitespace()).collect();
             if prog.contains("system(")
                 || prog.contains("print >")
                 || prog.contains("printf >")
                 || prog.contains("| \"")
                 || prog.contains("|\"")
-                || has_flag(args, &['i'], &[])
+                || compact.contains("|getline")
+                || compact.contains("|&")
+                || prog.contains("@load")
+                || has_flag(args, &['i', 'f', 'l'], &["file", "load", "include"])
             {
                 acc.unk(
                     "awk-side-effects",
@@ -1537,6 +1765,20 @@ fn classify_package_manager(name: &str, args: &[&str], acc: &mut Acc) {
 }
 
 fn classify_git(args: &[&str], acc: &mut Acc) {
+    // `git -c key=value` can make any subcommand run a program
+    // (core.fsmonitor, core.pager, core.sshCommand, diff.external, alias.*).
+    if args.iter().any(|a| {
+        *a == "-c"
+            || *a == "--config-env"
+            || a.starts_with("--config-env=")
+            || a.starts_with("-c") && a.len() > 2 && a.contains('=')
+    }) {
+        acc.unk(
+            "git-config-override",
+            "git -c may make git run another program",
+        );
+        return;
+    }
     let pos = positionals(
         args,
         &["-C", "-c", "--git-dir", "--work-tree", "--namespace"],

