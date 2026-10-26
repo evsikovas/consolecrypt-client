@@ -1,4 +1,4 @@
-//! `consolecrypt ai search|ask|gen|explain` — the AI features of the facade
+//! `consolecrypt-cli ai search|ask|gen|explain` — the AI features of the facade
 //! (providers are configured in the app and synced with the vault).
 //!
 //! AI output never runs by itself: `ai gen --run --host H` passes the

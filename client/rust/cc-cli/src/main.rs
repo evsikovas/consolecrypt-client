@@ -448,6 +448,24 @@ enum PassphraseCmd {
     Reset,
 }
 
+/// The folder the desktop app uses, so the CLI sees the same profiles. On
+/// macOS that is still the folder of the earlier sandboxed builds (inside
+/// ~/Library/Containers) when the profiles live there; the app picks it the
+/// same way. Elsewhere the core default is already the app's folder.
+fn app_data_dir() -> Option<String> {
+    if !cfg!(target_os = "macos") {
+        return None;
+    }
+    let home = std::path::PathBuf::from(std::env::var_os("HOME")?);
+    let current = home.join("Library/Application Support/io.consolecrypt.ConsoleCrypt");
+    let legacy = home.join(
+        "Library/Containers/io.consolecrypt.consolecrypt/Data/Library/Application Support/io.consolecrypt.ConsoleCrypt",
+    );
+    let has_profiles = |dir: &std::path::Path| dir.join("profiles.json").is_file();
+    (!has_profiles(&current) && has_profiles(&legacy))
+        .then(|| legacy.to_string_lossy().into_owned())
+}
+
 fn config(cli: &Cli) -> AppConfig {
     let mut c = AppConfig::new(Platform::Cli);
     // The server sees the app release this CLI came with.
@@ -456,7 +474,7 @@ fn config(cli: &Cli) -> AppConfig {
         .next()
         .unwrap_or_default()
         .to_owned();
-    c.data_dir = cli.data_dir.clone();
+    c.data_dir = cli.data_dir.clone().or_else(app_data_dir);
     c.secure_store = match cli.secure_store {
         StoreArg::Os => SecureStoreKind::Os,
         StoreArg::File => SecureStoreKind::InsecureFile,
@@ -527,7 +545,7 @@ async fn open(cli: &Cli, app: &AppCore) -> R<ProfileInfo> {
                     [one] => one.id.clone(),
                     [] => {
                         return Err(CliError::Usage(
-                            "no profile yet; run `consolecrypt init`".into(),
+                            "no profile yet; run `consolecrypt-cli init`".into(),
                         ))
                     }
                     _ => return Err(CliError::Usage("several profiles; pass --profile".into())),
@@ -705,7 +723,7 @@ async fn run(cli: &Cli, app: &AppCore) -> R<i32> {
         Cmd::RecoveryKit { regenerate } => {
             if !regenerate {
                 out.ok("The Recovery Kit is shown only once, when the vault is created. \
-                        `consolecrypt recovery-kit --regenerate` creates a new one (the old key stops working).");
+                        `consolecrypt-cli recovery-kit --regenerate` creates a new one (the old key stops working).");
                 return Ok(0);
             }
             unlocked(cli, app).await?;
