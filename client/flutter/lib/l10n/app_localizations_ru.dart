@@ -6134,6 +6134,28 @@ class AppLocalizationsRu extends AppLocalizations {
       'При смене модели остальные загрузки сохраняются. Обновление приложения сохраняет модели и ваш выбор.';
 
   @override
+  String get localAiTierCustom => 'Своя';
+
+  @override
+  String get localAiImport => 'Добавить свою модель (GGUF)…';
+
+  @override
+  String get localAiImportHelp =>
+      'Файл копируется в папку моделей ConsoleCrypt и проверяется по SHA-256, оригинал можно удалить. Подходят GGUF, которые читает встроенный llama.cpp; объём памяти оценивается по размеру файла.';
+
+  @override
+  String get localAiCustomModelNotice => 'Своя модель: происхождение и лицензию проверьте сами.';
+
+  @override
+  String get localAiInvalidGguf => 'Это не файл модели GGUF.';
+
+  @override
+  String get localAiImportFailed => 'Не удалось добавить модель. Проверьте свободное место на диске.';
+
+  @override
+  String get localAiCustomMissing => 'Файл своей модели не найден. Удалите её и добавьте снова.';
+
+  @override
   String get localAiModelInstalled => 'Установлена';
 
   @override

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:consolecrypt/ai/local/local_ai_download.dart';
 import 'package:consolecrypt/ai/local/local_ai_installation.dart';
@@ -104,7 +105,7 @@ void main() {
   });
 
   test('legacy selection and GGUF survive upgrade without download or rewrite', () async {
-    final installation = LocalAiInstallation(data(), models: models);
+    final installation = LocalAiInstallation(data(), catalog: models);
     final file = installation.modelFile(models.first);
     file.parent.createSync(recursive: true);
     file.writeAsStringSync(models.first.filename);
@@ -169,7 +170,7 @@ void main() {
     app = runtime(download);
     await app.initialize();
     expect(app.selectedModel.id, models.last.id);
-    final inventory = LocalAiInstallation(data(), models: models);
+    final inventory = LocalAiInstallation(data(), catalog: models);
     inventory.downloads.createSync(recursive: true);
     final otherPartial = File('${inventory.downloads.path}/${models.first.sha256}.part')..writeAsStringSync('resume');
     final selectedPartial = File('${inventory.downloads.path}/${models.last.sha256}.part')..writeAsStringSync('remove');
@@ -204,7 +205,7 @@ void main() {
     expect(app.status.installedModelIds, {models.first.id});
     expect(app.selectedModel.id, models[1].id);
     expect(
-      LocalAiInstallation(data(), models: models).modelFile(models.first).readAsStringSync(),
+      LocalAiInstallation(data(), catalog: models).modelFile(models.first).readAsStringSync(),
       models.first.filename,
     );
     await app.dispose();
@@ -227,7 +228,7 @@ void main() {
     expect(app.status.selectionRevision, greaterThan(oldRevision));
     expect(app.status.phase, LocalAiPhase.notInstalled);
     expect(app.status.installedModelIds, {models.first.id});
-    expect(LocalAiInstallation(data(), models: models).modelFile(models.first).existsSync(), isTrue);
+    expect(LocalAiInstallation(data(), catalog: models).modelFile(models.first).existsSync(), isTrue);
     await app.dispose();
   }, skip: Platform.isWindows);
 
@@ -244,7 +245,7 @@ void main() {
   });
 
   test('failed atomic selection retains prior id and installed model', () async {
-    final inventory = LocalAiInstallation(data(), models: models);
+    final inventory = LocalAiInstallation(data(), catalog: models);
     await inventory.select(models.first);
     final selection = File('${data().path}/selection.json');
     selection.deleteSync();
@@ -252,5 +253,84 @@ void main() {
     await expectLater(inventory.select(models[1]), throwsA(isA<FileSystemException>()));
     expect(inventory.selected.id, models.first.id);
     expect(data().listSync().whereType<Directory>().where((d) => d.path.contains('/selection-')), isEmpty);
+  });
+
+  group('own GGUF (LIM-04)', () {
+    File gguf(String name, {String head = 'GGUF', int version = 3, int size = 4096}) {
+      final bytes = BytesBuilder()
+        ..add(utf8.encode(head))
+        ..add([version, 0, 0, 0])
+        ..add(List<int>.generate(size, (i) => i % 251));
+      return File('${root.path}/$name')..writeAsBytesSync(bytes.toBytes());
+    }
+
+    test('is copied, hashed, selected and survives a restart; the original stays', () async {
+      final source = gguf('My-Model.Q4_K_M.gguf');
+      var app = runtime(_FixtureDownloader());
+      await app.importModel(source.path);
+      final model = app.selectedModel;
+      expect(model.isCustom, isTrue);
+      expect(model.label, 'My-Model.Q4_K_M');
+      expect(model.sha256, sha256.convert(source.readAsBytesSync()).toString());
+      expect(app.status.phase, LocalAiPhase.stopped);
+      expect(app.status.isInstalled, isTrue);
+      expect(app.models.last.id, model.id);
+      expect(source.existsSync(), isTrue);
+      expect(LocalAiInstallation(data(), catalog: models).modelFile(model).readAsBytesSync(), source.readAsBytesSync());
+      expect(Directory('${data().path}/downloads').listSync(), isEmpty, reason: 'no partial copy is left');
+
+      // Adding the same file again reuses the copy.
+      await app.importModel(source.path);
+      expect(app.models.where((m) => m.isCustom), hasLength(1));
+      await app.dispose();
+
+      app = runtime(_FixtureDownloader());
+      await app.initialize();
+      expect(app.selectedModel.id, model.id);
+      expect(app.status.isInstalled, isTrue);
+      await app.dispose();
+    });
+
+    test('a file without the GGUF header is refused and leaves nothing', () async {
+      final app = runtime(_FixtureDownloader());
+      for (final bad in [gguf('notes.gguf', head: 'GGML'), gguf('future.gguf', version: 9)]) {
+        await expectLater(
+          app.importModel(bad.path),
+          throwsA(isA<LocalAiException>().having((e) => e.code, 'code', 'invalid_gguf')),
+        );
+      }
+      expect(app.status.message, 'invalid_gguf');
+      expect(app.models.where((m) => m.isCustom), isEmpty);
+      expect(app.selectedModel.id, models.first.id);
+      expect(File('${data().path}/custom-models.json').existsSync(), isFalse);
+      await app.dispose();
+    });
+
+    test('removing it deletes the copy, drops it from the list and selects the catalog model', () async {
+      final download = _FixtureDownloader();
+      final app = runtime(download);
+      await app.importModel(gguf('mine.gguf').path);
+      final model = app.selectedModel;
+      final copy = LocalAiInstallation(data(), catalog: models).modelFile(model);
+      expect(copy.existsSync(), isTrue);
+      await app.uninstall();
+      expect(copy.existsSync(), isFalse);
+      expect(app.models.any((m) => m.id == model.id), isFalse);
+      expect(app.selectedModel.id, models.first.id);
+      expect(app.status.phase, LocalAiPhase.notInstalled);
+      expect(download.artifacts, isEmpty, reason: 'a custom model is never downloaded');
+      await app.dispose();
+    });
+
+    test('a missing copy is reported, not downloaded', () async {
+      final download = _FixtureDownloader();
+      final app = runtime(download);
+      await app.importModel(gguf('mine.gguf').path);
+      LocalAiInstallation(data(), catalog: models).modelFile(app.selectedModel).deleteSync();
+      await expectLater(app.install(), throwsA(isA<LocalAiException>()));
+      expect(app.status.message, 'custom_model_missing');
+      expect(download.artifacts, isEmpty);
+      await app.dispose();
+    });
   });
 }

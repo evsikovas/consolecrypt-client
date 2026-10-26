@@ -24,8 +24,25 @@ class FakeLocalAiRuntime implements LocalAiRuntime {
   LocalAiRuntimeStatus get status => state.value;
   @override
   Stream<LocalAiRuntimeStatus> get statuses => state.stream;
+  final custom = <LocalAiModel>[];
+  final imported = <String>[];
   @override
-  LocalAiModel get selectedModel => LocalAiCatalog.models.firstWhere((model) => model.id == status.modelId);
+  List<LocalAiModel> get models => [...LocalAiCatalog.models, ...custom];
+  @override
+  LocalAiModel get selectedModel => models.firstWhere((model) => model.id == status.modelId);
+
+  @override
+  Future<void> importModel(String path) async {
+    imported.add(path);
+    final model = LocalAiModel.custom(
+      label: path.split('/').last.replaceAll('.gguf', ''),
+      sha256: 'a' * 64,
+      bytes: 3 << 30,
+    );
+    custom.add(model);
+    emit(LocalAiPhase.stopped, installed: {...status.installedModelIds, model.id}, modelId: model.id);
+  }
+
   void emit(
     LocalAiPhase phase, {
     Set<String>? installed,

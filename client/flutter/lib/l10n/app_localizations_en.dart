@@ -5924,6 +5924,28 @@ class AppLocalizationsEn extends AppLocalizations {
       'Switching models keeps other downloads. Installed models and your choice survive app updates.';
 
   @override
+  String get localAiTierCustom => 'Custom';
+
+  @override
+  String get localAiImport => 'Add your own model (GGUF)…';
+
+  @override
+  String get localAiImportHelp =>
+      'The file is copied into the ConsoleCrypt models folder and checked by SHA-256; you can delete the original. Any GGUF the built-in llama.cpp reads will do; memory guidance is estimated from the file size.';
+
+  @override
+  String get localAiCustomModelNotice => 'Your own model: check its origin and license yourself.';
+
+  @override
+  String get localAiInvalidGguf => 'This is not a GGUF model file.';
+
+  @override
+  String get localAiImportFailed => 'Could not add the model. Check free disk space.';
+
+  @override
+  String get localAiCustomMissing => 'The custom model file is missing. Remove it and add it again.';
+
+  @override
   String get localAiModelInstalled => 'Installed';
 
   @override

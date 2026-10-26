@@ -10,6 +10,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/file_dialog_service.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -171,4 +172,69 @@ void main() {
       await settle(tester);
     }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   }
+
+  testWidgets('own GGUF: picked file is added, selected and labelled as your own model', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final runtime = FakeLocalAiRuntime();
+    addTearDown(runtime.dispose);
+    final dialogs = _PickGguf(backend.services.files);
+    tester.view.physicalSize = const Size(1200, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appServicesProvider.overrideWithValue(backend.services),
+          deviceLocalAiAvailableProvider.overrideWithValue(true),
+          localAiRuntimeProvider.overrideWithValue(runtime),
+          fileDialogServiceProvider.overrideWithValue(dialogs),
+          localAiHardwareProvider.overrideWith(
+            (ref) async =>
+                const LocalAiHardware(platform: LocalAiPlatform.windowsX64, totalMemoryBytes: 8 * 1024 * 1024 * 1024),
+          ),
+          aiServiceProvider.overrideWithValue(backend.services.ai),
+        ],
+        child: const ConsoleCryptApp(),
+      ),
+    );
+    await settle(tester);
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    container.read(routerProvider).go(AppRoutes.settings);
+    await settle(tester);
+    await tapKey(tester, 'local-ai-import');
+    expect(dialogs.extensions, ['gguf']);
+    expect(runtime.imported, ['/Users/demo/Models/Llama-3.2-3B.Q4_K_M.gguf']);
+    expect(runtime.selectedModel.isCustom, isTrue);
+    final l = tester.element(find.byKey(const ValueKey('local-ai-settings'))).l10n;
+    expect(find.text(l.localAiCustomModelNotice), findsOneWidget);
+    expect(find.textContaining('Llama-3.2-3B.Q4_K_M'), findsWidgets);
+    expect(find.text(l.localAiRamRecommendation(runtime.selectedModel.recommendedRamGiB)), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await settle(tester);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+}
+
+final class _PickGguf implements FileDialogService {
+  _PickGguf(this._inner);
+  final FileDialogService _inner;
+  List<String>? extensions;
+  @override
+  Future<String?> chooseOpenFile({List<String> extensions = const []}) async {
+    this.extensions = extensions;
+    return '/Users/demo/Models/Llama-3.2-3B.Q4_K_M.gguf';
+  }
+
+  @override
+  Future<String?> chooseSaveFile({required String suggestedName, List<String> extensions = const []}) =>
+      _inner.chooseSaveFile(suggestedName: suggestedName, extensions: extensions);
+  @override
+  Future<bool> finishSaveFile(String path) => _inner.finishSaveFile(path);
+  @override
+  Future<String?> chooseDirectory() => _inner.chooseDirectory();
+  @override
+  Future<String?> chooseApplication({required String label, required String confirmButtonText}) =>
+      _inner.chooseApplication(label: label, confirmButtonText: confirmButtonText);
 }

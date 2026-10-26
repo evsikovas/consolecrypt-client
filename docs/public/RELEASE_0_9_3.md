@@ -73,6 +73,9 @@
   передаётся системе и удаляется, ход виден в «Передачах». Папки — по-прежнему командой
   «Скачать». Перетаскивание внутри приложения и из Finder/Проводника работает как раньше
   (на Linux — тоже, но без перетаскивания наружу).
+- **Локальный ИИ: своя модель GGUF.** «Добавить свою модель (GGUF)…» копирует выбранный
+  файл в папку моделей со сверкой SHA-256 и делает его текущей моделью; «Удалить» убирает
+  копию. Происхождение и лицензию своей модели проверяйте сами.
 - **QR из Recovery Kit без ввода текста.** При восстановлении доступа QR-код комплекта
   можно отсканировать камерой телефона или прочитать с картинки или скриншота (на любой
   платформе). Распознавание идёт на устройстве открытым кодом, кадры никуда не уходят.
@@ -222,6 +225,9 @@ admins and sends invitations only to verified addresses.
   handed to the system and deleted, with progress in Transfers. Folders still go through
   Download. Dragging inside the app and from Finder/Explorer works as before (on Linux too,
   without dragging out).
+- **Local AI: your own GGUF model.** “Add your own model (GGUF)…” copies the chosen file
+  into the models folder with a SHA-256 check and makes it the current model; Remove deletes
+  the copy. Check the origin and license of your own model yourself.
 - **Recovery Kit QR without typing.** Recovery reads the kit's QR code with a phone camera
   or from a picture or screenshot (on any platform). Decoding runs on the device with open
   source code; frames go nowhere.

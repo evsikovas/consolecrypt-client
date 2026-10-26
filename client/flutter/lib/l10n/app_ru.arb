@@ -2892,6 +2892,34 @@
   "@localAiModelsPreserved": {
     "description": "Device-local AI model management and installation guidance."
   },
+  "localAiTierCustom": "Своя",
+  "@localAiTierCustom": {
+    "description": "Device-local AI: the user's own GGUF model (LIM-04)."
+  },
+  "localAiImport": "Добавить свою модель (GGUF)…",
+  "@localAiImport": {
+    "description": "Device-local AI: the user's own GGUF model (LIM-04)."
+  },
+  "localAiImportHelp": "Файл копируется в папку моделей ConsoleCrypt и проверяется по SHA-256, оригинал можно удалить. Подходят GGUF, которые читает встроенный llama.cpp; объём памяти оценивается по размеру файла.",
+  "@localAiImportHelp": {
+    "description": "Device-local AI: the user's own GGUF model (LIM-04)."
+  },
+  "localAiCustomModelNotice": "Своя модель: происхождение и лицензию проверьте сами.",
+  "@localAiCustomModelNotice": {
+    "description": "Device-local AI: the user's own GGUF model (LIM-04)."
+  },
+  "localAiInvalidGguf": "Это не файл модели GGUF.",
+  "@localAiInvalidGguf": {
+    "description": "Device-local AI: the user's own GGUF model (LIM-04)."
+  },
+  "localAiImportFailed": "Не удалось добавить модель. Проверьте свободное место на диске.",
+  "@localAiImportFailed": {
+    "description": "Device-local AI: the user's own GGUF model (LIM-04)."
+  },
+  "localAiCustomMissing": "Файл своей модели не найден. Удалите её и добавьте снова.",
+  "@localAiCustomMissing": {
+    "description": "Device-local AI: the user's own GGUF model (LIM-04)."
+  },
   "localAiModelInstalled": "Установлена",
   "@localAiModelInstalled": {
     "description": "Device-local AI model management and installation guidance."
