@@ -94,15 +94,17 @@ MongoDB, Apache Cassandra и ScyllaDB, а также с файлами SQLite. �
   уровни согласованности чтения (по умолчанию `LOCAL_ONE`) и записи
   (`LOCAL_QUORUM`) и размер страницы CQL (500 строк). «Keyspace» — keyspace по
   умолчанию (точное имя). Тайм-аут запроса — «Тайм-аут запроса» из лимитов.
-- **Один координатор.** Сеанс работает через один узел — первый ответивший
-  контактный узел; адреса остальных узлов из `system.peers` приложение не
-  использует и напрямую к ним не подключается, shard-aware порт ScyllaDB
-  отключён. Поэтому подключение одинаково работает напрямую и через SSH,
-  jump-профиль, прокси, SSH-туннель, проброс Kubernetes или Docker (через
-  проброс доступна только одна точка). Напрямую при недоступности узла
-  используется следующий контактный узел. Если указан локальный дата-центр,
-  координатор должен быть в нём, иначе — ошибка «узел в другом дата-центре»
-  (уровни `LOCAL_*` считаются по дата-центру координатора).
+- **Узлы кластера.** При прямом подключении приложение берёт адреса узлов из
+  `system.peers` и подключается к каждому узлу дата-центра первого ответившего
+  контактного узла (с тем же TLS): запросы распределяются по узлам с учётом
+  токенов, а при отказе узла переходят на другие. Узлы других дата-центров не
+  используются. Через SSH, jump-профиль, прокси, SSH-туннель, проброс
+  Kubernetes или Docker сеанс работает через один узел — первый ответивший
+  (через проброс доступна только одна точка); при недоступности узла
+  используется следующий контактный узел. Shard-aware порт ScyllaDB отключён.
+  Если указан локальный дата-центр, контактный узел должен быть в нём, иначе —
+  ошибка «узел в другом дата-центре» (уровни `LOCAL_*` считаются по
+  дата-центру координатора).
 - **TLS.** Шифрование выполняет само приложение (rustls) с теми же режимами:
   «Проверять» — цепочка и имя сервера (можно указать свой CA и клиентский
   сертификат), «Требовать» — только шифрование, «Предпочитать» — без TLS
@@ -788,14 +790,16 @@ works with Apache Cassandra 3.11+, 4.x, 5.x and ScyllaDB.
   (`LOCAL_ONE` by default) and write (`LOCAL_QUORUM`) consistency and the CQL
   page size (500 rows). “Keyspace” is the default keyspace (exact name). The
   request timeout is the statement timeout from the limits.
-- **One coordinator.** A session works through one node: the first contact
-  point that answers. Node addresses from `system.peers` are never dialled
-  and the ScyllaDB shard-aware port is off, so the connection behaves the same
-  directly and through an SSH host, jump profile, proxy, SSH tunnel,
-  Kubernetes or Docker forward (a forward reaches one endpoint). Directly, the
-  next contact point takes over when a node is down. With a local data center
-  set, the coordinator must be in it (`LOCAL_*` levels follow the
-  coordinator's data center).
+- **Cluster nodes.** Directly, the app reads node addresses from
+  `system.peers` and connects to every node in the data center of the first
+  contact point that answers (with the same TLS): requests are spread over the
+  nodes by token and move to other nodes when one fails. Nodes of other data
+  centers are not used. Through an SSH host, jump profile, proxy, SSH tunnel,
+  Kubernetes or Docker forward the session works through one node, the first
+  that answers (a forward reaches one endpoint); the next contact point takes
+  over when it is down. The ScyllaDB shard-aware port is off. With a local
+  data center set, the contact point must be in it (`LOCAL_*` levels follow
+  the coordinator's data center).
 - **TLS** is done by the app (rustls) with the usual modes: “Verify” checks the
   chain and name (custom CA and client certificates supported), “Require” only
   encrypts, “Prefer” goes without TLS only through a tunnel or on this

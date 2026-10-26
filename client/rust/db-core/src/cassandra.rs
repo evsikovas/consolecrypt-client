@@ -29,7 +29,9 @@ use cc_models::database::{CqlConsistency, DbConnection, DbOptions, DbRoute, DbTl
 use futures::future::BoxFuture;
 use scylla::{
     client::{
-        execution_profile::ExecutionProfile, session::Session, session_builder::SessionBuilder,
+        execution_profile::{ExecutionProfile, ExecutionProfileHandle},
+        session::Session,
+        session_builder::SessionBuilder,
         PoolSize, SelfIdentity,
     },
     cluster::metadata::Peer,
@@ -38,6 +40,7 @@ use scylla::{
     policies::{
         address_translator::{AddressTranslator, UntranslatedPeer},
         host_filter::HostFilter,
+        load_balancing::DefaultPolicy,
     },
     response::PagingState,
     statement::{prepared::PreparedStatement, unprepared::Statement, Consistency},
@@ -45,6 +48,7 @@ use scylla::{
 };
 use secrecy::ExposeSecret;
 use std::{
+    collections::HashMap,
     fmt,
     net::SocketAddr,
     num::NonZeroUsize,
@@ -118,6 +122,71 @@ impl AddressTranslator for ToRelay {
         _: &UntranslatedPeer,
     ) -> Result<SocketAddr, TranslationError> {
         Ok(self.0)
+    }
+}
+
+/// Most cluster nodes a direct session opens relays to.
+const MAX_PEERS: usize = 64;
+
+/// A direct route reaches every node (FEAT-12): each one the cluster
+/// announces gets its own loopback relay with the session's TLS, opened when
+/// the driver first dials it. The contact node keeps the probed relay.
+struct PeerRelays {
+    /// The contact node's host id and its probed relay.
+    contact: (Uuid, SocketAddr),
+    /// The cluster's CQL port: the driver gives peers the port it dialed,
+    /// which is the loopback relay's.
+    port: u16,
+    connector: Arc<dyn DbConnector>,
+    tls: Option<TlsProfile>,
+    scope: CancellationToken,
+    relays: tokio::sync::Mutex<HashMap<SocketAddr, LocalRelay>>,
+}
+#[async_trait]
+impl AddressTranslator for PeerRelays {
+    async fn translate_address(
+        &self,
+        peer: &UntranslatedPeer,
+    ) -> Result<SocketAddr, TranslationError> {
+        if peer.host_id() == self.contact.0 {
+            return Ok(self.contact.1);
+        }
+        let target = SocketAddr::new(peer.untranslated_address().ip(), self.port);
+        let refused = TranslationError::NoRuleForAddress(target);
+        // A node announcing a loopback or unspecified address is misconfigured
+        // for clients; dialing it would reach this computer instead.
+        if target.ip().is_loopback() || target.ip().is_unspecified() {
+            return Err(refused);
+        }
+        let mut relays = self.relays.lock().await;
+        if let Some(relay) = relays.get(&target) {
+            return Ok(relay.address);
+        }
+        if relays.len() >= MAX_PEERS {
+            return Err(refused);
+        }
+        let destination =
+            DbDestination::new(target.ip().to_string(), target.port()).map_err(|_| refused)?;
+        let relay = LocalRelay::failover(
+            self.connector.clone(),
+            vec![destination],
+            self.tls.clone(),
+            self.scope.clone(),
+        )
+        .await
+        .map_err(|_| TranslationError::NoRuleForAddress(target))?;
+        let address = relay.address;
+        relays.insert(target, relay);
+        Ok(address)
+    }
+}
+
+/// Nodes of the contact node's datacenter (LOCAL_* consistency and the
+/// configured local datacenter refer to it).
+struct InDatacenter(String);
+impl HostFilter for InDatacenter {
+    fn accept(&self, peer: &Peer) -> bool {
+        peer.datacenter.as_deref() == Some(self.0.as_str())
     }
 }
 
@@ -531,6 +600,14 @@ impl Cassandra {
             return Err(DbError::CleartextRefused);
         }
         let security = DbTransportSecurity::of(mode, !encrypted, path);
+        // Direct: other nodes are dialed on their own, with the same TLS.
+        // Tunnels and forwards reach one endpoint: one coordinator there.
+        let peer_dialer = (connection.route == DbRoute::Direct).then(|| {
+            (
+                connector.clone(),
+                if encrypted { tls.clone() } else { None },
+            )
+        });
         let relay = if encrypted {
             let mut ordered = destinations.clone();
             ordered.rotate_left(index);
@@ -548,40 +625,52 @@ impl Cassandra {
         let timeout = Duration::from_secs(u64::from(connection.limits.statement_timeout_seconds));
         let profile = ExecutionProfile::builder()
             .consistency(consistency(*read_consistency))
-            .request_timeout(Some(timeout))
-            .build()
-            .into_handle();
-        let mut builder = SessionBuilder::new()
-            .known_node_addr(relay.address)
-            .connection_timeout(Duration::from_secs(u64::from(
-                connection.limits.connect_timeout_seconds.clamp(1, 120),
-            )))
-            .pool_size(PoolSize::PerHost(NonZeroUsize::MIN))
-            .disallow_shard_aware_port(true)
-            .address_translator(Arc::new(ToRelay(relay.address)))
-            .host_filter(Arc::new(OneCoordinator::default()))
-            .fetch_schema_metadata(false)
-            .compression(None)
-            .default_execution_profile_handle(profile)
-            .custom_identity(SelfIdentity::new().with_application_name("ConsoleCrypt"));
-        if !connection.username.is_empty() || credentials.password.is_some() {
-            builder = builder.user(
-                connection.username.clone(),
-                credentials
-                    .password
-                    .as_ref()
-                    .map(|password| password.expose_secret().to_owned())
-                    .unwrap_or_default(),
-            );
-        }
-        if !connection.database.is_empty() {
-            builder = builder.use_keyspace(connection.database.clone(), true);
-        }
-        let session = tokio::select! {
-            biased;
-            _ = scope.cancelled() => return Err(DbError::Cancelled),
-            result = builder.build() => result.map_err(|error| classify(&error))?,
+            .request_timeout(Some(timeout));
+        let contact = relay.address;
+        let open = |translator: Arc<dyn AddressTranslator>,
+                    filter: Arc<dyn HostFilter>,
+                    profile: ExecutionProfileHandle| {
+            let mut builder = SessionBuilder::new()
+                .known_node_addr(contact)
+                .connection_timeout(Duration::from_secs(u64::from(
+                    connection.limits.connect_timeout_seconds.clamp(1, 120),
+                )))
+                .pool_size(PoolSize::PerHost(NonZeroUsize::MIN))
+                .disallow_shard_aware_port(true)
+                .address_translator(translator)
+                .host_filter(filter)
+                .fetch_schema_metadata(false)
+                .compression(None)
+                .default_execution_profile_handle(profile)
+                .custom_identity(SelfIdentity::new().with_application_name("ConsoleCrypt"));
+            if !connection.username.is_empty() || credentials.password.is_some() {
+                builder = builder.user(
+                    connection.username.clone(),
+                    credentials
+                        .password
+                        .as_ref()
+                        .map(|password| password.expose_secret().to_owned())
+                        .unwrap_or_default(),
+                );
+            }
+            if !connection.database.is_empty() {
+                builder = builder.use_keyspace(connection.database.clone(), true);
+            }
+            let scope = scope.clone();
+            async move {
+                tokio::select! {
+                    biased;
+                    _ = scope.cancelled() => Err(DbError::Cancelled),
+                    result = builder.build() => result.map_err(|error| classify(&error)),
+                }
+            }
         };
+        let session = open(
+            Arc::new(ToRelay(contact)),
+            Arc::new(OneCoordinator::default()),
+            profile.clone().build().into_handle(),
+        )
+        .await?;
         let mut driver = Self {
             session,
             _relay: relay,
@@ -595,7 +684,7 @@ impl Cassandra {
         let cancel = scope.child_token();
         let local = driver
             .catalogue(
-                "SELECT release_version, data_center FROM system.local WHERE key = 'local'",
+                "SELECT release_version, data_center, host_id FROM system.local WHERE key = 'local'",
                 &[],
                 &cancel,
             )
@@ -620,6 +709,47 @@ impl Cassandra {
         if let Some(expected) = local_datacenter {
             if !expected.is_empty() && *expected != driver.datacenter {
                 return Err(DbError::DatacenterMismatch);
+            }
+        }
+        // A cluster of several nodes (FEAT-12): a second session spreads
+        // requests over the nodes of this datacenter and fails over when the
+        // coordinator goes down. The contact node keeps the probed relay.
+        let host = local.get(2).and_then(|id| Uuid::parse_str(id).ok());
+        if let (Some((connector, tls)), Some(host)) = (peer_dialer, host) {
+            let peers = driver
+                .catalogue("SELECT peer FROM system.peers", &[], &cancel)
+                .await
+                .unwrap_or_default();
+            if !peers.is_empty() && !driver.datacenter.is_empty() {
+                let relays = PeerRelays {
+                    contact: (host, contact),
+                    port: connection.port,
+                    connector,
+                    tls,
+                    scope: scope.clone(),
+                    relays: tokio::sync::Mutex::new(HashMap::new()),
+                };
+                let balanced = profile
+                    .load_balancing_policy(
+                        DefaultPolicy::builder()
+                            .prefer_datacenter(driver.datacenter.clone())
+                            .permit_dc_failover(false)
+                            .build(),
+                    )
+                    .build()
+                    .into_handle();
+                match open(
+                    Arc::new(relays),
+                    Arc::new(InDatacenter(driver.datacenter.clone())),
+                    balanced,
+                )
+                .await
+                {
+                    Ok(session) => driver.session = session,
+                    Err(DbError::Cancelled) => return Err(DbError::Cancelled),
+                    // The single-coordinator session still works.
+                    Err(_) => {}
+                }
             }
         }
         Ok(driver)

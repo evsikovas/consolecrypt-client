@@ -1884,7 +1884,8 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(find.byKey(const ValueKey('db-sqlite-local-only')), findsOneWidget);
       expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('db-sqlite-read-only'))).value, isTrue);
     case 'db-cassandra-connection':
-      expect(find.byKey(const ValueKey('db-local-only')), findsOneWidget);
+      // Synced since 0.9.3 (FEAT-01): no device-only banner.
+      expect(find.byKey(const ValueKey('db-local-only')), findsNothing);
       expect(find.byKey(const ValueKey('db-cql-read')), findsOneWidget);
     case 'db-sqlite-tree':
       for (final folder in [
