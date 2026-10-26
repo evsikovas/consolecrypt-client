@@ -51,6 +51,7 @@ fn verification_mail_token(
     if fields.get("to").map(String::as_str) != Some(recipient) {
         return Ok(None);
     }
+    let (fields, body) = plain_part(fields, body)?;
     if fields.get("content-type").map(String::as_str) != Some("text/plain; charset=utf-8") {
         return Err("unexpected verification MIME content type");
     }
@@ -87,6 +88,45 @@ fn verification_mail_token(
         token = Some(SecretString::new(candidate.to_owned()));
     }
     token.ok_or("missing verification token line").map(Some)
+}
+
+/// Server mail is multipart/alternative (text and HTML) since server 0.2.4;
+/// the token is read from the text/plain part. A single-part message passes
+/// through unchanged.
+fn plain_part(
+    fields: BTreeMap<String, String>,
+    body: &str,
+) -> Result<(BTreeMap<String, String>, Zeroizing<String>), &'static str> {
+    let kind = fields.get("content-type").cloned().unwrap_or_default();
+    if !kind
+        .to_ascii_lowercase()
+        .starts_with("multipart/alternative")
+    {
+        return Ok((fields, Zeroizing::new(body.to_owned())));
+    }
+    let boundary = kind
+        .split(';')
+        .map(str::trim)
+        .find_map(|parameter| parameter.strip_prefix("boundary="))
+        .ok_or("missing MIME boundary")?
+        .trim_matches('"');
+    let delimiter = format!("--{boundary}");
+    for part in body.split(delimiter.as_str()).skip(1) {
+        let Some((headers, content)) = part.trim_start_matches("\r\n").split_once("\r\n\r\n")
+        else {
+            continue;
+        };
+        let mut part_fields = BTreeMap::new();
+        for line in headers.split("\r\n") {
+            let (name, value) = line.split_once(':').ok_or("invalid MIME part header")?;
+            part_fields.insert(name.to_ascii_lowercase(), value.trim().to_owned());
+        }
+        if part_fields.get("content-type").map(String::as_str) == Some("text/plain; charset=utf-8")
+        {
+            return Ok((part_fields, Zeroizing::new(content.trim_end().to_owned())));
+        }
+    }
+    Err("missing text/plain MIME part")
 }
 
 fn decode_quoted_printable(input: &[u8]) -> Result<Zeroizing<Vec<u8>>, &'static str> {
