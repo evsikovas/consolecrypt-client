@@ -53,6 +53,11 @@ abstract interface class InventoryService {
   /// Parses a pasted OpenSSH/PEM private key without importing it.
   Future<KeyInspection> inspectPrivateKey(SecretText privateKey);
 
+  /// Lets the user choose a private key file and returns its text (at most
+  /// [maxPrivateKeyFileBytes], UTF-8); `null` when cancelled. The bytes read
+  /// are wiped; nothing is copied to a temporary file.
+  Future<SecretText?> pickPrivateKeyFile();
+
   /// Imports an OpenSSH key (optionally with a certificate). An encrypted
   /// key keeps its own passphrase protection (§7.6).
   Future<Credential> importKeyCredential({
@@ -97,3 +102,7 @@ abstract interface class InventoryService {
 
   Future<void> deleteKnownHost(ObjectId id);
 }
+
+/// Largest private key file the import dialog reads (OpenSSH RSA-16384 with
+/// a certificate is well below this).
+const maxPrivateKeyFileBytes = 64 * 1024;

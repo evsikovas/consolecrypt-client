@@ -1611,6 +1611,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get credentialImportAction => 'Import';
 
   @override
+  String get credentialImportChooseFile => 'Choose file…';
+
+  @override
   String get credentialImportPrivateKey => 'Private key';
 
   @override

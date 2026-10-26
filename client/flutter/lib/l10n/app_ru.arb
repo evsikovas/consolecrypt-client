@@ -707,6 +707,7 @@
   "credentialImportTitle": "Импорт ключа OpenSSH",
   "credentialImportTitleWithCertificate": "Импорт ключа и сертификата",
   "credentialImportAction": "Импортировать",
+  "credentialImportChooseFile": "Выбрать файл…",
   "credentialImportPrivateKey": "Закрытый ключ",
   "credentialImportUnknownAlgorithm": "Ключ",
   "credentialImportEncryptedNotice": "Защищён парольной фразой: в хранилище он остаётся зашифрованным.",
