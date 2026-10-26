@@ -480,3 +480,98 @@ async fn copy_and_move_into_a_team() {
     assert_eq!(host_names(&alice).await, vec!["web", "web"]);
     alice.shutdown().await.unwrap();
 }
+
+/// Security review SEC-01: the admin's confirmation seals the team key only
+/// to the keys (and role) the compared member code was computed from — not
+/// to whatever the server reports for the invitation at confirmation time.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn confirm_seals_only_to_the_keys_whose_code_was_compared() {
+    let server = MockServer::start().await;
+    let url = server.url().to_string();
+    let tmp = tempfile::tempdir().unwrap();
+    let alice = account(
+        &tmp.path().join("a"),
+        &url,
+        "alice@example.org",
+        AccountMode::Register,
+    )
+    .await;
+    alice.create_vault(PASSPHRASE.into()).await.unwrap();
+    let bob = account(
+        &tmp.path().join("b"),
+        &url,
+        "bob@example.org",
+        AccountMode::Register,
+    )
+    .await;
+    bob.create_vault(PASSPHRASE.into()).await.unwrap();
+    let team = alice
+        .create_team("Ops".into(), None, None, None)
+        .await
+        .unwrap();
+    let tid = team.vault_id.clone();
+
+    // Confirming without having been shown a code is refused.
+    alice
+        .invite_team_member(
+            tid.clone(),
+            "bob@example.org".into(),
+            TeamRoleDto::Viewer,
+            None,
+        )
+        .await
+        .unwrap();
+    let inv = bob.incoming_team_invitations().await.unwrap().remove(0);
+    let joined = bob
+        .accept_team_invitation(inv.invitation_id.clone())
+        .await
+        .unwrap();
+    assert_eq!(
+        code(
+            &alice
+                .confirm_team_member(tid.clone(), joined.invitation_id.clone())
+                .await
+                .unwrap_err()
+        ),
+        "approval"
+    );
+
+    // The admin compares the code over Bob's real keys …
+    let requests = alice.team_join_requests(tid.clone()).await.unwrap();
+    let shown = requests
+        .iter()
+        .find(|r| r.invitation_id == joined.invitation_id)
+        .unwrap();
+    assert_eq!(shown.code, joined.code);
+
+    // … then the server swaps in its own keys and a higher role.
+    let bob_id = server.user_id("bob@example.org").unwrap();
+    let forged = TeamIdentity::generate().unwrap().member_keys(bob_id);
+    let inv_id = joined.invitation_id.parse().unwrap();
+    assert!(server.swap_team_invitation_keys(
+        inv_id,
+        forged,
+        Some(cc_protocol::vaults::VaultRole::Admin)
+    ));
+    // A later listing keeps showing the code that was compared.
+    let again = alice.team_join_requests(tid.clone()).await.unwrap();
+    let again = again
+        .iter()
+        .find(|r| r.invitation_id == joined.invitation_id)
+        .unwrap();
+    assert_eq!(again.code, joined.code);
+    assert_eq!(again.role, TeamRoleDto::Viewer);
+
+    let err = alice
+        .confirm_team_member(tid.clone(), joined.invitation_id.clone())
+        .await
+        .unwrap_err();
+    assert_eq!(code(&err), "approval", "{err:?}");
+    assert_eq!(
+        alice.team_members(tid.clone()).await.unwrap().len(),
+        1,
+        "nobody was added"
+    );
+    alice.shutdown().await.unwrap();
+    bob.shutdown().await.unwrap();
+}

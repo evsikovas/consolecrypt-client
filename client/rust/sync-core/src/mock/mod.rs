@@ -358,6 +358,20 @@ impl MockServer {
         self.shared.lock().inject_team_member(vault_id, keys)
     }
 
+    /// Hostile-server hook (teams): replace the keys (and role) an accepted
+    /// invitation reports, as a server would between the admin's code check
+    /// and the confirmation. Clients must refuse to seal to them.
+    pub fn swap_team_invitation_keys(
+        &self,
+        invitation_id: cc_protocol::TeamInvitationId,
+        keys: cc_protocol::teams::TeamMemberKeys,
+        role: Option<cc_protocol::vaults::VaultRole>,
+    ) -> bool {
+        self.shared
+            .lock()
+            .swap_team_invitation_keys(invitation_id, keys, role)
+    }
+
     /// Revoke a device as if from another trusted device (admin hook).
     /// Test hook (protocol 1.11): plant a key-commitment record for
     /// `vault_id` as if its device had published it (no signature check;
