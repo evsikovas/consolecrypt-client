@@ -206,22 +206,30 @@ fn malformed_if_invalid(e: StorageError) -> SyncError {
 }
 
 /// Test-decrypt server bodies through the codec: caches the KEK class and
-/// collects `(object, revision)` of ciphertexts that fail verification.
+/// collects `(object, revision)` of ciphertexts that fail verification. A
+/// body that fails authentication is not applied over a local copy that
+/// still decrypts (`local_ok`): a server must not destroy the last good copy
+/// with garbage (SEC-12). Bodies of a format this build cannot read are
+/// applied as before.
 fn verify_changes(
     codec: &dyn crate::codec::ObjectCodec,
     changes: Vec<Change>,
+    local_ok: impl Fn(ObjectId) -> bool,
 ) -> (Vec<RemoteChange>, Vec<(ObjectId, i64)>) {
     let mut warnings = Vec::new();
     let remote = changes
         .into_iter()
         .map(|c| {
+            let mut unauthentic = false;
             let hint =
                 c.body
                     .as_ref()
                     .and_then(|b| match codec.decrypt(c.object_id, c.revision, b) {
                         Ok(p) => Some(p.object.kind().kek_class()),
                         Err(CodecError::Locked) => None,
-                        Err(_) => {
+                        Err(e) => {
+                            unauthentic =
+                                matches!(e, CodecError::Integrity | CodecError::ClassMismatch);
                             warnings.push((c.object_id, c.revision));
                             None
                         }
@@ -231,6 +239,7 @@ fn verify_changes(
                 revision: c.revision,
                 sequence: c.sequence,
                 deleted: c.deleted,
+                keep_local: unauthentic && local_ok(c.object_id),
                 body: c.body,
                 kek_class_hint: hint,
                 writer_device_id: c.writer_device_id,
@@ -239,6 +248,24 @@ fn verify_changes(
         })
         .collect();
     (remote, warnings)
+}
+
+/// Whether the stored copy of `object_id` exists and decrypts.
+fn local_copy_ok(
+    tx: &cc_storage_core::Tx<'_>,
+    codec: &dyn crate::codec::ObjectCodec,
+    vault_id: VaultId,
+    object_id: ObjectId,
+) -> bool {
+    tx.get_object(vault_id, object_id)
+        .ok()
+        .flatten()
+        .is_some_and(|o| {
+            !o.deleted
+                && o.body
+                    .as_ref()
+                    .is_some_and(|b| codec.decrypt(object_id, o.revision, b).is_ok())
+        })
 }
 
 /// The server refused the request itself (`400`, `413` incl. the protocol
@@ -1010,7 +1037,9 @@ impl SyncEngine {
             .store
             .storage()
             .write(move |tx| -> Result<_, SyncError> {
-                let (remote, warnings) = verify_changes(codec.as_ref(), changes);
+                let (remote, warnings) = verify_changes(codec.as_ref(), changes, |id| {
+                    local_copy_ok(tx, codec.as_ref(), vault_id, id)
+                });
                 tx.note_server_epoch(vault_id, epoch)
                     .map_err(malformed_if_invalid)?;
                 let out = tx

@@ -108,6 +108,9 @@ pub struct RemoteChange {
     pub kek_class_hint: Option<KekClass>,
     pub writer_device_id: DeviceId,
     pub updated_at: Timestamp,
+    /// The sync engine found the body unauthentic while the local copy still
+    /// decrypts: keep the last good local copy instead (SEC-12).
+    pub keep_local: bool,
 }
 
 /// Which kind of page is being applied and how the cursor advances.
@@ -609,6 +612,11 @@ impl Tx<'_> {
         vault_id: VaultId,
         c: &RemoteChange,
     ) -> Result<RemoteApplyOutcome> {
+        if c.keep_local {
+            return Ok(RemoteApplyOutcome::Skipped {
+                object_id: c.object_id,
+            });
+        }
         let obj = self.get_object(vault_id, c.object_id)?;
         let known_revision = obj.as_ref().map_or(0, |o| o.server_revision);
         if self.outbox_has_object(vault_id, c.object_id)? {

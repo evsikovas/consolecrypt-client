@@ -44,6 +44,7 @@ fn remote(o: ObjectId, revision: i64, sequence: i64, tag: Option<u8>) -> RemoteC
         kek_class_hint: None,
         writer_device_id: DeviceId::new(),
         updated_at: chrono::Utc::now(),
+        keep_local: false,
     }
 }
 
