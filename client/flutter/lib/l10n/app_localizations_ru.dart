@@ -3348,6 +3348,21 @@ class AppLocalizationsRu extends AppLocalizations {
   String get terminalReconnect => 'Переподключиться';
 
   @override
+  String terminalKeyPassphrasePromptTitle(String key, String host) {
+    return 'Пароль к ключу «$key» для $host';
+  }
+
+  @override
+  String get terminalKeyPassphraseRetry => 'Неверный пароль к ключу, попробуйте ещё раз.';
+
+  @override
+  String get terminalKeyPassphraseLabel => 'Пароль к ключу';
+
+  @override
+  String get terminalKeyPassphraseHelper =>
+      'Нужен только для этого подключения и не сохраняется. Чтобы не вводить его каждый раз, сохраните пароль вместе с ключом в учётных данных.';
+
+  @override
   String terminalPasswordPromptTitle(String user, String host) {
     return 'Пароль для $user@$host';
   }

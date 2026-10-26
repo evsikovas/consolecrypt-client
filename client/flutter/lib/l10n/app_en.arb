@@ -4498,6 +4498,32 @@
   "@terminalReconnect": {
     "description": "Disconnected banner button: reconnect the session."
   },
+  "terminalKeyPassphrasePromptTitle": "Passphrase for key “{key}” on {host}",
+  "@terminalKeyPassphrasePromptTitle": {
+    "description": "Title of the connect-time prompt for the passphrase of an encrypted private key. {key} is the key credential name, {host} the host label.",
+    "placeholders": {
+      "key": {
+        "type": "String",
+        "example": "deploy key"
+      },
+      "host": {
+        "type": "String",
+        "example": "prod-db-1"
+      }
+    }
+  },
+  "terminalKeyPassphraseRetry": "Wrong key passphrase, please try again.",
+  "@terminalKeyPassphraseRetry": {
+    "description": "Connect-time key passphrase prompt: the previous passphrase did not decrypt the key."
+  },
+  "terminalKeyPassphraseLabel": "Key passphrase",
+  "@terminalKeyPassphraseLabel": {
+    "description": "Field label in the connect-time key passphrase prompt."
+  },
+  "terminalKeyPassphraseHelper": "Used for this connection only — not saved. Save it with the key credential to skip this step.",
+  "@terminalKeyPassphraseHelper": {
+    "description": "Helper under the connect-time key passphrase field."
+  },
   "terminalPasswordPromptTitle": "Password for {user}@{host}",
   "@terminalPasswordPromptTitle": {
     "description": "Title of the connect-time password prompt. {user} is the SSH user name, {host} the host label.",

@@ -198,13 +198,21 @@ final class TerminalHostKeyPrompt extends TerminalEvent {
   final HostKeyInfo info;
 }
 
-/// The server asks for a password (no stored password for this host).
-/// Answer with `TerminalService.answerPassword`; the value is never stored.
+/// The server asks for a password (no stored password for this host), or
+/// — with [keyName] — the private key of that credential needs its
+/// passphrase. Answer with `TerminalService.answerPassword`; the value is
+/// never stored.
 final class TerminalPasswordPrompt extends TerminalEvent {
-  const TerminalPasswordPrompt({required this.username, required this.hostLabel, this.retry = false});
+  const TerminalPasswordPrompt({required this.username, required this.hostLabel, this.retry = false, this.keyName});
 
   final String username;
   final String hostLabel;
+
+  /// Name of the key credential whose passphrase is asked; `null` for an
+  /// account password.
+  final String? keyName;
+
+  bool get isKeyPassphrase => keyName != null;
 
   /// The previous attempt was rejected.
   final bool retry;

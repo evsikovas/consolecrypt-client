@@ -381,14 +381,14 @@ final class RustTerminalService
             ),
           );
       case _PromptKind.passphrase:
-        // TODO(ui): dedicated key-passphrase prompt — shown as a password
-        // prompt labelled with the key's name; next: TerminalPassphrasePrompt.
+        final host = _hub.hosts.value.where((h) => h.id == s.hostId).firstOrNull;
         s
           ..event(const TerminalStateChanged(SessionConnectionState.awaitingPassword))
           ..event(
             TerminalPasswordPrompt(
               username: '',
-              hostLabel: body['credential_name'] as String? ?? '',
+              hostLabel: body['host_name'] as String? ?? host?.name ?? '',
+              keyName: body['credential_name'] as String? ?? '',
               retry: ((body['attempt'] as num?)?.toInt() ?? 0) > 0,
             ),
           );

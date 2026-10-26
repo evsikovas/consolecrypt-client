@@ -454,7 +454,11 @@ class _TerminalCard extends ConsumerWidget {
     final Widget? docked = hostKey != null && !hostKey.changed
         ? _HostKeyPromptCard(tab: active, hostKey: hostKey)
         : prompt != null
-        ? _PasswordPromptCard(key: ValueKey('password-prompt-${active.sessionId.value}'), tab: active, prompt: prompt)
+        ? TerminalPasswordPromptCard(
+            key: ValueKey('password-prompt-${active.sessionId.value}'),
+            tab: active,
+            prompt: prompt,
+          )
         : null;
     return DecoratedBox(
       key: const ValueKey('terminal-card'),
@@ -647,17 +651,19 @@ class _SessionBanners extends ConsumerWidget {
 
 /// Connect-time password prompt (host set to "ask when connecting", or no
 /// credential). The password is used once and never stored.
-class _PasswordPromptCard extends ConsumerStatefulWidget {
-  const _PasswordPromptCard({required this.tab, required this.prompt, super.key});
+/// Connect-time question for an account password or, for an encrypted key
+/// without a stored passphrase, the key's passphrase (TODO-05).
+class TerminalPasswordPromptCard extends ConsumerStatefulWidget {
+  const TerminalPasswordPromptCard({required this.tab, required this.prompt, super.key});
 
   final TerminalTab tab;
   final TerminalPasswordPrompt prompt;
 
   @override
-  ConsumerState<_PasswordPromptCard> createState() => _PasswordPromptCardState();
+  ConsumerState<TerminalPasswordPromptCard> createState() => TerminalPasswordPromptCardState();
 }
 
-class _PasswordPromptCardState extends ConsumerState<_PasswordPromptCard> {
+class TerminalPasswordPromptCardState extends ConsumerState<TerminalPasswordPromptCard> {
   final _password = TextEditingController();
 
   @override
@@ -676,6 +682,8 @@ class _PasswordPromptCardState extends ConsumerState<_PasswordPromptCard> {
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
     final l10n = context.l10n;
+    final prompt = widget.prompt;
+    final keyName = prompt.keyName;
     return SecureSurface(
       key: const ValueKey('terminal-password-prompt'),
       radius: tokens.radii.card,
@@ -686,27 +694,33 @@ class _PasswordPromptCardState extends ConsumerState<_PasswordPromptCard> {
         children: [
           Row(
             children: [
-              Icon(Icons.password_rounded, color: tokens.palette.accent, size: 22),
+              Icon(
+                keyName != null ? Icons.key_rounded : Icons.password_rounded,
+                color: tokens.palette.accent,
+                size: 22,
+              ),
               const SizedBox(width: GlassSpacing.s8),
               Expanded(
                 child: Text(
-                  l10n.terminalPasswordPromptTitle(widget.prompt.username, widget.prompt.hostLabel),
+                  keyName != null
+                      ? l10n.terminalKeyPassphrasePromptTitle(keyName, prompt.hostLabel)
+                      : l10n.terminalPasswordPromptTitle(prompt.username, prompt.hostLabel),
                   style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
                 ),
               ),
             ],
           ),
-          if (widget.prompt.retry) ...[
+          if (prompt.retry) ...[
             const SizedBox(height: GlassSpacing.s6),
-            GateErrorText(text: l10n.terminalPasswordRetry),
+            GateErrorText(text: keyName != null ? l10n.terminalKeyPassphraseRetry : l10n.terminalPasswordRetry),
           ],
           const SizedBox(height: GlassSpacing.s12),
           SecretField(
             key: const ValueKey('terminal-password'),
             controller: _password,
-            label: l10n.terminalPasswordLabel,
+            label: keyName != null ? l10n.terminalKeyPassphraseLabel : l10n.terminalPasswordLabel,
             autofocus: true,
-            helper: l10n.terminalPasswordHelper,
+            helper: keyName != null ? l10n.terminalKeyPassphraseHelper : l10n.terminalPasswordHelper,
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: GlassSpacing.s12),

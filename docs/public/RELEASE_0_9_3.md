@@ -12,6 +12,8 @@
 - **Вкладки терминала** можно расположить колонкой у левого края; свёрнутая боковая
   панель запоминается.
 - **Импорт ключа SSH из файла:** кнопка «Выбрать файл…» в окне импорта ключа.
+- **Пароль к ключу SSH** при подключении спрашивается отдельным окном с именем ключа,
+  а не как пароль сервера.
 
 **Безопасность.** Исправления по итогам ревью безопасности кода.
 
@@ -74,6 +76,8 @@ admins and sends invitations only to verified addresses.
 - The **Recovery Kit** can be printed or saved as PDF.
 - **Terminal tabs** can sit in a column at the left edge; a folded sidebar is remembered.
 - **Import an SSH key from a file:** “Choose file…” in the import key dialog.
+- **The SSH key passphrase** is asked at connect time in its own prompt naming the key,
+  not as the server password.
 
 **Security.** Fixes from the code security review.
 
