@@ -36,6 +36,7 @@ jobs:
         run: |
           python3 -m unittest discover -s client/scripts -p 'test_github_release.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_announce_telegram.py' -v
+          python3 -m unittest discover -s client/scripts -p 'test_announce_evsikovnet.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_ci_cleanup.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_cleanup_policy.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_linux_cleanup.py' -v
@@ -283,6 +284,9 @@ jobs:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       TELEGRAM_PROXY: ${{ secrets.TELEGRAM_PROXY }}
+      # DOC-04: each channel is enabled by the owner setting its secret or variable.
+      TELEGRAM_PERSONAL_CHAT_ID: ${{ vars.TELEGRAM_PERSONAL_CHAT_ID }}
+      EVSIKOVNET_TOKEN: ${{ secrets.EVSIKOVNET_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -290,6 +294,12 @@ jobs:
       - name: Announce the release in Telegram
         if: env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
         run: python3 client/scripts/announce-telegram.py --tag "$GITHUB_REF_NAME"
+      - name: Announce the release in the personal channel (@evsikovlife)
+        if: always() && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_PERSONAL_CHAT_ID != ''
+        run: TELEGRAM_CHAT_ID="$TELEGRAM_PERSONAL_CHAT_ID" python3 client/scripts/announce-telegram.py --tag "$GITHUB_REF_NAME"
+      - name: Publish the release on evsikov.net
+        if: always() && env.EVSIKOVNET_TOKEN != ''
+        run: python3 client/scripts/announce-evsikovnet.py --tag "$GITHUB_REF_NAME"
 
   # No checkout here: validate the immutable owner/HEAD of the released build.
   # The workflow concurrency lock remains held until this job finishes.

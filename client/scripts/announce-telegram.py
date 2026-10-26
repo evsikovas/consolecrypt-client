@@ -67,7 +67,7 @@ TEXT = {
 }
 
 
-def load_config() -> dict[str, str]:
+def file_config() -> dict[str, str]:
     values: dict[str, str] = {}
     if CONFIG.exists():
         mode = CONFIG.stat().st_mode
@@ -78,6 +78,11 @@ def load_config() -> dict[str, str]:
             if line and not line.startswith("#") and "=" in line:
                 key, value = line.split("=", 1)
                 values[key.strip()] = value.strip()
+    return values
+
+
+def load_config() -> dict[str, str]:
+    values = file_config()
     for key in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_PROXY"):
         if os.environ.get(key):
             values[key] = os.environ[key]
@@ -260,6 +265,20 @@ def announced() -> dict:
         return {}
 
 
+def journal_key(chat_id: str, tag: str, lang: str) -> str:
+    """One entry per channel: @ConsoleCrypt and @evsikovlife get the same tag."""
+    return f"{chat_id}|{tag}:{lang}"
+
+
+def previous_message(state: dict, chat_id: str, tag: str, lang: str, legacy_chat: str | None) -> int | None:
+    """The message that already announced this tag in this channel. Entries
+    from before the per-channel journal (`tag:lang`) belong to the channel of
+    telegram.env."""
+    if (key := journal_key(chat_id, tag, lang)) in state:
+        return state[key]
+    return state.get(f"{tag}:{lang}") if legacy_chat and chat_id == legacy_chat else None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--tag", help="release tag (default: latest release)")
@@ -284,13 +303,14 @@ def main() -> None:
         print(text)
         print(f"\n[{visible_length(text)} / {LIMIT} characters]", file=sys.stderr)
         return
-    key = f"{data['tag_name']}:{args.lang}"
-    state = announced()
-    if key in state and not args.force:
-        sys.exit(f"{key} was already announced (message {state[key]}); use --force to post again")
     chat_id = config.get("TELEGRAM_CHAT_ID")
     if not chat_id:
         sys.exit("TELEGRAM_CHAT_ID is not set")
+    key = journal_key(chat_id, data["tag_name"], args.lang)
+    state = announced()
+    earlier = previous_message(state, chat_id, data["tag_name"], args.lang, file_config().get("TELEGRAM_CHAT_ID"))
+    if earlier is not None and not args.force:
+        sys.exit(f"{data['tag_name']} ({args.lang}) was already announced in {chat_id} (message {earlier}); use --force to post again")
     sent = telegram(
         config,
         "sendMessage",

@@ -68,6 +68,14 @@ class AnnounceTests(unittest.TestCase):
         self.assertIn('Полный список изменений →', text)
         self.assertIn('<b>macOS</b>', text)
 
+    def test_the_journal_is_kept_per_channel(self):
+        state = {announce.journal_key('@ConsoleCrypt', 'v9.9.9', 'ru'): 10, 'v9.9.8:ru': 7}
+        self.assertEqual(announce.previous_message(state, '@ConsoleCrypt', 'v9.9.9', 'ru', None), 10)
+        self.assertIsNone(announce.previous_message(state, '@evsikovlife', 'v9.9.9', 'ru', '@ConsoleCrypt'))
+        # Entries from the old journal belong to the channel of telegram.env.
+        self.assertEqual(announce.previous_message(state, '@ConsoleCrypt', 'v9.9.8', 'ru', '@ConsoleCrypt'), 7)
+        self.assertIsNone(announce.previous_message(state, '@evsikovlife', 'v9.9.8', 'ru', '@ConsoleCrypt'))
+
 
 if __name__ == '__main__':
     unittest.main()
