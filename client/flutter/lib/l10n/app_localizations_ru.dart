@@ -757,6 +757,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get notesSaveFailed => 'Не сохранено';
 
   @override
+  String get notesSystemReminder => 'Напоминание из ConsoleCrypt';
+
+  @override
   String notesReminderToast(String title) {
     return 'Напоминание: $title';
   }

@@ -709,6 +709,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notesSaveFailed => 'Not saved';
 
   @override
+  String get notesSystemReminder => 'A reminder from ConsoleCrypt';
+
+  @override
   String notesReminderToast(String title) {
     return 'Reminder: $title';
   }

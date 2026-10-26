@@ -11,6 +11,7 @@ import 'package:consolecrypt/notes/note_service.dart';
 import 'package:consolecrypt/notes/notes_panel.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/notes/notes_reminders.dart';
+import 'package:consolecrypt/notes/system_reminders.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,6 +50,7 @@ Future<ProviderContainer> _pump(
   String language = 'en',
   Size size = const Size(420, 800),
   double scale = 1,
+  ReminderScheduler? scheduler,
 }) async {
   final backend = testBackend();
   addTearDown(backend.dispose);
@@ -64,6 +66,7 @@ Future<ProviderContainer> _pump(
         noteContextProvider.overrideWith((ref, _) => current),
         hostsProvider.overrideWith((ref) => Stream.value([_host])),
         inventoryServiceProvider.overrideWithValue(inventory ?? _Inventory()),
+        reminderSchedulerProvider.overrideWithValue(scheduler ?? _Scheduler()),
       ],
       child: MaterialApp(
         locale: Locale(language),
@@ -84,6 +87,22 @@ Future<ProviderContainer> _pump(
 }
 
 AppLocalizations _l(WidgetTester tester) => tester.element(find.byType(NotesPanel)).l10n;
+
+/// Records what the watcher hands to the system.
+class _Scheduler implements ReminderScheduler {
+  final replaced = <List<DateTime>>[];
+  String? title, body;
+  int cleared = 0;
+  @override
+  Future<void> replace(List<DateTime> at, {required String title, required String body}) async {
+    replaced.add(at);
+    this.title = title;
+    this.body = body;
+  }
+
+  @override
+  Future<void> clear() async => cleared++;
+}
 
 /// A vault that refuses every save (locked meanwhile, disk full…).
 class _FailingNotes implements NoteService {
@@ -195,6 +214,43 @@ void main() {
     await tester.pump(const Duration(seconds: 31));
     await settle(tester);
     expect(find.text(l.notesReminderToast('Call the vendor')), findsNothing);
+  });
+
+  testWidgets('future reminders go to the system with neutral text, past ones do not', (tester) async {
+    final soon = DateTime.now().add(const Duration(hours: 1));
+    final later = DateTime.now().add(const Duration(days: 2));
+    final scheduler = _Scheduler();
+    final service = MockNoteService(
+      seed: [
+        Note(id: 'b', title: 'Rotate the database password', remindAt: later),
+        Note(id: 'a', title: 'Call the vendor', remindAt: soon),
+        Note(id: 'c', title: 'Old', remindAt: DateTime.now().subtract(const Duration(minutes: 5))),
+      ],
+    );
+    await _pump(tester, service, current: null, scheduler: scheduler);
+    expect(scheduler.replaced.last, [soon.toUtc(), later.toUtc()]);
+    expect(scheduler.title, 'ConsoleCrypt');
+    expect(scheduler.body, _l(tester).notesSystemReminder);
+    expect(scheduler.body, isNot(contains('vendor')), reason: 'the note text never reaches the system');
+    // Unchanged reminders are not handed over again.
+    final count = scheduler.replaced.length;
+    await tester.pump(const Duration(seconds: 31));
+    await settle(tester);
+    expect(scheduler.replaced.length, count);
+  });
+
+  test('the system gets the nearest future reminders, each instant once', () {
+    final now = DateTime.utc(2026, 10, 26, 12);
+    final times = systemReminderTimes([
+      now.add(const Duration(minutes: 2)),
+      null,
+      now.subtract(const Duration(minutes: 1)),
+      now.add(const Duration(minutes: 1)),
+      now.add(const Duration(minutes: 1)),
+      for (var i = 0; i < 100; i++) now.add(Duration(days: 1, minutes: i)),
+    ], now);
+    expect(times.length, maxSystemReminders);
+    expect(times.take(2), [now.add(const Duration(minutes: 1)), now.add(const Duration(minutes: 2))]);
   });
 
   testWidgets('shared notes of a linked object: list, scope, write, read-only others', (tester) async {
