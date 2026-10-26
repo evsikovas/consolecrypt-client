@@ -236,7 +236,15 @@ abstract interface class DbCsvImportService implements DbRowEditService {
 
 /// Engines the CSV import writes to.
 bool dbCsvImportSupported(DbEngine engine) =>
-    const {DbEngine.postgresql, DbEngine.mysql, DbEngine.mariadb}.contains(engine);
+    const {DbEngine.postgresql, DbEngine.mysql, DbEngine.mariadb, DbEngine.sqlite, DbEngine.cassandra}.contains(engine);
+
+/// The import can run in one transaction for the whole file: not in CQL, and
+/// not through `sqlite3` on a host, which commits every statement.
+bool dbCsvWholeTransaction(DbConnection connection) => switch (connection.engine) {
+  DbEngine.cassandra => false,
+  DbEngine.sqlite => connection.route.kind == DbRouteKind.direct,
+  _ => true,
+};
 
 String _bytes(AppLocalizations l, int bytes) => bytes >= 1024 * 1024
     ? l.dbSizeMb((bytes / (1024 * 1024)).toStringAsFixed(1))
@@ -247,10 +255,19 @@ String _bytes(AppLocalizations l, int bytes) => bytes >= 1024 * 1024
 /// the vault passphrase and a run with progress. Closes with true when
 /// rows were written.
 class DbCsvImportDialog extends ConsumerStatefulWidget {
-  const DbCsvImportDialog({required this.service, required this.session, required this.table, super.key});
+  const DbCsvImportDialog({
+    required this.service,
+    required this.session,
+    required this.table,
+    this.wholeTransaction = true,
+    super.key,
+  });
   final DbCsvImportService service;
   final DbSessionInfo session;
   final DbObjectRef table;
+
+  /// See [dbCsvWholeTransaction]; when false every batch commits on its own.
+  final bool wholeTransaction;
   @override
   ConsumerState<DbCsvImportDialog> createState() => _DbCsvImportDialogState();
 }
@@ -275,7 +292,8 @@ class _DbCsvImportDialogState extends ConsumerState<DbCsvImportDialog> {
   List<DbCsvCheck>? _checks;
   bool _checking = false;
   DbCsvMode _mode = DbCsvMode.insert;
-  bool _skipBad = false, _perBatch = false, _truncate = false, _starting = false;
+  bool _skipBad = false, _truncate = false, _starting = false;
+  late bool _perBatch = !widget.wholeTransaction;
   String? _importId;
   DbCsvProgress? _progress;
   StreamSubscription<DbCsvProgress>? _watch;
@@ -861,26 +879,33 @@ class _DbCsvImportDialogState extends ConsumerState<DbCsvImportDialog> {
             ),
           ),
           const SizedBox(height: GlassSpacing.s12),
-          SizedBox(
-            width: 360,
-            child: GlassDropdownField<bool>(
-              key: const ValueKey('db-csv-transaction'),
-              label: l.dbCsvTransaction,
-              value: _perBatch,
-              items: [
-                GlassSelectItem(value: false, label: l.dbCsvWhole),
-                GlassSelectItem(value: true, label: l.dbCsvPerBatch),
-              ],
-              onChanged: (v) => setState(() => _perBatch = v),
+          if (widget.wholeTransaction)
+            SizedBox(
+              width: 360,
+              child: GlassDropdownField<bool>(
+                key: const ValueKey('db-csv-transaction'),
+                label: l.dbCsvTransaction,
+                value: _perBatch,
+                items: [
+                  GlassSelectItem(value: false, label: l.dbCsvWhole),
+                  GlassSelectItem(value: true, label: l.dbCsvPerBatch),
+                ],
+                onChanged: (v) => setState(() => _perBatch = v),
+              ),
+            )
+          else
+            Text(
+              l.dbCsvNoTransaction,
+              key: const ValueKey('db-csv-no-transaction'),
+              style: TextStyle(color: tokens.palette.tertiary),
             ),
-          ),
           const SizedBox(height: GlassSpacing.s8),
           CheckboxListTile(
             key: const ValueKey('db-csv-truncate'),
             contentPadding: EdgeInsets.zero,
             dense: true,
             title: Text(l.dbCsvTruncate, style: TextStyle(color: tokens.palette.danger)),
-            subtitle: Text(l.dbCsvTruncateHelp),
+            subtitle: Text(widget.wholeTransaction ? l.dbCsvTruncateHelp : l.dbCsvTruncateHelpNoTransaction),
             value: _truncate,
             onChanged: (v) => setState(() => _truncate = v ?? false),
           ),

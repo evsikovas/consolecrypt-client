@@ -268,6 +268,34 @@ impl DbSession {
         if table.kind != DbObjectKind::Table {
             return Err(DbError::InvalidRequest);
         }
+        if self.info.engine == DbEngine::Cassandra {
+            // Key columns must be given; no defaults. Counters change only
+            // through UPDATE, so they are not written like generated columns.
+            let columns: Vec<DbEditColumn> = self
+                .cassandra_columns(table)
+                .await?
+                .into_iter()
+                .map(|column| {
+                    let key = matches!(
+                        column.kind,
+                        crate::cassandra::CqlColumnKind::PartitionKey
+                            | crate::cassandra::CqlColumnKind::Clustering { .. }
+                    );
+                    DbEditColumn {
+                        key,
+                        nullable: !key,
+                        has_default: false,
+                        generated: column.type_name == "counter",
+                        type_name: column.type_name,
+                        name: column.name,
+                    }
+                })
+                .collect();
+            if columns.is_empty() {
+                return Err(DbError::InvalidRequest);
+            }
+            return Ok(columns);
+        }
         let text = |value: &str| DbParameter {
             name: String::new(),
             value: DbCell::Text(value.into()),
@@ -297,6 +325,16 @@ impl DbSession {
                  FROM information_schema.columns WHERE table_schema = ? AND table_name = ? \
                  ORDER BY ordinal_position",
                 vec![text(&table.database), text(&table.name)],
+            ),
+            // `hidden` 2/3 = generated; an INTEGER PRIMARY KEY (rowid alias)
+            // gets a value when left out, so it counts as having a default.
+            DbEngine::Sqlite => (
+                "SELECT name, type, CASE WHEN \"notnull\" THEN 'false' ELSE 'true' END, \
+                 CASE WHEN dflt_value IS NOT NULL OR (pk = 1 AND upper(type) = 'INTEGER') \
+                 THEN 'true' ELSE 'false' END, \
+                 CASE WHEN hidden IN (2, 3) THEN 'true' ELSE 'false' END \
+                 FROM pragma_table_xinfo(?1) WHERE hidden <> 1 ORDER BY cid",
+                vec![text(&table.name)],
             ),
             _ => return Err(DbError::InvalidRequest),
         };

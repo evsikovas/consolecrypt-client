@@ -14,6 +14,11 @@
 - **Импорт ключа SSH из файла:** кнопка «Выбрать файл…» в окне импорта ключа.
 - **Пароль к ключу SSH** при подключении спрашивается отдельным окном с именем ключа,
   а не как пароль сервера.
+- **Импорт из CSV в SQLite и Cassandra/ScyllaDB.** Мастер импорта теперь работает и с
+  этими базами. SQLite через `sqlite3` на хосте и Cassandra пишут без общей транзакции
+  (в CQL их нет), поэтому вариант «одна транзакция на весь файл» для них не
+  показывается. В Cassandra «добавлять» не перезаписывает существующие строки
+  (`INSERT … IF NOT EXISTS`). «Создать таблицу из CSV…» доступно и для SQLite.
 
 **Безопасность.** Исправления по итогам ревью безопасности кода.
 
@@ -78,6 +83,11 @@ admins and sends invitations only to verified addresses.
 - **Import an SSH key from a file:** “Choose file…” in the import key dialog.
 - **The SSH key passphrase** is asked at connect time in its own prompt naming the key,
   not as the server password.
+- **CSV import into SQLite and Cassandra/ScyllaDB.** The import wizard now works with
+  these databases too. SQLite through `sqlite3` on a host and Cassandra write without
+  a shared transaction (CQL has none), so the whole-file transaction is not offered
+  there. In Cassandra, insert does not overwrite existing rows (`INSERT … IF NOT EXISTS`).
+  “Create table from CSV…” works for SQLite as well.
 
 **Security.** Fixes from the code security review.
 

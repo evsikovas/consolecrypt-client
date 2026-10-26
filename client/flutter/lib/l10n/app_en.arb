@@ -16447,6 +16447,14 @@
   "@dbCsvTruncateHelp": {
     "description": "CSV truncate help"
   },
+  "dbCsvNoTransaction": "Every statement commits on its own here (CQL, or sqlite3 on a host): a stopped import keeps the rows already written.",
+  "@dbCsvNoTransaction": {
+    "description": "CSV import without a transaction"
+  },
+  "dbCsvTruncateHelpNoTransaction": "Runs before the first row and is not undone if the import stops; the review shows it.",
+  "@dbCsvTruncateHelpNoTransaction": {
+    "description": "CSV import without a transaction"
+  },
   "dbCsvImport": "Review and import…",
   "@dbCsvImport": {
     "description": "CSV wizard final button"

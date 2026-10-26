@@ -741,6 +741,29 @@ impl Cassandra {
         Ok(matches!(applied, Some(CqlValue::Boolean(true))))
     }
 
+    /// One CSV import write (FEAT-09): a conditional `… IF NOT EXISTS`
+    /// answers 1 when it wrote the row and 0 when the key existed; a plain
+    /// write answers 0 (its rows are counted by the caller).
+    pub(crate) async fn import_step(
+        &self,
+        text: &str,
+        parameters: &[DbParameter],
+        cancel: CancellationToken,
+    ) -> Result<u64, DbError> {
+        if text
+            .trim_end()
+            .trim_end_matches(';')
+            .ends_with("IF NOT EXISTS")
+        {
+            return Ok(u64::from(
+                self.conditional(text, parameters, &cancel).await?,
+            ));
+        }
+        let (prepared, values) = self.prepared(text, parameters, self.write, &cancel).await?;
+        cancellable(&cancel, self.session.execute_unpaged(&prepared, &values)).await?;
+        Ok(0)
+    }
+
     /// Catalogue rows as text, every page up to a bound.
     pub(crate) async fn catalogue(
         &self,

@@ -586,7 +586,7 @@ impl CsvKind {
         }
         match base {
             "smallint" | "integer" | "int" | "int2" | "int4" | "int8" | "bigint" | "tinyint"
-            | "mediumint" | "serial" | "bigserial" | "smallserial" | "year" => {
+            | "mediumint" | "serial" | "bigserial" | "smallserial" | "year" | "varint" => {
                 if unsigned {
                     Self::Uint
                 } else {
@@ -847,7 +847,7 @@ pub fn create_table_sql(
 ) -> Result<String, DbError> {
     if !matches!(
         engine,
-        DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb
+        DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Sqlite
     ) || table.name.is_empty()
     {
         return Err(DbError::InvalidRequest);
@@ -887,6 +887,10 @@ pub fn create_table_sql(
         (DbEngine::Postgresql, Some(CsvKind::Timestamp)) => "timestamp",
         (DbEngine::Postgresql, Some(CsvKind::Bool)) => "boolean",
         (DbEngine::Postgresql, _) => "text",
+        // SQLite type affinity: dates and timestamps are ISO-8601 text.
+        (DbEngine::Sqlite, Some(CsvKind::Int | CsvKind::Bool)) => "INTEGER",
+        (DbEngine::Sqlite, Some(CsvKind::Decimal)) => "NUMERIC",
+        (DbEngine::Sqlite, _) => "TEXT",
         (_, Some(CsvKind::Int)) => "bigint",
         (_, Some(CsvKind::Decimal)) => "decimal(38,10)",
         (_, Some(CsvKind::Timestamp)) => "datetime",
@@ -955,6 +959,23 @@ pub fn insert_sql(
         values.push(format!("({})", row.join(", ")));
     }
     let target = quote_identifier(engine, table);
+    if engine == DbEngine::Cassandra {
+        // One row per statement (batches have a small size limit). CQL
+        // INSERT replaces a row with the same key, so only upsert may do
+        // that; insert and skip-existing write new keys only.
+        if rows != 1 || key.is_empty() {
+            return Err(DbError::InvalidRequest);
+        }
+        let condition = match mode {
+            CsvInsertMode::Upsert => "",
+            CsvInsertMode::Insert | CsvInsertMode::SkipExisting => " IF NOT EXISTS",
+        };
+        return Ok(format!(
+            "INSERT INTO {target} ({}) VALUES {}{condition}",
+            names.join(", "),
+            values.join(", ")
+        ));
+    }
     let updates: Vec<&String> = columns.iter().filter(|c| !key.contains(c)).collect();
     let conflict = match (engine, mode) {
         (_, CsvInsertMode::Insert) => String::new(),
@@ -973,6 +994,27 @@ pub fn insert_sql(
                 .map(|c| {
                     let c = quote_column(engine, c);
                     format!("{c} = EXCLUDED.{c}")
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        // A rowid table without a declared key has no conflict target.
+        (DbEngine::Sqlite, _) if key == ["rowid"] => return Err(DbError::InvalidRequest),
+        // SQLite 3.24+: the same upsert syntax as PostgreSQL.
+        (DbEngine::Sqlite, CsvInsertMode::SkipExisting) => {
+            format!(" ON CONFLICT ({}) DO NOTHING", quoted(engine, key))
+        }
+        (DbEngine::Sqlite, CsvInsertMode::Upsert) if updates.is_empty() => {
+            format!(" ON CONFLICT ({}) DO NOTHING", quoted(engine, key))
+        }
+        (DbEngine::Sqlite, CsvInsertMode::Upsert) => format!(
+            " ON CONFLICT ({}) DO UPDATE SET {}",
+            quoted(engine, key),
+            updates
+                .iter()
+                .map(|c| {
+                    let c = quote_column(engine, c);
+                    format!("{c} = excluded.{c}")
                 })
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -1031,7 +1073,11 @@ pub fn template(
 ) -> Result<DbQueryRequest, DbError> {
     if !matches!(
         engine,
-        DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb
+        DbEngine::Postgresql
+            | DbEngine::Mysql
+            | DbEngine::Mariadb
+            | DbEngine::Sqlite
+            | DbEngine::Cassandra
     ) || plan.table.kind != DbObjectKind::Table
     {
         return Err(DbError::InvalidRequest);
@@ -1039,8 +1085,14 @@ pub fn template(
     let columns: Vec<String> = plan.mapping.iter().map(|m| m.target.clone()).collect();
     let insert = insert_sql(engine, &plan.table, &columns, key, plan.mode, 1)?;
     let text = if plan.truncate {
+        // CQL has no unconditional DELETE: TRUNCATE (reviewed as dangerous).
+        let clear = if engine == DbEngine::Cassandra {
+            "TRUNCATE"
+        } else {
+            "DELETE FROM"
+        };
         format!(
-            "DELETE FROM {};\n{insert};",
+            "{clear} {};\n{insert};",
             quote_identifier(engine, &plan.table)
         )
     } else {
@@ -1154,13 +1206,27 @@ pub(crate) fn report_line(line: u64, reason: &str, fields: &[Option<String>]) ->
 enum Tx<'a> {
     Postgres(&'a mut crate::postgres::Postgres),
     Mysql(&'a mut crate::mysql::Mysql),
+    Sqlite(&'a mut crate::sqlite::Sqlite),
+    /// `sqlite3` on a host: every statement runs and commits on its own, so
+    /// there is no transaction to open and a failed statement changed
+    /// nothing (savepoints are not needed).
+    SqliteCli(&'a mut crate::sqlite_cli::SqliteCli),
+    /// CQL has no transactions: every row is its own write.
+    Cassandra(&'a mut crate::cassandra::Cassandra),
 }
 
 impl Tx<'_> {
+    /// Whether one transaction can span several statements.
+    fn transactional(&self) -> bool {
+        !matches!(self, Self::SqliteCli(_) | Self::Cassandra(_))
+    }
+
     async fn begin(&mut self) -> Result<(), DbError> {
         match self {
             Self::Postgres(driver) => driver.begin_write().await,
             Self::Mysql(driver) => driver.begin_write().await,
+            Self::Sqlite(driver) => driver.begin_write().await,
+            Self::SqliteCli(_) | Self::Cassandra(_) => Ok(()),
         }
     }
 
@@ -1168,6 +1234,8 @@ impl Tx<'_> {
         match self {
             Self::Postgres(driver) => driver.control(sql).await,
             Self::Mysql(driver) => driver.control(sql).await,
+            Self::Sqlite(driver) => driver.control(sql).await,
+            Self::SqliteCli(_) | Self::Cassandra(_) => Ok(()),
         }
     }
 
@@ -1180,6 +1248,9 @@ impl Tx<'_> {
         match self {
             Self::Postgres(driver) => driver.step(sql, bindings, cancel).await,
             Self::Mysql(driver) => driver.step(sql, bindings, cancel).await,
+            Self::Sqlite(driver) => driver.step(sql, bindings, cancel).await,
+            Self::SqliteCli(driver) => driver.step(sql, bindings, cancel).await,
+            Self::Cassandra(driver) => driver.import_step(sql, bindings, cancel).await,
         }
     }
 
@@ -1187,6 +1258,8 @@ impl Tx<'_> {
         match self {
             Self::Postgres(driver) => driver.end_write(commit).await,
             Self::Mysql(driver) => driver.end_write(commit).await,
+            Self::Sqlite(driver) => driver.end_write(commit).await,
+            Self::SqliteCli(_) | Self::Cassandra(_) => Ok(()),
         }
     }
 }
@@ -1236,9 +1309,12 @@ fn permitted(
     for permit in &permits {
         session.guard.validate_permit(permit)?;
         match permit.parsed() {
-            crate::parser::ParsedStatement::Sql { text, parameters } => {
-                statements.push((text.clone(), parameters.clone()))
-            }
+            crate::parser::ParsedStatement::Sql { text, parameters }
+            | crate::parser::ParsedStatement::Cql {
+                text,
+                parameters,
+                keyspace: None,
+            } => statements.push((text.clone(), parameters.clone())),
             _ => return Err(DbError::InvalidRequest),
         }
     }
@@ -1308,7 +1384,11 @@ impl DbSession {
         let (mut reader, size) = Reader::open(path, plan, &columns, read.clone())?;
         progress.total_bytes.store(size, Ordering::Release);
         let names = reader.columns.clone();
-        let rows_per_batch = batch_rows(plan.batch_rows, names.len());
+        let rows_per_batch = if engine == DbEngine::Cassandra {
+            1
+        } else {
+            batch_rows(plan.batch_rows, names.len())
+        };
         // The approval is checked (and a destructive one consumed) up front.
         let approved_statements = permitted(self, approved)?;
         let truncate = plan
@@ -1324,9 +1404,17 @@ impl DbSession {
         let mut tx = match &mut *driver {
             crate::session::Driver::Postgres(driver) => Tx::Postgres(driver),
             crate::session::Driver::Mysql(driver) => Tx::Mysql(driver),
+            crate::session::Driver::Sqlite(driver) => Tx::Sqlite(driver),
+            crate::session::Driver::SqliteCli(driver) => Tx::SqliteCli(driver),
+            crate::session::Driver::Cassandra(driver) => Tx::Cassandra(driver),
             _ => return Err(DbError::InvalidRequest),
         };
         let whole = plan.transaction == CsvTransaction::Whole;
+        if whole && !tx.transactional() {
+            // `sqlite3` on a host commits every statement: a whole-file
+            // transaction cannot be promised there.
+            return Err(DbError::InvalidRequest);
+        }
         let mut open = false;
         let result: Result<(), DbError> = async {
             if whole {

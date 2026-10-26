@@ -680,7 +680,12 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace>
       context,
       secure: true,
       barrierDismissible: false,
-      builder: (_) => DbCsvImportDialog(service: service, session: session, table: table),
+      builder: (_) => DbCsvImportDialog(
+        service: service,
+        session: session,
+        table: table,
+        wholeTransaction: dbCsvWholeTransaction(widget.connection),
+      ),
     );
     if (imported == true && tab != null && _tabCurrent(tab)) {
       var refreshed = false;

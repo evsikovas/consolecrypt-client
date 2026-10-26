@@ -21182,6 +21182,18 @@ abstract class AppLocalizations {
   /// **'Runs DELETE FROM in the import transaction; the review shows it.'**
   String get dbCsvTruncateHelp;
 
+  /// CSV import without a transaction
+  ///
+  /// In en, this message translates to:
+  /// **'Every statement commits on its own here (CQL, or sqlite3 on a host): a stopped import keeps the rows already written.'**
+  String get dbCsvNoTransaction;
+
+  /// CSV import without a transaction
+  ///
+  /// In en, this message translates to:
+  /// **'Runs before the first row and is not undone if the import stops; the review shows it.'**
+  String get dbCsvTruncateHelpNoTransaction;
+
   /// CSV wizard final button
   ///
   /// In en, this message translates to:
