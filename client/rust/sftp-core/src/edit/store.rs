@@ -300,11 +300,35 @@ pub(crate) fn prepare_root(root: &Path, exclude_from_backup: bool) -> io::Result
     }
     #[cfg(not(target_os = "macos"))]
     {
-        // TODO(client): Windows/Linux backup exclusion — no portable mechanism;
-        // next: evaluate per-platform markers (e.g. CACHEDIR.TAG) with the backup tools we support.
-        let _ = exclude_from_backup;
+        if exclude_from_backup {
+            write_backup_markers(root);
+        }
     }
     Ok(())
+}
+
+/// The Cache Directory Tagging Specification signature (CACHEDIR.TAG).
+const CACHEDIR_SIGNATURE: &str = "Signature: 8a477f597d28d172789f06886806bc55";
+
+/// Windows and Linux have no system-wide exclusion like Time Machine's, so
+/// the edit root carries the markers backup tools honour: `CACHEDIR.TAG`
+/// (tar `--exclude-caches`, borg, restic `--exclude-caches`, Duplicity,
+/// Back In Time) and `.nobackup` (the `--exclude-if-present` convention).
+/// Best effort; an existing marker is left alone.
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+pub(crate) fn write_backup_markers(root: &Path) {
+    let tag = format!(
+        "{CACHEDIR_SIGNATURE}\n# ConsoleCrypt working copies of remote files being edited.\n\
+         # They are synced back to the server; backups do not need them.\n"
+    );
+    for (name, body) in [("CACHEDIR.TAG", tag.as_bytes()), (".nobackup", &b""[..])] {
+        let path = root.join(name);
+        if !path.exists() {
+            if let Err(e) = write_private_file(&path, body, true) {
+                tracing::debug!(error = %e, marker = name, "backup marker not written (ignored)");
+            }
+        }
+    }
 }
 
 /// Best-effort secure removal: overwrite regular files up to `limit` bytes
