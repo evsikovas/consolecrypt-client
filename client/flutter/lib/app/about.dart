@@ -2,17 +2,14 @@ import 'package:consolecrypt/app/app_info.dart';
 import 'package:consolecrypt/app/brand.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// "About ConsoleCrypt" (Settings → About and the macOS app menu): brand,
-/// version, author and licences (ADR-0005).
-///
-/// TODO(client): show the sync server's AGPL source link
-/// (`ServerInfo.source_code_url`, protocol `GET /v1/meta`) for synced
-/// profiles — the Dart `ServerInfo` model and bridge mapping do not expose it
-/// yet; next: add `sourceCodeUrl` to `ServerInfo` + `serverInfoFromJson`, then
-/// render it here as a selectable row.
+/// version, author and licences (ADR-0005). A synced profile also shows
+/// where its sync server offers its source code (AGPL, `GET /v1/meta`).
 Future<void> showAboutConsoleCrypt(BuildContext context) =>
     showAppDialog<void>(context, builder: (context) => const AboutConsoleCryptDialog());
 
@@ -39,17 +36,30 @@ class AboutConsoleCryptDialog extends StatelessWidget {
 }
 
 /// Body of the About dialog (also embedded in Settings → About).
-class AboutConsoleCryptContent extends StatelessWidget {
+/// The source-code link of the active profile's sync server; null for local
+/// profiles, unreachable servers or servers that do not offer one.
+final syncServerSourceProvider = FutureProvider.autoDispose<String?>((ref) async {
+  final server = ref.watch(activeProfileProvider.select((p) => p?.serverUrl));
+  if (server == null) return null;
+  try {
+    return (await ref.read(authServiceProvider).probeServer(server)).sourceCodeUrl;
+  } on Object {
+    return null;
+  }
+});
+
+class AboutConsoleCryptContent extends ConsumerWidget {
   const AboutConsoleCryptContent({super.key, this.compact = false});
 
   /// Settings card: a smaller logo next to the facts.
   final bool compact;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tokens = GlassTokens.of(context);
     final t = tokens.typography;
     final l10n = context.l10n;
+    final serverSource = ref.watch(syncServerSourceProvider).value;
     Widget row(String label, Widget value) => Padding(
       padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s4),
       child: Row(
@@ -108,6 +118,11 @@ class AboutConsoleCryptContent extends StatelessWidget {
         const SizedBox(height: GlassSpacing.s8),
         SelectableText(kAppWebsite, key: const ValueKey('about-website'), style: t.callout),
         SelectableText(kAppSourceUrl, key: const ValueKey('about-source'), style: t.callout),
+        if (serverSource != null) ...[
+          const SizedBox(height: GlassSpacing.s8),
+          Text(l10n.aboutServerSource, style: t.callout.copyWith(color: tokens.secondaryLabel)),
+          SelectableText(serverSource, key: const ValueKey('about-server-source'), style: t.callout),
+        ],
         const SizedBox(height: GlassSpacing.s4),
         Text(kAppCopyright, style: t.caption.copyWith(color: tokens.palette.tertiary)),
       ],

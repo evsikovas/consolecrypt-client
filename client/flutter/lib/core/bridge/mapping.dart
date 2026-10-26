@@ -348,7 +348,14 @@ ServerInfo serverInfoFromJson(Json j) => ServerInfo(
   registrationOpen: j['registration_open'] as bool? ?? true,
   emailVerificationRequired: _bool(j['email_verification_required']),
   auth: serverAuthFromJson((j['capabilities'] as Map?)?['auth']),
+  sourceCodeUrl: _httpUrl(j['source_code_url']),
 );
+
+/// An http(s) URL with a host, else null (shown to people as a link).
+String? _httpUrl(Object? raw) {
+  final uri = raw is String ? Uri.tryParse(raw.trim()) : null;
+  return uri != null && (uri.scheme == 'https' || uri.scheme == 'http') && uri.host.isNotEmpty ? uri.toString() : null;
+}
 
 /// `capabilities.auth` (protocol 1.8); absent → standard.
 ServerAuth serverAuthFromJson(Object? raw) {

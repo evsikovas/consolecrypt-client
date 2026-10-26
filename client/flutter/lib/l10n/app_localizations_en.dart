@@ -13308,4 +13308,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbMoveVersionUnknown => 'version unknown';
+
+  @override
+  String get aboutServerSource => 'Source code of your sync server:';
 }

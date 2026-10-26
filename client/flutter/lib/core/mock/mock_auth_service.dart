@@ -74,6 +74,7 @@ final class MockAuthService implements AuthService {
       protocolVersion: '1.10',
       registrationOpen: !auth.isEnterprise,
       auth: auth,
+      sourceCodeUrl: 'https://github.com/evsikovas/consolecrypt-server',
     );
   }
 
