@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/ai/command_palette.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/ai_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Why the last chat request failed; the screen turns it into localized text.
@@ -64,10 +65,9 @@ final class AiChatState {
   );
 }
 
-/// Streaming chat. Conversations currently live in memory only.
-// TODO(client/ui): persist conversations as `AiConversation` vault objects when
-// "Keep AI conversations in the vault" is on — needs an app-core storage API;
-// next: add save/list conversation calls to AiService at M7.
+/// Streaming chat. The core keeps each conversation for this unlock and, with
+/// "Keep AI conversations in the vault", as an `AiConversation` vault object;
+/// [resume] continues one from the history.
 class AiChatController extends Notifier<AiChatState> {
   StreamSubscription<AiStreamEvent>? _sub;
   int _generation = 0;
@@ -163,6 +163,25 @@ class AiChatController extends Notifier<AiChatState> {
       messages: [...state.messages, ChatMessage.now(ChatRole.assistant, partial)],
       stopped: {...state.stopped, state.messages.length},
       clearStreaming: true,
+    );
+  }
+
+  /// Continues [conversation]: its messages come back, and the next question
+  /// goes on in the same conversation, with the model given its turns again.
+  void resume(AiConversation conversation) {
+    final providerId = conversation.providerId;
+    final service = ref.read(aiServiceProvider);
+    if (providerId == null || service is! AiConversationHistory) return;
+    _generation++;
+    unawaited(_sub?.cancel());
+    _sub = null;
+    (service as AiConversationHistory).continueConversation(providerId, conversation.id);
+    state = AiChatState(
+      providerId: providerId,
+      messages: [
+        for (final m in conversation.messages)
+          if (m.role != ChatRole.system) m,
+      ],
     );
   }
 

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:consolecrypt/ai/ai_chat_controller.dart';
+import 'package:consolecrypt/ai/ai_history_dialog.dart';
 import 'package:consolecrypt/ai/code_blocks.dart';
 import 'package:consolecrypt/ai/terminal_attachment.dart';
 import 'package:consolecrypt/app/gate.dart';
@@ -9,6 +12,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/ai_service.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,6 +56,19 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> with WidgetsBinding
     _scroll.dispose();
     _inputFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _openHistory(AiConversationHistory history, List<AiProviderConfig> providers) async {
+    final conversation = await showAppDialog<AiConversation>(
+      context,
+      secure: true,
+      builder: (_) => AiHistoryDialog(history: history, providers: providers),
+    );
+    if (conversation == null || !mounted) return;
+    ref.read(aiChatControllerProvider.notifier).resume(conversation);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
+    });
   }
 
   void _send() {
@@ -125,6 +142,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> with WidgetsBinding
                   ),
               ],
               onChanged: controller.selectProvider,
+            ),
+          if (ref.watch(aiServiceProvider) case final AiConversationHistory history)
+            GlassIconButton(
+              key: const ValueKey('ai-history'),
+              tooltip: l10n.aiHistoryTitle,
+              icon: Icons.history_rounded,
+              onPressed: state.isStreaming ? null : () => unawaited(_openHistory(history, providers)),
             ),
           GlassIconButton(
             key: const ValueKey('ai-new-conversation'),

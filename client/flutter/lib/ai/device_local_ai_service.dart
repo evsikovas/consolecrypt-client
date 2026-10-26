@@ -8,7 +8,7 @@ import 'package:consolecrypt/core/util/value_stream.dart';
 
 /// Adds a device-only provider while all inference still passes through the
 /// native AI service and its sanitizer, context boundaries and approval gate.
-class DeviceLocalAiService implements AiService {
+class DeviceLocalAiService implements AiService, AiConversationHistory {
   DeviceLocalAiService({
     required this.delegate,
     required this.bridge,
@@ -216,6 +216,21 @@ class DeviceLocalAiService implements AiService {
 
   @override
   Stream<List<AiProviderConfig>> watchProviders() => _providers.stream;
+
+  // Conversations are kept by the native service for every provider.
+  @override
+  Future<List<AiConversation>> listConversations() async =>
+      delegate is AiConversationHistory ? (delegate as AiConversationHistory).listConversations() : const [];
+
+  @override
+  Future<void> deleteConversation(ObjectId id) async {
+    if (delegate is AiConversationHistory) await (delegate as AiConversationHistory).deleteConversation(id);
+  }
+
+  @override
+  void continueConversation(ObjectId providerId, ObjectId id) {
+    if (delegate is AiConversationHistory) (delegate as AiConversationHistory).continueConversation(providerId, id);
+  }
 
   @override
   Stream<AiStreamEvent> chat({

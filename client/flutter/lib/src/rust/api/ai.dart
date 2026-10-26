@@ -34,6 +34,14 @@ Future<void> aiClearDeviceLocalProvider({required String registrationId}) =>
 Future<String> aiTestProvider({required String providerId}) =>
     RustLib.instance.api.crateApiAiAiTestProvider(providerId: providerId);
 
+/// Ask AI conversations of this unlock and those kept in the vault (when
+/// the vault settings allow it), newest first → `[AiConversationDto]`.
+Future<String> aiListConversations() => RustLib.instance.api.crateApiAiAiListConversations();
+
+/// Forget a conversation (and delete its vault object if it was kept).
+Future<void> aiDeleteConversation({required String conversationId}) =>
+    RustLib.instance.api.crateApiAiAiDeleteConversation(conversationId: conversationId);
+
 /// Ask AI. The stream starts with
 /// `{"type":"started","request_id":…,"conversation_id":…}`, then `AiAskChunk`
 /// items, ending with exactly one `done` or `error`.

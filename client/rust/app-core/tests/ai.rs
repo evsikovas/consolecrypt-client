@@ -744,6 +744,13 @@ async fn ask_streams_and_persists_conversations_when_allowed() {
     )
     .await;
     assert!(matches!(done, AiAskChunk::Done(_)));
+    // The model got the stored turns back (TODO-02), secrets still hidden.
+    let resumed = mock.requests().last().unwrap().text.clone();
+    assert!(
+        resumed.contains("Yes, load is high.") && resumed.contains("and now?"),
+        "{resumed}"
+    );
+    assert!(!resumed.contains("AskPw-canary-6612"), "{resumed}");
     app.ai_delete_conversation(conv.clone()).await.unwrap();
     assert!(!app
         .ai_list_conversations()

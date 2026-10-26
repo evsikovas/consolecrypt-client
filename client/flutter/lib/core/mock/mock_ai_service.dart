@@ -11,7 +11,7 @@ import 'package:consolecrypt/core/util/value_stream.dart';
 /// Canned, keyword-driven "LLM". Demonstrates streaming, the sanitizer
 /// report and — deliberately — AI risk hints that local rules override
 /// (e.g. it calls `find … -delete` read-only).
-final class MockAiService extends VaultScopedMock implements AiService {
+final class MockAiService extends VaultScopedMock implements AiService, AiConversationHistory {
   MockAiService(super.cloud) {
     initScope();
   }
@@ -20,9 +20,48 @@ final class MockAiService extends VaultScopedMock implements AiService {
 
   MockConfig get _config => cloud.config;
 
+  /// Conversations of this unlock, newest last; the current one per provider.
+  final List<AiConversation> _conversations = [];
+  final Map<ObjectId, ObjectId> _current = {};
+
   @override
   void onDataChanged(MockVaultData? data) {
     _providers.value = List.unmodifiable(data?.providers ?? const <AiProviderConfig>[]);
+    if (data == null) {
+      _conversations.clear();
+      _current.clear();
+    }
+  }
+
+  @override
+  Future<List<AiConversation>> listConversations() async => _conversations.reversed.toList();
+
+  @override
+  Future<void> deleteConversation(ObjectId id) async {
+    _conversations.removeWhere((c) => c.id == id);
+    _current.removeWhere((_, current) => current == id);
+  }
+
+  @override
+  void continueConversation(ObjectId providerId, ObjectId id) => _current[providerId] = id;
+
+  void _remember(ObjectId providerId, List<ChatMessage> history, String answer) {
+    final turns = history.where((m) => m.role == ChatRole.user).length;
+    final id = turns > 1 ? _current[providerId] ?? ObjectId.generate() : ObjectId.generate();
+    _current[providerId] = id;
+    final previous = _conversations.where((c) => c.id == id).firstOrNull;
+    _conversations.removeWhere((c) => c.id == id);
+    final now = DateTime.now().toUtc();
+    _conversations.add(
+      AiConversation(
+        id: id,
+        title: history.firstWhere((m) => m.role == ChatRole.user).content.split('\n').first,
+        providerId: providerId,
+        messages: [...history, ChatMessage.now(ChatRole.assistant, answer)],
+        createdAt: previous?.createdAt ?? now,
+        updatedAt: now,
+      ),
+    );
   }
 
   @override
@@ -161,6 +200,7 @@ final class MockAiService extends VaultScopedMock implements AiService {
         '\n\n(I looked at the ${context.selectedTerminalText!.length} characters of terminal output you selected.)',
       );
     }
+    _remember(providerId, history, answer.toString());
     return _stream(providerId, question + (context.selectedTerminalText ?? ''), answer.toString());
   }
 

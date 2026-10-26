@@ -6,8 +6,8 @@ use cc_ai_core::context::{HostContext, StaticContext};
 use cc_ai_core::policy::ExecutionGate;
 use cc_ai_core::sanitizer::PrivacyProfile;
 use cc_ai_core::{
-    AiAssistant, AskOptions, CommandTarget, ConvertRequest, CreateSnippetRequest, ExplainRequest,
-    FixRequest, GenerateRequest, ParseQuality, RiskLevel,
+    AiAssistant, AskOptions, CommandTarget, Conversation, ConvertRequest, CreateSnippetRequest,
+    ExplainRequest, FixRequest, GenerateRequest, ParseQuality, RiskLevel,
 };
 use cc_models::snippet::SnippetSource;
 use cc_models::ObjectId;
@@ -385,4 +385,38 @@ async fn local_profile_for_local_provider_keeps_hosts_but_not_passwords() {
     );
     assert_eq!(a.privacy_profile(), PrivacyProfile::Standard);
     drop(mock);
+}
+
+#[tokio::test]
+async fn a_stored_conversation_continues_with_its_context() {
+    let (mock, a) = setup(
+        MockProvider::remote(PrivacyProfile::Strict),
+        StaticContext::default(),
+    );
+    // Turns as stored: the first question mentioned an address.
+    let stored = [
+        (true, "why is 10.20.30.40 slow?"),
+        (false, "Check the disk on 10.20.30.40 first."),
+    ];
+    let mut conv = Conversation::from_messages(PrivacyProfile::Strict, stored, 20);
+    assert_eq!(conv.len(), 2);
+    mock.push("Then look at <IP_1> memory.");
+    let ans = a
+        .ask(&mut conv, "and after that?", &AskOptions::default())
+        .await
+        .unwrap();
+    // The model saw the earlier turns, with the address hidden again, and
+    // the same placeholder maps back for the answer.
+    let sent = mock.chats.lock().unwrap()[0].clone();
+    assert!(sent.contains("Check the disk on <IP_1> first."), "{sent}");
+    assert!(!sent.contains("10.20.30.40"));
+    assert_eq!(ans.text, "Then look at 10.20.30.40 memory.");
+    // Only the newest messages are kept.
+    let long: Vec<(bool, String)> = (0..30).map(|i| (i % 2 == 0, format!("m{i}"))).collect();
+    let conv = Conversation::from_messages(
+        PrivacyProfile::Strict,
+        long.iter().map(|(u, t)| (*u, t.as_str())),
+        20,
+    );
+    assert_eq!(conv.len(), 20);
 }

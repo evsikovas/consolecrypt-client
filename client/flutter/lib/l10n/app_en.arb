@@ -18178,5 +18178,42 @@
   "dbDesignOptGcGrace": "gc_grace_seconds",
   "@dbDesignOptGcGrace": {
     "description": "Table designer"
+  },
+  "aiHistoryTitle": "Conversation history",
+  "@aiHistoryTitle": {
+    "description": "AI conversation history"
+  },
+  "aiHistoryEmpty": "No conversations yet. To keep them after the vault locks, turn on “Keep AI conversations in the vault” in Settings.",
+  "@aiHistoryEmpty": {
+    "description": "AI conversation history"
+  },
+  "aiHistoryFailed": "Could not load the conversations.",
+  "@aiHistoryFailed": {
+    "description": "AI conversation history"
+  },
+  "aiHistoryUntitled": "Untitled conversation",
+  "@aiHistoryUntitled": {
+    "description": "AI conversation history"
+  },
+  "aiHistoryKept": "kept in the vault",
+  "@aiHistoryKept": {
+    "description": "AI conversation history"
+  },
+  "aiHistoryUntilLock": "until the vault locks",
+  "@aiHistoryUntilLock": {
+    "description": "AI conversation history"
+  },
+  "aiHistoryProviderGone": "its provider was removed",
+  "@aiHistoryProviderGone": {
+    "description": "AI conversation history"
+  },
+  "aiHistoryMessages": "{count, plural, =1{1 message} other{{count} messages}}",
+  "@aiHistoryMessages": {
+    "description": "AI conversation history",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

@@ -23233,6 +23233,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'gc_grace_seconds'**
   String get dbDesignOptGcGrace;
+
+  /// AI conversation history
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation history'**
+  String get aiHistoryTitle;
+
+  /// AI conversation history
+  ///
+  /// In en, this message translates to:
+  /// **'No conversations yet. To keep them after the vault locks, turn on “Keep AI conversations in the vault” in Settings.'**
+  String get aiHistoryEmpty;
+
+  /// AI conversation history
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the conversations.'**
+  String get aiHistoryFailed;
+
+  /// AI conversation history
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled conversation'**
+  String get aiHistoryUntitled;
+
+  /// AI conversation history
+  ///
+  /// In en, this message translates to:
+  /// **'kept in the vault'**
+  String get aiHistoryKept;
+
+  /// AI conversation history
+  ///
+  /// In en, this message translates to:
+  /// **'until the vault locks'**
+  String get aiHistoryUntilLock;
+
+  /// AI conversation history
+  ///
+  /// In en, this message translates to:
+  /// **'its provider was removed'**
+  String get aiHistoryProviderGone;
+
+  /// AI conversation history
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 message} other{{count} messages}}'**
+  String aiHistoryMessages(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

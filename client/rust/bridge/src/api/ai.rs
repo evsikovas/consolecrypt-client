@@ -66,6 +66,17 @@ pub async fn ai_test_provider(provider_id: String) -> Result<String, BridgeError
     with_core(move |c| async move { to_json(&c.test_ai_provider(provider_id).await?) }).await
 }
 
+/// Ask AI conversations of this unlock and those kept in the vault (when
+/// the vault settings allow it), newest first → `[AiConversationDto]`.
+pub async fn ai_list_conversations() -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.ai_list_conversations().await?) }).await
+}
+
+/// Forget a conversation (and delete its vault object if it was kept).
+pub async fn ai_delete_conversation(conversation_id: String) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.ai_delete_conversation(conversation_id).await?) }).await
+}
+
 /// Ask AI. The stream starts with
 /// `{"type":"started","request_id":…,"conversation_id":…}`, then `AiAskChunk`
 /// items, ending with exactly one `done` or `error`.

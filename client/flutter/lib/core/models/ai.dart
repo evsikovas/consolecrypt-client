@@ -151,6 +151,7 @@ final class AiConversation {
     required this.createdAt,
     required this.updatedAt,
     this.providerId,
+    this.persisted = false,
   });
 
   final ObjectId id;
@@ -159,6 +160,10 @@ final class AiConversation {
   final List<ChatMessage> messages;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Kept in the vault (it survives locking); otherwise only until the vault
+  /// locks.
+  final bool persisted;
 }
 
 /// What the sanitizer did before a request left the device (§15).

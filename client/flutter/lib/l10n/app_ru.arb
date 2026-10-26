@@ -6729,5 +6729,13 @@
   "dbDesignOptPartitionColumns": "Столбцов ключа в ключе партиции",
   "dbDesignOptClusteringOrder": "Порядок кластеризации (например, at DESC)",
   "dbDesignOptDefaultTtl": "TTL по умолчанию, секунд",
-  "dbDesignOptGcGrace": "gc_grace_seconds"
+  "dbDesignOptGcGrace": "gc_grace_seconds",
+  "aiHistoryTitle": "История разговоров",
+  "aiHistoryEmpty": "Разговоров пока нет. Чтобы они сохранялись после блокировки хранилища, включите в настройках «Хранить разговоры с ИИ в хранилище».",
+  "aiHistoryFailed": "Не удалось загрузить разговоры.",
+  "aiHistoryUntitled": "Разговор без названия",
+  "aiHistoryKept": "хранится в хранилище",
+  "aiHistoryUntilLock": "до блокировки хранилища",
+  "aiHistoryProviderGone": "провайдер удалён",
+  "aiHistoryMessages": "{count, plural, one{{count} сообщение} few{{count} сообщения} many{{count} сообщений} other{{count} сообщения}}"
 }

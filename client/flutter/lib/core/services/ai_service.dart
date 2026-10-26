@@ -35,6 +35,19 @@ abstract interface class AiService {
   Future<SnippetDraft> draftSnippet({required String command, ObjectId? providerId});
 }
 
+/// Optional capability: Ask AI conversations of this unlock and those kept in
+/// the vault ("Keep AI conversations in the vault"), to continue or delete.
+abstract interface class AiConversationHistory {
+  /// Newest first.
+  Future<List<AiConversation>> listConversations();
+
+  Future<void> deleteConversation(ObjectId id);
+
+  /// The next [AiService.chat] with [providerId] and more than one user turn
+  /// continues [id]: the core gives the model its stored turns again.
+  void continueConversation(ObjectId providerId, ObjectId id);
+}
+
 /// Optional production capability. Endpoint and auth live only in an unlocked
 /// native AI session; calling this never saves an AiProvider/Secret vault object.
 abstract interface class DeviceLocalAiBridge {
