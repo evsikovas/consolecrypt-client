@@ -82,6 +82,19 @@ final newDevicesProvider = StreamProvider<List<NewDeviceNotice>>(
   (ref) => ref.watch(devicesServiceProvider).watchNewDevices(),
 );
 final syncStatusProvider = StreamProvider<SyncStatus>((ref) => ref.watch(syncServiceProvider).watchStatus());
+
+/// A deletion of the synced vault scheduled by another device (protocol
+/// 1.13); null when nothing is pending or the service cannot tell.
+final vaultDeletionProvider = FutureProvider.autoDispose<DateTime?>((ref) async {
+  ref.watch(activeProfileProvider.select((p) => p?.id));
+  final service = ref.watch(syncServiceProvider);
+  if (service is! VaultDeletionControl) return null;
+  try {
+    return await (service as VaultDeletionControl).scheduledVaultDeletion();
+  } on AppException {
+    return null;
+  }
+});
 final localSettingsProvider = StreamProvider<LocalSettings>((ref) => ref.watch(settingsServiceProvider).watchLocal());
 final vaultSettingsProvider = StreamProvider<VaultSettings?>((ref) => ref.watch(settingsServiceProvider).watchVault());
 final transfersProvider = StreamProvider<List<TransferJob>>((ref) => ref.watch(sftpServiceProvider).watchTransfers());

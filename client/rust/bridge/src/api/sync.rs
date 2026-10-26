@@ -25,6 +25,17 @@ pub async fn sync_retry_failed() -> Result<u64, BridgeError> {
     with_core(move |c| async move { Ok(c.sync_retry_failed().await?) }).await
 }
 
+/// When the synced vault will be deleted (ms since epoch): another device of
+/// the owner scheduled it (protocol 1.13). `None`: nothing pending.
+pub async fn vault_deletion_scheduled() -> Result<Option<i64>, BridgeError> {
+    with_core(move |c| async move { Ok(c.vault_deletion_scheduled().await?) }).await
+}
+
+/// Keep the vault: cancel its scheduled deletion from this trusted device.
+pub async fn cancel_vault_deletion() -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.cancel_vault_deletion().await?) }).await
+}
+
 /// Local → Synced (register or log in, upload the vault) → `ProfileInfo`.
 pub async fn sync_enable(
     server_url: String,

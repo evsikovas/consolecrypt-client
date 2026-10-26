@@ -367,6 +367,7 @@ mod tests {
                 is_current: false,
                 trusted: false,
                 quarantine_until: None,
+                client_version: None,
             },
             vault_ids: vec![created.unlocked.vault_id()],
             status: DeviceRequestStatus::Pending,

@@ -19,6 +19,13 @@ Future<String> syncNow() => RustLib.instance.api.crateApiSyncSyncNow();
 /// object limit, once cleaned up) → how many were re-queued.
 Future<int> syncRetryFailed() => RustLib.instance.api.crateApiSyncSyncRetryFailed();
 
+/// When the synced vault will be deleted (ms since epoch): another device of
+/// the owner scheduled it (protocol 1.13). `None`: nothing pending.
+Future<int?> vaultDeletionScheduled() => RustLib.instance.api.crateApiSyncVaultDeletionScheduled();
+
+/// Keep the vault: cancel its scheduled deletion from this trusted device.
+Future<void> cancelVaultDeletion() => RustLib.instance.api.crateApiSyncCancelVaultDeletion();
+
 /// Local → Synced (register or log in, upload the vault) → `ProfileInfo`.
 Future<String> syncEnable({
   required String serverUrl,

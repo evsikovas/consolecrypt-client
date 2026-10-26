@@ -449,6 +449,16 @@ impl MockServer {
         self.shared.lock().key_commitment(vault_id, device_id)
     }
 
+    /// Schedule a deletion of `vault_id` as an untrusted device would
+    /// (protocol 1.13); false when it is not active.
+    pub fn schedule_vault_deletion(&self, vault_id: VaultId) -> bool {
+        self.shared.lock().schedule_vault_deletion(vault_id)
+    }
+
+    pub fn vault_state(&self, vault_id: VaultId) -> Option<cc_protocol::vaults::VaultState> {
+        self.shared.lock().vault_state(vault_id)
+    }
+
     pub fn revoke_device(&self, device_id: DeviceId) -> bool {
         self.shared.lock().revoke_device_internal(device_id)
     }

@@ -8,6 +8,7 @@ use crate::error::{AppError, AppResult};
 use crate::key_trust::{adopt_own, KeySource};
 use crate::secrets;
 use cc_protocol::devices::RevokeDeviceRequest;
+use cc_protocol::vaults::{CancelVaultDeletionRequest, VaultState};
 use cc_storage_core::{Profile, ProfileKind};
 use cc_sync_core::EnableSync;
 
@@ -15,6 +16,38 @@ impl AppCore {
     /// Sync status of the open profile (`LocalOnly` for local profiles).
     pub async fn sync_status(&self) -> AppResult<SyncStatusDto> {
         self.session().await?.sync_status().await
+    }
+
+    /// When this profile's synced vault will be deleted (ms since epoch):
+    /// an untrusted device of the owner scheduled the deletion (protocol
+    /// 1.13) and a trusted device can still cancel it. `None` when nothing
+    /// is pending or the profile is not synced.
+    pub async fn vault_deletion_scheduled(&self) -> AppResult<Option<i64>> {
+        let s = self.session().await?;
+        if s.kind().await? == ProfileKind::Local {
+            return Ok(None);
+        }
+        let Some(vault_id) = s.vault_id() else {
+            return Ok(None);
+        };
+        let info = s.api()?.get_vault(vault_id).await?;
+        Ok(match info.state {
+            VaultState::PendingDeletion => info.deletion_scheduled_at.as_ref().map(ms),
+            VaultState::Active | VaultState::Deleted => None,
+        })
+    }
+
+    /// Keep the vault: cancel its scheduled deletion from this device (a
+    /// trusted device of the owner; the unlocked vault proves its key).
+    pub async fn cancel_vault_deletion(&self) -> AppResult<()> {
+        let (s, u) = self.unlocked().await?;
+        let vault_id = s.vault_id().ok_or(AppError::NoVault)?;
+        let req = CancelVaultDeletionRequest {
+            vault_access_key: u.vault()?.vault_access_key(),
+        };
+        s.api()?.cancel_vault_deletion(vault_id, &req).await?;
+        self.inner.ctx.emit(AppEvent::VaultDeletionChanged);
+        Ok(())
     }
 
     /// Run one sync cycle now (push, resolve conflicts, pull).

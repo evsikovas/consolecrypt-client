@@ -28,7 +28,8 @@ use cc_protocol::paths;
 use cc_protocol::recovery::{RecoveryMaterialQuery, ReplaceEnvelopeRequest};
 use cc_protocol::sync::{ChangesQuery, PushRequest, SnapshotQuery};
 use cc_protocol::vaults::{
-    CreateEnvelopeRequest, CreateVaultRequest, DeleteEnvelopeRequest, DeleteVaultRequest,
+    CancelVaultDeletionRequest, CreateEnvelopeRequest, CreateVaultRequest, DeleteEnvelopeRequest,
+    DeleteVaultRequest,
 };
 use cc_protocol::version::{ProtocolVersion, HEADER_DEVICE_PROOF, HEADER_PROTOCOL_VERSION};
 use cc_protocol::{DeviceId, EnvelopeId, ErrorCode, VaultId, PROTOCOL_VERSION};
@@ -64,6 +65,7 @@ pub(crate) fn router(shared: Arc<Shared>) -> Router {
         .route(paths::DEVICE_REVOKE, post(revoke))
         .route(paths::VAULTS, get(list_vaults).post(create_vault))
         .route(paths::VAULT, get(get_vault).delete(delete_vault))
+        .route(paths::VAULT_DELETION_CANCEL, post(cancel_vault_deletion))
         .route(
             paths::VAULT_ENVELOPES,
             get(list_envelopes).post(create_envelope),
@@ -527,8 +529,25 @@ async fn delete_vault(
     } else {
         parse(&body)?
     };
-    s.lock().delete_vault(p, vault_id, req.vault_access_key)?;
-    Ok(no_content())
+    match s.lock().delete_vault(p, vault_id, req.vault_access_key)? {
+        Some(info) => Ok(json(StatusCode::ACCEPTED, info)),
+        None => Ok(no_content()),
+    }
+}
+
+async fn cancel_vault_deletion(
+    State(s): S,
+    headers: HeaderMap,
+    Path(vault): Path<String>,
+    body: Bytes,
+) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    let vault_id: VaultId = id(&vault)?;
+    let req: CancelVaultDeletionRequest = parse(&body)?;
+    let info = s
+        .lock()
+        .cancel_vault_deletion(p, vault_id, &req.vault_access_key)?;
+    Ok(json(StatusCode::OK, info))
 }
 
 async fn list_envelopes(

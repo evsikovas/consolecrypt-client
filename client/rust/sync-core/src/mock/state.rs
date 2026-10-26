@@ -158,6 +158,8 @@ struct Vault {
     owner: UserId,
     vak_hash: [u8; 32],
     state: VaultState,
+    /// Set while `pending_deletion` (protocol 1.13).
+    deletion_scheduled_at: Option<Timestamp>,
     created_at: Timestamp,
     updated_at: Timestamp,
     last_sequence: i64,
@@ -979,7 +981,7 @@ impl State {
             updated_at: v.updated_at,
             latest_sequence: v.last_sequence,
             caller_trusted: self.is_trusted(p.device_id, v),
-            deletion_scheduled_at: None,
+            deletion_scheduled_at: v.deletion_scheduled_at,
             epoch: Some(v.epoch),
         }
     }
@@ -1006,6 +1008,7 @@ impl State {
             is_current: d.reg.device_id == current,
             trusted: !trusted.is_empty(),
             quarantine_until: self.quarantine_until(d.reg.device_id),
+            client_version: d.reg.client_version.clone(),
         }
     }
 
@@ -1639,6 +1642,7 @@ impl State {
                 owner: p.user_id,
                 vak_hash: sha256(req.vault_access_key.as_slice()),
                 state: VaultState::Active,
+                deletion_scheduled_at: None,
                 created_at: now,
                 updated_at: now,
                 last_sequence: 0,
@@ -1676,20 +1680,87 @@ impl State {
         Ok(self.vault_info(v, &p))
     }
 
+    /// Like the server (protocol 1.13): a trusted device deletes at once
+    /// (`None`); an untrusted device of the owner schedules the deletion.
     pub(crate) fn delete_vault(
         &mut self,
         p: Principal,
         vault_id: VaultId,
         vak: Option<Bytes>,
-    ) -> MResult<()> {
-        let v = self.trusted_vault(&p, vault_id)?;
+    ) -> MResult<Option<VaultInfo>> {
+        let v = self.member_vault(&p, vault_id)?;
         let vak = vak.ok_or_else(|| err(ErrorCode::InvalidProof, "vault access key required"))?;
         Self::check_vak(v, &vak)?;
-        if let Some(v) = self.vaults.get_mut(&vault_id) {
+        if Self::role_in(v, p.user_id) != Some(VaultRole::Owner) {
+            return Err(err(
+                ErrorCode::Forbidden,
+                "only the owner can delete a vault",
+            ));
+        }
+        let trusted = self.is_trusted(p.device_id, v);
+        let Some(v) = self.vaults.get_mut(&vault_id) else {
+            return Err(not_found());
+        };
+        v.updated_at = Utc::now();
+        if trusted {
             v.state = VaultState::Deleted;
+            v.deletion_scheduled_at = None;
+            return Ok(None);
+        }
+        if v.state == VaultState::Active {
+            v.state = VaultState::PendingDeletion;
+            v.deletion_scheduled_at = Some(
+                Utc::now()
+                    + chrono::Duration::days(cc_protocol::vaults::VAULT_DELETION_GRACE_DAYS.into()),
+            );
+        }
+        let v = self.vaults.get(&vault_id).ok_or_else(not_found)?;
+        Ok(Some(self.vault_info(v, &p)))
+    }
+
+    pub(crate) fn cancel_vault_deletion(
+        &mut self,
+        p: Principal,
+        vault_id: VaultId,
+        vak: &Bytes,
+    ) -> MResult<VaultInfo> {
+        let v = self.trusted_vault(&p, vault_id)?;
+        Self::check_vak(v, vak)?;
+        if Self::role_in(v, p.user_id) != Some(VaultRole::Owner) {
+            return Err(err(
+                ErrorCode::Forbidden,
+                "only the owner can cancel a deletion",
+            ));
+        }
+        if v.state != VaultState::PendingDeletion {
+            return Err(err(
+                ErrorCode::Conflict,
+                "the vault has no pending deletion",
+            ));
+        }
+        if let Some(v) = self.vaults.get_mut(&vault_id) {
+            v.state = VaultState::Active;
+            v.deletion_scheduled_at = None;
             v.updated_at = Utc::now();
         }
-        Ok(())
+        let v = self.vaults.get(&vault_id).ok_or_else(not_found)?;
+        Ok(self.vault_info(v, &p))
+    }
+
+    /// Test hook: a deletion scheduled from another (untrusted) device.
+    pub(crate) fn schedule_vault_deletion(&mut self, vault_id: VaultId) -> bool {
+        match self.vaults.get_mut(&vault_id) {
+            Some(v) if v.state == VaultState::Active => {
+                v.state = VaultState::PendingDeletion;
+                v.deletion_scheduled_at = Some(Utc::now() + chrono::Duration::days(7));
+                true
+            }
+            _ => false,
+        }
+    }
+
+    pub(crate) fn vault_state(&self, vault_id: VaultId) -> Option<VaultState> {
+        self.vaults.get(&vault_id).map(|v| v.state)
     }
 
     pub(crate) fn list_envelopes(

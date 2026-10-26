@@ -1893,6 +1893,8 @@ pub enum AppEvent {
     },
     /// The backup schedule or the list of recent backups changed.
     BackupScheduleChanged,
+    /// A scheduled deletion of the synced vault was cancelled (protocol 1.13).
+    VaultDeletionChanged,
     /// Teams were opened, closed or changed (members, roles, settings,
     /// key): re-read `teams`.
     TeamsChanged,

@@ -18215,5 +18215,26 @@
         "type": "int"
       }
     }
+  },
+  "syncVaultDeletionTitle": "This vault will be deleted on {date}",
+  "@syncVaultDeletionTitle": {
+    "description": "Pending vault deletion (sync screen)",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "syncVaultDeletionBody": "Another device of your account that is not trusted yet asked to delete it. If it was not you, keep the vault and change your account password.",
+  "@syncVaultDeletionBody": {
+    "description": "Pending vault deletion (sync screen)"
+  },
+  "syncVaultDeletionCancel": "Keep the vault",
+  "@syncVaultDeletionCancel": {
+    "description": "Pending vault deletion (sync screen)"
+  },
+  "syncVaultDeletionCancelled": "The deletion is cancelled.",
+  "@syncVaultDeletionCancelled": {
+    "description": "Pending vault deletion (sync screen)"
   }
 }

@@ -37,6 +37,10 @@
   общее для правок этого хоста и закрывается вместе с последней из них, а не живёт до
   выхода из приложения.
 
+**Синхронизация.** С сервером 0.2.4 (протокол 1.13) удаление хранилища, запрошенное
+ещё не доверенным устройством, откладывается на 7 дней; доверенное устройство показывает
+предупреждение в «Синхронизации» и может сохранить хранилище.
+
 **Безопасность.** Исправления по итогам ревью безопасности кода.
 
 - **Команды: подтверждение участника.** Ключ команды получают ровно те ключи участника,
@@ -121,6 +125,9 @@ admins and sends invitations only to verified addresses.
 - **SFTP: recovering edits on other hosts.** The connection opened to recover unsaved
   edits on a host the browser is not showing is now shared by that host's edits and
   closes with the last of them instead of living until the app quits.
+
+**Sync.** With server 0.2.4 (protocol 1.13) a vault deletion asked by a device that is not
+trusted yet waits 7 days; a trusted device shows a warning under Sync and can keep the vault.
 
 **Security.** Fixes from the code security review.
 

@@ -67,6 +67,23 @@ final class _FakeSync implements SyncService {
   }) => const Stream.empty();
 }
 
+/// Also reports a vault deletion scheduled by another device (1.13).
+final class _DeletionSync extends _FakeSync implements VaultDeletionControl {
+  _DeletionSync(super.status, this.at);
+
+  DateTime? at;
+  int cancelled = 0;
+
+  @override
+  Future<DateTime?> scheduledVaultDeletion() async => at;
+
+  @override
+  Future<void> cancelVaultDeletion() async {
+    cancelled++;
+    at = null;
+  }
+}
+
 Future<_FakeSync> _pumpSync(WidgetTester tester, SyncStatus status, {AppLocale locale = AppLocale.en}) async {
   final backend = testBackend();
   addTearDown(backend.dispose);
@@ -183,4 +200,22 @@ void main() {
       startsWith('В хранилище слишком много объектов (предел 200)'),
     );
   });
+
+  testWidgets('a deletion scheduled by another device is shown and can be cancelled', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final at = DateTime.now().toUtc().add(const Duration(days: 7));
+    final sync = _DeletionSync(SyncStatus(state: SyncState.idle, lastSyncAt: lastSync), at);
+    await pumpApp(tester, backend, overrides: [syncServiceProvider.overrideWithValue(sync)]);
+    await tapKey(tester, 'nav-sync');
+    final l = lookupAppLocalizations(const Locale('en'));
+    expect(find.byKey(const ValueKey('sync-pending-deletion')), findsOneWidget);
+    expect(find.text(l.syncVaultDeletionTitle(formatDateTime(l, at))), findsOneWidget);
+    await tapKey(tester, 'sync-cancel-deletion');
+    expect(sync.cancelled, 1);
+    expect(find.text(l.syncVaultDeletionCancelled), findsOneWidget);
+    expect(find.byKey(const ValueKey('sync-pending-deletion')), findsNothing);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 }

@@ -10,7 +10,7 @@ import 'package:consolecrypt/core/util/value_stream.dart';
 
 /// Simulated outbox worker: local mutations of synced profiles become
 /// pending changes that are "pushed" shortly afterwards unless offline.
-final class MockSyncService implements SyncService {
+final class MockSyncService implements SyncService, VaultDeletionControl {
   MockSyncService(this._cloud) {
     _changedSub = _cloud.changed.listen((_) => _recompute());
     _mutationSub = _cloud.mutations.listen((_) => _onMutation());
@@ -26,6 +26,25 @@ final class MockSyncService implements SyncService {
   bool _disposed = false;
 
   MockConfig get _config => _cloud.config;
+
+  /// A deletion "scheduled by another device" (demo and tests).
+  DateTime? _deletionAt;
+
+  void debugScheduleVaultDeletion(DateTime at) => _deletionAt = at;
+
+  @override
+  Future<DateTime?> scheduledVaultDeletion() async =>
+      _cloud.activeRecord?.profile.isSynced == true ? _deletionAt : null;
+
+  @override
+  Future<void> cancelVaultDeletion() async {
+    final r = _cloud.activeRecord;
+    if (r == null || r.phase != VaultPhase.unlocked) {
+      throw const AppException(AppErrorCode.passphraseRequired, 'Unlock the vault first');
+    }
+    if (_deletionAt == null) throw const AppException(AppErrorCode.conflict, 'Nothing to cancel');
+    _deletionAt = null;
+  }
 
   bool _canSync(MockProfileRecord r) => r.profile.isSynced && r.sessionActive && r.phase == VaultPhase.unlocked;
 
