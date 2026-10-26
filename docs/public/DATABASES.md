@@ -58,8 +58,10 @@ MongoDB, Apache Cassandra и ScyllaDB, а также с файлами SQLite. �
 работают как фильтры.
 
 Подключение можно импортировать из строки (`postgres://`, `mysql://`,
-`clickhouse://`, `redis://`, `mongodb://`, `mongodb+srv://`) или из файла
-`.pgpass`. Перед сохранением показывается список найденных подключений: для
+`clickhouse://`, `redis://`, `mongodb://`, `mongodb+srv://`,
+`cassandra://` или `scylla://` — keyspace в пути, `?datacenter=` для
+локального дата-центра, — и `sqlite:///абсолютный/путь.db`, `?mode=ro` — только
+чтение) или из файла `.pgpass`. Перед сохранением показывается список найденных подключений: для
 каждого можно включить «Прод», выбрать маршрут и решить, сохранять ли пароль.
 Строки с подстановками `*` и локальными сокетами пропускаются.
 
@@ -744,7 +746,9 @@ compact list with the same toggle as Hosts, remembered on this device. Search
 matches names, hosts, databases, engines and tags, and tags act as filters.
 
 Import a connection string (`postgres://`, `mysql://`, `clickhouse://`,
-`redis://`, `mongodb://`, `mongodb+srv://`) or a `.pgpass` file and review
+`redis://`, `mongodb://`, `mongodb+srv://`, `cassandra://` or `scylla://` with
+the keyspace in the path and `?datacenter=` for the local data center, and
+`sqlite:///absolute/path.db` with `?mode=ro` for read-only) or a `.pgpass` file and review
 each entry — production flag, route, whether to keep the password — before
 saving. Connections and passwords live in the encrypted vault and sync
 end-to-end encrypted. Queries go from the device to the database; the sync

@@ -606,3 +606,42 @@ async fn the_sqlite3_program_route_reads_writes_and_browses() {
     );
     assert!(!dir.path().join("absent.db").exists());
 }
+
+/// The SQLite starter snippets (client/flutter/lib/snippets/
+/// starter_catalog_db.dart, FEAT-10) pass the guard on a real file.
+#[tokio::test]
+async fn sqlite_starter_snippets_pass_the_guard() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = sample(dir.path(), false);
+    let session = open(&connection(&path, false, false), SqliteTarget::Local).await;
+    for text in [
+        "SELECT type, name, tbl_name FROM sqlite_master WHERE name NOT LIKE 'sqlite!_%' ESCAPE '!' ORDER BY type, name;",
+        "SELECT cid, name, type, \"notnull\", dflt_value, pk, hidden FROM pragma_table_xinfo('orders');",
+        "SELECT name, \"unique\", origin, partial FROM pragma_index_list('orders');",
+        "SELECT seqno, cid, name, \"desc\", coll FROM pragma_index_xinfo('orders_by_customer') WHERE key = 1;",
+        "SELECT id, seq, \"table\", \"from\", \"to\", on_update, on_delete FROM pragma_foreign_key_list('orders');",
+        "SELECT * FROM pragma_foreign_key_check;",
+        "PRAGMA quick_check;",
+        "SELECT page_count * page_size AS bytes, page_count, page_size, freelist_count FROM pragma_page_count, pragma_page_size, pragma_freelist_count;",
+        "SELECT type, sql FROM sqlite_master WHERE name = 'orders';",
+        "SELECT count(*) AS rows FROM \"orders\";",
+        "EXPLAIN QUERY PLAN SELECT * FROM \"orders\" WHERE customer_id = 1;",
+        "SELECT sqlite_version() AS version, sqlite_source_id() AS source;",
+        "SELECT * FROM pragma_compile_options;",
+    ] {
+        assert!(
+            run(&session, &request(text)).await.is_ok(),
+            "read refused: {text}"
+        );
+    }
+    // ANALYZE is a write (runs here: not a production file); VACUUM rewrites
+    // the file and always needs a review.
+    assert!(run(&session, &request("ANALYZE;")).await.is_ok());
+    assert!(run(&session, &request("VACUUM;")).await.is_err());
+    let vacuum = approved(&session, "VACUUM;").await;
+    assert!(vacuum.is_ok(), "{vacuum:?}");
+    // The temporary database VACUUM needs never opens ATTACH to anyone.
+    for attach in ["ATTACH '' AS scratch;", "ATTACH 'other.db' AS other;"] {
+        assert!(approved(&session, attach).await.is_err(), "{attach}");
+    }
+}

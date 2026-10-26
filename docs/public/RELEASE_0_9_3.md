@@ -36,6 +36,11 @@
   ссылку на исходный код вашего сервера синхронизации (требование AGPL; сервер сообщает её
   в `/v1/meta`).
 
+- **SQLite: стартовые сниппеты и импорт из строки.** Набор из 15 сниппетов SQLite (схема,
+  индексы, внешние ключи, проверка целостности, размер файла, план запроса, ANALYZE,
+  VACUUM). Подключения импортируются из строк `sqlite:///путь.db` и `cassandra://` /
+  `scylla://`.
+
 **Исправления.**
 
 - **SFTP: восстановление правок на других хостах.** Подключение, открытое для
@@ -46,6 +51,8 @@
   `CACHEDIR.TAG` и `.nobackup`, поэтому borg, restic, tar, Duplicity, Back In Time и
   другие программы резервного копирования, которые учитывают эти метки, его пропускают
   (на macOS он, как и раньше, исключён из Time Machine).
+- **SQLite: VACUUM.** Подтверждённый `VACUUM` в разделе «Базы данных» больше не
+  отказывает: раньше его блокировал запрет подключать к сессии другие базы.
 - **Синхронизация удалённого хранилища.** Если хранилище удалено на сервере, синхронизация
   останавливается с понятной причиной («хранилище не найдено на сервере»), а не повторяет
   попытки бесконечно.
@@ -143,6 +150,10 @@ admins and sends invitations only to verified addresses.
 - **Server source in About.** For a synced profile the dialog shows where your sync server
   offers its source code (AGPL; the server reports it in `/v1/meta`).
 
+- **SQLite: starter snippets and import from a string.** A pack of 15 SQLite snippets (schema,
+  indexes, foreign keys, integrity check, file size, query plan, ANALYZE, VACUUM).
+  Connections import from `sqlite:///path.db` and `cassandra://` / `scylla://` strings.
+
 **Fixes.**
 
 - **SFTP: recovering edits on other hosts.** The connection opened to recover unsaved
@@ -151,6 +162,8 @@ admins and sends invitations only to verified addresses.
 - **Editing files over SFTP: backups on Windows and Linux.** The working-copy folder carries
   `CACHEDIR.TAG` and `.nobackup`, so borg, restic, tar, Duplicity, Back In Time and other
   backup tools that honour them skip it (on macOS it stays excluded from Time Machine).
+- **SQLite: VACUUM.** An approved `VACUUM` in Databases no longer fails; the rule against
+  attaching other databases to the session used to block it.
 - **Syncing a deleted vault.** When the vault was deleted on the server, sync stops with a
   clear reason (“vault not found on server”) instead of retrying forever.
 

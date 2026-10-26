@@ -1,5 +1,5 @@
 // Query text was checked against PostgreSQL 17, MySQL 8.4, ClickHouse 25.8,
-// Redis 7.4, MongoDB 7.0 (mongosh), Cassandra 5.0 and ScyllaDB 6.2; keep the per-package counts in
+// Redis 7.4, MongoDB 7.0 (mongosh), SQLite 3.45, Cassandra 5.0 and ScyllaDB 6.2; keep the per-package counts in
 // test/unit/snippet_catalog_test.dart in sync when adding entries.
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
@@ -17,7 +17,8 @@ typedef _Pack = ({String name, SnippetType type, String? shell, String client});
 /// Database starter packages. Type and dialect (`shell`) follow
 /// `db_save_history_snippet`: PostgreSQL → postgresql; MySQL / MariaDB /
 /// ClickHouse → sql + "mysql" / "clickhouse"; Redis → redis_cli; MongoDB →
-/// shell + "mongosh"; Cassandra / ScyllaDB → cql. Query text is never localized.
+/// shell + "mongosh"; SQLite → sql + "sqlite"; Cassandra / ScyllaDB → cql.
+/// Query text is never localized.
 List<StarterSnippetPackage> databaseStarterPackages(AppLocalizations l, StarterEntry entry) {
   Snippet db(
     _Pack pack,
@@ -53,6 +54,7 @@ List<StarterSnippetPackage> databaseStarterPackages(AppLocalizations l, StarterE
   );
   final _Pack redis = (name: l.snippetPackRedis, type: SnippetType.redisCli, shell: null, client: 'redis-cli');
   final _Pack mongodb = (name: l.snippetPackMongodb, type: SnippetType.shell, shell: 'mongosh', client: 'mongosh');
+  final _Pack sqlite = (name: l.snippetPackSqlite, type: SnippetType.sql, shell: 'sqlite', client: 'sqlite3');
   final _Pack cassandra = (name: l.snippetPackCassandra, type: SnippetType.cql, shell: null, client: 'cqlsh');
   return [
     StarterSnippetPackage('postgresql', postgresql.name, l.snippetPackPostgresqlDescription, [
@@ -1025,6 +1027,105 @@ List<StarterSnippetPackage> databaseStarterPackages(AppLocalizations l, StarterE
         risk: RiskLevel.modifying,
         terminalOnly: true,
       ),
+    ]),
+    StarterSnippetPackage('sqlite', sqlite.name, l.snippetPackSqliteDescription, [
+      db(sqlite, 'db.sqlite.tables', l.snippetDbSqliteTables, l.snippetDbSqliteTablesNote, [
+        r"SELECT type, name, tbl_name FROM sqlite_master WHERE name NOT LIKE 'sqlite!_%' ESCAPE '!' ORDER BY type, name;", // l10n-ignore: query text
+      ]),
+      db(
+        sqlite,
+        'db.sqlite.columns',
+        l.snippetDbSqliteColumns,
+        l.snippetDbSqliteColumnsNote,
+        [
+          r'''SELECT cid, name, type, "notnull", dflt_value, pk, hidden FROM pragma_table_xinfo('{{table}}');''', // l10n-ignore: query text
+        ],
+        variables: const [SnippetVariable(name: 'table')],
+      ),
+      db(
+        sqlite,
+        'db.sqlite.indexes',
+        l.snippetDbSqliteIndexes,
+        l.snippetDbSqliteIndexesNote,
+        [
+          r'''SELECT name, "unique", origin, partial FROM pragma_index_list('{{table}}');''', // l10n-ignore: query text
+        ],
+        variables: const [SnippetVariable(name: 'table')],
+      ),
+      db(
+        sqlite,
+        'db.sqlite.index_columns',
+        l.snippetDbSqliteIndexColumns,
+        l.snippetDbSqliteIndexColumnsNote,
+        [
+          r'''SELECT seqno, cid, name, "desc", coll FROM pragma_index_xinfo('{{index}}') WHERE key = 1;''', // l10n-ignore: query text
+        ],
+        variables: const [SnippetVariable(name: 'index')],
+      ),
+      db(
+        sqlite,
+        'db.sqlite.foreign_keys',
+        l.snippetDbSqliteForeignKeys,
+        l.snippetDbSqliteForeignKeysNote,
+        [
+          r'''SELECT id, seq, "table", "from", "to", on_update, on_delete FROM pragma_foreign_key_list('{{table}}');''', // l10n-ignore: query text
+        ],
+        variables: const [SnippetVariable(name: 'table')],
+      ),
+      db(sqlite, 'db.sqlite.fk_check', l.snippetDbSqliteFkCheck, l.snippetDbSqliteFkCheckNote, [
+        r'SELECT * FROM pragma_foreign_key_check;', // l10n-ignore: query text
+      ]),
+      db(sqlite, 'db.sqlite.quick_check', l.snippetDbSqliteQuickCheck, l.snippetDbSqliteQuickCheckNote, [
+        r'PRAGMA quick_check;', // l10n-ignore: query text
+      ]),
+      db(sqlite, 'db.sqlite.size', l.snippetDbSqliteSize, l.snippetDbSqliteSizeNote, [
+        r'SELECT page_count * page_size AS bytes, page_count, page_size, freelist_count FROM pragma_page_count, pragma_page_size, pragma_freelist_count;', // l10n-ignore: query text
+      ]),
+      db(
+        sqlite,
+        'db.sqlite.definition',
+        l.snippetDbSqliteDefinition,
+        l.snippetDbSqliteDefinitionNote,
+        [
+          r"SELECT type, sql FROM sqlite_master WHERE name = '{{name}}';", // l10n-ignore: query text
+        ],
+        variables: const [SnippetVariable(name: 'name')],
+      ),
+      db(
+        sqlite,
+        'db.sqlite.count',
+        l.snippetDbSqliteCount,
+        l.snippetDbSqliteCountNote,
+        [
+          r'SELECT count(*) AS rows FROM "{{table}}";', // l10n-ignore: query text
+        ],
+        variables: const [SnippetVariable(name: 'table')],
+      ),
+      db(
+        sqlite,
+        'db.sqlite.plan',
+        l.snippetDbSqlitePlan,
+        l.snippetDbSqlitePlanNote,
+        [
+          r'EXPLAIN QUERY PLAN SELECT * FROM "{{table}}" WHERE {{condition}};', // l10n-ignore: query text
+        ],
+        variables: const [
+          SnippetVariable(name: 'table'),
+          SnippetVariable(name: 'condition'),
+        ],
+      ),
+      db(sqlite, 'db.sqlite.version', l.snippetDbSqliteVersion, l.snippetDbSqliteVersionNote, [
+        r'SELECT sqlite_version() AS version, sqlite_source_id() AS source;', // l10n-ignore: query text
+      ]),
+      db(sqlite, 'db.sqlite.compile_options', l.snippetDbSqliteCompileOptions, l.snippetDbSqliteCompileOptionsNote, [
+        r'SELECT * FROM pragma_compile_options;', // l10n-ignore: query text
+      ]),
+      db(sqlite, 'db.sqlite.analyze', l.snippetDbSqliteAnalyze, l.snippetDbSqliteAnalyzeNote, [
+        r'ANALYZE;', // l10n-ignore: query text
+      ], risk: RiskLevel.modifying),
+      db(sqlite, 'db.sqlite.vacuum', l.snippetDbSqliteVacuum, l.snippetDbSqliteVacuumNote, [
+        r'VACUUM;', // l10n-ignore: query text
+      ], risk: RiskLevel.destructive),
     ]),
     StarterSnippetPackage('cassandra', cassandra.name, l.snippetPackCassandraDescription, [
       db(cassandra, 'db.cql.keyspaces', l.snippetDbCqlKeyspaces, l.snippetDbCqlKeyspacesNote, [

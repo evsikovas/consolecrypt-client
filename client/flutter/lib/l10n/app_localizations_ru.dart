@@ -13633,4 +13633,113 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get startupFailedStorageBody =>
       'Существующее хранилище не удалось безопасно открыть. Ваши данные не изменены. Устраните описанную ниже проблему с хранилищем и попробуйте снова.';
+
+  @override
+  String get snippetPackSqlite => 'SQLite';
+
+  @override
+  String get snippetPackSqliteDescription =>
+      'Схема, индексы, внешние ключи, целостность, размер и планы запросов файла SQLite. Для sqlite3 или раздела «Базы данных».';
+
+  @override
+  String get snippetDbSqliteTables => 'Таблицы и представления';
+
+  @override
+  String get snippetDbSqliteTablesNote =>
+      'Все таблицы, представления, индексы и триггеры файла, кроме служебных sqlite_.';
+
+  @override
+  String get snippetDbSqliteColumns => 'Столбцы таблицы';
+
+  @override
+  String get snippetDbSqliteColumnsNote =>
+      'Имя, объявленный тип, NOT NULL, значение по умолчанию, позиция в первичном ключе и признак скрытого (вычисляемого) столбца.';
+
+  @override
+  String get snippetDbSqliteIndexes => 'Индексы таблицы';
+
+  @override
+  String get snippetDbSqliteIndexesNote =>
+      'Каждый индекс: уникальность, происхождение (c — CREATE INDEX, u — UNIQUE, pk) и признак частичного индекса.';
+
+  @override
+  String get snippetDbSqliteIndexColumns => 'Столбцы индекса';
+
+  @override
+  String get snippetDbSqliteIndexColumnsNote =>
+      'Ключевые столбцы индекса по порядку, с направлением сортировки и правилом сравнения.';
+
+  @override
+  String get snippetDbSqliteForeignKeys => 'Внешние ключи таблицы';
+
+  @override
+  String get snippetDbSqliteForeignKeysNote =>
+      'Таблица и столбцы, на которые ссылается ключ, и действия ON UPDATE / ON DELETE.';
+
+  @override
+  String get snippetDbSqliteFkCheck => 'Строки, нарушающие внешние ключи';
+
+  @override
+  String get snippetDbSqliteFkCheckNote =>
+      'Строки, внешние ключи которых ни на что не указывают (проверяется и при выключенном контроле ключей).';
+
+  @override
+  String get snippetDbSqliteQuickCheck => 'Быстрая проверка целостности';
+
+  @override
+  String get snippetDbSqliteQuickCheckNote => 'Проверка структуры всего файла; если всё в порядке, возвращает ok.';
+
+  @override
+  String get snippetDbSqliteSize => 'Размер файла и свободные страницы';
+
+  @override
+  String get snippetDbSqliteSizeNote =>
+      'Страницы, размер страницы, размер в байтах и страницы, которые освободит VACUUM.';
+
+  @override
+  String get snippetDbSqliteDefinition => 'Оператор CREATE объекта';
+
+  @override
+  String get snippetDbSqliteDefinitionNote =>
+      'SQL, которым создана таблица, представление, индекс или триггер, как он хранится в файле.';
+
+  @override
+  String get snippetDbSqliteCount => 'Строк в таблице';
+
+  @override
+  String get snippetDbSqliteCountNote => 'Точное число строк (сканирует таблицу).';
+
+  @override
+  String get snippetDbSqlitePlan => 'План запроса';
+
+  @override
+  String get snippetDbSqlitePlanNote =>
+      'Как SQLite выполнит запрос: какие индексы использует, где просмотр таблицы и временные B-деревья.';
+
+  @override
+  String get snippetDbSqliteVersion => 'Версия SQLite';
+
+  @override
+  String get snippetDbSqliteVersionNote => 'Версия библиотеки и идентификатор исходников программы, открывшей файл.';
+
+  @override
+  String get snippetDbSqliteCompileOptions => 'Параметры сборки SQLite';
+
+  @override
+  String get snippetDbSqliteCompileOptionsNote =>
+      'Параметры, с которыми собрана библиотека SQLite (JSON, FTS5, предельные размеры).';
+
+  @override
+  String get snippetDbSqliteAnalyze => 'Обновить статистику планировщика';
+
+  @override
+  String get snippetDbSqliteAnalyzeNote =>
+      'Собирает статистику индексов в sqlite_stat1, чтобы планировщик лучше выбирал индексы.';
+
+  @override
+  String get snippetDbSqliteVacuum => 'Сжать файл';
+
+  @override
+  String get snippetDbSqliteVacuumNote =>
+      'Перестраивает файл и возвращает свободные страницы диску; нужен монопольный доступ и свободное место размером с файл.';
 }

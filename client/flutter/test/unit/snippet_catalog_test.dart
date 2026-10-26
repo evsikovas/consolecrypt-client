@@ -23,6 +23,7 @@ void main() {
       'clickhouse',
       'redis',
       'mongodb',
+      'sqlite',
       'cassandra',
     ]);
     expect(
@@ -36,6 +37,7 @@ void main() {
         'clickhouse': 20,
         'redis': 15,
         'mongodb': 15,
+        'sqlite': 15,
         'cassandra': 17,
       },
     );
@@ -70,6 +72,7 @@ void main() {
       'clickhouse': (DbEngine.clickhouse, SnippetType.sql, 'clickhouse'),
       'redis': (DbEngine.redis, SnippetType.redisCli, null),
       'mongodb': (DbEngine.mongodb, SnippetType.shell, 'mongosh'),
+      'sqlite': (DbEngine.sqlite, SnippetType.sql, 'sqlite'),
       'cassandra': (DbEngine.cassandra, SnippetType.cql, null),
     };
     for (final MapEntry(key: id, value: (engine, type, shell)) in engines.entries) {
@@ -126,6 +129,8 @@ void main() {
       'consolecrypt.db.mysql.kill_query.v1': RiskLevel.modifying,
       'consolecrypt.db.clickhouse.kill_query.v1': RiskLevel.modifying,
       'consolecrypt.db.mongodb.kill_op.v1': RiskLevel.modifying,
+      'consolecrypt.db.sqlite.analyze.v1': RiskLevel.modifying,
+      'consolecrypt.db.sqlite.vacuum.v1': RiskLevel.destructive,
       'consolecrypt.db.cql.create_table.v1': RiskLevel.modifying,
       'consolecrypt.db.cql.insert_json.v1': RiskLevel.modifying,
     });

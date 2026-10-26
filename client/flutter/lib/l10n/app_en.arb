@@ -18280,5 +18280,133 @@
   "startupFailedStorageBody": "Existing storage could not be opened safely. Your data was not changed. Resolve the storage issue below and try again.",
   "@startupFailedStorageBody": {
     "description": "Startup error screen (native core failed to load)"
+  },
+  "snippetPackSqlite": "SQLite",
+  "@snippetPackSqlite": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetPackSqliteDescription": "Schema, indexes, foreign keys, integrity, size and query plans of an SQLite file. For sqlite3 or the Databases workspace.",
+  "@snippetPackSqliteDescription": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteTables": "Tables and views",
+  "@snippetDbSqliteTables": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteTablesNote": "Every table, view, index and trigger of the file except the internal sqlite_ ones.",
+  "@snippetDbSqliteTablesNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteColumns": "Columns of a table",
+  "@snippetDbSqliteColumns": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteColumnsNote": "Name, declared type, NOT NULL, default, primary key position and hidden (generated) flag.",
+  "@snippetDbSqliteColumnsNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteIndexes": "Indexes of a table",
+  "@snippetDbSqliteIndexes": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteIndexesNote": "Each index with uniqueness, origin (c = CREATE INDEX, u = UNIQUE, pk) and whether it is partial.",
+  "@snippetDbSqliteIndexesNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteIndexColumns": "Columns of an index",
+  "@snippetDbSqliteIndexColumns": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteIndexColumnsNote": "Key columns of an index in order, with sort direction and collation.",
+  "@snippetDbSqliteIndexColumnsNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteForeignKeys": "Foreign keys of a table",
+  "@snippetDbSqliteForeignKeys": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteForeignKeysNote": "Referenced table and columns with ON UPDATE / ON DELETE actions.",
+  "@snippetDbSqliteForeignKeysNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteFkCheck": "Rows breaking foreign keys",
+  "@snippetDbSqliteFkCheck": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteFkCheckNote": "Rows whose foreign keys point nowhere (checked even when enforcement is off).",
+  "@snippetDbSqliteFkCheckNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteQuickCheck": "Quick integrity check",
+  "@snippetDbSqliteQuickCheck": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteQuickCheckNote": "Structure check of the whole file; returns ok when nothing is wrong.",
+  "@snippetDbSqliteQuickCheckNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteSize": "File size and free pages",
+  "@snippetDbSqliteSize": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteSizeNote": "Pages in use, page size, the size in bytes and pages VACUUM could free.",
+  "@snippetDbSqliteSizeNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteDefinition": "CREATE statement of an object",
+  "@snippetDbSqliteDefinition": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteDefinitionNote": "The SQL that created a table, view, index or trigger, as stored in the file.",
+  "@snippetDbSqliteDefinitionNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteCount": "Rows in a table",
+  "@snippetDbSqliteCount": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteCountNote": "Exact row count (scans the table).",
+  "@snippetDbSqliteCountNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqlitePlan": "Query plan",
+  "@snippetDbSqlitePlan": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqlitePlanNote": "How SQLite will run the query: indexes used, scans and temporary B-trees.",
+  "@snippetDbSqlitePlanNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteVersion": "SQLite version",
+  "@snippetDbSqliteVersion": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteVersionNote": "Library version and source id of the program that opened the file.",
+  "@snippetDbSqliteVersionNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteCompileOptions": "Compile options",
+  "@snippetDbSqliteCompileOptions": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteCompileOptionsNote": "Options the SQLite library was built with (JSON, FTS5, maximum sizes).",
+  "@snippetDbSqliteCompileOptionsNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteAnalyze": "Refresh planner statistics",
+  "@snippetDbSqliteAnalyze": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteAnalyzeNote": "Collects index statistics into sqlite_stat1 so the planner picks better indexes.",
+  "@snippetDbSqliteAnalyzeNote": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteVacuum": "Compact the file",
+  "@snippetDbSqliteVacuum": {
+    "description": "SQLite starter snippet"
+  },
+  "snippetDbSqliteVacuumNote": "Rebuilds the file to return free pages to the disk; needs exclusive access and free space about the file's size.",
+  "@snippetDbSqliteVacuumNote": {
+    "description": "SQLite starter snippet"
   }
 }
