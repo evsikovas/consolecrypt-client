@@ -393,6 +393,32 @@ async fn scenario(variable: &str, product: &str) {
     .rows
     .is_empty());
 
+    // CQL has no EXPLAIN: the measured form traces one run per node.
+    assert_eq!(
+        dev.explain(&request("SELECT * FROM cc_live.events"), false)
+            .await
+            .err(),
+        Some(DbError::InvalidRequest)
+    );
+    let traced = dev
+        .explain(
+            &request("SELECT note FROM cc_live.events WHERE tenant = 't1' AND day = '2024-01-01'"),
+            true,
+        )
+        .await
+        .unwrap();
+    assert_eq!(traced["analyzed"], true);
+    let trace = &traced["plan"]["cql_trace"];
+    assert!(trace["duration_us"].as_i64().is_some(), "{traced}");
+    let nodes = trace["nodes"].as_array().unwrap();
+    assert!(!nodes.is_empty(), "{traced}");
+    assert!(
+        nodes[0]["events"]
+            .as_array()
+            .is_some_and(|events| events.iter().any(|e| e["activity"].is_string())),
+        "{traced}"
+    );
+
     // Rows of one partition change in one conditional batch: all or none.
     write(
         &dev,

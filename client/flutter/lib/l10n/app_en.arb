@@ -11777,6 +11777,14 @@
   "@dbExplainAnalyzeHelp": {
     "description": "Database interface: ANALYZE executes the query to collect measurements. Available only for non-production connections."
   },
+  "dbTrace": "Trace query",
+  "@dbTrace": {
+    "description": "Cassandra/ScyllaDB: run the statement with tracing (CQL has no EXPLAIN)"
+  },
+  "dbTraceHelp": "The query runs once with tracing on: every node records its steps and delays in system_traces. Available only for non-production connections.",
+  "@dbTraceHelp": {
+    "description": "Confirmation before a traced CQL run"
+  },
   "dbEditCell": "Edit cell",
   "@dbEditCell": {
     "description": "Database interface: Edit cell"

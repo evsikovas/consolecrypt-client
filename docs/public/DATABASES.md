@@ -378,6 +378,14 @@ EXPLAIN показывает план деревом: у каждого шага
 ANALYZE» добавляет реальное время, но выполняет запрос, поэтому доступно
 только для непрод-подключений и требует подтверждения.
 
+В CQL нет EXPLAIN, поэтому у Cassandra/ScyllaDB вместо него кнопка
+«Трассировка запроса»: запрос выполняется один раз с трассировкой
+(`system_traces`), а окно показывает дерево — координатор и общее время, под
+ним каждый узел и его шаги; полоса шага — время с предыдущего шага этого узла,
+самый долгий отмечен. Читается только первая страница результата. Как и
+ANALYZE, трассировка выполняет запрос, поэтому доступна только для
+непрод-подключений и требует подтверждения.
+
 ### Результаты, копирование и экспорт
 
 Результат — компактная таблица с номерами строк: сортировка и фильтр по
@@ -995,6 +1003,13 @@ stop at the first error. `{{variables}}` are bound as parameters.
 EXPLAIN draws the plan as a tree with rows, cost and each step’s own share;
 JSON shows the raw plan. “Execute with ANALYZE” adds timings but runs the
 query, so it is limited to non-production connections and asks first.
+
+CQL has no EXPLAIN, so Cassandra/ScyllaDB offer “Trace query” instead: the
+query runs once with tracing (`system_traces`) and the window shows a tree —
+the coordinator and total time, then each node with its steps; a step's bar is
+the time since that node's previous step, and the slowest one is marked. Only
+the first page of the result is read. Like ANALYZE, tracing runs the query,
+so it is limited to non-production connections and asks first.
 
 ### Results, editing, history and export
 

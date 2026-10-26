@@ -92,9 +92,45 @@ DbPlanNode _sqliteNode(Object? value) {
   );
 }
 
+/// Cassandra / ScyllaDB query trace (`cql_trace`): the coordinator's session,
+/// then each node with its events. An event's time is the gap since the
+/// previous event of its node, so the hottest bar is the slowest step.
+DbPlanNode _traceNode(Map<Object?, Object?> trace) {
+  double? ms(Object? micros) => _number(micros) == null ? null : _number(micros)! / 1000;
+  final nodes = [
+    for (final node in (trace['nodes'] as List? ?? const []).whereType<Map<Object?, Object?>>())
+      () {
+        var previous = 0.0;
+        final events = [
+          for (final event in (node['events'] as List? ?? const []).whereType<Map<Object?, Object?>>())
+            () {
+              final at = ms(event['elapsed_us']) ?? previous;
+              final step = DbPlanNode(
+                label: '${event['activity'] ?? ''}', // l10n-ignore: trace text
+                detail: '${event['thread'] ?? ''}', // l10n-ignore: trace text
+                timeMs: (at - previous).clamp(0, double.infinity).toDouble(),
+              );
+              previous = at;
+              return step;
+            }(),
+        ];
+        return DbPlanNode(label: '${node['source'] ?? ''}', timeMs: previous, children: events); // l10n-ignore: address
+      }(),
+  ];
+  return DbPlanNode(
+    label: ['${trace['request'] ?? 'TRACE'}', ?trace['coordinator'] as String?].join(' · '), // l10n-ignore: trace text
+    detail: [for (final MapEntry(:key, :value) in ((trace['parameters'] as Map?) ?? const {}).entries) '$key: $value']
+        .join('\n'),
+    timeMs: ms(trace['duration_us']),
+    children: nodes,
+  );
+}
+
 /// The plan tree of a native EXPLAIN document, or null for text/unknown plans.
 DbPlanNode? parsePlan(DbJson document) {
   final plan = document['plan'] ?? document;
+  const trace = 'cql_trace'; // l10n-ignore: plan key
+  if (plan is Map && plan[trace] is Map) return _traceNode(plan[trace] as Map<Object?, Object?>);
   const sqlite = 'sqlite_plan'; // l10n-ignore: plan key
   if (plan is Map && plan[sqlite] is List) {
     return DbPlanNode(

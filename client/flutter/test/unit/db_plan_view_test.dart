@@ -43,6 +43,43 @@ void main() {
     expect(root.children.single.rows, 2);
   });
 
+  test('a CQL trace is a tree of nodes whose steps take the gap since the previous one', () {
+    final root = parsePlan({
+      'plan': {
+        'cql_trace': {
+          'request': 'Execute CQL3 query',
+          'coordinator': '10.0.0.1',
+          'duration_us': 900,
+          'parameters': {'consistency_level': 'LOCAL_ONE'},
+          'nodes': [
+            {
+              'source': '10.0.0.1',
+              'events': [
+                {'activity': 'Parsing a statement', 'elapsed_us': 100, 'thread': 'shard 0'},
+                {'activity': 'Read from replica', 'elapsed_us': 700, 'thread': 'shard 0'},
+              ],
+            },
+            {
+              'source': '10.0.0.2',
+              'events': [
+                {'activity': 'Querying cache', 'elapsed_us': 50},
+              ],
+            },
+          ],
+        },
+      },
+    })!;
+    expect(root.label, 'Execute CQL3 query · 10.0.0.1');
+    expect(root.detail, 'consistency_level: LOCAL_ONE');
+    expect(root.timeMs, .9);
+    expect(root.children.map((n) => n.label), ['10.0.0.1', '10.0.0.2']);
+    expect(root.children[0].timeMs, .7);
+    expect(root.children[0].children.map((e) => e.timeMs), [.1, .6]);
+    expect(root.children[0].children[1].label, 'Read from replica');
+    expect(root.children[0].children[1].detail, 'shard 0');
+    expect(root.children[1].children.single.detail, '');
+  });
+
   test('text plans are not parsed as trees', () {
     expect(parsePlan({'plan': '-> Table scan on t'}), isNull);
   });

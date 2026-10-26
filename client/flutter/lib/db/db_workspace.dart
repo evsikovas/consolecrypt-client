@@ -623,11 +623,11 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace>
     setState(() => tab.preparing = true);
     try {
       if (analyze) {
-        final l = context.l10n;
+        final l = context.l10n, cql = session.engine == DbEngine.cassandra;
         final yes = await showConfirmDialog(
           context,
-          title: l.dbExplainAnalyze,
-          message: l.dbExplainAnalyzeHelp,
+          title: cql ? l.dbTrace : l.dbExplainAnalyze,
+          message: cql ? l.dbTraceHelp : l.dbExplainAnalyzeHelp,
           confirmLabel: l.dbRun,
           secure: true,
         );
@@ -1362,7 +1362,9 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
     });
     if (!_scope.unlocked || !identical(_scope, ref.watch(dbScopeProvider))) return const SizedBox.shrink();
     return GlassDialog(
-      title: '${context.l10n.dbExplain} · ${widget.plan.engine.label}',
+      title:
+          '${widget.plan.engine == DbEngine.cassandra ? context.l10n.dbTrace : context.l10n.dbExplain} · '
+          '${widget.plan.engine.label}',
       content: SizedBox(
         width: 900,
         height: MediaQuery.sizeOf(context).height * .65,

@@ -8786,6 +8786,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'ANALYZE выполняет запрос для сбора измерений. Доступно только для непрод-подключений.';
 
   @override
+  String get dbTrace => 'Трассировка запроса';
+
+  @override
+  String get dbTraceHelp =>
+      'Запрос выполнится один раз с трассировкой: каждый узел запишет свои шаги и задержки в system_traces. Доступно только для непрод-подключений.';
+
+  @override
   String get dbEditCell => 'Изменить ячейку';
 
   @override

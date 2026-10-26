@@ -34,6 +34,7 @@ use scylla::{
     },
     cluster::metadata::Peer,
     errors::TranslationError,
+    observability::tracing::TracingInfo,
     policies::{
         address_translator::{AddressTranslator, UntranslatedPeer},
         host_filter::HostFilter,
@@ -56,6 +57,41 @@ use uuid::Uuid;
 
 /// Most catalogue rows read for one structure or completion lookup.
 const MAX_CATALOGUE_ROWS: usize = 20_000;
+
+/// Most trace events kept (a scan touching many nodes logs thousands).
+const MAX_TRACE_EVENTS: usize = 2_000;
+
+/// A query trace for the plan view: the coordinator's session and each
+/// node's events in the order they happened.
+fn trace_json(info: &TracingInfo) -> serde_json::Value {
+    let mut nodes: Vec<(String, Vec<serde_json::Value>)> = Vec::new();
+    for event in info.events.iter().take(MAX_TRACE_EVENTS) {
+        let source = event.source.map(|ip| ip.to_string()).unwrap_or_default();
+        let entry = serde_json::json!({
+            "activity": event.activity,
+            "elapsed_us": event.source_elapsed,
+            "thread": event.thread,
+        });
+        match nodes.iter_mut().find(|(known, _)| *known == source) {
+            Some((_, events)) => events.push(entry),
+            None => nodes.push((source, vec![entry])),
+        }
+    }
+    serde_json::json!({
+        "cql_trace": {
+            "request": info.request,
+            "coordinator": info.coordinator.map(|ip| ip.to_string()),
+            "duration_us": info.duration,
+            "started_at": info.started_at.map(|at| at.0),
+            "parameters": info.parameters,
+            "truncated": info.events.len() > MAX_TRACE_EVENTS,
+            "nodes": nodes
+                .into_iter()
+                .map(|(source, events)| serde_json::json!({"source": source, "events": events}))
+                .collect::<Vec<_>>(),
+        }
+    })
+}
 
 pub(crate) struct Cassandra {
     session: Session,
@@ -739,6 +775,44 @@ impl Cassandra {
             .and_then(Result::ok)
             .and_then(|row| row.columns.into_iter().next().flatten());
         Ok(matches!(applied, Some(CqlValue::Boolean(true))))
+    }
+
+    /// Runs one statement with tracing on (FEAT-14, CQL has no EXPLAIN) and
+    /// returns the trace: the coordinator's session and every node's events
+    /// in order. Only the first page is read; the rows are dropped.
+    pub(crate) async fn trace(
+        &self,
+        text: &str,
+        parameters: &[DbParameter],
+        read_only: bool,
+        cancel: &CancellationToken,
+    ) -> Result<serde_json::Value, DbError> {
+        let consistency = if read_only { self.read } else { self.write };
+        let (result, _) = if parameters.is_empty() {
+            let mut statement = Statement::new(text.to_owned());
+            statement.set_consistency(consistency);
+            statement.set_page_size(self.page_size);
+            statement.set_tracing(true);
+            cancellable(
+                cancel,
+                self.session
+                    .query_single_page(statement, (), PagingState::start()),
+            )
+            .await?
+        } else {
+            let (mut prepared, values) =
+                self.prepared(text, parameters, consistency, cancel).await?;
+            prepared.set_tracing(true);
+            cancellable(
+                cancel,
+                self.session
+                    .execute_single_page(&prepared, &values, PagingState::start()),
+            )
+            .await?
+        };
+        let id = result.tracing_id().ok_or(DbError::QueryFailed)?;
+        let info = cancellable(cancel, self.session.get_tracing_info(&id)).await?;
+        Ok(trace_json(&info))
     }
 
     /// One CSV import write (FEAT-09): a conditional `… IF NOT EXISTS`
