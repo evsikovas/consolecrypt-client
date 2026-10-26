@@ -35,6 +35,12 @@ pub struct TeamMembership {
     /// cleared once the verified log contains this member.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub invitation_id: Option<TeamInvitationId>,
+    /// Hex Ed25519 key of the admin whose member code this member compared
+    /// when joining. The first verified log must add this member with an
+    /// entry signed by that key, so a server cannot hand a joiner a team of
+    /// its own (security review SEC-02). `None` for owners and older joins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub join_admin_key: Option<String>,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
 }

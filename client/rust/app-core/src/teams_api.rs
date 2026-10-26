@@ -313,6 +313,7 @@ impl AppCore {
             sort_order: next_sort_order(&cx.unlocked),
             hidden: false,
             invitation_id: None,
+            join_admin_key: None,
             created_at: now,
             updated_at: now,
         };
@@ -481,12 +482,13 @@ impl AppCore {
             sort_order: next_sort_order(&cx.unlocked),
             hidden: false,
             invitation_id: Some(inv_id),
+            join_admin_key: None,
             created_at: now,
             updated_at: now,
         };
         cx.unlocked
             .writer
-            .put(VaultObject::TeamMembership(membership))
+            .put(VaultObject::TeamMembership(membership.clone()))
             .await?;
         let accepted = cx
             .api
@@ -502,6 +504,16 @@ impl AppCore {
             .inviter_signing_key
             .to_array()
             .ok_or_else(|| AppError::Crypto("inviter key is malformed".into()))?;
+        // The code shown below covers this admin key: the first verified log
+        // must add us with an entry this key signed (SEC-02).
+        cx.unlocked
+            .writer
+            .put(VaultObject::TeamMembership(TeamMembership {
+                join_admin_key: Some(hex(&admin_key)),
+                updated_at: chrono::Utc::now(),
+                ..membership
+            }))
+            .await?;
         self.inner.ctx.emit(AppEvent::TeamsChanged);
         Ok(TeamJoinDto {
             invitation_id: inv_id.to_string(),

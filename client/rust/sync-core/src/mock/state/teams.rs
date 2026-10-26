@@ -688,6 +688,48 @@ impl State {
         })
     }
 
+    /// Test hook: a hostile server replaces the team's log with `log` (a
+    /// genesis of its own and an `AddMember` of `keys`) and hands that user
+    /// an envelope of a key it chose.
+    pub(crate) fn forge_team(
+        &mut self,
+        vault_id: VaultId,
+        log: Vec<SignedTeamLogEntry>,
+        keys: TeamMemberKeys,
+        envelope: NewEnvelope,
+    ) -> bool {
+        {
+            let Some(t) = self.vaults.get_mut(&vault_id).and_then(|v| v.team.as_mut()) else {
+                return false;
+            };
+            let Some(last) = log.last() else {
+                return false;
+            };
+            t.head = entry_hash(last);
+            t.log = log;
+            t.key_epoch = 0;
+            t.chain.clear();
+            t.members.insert(
+                keys.user_id,
+                MemberRec {
+                    role: VaultRole::Editor,
+                    keys,
+                    joined_at: Utc::now(),
+                },
+            );
+        }
+        self.store_envelope(vault_id, envelope, cc_protocol::DeviceId::new());
+        true
+    }
+
+    /// Test hook: the keys an invitee sent when accepting.
+    pub(crate) fn team_invitation_keys(
+        &self,
+        invitation_id: TeamInvitationId,
+    ) -> Option<TeamMemberKeys> {
+        self.team_invitations.get(&invitation_id)?.keys.clone()
+    }
+
     /// Test hook: a hostile server swaps the keys/role of an invitation.
     pub(crate) fn swap_team_invitation_keys(
         &mut self,

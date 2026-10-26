@@ -358,6 +358,27 @@ impl MockServer {
         self.shared.lock().inject_team_member(vault_id, keys)
     }
 
+    /// Test hook (teams): the keys an invitee sent when accepting.
+    pub fn team_invitation_keys(
+        &self,
+        invitation_id: cc_protocol::TeamInvitationId,
+    ) -> Option<cc_protocol::teams::TeamMemberKeys> {
+        self.shared.lock().team_invitation_keys(invitation_id)
+    }
+
+    /// Hostile-server hook (teams): serve a forged team — the server's own
+    /// genesis and an `AddMember` of `keys` it signed itself — and an
+    /// envelope of a key it chose. A joining member must refuse it.
+    pub fn forge_team(
+        &self,
+        vault_id: VaultId,
+        log: Vec<cc_protocol::teams::SignedTeamLogEntry>,
+        keys: cc_protocol::teams::TeamMemberKeys,
+        envelope: cc_protocol::envelopes::NewEnvelope,
+    ) -> bool {
+        self.shared.lock().forge_team(vault_id, log, keys, envelope)
+    }
+
     /// Hostile-server hook (teams): replace the keys (and role) an accepted
     /// invitation reports, as a server would between the admin's code check
     /// and the confirmation. Clients must refuse to seal to them.
