@@ -13322,4 +13322,109 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get startupFailedStorageBody =>
       'Existing storage could not be opened safely. Your data was not changed. Resolve the storage issue below and try again.';
+
+  @override
+  String get snippetPackSqlite => 'SQLite';
+
+  @override
+  String get snippetPackSqliteDescription =>
+      'Schema, indexes, foreign keys, integrity, size and query plans of an SQLite file. For sqlite3 or the Databases workspace.';
+
+  @override
+  String get snippetDbSqliteTables => 'Tables and views';
+
+  @override
+  String get snippetDbSqliteTablesNote =>
+      'Every table, view, index and trigger of the file except the internal sqlite_ ones.';
+
+  @override
+  String get snippetDbSqliteColumns => 'Columns of a table';
+
+  @override
+  String get snippetDbSqliteColumnsNote =>
+      'Name, declared type, NOT NULL, default, primary key position and hidden (generated) flag.';
+
+  @override
+  String get snippetDbSqliteIndexes => 'Indexes of a table';
+
+  @override
+  String get snippetDbSqliteIndexesNote =>
+      'Each index with uniqueness, origin (c = CREATE INDEX, u = UNIQUE, pk) and whether it is partial.';
+
+  @override
+  String get snippetDbSqliteIndexColumns => 'Columns of an index';
+
+  @override
+  String get snippetDbSqliteIndexColumnsNote => 'Key columns of an index in order, with sort direction and collation.';
+
+  @override
+  String get snippetDbSqliteForeignKeys => 'Foreign keys of a table';
+
+  @override
+  String get snippetDbSqliteForeignKeysNote => 'Referenced table and columns with ON UPDATE / ON DELETE actions.';
+
+  @override
+  String get snippetDbSqliteFkCheck => 'Rows breaking foreign keys';
+
+  @override
+  String get snippetDbSqliteFkCheckNote =>
+      'Rows whose foreign keys point nowhere (checked even when enforcement is off).';
+
+  @override
+  String get snippetDbSqliteQuickCheck => 'Quick integrity check';
+
+  @override
+  String get snippetDbSqliteQuickCheckNote => 'Structure check of the whole file; returns ok when nothing is wrong.';
+
+  @override
+  String get snippetDbSqliteSize => 'File size and free pages';
+
+  @override
+  String get snippetDbSqliteSizeNote => 'Pages in use, page size, the size in bytes and pages VACUUM could free.';
+
+  @override
+  String get snippetDbSqliteDefinition => 'CREATE statement of an object';
+
+  @override
+  String get snippetDbSqliteDefinitionNote =>
+      'The SQL that created a table, view, index or trigger, as stored in the file.';
+
+  @override
+  String get snippetDbSqliteCount => 'Rows in a table';
+
+  @override
+  String get snippetDbSqliteCountNote => 'Exact row count (scans the table).';
+
+  @override
+  String get snippetDbSqlitePlan => 'Query plan';
+
+  @override
+  String get snippetDbSqlitePlanNote => 'How SQLite will run the query: indexes used, scans and temporary B-trees.';
+
+  @override
+  String get snippetDbSqliteVersion => 'SQLite version';
+
+  @override
+  String get snippetDbSqliteVersionNote => 'Library version and source id of the program that opened the file.';
+
+  @override
+  String get snippetDbSqliteCompileOptions => 'Compile options';
+
+  @override
+  String get snippetDbSqliteCompileOptionsNote =>
+      'Options the SQLite library was built with (JSON, FTS5, maximum sizes).';
+
+  @override
+  String get snippetDbSqliteAnalyze => 'Refresh planner statistics';
+
+  @override
+  String get snippetDbSqliteAnalyzeNote =>
+      'Collects index statistics into sqlite_stat1 so the planner picks better indexes.';
+
+  @override
+  String get snippetDbSqliteVacuum => 'Compact the file';
+
+  @override
+  String get snippetDbSqliteVacuumNote =>
+      'Rebuilds the file to return free pages to the disk; needs exclusive access and free space about the file\'s size.';
 }

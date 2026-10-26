@@ -38,6 +38,54 @@ fn uri_credentials_are_separate_and_secure_defaults_are_preserved() {
     assert_eq!(c.connection().host, "2001:db8::1");
 }
 #[test]
+fn sqlite_and_cassandra_uris_import() {
+    let file = parse_uri(&secret("sqlite:///srv/data/app.db?mode=ro")).unwrap();
+    let c = file.connection();
+    assert_eq!(c.engine, DbEngine::Sqlite);
+    assert_eq!(c.database, "/srv/data/app.db");
+    assert_eq!(c.name, "app.db");
+    assert!(matches!(c.options, DbOptions::Sqlite { read_only: true }));
+    assert!(file.password().is_none());
+    let short = parse_uri(&secret("sqlite:/home/me/notes%20db.sqlite")).unwrap();
+    assert_eq!(short.connection().database, "/home/me/notes db.sqlite");
+    assert!(matches!(
+        short.connection().options,
+        DbOptions::Sqlite { read_only: false }
+    ));
+    let windows = parse_uri(&secret("sqlite:///C:/Data/app.db")).unwrap();
+    assert_eq!(windows.connection().database, "C:/Data/app.db");
+    for bad in [
+        "sqlite:relative.db",
+        "sqlite:///",
+        "sqlite:///x.db?mode=memory",
+        "sqlite:///x.db?vfs=unix-none",
+    ] {
+        assert!(parse_uri(&secret(bad)).is_err(), "{bad}");
+    }
+
+    let ring = parse_uri(&secret(
+        "cassandra://reader:pa%40ss@scylla-1.internal/events?datacenter=dc1",
+    ))
+    .unwrap();
+    let c = ring.connection();
+    assert_eq!(c.engine, DbEngine::Cassandra);
+    assert_eq!(c.host, "scylla-1.internal");
+    assert_eq!(c.port, 9042);
+    assert_eq!(c.database, "events");
+    assert_eq!(c.username, "reader");
+    assert_eq!(ring.password().unwrap().expose_secret(), "pa@ss");
+    assert!(matches!(
+        &c.options,
+        DbOptions::Cassandra { local_datacenter: Some(dc), .. } if dc == "dc1"
+    ));
+    let scylla = parse_uri(&secret("scylla://10.0.0.5:19042")).unwrap();
+    assert_eq!(scylla.connection().port, 19042);
+    // One contact point per import; unknown driver options are refused.
+    assert!(parse_uri(&secret("cassandra://a,b/ks")).is_err());
+    assert!(parse_uri(&secret("cassandra://a/ks?consistency=ALL")).is_err());
+}
+
+#[test]
 fn uri_options_cannot_override_native_security_or_driver_protocol() {
     for uri in [
         "postgresql://u:p@db/app?sslmode=disable",

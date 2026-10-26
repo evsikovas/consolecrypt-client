@@ -55,6 +55,12 @@ pub fn parse_uri(input: &SecretString) -> Result<ImportedConnection, DbError> {
     if input.is_empty() || input.len() > MAX_IMPORT_BYTES || input.chars().any(char::is_control) {
         return Err(DbError::InvalidRequest);
     }
+    if let Some(rest) = input
+        .strip_prefix("sqlite:")
+        .or_else(|| input.strip_prefix("SQLITE:"))
+    {
+        return parse_sqlite(rest);
+    }
     let (scheme, remaining) = input.split_once("://").ok_or(DbError::InvalidRequest)?;
     let (engine, srv) = match scheme.to_ascii_lowercase().as_str() {
         "postgres" | "postgresql" => (DbEngine::Postgresql, false),
@@ -64,6 +70,7 @@ pub fn parse_uri(input: &SecretString) -> Result<ImportedConnection, DbError> {
         "redis" | "rediss" => (DbEngine::Redis, false),
         "mongodb" => (DbEngine::Mongodb, false),
         "mongodb+srv" => (DbEngine::Mongodb, true),
+        "cassandra" | "scylla" | "scylladb" => (DbEngine::Cassandra, false),
         _ => return Err(DbError::InvalidRequest),
     };
     let authority_end = remaining.find(['/', '?', '#']).unwrap_or(remaining.len());
@@ -204,6 +211,15 @@ fn apply_option(connection: &mut DbConnection, key: &str, value: &str) -> Result
             }
             *charset = value.into();
         }
+        DbOptions::Cassandra {
+            local_datacenter, ..
+        } if matches!(
+            key,
+            "datacenter" | "localdatacenter" | "local_datacenter" | "dc"
+        ) =>
+        {
+            *local_datacenter = Some(bounded_option(value)?);
+        }
         DbOptions::Redis { resp3 } if key == "protocol" => {
             *resp3 = match value {
                 "2" => false,
@@ -241,6 +257,46 @@ fn apply_option(connection: &mut DbConnection, key: &str, value: &str) -> Result
         _ => return Err(DbError::PolicyDenied),
     }
     Ok(())
+}
+
+/// `sqlite:///abs/path.db`, `sqlite:/abs/path.db` or (Windows)
+/// `sqlite:///C:/data/x.db`; `?mode=ro` opens it read-only. Only an absolute
+/// path on this computer: a relative one has no base to resolve against.
+fn parse_sqlite(rest: &str) -> Result<ImportedConnection, DbError> {
+    let (path, query) = rest.split_once('?').unwrap_or((rest, ""));
+    let path = path.strip_prefix("//").unwrap_or(path);
+    let path = decoded(path)?;
+    let windows = path.len() > 3
+        && path.starts_with('/')
+        && path.as_bytes()[1].is_ascii_alphabetic()
+        && path[2..].starts_with(":/");
+    let path = if windows { path[1..].to_owned() } else { path };
+    let absolute = path.starts_with('/') || (path.len() > 2 && path[1..].starts_with(":/"));
+    if !absolute || path.len() > 4096 || path.ends_with('/') || path.contains('\0') {
+        return Err(DbError::InvalidRequest);
+    }
+    let mut read_only = false;
+    for pair in query.split('&').filter(|pair| !pair.is_empty()) {
+        match pair.split_once('=') {
+            Some(("mode", "ro")) => read_only = true,
+            Some(("mode", "rw" | "rwc")) => read_only = false,
+            _ => return Err(DbError::PolicyDenied),
+        }
+    }
+    let name = path
+        .rsplit('/')
+        .next()
+        .filter(|name| !name.is_empty())
+        .unwrap_or("SQLite")
+        .to_owned();
+    let mut connection = DbConnection::new(name, "localhost", DbEngine::Sqlite);
+    connection.database = path;
+    connection.options = DbOptions::Sqlite { read_only };
+    connection.validate().map_err(|_| DbError::InvalidRequest)?;
+    Ok(ImportedConnection {
+        connection,
+        password: None,
+    })
 }
 
 fn bounded_option(value: &str) -> Result<String, DbError> {

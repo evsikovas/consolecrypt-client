@@ -23371,6 +23371,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Existing storage could not be opened safely. Your data was not changed. Resolve the storage issue below and try again.'**
   String get startupFailedStorageBody;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'SQLite'**
+  String get snippetPackSqlite;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Schema, indexes, foreign keys, integrity, size and query plans of an SQLite file. For sqlite3 or the Databases workspace.'**
+  String get snippetPackSqliteDescription;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Tables and views'**
+  String get snippetDbSqliteTables;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Every table, view, index and trigger of the file except the internal sqlite_ ones.'**
+  String get snippetDbSqliteTablesNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Columns of a table'**
+  String get snippetDbSqliteColumns;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Name, declared type, NOT NULL, default, primary key position and hidden (generated) flag.'**
+  String get snippetDbSqliteColumnsNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Indexes of a table'**
+  String get snippetDbSqliteIndexes;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Each index with uniqueness, origin (c = CREATE INDEX, u = UNIQUE, pk) and whether it is partial.'**
+  String get snippetDbSqliteIndexesNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Columns of an index'**
+  String get snippetDbSqliteIndexColumns;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Key columns of an index in order, with sort direction and collation.'**
+  String get snippetDbSqliteIndexColumnsNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Foreign keys of a table'**
+  String get snippetDbSqliteForeignKeys;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Referenced table and columns with ON UPDATE / ON DELETE actions.'**
+  String get snippetDbSqliteForeignKeysNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Rows breaking foreign keys'**
+  String get snippetDbSqliteFkCheck;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Rows whose foreign keys point nowhere (checked even when enforcement is off).'**
+  String get snippetDbSqliteFkCheckNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Quick integrity check'**
+  String get snippetDbSqliteQuickCheck;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Structure check of the whole file; returns ok when nothing is wrong.'**
+  String get snippetDbSqliteQuickCheckNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'File size and free pages'**
+  String get snippetDbSqliteSize;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Pages in use, page size, the size in bytes and pages VACUUM could free.'**
+  String get snippetDbSqliteSizeNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'CREATE statement of an object'**
+  String get snippetDbSqliteDefinition;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'The SQL that created a table, view, index or trigger, as stored in the file.'**
+  String get snippetDbSqliteDefinitionNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Rows in a table'**
+  String get snippetDbSqliteCount;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Exact row count (scans the table).'**
+  String get snippetDbSqliteCountNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Query plan'**
+  String get snippetDbSqlitePlan;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'How SQLite will run the query: indexes used, scans and temporary B-trees.'**
+  String get snippetDbSqlitePlanNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'SQLite version'**
+  String get snippetDbSqliteVersion;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Library version and source id of the program that opened the file.'**
+  String get snippetDbSqliteVersionNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Compile options'**
+  String get snippetDbSqliteCompileOptions;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Options the SQLite library was built with (JSON, FTS5, maximum sizes).'**
+  String get snippetDbSqliteCompileOptionsNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh planner statistics'**
+  String get snippetDbSqliteAnalyze;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Collects index statistics into sqlite_stat1 so the planner picks better indexes.'**
+  String get snippetDbSqliteAnalyzeNote;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Compact the file'**
+  String get snippetDbSqliteVacuum;
+
+  /// SQLite starter snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Rebuilds the file to return free pages to the disk; needs exclusive access and free space about the file\'s size.'**
+  String get snippetDbSqliteVacuumNote;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

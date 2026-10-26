@@ -142,6 +142,13 @@ fn authorize(mode: &AtomicU8, context: AuthContext<'_>) -> Authorization {
     }
     let read = mode != MODE_WRITE;
     match context.action {
+        // An approved VACUUM copies through a temporary database without a
+        // file name (the attach limit admits it only then); no file is ever
+        // attached.
+        AuthAction::Attach { filename } if !read && filename.is_empty() => Authorization::Allow,
+        AuthAction::Detach { database_name } if !read && database_name == "vacuum_db" => {
+            Authorization::Allow
+        }
         AuthAction::Attach { .. } | AuthAction::Detach { .. } => Authorization::Deny,
         AuthAction::Function { function_name } => {
             if crate::parser::sqlite::denied_name(function_name) {
@@ -561,6 +568,18 @@ fn internal(connection: &Connection, mode: &AtomicU8, sql: &str) -> Result<(), D
     result
 }
 
+/// A plain `VACUUM` statement (`VACUUM INTO` never reaches here).
+fn is_vacuum(sql: &str) -> bool {
+    let words: Vec<&str> = sql
+        .trim()
+        .trim_end_matches(';')
+        .split_whitespace()
+        .collect();
+    matches!(words.as_slice(), [word] if word.eq_ignore_ascii_case("vacuum"))
+        || matches!(words.as_slice(), [word, schema] if word.eq_ignore_ascii_case("vacuum")
+            && schema.eq_ignore_ascii_case("main"))
+}
+
 type Sender = mpsc::Sender<Result<Message, DbError>>;
 
 fn run_blocking(
@@ -596,7 +615,23 @@ fn run_blocking(
             )?;
         }
         for (sql, parameters) in &statements {
-            run_one(connection, sql, parameters, sender)?;
+            // VACUUM (the guard allows only the plain form, after a review)
+            // copies the file through an internal temporary database, which
+            // the no-attach limit would refuse. ATTACH itself stays denied
+            // by the authorizer and the guard.
+            let vacuum = writable && is_vacuum(sql);
+            if vacuum {
+                connection
+                    .set_limit(Limit::SQLITE_LIMIT_ATTACHED, 1)
+                    .map_err(classify)?;
+            }
+            let ran = run_one(connection, sql, parameters, sender);
+            if vacuum {
+                connection
+                    .set_limit(Limit::SQLITE_LIMIT_ATTACHED, 0)
+                    .map_err(classify)?;
+            }
+            ran?;
         }
         if transaction {
             internal(connection, mode, "COMMIT;")?;
