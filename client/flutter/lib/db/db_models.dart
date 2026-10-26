@@ -338,8 +338,13 @@ final class DbConnection {
     this.color,
     this.createdAt,
     this.updatedAt,
+    this.deviceOnly = false,
   });
   final String id, name, host, database, username;
+
+  /// Kept on this device instead of the vault (engines added after 0.9.1
+  /// until moved, see [DbVaultMove]); not part of the stored object.
+  final bool deviceOnly;
   final DbEngine engine;
   final int port;
   final DbAuth auth;
@@ -370,6 +375,7 @@ final class DbConnection {
     color: json['color'] as String?,
     createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
     updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? ''),
+    deviceOnly: json['device_only'] as bool? ?? DbEngine.parse(json['engine'] as String).localOnly,
   );
   DbJson toJson() => {
     'id': id,
@@ -882,3 +888,9 @@ DbCell? dbCellFromInput(DbCellKind kind, String input) {
       return DbCell(kind, input);
   }
 }
+
+/// Whether a connection can move into the vault: Cassandra, or SQLite
+/// reached through a host (a file on this computer stays here).
+bool dbMovableToVault(DbConnection c) =>
+    c.deviceOnly &&
+    (c.engine == DbEngine.cassandra || (c.engine == DbEngine.sqlite && c.route.kind != DbRouteKind.direct));

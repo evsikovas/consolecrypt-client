@@ -83,11 +83,13 @@ impl AppCore {
     ) -> AppResult<DbConnection> {
         let (owner, unlocked) = self.unlocked().await?;
         let creating = connection.id == ObjectId::NIL;
-        // Engines added after 0.9.1 stay on this device (see database_local).
-        let local = !creating
-            && unlocked.working().db_connection(connection.id).is_none()
-            && self.db_saved_connection(connection.id).await?.is_some();
-        if connection.engine.local_only() || local {
+        // Engines added after 0.9.1 stay on this device (see database_local)
+        // unless the connection was moved into the vault
+        // (database_vault_move).
+        let in_vault = !creating && unlocked.working().db_connection(connection.id).is_some();
+        let local =
+            !creating && !in_vault && self.db_saved_connection(connection.id).await?.is_some();
+        if (connection.engine.local_only() && !in_vault) || local {
             if !connection.engine.local_only() || (!creating && !local) {
                 // An engine never moves between the vault and this device.
                 return Err(invalid("engine_changed"));
@@ -113,6 +115,14 @@ impl AppCore {
                     .ok_or_else(|| invalid("connection_unavailable"))?,
             )
         };
+        // A vault connection never becomes one of an engine older apps cannot
+        // read (that is a move, with its device check), nor the other way.
+        if existing.as_ref().is_some_and(|old| {
+            old.engine != connection.engine
+                && (old.engine.local_only() || connection.engine.local_only())
+        }) {
+            return Err(invalid("engine_changed"));
+        }
         let now = chrono::Utc::now();
         connection.created_at = existing.as_ref().map_or(now, |old| old.created_at);
         connection.updated_at = now;

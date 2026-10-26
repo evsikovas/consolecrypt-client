@@ -23305,6 +23305,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The deletion is cancelled.'**
   String get syncVaultDeletionCancelled;
+
+  /// Moving a device-local database connection into the vault (FEAT-01)
+  ///
+  /// In en, this message translates to:
+  /// **'Sync with the vault'**
+  String get dbMoveToVault;
+
+  /// Moving a device-local database connection into the vault (FEAT-01)
+  ///
+  /// In en, this message translates to:
+  /// **'The connection and its password move into the vault: they sync to all your devices and are backed up with the vault. It does not go back to this device only.'**
+  String get dbMoveToVaultHelp;
+
+  /// Moving a device-local database connection into the vault (FEAT-01)
+  ///
+  /// In en, this message translates to:
+  /// **'Move into the vault'**
+  String get dbMoveToVaultConfirm;
+
+  /// Moving a device-local database connection into the vault (FEAT-01)
+  ///
+  /// In en, this message translates to:
+  /// **'The connection now syncs with the vault.'**
+  String get dbMovedToVault;
+
+  /// Moving a device-local database connection into the vault (FEAT-01)
+  ///
+  /// In en, this message translates to:
+  /// **'Update your devices first'**
+  String get dbMoveOutdatedTitle;
+
+  /// Moving a device-local database connection into the vault (FEAT-01)
+  ///
+  /// In en, this message translates to:
+  /// **'Apps before 0.9.2 cannot read this connection. Update these devices of your account (or sign them out), then try again:'**
+  String get dbMoveOutdatedBody;
+
+  /// Moving a device-local database connection into the vault (FEAT-01)
+  ///
+  /// In en, this message translates to:
+  /// **'version unknown'**
+  String get dbMoveVersionUnknown;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

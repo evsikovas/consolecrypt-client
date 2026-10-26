@@ -79,7 +79,14 @@ MongoDB, Apache Cassandra и ScyllaDB, а также с файлами SQLite. �
   ConsoleCrypt до 0.9.1 включительно не умеют читать такие подключения.
   Подключение и его пароль хранятся в локальной базе профиля, зашифрованные
   ключами хранилища. На карточке видна метка «Только на этом устройстве».
-  Синхронизация появится в следующих версиях.
+  С версии 0.9.3 пункт меню «Синхронизировать через хранилище» переносит
+  подключение и его пароль в хранилище: дальше оно синхронизируется и
+  попадает в резервные копии, как остальные. Перенос возможен, когда все
+  активные устройства аккаунта работают на 0.9.2 или новее (их версии
+  сообщает сервер 0.2.4, протокол 1.13); иначе приложение перечислит
+  устройства, которые нужно обновить. Обратно «только на устройство»
+  подключение не возвращается. Поделиться им с другими людьми по-прежнему
+  нельзя, история запросов остаётся локальной.
 - **Поля.** «Хост» — первый контактный узел; в параметрах можно добавить
   другие контактные узлы (через запятую, тот же порт), локальный дата-центр,
   уровни согласованности чтения (по умолчанию `LOCAL_ONE`) и записи
@@ -198,7 +205,11 @@ INSERT с литералами SQLite) и правка ячеек по перв�
 Подключения SQLite хранятся **только на этом устройстве** (значок «Только на
 этом устройстве»): они не синхронизируются, не попадают в хранилище и
 резервные копии и не передаются другим — версии приложения до 0.9.1 не умеют
-их читать. История их запросов тоже остаётся локальной.
+их читать. История их запросов тоже остаётся локальной. Подключение к файлу
+через хост (SSH, Docker, Kubernetes) с 0.9.3 можно перенести в хранилище
+пунктом «Синхронизировать через хранилище» (условия — как у Cassandra);
+файл на этом компьютере остаётся только здесь: на другом устройстве его путь
+ничего не значит.
 
 ### Режим «Прод»
 
@@ -749,7 +760,13 @@ works with Apache Cassandra 3.11+, 4.x, 5.x and ScyllaDB.
   vault backups, and their query history stays local, because ConsoleCrypt
   0.9.1 and earlier cannot read them. The connection and its password are
   kept in the profile's local database, encrypted with the vault's keys; the
-  card shows “This device only”. Syncing comes in a later release.
+  card shows “This device only”. Since 0.9.3 **Sync with the vault** in the
+  menu moves the connection and its password into the vault: from then on it
+  syncs and is backed up like the others. It works once every active device
+  of the account runs 0.9.2 or later (server 0.2.4, protocol 1.13, reports
+  their versions); otherwise the app lists the devices to update. It does
+  not go back to this device only. It still cannot be shared with other
+  people, and its query history stays local.
 - **Fields.** “Host” is the first contact point; the options add more contact
   points (comma-separated, same port), the local data center, read
   (`LOCAL_ONE` by default) and write (`LOCAL_QUORUM`) consistency and the CQL
@@ -857,7 +874,10 @@ primary key or `rowid` work as for the other engines.
 SQLite connections are kept **on this device only** (“This device only”
 badge): they are not synced, stored in the vault or its backups, or shared,
 because app versions up to 0.9.1 cannot read them. Their query history stays
-local too.
+local too. Since 0.9.3 a file reached through a host (SSH, Docker,
+Kubernetes) can move into the vault with **Sync with the vault** (same
+conditions as Cassandra); a file on this computer stays here, as its path
+means nothing on another device.
 
 ### Production
 

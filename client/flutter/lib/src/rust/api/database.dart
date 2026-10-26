@@ -11,7 +11,17 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // These functions are ignored because they are not marked as `pub`: `connection_from_json`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Selection`
 
+/// Saved connections; each carries `device_only` (kept on this device, not
+/// in the vault).
 Future<String> dbConnections() => RustLib.instance.api.crateApiDatabaseDbConnections();
+
+/// Whether connections of engines added after 0.9.1 can sync on this
+/// account → `DbSyncReadinessDto`.
+Future<String> dbSyncReadiness() => RustLib.instance.api.crateApiDatabaseDbSyncReadiness();
+
+/// Move a device-local connection into the vault (FEAT-01) → `DbConnection`.
+Future<String> dbMoveConnectionToVault({required String connectionId}) =>
+    RustLib.instance.api.crateApiDatabaseDbMoveConnectionToVault(connectionId: connectionId);
 
 Future<String> dbSaveConnection({required String connectionJson, Uint8List? password, Uint8List? privateKey}) => RustLib
     .instance

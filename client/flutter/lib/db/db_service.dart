@@ -106,3 +106,20 @@ abstract interface class DbSqliteFileService {
 abstract interface class DbPgpassFileService {
   Future<DbImportReview?> selectPgpassFile();
 }
+
+/// Whether connections of engines added after 0.9.1 can sync on this
+/// account: every active device runs 0.9.2 or later.
+final class DbSyncReadiness {
+  const DbSyncReadiness({required this.ready, this.outdatedDevices = const []});
+  final bool ready;
+
+  /// Names and reported versions (null: never reported) of devices to update.
+  final List<(String, String?)> outdatedDevices;
+}
+
+/// Optional capability (FEAT-01): moving a device-local connection into the
+/// vault so it syncs with it.
+abstract interface class DbVaultMove {
+  Future<DbSyncReadiness> syncReadiness();
+  Future<void> moveToVault(String connectionId);
+}

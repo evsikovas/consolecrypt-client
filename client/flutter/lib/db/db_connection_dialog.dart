@@ -639,7 +639,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                           });
                         },
                 ),
-                if (_engine.localOnly)
+                if (_engine.localOnly && (widget.connection?.deviceOnly ?? true))
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: InfoBanner(
