@@ -243,7 +243,7 @@ impl SyncEngine {
                 .store
                 .storage()
                 .write(move |tx| -> Result<_, SyncError> {
-                    let (remote, warnings) = verify_changes(codec.as_ref(), changes);
+                    let (remote, warnings) = verify_changes(codec.as_ref(), changes, |_| false);
                     tx.record_recovery_page(vault_id, &remote, page)
                         .map_err(malformed_if_invalid)?;
                     Ok(warnings)

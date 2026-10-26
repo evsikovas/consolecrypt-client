@@ -44,6 +44,9 @@
   этому устройству, что поддерживает проверку по коду пары, переключить его на старый
   способ без проверки он уже не может: такое подтверждение отклоняется. Одобряющее
   устройство должно быть версии 0.9.2 или новее.
+- **Синхронизация: испорченные данные.** Если сервер присылает объект, который не
+  проходит проверку подлинности, приложение показывает предупреждение и оставляет
+  последнюю хорошую локальную копию, а не заменяет её нечитаемыми данными.
 - **Зависимости.** `crypto-bigint` 0.7.10 (RUSTSEC-2026-0387, неравномерное по
   времени выполнение операций, которые должны быть постоянными), `tokio` 1.54.1
   (RUSTSEC-2026-0386) и плановые обновления `hyper`, `uuid`, `tokio-rustls`, `xml` и
@@ -90,6 +93,9 @@ admins and sends invitations only to verified addresses.
 - **New device: approval without a check.** Once the server told this device that it
   supports the pairing-code check, it can no longer switch it back to the unchecked way:
   such an approval is refused. The approving device must run 0.9.2 or later.
+- **Sync: damaged data.** If the server sends an object that fails authentication, the
+  app shows a warning and keeps the last good local copy instead of replacing it with
+  unreadable data.
 - **Dependencies.** `crypto-bigint` 0.7.10 (RUSTSEC-2026-0387, timing variability in
   operations meant to be constant-time), `tokio` 1.54.1 (RUSTSEC-2026-0386) and routine
   updates of `hyper`, `uuid`, `tokio-rustls`, `xml` and other libraries.

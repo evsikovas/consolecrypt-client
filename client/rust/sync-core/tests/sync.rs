@@ -722,8 +722,9 @@ async fn malformed_responses_do_not_corrupt_local_state() {
         Err(SyncError::MalformedResponse(_))
     ));
 
-    // Tampered ciphertext passes the structure check: stored as received,
-    // flagged, and never decrypts.
+    // Tampered ciphertext passes the structure check: it is flagged, but it
+    // never replaces the last good local copy (security review SEC-12).
+    let before = b.store.get(h2.id).await.unwrap().expect("synced copy");
     a.engine
         .put(p(VaultObject::Host(renamed(h2.clone(), "a-edit"))))
         .await
@@ -740,7 +741,9 @@ async fn malformed_responses_do_not_corrupt_local_state() {
     sync_ok(&b.engine).await;
     assert!(std::iter::from_fn(|| events.try_recv().ok())
         .any(|e| matches!(e, SyncEvent::IntegrityWarning { object_id, .. } if object_id == h2.id)));
-    assert!(matches!(b.store.get(h2.id).await, Err(SyncError::Codec(_))));
+    let kept = b.store.get(h2.id).await.unwrap().expect("the good copy is kept");
+    assert_eq!(kept.revision, before.revision);
+    assert_eq!(kept.payload, before.payload);
 }
 
 #[tokio::test]
