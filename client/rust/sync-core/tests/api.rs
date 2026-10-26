@@ -444,7 +444,7 @@ async fn vaults_envelopes_recovery_and_authorization() {
         .get_vault(vault.vault_id)
         .await
         .unwrap_err()
-        .is_code(ErrorCode::NotFound));
+        .is_code(ErrorCode::Gone));
 }
 
 #[tokio::test]

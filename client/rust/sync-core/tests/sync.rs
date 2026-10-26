@@ -610,6 +610,26 @@ async fn untrusted_device_is_stopped() {
     assert_eq!(err.stop_reason(), Some(StopReason::NotTrusted), "{err}");
 }
 
+/// A deleted vault answers 410 (also after the re-snapshot): sync stops as
+/// VaultGone instead of retrying forever (TODO-14).
+#[tokio::test]
+async fn a_deleted_vault_stops_sync() {
+    let server = MockServer::start().await;
+    let (a, b, vault) = two_devices(&server).await;
+    sync_ok(&b.engine).await;
+    a.api
+        .delete_vault(
+            vault.vault_id,
+            &cc_protocol::vaults::DeleteVaultRequest {
+                vault_access_key: Some(vault.vak.clone()),
+            },
+        )
+        .await
+        .unwrap();
+    let err = b.engine.sync_now().await.unwrap_err();
+    assert_eq!(err.stop_reason(), Some(StopReason::VaultGone), "{err}");
+}
+
 #[tokio::test]
 async fn malformed_responses_do_not_corrupt_local_state() {
     let server = MockServer::start().await;
