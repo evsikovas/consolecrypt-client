@@ -64,6 +64,9 @@ dependencies:
   # Builds the Recovery Kit PDF in memory (Apache-2.0; DavBfr; transitive:
   # barcode Apache-2.0, bidi MIT, image MIT, path_parsing MIT).
   pdf: ^3.13.1
+  camera: ^0.12.1
+  zxing2: ^0.2.4
+  image: ^4.12.0
 
 dev_dependencies:
   flutter_test:

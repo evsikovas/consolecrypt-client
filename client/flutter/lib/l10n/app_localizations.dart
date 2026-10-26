@@ -7520,6 +7520,36 @@ abstract class AppLocalizations {
   /// **'word1 word2 … word24  or  consolecrypt-recovery:v1:…'**
   String get recoveryInputHint;
 
+  /// Recovery: scan the Recovery Kit QR with the camera
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the QR'**
+  String get recoveryScanQr;
+
+  /// Recovery: read the Recovery Kit QR from a photo or screenshot
+  ///
+  /// In en, this message translates to:
+  /// **'QR from a picture'**
+  String get recoveryQrFromImage;
+
+  /// Recovery: no QR recognised
+  ///
+  /// In en, this message translates to:
+  /// **'No Recovery Kit QR found. Try a sharper, closer picture or type the words.'**
+  String get recoveryQrNotFound;
+
+  /// Recovery QR scanner help
+  ///
+  /// In en, this message translates to:
+  /// **'Point the camera at the QR code of your Recovery Kit. Frames stay on this device.'**
+  String get recoveryScanQrHelp;
+
+  /// Recovery QR scanner without camera
+  ///
+  /// In en, this message translates to:
+  /// **'The camera is unavailable. Allow camera access in Settings or use a picture of the QR.'**
+  String get recoveryScanQrUnavailable;
+
   /// Status under the input: pasted QR text is valid.
   ///
   /// In en, this message translates to:

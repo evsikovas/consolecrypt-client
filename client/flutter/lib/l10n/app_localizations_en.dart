@@ -4292,6 +4292,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recoveryInputHint => 'word1 word2 … word24  or  consolecrypt-recovery:v1:…';
 
   @override
+  String get recoveryScanQr => 'Scan the QR';
+
+  @override
+  String get recoveryQrFromImage => 'QR from a picture';
+
+  @override
+  String get recoveryQrNotFound => 'No Recovery Kit QR found. Try a sharper, closer picture or type the words.';
+
+  @override
+  String get recoveryScanQrHelp => 'Point the camera at the QR code of your Recovery Kit. Frames stay on this device.';
+
+  @override
+  String get recoveryScanQrUnavailable =>
+      'The camera is unavailable. Allow camera access in Settings or use a picture of the QR.';
+
+  @override
   String get recoveryQrRecognised => 'QR text recognised';
 
   @override

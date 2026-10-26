@@ -6117,6 +6117,26 @@
   "@recoveryInputHint": {
     "description": "Hint in the Recovery Key input. Only 'or' is translated; the rest is literal input format."
   },
+  "recoveryScanQr": "Scan the QR",
+  "@recoveryScanQr": {
+    "description": "Recovery: scan the Recovery Kit QR with the camera"
+  },
+  "recoveryQrFromImage": "QR from a picture",
+  "@recoveryQrFromImage": {
+    "description": "Recovery: read the Recovery Kit QR from a photo or screenshot"
+  },
+  "recoveryQrNotFound": "No Recovery Kit QR found. Try a sharper, closer picture or type the words.",
+  "@recoveryQrNotFound": {
+    "description": "Recovery: no QR recognised"
+  },
+  "recoveryScanQrHelp": "Point the camera at the QR code of your Recovery Kit. Frames stay on this device.",
+  "@recoveryScanQrHelp": {
+    "description": "Recovery QR scanner help"
+  },
+  "recoveryScanQrUnavailable": "The camera is unavailable. Allow camera access in Settings or use a picture of the QR.",
+  "@recoveryScanQrUnavailable": {
+    "description": "Recovery QR scanner without camera"
+  },
   "recoveryQrRecognised": "QR text recognised",
   "@recoveryQrRecognised": {
     "description": "Status under the input: pasted QR text is valid."
