@@ -9,7 +9,8 @@ if [[ "$mode" != '--test-only' && "$mode" != '--build-only' ]]; then
   echo 'Usage: ci-ios.sh [--test-only|--build-only]' >&2
   exit 2
 fi
-export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.cargo/bin:$PATH"
+# rustup first: a Homebrew cargo ignores rust-toolchain.toml and has no iOS targets.
+export PATH="$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export CARGO_INCREMENTAL=0
 export IPHONEOS_DEPLOYMENT_TARGET=15.0
 if [[ "$(uname -s)" != Darwin ]]; then

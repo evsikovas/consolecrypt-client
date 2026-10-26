@@ -2,7 +2,7 @@
 
 ## Русский
 
-Выпуск доступен для macOS, Windows, Linux и Android. Сборка и проверка iOS отложены.
+Выпуск доступен для macOS, Windows, Linux и Android. iOS проверяется на Simulator, но её выпуск пока отложен.
 Исправления команд работают со всеми серверами синхронизации с командами (0.2.1 и новее);
 сервер 0.2.4 дополнительно запрещает участникам менять чужие ключи команды, разрешает назначать администраторов только владельцу и отправляет приглашения только на подтверждённые адреса.
 
@@ -88,7 +88,7 @@
 
 ## English
 
-This release targets macOS, Windows, Linux and Android. The iOS build and testing are deferred.
+This release targets macOS, Windows, Linux and Android. iOS is built and tested on the Simulator, but its release is still deferred.
 The team fixes work with every sync server that has teams (0.2.1 and later); server 0.2.4
 also stops members from changing other members' team keys, lets only the owner appoint
 admins and sends invitations only to verified addresses.

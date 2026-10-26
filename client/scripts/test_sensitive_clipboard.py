@@ -28,7 +28,7 @@ class NativeClipboardTests(unittest.TestCase):
         source = IOS.read_text()
         self.assertIn('"consolecrypt/clipboard"', source)
         self.assertIn('case "copySecret":', source)
-        handler = source.split("  private func copySecret(", 1)[1].split("  private func availability()", 1)[0]
+        handler = source.split("  private func copySecret(", 1)[1].split("  private func clearIfOwned(", 1)[0]
         handler = "  func copySecret(" + handler
         program = r'''
 import Foundation
@@ -39,10 +39,11 @@ final class UIPasteboard {
   enum OptionsKey: Hashable { case localOnly, expirationDate }
   static let general = UIPasteboard()
   var calls = 0
+  var changeCount = 0
   var items: [[String: Any]] = []
   var options: [OptionsKey: Any] = [:]
   func setItems(_ items: [[String: Any]], options: [OptionsKey: Any]) {
-    calls += 1; self.items = items; self.options = options
+    calls += 1; changeCount += 1; self.items = items; self.options = options
   }
 }
 final class Handler {
@@ -52,8 +53,9 @@ let handler = Handler()
 let secret = UUID().uuidString
 let start = Date()
 var completions = 0
+// The result is the ownership token: the change count right after the copy.
 handler.copySecret(arguments: ["text": secret, "clearAfterMilliseconds": 30000]) { result in
-  precondition(result == nil); completions += 1
+  precondition(result as? String == "1"); completions += 1
 }
 precondition(completions == 1 && UIPasteboard.general.calls == 1)
 precondition(UIPasteboard.general.items.first?["public.utf8-plain-text"] as? String == secret)
@@ -73,7 +75,7 @@ for args in invalid {
 }
 precondition(UIPasteboard.general.calls == 1)
 for ttl in [1, 86400000] {
-  handler.copySecret(arguments: ["text": secret, "clearAfterMilliseconds": ttl]) { precondition($0 == nil) }
+  handler.copySecret(arguments: ["text": secret, "clearAfterMilliseconds": ttl]) { precondition($0 is String) }
 }
 precondition(UIPasteboard.general.calls == 3)
 '''

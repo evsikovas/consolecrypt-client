@@ -202,6 +202,37 @@ jobs:
             dist/android/ConsoleCrypt-android-arm64.apk.sha256
             dist/android/ConsoleCrypt.version
 
+  # iOS Simulator: build and launch in an isolated, throwaway Simulator. The
+  # preview is kept as a workflow artifact only; releases do not publish it
+  # (prepare-github-release.py) and a failure here does not block them.
+  ios:
+    needs: validate
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          clean: false
+          persist-credentials: false
+      - name: Register this release workspace
+        run: python3 client/scripts/cleanup-ci-workspace.py --workspace "$GITHUB_WORKSPACE" --claim-workspace
+      - name: Native toolchain and version
+        run: |
+          source client/scripts/ci-macos-tools.sh --xcode
+          python3 client/scripts/github-build-number.py ios
+      - name: Build and launch an isolated iOS Simulator preview
+        run: bash client/scripts/ci-ios.sh --build-only
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ios-preview
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          path: |
+            dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip
+            dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip.sha256
+            dist/ios/ConsoleCrypt-simulator-universal.version
+
   publish:
     outputs:
       published: ${{ steps.release.outputs.published }}
