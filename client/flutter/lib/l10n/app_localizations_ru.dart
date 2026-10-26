@@ -1687,6 +1687,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get credentialImportAction => 'Импортировать';
 
   @override
+  String get credentialImportChooseFile => 'Выбрать файл…';
+
+  @override
   String get credentialImportPrivateKey => 'Закрытый ключ';
 
   @override

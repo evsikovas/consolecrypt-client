@@ -2228,6 +2228,10 @@
   "@credentialImportAction": {
     "description": "Import key dialog: confirm button."
   },
+  "credentialImportChooseFile": "Choose file…",
+  "@credentialImportChooseFile": {
+    "description": "Import key dialog: fill the private key field from a key file."
+  },
   "credentialImportPrivateKey": "Private key",
   "@credentialImportPrivateKey": {
     "description": "Import key dialog: label above the private key text area."

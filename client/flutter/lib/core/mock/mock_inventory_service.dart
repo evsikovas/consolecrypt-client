@@ -446,6 +446,9 @@ final class MockInventoryService extends VaultScopedMock implements InventorySer
   }
 
   @override
+  Future<SecretText?> pickPrivateKeyFile() async => null;
+
+  @override
   Future<KeyInspection> inspectPrivateKey(SecretText privateKey) async {
     await mockDelay(_config.latency);
     return inspectPem(privateKey.expose());

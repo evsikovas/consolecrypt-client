@@ -11,6 +11,7 @@
 - **Комплект восстановления** можно напечатать или сохранить в PDF.
 - **Вкладки терминала** можно расположить колонкой у левого края; свёрнутая боковая
   панель запоминается.
+- **Импорт ключа SSH из файла:** кнопка «Выбрать файл…» в окне импорта ключа.
 
 **Безопасность.** Исправления по итогам ревью безопасности кода.
 
@@ -72,6 +73,7 @@ admins and sends invitations only to verified addresses.
 
 - The **Recovery Kit** can be printed or saved as PDF.
 - **Terminal tabs** can sit in a column at the left edge; a folded sidebar is remembered.
+- **Import an SSH key from a file:** “Choose file…” in the import key dialog.
 
 **Security.** Fixes from the code security review.
 

@@ -2948,6 +2948,12 @@ abstract class AppLocalizations {
   /// **'Import'**
   String get credentialImportAction;
 
+  /// Import key dialog: fill the private key field from a key file.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose file…'**
+  String get credentialImportChooseFile;
+
   /// Import key dialog: label above the private key text area.
   ///
   /// In en, this message translates to:

@@ -16,6 +16,7 @@ import 'package:consolecrypt/src/rust/api/ai.dart' as rs_ai;
 import 'package:consolecrypt/src/rust/api/credentials.dart' as rs_cred;
 import 'package:consolecrypt/src/rust/api/inventory.dart' as rs_inv;
 import 'package:consolecrypt/src/rust/api/ssh.dart' as rs_ssh;
+import 'package:file_selector/file_selector.dart';
 
 // ---- inventory -------------------------------------------------------------------------
 
@@ -239,6 +240,34 @@ final class RustInventoryService implements InventoryService, SshConfigImportSer
   Future<SshConfigPreview> previewSshConfig({String? path}) async => SshConfigPreview.fromJson(
     jsonDecode(await guard(() => rs_inv.hostsSshConfigPreview(path: path))) as Map<String, dynamic>,
   );
+
+  @override
+  Future<SecretText?> pickPrivateKeyFile() async {
+    final file = await openFile();
+    if (file == null) return null;
+    if (await file.length() > maxPrivateKeyFileBytes) {
+      throw const AppException(
+        AppErrorCode.validation,
+        'key file too large',
+        reason: AppErrorReason.invalidField,
+        args: {'field': 'private_key', 'rule': 'too_long'},
+      );
+    }
+    final bytes = await file.readAsBytes();
+    try {
+      utf8.decode(bytes);
+      return SecretText.fromBytes(bytes);
+    } on FormatException {
+      throw const AppException(
+        AppErrorCode.validation,
+        'key file is not text',
+        reason: AppErrorReason.invalidField,
+        args: {'field': 'private_key', 'rule': 'format'},
+      );
+    } finally {
+      bytes.fillRange(0, bytes.length, 0);
+    }
+  }
 
   @override
   Future<KeyInspection> inspectPrivateKey(SecretText privateKey) async {

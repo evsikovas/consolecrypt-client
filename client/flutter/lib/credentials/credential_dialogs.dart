@@ -364,6 +364,19 @@ class _ImportKeyDialogState extends ConsumerState<ImportKeyDialog> with _Busy {
     });
   }
 
+  /// Fill the key field from a file the user chooses (read and wiped by
+  /// the inventory service; nothing is copied).
+  Future<void> _chooseFile() => guard(() async {
+    final secret = await ref.read(inventoryServiceProvider).pickPrivateKeyFile();
+    if (secret == null) return;
+    try {
+      _key.text = secret.expose();
+    } finally {
+      secret.wipe();
+    }
+    _onKeyChanged(_key.text);
+  });
+
   Future<void> _import() => guard(() async {
     final key = SecretText(_key.text);
     final pass = _passphrase.text.isEmpty ? null : SecretText(_passphrase.text);
@@ -419,14 +432,18 @@ class _ImportKeyDialogState extends ConsumerState<ImportKeyDialog> with _Busy {
             ),
             const Spacer(),
             GlassButton.plain(
+              key: const ValueKey('private-key-choose-file'),
+              size: GlassControlSize.sm,
+              onPressed: busy ? null : () => unawaited(_chooseFile()),
+              icon: Icons.file_open_rounded,
+              label: l10n.credentialImportChooseFile,
+            ),
+            GlassButton.plain(
               size: GlassControlSize.sm,
               onPressed: () => setState(() => _key.obscured = !_key.obscured),
               icon: _key.obscured ? Icons.visibility_rounded : Icons.visibility_off_rounded,
               label: _key.obscured ? l10n.commonShow : l10n.commonHide,
             ),
-            // TODO(client/ui): "Choose file…" for private keys — the desktop FileDialogService
-            // lands at M4 and app-core must read the file itself (no temp copies in Dart);
-            // next: add InventoryService.importKeyFile(path) and wire this button.
           ],
         ),
         // The key is drawn as bullets until "Show" — never blurred (a blur still
