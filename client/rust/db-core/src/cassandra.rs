@@ -862,6 +862,60 @@ impl Cassandra {
             .collect())
     }
 
+    /// For the table designer: the table's comment, default TTL and
+    /// gc_grace_seconds, and its secondary indexes on one plain column as
+    /// (index, column). Custom and collection indexes are left out.
+    pub(crate) async fn design_metadata(
+        &self,
+        keyspace: &str,
+        table: &str,
+        cancel: &CancellationToken,
+    ) -> Result<(Vec<String>, Vec<(String, String)>), DbError> {
+        let options = self
+            .catalogue(
+                "SELECT comment, default_time_to_live, gc_grace_seconds FROM system_schema.tables \
+                 WHERE keyspace_name = ? AND table_name = ?",
+                &[keyspace, table],
+                cancel,
+            )
+            .await?
+            .into_iter()
+            .next()
+            .unwrap_or_default();
+        let mut indexes = Vec::new();
+        for index in self
+            .catalogue_values(
+                "SELECT index_name, kind, options FROM system_schema.indexes \
+                 WHERE keyspace_name = ? AND table_name = ?",
+                &[keyspace, table],
+                cancel,
+            )
+            .await?
+            .1
+        {
+            if text(index[1].as_ref()).eq_ignore_ascii_case("CUSTOM") {
+                continue;
+            }
+            let target = serde_json::from_str::<serde_json::Value>(&text(index[2].as_ref()))
+                .ok()
+                .and_then(|o| o.get("target").and_then(|t| t.as_str()).map(str::to_owned))
+                .unwrap_or_default();
+            let column = match target.strip_prefix('"').and_then(|t| t.strip_suffix('"')) {
+                Some(quoted) => quoted.replace("\"\"", "\""),
+                None if !target.is_empty()
+                    && target
+                        .bytes()
+                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_') =>
+                {
+                    target
+                }
+                None => continue,
+            };
+            indexes.push((text(index[0].as_ref()), column));
+        }
+        Ok((options, indexes))
+    }
+
     /// Structure below `parent`: keyspaces, then their tables, views, user
     /// types, functions and aggregates, then columns, indexes and fields.
     pub(crate) fn browse<'a>(

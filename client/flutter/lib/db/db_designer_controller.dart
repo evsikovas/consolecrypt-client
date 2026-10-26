@@ -42,6 +42,8 @@ class DbDesignerController extends ChangeNotifier {
         name: 'id', // l10n-ignore: column name
         dataType: switch (engine) {
           DbEngine.clickhouse => 'UInt64',
+          DbEngine.sqlite => 'INTEGER',
+          DbEngine.cassandra => 'uuid',
           _ => 'bigint',
         },
         nullable: false,
@@ -49,6 +51,8 @@ class DbDesignerController extends ChangeNotifier {
             ? 'by_default'
             : dialect.identityKinds.contains('auto_increment')
             ? 'auto_increment'
+            : dialect.identityKinds.contains('autoincrement')
+            ? 'autoincrement'
             : '',
         unsigned: dialect.has('unsigned'),
       );

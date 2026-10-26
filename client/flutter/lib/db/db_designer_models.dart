@@ -159,13 +159,15 @@ final class DbTableDesign {
     List<DbDesignIndex>? indexes,
     List<DbDesignCheck>? checks,
     Map<String, String>? options,
+    List<String>? unmodeled,
   }) : columns = columns ?? [],
        primaryKey = primaryKey ?? DbDesignKey(),
        uniques = uniques ?? [],
        foreignKeys = foreignKeys ?? [],
        indexes = indexes ?? [],
        checks = checks ?? [],
-       options = options ?? {};
+       options = options ?? {},
+       unmodeled = unmodeled ?? [];
   String database, name, comment;
   String? schema, original;
   List<DbDesignColumn> columns;
@@ -175,6 +177,11 @@ final class DbTableDesign {
   List<DbDesignIndex> indexes;
   List<DbDesignCheck> checks;
   Map<String, String> options;
+
+  /// What the loaded table has but the design does not carry (SQLite
+  /// triggers, generated columns, …): the core refuses a change that would
+  /// recreate the table and lose it. Kept as loaded.
+  List<String> unmodeled;
 
   factory DbTableDesign.fromJson(DbJson json) => DbTableDesign(
     database: json['database'] as String? ?? '',
@@ -191,6 +198,7 @@ final class DbTableDesign {
     indexes: [for (final i in (json['indexes'] as List? ?? const [])) DbDesignIndex.fromJson(i as DbJson)],
     checks: [for (final c in (json['checks'] as List? ?? const [])) DbDesignCheck.fromJson(c as DbJson)],
     options: (json['options'] as Map? ?? const {}).map((k, v) => MapEntry(k as String, v as String)),
+    unmodeled: (json['unmodeled'] as List? ?? const []).cast<String>(),
   );
   DbJson toJson() => {
     'database': database,
@@ -205,6 +213,7 @@ final class DbTableDesign {
     'indexes': [for (final i in indexes) i.toJson()],
     'checks': [for (final c in checks) c.toJson()],
     'options': options,
+    if (unmodeled.isNotEmpty) 'unmodeled': unmodeled,
   };
   String encode() => jsonEncode(toJson());
   DbTableDesign copy() => DbTableDesign.fromJson(jsonDecode(encode()) as DbJson);
@@ -399,6 +408,8 @@ const dbDesignerEngines = {
   DbEngine.mariadb,
   DbEngine.clickhouse,
   DbEngine.mongodb,
+  DbEngine.sqlite,
+  DbEngine.cassandra,
 };
 
 /// Engines whose tables (or collections) can be designed.

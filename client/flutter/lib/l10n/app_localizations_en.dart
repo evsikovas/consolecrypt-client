@@ -13157,4 +13157,89 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vaultKeyMismatchDiagnostics => 'Diagnostics';
+
+  @override
+  String get dbDesignIdentityAutoincrement => 'AUTOINCREMENT';
+
+  @override
+  String dbDesignIssueAutoincrementKey(String name) {
+    return '$name: AUTOINCREMENT needs this column alone as an INTEGER primary key of a rowid table.';
+  }
+
+  @override
+  String get dbDesignIssueAutoincrementSingle => 'Only one column can have AUTOINCREMENT.';
+
+  @override
+  String dbDesignIssueRebuildBlocked(String name) {
+    return 'This change recreates the table, and the table has what the designer does not carry over: $name. Make it in the SQL editor.';
+  }
+
+  @override
+  String dbDesignIssueTableRebuild(String name) {
+    return '$name will be recreated: the rows are copied into a new table and the old one is dropped, all in one transaction. Triggers of the table are not kept, so the change is refused when it has any.';
+  }
+
+  @override
+  String dbDesignIssueTypeStrict(String name) {
+    return 'A STRICT table takes only INT, INTEGER, REAL, TEXT, BLOB and ANY: $name.';
+  }
+
+  @override
+  String get dbDesignIssuePrimaryKeyRequired => 'Choose the primary key columns.';
+
+  @override
+  String dbDesignIssueCommentIgnored(String name) {
+    return '$name: this database keeps no comments; the comment is not saved.';
+  }
+
+  @override
+  String dbDesignIssueColumnRename(String name) {
+    return 'Only primary key columns can be renamed: $name.';
+  }
+
+  @override
+  String dbDesignIssueTypeChange(String name) {
+    return 'The column type cannot be changed: $name.';
+  }
+
+  @override
+  String dbDesignIssueCounterMixed(String name) {
+    return '$name: counter columns cannot be in the key, and a table with counters has only counters besides the key.';
+  }
+
+  @override
+  String get dbDesignIssueIndexSingleColumn => 'A secondary index covers one column.';
+
+  @override
+  String get dbDesignUnmodeledTriggers => 'triggers';
+
+  @override
+  String get dbDesignUnmodeledGenerated => 'generated columns';
+
+  @override
+  String get dbDesignUnmodeledCollations => 'column collations';
+
+  @override
+  String get dbDesignUnmodeledIndexes => 'expression, partial or ordered indexes';
+
+  @override
+  String get dbDesignUnmodeledOther => 'constraints the designer cannot read';
+
+  @override
+  String get dbDesignOptStrict => 'STRICT (strict column types)';
+
+  @override
+  String get dbDesignOptWithoutRowid => 'WITHOUT ROWID';
+
+  @override
+  String get dbDesignOptPartitionColumns => 'Key columns in the partition key';
+
+  @override
+  String get dbDesignOptClusteringOrder => 'Clustering order (for example, at DESC)';
+
+  @override
+  String get dbDesignOptDefaultTtl => 'Default TTL, seconds';
+
+  @override
+  String get dbDesignOptGcGrace => 'gc_grace_seconds';
 }

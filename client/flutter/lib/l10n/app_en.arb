@@ -18046,5 +18046,137 @@
   "vaultKeyMismatchDiagnostics": "Diagnostics",
   "@vaultKeyMismatchDiagnostics": {
     "description": "Noun inserted into '{what} copied' after copying the vault key mismatch diagnostics."
+  },
+  "dbDesignIdentityAutoincrement": "AUTOINCREMENT",
+  "@dbDesignIdentityAutoincrement": {
+    "description": "Table designer"
+  },
+  "dbDesignIssueAutoincrementKey": "{name}: AUTOINCREMENT needs this column alone as an INTEGER primary key of a rowid table.",
+  "@dbDesignIssueAutoincrementKey": {
+    "description": "Table designer",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueAutoincrementSingle": "Only one column can have AUTOINCREMENT.",
+  "@dbDesignIssueAutoincrementSingle": {
+    "description": "Table designer"
+  },
+  "dbDesignIssueRebuildBlocked": "This change recreates the table, and the table has what the designer does not carry over: {name}. Make it in the SQL editor.",
+  "@dbDesignIssueRebuildBlocked": {
+    "description": "Table designer",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueTableRebuild": "{name} will be recreated: the rows are copied into a new table and the old one is dropped, all in one transaction. Triggers of the table are not kept, so the change is refused when it has any.",
+  "@dbDesignIssueTableRebuild": {
+    "description": "Table designer",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueTypeStrict": "A STRICT table takes only INT, INTEGER, REAL, TEXT, BLOB and ANY: {name}.",
+  "@dbDesignIssueTypeStrict": {
+    "description": "Table designer",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssuePrimaryKeyRequired": "Choose the primary key columns.",
+  "@dbDesignIssuePrimaryKeyRequired": {
+    "description": "Table designer"
+  },
+  "dbDesignIssueCommentIgnored": "{name}: this database keeps no comments; the comment is not saved.",
+  "@dbDesignIssueCommentIgnored": {
+    "description": "Table designer",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueColumnRename": "Only primary key columns can be renamed: {name}.",
+  "@dbDesignIssueColumnRename": {
+    "description": "Table designer",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueTypeChange": "The column type cannot be changed: {name}.",
+  "@dbDesignIssueTypeChange": {
+    "description": "Table designer",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueCounterMixed": "{name}: counter columns cannot be in the key, and a table with counters has only counters besides the key.",
+  "@dbDesignIssueCounterMixed": {
+    "description": "Table designer",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDesignIssueIndexSingleColumn": "A secondary index covers one column.",
+  "@dbDesignIssueIndexSingleColumn": {
+    "description": "Table designer"
+  },
+  "dbDesignUnmodeledTriggers": "triggers",
+  "@dbDesignUnmodeledTriggers": {
+    "description": "Table designer"
+  },
+  "dbDesignUnmodeledGenerated": "generated columns",
+  "@dbDesignUnmodeledGenerated": {
+    "description": "Table designer"
+  },
+  "dbDesignUnmodeledCollations": "column collations",
+  "@dbDesignUnmodeledCollations": {
+    "description": "Table designer"
+  },
+  "dbDesignUnmodeledIndexes": "expression, partial or ordered indexes",
+  "@dbDesignUnmodeledIndexes": {
+    "description": "Table designer"
+  },
+  "dbDesignUnmodeledOther": "constraints the designer cannot read",
+  "@dbDesignUnmodeledOther": {
+    "description": "Table designer"
+  },
+  "dbDesignOptStrict": "STRICT (strict column types)",
+  "@dbDesignOptStrict": {
+    "description": "Table designer"
+  },
+  "dbDesignOptWithoutRowid": "WITHOUT ROWID",
+  "@dbDesignOptWithoutRowid": {
+    "description": "Table designer"
+  },
+  "dbDesignOptPartitionColumns": "Key columns in the partition key",
+  "@dbDesignOptPartitionColumns": {
+    "description": "Table designer"
+  },
+  "dbDesignOptClusteringOrder": "Clustering order (for example, at DESC)",
+  "@dbDesignOptClusteringOrder": {
+    "description": "Table designer"
+  },
+  "dbDesignOptDefaultTtl": "Default TTL, seconds",
+  "@dbDesignOptDefaultTtl": {
+    "description": "Table designer"
+  },
+  "dbDesignOptGcGrace": "gc_grace_seconds",
+  "@dbDesignOptGcGrace": {
+    "description": "Table designer"
   }
 }

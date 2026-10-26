@@ -665,6 +665,66 @@ impl SqliteCli {
         }
     }
 
+    /// A designer script in one transaction (FEAT-08): `sqlite3 -bail` stops
+    /// at the first failing statement and ends without COMMIT, so the
+    /// program rolls everything back. Foreign key enforcement is off for the
+    /// run (a rebuilt table is dropped and created again). A marker after
+    /// each statement counts how many ran.
+    pub(crate) async fn apply_script(
+        &mut self,
+        statements: &[(String, Vec<DbParameter>)],
+        cancel: CancellationToken,
+    ) -> (usize, Result<(), DbError>) {
+        if self.read_only {
+            return (0, Err(DbError::PolicyDenied));
+        }
+        let marker = format!("__cc_step_{}", self.nonce);
+        let mut script = String::from("PRAGMA foreign_keys = OFF;\nBEGIN IMMEDIATE;\n");
+        for (sql, parameters) in statements {
+            let statement = match inline_parameters(sql, parameters) {
+                Ok(statement) => statement,
+                Err(error) => return (0, Err(error)),
+            };
+            if !self.safe
+                && statement
+                    .lines()
+                    .skip(1)
+                    .any(|line| line.starts_with('.') || line.starts_with('#'))
+            {
+                return (0, Err(DbError::PolicyDenied));
+            }
+            script.push_str(statement.trim_end().trim_end_matches(';'));
+            script.push_str(&format!(";\nSELECT 1 AS \"{marker}\";\n"));
+        }
+        script.push_str("COMMIT;\n");
+        let run = self.runner.run(
+            self.argv(true),
+            script.into_bytes(),
+            self.output_limit,
+            cancel.clone(),
+        );
+        let output = tokio::select! {
+            biased;
+            _ = cancel.cancelled() => return (0, Err(DbError::Cancelled)),
+            result = tokio::time::timeout(self.timeout, run) => match result {
+                Ok(Ok(output)) => output,
+                Ok(Err(error)) => return (0, Err(error)),
+                Err(_) => return (0, Err(DbError::Timeout)),
+            },
+        };
+        let done = String::from_utf8_lossy(&output.stdout)
+            .matches(marker.as_str())
+            .count()
+            .min(statements.len());
+        if output.status != Some(0) {
+            return (done, Err(classify_failure(&output)));
+        }
+        if done != statements.len() {
+            return (done, Err(DbError::QueryFailed));
+        }
+        (done, Ok(()))
+    }
+
     /// The raw output of a read (the plan drawing of EXPLAIN QUERY PLAN).
     pub(crate) async fn raw(
         &self,

@@ -521,12 +521,11 @@ ClickHouse, MongoDB и Redis импорт из CSV пока не поддерж�
 ### Конструктор таблиц
 
 Таблицу можно создать или изменить без ручного SQL. «Создать таблицу…» есть в
-меню схемы (PostgreSQL), базы данных (MySQL/MariaDB, ClickHouse) и папки
+меню схемы (PostgreSQL), базы данных (MySQL/MariaDB, ClickHouse, SQLite), keyspace (Cassandra/ScyllaDB) и папки
 «Таблицы», а также кнопкой в заголовке рабочей области; для MongoDB пункт
 называется «Создать коллекцию…» и доступен у базы данных подключения.
 «Изменить структуру…» в меню таблицы загружает её текущую структуру. Для Redis
-конструктора нет; для SQLite и Cassandra/ScyllaDB его пока нет — таблицы
-создаются и меняются через редактор SQL/CQL.
+конструктора нет.
 
 Конструктор открывается вкладкой рядом с вкладками редактора: имя, схема или
 база данных, комментарий и разделы «Столбцы», «Ключи», «Внешние ключи»,
@@ -547,6 +546,37 @@ ClickHouse вместо NOT NULL используется `Nullable(T)`, ест�
 обязательностью превращаются в валидатор `$jsonSchema`, доступны capped,
 time series, уровень и действие проверки, collation и индексы.
 
+**SQLite.** Типы с правилами приведения SQLite (INTEGER, TEXT, REAL, NUMERIC,
+BLOB, DATE и другие, свой тип тоже можно ввести), `AUTOINCREMENT` для
+единственного столбца INTEGER первичного ключа, уникальность, проверки,
+внешние ключи и индексы; в «Параметрах» — `STRICT` (строгие типы: только INT,
+INTEGER, REAL, TEXT, BLOB и ANY) или `WITHOUT ROWID` (нужен первичный ключ).
+Комментариев в SQLite нет. Переименование таблицы и столбцов, добавление
+столбцов в конец (без ключа, с постоянным значением по умолчанию) и индексы
+меняются на месте через `ALTER TABLE`. Всё остальное — удаление столбца, смена
+типа, NULL или значения по умолчанию, ключей, проверок, внешних ключей и
+параметров — пересоздаёт таблицу, как советует документация SQLite: новая
+таблица под временным именем, перенос строк, удаление старой, переименование
+и пересоздание индексов. Скрипт выполняется одной транзакцией (и для файла на
+этом компьютере, и через `sqlite3` на хосте), проверка внешних ключей на это
+время отключается, чтобы удаление старой таблицы не затронуло строки других
+таблиц. Если в таблице есть то, что конструктор не переносит (триггеры,
+вычисляемые столбцы, COLLATE, индексы по выражениям, частичные или с порядком),
+изменения, требующие пересоздания, не выполняются — их нужно сделать в
+редакторе; переименования и новые столбцы по-прежнему работают.
+
+**Cassandra и ScyllaDB.** Первичный ключ обязателен: первые N его столбцов —
+ключ партиции («Столбцов ключа в ключе партиции», по умолчанию 1), остальные —
+кластерные столбцы с порядком кластеризации (например, `at DESC`). Доступны
+типы CQL, включая коллекции (`list<text>`, `set<int>`, `map<text, int>`,
+`frozen<…>`), счётчики (тогда все столбцы вне ключа — счётчики), вторичные
+индексы по одному столбцу, комментарий таблицы, TTL по умолчанию и
+`gc_grace_seconds`. Значений по умолчанию, уникальности, проверок и внешних
+ключей в CQL нет. После создания ключ, порядок кластеризации и типы столбцов
+не меняются, таблицу нельзя переименовать, а переименовать можно только
+столбцы ключа; столбцы добавляются и удаляются, индексы и параметры
+меняются. Операторы CQL выполняются по одному, без транзакции.
+
 Пока таблица проектируется, на сервере ничего не выполняется: изменения
 копятся в черновике. Вкладка, новые и изменённые строки помечаются, новая
 таблица и её столбцы сразу видны в дереве зелёным, изменённые — оранжевым
@@ -565,7 +595,7 @@ ORDER BY для MergeTree, AUTO_INCREMENT без ключа и т. п.; иден
 таблицы, просит парольную фразу хранилища, а выполнение проходит обычную
 проверку запроса и защиту продакшена (для прод-подключения нужно открыть окно
 записи). В PostgreSQL скрипт выполняется одной транзакцией: при ошибке не
-меняется ничего. В MySQL/MariaDB, ClickHouse и MongoDB DDL не транзакционный —
+меняется ничего; так же и в SQLite. В MySQL/MariaDB, ClickHouse, MongoDB и Cassandra DDL не транзакционный —
 окно предупреждает об этом, и при ошибке показывает, какие операторы уже
 применены. После успеха дерево обновляется, а конструктор продолжает работать
 с таблицей на сервере. При закрытии вкладки с несохранёнными изменениями
@@ -1067,11 +1097,10 @@ turned off, and any entry can become a snippet.
 ### Table designer
 
 Tables can be created and changed without writing SQL. «Create table…» is in
-the menu of a schema (PostgreSQL), a database (MySQL/MariaDB, ClickHouse) and
+the menu of a schema (PostgreSQL), a database (MySQL/MariaDB, ClickHouse, SQLite), a keyspace (Cassandra/ScyllaDB) and
 the Tables folder, and in the workspace header; for MongoDB it is «Create
 collection…» on the connection's database. «Edit structure…» on a table loads
-its current structure. Redis has no designer; SQLite and Cassandra/ScyllaDB
-have none yet — their tables are created and changed in the SQL/CQL editor.
+its current structure. Redis has no designer.
 
 The designer opens as a tab next to the editor tabs: name, schema or
 database, comment, and the sections Columns, Keys, Foreign keys, Indexes,
@@ -1091,6 +1120,36 @@ For MongoDB, fields with a BSON type and «required» become a `$jsonSchema`
 validator; capped and time-series collections, validation level/action,
 collation and indexes are available.
 
+**SQLite.** Types follow SQLite's affinity rules (INTEGER, TEXT, REAL,
+NUMERIC, BLOB, DATE and more, or any type typed in); `AUTOINCREMENT` for the
+single INTEGER primary key column, unique keys, checks, foreign keys and
+indexes; Options offer `STRICT` (only INT, INTEGER, REAL, TEXT, BLOB and ANY)
+or `WITHOUT ROWID` (needs a primary key). SQLite keeps no comments. Renaming
+the table or columns, adding columns at the end (no key, a constant default)
+and indexes change in place with `ALTER TABLE`. Anything else — dropping a
+column, changing a type, NULL or default, keys, checks, foreign keys or
+options — rebuilds the table the way the SQLite documentation describes: a
+new table under a temporary name, the rows copied over, the old table
+dropped, the new one renamed and the indexes recreated. The script runs in
+one transaction (for a file on this computer and through `sqlite3` on a
+host), with foreign key enforcement off for its duration so dropping the old
+table never touches rows of other tables. When the table has what the
+designer does not carry over (triggers, generated columns, COLLATE,
+expression, partial or ordered indexes), a change that needs a rebuild is
+refused — make it in the editor; renames and new columns still work.
+
+**Cassandra and ScyllaDB.** A primary key is required: its first N columns
+are the partition key (“Key columns in the partition key”, 1 by default), the
+rest are clustering columns with a clustering order (for example `at DESC`).
+CQL types are available, collections too (`list<text>`, `set<int>`,
+`map<text, int>`, `frozen<…>`), counters (then every column outside the key is
+a counter), secondary indexes on one column, the table comment, the default
+TTL and `gc_grace_seconds`. CQL has no defaults, unique keys, checks or
+foreign keys. After creation the key, the clustering order and column types
+stay as they are, the table cannot be renamed and only key columns can be
+renamed; columns are added and dropped, indexes and options change. CQL
+statements run one by one, without a transaction.
+
 Nothing runs on the server while you design: changes stay in a draft. The
 tab, new and changed rows are marked; a new table and its columns appear in
 the tree right away in green, changed ones in orange (with a dot marker), and
@@ -1107,8 +1166,8 @@ script (highlighting, line numbers, wrap switch) and «Open in editor»,
 data is dropped or the table is rewritten, asks for the vault passphrase, and
 the run goes through the usual query review and production guard (a
 production connection needs an open write window). PostgreSQL applies the
-script in one transaction, so a failure changes nothing. DDL in
-MySQL/MariaDB, ClickHouse and MongoDB is not transactional: the dialog says
+script in one transaction, so a failure changes nothing; so does SQLite. DDL in
+MySQL/MariaDB, ClickHouse, MongoDB and Cassandra is not transactional: the dialog says
 so and, on failure, shows which statements were already applied. After a
 successful run the tree refreshes and the designer keeps working on the
 table on the server. Closing a tab with unsaved changes asks «Save / Don't

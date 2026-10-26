@@ -6,6 +6,7 @@ import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/db/db_designer_models.dart';
+import 'package:consolecrypt/db/db_designer_view.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
@@ -493,6 +494,27 @@ void main() {
   testWidgets('Redis has no designer entries', (tester) async {
     expect(dbDesignerSupported(DbEngine.redis), isFalse);
     expect(dbDesignerSupported(DbEngine.mongodb), isTrue);
+    expect(dbDesignerSupported(DbEngine.sqlite), isTrue);
+    expect(dbDesignerSupported(DbEngine.cassandra), isTrue);
     unawaited(Future<void>.value());
+  });
+
+  test('what the design does not carry survives editing and is named in the refusal', () async {
+    final design = DbTableDesign.fromJson({
+      'name': 'logged',
+      'columns': [
+        {'name': 'id', 'data_type': 'INTEGER'},
+      ],
+      'unmodeled': ['triggers', 'generated_columns'],
+    });
+    expect(design.copy().unmodeled, ['triggers', 'generated_columns']);
+    expect(DbTableDesign(name: 'plain').toJson().containsKey('unmodeled'), isFalse);
+    final l = await AppLocalizations.delegate.load(const Locale('ru'));
+    final text = dbDesignIssueText(
+      const DbDesignIssue(error: true, code: 'rebuild_blocked', target: 'table', value: 'triggers, generated_columns'),
+      l,
+    );
+    expect(text, contains('триггеры, вычисляемые столбцы'));
+    expect(dbDesignOptionLabel('partition_key_columns', l), 'Столбцов ключа в ключе партиции');
   });
 }

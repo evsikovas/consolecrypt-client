@@ -67,9 +67,32 @@ String dbDesignIssueText(DbDesignIssue issue, AppLocalizations l) {
     'collation_locale_required' => l.dbDesignIssueCollationLocale,
     'default_ignored' => l.dbDesignIssueDefaultIgnored(v),
     'nullable_twice' => l.dbDesignIssueNullableTwice(v),
+    'autoincrement_key' => l.dbDesignIssueAutoincrementKey(v),
+    'autoincrement_single' => l.dbDesignIssueAutoincrementSingle,
+    'rebuild_blocked' => l.dbDesignIssueRebuildBlocked(_unmodeled(v, l)),
+    'table_rebuild' => l.dbDesignIssueTableRebuild(v),
+    'type_strict' => l.dbDesignIssueTypeStrict(v),
+    'primary_key_required' => l.dbDesignIssuePrimaryKeyRequired,
+    'comment_ignored' => l.dbDesignIssueCommentIgnored(v),
+    'column_rename_unsupported' => l.dbDesignIssueColumnRename(v),
+    'type_change_unsupported' => l.dbDesignIssueTypeChange(v),
+    'counter_mixed' => l.dbDesignIssueCounterMixed(v),
+    'index_single_column' => l.dbDesignIssueIndexSingleColumn,
     _ => l.dbDesignIssueOther(issue.code),
   };
 }
+
+/// What the designer does not carry over, as words (`triggers, …`).
+String _unmodeled(String codes, AppLocalizations l) => {
+  for (final code in codes.split(', '))
+    switch (code) {
+      'triggers' => l.dbDesignUnmodeledTriggers,
+      'generated_columns' => l.dbDesignUnmodeledGenerated,
+      'collations' => l.dbDesignUnmodeledCollations,
+      'expression_indexes' || 'partial_indexes' || 'index_order' => l.dbDesignUnmodeledIndexes,
+      _ => l.dbDesignUnmodeledOther,
+    },
+}.join(', ');
 
 /// Label of an engine option on the Options tab.
 String dbDesignOptionLabel(String id, AppLocalizations l) => switch (id) {
@@ -92,6 +115,12 @@ String dbDesignOptionLabel(String id, AppLocalizations l) => switch (id) {
   'validation_action' => l.dbDesignOptValidationAction,
   'collation_locale' => l.dbDesignOptCollationLocale,
   'collation_strength' => l.dbDesignOptCollationStrength,
+  'strict' => l.dbDesignOptStrict,
+  'without_rowid' => l.dbDesignOptWithoutRowid,
+  'partition_key_columns' => l.dbDesignOptPartitionColumns,
+  'clustering_order' => l.dbDesignOptClusteringOrder,
+  'default_time_to_live' => l.dbDesignOptDefaultTtl,
+  'gc_grace_seconds' => l.dbDesignOptGcGrace,
   _ => id,
 };
 
@@ -100,6 +129,7 @@ String _identityLabel(String kind, AppLocalizations l) => switch (kind) {
   'always' => l.dbDesignIdentityAlways,
   'serial' => l.dbDesignIdentitySerial,
   'auto_increment' => l.dbDesignIdentityAutoIncrement,
+  'autoincrement' => l.dbDesignIdentityAutoincrement,
   _ => l.dbDesignNone,
 };
 
