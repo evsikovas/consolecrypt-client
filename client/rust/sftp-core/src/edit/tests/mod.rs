@@ -7,7 +7,7 @@ mod sftp;
 
 use super::store::{
     remote_base_name, remote_copy_name, remote_parent, sanitize_file_name, secure_remove_dir,
-    split_ext,
+    split_ext, write_backup_markers,
 };
 use super::watch::is_relevant;
 use super::{is_editor_artifact, EditConfig};
@@ -43,6 +43,26 @@ pub(crate) async fn eventually(what: &str, f: impl Fn() -> bool) {
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
     panic!("timed out waiting for {what}");
+}
+
+/// Windows and Linux: backup tools skip the edit root by its markers.
+#[test]
+fn backup_markers_follow_the_cache_directory_spec() {
+    let dir = tempfile::tempdir().unwrap();
+    write_backup_markers(dir.path());
+    let tag = std::fs::read_to_string(dir.path().join("CACHEDIR.TAG")).unwrap();
+    assert!(
+        tag.starts_with("Signature: 8a477f597d28d172789f06886806bc55\n"),
+        "{tag}"
+    );
+    assert!(dir.path().join(".nobackup").is_file());
+    // A second call keeps them as they are.
+    std::fs::write(dir.path().join(".nobackup"), b"kept").unwrap();
+    write_backup_markers(dir.path());
+    assert_eq!(
+        std::fs::read(dir.path().join(".nobackup")).unwrap(),
+        b"kept"
+    );
 }
 
 #[test]

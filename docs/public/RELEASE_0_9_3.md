@@ -36,6 +36,10 @@
   восстановления несохранённых правок на хосте, которого нет в браузере, теперь
   общее для правок этого хоста и закрывается вместе с последней из них, а не живёт до
   выхода из приложения.
+- **Правка файлов по SFTP: бэкапы на Windows и Linux.** Каталог рабочих копий помечается
+  `CACHEDIR.TAG` и `.nobackup`, поэтому borg, restic, tar, Duplicity, Back In Time и
+  другие программы резервного копирования, которые учитывают эти метки, его пропускают
+  (на macOS он, как и раньше, исключён из Time Machine).
 
 - **Синхронизация подключений Cassandra/ScyllaDB и SQLite через хост.** Пункт «Синхронизировать
   через хранилище» переносит такое подключение с паролем в хранилище, если все устройства
@@ -130,6 +134,9 @@ admins and sends invitations only to verified addresses.
 - **SFTP: recovering edits on other hosts.** The connection opened to recover unsaved
   edits on a host the browser is not showing is now shared by that host's edits and
   closes with the last of them instead of living until the app quits.
+- **Editing files over SFTP: backups on Windows and Linux.** The working-copy folder carries
+  `CACHEDIR.TAG` and `.nobackup`, so borg, restic, tar, Duplicity, Back In Time and other
+  backup tools that honour them skip it (on macOS it stays excluded from Time Machine).
 
 - **Syncing Cassandra/ScyllaDB connections and SQLite through a host.** “Sync with the vault”
   moves such a connection and its password into the vault once every device of the account
