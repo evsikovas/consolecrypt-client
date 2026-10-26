@@ -15939,6 +15939,19 @@
   "@dbEditNoKey": {
     "description": "Why row editing is disabled: no key to identify rows"
   },
+  "dbEditPartitions": "The rows are in {count} partitions. Each partition changes all or nothing, but not together with the others: some partitions can be changed while others are not. Review the statements and enter the vault passphrase.",
+  "@dbEditPartitions": {
+    "description": "Review of Cassandra cell edits spanning several partitions",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dbEditCqlKey": "Key columns of a Cassandra / ScyllaDB table cannot be edited",
+  "@dbEditCqlKey": {
+    "description": "Edit refused: partition or clustering column in a CQL grid"
+  },
   "dbEditProductionLocked": "Production is read-only: unlock writes first",
   "@dbEditProductionLocked": {
     "description": "Why row editing is disabled on a locked production session"

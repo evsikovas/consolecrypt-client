@@ -11682,6 +11682,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dbEditNoKey => 'Editing needs a query of one table with a primary or unique key';
 
   @override
+  String dbEditPartitions(int count) {
+    return 'The rows are in $count partitions. Each partition changes all or nothing, but not together with the others: some partitions can be changed while others are not. Review the statements and enter the vault passphrase.';
+  }
+
+  @override
+  String get dbEditCqlKey => 'Key columns of a Cassandra / ScyllaDB table cannot be edited';
+
+  @override
   String get dbEditProductionLocked => 'Production is read-only: unlock writes first';
 
   @override

@@ -198,11 +198,21 @@ final class DbCellEdit {
 }
 
 final class DbCellEditReview {
-  const DbCellEditReview({required this.ticket, required this.sql, required this.expiresAt, required this.rows});
+  const DbCellEditReview({
+    required this.ticket,
+    required this.sql,
+    required this.expiresAt,
+    required this.rows,
+    this.partitions = 0,
+  });
   final String ticket;
   final SecretText sql;
   final DateTime expiresAt;
   final int rows;
+
+  /// Cassandra / ScyllaDB: partitions the rows span. Each changes all or
+  /// nothing, but not together with the others.
+  final int partitions;
 }
 
 abstract interface class DbCellEditService {

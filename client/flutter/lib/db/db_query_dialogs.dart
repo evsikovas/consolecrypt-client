@@ -143,9 +143,12 @@ class _DbVariablesDialogState extends ConsumerState<DbVariablesDialog> {
 /// vault passphrase. Closes unapproved when the vault scope changes and
 /// refuses approval once the review expires.
 class DbQueryReviewDialog extends StatelessWidget {
-  const DbQueryReviewDialog({required this.query, required this.review, super.key});
+  const DbQueryReviewDialog({required this.query, required this.review, this.message, super.key});
   final String query;
   final DbQueryReview review;
+
+  /// Replaces the default warning (e.g. edits spanning Cassandra partitions).
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +158,7 @@ class DbQueryReviewDialog extends StatelessWidget {
       scope: dbScopeProvider,
       live: (scope) => scope.unlocked,
       title: l.dbReviewQuery,
-      message: l.dbQueryDangerous,
+      message: message ?? l.dbQueryDangerous,
       confirmLabel: l.dbRun,
       details: DbCodeBlock(key: const ValueKey('db-query-review-sql'), text: query),
       expiresAt: review.expiresAt,

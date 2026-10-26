@@ -53,7 +53,7 @@ String? dbEditBlockReason(
   required bool mobile,
 }) {
   if (backend is! DbCellEditService) return l.dbEditUnsupported;
-  if (!const {DbEngine.postgresql, DbEngine.mysql, DbEngine.mariadb}.contains(session.engine)) {
+  if (!const {DbEngine.postgresql, DbEngine.mysql, DbEngine.mariadb, DbEngine.cassandra}.contains(session.engine)) {
     return l.dbEditEngineUnsupported;
   }
   if (mobile) return l.dbEditDesktopOnly;
@@ -62,15 +62,23 @@ String? dbEditBlockReason(
   return null;
 }
 
-/// A reviewed set of statements: the ticket to commit and the display SQL.
-typedef _Review = ({String ticket, SecretText sql, DbQueryRisk risk, DateTime expiresAt});
+/// Whether rows can be added and deleted, not only changed: CQL updates
+/// are upserts, so Cassandra / ScyllaDB grids change existing cells only.
+bool dbRowsAddable(Object? backend, DbSessionInfo session) =>
+    backend is DbRowEditService && session.engine != DbEngine.cassandra;
+
+/// A reviewed set of statements: the ticket to commit, the display SQL and
+/// the Cassandra partitions it spans (each applied on its own).
+typedef _Review = ({String ticket, SecretText sql, DbQueryRisk risk, DateTime expiresAt, int partitions});
 
 Future<_Review> _review(Object backend, DbSessionInfo session, DbResultSet result, DbResultEdits edits) async {
-  if (backend is DbRowEditService) {
+  if (dbRowsAddable(backend, session)) {
+    backend as DbRowEditService;
     final review = await backend.reviewRowChanges(session.id, result.editableTable!, edits.changes(result));
-    return (ticket: review.ticket, sql: review.sql, risk: review.risk, expiresAt: review.expiresAt);
+    return (ticket: review.ticket, sql: review.sql, risk: review.risk, expiresAt: review.expiresAt, partitions: 0);
   }
-  // Cell edits only (no row service): one UPDATE per changed cell.
+  // Cell edits only (no row service, or CQL): one UPDATE per changed row;
+  // rows of one Cassandra partition in one conditional BATCH.
   if (backend is! DbCellEditService || edits.added.isNotEmpty || edits.deleted.isNotEmpty) {
     throw StateError('row edits unsupported');
   }
@@ -86,7 +94,13 @@ Future<_Review> _review(Object backend, DbSessionInfo session, DbResultSet resul
       ),
   ];
   final review = await backend.reviewCellEdits(session.id, result.editableTable!, cells);
-  return (ticket: review.ticket, sql: review.sql, risk: DbQueryRisk.write, expiresAt: review.expiresAt);
+  return (
+    ticket: review.ticket,
+    sql: review.sql,
+    risk: DbQueryRisk.write,
+    expiresAt: review.expiresAt,
+    partitions: review.partitions,
+  );
 }
 
 /// Loads the table's columns once (required and default columns of new rows).
@@ -132,6 +146,7 @@ Future<bool> saveResultEdits(
       builder: (_) => DbQueryReviewDialog(
         query: review!.sql.expose(),
         review: DbQueryReview(ticket: review.ticket, risk: review.risk, expiresAt: review.expiresAt),
+        message: review.partitions > 1 ? l.dbEditPartitions(review.partitions) : null,
       ),
     );
     if (!isCurrent() || approved != true) return false;
@@ -353,7 +368,7 @@ class _DbResultPanelState extends ConsumerState<DbResultPanel> with WidgetsBindi
     mobile: _mobile,
   );
 
-  bool _rowsEditable(DbResultSet result) => _blocked(result) == null && widget.backend is DbRowEditService;
+  bool _rowsEditable(DbResultSet result) => _blocked(result) == null && dbRowsAddable(widget.backend, widget.session);
 
   // ---- auto-refresh ----------------------------------------------------
 
@@ -451,6 +466,11 @@ class _DbResultPanelState extends ConsumerState<DbResultPanel> with WidgetsBindi
 
   void _editCell(DbResultSet result, int row, int column, DbCell value) {
     if (!widget.isCurrent() || _blocked(result) != null) return;
+    // CQL key columns identify the row and cannot be updated.
+    if (widget.session.engine == DbEngine.cassandra && result.columns[column].primaryKey) {
+      showSnack(context, context.l10n.dbEditCqlKey, tone: GlassTone.warning);
+      return;
+    }
     _edits.setCell(result, row, column, value);
   }
 
