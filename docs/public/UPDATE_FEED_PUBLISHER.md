@@ -119,3 +119,31 @@ Workflow **Signed update feeds** проверяет релиз каждый де
 и запустите ручную проверку из `main`, как показано выше. Проверьте результат и
 срок действия публичного feed после обновления mirror; просроченный документ
 клиент принимает только после его повторной подписи и доставки.
+
+## Linux feed (FEAT-06)
+
+DEB and RPM packages have their own signed document, `linux-stable.json`,
+listing `linux-x64-deb` and `linux-x64-rpm` with
+`https://updates.consolecrypt.dev/releases/VERSION/NAME` URLs. It is signed by a
+separate Ed25519 key in the repository secret **LINUX_UPDATE_SIGNING_KEY**; Linux
+clients embed only its public anchor:
+
+```text
+Fn0pzhn51t/i8e8VYt7/wJkkXa7n2PkYtILgnxsuVlc=
+```
+
+The same run signs it after the main pair, with the same checks: the release
+checksums, streamed package hashes, a 90-day lifetime, renewal with less than 14
+days left, and no version or build downgrade against an earlier signed Linux
+feed. The first Linux feed is signed from the release itself (there is no
+earlier Linux baseline to bootstrap from). Without the secret the Linux feed is
+skipped and the main pair is published as before. The two keys are not
+interchangeable: each is checked against its own anchor before any request.
+
+## По-русски: лента Linux
+
+Для DEB и RPM публикуется отдельный подписанный `linux-stable.json`. Его
+подписывает собственный ключ Ed25519 из секрета `LINUX_UPDATE_SIGNING_KEY`;
+клиенты Linux знают только его открытый ключ (выше). Проверки те же, что для
+основной пары; первая лента Linux подписывается по самому релизу. Пока секрета
+нет, лента Linux пропускается, а основная пара публикуется как раньше.

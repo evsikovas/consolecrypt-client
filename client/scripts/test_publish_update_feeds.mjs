@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync, randomBytes, sign } from 'node:crypto';
 import {
-  DAY, MAX_INSTALLER, REPOSITORY, REPOSITORY_ID, assertNoDowngrade,
+  CHANNELS, DAY, MAX_INSTALLER, REPOSITORY, REPOSITORY_ID, assertNoDowngrade,
   compareVersions, downloadAsset, parseChecksums, publishUpdateFeeds,
   selectInstallers, signFeeds, validateDownloadUrl, verifyFeed,
 } from './publish-update-feeds.mjs';
@@ -13,6 +13,8 @@ const HOST = 'updates.consolecrypt.dev';
 const LEGACY = 'updates.consolecrypt.evsikov.net';
 const API = `https://api.github.com/repos/${REPOSITORY}`;
 const SUFFIXES = { 'windows-x64': 'windows-x64-setup.exe', 'macos-universal': 'macos-universal.dmg', 'android-arm64': 'android-arm64.apk' };
+const LINUX_SUFFIXES = { 'linux-x64-deb': 'linux-x64.deb', 'linux-x64-rpm': 'linux-x64.rpm' };
+const LINUX_FEEDS = { 'linux-stable.json': HOST };
 const hash = body => createHash('sha256').update(body).digest('hex');
 const json = value => new Response(JSON.stringify(value), { status: 200 });
 function makeKeys() {
@@ -22,8 +24,10 @@ function makeKeys() {
     anchor: publicKey.export({ type: 'spki', format: 'der' }).subarray(-32).toString('base64'),
   };
 }
-function fixture({ sameVersion = false, age = 1, corruptInstaller = false, redirectHost, failUpload = false, mutateAssets = false, bootstrap = true } = {}) {
+function fixture({ sameVersion = false, age = 1, corruptInstaller = false, redirectHost, failUpload = false, mutateAssets = false, bootstrap = true, linux = false, linuxBaseline = false } = {}) {
   const keys = makeKeys(), token = randomBytes(24).toString('hex');
+  const linuxKeys = makeKeys();
+  const packaged = linux ? { ...SUFFIXES, ...LINUX_SUFFIXES } : SUFFIXES;
   const blobs = new Map(), downloads = [], writes = [], calls = [];
   let nextId = 10, latestReads = 0, failedUpload = false;
   const version = sameVersion ? '0.3.1' : '0.3.2';
@@ -35,7 +39,7 @@ function fixture({ sameVersion = false, age = 1, corruptInstaller = false, redir
   }
   function packages(release, baseBuild) {
     const selected = {}, ver = release.tag_name.slice(1);
-    for (const [index, [platform, suffix]] of Object.entries(SUFFIXES).entries()) {
+    for (const [index, [platform, suffix]] of Object.entries(packaged).entries()) {
       const build = baseBuild + index;
       const body = Buffer.from(`Synthetic package ${platform} ${ver}, not an executable.`);
       const asset = add(release, `ConsoleCrypt-${ver}+${build}-${suffix}`, body);
@@ -47,8 +51,13 @@ function fixture({ sameVersion = false, age = 1, corruptInstaller = false, redir
   const oldSelected = packages(previous, 1390);
   const selected = sameVersion ? oldSelected : packages(target, 13010);
   const notes = { ru: 'Проверенный выпуск', en: 'Verified release' };
-  const oldFeeds = signFeeds('0.3.1', oldSelected, keys.privateKey, new Date(NOW.getTime() - age * DAY), notes);
+  const pick = (all, platforms) => Object.fromEntries(Object.keys(platforms).map(platform => [platform, all[platform]]));
+  const oldFeeds = signFeeds('0.3.1', pick(oldSelected, SUFFIXES), keys.privateKey, new Date(NOW.getTime() - age * DAY), notes);
   if (bootstrap) for (const [name, body] of Object.entries(oldFeeds)) add(previous, name, body);
+  const oldLinuxFeeds = linux
+    ? signFeeds('0.3.1', pick(oldSelected, LINUX_SUFFIXES), linuxKeys.privateKey, new Date(NOW.getTime() - age * DAY), notes, LINUX_FEEDS)
+    : {};
+  if (linuxBaseline) for (const [name, body] of Object.entries(oldLinuxFeeds)) add(previous, name, body);
   const history = sameVersion ? [target] : [target, previous];
   const cdnBodies = new Map();
   async function fetchImpl(value, options = {}) {
@@ -98,14 +107,17 @@ function fixture({ sameVersion = false, age = 1, corruptInstaller = false, redir
     if (url.hostname === 'release-assets.githubusercontent.com') {
       const { body, key } = cdnBodies.get(url.pathname);
       downloads.push(key);
-      const installer = Object.values(SUFFIXES).some(suffix => key.endsWith(suffix));
+      const installer = Object.values(packaged).some(suffix => key.endsWith(suffix));
       const bytes = Buffer.from(body);
       if (corruptInstaller && installer) bytes[0] ^= 1;
       return new Response(bytes, { status: 200, headers: { 'content-length': String(bytes.length) } });
     }
     throw Error('Unexpected public host reached in test');
   }
-  return { ...keys, token, fetchImpl, now: NOW, target, previous, selected, oldSelected, history, blobs, oldFeeds, downloads, writes, calls, add };
+  return {
+    ...keys, token, fetchImpl, now: NOW, target, previous, selected, oldSelected, history, blobs, oldFeeds, downloads, writes, calls, add,
+    linuxKeys, oldLinuxFeeds,
+  };
 }
 
 test('new stable release streams three installers and signs both domains with the existing anchor', async () => {
@@ -262,4 +274,47 @@ test('even a valid signer cannot authorize foreign installer paths or excessive 
   assert.throws(() => verifyFeed(signed(foreign), HOST, { anchor: f.anchor, now: NOW }), /feed identity/);
   const long = structuredClone(original); long.expiresAt = new Date(Date.parse(long.issuedAt) + 91 * DAY).toISOString();
   assert.throws(() => verifyFeed(signed(long), HOST, { anchor: f.anchor, now: NOW }), /feed lifetime/);
+});
+
+const linuxRun = f => publishUpdateFeeds({ ...f, linuxKeyText: f.linuxKeys.keyText, linuxAnchor: f.linuxKeys.anchor });
+
+test('Linux packages get their own feed under the Linux key; the first one bootstraps', async () => {
+  const f = fixture({ linux: true });
+  const result = await linuxRun(f);
+  assert.equal(result.status, 'published'); assert.equal(result.installers, 3);
+  assert.equal(result.linux.status, 'published'); assert.equal(result.linux.installers, 2);
+  const body = f.blobs.get('v0.3.2/linux-stable.json');
+  const feed = verifyFeed(body, HOST, { channel: CHANNELS.linux, anchor: f.linuxKeys.anchor, now: NOW });
+  assert.deepEqual(Object.keys(feed.platforms).sort(), ['linux-x64-deb', 'linux-x64-rpm']);
+  assert.equal(feed.platforms['linux-x64-rpm'].sha256, f.selected['linux-x64-rpm'].sha256);
+  assert(feed.platforms['linux-x64-deb'].url.startsWith(`https://${HOST}/releases/0.3.2/ConsoleCrypt-0.3.2%2B`));
+  assert.throws(() => verifyFeed(body, HOST, { channel: CHANNELS.linux, anchor: f.anchor, now: NOW }), /signature/);
+  // Main feeds never list Linux packages.
+  const main = verifyFeed(f.blobs.get('v0.3.2/stable.json'), HOST, { anchor: f.anchor, now: NOW });
+  assert(!('linux-x64-deb' in main.platforms));
+});
+
+test('without the Linux key only the main feeds are written', async () => {
+  const f = fixture({ linux: true });
+  const result = await publishUpdateFeeds(f);
+  assert.equal(result.linux, undefined);
+  assert.deepEqual(f.writes.map(write => write.name).sort(), ['legacy-stable.json', 'stable.json']);
+});
+
+test('the keys are not interchangeable between channels', async () => {
+  const f = fixture({ linux: true });
+  await assert.rejects(publishUpdateFeeds({ ...f, linuxKeyText: f.keyText, linuxAnchor: f.linuxKeys.anchor }), /signing key does not match/);
+  await assert.rejects(publishUpdateFeeds({ ...f, keyText: f.linuxKeys.keyText }), /signing key does not match/);
+  assert.equal(f.writes.length, 0);
+});
+
+test('a signed Linux baseline is kept while fresh and blocks a Linux build downgrade', async () => {
+  const fresh = fixture({ linux: true, linuxBaseline: true, sameVersion: true });
+  assert.equal((await linuxRun(fresh)).linux.status, 'unchanged');
+  const f = fixture({ linux: true, linuxBaseline: true });
+  const old = verifyFeed(f.oldLinuxFeeds['linux-stable.json'], HOST, { channel: CHANNELS.linux, anchor: f.linuxKeys.anchor, now: NOW });
+  const selected = structuredClone({ 'linux-x64-deb': f.selected['linux-x64-deb'], 'linux-x64-rpm': f.selected['linux-x64-rpm'] });
+  selected['linux-x64-deb'].build = old.platforms['linux-x64-deb'].build;
+  assert.throws(() => assertNoDowngrade(old, '0.3.2', selected), /build downgrade/);
+  assert.equal((await linuxRun(f)).linux.status, 'published');
 });

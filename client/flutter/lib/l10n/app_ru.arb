@@ -1895,6 +1895,31 @@
     "description": "Application update interface"
   },
   "updateAppleHelp": "На iOS обновления устанавливаются через App Store, TestFlight или Xcode, в зависимости от способа установки приложения.",
+  "updateLinuxInstallHelp": "Пакет скачается и пройдёт проверку подписи и SHA-256, затем система спросит пароль администратора, и менеджер пакетов (apt, dnf или zypper) установит его. Профили, хранилища и системная ключница сохраняются; новая версия откроется после перезапуска.",
+  "@updateLinuxInstallHelp": {
+    "description": "Linux updates from the signed DEB/RPM feed (FEAT-06)."
+  },
+  "updateLinuxInstalled": "Обновление установлено. Перезапустите ConsoleCrypt, чтобы открыть новую версию.",
+  "@updateLinuxInstalled": {
+    "description": "Linux updates from the signed DEB/RPM feed (FEAT-06)."
+  },
+  "updateRelaunch": "Перезапустить",
+  "@updateRelaunch": {
+    "description": "Linux updates from the signed DEB/RPM feed (FEAT-06)."
+  },
+  "updateLinuxNoPkexec": "Не найден pkexec (polkit), через который приложение просит пароль администратора. Установите пакет со страницы загрузки вручную через apt или dnf.",
+  "@updateLinuxNoPkexec": {
+    "description": "Linux updates from the signed DEB/RPM feed (FEAT-06)."
+  },
+  "updateLinuxInstallFailed": "Менеджер пакетов завершился с кодом {code}. Установите пакет со страницы загрузки вручную через apt или dnf.",
+  "@updateLinuxInstallFailed": {
+    "description": "Linux updates from the signed DEB/RPM feed (FEAT-06).",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
   "updateLinuxHelp": "На Linux скачайте с официального сайта последнюю версию пакета .deb или .rpm для своего дистрибутива и установите через менеджер пакетов. Для обновления приложения используйте тот же способ.",
   "@updateLinuxHelp": {
     "description": "Linux installation and manual package update help"

@@ -51,4 +51,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          # Linux feed (FEAT-06); skipped until the owner adds this secret.
+          LINUX_UPDATE_SIGNING_KEY: ${{ secrets.LINUX_UPDATE_SIGNING_KEY }}
         run: node client/scripts/publish-update-feeds.mjs

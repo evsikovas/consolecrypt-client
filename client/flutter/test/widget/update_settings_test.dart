@@ -67,6 +67,30 @@ void main() {
       expect(tester.takeException(), isNull);
     }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
   }
+  testWidgets('Linux installed from the DEB/RPM checks the signed feed like other desktops', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    final services = backend.services;
+    final fake = _Service(platform: 'linux-x64-rpm');
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appServicesProvider.overrideWithValue(services), updateServiceProvider.overrideWithValue(fake)],
+        child: const MaterialApp(
+          localizationsDelegates: [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: UpdateNoticeScope(child: SingleChildScrollView(child: UpdateSettingsSection())),
+          ),
+        ),
+      ),
+    );
+    await settle(tester);
+    expect(find.byKey(const ValueKey('updates-linux-download-page')), findsNothing);
+    expect(find.byKey(const ValueKey('updates-automatic')), findsOneWidget);
+    await tapKey(tester, 'updates-check');
+    expect(fake.checks, 1);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
   testWidgets('iOS uses Apple updates without probing the desktop update server', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);
@@ -186,7 +210,7 @@ void main() {
 
 class _Service extends UpdateService {
   // An installed copy, so a Windows test host offers the in-place install.
-  _Service({this.offer = false}) : super(windowsInstalled: () async => true);
+  _Service({this.offer = false, super.platform}) : super(windowsInstalled: () async => true);
   final bool offer;
   int checks = 0;
   int downloads = 0;

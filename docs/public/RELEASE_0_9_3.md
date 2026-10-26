@@ -76,6 +76,10 @@
 - **Локальный ИИ: своя модель GGUF.** «Добавить свою модель (GGUF)…» копирует выбранный
   файл в папку моделей со сверкой SHA-256 и делает его текущей моделью; «Удалить» убирает
   копию. Происхождение и лицензию своей модели проверяйте сами.
+- **Обновления на Linux.** Копия из DEB или RPM проверяет обновления при запуске и
+  устанавливает их из приложения: отдельная подписанная лента Linux, проверка SHA-256,
+  пароль администратора через `pkexec` и установка через apt, dnf или zypper, затем
+  «Перезапустить». Саму версию 0.9.3 на Linux установите вручную.
 - **QR из Recovery Kit без ввода текста.** При восстановлении доступа QR-код комплекта
   можно отсканировать камерой телефона или прочитать с картинки или скриншота (на любой
   платформе). Распознавание идёт на устройстве открытым кодом, кадры никуда не уходят.
@@ -228,6 +232,10 @@ admins and sends invitations only to verified addresses.
 - **Local AI: your own GGUF model.** “Add your own model (GGUF)…” copies the chosen file
   into the models folder with a SHA-256 check and makes it the current model; Remove deletes
   the copy. Check the origin and license of your own model yourself.
+- **Updates on Linux.** A DEB or RPM copy checks for updates at startup and installs them
+  from the app: a separate signed Linux feed, SHA-256 verification, the administrator
+  password through `pkexec` and installation with apt, dnf or zypper, then Restart.
+  Install 0.9.3 itself on Linux manually.
 - **Recovery Kit QR without typing.** Recovery reads the kit's QR code with a phone camera
   or from a picture or screenshot (on any platform). Decoding runs on the device with open
   source code; frames go nowhere.

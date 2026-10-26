@@ -24,6 +24,20 @@ const SUFFIXES = {
   'macos-universal': 'macos-universal.dmg',
   'android-arm64': 'android-arm64.apk',
 };
+// Linux packages have their own feed and key (FEAT-06): a separate anchor in
+// Linux clients, so this key can never vouch for Windows, macOS or Android.
+export const LINUX_TRUST_ANCHOR = 'Fn0pzhn51t/i8e8VYt7/wJkkXa7n2PkYtILgnxsuVlc=';
+export const CHANNELS = {
+  main: { feeds: FEEDS, suffixes: SUFFIXES, anchor: TRUST_ANCHOR, bootstrap: false },
+  linux: {
+    feeds: { 'linux-stable.json': 'updates.consolecrypt.dev' },
+    suffixes: { 'linux-x64-deb': 'linux-x64.deb', 'linux-x64-rpm': 'linux-x64.rpm' },
+    anchor: LINUX_TRUST_ANCHOR,
+    // The first Linux feed is signed from the release itself; afterwards the
+    // signed baseline forbids downgrades as for the main channel.
+    bootstrap: true,
+  },
+};
 const fail = message => { const error = new Error(message); error.safeForLog = true; throw error; };
 const integer = (n, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(n) && n > 0 && n <= max;
 const hexHash = s => typeof s === 'string' && /^[0-9a-f]{64}$/.test(s);
@@ -45,9 +59,9 @@ function releaseVersion(release) {
   versionParts(version);
   return version;
 }
-function assetName(version, platform, build) {
+function assetName(version, platform, build, suffixes = SUFFIXES) {
   if (!integer(build, 2_100_000_000)) fail('Invalid installer build');
-  return `ConsoleCrypt-${version}+${build}-${SUFFIXES[platform]}`;
+  return `ConsoleCrypt-${version}+${build}-${suffixes[platform]}`;
 }
 function downloadUrl(tag, name) { return DOWNLOAD + tag + '/' + encodeURIComponent(name); }
 
@@ -148,10 +162,10 @@ function validateAssets(assets) {
   }
   return assets;
 }
-export function selectInstallers(assets, sums, version) {
+export function selectInstallers(assets, sums, version, suffixes = SUFFIXES) {
   validateAssets(assets);
   const selected = {};
-  for (const [platform, suffix] of Object.entries(SUFFIXES)) {
+  for (const [platform, suffix] of Object.entries(suffixes)) {
     const candidates = assets.filter(asset => asset.name.endsWith(`-${suffix}`));
     if (candidates.length !== 1) fail('Missing or ambiguous installer');
     const asset = candidates[0];
@@ -159,7 +173,7 @@ export function selectInstallers(assets, sums, version) {
     const buildText = asset.name.slice(prefix.length, -suffix.length - 1);
     if (!asset.name.startsWith(prefix) || !/^[1-9]\d*$/.test(buildText)) fail('Invalid installer identity');
     const build = Number(buildText);
-    if (asset.name !== assetName(version, platform, build) || asset.size > MAX_INSTALLER || !sums.has(asset.name)) fail('Invalid installer identity');
+    if (asset.name !== assetName(version, platform, build, suffixes) || asset.size > MAX_INSTALLER || !sums.has(asset.name)) fail('Invalid installer identity');
     validateDownloadUrl(asset.browser_download_url, `v${version}`, asset.name);
     if (asset.digest != null && asset.digest !== `sha256:${sums.get(asset.name)}`) fail('GitHub asset digest mismatch');
     selected[platform] = { ...asset, build, sha256: sums.get(asset.name) };
@@ -179,8 +193,8 @@ function decode64(text, limit) {
   if (bytes.length > limit || bytes.toString('base64') !== text) fail('Invalid signed envelope');
   return bytes;
 }
-export function verifyFeed(body, host, { anchor = TRUST_ANCHOR, now = new Date() } = {}) {
-  if (Buffer.byteLength(body) > MAX_FEED || !Object.values(FEEDS).includes(host)) fail('Invalid existing feed');
+export function verifyFeed(body, host, { channel = CHANNELS.main, anchor = channel.anchor, now = new Date() } = {}) {
+  if (Buffer.byteLength(body) > MAX_FEED || !Object.values(channel.feeds).includes(host)) fail('Invalid existing feed');
   const wrapper = JSON.parse(body.toString());
   const bytes = decode64(wrapper.payload, 32_768), signature = decode64(wrapper.signature, 64);
   if (signature.length !== 64 || !verify(null, bytes, rawPublicKey(anchor), signature)) fail('Existing feed signature does not match trust anchor');
@@ -188,16 +202,16 @@ export function verifyFeed(body, host, { anchor = TRUST_ANCHOR, now = new Date()
   versionParts(payload.version);
   const issued = Date.parse(payload.issuedAt), expires = Date.parse(payload.expiresAt);
   if (payload.schema !== 1 || !Number.isFinite(issued) || !Number.isFinite(expires) || issued > now.getTime() + 600_000 || expires <= issued || expires - issued > 90 * DAY) fail('Invalid existing feed lifetime');
-  if (!payload.platforms || Object.keys(payload.platforms).sort().join() !== Object.keys(SUFFIXES).sort().join()) fail('Invalid existing feed platforms');
+  if (!payload.platforms || Object.keys(payload.platforms).sort().join() !== Object.keys(channel.suffixes).sort().join()) fail('Invalid existing feed platforms');
   for (const [platform, item] of Object.entries(payload.platforms)) {
-    const name = assetName(payload.version, platform, item.build);
+    const name = assetName(payload.version, platform, item.build, channel.suffixes);
     if (!integer(item.bytes, MAX_INSTALLER) || !hexHash(item.sha256) || item.url !== `https://${host}/releases/${payload.version}/${encodeURIComponent(name)}`) fail('Invalid existing feed identity');
   }
   if (!payload.notes || !['ru', 'en'].every(locale => typeof payload.notes[locale] === 'string' && payload.notes[locale].length <= 4000)) fail('Invalid feed notes');
   return payload; // Expired, correctly signed baselines can be renewed.
 }
-function coreIdentity(feed) {
-  return JSON.stringify([feed.version, ...Object.keys(SUFFIXES).map(platform => {
+function coreIdentity(feed, suffixes = SUFFIXES) {
+  return JSON.stringify([feed.version, ...Object.keys(suffixes).map(platform => {
     const item = feed.platforms[platform];
     return [platform, item.build, item.bytes, item.sha256];
   })]);
@@ -216,9 +230,9 @@ function signingKey(text, anchor) {
   if (key.asymmetricKeyType !== 'ed25519' || createPublicKey(key).export({ format: 'der', type: 'spki' }).subarray(-32).toString('base64') !== anchor) fail('Update signing key does not match existing clients');
   return key;
 }
-export function signFeeds(version, selected, key, now, notes) {
+export function signFeeds(version, selected, key, now, notes, feedHosts = FEEDS) {
   const feeds = {};
-  for (const [name, host] of Object.entries(FEEDS)) {
+  for (const [name, host] of Object.entries(feedHosts)) {
     const platforms = Object.fromEntries(Object.entries(selected).map(([platform, asset]) => [platform, {
       url: `https://${host}/releases/${version}/${encodeURIComponent(asset.name)}`,
       build: asset.build, bytes: asset.size, sha256: asset.sha256,
@@ -229,9 +243,10 @@ export function signFeeds(version, selected, key, now, notes) {
   return feeds;
 }
 
-export async function publishUpdateFeeds({ token, keyText, fetchImpl = fetch, now = new Date(), anchor = TRUST_ANCHOR } = {}) {
+export async function publishUpdateFeeds({ token, keyText, linuxKeyText, fetchImpl = fetch, now = new Date(), anchor = TRUST_ANCHOR, linuxAnchor = LINUX_TRUST_ANCHOR } = {}) {
   if (!token || !keyText) fail('GITHUB_TOKEN and UPDATE_SIGNING_KEY are required');
   const key = signingKey(keyText, anchor);
+  const linuxKey = linuxKeyText ? signingKey(linuxKeyText, linuxAnchor) : null;
   async function api(path, { method = 'GET', body, upload = false } = {}) {
     const base = upload ? `https://uploads.github.com/repos/${REPOSITORY}` : API;
     const response = await fetchImpl(base + path, {
@@ -255,79 +270,93 @@ export async function publishUpdateFeeds({ token, keyText, fetchImpl = fetch, no
   const checksum = latestAssets.find(asset => asset.name === `SHA256SUMS-${version}.txt`);
   if (!checksum || checksum.size > MAX_FEED) fail('Missing release checksums');
   const sums = parseChecksums((await downloadAsset(checksum, latest.tag_name, { fetchImpl })).toString(), version);
-  const selected = selectInstallers(latestAssets, sums, version);
-  let previous;
-  let currentFeeds = {};
-  for (const release of stable) {
-    const assets = release.id === latest.id ? latestAssets : validateAssets(await api(`/releases/${release.id}/assets?per_page=100`));
-    const found = {};
-    for (const [name, host] of Object.entries(FEEDS)) {
-      const asset = assets.find(item => item.name === name);
-      if (!asset) continue;
-      const body = await downloadAsset(asset, release.tag_name, { fetchImpl });
-      const payload = verifyFeed(body, host, { anchor, now });
-      if (payload.version !== releaseVersion(release)) fail('Feed and release version mismatch');
-      found[name] = { asset, body, payload };
-    }
-    if (!Object.keys(found).length) continue;
-    const payloads = Object.values(found).map(item => item.payload);
-    if (payloads.some(payload => coreIdentity(payload) !== coreIdentity(payloads[0]))) fail('Existing feeds disagree about installer identities');
-    previous = payloads[0];
-    if (release.id === latest.id) currentFeeds = found;
-    break;
-  }
-  if (!previous) fail('Bootstrap requires an existing feed signed by the client trust anchor');
-  assertNoDowngrade(previous, version, selected);
-  const complete = Object.keys(currentFeeds).length === 2;
-  if (complete && Object.values(currentFeeds).every(feed => Date.parse(feed.payload.expiresAt) - now.getTime() >= 14 * DAY)) {
-    return { status: 'unchanged', version }; // Do not redownload GBs or re-sign daily.
-  }
-  for (const asset of Object.values(selected)) {
-    const measured = await downloadAsset(asset, latest.tag_name, { fetchImpl, hashOnly: true, limit: MAX_INSTALLER });
-    if (measured.sha256 !== asset.sha256) fail('Installer checksum mismatch');
-  }
-  // Fail before writes if a new release or edited metadata appeared while hashing.
-  const recheck = await api('/releases/latest');
-  if (recheck.id !== latest.id || recheck.tag_name !== latest.tag_name || recheck.draft || recheck.prerelease) fail('Latest release changed during verification');
-  const afterAssets = validateAssets(await api(`/releases/${latest.id}/assets?per_page=100`));
-  if (JSON.stringify(afterAssets.map(a => [a.id, a.name, a.size, a.digest, a.updated_at]).sort()) !== JSON.stringify(latestAssets.map(a => [a.id, a.name, a.size, a.digest, a.updated_at]).sort())) fail('Release assets changed during verification');
-  const notes = previous.version === version ? previous.notes : {
-    ru: `Обновление ConsoleCrypt ${version}. Описание: https://github.com/${REPOSITORY}/releases/tag/v${version}`,
-    en: `ConsoleCrypt ${version} update. Release notes: https://github.com/${REPOSITORY}/releases/tag/v${version}`,
-  };
-  const feeds = signFeeds(version, selected, key, now, notes);
-  async function uploadFeed(name, body) {
-    const uploaded = await api(`/releases/${latest.id}/assets?name=${encodeURIComponent(name)}`, { method: 'POST', body, upload: true });
-    validateAssets([uploaded]);
-    if (uploaded.name !== name || uploaded.size !== body.length || (uploaded.digest != null && uploaded.digest !== `sha256:${createHash('sha256').update(body).digest('hex')}`)) fail('Uploaded feed metadata mismatch');
-    const location = validateDownloadUrl(uploaded.browser_download_url, latest.tag_name, name);
-    if (location.hostname !== 'github.com') fail('Uploaded feed has an unexpected location');
-  }
-  for (const [name, body] of Object.entries(feeds)) {
-    verifyFeed(body, FEEDS[name], { anchor, now });
-    const old = currentFeeds[name];
-    if (old) await api(`/releases/assets/${old.asset.id}`, { method: 'DELETE' });
-    try {
-      await uploadFeed(name, body);
-    } catch (error) {
-      // GitHub has no atomic replace. Best effort restores the previous public
-      // feed; the serving mirror must retain its last verified pair on failure.
-      if (old) {
-        try { await uploadFeed(name, old.body); } catch { /* Next run repairs from the other signed feed or operator backup. */ }
+
+  async function publishChannel(channel, key, anchor) {
+    const selected = selectInstallers(latestAssets, sums, version, channel.suffixes);
+    let previous;
+    let currentFeeds = {};
+    for (const release of stable) {
+      const assets = release.id === latest.id ? latestAssets : validateAssets(await api(`/releases/${release.id}/assets?per_page=100`));
+      const found = {};
+      for (const [name, host] of Object.entries(channel.feeds)) {
+        const asset = assets.find(item => item.name === name);
+        if (!asset) continue;
+        const body = await downloadAsset(asset, release.tag_name, { fetchImpl });
+        const payload = verifyFeed(body, host, { channel, anchor, now });
+        if (payload.version !== releaseVersion(release)) fail('Feed and release version mismatch');
+        found[name] = { asset, body, payload };
       }
-      throw error;
+      if (!Object.keys(found).length) continue;
+      const payloads = Object.values(found).map(item => item.payload);
+      if (payloads.some(payload => coreIdentity(payload, channel.suffixes) !== coreIdentity(payloads[0], channel.suffixes))) fail('Existing feeds disagree about installer identities');
+      previous = payloads[0];
+      if (release.id === latest.id) currentFeeds = found;
+      break;
     }
+    if (!previous && !channel.bootstrap) fail('Bootstrap requires an existing feed signed by the client trust anchor');
+    if (previous) assertNoDowngrade(previous, version, selected);
+    const complete = Object.keys(currentFeeds).length === Object.keys(channel.feeds).length;
+    if (complete && Object.values(currentFeeds).every(feed => Date.parse(feed.payload.expiresAt) - now.getTime() >= 14 * DAY)) {
+      return { status: 'unchanged', version }; // Do not redownload GBs or re-sign daily.
+    }
+    for (const asset of Object.values(selected)) {
+      const measured = await downloadAsset(asset, latest.tag_name, { fetchImpl, hashOnly: true, limit: MAX_INSTALLER });
+      if (measured.sha256 !== asset.sha256) fail('Installer checksum mismatch');
+    }
+    // Fail before writes if a new release or edited metadata appeared while hashing.
+    const recheck = await api('/releases/latest');
+    if (recheck.id !== latest.id || recheck.tag_name !== latest.tag_name || recheck.draft || recheck.prerelease) fail('Latest release changed during verification');
+    const afterAssets = validateAssets(await api(`/releases/${latest.id}/assets?per_page=100`));
+    // Feed documents are this publisher's own writes (another channel may have
+    // just replaced its pair); every other asset must be exactly as hashed.
+    const feedNames = new Set(Object.values(CHANNELS).flatMap(c => Object.keys(c.feeds)));
+    const identity = assets => JSON.stringify(assets.filter(a => !feedNames.has(a.name)).map(a => [a.id, a.name, a.size, a.digest, a.updated_at]).sort());
+    if (identity(afterAssets) !== identity(latestAssets)) fail('Release assets changed during verification');
+    const notes = previous?.version === version ? previous.notes : {
+      ru: `Обновление ConsoleCrypt ${version}. Описание: https://github.com/${REPOSITORY}/releases/tag/v${version}`,
+      en: `ConsoleCrypt ${version} update. Release notes: https://github.com/${REPOSITORY}/releases/tag/v${version}`,
+    };
+    const feeds = signFeeds(version, selected, key, now, notes, channel.feeds);
+    async function uploadFeed(name, body) {
+      const uploaded = await api(`/releases/${latest.id}/assets?name=${encodeURIComponent(name)}`, { method: 'POST', body, upload: true });
+      validateAssets([uploaded]);
+      if (uploaded.name !== name || uploaded.size !== body.length || (uploaded.digest != null && uploaded.digest !== `sha256:${createHash('sha256').update(body).digest('hex')}`)) fail('Uploaded feed metadata mismatch');
+      const location = validateDownloadUrl(uploaded.browser_download_url, latest.tag_name, name);
+      if (location.hostname !== 'github.com') fail('Uploaded feed has an unexpected location');
+    }
+    for (const [name, body] of Object.entries(feeds)) {
+      verifyFeed(body, channel.feeds[name], { channel, anchor, now });
+      const old = currentFeeds[name];
+      if (old) await api(`/releases/assets/${old.asset.id}`, { method: 'DELETE' });
+      try {
+        await uploadFeed(name, body);
+      } catch (error) {
+        // GitHub has no atomic replace. Best effort restores the previous public
+        // feed; the serving mirror must retain its last verified pair on failure.
+        if (old) {
+          try { await uploadFeed(name, old.body); } catch { /* Next run repairs from the other signed feed or operator backup. */ }
+        }
+        throw error;
+      }
+    }
+    return { status: 'published', version, expiresAt: new Date(now.getTime() + 90 * DAY).toISOString(), installers: Object.keys(selected).length };
   }
-  return { status: 'published', version, expiresAt: new Date(now.getTime() + 90 * DAY).toISOString(), installers: 3 };
+
+  const result = await publishChannel(CHANNELS.main, key, anchor);
+  // Until the owner adds LINUX_UPDATE_SIGNING_KEY, the Linux feed is skipped.
+  if (linuxKey) result.linux = await publishChannel(CHANNELS.linux, linuxKey, linuxAnchor);
+  return result;
 }
 
 async function main() {
   if (process.env.GITHUB_ACTIONS !== 'true' || process.env.GITHUB_REPOSITORY !== REPOSITORY || process.env.GITHUB_REF !== 'refs/heads/main' || !['schedule', 'workflow_dispatch'].includes(process.env.GITHUB_EVENT_NAME)) fail('Run only from the trusted main GitHub workflow');
   const token = process.env.GITHUB_TOKEN;
   const keyText = process.env.UPDATE_SIGNING_KEY;
+  const linuxKeyText = process.env.LINUX_UPDATE_SIGNING_KEY || undefined;
   delete process.env.UPDATE_SIGNING_KEY;
+  delete process.env.LINUX_UPDATE_SIGNING_KEY;
   delete process.env.GITHUB_TOKEN;
-  const result = await publishUpdateFeeds({ token, keyText });
+  const result = await publishUpdateFeeds({ token, keyText, linuxKeyText });
   console.log(JSON.stringify(result));
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

@@ -8960,6 +8960,36 @@ abstract class AppLocalizations {
   /// **'On iOS, updates are installed through the App Store, TestFlight or Xcode, depending on how the app was installed.'**
   String get updateAppleHelp;
 
+  /// Linux updates from the signed DEB/RPM feed (FEAT-06).
+  ///
+  /// In en, this message translates to:
+  /// **'The package is downloaded and checked against the signature and SHA-256, then the system asks for the administrator password and the package manager (apt, dnf or zypper) installs it. Profiles, vaults and the system keyring are kept; the new version opens after a restart.'**
+  String get updateLinuxInstallHelp;
+
+  /// Linux updates from the signed DEB/RPM feed (FEAT-06).
+  ///
+  /// In en, this message translates to:
+  /// **'The update is installed. Restart ConsoleCrypt to open the new version.'**
+  String get updateLinuxInstalled;
+
+  /// Linux updates from the signed DEB/RPM feed (FEAT-06).
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get updateRelaunch;
+
+  /// Linux updates from the signed DEB/RPM feed (FEAT-06).
+  ///
+  /// In en, this message translates to:
+  /// **'pkexec (polkit), which the app uses to ask for the administrator password, was not found. Install the package from the download page manually with apt or dnf.'**
+  String get updateLinuxNoPkexec;
+
+  /// Linux updates from the signed DEB/RPM feed (FEAT-06).
+  ///
+  /// In en, this message translates to:
+  /// **'The package manager exited with code {code}. Install the package from the download page manually with apt or dnf.'**
+  String updateLinuxInstallFailed(String code);
+
   /// Linux installation and manual package update help
   ///
   /// In en, this message translates to:
