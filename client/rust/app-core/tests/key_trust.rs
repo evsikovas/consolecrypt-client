@@ -573,3 +573,42 @@ async fn existing_profiles_pin_on_first_unlock() {
     assert!(!app.is_unlocked().await);
     app.shutdown().await.unwrap();
 }
+
+/// Security review SEC-11: once the server announced approval v2 to this
+/// new device, it cannot switch it off to push the device onto trust on
+/// first use with a key it chose.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_server_that_announced_approval_v2_cannot_switch_it_off() {
+    let server = MockServer::start().await;
+    let tmp = tempfile::tempdir().unwrap();
+    let a = synced(&server, &tmp.path().join("a"), AccountMode::Register).await;
+    let kit = a.create_vault(PASSPHRASE.into()).await.unwrap();
+    let c = synced(&server, &tmp.path().join("c"), AccountMode::Login).await;
+    let own = c
+        .request_device_approval(Some(kit.vault_id.clone()))
+        .await
+        .unwrap();
+    assert!(own.vrk_commitment, "the server announced approval v2");
+
+    // The server now pretends to be older: no intent, no signed record.
+    server.set_vrk_commitment(false);
+    let pending = a
+        .start_device_approval(own.request_id.clone())
+        .await
+        .unwrap();
+    assert_eq!(pending.code_version, 1);
+    a.confirm_device_approval(own.request_id.clone())
+        .await
+        .unwrap();
+    let err = c.finish_device_approval(None).await.unwrap_err();
+    assert_eq!(err.code(), "vault_key_mismatch", "{err:?}");
+    assert!(
+        c.vault_key_status()
+            .await
+            .map(|s| !s.pinned)
+            .unwrap_or(true),
+        "nothing was pinned or installed"
+    );
+    a.shutdown().await.unwrap();
+    c.shutdown().await.unwrap();
+}
