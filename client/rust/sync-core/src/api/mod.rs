@@ -46,8 +46,8 @@ use cc_protocol::sync::{
     ChangesQuery, ChangesResponse, PushRequest, PushResponse, SnapshotQuery, SnapshotResponse,
 };
 use cc_protocol::vaults::{
-    CreateEnvelopeRequest, CreateVaultRequest, DeleteEnvelopeRequest, DeleteVaultRequest,
-    ListEnvelopesResponse, ListVaultsResponse, VaultInfo,
+    CancelVaultDeletionRequest, CreateEnvelopeRequest, CreateVaultRequest, DeleteEnvelopeRequest,
+    DeleteVaultRequest, ListEnvelopesResponse, ListVaultsResponse, VaultInfo,
 };
 use cc_protocol::version::{
     Platform, HEADER_CLIENT_VERSION, HEADER_DEVICE_PROOF, HEADER_PLATFORM, HEADER_PROTOCOL_VERSION,
@@ -934,15 +934,39 @@ impl ApiClient {
             .await
     }
 
-    /// `DELETE /v1/vaults/{id}`.
+    /// `DELETE /v1/vaults/{id}`: `None` when deleted at once (trusted
+    /// device), the vault in `pending_deletion` when scheduled from an
+    /// untrusted device (protocol 1.13, `202`).
     pub async fn delete_vault(
         &self,
         vault_id: VaultId,
         req: &DeleteVaultRequest,
-    ) -> Result<(), ApiError> {
-        self.authed_empty(
-            Method::DELETE,
-            self.vault_url(paths::VAULT, vault_id),
+    ) -> Result<Option<VaultInfo>, ApiError> {
+        let raw = check(
+            self.send_authed(
+                Method::DELETE,
+                self.vault_url(paths::VAULT, vault_id),
+                Some(to_json(req)?),
+            )
+            .await?,
+        )?;
+        if raw.status == StatusCode::ACCEPTED {
+            decode(&raw).map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// `POST /v1/vaults/{id}/deletion/cancel` (protocol 1.13): a trusted
+    /// device of the owner keeps a vault whose deletion was scheduled.
+    pub async fn cancel_vault_deletion(
+        &self,
+        vault_id: VaultId,
+        req: &CancelVaultDeletionRequest,
+    ) -> Result<VaultInfo, ApiError> {
+        self.authed(
+            Method::POST,
+            self.vault_url(paths::VAULT_DELETION_CANCEL, vault_id),
             Some(to_json(req)?),
         )
         .await

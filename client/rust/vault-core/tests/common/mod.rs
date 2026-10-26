@@ -55,6 +55,7 @@ pub fn device_info(reg: &DeviceRegistration) -> DeviceInfo {
         is_current: false,
         trusted: false,
         quarantine_until: None,
+        client_version: None,
     }
 }
 

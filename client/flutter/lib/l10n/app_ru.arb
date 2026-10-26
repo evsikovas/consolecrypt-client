@@ -6737,5 +6737,9 @@
   "aiHistoryKept": "хранится в хранилище",
   "aiHistoryUntilLock": "до блокировки хранилища",
   "aiHistoryProviderGone": "провайдер удалён",
-  "aiHistoryMessages": "{count, plural, one{{count} сообщение} few{{count} сообщения} many{{count} сообщений} other{{count} сообщения}}"
+  "aiHistoryMessages": "{count, plural, one{{count} сообщение} few{{count} сообщения} many{{count} сообщений} other{{count} сообщения}}",
+  "syncVaultDeletionTitle": "Хранилище будет удалено {date}",
+  "syncVaultDeletionBody": "Удаление запросило другое, ещё не доверенное устройство вашего аккаунта. Если это были не вы, сохраните хранилище и смените пароль аккаунта.",
+  "syncVaultDeletionCancel": "Сохранить хранилище",
+  "syncVaultDeletionCancelled": "Удаление отменено."
 }

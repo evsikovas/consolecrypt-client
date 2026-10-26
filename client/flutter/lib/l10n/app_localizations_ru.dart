@@ -13581,4 +13581,19 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String syncVaultDeletionTitle(String date) {
+    return 'Хранилище будет удалено $date';
+  }
+
+  @override
+  String get syncVaultDeletionBody =>
+      'Удаление запросило другое, ещё не доверенное устройство вашего аккаунта. Если это были не вы, сохраните хранилище и смените пароль аккаунта.';
+
+  @override
+  String get syncVaultDeletionCancel => 'Сохранить хранилище';
+
+  @override
+  String get syncVaultDeletionCancelled => 'Удаление отменено.';
 }

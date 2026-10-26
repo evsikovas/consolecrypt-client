@@ -13270,4 +13270,19 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count messages', one: '1 message');
     return '$_temp0';
   }
+
+  @override
+  String syncVaultDeletionTitle(String date) {
+    return 'This vault will be deleted on $date';
+  }
+
+  @override
+  String get syncVaultDeletionBody =>
+      'Another device of your account that is not trusted yet asked to delete it. If it was not you, keep the vault and change your account password.';
+
+  @override
+  String get syncVaultDeletionCancel => 'Keep the vault';
+
+  @override
+  String get syncVaultDeletionCancelled => 'The deletion is cancelled.';
 }

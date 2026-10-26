@@ -23281,6 +23281,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 message} other{{count} messages}}'**
   String aiHistoryMessages(int count);
+
+  /// Pending vault deletion (sync screen)
+  ///
+  /// In en, this message translates to:
+  /// **'This vault will be deleted on {date}'**
+  String syncVaultDeletionTitle(String date);
+
+  /// Pending vault deletion (sync screen)
+  ///
+  /// In en, this message translates to:
+  /// **'Another device of your account that is not trusted yet asked to delete it. If it was not you, keep the vault and change your account password.'**
+  String get syncVaultDeletionBody;
+
+  /// Pending vault deletion (sync screen)
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the vault'**
+  String get syncVaultDeletionCancel;
+
+  /// Pending vault deletion (sync screen)
+  ///
+  /// In en, this message translates to:
+  /// **'The deletion is cancelled.'**
+  String get syncVaultDeletionCancelled;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

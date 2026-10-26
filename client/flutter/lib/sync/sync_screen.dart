@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/sync_service.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -154,6 +155,10 @@ class SyncScreen extends ConsumerWidget {
               message: l10n.syncScreenThrottledBody,
             ),
           ],
+          if (ref.watch(vaultDeletionProvider).value case final DateTime at) ...[
+            const SizedBox(height: GlassSpacing.s16),
+            _PendingDeletionCard(at: at),
+          ],
           if (status.failedChanges > 0) ...[
             const SizedBox(height: GlassSpacing.s16),
             _RejectedChangesCard(status: status),
@@ -247,6 +252,35 @@ class _RejectedChangesCard extends ConsumerWidget {
             onPressed: () => runWithFeedback(context, () => ref.read(syncServiceProvider).retryFailed()),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Another, not yet trusted device of the account scheduled the deletion of
+/// this vault (protocol 1.13): when, and «Keep the vault» from this device.
+class _PendingDeletionCard extends ConsumerWidget {
+  const _PendingDeletionCard({required this.at});
+
+  final DateTime at;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    return InfoBanner(
+      key: const ValueKey('sync-pending-deletion'),
+      tone: BannerTone.danger,
+      title: l10n.syncVaultDeletionTitle(formatDateTime(l10n, at)),
+      message: l10n.syncVaultDeletionBody,
+      action: GlassButton.prominent(
+        key: const ValueKey('sync-cancel-deletion'),
+        icon: Icons.restore_rounded,
+        label: l10n.syncVaultDeletionCancel,
+        onPressed: () => runWithFeedback(context, () async {
+          final service = ref.read(syncServiceProvider);
+          if (service is VaultDeletionControl) await (service as VaultDeletionControl).cancelVaultDeletion();
+          ref.invalidate(vaultDeletionProvider);
+        }, success: l10n.syncVaultDeletionCancelled),
       ),
     );
   }

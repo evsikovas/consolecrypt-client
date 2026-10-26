@@ -172,6 +172,7 @@ impl State {
                 owner: p.user_id,
                 vak_hash: sha256(req.vault_access_key.as_slice()),
                 state: VaultState::Active,
+                deletion_scheduled_at: None,
                 created_at: now,
                 updated_at: now,
                 last_sequence: 0,

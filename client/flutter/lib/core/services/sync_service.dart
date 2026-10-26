@@ -41,3 +41,14 @@ abstract interface class SyncService {
   /// this device on the server; the server copy is left untouched.
   Future<void> disconnect({required bool revokeThisDevice});
 }
+
+/// Optional capability (protocol 1.13): a deletion of the synced vault that
+/// another, not yet trusted device of the owner scheduled, and keeping the
+/// vault from this trusted device.
+abstract interface class VaultDeletionControl {
+  /// When the vault will be deleted; null when nothing is pending.
+  Future<DateTime?> scheduledVaultDeletion();
+
+  /// Cancels the scheduled deletion (needs the unlocked vault).
+  Future<void> cancelVaultDeletion();
+}

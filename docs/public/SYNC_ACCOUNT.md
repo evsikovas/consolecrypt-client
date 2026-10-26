@@ -45,6 +45,17 @@
 другое устройство аккаунта сообщило иной ключ, в **Устройствах** появится
 предупреждение с предложением отозвать его.
 
+### Запрос на удаление хранилища (0.9.3, протокол 1.13)
+
+Сервер 0.2.4 разрешает ещё не доверенному устройству владельца, на котором
+хранилище разблокировано, запросить удаление хранилища. Хранилище при этом не
+удаляется сразу: 7 дней оно ждёт в состоянии «удаление запланировано» и
+продолжает синхронизироваться. Доверенное устройство показывает в
+«Синхронизации» предупреждение «Хранилище будет удалено …» с кнопкой
+«Сохранить хранилище» — она отменяет удаление. Если запрос сделали не вы,
+отмените удаление и смените пароль аккаунта. Удаление с доверенного устройства
+по-прежнему происходит сразу.
+
 ### Корпоративный вход (Enterprise)
 
 Сервер синхронизации 0.2.0 и новее (протокол 1.8) может работать в
@@ -143,6 +154,15 @@ vault key is marked "not confirmed" until you enter the vault passphrase once
 (**Devices** or **Settings → Vault → Confirm with passphrase**). If another
 device of the account reports a different key, **Devices** warns and offers to
 revoke it.
+
+### A request to delete the vault (0.9.3, protocol 1.13)
+
+Server 0.2.4 lets a device of the owner that is not trusted yet, with the
+vault unlocked, ask to delete the vault. It is not deleted at once: for 7
+days it waits as “deletion scheduled” and keeps syncing. A trusted device
+shows “This vault will be deleted on …” under Sync with **Keep the vault**,
+which cancels the deletion. If you did not ask for it, keep the vault and
+change your account password. A trusted device still deletes at once.
 
 ### Corporate sign-in (Enterprise)
 

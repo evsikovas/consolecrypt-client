@@ -922,7 +922,7 @@ final class RustDevicesService implements DevicesService {
 
 // ---- sync ---------------------------------------------------------------------------------
 
-final class RustSyncService implements SyncService {
+final class RustSyncService implements SyncService, VaultDeletionControl {
   RustSyncService(this._hub);
 
   final RustBackend _hub;
@@ -944,6 +944,16 @@ final class RustSyncService implements SyncService {
     }
     await _hub.refreshSyncStatus();
   }
+
+  @override
+  Future<DateTime?> scheduledVaultDeletion() async {
+    if (_hub.activeInfo?['kind'] != 'synced') return null;
+    final ms = await guard(rs_sync.vaultDeletionScheduled);
+    return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true);
+  }
+
+  @override
+  Future<void> cancelVaultDeletion() => guard(rs_sync.cancelVaultDeletion);
 
   @override
   Future<int> retryFailed() async {
