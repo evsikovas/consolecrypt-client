@@ -44,9 +44,11 @@ dependencies:
   file_selector: ^1.1.0
   # Declarative iTerm colour preset import (MIT); never executes XML content.
   xml: ^7.1.0
-  # Drop files from Finder/Explorer into the SFTP browser = upload (Apache-2.0;
-  # MixinNetwork). Drop-in only; drag-out is deferred (lib/sftp/widgets/sftp_drop_target.dart).
-  desktop_drop: ^0.8.4
+  # Native drag and drop (MIT; Superlist): files from Finder/Explorer in, remote
+  # files out as virtual files (lib/core/widgets/native_drag_drop.dart). Its Rust
+  # library is built from source (cargokit_options.yaml).
+  super_drag_and_drop: ^0.9.1
+  super_clipboard: ^0.9.1
   # Authenticate update feeds (Apache-2.0) and installer digests (BSD-3-Clause).
   cryptography: ^2.9.0
   crypto: ^3.0.7

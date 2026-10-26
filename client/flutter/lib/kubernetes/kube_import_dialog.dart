@@ -7,12 +7,12 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
 import 'package:consolecrypt/kubernetes/kube_auth_service.dart';
 import 'package:consolecrypt/kubernetes/kube_import_exec_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_inventory_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
-import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart' as files;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -298,13 +298,11 @@ class _KubeImportDialogState extends ConsumerState<KubeImportDialog> {
     final preview = _preview;
     return PopScope(
       canPop: !_busy,
-      child: DropTarget(
-        enable: !AppPlatform.isMobile && !_busy,
-        onDragDone: (details) {
+      child: OsFileDropTarget(
+        enabled: !_busy,
+        onDrop: (paths, _) {
           if (!_current || _busy) return;
-          _queuedFiles.addAll(
-            details.files.map((file) => file.path).where((path) => path.isNotEmpty).take(64 - _queuedFiles.length),
-          );
+          _queuedFiles.addAll(paths.take(64 - _queuedFiles.length));
           if (_preview == null) {
             unawaited(_nextFile());
           } else {

@@ -68,6 +68,11 @@
   уведомлением «Напоминание из ConsoleCrypt» — без текста заметки, центр уведомлений не
   шифруется. На Android время может сдвинуться на несколько минут, на Linux напоминания
   по-прежнему работают только при открытом приложении.
+- **SFTP: перетаскивание в Finder и Проводник.** На macOS и Windows файлы из списка хоста
+  перетаскиваются прямо в Finder или Проводник: файл скачивается во временную папку,
+  передаётся системе и удаляется, ход виден в «Передачах». Папки — по-прежнему командой
+  «Скачать». Перетаскивание внутри приложения и из Finder/Проводника работает как раньше
+  (на Linux — тоже, но без перетаскивания наружу).
 - **QR из Recovery Kit без ввода текста.** При восстановлении доступа QR-код комплекта
   можно отсканировать камерой телефона или прочитать с картинки или скриншота (на любой
   платформе). Распознавание идёт на устройстве открытым кодом, кадры никуда не уходят.
@@ -212,6 +217,11 @@ admins and sends invitations only to verified addresses.
   notification “A reminder from ConsoleCrypt” without the note text, since the notification
   centre is not encrypted. On Android the time may drift by a few minutes; on Linux reminders
   still work only while the app is open.
+- **SFTP: drag into Finder and Explorer.** On macOS and Windows, files from the host list
+  drag straight into Finder or Explorer: the file is downloaded into a temporary folder,
+  handed to the system and deleted, with progress in Transfers. Folders still go through
+  Download. Dragging inside the app and from Finder/Explorer works as before (on Linux too,
+  without dragging out).
 - **Recovery Kit QR without typing.** Recovery reads the kit's QR code with a phone camera
   or from a picture or screenshot (on any platform). Decoding runs on the device with open
   source code; frames go nowhere.

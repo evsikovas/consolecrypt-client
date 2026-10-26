@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/sftp/widgets/sftp_drag.dart';
 import 'package:flutter/services.dart';
@@ -269,11 +270,10 @@ class _CrumbState extends State<_Crumb> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return DragTarget<SftpDragData>(
-      onWillAcceptWithDetails: (_) => true,
-      onAcceptWithDetails: (d) => widget.onDrop(d.data),
-      builder: (context, candidates, _) {
-        final highlight = candidates.isNotEmpty || _hover;
+    return AppDropTarget<SftpDragData>(
+      onAccept: widget.onDrop,
+      builder: (context, dropping) {
+        final highlight = dropping || _hover;
         return MouseRegion(
           cursor: SystemMouseCursors.click,
           onEnter: (_) => setState(() => _hover = true),
@@ -285,7 +285,7 @@ class _CrumbState extends State<_Crumb> {
             onLongPressStart: (d) => widget.onMenu(d.globalPosition),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: candidates.isNotEmpty
+                color: dropping
                     ? theme.colorScheme.primary.withValues(alpha: 0.18)
                     : (highlight ? theme.colorScheme.onSurface.withValues(alpha: 0.06) : null),
                 borderRadius: BorderRadius.circular(6),

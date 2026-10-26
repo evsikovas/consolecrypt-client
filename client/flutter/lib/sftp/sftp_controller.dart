@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/sftp/sftp_providers.dart';
 import 'package:consolecrypt/sftp/sftp_rows.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 const _keep = Object();
@@ -624,6 +626,28 @@ class SftpController extends Notifier<SftpState> {
 
   Future<List<TransferId>> download(List<String> remotePaths, String localDirectory) =>
       _browser.downloadItems(_requireSession(), remotePaths, localDirectory);
+
+  /// Downloads a regular file into a private temporary folder of its own
+  /// for a drag to Finder/Explorer, reporting progress 0..1; the drag deletes
+  /// the folder once the file is handed over. The job shows in Transfers.
+  Future<File> stageForDrag(String remotePath, ValueChanged<double> progress) async {
+    final session = _requireSession();
+    final folder = await Directory.systemTemp.createTemp('consolecrypt-drag-');
+    try {
+      final id = (await _browser.downloadItems(session, [remotePath], folder.path)).single;
+      final job = await _sftp.watchTransfers().map((jobs) => jobs.where((job) => job.id == id).firstOrNull).firstWhere((
+        job,
+      ) {
+        if (job != null && job.totalBytes > 0) progress(job.transferredBytes / job.totalBytes);
+        return job != null && !job.isActive;
+      });
+      if (job!.state != TransferState.completed) throw StateError(job.error ?? job.state.name);
+      return File(job.destinationPath);
+    } catch (_) {
+      await folder.delete(recursive: true);
+      rethrow;
+    }
+  }
 
   // Local pane -------------------------------------------------------------------------
 
