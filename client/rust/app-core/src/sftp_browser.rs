@@ -84,14 +84,23 @@ pub(crate) fn remote_path_arg(field: &str, path: &str) -> AppResult<String> {
     Ok(path.to_owned())
 }
 
-/// A remote file name that is safe as one local path component (no
-/// separators, no `.` / `..`, no NUL).
+/// A remote file name that is safe as one local path component: exactly one
+/// normal component (no separators, no `.` / `..`, no NUL or control
+/// characters), and on Windows also no drive prefix, alternate data stream,
+/// reserved device name or trailing dot/space (security review SEC-06).
 pub(crate) fn safe_local_name(name: &str) -> AppResult<String> {
+    let mut parts = std::path::Path::new(name).components();
+    let one_normal = matches!(
+        (parts.next(), parts.next()),
+        (Some(std::path::Component::Normal(c)), None) if c == std::ffi::OsStr::new(name)
+    );
     if name.is_empty()
         || name == "."
         || name == ".."
         || name.contains(['/', '\\', '\0'])
         || name.chars().any(char::is_control)
+        || !one_normal
+        || (cfg!(windows) && !windows_file_name_ok(name))
     {
         return Err(AppError::invalid(
             "remote_path",
@@ -99,6 +108,46 @@ pub(crate) fn safe_local_name(name: &str) -> AppResult<String> {
         ));
     }
     Ok(name.to_owned())
+}
+
+/// Whether Windows stores `name` as exactly that file in the chosen folder:
+/// `C:x` is relative to another directory, `a:b` writes an alternate data
+/// stream (such as a sibling's `Zone.Identifier`), and device names or a
+/// trailing dot/space are rewritten by Win32.
+fn windows_file_name_ok(name: &str) -> bool {
+    if name.contains(['<', '>', ':', '"', '|', '?', '*']) || name.ends_with([' ', '.']) {
+        return false;
+    }
+    let stem = name
+        .split('.')
+        .next()
+        .unwrap_or("")
+        .trim_end_matches(' ')
+        .to_ascii_uppercase();
+    let numbered = |prefix: &str| {
+        stem.strip_prefix(prefix).is_some_and(|n| {
+            matches!(
+                n,
+                "0" | "1"
+                    | "2"
+                    | "3"
+                    | "4"
+                    | "5"
+                    | "6"
+                    | "7"
+                    | "8"
+                    | "9"
+                    | "\u{b9}"
+                    | "\u{b2}"
+                    | "\u{b3}"
+            )
+        })
+    };
+    !(matches!(
+        stem.as_str(),
+        "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+    ) || numbered("COM")
+        || numbered("LPT"))
 }
 
 /// Normalize a typed remote path: `~` / `~/x` → `home`, relative → under
@@ -418,5 +467,48 @@ mod tests {
             assert!(safe_local_name(bad).is_err(), "{bad:?}");
         }
         assert_eq!(safe_local_name("ok name.txt").unwrap(), "ok name.txt");
+    }
+
+    /// SEC-06: names Windows would store elsewhere or as something else.
+    #[test]
+    fn windows_unsafe_names_are_refused() {
+        for bad in [
+            "C:evil.dll",
+            "c:x",
+            "foo.exe:Zone.Identifier",
+            "a:b",
+            "CON",
+            "nul.txt",
+            "COM1",
+            "lpt9.log",
+            "CONIN$",
+            "x.",
+            "x ",
+            "what?",
+            "a*b",
+            "<a>",
+            "pipe|name",
+            "quote\"d",
+        ] {
+            assert!(!windows_file_name_ok(bad), "{bad:?}");
+            if cfg!(windows) {
+                assert!(safe_local_name(bad).is_err(), "{bad:?}");
+            }
+        }
+        for ok in [
+            "report.pdf",
+            "COM10.txt",
+            "CONSOLE.md",
+            "lpt.txt",
+            ".bashrc",
+            "a b.c",
+        ] {
+            assert!(windows_file_name_ok(ok), "{ok:?}");
+            assert!(safe_local_name(ok).is_ok(), "{ok:?}");
+        }
+        // On Unix a colon is an ordinary character.
+        if !cfg!(windows) {
+            assert_eq!(safe_local_name("a:b").unwrap(), "a:b");
+        }
     }
 }

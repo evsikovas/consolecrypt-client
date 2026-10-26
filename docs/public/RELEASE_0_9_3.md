@@ -31,6 +31,10 @@
   не становится получателем секрета, подключения Kubernetes или базы данных: свои
   устройства получают общий доступ только через подтверждённое подключение. Поиск по
   адресу собственного аккаунта отклоняется.
+- **SFTP на Windows.** При скачивании папки имена вида `C:файл`, `файл:поток`, `CON`,
+  `NUL` или с точкой/пробелом в конце больше не принимаются: раньше сервер мог записать
+  файл за пределы выбранной папки или снять у соседнего файла метку «скачано из
+  интернета».
 
 ## English
 
@@ -61,3 +65,7 @@ also stops members from changing other members' team keys.
   becomes a recipient of a secret, a Kubernetes or database connection: your own devices
   get shared items only through a verified enrollment. Looking up your own account's
   address is refused.
+- **SFTP on Windows.** Folder downloads no longer accept names such as `C:file`,
+  `file:stream`, `CON`, `NUL` or names ending in a dot or space: a server could write a
+  file outside the chosen folder or strip a sibling file's "downloaded from the
+  internet" mark.
