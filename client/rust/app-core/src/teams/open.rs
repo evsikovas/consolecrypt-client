@@ -268,7 +268,7 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
                 .storage()?
                 .setting_set(cache_key(vault_id), cache)
                 .await?;
-            record_verified_head(writer, m, &view).await?;
+            record_verified_head(writer, m, &view, None).await?;
             if open.engine().is_none() {
                 start_team_engine(cx, &open).await?;
             }
@@ -277,6 +277,14 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
     }
     let current = UnlockedVault::open_team(&identity, &cache.key.envelope, vault_id, cx.user_id)
         .map_err(AppError::from)?;
+    if let Err(why) = check_pinned_key(m, &current, &cache.key, complete.then_some(view.key_epoch))
+    {
+        // A key the server picked for an epoch we already know, or a newer
+        // one that does not chain back to it: refuse (SEC-03).
+        tracing::warn!(team = %vault_id, why, "the team key does not match the pinned one");
+        return Err(AppError::TeamUntrusted("key_mismatch".into()));
+    }
+    let pin = (cache.key.key_epoch, current.key_commitment());
     let mut older = Vec::new();
     let mut epoch = cache.key.key_epoch;
     let mut newest = None::<UnlockedVault>;
@@ -351,7 +359,7 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
         }
     }
     if warning.is_none() {
-        record_verified_head(writer, m, &view).await?;
+        record_verified_head(writer, m, &view, Some(pin)).await?;
         if online {
             start_team_engine(cx, &handle).await?;
         }
@@ -366,21 +374,90 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
 
 /// Remember the verified log head (rollback detection) and finish a
 /// pending join in the personal-vault membership object.
+/// Record the verified log head and, after a full open, the accepted team
+/// key (`pin`: epoch and commitment).
 async fn record_verified_head(
     writer: &VaultWriter,
     m: &TeamMembership,
     view: &TeamLogView,
+    pin: Option<(u32, [u8; 32])>,
 ) -> AppResult<()> {
     let head = hex(&view.head);
-    if view.seq != m.verified_log_seq || head != m.verified_log_head || m.invitation_id.is_some() {
+    let pin = pin.map(|(epoch, commitment)| (epoch, hex(&commitment)));
+    let pin_changed = pin.as_ref().is_some_and(|(epoch, commitment)| {
+        m.pinned_key_epoch != Some(*epoch)
+            || m.pinned_key_commitment.as_deref() != Some(commitment.as_str())
+    });
+    if view.seq != m.verified_log_seq
+        || head != m.verified_log_head
+        || m.invitation_id.is_some()
+        || pin_changed
+    {
         let mut updated = m.clone();
         updated.invitation_id = None;
         updated.verified_log_seq = view.seq;
         updated.verified_log_head = head;
+        if let Some((epoch, commitment)) = pin {
+            updated.pinned_key_epoch = Some(epoch);
+            updated.pinned_key_commitment = Some(commitment);
+        }
         updated.updated_at = chrono::Utc::now();
         writer.put(VaultObject::TeamMembership(updated)).await?;
     }
     Ok(())
+}
+
+/// Longest rotation chain walked back to a pinned key.
+const MAX_PIN_CHAIN: u32 = 4096;
+
+/// SEC-03: the key the server hands out must be the pinned key of its epoch,
+/// or a newer one whose chain links lead back to the pinned key; and, with a
+/// complete log, its epoch must be the one the verified log announces. No
+/// pin yet (first open, or a membership from before this check) → accepted
+/// and pinned.
+fn check_pinned_key(
+    m: &TeamMembership,
+    current: &UnlockedVault,
+    key: &TeamKeyMaterial,
+    log_epoch: Option<u32>,
+) -> Result<(), &'static str> {
+    if log_epoch.is_some_and(|e| e != key.key_epoch) {
+        return Err("the key epoch differs from the verified log");
+    }
+    let Some(pinned_epoch) = m.pinned_key_epoch else {
+        return Ok(());
+    };
+    let pinned = m
+        .pinned_key_commitment
+        .as_deref()
+        .and_then(unhex32)
+        .ok_or("malformed pinned key")?;
+    if key.key_epoch < pinned_epoch {
+        return Err("an older key epoch than the pinned one");
+    }
+    if key.key_epoch - pinned_epoch > MAX_PIN_CHAIN {
+        return Err("too many rotations since the pinned key");
+    }
+    let mut older: Option<UnlockedVault> = None;
+    for epoch in (pinned_epoch + 1..=key.key_epoch).rev() {
+        let link = key
+            .chain
+            .iter()
+            .find(|l| l.key_epoch == epoch)
+            .ok_or("a chain link back to the pinned key is missing")?;
+        let opener = older.as_ref().unwrap_or(current);
+        older = Some(
+            opener
+                .open_previous_epoch(link)
+                .map_err(|_| "a chain link back to the pinned key is rejected")?,
+        );
+    }
+    let reached = older.as_ref().unwrap_or(current).key_commitment();
+    if reached == pinned {
+        Ok(())
+    } else {
+        Err("the key does not lead back to the pinned key")
+    }
 }
 
 fn newest_settings(
