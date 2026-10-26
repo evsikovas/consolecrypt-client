@@ -35,6 +35,11 @@
   `NUL` или с точкой/пробелом в конце больше не принимаются: раньше сервер мог записать
   файл за пределы выбранной папки или снять у соседнего файла метку «скачано из
   интернета».
+- **ИИ: оценка риска команд.** Команды, которые сами запускают программы или пишут
+  файлы, больше не помечаются как «только чтение»: `env -S '…'`, `fd -x/-X`,
+  `rg --pre`, скрипты `sed` с командами `e`/`w` и флагами `s///e`/`s///w`, `awk` с
+  `| getline` или файлом программы, `git -c …`. Для них снова нужно отметить, что вы
+  понимаете риск, перед «Выполнить».
 
 ## English
 
@@ -69,3 +74,7 @@ also stops members from changing other members' team keys.
   `file:stream`, `CON`, `NUL` or names ending in a dot or space: a server could write a
   file outside the chosen folder or strip a sibling file's "downloaded from the
   internet" mark.
+- **AI: command risk.** Commands that run programs or write files themselves are no
+  longer marked read-only: `env -S '…'`, `fd -x/-X`, `rg --pre`, `sed` scripts with the
+  `e`/`w` commands or the `s///e`/`s///w` flags, `awk` with `| getline` or a program
+  file, `git -c …`. They again need the risk acknowledgement before Run.
