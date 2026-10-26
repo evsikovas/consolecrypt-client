@@ -5744,6 +5744,30 @@ abstract class AppLocalizations {
   /// **'Reconnect'**
   String get terminalReconnect;
 
+  /// Title of the connect-time prompt for the passphrase of an encrypted private key. {key} is the key credential name, {host} the host label.
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrase for key “{key}” on {host}'**
+  String terminalKeyPassphrasePromptTitle(String key, String host);
+
+  /// Connect-time key passphrase prompt: the previous passphrase did not decrypt the key.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong key passphrase, please try again.'**
+  String get terminalKeyPassphraseRetry;
+
+  /// Field label in the connect-time key passphrase prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Key passphrase'**
+  String get terminalKeyPassphraseLabel;
+
+  /// Helper under the connect-time key passphrase field.
+  ///
+  /// In en, this message translates to:
+  /// **'Used for this connection only — not saved. Save it with the key credential to skip this step.'**
+  String get terminalKeyPassphraseHelper;
+
   /// Title of the connect-time password prompt. {user} is the SSH user name, {host} the host label.
   ///
   /// In en, this message translates to:

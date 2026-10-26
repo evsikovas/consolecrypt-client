@@ -3213,6 +3213,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get terminalReconnect => 'Reconnect';
 
   @override
+  String terminalKeyPassphrasePromptTitle(String key, String host) {
+    return 'Passphrase for key “$key” on $host';
+  }
+
+  @override
+  String get terminalKeyPassphraseRetry => 'Wrong key passphrase, please try again.';
+
+  @override
+  String get terminalKeyPassphraseLabel => 'Key passphrase';
+
+  @override
+  String get terminalKeyPassphraseHelper =>
+      'Used for this connection only — not saved. Save it with the key credential to skip this step.';
+
+  @override
   String terminalPasswordPromptTitle(String user, String host) {
     return 'Password for $user@$host';
   }
