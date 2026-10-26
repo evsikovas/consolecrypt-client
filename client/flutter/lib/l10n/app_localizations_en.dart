@@ -8580,6 +8580,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'ANALYZE executes the query to collect measurements. Available only for non-production connections.';
 
   @override
+  String get dbTrace => 'Trace query';
+
+  @override
+  String get dbTraceHelp =>
+      'The query runs once with tracing on: every node records its steps and delays in system_traces. Available only for non-production connections.';
+
+  @override
   String get dbEditCell => 'Edit cell';
 
   @override

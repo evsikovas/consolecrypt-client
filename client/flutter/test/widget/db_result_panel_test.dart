@@ -37,6 +37,34 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbRow
   List<DbRowChange> reviewed = const [];
   List<DbCellEdit> cellEdits = const [];
   int reviews = 0;
+  final explained = <bool>[];
+
+  @override
+  Future<DbExplainPlan> explain(String sessionId, DbQueryRequest request, {bool analyze = false}) async {
+    explained.add(analyze);
+    return DbExplainPlan(
+      engine: engine,
+      analyzed: analyze,
+      document: const {
+        'plan': {
+          'cql_trace': {
+            'request': 'Execute CQL3 query',
+            'coordinator': '10.0.0.1',
+            'duration_us': 800,
+            'nodes': [
+              {
+                'source': '10.0.0.1',
+                'events': [
+                  {'activity': 'Parsing a statement', 'elapsed_us': 100},
+                  {'activity': 'Read from replica', 'elapsed_us': 700},
+                ],
+              },
+            ],
+          },
+        },
+      },
+    );
+  }
 
   @override
   Future<DbSessionInfo> connect(String connectionId, {SecretText? temporaryPassword}) async => DbSessionInfo(
@@ -326,6 +354,23 @@ void main() {
     expect(find.textContaining('The rows are in 2 partitions'), findsOneWidget);
     await _confirm(tester);
     expect(service.commits, ['cells-1']);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('Cassandra: no EXPLAIN; a confirmed trace shows each node\'s steps', (tester) async {
+    final service = _Service(engine: DbEngine.cassandra);
+    await _pump(tester, service);
+    expect(_key('db-explain-menu'), findsNothing);
+    await tester.enterText(find.byKey(const ValueKey('db-query-editor')), 'SELECT * FROM items');
+    await tester.pump();
+    await _tap(tester, 'db-trace');
+    expect(find.textContaining('runs once with tracing on'), findsOneWidget);
+    expect(service.explained, isEmpty, reason: 'nothing runs before the confirmation');
+    await tester.tap(find.text('Run').last);
+    await _finish(tester);
+    expect(service.explained, [true]);
+    expect(find.text('Trace query · Cassandra / ScyllaDB'), findsOneWidget);
+    expect(find.text('10.0.0.1'), findsOneWidget);
+    expect(find.text('Read from replica'), findsOneWidget);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('without a key editing actions are off and say why', (tester) async {

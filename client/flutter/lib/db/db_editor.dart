@@ -351,7 +351,7 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
       margin: const EdgeInsets.symmetric(horizontal: GlassSpacing.s6),
       color: tokens.surfaces.separator,
     );
-    final sql = widget.session.engine != DbEngine.redis;
+    final sql = widget.session.engine != DbEngine.redis, cql = widget.session.engine == DbEngine.cassandra;
     return Padding(
       padding: const EdgeInsets.fromLTRB(GlassSpacing.s6, GlassSpacing.s6, GlassSpacing.s6, GlassSpacing.s4),
       child: SingleChildScrollView(
@@ -403,8 +403,10 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
             ),
             tool('db-cancel', Icons.stop_rounded, l.dbCancelQuery, widget.running ? widget.onCancel : null),
             divider(),
-            // CQL has no EXPLAIN.
-            if (widget.onExplain != null && sql && widget.session.engine != DbEngine.cassandra)
+            // CQL has no EXPLAIN: a traced run instead (not on production).
+            if (widget.onExplain != null && cql && !widget.session.production)
+              tool('db-trace', Icons.timeline_rounded, l.dbTrace, () => widget.onExplain!(true)),
+            if (widget.onExplain != null && sql && !cql)
               GlassMenuButton<bool>(
                 key: const ValueKey('db-explain-menu'),
                 entries: [
@@ -546,7 +548,7 @@ class _DbQueryEditorState extends State<DbQueryEditor> {
           },
           if (widget.onCancel != null)
             SingleActivator(LogicalKeyboardKey.period, control: !meta, meta: meta): widget.onCancel!,
-          if (widget.onExplain != null)
+          if (widget.onExplain != null && widget.session.engine != DbEngine.cassandra)
             SingleActivator(LogicalKeyboardKey.keyE, control: !meta, meta: meta): () => widget.onExplain!(false),
           if (widget.onHistory != null)
             SingleActivator(LogicalKeyboardKey.keyH, control: !meta, meta: meta): widget.onHistory!,

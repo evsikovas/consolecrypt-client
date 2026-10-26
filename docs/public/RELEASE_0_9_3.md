@@ -61,6 +61,9 @@
   через хранилище» переносит такое подключение с паролем в хранилище, если все устройства
   аккаунта работают на 0.9.2 или новее (с сервером 0.2.4 приложение видит их версии и
   перечислит те, что нужно обновить). Файл SQLite на этом компьютере остаётся только здесь.
+- **Cassandra/ScyllaDB: трассировка запроса** вместо EXPLAIN, которого нет в CQL:
+  запрос выполняется один раз с трассировкой, окно показывает шаги и задержки каждого
+  узла деревом, как план у SQL. Только для непрод-подключений, с подтверждением.
 - **Cassandra/ScyllaDB: правка ячеек.** Правка ячеек в таблице результатов снова
   доступна (раньше интерфейс её не пускал). Строки одной партиции меняются одним
   условным `BATCH` — все или ни одна; если правки затрагивают несколько партиций, окно
@@ -178,6 +181,9 @@ admins and sends invitations only to verified addresses.
   moves such a connection and its password into the vault once every device of the account
   runs 0.9.2 or later (with server 0.2.4 the app sees their versions and lists the ones to
   update). An SQLite file on this computer stays here.
+- **Cassandra/ScyllaDB: query tracing** in place of EXPLAIN, which CQL lacks: the query
+  runs once with tracing, and the window shows each node's steps and delays as a tree,
+  like an SQL plan. Non-production connections only, after a confirmation.
 - **Cassandra/ScyllaDB: cell editing.** Editing cells in the result grid works again
   (the interface used to refuse it). Rows of one partition change in one conditional
   `BATCH` — all or none; when the edits span several partitions, the review warns that

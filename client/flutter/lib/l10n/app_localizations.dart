@@ -15476,6 +15476,18 @@ abstract class AppLocalizations {
   /// **'ANALYZE executes the query to collect measurements. Available only for non-production connections.'**
   String get dbExplainAnalyzeHelp;
 
+  /// Cassandra/ScyllaDB: run the statement with tracing (CQL has no EXPLAIN)
+  ///
+  /// In en, this message translates to:
+  /// **'Trace query'**
+  String get dbTrace;
+
+  /// Confirmation before a traced CQL run
+  ///
+  /// In en, this message translates to:
+  /// **'The query runs once with tracing on: every node records its steps and delays in system_traces. Available only for non-production connections.'**
+  String get dbTraceHelp;
+
   /// Database interface: Edit cell
   ///
   /// In en, this message translates to:

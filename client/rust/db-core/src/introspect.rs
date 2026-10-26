@@ -269,6 +269,9 @@ impl DbSession {
         if statement.is_empty() {
             return Err(DbError::InvalidRequest);
         }
+        if self.info.engine == DbEngine::Cassandra {
+            return self.cassandra_trace(request, analyze).await;
+        }
         if self.info.engine == DbEngine::Sqlite {
             // No ANALYZE form: SQLite plans only.
             if analyze {
@@ -370,6 +373,54 @@ impl DbSession {
             "engine": self.info.engine,
             "analyzed": analyze,
             "plan": plan,
+        }))
+    }
+
+    /// CQL has no EXPLAIN (FEAT-14): the statement runs once with tracing
+    /// on, which is the measured (`analyze`) form only, reviewed and approved
+    /// like a write. The plan is the trace of each node's steps.
+    async fn cassandra_trace(
+        &self,
+        request: &DbQueryRequest,
+        analyze: bool,
+    ) -> Result<serde_json::Value, DbError> {
+        if !analyze {
+            return Err(DbError::InvalidRequest);
+        }
+        let mut traced = DbQueryRequest {
+            text: request.text.clone(),
+            parameters: request.parameters.clone(),
+            approval_ticket: None,
+        };
+        let review = self.guard.review(&traced)?;
+        self.guard.approve(&review.ticket)?;
+        traced.approval_ticket = Some(review.ticket.clone());
+        let statements = self.guard.prepare(&traced)?;
+        let [statement] = statements.as_slice() else {
+            return Err(DbError::InvalidRequest);
+        };
+        self.guard.validate_permit(statement)?;
+        let crate::parser::ParsedStatement::Cql {
+            text,
+            parameters,
+            keyspace: None,
+        } = statement.parsed()
+        else {
+            return Err(DbError::InvalidRequest);
+        };
+        let read_only = review.risk == crate::guard::QueryRisk::ReadOnly;
+        let trace = match &*self.driver.lock().await {
+            crate::session::Driver::Cassandra(driver) => {
+                driver
+                    .trace(text, parameters, read_only, &self.scope.child_token())
+                    .await?
+            }
+            _ => return Err(DbError::InvalidRequest),
+        };
+        Ok(serde_json::json!({
+            "engine": self.info.engine,
+            "analyzed": true,
+            "plan": trace,
         }))
     }
 
