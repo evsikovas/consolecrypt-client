@@ -4488,6 +4488,23 @@ class AppLocalizationsRu extends AppLocalizations {
   String get recoveryInputHint => 'word1 word2 … word24  или  consolecrypt-recovery:v1:…';
 
   @override
+  String get recoveryScanQr => 'Сканировать QR';
+
+  @override
+  String get recoveryQrFromImage => 'QR с картинки';
+
+  @override
+  String get recoveryQrNotFound =>
+      'QR-код Recovery Kit не найден. Попробуйте более чёткий снимок крупнее или введите слова.';
+
+  @override
+  String get recoveryScanQrHelp => 'Наведите камеру на QR-код вашего Recovery Kit. Кадры не покидают это устройство.';
+
+  @override
+  String get recoveryScanQrUnavailable =>
+      'Камера недоступна. Разрешите доступ к камере в настройках или используйте снимок QR-кода.';
+
+  @override
   String get recoveryQrRecognised => 'Текст QR-кода распознан';
 
   @override

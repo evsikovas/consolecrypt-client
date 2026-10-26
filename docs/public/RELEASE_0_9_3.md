@@ -64,6 +64,9 @@
   через хранилище» переносит такое подключение с паролем в хранилище, если все устройства
   аккаунта работают на 0.9.2 или новее (с сервером 0.2.4 приложение видит их версии и
   перечислит те, что нужно обновить). Файл SQLite на этом компьютере остаётся только здесь.
+- **QR из Recovery Kit без ввода текста.** При восстановлении доступа QR-код комплекта
+  можно отсканировать камерой телефона или прочитать с картинки или скриншота (на любой
+  платформе). Распознавание идёт на устройстве открытым кодом, кадры никуда не уходят.
 - **Общий доступ к RDP-хостам.** RDP-хостом можно поделиться с проверенным коллегой:
   адрес, порт, пользователь, домен и метки; заметки и сохранённый пароль — только по
   отметке. Сервер и протокол не меняются; клиенты до 0.9.3 такую карточку не показывают.
@@ -201,6 +204,9 @@ admins and sends invitations only to verified addresses.
   moves such a connection and its password into the vault once every device of the account
   runs 0.9.2 or later (with server 0.2.4 the app sees their versions and lists the ones to
   update). An SQLite file on this computer stays here.
+- **Recovery Kit QR without typing.** Recovery reads the kit's QR code with a phone camera
+  or from a picture or screenshot (on any platform). Decoding runs on the device with open
+  source code; frames go nowhere.
 - **Sharing RDP hosts.** An RDP host can be shared with a verified colleague: address,
   port, user, domain and tags; notes and the saved password only when ticked. Neither the
   server nor the protocol changes; clients before 0.9.3 do not show such a card.

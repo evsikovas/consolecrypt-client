@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -9,11 +12,14 @@ import 'package:consolecrypt/core/security/passphrase_strength.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/keyboard_layout.dart';
 import 'package:consolecrypt/core/widgets/obscurable_text_controller.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
+import 'package:consolecrypt/vault/recovery_qr.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -59,6 +65,35 @@ class _RecoveryScreenState extends ConsumerState<RecoveryScreen> {
   bool get _passphraseOk => _strength.acceptable && _passphrase.text == _confirm.text;
 
   bool get _recoveryOk => RecoveryInput.parse(_recovery.text) != null;
+
+  void _useQr(String? text) {
+    if (!mounted) return;
+    if (text == null) {
+      showSnack(context, context.l10n.recoveryQrNotFound, error: true);
+      return;
+    }
+    setState(() {
+      _recovery.text = text;
+      _error = null;
+    });
+  }
+
+  Future<void> _scanQr() async => _useQr(await scanRecoveryQr(context));
+
+  /// The Recovery Kit QR from a photo or screenshot, decoded on this device.
+  Future<void> _qrFromImage() async {
+    final path = await ref
+        .read(fileDialogServiceProvider)
+        .chooseOpenFile(extensions: const ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif']);
+    if (path == null || !mounted) return;
+    try {
+      final bytes = await File(path).readAsBytes();
+      if (bytes.length > 64 * 1024 * 1024) throw const FileSystemException('too large');
+      _useQr(await compute(decodeRecoveryQrImage, bytes));
+    } catch (_) {
+      _useQr(null);
+    }
+  }
 
   Future<void> _submit() async {
     setState(() {
@@ -178,8 +213,26 @@ class _RecoveryScreenState extends ConsumerState<RecoveryScreen> {
                   : l10n.recoveryWordCount(words, RecoveryKit.wordCount),
               style: t.callout.copyWith(color: tokens.secondaryLabel),
             ),
-            // TODO(client/ui): scan the Recovery Kit QR with the camera — needs a camera
-            // plugin; desktop users paste the QR text for now; next: evaluate at M5.
+            const SizedBox(height: GlassSpacing.s8),
+            Wrap(
+              spacing: GlassSpacing.s8,
+              runSpacing: GlassSpacing.s8,
+              children: [
+                if (AppPlatform.isMobile)
+                  GlassButton(
+                    key: const ValueKey('recovery-scan-qr'),
+                    icon: Icons.qr_code_scanner_rounded,
+                    label: l10n.recoveryScanQr,
+                    onPressed: _busy ? null : _scanQr,
+                  ),
+                GlassButton(
+                  key: const ValueKey('recovery-qr-image'),
+                  icon: Icons.image_search_rounded,
+                  label: l10n.recoveryQrFromImage,
+                  onPressed: _busy ? null : _qrFromImage,
+                ),
+              ],
+            ),
           ] else ...[
             if (deviceAvailable)
               InfoBanner(message: l10n.recoveryTrustedDeviceInfo(status!.deviceUnlock.authName(l10n)))
