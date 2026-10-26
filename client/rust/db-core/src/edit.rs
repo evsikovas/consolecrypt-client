@@ -37,6 +37,9 @@ pub struct CellEditRequest {
     /// null, long values shortened with `…`). Display only.
     pub preview: String,
     pub rows: usize,
+    /// Cassandra / ScyllaDB: partitions touched. Rows of one partition change
+    /// together (one conditional BATCH); different partitions do not.
+    pub partitions: usize,
 }
 
 /// How a bound value reads in the review preview.
@@ -149,6 +152,19 @@ pub fn cell_edit_request(
     primary_key: &[String],
     edits: &[DbCellEdit],
 ) -> Result<CellEditRequest, DbError> {
+    cell_edit_request_in_partitions(engine, table, primary_key, &[], edits)
+}
+
+/// [`cell_edit_request`] for Cassandra / ScyllaDB with the table's partition
+/// key: the rows of one partition become one conditional `BEGIN BATCH …
+/// APPLY BATCH` (all or none), each partition its own statement.
+pub fn cell_edit_request_in_partitions(
+    engine: DbEngine,
+    table: &DbObjectRef,
+    primary_key: &[String],
+    partition_key: &[String],
+    edits: &[DbCellEdit],
+) -> Result<CellEditRequest, DbError> {
     if edits.is_empty() || edits.len() > MAX_CELL_EDITS || primary_key.is_empty() {
         return Err(DbError::InvalidRequest);
     }
@@ -236,6 +252,50 @@ pub fn cell_edit_request(
             condition.1.join(" AND ")
         ));
     }
+    // Rows grouped by partition (first appearance first).
+    let positions: Vec<usize> = partition_key
+        .iter()
+        .filter_map(|column| primary_key.iter().position(|key| key == column))
+        .collect();
+    let mut groups: Vec<(Vec<DbCell>, Vec<usize>)> = Vec::new();
+    for (index, (key, _)) in rows.iter().enumerate() {
+        let partition: Vec<DbCell> = if engine == DbEngine::Cassandra
+            && !positions.is_empty()
+            && positions.len() == partition_key.len()
+        {
+            positions.iter().map(|&p| key[p].clone()).collect()
+        } else {
+            // One group per row.
+            key.clone()
+        };
+        match groups
+            .iter_mut()
+            .find(|(existing, _)| *existing == partition)
+        {
+            Some((_, members)) => members.push(index),
+            None => groups.push((partition, vec![index])),
+        }
+    }
+    let combine = |texts: &[String]| -> Vec<String> {
+        groups
+            .iter()
+            .map(|(_, members)| match members.as_slice() {
+                [one] => texts[*one].clone(),
+                many => format!(
+                    "BEGIN BATCH\n{};\nAPPLY BATCH",
+                    many.iter()
+                        .map(|&i| texts[i].as_str())
+                        .collect::<Vec<_>>()
+                        .join(";\n")
+                ),
+            })
+            .collect()
+    };
+    let (statements, previews) = if engine == DbEngine::Cassandra {
+        (combine(&statements), combine(&previews))
+    } else {
+        (statements, previews)
+    };
     Ok(CellEditRequest {
         request: DbQueryRequest {
             text: statements.join(";\n") + ";",
@@ -244,7 +304,36 @@ pub fn cell_edit_request(
         },
         preview: previews.join(";\n") + ";",
         rows: rows.len(),
+        partitions: if engine == DbEngine::Cassandra {
+            groups.len()
+        } else {
+            0
+        },
     })
+}
+
+/// How many rows a generated CQL edit changes: one `UPDATE … IF EXISTS`, or a
+/// `BEGIN BATCH … APPLY BATCH` of them (rows of one partition). Anything
+/// else is not an edit this module wrote.
+fn conditional_updates(text: &str) -> Option<u64> {
+    let update = |statement: &str| {
+        let statement = statement.trim();
+        statement.starts_with("UPDATE ") && statement.ends_with(" IF EXISTS")
+    };
+    if update(text) {
+        return Some(1);
+    }
+    let inner = text
+        .strip_prefix("BEGIN BATCH")?
+        .trim_end()
+        .strip_suffix("APPLY BATCH")?;
+    let statements: Vec<&str> = inner
+        .split(';')
+        .map(str::trim)
+        .filter(|statement| !statement.is_empty())
+        .collect();
+    (statements.len() > 1 && statements.iter().all(|statement| update(statement)))
+        .then_some(statements.len() as u64)
 }
 
 /// Rejects a statement that changed anything but exactly one row, which
@@ -483,6 +572,18 @@ impl DbSession {
             if edits.iter().any(|edit| !editable(&edit.column)) {
                 return Err(DbError::InvalidRequest);
             }
+            let partition: Vec<String> = columns
+                .iter()
+                .filter(|column| column.kind == crate::cassandra::CqlColumnKind::PartitionKey)
+                .map(|column| column.name.clone())
+                .collect();
+            return cell_edit_request_in_partitions(
+                self.info.engine,
+                table,
+                &key,
+                &partition,
+                edits,
+            );
         }
         cell_edit_request(self.info.engine, table, &key, edits)
     }
@@ -513,8 +614,8 @@ impl DbSession {
         let mut sink = OneRowEach::default();
         let mut driver = self.driver.lock().await;
         if let Driver::Cassandra(driver) = &*driver {
-            // CQL has no multi-row transaction: rows are updated one by one,
-            // each only if it still exists.
+            // Rows of one partition change together (one conditional batch);
+            // partitions one by one, each row only if it still exists.
             let cancel = self.scope.child_token();
             for statement in &statements {
                 let crate::parser::ParsedStatement::Cql {
@@ -523,13 +624,11 @@ impl DbSession {
                 else {
                     return Err(DbError::InvalidRequest);
                 };
-                if !text.starts_with("UPDATE ") || !text.ends_with(" IF EXISTS") {
-                    return Err(DbError::InvalidRequest);
-                }
+                let updates = conditional_updates(text).ok_or(DbError::InvalidRequest)?;
                 if !driver.conditional(text, parameters, &cancel).await? {
                     return Err(DbError::QueryFailed);
                 }
-                sink.rows += 1;
+                sink.rows += updates;
             }
             return Ok(sink.rows);
         }
@@ -631,6 +730,68 @@ mod tests {
         wrong.original_primary_key =
             BTreeMap::from([("name".to_string(), DbCell::Text("a".into()))]);
         assert!(cell_edit_request(DbEngine::Postgresql, &table, &["id".into()], &[wrong]).is_err());
+    }
+
+    #[test]
+    fn cassandra_rows_of_one_partition_share_a_conditional_batch() {
+        let table = DbObjectRef {
+            database: "ks".into(),
+            schema: None,
+            kind: DbObjectKind::Table,
+            name: "t".into(),
+            parent_name: None,
+        };
+        let key = |p: &str, c: &str| {
+            BTreeMap::from([
+                ("p".to_string(), DbCell::Int(p.into())),
+                ("c".to_string(), DbCell::Int(c.into())),
+            ])
+        };
+        let edit = |p: &str, c: &str| DbCellEdit {
+            original_primary_key: key(p, c),
+            column: "v".into(),
+            value: DbCell::Text(format!("{p}/{c}")),
+        };
+        let edits = [edit("1", "1"), edit("2", "1"), edit("1", "2")];
+        let primary = ["p".to_string(), "c".to_string()];
+        let request = cell_edit_request_in_partitions(
+            DbEngine::Cassandra,
+            &table,
+            &primary,
+            &["p".into()],
+            &edits,
+        )
+        .unwrap();
+        assert_eq!((request.rows, request.partitions), (3, 2));
+        let statements: Vec<&str> = request.preview.split(";\nAPPLY BATCH;\n").collect();
+        assert_eq!(statements.len(), 2, "{}", request.preview);
+        assert!(statements[0].starts_with("BEGIN BATCH\nUPDATE "));
+        assert!(statements[0].contains("'1/1'") && statements[0].contains("'1/2'"));
+        assert!(statements[1].starts_with("UPDATE ") && statements[1].contains("'2/1'"));
+        assert_eq!(request.request.text.matches(" IF EXISTS").count(), 3);
+        assert_eq!(request.request.text.matches("BEGIN BATCH").count(), 1);
+        // The batch is one guarded edit; anything else is not.
+        let batch = request.request.text.split(";\nAPPLY BATCH").next().unwrap();
+        assert_eq!(
+            conditional_updates(&format!("{batch};\nAPPLY BATCH")),
+            Some(2)
+        );
+        assert_eq!(
+            conditional_updates("UPDATE t SET v = ? WHERE p = ? IF EXISTS"),
+            Some(1)
+        );
+        for text in [
+            "BEGIN BATCH\nUPDATE t SET v = ? WHERE p = ? IF EXISTS;\nAPPLY BATCH",
+            "BEGIN BATCH\nUPDATE t SET v = ? WHERE p = ? IF EXISTS;\nDELETE FROM t WHERE p = ?;\nAPPLY BATCH",
+            "BEGIN BATCH\nUPDATE t SET v = ? WHERE p = ?;\nUPDATE t SET v = ? WHERE p = ? IF EXISTS;\nAPPLY BATCH",
+            "UPDATE t SET v = ? WHERE p = ?",
+        ] {
+            assert_eq!(conditional_updates(text), None, "{text}");
+        }
+        // Without the partition key every row stays its own statement.
+        let single = cell_edit_request(DbEngine::Cassandra, &table, &primary, &edits).unwrap();
+        assert_eq!((single.rows, single.partitions), (3, 3));
+        assert!(!single.request.text.contains("BATCH"));
     }
 
     #[test]

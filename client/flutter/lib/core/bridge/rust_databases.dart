@@ -640,6 +640,7 @@ final class RustDbService
       sql: SecretText(json['sql'] as String),
       expiresAt: DateTime.now().add(Duration(seconds: json['expires_in_seconds'] as int? ?? 60)),
       rows: json['rows'] as int,
+      partitions: json['partitions'] as int? ?? 0,
     );
   }
 

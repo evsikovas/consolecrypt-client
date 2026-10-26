@@ -20594,6 +20594,18 @@ abstract class AppLocalizations {
   /// **'Editing needs a query of one table with a primary or unique key'**
   String get dbEditNoKey;
 
+  /// Review of Cassandra cell edits spanning several partitions
+  ///
+  /// In en, this message translates to:
+  /// **'The rows are in {count} partitions. Each partition changes all or nothing, but not together with the others: some partitions can be changed while others are not. Review the statements and enter the vault passphrase.'**
+  String dbEditPartitions(int count);
+
+  /// Edit refused: partition or clustering column in a CQL grid
+  ///
+  /// In en, this message translates to:
+  /// **'Key columns of a Cassandra / ScyllaDB table cannot be edited'**
+  String get dbEditCqlKey;
+
   /// Why row editing is disabled on a locked production session
   ///
   /// In en, this message translates to:

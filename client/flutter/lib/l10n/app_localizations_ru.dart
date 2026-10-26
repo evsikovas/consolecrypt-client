@@ -11970,6 +11970,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbEditNoKey => 'Для правки нужен запрос к одной таблице с первичным или уникальным ключом';
 
   @override
+  String dbEditPartitions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count партиции',
+      many: '$count партиций',
+      few: '$count партиций',
+      one: '$count партиции',
+    );
+    return 'Строки из $_temp0. Каждая партиция меняется целиком или не меняется, но не вместе с остальными: одни партиции могут измениться, а другие нет. Проверьте запросы и введите пароль хранилища.';
+  }
+
+  @override
+  String get dbEditCqlKey => 'Колонки ключа таблицы Cassandra / ScyllaDB не редактируются';
+
+  @override
   String get dbEditProductionLocked => 'Продакшен только для чтения: сначала разрешите запись';
 
   @override

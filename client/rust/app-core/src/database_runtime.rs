@@ -284,6 +284,9 @@ pub struct DbCellEditReviewDto {
     /// values shortened) for review; what runs keeps them bound.
     pub sql: String,
     pub rows: usize,
+    /// Cassandra / ScyllaDB: partitions the rows span. Each partition is
+    /// changed all-or-nothing on its own, not together with the others.
+    pub partitions: usize,
     pub expires_in_seconds: u64,
 }
 
@@ -1021,6 +1024,7 @@ impl AppCore {
             request,
             preview: sql,
             rows,
+            partitions,
         } = session
             .review_cell_edits(&table, &edits)
             .await
@@ -1036,6 +1040,7 @@ impl AppCore {
             ticket,
             sql,
             rows,
+            partitions,
             expires_in_seconds: review.expires_in_seconds,
         })
     }

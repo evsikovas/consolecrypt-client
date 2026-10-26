@@ -30,17 +30,19 @@ const _items = DbObjectRef(database: '', schema: 'public', kind: DbObjectKind.ta
 
 /// A writable PostgreSQL session whose reads return two rows of `items`.
 class _Service implements DbService, DbQueryService, DbQueryReviewService, DbRowEditService {
-  _Service({this.editable = true});
+  _Service({this.editable = true, this.engine = DbEngine.postgresql});
   final bool editable;
+  final DbEngine engine;
   final executed = <DbQueryRequest>[], commits = <String>[], discarded = <String>[];
   List<DbRowChange> reviewed = const [];
+  List<DbCellEdit> cellEdits = const [];
   int reviews = 0;
 
   @override
-  Future<DbSessionInfo> connect(String connectionId, {SecretText? temporaryPassword}) async => const DbSessionInfo(
+  Future<DbSessionInfo> connect(String connectionId, {SecretText? temporaryPassword}) async => DbSessionInfo(
     id: 'session',
     connectionId: 'connection',
-    engine: DbEngine.postgresql,
+    engine: engine,
     serverVersion: '17.0',
     production: false,
     readOnly: false,
@@ -128,8 +130,17 @@ class _Service implements DbService, DbQueryService, DbQueryReviewService, DbRow
   }
 
   @override
-  Future<DbCellEditReview> reviewCellEdits(String sessionId, DbObjectRef table, List<DbCellEdit> edits) =>
-      throw UnimplementedError();
+  Future<DbCellEditReview> reviewCellEdits(String sessionId, DbObjectRef table, List<DbCellEdit> edits) async {
+    reviews++;
+    cellEdits = edits;
+    return DbCellEditReview(
+      ticket: 'cells-$reviews',
+      sql: SecretText('UPDATE items SET name = ? WHERE id = ? IF EXISTS;'),
+      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      rows: edits.length,
+      partitions: edits.length,
+    );
+  }
   @override
   Future<void> commitCellEdits(String sessionId, String ticket) async => commits.add(ticket);
   @override
@@ -292,6 +303,29 @@ void main() {
     await _tap(tester, 'db-discard-edits');
     expect(find.textContaining('not saved'), findsNothing);
     expect(find.descendant(of: _cell(1, 1), matching: find.text('beta')), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('Cassandra: cells change through conditional updates, keys and rows stay', (tester) async {
+    final service = _Service(engine: DbEngine.cassandra);
+    await _pump(tester, service);
+    await _runSelect(tester);
+    expect(_pressed(tester, 'db-row-add'), isNull, reason: 'CQL updates are upserts: no new rows');
+    expect(_pressed(tester, 'db-row-delete'), isNull);
+    // A key column identifies the row and is not changed.
+    await _typeCell(tester, 0, 0, '9');
+    expect(find.textContaining('Key columns of a Cassandra'), findsOneWidget);
+    expect(find.textContaining('not saved'), findsNothing);
+    await tester.pump(const Duration(seconds: 5));
+    await settle(tester);
+
+    await _typeCell(tester, 0, 1, 'first');
+    await _typeCell(tester, 1, 1, 'second');
+    await _tap(tester, 'db-apply-edits');
+    expect(service.cellEdits.map((e) => e.column), ['name', 'name']);
+    // Rows of different partitions: each changes on its own.
+    expect(find.textContaining('The rows are in 2 partitions'), findsOneWidget);
+    await _confirm(tester);
+    expect(service.commits, ['cells-1']);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('without a key editing actions are off and say why', (tester) async {

@@ -393,6 +393,68 @@ async fn scenario(variable: &str, product: &str) {
     .rows
     .is_empty());
 
+    // Rows of one partition change in one conditional batch: all or none.
+    write(
+        &dev,
+        "CREATE TABLE cc_live.batch_edits (p int, c int, v text, PRIMARY KEY (p, c))",
+    )
+    .await
+    .unwrap();
+    for (p, c) in [(1, 1), (1, 2), (2, 1)] {
+        write(
+            &dev,
+            &format!("INSERT INTO cc_live.batch_edits (p, c, v) VALUES ({p}, {c}, 'old')"),
+        )
+        .await
+        .unwrap();
+    }
+    let batch_table = object(DbObjectKind::Table, "batch_edits");
+    let cell = |p: i64, c: i64, v: &str| DbCellEdit {
+        original_primary_key: BTreeMap::from([
+            ("p".to_string(), DbCell::Int(p.to_string())),
+            ("c".to_string(), DbCell::Int(c.to_string())),
+        ]),
+        column: "v".into(),
+        value: DbCell::Text(v.into()),
+    };
+    async fn values(session: &Arc<DbSession>) -> Vec<DbCell> {
+        run(session, "SELECT v FROM cc_live.batch_edits")
+            .await
+            .unwrap()
+            .rows
+            .into_iter()
+            .map(|row| row[0].clone())
+            .collect()
+    }
+    let edit = dev
+        .review_cell_edits(
+            &batch_table,
+            &[cell(1, 1, "new"), cell(1, 2, "new"), cell(2, 1, "new")],
+        )
+        .await
+        .unwrap();
+    assert_eq!((edit.rows, edit.partitions), (3, 2));
+    assert!(edit.preview.starts_with("BEGIN BATCH"), "{}", edit.preview);
+    assert_eq!(dev.apply_cell_edits(&edit.request).await.unwrap(), 3);
+    assert!(values(&dev)
+        .await
+        .iter()
+        .all(|v| *v == DbCell::Text("new".into())));
+    // One row of the partition is gone: the other is not changed either.
+    let edit = dev
+        .review_cell_edits(&batch_table, &[cell(1, 1, "lost"), cell(1, 9, "lost")])
+        .await
+        .unwrap();
+    assert_eq!((edit.rows, edit.partitions), (2, 1));
+    assert_eq!(
+        dev.apply_cell_edits(&edit.request).await,
+        Err(DbError::QueryFailed)
+    );
+    assert!(values(&dev)
+        .await
+        .iter()
+        .all(|v| *v == DbCell::Text("new".into())));
+
     // Bound parameters follow the server's types.
     let mut parameterized = request(
         "SELECT note FROM cc_live.events WHERE tenant = {{tenant}} AND day = {{day}} AND ts = {{ts}}",
