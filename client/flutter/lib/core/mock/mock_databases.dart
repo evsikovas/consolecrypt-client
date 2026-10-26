@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/mock/mock_db_extras.dart';
 import 'package:consolecrypt/core/mock/mock_presence.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/db/db_ai_service.dart';
 import 'package:consolecrypt/db/db_csv_import.dart';
 import 'package:consolecrypt/db/db_designer_models.dart';
@@ -31,7 +32,8 @@ final class MockDbService
         DbCsvImportService,
         DbTableDesignService,
         DbSqliteFileService,
-        DbObjectInspectService {
+        DbObjectInspectService,
+        DbVaultMove {
   final _changes = StreamController<void>.broadcast();
   final _history = <DbHistoryEntry>[];
   var _next = 0;
@@ -197,6 +199,8 @@ final class MockDbService
   Future<DbConnection> saveConnection(DbConnectionDraft draft) async {
     final json = draft.metadata.toJson();
     if ((json['id'] as String? ?? '').isEmpty) json['id'] = 'mock-${_next++}';
+    final previous = _connections.where((c) => c.id == json['id']).firstOrNull;
+    json['device_only'] = previous?.deviceOnly ?? draft.metadata.engine.localOnly;
     final saved = DbConnection.fromJson(json);
     _connections
       ..removeWhere((c) => c.id == saved.id)
@@ -209,6 +213,26 @@ final class MockDbService
   @override
   Future<void> deleteConnection(String id) async {
     _connections.removeWhere((c) => c.id == id);
+    _changes.add(null);
+  }
+
+  /// Demo: every device is up to date unless a test says otherwise.
+  DbSyncReadiness debugReadiness = const DbSyncReadiness(ready: true);
+
+  @override
+  Future<DbSyncReadiness> syncReadiness() async => debugReadiness;
+
+  @override
+  Future<void> moveToVault(String connectionId) async {
+    final connection = _byId(connectionId);
+    if (!dbMovableToVault(connection)) {
+      throw const AppException(AppErrorCode.validation, 'This connection stays on this device');
+    }
+    if (!debugReadiness.ready) throw const AppException(AppErrorCode.validation, 'Update your devices first');
+    final json = connection.toJson()..['device_only'] = false;
+    _connections
+      ..removeWhere((c) => c.id == connectionId)
+      ..add(DbConnection.fromJson(json));
     _changes.add(null);
   }
 

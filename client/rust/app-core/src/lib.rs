@@ -45,6 +45,7 @@ mod database_local;
 mod database_local_secrets;
 mod database_route;
 mod database_runtime;
+pub mod database_vault_move;
 mod docker_compose;
 mod docker_runtime;
 pub use database_ai::{DbAiConsent, DbAiRequest};

@@ -13285,4 +13285,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncVaultDeletionCancelled => 'The deletion is cancelled.';
+
+  @override
+  String get dbMoveToVault => 'Sync with the vault';
+
+  @override
+  String get dbMoveToVaultHelp =>
+      'The connection and its password move into the vault: they sync to all your devices and are backed up with the vault. It does not go back to this device only.';
+
+  @override
+  String get dbMoveToVaultConfirm => 'Move into the vault';
+
+  @override
+  String get dbMovedToVault => 'The connection now syncs with the vault.';
+
+  @override
+  String get dbMoveOutdatedTitle => 'Update your devices first';
+
+  @override
+  String get dbMoveOutdatedBody =>
+      'Apps before 0.9.2 cannot read this connection. Update these devices of your account (or sign them out), then try again:';
+
+  @override
+  String get dbMoveVersionUnknown => 'version unknown';
 }

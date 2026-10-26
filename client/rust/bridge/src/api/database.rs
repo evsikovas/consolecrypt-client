@@ -30,8 +30,39 @@ fn connection_from_json(json: &str) -> Result<DbConnection, BridgeError> {
         .map_err(|_| BridgeError::invalid("connection", "malformed connection"))
 }
 
+/// Saved connections; each carries `device_only` (kept on this device, not
+/// in the vault).
 pub async fn db_connections() -> Result<String, BridgeError> {
-    with_core(move |c| async move { to_json(&c.db_connections().await?) }).await
+    with_core(move |c| async move {
+        let device_only = c.db_device_only_ids().await?;
+        let mut list = serde_json::to_value(c.db_connections().await?)
+            .map_err(|_| BridgeError::invalid("connections", "not serializable"))?;
+        if let Some(items) = list.as_array_mut() {
+            for item in items {
+                let local = item
+                    .get("id")
+                    .and_then(|id| id.as_str())
+                    .is_some_and(|id| device_only.iter().any(|d| d == id));
+                if let Some(object) = item.as_object_mut() {
+                    object.insert("device_only".into(), local.into());
+                }
+            }
+        }
+        to_json(&list)
+    })
+    .await
+}
+
+/// Whether connections of engines added after 0.9.1 can sync on this
+/// account → `DbSyncReadinessDto`.
+pub async fn db_sync_readiness() -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.db_sync_readiness().await?) }).await
+}
+
+/// Move a device-local connection into the vault (FEAT-01) → `DbConnection`.
+pub async fn db_move_connection_to_vault(connection_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.db_move_connection_to_vault(connection_id).await?) })
+        .await
 }
 
 pub async fn db_save_connection(

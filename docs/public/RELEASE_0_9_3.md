@@ -37,6 +37,11 @@
   общее для правок этого хоста и закрывается вместе с последней из них, а не живёт до
   выхода из приложения.
 
+- **Синхронизация подключений Cassandra/ScyllaDB и SQLite через хост.** Пункт «Синхронизировать
+  через хранилище» переносит такое подключение с паролем в хранилище, если все устройства
+  аккаунта работают на 0.9.2 или новее (с сервером 0.2.4 приложение видит их версии и
+  перечислит те, что нужно обновить). Файл SQLite на этом компьютере остаётся только здесь.
+
 **Синхронизация.** С сервером 0.2.4 (протокол 1.13) удаление хранилища, запрошенное
 ещё не доверенным устройством, откладывается на 7 дней; доверенное устройство показывает
 предупреждение в «Синхронизации» и может сохранить хранилище.
@@ -125,6 +130,11 @@ admins and sends invitations only to verified addresses.
 - **SFTP: recovering edits on other hosts.** The connection opened to recover unsaved
   edits on a host the browser is not showing is now shared by that host's edits and
   closes with the last of them instead of living until the app quits.
+
+- **Syncing Cassandra/ScyllaDB connections and SQLite through a host.** “Sync with the vault”
+  moves such a connection and its password into the vault once every device of the account
+  runs 0.9.2 or later (with server 0.2.4 the app sees their versions and lists the ones to
+  update). An SQLite file on this computer stays here.
 
 **Sync.** With server 0.2.4 (protocol 1.13) a vault deletion asked by a device that is not
 trusted yet waits 7 days; a trusted device shows a warning under Sync and can keep the vault.

@@ -13596,4 +13596,27 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get syncVaultDeletionCancelled => 'Удаление отменено.';
+
+  @override
+  String get dbMoveToVault => 'Синхронизировать через хранилище';
+
+  @override
+  String get dbMoveToVaultHelp =>
+      'Подключение и его пароль переносятся в хранилище: они синхронизируются со всеми вашими устройствами и попадают в резервные копии хранилища. Вернуть его «только на это устройство» нельзя.';
+
+  @override
+  String get dbMoveToVaultConfirm => 'Перенести в хранилище';
+
+  @override
+  String get dbMovedToVault => 'Подключение теперь синхронизируется через хранилище.';
+
+  @override
+  String get dbMoveOutdatedTitle => 'Сначала обновите устройства';
+
+  @override
+  String get dbMoveOutdatedBody =>
+      'Приложения до версии 0.9.2 не могут прочитать такое подключение. Обновите эти устройства аккаунта (или выйдите на них), затем повторите:';
+
+  @override
+  String get dbMoveVersionUnknown => 'версия неизвестна';
 }

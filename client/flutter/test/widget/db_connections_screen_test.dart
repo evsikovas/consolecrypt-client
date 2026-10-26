@@ -46,6 +46,7 @@ const _ring = DbConnection(
   database: 'events',
   production: false,
   options: DbDriverOptions(engine: DbEngine.cassandra, contactPoints: ['cass-2.internal'], localDatacenter: 'dc1'),
+  deviceOnly: true,
 );
 
 class _Service implements DbService {
@@ -181,4 +182,61 @@ void main() {
     expect(find.text('Keyspace'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('a device-only Cassandra connection moves into the vault once all devices are up to date', (
+    tester,
+  ) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    final service = _MoveService();
+    await _pump(tester, backend, service);
+    final l = lookupAppLocalizations(const Locale('en'));
+    // An old device on the account: the move waits.
+    service.readiness = const DbSyncReadiness(
+      ready: false,
+      outdatedDevices: [('Old laptop', '0.9.1'), ('Phone', null)],
+    );
+    await tapKey(tester, 'db-menu-ring');
+    await tester.tap(find.text(l.dbMoveToVault));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('db-move-outdated')), findsOneWidget);
+    expect(find.text('• Old laptop — 0.9.1'), findsOneWidget);
+    expect(find.text('• Phone — ${l.dbMoveVersionUnknown}'), findsOneWidget);
+    await tester.tap(find.text(l.commonClose));
+    await settle(tester);
+    expect(service.moved, isEmpty);
+
+    service.readiness = const DbSyncReadiness(ready: true);
+    await tapKey(tester, 'db-menu-ring');
+    await tester.tap(find.text(l.dbMoveToVault));
+    await settle(tester);
+    await tester.tap(find.text(l.dbMoveToVaultConfirm));
+    await settle(tester);
+    expect(service.moved, ['ring']);
+    expect(find.text(l.dbMovedToVault), findsOneWidget);
+    expect(find.byKey(const ValueKey('db-local-only-ring')), findsNothing);
+    // Once in the vault, there is nothing to move.
+    await tapKey(tester, 'db-menu-ring');
+    expect(find.text(l.dbMoveToVault), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+/// Moves `ring` into the "vault" when asked.
+class _MoveService extends _Service implements DbVaultMove {
+  _MoveService() : super([_ring]);
+
+  DbSyncReadiness readiness = const DbSyncReadiness(ready: true);
+  final moved = <String>[];
+
+  @override
+  Future<List<DbConnection>> connections() async => [
+    for (final c in items) moved.contains(c.id) ? DbConnection.fromJson(c.toJson()..['device_only'] = false) : c,
+  ];
+
+  @override
+  Future<DbSyncReadiness> syncReadiness() async => readiness;
+
+  @override
+  Future<void> moveToVault(String connectionId) async => moved.add(connectionId);
 }

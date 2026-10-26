@@ -12,6 +12,7 @@ import 'package:consolecrypt/db/db_import_dialog.dart';
 import 'package:consolecrypt/db/db_local_only_badge.dart';
 import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_providers.dart';
+import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/db/db_transport_badge.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -71,6 +72,55 @@ class _DbConnectionsScreenState extends ConsumerState<DbConnectionsScreen> {
     }
   }
 
+  /// FEAT-01: the connection (and its password) moves into the vault and
+  /// syncs, once every device of the account can read it.
+  Future<void> _moveToVault(DbConnection connection) async {
+    final scope = ref.read(dbScopeProvider), service = ref.read(dbServiceProvider), l = context.l10n;
+    if (service is! DbVaultMove) return;
+    final mover = service as DbVaultMove;
+    try {
+      final readiness = await mover.syncReadiness();
+      if (!mounted || !identical(scope, ref.read(dbScopeProvider))) return;
+      if (!readiness.ready) {
+        await showAppDialog<void>(
+          context,
+          builder: (context) => GlassDialog(
+            key: const ValueKey('db-move-outdated'),
+            title: l.dbMoveOutdatedTitle,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.dbMoveOutdatedBody),
+                const SizedBox(height: GlassSpacing.s8),
+                for (final (name, version) in readiness.outdatedDevices)
+                  Text('• $name — ${version ?? l.dbMoveVersionUnknown}'),
+              ],
+            ),
+            primaryAction: GlassButton(label: l.commonClose, onPressed: () => closeDialog<void>(context)),
+          ),
+        );
+        return;
+      }
+      final confirmed = await showConfirmDialog(
+        context,
+        title: l.dbMoveToVault,
+        message: l.dbMoveToVaultHelp,
+        confirmLabel: l.dbMoveToVaultConfirm,
+        secure: true,
+        extra: Text(connection.name),
+      );
+      if (!confirmed || !mounted || !identical(scope, ref.read(dbScopeProvider)) || !scope.unlocked) return;
+      await mover.moveToVault(connection.id);
+      if (mounted && identical(scope, ref.read(dbScopeProvider))) {
+        ref.invalidate(dbConnectionsProvider(scope));
+        showSnack(context, l.dbMovedToVault);
+      }
+    } catch (_) {
+      if (mounted && identical(scope, ref.read(dbScopeProvider))) showSnack(context, l.dbFailed, error: true);
+    }
+  }
+
   void _act(_DbAction action, DbConnection c) {
     switch (action) {
       case _DbAction.open:
@@ -79,6 +129,8 @@ class _DbConnectionsScreenState extends ConsumerState<DbConnectionsScreen> {
         unawaited(_edit(c));
       case _DbAction.share:
         widget.onShare?.call(c);
+      case _DbAction.moveToVault:
+        unawaited(_moveToVault(c));
       case _DbAction.delete:
         unawaited(_delete(c));
     }
@@ -184,6 +236,7 @@ class _DbConnectionsScreenState extends ConsumerState<DbConnectionsScreen> {
                   security: observed[c.id] ?? DbTransportSecurity.expected(c, loopback: dbLoopbackHost(c.host)),
                   cards: cards,
                   canShare: widget.onShare != null,
+                  canMove: service is DbVaultMove,
                   onOpen: () => widget.onOpen(c),
                   onAction: (action) => _act(action, c),
                 );
@@ -281,7 +334,7 @@ class _DbConnectionsScreenState extends ConsumerState<DbConnectionsScreen> {
   }
 }
 
-enum _DbAction { open, edit, share, delete }
+enum _DbAction { open, edit, share, moveToVault, delete }
 
 /// `#RRGGBB` label colour of a saved connection, if valid.
 Color? _connectionColor(String? hex) => hex != null && RegExp(r'^#[a-fA-F0-9]{6}$').hasMatch(hex)
@@ -306,6 +359,7 @@ class _DbConnectionEntry extends StatelessWidget {
     required this.canShare,
     required this.onOpen,
     required this.onAction,
+    this.canMove = false,
   });
 
   final DbConnection connection;
@@ -313,7 +367,7 @@ class _DbConnectionEntry extends StatelessWidget {
   /// Seen in the last session, or what the settings guarantee; null when
   /// only the server can tell.
   final DbTransportSecurity? security;
-  final bool cards, canShare;
+  final bool cards, canShare, canMove;
   final VoidCallback onOpen;
   final ValueChanged<_DbAction> onAction;
 
@@ -378,7 +432,7 @@ class _DbConnectionEntry extends StatelessWidget {
           const SizedBox(width: GlassSpacing.s6),
           DbTransportBadge(security, compact: true, key: ValueKey('db-transport-${connection.id}')),
         ],
-        if (c.engine.localOnly) ...[
+        if (c.deviceOnly) ...[
           const SizedBox(width: GlassSpacing.s6),
           DbLocalOnlyBadge(compact: true, key: ValueKey('db-local-only-${connection.id}')),
         ],
@@ -396,6 +450,8 @@ class _DbConnectionEntry extends StatelessWidget {
         GlassMenuItem(value: _DbAction.edit, label: l.commonEdit, icon: Icons.edit_rounded),
         if (canShare && !c.engine.localOnly)
           GlassMenuItem(value: _DbAction.share, label: l.sharingTitle, icon: Icons.share_outlined),
+        if (canMove && dbMovableToVault(c))
+          GlassMenuItem(value: _DbAction.moveToVault, label: l.dbMoveToVault, icon: Icons.cloud_upload_outlined),
         const GlassMenuDivider(),
         GlassMenuItem(value: _DbAction.delete, label: l.commonDelete, icon: Icons.delete_rounded, destructive: true),
       ],

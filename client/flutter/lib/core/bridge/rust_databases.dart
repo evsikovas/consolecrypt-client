@@ -37,7 +37,8 @@ final class RustDbService
         DbCsvImportService,
         DbObjectInspectService,
         DbProductionWriteService,
-        DbAiService {
+        DbAiService,
+        DbVaultMove {
   RustDbService(this._hub);
   final RustBackend _hub;
   final _sessions = <String, DbSessionInfo>{};
@@ -83,6 +84,24 @@ final class RustDbService
     return List.unmodifiable(
       list.cast<DbJson>().where((json) => DbEngine.tryParse(json['engine']) != null).map(DbConnection.fromJson),
     );
+  }
+
+  @override
+  Future<DbSyncReadiness> syncReadiness() async {
+    final json = decodeObject(await guard(native.dbSyncReadiness));
+    return DbSyncReadiness(
+      ready: json['ready'] == true,
+      outdatedDevices: [
+        for (final d in (json['outdated_devices'] as List? ?? const []).cast<Map<String, Object?>>())
+          (d['name'] as String? ?? '', d['client_version'] as String?),
+      ],
+    );
+  }
+
+  @override
+  Future<void> moveToVault(String connectionId) async {
+    await guard(() => native.dbMoveConnectionToVault(connectionId: connectionId));
+    _local.add(null);
   }
 
   @override

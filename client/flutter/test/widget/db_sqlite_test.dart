@@ -25,6 +25,7 @@ const _file = DbConnection(
   database: '/data/notes.db',
   production: false,
   options: DbDriverOptions(engine: DbEngine.sqlite),
+  deviceOnly: true,
 );
 
 class _Service implements DbService, DbSqliteFileService {

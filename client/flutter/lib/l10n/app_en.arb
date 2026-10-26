@@ -18236,5 +18236,33 @@
   "syncVaultDeletionCancelled": "The deletion is cancelled.",
   "@syncVaultDeletionCancelled": {
     "description": "Pending vault deletion (sync screen)"
+  },
+  "dbMoveToVault": "Sync with the vault",
+  "@dbMoveToVault": {
+    "description": "Moving a device-local database connection into the vault (FEAT-01)"
+  },
+  "dbMoveToVaultHelp": "The connection and its password move into the vault: they sync to all your devices and are backed up with the vault. It does not go back to this device only.",
+  "@dbMoveToVaultHelp": {
+    "description": "Moving a device-local database connection into the vault (FEAT-01)"
+  },
+  "dbMoveToVaultConfirm": "Move into the vault",
+  "@dbMoveToVaultConfirm": {
+    "description": "Moving a device-local database connection into the vault (FEAT-01)"
+  },
+  "dbMovedToVault": "The connection now syncs with the vault.",
+  "@dbMovedToVault": {
+    "description": "Moving a device-local database connection into the vault (FEAT-01)"
+  },
+  "dbMoveOutdatedTitle": "Update your devices first",
+  "@dbMoveOutdatedTitle": {
+    "description": "Moving a device-local database connection into the vault (FEAT-01)"
+  },
+  "dbMoveOutdatedBody": "Apps before 0.9.2 cannot read this connection. Update these devices of your account (or sign them out), then try again:",
+  "@dbMoveOutdatedBody": {
+    "description": "Moving a device-local database connection into the vault (FEAT-01)"
+  },
+  "dbMoveVersionUnknown": "version unknown",
+  "@dbMoveVersionUnknown": {
+    "description": "Moving a device-local database connection into the vault (FEAT-01)"
   }
 }
