@@ -870,6 +870,33 @@ async fn scylla_cluster_spreads_over_nodes() {
         }
     }
     assert_eq!(coordinators.len(), 2, "{coordinators:?}");
+    // CC_DB_LIVE_SCYLLA_SHARDS = the nodes' containers (FEAT-13): on each
+    // one this client holds a connection to every shard.
+    if let Ok(containers) = std::env::var("CC_DB_LIVE_SCYLLA_SHARDS") {
+        for container in containers.split(',') {
+            let output = std::process::Command::new("docker")
+                .args([
+                    "exec",
+                    container,
+                    "cqlsh",
+                    "-e",
+                    "SELECT shard_id, driver_name FROM system.clients",
+                ])
+                .output()
+                .unwrap();
+            let text = String::from_utf8_lossy(&output.stdout);
+            let shards: std::collections::BTreeSet<&str> = text
+                .lines()
+                .filter(|line| line.contains("ScyllaDB Rust Driver"))
+                .filter_map(|line| line.split('|').next().map(str::trim))
+                .collect();
+            assert_eq!(
+                shards.into_iter().collect::<Vec<_>>(),
+                ["0", "1"],
+                "{container}: {text}"
+            );
+        }
+    }
     write(&dev, "DROP KEYSPACE cc_pair").await.unwrap();
     // CC_DB_LIVE_SCYLLA_FAILOVER = the contact node's container: it is
     // stopped, and requests go on through the other node.

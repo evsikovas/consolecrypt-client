@@ -715,12 +715,47 @@ impl Cassandra {
         // requests over the nodes of this datacenter and fails over when the
         // coordinator goes down. The contact node keeps the probed relay.
         let host = local.get(2).and_then(|id| Uuid::parse_str(id).ok());
-        if let (Some((connector, tls)), Some(host)) = (peer_dialer, host) {
+        if let (Some((connector, tls)), Some(host), false) =
+            (peer_dialer, host, driver.datacenter.is_empty())
+        {
+            let balanced = profile
+                .load_balancing_policy(
+                    DefaultPolicy::builder()
+                        .prefer_datacenter(driver.datacenter.clone())
+                        .permit_dc_failover(false)
+                        .build(),
+                )
+                .build()
+                .into_handle();
+            // ScyllaDB (FEAT-13): the driver dials the nodes of this
+            // datacenter itself, one connection per shard through the
+            // shard-aware port, which picks the shard by the client's port
+            // (a relay cannot keep it). The relay session is the fallback.
+            if driver.version.starts_with("ScyllaDB") {
+                match Self::shard_aware(
+                    connection,
+                    credentials,
+                    &destinations,
+                    tls.as_ref(),
+                    &driver.datacenter,
+                    balanced.clone(),
+                    &scope,
+                )
+                .await
+                {
+                    Ok(session) => {
+                        driver.session = session;
+                        return Ok(driver);
+                    }
+                    Err(DbError::Cancelled) => return Err(DbError::Cancelled),
+                    Err(_) => {}
+                }
+            }
             let peers = driver
                 .catalogue("SELECT peer FROM system.peers", &[], &cancel)
                 .await
                 .unwrap_or_default();
-            if !peers.is_empty() && !driver.datacenter.is_empty() {
+            if !peers.is_empty() {
                 let relays = PeerRelays {
                     contact: (host, contact),
                     port: connection.port,
@@ -729,15 +764,6 @@ impl Cassandra {
                     scope: scope.clone(),
                     relays: tokio::sync::Mutex::new(HashMap::new()),
                 };
-                let balanced = profile
-                    .load_balancing_policy(
-                        DefaultPolicy::builder()
-                            .prefer_datacenter(driver.datacenter.clone())
-                            .permit_dc_failover(false)
-                            .build(),
-                    )
-                    .build()
-                    .into_handle();
                 match open(
                     Arc::new(relays),
                     Arc::new(InDatacenter(driver.datacenter.clone())),
@@ -753,6 +779,67 @@ impl Cassandra {
             }
         }
         Ok(driver)
+    }
+
+    /// A direct ScyllaDB session without the relay (FEAT-13): every node of
+    /// `datacenter`, one connection per shard, the shard-aware port allowed,
+    /// TLS by the driver with the connection's own policy.
+    async fn shard_aware(
+        connection: &DbConnection,
+        credentials: &DbCredentials,
+        destinations: &[DbDestination],
+        tls: Option<&TlsProfile>,
+        datacenter: &str,
+        profile: ExecutionProfileHandle,
+        scope: &CancellationToken,
+    ) -> Result<Session, DbError> {
+        let nodes: Vec<String> = destinations
+            .iter()
+            .map(|node| {
+                if node.host.contains(':') {
+                    format!("[{}]:{}", node.host, node.port)
+                } else {
+                    format!("{}:{}", node.host, node.port)
+                }
+            })
+            .collect();
+        let mut builder = SessionBuilder::new()
+            .known_nodes(&nodes)
+            .connection_timeout(Duration::from_secs(u64::from(
+                connection.limits.connect_timeout_seconds.clamp(1, 120),
+            )))
+            .pool_size(PoolSize::PerShard(NonZeroUsize::MIN))
+            .host_filter(Arc::new(InDatacenter(datacenter.to_owned())))
+            .fetch_schema_metadata(false)
+            .compression(None)
+            .default_execution_profile_handle(profile)
+            .custom_identity(SelfIdentity::new().with_application_name("ConsoleCrypt"));
+        if let Some(tls) = tls {
+            builder = builder.tls_context(Some(tls.for_nodes(connection)?));
+        }
+        if !connection.username.is_empty() || credentials.password.is_some() {
+            builder = builder.user(
+                connection.username.clone(),
+                credentials
+                    .password
+                    .as_ref()
+                    .map(|password| password.expose_secret().to_owned())
+                    .unwrap_or_default(),
+            );
+        }
+        if !connection.database.is_empty() {
+            builder = builder.use_keyspace(connection.database.clone(), true);
+        }
+        let session = tokio::select! {
+            biased;
+            _ = scope.cancelled() => return Err(DbError::Cancelled),
+            result = builder.build() => result.map_err(|error| classify(&error))?,
+        };
+        // The nodes must answer at the addresses they announce (a port
+        // forward to one of them does not carry the others).
+        let probe = Statement::new("SELECT key FROM system.local WHERE key = 'local'");
+        cancellable(scope, session.query_unpaged(probe, ())).await?;
+        Ok(session)
     }
 
     /// The keyspace unqualified names refer to (`USE` or the connection's).
