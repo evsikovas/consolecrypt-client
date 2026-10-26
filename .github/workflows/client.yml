@@ -37,6 +37,7 @@ jobs:
           python3 -m unittest discover -s client/scripts -p 'test_github_release.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_announce_telegram.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_announce_evsikovnet.py' -v
+          python3 -m unittest discover -s client/scripts -p 'test_release_docs.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_ci_cleanup.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_cleanup_policy.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_linux_cleanup.py' -v
