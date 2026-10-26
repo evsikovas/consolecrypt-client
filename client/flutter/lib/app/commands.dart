@@ -25,6 +25,9 @@ enum AppCommandId {
   openSettings,
   snippets,
   toggleSidebar,
+  splitTerminalRight,
+  splitTerminalDown,
+  nextTerminalPane,
 }
 
 /// A key combination: the platform primary modifier (⌘ on macOS, Ctrl
@@ -169,6 +172,9 @@ final class AppCommand {
     AppCommandId.openSettings => l.commandOpenSettings,
     AppCommandId.snippets => l.navSnippets,
     AppCommandId.toggleSidebar => l.commandToggleSidebar,
+    AppCommandId.splitTerminalRight => l.terminalSplitRight,
+    AppCommandId.splitTerminalDown => l.terminalSplitDown,
+    AppCommandId.nextTerminalPane => l.terminalNextPane,
   };
 }
 
@@ -182,6 +188,10 @@ const appCommands = [
   AppCommand(AppCommandId.openSettings, ShortcutBinding(LogicalKeyboardKey.comma)),
   AppCommand(AppCommandId.snippets, ShortcutBinding(LogicalKeyboardKey.period)),
   AppCommand(AppCommandId.toggleSidebar, ShortcutBinding(LogicalKeyboardKey.keyS, shift: true)),
+  // ⇧\ is `|` (side by side), ⇧- is `_` (one under the other).
+  AppCommand(AppCommandId.splitTerminalRight, ShortcutBinding(LogicalKeyboardKey.backslash, shift: true)),
+  AppCommand(AppCommandId.splitTerminalDown, ShortcutBinding(LogicalKeyboardKey.minus, shift: true)),
+  AppCommand(AppCommandId.nextTerminalPane, ShortcutBinding(LogicalKeyboardKey.bracketRight)),
 ];
 
 /// Commands with the user's overrides (`id → encoded binding`, empty =
@@ -273,6 +283,16 @@ final class AppCommandDispatcher {
         // Phones have no sidebar; narrow windows keep it compact (no toggle).
         final narrow = context != null && MediaQuery.sizeOf(context).width < GlassSizes.compactBreakpoint;
         if (!AppPlatform.isMobile && !narrow) _ref.read(sidebarCollapsedProvider.notifier).toggle();
+      case AppCommandId.splitTerminalRight || AppCommandId.splitTerminalDown:
+        final tab = _ref.read(terminalTabsProvider).active;
+        if (!AppPlatform.isMobile && tab != null && router.state.matchedLocation.startsWith(AppRoutes.terminal)) {
+          final axis = id == AppCommandId.splitTerminalRight ? Axis.horizontal : Axis.vertical;
+          unawaited(_ref.read(terminalTabsProvider.notifier).split(tab, axis).then((_) {}, onError: (_) {}));
+        }
+      case AppCommandId.nextTerminalPane:
+        if (router.state.matchedLocation.startsWith(AppRoutes.terminal)) {
+          _ref.read(terminalTabsProvider.notifier).focusNextPane();
+        }
     }
   }
 

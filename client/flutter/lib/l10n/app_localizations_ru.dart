@@ -3283,7 +3283,32 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get terminalSplitViewLater => 'Разделение окна появится в одном из следующих выпусков';
+  String get terminalSplit => 'Разделить';
+
+  @override
+  String get terminalSplitRight => 'Разделить вправо';
+
+  @override
+  String get terminalSplitDown => 'Разделить вниз';
+
+  @override
+  String get terminalNextPane => 'Следующая панель';
+
+  @override
+  String get terminalClosePane => 'Закрыть панель';
+
+  @override
+  String terminalSplitFull(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Во вкладке не больше $count панели',
+      many: 'Во вкладке не больше $count панелей',
+      few: 'Во вкладке не больше $count панелей',
+      one: 'Во вкладке не больше $count панели',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get terminalSnippets => 'Сниппеты';

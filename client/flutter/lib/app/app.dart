@@ -154,7 +154,14 @@ class AppCommandsScope extends ConsumerWidget {
           ),
           PlatformMenu(
             label: l10n.menuView,
-            menus: [item(AppCommandId.commandPalette), item(AppCommandId.snippets), item(AppCommandId.toggleSidebar)],
+            menus: [
+              item(AppCommandId.commandPalette),
+              item(AppCommandId.snippets),
+              item(AppCommandId.toggleSidebar),
+              item(AppCommandId.splitTerminalRight),
+              item(AppCommandId.splitTerminalDown),
+              item(AppCommandId.nextTerminalPane),
+            ],
           ),
           PlatformMenu(
             label: l10n.menuWindow,

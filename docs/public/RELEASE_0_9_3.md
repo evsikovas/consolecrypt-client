@@ -11,6 +11,9 @@
 - **Комплект восстановления** можно напечатать или сохранить в PDF.
 - **Вкладки терминала** можно расположить колонкой у левого края; свёрнутая боковая
   панель запоминается.
+- **Разделение терминала на панели:** «Разделить вправо» / «Разделить вниз»
+  (Cmd/Ctrl+Shift+\ / Shift+−) открывают рядом ещё одну сессию к той же цели, до четырёх
+  панелей во вкладке; Cmd/Ctrl+] переключает панели, разделители перетаскиваются.
 - **Порядок вкладок терминала** меняется перетаскиванием (в полосе и в колонке), а в колонке
   ещё и клавишами Alt+↑ / Alt+↓.
 - **Импорт ключа SSH из файла:** кнопка «Выбрать файл…» в окне импорта ключа.
@@ -147,6 +150,9 @@ admins and sends invitations only to verified addresses.
 
 - The **Recovery Kit** can be printed or saved as PDF.
 - **Terminal tabs** can sit in a column at the left edge; a folded sidebar is remembered.
+- **Split terminal panes:** “Split right” / “Split down” (Cmd/Ctrl+Shift+\ / Shift+−) open
+  another session to the same target beside the focused one, up to four panes per tab;
+  Cmd/Ctrl+] moves between them and the dividers can be dragged.
 - **Terminal tabs** are reordered by dragging (in the strip and the column), and with
   Alt+↑ / Alt+↓ in the column.
 - **Import an SSH key from a file:** “Choose file…” in the import key dialog.

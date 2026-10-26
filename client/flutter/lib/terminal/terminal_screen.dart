@@ -204,7 +204,7 @@ class _TerminalTabs extends ConsumerWidget {
             final host? => teamColor(teamOf(ref, host.id)?.color),
             null => null,
           },
-          attention: tab.attention,
+          attention: tab.anyAttention,
           subtitle: _tabSubtitle(context, tab, subtitleMode),
           state: _state(tab),
           tooltip: switch (_state(tab)) {
@@ -231,7 +231,7 @@ class _TerminalTabs extends ConsumerWidget {
         maxWidth: maxColumnWidth.clamp(0, LocalSettings.terminalTabColumnMax),
         collapsed: layout.$2 ?? false,
         onSelect: controller.activate,
-        onClose: (i) => controller.close(state.tabs[i]),
+        onClose: (i) => controller.closeTab(state.tabs[i]),
         onContextMenu: menu,
         onAdd: onNewTab,
         onReorder: controller.moveTab,
@@ -249,7 +249,7 @@ class _TerminalTabs extends ConsumerWidget {
       activeIndex: activeIndex,
       tabs: tabs,
       onSelect: controller.activate,
-      onClose: (i) => controller.close(state.tabs[i]),
+      onClose: (i) => controller.closeTab(state.tabs[i]),
       onContextMenu: menu,
       onAdd: onNewTab,
       onReorder: controller.moveTab,
@@ -363,7 +363,7 @@ Future<void> _tabMenu(BuildContext context, WidgetRef ref, TerminalTab tab, int 
     case 'duplicate':
       await controller.duplicate(tab);
     case 'close':
-      await controller.close(tab);
+      await controller.closeTab(tab);
     case 'others':
       await controller.closeOthers(tab);
     case 'right':
@@ -418,17 +418,71 @@ class _SessionToolbar extends ConsumerWidget {
               if (context.mounted) context.go(AppRoutes.sftp);
             },
           ),
-        // TODO(client/ui): split panes (horizontal/vertical) — needs a layout model for
-        // tabs; next: after M4 when sessions are real.
-        GlassIconButton(
-          icon: Icons.vertical_split_rounded,
-          tooltip: l10n.terminalSplitViewLater,
-          style: GlassIconButtonStyle.plain,
-          size: GlassSizes.tab,
-          iconSize: GlassSizes.iconRow,
-          onPressed: null,
-        ),
+        if (!AppPlatform.isMobile) _SplitMenu(tab: tab),
       ],
+    );
+  }
+}
+
+/// Split the focused pane right or down (up to [TerminalTabsController.maxPanes]
+/// per tab), or close it.
+class _SplitMenu extends ConsumerWidget {
+  const _SplitMenu({required this.tab});
+
+  final TerminalTab tab;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final controller = ref.read(terminalTabsProvider.notifier);
+    final commands = ref.watch(appCommandsProvider);
+    final host = tab.owner ?? tab;
+    final room = host.allPanes.length < TerminalTabsController.maxPanes;
+    String shortcut(AppCommandId id) => commandFor(id, commands).shortcutLabel;
+    return GlassMenuButton<String>(
+      key: const ValueKey('terminal-split'),
+      entries: [
+        GlassMenuItem(
+          value: 'right',
+          label: l10n.terminalSplitRight,
+          icon: Icons.vertical_split_rounded,
+          shortcut: shortcut(AppCommandId.splitTerminalRight),
+          enabled: room,
+        ),
+        GlassMenuItem(
+          value: 'down',
+          label: l10n.terminalSplitDown,
+          icon: Icons.horizontal_split_rounded,
+          shortcut: shortcut(AppCommandId.splitTerminalDown),
+          enabled: room,
+        ),
+        if (host.panes.isNotEmpty) ...[
+          GlassMenuItem(
+            value: 'next',
+            label: l10n.terminalNextPane,
+            icon: Icons.switch_left_rounded,
+            shortcut: shortcut(AppCommandId.nextTerminalPane),
+          ),
+          const GlassMenuDivider(),
+          GlassMenuItem(value: 'close', label: l10n.terminalClosePane, icon: Icons.close_rounded),
+        ],
+      ],
+      onSelected: (action) => switch (action) {
+        'right' => unawaited(runWithFeedback(context, () => controller.split(tab, Axis.horizontal))),
+        'down' => unawaited(runWithFeedback(context, () => controller.split(tab, Axis.vertical))),
+        'next' => controller.focusNextPane(),
+        _ => unawaited(controller.close(tab)),
+      },
+      builder: (context, open) => GlassIconButton(
+        icon: host.splitAxis == Axis.vertical && host.panes.isNotEmpty
+            ? Icons.horizontal_split_rounded
+            : Icons.vertical_split_rounded,
+        tooltip: room ? l10n.terminalSplit : l10n.terminalSplitFull(TerminalTabsController.maxPanes),
+        style: GlassIconButtonStyle.plain,
+        size: GlassSizes.tab,
+        iconSize: GlassSizes.iconRow,
+        onPressed: open,
+      ),
     );
   }
 }
@@ -451,17 +505,6 @@ class _TerminalCard extends ConsumerWidget {
     );
     final custom = ref.watch(localSettingsProvider.select((s) => s.value?.customTerminalColors));
     final theme = AppTheme.terminalTheme(Theme.of(context).brightness, scheme: scheme, custom: custom);
-    final hostKey = active.hostKey;
-    final prompt = active.passwordPrompt;
-    final Widget? docked = hostKey != null && !hostKey.changed
-        ? _HostKeyPromptCard(tab: active, hostKey: hostKey)
-        : prompt != null
-        ? TerminalPasswordPromptCard(
-            key: ValueKey('password-prompt-${active.sessionId.value}'),
-            tab: active,
-            prompt: prompt,
-          )
-        : null;
     return DecoratedBox(
       key: const ValueKey('terminal-card'),
       decoration: ShapeDecoration(
@@ -470,33 +513,189 @@ class _TerminalCard extends ConsumerWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(10),
-        child: Stack(
+        child: IndexedStack(
+          index: state.activeIndex.clamp(0, state.tabs.length - 1),
+          sizing: StackFit.expand,
           children: [
-            Positioned.fill(
-              child: IndexedStack(
-                index: state.activeIndex.clamp(0, state.tabs.length - 1),
-                children: [
-                  for (final tab in state.tabs)
-                    TerminalPane(
-                      key: ValueKey('${tab.sessionId.value}:${tab.renderGeneration}'),
+            for (final tab in state.tabs)
+              tab.panes.isEmpty
+                  ? _PaneView(pane: tab, active: identical(tab, state.activeTab))
+                  : _SplitPanes(
+                      key: ValueKey('terminal-split-${tab.sessionId.value}'),
                       tab: tab,
-                      active: identical(tab, active) && docked == null,
+                      current: identical(tab, state.activeTab),
+                      foreground: theme.foreground,
                     ),
-                ],
-              ),
-            ),
-            if (docked != null)
-              Positioned(
-                top: 2,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 520), child: docked),
-                ),
-              ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// One session with its connect-time prompt docked at the top (the
+/// unknown host key or the password); the prompt takes the keyboard.
+class _PaneView extends StatelessWidget {
+  const _PaneView({required this.pane, required this.active});
+
+  final TerminalTab pane;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final hostKey = pane.hostKey;
+    final prompt = pane.passwordPrompt;
+    final Widget? docked = hostKey != null && !hostKey.changed
+        ? _HostKeyPromptCard(tab: pane, hostKey: hostKey)
+        : prompt != null
+        ? TerminalPasswordPromptCard(
+            key: ValueKey('password-prompt-${pane.sessionId.value}'),
+            tab: pane,
+            prompt: prompt,
+          )
+        : null;
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: TerminalPane(
+            key: ValueKey('${pane.sessionId.value}:${pane.renderGeneration}'),
+            tab: pane,
+            active: active && docked == null,
+          ),
+        ),
+        if (docked != null)
+          Positioned(
+            top: 2,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 520), child: docked),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// A tab split into panes (TODO-07) along its axis: each pane has a slim
+/// title row with its close button; a click gives it the keyboard; the
+/// dividers resize neighbours.
+class _SplitPanes extends ConsumerWidget {
+  const _SplitPanes({required this.tab, required this.current, required this.foreground, super.key});
+
+  final TerminalTab tab;
+  final bool current;
+  final Color foreground;
+
+  static const _divider = 9.0;
+  static const _minShare = .12;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = GlassTokens.of(context);
+    final l10n = context.l10n;
+    final controller = ref.read(terminalTabsProvider.notifier);
+    final panes = tab.allPanes;
+    final horizontal = tab.splitAxis == Axis.horizontal;
+    return LayoutBuilder(
+      builder: (context, box) {
+        final total = (horizontal ? box.maxWidth : box.maxHeight) - _divider * (panes.length - 1);
+        final children = <Widget>[];
+        for (final (i, pane) in panes.indexed) {
+          final focused = i == tab.focusedPane;
+          if (i > 0) {
+            children.add(
+              MouseRegion(
+                cursor: horizontal ? SystemMouseCursors.resizeColumn : SystemMouseCursors.resizeRow,
+                child: GestureDetector(
+                  key: ValueKey('terminal-pane-divider-$i'),
+                  behavior: HitTestBehavior.opaque,
+                  onPanUpdate: (details) {
+                    if (total <= 0) return;
+                    final delta = (horizontal ? details.delta.dx : details.delta.dy) / total;
+                    final shares = [...tab.paneShares];
+                    if (shares.length != panes.length) return;
+                    final before = shares[i - 1] + delta, after = shares[i] - delta;
+                    if (before < _minShare || after < _minShare) return;
+                    shares[i - 1] = before;
+                    shares[i] = after;
+                    controller.resizePanes(tab, shares);
+                  },
+                  child: SizedBox(
+                    width: horizontal ? _divider : null,
+                    height: horizontal ? null : _divider,
+                    child: Center(
+                      child: Container(
+                        width: horizontal ? 1 : null,
+                        height: horizontal ? null : 1,
+                        color: foreground.withValues(alpha: .18),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+          final share = i < tab.paneShares.length ? tab.paneShares[i] : 1 / panes.length;
+          children.add(
+            Expanded(
+              flex: (share * 1000).round().clamp(1, 1000),
+              child: Listener(
+                key: ValueKey('terminal-pane-$i'),
+                behavior: HitTestBehavior.translucent,
+                onPointerDown: (_) => controller.focusPane(pane),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: 22,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            margin: const EdgeInsets.only(right: GlassSpacing.s6),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: focused ? tokens.palette.accent : foreground.withValues(alpha: .25),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              pane.displayTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tokens.typography.caption.copyWith(
+                                color: foreground.withValues(alpha: focused ? .9 : .5),
+                                fontWeight: focused ? FontWeight.w600 : FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            key: ValueKey('terminal-pane-close-$i'),
+                            tooltip: l10n.terminalClosePane,
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            iconSize: 14,
+                            constraints: const BoxConstraints.tightFor(width: 22, height: 22),
+                            color: foreground.withValues(alpha: .6),
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => unawaited(controller.close(pane)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: _PaneView(pane: pane, active: current && focused),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+        return Flex(direction: tab.splitAxis, crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+      },
     );
   }
 }

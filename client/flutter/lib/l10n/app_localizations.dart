@@ -5636,11 +5636,41 @@ abstract class AppLocalizations {
   /// **'New tab ({shortcut})'**
   String terminalNewTabTooltip(String shortcut);
 
-  /// Tooltip on the disabled split-view icon in the terminal tab strip.
+  /// Terminal toolbar: split menu
   ///
   /// In en, this message translates to:
-  /// **'Split view arrives in a later release'**
-  String get terminalSplitViewLater;
+  /// **'Split'**
+  String get terminalSplit;
+
+  /// Terminal: open another session beside the focused pane
+  ///
+  /// In en, this message translates to:
+  /// **'Split right'**
+  String get terminalSplitRight;
+
+  /// Terminal: open another session below the focused pane
+  ///
+  /// In en, this message translates to:
+  /// **'Split down'**
+  String get terminalSplitDown;
+
+  /// Terminal: move the keyboard to the next pane
+  ///
+  /// In en, this message translates to:
+  /// **'Next pane'**
+  String get terminalNextPane;
+
+  /// Terminal: close the session of one pane
+  ///
+  /// In en, this message translates to:
+  /// **'Close pane'**
+  String get terminalClosePane;
+
+  /// Terminal: split tooltip when the tab is full
+  ///
+  /// In en, this message translates to:
+  /// **'A tab holds up to {count} panes'**
+  String terminalSplitFull(int count);
 
   /// Terminal session toolbar button: open the snippet picker.
   ///

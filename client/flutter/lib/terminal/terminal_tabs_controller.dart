@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/terminal/terminal_output.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show Axis;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xterm/xterm.dart';
 
@@ -62,6 +63,30 @@ final class TerminalTab {
 
   bool get isConnected => state == SessionConnectionState.connected;
 
+  /// Split panes (TODO-07): sessions shown beside this tab along
+  /// [splitAxis]. Each pane is a tab of its own whose [owner] is this one;
+  /// only owners are in the tab strip.
+  final List<TerminalTab> panes = [];
+  Axis splitAxis = Axis.horizontal;
+
+  /// Share of the space of each pane, this tab first.
+  List<double> paneShares = const [1];
+
+  /// The pane that takes input: 0 is this tab, then [panes].
+  int focusedPane = 0;
+
+  /// The strip tab this pane is shown in; null for a strip tab.
+  TerminalTab? owner;
+
+  /// This tab and its panes, in order.
+  List<TerminalTab> get allPanes => [this, ...panes];
+
+  /// The pane the user works in.
+  TerminalTab get focused => focusedPane <= 0 || focusedPane > panes.length ? this : panes[focusedPane - 1];
+
+  /// Unseen activity in this tab or one of its panes.
+  bool get anyAttention => attention || panes.any((pane) => pane.attention);
+
   /// Currently selected terminal text (allowed AI context, §14).
   String? get rawSelectedText {
     final selection = controller.selection;
@@ -97,10 +122,14 @@ final class TerminalTabsState {
   /// Bumped when a tab mutates in place (status, prompt, title).
   final int revision;
 
-  TerminalTab? get active => tabs.isEmpty ? null : tabs[activeIndex.clamp(0, tabs.length - 1)];
+  /// The tab selected in the strip.
+  TerminalTab? get activeTab => tabs.isEmpty ? null : tabs[activeIndex.clamp(0, tabs.length - 1)];
+
+  /// The session the user works in: the focused pane of the active tab.
+  TerminalTab? get active => activeTab?.focused;
 
   /// Tabs with unseen finished activity.
-  int get attentionCount => tabs.where((tab) => tab.attention).length;
+  int get attentionCount => tabs.where((tab) => tab.anyAttention).length;
 
   TerminalTabsState copyWith({List<TerminalTab>? tabs, int? activeIndex}) =>
       TerminalTabsState(tabs: tabs ?? this.tabs, activeIndex: activeIndex ?? this.activeIndex, revision: revision + 1);
@@ -172,9 +201,17 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     }
     final existing = _open.where((tab) => tab.sessionId == handle.id).firstOrNull;
     if (existing != null) {
-      activate(state.tabs.indexOf(existing));
+      activate(state.tabs.indexOf(existing.owner ?? existing));
       return existing;
     }
+    final tab = _adopt(target, handle);
+    final tabs = [...state.tabs, tab];
+    state = state.copyWith(tabs: tabs, activeIndex: tabs.length - 1);
+    return tab;
+  }
+
+  /// A tab for an opened [handle]: terminal, output and events bound.
+  TerminalTab _adopt(TerminalTarget target, TerminalSessionHandle handle) {
     final service = ref.read(terminalServiceProvider);
     final scrollback = ref.read(settingsServiceProvider).currentLocal.terminalScrollback;
     final terminal = Terminal(maxLines: scrollback, platform: _platform);
@@ -205,9 +242,62 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
           })
       .._events = handle.events.listen((e) => _onEvent(tab, e));
     _open.add(tab);
-    final tabs = [...state.tabs, tab];
-    state = state.copyWith(tabs: tabs, activeIndex: tabs.length - 1);
     return tab;
+  }
+
+  /// Most panes in one tab.
+  static const maxPanes = 4;
+
+  /// Opens another session to the focused pane's target beside it
+  /// (TODO-07). The first split sets the [axis]; later panes join it.
+  /// Returns null when the tab is full or went away meanwhile.
+  Future<TerminalTab?> split(TerminalTab tab, Axis axis) async {
+    final host = tab.owner ?? tab;
+    if (host.allPanes.length >= maxPanes) return null;
+    final generation = _generation;
+    final service = ref.read(terminalServiceProvider);
+    final target = host.focused.target;
+    final handle = await service.openTarget(target: target, size: TerminalSize.initial);
+    if (_disposed || generation != _generation || !state.tabs.contains(host) || host.allPanes.length >= maxPanes) {
+      await service.close(handle.id);
+      return null;
+    }
+    final pane = _adopt(target, handle)..owner = host;
+    if (host.panes.isEmpty) host.splitAxis = axis;
+    host.panes.add(pane);
+    host
+      ..paneShares = _equal(host.allPanes.length)
+      ..focusedPane = host.panes.length;
+    _touch();
+    return pane;
+  }
+
+  static List<double> _equal(int count) => List.filled(count, 1 / count);
+
+  /// Gives input to [pane] of its tab.
+  void focusPane(TerminalTab pane) {
+    final host = pane.owner ?? pane;
+    final index = host.allPanes.indexOf(pane);
+    if (index < 0 || index == host.focusedPane) return;
+    host.focusedPane = index;
+    if (_viewing && identical(state.activeTab, host)) _seen(pane);
+    _touch();
+  }
+
+  /// Moves input to the next (or previous) pane of the active tab.
+  void focusNextPane({bool backwards = false}) {
+    final host = state.activeTab;
+    if (host == null || host.panes.isEmpty) return;
+    final count = host.allPanes.length;
+    focusPane(host.allPanes[(host.focusedPane + (backwards ? count - 1 : 1)) % count]);
+  }
+
+  /// New shares of a split tab's panes (a divider was dragged).
+  void resizePanes(TerminalTab host, List<double> shares) {
+    if (shares.length != host.allPanes.length || shares.any((share) => share <= 0)) return;
+    final total = shares.fold<double>(0, (sum, share) => sum + share);
+    host.paneShares = [for (final share in shares) share / total];
+    _touch();
   }
 
   void _bindTerminal(TerminalTab tab, TerminalService service) {
@@ -312,7 +402,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
 
   void activate(int index) {
     if (index < 0 || index >= state.tabs.length) return;
-    if (_viewing) _seen(state.tabs[index]);
+    if (_viewing) state.tabs[index].allPanes.forEach(_seen);
     state = state.copyWith(activeIndex: index);
   }
 
@@ -330,9 +420,9 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   void setViewing(bool viewing) {
     if (_viewing == viewing) return;
     _viewing = viewing;
-    final active = state.active;
-    if (viewing && active != null && active.attention) {
-      _seen(active);
+    final active = state.activeTab;
+    if (viewing && active != null && active.anyAttention) {
+      active.allPanes.forEach(_seen);
       _touch();
     }
   }
@@ -342,7 +432,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     tab.attention = false;
   }
 
-  bool _watched(TerminalTab tab) => _viewing && identical(state.active, tab);
+  bool _watched(TerminalTab tab) => _viewing && identical(state.activeTab, tab.owner ?? tab);
 
   /// Output in an unwatched tab marks it shortly after it starts, whether the
   /// command finished or keeps streaming (ping, tail -f); a bell marks it at
@@ -395,6 +485,8 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     await _service.reconnect(tab.sessionId);
   }
 
+  /// Closes one session: a pane leaves its tab; a split tab hands its
+  /// place to its first pane; any other tab leaves the strip.
   Future<void> close(TerminalTab tab) async {
     _open.remove(tab);
     tab._quiet?.cancel();
@@ -402,9 +494,42 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     await tab._output?.cancel();
     await tab._events?.cancel();
     if (_disposed) return _service.close(tab.sessionId);
-    final tabs = [...state.tabs]..remove(tab);
-    state = state.copyWith(tabs: tabs, activeIndex: state.activeIndex.clamp(0, tabs.isEmpty ? 0 : tabs.length - 1));
+    final owner = tab.owner;
+    if (owner != null) {
+      final index = owner.allPanes.indexOf(tab);
+      owner.panes.remove(tab);
+      tab.owner = null;
+      if (owner.focusedPane >= index && owner.focusedPane > 0) owner.focusedPane--;
+      owner.paneShares = _equal(owner.allPanes.length);
+      _touch();
+    } else if (tab.panes.isNotEmpty && state.tabs.contains(tab)) {
+      final heir = tab.panes.removeAt(0)..owner = null;
+      heir.panes.addAll(tab.panes);
+      for (final pane in heir.panes) {
+        pane.owner = heir;
+      }
+      heir
+        ..splitAxis = tab.splitAxis
+        ..focusedPane = 0
+        ..paneShares = _equal(heir.allPanes.length)
+        ..customTitle ??= tab.customTitle;
+      tab.panes.clear();
+      final tabs = [...state.tabs];
+      tabs[tabs.indexOf(tab)] = heir;
+      state = state.copyWith(tabs: tabs);
+    } else {
+      final tabs = [...state.tabs]..remove(tab);
+      state = state.copyWith(tabs: tabs, activeIndex: state.activeIndex.clamp(0, tabs.isEmpty ? 0 : tabs.length - 1));
+    }
     await _service.close(tab.sessionId);
+  }
+
+  /// Closes a strip tab with all its panes.
+  Future<void> closeTab(TerminalTab tab) async {
+    for (final pane in [...tab.panes]) {
+      await close(pane);
+    }
+    await close(tab);
   }
 
   /// Moves the tab at [from] to [to] (drag in the tab strip or column); the
@@ -427,7 +552,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
 
   Future<void> closeOthers(TerminalTab keep) async {
     for (final tab in [...state.tabs]) {
-      if (!identical(tab, keep)) await close(tab);
+      if (!identical(tab, keep)) await closeTab(tab);
     }
     final index = state.tabs.indexOf(keep);
     if (index >= 0) activate(index);
@@ -437,7 +562,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     final index = state.tabs.indexOf(tab);
     if (index < 0) return;
     for (final other in state.tabs.sublist(index + 1).toList()) {
-      await close(other);
+      await closeTab(other);
     }
   }
 

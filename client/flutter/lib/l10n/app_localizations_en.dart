@@ -3148,7 +3148,24 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get terminalSplitViewLater => 'Split view arrives in a later release';
+  String get terminalSplit => 'Split';
+
+  @override
+  String get terminalSplitRight => 'Split right';
+
+  @override
+  String get terminalSplitDown => 'Split down';
+
+  @override
+  String get terminalNextPane => 'Next pane';
+
+  @override
+  String get terminalClosePane => 'Close pane';
+
+  @override
+  String terminalSplitFull(int count) {
+    return 'A tab holds up to $count panes';
+  }
 
   @override
   String get terminalSnippets => 'Snippets';
