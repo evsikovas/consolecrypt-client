@@ -8,7 +8,20 @@ import 'package:consolecrypt/updates/update_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-enum UpdatePhase { idle, checking, current, available, downloading, ready, installing, permission, opened, failed }
+/// [installed]: Linux replaced the package; a restart runs the new version.
+enum UpdatePhase {
+  idle,
+  checking,
+  current,
+  available,
+  downloading,
+  ready,
+  installing,
+  permission,
+  opened,
+  installed,
+  failed,
+}
 
 class UpdateState {
   const UpdateState({
@@ -69,6 +82,20 @@ final updateAppExitProvider = Provider<Future<void> Function()>(
   },
 );
 
+/// Linux, after the package manager replaced the app: closes this copy
+/// (vault and connections first) and starts the installed version.
+final updateRelaunchProvider = Provider<Future<void> Function()>(
+  (ref) => () async {
+    try {
+      await RustAppServices.current?.close().timeout(const Duration(seconds: 5));
+    } on Object {
+      // The new copy opens the vault itself; a slow shutdown must not block it.
+    }
+    await Process.start('/usr/bin/consolecrypt', const [], mode: ProcessStartMode.detached);
+    exit(0);
+  },
+);
+
 Uri updateDownloadPage(String languageCode) => Uri.https('consolecrypt.dev', '/download', {'lang': languageCode});
 
 class UpdateController extends Notifier<UpdateState> {
@@ -120,6 +147,7 @@ class UpdateController extends Notifier<UpdateState> {
         phase: switch (outcome) {
           UpdateInstallResult.androidPermission => UpdatePhase.permission,
           UpdateInstallResult.cancelled => UpdatePhase.ready,
+          UpdateInstallResult.installedRestart => UpdatePhase.installed,
           _ => UpdatePhase.opened,
         },
         release: release,

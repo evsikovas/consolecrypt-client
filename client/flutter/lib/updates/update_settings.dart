@@ -42,6 +42,8 @@ Future<void> confirmInstallUpdate(BuildContext context, WidgetRef ref) async {
             ? l.updateMacInstallHelp
             : AppPlatform.isWindows
             ? l.updateWindowsInstallHelp
+            : AppPlatform.isLinux
+            ? l.updateLinuxInstallHelp
             : l.updateInstallHelp,
       ),
       actions: [
@@ -83,8 +85,15 @@ String updateStatus(AppLocalizations l, UpdateState state) => switch (state.phas
   UpdatePhase.installing => l.updateInstalling,
   UpdatePhase.permission => l.updateAndroidPermission,
   UpdatePhase.opened => AppPlatform.isMacOS ? l.updateMacInstallerOpened : l.updateInstallerOpened,
+  UpdatePhase.installed => l.updateLinuxInstalled,
   UpdatePhase.failed => l.updateFailed,
 };
+
+/// Windows, macOS, Android, and Linux copies installed from the DEB or RPM
+/// (a build tree or copied folder keeps the download page).
+bool directUpdates(WidgetRef ref) =>
+    AppPlatform.supportsDirectUpdates ||
+    (AppPlatform.isLinux && ref.read(updateServiceProvider).platform.startsWith('linux-'));
 
 /// What went wrong and what to do next, for every failure code.
 String updateErrorMessage(AppLocalizations l, UpdateState state) => switch (state.error) {
@@ -99,6 +108,8 @@ String updateErrorMessage(AppLocalizations l, UpdateState state) => switch (stat
   'version' => l.updateErrorFeed,
   'manifest_rollback' => l.updateErrorRollback,
   'launch' => l.updateErrorLaunch(state.errorDetail ?? '?'),
+  'pkexec' => l.updateLinuxNoPkexec,
+  'installer' when AppPlatform.isLinux => l.updateLinuxInstallFailed(state.errorDetail ?? '?'),
   'storage' => l.updateErrorStorage,
   'portable' => l.updatePortableHelp,
   'browser' => l.updateErrorBrowser(_downloadPage(l).toString()),
@@ -118,7 +129,7 @@ class UpdateSettingsSection extends ConsumerWidget {
         child: Text(l.updateAppleHelp),
       );
     }
-    if (AppPlatform.isLinux) {
+    if (AppPlatform.isLinux && !directUpdates(ref)) {
       final language = l.localeName.split('_').first;
       final downloadPage = Uri.https('consolecrypt.dev', '/download', {'lang': language});
       return SectionCard(
@@ -186,7 +197,14 @@ class UpdateSettingsSection extends ConsumerWidget {
                 busy: state.phase == UpdatePhase.checking,
                 onPressed: state.busy ? null : ref.read(updateControllerProvider.notifier).check,
               ),
-              if (release != null && state.inPlace && state.phase != UpdatePhase.opened)
+              if (state.phase == UpdatePhase.installed)
+                GlassButton.prominent(
+                  key: const ValueKey('updates-relaunch'),
+                  label: l.updateRelaunch,
+                  icon: Icons.restart_alt_rounded,
+                  onPressed: () => unawaited(ref.read(updateRelaunchProvider)()),
+                )
+              else if (release != null && state.inPlace && state.phase != UpdatePhase.opened)
                 GlassButton(
                   key: const ValueKey('updates-install'),
                   label: state.phase == UpdatePhase.failed ? l.commonRetry : l.updateDownloadInstall,
@@ -253,10 +271,7 @@ class _UpdateNoticeScopeState extends ConsumerState<UpdateNoticeScope> {
       final state = ref.read(updateControllerProvider);
       final release = state.release;
       final visible =
-          AppPlatform.supportsDirectUpdates &&
-          release != null &&
-          release.version != _dismissed &&
-          state.phase != UpdatePhase.opened;
+          directUpdates(ref) && release != null && release.version != _dismissed && state.phase != UpdatePhase.opened;
       final overlay = widget.navigatorKey?.currentState?.overlay ?? Navigator.maybeOf(context)?.overlay;
       if (!visible || overlay == null || !overlay.mounted) {
         _removeNotice();
@@ -285,7 +300,7 @@ class _UpdateNoticeScopeState extends ConsumerState<UpdateNoticeScope> {
 
   @override
   Widget build(BuildContext context) {
-    if (!AppPlatform.supportsDirectUpdates) {
+    if (!directUpdates(ref)) {
       if (_notice != null) _scheduleNotice();
       return widget.child;
     }
@@ -309,6 +324,7 @@ class _UpdateNoticeScopeState extends ConsumerState<UpdateNoticeScope> {
     if (release == null || release.version == _dismissed || state.phase == UpdatePhase.opened) {
       return const SizedBox.shrink();
     }
+    final installed = state.phase == UpdatePhase.installed;
     final l = context.l10n;
     final failed = state.phase == UpdatePhase.failed;
     final downloading = state.phase == UpdatePhase.downloading;
@@ -351,7 +367,14 @@ class _UpdateNoticeScopeState extends ConsumerState<UpdateNoticeScope> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  if (state.inPlace)
+                  if (installed)
+                    GlassIconButton(
+                      key: const ValueKey('update-notice-relaunch'),
+                      tooltip: l.updateRelaunch,
+                      icon: Icons.restart_alt_rounded,
+                      onPressed: () => unawaited(ref.read(updateRelaunchProvider)()),
+                    )
+                  else if (state.inPlace)
                     GlassIconButton(
                       key: const ValueKey('update-notice-install'),
                       tooltip: failed ? l.commonRetry : l.updateDownloadInstall,

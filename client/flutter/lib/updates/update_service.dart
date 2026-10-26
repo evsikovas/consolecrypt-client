@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ffi' show Abi;
 import 'dart:io';
 
 import 'package:consolecrypt/app/app_info.dart';
@@ -19,6 +20,61 @@ const updateVerificationKey = String.fromEnvironment(
   'CC_UPDATE_PUBLIC_KEY',
   defaultValue: 'aK3R5vXwJ9eeqQ1iYah9fzBAIHOeKNejoRdI8weXUYo=',
 );
+
+/// DEB and RPM packages have their own feed and key (FEAT-06): the Linux
+/// anchor never vouches for Windows, macOS or Android installers.
+const linuxUpdateFeedUrl = String.fromEnvironment(
+  'CC_LINUX_UPDATE_FEED',
+  defaultValue: 'https://updates.consolecrypt.dev/linux-stable.json',
+);
+const linuxUpdateVerificationKey = String.fromEnvironment(
+  'CC_LINUX_UPDATE_PUBLIC_KEY',
+  defaultValue: 'Fn0pzhn51t/i8e8VYt7/wJkkXa7n2PkYtILgnxsuVlc=',
+);
+
+/// Runs a program and waits for its exit code (the Linux package manager).
+typedef PackageInstaller = Future<int> Function(String executable, List<String> arguments);
+
+Future<int> _runAndWait(String executable, List<String> arguments) async =>
+    (await Process.run(executable, arguments)).exitCode;
+
+bool _exists(String path) => File(path).existsSync();
+
+/// How this Linux copy was installed: the `consolecrypt` DEB or RPM in
+/// /opt/consolecrypt, or neither (a build tree or a copied folder, which
+/// keep the download page).
+String linuxPackagePlatform() {
+  if (Abi.current() != Abi.linuxX64 || Platform.resolvedExecutable != '/opt/consolecrypt/consolecrypt') {
+    return 'unsupported';
+  }
+  if (_exists('/var/lib/dpkg/info/consolecrypt.list')) return 'linux-x64-deb';
+  try {
+    if (_exists('/usr/bin/rpm') && Process.runSync('/usr/bin/rpm', ['-q', '--quiet', 'consolecrypt']).exitCode == 0) {
+      return 'linux-x64-rpm';
+    }
+  } on Object {
+    // No usable RPM database: not an RPM installation.
+  }
+  return 'unsupported';
+}
+
+/// The package manager command `pkexec` runs for a verified [path].
+List<String> linuxInstallCommand(String platform, String path, {bool Function(String) exists = _exists}) =>
+    switch (platform) {
+      'linux-x64-deb' when exists('/usr/bin/apt-get') => ['/usr/bin/apt-get', 'install', '--yes', path],
+      'linux-x64-deb' => ['/usr/bin/dpkg', '--install', path],
+      'linux-x64-rpm' when exists('/usr/bin/dnf') => ['/usr/bin/dnf', 'install', '--assumeyes', path],
+      // The package is verified by the signed feed, not by an RPM signature.
+      'linux-x64-rpm' when exists('/usr/bin/zypper') => [
+        '/usr/bin/zypper',
+        '--non-interactive',
+        'install',
+        '--allow-unsigned-rpm',
+        path,
+      ],
+      'linux-x64-rpm' => ['/usr/bin/rpm', '--upgrade', path],
+      _ => throw const UpdateException('platform'),
+    };
 
 class UpdateException implements Exception {
   const UpdateException(this.code, [this.detail]);
@@ -93,6 +149,8 @@ final class UpdateRelease {
         'windows-x64' => 'windows-x64-setup.exe',
         'macos-universal' => 'macos-universal.dmg',
         'android-arm64' => 'android-arm64.apk',
+        'linux-x64-deb' => 'linux-x64.deb',
+        'linux-x64-rpm' => 'linux-x64.rpm',
         _ => throw const UpdateException('platform'),
       }}';
 }
@@ -203,26 +261,35 @@ Future<UpdateRelease?> verifyUpdateFeed(
   }
 }
 
-enum UpdateInstallResult { opened, exitWindows, androidPermission, cancelled }
+/// [installedRestart]: the Linux package manager replaced the app; it runs
+/// the new version after a restart.
+enum UpdateInstallResult { opened, exitWindows, androidPermission, cancelled, installedRestart }
 
 class UpdateService {
   UpdateService({
     HttpClient Function()? clientFactory,
     this.publicKey = updateVerificationKey,
+    this.linuxPublicKey = linuxUpdateVerificationKey,
     MethodChannel? macosChannel,
     this._feedHighWater,
     InstallerLauncher? launcher,
     this._platform,
     Future<bool> Function()? windowsInstalled,
     int? processId,
+    PackageInstaller? packageInstaller,
+    bool Function(String path)? fileExists,
   }) : _clientFactory = clientFactory ?? HttpClient.new,
+       _packageInstaller = packageInstaller ?? _runAndWait,
+       _fileExists = fileExists ?? _exists,
        _macos = macosChannel ?? const MethodChannel('consolecrypt/macos_updates'),
        _launch = launcher ?? _startDetached,
        _windowsInstalled = windowsInstalled ?? _probeWindowsInstall,
        _processId = processId ?? pid;
   final HttpClient Function() _clientFactory;
   final MethodChannel _macos;
-  final String publicKey;
+  final String publicKey, linuxPublicKey;
+  final PackageInstaller _packageInstaller;
+  final bool Function(String path) _fileExists;
   final UpdateFeedHighWater? _feedHighWater;
   final InstallerLauncher _launch;
   final String? _platform;
@@ -249,7 +316,11 @@ class UpdateService {
           ? 'macos-universal'
           : Platform.isAndroid
           ? 'android-arm64'
+          : Platform.isLinux
+          ? _linux
           : 'unsupported');
+  late final String _linux = linuxPackagePlatform();
+  bool get _isLinux => platform.startsWith('linux-');
 
   static Future<bool> _probeWindowsInstall() async {
     try {
@@ -298,7 +369,7 @@ class UpdateService {
     if (platform == 'unsupported') throw const UpdateException('platform');
     final client = _client();
     try {
-      final response = await _get(client, Uri.parse(updateFeedUrl));
+      final response = await _get(client, Uri.parse(_isLinux ? linuxUpdateFeedUrl : updateFeedUrl));
       final bytes = <int>[];
       await for (final chunk in response.timeout(const Duration(seconds: 30))) {
         bytes.addAll(chunk);
@@ -312,7 +383,7 @@ class UpdateService {
       final release = await verifyUpdateFeed(
         bytes,
         platform: platform,
-        publicKey: publicKey,
+        publicKey: _isLinux ? linuxPublicKey : publicKey,
         now: now,
         notBefore: floor,
         onAuthenticated: (value) => issued = value,
@@ -450,6 +521,25 @@ class UpdateService {
     }
   }
 
+  /// Linux: the system package manager installs the verified package through
+  /// `pkexec` (the polkit password dialog names the command). Profiles, the
+  /// vault and the keyring stay; the app runs the new version after a restart.
+  Future<UpdateInstallResult> _installLinux(File file, UpdateRelease release) async {
+    const pkexec = '/usr/bin/pkexec';
+    if (!_fileExists(pkexec)) throw const UpdateException('pkexec');
+    final command = linuxInstallCommand(release.platform, file.absolute.path, exists: _fileExists);
+    final int code;
+    try {
+      code = await _packageInstaller(pkexec, command);
+    } on ProcessException catch (error) {
+      throw UpdateException('launch', '${error.errorCode}');
+    }
+    // pkexec: 126 = the password dialog was dismissed, 127 = not authorized.
+    if (code == 126 || code == 127) return UpdateInstallResult.cancelled;
+    if (code != 0) throw UpdateException('installer', '$code');
+    return UpdateInstallResult.installedRestart;
+  }
+
   Future<UpdateInstallResult> install(
     File file,
     UpdateRelease release, {
@@ -462,6 +552,7 @@ class UpdateService {
       return _installWindows(file, release);
     }
     await verifyInstaller(file, release);
+    if (_isLinux) return _installLinux(file, release);
     if (Platform.isMacOS) {
       // Opening the sandbox cache directly propagates quarantine's
       // no-user-consent bit to the app copied out of the DMG. The native

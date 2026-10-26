@@ -5297,6 +5297,25 @@ class AppLocalizationsRu extends AppLocalizations {
       'На iOS обновления устанавливаются через App Store, TestFlight или Xcode, в зависимости от способа установки приложения.';
 
   @override
+  String get updateLinuxInstallHelp =>
+      'Пакет скачается и пройдёт проверку подписи и SHA-256, затем система спросит пароль администратора, и менеджер пакетов (apt, dnf или zypper) установит его. Профили, хранилища и системная ключница сохраняются; новая версия откроется после перезапуска.';
+
+  @override
+  String get updateLinuxInstalled => 'Обновление установлено. Перезапустите ConsoleCrypt, чтобы открыть новую версию.';
+
+  @override
+  String get updateRelaunch => 'Перезапустить';
+
+  @override
+  String get updateLinuxNoPkexec =>
+      'Не найден pkexec (polkit), через который приложение просит пароль администратора. Установите пакет со страницы загрузки вручную через apt или dnf.';
+
+  @override
+  String updateLinuxInstallFailed(String code) {
+    return 'Менеджер пакетов завершился с кодом $code. Установите пакет со страницы загрузки вручную через apt или dnf.';
+  }
+
+  @override
   String get updateLinuxHelp =>
       'На Linux скачайте с официального сайта последнюю версию пакета .deb или .rpm для своего дистрибутива и установите через менеджер пакетов. Для обновления приложения используйте тот же способ.';
 

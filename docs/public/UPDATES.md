@@ -1,6 +1,6 @@
 # Обновления ConsoleCrypt
 
-С версии 0.1.12 на Windows, macOS и Android в настройках есть раздел **Обновления**:
+С версии 0.1.12 на Windows, macOS и Android (на Linux — с 0.9.3, см. ниже) в настройках есть раздел **Обновления**:
 
 - **Проверять обновления при запуске** — сохранённый на этом устройстве
   переключатель. Когда он выключен, запросов при запуске нет.
@@ -55,12 +55,23 @@ macOS и sandbox остаются включены, хранилище и свя
 
 ## Linux и iOS
 
-На Linux в **Настройки → Обновления** показаны текущая версия и
-[страница новых пакетов](https://consolecrypt.dev/download?lang=ru).
-Скачайте DEB или RPM и установите его через `apt` или `dnf`, как описано в
-[инструкции Linux](BUILD_LINUX.md). Номер сборки входит в версию пакета.
-Автопроверка, подписанная лента и автоматическая установка обновлений Linux
-в этом выпуске не поддерживаются. Профили и системную ключницу удалять не нужно.
+С версии 0.9.3 копия, установленная из DEB или RPM (пакет `consolecrypt` в
+`/opt/consolecrypt`), обновляется так же, как на других компьютерах: проверка
+при запуске, «Проверить обновления» и «Скачать и установить». У Linux своя лента
+`https://updates.consolecrypt.dev/linux-stable.json`, подписанная отдельным
+ключом Ed25519; ключ Windows, macOS и Android её не подписывает, и наоборот.
+Пакет проверяется по подписи и SHA-256, затем система спрашивает пароль
+администратора (`pkexec`, polkit), и менеджер пакетов ставит его: `apt-get` (или
+`dpkg`) для DEB, `dnf`, `zypper` или `rpm` для RPM. Профили, хранилища и системная
+ключница сохраняются; новая версия открывается кнопкой «Перезапустить». Если
+закрыть окно пароля, установка отменяется, а проверенный пакет остаётся для
+повторной попытки. Без `pkexec` или при ошибке менеджера пакетов установите пакет
+вручную со [страницы загрузок](https://consolecrypt.dev/download?lang=ru), как
+описано в [инструкции Linux](BUILD_LINUX.md).
+
+Версию 0.9.3 на Linux один раз установите вручную: более ранние версии ленту
+Linux не читают. Копия, запущенная не из пакета (сборка из исходников,
+скопированная папка), по-прежнему показывает только страницу загрузок.
 
 На iOS настольный загрузчик отключён. Новый Simulator ZIP устанавливается
 по [инструкции](BUILD_IOS.md); настоящий iPhone требует отдельной подписи.
@@ -100,9 +111,20 @@ replacement app.
 Do not delete your vault or Keychain.
 
 
-On Linux, **Settings → Updates** shows the current version and the
-[download page](https://consolecrypt.dev/download?lang=en). Download a new
-DEB/RPM and update through `apt`/`dnf`. Linux has no startup update checks,
-signed updater feed or automatic package installation in this release.
-Keep your profiles and system keyring. On iOS, install a new Simulator archive
+From 0.9.3, a copy installed from the DEB or RPM (the `consolecrypt` package
+in `/opt/consolecrypt`) updates like the other desktops: startup checks, Check
+for updates and Download and install. Linux has its own feed,
+`https://updates.consolecrypt.dev/linux-stable.json`, signed with a separate
+Ed25519 key; the Windows/macOS/Android key cannot sign it and vice versa. The
+package is checked against the signature and SHA-256, then the system asks for
+the administrator password (`pkexec`, polkit) and the package manager installs
+it: `apt-get` (or `dpkg`) for DEB, `dnf`, `zypper` or `rpm` for RPM. Profiles,
+vaults and the system keyring are kept; Restart opens the new version. Closing
+the password dialog cancels and keeps the verified package for a retry. Without
+`pkexec`, or when the package manager fails, install the package manually from
+the [download page](https://consolecrypt.dev/download?lang=en).
+
+Install 0.9.3 on Linux manually once: earlier versions do not read the Linux
+feed. A copy not run from the package (a source build or a copied folder) still
+shows only the download page. Keep your profiles and system keyring. On iOS, install a new Simulator archive
 manually; an actual iPhone still requires separate signing.

@@ -235,6 +235,18 @@ void main() {
     expect(fake.installs, 3);
     expect(container.read(updateControllerProvider).phase, UpdatePhase.opened);
   });
+  test('a Linux package installed by the package manager waits for a restart', () async {
+    final release = (await verify(await envelope()))!;
+    final fake = _InstallService(release)..result = UpdateInstallResult.installedRestart;
+    final container = ProviderContainer(overrides: [updateServiceProvider.overrideWithValue(fake)]);
+    addTearDown(container.dispose);
+    addTearDown(() => fake.folder.delete(recursive: true));
+    final controller = container.read(updateControllerProvider.notifier);
+    await controller.check();
+    await controller.downloadAndInstall();
+    expect(container.read(updateControllerProvider).phase, UpdatePhase.installed);
+    expect(container.read(updateControllerProvider).busy, isFalse);
+  });
   test('cancelling the macOS save panel preserves a verified download for retry', () async {
     final release = (await verify(await envelope()))!;
     final fake = _InstallService(release)..cancelNext = true;
@@ -301,6 +313,122 @@ void main() {
     await expectLater(service.install(file, release), throwsA(isA<UpdateException>()));
     expect(calls.length, before);
   });
+  group('Linux packages', () {
+    late Directory folder;
+    late UpdateRelease release;
+    late File package;
+    setUp(() async {
+      folder = await Directory.systemTemp.createTemp('consolecrypt-linux-update-test-');
+      release = UpdateRelease(
+        version: '0.9.3',
+        build: 46013,
+        platform: 'linux-x64-deb',
+        url: Uri.parse('https://updates.consolecrypt.dev/releases/0.9.3/ConsoleCrypt-0.9.3%2B46013-linux-x64.deb'),
+        bytes: 3,
+        sha256: sha256.convert([1, 2, 3]).toString(),
+        notes: const {},
+      );
+      package = File('${folder.path}/${release.fileName}');
+      await package.writeAsBytes([1, 2, 3]);
+    });
+    tearDown(() => folder.delete(recursive: true));
+
+    UpdateService linux({required List<(String, List<String>)> runs, int code = 0, Set<String>? files}) =>
+        UpdateService(
+          platform: 'linux-x64-deb',
+          fileExists: (path) => (files ?? {'/usr/bin/pkexec', '/usr/bin/apt-get'}).contains(path),
+          packageInstaller: (executable, arguments) async {
+            // The verified bytes are what the package manager receives.
+            expect(File(arguments.last).readAsBytesSync(), [1, 2, 3]);
+            runs.add((executable, arguments));
+            return code;
+          },
+        );
+
+    test('the Linux feed and its own key are used, never the main ones', () async {
+      payload['platforms'] = {
+        'linux-x64-deb': {'build': 46013, 'url': release.url.toString(), 'bytes': 3, 'sha256': release.sha256},
+      };
+      payload['version'] = '99.0.0';
+      final client = _Client(_Response([await envelope()]));
+      final other = base64Encode((await (await Ed25519().newKeyPair()).extractPublicKey()).bytes);
+      final service = UpdateService(
+        clientFactory: () => client,
+        platform: 'linux-x64-deb',
+        publicKey: other,
+        linuxPublicKey: publicKey,
+      );
+      final found = (await service.check())!;
+      expect(client.urls.single, Uri.parse(linuxUpdateFeedUrl));
+      expect(linuxUpdateFeedUrl, 'https://updates.consolecrypt.dev/linux-stable.json');
+      expect(found.fileName, 'ConsoleCrypt-99.0.0+46013-linux-x64.deb');
+      // The main anchor does not verify the Linux feed.
+      final wrong = _Client(_Response([await envelope()]));
+      await expectLater(
+        UpdateService(clientFactory: () => wrong, platform: 'linux-x64-deb', linuxPublicKey: other).check(),
+        throwsA(isA<UpdateException>().having((e) => e.code, 'code', 'signature')),
+      );
+    });
+
+    test('pkexec runs the package manager on the verified package; restart is offered', () async {
+      final runs = <(String, List<String>)>[];
+      expect(await linux(runs: runs).install(package, release), UpdateInstallResult.installedRestart);
+      expect(runs.single.$1, '/usr/bin/pkexec');
+      expect(runs.single.$2, ['/usr/bin/apt-get', 'install', '--yes', package.absolute.path]);
+    });
+
+    test('a dismissed password dialog cancels; a failed install reports the exit code', () async {
+      for (final code in [126, 127]) {
+        expect(await linux(runs: [], code: code).install(package, release), UpdateInstallResult.cancelled);
+      }
+      await expectLater(
+        linux(runs: [], code: 100).install(package, release),
+        throwsA(
+          isA<UpdateException>().having((e) => e.code, 'code', 'installer').having((e) => e.detail, 'detail', '100'),
+        ),
+      );
+      await expectLater(
+        linux(runs: [], files: {'/usr/bin/apt-get'}).install(package, release),
+        throwsA(isA<UpdateException>().having((e) => e.code, 'code', 'pkexec')),
+      );
+    });
+
+    test('changed bytes never reach the package manager', () async {
+      final runs = <(String, List<String>)>[];
+      await package.writeAsBytes([3, 2, 1]);
+      await expectLater(linux(runs: runs).install(package, release), throwsA(isA<UpdateException>()));
+      expect(runs, isEmpty);
+    });
+
+    test('each distribution gets its own package manager', () {
+      Set<String> tools(List<String> names) => {for (final name in names) '/usr/bin/$name'};
+      expect(linuxInstallCommand('linux-x64-deb', '/t/p.deb', exists: tools(['dpkg']).contains), [
+        '/usr/bin/dpkg',
+        '--install',
+        '/t/p.deb',
+      ]);
+      expect(linuxInstallCommand('linux-x64-rpm', '/t/p.rpm', exists: tools(['dnf', 'zypper']).contains), [
+        '/usr/bin/dnf',
+        'install',
+        '--assumeyes',
+        '/t/p.rpm',
+      ]);
+      expect(linuxInstallCommand('linux-x64-rpm', '/t/p.rpm', exists: tools(['zypper']).contains), [
+        '/usr/bin/zypper',
+        '--non-interactive',
+        'install',
+        '--allow-unsigned-rpm',
+        '/t/p.rpm',
+      ]);
+      expect(linuxInstallCommand('linux-x64-rpm', '/t/p.rpm', exists: tools([]).contains), [
+        '/usr/bin/rpm',
+        '--upgrade',
+        '/t/p.rpm',
+      ]);
+      expect(() => linuxInstallCommand('windows-x64', '/t/p.exe'), throwsA(isA<UpdateException>()));
+    });
+  });
+
   group('Windows in-place install', () {
     late Directory folder;
     late UpdateRelease release;
@@ -627,10 +755,12 @@ class _Client implements HttpClient {
   _Client(this.response);
   final _Response response;
   int requests = 0;
+  final urls = <Uri>[];
   bool closed = false;
   @override
   Future<HttpClientRequest> getUrl(Uri url) async {
     requests++;
+    urls.add(url);
     return _Request(response);
   }
 
