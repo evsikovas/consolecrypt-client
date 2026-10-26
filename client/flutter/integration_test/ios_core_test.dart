@@ -23,9 +23,8 @@ void main() {
       throwsA(isA<PlatformException>().having((error) => error.code, 'code', 'export_path')),
     );
 
-    final auth = await const MethodChannel('consolecrypt/local_auth').invokeMapMethod<String, Object?>('availability');
-    expect(auth, contains('kind'));
-    expect(auth?['not_enrolled'], isA<bool>());
+    // Device unlock is asked by the Rust core on Apple platforms (Secure
+    // Enclave); there is no Flutter local_auth channel on iOS any more.
     final root = await Directory(privateRoot).createTemp('ios-it-');
     final options = RustCoreOptions(
       dataDir: '${root.path}/data',
