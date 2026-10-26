@@ -264,6 +264,13 @@ impl Dialect for Postgres {
                     default: "",
                     create_only: true,
                 },
+                OptionInfo {
+                    id: "unlogged",
+                    kind: OptionKind::Bool,
+                    choices: vec![],
+                    default: "false",
+                    create_only: false,
+                },
             ],
             max_identifier: 63,
         }
@@ -283,6 +290,10 @@ impl Dialect for Postgres {
         let key = option(&info, design, "partition_key");
         if !by.is_empty() && key.trim().is_empty() {
             issues.error("partition_key_required", "options.partition_key", "");
+        }
+        // PostgreSQL refuses an unlogged partitioned table.
+        if !by.is_empty() && option(&info, design, "unlogged") == "true" {
+            issues.error("unlogged_partitioned", "options.unlogged", "");
         }
         if !by.is_empty() && !design.primary_key.columns.is_empty() {
             // A partitioned table's primary key must include the partition key.
@@ -324,16 +335,6 @@ impl Dialect for Postgres {
                     &column.name,
                 );
             }
-            if column.comment.contains('\'') {
-                issues.error(
-                    "comment_quote_unsupported",
-                    format!("columns.{i}.comment"),
-                    &column.name,
-                );
-            }
-        }
-        if design.comment.contains('\'') {
-            issues.error("comment_quote_unsupported", "table.comment", &design.name);
         }
     }
 
@@ -351,8 +352,13 @@ impl Dialect for Postgres {
                 .iter()
                 .map(|fk| self.foreign_key(design, fk)),
         );
+        let unlogged = if option(&info, design, "unlogged") == "true" {
+            "UNLOGGED "
+        } else {
+            ""
+        };
         let mut sql = format!(
-            "CREATE TABLE {} (\n    {}\n)",
+            "CREATE {unlogged}TABLE {} (\n    {}\n)",
             self.table(design),
             lines.join(",\n    ")
         );
@@ -402,8 +408,13 @@ impl Dialect for Postgres {
                 after.schema.as_deref().unwrap_or(""),
             );
         }
+        let mut persistence = None;
         for id in &changes.changed_options {
-            issues.error("option_create_only", format!("options.{id}"), id);
+            if *id == "unlogged" {
+                persistence = Some(option(&info, after, "unlogged") == "true");
+            } else {
+                issues.error("option_create_only", format!("options.{id}"), id);
+            }
         }
         // Everything addresses the table by its current name; a rename runs last.
         let current = TableDesign {
@@ -414,6 +425,17 @@ impl Dialect for Postgres {
         let table = self.table(&current);
         let alter = |op: String| format!("ALTER TABLE {table} {op}");
         let mut out = Vec::new();
+        if let Some(unlogged) = persistence {
+            // Rewrites the table; UNLOGGED data is lost after a crash.
+            out.push(statement(alter(
+                if unlogged {
+                    "SET UNLOGGED"
+                } else {
+                    "SET LOGGED"
+                }
+                .to_owned(),
+            )));
+        }
         let named = |name: &str, columns: &[String], suffix: &str| {
             name_or(&info, name, &before.name, columns, suffix)
         };
@@ -480,7 +502,24 @@ impl Dialect for Postgres {
             let new_type = (short_type(&new.data_type), new.length, new.scale, new.array);
             if old.identity != new.identity {
                 match (old.identity.as_str(), new.identity.as_str()) {
+                    // ADD GENERATED below.
                     ("", "by_default" | "always") => {}
+                    ("by_default" | "always", "") => {
+                        out.push(statement(alter(format!(
+                            "ALTER COLUMN {name} DROP IDENTITY"
+                        ))));
+                    }
+                    ("by_default", "always") | ("always", "by_default") => {
+                        out.push(statement(alter(format!(
+                            "ALTER COLUMN {name} SET GENERATED {}",
+                            if new.identity == "always" {
+                                "ALWAYS"
+                            } else {
+                                "BY DEFAULT"
+                            }
+                        ))));
+                    }
+                    // serial is a sequence default, not an identity.
                     _ => issues.error(
                         "identity_change_unsupported",
                         format!("{target}.identity"),
@@ -770,7 +809,94 @@ mod tests {
             .collect();
         assert!(codes.contains(&"identity_type"));
         assert!(codes.contains(&"partition_key_required"));
-        assert!(codes.contains(&"comment_quote_unsupported"));
+        // An apostrophe in a comment is fine (LIM-06).
+        assert!(!codes.iter().any(|code| code.starts_with("comment_")));
+    }
+
+    #[test]
+    fn identity_is_dropped_and_switched() {
+        let before = loaded(orders());
+        let mut always = before.clone();
+        always.columns[0].identity = "always".into();
+        let plan = make_plan(DbEngine::Postgresql, Some(&before), &always);
+        assert!(plan.issues.is_empty(), "{:?}", plan.issues);
+        assert_eq!(
+            plan.statements[0].sql,
+            "ALTER TABLE \"public\".\"orders\" ALTER COLUMN \"id\" SET GENERATED ALWAYS"
+        );
+        assert_guard_accepts(DbEngine::Postgresql, &plan);
+        let mut none = before.clone();
+        none.columns[0].identity = String::new();
+        let plan = make_plan(DbEngine::Postgresql, Some(&before), &none);
+        assert!(plan.issues.is_empty(), "{:?}", plan.issues);
+        assert_eq!(
+            plan.statements[0].sql,
+            "ALTER TABLE \"public\".\"orders\" ALTER COLUMN \"id\" DROP IDENTITY"
+        );
+        assert_guard_accepts(DbEngine::Postgresql, &plan);
+        // serial is a sequence default: still refused.
+        let mut serial = before.clone();
+        serial.columns[0].identity = "serial".into();
+        let codes: Vec<_> = make_plan(DbEngine::Postgresql, Some(&before), &serial)
+            .issues
+            .into_iter()
+            .map(|issue| issue.code)
+            .collect();
+        assert!(codes.contains(&"identity_change_unsupported"), "{codes:?}");
+    }
+
+    #[test]
+    fn unlogged_tables_are_created_and_switched() {
+        let mut design = orders();
+        design.options.insert("unlogged".into(), "true".into());
+        let plan = make_plan(DbEngine::Postgresql, None, &design);
+        assert!(plan.issues.is_empty(), "{:?}", plan.issues);
+        assert!(plan.statements[0]
+            .sql
+            .starts_with("CREATE UNLOGGED TABLE \"public\".\"orders\""));
+        assert_guard_accepts(DbEngine::Postgresql, &plan);
+
+        let before = loaded(design);
+        let mut after = before.clone();
+        after.options.insert("unlogged".into(), "false".into());
+        let plan = make_plan(DbEngine::Postgresql, Some(&before), &after);
+        assert!(plan.issues.is_empty(), "{:?}", plan.issues);
+        let sql: Vec<&str> = plan.statements.iter().map(|s| s.sql.as_str()).collect();
+        assert_eq!(sql, ["ALTER TABLE \"public\".\"orders\" SET LOGGED"]);
+        assert_guard_accepts(DbEngine::Postgresql, &plan);
+        let plan = make_plan(DbEngine::Postgresql, Some(&after), &before);
+        assert_eq!(
+            plan.statements[0].sql,
+            "ALTER TABLE \"public\".\"orders\" SET UNLOGGED"
+        );
+        assert_guard_accepts(DbEngine::Postgresql, &plan);
+
+        // A partitioned table cannot be unlogged.
+        let mut partitioned = orders();
+        partitioned.primary_key.columns.clear();
+        partitioned
+            .options
+            .insert("partition_by".into(), "RANGE".into());
+        partitioned
+            .options
+            .insert("partition_key".into(), "created_at".into());
+        partitioned.options.insert("unlogged".into(), "true".into());
+        let codes: Vec<_> = make_plan(DbEngine::Postgresql, None, &partitioned)
+            .issues
+            .into_iter()
+            .map(|issue| issue.code)
+            .collect();
+        assert!(codes.contains(&"unlogged_partitioned"), "{codes:?}");
+    }
+
+    #[test]
+    fn comments_with_apostrophes_pass_the_guard() {
+        let mut design = orders();
+        design.comment = "Bob's orders".into();
+        design.columns[1].comment = "it's \\ fine".into();
+        let plan = make_plan(DbEngine::Postgresql, None, &design);
+        assert!(plan.issues.is_empty(), "{:?}", plan.issues);
+        assert_guard_accepts(DbEngine::Postgresql, &plan);
     }
 
     #[test]
@@ -847,17 +973,6 @@ mod tests {
         assert!(plan.statements[0]
             .sql
             .ends_with("RENAME COLUMN \"id\" TO \"order_id\""));
-    }
-
-    #[test]
-    fn refuses_identity_removal() {
-        let before = loaded(orders());
-        let mut after = before.clone();
-        after.columns[0].identity = String::new();
-        let plan = make_plan(DbEngine::Postgresql, Some(&before), &after);
-        assert!(plan.has_errors());
-        assert_eq!(plan.issues[0].code, "identity_change_unsupported");
-        assert!(plan.statements.is_empty());
     }
 
     #[test]

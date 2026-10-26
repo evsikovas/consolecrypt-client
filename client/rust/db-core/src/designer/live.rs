@@ -336,7 +336,8 @@ impl DbSession {
         if let Some(row) = self
             .design_rows(
                 "SELECT COALESCE(pg_catalog.obj_description(c.oid, 'pg_class'), ''), \
-                 COALESCE(pg_catalog.pg_get_partkeydef(c.oid), '') \
+                 COALESCE(pg_catalog.pg_get_partkeydef(c.oid), ''), \
+                 (c.relpersistence = 'u')::text \
                  FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace \
                  WHERE n.nspname = $1 AND c.relname = $2",
                 &bindings,
@@ -346,6 +347,9 @@ impl DbSession {
             .next()
         {
             design.comment = row[0].clone();
+            if row.get(2).is_some_and(|unlogged| unlogged == "true") {
+                design.options.insert("unlogged".into(), "true".into());
+            }
             let (by, key) = split_params(&row[1]);
             if !by.is_empty() {
                 design.options.insert("partition_by".into(), by.to_ascii_uppercase());

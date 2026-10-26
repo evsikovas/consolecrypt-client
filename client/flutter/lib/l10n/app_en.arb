@@ -17330,8 +17330,8 @@
   "@dbDesignIssuePartitionPrimaryKey": {
     "description": "Designer validation warning (PostgreSQL)"
   },
-  "dbDesignIssueCommentQuote": "This comment cannot contain an apostrophe (') yet.",
-  "@dbDesignIssueCommentQuote": {
+  "dbDesignIssueCommentBackslash": "In MySQL and MariaDB a comment cannot contain a backslash (\\) yet.",
+  "@dbDesignIssueCommentBackslash": {
     "description": "Designer validation"
   },
   "dbDesignIssueOptionInvalid": "Check the value “{name}”.",
@@ -17381,24 +17381,6 @@
   "dbDesignIssuePrimaryKeyChange": "The primary key of this table cannot be changed.",
   "@dbDesignIssuePrimaryKeyChange": {
     "description": "Designer validation (ClickHouse)"
-  },
-  "dbDesignIssueRemoveDefault": "{name}: removing a default is not supported here.",
-  "@dbDesignIssueRemoveDefault": {
-    "description": "Designer validation (ClickHouse)",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "dbDesignIssueRemoveComment": "{name}: removing a comment is not supported here.",
-  "@dbDesignIssueRemoveComment": {
-    "description": "Designer validation (ClickHouse)",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
   },
   "dbDesignIssueCappedSize": "A capped collection needs a size.",
   "@dbDesignIssueCappedSize": {
@@ -18179,6 +18161,14 @@
   "dbDesignOptStrict": "STRICT (strict column types)",
   "@dbDesignOptStrict": {
     "description": "Table designer"
+  },
+  "dbDesignOptUnlogged": "UNLOGGED (no write-ahead log: faster, emptied after a crash)",
+  "@dbDesignOptUnlogged": {
+    "description": "Table designer: PostgreSQL unlogged table option"
+  },
+  "dbDesignIssueUnloggedPartitioned": "A partitioned table cannot be UNLOGGED.",
+  "@dbDesignIssueUnloggedPartitioned": {
+    "description": "Table designer issue"
   },
   "dbDesignOptWithoutRowid": "WITHOUT ROWID",
   "@dbDesignOptWithoutRowid": {

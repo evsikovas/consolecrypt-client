@@ -301,9 +301,23 @@ impl Dialect for Mysql {
         if auto > 1 {
             issues.error("auto_increment_single", "columns", "");
         }
-        // The guard's parser renders a quote in a table comment differently.
-        if design.comment.contains('\'') {
-            issues.error("comment_quote_unsupported", "table.comment", &design.name);
+        // The guard's parser keeps a backslash in a comment as written, and
+        // the server reads it as an escape: the texts would differ.
+        for (i, column) in design.columns.iter().enumerate() {
+            if column.comment.contains('\\') {
+                issues.error(
+                    "comment_backslash_unsupported",
+                    format!("columns.{i}.comment"),
+                    &column.name,
+                );
+            }
+        }
+        if design.comment.contains('\\') {
+            issues.error(
+                "comment_backslash_unsupported",
+                "table.comment",
+                &design.name,
+            );
         }
     }
 
@@ -588,7 +602,7 @@ mod tests {
         design.columns[1].identity = "auto_increment".into();
         design.columns[2].unsigned = true;
         design.options.insert("charset".into(), "utf8; DROP".into());
-        design.comment = "it's".into();
+        design.comment = r"C:\temp".into();
         let codes: Vec<_> = make_plan(DbEngine::Mysql, None, &design)
             .issues
             .into_iter()
@@ -600,10 +614,23 @@ mod tests {
             "unsigned_type",
             "auto_increment_single",
             "option_invalid",
-            "comment_quote_unsupported",
+            "comment_backslash_unsupported",
         ] {
             assert!(codes.contains(&code), "{code}: {codes:?}");
         }
+    }
+
+    #[test]
+    fn comments_with_apostrophes_pass_the_guard() {
+        let mut design = users();
+        design.comment = "Bob's accounts".into();
+        design.columns[1].comment = "it's the key".into();
+        let plan = make_plan(DbEngine::Mysql, None, &design);
+        assert!(plan.issues.is_empty(), "{:?}", plan.issues);
+        assert!(plan.statements[0]
+            .sql
+            .contains("COMMENT = 'Bob''s accounts'"));
+        assert_guard_accepts(DbEngine::Mysql, &plan);
     }
 
     #[test]

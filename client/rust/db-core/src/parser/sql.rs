@@ -3,14 +3,15 @@ use crate::guard::QueryRisk;
 use crate::types::{DbCell, DbError, DbParameter, DbQueryRequest};
 use cc_models::database::DbEngine;
 use sqlparser::ast::{
-    AlterColumnOperation, AlterTableOperation, ArrayElemTypeDef, BinaryOperator, DataType,
-    EnumMember, Expr, Ident, ObjectName, ObjectNamePart, Query, Select, Statement, TableFactor,
-    Value, ValueWithSpan, VisitMut, VisitorMut,
+    AlterColumnOperation, AlterTableOperation, ArrayElemTypeDef, BinaryOperator, CommentDef,
+    CreateTableOptions, DataType, EnumMember, Expr, Ident, ObjectName, ObjectNamePart, Query,
+    Select, SqlOption, Statement, TableFactor, Value, ValueWithSpan, VisitMut, VisitorMut,
 };
 use sqlparser::dialect::{
     ClickHouseDialect, Dialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect,
 };
 use sqlparser::parser::Parser;
+use sqlparser::tokenizer::{Location, Token, Tokenizer};
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::ControlFlow;
 use zeroize::Zeroizing;
@@ -38,25 +39,71 @@ pub(super) fn parse(
         text
     };
     let text = Zeroizing::new(text);
-    let mut statements = Parser::new(dialect.as_ref())
+    let mut result = Vec::new();
+    let mut all_used = BTreeSet::new();
+    match closed_forms(engine, dialect.as_ref(), default_schema, &text)? {
+        None => classify(
+            engine,
+            dialect.as_ref(),
+            default_schema,
+            &bindings,
+            &text,
+            &mut result,
+            &mut all_used,
+        )?,
+        Some(segments) => {
+            for segment in segments {
+                match segment {
+                    Segment::Closed(statement) => result.push(statement),
+                    Segment::Sql(range) => classify(
+                        engine,
+                        dialect.as_ref(),
+                        default_schema,
+                        &bindings,
+                        &text[range],
+                        &mut result,
+                        &mut all_used,
+                    )?,
+                }
+            }
+        }
+    }
+    if result.len() > super::MAX_STATEMENTS {
+        return Err(DbError::ResultLimit);
+    }
+    if all_used.len() != bindings.len() {
+        return Err(DbError::InvalidRequest);
+    }
+    Ok(result)
+}
+
+/// Parses `text` with sqlparser and classifies each statement.
+fn classify(
+    engine: DbEngine,
+    dialect: &dyn Dialect,
+    default_schema: &str,
+    bindings: &BTreeMap<String, DbParameter>,
+    text: &str,
+    result: &mut Vec<ClassifiedStatement>,
+    all_used: &mut BTreeSet<String>,
+) -> Result<(), DbError> {
+    let mut statements = Parser::new(dialect)
         .with_recursion_limit(64)
-        .try_with_sql(&text)
+        .try_with_sql(text)
         .map_err(|_| DbError::InvalidRequest)?
         .parse_statements()
         .map_err(|_| DbError::InvalidRequest)?;
     if statements.len() > super::MAX_STATEMENTS {
         return Err(DbError::ResultLimit);
     }
-    let mut result = Vec::with_capacity(statements.len());
-    let mut all_used = BTreeSet::new();
     for statement in &mut statements {
-        verify_rendering(engine, dialect.as_ref(), statement)?;
+        verify_rendering(engine, dialect, statement)?;
         let mut visitor = GuardVisitor {
             engine,
             default_schema,
             risk: QueryRisk::ReadOnly,
             reason: "sql_read",
-            bindings: &bindings,
+            bindings,
             parameters: Vec::new(),
             used: BTreeSet::new(),
             depth: 0,
@@ -80,10 +127,196 @@ pub(super) fn parse(
             reason: visitor.reason,
         });
     }
-    if all_used.len() != bindings.len() {
-        return Err(DbError::InvalidRequest);
+    Ok(())
+}
+
+/// A statement of a script: a closed form rebuilt by [`closed_form`], or a
+/// byte range for sqlparser.
+enum Segment {
+    Closed(ClassifiedStatement),
+    Sql(std::ops::Range<usize>),
+}
+
+/// Splits `text` at top-level `;` when one of its statements is a closed
+/// form; `None` (parse the whole text as before) when none is.
+fn closed_forms(
+    engine: DbEngine,
+    dialect: &dyn Dialect,
+    default_schema: &str,
+    text: &str,
+) -> Result<Option<Vec<Segment>>, DbError> {
+    if !matches!(engine, DbEngine::Postgresql | DbEngine::Clickhouse) {
+        return Ok(None);
     }
-    Ok(result)
+    let tokens = Tokenizer::new(dialect, text)
+        .tokenize_with_location()
+        .map_err(|_| DbError::InvalidRequest)?;
+    let mut segments = Vec::new();
+    let mut any = false;
+    let mut start = 0;
+    let mut words: Vec<&Token> = Vec::new();
+    let mut close = |end: usize, words: &mut Vec<&Token>, start: usize| {
+        if !words.is_empty() {
+            match closed_form(engine, default_schema, words) {
+                Some(text) => {
+                    any = true;
+                    segments.push(Segment::Closed(ClassifiedStatement {
+                        parsed: ParsedStatement::Sql {
+                            text,
+                            parameters: Vec::new(),
+                        },
+                        risk: QueryRisk::Destructive,
+                        reason: "sql_ddl",
+                    }));
+                }
+                None => segments.push(Segment::Sql(start..end)),
+            }
+        }
+        words.clear();
+    };
+    for token in &tokens {
+        match &token.token {
+            Token::SemiColon => {
+                let end = byte_offset(text, token.span.start).ok_or(DbError::InvalidRequest)?;
+                close(end, &mut words, start);
+                start = end + 1;
+            }
+            Token::Whitespace(_) => {}
+            other => words.push(other),
+        }
+    }
+    close(text.len(), &mut words, start);
+    Ok(any.then_some(segments))
+}
+
+/// Byte offset of a 1-based line/column (in characters) location.
+fn byte_offset(text: &str, location: Location) -> Option<usize> {
+    let (mut line, mut column) = (1, 1);
+    for (offset, ch) in text.char_indices() {
+        if line == location.line && column == location.column {
+            return Some(offset);
+        }
+        if ch == '\n' {
+            line += 1;
+            column = 1;
+        } else {
+            column += 1;
+        }
+    }
+    (line == location.line && column == location.column).then_some(text.len())
+}
+
+/// Designer statements sqlparser cannot read (LIM-06), as a closed grammar
+/// of keywords and names: PostgreSQL `ALTER TABLE t ALTER COLUMN c DROP
+/// IDENTITY [IF EXISTS]` and `… SET GENERATED { ALWAYS | BY DEFAULT }`,
+/// ClickHouse `ALTER TABLE t MODIFY COLUMN c REMOVE { DEFAULT | COMMENT }`.
+/// The executed text is rebuilt from the names, nothing else; an unqualified
+/// PostgreSQL table gets the default schema like every other statement.
+fn closed_form(engine: DbEngine, default_schema: &str, tokens: &[&Token]) -> Option<String> {
+    let quote = if engine == DbEngine::Clickhouse {
+        '`'
+    } else {
+        '"'
+    };
+    let doubled = format!("{quote}{quote}");
+    let mut at = 0;
+    let keyword = |at: &mut usize, word: &str| match tokens.get(*at) {
+        Some(Token::Word(found))
+            if found.quote_style.is_none() && found.value.eq_ignore_ascii_case(word) =>
+        {
+            *at += 1;
+            true
+        }
+        _ => false,
+    };
+    let ident = |at: &mut usize| -> Option<String> {
+        let Some(Token::Word(word)) = tokens.get(*at) else {
+            return None;
+        };
+        let value = &word.value;
+        if value.is_empty()
+            || value.len() > 256
+            || value.chars().any(|ch| ch.is_control() || ch == '\\')
+        {
+            return None;
+        }
+        let rendered = match word.quote_style {
+            Some(style) if style == quote => {
+                format!("{quote}{}{quote}", value.replace(quote, &doubled))
+            }
+            None if value.starts_with(|ch: char| ch.is_ascii_alphabetic() || ch == '_')
+                && value
+                    .chars()
+                    .all(|ch| ch.is_ascii_alphanumeric() || ch == '_') =>
+            {
+                value.clone()
+            }
+            _ => return None,
+        };
+        *at += 1;
+        Some(rendered)
+    };
+    if !(keyword(&mut at, "ALTER") && keyword(&mut at, "TABLE")) {
+        return None;
+    }
+    let mut table = ident(&mut at)?;
+    if matches!(tokens.get(at), Some(Token::Period)) {
+        at += 1;
+        table = format!("{table}.{}", ident(&mut at)?);
+    } else if engine == DbEngine::Postgresql {
+        // Like every other PostgreSQL name: never left to search_path.
+        let schema = default_schema.replace(quote, &doubled);
+        table = format!("{quote}{schema}{quote}.{table}");
+    }
+    let text = match engine {
+        DbEngine::Postgresql => {
+            if !keyword(&mut at, "ALTER") {
+                return None;
+            }
+            keyword(&mut at, "COLUMN");
+            let column = ident(&mut at)?;
+            let action = if keyword(&mut at, "DROP") && keyword(&mut at, "IDENTITY") {
+                if keyword(&mut at, "IF") {
+                    if !keyword(&mut at, "EXISTS") {
+                        return None;
+                    }
+                    "DROP IDENTITY IF EXISTS"
+                } else {
+                    "DROP IDENTITY"
+                }
+            } else if keyword(&mut at, "SET") && keyword(&mut at, "GENERATED") {
+                if keyword(&mut at, "ALWAYS") {
+                    "SET GENERATED ALWAYS"
+                } else if keyword(&mut at, "BY") && keyword(&mut at, "DEFAULT") {
+                    "SET GENERATED BY DEFAULT"
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            };
+            format!("ALTER TABLE {table} ALTER COLUMN {column} {action}")
+        }
+        DbEngine::Clickhouse => {
+            if !(keyword(&mut at, "MODIFY") && keyword(&mut at, "COLUMN")) {
+                return None;
+            }
+            let column = ident(&mut at)?;
+            if !keyword(&mut at, "REMOVE") {
+                return None;
+            }
+            let what = if keyword(&mut at, "DEFAULT") {
+                "DEFAULT"
+            } else if keyword(&mut at, "COMMENT") {
+                "COMMENT"
+            } else {
+                return None;
+            };
+            format!("ALTER TABLE {table} MODIFY COLUMN {column} REMOVE {what}")
+        }
+        _ => return None,
+    };
+    (at == tokens.len()).then_some(text)
 }
 
 /// The executed text is the rendered AST. It must re-parse to exactly the
@@ -112,11 +345,49 @@ fn verify_rendering(
 
 /// Renders literals and type names in the server's own spelling.
 fn spell(engine: DbEngine, statement: &mut Statement) {
+    escape_comments(statement);
     if matches!(
         engine,
         DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Clickhouse
     ) {
         let _ = statement.visit(&mut Spelling { engine });
+    }
+}
+
+/// sqlparser keeps `COMMENT ON … IS '…'` and a table's `COMMENT = '…'` with
+/// `''` read as one quote (backslashes stay as written) and prints the text
+/// between quotes as is, so `it's` would render as `'it's'`. Doubles the
+/// quotes for rendering; the re-parse check compares the result with the
+/// inspected statement, so any other difference still fails closed.
+fn escape_comments(statement: &mut Statement) {
+    let escape = |text: &mut String| *text = text.replace('\'', "''");
+    match statement {
+        Statement::Comment {
+            comment: Some(text),
+            ..
+        } => escape(text),
+        Statement::CreateTable(table) => {
+            if let Some(CommentDef::WithEq(text) | CommentDef::WithoutEq(text)) = &mut table.comment
+            {
+                escape(text);
+            }
+            // MySQL keeps `COMMENT = '…'` among the table options.
+            if let CreateTableOptions::With(options)
+            | CreateTableOptions::Options(options)
+            | CreateTableOptions::Plain(options)
+            | CreateTableOptions::TableProperties(options) = &mut table.table_options
+            {
+                for option in options {
+                    if let SqlOption::Comment(
+                        CommentDef::WithEq(text) | CommentDef::WithoutEq(text),
+                    ) = option
+                    {
+                        escape(text);
+                    }
+                }
+            }
+        }
+        _ => {}
     }
 }
 
@@ -229,7 +500,7 @@ fn clickhouse_type_spelling(data_type: &mut DataType) {
         )
         | DataType::Nullable(inner)
         | DataType::LowCardinality(inner) => return clickhouse_type_spelling(inner),
-        DataType::Map(key, value) => {
+        DataType::Map(key, value, _) => {
             clickhouse_type_spelling(key);
             return clickhouse_type_spelling(value);
         }
@@ -403,6 +674,7 @@ impl VisitorMut for GuardVisitor<'_> {
             | Statement::Drop { .. }
             | Statement::Truncate(_)
             | Statement::AlterTable(_)
+            | Statement::RenameTable(_)
             | Statement::AlterIndex { .. }
             | Statement::AlterView { .. } => self.risk(QueryRisk::Destructive, "sql_ddl"),
             // Session, role, transaction and wire-protocol controls must remain

@@ -22223,8 +22223,8 @@ abstract class AppLocalizations {
   /// Designer validation
   ///
   /// In en, this message translates to:
-  /// **'This comment cannot contain an apostrophe (\') yet.'**
-  String get dbDesignIssueCommentQuote;
+  /// **'In MySQL and MariaDB a comment cannot contain a backslash (\\) yet.'**
+  String get dbDesignIssueCommentBackslash;
 
   /// Designer validation
   ///
@@ -22267,18 +22267,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The primary key of this table cannot be changed.'**
   String get dbDesignIssuePrimaryKeyChange;
-
-  /// Designer validation (ClickHouse)
-  ///
-  /// In en, this message translates to:
-  /// **'{name}: removing a default is not supported here.'**
-  String dbDesignIssueRemoveDefault(String name);
-
-  /// Designer validation (ClickHouse)
-  ///
-  /// In en, this message translates to:
-  /// **'{name}: removing a comment is not supported here.'**
-  String dbDesignIssueRemoveComment(String name);
 
   /// Designer validation (MongoDB)
   ///
@@ -23227,6 +23215,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'STRICT (strict column types)'**
   String get dbDesignOptStrict;
+
+  /// Table designer: PostgreSQL unlogged table option
+  ///
+  /// In en, this message translates to:
+  /// **'UNLOGGED (no write-ahead log: faster, emptied after a crash)'**
+  String get dbDesignOptUnlogged;
+
+  /// Table designer issue
+  ///
+  /// In en, this message translates to:
+  /// **'A partitioned table cannot be UNLOGGED.'**
+  String get dbDesignIssueUnloggedPartitioned;
 
   /// Table designer
   ///
