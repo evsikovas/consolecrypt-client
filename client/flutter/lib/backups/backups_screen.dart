@@ -215,8 +215,8 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
               label: l10n.backupsBackUpNow,
             ),
           ),
-          // TODO(client/ui): the scheduler itself runs in app-core (timer + retention) so it
-          // works while the UI is closed to tray; next: expose next-run events in M4.
+          // Scheduled runs happen in app-core (a 30 s check, retention, events), also
+          // while the window is closed to the tray; this screen only edits the schedule.
         ],
       ),
     );
