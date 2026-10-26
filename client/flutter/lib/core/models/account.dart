@@ -11,6 +11,7 @@ final class ServerInfo {
     this.registrationOpen = true,
     this.emailVerificationRequired = false,
     this.auth = ServerAuth.standard,
+    this.sourceCodeUrl,
   });
 
   final String serverVersion;
@@ -21,6 +22,9 @@ final class ServerInfo {
 
   /// How accounts sign in (`capabilities.auth`, protocol 1.8).
   final ServerAuth auth;
+
+  /// Where the server's source code is offered (AGPL §13), an http(s) URL.
+  final String? sourceCodeUrl;
 }
 
 /// `capabilities.auth.mode`: email + account password, or only the

@@ -13619,4 +13619,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbMoveVersionUnknown => 'версия неизвестна';
+
+  @override
+  String get aboutServerSource => 'Исходный код вашего сервера синхронизации:';
 }

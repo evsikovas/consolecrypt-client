@@ -23347,6 +23347,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'version unknown'**
   String get dbMoveVersionUnknown;
+
+  /// About: the sync server's source code link (AGPL)
+  ///
+  /// In en, this message translates to:
+  /// **'Source code of your sync server:'**
+  String get aboutServerSource;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

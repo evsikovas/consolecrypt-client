@@ -30,6 +30,10 @@
   модели прежние ходы, со скрытыми, как и раньше, данными: раньше модель начинала его с
   пустого контекста.
 
+- **Исходники сервера в «О программе».** Для синхронизированного профиля окно показывает
+  ссылку на исходный код вашего сервера синхронизации (требование AGPL; сервер сообщает её
+  в `/v1/meta`).
+
 **Исправления.**
 
 - **SFTP: восстановление правок на других хостах.** Подключение, открытое для
@@ -131,6 +135,9 @@ admins and sends invitations only to verified addresses.
   can be continued or deleted. A continued conversation gives the model its earlier turns
   again, with the same data hidden as before; before, the model started it with an empty
   context.
+
+- **Server source in About.** For a synced profile the dialog shows where your sync server
+  offers its source code (AGPL; the server reports it in `/v1/meta`).
 
 **Fixes.**
 

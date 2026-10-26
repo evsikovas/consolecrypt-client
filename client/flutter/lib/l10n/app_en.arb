@@ -18264,5 +18264,9 @@
   "dbMoveVersionUnknown": "version unknown",
   "@dbMoveVersionUnknown": {
     "description": "Moving a device-local database connection into the vault (FEAT-01)"
+  },
+  "aboutServerSource": "Source code of your sync server:",
+  "@aboutServerSource": {
+    "description": "About: the sync server's source code link (AGPL)"
   }
 }
