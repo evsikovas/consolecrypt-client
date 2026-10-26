@@ -34,7 +34,7 @@ type R<T = ()> = Result<T, CliError>;
 #[derive(Parser, Debug)]
 #[command(
     name = "consolecrypt-cli",
-    version,
+    version = env!("CC_APP_VERSION"),
     author,
     about = "ConsoleCrypt headless client",
     after_help = "Author: Alexander Evsikov <i@evsikov.net>"
@@ -450,6 +450,12 @@ enum PassphraseCmd {
 
 fn config(cli: &Cli) -> AppConfig {
     let mut c = AppConfig::new(Platform::Cli);
+    // The server sees the app release this CLI came with.
+    c.client_version = env!("CC_APP_VERSION")
+        .split('+')
+        .next()
+        .unwrap_or_default()
+        .to_owned();
     c.data_dir = cli.data_dir.clone();
     c.secure_store = match cli.secure_store {
         StoreArg::Os => SecureStoreKind::Os,
