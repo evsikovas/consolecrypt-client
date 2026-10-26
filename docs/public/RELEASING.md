@@ -33,6 +33,22 @@
    результаты этого workflow и доступность установщиков без авторизации.
    Сайт и сервер выпускаются собственными тегами в отдельных репозиториях;
    публикация клиента сама по себе не меняет production Compose.
+7. Перед тем как docs и сайт сошлются на новый выпуск, проверьте его ассеты и
+   обновите ссылки (соседние checkout `consolecrypt-docs` и `consolecrypt-site`):
+
+   ```sh
+   python3 client/scripts/verify-client-release.py --tag vX.Y.Z --download > verified-downloads.json
+   python3 client/scripts/update-release-docs.py verified-downloads.json --docs ../consolecrypt-docs --site ../consolecrypt-site
+   ```
+
+   Первый скрипт проверяет опубликованный релиз: по одному файлу каждого вида,
+   один номер сборки на платформу, размеры, пути и digest GitHub против
+   `SHA256SUMS`, допустимые ленты; с `--download` скачивает установщики и
+   сверяет SHA-256. Второй переписывает в README docs заголовок, ссылки и
+   таблицу сборок, а на сайте — `download.html`, `index.html` и `assets/en.js`;
+   если после правки где-то осталась прежняя версия, он ничего не записывает.
+   `--check` только сообщает, что изменится. Затем `npm test` на сайте; версия
+   сайта в `package.json` и `releases/0.1.N.md` правятся вручную.
 
 ## Переход с прежнего сервера обновлений
 
@@ -58,3 +74,11 @@ platforms (macOS, Windows, Linux, Android; no iOS) pass and dispatches signed up
 and server deployment are independent tag releases. Preserve signing identities,
 app IDs and the Ed25519 update trust anchor. Old clients still require installer
 bytes on their previously trusted domains.
+
+Before the docs and the website point at a release, run
+`verify-client-release.py --tag vX.Y.Z --download > verified-downloads.json` (one
+file of each kind, one build per platform, sizes, paths and GitHub digests against
+`SHA256SUMS`, then the downloaded SHA-256) and
+`update-release-docs.py verified-downloads.json --docs ../consolecrypt-docs --site ../consolecrypt-site`
+(the docs README build table and the website download links; it writes nothing if
+the previous version would remain anywhere). Run `npm test` in the site afterwards.
