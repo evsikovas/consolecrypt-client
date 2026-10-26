@@ -52,7 +52,7 @@ impl Out {
     pub fn profiles(&self, ps: &[ProfileInfo]) {
         self.value(ps, || {
             if ps.is_empty() {
-                println!("no profiles (run `consolecrypt init`)");
+                println!("no profiles (run `consolecrypt-cli init`)");
             }
             for p in ps {
                 println!(
