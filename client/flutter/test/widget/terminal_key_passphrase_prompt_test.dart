@@ -15,7 +15,7 @@ Future<void> _pump(WidgetTester tester, TerminalPasswordPrompt prompt, String lo
   final budget = GlassBackdropBudget();
   addTearDown(budget.dispose);
   final tab = TerminalTab(
-    sessionId: TerminalSessionId('s1'),
+    sessionId: const TerminalSessionId('s1'),
     target: SshTerminalTarget(Host.create(name: 'web', address: '192.0.2.10')),
     terminal: Terminal(),
     controller: TerminalController(),
