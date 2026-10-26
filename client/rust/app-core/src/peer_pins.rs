@@ -319,10 +319,6 @@ pub(super) fn check_grants(
     };
     for grant in recipients {
         let member = member_of(env.pin.instance, &grant.identity, SharingRole::Reader)?;
-        if member.user_id == env.pin.user {
-            // The owner's own devices are admitted through enrollment.
-            continue;
-        }
         let kept = existing.iter().any(|m| {
             m.device_id == member.device_id
                 && m.user_id == member.user_id
@@ -331,6 +327,15 @@ pub(super) fn check_grants(
         });
         if kept {
             continue;
+        }
+        if member.user_id == env.pin.user {
+            // The owner's own devices join only through enrollment (or stay
+            // as members with the same keys). A device the server reports
+            // under this account is never granted directly, whatever the
+            // policy (SEC-05).
+            return Err(invalid(
+                "your own devices receive shared items through enrollment, not as recipients",
+            ));
         }
         pins.require(
             env.pin.instance,
