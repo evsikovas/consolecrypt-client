@@ -61,6 +61,9 @@
   через хранилище» переносит такое подключение с паролем в хранилище, если все устройства
   аккаунта работают на 0.9.2 или новее (с сервером 0.2.4 приложение видит их версии и
   перечислит те, что нужно обновить). Файл SQLite на этом компьютере остаётся только здесь.
+- **Kubernetes: «Поток ресурсов».** Заголовок больше не повторяется, поиск, фильтры и
+  список не наезжают друг на друга, а выбор пространства имён и меток выглядит как
+  остальные фильтры.
 
 **Синхронизация.** С сервером 0.2.4 (протокол 1.13) удаление хранилища, запрошенное
 ещё не доверенным устройством, откладывается на 7 дней; доверенное устройство показывает
@@ -171,6 +174,9 @@ admins and sends invitations only to verified addresses.
   moves such a connection and its password into the vault once every device of the account
   runs 0.9.2 or later (with server 0.2.4 the app sees their versions and lists the ones to
   update). An SQLite file on this computer stays here.
+- **Kubernetes: resource flow.** The title is no longer repeated, the search, filters and
+  list no longer run into each other, and the namespace and label pickers look like the
+  other filters.
 
 **Sync.** With server 0.2.4 (protocol 1.13) a vault deletion asked by a device that is not
 trusted yet waits 7 days; a trusted device shows a warning under Sync and can keep the vault.
