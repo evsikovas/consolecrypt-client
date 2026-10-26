@@ -23095,6 +23095,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Diagnostics'**
   String get vaultKeyMismatchDiagnostics;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'AUTOINCREMENT'**
+  String get dbDesignIdentityAutoincrement;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: AUTOINCREMENT needs this column alone as an INTEGER primary key of a rowid table.'**
+  String dbDesignIssueAutoincrementKey(String name);
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'Only one column can have AUTOINCREMENT.'**
+  String get dbDesignIssueAutoincrementSingle;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'This change recreates the table, and the table has what the designer does not carry over: {name}. Make it in the SQL editor.'**
+  String dbDesignIssueRebuildBlocked(String name);
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'{name} will be recreated: the rows are copied into a new table and the old one is dropped, all in one transaction. Triggers of the table are not kept, so the change is refused when it has any.'**
+  String dbDesignIssueTableRebuild(String name);
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'A STRICT table takes only INT, INTEGER, REAL, TEXT, BLOB and ANY: {name}.'**
+  String dbDesignIssueTypeStrict(String name);
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the primary key columns.'**
+  String get dbDesignIssuePrimaryKeyRequired;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: this database keeps no comments; the comment is not saved.'**
+  String dbDesignIssueCommentIgnored(String name);
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'Only primary key columns can be renamed: {name}.'**
+  String dbDesignIssueColumnRename(String name);
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'The column type cannot be changed: {name}.'**
+  String dbDesignIssueTypeChange(String name);
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: counter columns cannot be in the key, and a table with counters has only counters besides the key.'**
+  String dbDesignIssueCounterMixed(String name);
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'A secondary index covers one column.'**
+  String get dbDesignIssueIndexSingleColumn;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'triggers'**
+  String get dbDesignUnmodeledTriggers;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'generated columns'**
+  String get dbDesignUnmodeledGenerated;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'column collations'**
+  String get dbDesignUnmodeledCollations;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'expression, partial or ordered indexes'**
+  String get dbDesignUnmodeledIndexes;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'constraints the designer cannot read'**
+  String get dbDesignUnmodeledOther;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'STRICT (strict column types)'**
+  String get dbDesignOptStrict;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'WITHOUT ROWID'**
+  String get dbDesignOptWithoutRowid;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'Key columns in the partition key'**
+  String get dbDesignOptPartitionColumns;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'Clustering order (for example, at DESC)'**
+  String get dbDesignOptClusteringOrder;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'Default TTL, seconds'**
+  String get dbDesignOptDefaultTtl;
+
+  /// Table designer
+  ///
+  /// In en, this message translates to:
+  /// **'gc_grace_seconds'**
+  String get dbDesignOptGcGrace;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

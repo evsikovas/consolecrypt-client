@@ -13461,4 +13461,89 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get vaultKeyMismatchDiagnostics => 'Диагностика';
+
+  @override
+  String get dbDesignIdentityAutoincrement => 'AUTOINCREMENT';
+
+  @override
+  String dbDesignIssueAutoincrementKey(String name) {
+    return '$name: для AUTOINCREMENT этот столбец должен быть единственным столбцом первичного ключа, типа INTEGER, в таблице с rowid.';
+  }
+
+  @override
+  String get dbDesignIssueAutoincrementSingle => 'AUTOINCREMENT может быть только у одного столбца.';
+
+  @override
+  String dbDesignIssueRebuildBlocked(String name) {
+    return 'Это изменение пересоздаёт таблицу, а в ней есть то, что конструктор не переносит: $name. Внесите его в редакторе SQL.';
+  }
+
+  @override
+  String dbDesignIssueTableRebuild(String name) {
+    return 'Таблица $name будет пересоздана: строки копируются в новую таблицу, старая удаляется, всё — в одной транзакции. Триггеры таблицы не переносятся, поэтому при их наличии изменение не выполняется.';
+  }
+
+  @override
+  String dbDesignIssueTypeStrict(String name) {
+    return 'В таблице STRICT допустимы только INT, INTEGER, REAL, TEXT, BLOB и ANY: $name.';
+  }
+
+  @override
+  String get dbDesignIssuePrimaryKeyRequired => 'Выберите столбцы первичного ключа.';
+
+  @override
+  String dbDesignIssueCommentIgnored(String name) {
+    return '$name: эта база не хранит комментарии, комментарий не сохранится.';
+  }
+
+  @override
+  String dbDesignIssueColumnRename(String name) {
+    return 'Переименовать можно только столбцы первичного ключа: $name.';
+  }
+
+  @override
+  String dbDesignIssueTypeChange(String name) {
+    return 'Тип столбца изменить нельзя: $name.';
+  }
+
+  @override
+  String dbDesignIssueCounterMixed(String name) {
+    return '$name: счётчик (counter) не может входить в ключ, а в таблице со счётчиками все столбцы вне ключа — счётчики.';
+  }
+
+  @override
+  String get dbDesignIssueIndexSingleColumn => 'Вторичный индекс строится по одному столбцу.';
+
+  @override
+  String get dbDesignUnmodeledTriggers => 'триггеры';
+
+  @override
+  String get dbDesignUnmodeledGenerated => 'вычисляемые столбцы';
+
+  @override
+  String get dbDesignUnmodeledCollations => 'правила сравнения (COLLATE)';
+
+  @override
+  String get dbDesignUnmodeledIndexes => 'индексы по выражениям, частичные или с порядком';
+
+  @override
+  String get dbDesignUnmodeledOther => 'ограничения, которые конструктор не читает';
+
+  @override
+  String get dbDesignOptStrict => 'STRICT (строгие типы столбцов)';
+
+  @override
+  String get dbDesignOptWithoutRowid => 'WITHOUT ROWID';
+
+  @override
+  String get dbDesignOptPartitionColumns => 'Столбцов ключа в ключе партиции';
+
+  @override
+  String get dbDesignOptClusteringOrder => 'Порядок кластеризации (например, at DESC)';
+
+  @override
+  String get dbDesignOptDefaultTtl => 'TTL по умолчанию, секунд';
+
+  @override
+  String get dbDesignOptGcGrace => 'gc_grace_seconds';
 }

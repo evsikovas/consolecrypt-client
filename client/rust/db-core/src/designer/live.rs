@@ -14,6 +14,7 @@ use crate::{
 use async_trait::async_trait;
 use cc_models::database::DbEngine;
 use serde::Serialize;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Separator of aggregated name lists (unit separator; never in a name).
 const SEP: char = '\u{1f}';
@@ -173,6 +174,8 @@ impl DbSession {
             DbEngine::Postgresql => self.postgres_design(table).await?,
             DbEngine::Mysql | DbEngine::Mariadb => self.mysql_design(table).await?,
             DbEngine::Clickhouse => self.clickhouse_design(table).await?,
+            DbEngine::Sqlite => self.sqlite_design(table).await?,
+            DbEngine::Cassandra => self.cassandra_design(table).await?,
             _ => return Err(DbError::InvalidRequest),
         };
         if design.columns.is_empty() {
@@ -641,8 +644,345 @@ impl DbSession {
         Ok(design)
     }
 
-    /// Runs an approved designer script. PostgreSQL applies it in one
-    /// transaction (all or nothing); other engines run the statements in
+    /// SQLite: columns, keys, indexes and foreign keys from the PRAGMA
+    /// functions; checks, AUTOINCREMENT, STRICT and WITHOUT ROWID from the
+    /// stored CREATE TABLE. What the design cannot carry (generated columns,
+    /// collations, expression or partial indexes, triggers) is listed in
+    /// `unmodeled`, so a change that would rebuild the table is refused.
+    async fn sqlite_design(&self, table: &DbObjectRef) -> Result<TableDesign, DbError> {
+        use sqlparser::ast::{ColumnOption, Statement, TableConstraint};
+        let name = [text("", &table.name)];
+        let mut design = TableDesign {
+            database: table.database.clone(),
+            name: table.name.clone(),
+            ..Default::default()
+        };
+        let mut unmodeled = BTreeSet::new();
+        let definition = self
+            .design_rows(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?1",
+                &name,
+            )
+            .await?
+            .into_iter()
+            .next()
+            .and_then(|row| row.into_iter().next())
+            .ok_or(DbError::QueryFailed)?;
+        if definition
+            .trim_start()
+            .to_ascii_uppercase()
+            .starts_with("CREATE VIRTUAL")
+        {
+            return Err(DbError::InvalidRequest);
+        }
+        let mut key: Vec<(u32, String)> = Vec::new();
+        for row in self
+            .design_rows(
+                "SELECT name, type, \"notnull\", dflt_value, pk, hidden \
+                 FROM pragma_table_xinfo(?1) ORDER BY cid",
+                &name,
+            )
+            .await?
+        {
+            match row[5].as_str() {
+                "0" => {}
+                "2" | "3" => {
+                    unmodeled.insert("generated_columns");
+                    continue;
+                }
+                _ => continue,
+            }
+            let mut column = ColumnDesign {
+                name: row[0].clone(),
+                nullable: row[2] == "0",
+                default: row[3].clone(),
+                ..Default::default()
+            };
+            let (base, params) = split_params(&row[1]);
+            match params.as_deref().and_then(numeric_params) {
+                Some((length, scale)) => {
+                    column.data_type = base;
+                    column.length = Some(length);
+                    column.scale = scale;
+                }
+                None => column.data_type = row[1].trim().to_owned(),
+            }
+            if let Ok(position) = row[4].parse::<u32>() {
+                if position > 0 {
+                    key.push((position, column.name.clone()));
+                }
+            }
+            design.columns.push(column);
+        }
+        key.sort();
+        design.primary_key.columns = key.into_iter().map(|(_, name)| name).collect();
+        match sqlparser::parser::Parser::parse_sql(
+            &sqlparser::dialect::SQLiteDialect {},
+            &definition,
+        ) {
+            Ok(statements) => match statements.as_slice() {
+                [Statement::CreateTable(create)] => {
+                    if create.strict {
+                        design.options.insert("strict".into(), "true".into());
+                    }
+                    if create.without_rowid {
+                        design.options.insert("without_rowid".into(), "true".into());
+                    }
+                    for column in &create.columns {
+                        for option in &column.options {
+                            match &option.option {
+                                ColumnOption::Check(check) => design.checks.push(CheckDesign {
+                                    name: option
+                                        .name
+                                        .as_ref()
+                                        .or(check.name.as_ref())
+                                        .map(|n| n.value.clone())
+                                        .unwrap_or_default(),
+                                    expression: check.expr.to_string(),
+                                    ..Default::default()
+                                }),
+                                ColumnOption::DialectSpecific(tokens)
+                                    if tokens.iter().any(|t| {
+                                        t.to_string().eq_ignore_ascii_case("AUTOINCREMENT")
+                                    }) =>
+                                {
+                                    if let Some(designed) = design
+                                        .columns
+                                        .iter_mut()
+                                        .find(|c| c.name == column.name.value)
+                                    {
+                                        designed.identity = "autoincrement".into();
+                                    }
+                                }
+                                ColumnOption::Collation(_) => {
+                                    unmodeled.insert("collations");
+                                }
+                                ColumnOption::Null
+                                | ColumnOption::NotNull
+                                | ColumnOption::Default(_)
+                                | ColumnOption::PrimaryKey(_)
+                                | ColumnOption::Unique(_)
+                                | ColumnOption::ForeignKey(_)
+                                | ColumnOption::Generated { .. } => {}
+                                _ => {
+                                    unmodeled.insert("column_options");
+                                }
+                            }
+                        }
+                    }
+                    for constraint in &create.constraints {
+                        if let TableConstraint::Check(check) = constraint {
+                            design.checks.push(CheckDesign {
+                                name: check
+                                    .name
+                                    .as_ref()
+                                    .map(|n| n.value.clone())
+                                    .unwrap_or_default(),
+                                expression: check.expr.to_string(),
+                                ..Default::default()
+                            });
+                        }
+                    }
+                }
+                _ => {
+                    unmodeled.insert("definition");
+                }
+            },
+            Err(_) => {
+                unmodeled.insert("definition");
+            }
+        }
+        for row in self
+            .design_rows(
+                "SELECT name, \"unique\", origin, partial FROM pragma_index_list(?1)",
+                &name,
+            )
+            .await?
+        {
+            if row[2] == "pk" {
+                continue;
+            }
+            if row[3] == "1" {
+                unmodeled.insert("partial_indexes");
+                continue;
+            }
+            let mut columns = Vec::new();
+            let mut plain = true;
+            for part in self
+                .design_rows(
+                    "SELECT cid, name, \"desc\", coll FROM pragma_index_xinfo(?1) \
+                     WHERE key = 1 ORDER BY seqno",
+                    &[text("", &row[0])],
+                )
+                .await?
+            {
+                if part[0] == "-2" {
+                    unmodeled.insert("expression_indexes");
+                    plain = false;
+                } else if part[2] == "1" || !part[3].eq_ignore_ascii_case("BINARY") {
+                    unmodeled.insert("index_order");
+                    plain = false;
+                }
+                columns.push(part[1].clone());
+            }
+            if !plain || columns.is_empty() {
+                continue;
+            }
+            if row[2] == "u" {
+                design.uniques.push(KeyDesign {
+                    columns,
+                    ..Default::default()
+                });
+            } else {
+                design.indexes.push(IndexDesign {
+                    name: row[0].clone(),
+                    columns,
+                    unique: row[1] == "1",
+                    ..Default::default()
+                });
+            }
+        }
+        let mut foreign: BTreeMap<String, ForeignKeyDesign> = BTreeMap::new();
+        for row in self
+            .design_rows(
+                "SELECT id, \"table\", \"from\", \"to\", on_update, on_delete \
+                 FROM pragma_foreign_key_list(?1) ORDER BY id, seq",
+                &name,
+            )
+            .await?
+        {
+            let action = |value: &str| {
+                if value.eq_ignore_ascii_case("NO ACTION") {
+                    String::new()
+                } else {
+                    value.to_ascii_uppercase()
+                }
+            };
+            let fk = foreign
+                .entry(row[0].clone())
+                .or_insert_with(|| ForeignKeyDesign {
+                    ref_table: row[1].clone(),
+                    on_update: action(&row[4]),
+                    on_delete: action(&row[5]),
+                    ..Default::default()
+                });
+            fk.columns.push(row[2].clone());
+            if !row[3].is_empty() {
+                fk.ref_columns.push(row[3].clone());
+            }
+        }
+        for mut fk in foreign.into_values() {
+            if fk.ref_columns.is_empty() {
+                // REFERENCES t without columns: the primary key of t.
+                fk.ref_columns = self
+                    .design_rows(
+                        "SELECT name FROM pragma_table_info(?1) WHERE pk > 0 ORDER BY pk",
+                        &[text("", &fk.ref_table)],
+                    )
+                    .await?
+                    .into_iter()
+                    .filter_map(|row| row.into_iter().next())
+                    .collect();
+            }
+            if fk.ref_columns.len() != fk.columns.len() {
+                unmodeled.insert("foreign_keys");
+                continue;
+            }
+            design.foreign_keys.push(fk);
+        }
+        let triggers = self
+            .design_rows(
+                "SELECT count(*) FROM sqlite_master WHERE type = 'trigger' AND tbl_name = ?1",
+                &name,
+            )
+            .await?;
+        if triggers
+            .first()
+            .and_then(|row| row.first())
+            .is_some_and(|n| n != "0")
+        {
+            unmodeled.insert("triggers");
+        }
+        design.unmodeled = unmodeled.into_iter().map(str::to_owned).collect();
+        Ok(design)
+    }
+
+    /// Cassandra / ScyllaDB: key columns in key order, the partition key
+    /// size and clustering order, table options and plain secondary indexes.
+    async fn cassandra_design(&self, table: &DbObjectRef) -> Result<TableDesign, DbError> {
+        use crate::cassandra::CqlColumnKind;
+        let columns = self.cassandra_columns(table).await?;
+        let (options, indexes) = {
+            let driver = self.driver.lock().await;
+            let Driver::Cassandra(driver) = &*driver else {
+                return Err(DbError::InvalidRequest);
+            };
+            driver
+                .design_metadata(&table.database, &table.name, &self.scope.child_token())
+                .await?
+        };
+        let mut design = TableDesign {
+            database: table.database.clone(),
+            name: table.name.clone(),
+            ..Default::default()
+        };
+        let mut partition = 0;
+        let mut order = Vec::new();
+        for column in columns {
+            match column.kind {
+                CqlColumnKind::PartitionKey => {
+                    partition += 1;
+                    design.primary_key.columns.push(column.name.clone());
+                }
+                CqlColumnKind::Clustering { descending } => {
+                    design.primary_key.columns.push(column.name.clone());
+                    order.push(format!(
+                        "{} {}",
+                        crate::parser::cql::quote_name(&column.name),
+                        if descending { "DESC" } else { "ASC" }
+                    ));
+                }
+                CqlColumnKind::Static | CqlColumnKind::Regular => {}
+            }
+            design.columns.push(ColumnDesign {
+                name: column.name,
+                data_type: column.type_name,
+                nullable: true,
+                ..Default::default()
+            });
+        }
+        design
+            .options
+            .insert("partition_key_columns".into(), partition.to_string());
+        if !order.is_empty() {
+            design
+                .options
+                .insert("clustering_order".into(), order.join(", "));
+        }
+        if let [comment, ttl, gc] = options.as_slice() {
+            design.comment = comment.clone();
+            if !ttl.is_empty() && ttl != "0" {
+                design
+                    .options
+                    .insert("default_time_to_live".into(), ttl.clone());
+            }
+            if !gc.is_empty() {
+                design.options.insert("gc_grace_seconds".into(), gc.clone());
+            }
+        }
+        design.indexes = indexes
+            .into_iter()
+            .map(|(name, column)| IndexDesign {
+                name,
+                columns: vec![column],
+                ..Default::default()
+            })
+            .collect();
+        Ok(design)
+    }
+
+    /// Runs an approved designer script. PostgreSQL and SQLite apply it in
+    /// one transaction (all or nothing); other engines run the statements in
     /// order and stop at the first failure.
     pub async fn apply_design(
         &self,
@@ -679,6 +1019,37 @@ impl DbSession {
                             (Some(_), std::cmp::Ordering::Greater) => "skipped",
                         },
                         error_code: failed.filter(|_| i == progress.done),
+                    })
+                    .collect(),
+                committed: failed.is_none(),
+            }
+        } else if matches!(&*driver, Driver::Sqlite(_) | Driver::SqliteCli(_)) {
+            let mut parsed = Vec::with_capacity(count);
+            for statement in &statements {
+                match statement.parsed() {
+                    ParsedStatement::Sql { text, parameters } => {
+                        parsed.push((text.clone(), parameters.clone()))
+                    }
+                    _ => return Err(DbError::InvalidRequest),
+                }
+            }
+            let cancel = self.scope.child_token();
+            let (done, outcome) = match &mut *driver {
+                Driver::Sqlite(sqlite) => sqlite.apply_script(parsed, cancel).await,
+                Driver::SqliteCli(cli) => cli.apply_script(&parsed, cancel).await,
+                _ => unreachable!("matched above"),
+            };
+            let failed = outcome.as_ref().err().map(error_code);
+            DesignApplyResult {
+                statements: (0..count)
+                    .map(|i| DesignStatementResult {
+                        status: match (&failed, i.cmp(&done)) {
+                            (None, _) => "done",
+                            (Some(_), std::cmp::Ordering::Less) => "rolled_back",
+                            (Some(_), std::cmp::Ordering::Equal) => "failed",
+                            (Some(_), std::cmp::Ordering::Greater) => "skipped",
+                        },
+                        error_code: failed.filter(|_| i == done),
                     })
                     .collect(),
                 committed: failed.is_none(),

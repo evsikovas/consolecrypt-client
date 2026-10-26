@@ -450,6 +450,104 @@ impl Sqlite {
     }
 }
 
+/// Designer scripts (FEAT-08).
+impl Sqlite {
+    /// Runs a designer script in one write transaction. Foreign key
+    /// enforcement, when on, is switched off around it (a rebuilt table is
+    /// dropped and created again; with enforcement the drop would delete or
+    /// refuse rows of other tables) and the keys are checked before the
+    /// commit. Returns how many statements ran and the outcome.
+    pub(crate) fn apply_script(
+        &mut self,
+        statements: Vec<(String, Vec<DbParameter>)>,
+        cancel: CancellationToken,
+    ) -> futures::future::BoxFuture<'_, (usize, Result<(), DbError>)> {
+        Box::pin(async move {
+            if self.read_only {
+                return (0, Err(DbError::PolicyDenied));
+            }
+            let connection = Arc::clone(&self.connection);
+            let mode = Arc::clone(&self.mode);
+            let run = tokio::task::spawn_blocking(move || {
+                let mut guard = connection.lock().unwrap_or_else(|e| e.into_inner());
+                let Some(c) = guard.as_ref() else {
+                    return (0, Err(DbError::SessionClosed));
+                };
+                let previous = mode.swap(MODE_INTERNAL, Ordering::AcqRel);
+                let enforced = c
+                    .query_row("PRAGMA foreign_keys", [], |row| row.get::<_, i64>(0))
+                    .map(|on| on == 1);
+                mode.store(previous, Ordering::Release);
+                let enforced = match enforced {
+                    Ok(enforced) => enforced,
+                    Err(error) => return (0, Err(classify(error))),
+                };
+                let mut done = 0;
+                let mut result = (|| {
+                    if enforced {
+                        internal(c, &mode, "PRAGMA foreign_keys = OFF;")?;
+                    }
+                    internal(c, &mode, "PRAGMA query_only = 0;")?;
+                    mode.store(MODE_WRITE, Ordering::Release);
+                    internal(c, &mode, "BEGIN IMMEDIATE;")?;
+                    for (sql, bindings) in &statements {
+                        let mut statement = c.prepare(sql).map_err(classify)?;
+                        if statement.parameter_count() != bindings.len() {
+                            return Err(DbError::InvalidRequest);
+                        }
+                        for (index, parameter) in bindings.iter().enumerate() {
+                            statement
+                                .raw_bind_parameter(index + 1, bind_value(&parameter.value)?)
+                                .map_err(classify)?;
+                        }
+                        statement.raw_execute().map_err(classify)?;
+                        done += 1;
+                    }
+                    if enforced {
+                        let previous = mode.swap(MODE_INTERNAL, Ordering::AcqRel);
+                        let violated = c
+                            .prepare("PRAGMA foreign_key_check")
+                            .and_then(|mut check| check.query([])?.next().map(|row| row.is_some()));
+                        mode.store(previous, Ordering::Release);
+                        if violated.map_err(classify)? {
+                            return Err(DbError::QueryFailed);
+                        }
+                    }
+                    internal(c, &mode, "COMMIT;")
+                })();
+                if !c.is_autocommit() {
+                    let rolled = internal(c, &mode, "ROLLBACK;");
+                    if result.is_ok() {
+                        result = rolled;
+                    }
+                }
+                let restored = internal(c, &mode, "PRAGMA query_only = 1;").is_ok()
+                    && (!enforced || internal(c, &mode, "PRAGMA foreign_keys = ON;").is_ok());
+                mode.store(MODE_READ, Ordering::Release);
+                if !restored {
+                    guard.take();
+                }
+                (done, result)
+            });
+            tokio::select! {
+                biased;
+                _ = cancel.cancelled() => {
+                    self.interrupt.interrupt();
+                    (0, Err(DbError::Cancelled))
+                }
+                result = tokio::time::timeout(self.timeout, run) => match result {
+                    Ok(Ok(outcome)) => outcome,
+                    Ok(Err(_)) => (0, Err(DbError::SessionClosed)),
+                    Err(_) => {
+                        self.interrupt.interrupt();
+                        (0, Err(DbError::Timeout))
+                    }
+                },
+            }
+        })
+    }
+}
+
 impl Drop for Sqlite {
     fn drop(&mut self) {
         self.interrupt.interrupt();

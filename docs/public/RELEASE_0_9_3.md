@@ -19,6 +19,11 @@
   (в CQL их нет), поэтому вариант «одна транзакция на весь файл» для них не
   показывается. В Cassandra «добавлять» не перезаписывает существующие строки
   (`INSERT … IF NOT EXISTS`). «Создать таблицу из CSV…» доступно и для SQLite.
+- **Конструктор таблиц для SQLite и Cassandra/ScyllaDB.** Таблицы создаются и меняются
+  без ручного SQL и CQL. Изменения SQLite, которые не умеет `ALTER TABLE`, пересоздают
+  таблицу одной транзакцией с сохранением строк и индексов; таблицу с триггерами или
+  вычисляемыми столбцами конструктор не пересоздаёт. Для Cassandra задаются ключ
+  партиции, кластерные столбцы с порядком, вторичные индексы, TTL и `gc_grace_seconds`.
 
 **Безопасность.** Исправления по итогам ревью безопасности кода.
 
@@ -88,6 +93,11 @@ admins and sends invitations only to verified addresses.
   a shared transaction (CQL has none), so the whole-file transaction is not offered
   there. In Cassandra, insert does not overwrite existing rows (`INSERT … IF NOT EXISTS`).
   “Create table from CSV…” works for SQLite as well.
+- **Table designer for SQLite and Cassandra/ScyllaDB.** Create and change tables without
+  writing SQL or CQL. SQLite changes that `ALTER TABLE` cannot make rebuild the table in
+  one transaction and keep its rows and indexes; a table with triggers or generated
+  columns is never rebuilt. Cassandra tables get a partition key, clustering columns
+  with their order, secondary indexes, TTL and `gc_grace_seconds`.
 
 **Security.** Fixes from the code security review.
 

@@ -17,11 +17,13 @@ use cc_models::database::DbEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
+mod cassandra;
 mod clickhouse;
 mod live;
 mod mongo;
 mod mysql;
 mod postgres;
+mod sqlite;
 
 pub use live::{DesignApplyResult, DesignStatementResult};
 
@@ -53,6 +55,11 @@ pub struct TableDesign {
     pub checks: Vec<CheckDesign>,
     /// Engine options by id (see [`OptionInfo`]); missing means the default.
     pub options: BTreeMap<String, String>,
+    /// What the loaded table has but the design does not carry (SQLite
+    /// triggers, generated columns, collations, …). A change that would
+    /// recreate the table, and so lose it, is refused.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub unmodeled: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -556,8 +563,7 @@ pub trait Dialect: Sync {
     }
 }
 
-/// The designer of `engine`; None where tables cannot be designed (Redis)
-/// or no designer exists yet (SQLite, Cassandra / ScyllaDB).
+/// The designer of `engine`; None where tables cannot be designed (Redis).
 pub fn dialect(engine: DbEngine) -> Option<&'static dyn Dialect> {
     match engine {
         DbEngine::Postgresql => Some(&postgres::Postgres),
@@ -565,7 +571,9 @@ pub fn dialect(engine: DbEngine) -> Option<&'static dyn Dialect> {
         DbEngine::Mariadb => Some(&mysql::MARIADB),
         DbEngine::Clickhouse => Some(&clickhouse::ClickHouse),
         DbEngine::Mongodb => Some(&mongo::Mongo),
-        DbEngine::Redis | DbEngine::Sqlite | DbEngine::Cassandra | DbEngine::Unknown => None,
+        DbEngine::Sqlite => Some(&sqlite::Sqlite),
+        DbEngine::Cassandra => Some(&cassandra::Cassandra),
+        DbEngine::Redis | DbEngine::Unknown => None,
     }
 }
 
@@ -708,7 +716,7 @@ fn check_type(text: &str, target: impl Into<String>, issues: &mut Issues) -> boo
             .is_some_and(|c| c.is_ascii_alphabetic() || c == '_' || c == '"')
         && text.chars().all(|c| {
             c.is_ascii_alphanumeric()
-                || " _(),'=.-\"[]".contains(c)
+                || " _(),'=.-\"[]<>".contains(c)
                 || (!c.is_ascii() && !c.is_control())
         });
     if !valid || !check_expression(text, target.clone(), &mut Issues::default()) {
@@ -1242,8 +1250,6 @@ mod tests {
     #[test]
     fn redis_has_no_designer() {
         assert!(dialect(DbEngine::Redis).is_none());
-        assert!(dialect(DbEngine::Sqlite).is_none());
-        assert!(dialect(DbEngine::Cassandra).is_none());
         let plan = plan(DbEngine::Redis, None, &TableDesign::default());
         assert_eq!(plan.issues[0].code, "engine_unsupported");
     }
