@@ -47,6 +47,9 @@
 - **Синхронизация: испорченные данные.** Если сервер присылает объект, который не
   проходит проверку подлинности, приложение показывает предупреждение и оставляет
   последнюю хорошую локальную копию, а не заменяет её нечитаемыми данными.
+- **SSH-агент на Windows.** Канал встроенного SSH-агента теперь доступен только вашей
+  учётной записи и системе: раньше по умолчанию к нему могли подключаться администраторы,
+  а на чтение — любые пользователи.
 - **Зависимости.** `crypto-bigint` 0.7.10 (RUSTSEC-2026-0387, неравномерное по
   времени выполнение операций, которые должны быть постоянными), `tokio` 1.54.1
   (RUSTSEC-2026-0386) и плановые обновления `hyper`, `uuid`, `tokio-rustls`, `xml` и
@@ -96,6 +99,9 @@ admins and sends invitations only to verified addresses.
 - **Sync: damaged data.** If the server sends an object that fails authentication, the
   app shows a warning and keeps the last good local copy instead of replacing it with
   unreadable data.
+- **SSH agent on Windows.** The built-in SSH agent's pipe is now open only to your account
+  and the system; before, the default descriptor let administrators in and gave every
+  user read access.
 - **Dependencies.** `crypto-bigint` 0.7.10 (RUSTSEC-2026-0387, timing variability in
   operations meant to be constant-time), `tokio` 1.54.1 (RUSTSEC-2026-0386) and routine
   updates of `hyper`, `uuid`, `tokio-rustls`, `xml` and other libraries.
