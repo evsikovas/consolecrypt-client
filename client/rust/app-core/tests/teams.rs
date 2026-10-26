@@ -668,3 +668,58 @@ async fn a_joiner_refuses_a_team_the_server_made_up() {
     alice.shutdown().await.unwrap();
     bob.shutdown().await.unwrap();
 }
+
+/// Security review SEC-03: a member pins the team key it accepted. A server
+/// that later hands out a key of its own for the same epoch is refused on
+/// the next full open instead of silently taking the member's new writes.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_member_refuses_a_swapped_team_key() {
+    let server = MockServer::start().await;
+    let url = server.url().to_string();
+    let tmp = tempfile::tempdir().unwrap();
+    let alice = account(
+        &tmp.path().join("a"),
+        &url,
+        "alice@example.org",
+        AccountMode::Register,
+    )
+    .await;
+    alice.create_vault(PASSPHRASE.into()).await.unwrap();
+    let bob = account(
+        &tmp.path().join("b"),
+        &url,
+        "bob@example.org",
+        AccountMode::Register,
+    )
+    .await;
+    bob.create_vault(PASSPHRASE.into()).await.unwrap();
+    let team = alice
+        .create_team("Ops".into(), None, None, None)
+        .await
+        .unwrap();
+    let tid = team.vault_id.clone();
+    let vid = VaultId::from_str(&tid).unwrap();
+    let inv = join(&alice, &bob, &tid, "bob@example.org", TeamRoleDto::Editor).await;
+    let bob_keys = server.team_invitation_keys(inv.parse().unwrap()).unwrap();
+    assert!(team_of(&bob, &tid).await.unwrap().open);
+
+    // Reopening with the same key works.
+    bob.lock().await.unwrap();
+    bob.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
+    bob.refresh_teams().await.unwrap();
+    assert!(team_of(&bob, &tid).await.unwrap().open, "same key reopens");
+
+    // The server swaps Bob's envelope for a key it chose, same epoch.
+    let fake_key = cc_vault_core::UnlockedVault::new_team(vid).unwrap();
+    assert!(server.plant_team_user_envelope(vid, fake_key.seal_for_member(&bob_keys).unwrap()));
+    bob.lock().await.unwrap();
+    bob.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
+    let _ = bob.refresh_teams().await;
+    let t = team_of(&bob, &tid).await;
+    assert!(
+        t.as_ref().is_none_or(|t| !t.open),
+        "a swapped team key must not open: {t:?}"
+    );
+    alice.shutdown().await.unwrap();
+    bob.shutdown().await.unwrap();
+}

@@ -314,6 +314,8 @@ impl AppCore {
             hidden: false,
             invitation_id: None,
             join_admin_key: None,
+            pinned_key_epoch: None,
+            pinned_key_commitment: None,
             created_at: now,
             updated_at: now,
         };
@@ -483,6 +485,8 @@ impl AppCore {
             hidden: false,
             invitation_id: Some(inv_id),
             join_admin_key: None,
+            pinned_key_epoch: None,
+            pinned_key_commitment: None,
             created_at: now,
             updated_at: now,
         };

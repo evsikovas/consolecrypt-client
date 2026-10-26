@@ -23,6 +23,10 @@
   привязывает команду к ключу этого администратора. Команда откроется, только если
   участника добавил именно он; поддельную команду, собранную сервером, приложение
   не откроет.
+- **Команды: ключ команды закрепляется.** Приложение запоминает ключ команды, с которым
+  работало. Подменить его сервер больше не может: другой ключ той же эпохи или новый
+  ключ, который не связан цепочкой с прежним, приводит к паузе команды, а не к записи
+  новых данных под чужим ключом.
 
 ## English
 
@@ -45,3 +49,7 @@ also stops members from changing other members' team keys.
 - **Teams: joining.** The code the invitee reads to the admin now ties the team to that
   admin's key. The team opens only if that admin adds the member; a fake team put
   together by the server is not opened.
+- **Teams: the team key is pinned.** The app remembers the team key it has used. The
+  server can no longer swap it: another key for the same epoch, or a new key that does
+  not chain back to the previous one, pauses the team instead of writing new data
+  under a foreign key.

@@ -358,6 +358,18 @@ impl MockServer {
         self.shared.lock().inject_team_member(vault_id, keys)
     }
 
+    /// Hostile-server hook (teams): replace a member's user envelope with
+    /// one of a key the server chose, at the same key epoch.
+    pub fn plant_team_user_envelope(
+        &self,
+        vault_id: VaultId,
+        envelope: cc_protocol::envelopes::NewEnvelope,
+    ) -> bool {
+        self.shared
+            .lock()
+            .plant_team_user_envelope(vault_id, envelope)
+    }
+
     /// Test hook (teams): the keys an invitee sent when accepting.
     pub fn team_invitation_keys(
         &self,

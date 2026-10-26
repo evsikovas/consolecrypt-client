@@ -41,6 +41,14 @@ pub struct TeamMembership {
     /// its own (security review SEC-02). `None` for owners and older joins.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub join_admin_key: Option<String>,
+    /// The team key this member last accepted: its epoch and the hex key
+    /// commitment. The server may hand out only that key for that epoch, or
+    /// a newer key whose chain links lead back to it (security review
+    /// SEC-03). `None` until the first open with this check.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pinned_key_epoch: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pinned_key_commitment: Option<String>,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
 }

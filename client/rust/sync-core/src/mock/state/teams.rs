@@ -722,6 +722,20 @@ impl State {
         true
     }
 
+    /// Test hook: a hostile server replaces a member's user envelope with
+    /// one of a key it chose, keeping the key epoch.
+    pub(crate) fn plant_team_user_envelope(
+        &mut self,
+        vault_id: VaultId,
+        envelope: NewEnvelope,
+    ) -> bool {
+        if !self.vaults.get(&vault_id).is_some_and(|v| v.team.is_some()) {
+            return false;
+        }
+        self.store_envelope(vault_id, envelope, cc_protocol::DeviceId::new());
+        true
+    }
+
     /// Test hook: the keys an invitee sent when accepting.
     pub(crate) fn team_invitation_keys(
         &self,
