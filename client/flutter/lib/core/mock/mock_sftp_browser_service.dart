@@ -484,6 +484,9 @@ final class MockSftpBrowserService implements SftpBrowserService, SftpBrowserDeb
   }
 
   @override
+  Future<SftpSessionId> connectForEdits(ObjectId hostId) => _sftp.connect(hostId);
+
+  @override
   Future<EditSessionInfo> resumeEditLeftover(EditSessionId id, SftpSessionId session, {OpenWith? openWith}) async {
     final leftover = _leftovers?.where((l) => l.id == id).firstOrNull;
     if (leftover == null || !leftover.canResume) throw AppException(AppErrorCode.notFound, 'No such leftover: $id');

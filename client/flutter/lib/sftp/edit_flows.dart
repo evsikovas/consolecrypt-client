@@ -209,9 +209,9 @@ class _SftpEditRecoveryListenerState extends ConsumerState<SftpEditRecoveryListe
             await ref.read(sftpControllerProvider.notifier).connect(host);
             session = ref.read(sftpControllerProvider).session;
           } else {
-            // TODO(sftp-ui): background connections for other hosts live until app quit — the browser has
-            // one session at a time; next: a connection pool in app-core shared by browser and edit sessions.
-            session = await ref.read(sftpServiceProvider).connect(host.id);
+            // The browser shows another host: a session the core shares between this host's edit
+            // sessions and closes with the last of them.
+            session = await service.connectForEdits(host.id);
           }
           if (session == null) continue;
           sessions[host.id] = session;

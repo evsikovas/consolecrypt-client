@@ -150,6 +150,11 @@ abstract interface class SftpBrowserService {
   /// [openWith] non-null also opens it in an editor. Core: `EditManager::resume`.
   Future<EditSessionInfo> resumeEditLeftover(EditSessionId id, SftpSessionId session, {OpenWith? openWith});
 
+  /// An SFTP session to [hostId] for continuing its edit sessions while the
+  /// browser shows another host: one per host, shared by those edit sessions
+  /// and closed by the core with the last of them. Core: `AppCore::edit_connect`.
+  Future<SftpSessionId> connectForEdits(ObjectId hostId);
+
   /// Securely removes one leftover. Core: `EditManager::discard_leftover`.
   Future<void> discardEditLeftover(EditSessionId id);
 
@@ -295,6 +300,9 @@ final class SftpBrowserFallback implements SftpBrowserService {
   @override
   Future<EditSessionInfo> resumeEditLeftover(EditSessionId id, SftpSessionId session, {OpenWith? openWith}) async =>
       _unsupported('editSessions');
+
+  @override
+  Future<SftpSessionId> connectForEdits(ObjectId hostId) async => _unsupported('editSessions');
 
   @override
   Future<void> discardEditLeftover(EditSessionId id) async => _unsupported('editSessions');

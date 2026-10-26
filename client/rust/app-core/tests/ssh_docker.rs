@@ -365,6 +365,47 @@ async fn ssh_terminal_tunnel_sftp_through_two_jump_hosts() {
         .await
         .unwrap();
     assert_eq!(stopped, EditStopOutcomeDto::Closed { uploaded: false });
+    // The browser's own session stays open after its edit session ends.
+    app.sftp_home(sftp.clone()).await.unwrap();
+
+    // Edit sessions on a host the browser is not showing share one pooled
+    // session (TODO-03), closed with the last of them.
+    let pooled = app.edit_connect(target.id.clone()).await.unwrap();
+    assert_ne!(pooled, sftp);
+    assert_eq!(app.edit_connect(target.id.clone()).await.unwrap(), pooled);
+    let first = app
+        .edit_open(
+            pooled.clone(),
+            format!("{base}/dir/a.txt"),
+            OpenWithDto::Default,
+        )
+        .await
+        .unwrap();
+    let second = app
+        .edit_open(
+            pooled.clone(),
+            format!("{base}/copy/a.txt"),
+            OpenWithDto::Default,
+        )
+        .await
+        .unwrap();
+    app.edit_stop(first.id, EditStopModeDto::Upload)
+        .await
+        .unwrap();
+    app.sftp_home(pooled.clone())
+        .await
+        .expect("still used by the second");
+    app.edit_stop(second.id, EditStopModeDto::Upload)
+        .await
+        .unwrap();
+    assert!(
+        app.sftp_home(pooled.clone()).await.is_err(),
+        "closed with its last edit session"
+    );
+    let again = app.edit_connect(target.id.clone()).await.unwrap();
+    assert_ne!(again, pooled, "a closed session is not handed out");
+    app.sftp_close(again).await.unwrap();
+    println!("IT pooled sftp session for edit sessions ... ok");
     app.sftp_remove(sftp.clone(), base.clone(), true)
         .await
         .unwrap();

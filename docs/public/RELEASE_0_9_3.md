@@ -25,6 +25,13 @@
   вычисляемыми столбцами конструктор не пересоздаёт. Для Cassandra задаются ключ
   партиции, кластерные столбцы с порядком, вторичные индексы, TTL и `gc_grace_seconds`.
 
+**Исправления.**
+
+- **SFTP: восстановление правок на других хостах.** Подключение, открытое для
+  восстановления несохранённых правок на хосте, которого нет в браузере, теперь
+  общее для правок этого хоста и закрывается вместе с последней из них, а не живёт до
+  выхода из приложения.
+
 **Безопасность.** Исправления по итогам ревью безопасности кода.
 
 - **Команды: подтверждение участника.** Ключ команды получают ровно те ключи участника,
@@ -98,6 +105,12 @@ admins and sends invitations only to verified addresses.
   one transaction and keep its rows and indexes; a table with triggers or generated
   columns is never rebuilt. Cassandra tables get a partition key, clustering columns
   with their order, secondary indexes, TTL and `gc_grace_seconds`.
+
+**Fixes.**
+
+- **SFTP: recovering edits on other hosts.** The connection opened to recover unsaved
+  edits on a host the browser is not showing is now shared by that host's edits and
+  closes with the last of them instead of living until the app quits.
 
 **Security.** Fixes from the code security review.
 
