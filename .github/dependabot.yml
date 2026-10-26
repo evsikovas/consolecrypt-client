@@ -1,7 +1,7 @@
 # Version-update PRs are off (open-pull-requests-limit: 0): dependencies are
-# bumped by hand from issues. Security updates are not affected by the limit
-# and still arrive as PRs, alongside the weekly dependency-audit.yml issue.
-# The schedule, groups and ignores stay so version updates can be turned
+# bumped by hand from issues. Dependabot alerts and security updates are off
+# in the repository settings; vulnerable dependencies are reported by the
+# weekly dependency-audit.yml issue instead. The schedule, groups and ignores stay so version updates can be turned
 # back on by raising the limit. Dependabot PRs run only the hosted
 # dependency-audit.yml checks: no workflow here schedules self-hosted
 # runners on pull_request.
