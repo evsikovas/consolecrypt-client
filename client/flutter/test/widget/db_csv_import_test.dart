@@ -118,7 +118,7 @@ class _Service implements DbCsvImportService {
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
-Future<bool?> Function() _pump(WidgetTester tester, _Service service, String path) {
+Future<bool?> Function() _pump(WidgetTester tester, _Service service, String path, {bool wholeTransaction = true}) {
   bool? closed;
   return () async {
     final backend = testBackend();
@@ -142,7 +142,12 @@ Future<bool?> Function() _pump(WidgetTester tester, _Service service, String pat
               builder: (context) => TextButton(
                 onPressed: () async => closed = await showDialog<bool>(
                   context: context,
-                  builder: (_) => DbCsvImportDialog(service: service, session: _session, table: _table),
+                  builder: (_) => DbCsvImportDialog(
+                    service: service,
+                    session: _session,
+                    table: _table,
+                    wholeTransaction: wholeTransaction,
+                  ),
                 ),
                 child: const Text('open'),
               ),
@@ -171,6 +176,42 @@ Future<void> _choose(WidgetTester tester, String key, String label) async {
 }
 
 void main() {
+  test('SQLite and Cassandra import; one transaction only where the engine has it', () {
+    DbConnection connection(DbEngine engine, {DbRouteKind route = DbRouteKind.direct}) => DbConnection(
+      id: 'c',
+      name: 'c',
+      engine: engine,
+      host: '',
+      port: 0,
+      options: DbDriverOptions(engine: engine),
+      route: DbRoute(kind: route, reference: route == DbRouteKind.direct ? null : 'host'),
+    );
+    for (final engine in [DbEngine.postgresql, DbEngine.mysql, DbEngine.mariadb, DbEngine.sqlite, DbEngine.cassandra]) {
+      expect(dbCsvImportSupported(engine), isTrue, reason: engine.name);
+    }
+    expect(dbCsvImportSupported(DbEngine.mongodb), isFalse);
+    expect(dbCsvWholeTransaction(connection(DbEngine.postgresql)), isTrue);
+    expect(dbCsvWholeTransaction(connection(DbEngine.sqlite)), isTrue);
+    expect(dbCsvWholeTransaction(connection(DbEngine.sqlite, route: DbRouteKind.ssh)), isFalse);
+    expect(dbCsvWholeTransaction(connection(DbEngine.cassandra)), isFalse);
+  });
+
+  testWidgets('without a transaction the import commits per batch and says so', (tester) async {
+    final service = _Service();
+    await _pump(tester, service, '/data/items.csv', wholeTransaction: false)();
+    await _tap(tester, 'db-csv-choose');
+    await _tap(tester, 'db-csv-next');
+    await _tap(tester, 'db-csv-next');
+    await _choose(tester, 'db-csv-target-2', 'Skip');
+    await _tap(tester, 'db-csv-next');
+    expect(find.text('Step 4 of 5: Import options'), findsOneWidget);
+    expect(_key('db-csv-transaction'), findsNothing);
+    expect(_key('db-csv-no-transaction'), findsOneWidget);
+    expect(find.textContaining('is not undone if the import stops'), findsOneWidget);
+    await _tap(tester, 'db-csv-next');
+    expect(service.reviewed!.perBatch, isTrue);
+  });
+
   testWidgets('file → settings → mapping → options → review with passphrase → progress and summary', (tester) async {
     final service = _Service();
     addTearDown(service.progress.close);

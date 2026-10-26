@@ -331,6 +331,125 @@ impl Sqlite {
     }
 }
 
+/// Write transaction driven statement by statement (CSV import, FEAT-09):
+/// the session holds its driver lock for the whole import, so nothing else
+/// runs on the connection between the steps.
+impl Sqlite {
+    /// Runs `f` on the connection in a blocking task.
+    async fn with_connection<T: Send + 'static>(
+        &self,
+        f: impl FnOnce(&Connection, &AtomicU8) -> Result<T, DbError> + Send + 'static,
+    ) -> Result<T, DbError> {
+        let connection = Arc::clone(&self.connection);
+        let mode = Arc::clone(&self.mode);
+        tokio::task::spawn_blocking(move || {
+            let guard = connection.lock().unwrap_or_else(|e| e.into_inner());
+            let connection = guard.as_ref().ok_or(DbError::SessionClosed)?;
+            f(connection, &mode)
+        })
+        .await
+        .map_err(|_| DbError::SessionClosed)?
+    }
+
+    /// Opens a write transaction (writes allowed until [`Self::end_write`]).
+    pub(crate) fn begin_write(&mut self) -> futures::future::BoxFuture<'_, Result<(), DbError>> {
+        Box::pin(async move {
+            if self.read_only {
+                return Err(DbError::PolicyDenied);
+            }
+            self.with_connection(|connection, mode| {
+                internal(connection, mode, "PRAGMA query_only = 0;")?;
+                mode.store(MODE_WRITE, Ordering::Release);
+                internal(connection, mode, "BEGIN IMMEDIATE;")
+            })
+            .await
+        })
+    }
+
+    /// A fixed transaction-control statement (savepoints).
+    pub(crate) fn control(
+        &mut self,
+        sql: &'static str,
+    ) -> futures::future::BoxFuture<'_, Result<(), DbError>> {
+        Box::pin(async move {
+            self.with_connection(move |connection, mode| internal(connection, mode, sql))
+                .await
+        })
+    }
+
+    /// One guarded statement inside the open write transaction, within the
+    /// session timeout; returns the changed rows.
+    pub(crate) fn step<'a>(
+        &'a mut self,
+        sql: &'a str,
+        bindings: &'a [DbParameter],
+        cancel: CancellationToken,
+    ) -> futures::future::BoxFuture<'a, Result<u64, DbError>> {
+        let (sql, bindings) = (sql.to_owned(), bindings.to_vec());
+        Box::pin(async move {
+            let run = self.with_connection(move |connection, _| {
+                let mut statement = connection.prepare(&sql).map_err(classify)?;
+                if statement.parameter_count() != bindings.len() {
+                    return Err(DbError::InvalidRequest);
+                }
+                for (index, parameter) in bindings.iter().enumerate() {
+                    statement
+                        .raw_bind_parameter(index + 1, bind_value(&parameter.value)?)
+                        .map_err(classify)?;
+                }
+                statement.raw_execute().map_err(classify)?;
+                Ok(connection.changes())
+            });
+            let result = tokio::select! {
+                biased;
+                _ = cancel.cancelled() => Err(DbError::Cancelled),
+                result = tokio::time::timeout(self.timeout, run) => result.unwrap_or(Err(DbError::Timeout)),
+            };
+            if matches!(result, Err(DbError::Cancelled | DbError::Timeout)) {
+                self.interrupt.interrupt();
+            }
+            result
+        })
+    }
+
+    /// Commits or rolls back, then returns to read-only; a connection that
+    /// cannot return is closed rather than reused.
+    pub(crate) fn end_write(
+        &mut self,
+        commit: bool,
+    ) -> futures::future::BoxFuture<'_, Result<(), DbError>> {
+        Box::pin(async move {
+            let connection = Arc::clone(&self.connection);
+            let mode = Arc::clone(&self.mode);
+            tokio::task::spawn_blocking(move || {
+                let mut guard = connection.lock().unwrap_or_else(|e| e.into_inner());
+                let Some(c) = guard.as_ref() else {
+                    return Err(DbError::SessionClosed);
+                };
+                let mut result = if commit {
+                    internal(c, &mode, "COMMIT;")
+                } else {
+                    Ok(())
+                };
+                if !c.is_autocommit() {
+                    let rolled = internal(c, &mode, "ROLLBACK;");
+                    if result.is_ok() {
+                        result = rolled;
+                    }
+                }
+                let restored = internal(c, &mode, "PRAGMA query_only = 1;").is_ok();
+                mode.store(MODE_READ, Ordering::Release);
+                if !restored {
+                    guard.take();
+                }
+                result
+            })
+            .await
+            .map_err(|_| DbError::SessionClosed)?
+        })
+    }
+}
+
 impl Drop for Sqlite {
     fn drop(&mut self) {
         self.interrupt.interrupt();

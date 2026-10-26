@@ -462,7 +462,7 @@ Redis и MongoDB, а также на телефоне кнопки измене�
 
 ### Импорт из CSV
 
-Для PostgreSQL, MySQL и MariaDB на компьютере данные из CSV можно загрузить в
+Для PostgreSQL, MySQL, MariaDB, SQLite и Cassandra/ScyllaDB на компьютере данные из CSV можно загрузить в
 таблицу: «Импорт данных…» на панели результата (в таблицу результата, если
 это запрос к одной таблице с ключом) или «Импорт из CSV…» в меню таблицы в
 дереве. Нужна разрешённая запись (на проде — открытое окно записи). Мастер:
@@ -479,8 +479,8 @@ Redis и MongoDB, а также на телефоне кнопки измене�
    соответствие типам, проблемные значения показаны примерами, а
    обязательные столбцы без значений — предупреждением.
 4. **Параметры импорта** — добавлять; добавлять, пропуская существующие
-   ключи; добавлять или обновлять по ключу (PostgreSQL `ON CONFLICT`,
-   MySQL `ON DUPLICATE KEY UPDATE`); размер пакета; при ошибочной строке —
+   ключи; добавлять или обновлять по ключу (PostgreSQL и SQLite
+   `ON CONFLICT`, MySQL `ON DUPLICATE KEY UPDATE`); размер пакета; при ошибочной строке —
    остановить импорт или пропустить её и записать отчёт
    `<файл>.errors.csv`; одна транзакция на весь файл или по пакету;
    «Сначала удалить все строки таблицы» (выключено по умолчанию; это
@@ -495,10 +495,28 @@ Redis и MongoDB, а также на телефоне кнопки измене�
 задача экспорта). Пока идёт импорт, другие запросы этого подключения ждут.
 ClickHouse, MongoDB и Redis импорт из CSV пока не поддерживают.
 
-В меню схемы (PostgreSQL) или базы (MySQL) есть «Создать таблицу из CSV…»:
+Особенности движков:
+
+- **SQLite.** Файл на этом компьютере пишется так же, как PostgreSQL: одна
+  транзакция или по пакету, при пропуске ошибок — точки сохранения. Через
+  `sqlite3` на хосте (SSH, Docker, Kubernetes) каждый оператор фиксируется
+  сразу: варианта «одна транзакция на весь файл» нет, а остановленный
+  импорт оставляет уже записанные строки. «Добавлять или обновлять» требует
+  объявленного первичного ключа или уникального ограничения (у таблицы
+  только с `rowid` его нет).
+- **Cassandra и ScyllaDB.** Транзакций в CQL нет: каждая строка — отдельный
+  `INSERT`, импорт не откатывается. Обычный `INSERT` в CQL перезаписывает
+  строку с тем же ключом, поэтому «добавлять» и «добавлять, пропуская
+  существующие» пишут `INSERT … IF NOT EXISTS` (лёгкая транзакция: существующие
+  ключи считаются пропущенными), а «добавлять или обновлять» — простой
+  `INSERT`. «Сначала удалить все строки» — это `TRUNCATE`. Тип `counter`
+  не импортируется (счётчики меняются только через `UPDATE`).
+
+В меню схемы (PostgreSQL) или базы (MySQL, SQLite) есть «Создать таблицу из CSV…»:
 по первым строкам файла строится простой `CREATE TABLE` (целые, десятичные,
 даты, дата и время, да/нет, иначе текст), который можно скопировать или
-открыть в редакторе и выполнить через обычную проверку.
+открыть в редакторе и выполнить через обычную проверку. Для Cassandra этого
+пункта нет: таблице CQL нужен первичный ключ, а из файла его не вывести.
 
 ### Конструктор таблиц
 
@@ -507,7 +525,8 @@ ClickHouse, MongoDB и Redis импорт из CSV пока не поддерж�
 «Таблицы», а также кнопкой в заголовке рабочей области; для MongoDB пункт
 называется «Создать коллекцию…» и доступен у базы данных подключения.
 «Изменить структуру…» в меню таблицы загружает её текущую структуру. Для Redis
-конструктора нет.
+конструктора нет; для SQLite и Cassandra/ScyllaDB его пока нет — таблицы
+создаются и меняются через редактор SQL/CQL.
 
 Конструктор открывается вкладкой рядом с вкладками редактора: имя, схема или
 база данных, комментарий и разделы «Столбцы», «Ключи», «Внешние ключи»,
@@ -997,7 +1016,7 @@ to the current editor tab. Running again, refreshing, switching result sets,
 closing the tab or leaving the connection with pending changes asks whether to
 save, discard or stay.
 
-**CSV import.** On desktop, PostgreSQL, MySQL and MariaDB tables can be
+**CSV import.** On desktop, PostgreSQL, MySQL, MariaDB, SQLite and Cassandra/ScyllaDB tables can be
 loaded from CSV: **Import data…** on the result toolbar (into the result's
 table when it is a single keyed table) or **Import from CSV…** on a table in
 the tree. Writes must be allowed (production: an open write window). The
@@ -1011,7 +1030,7 @@ column goes to a table column (matched by name, ignoring case) or is
 skipped, and the first 1,000 rows are checked against the column types with
 sample bad values and a warning for required columns without values;
 **options** — insert, insert skipping existing keys, or insert-or-update by
-key (PostgreSQL `ON CONFLICT`, MySQL `ON DUPLICATE KEY UPDATE`), batch size,
+key (PostgreSQL and SQLite `ON CONFLICT`, MySQL `ON DUPLICATE KEY UPDATE`), batch size,
 stop on a bad row or skip it into `<file>.errors.csv`, one transaction for
 the whole file or one per batch, and “Delete all rows of the table first”
 (off by default; a `DELETE FROM` in the same transaction, shown in the
@@ -1022,10 +1041,23 @@ the open transaction back, ending with imported / skipped / failed counts
 and the report. Formula-looking values are imported as they are (escaping
 them is an export concern). Other queries of the connection wait while an
 import runs. ClickHouse, MongoDB and Redis do not import CSV yet.
-**Create table from CSV…** on a schema (PostgreSQL) or database (MySQL)
-builds a simple `CREATE TABLE` typed from the file's first rows (whole
-numbers, decimals, dates, timestamps, true/false, else text) to copy or open
-in the editor and run through the usual review.
+**SQLite:** a file on this computer is written like PostgreSQL (one
+transaction or one per batch, savepoints when skipping bad rows). Through
+`sqlite3` on a host (SSH, Docker, Kubernetes) every statement commits on its
+own, so there is no whole-file transaction and a stopped import keeps the rows
+already written. Insert-or-update needs a declared primary key or unique
+constraint (a `rowid`-only table has none). **Cassandra and ScyllaDB:** CQL
+has no transactions — every row is its own `INSERT` and nothing is rolled
+back. A plain CQL `INSERT` overwrites a row with the same key, so insert and
+insert-skipping-existing write `INSERT … IF NOT EXISTS` (a lightweight
+transaction; existing keys count as skipped) and insert-or-update writes a
+plain `INSERT`. “Delete all rows first” is a `TRUNCATE`. `counter` columns
+are not imported (counters change only through `UPDATE`).
+**Create table from CSV…** on a schema (PostgreSQL) or database (MySQL,
+SQLite) builds a simple `CREATE TABLE` typed from the file's first rows
+(whole numbers, decimals, dates, timestamps, true/false, else text) to copy
+or open in the editor and run through the usual review. Cassandra has no
+such item: a CQL table needs a primary key, which a file does not give.
 
 History is kept per connection — text, time, duration, rows and error, never
 parameter values or data — with filters for successful, failed and favourite
@@ -1038,7 +1070,8 @@ Tables can be created and changed without writing SQL. «Create table…» is in
 the menu of a schema (PostgreSQL), a database (MySQL/MariaDB, ClickHouse) and
 the Tables folder, and in the workspace header; for MongoDB it is «Create
 collection…» on the connection's database. «Edit structure…» on a table loads
-its current structure. Redis has no designer.
+its current structure. Redis has no designer; SQLite and Cassandra/ScyllaDB
+have none yet — their tables are created and changed in the SQL/CQL editor.
 
 The designer opens as a tab next to the editor tabs: name, schema or
 database, comment, and the sections Columns, Keys, Foreign keys, Indexes,

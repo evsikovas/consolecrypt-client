@@ -634,6 +634,37 @@ impl SqliteCli {
         Ok(output)
     }
 
+    /// One guarded write (CSV import, FEAT-09). The program runs each
+    /// statement on its own and commits it, so a statement is atomic but a
+    /// batch of them is not; returns the changed rows.
+    pub(crate) async fn step(
+        &mut self,
+        sql: &str,
+        bindings: &[DbParameter],
+        cancel: CancellationToken,
+    ) -> Result<u64, DbError> {
+        if self.read_only {
+            return Err(DbError::PolicyDenied);
+        }
+        let output = self.execute(sql, bindings, true, cancel).await?;
+        let changes_header = self.changes_header();
+        let mut results = if self.json {
+            parse_json(&output.stdout)?
+        } else {
+            parse_csv(&output.stdout, &self.null_value(), Some(&changes_header))?
+        };
+        let changes = results.pop().ok_or(DbError::QueryFailed)?;
+        if changes.columns != [changes_header] {
+            return Err(DbError::QueryFailed);
+        }
+        match changes.rows.first().and_then(|row| row.first()) {
+            Some(DbCell::Int(value) | DbCell::Text(value)) => {
+                value.parse().map_err(|_| DbError::QueryFailed)
+            }
+            _ => Err(DbError::QueryFailed),
+        }
+    }
+
     /// The raw output of a read (the plan drawing of EXPLAIN QUERY PLAN).
     pub(crate) async fn raw(
         &self,

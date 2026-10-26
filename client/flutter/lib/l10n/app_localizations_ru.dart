@@ -12335,6 +12335,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbCsvTruncateHelp => 'Выполняется DELETE FROM в транзакции импорта; он виден при проверке.';
 
   @override
+  String get dbCsvNoTransaction =>
+      'Здесь каждая команда фиксируется сразу (CQL или sqlite3 на хосте): при остановке импорта уже записанные строки остаются.';
+
+  @override
+  String get dbCsvTruncateHelpNoTransaction =>
+      'Выполняется до первой строки и не отменяется, если импорт остановится; он виден при проверке.';
+
+  @override
   String get dbCsvImport => 'Проверить и импортировать…';
 
   @override

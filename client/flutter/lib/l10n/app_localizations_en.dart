@@ -12039,6 +12039,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dbCsvTruncateHelp => 'Runs DELETE FROM in the import transaction; the review shows it.';
 
   @override
+  String get dbCsvNoTransaction =>
+      'Every statement commits on its own here (CQL, or sqlite3 on a host): a stopped import keeps the rows already written.';
+
+  @override
+  String get dbCsvTruncateHelpNoTransaction =>
+      'Runs before the first row and is not undone if the import stops; the review shows it.';
+
+  @override
   String get dbCsvImport => 'Review and import…';
 
   @override
