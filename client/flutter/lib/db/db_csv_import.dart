@@ -235,13 +235,37 @@ abstract interface class DbCsvImportService implements DbRowEditService {
 }
 
 /// Engines the CSV import writes to.
-bool dbCsvImportSupported(DbEngine engine) =>
-    const {DbEngine.postgresql, DbEngine.mysql, DbEngine.mariadb, DbEngine.sqlite, DbEngine.cassandra}.contains(engine);
+bool dbCsvImportSupported(DbEngine engine) => const {
+  DbEngine.postgresql,
+  DbEngine.mysql,
+  DbEngine.mariadb,
+  DbEngine.sqlite,
+  DbEngine.cassandra,
+  DbEngine.clickhouse,
+  DbEngine.mongodb,
+  DbEngine.redis,
+}.contains(engine);
+
+/// A Redis hash field a CSV column may create: one word, no quotes,
+/// backslashes or placeholder braces; `key` and `value` are taken.
+bool dbCsvRedisField(String name) =>
+    name.isNotEmpty &&
+    name.length <= 256 &&
+    name != 'key' &&
+    name != 'value' &&
+    !name.contains('{{') &&
+    !name.contains('}}') &&
+    !name.contains("'") &&
+    !name.contains(RegExp(r'[\s"\\\x00-\x1f]'));
+
+/// A MongoDB field a CSV column may create: no `$` in front, no `.` path.
+bool dbCsvMongoField(String name) =>
+    name.isNotEmpty && name.length <= 256 && !name.startsWith(r'$') && !name.contains('.') && !name.contains('\x00');
 
 /// The import can run in one transaction for the whole file: not in CQL, and
 /// not through `sqlite3` on a host, which commits every statement.
 bool dbCsvWholeTransaction(DbConnection connection) => switch (connection.engine) {
-  DbEngine.cassandra => false,
+  DbEngine.cassandra || DbEngine.clickhouse || DbEngine.mongodb || DbEngine.redis => false,
   DbEngine.sqlite => connection.route.kind == DbRouteKind.direct,
   _ => true,
 };
@@ -363,11 +387,36 @@ class _DbCsvImportDialogState extends ConsumerState<DbCsvImportDialog> {
     _debounce = Timer(const Duration(milliseconds: 300), () => unawaited(_loadPreview()));
   }
 
-  /// Matches file columns to table columns by name, ignoring case and `_`.
+  bool get _mongo => widget.session.engine == DbEngine.mongodb;
+  bool get _redis => widget.session.engine == DbEngine.redis;
+
+  /// Whether a file column may create a target of its own name: a MongoDB
+  /// field or a Redis hash field.
+  bool _newTarget(String name, List<DbEditColumn> columns) =>
+      (_mongo ? dbCsvMongoField(name) : _redis && dbCsvRedisField(name)) && !columns.any((c) => c.name == name);
+
+  /// Matches file columns to table columns by name, ignoring case and `_`;
+  /// in MongoDB the others become new fields of the same name.
   void _autoMap(DbCsvPreview preview) {
     final columns = _columns;
     if (columns == null) {
       _targets = List.filled(preview.columns.length, null);
+      return;
+    }
+    if (_redis) {
+      // The first column is the key; with one more it is the value (a
+      // string), with several they are hash fields of their names.
+      final names = preview.columns;
+      _targets = [
+        for (var i = 0; i < names.length; i++)
+          i == 0
+              ? 'key'
+              : names.length == 2
+              ? 'value'
+              : dbCsvRedisField(names[i])
+              ? names[i]
+              : null,
+      ];
       return;
     }
     String norm(String s) => s.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '');
@@ -378,6 +427,7 @@ class _DbCsvImportDialogState extends ConsumerState<DbCsvImportDialog> {
             .where((c) => !c.generated && norm(c.name) == norm(name) && !used.contains(c.name))
             .firstOrNull) {
           final DbEditColumn column => (used..add(column.name)).isEmpty ? null : column.name,
+          null when _mongo && _newTarget(name, columns) => name,
           null => null,
         },
     ];
@@ -427,7 +477,8 @@ class _DbCsvImportDialogState extends ConsumerState<DbCsvImportDialog> {
     }
   }
 
-  bool get _hasKey => _columns?.any((c) => c.key) ?? false;
+  /// Skip-existing and upsert match on a key: in MongoDB `_id` must be mapped.
+  bool get _hasKey => _mongo ? _targets.contains('_id') : _columns?.any((c) => c.key) ?? false;
 
   Future<void> _import() async {
     final path = _path, l = context.l10n;
@@ -739,7 +790,13 @@ class _DbCsvImportDialogState extends ConsumerState<DbCsvImportDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l.dbCsvMapHelp),
+        Text(
+          _mongo
+              ? l.dbCsvMapHelpMongo
+              : _redis
+              ? l.dbCsvMapHelpRedis
+              : l.dbCsvMapHelp,
+        ),
         const SizedBox(height: GlassSpacing.s8),
         if (_duplicateTargets) InfoBanner(tone: BannerTone.danger, message: l.dbCsvDuplicateTarget),
         if (missing.isNotEmpty)
@@ -796,6 +853,8 @@ class _DbCsvImportDialogState extends ConsumerState<DbCsvImportDialog> {
                               value: c.name,
                               label: c.typeName.isEmpty ? c.name : '${c.name} · ${c.typeName}', // l10n-ignore
                             ),
+                          if (_newTarget(preview.columns[i], columns))
+                            GlassSelectItem(value: preview.columns[i], label: l.dbCsvNewField(preview.columns[i])),
                         ],
                         onChanged: (v) {
                           setState(() => _targets[i] = v.isEmpty ? null : v);
@@ -844,7 +903,12 @@ class _DbCsvImportDialogState extends ConsumerState<DbCsvImportDialog> {
               onChanged: (v) => setState(() => _mode = v),
             ),
           ),
-          if (!_hasKey) _caption(l.dbCsvNoKey),
+          if (!_hasKey)
+            _caption(switch (widget.session.engine) {
+              DbEngine.clickhouse => l.dbCsvNoKeyClickhouse,
+              DbEngine.mongodb => l.dbCsvNoKeyMongo,
+              _ => l.dbCsvNoKey,
+            }),
           const SizedBox(height: GlassSpacing.s12),
           Row(
             children: [
@@ -900,15 +964,20 @@ class _DbCsvImportDialogState extends ConsumerState<DbCsvImportDialog> {
               style: TextStyle(color: tokens.palette.tertiary),
             ),
           const SizedBox(height: GlassSpacing.s8),
-          CheckboxListTile(
-            key: const ValueKey('db-csv-truncate'),
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            title: Text(l.dbCsvTruncate, style: TextStyle(color: tokens.palette.danger)),
-            subtitle: Text(widget.wholeTransaction ? l.dbCsvTruncateHelp : l.dbCsvTruncateHelpNoTransaction),
-            value: _truncate,
-            onChanged: (v) => setState(() => _truncate = v ?? false),
-          ),
+          // Redis never offers FLUSHDB.
+          if (!_redis)
+            CheckboxListTile(
+              key: const ValueKey('db-csv-truncate'),
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(
+                _mongo ? l.dbCsvTruncateDocuments : l.dbCsvTruncate,
+                style: TextStyle(color: tokens.palette.danger),
+              ),
+              subtitle: Text(widget.wholeTransaction ? l.dbCsvTruncateHelp : l.dbCsvTruncateHelpNoTransaction),
+              value: _truncate,
+              onChanged: (v) => setState(() => _truncate = v ?? false),
+            ),
         ],
       ),
     );

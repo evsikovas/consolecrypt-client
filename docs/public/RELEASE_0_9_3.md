@@ -61,6 +61,10 @@
   через хранилище» переносит такое подключение с паролем в хранилище, если все устройства
   аккаунта работают на 0.9.2 или новее (с сервером 0.2.4 приложение видит их версии и
   перечислит те, что нужно обновить). Файл SQLite на этом компьютере остаётся только здесь.
+- **Импорт CSV в ClickHouse, MongoDB и Redis.** ClickHouse — пакетами `INSERT` (и
+  «Создать таблицу из CSV…» с MergeTree); MongoDB — в коллекцию, с новыми полями по
+  заголовкам, пропуском и обновлением по `_id`; Redis — в базу или папку ключей, строками
+  (`SET`) или хешами (`HSET`).
 - **Конструктор таблиц.** Комментарии с апострофом; в PostgreSQL — снятие identity,
   смена ALWAYS ↔ BY DEFAULT и UNLOGGED; в ClickHouse — переименование таблицы, снятие
   значения по умолчанию и комментария столбца.
@@ -188,6 +192,10 @@ admins and sends invitations only to verified addresses.
   moves such a connection and its password into the vault once every device of the account
   runs 0.9.2 or later (with server 0.2.4 the app sees their versions and lists the ones to
   update). An SQLite file on this computer stays here.
+- **CSV import into ClickHouse, MongoDB and Redis.** ClickHouse in `INSERT` batches (and
+  “Create table from CSV…” with MergeTree); MongoDB into a collection, with new fields from
+  the headers, skip and update by `_id`; Redis into a database or key folder, as strings
+  (`SET`) or hashes (`HSET`).
 - **Table designer.** Comments with an apostrophe; in PostgreSQL dropping an identity,
   switching ALWAYS ↔ BY DEFAULT and UNLOGGED; in ClickHouse renaming the table and removing
   a column default or comment.

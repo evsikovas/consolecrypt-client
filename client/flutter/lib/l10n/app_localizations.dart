@@ -21140,6 +21140,42 @@ abstract class AppLocalizations {
   /// **'Insert or update by key'**
   String get dbCsvModeUpsert;
 
+  /// CSV import options: ClickHouse supports only plain inserts
+  ///
+  /// In en, this message translates to:
+  /// **'ClickHouse sorting keys are not unique: rows can only be added.'**
+  String get dbCsvNoKeyClickhouse;
+
+  /// CSV import options: MongoDB skip/upsert need _id
+  ///
+  /// In en, this message translates to:
+  /// **'Map a column to _id to skip or replace existing documents.'**
+  String get dbCsvNoKeyMongo;
+
+  /// CSV import option for MongoDB
+  ///
+  /// In en, this message translates to:
+  /// **'Delete every document of the collection first'**
+  String get dbCsvTruncateDocuments;
+
+  /// CSV import mapping help for MongoDB
+  ///
+  /// In en, this message translates to:
+  /// **'Each file column goes to a field or is skipped; a column can also create a new field of its name, typed by each value (number, true/false, date or text). The first 1000 rows are checked.'**
+  String get dbCsvMapHelpMongo;
+
+  /// CSV import mapping help for Redis
+  ///
+  /// In en, this message translates to:
+  /// **'Map one column to key (the folder\'s prefix goes in front). Map one more to value for a string, or several to hash fields of their names (empty ones are left out).'**
+  String get dbCsvMapHelpRedis;
+
+  /// CSV import mapping: create a MongoDB field named after the column
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · new field'**
+  String dbCsvNewField(String name);
+
   /// CSV options note
   ///
   /// In en, this message translates to:

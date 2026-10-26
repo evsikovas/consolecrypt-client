@@ -19,6 +19,12 @@ import 'package:material_ui/material_ui.dart';
 import '../helpers/test_app.dart';
 
 const _table = DbObjectRef(database: '', schema: 'public', kind: DbObjectKind.table, name: 'items');
+const _columns = [
+  DbEditColumn(name: 'id', typeName: 'integer', nullable: false, key: true),
+  DbEditColumn(name: 'name', typeName: 'text', nullable: false),
+  DbEditColumn(name: 'amount', typeName: 'integer'),
+  DbEditColumn(name: 'total', typeName: 'integer', generated: true),
+];
 const _session = DbSessionInfo(
   id: 'session',
   connectionId: 'connection',
@@ -39,6 +45,8 @@ class _Files implements FileDialogService {
 }
 
 class _Service implements DbCsvImportService {
+  _Service({this.columns = _columns});
+  final List<DbEditColumn> columns;
   final previews = <DbCsvOptions>[];
   final checks = <List<DbCsvMapping>>[];
   final discarded = <String>[], started = <String>[];
@@ -61,12 +69,7 @@ class _Service implements DbCsvImportService {
   }
 
   @override
-  Future<List<DbEditColumn>> editColumns(String sessionId, DbObjectRef table) async => const [
-    DbEditColumn(name: 'id', typeName: 'integer', nullable: false, key: true),
-    DbEditColumn(name: 'name', typeName: 'text', nullable: false),
-    DbEditColumn(name: 'amount', typeName: 'integer'),
-    DbEditColumn(name: 'total', typeName: 'integer', generated: true),
-  ];
+  Future<List<DbEditColumn>> editColumns(String sessionId, DbObjectRef table) async => columns;
 
   @override
   Future<List<DbCsvCheck>> csvCheck(
@@ -118,7 +121,13 @@ class _Service implements DbCsvImportService {
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
-Future<bool?> Function() _pump(WidgetTester tester, _Service service, String path, {bool wholeTransaction = true}) {
+Future<bool?> Function() _pump(
+  WidgetTester tester,
+  _Service service,
+  String path, {
+  bool wholeTransaction = true,
+  DbEngine engine = DbEngine.postgresql,
+}) {
   bool? closed;
   return () async {
     final backend = testBackend();
@@ -144,7 +153,15 @@ Future<bool?> Function() _pump(WidgetTester tester, _Service service, String pat
                   context: context,
                   builder: (_) => DbCsvImportDialog(
                     service: service,
-                    session: _session,
+                    session: DbSessionInfo(
+                      id: _session.id,
+                      connectionId: _session.connectionId,
+                      engine: engine,
+                      serverVersion: _session.serverVersion,
+                      production: false,
+                      readOnly: false,
+                      serverReadOnly: DbServerReadOnly.unverified,
+                    ),
                     table: _table,
                     wholeTransaction: wholeTransaction,
                   ),
@@ -186,14 +203,87 @@ void main() {
       options: DbDriverOptions(engine: engine),
       route: DbRoute(kind: route, reference: route == DbRouteKind.direct ? null : 'host'),
     );
-    for (final engine in [DbEngine.postgresql, DbEngine.mysql, DbEngine.mariadb, DbEngine.sqlite, DbEngine.cassandra]) {
+    for (final engine in [
+      DbEngine.postgresql,
+      DbEngine.mysql,
+      DbEngine.mariadb,
+      DbEngine.sqlite,
+      DbEngine.cassandra,
+      DbEngine.clickhouse,
+      DbEngine.mongodb,
+      DbEngine.redis,
+    ]) {
       expect(dbCsvImportSupported(engine), isTrue, reason: engine.name);
     }
-    expect(dbCsvImportSupported(DbEngine.mongodb), isFalse);
+    for (final engine in [DbEngine.clickhouse, DbEngine.mongodb, DbEngine.redis]) {
+      expect(dbCsvWholeTransaction(connection(engine)), isFalse, reason: engine.name);
+    }
+    expect(dbCsvMongoField('price'), isTrue);
+    expect(dbCsvMongoField(r'$where'), isFalse);
+    expect(dbCsvMongoField('a.b'), isFalse);
+    expect(dbCsvRedisField('name'), isTrue);
+    for (final bad in ['a b', 'key', 'value', 'q"', "q'", r'b\s', '{{x}}']) {
+      expect(dbCsvRedisField(bad), isFalse, reason: bad);
+    }
     expect(dbCsvWholeTransaction(connection(DbEngine.postgresql)), isTrue);
     expect(dbCsvWholeTransaction(connection(DbEngine.sqlite)), isTrue);
     expect(dbCsvWholeTransaction(connection(DbEngine.sqlite, route: DbRouteKind.ssh)), isFalse);
     expect(dbCsvWholeTransaction(connection(DbEngine.cassandra)), isFalse);
+  });
+
+  testWidgets('ClickHouse adds rows only; MongoDB maps new fields and keys on _id', (tester) async {
+    final house = _Service(
+      columns: const [
+        DbEditColumn(name: 'id', typeName: 'UInt64', nullable: false),
+        DbEditColumn(name: 'name', typeName: 'String', nullable: false),
+        DbEditColumn(name: 'amount', typeName: 'Nullable(Int64)'),
+      ],
+    );
+    await _pump(tester, house, '/data/items.csv', wholeTransaction: false, engine: DbEngine.clickhouse)();
+    await _tap(tester, 'db-csv-choose');
+    await _tap(tester, 'db-csv-next');
+    await _tap(tester, 'db-csv-next');
+    await _tap(tester, 'db-csv-next');
+    expect(find.textContaining('ClickHouse sorting keys are not unique'), findsOneWidget);
+    await _tap(tester, 'db-csv-mode');
+    expect(find.text('Insert or update by key'), findsNothing);
+    expect(find.text('Insert, skip existing keys'), findsNothing);
+  });
+
+  testWidgets('MongoDB: unmatched columns become new fields; _id enables skip and replace', (tester) async {
+    final service = _Service(
+      columns: const [
+        DbEditColumn(name: '_id', typeName: 'objectId', nullable: false, key: true),
+        DbEditColumn(name: 'name', typeName: 'string'),
+      ],
+    );
+    await _pump(tester, service, '/data/items.csv', wholeTransaction: false, engine: DbEngine.mongodb)();
+    await _tap(tester, 'db-csv-choose');
+    await _tap(tester, 'db-csv-next');
+    await _tap(tester, 'db-csv-next');
+    expect(find.textContaining('create a new field'), findsOneWidget);
+    expect(service.checks.last.map((m) => m.target), ['_id', 'name', 'amount']);
+    expect(find.text('amount · new field'), findsOneWidget);
+    await _tap(tester, 'db-csv-next');
+    expect(find.text('Delete every document of the collection first'), findsOneWidget);
+    expect(find.textContaining('Map a column to _id'), findsNothing);
+  });
+
+  testWidgets('Redis: the first column is the key, the others hash fields; no FLUSHDB', (tester) async {
+    final service = _Service(
+      columns: const [
+        DbEditColumn(name: 'key', typeName: 'key', nullable: false, key: true),
+        DbEditColumn(name: 'value', typeName: 'string', nullable: false),
+      ],
+    );
+    await _pump(tester, service, '/data/items.csv', wholeTransaction: false, engine: DbEngine.redis)();
+    await _tap(tester, 'db-csv-choose');
+    await _tap(tester, 'db-csv-next');
+    await _tap(tester, 'db-csv-next');
+    expect(find.textContaining('Map one column to key'), findsOneWidget);
+    expect(service.checks.last.map((m) => m.target), ['key', 'Name', 'amount']);
+    await _tap(tester, 'db-csv-next');
+    expect(find.textContaining('Delete every'), findsNothing);
   });
 
   testWidgets('without a transaction the import commits per batch and says so', (tester) async {

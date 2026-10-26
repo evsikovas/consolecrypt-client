@@ -12021,6 +12021,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dbCsvModeUpsert => 'Insert or update by key';
 
   @override
+  String get dbCsvNoKeyClickhouse => 'ClickHouse sorting keys are not unique: rows can only be added.';
+
+  @override
+  String get dbCsvNoKeyMongo => 'Map a column to _id to skip or replace existing documents.';
+
+  @override
+  String get dbCsvTruncateDocuments => 'Delete every document of the collection first';
+
+  @override
+  String get dbCsvMapHelpMongo =>
+      'Each file column goes to a field or is skipped; a column can also create a new field of its name, typed by each value (number, true/false, date or text). The first 1000 rows are checked.';
+
+  @override
+  String get dbCsvMapHelpRedis =>
+      'Map one column to key (the folder\'s prefix goes in front). Map one more to value for a string, or several to hash fields of their names (empty ones are left out).';
+
+  @override
+  String dbCsvNewField(String name) {
+    return '$name · new field';
+  }
+
+  @override
   String get dbCsvNoKey => 'The table has no key: rows can only be inserted.';
 
   @override

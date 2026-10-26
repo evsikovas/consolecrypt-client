@@ -16424,6 +16424,35 @@
   "@dbCsvModeUpsert": {
     "description": "CSV insert mode"
   },
+  "dbCsvNoKeyClickhouse": "ClickHouse sorting keys are not unique: rows can only be added.",
+  "@dbCsvNoKeyClickhouse": {
+    "description": "CSV import options: ClickHouse supports only plain inserts"
+  },
+  "dbCsvNoKeyMongo": "Map a column to _id to skip or replace existing documents.",
+  "@dbCsvNoKeyMongo": {
+    "description": "CSV import options: MongoDB skip/upsert need _id"
+  },
+  "dbCsvTruncateDocuments": "Delete every document of the collection first",
+  "@dbCsvTruncateDocuments": {
+    "description": "CSV import option for MongoDB"
+  },
+  "dbCsvMapHelpMongo": "Each file column goes to a field or is skipped; a column can also create a new field of its name, typed by each value (number, true/false, date or text). The first 1000 rows are checked.",
+  "@dbCsvMapHelpMongo": {
+    "description": "CSV import mapping help for MongoDB"
+  },
+  "dbCsvMapHelpRedis": "Map one column to key (the folder's prefix goes in front). Map one more to value for a string, or several to hash fields of their names (empty ones are left out).",
+  "@dbCsvMapHelpRedis": {
+    "description": "CSV import mapping help for Redis"
+  },
+  "dbCsvNewField": "{name} · new field",
+  "@dbCsvNewField": {
+    "description": "CSV import mapping: create a MongoDB field named after the column",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "dbCsvNoKey": "The table has no key: rows can only be inserted.",
   "@dbCsvNoKey": {
     "description": "CSV options note"

@@ -106,7 +106,10 @@ impl AppCore {
     ) -> AppResult<Vec<CsvColumnCheck>> {
         let (_, unlocked) = self.unlocked().await?;
         let session = unlocked.db.session(&session_id)?;
-        let columns = session.edit_columns(&table).await.map_err(db_error)?;
+        let columns = session
+            .import_columns(&table, &mapping)
+            .await
+            .map_err(db_error)?;
         let path = file(&path)?;
         blocking(move || csv_import::check(&path, &options, &mapping, &columns)).await
     }

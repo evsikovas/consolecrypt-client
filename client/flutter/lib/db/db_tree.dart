@@ -497,11 +497,14 @@ class _DbObjectTreeState extends ConsumerState<DbObjectTree> {
       if (object.kind == DbObjectKind.collection)
         GlassMenuItem(value: 'sample', label: l.dbSampleSchema, icon: Icons.schema_outlined),
     ],
-    if (widget.onImportCsv != null && object.kind == DbObjectKind.table)
+    if (widget.onImportCsv != null &&
+        (object.kind == DbObjectKind.table ||
+            (object.kind == DbObjectKind.collection && widget.session.engine == DbEngine.mongodb) ||
+            (object.kind == DbObjectKind.redisDatabase && widget.session.engine == DbEngine.redis)))
       GlassMenuItem(value: 'import-csv', label: l.dbImportCsv, icon: Icons.file_upload_outlined),
     // A CQL table needs a primary key, which a file does not give.
     if (widget.onCreateFromCsv != null &&
-        widget.session.engine != DbEngine.cassandra &&
+        !const {DbEngine.cassandra, DbEngine.mongodb, DbEngine.redis}.contains(widget.session.engine) &&
         (object.kind == DbObjectKind.schema ||
             (object.kind == DbObjectKind.database && widget.session.engine != DbEngine.postgresql)))
       GlassMenuItem(value: 'create-from-csv', label: l.dbCsvCreateTable, icon: Icons.table_chart_outlined),

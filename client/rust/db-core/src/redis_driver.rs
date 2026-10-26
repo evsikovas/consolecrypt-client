@@ -200,6 +200,48 @@ impl Redis {
         })
     }
 
+    /// One CSV import write (LIM-05) in database `database`: whether it
+    /// wrote (`OK`, a count), or found the key (`SET … NX` → nil) and how
+    /// many it counted (`EXISTS`).
+    pub(crate) async fn import_write(
+        &mut self,
+        database: &str,
+        argv: &[Vec<u8>],
+        cancel: &CancellationToken,
+    ) -> Result<Option<i64>, DbError> {
+        let db = database_index(database)?;
+        let mut command = redis::Cmd::new();
+        for argument in argv {
+            command.arg(argument.as_slice());
+        }
+        let mut live = self.connection(db).await?;
+        let operation = async move {
+            command
+                .query_async::<Value>(&mut live)
+                .await
+                .map_err(classify)
+        };
+        let reply = tokio::select! {
+            biased;
+            _ = cancel.cancelled() => Err(DbError::Cancelled),
+            reply = tokio::time::timeout(self.timeout, operation) => reply.unwrap_or(Err(DbError::Timeout)),
+        };
+        match reply {
+            Ok(Value::Nil) => Ok(None),
+            Ok(Value::Int(count)) => Ok(Some(count)),
+            Ok(_) => Ok(Some(1)),
+            Err(error) => {
+                if matches!(
+                    error,
+                    DbError::Cancelled | DbError::Timeout | DbError::ConnectionFailed
+                ) {
+                    self.query = None;
+                }
+                Err(error)
+            }
+        }
+    }
+
     /// Structure below `parent`: databases at the top, then the key tree of
     /// one database grouped by `:`, loaded with SCAN (never KEYS) in pages.
     pub fn browse<'a>(

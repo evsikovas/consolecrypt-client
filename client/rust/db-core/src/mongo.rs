@@ -668,6 +668,61 @@ impl Mongo {
         })
     }
 
+    /// One CSV import write (LIM-05): an `insert` or `update` with
+    /// `ordered: false` into `database`. Answers how many documents were
+    /// written and, instead of failing, the refused ones by index with
+    /// their error code.
+    pub(crate) async fn import_write(
+        &self,
+        database: &str,
+        command: &Value,
+        order: &KeyOrder,
+        cancel: &CancellationToken,
+    ) -> Result<(u64, Vec<(usize, i32)>), DbError> {
+        let mut document = command_document(command, order)?;
+        let operation = operation(&document)?;
+        if !matches!(operation, "insert" | "update" | "delete") || database.is_empty() {
+            return Err(DbError::InvalidRequest);
+        }
+        limit_time(&mut document, self.time_limit_ms());
+        let target = self.client.database(database);
+        let work = bounded(
+            self.round_trip(),
+            target
+                .run_command(document)
+                .selection_criteria(SelectionCriteria::ReadPreference(ReadPreference::Primary))
+                .into_future(),
+        );
+        let reply = tokio::select! {
+            biased;
+            _ = cancel.cancelled() => return Err(DbError::Cancelled),
+            reply = work => reply?,
+        };
+        if reply.contains_key("writeConcernError") {
+            return Err(DbError::QueryFailed);
+        }
+        let mut refused = Vec::new();
+        if let Ok(errors) = reply.get_array("writeErrors") {
+            for error in errors {
+                let Bson::Document(error) = error else {
+                    return Err(DbError::QueryFailed);
+                };
+                let index = match error.get("index") {
+                    Some(Bson::Int32(index)) => usize::try_from(*index).ok(),
+                    Some(Bson::Int64(index)) => usize::try_from(*index).ok(),
+                    _ => None,
+                }
+                .ok_or(DbError::QueryFailed)?;
+                let code = match error.get("code") {
+                    Some(Bson::Int32(code)) => *code,
+                    _ => 0,
+                };
+                refused.push((index, code));
+            }
+        }
+        Ok((affected(operation, &reply).unwrap_or(0), refused))
+    }
+
     /// The MongoDB "DDL": collection/view options and indexes as pretty
     /// relaxed Extended JSON. A database lists its collections; an index its
     /// specification.
