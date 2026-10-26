@@ -922,6 +922,10 @@ impl State {
             Some(v) if Self::role_in(v, p.user_id).is_some() && v.state != VaultState::Deleted => {
                 Ok(v)
             }
+            // Like the server: a deleted vault answers 410 to its members.
+            Some(v) if Self::role_in(v, p.user_id).is_some() => {
+                Err(err(ErrorCode::Gone, "vault was deleted"))
+            }
             _ => Err(not_found()),
         }
     }

@@ -201,15 +201,10 @@ impl SyncEngine {
             };
             let resp = match self.inner.api.changes(&q).await {
                 Ok(r) => r,
-                // TODO(server): a tombstone horizon (410 on `changes`) would
-                // make the full listing impossible — ADR-0202 rules it out in
-                // v1; next: if compaction is ever introduced, fall back to a
-                // snapshot listing and probe unlisted objects with creates.
-                Err(e) if e.is_code(ErrorCode::Gone) => {
-                    return Err(SyncError::MalformedResponse(
-                        "server refused the full listing needed for rollback recovery (410)".into(),
-                    ))
-                }
+                // The change log is never compacted (ADR-0202), so 410 here
+                // means the vault was deleted: sync stops (VaultGone). Should
+                // a tombstone horizon ever appear, recovery must list from a
+                // snapshot and probe unlisted objects with creates instead.
                 Err(e) => return Err(e.into()),
             };
             let epoch_moved = matches!((rec.epoch, resp.epoch), (Some(a), Some(b)) if a != b);

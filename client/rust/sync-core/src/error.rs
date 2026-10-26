@@ -112,7 +112,12 @@ impl SyncError {
                     ErrorCode::DeviceNotTrusted | ErrorCode::Forbidden => {
                         Disposition::Stop(StopReason::NotTrusted)
                     }
-                    ErrorCode::NotFound => Disposition::Stop(StopReason::VaultGone),
+                    // The server answers 410 for a deleted vault (it never
+                    // compacts the change log, ADR-0202); a re-snapshot that
+                    // still gets 410 ends here.
+                    ErrorCode::NotFound | ErrorCode::Gone => {
+                        Disposition::Stop(StopReason::VaultGone)
+                    }
                     _ => Disposition::Retry {
                         offline: false,
                         after: e.retry_after(),
