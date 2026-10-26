@@ -294,6 +294,7 @@ impl AppCore {
     /// leftover) and its transfer jobs cancelled.
     pub async fn sftp_close(&self, sftp_id: String) -> AppResult<()> {
         let (_, u) = self.unlocked().await?;
+        u.edit.forget_pooled(&sftp_id);
         u.edit.stop_for_sftp(&sftp_id).await;
         u.transfers.cancel_for_session(&sftp_id);
         u.ssh.sftp_close(&sftp_id).await

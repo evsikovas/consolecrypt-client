@@ -93,6 +93,10 @@ Future<String> editResume({required String sessionId, required String sftpId, St
     RustLib.instance.api.crateApiSftpEditResume(sessionId: sessionId, sftpId: sftpId, openWithJson: openWithJson);
 
 /// Securely remove one leftover.
+/// An SFTP session to a host for continuing its edit sessions, shared by them
+/// and closed with the last one (the browser keeps its own session).
+Future<String> editConnect({required String hostId}) => RustLib.instance.api.crateApiSftpEditConnect(hostId: hostId);
+
 Future<void> editDiscardLeftover({required String sessionId}) =>
     RustLib.instance.api.crateApiSftpEditDiscardLeftover(sessionId: sessionId);
 

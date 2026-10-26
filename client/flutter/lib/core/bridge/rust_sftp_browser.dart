@@ -202,6 +202,10 @@ final class RustSftpBrowserService implements SftpBrowserService {
   ];
 
   @override
+  Future<SftpSessionId> connectForEdits(ObjectId hostId) async =>
+      SftpSessionId(await guard(() => rs_sftp.editConnect(hostId: hostId.value)));
+
+  @override
   Future<EditSessionInfo> resumeEditLeftover(EditSessionId id, SftpSessionId session, {OpenWith? openWith}) async {
     final info = editSessionFromJson(
       decodeObject(

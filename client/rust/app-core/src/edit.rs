@@ -310,6 +310,9 @@ pub(crate) struct EditRuntime {
     opener: FileOpener,
     /// Edit session → SFTP session it was opened / resumed through.
     owners: Mutex<HashMap<Uuid, String>>,
+    /// Host → SFTP session opened only for edit sessions (see
+    /// [`AppCore::edit_connect`]); closed with its last edit session.
+    pooled: Mutex<HashMap<String, String>>,
 }
 
 impl std::fmt::Debug for EditRuntime {
@@ -341,6 +344,7 @@ impl EditRuntime {
             manager,
             opener,
             owners: Mutex::new(HashMap::new()),
+            pooled: Mutex::new(HashMap::new()),
         })
     }
 
@@ -352,6 +356,27 @@ impl EditRuntime {
 
     fn owners(&self) -> std::sync::MutexGuard<'_, HashMap<Uuid, String>> {
         self.owners.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    fn pooled(&self) -> std::sync::MutexGuard<'_, HashMap<String, String>> {
+        self.pooled.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    /// `sftp_id` was closed: it is no longer offered from the pool.
+    pub(crate) fn forget_pooled(&self, sftp_id: &str) {
+        self.pooled().retain(|_, id| id != sftp_id);
+    }
+
+    /// Takes `sftp_id` out of the pool when it is a pooled session that no
+    /// edit session uses any more; the caller closes it.
+    fn unused_pooled(&self, sftp_id: &str) -> bool {
+        if self.owners().values().any(|owner| owner == sftp_id) {
+            return false;
+        }
+        let mut pooled = self.pooled();
+        let before = pooled.len();
+        pooled.retain(|_, id| id != sftp_id);
+        pooled.len() != before
     }
 
     fn dto(&self, info: &EditSessionInfo) -> EditSessionDto {
@@ -547,12 +572,14 @@ impl AppCore {
     ) -> AppResult<EditStopOutcomeDto> {
         let e = self.edit_runtime().await?;
         let s = Self::edit_session_of(&e, &session_id)?;
+        let owner = e.owners().get(&s.id()).cloned();
         let outcome = s.stop(mode.into()).await?;
         if matches!(
             outcome,
             StopOutcome::Closed { .. } | StopOutcome::KeptFiles { .. }
         ) {
             e.owners().remove(&s.id());
+            self.release_pooled(&e, owner).await;
         }
         Ok((&outcome).into())
     }
@@ -593,9 +620,45 @@ impl AppCore {
         }
         let with = open_with.map(|w| w.to_open_with()).transpose()?;
         let remote: Arc<dyn EditRemote> = client;
-        let session = m.resume(remote, uuid, with).await?;
+        let session = match m.resume(remote, uuid, with).await {
+            Ok(session) => session,
+            Err(error) => {
+                // A session opened just for this resume is not kept.
+                self.release_pooled(&u.edit, Some(sftp_id)).await;
+                return Err(error.into());
+            }
+        };
         u.edit.owners().insert(session.id(), sftp_id);
         Ok(u.edit.dto(&session.info()))
+    }
+
+    /// An SFTP session to `host_id` for continuing edit sessions on a host
+    /// the browser is not showing: one per host, shared by those edit
+    /// sessions and closed when the last of them ends (or when resuming
+    /// through a new one fails). The browser keeps its own session.
+    pub async fn edit_connect(&self, host_id: String) -> AppResult<String> {
+        let e = self.edit_runtime().await?;
+        let existing = e.pooled().get(&host_id).cloned();
+        if let Some(id) = existing {
+            let (_, u) = self.unlocked().await?;
+            if u.ssh.sftp(&id).await.is_ok() {
+                return Ok(id);
+            }
+            e.forget_pooled(&id);
+        }
+        let id = self.sftp_open(host_id.clone()).await?;
+        e.pooled().insert(host_id, id.clone());
+        Ok(id)
+    }
+
+    /// Closes `sftp_id` when it is a pooled session no edit session uses.
+    async fn release_pooled(&self, e: &EditRuntime, sftp_id: Option<String>) {
+        let Some(sftp_id) = sftp_id else { return };
+        if e.unused_pooled(&sftp_id) {
+            if let Err(error) = self.sftp_close(sftp_id).await {
+                tracing::debug!(code = error.code(), "pooled sftp session close failed");
+            }
+        }
     }
 
     /// Securely remove one leftover.

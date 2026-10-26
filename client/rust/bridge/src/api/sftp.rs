@@ -235,6 +235,12 @@ pub async fn edit_resume(
 }
 
 /// Securely remove one leftover.
+/// An SFTP session to a host for continuing its edit sessions, shared by them
+/// and closed with the last one (the browser keeps its own session).
+pub async fn edit_connect(host_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { Ok(c.edit_connect(host_id).await?) }).await
+}
+
 pub async fn edit_discard_leftover(session_id: String) -> Result<(), BridgeError> {
     with_core(move |c| async move { Ok(c.edit_discard_leftover(session_id).await?) }).await
 }
