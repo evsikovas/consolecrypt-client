@@ -4275,3 +4275,58 @@ async fn existing_shares_are_pinned_chosen_once_with_one_banner() {
 fn hex_lower(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
+
+/// Security review SEC-05: a device the server reports under the owner's own
+/// account is never granted directly — own devices join only through
+/// enrollment — so a server cannot slip its own keys into a share by
+/// claiming they belong to the owner, whatever the verification policy.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn devices_reported_under_the_owner_account_are_not_recipients() {
+    let server = Harness::new().await;
+    let directory = tempfile::tempdir().unwrap();
+    let owner = account(
+        &server.url,
+        &directory.path().join("owner"),
+        Arc::new(InMemorySecureStore::new()),
+    )
+    .await;
+    let other = account(
+        &server.url,
+        &directory.path().join("other"),
+        Arc::new(InMemorySecureStore::new()),
+    )
+    .await;
+    server.state.supports_secrets.store(true, Ordering::SeqCst);
+    owner.app.sharing_status().await.unwrap();
+    let credential = owner
+        .app
+        .add_password_credential("Selected secret".into(), None, "runtime value".into())
+        .await
+        .unwrap();
+    let own = owner.app.sharing_identity().await.unwrap();
+    // Keys the server controls, presented as one of the owner's devices.
+    let mut forged = other.app.sharing_identity().await.unwrap();
+    forged.user_id = own.user_id.clone();
+    forged.verification_id = None;
+    let err = owner
+        .app
+        .sharing_publish_secret(
+            credential.id.clone(),
+            false,
+            vec![grant(forged, SharingRoleDto::Reader)],
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(err.code(), "invalid_input", "{err:?}");
+    assert!(owner.app.sharing_outbox().await.unwrap().entries.is_empty());
+    // Looking up the owner's own address is refused too.
+    assert_eq!(
+        owner
+            .app
+            .sharing_discover(owner.email.clone())
+            .await
+            .unwrap_err()
+            .code(),
+        "invalid_input"
+    );
+}

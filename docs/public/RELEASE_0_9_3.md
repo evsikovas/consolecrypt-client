@@ -27,6 +27,10 @@
   работало. Подменить его сервер больше не может: другой ключ той же эпохи или новый
   ключ, который не связан цепочкой с прежним, приводит к паузе команды, а не к записи
   новых данных под чужим ключом.
+- **Общий доступ: свои устройства.** Устройство, которое сервер выдаёт за ваше, больше
+  не становится получателем секрета, подключения Kubernetes или базы данных: свои
+  устройства получают общий доступ только через подтверждённое подключение. Поиск по
+  адресу собственного аккаунта отклоняется.
 
 ## English
 
@@ -53,3 +57,7 @@ also stops members from changing other members' team keys.
   server can no longer swap it: another key for the same epoch, or a new key that does
   not chain back to the previous one, pauses the team instead of writing new data
   under a foreign key.
+- **Sharing: your own devices.** A device the server presents as yours no longer
+  becomes a recipient of a secret, a Kubernetes or database connection: your own devices
+  get shared items only through a verified enrollment. Looking up your own account's
+  address is refused.

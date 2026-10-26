@@ -1565,6 +1565,13 @@ impl AppCore {
             .wait(env.transport()?.sharing_recipient_lookup(&email, post))
             .await?;
         self.sharing_check(&env).await?;
+        if recipient.user_id == env.pin.user {
+            // Our own account (or a server pretending a colleague's address
+            // is ours): own devices join through enrollment (SEC-05).
+            return Err(invalid(
+                "this is your own account; your devices receive shared items through enrollment",
+            ));
+        }
         let mut devices = recipient
             .devices
             .iter()
