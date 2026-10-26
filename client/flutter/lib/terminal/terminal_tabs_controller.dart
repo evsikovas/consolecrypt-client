@@ -6,6 +6,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_output.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show Axis;
@@ -256,7 +257,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     if (host.allPanes.length >= maxPanes) return null;
     final generation = _generation;
     final service = ref.read(terminalServiceProvider);
-    final target = host.focused.target;
+    final target = _current(host.focused.target);
     final handle = await service.openTarget(target: target, size: TerminalSize.initial);
     if (_disposed || generation != _generation || !state.tabs.contains(host) || host.allPanes.length >= maxPanes) {
       await service.close(handle.id);
@@ -273,6 +274,29 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   }
 
   static List<double> _equal(int count) => List.filled(count, 1 / count);
+
+  /// The saved host an SSH target stands for now. Moving a host into or out
+  /// of a team gives it a new id: follow this device's move, else (moved on
+  /// another device) take the one host with the same name, address, port and
+  /// user. Anything else keeps the target as it is.
+  TerminalTarget _current(TerminalTarget target) {
+    if (target is! SshTerminalTarget) return target;
+    final hosts = ref.read(hostsProvider).value ?? const <Host>[];
+    final old = target.host;
+    if (hosts.any((h) => h.id == old.id)) return target;
+    final movedTo = ref.read(movedObjectsProvider)[old.id.value];
+    final replacement =
+        hosts.where((h) => h.id.value == movedTo).firstOrNull ??
+        switch (hosts
+            .where(
+              (h) => h.name == old.name && h.address == old.address && h.port == old.port && h.username == old.username,
+            )
+            .toList()) {
+          [final only] => only,
+          _ => null,
+        };
+    return replacement == null ? target : SshTerminalTarget(replacement);
+  }
 
   /// Gives input to [pane] of its tab.
   void focusPane(TerminalTab pane) {

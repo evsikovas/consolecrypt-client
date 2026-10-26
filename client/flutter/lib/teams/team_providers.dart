@@ -53,6 +53,21 @@ final objectTeamsProvider = FutureProvider<Map<String, String>>((ref) async {
   return ref.watch(teamServiceProvider).objectVaults();
 });
 
+/// Ids replaced by a move into or out of a team on this device (old → new):
+/// a move copies objects under new ids and deletes the originals, while an
+/// open terminal still holds the old host.
+class MovedObjects extends Notifier<Map<String, String>> {
+  @override
+  Map<String, String> build() => const {};
+
+  void record(List<String> before, List<String> after) {
+    if (before.length != after.length) return;
+    state = {...state, for (var i = 0; i < before.length; i++) before[i]: after[i]};
+  }
+}
+
+final movedObjectsProvider = NotifierProvider<MovedObjects, Map<String, String>>(MovedObjects.new);
+
 /// The team of an object, if any.
 Team? teamOf(WidgetRef ref, ObjectId id) {
   final vault = ref.watch(objectTeamsProvider).value?[id.value];
