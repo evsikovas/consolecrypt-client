@@ -12777,7 +12777,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbCassandraRouteHelp =>
-      'The session works through one coordinator node: the first contact point that answers. Through SSH, a tunnel, Kubernetes or Docker only that endpoint is used and other cluster nodes are never contacted directly. With a local data center set, the coordinator must be in it.';
+      'Directly, requests spread over every node in the data center of the first contact point that answers, and move to other nodes when one fails. Through SSH, a jump profile, a proxy, a tunnel, Kubernetes or Docker the session works through one node: the first one that answers. With a local data center set, the contact point must be in it.';
 
   @override
   String get dbErrorDatacenter =>

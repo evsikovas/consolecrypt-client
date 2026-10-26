@@ -819,3 +819,85 @@ async fn scylla_end_to_end() {
 async fn cassandra_end_to_end() {
     scenario("CC_DB_LIVE_CASSANDRA", "Apache Cassandra").await;
 }
+
+/// A direct session spreads requests over every node of the datacenter
+/// (FEAT-12). CC_DB_LIVE_SCYLLA_CLUSTER = host:port of one node of a
+/// two-node cluster whose node addresses this computer can reach, e.g. on
+/// OrbStack: `docker network create cc-scylla-pair`, then
+/// `docker run -d --name cc-scylla-a --network cc-scylla-pair
+/// scylladb/scylla:6.2.3 --smp 1 --memory 750M --overprovisioned 1
+/// --developer-mode 1` and the same for `cc-scylla-b` with
+/// `--seeds <address of cc-scylla-a>` → CC_DB_LIVE_SCYLLA_CLUSTER=<a>:9042.
+#[tokio::test(flavor = "multi_thread")]
+async fn scylla_cluster_spreads_over_nodes() {
+    let Some((connection, credentials)) = target("CC_DB_LIVE_SCYLLA_CLUSTER", false) else {
+        eprintln!("CC_DB_LIVE_SCYLLA_CLUSTER not set; skipped");
+        return;
+    };
+    let dev = open(&connection, &credentials, Arc::new(DirectConnector))
+        .await
+        .unwrap();
+    write(
+        &dev,
+        "CREATE KEYSPACE IF NOT EXISTS cc_pair WITH replication = \
+         {'class': 'SimpleStrategy', 'replication_factor': 1}",
+    )
+    .await
+    .unwrap();
+    write(
+        &dev,
+        "CREATE TABLE IF NOT EXISTS cc_pair.t (k int PRIMARY KEY, v int)",
+    )
+    .await
+    .unwrap();
+    let mut coordinators = std::collections::BTreeSet::new();
+    for k in 0..24 {
+        write(
+            &dev,
+            &format!("INSERT INTO cc_pair.t (k, v) VALUES ({k}, {k})"),
+        )
+        .await
+        .unwrap();
+        let traced = dev
+            .explain(
+                &request(&format!("SELECT v FROM cc_pair.t WHERE k = {k}")),
+                true,
+            )
+            .await
+            .unwrap();
+        if let Some(coordinator) = traced["plan"]["cql_trace"]["coordinator"].as_str() {
+            coordinators.insert(coordinator.to_owned());
+        }
+    }
+    assert_eq!(coordinators.len(), 2, "{coordinators:?}");
+    write(&dev, "DROP KEYSPACE cc_pair").await.unwrap();
+    // CC_DB_LIVE_SCYLLA_FAILOVER = the contact node's container: it is
+    // stopped, and requests go on through the other node.
+    if let Ok(container) = std::env::var("CC_DB_LIVE_SCYLLA_FAILOVER") {
+        let docker = |action: &str| {
+            assert!(std::process::Command::new("docker")
+                .args([action, container.as_str()])
+                .output()
+                .unwrap()
+                .status
+                .success());
+        };
+        docker("stop");
+        let mut answered = 0;
+        for _ in 0..30 {
+            if run(&dev, "SELECT release_version FROM system.local")
+                .await
+                .is_ok()
+            {
+                answered += 1;
+                if answered == 5 {
+                    break;
+                }
+            }
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+        docker("start");
+        assert_eq!(answered, 5, "the remaining node did not take over");
+    }
+    dev.close();
+}
