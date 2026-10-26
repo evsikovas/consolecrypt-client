@@ -265,6 +265,27 @@ impl DbSession {
     /// Columns of an editable table with their NULL, default and generated
     /// flags; the key columns are marked.
     pub async fn edit_columns(&self, table: &DbObjectRef) -> Result<Vec<DbEditColumn>, DbError> {
+        if self.info.engine == DbEngine::Mongodb {
+            return self.mongo_fields(table).await;
+        }
+        if self.info.engine == DbEngine::Redis {
+            if table.kind != DbObjectKind::RedisDatabase {
+                return Err(DbError::InvalidRequest);
+            }
+            // A CSV import writes `key` and `value` (a string) or named
+            // hash fields (added by the import itself).
+            return Ok(["key", "value"]
+                .iter()
+                .map(|name| DbEditColumn {
+                    name: (*name).into(),
+                    type_name: if *name == "key" { "key" } else { "string" }.into(),
+                    nullable: false,
+                    has_default: false,
+                    generated: false,
+                    key: *name == "key",
+                })
+                .collect());
+        }
         if table.kind != DbObjectKind::Table {
             return Err(DbError::InvalidRequest);
         }
@@ -336,6 +357,25 @@ impl DbSession {
                  FROM pragma_table_xinfo(?1) WHERE hidden <> 1 ORDER BY cid",
                 vec![text(&table.name)],
             ),
+            // Nullable(...) columns take NULL; DEFAULT/MATERIALIZED/ALIAS
+            // fill themselves (the last two are never written).
+            DbEngine::Clickhouse => (
+                "SELECT name, type, if(startsWith(type, 'Nullable('), 'true', 'false'), \
+                 if(default_kind != '', 'true', 'false'), \
+                 if(default_kind IN ('MATERIALIZED', 'ALIAS', 'EPHEMERAL'), 'true', 'false') \
+                 FROM system.columns WHERE database = {cc_database:String} \
+                 AND table = {cc_table:String} ORDER BY position",
+                vec![
+                    DbParameter {
+                        name: "cc_database".into(),
+                        ..text(&table.database)
+                    },
+                    DbParameter {
+                        name: "cc_table".into(),
+                        ..text(&table.name)
+                    },
+                ],
+            ),
             _ => return Err(DbError::InvalidRequest),
         };
         let key = self.primary_key(table).await?;
@@ -360,6 +400,68 @@ impl DbSession {
             .collect();
         if columns.is_empty() {
             return Err(DbError::InvalidRequest);
+        }
+        Ok(columns)
+    }
+
+    /// Top-level fields of a sampled MongoDB collection (LIM-05) by their
+    /// most common BSON type; objects, arrays and other structured values
+    /// are not written from CSV. `_id` is the key and always listed.
+    async fn mongo_fields(&self, table: &DbObjectRef) -> Result<Vec<DbEditColumn>, DbError> {
+        if table.kind != DbObjectKind::Collection {
+            return Err(DbError::InvalidRequest);
+        }
+        let report = match &mut *self.driver.lock().await {
+            crate::session::Driver::Mongo(driver) => driver.inspect(table, 200).await?,
+            _ => return Err(DbError::InvalidRequest),
+        };
+        let mut columns = Vec::new();
+        for field in report["fields"].as_array().into_iter().flatten() {
+            let Some(path) = field["path"].as_str() else {
+                continue;
+            };
+            if path.contains(['.', '[']) {
+                continue;
+            }
+            let dominant = field["types"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .filter(|(name, _)| name.as_str() != "null")
+                .max_by_key(|(_, count)| count.as_u64().unwrap_or(0))
+                .map(|(name, _)| name.as_str())
+                .unwrap_or("string");
+            let scalar = matches!(
+                dominant,
+                "string" | "int" | "long" | "double" | "decimal" | "bool" | "date" | "objectId"
+            );
+            columns.push(DbEditColumn {
+                name: path.to_owned(),
+                // A BSON date carries a time of day.
+                type_name: if dominant == "date" {
+                    "datetime"
+                } else {
+                    dominant
+                }
+                .to_owned(),
+                nullable: path != "_id",
+                has_default: true,
+                generated: !scalar,
+                key: path == "_id",
+            });
+        }
+        if !columns.iter().any(|c| c.name == "_id") {
+            columns.insert(
+                0,
+                DbEditColumn {
+                    name: "_id".into(),
+                    type_name: "objectId".into(),
+                    nullable: false,
+                    has_default: true,
+                    generated: false,
+                    key: true,
+                },
+            );
         }
         Ok(columns)
     }

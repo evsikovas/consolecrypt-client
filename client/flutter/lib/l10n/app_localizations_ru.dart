@@ -12325,6 +12325,28 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dbCsvModeUpsert => 'Добавлять или обновлять по ключу';
 
   @override
+  String get dbCsvNoKeyClickhouse => 'Ключ сортировки ClickHouse не уникален: строки можно только добавлять.';
+
+  @override
+  String get dbCsvNoKeyMongo => 'Чтобы пропускать или заменять существующие документы, сопоставьте столбец с _id.';
+
+  @override
+  String get dbCsvTruncateDocuments => 'Сначала удалить все документы коллекции';
+
+  @override
+  String get dbCsvMapHelpMongo =>
+      'Каждый столбец файла попадает в поле или пропускается; столбец может и создать новое поле со своим именем — тип берётся по каждому значению (число, true/false, дата или текст). Первые 1000 строк проверяются.';
+
+  @override
+  String get dbCsvMapHelpRedis =>
+      'Сопоставьте один столбец с key (префикс папки добавится в начало). Ещё один — с value, чтобы получить строку, или несколько — с полями хеша с их именами (пустые поля пропускаются).';
+
+  @override
+  String dbCsvNewField(String name) {
+    return '$name · новое поле';
+  }
+
+  @override
   String get dbCsvNoKey => 'У таблицы нет ключа: строки можно только добавлять.';
 
   @override

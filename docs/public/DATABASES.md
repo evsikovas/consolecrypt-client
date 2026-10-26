@@ -489,10 +489,11 @@ Redis и MongoDB, а также на телефоне кнопки измене�
 
 ### Импорт из CSV
 
-Для PostgreSQL, MySQL, MariaDB, SQLite и Cassandra/ScyllaDB на компьютере данные из CSV можно загрузить в
-таблицу: «Импорт данных…» на панели результата (в таблицу результата, если
-это запрос к одной таблице с ключом) или «Импорт из CSV…» в меню таблицы в
-дереве. Нужна разрешённая запись (на проде — открытое окно записи). Мастер:
+Для PostgreSQL, MySQL, MariaDB, SQLite, ClickHouse и Cassandra/ScyllaDB на компьютере
+данные из CSV можно загрузить в таблицу, для MongoDB — в коллекцию, для Redis —
+в базу или папку ключей: «Импорт данных…» на панели результата (в таблицу
+результата, если это запрос к одной таблице с ключом) или «Импорт из CSV…» в
+меню таблицы, коллекции, базы Redis или папки ключей в дереве. Нужна разрешённая запись (на проде — открытое окно записи). Мастер:
 
 1. **Файл** — CSV, TSV или текст до 200 МБ; файл читается потоком и никуда,
    кроме этой базы, не передаётся.
@@ -520,7 +521,6 @@ Redis и MongoDB, а также на телефоне кнопки измене�
 
 Значения, похожие на формулы, импортируются как есть (экранирование формул —
 задача экспорта). Пока идёт импорт, другие запросы этого подключения ждут.
-ClickHouse, MongoDB и Redis импорт из CSV пока не поддерживают.
 
 Особенности движков:
 
@@ -538,12 +538,39 @@ ClickHouse, MongoDB и Redis импорт из CSV пока не поддерж�
   ключи считаются пропущенными), а «добавлять или обновлять» — простой
   `INSERT`. «Сначала удалить все строки» — это `TRUNCATE`. Тип `counter`
   не импортируется (счётчики меняются только через `UPDATE`).
+- **ClickHouse.** Транзакций нет, ключ сортировки MergeTree не уникален,
+  поэтому доступно только «добавлять»: каждый пакет — один `INSERT`, который
+  записывается целиком или не записывается. Столбцы `MATERIALIZED`, `ALIAS`
+  и `EPHEMERAL` не заполняются, `DEFAULT` можно пропустить. «Сначала удалить
+  все строки» — это `TRUNCATE TABLE`.
+- **MongoDB.** Столбцы сопоставляются с полями коллекции (по выборке
+  документов, с их преобладающим типом BSON); столбец без пары может создать
+  новое поле со своим именем — тип берётся по каждому значению (целое, число,
+  `true`/`false`, дата или дата и время, иначе текст). Имена полей не
+  начинаются с `$` и не содержат точку. Документы пишутся пакетами
+  `insert` с `ordered: false`, поэтому каждый записывается или отклоняется
+  отдельно; пустые поля не записываются. «Пропуская существующие» и
+  «добавлять или обновлять» работают по `_id` (его столбец должен быть
+  сопоставлен; 24 шестнадцатеричных символа в поле типа objectId становятся
+  ObjectId); обновление — `update` с `$set` и `upsert: true`. Дата и время
+  без часового пояса считаются UTC. «Сначала удалить все документы» — это
+  `delete` с пустым фильтром.
+- **Redis.** Один столбец — `key` (если импорт идёт в папку ключей, её
+  префикс добавляется в начало). Ещё один столбец, сопоставленный с `value`,
+  даёт строку (`SET`), несколько столбцов с именами полей — хеш (`HSET`,
+  пустые поля пропускаются). «Добавлять» и «пропуская существующие» не
+  перезаписывают ключ: строка пишется `SET … NX`, для хеша сначала
+  проверяется `EXISTS` (проверка и запись не атомарны); «добавлять или
+  обновлять» перезаписывает строку и дописывает поля хеша. Каждый ключ —
+  отдельная команда, без транзакций; очистки базы (`FLUSHDB`) нет.
 
-В меню схемы (PostgreSQL) или базы (MySQL, SQLite) есть «Создать таблицу из CSV…»:
-по первым строкам файла строится простой `CREATE TABLE` (целые, десятичные,
-даты, дата и время, да/нет, иначе текст), который можно скопировать или
-открыть в редакторе и выполнить через обычную проверку. Для Cassandra этого
-пункта нет: таблице CQL нужен первичный ключ, а из файла его не вывести.
+В меню схемы (PostgreSQL) или базы (MySQL, SQLite, ClickHouse) есть «Создать
+таблицу из CSV…»: по первым строкам файла строится простой `CREATE TABLE`
+(целые, десятичные, даты, дата и время, да/нет, иначе текст; в ClickHouse —
+`Nullable` столбцы и `ENGINE = MergeTree ORDER BY tuple()`), который можно
+скопировать или открыть в редакторе и выполнить через обычную проверку. Для
+Cassandra этого пункта нет: таблице CQL нужен первичный ключ, а из файла его
+не вывести; MongoDB и Redis таблиц не создают.
 
 ### Конструктор таблиц
 
@@ -1100,10 +1127,11 @@ to the current editor tab. Running again, refreshing, switching result sets,
 closing the tab or leaving the connection with pending changes asks whether to
 save, discard or stay.
 
-**CSV import.** On desktop, PostgreSQL, MySQL, MariaDB, SQLite and Cassandra/ScyllaDB tables can be
-loaded from CSV: **Import data…** on the result toolbar (into the result's
-table when it is a single keyed table) or **Import from CSV…** on a table in
-the tree. Writes must be allowed (production: an open write window). The
+**CSV import.** On desktop, PostgreSQL, MySQL, MariaDB, SQLite, ClickHouse and
+Cassandra/ScyllaDB tables, MongoDB collections and Redis databases or key
+folders can be loaded from CSV: **Import data…** on the result toolbar (into
+the result's table when it is a single keyed table) or **Import from CSV…** on
+a table, collection, Redis database or key folder in the tree. Writes must be allowed (production: an open write window). The
 wizard has five steps: the **file** (CSV, TSV or text up to 200 MB, read as a
 stream and sent nowhere but this database); **reading settings** with a live
 preview of the first 100 rows — encoding (UTF-8 by default with BOM
@@ -1124,7 +1152,7 @@ batches with progress (rows per second, time left) and Cancel, which rolls
 the open transaction back, ending with imported / skipped / failed counts
 and the report. Formula-looking values are imported as they are (escaping
 them is an export concern). Other queries of the connection wait while an
-import runs. ClickHouse, MongoDB and Redis do not import CSV yet.
+import runs.
 **SQLite:** a file on this computer is written like PostgreSQL (one
 transaction or one per batch, savepoints when skipping bad rows). Through
 `sqlite3` on a host (SSH, Docker, Kubernetes) every statement commits on its
@@ -1136,12 +1164,35 @@ back. A plain CQL `INSERT` overwrites a row with the same key, so insert and
 insert-skipping-existing write `INSERT … IF NOT EXISTS` (a lightweight
 transaction; existing keys count as skipped) and insert-or-update writes a
 plain `INSERT`. “Delete all rows first” is a `TRUNCATE`. `counter` columns
-are not imported (counters change only through `UPDATE`).
+are not imported (counters change only through `UPDATE`). **ClickHouse:** no
+transactions and MergeTree sorting keys are not unique, so only insert is
+offered; each batch is one `INSERT` written whole or not at all.
+`MATERIALIZED`, `ALIAS` and `EPHEMERAL` columns are never written, `DEFAULT`
+ones may be left out, and “Delete all rows first” is a `TRUNCATE TABLE`.
+**MongoDB:** columns map to the collection's fields (from a sample of its
+documents, with their most common BSON type); an unmatched column can create
+a new field of its name, typed by each value (whole number, number,
+`true`/`false`, date or timestamp, else text). Field names cannot start with
+`$` or contain a dot. Documents go in `insert` batches with
+`ordered: false`, so each one is written or refused on its own; empty fields
+are left out. Skip-existing and insert-or-update key on `_id` (its column must
+be mapped; 24 hex digits into an objectId field become an ObjectId); updates
+are `update` with `$set` and `upsert: true`. A date or timestamp without a time
+zone is UTC. “Delete every document first” is a `delete` with an empty
+filter. **Redis:** one column is the `key` (a key folder's prefix goes in
+front). One more column mapped to `value` makes a string (`SET`); several
+columns named as fields make a hash (`HSET`, empty fields left out). Insert
+and skip-existing never overwrite a key: a string is written with `SET … NX`,
+a hash after an `EXISTS` check (the check and the write are not atomic);
+insert-or-update overwrites the string or adds to the hash. Every key is its
+own command with no transaction, and there is no clearing (`FLUSHDB`).
 **Create table from CSV…** on a schema (PostgreSQL) or database (MySQL,
-SQLite) builds a simple `CREATE TABLE` typed from the file's first rows
-(whole numbers, decimals, dates, timestamps, true/false, else text) to copy
-or open in the editor and run through the usual review. Cassandra has no
-such item: a CQL table needs a primary key, which a file does not give.
+SQLite, ClickHouse) builds a simple `CREATE TABLE` typed from the file's
+first rows (whole numbers, decimals, dates, timestamps, true/false, else text;
+in ClickHouse `Nullable` columns and `ENGINE = MergeTree ORDER BY tuple()`)
+to copy or open in the editor and run through the usual review. Cassandra has
+no such item: a CQL table needs a primary key, which a file does not give;
+MongoDB and Redis have no tables to create.
 
 History is kept per connection — text, time, duration, rows and error, never
 parameter values or data — with filters for successful, failed and favourite

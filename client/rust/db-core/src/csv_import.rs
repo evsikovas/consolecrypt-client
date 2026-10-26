@@ -571,11 +571,27 @@ pub enum CsvKind {
     Json,
     Binary,
     Text,
+    /// A new MongoDB field: each value as it reads (whole number, number,
+    /// true/false, ISO date or timestamp, else text).
+    Auto,
 }
 
 impl CsvKind {
     pub fn of(type_name: &str) -> Self {
-        let lower = type_name.to_ascii_lowercase();
+        // ClickHouse wrappers: Nullable(T), LowCardinality(T).
+        let mut inner = type_name.trim();
+        for wrapper in ["Nullable(", "LowCardinality("] {
+            if let Some(rest) = inner
+                .strip_prefix(wrapper)
+                .and_then(|r| r.strip_suffix(')'))
+            {
+                inner = rest.trim();
+            }
+        }
+        let lower = inner.to_ascii_lowercase();
+        if lower == "auto" {
+            return Self::Auto;
+        }
         let base = lower.split(['(', ' ']).next().unwrap_or("").trim();
         let unsigned = lower.contains("unsigned");
         if lower.ends_with("[]") || base.starts_with('_') {
@@ -585,6 +601,14 @@ impl CsvKind {
             return Self::Bool;
         }
         match base {
+            "uint8" | "uint16" | "uint32" | "uint64" | "uint128" | "uint256" => Self::Uint,
+            // MongoDB BSON type names.
+            "long" => Self::Int,
+            "int16" | "int32" | "int64" | "int128" | "int256" => Self::Int,
+            "float32" | "float64" => Self::Float,
+            "decimal32" | "decimal64" | "decimal128" | "decimal256" => Self::Decimal,
+            "date32" => Self::Date,
+            "datetime64" => Self::Timestamp,
             "smallint" | "integer" | "int" | "int2" | "int4" | "int8" | "bigint" | "tinyint"
             | "mediumint" | "serial" | "bigserial" | "smallserial" | "year" | "varint" => {
                 if unsigned {
@@ -745,6 +769,36 @@ pub fn convert(text: Option<&str>, kind: CsvKind, options: &CsvOptions) -> Optio
             DbCell::Binary(base64::engine::general_purpose::STANDARD.encode(bytes))
         }
         CsvKind::Text => DbCell::Text(text.into()),
+        CsvKind::Auto => {
+            let iso = CsvOptions {
+                date_order: CsvDateOrder::Iso,
+                ..options.clone()
+            };
+            [
+                CsvKind::Int,
+                CsvKind::Float,
+                CsvKind::Date,
+                CsvKind::Timestamp,
+            ]
+            .into_iter()
+            .find_map(|kind| {
+                // Dates need their separators; numbers keep the dot.
+                let shaped = match kind {
+                    CsvKind::Date | CsvKind::Timestamp => {
+                        trimmed.len() >= 10 && trimmed.contains('-')
+                    }
+                    CsvKind::Float => !options.decimal_comma || !trimmed.contains(','),
+                    _ => true,
+                };
+                shaped.then(|| convert(Some(text), kind, &iso)).flatten()
+            })
+            .or(match trimmed {
+                "true" => Some(DbCell::Bool(true)),
+                "false" => Some(DbCell::Bool(false)),
+                _ => None,
+            })
+            .unwrap_or_else(|| DbCell::Text(text.into()))
+        }
     })
 }
 
@@ -847,7 +901,11 @@ pub fn create_table_sql(
 ) -> Result<String, DbError> {
     if !matches!(
         engine,
-        DbEngine::Postgresql | DbEngine::Mysql | DbEngine::Mariadb | DbEngine::Sqlite
+        DbEngine::Postgresql
+            | DbEngine::Mysql
+            | DbEngine::Mariadb
+            | DbEngine::Sqlite
+            | DbEngine::Clickhouse
     ) || table.name.is_empty()
     {
         return Err(DbError::InvalidRequest);
@@ -891,6 +949,12 @@ pub fn create_table_sql(
         (DbEngine::Sqlite, Some(CsvKind::Int | CsvKind::Bool)) => "INTEGER",
         (DbEngine::Sqlite, Some(CsvKind::Decimal)) => "NUMERIC",
         (DbEngine::Sqlite, _) => "TEXT",
+        (DbEngine::Clickhouse, Some(CsvKind::Int)) => "Nullable(Int64)",
+        (DbEngine::Clickhouse, Some(CsvKind::Decimal)) => "Nullable(Decimal(38, 10))",
+        (DbEngine::Clickhouse, Some(CsvKind::Timestamp)) => "Nullable(DateTime64(3))",
+        (DbEngine::Clickhouse, Some(CsvKind::Bool)) => "Nullable(Bool)",
+        (DbEngine::Clickhouse, Some(CsvKind::Date)) => "Nullable(Date32)",
+        (DbEngine::Clickhouse, _) => "Nullable(String)",
         (_, Some(CsvKind::Int)) => "bigint",
         (_, Some(CsvKind::Decimal)) => "decimal(38,10)",
         (_, Some(CsvKind::Timestamp)) => "datetime",
@@ -904,14 +968,20 @@ pub fn create_table_sql(
         .map(|(i, name)| {
             let kind = if seen[i] { kinds[i].first() } else { None };
             let kind = match kind {
-                Some(CsvKind::Date) => "date",
+                Some(CsvKind::Date) if engine != DbEngine::Clickhouse => "date",
                 other => type_name(other),
             };
             format!("    {} {kind}", quote_column(engine, name))
         })
         .collect();
+    // A MergeTree needs a sorting key; the designer can change it later.
+    let engine_clause = if engine == DbEngine::Clickhouse {
+        "\nENGINE = MergeTree\nORDER BY tuple()"
+    } else {
+        ""
+    };
     Ok(format!(
-        "CREATE TABLE {} (\n{}\n);",
+        "CREATE TABLE {} (\n{}\n){engine_clause};",
         quote_identifier(engine, table),
         definitions.join(",\n")
     ))
@@ -978,6 +1048,9 @@ pub fn insert_sql(
     }
     let updates: Vec<&String> = columns.iter().filter(|c| !key.contains(c)).collect();
     let conflict = match (engine, mode) {
+        // MergeTree keys are not unique: every row is a new row.
+        (DbEngine::Clickhouse, CsvInsertMode::Insert) => String::new(),
+        (DbEngine::Clickhouse, _) => return Err(DbError::InvalidRequest),
         (_, CsvInsertMode::Insert) => String::new(),
         (_, _) if key.is_empty() => return Err(DbError::InvalidRequest),
         (DbEngine::Postgresql, CsvInsertMode::SkipExisting) => {
@@ -1078,18 +1151,32 @@ pub fn template(
             | DbEngine::Mariadb
             | DbEngine::Sqlite
             | DbEngine::Cassandra
-    ) || plan.table.kind != DbObjectKind::Table
+            | DbEngine::Clickhouse
+            | DbEngine::Mongodb
+            | DbEngine::Redis
+    ) || plan.table.kind
+        != match engine {
+            DbEngine::Mongodb => DbObjectKind::Collection,
+            DbEngine::Redis => DbObjectKind::RedisDatabase,
+            _ => DbObjectKind::Table,
+        }
     {
         return Err(DbError::InvalidRequest);
+    }
+    match engine {
+        DbEngine::Mongodb => return mongo_template(plan),
+        DbEngine::Redis => return redis_template(plan),
+        _ => {}
     }
     let columns: Vec<String> = plan.mapping.iter().map(|m| m.target.clone()).collect();
     let insert = insert_sql(engine, &plan.table, &columns, key, plan.mode, 1)?;
     let text = if plan.truncate {
-        // CQL has no unconditional DELETE: TRUNCATE (reviewed as dangerous).
-        let clear = if engine == DbEngine::Cassandra {
-            "TRUNCATE"
-        } else {
-            "DELETE FROM"
+        // CQL has no unconditional DELETE, and a ClickHouse DELETE needs a
+        // WHERE: TRUNCATE (reviewed as dangerous).
+        let clear = match engine {
+            DbEngine::Cassandra => "TRUNCATE",
+            DbEngine::Clickhouse => "TRUNCATE TABLE",
+            _ => "DELETE FROM",
         };
         format!(
             "{clear} {};\n{insert};",
@@ -1213,12 +1300,25 @@ enum Tx<'a> {
     SqliteCli(&'a mut crate::sqlite_cli::SqliteCli),
     /// CQL has no transactions: every row is its own write.
     Cassandra(&'a mut crate::cassandra::Cassandra),
+    /// No transactions either; each INSERT block is written whole or not.
+    Clickhouse(&'a mut crate::clickhouse::ClickHouse),
+    /// No transactions; each document is written or refused on its own.
+    Mongo(&'a mut crate::mongo::Mongo),
+    /// No transactions; one key per command.
+    Redis(&'a mut crate::redis_driver::Redis),
 }
 
 impl Tx<'_> {
     /// Whether one transaction can span several statements.
     fn transactional(&self) -> bool {
-        !matches!(self, Self::SqliteCli(_) | Self::Cassandra(_))
+        !matches!(
+            self,
+            Self::SqliteCli(_)
+                | Self::Cassandra(_)
+                | Self::Clickhouse(_)
+                | Self::Mongo(_)
+                | Self::Redis(_)
+        )
     }
 
     async fn begin(&mut self) -> Result<(), DbError> {
@@ -1226,7 +1326,11 @@ impl Tx<'_> {
             Self::Postgres(driver) => driver.begin_write().await,
             Self::Mysql(driver) => driver.begin_write().await,
             Self::Sqlite(driver) => driver.begin_write().await,
-            Self::SqliteCli(_) | Self::Cassandra(_) => Ok(()),
+            Self::SqliteCli(_)
+            | Self::Cassandra(_)
+            | Self::Clickhouse(_)
+            | Self::Mongo(_)
+            | Self::Redis(_) => Ok(()),
         }
     }
 
@@ -1235,7 +1339,11 @@ impl Tx<'_> {
             Self::Postgres(driver) => driver.control(sql).await,
             Self::Mysql(driver) => driver.control(sql).await,
             Self::Sqlite(driver) => driver.control(sql).await,
-            Self::SqliteCli(_) | Self::Cassandra(_) => Ok(()),
+            Self::SqliteCli(_)
+            | Self::Cassandra(_)
+            | Self::Clickhouse(_)
+            | Self::Mongo(_)
+            | Self::Redis(_) => Ok(()),
         }
     }
 
@@ -1251,6 +1359,15 @@ impl Tx<'_> {
             Self::Sqlite(driver) => driver.step(sql, bindings, cancel).await,
             Self::SqliteCli(driver) => driver.step(sql, bindings, cancel).await,
             Self::Cassandra(driver) => driver.import_step(sql, bindings, cancel).await,
+            Self::Clickhouse(driver) => {
+                let mut written = Affected::default();
+                driver
+                    .query(sql, bindings, false, &mut written, cancel)
+                    .await?;
+                Ok(written.rows)
+            }
+            // Written through `import_mongo_batch` and `import_redis_batch`.
+            Self::Mongo(_) | Self::Redis(_) => Err(DbError::InvalidRequest),
         }
     }
 
@@ -1259,7 +1376,11 @@ impl Tx<'_> {
             Self::Postgres(driver) => driver.end_write(commit).await,
             Self::Mysql(driver) => driver.end_write(commit).await,
             Self::Sqlite(driver) => driver.end_write(commit).await,
-            Self::SqliteCli(_) | Self::Cassandra(_) => Ok(()),
+            Self::SqliteCli(_)
+            | Self::Cassandra(_)
+            | Self::Clickhouse(_)
+            | Self::Mongo(_)
+            | Self::Redis(_) => Ok(()),
         }
     }
 }
@@ -1336,7 +1457,13 @@ fn batch_request(
         .map(|(i, cell)| DbParameter {
             name: format!("p{i}"),
             value: cell.clone(),
-            type_hint: None,
+            type_hint: match cell {
+                // ClickHouse binds a decimal with an explicit scale.
+                DbCell::Decimal(value) if engine == DbEngine::Clickhouse => {
+                    Some(clickhouse_decimal(value).into())
+                }
+                _ => None,
+            },
         })
         .collect();
     Ok(DbQueryRequest {
@@ -1346,6 +1473,288 @@ fn batch_request(
     })
 }
 
+/// A MongoDB field the import may write: not empty, no `$` in front, no
+/// `.` (a path) and no NUL.
+fn mongo_field(name: &str) -> bool {
+    !name.is_empty() && name.len() <= 256 && !name.starts_with('$') && !name.contains(['.', '\0'])
+}
+
+/// The effective MongoDB mode: an upsert that sets nothing but `_id` only
+/// adds missing documents.
+fn mongo_mode(mode: CsvInsertMode, columns: &[String]) -> CsvInsertMode {
+    if mode == CsvInsertMode::Upsert && columns.iter().all(|c| c == "_id") {
+        CsvInsertMode::SkipExisting
+    } else {
+        mode
+    }
+}
+
+/// An `insert` (or, for upsert, an `update … upsert: true` by `_id`) of
+/// `rows` with `ordered: false`, values as `$param` placeholders. NULL
+/// fields are left out; a 24-digit hex text into an objectId field is an
+/// ObjectId; a date or timestamp without an offset is UTC.
+fn mongo_request(
+    collection: &str,
+    columns: &[String],
+    object_ids: &[bool],
+    mode: CsvInsertMode,
+    rows: &[(u64, Vec<DbCell>)],
+    keep_nulls: bool,
+) -> Result<DbQueryRequest, DbError> {
+    if columns.is_empty() || rows.is_empty() || !columns.iter().all(|c| mongo_field(c)) {
+        return Err(DbError::InvalidRequest);
+    }
+    let quote = |text: &str| serde_json::to_string(text).unwrap_or_default();
+    let mut parameters = Vec::new();
+    let mut value = |cell: &DbCell, object_id: bool| -> String {
+        if let (true, DbCell::Text(text)) = (object_id, cell) {
+            if text.len() == 24 && text.chars().all(|c| c.is_ascii_hexdigit()) {
+                return format!(r#"{{"$oid":"{text}"}}"#);
+            }
+        }
+        let cell = match cell {
+            DbCell::Date(day) => DbCell::Timestamp(format!("{day}T00:00:00Z")),
+            DbCell::Timestamp(at)
+                if !at.ends_with('Z')
+                    && at.get(10..).is_some_and(|tail| !tail.contains(['+', '-'])) =>
+            {
+                DbCell::Timestamp(format!("{at}Z"))
+            }
+            other => other.clone(),
+        };
+        let name = format!("p{}", parameters.len());
+        parameters.push(DbParameter {
+            name: name.clone(),
+            value: cell,
+            type_hint: None,
+        });
+        format!(r#"{{"$param":"{name}"}}"#)
+    };
+    let mode = mongo_mode(mode, columns);
+    let key = columns.iter().position(|c| c == "_id");
+    let mut entries = Vec::with_capacity(rows.len());
+    for (_, cells) in rows {
+        let mut fields = Vec::new();
+        let mut id = None;
+        for (index, (column, cell)) in columns.iter().zip(cells).enumerate() {
+            if matches!(cell, DbCell::Null) && !keep_nulls {
+                continue;
+            }
+            let rendered = value(cell, object_ids.get(index).copied().unwrap_or(false));
+            if mode == CsvInsertMode::Upsert && Some(index) == key {
+                id = Some(rendered);
+            } else {
+                fields.push(format!("{}:{rendered}", quote(column)));
+            }
+        }
+        entries.push(match mode {
+            CsvInsertMode::Upsert => format!(
+                r#"{{"q":{{"_id":{}}},"u":{{"$set":{{{}}}}},"upsert":true}}"#,
+                id.ok_or(DbError::InvalidRequest)?,
+                fields.join(",")
+            ),
+            _ => format!("{{{}}}", fields.join(",")),
+        });
+    }
+    let text = match mode {
+        CsvInsertMode::Upsert => format!(
+            r#"{{"update":{},"updates":[{}],"ordered":false}}"#,
+            quote(collection),
+            entries.join(",")
+        ),
+        _ => format!(
+            r#"{{"insert":{},"documents":[{}],"ordered":false}}"#,
+            quote(collection),
+            entries.join(",")
+        ),
+    };
+    Ok(DbQueryRequest {
+        text,
+        parameters,
+        approval_ticket: None,
+    })
+}
+
+/// The reviewed MongoDB template: the optional `delete` of every document
+/// and one document of placeholders.
+fn mongo_template(plan: &CsvImportPlan) -> Result<DbQueryRequest, DbError> {
+    let columns: Vec<String> = plan.mapping.iter().map(|m| m.target.clone()).collect();
+    if mongo_mode(plan.mode, &columns) == CsvInsertMode::Upsert
+        && !columns.iter().any(|c| c == "_id")
+    {
+        return Err(DbError::InvalidRequest);
+    }
+    let row = (0, vec![DbCell::Null; columns.len()]);
+    let mut request = mongo_request(&plan.table.name, &columns, &[], plan.mode, &[row], true)?;
+    if plan.truncate {
+        request.text = format!(
+            r#"{{"delete":{},"deletes":[{{"q":{{}},"limit":0}}]}};{}"#,
+            serde_json::to_string(&plan.table.name).unwrap_or_default(),
+            request.text
+        );
+    }
+    Ok(request)
+}
+
+/// A Redis hash field the import may name in a command: printable, no
+/// spaces, quotes, backslashes or placeholder braces.
+fn redis_field(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 256
+        && !matches!(name, "key" | "value")
+        && !name.contains("{{")
+        && !name.contains("}}")
+        && name
+            .chars()
+            .all(|c| !c.is_whitespace() && !c.is_control() && !matches!(c, '"' | '\'' | '\\'))
+}
+
+/// What a Redis import writes per row: a string (`key` and `value`) or a
+/// hash (`key` and named fields).
+enum RedisShape {
+    String,
+    Hash(Vec<String>),
+}
+
+fn redis_shape(columns: &[String]) -> Result<RedisShape, DbError> {
+    let fields: Vec<&String> = columns.iter().filter(|c| *c != "key").collect();
+    if !columns.iter().any(|c| c == "key") || fields.is_empty() {
+        return Err(DbError::InvalidRequest);
+    }
+    if fields.iter().any(|c| *c == "value") {
+        return if fields.len() == 1 {
+            Ok(RedisShape::String)
+        } else {
+            Err(DbError::InvalidRequest)
+        };
+    }
+    if !fields.iter().all(|c| redis_field(c)) {
+        return Err(DbError::InvalidRequest);
+    }
+    Ok(RedisShape::Hash(fields.into_iter().cloned().collect()))
+}
+
+/// The commands for one row: the `EXISTS` check (a hash that must not be
+/// overwritten) and the write. A string is `SET` (`NX` unless upserting),
+/// a hash `HSET` with its non-NULL fields. Keys get the folder `prefix`.
+fn redis_row(
+    columns: &[String],
+    shape: &RedisShape,
+    prefix: &str,
+    mode: CsvInsertMode,
+    cells: &[DbCell],
+) -> Result<(Option<DbQueryRequest>, DbQueryRequest), DbError> {
+    let cell = |name: &str| {
+        columns
+            .iter()
+            .position(|c| c == name)
+            .and_then(|i| cells.get(i))
+    };
+    let key = match cell("key") {
+        Some(DbCell::Text(key)) if !key.is_empty() => DbCell::Text(format!("{prefix}{key}")),
+        _ => return Err(DbError::InvalidRequest),
+    };
+    let parameter = |name: &str, value: DbCell| DbParameter {
+        name: name.into(),
+        value,
+        type_hint: None,
+    };
+    let keep = mode == CsvInsertMode::Upsert;
+    match shape {
+        RedisShape::String => {
+            let value = cell("value").cloned().unwrap_or(DbCell::Null);
+            if matches!(value, DbCell::Null) {
+                return Err(DbError::InvalidRequest);
+            }
+            Ok((
+                None,
+                DbQueryRequest {
+                    text: format!("SET {{{{k}}}} {{{{v}}}}{}", if keep { "" } else { " NX" }),
+                    parameters: vec![parameter("k", key), parameter("v", value)],
+                    approval_ticket: None,
+                },
+            ))
+        }
+        RedisShape::Hash(fields) => {
+            let mut text = String::from("HSET {{k}}");
+            let mut parameters = vec![parameter("k", key.clone())];
+            for field in fields {
+                if let Some(value) = cell(field).filter(|v| !matches!(v, DbCell::Null)) {
+                    let name = format!("f{}", parameters.len());
+                    text.push_str(&format!(" {field} {{{{{name}}}}}"));
+                    parameters.push(parameter(&name, value.clone()));
+                }
+            }
+            if parameters.len() == 1 {
+                return Err(DbError::InvalidRequest);
+            }
+            let check = (!keep).then(|| DbQueryRequest {
+                text: "EXISTS {{k}}".into(),
+                parameters: vec![parameter("k", key)],
+                approval_ticket: None,
+            });
+            Ok((
+                check,
+                DbQueryRequest {
+                    text,
+                    parameters,
+                    approval_ticket: None,
+                },
+            ))
+        }
+    }
+}
+
+/// The key prefix of a Redis import target: a key folder's, else none.
+fn redis_prefix(target: &DbObjectRef) -> &str {
+    if target.parent_name.is_some() {
+        &target.name
+    } else {
+        ""
+    }
+}
+
+/// The reviewed Redis template: the commands of one row (no clearing:
+/// a whole-database FLUSHDB is never offered).
+fn redis_template(plan: &CsvImportPlan) -> Result<DbQueryRequest, DbError> {
+    if plan.truncate {
+        return Err(DbError::InvalidRequest);
+    }
+    let columns: Vec<String> = plan.mapping.iter().map(|m| m.target.clone()).collect();
+    let shape = redis_shape(&columns)?;
+    let cells = vec![DbCell::Text("…".into()); columns.len()];
+    let (check, write) = redis_row(
+        &columns,
+        &shape,
+        redis_prefix(&plan.table),
+        plan.mode,
+        &cells,
+    )?;
+    // The check and the write share the key placeholder.
+    let parameters = write.parameters.clone();
+    let text = match check {
+        Some(check) => format!("{}\n{}", check.text, write.text),
+        None => write.text.clone(),
+    };
+    Ok(DbQueryRequest {
+        text,
+        parameters,
+        approval_ticket: None,
+    })
+}
+
+/// The ClickHouse decimal type a value fits: 20 integer and 18 fraction
+/// digits, else 38 and 38.
+fn clickhouse_decimal(value: &str) -> &'static str {
+    let digits = value.trim_start_matches(['+', '-']);
+    let (whole, fraction) = digits.split_once('.').unwrap_or((digits, ""));
+    if !digits.contains(['e', 'E']) && whole.len() <= 20 && fraction.len() <= 18 {
+        "Decimal128(18)"
+    } else {
+        "Decimal256(38)"
+    }
+}
+
 impl DbSession {
     /// The reviewable template of `plan` (see [`template`]), checked against
     /// the table's columns and key. Writes must be allowed.
@@ -1353,10 +1762,70 @@ impl DbSession {
         if self.guard.is_read_only() || self.guard.policy().mobile {
             return Err(DbError::PolicyDenied);
         }
-        let columns = self.edit_columns(&plan.table).await?;
+        let columns = self.import_columns(&plan.table, &plan.mapping).await?;
         targets(&plan.mapping, &columns)?;
-        let key = self.primary_key(&plan.table).await?;
+        let key = self.import_key(&plan.table).await?;
         template(self.info.engine, plan, &key)
+    }
+
+    /// The columns an import may write: the table's, and for a MongoDB
+    /// collection also new fields named in `mapping` (each value typed as
+    /// it reads).
+    pub async fn import_columns(
+        &self,
+        table: &DbObjectRef,
+        mapping: &[CsvMapping],
+    ) -> Result<Vec<DbEditColumn>, DbError> {
+        let mut columns = self.edit_columns(table).await?;
+        if self.info.engine == DbEngine::Redis {
+            // Other targets are hash fields.
+            for target in mapping.iter().map(|m| &m.target) {
+                if columns.iter().any(|c| &c.name == target) {
+                    continue;
+                }
+                if !redis_field(target) || columns.len() >= MAX_COLUMNS {
+                    return Err(DbError::InvalidRequest);
+                }
+                columns.push(DbEditColumn {
+                    name: target.clone(),
+                    type_name: "hash field".into(),
+                    nullable: true,
+                    has_default: true,
+                    generated: false,
+                    key: false,
+                });
+            }
+            return Ok(columns);
+        }
+        if self.info.engine == DbEngine::Mongodb {
+            for target in mapping.iter().map(|m| &m.target) {
+                if columns.iter().any(|c| &c.name == target) {
+                    continue;
+                }
+                if !mongo_field(target) || columns.len() >= MAX_COLUMNS {
+                    return Err(DbError::InvalidRequest);
+                }
+                columns.push(DbEditColumn {
+                    name: target.clone(),
+                    type_name: "auto".into(),
+                    nullable: true,
+                    has_default: true,
+                    generated: false,
+                    key: false,
+                });
+            }
+        }
+        Ok(columns)
+    }
+
+    /// The key skip-existing and upsert match on: `_id` in MongoDB.
+    async fn import_key(&self, table: &DbObjectRef) -> Result<Vec<String>, DbError> {
+        match self.info.engine {
+            DbEngine::Mongodb => return Ok(vec!["_id".into()]),
+            DbEngine::Redis => return Ok(vec!["key".into()]),
+            _ => {}
+        }
+        self.primary_key(table).await
     }
 
     /// Imports a CSV file as `plan` says. `approved` is the reviewed
@@ -1375,11 +1844,20 @@ impl DbSession {
         report: Option<PathBuf>,
     ) -> Result<(), DbError> {
         let engine = self.info.engine;
-        let key = self.primary_key(&plan.table).await?;
-        let columns = self.edit_columns(&plan.table).await?;
+        let key = self.import_key(&plan.table).await?;
+        let columns = self.import_columns(&plan.table, &plan.mapping).await?;
         if template(engine, plan, &key)?.text != approved.text {
             return Err(DbError::ApprovalRequired);
         }
+        let object_ids: Vec<bool> = plan
+            .mapping
+            .iter()
+            .map(|m| {
+                columns
+                    .iter()
+                    .any(|c| c.name == m.target && c.type_name == "objectId")
+            })
+            .collect();
         let read = Arc::new(AtomicU64::new(0));
         let (mut reader, size) = Reader::open(path, plan, &columns, read.clone())?;
         progress.total_bytes.store(size, Ordering::Release);
@@ -1390,11 +1868,29 @@ impl DbSession {
             batch_rows(plan.batch_rows, names.len())
         };
         // The approval is checked (and a destructive one consumed) up front.
-        let approved_statements = permitted(self, approved)?;
-        let truncate = plan
-            .truncate
-            .then(|| approved_statements.first().cloned())
-            .flatten();
+        let (truncate, mongo_truncate) = if matches!(engine, DbEngine::Mongodb | DbEngine::Redis) {
+            let permits = self.guard.prepare(approved)?;
+            let mut clear = None;
+            for permit in &permits {
+                self.guard.validate_permit(permit)?;
+            }
+            if plan.truncate {
+                match permits.first().map(|permit| permit.parsed()) {
+                    Some(crate::parser::ParsedStatement::Mongo { command, order }) => {
+                        clear = Some((command.clone(), order.clone()));
+                    }
+                    _ => return Err(DbError::InvalidRequest),
+                }
+            }
+            (None, clear)
+        } else {
+            let approved_statements = permitted(self, approved)?;
+            let truncate = plan
+                .truncate
+                .then(|| approved_statements.first().cloned())
+                .flatten();
+            (truncate, None)
+        };
         let mut report = Report {
             path: report,
             file: None,
@@ -1407,7 +1903,9 @@ impl DbSession {
             crate::session::Driver::Sqlite(driver) => Tx::Sqlite(driver),
             crate::session::Driver::SqliteCli(driver) => Tx::SqliteCli(driver),
             crate::session::Driver::Cassandra(driver) => Tx::Cassandra(driver),
-            _ => return Err(DbError::InvalidRequest),
+            crate::session::Driver::ClickHouse(driver) => Tx::Clickhouse(driver),
+            crate::session::Driver::Mongo(driver) => Tx::Mongo(driver),
+            crate::session::Driver::Redis(driver) => Tx::Redis(driver),
         };
         let whole = plan.transaction == CsvTransaction::Whole;
         if whole && !tx.transactional() {
@@ -1446,7 +1944,7 @@ impl DbSession {
                 progress
                     .bytes_read
                     .store(read.load(Ordering::Acquire).min(size), Ordering::Release);
-                if rows.is_empty() && !(first && truncate.is_some()) {
+                if rows.is_empty() && !(first && (truncate.is_some() || mongo_truncate.is_some())) {
                     break;
                 }
                 if !whole {
@@ -1457,9 +1955,38 @@ impl DbSession {
                     if let Some((sql, parameters)) = &truncate {
                         tx.step(sql, parameters, cancel.clone()).await?;
                     }
+                    if let (Some((command, order)), Tx::Mongo(driver)) = (&mongo_truncate, &mut tx)
+                    {
+                        driver
+                            .import_write(&plan.table.database, command, order, &cancel)
+                            .await?;
+                    }
                     first = false;
                 }
-                if !rows.is_empty() {
+                if let (false, Tx::Redis(driver)) = (rows.is_empty(), &mut tx) {
+                    self.import_redis_batch(
+                        driver,
+                        plan,
+                        &names,
+                        &rows,
+                        &progress,
+                        &mut report,
+                        &cancel,
+                    )
+                    .await?;
+                } else if let (false, Tx::Mongo(driver)) = (rows.is_empty(), &mut tx) {
+                    self.import_mongo_batch(
+                        driver,
+                        plan,
+                        &names,
+                        &object_ids,
+                        &rows,
+                        &progress,
+                        &mut report,
+                        &cancel,
+                    )
+                    .await?;
+                } else if !rows.is_empty() {
                     self.import_batch(
                         &mut tx,
                         plan,
@@ -1496,6 +2023,137 @@ impl DbSession {
             .bytes_read
             .store(read.load(Ordering::Acquire).min(size), Ordering::Release);
         result
+    }
+
+    /// Redis rows, one key at a time. An existing key is skipped in
+    /// skip-existing mode and refused in insert mode; a hash is checked with
+    /// `EXISTS` first (not atomic with the write).
+    #[allow(clippy::too_many_arguments)]
+    async fn import_redis_batch(
+        &self,
+        driver: &mut crate::redis_driver::Redis,
+        plan: &CsvImportPlan,
+        names: &[String],
+        rows: &[(u64, Vec<DbCell>)],
+        progress: &CsvImportProgress,
+        report: &mut Report,
+        cancel: &CancellationToken,
+    ) -> Result<(), DbError> {
+        let shape = redis_shape(names)?;
+        let prefix = redis_prefix(&plan.table);
+        let database = &plan.table.database;
+        for (line, cells) in rows {
+            let run = |request: DbQueryRequest| -> Result<Vec<Vec<u8>>, DbError> {
+                let permits = self.guard.prepare(&request)?;
+                let [permit] = permits.as_slice() else {
+                    return Err(DbError::InvalidRequest);
+                };
+                self.guard.validate_permit(permit)?;
+                match permit.parsed() {
+                    crate::parser::ParsedStatement::Redis { argv } => Ok(argv.clone()),
+                    _ => Err(DbError::InvalidRequest),
+                }
+            };
+            let outcome: Result<bool, DbError> = async {
+                let (check, write) = redis_row(names, &shape, prefix, plan.mode, cells)?;
+                if let Some(check) = check {
+                    if driver.import_write(database, &run(check)?, cancel).await? != Some(0) {
+                        return Ok(false);
+                    }
+                }
+                Ok(driver
+                    .import_write(database, &run(write)?, cancel)
+                    .await?
+                    .is_some())
+            }
+            .await;
+            match outcome {
+                Ok(true) => {
+                    progress.imported.fetch_add(1, Ordering::AcqRel);
+                }
+                Ok(false) if plan.mode == CsvInsertMode::SkipExisting => {
+                    progress.skipped.fetch_add(1, Ordering::AcqRel);
+                }
+                Err(
+                    error @ (DbError::Cancelled
+                    | DbError::Timeout
+                    | DbError::SessionClosed
+                    | DbError::ConnectionFailed
+                    | DbError::PolicyDenied),
+                ) => return Err(error),
+                // An existing key in insert mode, or a refused write.
+                _ if plan.skip_bad_rows => {
+                    let fields: Vec<Option<String>> = cells.iter().map(cell_text).collect();
+                    report.add(*line, "refused", &fields);
+                }
+                _ => {
+                    if let Ok(mut error) = progress.error.lock() {
+                        *error = Some(format!("row_refused:{line}"));
+                    }
+                    return Err(DbError::QueryFailed);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// One MongoDB batch, `ordered: false`: every document is written or
+    /// refused on its own. A duplicate `_id` is skipped in skip-existing
+    /// mode; other refused documents are reported with `skip_bad_rows`,
+    /// else they stop the import (the others of the batch stay written).
+    #[allow(clippy::too_many_arguments)]
+    async fn import_mongo_batch(
+        &self,
+        driver: &mut crate::mongo::Mongo,
+        plan: &CsvImportPlan,
+        names: &[String],
+        object_ids: &[bool],
+        rows: &[(u64, Vec<DbCell>)],
+        progress: &CsvImportProgress,
+        report: &mut Report,
+        cancel: &CancellationToken,
+    ) -> Result<(), DbError> {
+        let mode = mongo_mode(plan.mode, names);
+        let request = mongo_request(&plan.table.name, names, object_ids, plan.mode, rows, false)?;
+        let permits = self.guard.prepare(&request)?;
+        let [permit] = permits.as_slice() else {
+            return Err(DbError::InvalidRequest);
+        };
+        self.guard.validate_permit(permit)?;
+        let crate::parser::ParsedStatement::Mongo { command, order } = permit.parsed() else {
+            return Err(DbError::InvalidRequest);
+        };
+        let (written, refused) = driver
+            .import_write(&plan.table.database, command, order, cancel)
+            .await?;
+        let mut skipped = 0u64;
+        let mut failed = Vec::new();
+        for (index, code) in refused {
+            // 11000: duplicate key.
+            if code == 11000 && mode == CsvInsertMode::SkipExisting {
+                skipped += 1;
+            } else if let Some(row) = rows.get(index) {
+                failed.push(row);
+            }
+        }
+        let written = if mode == CsvInsertMode::Upsert {
+            rows.len() as u64 - skipped - failed.len() as u64
+        } else {
+            written
+        };
+        progress.imported.fetch_add(written, Ordering::AcqRel);
+        progress.skipped.fetch_add(skipped, Ordering::AcqRel);
+        if !failed.is_empty() && !plan.skip_bad_rows {
+            if let Ok(mut error) = progress.error.lock() {
+                *error = Some(format!("row_refused:{}", failed[0].0));
+            }
+            return Err(DbError::QueryFailed);
+        }
+        for row in failed {
+            let fields: Vec<Option<String>> = row.1.iter().map(cell_text).collect();
+            report.add(row.0, "refused", &fields);
+        }
+        Ok(())
     }
 
     /// One batch; with `skip_bad_rows` a refused batch is retried row by
@@ -1599,6 +2257,121 @@ fn cell_text(cell: &DbCell) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn clickhouse_and_bson_type_names_map_to_kinds() {
+        for (name, kind) in [
+            ("Nullable(Int64)", CsvKind::Int),
+            ("UInt8", CsvKind::Uint),
+            ("LowCardinality(Nullable(String))", CsvKind::Text),
+            ("Decimal(10, 2)", CsvKind::Decimal),
+            ("DateTime64(3)", CsvKind::Timestamp),
+            ("Date32", CsvKind::Date),
+            ("Float32", CsvKind::Float),
+            ("Bool", CsvKind::Bool),
+            ("long", CsvKind::Int),
+            ("datetime", CsvKind::Timestamp),
+            ("objectId", CsvKind::Text),
+            ("auto", CsvKind::Auto),
+        ] {
+            assert_eq!(CsvKind::of(name), kind, "{name}");
+        }
+        assert_eq!(clickhouse_decimal("-12.50"), "Decimal128(18)");
+        assert_eq!(
+            clickhouse_decimal("123456789012345678901.5"),
+            "Decimal256(38)"
+        );
+    }
+
+    #[test]
+    fn auto_values_type_themselves() {
+        let options = CsvOptions::default();
+        let auto = |text: &str| convert(Some(text), CsvKind::Auto, &options);
+        assert_eq!(auto("12"), Some(DbCell::Int("12".into())));
+        assert_eq!(auto("1.5"), Some(DbCell::Float("1.5".into())));
+        assert_eq!(auto("true"), Some(DbCell::Bool(true)));
+        assert_eq!(auto("2024-01-02"), Some(DbCell::Date("2024-01-02".into())));
+        assert!(matches!(
+            auto("2024-01-02 03:04:05"),
+            Some(DbCell::Timestamp(_))
+        ));
+        assert_eq!(auto("yes"), Some(DbCell::Text("yes".into())));
+        assert_eq!(auto("007x"), Some(DbCell::Text("007x".into())));
+        assert_eq!(convert(None, CsvKind::Auto, &options), Some(DbCell::Null));
+    }
+
+    #[test]
+    fn mongo_requests_insert_or_upsert_by_id() {
+        let rows = vec![
+            (
+                2,
+                vec![
+                    DbCell::Text("0123456789abcdef01234567".into()),
+                    DbCell::Null,
+                    DbCell::Timestamp("2024-01-02T03:04:05".into()),
+                ],
+            ),
+            (
+                3,
+                vec![
+                    DbCell::Text("plain".into()),
+                    DbCell::Int("7".into()),
+                    DbCell::Date("2024-01-02".into()),
+                ],
+            ),
+        ];
+        let columns = ["_id".to_string(), "qty".into(), "seen".into()];
+        let insert = mongo_request(
+            "items",
+            &columns,
+            &[true, false, false],
+            CsvInsertMode::Insert,
+            &rows,
+            false,
+        )
+        .unwrap();
+        assert_eq!(
+            insert.text,
+            r#"{"insert":"items","documents":[{"_id":{"$oid":"0123456789abcdef01234567"},"seen":{"$param":"p0"}},{"_id":{"$param":"p1"},"qty":{"$param":"p2"},"seen":{"$param":"p3"}}],"ordered":false}"#
+        );
+        assert_eq!(
+            insert.parameters[0].value,
+            DbCell::Timestamp("2024-01-02T03:04:05Z".into())
+        );
+        assert_eq!(
+            insert.parameters[3].value,
+            DbCell::Timestamp("2024-01-02T00:00:00Z".into())
+        );
+        let upsert = mongo_request(
+            "items",
+            &columns,
+            &[true, false, false],
+            CsvInsertMode::Upsert,
+            &rows[..1],
+            false,
+        )
+        .unwrap();
+        assert_eq!(
+            upsert.text,
+            r#"{"update":"items","updates":[{"q":{"_id":{"$oid":"0123456789abcdef01234567"}},"u":{"$set":{"seen":{"$param":"p0"}}},"upsert":true}],"ordered":false}"#
+        );
+        // Only _id: an upsert adds missing documents.
+        assert_eq!(
+            mongo_mode(CsvInsertMode::Upsert, &["_id".to_string()]),
+            CsvInsertMode::SkipExisting
+        );
+        for bad in ["$where", "a.b", ""] {
+            assert!(mongo_request(
+                "items",
+                &[bad.to_string()],
+                &[],
+                CsvInsertMode::Insert,
+                &rows[..1],
+                false
+            )
+            .is_err());
+        }
+    }
     use std::io::Write;
 
     fn file(bytes: &[u8]) -> tempfile::NamedTempFile {
