@@ -65,7 +65,7 @@ class LocalAiRuntime {
        bundledRuntimeDirectory =
            bundledRuntimeDirectory ?? _defaultBundledRuntimeDirectory(platform ?? LocalAiCatalog.platform),
        _downloader = downloader ?? const LocalAiDownloader() {
-    _installation = LocalAiInstallation(this.supportDirectory, models: models);
+    _installation = LocalAiInstallation(this.supportDirectory, catalog: models);
     if (this.platform == LocalAiPlatform.unsupported) {
       _status = const LocalAiRuntimeStatus(phase: LocalAiPhase.unsupported);
     }
@@ -86,6 +86,9 @@ class LocalAiRuntime {
   LocalAiRuntimeStatus get status => _status;
   Stream<LocalAiRuntimeStatus> get statuses => _changes.stream;
   LocalAiModel get selectedModel => _installation.selected;
+
+  /// The catalog and the user's own GGUF models.
+  List<LocalAiModel> get models => _installation.models;
   Future<void>? _initializing, _installing, _stopping, _selecting, _removing;
   Future<LocalAiEndpoint>? _starting;
   LocalAiCancellation? _downloadCancellation;
@@ -256,6 +259,7 @@ class LocalAiRuntime {
     Directory? staging;
     try {
       final modelPresent = await _installation.verify(selected, cancellation: cancellation);
+      if (!modelPresent && selected.isCustom) throw const LocalAiException('custom_model_missing');
       _runtimeInstalled = await _runtimeExecutable(verifyFiles: true, cancellation: cancellation) != null;
       final runtimeBytes = !_runtimeInstalled && _downloadsRuntime ? artifact.bytes : 0;
       final total = runtimeBytes + (modelPresent ? 0 : selected.bytes);
@@ -299,7 +303,9 @@ class LocalAiRuntime {
       _set(
         LocalAiPhase.error,
         installed: _installation.installedModelIds.contains(selected.id),
-        message: error is LocalAiException && error.code == 'bundled_runtime_unavailable'
+        message:
+            error is LocalAiException &&
+                (error.code == 'bundled_runtime_unavailable' || error.code == 'custom_model_missing')
             ? error.code
             : 'install_failed',
       );
@@ -307,6 +313,58 @@ class LocalAiRuntime {
     } finally {
       if (staging != null && staging.existsSync()) await staging.delete(recursive: true);
       _downloadCancellation = null;
+    }
+  }
+
+  /// Adds the user's GGUF at [path] (copied and hashed, LIM-04) and selects
+  /// it. Shows as installing with progress; [cancelInstall] cancels it.
+  Future<void> importModel(String path) {
+    _checkUsable();
+    if (_selecting != null || _removing != null || _installing != null) {
+      throw const LocalAiException('operation_in_progress');
+    }
+    final cancellation = LocalAiCancellation();
+    _downloadCancellation = cancellation;
+    return _installing = _import(File(path), cancellation).whenComplete(() {
+      _installing = null;
+      _downloadCancellation = null;
+    });
+  }
+
+  Future<void> _import(File source, LocalAiCancellation cancellation) async {
+    await initialize();
+    _checkUsable();
+    if (!_initialized) throw const LocalAiException('local_storage_unavailable');
+    final total = source.existsSync() ? await source.length() : 0;
+    _set(LocalAiPhase.installing, total: total);
+    try {
+      final model = await _installation.importCustom(
+        source,
+        cancellation: cancellation,
+        onProgress: (copied) => _set(LocalAiPhase.installing, received: copied, total: total),
+      );
+      cancellation.check();
+      if (selectedModel.id != model.id) {
+        // As in selectModel: nothing from the old model crosses the switch.
+        _selectionRevision++;
+        await stop();
+        await _installation.select(model);
+      }
+      _modelVerified = true; // Hashed while copying.
+      _runtimeInstalled = await _runtimeExecutable() != null;
+      _set(LocalAiPhase.stopped, installed: true);
+    } on LocalAiDownloadCancelled {
+      final installed = _installation.installedModelIds.contains(selectedModel.id);
+      _set(installed ? LocalAiPhase.stopped : LocalAiPhase.notInstalled, installed: installed);
+      rethrow;
+    } catch (error) {
+      await _installation.refresh();
+      _set(
+        LocalAiPhase.error,
+        installed: _installation.installedModelIds.contains(selectedModel.id),
+        message: error is LocalAiException && error.code == 'invalid_gguf' ? error.code : 'import_failed',
+      );
+      rethrow;
     }
   }
 
@@ -553,6 +611,13 @@ class LocalAiRuntime {
     await stop();
     await _installation.remove(selected);
     _modelVerified = false;
+    if (selected.isCustom) {
+      // A removed custom model leaves the list; the first catalog model is selected.
+      await _installation.forget(selected);
+      final installed = _installation.installedModelIds.contains(selectedModel.id);
+      _set(installed ? LocalAiPhase.stopped : LocalAiPhase.notInstalled, installed: installed);
+      return;
+    }
     _set(LocalAiPhase.notInstalled, installed: false);
   }
 

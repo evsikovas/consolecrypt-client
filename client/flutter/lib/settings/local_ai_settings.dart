@@ -28,6 +28,7 @@ class LocalAiSettings extends ConsumerWidget {
       LocalAiTier.light => l.localAiTierLight,
       LocalAiTier.medium => l.localAiTierMedium,
       LocalAiTier.strong => l.localAiTierStrong,
+      LocalAiTier.custom => l.localAiTierCustom,
     };
     Future<void> perform(Future<void> Function() action) async {
       try {
@@ -66,7 +67,7 @@ class LocalAiSettings extends ConsumerWidget {
                 value: runtime.selectedModel.id,
                 label: l.localAiModel,
                 items: [
-                  for (final model in LocalAiCatalog.models)
+                  for (final model in runtime.models)
                     GlassSelectItem(
                       // Star marks the recommended model, a done mark the installed ones.
                       key: hardware?.recommendedModel?.id == model.id
@@ -104,7 +105,9 @@ class LocalAiSettings extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              l.localAiModelAttribution(runtime.selectedModel.publisher, runtime.selectedModel.license),
+              runtime.selectedModel.isCustom
+                  ? l.localAiCustomModelNotice
+                  : l.localAiModelAttribution(runtime.selectedModel.publisher, runtime.selectedModel.license),
               style: Theme.of(context).textTheme.bodySmall,
             ),
             GlassButton.plain(
@@ -139,6 +142,9 @@ class LocalAiSettings extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(switch (status.message) {
                 'install_failed' => l.localAiInstallFailed,
+                'invalid_gguf' => l.localAiInvalidGguf,
+                'import_failed' => l.localAiImportFailed,
+                'custom_model_missing' => l.localAiCustomMissing,
                 'installed_files_changed' => l.localAiFilesChanged,
                 'local_storage_unavailable' => l.localAiStorageUnavailable,
                 'bundled_runtime_unavailable' => l.localAiBundledRuntimeMissing,
@@ -174,6 +180,13 @@ class LocalAiSettings extends ConsumerWidget {
                     key: const ValueKey('local-ai-cancel'),
                     label: l.commonCancel,
                     onPressed: runtime.cancelInstall,
+                  )
+                else if (!status.isInstalled && runtime.selectedModel.isCustom)
+                  GlassButton.plain(
+                    key: const ValueKey('local-ai-remove'),
+                    label: l.localAiRemove,
+                    icon: Icons.delete_outline_rounded,
+                    onPressed: busy ? null : () => perform(runtime.uninstall),
                   )
                 else if (!status.isInstalled)
                   GlassButton.prominent(
@@ -217,6 +230,24 @@ class LocalAiSettings extends ConsumerWidget {
                 ],
               ],
             ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: GlassButton.plain(
+                key: const ValueKey('local-ai-import'),
+                label: l.localAiImport,
+                icon: Icons.add_rounded,
+                onPressed: busy
+                    ? null
+                    : () => perform(() async {
+                        final path = await ref
+                            .read(fileDialogServiceProvider)
+                            .chooseOpenFile(extensions: const ['gguf']);
+                        if (path != null) await runtime.importModel(path);
+                      }),
+              ),
+            ),
+            Text(l.localAiImportHelp, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 8),
             Text(l.localAiModelsPreserved, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 8),

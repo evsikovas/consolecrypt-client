@@ -88,8 +88,21 @@ ConsoleCrypt. Путь к модели и токен процесса не си�
 Точные URL, размеры и SHA-256 находятся в
 `client/flutter/lib/ai/local/local_ai_catalog.dart`. В настройках доступен текст
 «Источники и лицензии моделей», включая лицензию без подключения к интернету.
-Выбор произвольного GGUF и CUDA-пакета пока не реализован. Для Qwen3.5 движок
-настроен без отдельного reasoning-ответа.
+Для Qwen3.5 движок настроен без отдельного reasoning-ответа. CUDA-пакет пока не
+реализован.
+
+### Своя модель (GGUF)
+
+«Добавить свою модель (GGUF)…» выбирает файл на компьютере. ConsoleCrypt проверяет
+заголовок GGUF (версии 2 и 3), копирует файл в свою папку моделей, считая SHA-256 по
+пути, и выбирает модель; оригинал не меняется, его можно удалить. Повторное
+добавление того же файла использует уже сделанную копию. Модель называется по имени
+файла и помечена «Своя»; ориентир по ОЗУ — оценка по размеру файла (не меньше 4 ГиБ).
+Происхождение и лицензию своей модели проверяйте сами. Перед каждым первым запуском
+за сеанс копия сверяется с SHA-256. «Удалить» удаляет копию и убирает модель из
+списка, выбранной становится Qwen2.5-Coder 1.5B. Свою модель приложение никогда не
+скачивает: если копия пропала, удалите модель и добавьте файл снова. Подходят
+модели, которые читает встроенный llama.cpp b11739, с шаблоном чата внутри GGUF.
 
 ## English
 
@@ -122,6 +135,18 @@ switch or quit. Inference uses authenticated loopback with system HTTP proxies
 disabled; context filtering still applies. Local-terminal commands support
 Insert without Enter, followed by your manual review and execution. SSH keeps
 its execution approval. The current chat is session-only.
+
+**Your own model (GGUF).** “Add your own model (GGUF)…” picks a file on the computer.
+ConsoleCrypt checks the GGUF header (versions 2 and 3), copies the file into its models
+folder while computing SHA-256 and selects it; the original is untouched and can be
+deleted. Adding the same file again reuses the copy. The model is named after the file
+and marked Custom; the RAM guidance is estimated from the file size (at least 4 GiB).
+Check the origin and license of your own model yourself. The copy is checked against
+its SHA-256 before the first start of each session. Remove deletes the copy and drops
+the model from the list, selecting Qwen2.5-Coder 1.5B. A custom model is never
+downloaded: if the copy is gone, remove the model and add the file again. Any model the
+built-in llama.cpp b11739 reads, with a chat template inside the GGUF, will do. A CUDA
+package is not available yet.
 
 Qwen publishes the 1.5B GGUF; Unsloth quantizes/distributes the Qwen3.5 4B/9B GGUFs.
 All three models use Apache-2.0; llama.cpp uses MIT. Pinned revisions are listed

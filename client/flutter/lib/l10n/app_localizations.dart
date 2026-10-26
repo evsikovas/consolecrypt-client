@@ -10496,6 +10496,48 @@ abstract class AppLocalizations {
   /// **'Switching models keeps other downloads. Installed models and your choice survive app updates.'**
   String get localAiModelsPreserved;
 
+  /// Device-local AI: the user's own GGUF model (LIM-04).
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get localAiTierCustom;
+
+  /// Device-local AI: the user's own GGUF model (LIM-04).
+  ///
+  /// In en, this message translates to:
+  /// **'Add your own model (GGUF)…'**
+  String get localAiImport;
+
+  /// Device-local AI: the user's own GGUF model (LIM-04).
+  ///
+  /// In en, this message translates to:
+  /// **'The file is copied into the ConsoleCrypt models folder and checked by SHA-256; you can delete the original. Any GGUF the built-in llama.cpp reads will do; memory guidance is estimated from the file size.'**
+  String get localAiImportHelp;
+
+  /// Device-local AI: the user's own GGUF model (LIM-04).
+  ///
+  /// In en, this message translates to:
+  /// **'Your own model: check its origin and license yourself.'**
+  String get localAiCustomModelNotice;
+
+  /// Device-local AI: the user's own GGUF model (LIM-04).
+  ///
+  /// In en, this message translates to:
+  /// **'This is not a GGUF model file.'**
+  String get localAiInvalidGguf;
+
+  /// Device-local AI: the user's own GGUF model (LIM-04).
+  ///
+  /// In en, this message translates to:
+  /// **'Could not add the model. Check free disk space.'**
+  String get localAiImportFailed;
+
+  /// Device-local AI: the user's own GGUF model (LIM-04).
+  ///
+  /// In en, this message translates to:
+  /// **'The custom model file is missing. Remove it and add it again.'**
+  String get localAiCustomMissing;
+
   /// Device-local AI model management and installation guidance.
   ///
   /// In en, this message translates to:

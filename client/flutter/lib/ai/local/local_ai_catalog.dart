@@ -1,8 +1,10 @@
 import 'dart:ffi';
+import 'dart:math';
 
 enum LocalAiPlatform { macArm64, macX64, windowsX64, unsupported }
 
-enum LocalAiTier { light, medium, strong }
+/// [custom]: a GGUF the user added (LIM-04); never downloaded.
+enum LocalAiTier { light, medium, strong, custom }
 
 /// Only this reviewed catalog can supply executable/model download URLs.
 /// llama.cpp: https://github.com/ggml-org/llama.cpp/releases/tag/b11739
@@ -26,11 +28,23 @@ class LocalAiModel extends LocalAiArtifact {
     this.tier = LocalAiTier.light,
     this.publisher = 'Qwen',
   });
+
+  /// A GGUF added by the user, stored under its digest; origin and license
+  /// are the user's to check. RAM guidance is an estimate from the size.
+  LocalAiModel.custom({required this.label, required super.sha256, required super.bytes})
+    : id = 'custom-${sha256.substring(0, 16)}',
+      recommendedRamGiB = max(4, (bytes * 1.5 / (1 << 30)).ceil()),
+      disableReasoning = false,
+      tier = LocalAiTier.custom,
+      publisher = '',
+      super(url: '', filename: 'custom-${sha256.substring(0, 16)}.gguf');
+
   final String id, label;
   final int recommendedRamGiB;
   final bool disableReasoning;
   final LocalAiTier tier;
   final String publisher;
+  bool get isCustom => tier == LocalAiTier.custom;
   String get license => 'Apache-2.0';
   String get sourceUrl => url.split('/resolve/').first;
 }
