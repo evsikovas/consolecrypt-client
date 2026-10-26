@@ -1257,7 +1257,7 @@ dependencies = [
 [[package]]
 name = "cc-protocol"
 version = "0.1.0"
-source = "git+https://github.com/evsikovas/consolecrypt-server.git?rev=0d0f8a27f3b4f10712de6098ff433f8245d70ebd#0d0f8a27f3b4f10712de6098ff433f8245d70ebd"
+source = "git+https://github.com/evsikovas/consolecrypt-server.git?rev=b13f632bf04d92753de8971c5ec0343ec68f3afe#b13f632bf04d92753de8971c5ec0343ec68f3afe"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -7197,7 +7197,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
