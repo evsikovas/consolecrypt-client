@@ -8,7 +8,9 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/services/database_sharing_service.dart';
 import 'package:consolecrypt/core/services/enrollment_service.dart';
 import 'package:consolecrypt/core/services/file_dialog_service.dart';
+import 'package:consolecrypt/core/services/rdp_sharing_service.dart';
 import 'package:consolecrypt/core/services/sharing_service.dart';
+import 'package:consolecrypt/settings/cli_installer.dart';
 import 'package:consolecrypt/sharing/enrollment_models.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/teams/team_models.dart';
@@ -124,7 +126,22 @@ const guideScreens = [
   'kube-rollout',
   'kube-ai',
   ...guideExtraScreens,
+  ...guide093Screens,
 ];
+
+/// 0.9.3 additions, handled by `_release093Screen` in design_preview.dart.
+const guide093Screens = ['terminal-split', 'sharing-rdp', 'settings-cli', 'db-cassandra-trace'];
+
+/// Settings → Command line as in an installed app: the command is bundled
+/// and not yet installed. Nothing is linked or changed.
+final class GuideCliInstaller extends CliInstaller {
+  @override
+  Future<CliCommandState> state() async => const CliCommandState(
+    bundled: '/Applications/ConsoleCrypt.app/Contents/Helpers/consolecrypt-cli',
+    installed: false,
+    location: '/usr/local/bin/consolecrypt-cli',
+  );
+}
 
 /// 0.9.2 database cases handled by `_database092Screen` in design_preview.dart.
 const guideDb092Screens = [
@@ -319,7 +336,7 @@ const guideSafetyNumberGroups = [
   '11760',
 ];
 
-final class GuideSharingService implements SharingService, DatabaseSharingService {
+final class GuideSharingService implements SharingService, DatabaseSharingService, RdpSharingService {
   GuideSharingService({this.databases = false, this.banner = const []});
 
   /// Databases screens list shared database connections as well.
@@ -553,6 +570,30 @@ final class GuideSharingService implements SharingService, DatabaseSharingServic
     'kind': 'secret',
     'data': {'name': 'Deployment credential', 'secret_kind': 'password', 'value': guideUnexpectedMetadata},
   });
+
+  /// The RDP host card a colleague would receive (FEAT-05): metadata only.
+  @override
+  Future<RdpSharingPreview> previewRdpHost(
+    String hostId, {
+    bool includePassword = false,
+    bool includeNotes = false,
+  }) async => RdpSharingPreview(
+    snapshotStamp: 'guide-rdp',
+    previewJson: jsonEncode({
+      'kind': 'rdp_host',
+      'data': {
+        'name': 'Windows demo',
+        'address': 'windows.example.test',
+        'port': 3389,
+        'username': 'demo',
+        'domain': 'EXAMPLE',
+        'tags': ['office'],
+        'notes': null,
+        'includes_password': includePassword,
+      },
+    }),
+  );
+
   @override
   dynamic noSuchMethod(Invocation invocation) => throw StateError('Guide capture may not perform sharing mutations.');
 }

@@ -54,6 +54,10 @@
   `CACHEDIR.TAG` и `.nobackup`, поэтому borg, restic, tar, Duplicity, Back In Time и
   другие программы резервного копирования, которые учитывают эти метки, его пропускают
   (на macOS он, как и раньше, исключён из Time Machine).
+- **Экран запуска.** При запуске показан текущий знак ConsoleCrypt на тёмном фоне: на iOS
+  вместо прежнего оранжевого логотипа, на Android до 12 вместо белого экрана.
+- **Ошибка запуска на русском.** Экран, который появляется, если приложение не смогло
+  запуститься, переведён на русский и английский.
 - **SQLite: VACUUM.** Подтверждённый `VACUUM` в разделе «Базы данных» больше не
   отказывает: раньше его блокировал запрет подключать к сессии другие базы.
 - **Синхронизация удалённого хранилища.** Если хранилище удалено на сервере, синхронизация
@@ -218,6 +222,11 @@ admins and sends invitations only to verified addresses.
 - **Editing files over SFTP: backups on Windows and Linux.** The working-copy folder carries
   `CACHEDIR.TAG` and `.nobackup`, so borg, restic, tar, Duplicity, Back In Time and other
   backup tools that honour them skip it (on macOS it stays excluded from Time Machine).
+- **Launch screen.** The app shows the current ConsoleCrypt mark on a dark background at
+  launch: on iOS instead of the former orange logo, on Android before 12 instead of a blank
+  white screen.
+- **Startup error in Russian.** The screen shown when the app could not start is now in
+  Russian and English.
 - **SQLite: VACUUM.** An approved `VACUUM` in Databases no longer fails; the rule against
   attaching other databases to the session used to block it.
 - **Syncing a deleted vault.** When the vault was deleted on the server, sync stops with a
