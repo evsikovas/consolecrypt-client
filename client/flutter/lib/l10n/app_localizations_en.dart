@@ -13557,4 +13557,48 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get snippetDbSqliteVacuumNote =>
       'Rebuilds the file to return free pages to the disk; needs exclusive access and free space about the file\'s size.';
+
+  @override
+  String get cliTitle => 'Command line';
+
+  @override
+  String get cliHelp =>
+      'The consolecrypt-cli command manages profiles, hosts, keys, tunnels, SFTP, sync and backups from a terminal. It works with the same profiles as the app; consolecrypt-cli --help lists the commands.';
+
+  @override
+  String get cliInstall => 'Install CLI commands';
+
+  @override
+  String get cliUninstall => 'Remove CLI commands';
+
+  @override
+  String cliInstalled(String location) {
+    return 'Installed: $location';
+  }
+
+  @override
+  String get cliNotInstalled => 'The consolecrypt-cli command is not installed yet.';
+
+  @override
+  String get cliNotBundled =>
+      'This build has no consolecrypt-cli; it comes with the installers from the download page.';
+
+  @override
+  String cliNotOnPath(String folder) {
+    return '$folder is not on PATH: add it in your shell settings so the command is found.';
+  }
+
+  @override
+  String get cliInstalledHint => 'Done. Open a new terminal window and run consolecrypt-cli --help.';
+
+  @override
+  String get cliRemoved => 'The CLI commands were removed.';
+
+  @override
+  String cliConflict(String path) {
+    return '$path is taken by another file; ConsoleCrypt leaves it alone.';
+  }
+
+  @override
+  String get cliFailed => 'Could not install or remove the CLI commands.';
 }

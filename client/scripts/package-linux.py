@@ -14,7 +14,7 @@ import subprocess
 import tempfile
 
 VERSION = re.compile(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\+([1-9][0-9]*)')
-REQUIRED_ELFS = ('consolecrypt', 'lib/libapp.so', 'lib/libflutter_linux_gtk.so', 'lib/libcc_bridge.so')
+REQUIRED_ELFS = ('consolecrypt', 'consolecrypt-cli', 'lib/libapp.so', 'lib/libflutter_linux_gtk.so', 'lib/libcc_bridge.so')
 DEB_DEPENDS = ('libc6 (>= 2.35), libstdc++6 (>= 11), libgcc-s1, '
                'libgtk-3-0 (>= 3.22), libglib2.0-0 (>= 2.56), libblkid1, libepoxy0, liblzma5, libgl1, libegl1, libgles2, '
                'xdg-desktop-portal')
@@ -68,6 +68,7 @@ def stage_bundle(root: Path, bundle: Path, stage: Path, version: str) -> dict:
     for path in installation.rglob('*'):
         path.chmod(0o755 if path.is_dir() else 0o644)
     (installation / 'consolecrypt').chmod(0o755)
+    (installation / 'consolecrypt-cli').chmod(0o755)
     shutil.copy2(license_file, installation / 'LICENSE')
     if rdp_notice.is_file():
         shutil.copy2(rdp_notice, installation / 'RDP-THIRD-PARTY-NOTICES.txt')

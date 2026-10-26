@@ -18574,5 +18574,68 @@
   "snippetDbSqliteVacuumNote": "Rebuilds the file to return free pages to the disk; needs exclusive access and free space about the file's size.",
   "@snippetDbSqliteVacuumNote": {
     "description": "SQLite starter snippet"
+  },
+  "cliTitle": "Command line",
+  "@cliTitle": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliHelp": "The consolecrypt-cli command manages profiles, hosts, keys, tunnels, SFTP, sync and backups from a terminal. It works with the same profiles as the app; consolecrypt-cli --help lists the commands.",
+  "@cliHelp": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliInstall": "Install CLI commands",
+  "@cliInstall": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliUninstall": "Remove CLI commands",
+  "@cliUninstall": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliInstalled": "Installed: {location}",
+  "@cliInstalled": {
+    "description": "Settings: install the bundled consolecrypt-cli command.",
+    "placeholders": {
+      "location": {
+        "type": "String"
+      }
+    }
+  },
+  "cliNotInstalled": "The consolecrypt-cli command is not installed yet.",
+  "@cliNotInstalled": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliNotBundled": "This build has no consolecrypt-cli; it comes with the installers from the download page.",
+  "@cliNotBundled": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliNotOnPath": "{folder} is not on PATH: add it in your shell settings so the command is found.",
+  "@cliNotOnPath": {
+    "description": "Settings: install the bundled consolecrypt-cli command.",
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "cliInstalledHint": "Done. Open a new terminal window and run consolecrypt-cli --help.",
+  "@cliInstalledHint": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliRemoved": "The CLI commands were removed.",
+  "@cliRemoved": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliConflict": "{path} is taken by another file; ConsoleCrypt leaves it alone.",
+  "@cliConflict": {
+    "description": "Settings: install the bundled consolecrypt-cli command.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "cliFailed": "Could not install or remove the CLI commands.",
+  "@cliFailed": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
   }
 }

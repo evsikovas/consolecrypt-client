@@ -81,7 +81,7 @@ jobs:
           flutter test
       - name: Build universal macOS installer
         run: |
-          bash client/scripts/build-macos.sh --no-cli
+          bash client/scripts/build-macos.sh
           version="$(cat dist/macos/ConsoleCrypt.version)"
           cp dist/macos/ConsoleCrypt.dmg "dist/macos/ConsoleCrypt-$version-macos-universal.dmg"
           cd dist/macos

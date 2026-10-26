@@ -23797,6 +23797,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rebuilds the file to return free pages to the disk; needs exclusive access and free space about the file\'s size.'**
   String get snippetDbSqliteVacuumNote;
+
+  /// Settings: install the bundled consolecrypt-cli command.
+  ///
+  /// In en, this message translates to:
+  /// **'Command line'**
+  String get cliTitle;
+
+  /// Settings: install the bundled consolecrypt-cli command.
+  ///
+  /// In en, this message translates to:
+  /// **'The consolecrypt-cli command manages profiles, hosts, keys, tunnels, SFTP, sync and backups from a terminal. It works with the same profiles as the app; consolecrypt-cli --help lists the commands.'**
+  String get cliHelp;
+
+  /// Settings: install the bundled consolecrypt-cli command.
+  ///
+  /// In en, this message translates to:
+  /// **'Install CLI commands'**
+  String get cliInstall;
+
+  /// Settings: install the bundled consolecrypt-cli command.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove CLI commands'**
+  String get cliUninstall;
+
+  /// Settings: install the bundled consolecrypt-cli command.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed: {location}'**
+  String cliInstalled(String location);
+
+  /// Settings: install the bundled consolecrypt-cli command.
+  ///
+  /// In en, this message translates to:
+  /// **'The consolecrypt-cli command is not installed yet.'**
+  String get cliNotInstalled;
+
+  /// Settings: install the bundled consolecrypt-cli command.
+  ///
+  /// In en, this message translates to:
+  /// **'This build has no consolecrypt-cli; it comes with the installers from the download page.'**
+  String get cliNotBundled;
+
+  /// Settings: install the bundled consolecrypt-cli command.
+  ///
+  /// In en, this message translates to:
+  /// **'{folder} is not on PATH: add it in your shell settings so the command is found.'**
+  String cliNotOnPath(String folder);
+
+  /// Settings: install the bundled consolecrypt-cli command.
+  ///
+  /// In en, this message translates to:
+  /// **'Done. Open a new terminal window and run consolecrypt-cli --help.'**
+  String get cliInstalledHint;
+
+  /// Settings: install the bundled consolecrypt-cli command.
+  ///
+  /// In en, this message translates to:
+  /// **'The CLI commands were removed.'**
+  String get cliRemoved;
+
+  /// Settings: install the bundled consolecrypt-cli command.
+  ///
+  /// In en, this message translates to:
+  /// **'{path} is taken by another file; ConsoleCrypt leaves it alone.'**
+  String cliConflict(String path);
+
+  /// Settings: install the bundled consolecrypt-cli command.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not install or remove the CLI commands.'**
+  String get cliFailed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

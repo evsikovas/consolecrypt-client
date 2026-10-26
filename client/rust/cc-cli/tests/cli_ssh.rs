@@ -10,7 +10,7 @@ use std::process::{Command, Output};
 const PASSPHRASE: &str = "cli ssh passphrase 42";
 
 fn cc(dir: &Path, envs: &[(&str, &str)], args: &[&str]) -> Output {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_consolecrypt"));
+    let mut c = Command::new(env!("CARGO_BIN_EXE_consolecrypt-cli"));
     c.arg("--data-dir")
         .arg(dir)
         .args(["--secure-store", "file"])

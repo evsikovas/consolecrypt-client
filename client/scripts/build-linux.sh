@@ -25,6 +25,10 @@ flutter pub get
 # release builds. Recreate it so their kernel cannot enter a release package.
 rm -rf -- "$client_dir/flutter/build/flutter_assets"
 flutter build linux --release --target-platform linux-x64 --dart-define=CC_MOCK=false
+# Settings → Command line links it into ~/.local/bin.
+(cd -- "$client_dir/rust" && cargo build --release --locked -p cc-cli)
+install -m 0755 "$client_dir/rust/target/release/consolecrypt-cli" \
+  "$client_dir/flutter/build/linux/x64/release/bundle/consolecrypt-cli"
 python3 "$client_dir/scripts/package-linux.py" --root "$repo_dir" \
   --bundle "$client_dir/flutter/build/linux/x64/release/bundle" \
   --output "$repo_dir/dist/linux" --version "$build_version"

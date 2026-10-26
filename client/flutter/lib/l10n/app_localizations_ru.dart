@@ -13890,4 +13890,47 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get snippetDbSqliteVacuumNote =>
       'Перестраивает файл и возвращает свободные страницы диску; нужен монопольный доступ и свободное место размером с файл.';
+
+  @override
+  String get cliTitle => 'Командная строка';
+
+  @override
+  String get cliHelp =>
+      'Команда consolecrypt-cli управляет профилями, хостами, ключами, туннелями, SFTP, синхронизацией и резервными копиями из терминала. Она работает с теми же профилями, что и приложение; список команд — consolecrypt-cli --help.';
+
+  @override
+  String get cliInstall => 'Установить команды CLI';
+
+  @override
+  String get cliUninstall => 'Удалить команды CLI';
+
+  @override
+  String cliInstalled(String location) {
+    return 'Установлено: $location';
+  }
+
+  @override
+  String get cliNotInstalled => 'Команда consolecrypt-cli ещё не установлена в систему.';
+
+  @override
+  String get cliNotBundled => 'В этой сборке нет consolecrypt-cli: он входит в установщики со страницы загрузок.';
+
+  @override
+  String cliNotOnPath(String folder) {
+    return 'Папки $folder нет в PATH: добавьте её в настройки своей оболочки, чтобы команда находилась.';
+  }
+
+  @override
+  String get cliInstalledHint => 'Готово. Откройте новое окно терминала и выполните consolecrypt-cli --help.';
+
+  @override
+  String get cliRemoved => 'Команды CLI удалены из системы.';
+
+  @override
+  String cliConflict(String path) {
+    return '$path уже занят другим файлом — ConsoleCrypt его не трогает.';
+  }
+
+  @override
+  String get cliFailed => 'Не удалось установить или удалить команды CLI.';
 }

@@ -33,7 +33,7 @@ type R<T = ()> = Result<T, CliError>;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "consolecrypt",
+    name = "consolecrypt-cli",
     version,
     author,
     about = "ConsoleCrypt headless client",

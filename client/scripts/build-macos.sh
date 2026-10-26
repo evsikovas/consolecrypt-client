@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # Build the ConsoleCrypt desktop client (Flutter UI + Rust core) and the
-# `consolecrypt` CLI for macOS.
+# `consolecrypt-cli` command (inside the app) for macOS.
 #
 # Usage:
 #   client/scripts/build-macos.sh                 # release build of the working tree
 #   client/scripts/build-macos.sh --debug         # faster debug build
 #   client/scripts/build-macos.sh --commit HEAD   # build a clean checkout of a commit
 #   client/scripts/build-macos.sh --mock          # UI on the in-memory mock backend
-#   client/scripts/build-macos.sh --no-cli        # skip the CLI
+#   client/scripts/build-macos.sh --no-cli        # without consolecrypt-cli inside the app
 #   CC_CODESIGN_IDENTITY='Developer ID Application: Name (TEAM)' client/scripts/build-macos.sh --no-cli
 #
 # Output: dist/macos/ConsoleCrypt.app, ConsoleCrypt-macos.zip, ConsoleCrypt.dmg,
-#         consolecrypt (CLI)
+#         (consolecrypt-cli is inside the app: Contents/Helpers)
 #
 # Author: Alexander Evsikov <i@evsikov.net>
 set -euo pipefail
@@ -129,6 +129,20 @@ if [[ -f "$SRC/client/scripts/bundle-macos-local-ai.py" ]]; then
   LOCAL_AI_BUNDLED=1
 fi
 
+if [[ "$CLI" == 1 ]]; then
+  # Settings → Command line links it into /usr/local/bin; signed with the app.
+  echo "==> consolecrypt-cli (Apple Silicon + Intel) inside the app"
+  for target in aarch64-apple-darwin x86_64-apple-darwin; do
+    (cd "$SRC/client/rust" && CARGO_TARGET_DIR="$SRC/client/rust/target/dist" \
+      cargo build --release --locked -p cc-cli --target "$target")
+  done
+  mkdir -p "$OUT/ConsoleCrypt.app/Contents/Helpers"
+  lipo -create -output "$OUT/ConsoleCrypt.app/Contents/Helpers/consolecrypt-cli" \
+    "$SRC/client/rust/target/dist/aarch64-apple-darwin/release/consolecrypt-cli" \
+    "$SRC/client/rust/target/dist/x86_64-apple-darwin/release/consolecrypt-cli"
+  chmod 755 "$OUT/ConsoleCrypt.app/Contents/Helpers/consolecrypt-cli"
+fi
+
 if [[ -n "$SIGN_IDENTITY" ]]; then
   echo "==> signing with a stable identity"
   python3 "$SRC/client/scripts/sign-macos.py" --identity "$SIGN_IDENTITY" --app "$OUT/ConsoleCrypt.app"
@@ -160,12 +174,6 @@ if [[ "$MODE" == release ]]; then
   bash "$SRC/client/scripts/package-macos.sh" "$OUT/ConsoleCrypt.app" "$OUT/ConsoleCrypt.dmg"
 fi
 
-if [[ "$CLI" == 1 ]]; then
-  echo "==> consolecrypt CLI"
-  cd "$SRC/client/rust"
-  CARGO_TARGET_DIR="$SRC/client/rust/target/dist" cargo build --release -p cc-cli
-  cp "$SRC/client/rust/target/dist/release/consolecrypt" "$OUT/consolecrypt"
-fi
 
 printf '%s\n' "$BUILD_VERSION" > "$OUT/ConsoleCrypt.version"
 echo

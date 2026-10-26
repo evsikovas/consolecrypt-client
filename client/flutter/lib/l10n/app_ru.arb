@@ -6864,5 +6864,68 @@
   "snippetDbSqliteAnalyze": "Обновить статистику планировщика",
   "snippetDbSqliteAnalyzeNote": "Собирает статистику индексов в sqlite_stat1, чтобы планировщик лучше выбирал индексы.",
   "snippetDbSqliteVacuum": "Сжать файл",
-  "snippetDbSqliteVacuumNote": "Перестраивает файл и возвращает свободные страницы диску; нужен монопольный доступ и свободное место размером с файл."
+  "snippetDbSqliteVacuumNote": "Перестраивает файл и возвращает свободные страницы диску; нужен монопольный доступ и свободное место размером с файл.",
+  "cliTitle": "Командная строка",
+  "@cliTitle": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliHelp": "Команда consolecrypt-cli управляет профилями, хостами, ключами, туннелями, SFTP, синхронизацией и резервными копиями из терминала. Она работает с теми же профилями, что и приложение; список команд — consolecrypt-cli --help.",
+  "@cliHelp": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliInstall": "Установить команды CLI",
+  "@cliInstall": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliUninstall": "Удалить команды CLI",
+  "@cliUninstall": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliInstalled": "Установлено: {location}",
+  "@cliInstalled": {
+    "description": "Settings: install the bundled consolecrypt-cli command.",
+    "placeholders": {
+      "location": {
+        "type": "String"
+      }
+    }
+  },
+  "cliNotInstalled": "Команда consolecrypt-cli ещё не установлена в систему.",
+  "@cliNotInstalled": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliNotBundled": "В этой сборке нет consolecrypt-cli: он входит в установщики со страницы загрузок.",
+  "@cliNotBundled": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliNotOnPath": "Папки {folder} нет в PATH: добавьте её в настройки своей оболочки, чтобы команда находилась.",
+  "@cliNotOnPath": {
+    "description": "Settings: install the bundled consolecrypt-cli command.",
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "cliInstalledHint": "Готово. Откройте новое окно терминала и выполните consolecrypt-cli --help.",
+  "@cliInstalledHint": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliRemoved": "Команды CLI удалены из системы.",
+  "@cliRemoved": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "cliConflict": "{path} уже занят другим файлом — ConsoleCrypt его не трогает.",
+  "@cliConflict": {
+    "description": "Settings: install the bundled consolecrypt-cli command.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "cliFailed": "Не удалось установить или удалить команды CLI.",
+  "@cliFailed": {
+    "description": "Settings: install the bundled consolecrypt-cli command."
+  }
 }
