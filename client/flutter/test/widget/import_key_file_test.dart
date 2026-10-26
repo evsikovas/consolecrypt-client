@@ -78,7 +78,7 @@ void main() {
   testWidgets('TODO-04: "Choose file…" fills the key field, inspects it and wipes the read copy', (tester) async {
     final inventory = _Inventory();
     await _open(tester, inventory);
-    expect(find.text('Choose file…'), findsOneWidget);
+    expect(find.byTooltip('Choose file…'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('private-key-choose-file')));
     await settle(tester);
     await tester.pump(const Duration(milliseconds: 300));
