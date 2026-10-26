@@ -543,23 +543,47 @@ impl AppCore {
         team.require_admin()?;
         let own_key = team.with_identity(|i| Ok(i.signing_key()))?;
         let list = cx.api.team_invitations(vid).await?;
-        Ok(list
-            .invitations
-            .iter()
-            .filter(|i| {
-                i.status == TeamInvitationStatus::Accepted && i.inviter_user_id == cx.user_id
-            })
-            .filter_map(|i| {
-                let keys = i.member_keys.as_ref()?;
-                (keys.user_id == i.invitee_user_id).then(|| TeamJoinRequestDto {
-                    invitation_id: i.invitation_id.to_string(),
-                    vault_id: vid.to_string(),
-                    invitee_email: i.invitee_email.clone(),
-                    role: i.role.into(),
-                    code: code_string(team_member_code(vid, &own_key, keys)),
+        let mut shown = cx
+            .unlocked
+            .team_joins_shown
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+        // Joins no longer waiting are forgotten. A join already shown keeps
+        // the keys and role first shown: the code on screen never changes
+        // under the admin, and a server that changes them later is refused
+        // at confirmation (SEC-01).
+        shown.retain(|id, s| {
+            s.vault_id != vid || list.invitations.iter().any(|i| i.invitation_id == *id)
+        });
+        let mut requests = Vec::new();
+        for i in &list.invitations {
+            if i.status != TeamInvitationStatus::Accepted || i.inviter_user_id != cx.user_id {
+                continue;
+            }
+            let Some(keys) = i
+                .member_keys
+                .as_ref()
+                .filter(|k| k.user_id == i.invitee_user_id)
+            else {
+                continue;
+            };
+            let first = shown
+                .entry(i.invitation_id)
+                .or_insert_with(|| ShownJoin {
+                    vault_id: vid,
+                    keys: keys.clone(),
+                    role: i.role,
                 })
-            })
-            .collect())
+                .clone();
+            requests.push(TeamJoinRequestDto {
+                invitation_id: i.invitation_id.to_string(),
+                vault_id: vid.to_string(),
+                invitee_email: i.invitee_email.clone(),
+                role: first.role.into(),
+                code: code_string(team_member_code(vid, &own_key, &first.keys)),
+            });
+        }
+        Ok(requests)
     }
 
     /// "Codes match": add the member to the log and seal the team key to
@@ -575,6 +599,19 @@ impl AppCore {
         let inv_id = parse_invitation(&invitation_id)?;
         let team = cx.unlocked.writer.teams.require(vid)?;
         let me = team.require_admin()?;
+        // Seal only to the keys and role the code shown to this admin was
+        // computed from — never to what the server answers now (SEC-01).
+        let shown = cx
+            .unlocked
+            .team_joins_shown
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .get(&inv_id)
+            .filter(|s| s.vault_id == vid)
+            .cloned()
+            .ok_or_else(|| {
+                AppError::Approval("list the join requests and compare the codes first".into())
+            })?;
         let inv = cx
             .api
             .team_invitations(vid)
@@ -583,29 +620,31 @@ impl AppCore {
             .into_iter()
             .find(|i| i.invitation_id == inv_id)
             .ok_or_else(|| AppError::not_found("invitation", inv_id))?;
-        let keys = inv
-            .member_keys
-            .clone()
-            .filter(|k| {
-                inv.status == TeamInvitationStatus::Accepted && k.user_id == inv.invitee_user_id
-            })
-            .ok_or_else(|| AppError::invalid("invitation_id", "not_accepted"))?;
-        if inv.role == VaultRole::Owner || (inv.role == VaultRole::Admin && me != VaultRole::Owner)
+        if inv.status != TeamInvitationStatus::Accepted || inv.invitee_user_id != shown.keys.user_id
         {
+            return Err(AppError::invalid("invitation_id", "not_accepted"));
+        }
+        if inv.member_keys.as_ref() != Some(&shown.keys) || inv.role != shown.role {
+            forget_shown(&cx.unlocked, inv_id);
+            return Err(AppError::Approval(
+                "the member's keys or role changed after the code was shown; compare the codes again"
+                    .into(),
+            ));
+        }
+        let ShownJoin { keys, role, .. } = shown;
+        if role == VaultRole::Owner || (role == VaultRole::Admin && me != VaultRole::Owner) {
             return Err(AppError::invalid("role", "not_allowed"));
         }
         let envelope = team.codec.vault()?.seal_for_member(&keys)?;
         submit(
             &cx,
             &team,
-            TeamLogOp::AddMember {
-                member: keys,
-                role: inv.role,
-            },
+            TeamLogOp::AddMember { member: keys, role },
             Some(inv_id),
             vec![envelope],
         )
         .await?;
+        forget_shown(&cx.unlocked, inv_id);
         self.team(vid).await
     }
 
@@ -1066,4 +1105,21 @@ fn rewrite_ids(
     let mut v = serde_json::to_value(object).map_err(AppError::internal)?;
     walk(&mut v, &strings);
     serde_json::from_value(v).map_err(AppError::internal)
+}
+
+/// A join request as shown to the admin: the member code covers exactly
+/// these keys and this role (security review SEC-01).
+#[derive(Debug, Clone)]
+pub(crate) struct ShownJoin {
+    vault_id: VaultId,
+    keys: TeamMemberKeys,
+    role: VaultRole,
+}
+
+fn forget_shown(unlocked: &Unlocked, invitation_id: TeamInvitationId) {
+    unlocked
+        .team_joins_shown
+        .lock()
+        .unwrap_or_else(|p| p.into_inner())
+        .remove(&invitation_id);
 }

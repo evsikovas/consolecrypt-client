@@ -688,6 +688,23 @@ impl State {
         })
     }
 
+    /// Test hook: a hostile server swaps the keys/role of an invitation.
+    pub(crate) fn swap_team_invitation_keys(
+        &mut self,
+        invitation_id: TeamInvitationId,
+        keys: TeamMemberKeys,
+        role: Option<VaultRole>,
+    ) -> bool {
+        let Some(r) = self.team_invitations.get_mut(&invitation_id) else {
+            return false;
+        };
+        r.keys = Some(keys);
+        if let Some(role) = role {
+            r.role = role;
+        }
+        true
+    }
+
     /// Test hook: a hostile server adds `user` with `keys` without any
     /// admin signature (the forged entry carries a garbage signature).
     pub(crate) fn inject_team_member(&mut self, vault_id: VaultId, keys: TeamMemberKeys) -> bool {

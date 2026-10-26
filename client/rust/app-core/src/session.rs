@@ -242,6 +242,11 @@ pub(crate) struct Unlocked {
     pub(crate) presence: crate::presence::PresenceTokens,
     /// Requests whose approval uses the pairing code v2 (protocol 1.11).
     pub approvals_v2: Mutex<std::collections::HashSet<DeviceRequestId>>,
+    /// Team joins whose member code this admin was shown, with the keys and
+    /// role that code covers: the confirmation seals the team key to exactly
+    /// these (security review SEC-01).
+    pub(crate) team_joins_shown:
+        Mutex<HashMap<cc_protocol::TeamInvitationId, crate::teams_api::ShownJoin>>,
     /// Devices of the account that reported a different vault key
     /// (protocol 1.11 key-commitment records), refreshed after unlock.
     key_conflicts: Mutex<Vec<crate::dto::VaultKeyConflictDto>>,
@@ -1024,6 +1029,7 @@ impl Session {
             approvals: Mutex::new(HashMap::new()),
             presence: Default::default(),
             approvals_v2: Mutex::new(std::collections::HashSet::new()),
+            team_joins_shown: Mutex::new(HashMap::new()),
             key_conflicts: Mutex::new(Vec::new()),
         });
         unlocked.push_task(tokio::spawn(object_event_task(
