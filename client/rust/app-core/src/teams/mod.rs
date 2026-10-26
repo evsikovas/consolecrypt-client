@@ -17,8 +17,8 @@ mod open;
 mod routing;
 
 pub(crate) use open::{
-    close_team, encode_identity, membership_of, open_teams, refresh_team, sync_teams,
-    TeamOpenContext,
+    close_team, encode_identity, ensure_key_commitment, membership_of, open_teams, refresh_team,
+    sync_teams, TeamOpenContext,
 };
 pub(crate) use routing::{
     ai_blocked, check_ai_allowed, check_references, infer_vault, references, team_capable,

@@ -89,6 +89,20 @@ impl ApiClient {
             .await
     }
 
+    /// `PUT /v1/teams/{vault_id}/key-commitment` (protocol 1.12).
+    pub async fn put_team_key_commitment(
+        &self,
+        vault_id: VaultId,
+        req: &cc_protocol::teams::PutTeamKeyCommitmentRequest,
+    ) -> Result<(), ApiError> {
+        self.authed_empty(
+            Method::PUT,
+            self.team_url(paths::TEAM_KEY_COMMITMENT, vault_id),
+            Some(to_json(req)?),
+        )
+        .await
+    }
+
     /// `POST /v1/teams/{vault_id}/invitations` (always `202`).
     pub async fn invite_team_member(
         &self,

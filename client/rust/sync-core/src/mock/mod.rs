@@ -73,6 +73,9 @@ pub struct MockServerConfig {
     /// v2 (kept for the new device) and key-commitment records. Off = a
     /// pre-1.11 server: the routes answer `404` and `v2` is ignored.
     pub vrk_commitment: bool,
+    /// Protocol 1.12 team key commitments (default on). Off = a pre-1.12
+    /// server: they are dropped and the route answers `404`.
+    pub team_key_commitment: bool,
 }
 
 impl Default for MockServerConfig {
@@ -87,6 +90,7 @@ impl Default for MockServerConfig {
             device_protection: false,
             auth: Default::default(),
             vrk_commitment: true,
+            team_key_commitment: true,
         }
     }
 }
@@ -383,6 +387,18 @@ impl MockServer {
     /// use.
     pub fn set_vrk_commitment(&self, on: bool) {
         self.shared.lock().cfg.vrk_commitment = on;
+    }
+
+    /// Hostile-server hook (teams, protocol 1.12): drop the published key
+    /// commitments of `vault_id`.
+    pub fn strip_team_key_commitments(&self, vault_id: VaultId) -> bool {
+        self.shared.lock().strip_team_key_commitments(vault_id)
+    }
+
+    /// Hostile-server hook: stop announcing (and serving) team key
+    /// commitments, as a pre-1.12 server.
+    pub fn set_team_key_commitment(&self, on: bool) {
+        self.shared.lock().cfg.team_key_commitment = on;
     }
 
     /// Hostile-server hook (teams): serve a forged team — the server's own

@@ -294,8 +294,11 @@ impl AppCore {
                 },
             )
             .map_err(|e| AppError::Crypto(e.to_string()))?;
+        let key_commitment =
+            identity.sign_key_commitment(vault_id, cx.user_id, 0, vault.key_commitment());
         let req = CreateTeamRequest {
             vault_id,
+            key_commitment: Some(key_commitment),
             vault_access_key: vault.vault_access_key(),
             genesis: genesis.clone(),
             owner_envelope: vault.seal_for_member(&keys)?,
@@ -651,6 +654,9 @@ impl AppCore {
         if role == VaultRole::Owner || (role == VaultRole::Admin && me != VaultRole::Owner) {
             return Err(AppError::invalid("role", "not_allowed"));
         }
+        // The new member opens only a key an admin vouched for (SEC-03b):
+        // publish the current epoch's commitment first if it is missing.
+        crate::teams::ensure_key_commitment(&cx.api, &team, cx.user_id).await?;
         let envelope = team.codec.vault()?.seal_for_member(&keys)?;
         submit(
             &cx,
@@ -942,6 +948,7 @@ fn request(
         envelopes,
         new_vault_access_key: None,
         chain_link: None,
+        key_commitment: None,
     })
 }
 
@@ -1003,6 +1010,9 @@ async fn rotate(cx: &TeamCtx, team: &Arc<TeamHandle>) -> AppResult<()> {
     check
         .apply(&entry)
         .map_err(|_| AppError::invalid("operation", "not_allowed"))?;
+    let key_commitment = team.with_identity(|i| {
+        Ok(i.sign_key_commitment(vid, cx.user_id, epoch, next.key_commitment()))
+    })?;
     let req = SubmitTeamLogRequest {
         entry,
         vault_access_key: current.vault_access_key(),
@@ -1010,6 +1020,7 @@ async fn rotate(cx: &TeamCtx, team: &Arc<TeamHandle>) -> AppResult<()> {
         envelopes,
         new_vault_access_key: Some(next.vault_access_key()),
         chain_link: Some(link),
+        key_commitment: Some(key_commitment),
     };
     cx.api.submit_team_log(vid, &req).await?;
     drop(current);

@@ -10,7 +10,7 @@ use axum::extract::{DefaultBodyLimit, Path, Query, Request, State};
 use axum::http::{header, HeaderMap, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{delete, get, patch, post};
+use axum::routing::{delete, get, patch, post, put};
 use axum::{Json, Router};
 use cc_protocol::auth::{
     ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, LogoutRequest, RefreshRequest,
@@ -80,6 +80,7 @@ pub(crate) fn router(shared: Arc<Shared>) -> Router {
         .route(paths::TEAM, get(get_team))
         .route(paths::TEAM_LOG, get(team_log).post(submit_team_log))
         .route(paths::TEAM_KEY, get(team_key))
+        .route(paths::TEAM_KEY_COMMITMENT, put(put_team_key_commitment))
         .route(paths::TEAM_INVITATIONS, get(team_invitations).post(invite))
         .route(paths::SYNC_PUSH, post(push))
         .route(paths::SYNC_CHANGES, get(changes))
@@ -148,6 +149,7 @@ fn server_info(s: &Shared, upgrade_required: bool) -> ServerInfo {
             auth: st.cfg.auth.clone(),
             teams: true,
             vrk_commitment: st.cfg.vrk_commitment,
+            team_key_commitment: st.cfg.team_key_commitment,
             // The personal-sync mock has no sharing routes.
             ..Default::default()
         },
@@ -618,6 +620,18 @@ async fn submit_team_log(
         StatusCode::OK,
         s.lock().submit_team_log(p, id(&vault)?, req)?,
     ))
+}
+
+async fn put_team_key_commitment(
+    State(s): S,
+    headers: HeaderMap,
+    Path(vault): Path<String>,
+    body: Bytes,
+) -> MResult<Response> {
+    let p = auth(&s, &headers)?;
+    let req: cc_protocol::teams::PutTeamKeyCommitmentRequest = parse(&body)?;
+    s.lock().put_team_key_commitment(p, id(&vault)?, req)?;
+    Ok(StatusCode::NO_CONTENT.into_response())
 }
 
 async fn team_key(State(s): S, headers: HeaderMap, Path(vault): Path<String>) -> MResult<Response> {
