@@ -21,7 +21,7 @@ use async_trait::async_trait;
 use cc_ai_core::policy::{ApprovedCommand, RunProposal};
 use cc_ai_core::provider::LlmProvider;
 use cc_ai_core::{AiError, CancellationToken, Conversation, EmbeddingSync, PrivacyProfile};
-use cc_models::ai::{AiConversation, AiProviderConfig};
+use cc_models::ai::{AiConversation, AiProviderConfig, ChatRole};
 use cc_models::secret::SecretKind;
 use cc_models::{ObjectId, ObjectKind, VaultObject};
 use cc_search_core::SearchIndex;
@@ -878,9 +878,19 @@ impl AiSession {
     ) -> (String, ConvHandle) {
         let now = chrono::Utc::now();
         let persisted = record.is_some();
-        // TODO(ai-core): a resumed conversation starts with an empty model
-        // context — `Conversation` cannot be rebuilt from stored messages;
-        // next: `Conversation::from_messages(profile, …)` in ai-core.
+        // A resumed conversation gives the model its stored turns again.
+        let conv = match &record {
+            Some(record) => Conversation::from_messages(
+                profile,
+                record
+                    .messages
+                    .iter()
+                    .filter(|m| m.role != ChatRole::System)
+                    .map(|m| (m.role == ChatRole::User, m.content.as_str())),
+                cc_ai_core::assistant::AssistantOptions::default().max_history,
+            ),
+            None => Conversation::new(profile),
+        };
         let record = record.unwrap_or_else(|| AiConversation {
             id: ObjectId::new(),
             title: String::new(),
@@ -894,7 +904,7 @@ impl AiSession {
         let handle = ConvHandle {
             provider_id,
             state: Arc::new(tokio::sync::Mutex::new(ConversationState {
-                conv: Conversation::new(profile),
+                conv,
                 record,
                 persisted,
             })),

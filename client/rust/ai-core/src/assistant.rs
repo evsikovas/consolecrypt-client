@@ -114,7 +114,8 @@ pub struct ConvertRequest {
 }
 
 /// An Ask AI conversation: history plus the sanitizer session that keeps
-/// placeholders stable across turns. Lives in memory only.
+/// placeholders stable across turns. Lives in memory; a stored conversation
+/// is continued with [`Conversation::from_messages`].
 pub struct Conversation {
     session: SanitizerSession,
     history: Vec<Message>,
@@ -134,6 +135,30 @@ impl Conversation {
             session: SanitizerSession::new(profile),
             history: Vec::new(),
         }
+    }
+
+    /// Continues a stored conversation: its turns (`true` for the user's,
+    /// oldest first, as stored) are sanitized again in order under
+    /// `profile`, so the model gets the earlier context and placeholders
+    /// stay stable from here on. Only the newest `max` messages are kept, as
+    /// in a live conversation.
+    pub fn from_messages<'a>(
+        profile: PrivacyProfile,
+        messages: impl IntoIterator<Item = (bool, &'a str)>,
+        max: usize,
+    ) -> Self {
+        let mut conv = Self::new(profile);
+        for (user, text) in messages {
+            let s = conv.session.sanitize(text);
+            conv.history.push(if user {
+                Message::user(s)
+            } else {
+                Message::assistant(s)
+            });
+        }
+        let excess = conv.history.len().saturating_sub(max);
+        conv.history.drain(..excess);
+        conv
     }
 
     pub fn len(&self) -> usize {

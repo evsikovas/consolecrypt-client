@@ -13546,4 +13546,39 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbDesignOptGcGrace => 'gc_grace_seconds';
+
+  @override
+  String get aiHistoryTitle => 'История разговоров';
+
+  @override
+  String get aiHistoryEmpty =>
+      'Разговоров пока нет. Чтобы они сохранялись после блокировки хранилища, включите в настройках «Хранить разговоры с ИИ в хранилище».';
+
+  @override
+  String get aiHistoryFailed => 'Не удалось загрузить разговоры.';
+
+  @override
+  String get aiHistoryUntitled => 'Разговор без названия';
+
+  @override
+  String get aiHistoryKept => 'хранится в хранилище';
+
+  @override
+  String get aiHistoryUntilLock => 'до блокировки хранилища';
+
+  @override
+  String get aiHistoryProviderGone => 'провайдер удалён';
+
+  @override
+  String aiHistoryMessages(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count сообщения',
+      many: '$count сообщений',
+      few: '$count сообщения',
+      one: '$count сообщение',
+    );
+    return '$_temp0';
+  }
 }

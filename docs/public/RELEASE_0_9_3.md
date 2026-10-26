@@ -24,6 +24,11 @@
   таблицу одной транзакцией с сохранением строк и индексов; таблицу с триггерами или
   вычисляемыми столбцами конструктор не пересоздаёт. Для Cassandra задаются ключ
   партиции, кластерные столбцы с порядком, вторичные индексы, TTL и `gc_grace_seconds`.
+- **История разговоров с ИИ.** Кнопка «История разговоров» в чате показывает разговоры
+  этой сессии и сохранённые в хранилище (настройка «Хранить разговоры с ИИ в
+  хранилище»); их можно продолжить или удалить. Продолженный разговор снова передаёт
+  модели прежние ходы, со скрытыми, как и раньше, данными: раньше модель начинала его с
+  пустого контекста.
 
 **Исправления.**
 
@@ -105,6 +110,11 @@ admins and sends invitations only to verified addresses.
   one transaction and keep its rows and indexes; a table with triggers or generated
   columns is never rebuilt. Cassandra tables get a partition key, clustering columns
   with their order, secondary indexes, TTL and `gc_grace_seconds`.
+- **AI conversation history.** “Conversation history” in the chat lists this session’s
+  conversations and those kept in the vault (“Keep AI conversations in the vault”); they
+  can be continued or deleted. A continued conversation gives the model its earlier turns
+  again, with the same data hidden as before; before, the model started it with an empty
+  context.
 
 **Fixes.**
 

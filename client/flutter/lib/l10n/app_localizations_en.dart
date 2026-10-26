@@ -13242,4 +13242,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbDesignOptGcGrace => 'gc_grace_seconds';
+
+  @override
+  String get aiHistoryTitle => 'Conversation history';
+
+  @override
+  String get aiHistoryEmpty =>
+      'No conversations yet. To keep them after the vault locks, turn on “Keep AI conversations in the vault” in Settings.';
+
+  @override
+  String get aiHistoryFailed => 'Could not load the conversations.';
+
+  @override
+  String get aiHistoryUntitled => 'Untitled conversation';
+
+  @override
+  String get aiHistoryKept => 'kept in the vault';
+
+  @override
+  String get aiHistoryUntilLock => 'until the vault locks';
+
+  @override
+  String get aiHistoryProviderGone => 'its provider was removed';
+
+  @override
+  String aiHistoryMessages(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count messages', one: '1 message');
+    return '$_temp0';
+  }
 }

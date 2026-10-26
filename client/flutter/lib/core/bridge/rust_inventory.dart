@@ -636,7 +636,7 @@ final class RustSettingsService implements SettingsService {
 /// AI over app-core's AI runtime (providers, Ask, command generation,
 /// snippet drafts). Provider configs and API keys live in the vault; keys
 /// are write-only.
-final class RustAiService implements AiService, DeviceLocalAiBridge {
+final class RustAiService implements AiService, DeviceLocalAiBridge, AiConversationHistory {
   RustAiService(this._hub) {
     _hub.onSessionReset.add(_conversations.clear);
   }
@@ -646,6 +646,36 @@ final class RustAiService implements AiService, DeviceLocalAiBridge {
   /// Conversation per provider for multi-turn chats (app-core keeps the
   /// history; the UI sends the whole transcript).
   final Map<String, String> _conversations = {};
+
+  @override
+  Future<List<AiConversation>> listConversations() async => [
+    for (final j in decodeList(await guard(rs_ai.aiListConversations)))
+      AiConversation(
+        id: ObjectId(j['id'] as String),
+        title: j['title'] as String? ?? '',
+        providerId: j['provider_id'] == null ? null : ObjectId(j['provider_id'] as String),
+        messages: [
+          for (final m in (j['messages'] as List? ?? const []).cast<Map<String, Object?>>())
+            ChatMessage(
+              role: ChatRole.values.asNameMap()[m['role']] ?? ChatRole.user,
+              content: m['content'] as String? ?? '',
+              createdAt: fromMs(m['created_at_ms']),
+            ),
+        ],
+        persisted: j['persisted'] == true,
+        createdAt: fromMs(j['created_at_ms']),
+        updatedAt: fromMs(j['updated_at_ms']),
+      ),
+  ];
+
+  @override
+  Future<void> deleteConversation(ObjectId id) async {
+    await guard(() => rs_ai.aiDeleteConversation(conversationId: id.value));
+    _conversations.removeWhere((_, conversation) => conversation == id.value);
+  }
+
+  @override
+  void continueConversation(ObjectId providerId, ObjectId id) => _conversations[providerId.value] = id.value;
 
   @override
   Future<void> registerDeviceLocalProvider({
