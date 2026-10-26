@@ -13622,4 +13622,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get aboutServerSource => 'Исходный код вашего сервера синхронизации:';
+
+  @override
+  String get startupFailedTitle => 'ConsoleCrypt не смог запустить защищённое ядро';
+
+  @override
+  String get startupFailedBody =>
+      'Ваши данные не затронуты. Переустановите приложение или пересоберите его с установленным набором инструментов Rust и попробуйте снова.';
+
+  @override
+  String get startupFailedStorageBody =>
+      'Существующее хранилище не удалось безопасно открыть. Ваши данные не изменены. Устраните описанную ниже проблему с хранилищем и попробуйте снова.';
 }

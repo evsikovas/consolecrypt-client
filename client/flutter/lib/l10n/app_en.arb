@@ -18268,5 +18268,17 @@
   "aboutServerSource": "Source code of your sync server:",
   "@aboutServerSource": {
     "description": "About: the sync server's source code link (AGPL)"
+  },
+  "startupFailedTitle": "ConsoleCrypt could not start its secure core",
+  "@startupFailedTitle": {
+    "description": "Startup error screen (native core failed to load)"
+  },
+  "startupFailedBody": "Your data was not touched. Reinstall the app or rebuild it with the Rust toolchain installed, then try again.",
+  "@startupFailedBody": {
+    "description": "Startup error screen (native core failed to load)"
+  },
+  "startupFailedStorageBody": "Existing storage could not be opened safely. Your data was not changed. Resolve the storage issue below and try again.",
+  "@startupFailedStorageBody": {
+    "description": "Startup error screen (native core failed to load)"
   }
 }

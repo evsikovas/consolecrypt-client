@@ -13311,4 +13311,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutServerSource => 'Source code of your sync server:';
+
+  @override
+  String get startupFailedTitle => 'ConsoleCrypt could not start its secure core';
+
+  @override
+  String get startupFailedBody =>
+      'Your data was not touched. Reinstall the app or rebuild it with the Rust toolchain installed, then try again.';
+
+  @override
+  String get startupFailedStorageBody =>
+      'Existing storage could not be opened safely. Your data was not changed. Resolve the storage issue below and try again.';
 }
