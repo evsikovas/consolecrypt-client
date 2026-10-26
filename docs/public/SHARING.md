@@ -95,6 +95,21 @@
 прокси, туннель или контекст получатель выбирает свой при сохранении копии.
 Подробности — в разделах Kubernetes и «Базы данных».
 
+## RDP-хосты (клиент 0.9.3)
+
+RDP-хостом можно поделиться так же, как SSH-хостом: **Поделиться…** в меню
+хоста. В карточку входят адрес, порт, пользователь, домен и метки; заметки и
+сохранённый пароль — только по отдельной отметке (пароль — только проверенным
+устройствам). Сервер и протокол не меняются, клиенты до 0.9.3 такую карточку
+не показывают. Подробнее — [RDP.md](RDP.md).
+
+## Свои устройства
+
+С 0.9.3 устройство, которое сервер выдаёт за ваше, не становится получателем
+секрета, подключения Kubernetes или базы данных: свои устройства получают общий
+доступ только через подтверждённое подключение («Добавить это устройство»).
+Поиск по адресу собственного аккаунта отклоняется.
+
 ## Общие заметки
 
 Если сервер поддерживает общие заметки (`supports_notes_v1`), в правой панели
@@ -221,6 +236,16 @@ Kubernetes contexts and database connections are offered only when the server
 supports them; an older server keeps these actions hidden. Credentials are
 excluded by default, and a route through a personal SSH host, jump profile,
 proxy, tunnel or context is chosen by the recipient when saving a copy.
+
+**RDP hosts (client 0.9.3)** are shared like SSH hosts with **Share…** in the host
+menu: address, port, user, domain and tags; the notes and the saved password only
+when ticked (the password only to verified devices). Neither the server nor the
+protocol changes; clients before 0.9.3 do not show such a card. See RDP.md.
+
+**Your own devices.** From 0.9.3 a device the server presents as yours never
+becomes a recipient of a secret, a Kubernetes or database connection: your own
+devices get shared items only through a verified enrollment. Looking up your own
+account's address is refused.
 
 Shared notes appear under **Notes → Object** for a shared host, database
 connection or Kubernetes context when the server supports them

@@ -56,6 +56,15 @@
 отмените удаление и смените пароль аккаунта. Удаление с доверенного устройства
 по-прежнему происходит сразу.
 
+### Удалённое хранилище и проверка данных (0.9.3)
+
+Если хранилище удалено на сервере, синхронизация останавливается с понятной
+причиной («хранилище не найдено на сервере») и не повторяет попытки бесконечно.
+Объект с сервера, который не прошёл проверку подлинности, не заменяет последнюю
+хорошую локальную копию: приложение показывает предупреждение. Если сервер хоть
+раз сообщил устройству о проверке по коду пары, одобрение без этой проверки
+больше не принимается.
+
 ### Корпоративный вход (Enterprise)
 
 Сервер синхронизации 0.2.0 и новее (протокол 1.8) может работать в
@@ -163,6 +172,14 @@ days it waits as “deletion scheduled” and keeps syncing. A trusted device
 shows “This vault will be deleted on …” under Sync with **Keep the vault**,
 which cancels the deletion. If you did not ask for it, keep the vault and
 change your account password. A trusted device still deletes at once.
+
+### A deleted vault and data checks (0.9.3)
+
+When the vault was deleted on the server, sync stops with a clear reason (“vault
+not found on server”) instead of retrying forever. An object from the server that
+fails authentication never replaces the last good local copy; the app shows a
+warning. Once the server told a device about the pairing-code check, an approval
+without that check is refused.
 
 ### Corporate sign-in (Enterprise)
 

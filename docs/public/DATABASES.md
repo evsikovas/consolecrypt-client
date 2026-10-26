@@ -690,7 +690,7 @@ SETTINGS ClickHouse приложение не выполняет ни в кон�
 
 В разделе «Сниппеты» → «Базовые наборы» есть готовые наборы диагностических
 запросов: «SQL · PostgreSQL» (20), «SQL · MySQL/MariaDB» (20),
-«SQL · ClickHouse» (20), «Redis» (15), «MongoDB» (15) и «Cassandra / ScyllaDB»
+«SQL · ClickHouse» (20), «Redis» (15), «MongoDB» (15), «SQLite» (15) и «Cassandra / ScyllaDB»
 (17: схема из `system_schema`, узлы кластера, оценки размера, партиции, TTL,
 токены, роли и права, создание таблицы временного ряда и `INSERT … JSON`). Они добавляются в
 хранилище только по нажатию кнопки, после чего их можно править и удалять как
@@ -1308,7 +1308,7 @@ through cannot read them — use `clickhouse-client` in a terminal.
 
 Snippets → Starter packages offers diagnostic query packages: “SQL ·
 PostgreSQL” (20), “SQL · MySQL/MariaDB” (20), “SQL · ClickHouse” (20),
-“Redis” (15), “MongoDB” (15) and “Cassandra / ScyllaDB” (17: `system_schema`
+“Redis” (15), “MongoDB” (15), “SQLite” (15) and “Cassandra / ScyllaDB” (17: `system_schema`
 schema, cluster nodes, size estimates, partitions, TTLs, tokens, roles and
 permissions, a time-series table and `INSERT … JSON`). They are added to the vault only when you
 press the button and are ordinary editable snippets afterwards. They cover

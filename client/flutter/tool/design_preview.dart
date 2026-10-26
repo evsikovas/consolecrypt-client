@@ -20,6 +20,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
+import 'package:consolecrypt/core/mock/mock_databases.dart';
 import 'package:consolecrypt/core/mock/mock_notes.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
@@ -38,6 +39,7 @@ import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_rollout_panel.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
 import 'package:consolecrypt/notes/note_models.dart';
+import 'package:consolecrypt/settings/cli_installer.dart';
 import 'package:consolecrypt/settings/settings_dialogs.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/sftp/widgets/sftp_activity.dart';
@@ -47,6 +49,7 @@ import 'package:consolecrypt/sharing/sharing_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_management.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
+import 'package:consolecrypt/sharing/sharing_rdp.dart';
 import 'package:consolecrypt/sharing/sharing_secrets.dart';
 import 'package:consolecrypt/snippets/snippet_editor.dart';
 import 'package:consolecrypt/snippets/starter_catalog.dart';
@@ -196,7 +199,7 @@ void main() {
             profiles: screen == 'terminal-wsl-picker' ? guideWindowsShellProfiles : guideMacShellProfiles,
           );
         }
-        if (screen == 'connection-picker' || screen == 'rdp-host-picker') {
+        if (screen == 'connection-picker' || screen == 'rdp-host-picker' || screen == 'sharing-rdp') {
           final now = DateTime.utc(2026, 10, 19);
           await backend.inventory.saveHost(
             Host(
@@ -303,6 +306,7 @@ void main() {
                 if (kube != null) kubeServiceProvider.overrideWithValue(kube),
                 if (screen == 'kube-shell') terminalServiceProvider.overrideWithValue(GuideKubeTerminal()),
                 if (screen.startsWith('db-csv-')) fileDialogServiceProvider.overrideWithValue(GuideCsvFiles()),
+                if (screen == 'settings-cli') cliInstallerProvider.overrideWithValue(GuideCliInstaller()),
                 if (localAi != null) ...[
                   deviceLocalAiAvailableProvider.overrideWithValue(true),
                   localAiRuntimeProvider.overrideWithValue(localAi),
@@ -743,6 +747,7 @@ void main() {
             screen.startsWith('sharing-') &&
             screen != 'sharing-main' &&
             screen != 'sharing-deleted' &&
+            screen != 'sharing-rdp' &&
             !guideKeyTrustScreens.contains(screen)) {
           final context = tester.element(find.byType(Navigator).first);
           if (screen == 'sharing-secret') {
@@ -798,6 +803,7 @@ void main() {
         if (teams != null) await _teamsScreen(tester, screen, backend, l10n);
         if (kube != null) await _kubeScreen(tester, screen, kube, l10n);
         if (_guide && guideExtraScreens.contains(screen)) await _extraScreen(tester, screen, backend, sharing, l10n);
+        if (_guide && guide093Screens.contains(screen)) await _release093Screen(tester, screen, backend, l10n);
         expect(tester.takeException(), isNull);
         if (_guide) _assertGuideScreen(tester, screen, l10n);
         final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
@@ -1380,6 +1386,60 @@ Future<void> _enterpriseScreen(WidgetTester tester, String screen, MockBackend b
 
 /// Databases section on the mock backend: demo connections, a synthetic shop
 /// schema, canned results, plan and assistant draft. Nothing leaves the test.
+/// 0.9.3: split terminal, sharing an RDP host, Settings → Command line and
+/// the CQL trace (a non-production ScyllaDB connection added for it).
+Future<void> _release093Screen(WidgetTester tester, String screen, MockBackend backend, AppLocalizations l10n) async {
+  final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+  switch (screen) {
+    case 'terminal-split':
+      final tabs = container.read(terminalTabsProvider.notifier);
+      final host = backend.inventory.currentHosts.firstWhere((h) => h.name == 'raspberry-pi');
+      final tab = await tabs.open(host);
+      container.read(routerProvider).go(AppRoutes.terminal);
+      await settle(tester);
+      tab.terminal.write(
+        '\x1b[2J\x1b[Hpi@raspberry-pi:~ \$ uptime\r\n'
+        ' 10:42:07 up 12 days,  3:04,  1 user,  load average: 0.08, 0.12, 0.10\r\n'
+        'pi@raspberry-pi:~ \$ ',
+      );
+      final pane = await tabs.split(tab, Axis.horizontal);
+      await settle(tester);
+      pane!.terminal.write(
+        '\x1b[2J\x1b[Hpi@raspberry-pi:~ \$ journalctl -fu nginx\r\n'
+        'Oct 27 10:41:58 raspberry-pi nginx[812]: GET /healthz 200\r\n'
+        'Oct 27 10:42:03 raspberry-pi nginx[812]: GET /healthz 200\r\n',
+      );
+      await settle(tester);
+      expect(find.byType(TerminalView), findsNWidgets(2));
+    case 'sharing-rdp':
+      showSharingRdpHost(tester.element(find.byType(Navigator).first), hostId: 'guide-windows').ignore();
+      await settle(tester);
+      await tester.enterText(find.byKey(const ValueKey('sharing-email')), 'colleague@example.test');
+      await tapKey(tester, 'sharing-find');
+      await tapKey(tester, 'sharing-give-access-${guideRecipient.deviceId}');
+      await Scrollable.ensureVisible(tester.element(find.byKey(const ValueKey('sharing-rdp-include-notes'))));
+      await settle(tester);
+    case 'settings-cli':
+      await tapKey(tester, 'nav-settings');
+      await Scrollable.ensureVisible(tester.element(find.byKey(const ValueKey('settings-cli'))), alignment: .4);
+      await settle(tester);
+      expect(find.byKey(const ValueKey('cli-install')), findsOneWidget);
+    case 'db-cassandra-trace':
+      (backend.services.databases! as MockDbService).debugAddStagingCassandra();
+      await tapKey(tester, 'nav-databases');
+      await tapKey(tester, 'db-connection-cassandra-staging');
+      await tester.enterText(
+        find.byKey(const ValueKey('db-query-editor')),
+        "SELECT device_id, ts, value\nFROM readings_by_device\nWHERE device_id = 'sensor-17'\nLIMIT 100;",
+      );
+      await tester.pump();
+      await tapKey(tester, 'db-trace');
+      await tester.tap(find.text(l10n.dbRun).last);
+      await settle(tester);
+      expect(find.text('10.20.0.12'), findsWidgets);
+  }
+}
+
 Future<void> _databaseScreen(WidgetTester tester, String screen, AppLocalizations l10n) async {
   await tapKey(tester, 'nav-databases');
   if (guideDb092Screens.contains(screen)) return _database092Screen(tester, screen, l10n);

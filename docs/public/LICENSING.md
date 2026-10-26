@@ -11,7 +11,9 @@ Copyright © 2026 Alexander Evsikov · [i@evsikov.net](mailto:i@evsikov.net)
 и распространения определяет полный текст лицензии. При распространении
 сборок сохраняйте лицензию и уведомления об авторских правах, предоставляйте
 соответствующий исходный код по условиям AGPL. Для изменённого сервера,
-доступного пользователям по сети, учитывайте требования раздела 13.
+доступного пользователям по сети, учитывайте требования раздела 13. Клиент в
+профиле с синхронизацией показывает в «О программе» ссылку на исходный код
+сервера, которую тот сообщает о себе (`CC_SOURCE_CODE_URL`).
 
 Сторонние зависимости и включённые компоненты сохраняют собственные лицензии
 и уведомления. Этот выбор применяется к текущему коду и новым выпускам
@@ -29,7 +31,8 @@ The software is provided without warranty. The full license governs use,
 modification and redistribution. Preserve license and copyright notices and
 provide corresponding source when distributing binaries, as required by
 AGPL. Operators of modified network-accessible servers must also comply
-with section 13.
+with section 13. In a synced profile the client's About dialog shows the source
+link the server reports about itself (`CC_SOURCE_CODE_URL`).
 
 Third-party dependencies and vendored components retain their own licenses
 and notices. This decision applies to current sources and new client releases

@@ -35,6 +35,8 @@ consolecrypt-cli sftp ls | get | put          # файлы
 consolecrypt-cli sync now | status            # синхронизация
 consolecrypt-cli device list | code | ...     # устройства и их одобрение
 consolecrypt-cli backup ...                   # зашифрованные копии .ccbackup
+consolecrypt-cli recovery-kit                 # комплект восстановления
+consolecrypt-cli passphrase change | reset    # парольная фраза хранилища
 consolecrypt-cli ai search | ask | ...        # ИИ: поиск, вопросы, команды
 ```
 
@@ -45,6 +47,11 @@ consolecrypt-cli ai search | ask | ...        # ИИ: поиск, вопросы
 `CC_SECRET`, `CC_KEY_PASSPHRASE`, `CC_SSH_PASSWORD`, `CC_RECOVERY_KEY`.
 Обычный `http://` разрешён только для адресов этого компьютера; `--insecure-http`
 — только для доверенной локальной сети.
+
+`consolecrypt-cli --version` показывает версию приложения, с которым он
+поставляется. На macOS CLI находит профили там же, где приложение (в том числе в
+папке прежних сборок внутри `~/Library/Containers`); другую папку задаёт
+`--data-dir` или `CONSOLECRYPT_DATA_DIR`.
 
 Приложение и CLI могут работать одновременно с одним профилем. Синхронизация
 сводит их изменения, но одну и ту же запись лучше не править в двух местах сразу.
@@ -71,4 +78,7 @@ recovery-kit, passphrase and ai. Global flags: `--profile`, `--json`,
 `CC_SSH_PASSWORD` and `CC_RECOVERY_KEY`. Plain `http://` is allowed only for
 this computer; `--insecure-http` is for a trusted local network only. The app
 and the CLI can use one profile at the same time; avoid editing the same item in
-both at once.
+both at once. `consolecrypt-cli --version` shows the app release it ships with; on
+macOS the CLI finds the profiles where the app keeps them (including the folder of
+earlier builds inside `~/Library/Containers`); `--data-dir` or
+`CONSOLECRYPT_DATA_DIR` chooses another folder.

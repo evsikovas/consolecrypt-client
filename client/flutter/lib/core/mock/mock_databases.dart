@@ -38,6 +38,42 @@ final class MockDbService
   final _history = <DbHistoryEntry>[];
   var _next = 0;
 
+  /// A demo CQL trace: coordinator and two replicas (synthetic addresses).
+  static const _cqlTrace = {
+    'plan': {
+      'cql_trace': {
+        'request': 'Execute CQL3 query',
+        'coordinator': '10.20.0.11',
+        'duration_us': 2840,
+        'nodes': [
+          {
+            'source': '10.20.0.11',
+            'events': [
+              {'activity': 'Parsing a statement', 'elapsed_us': 92},
+              {'activity': 'Preparing statement', 'elapsed_us': 188},
+              {'activity': 'Sending a read request to replicas', 'elapsed_us': 401},
+              {'activity': 'Received responses from 2 replicas', 'elapsed_us': 2611},
+            ],
+          },
+          {
+            'source': '10.20.0.12',
+            'events': [
+              {'activity': 'Querying partition sensor-17', 'elapsed_us': 1210},
+              {'activity': 'Read 100 live rows from 2 SSTables', 'elapsed_us': 1904},
+            ],
+          },
+          {
+            'source': '10.20.0.13',
+            'events': [
+              {'activity': 'Querying partition sensor-17', 'elapsed_us': 1288},
+              {'activity': 'Read 100 live rows from 1 SSTable', 'elapsed_us': 1730},
+            ],
+          },
+        ],
+      },
+    },
+  };
+
   late final List<DbConnection> _connections = [
     _connection(
       'pg',
@@ -800,47 +836,66 @@ final class MockDbService
   @override
   Future<void> releaseQuery(String sessionId, String queryId) async => _queries.remove(queryId);
 
+  /// A non-production ScyllaDB connection (guide capture of the CQL trace,
+  /// which production connections do not offer).
+  void debugAddStagingCassandra() {
+    _connections.add(
+      _connection(
+        'cassandra-staging',
+        'telemetry-staging',
+        DbEngine.cassandra,
+        'scylla-staging.internal',
+        production: false,
+        database: 'telemetry',
+        options: const DbDriverOptions(engine: DbEngine.cassandra, localDatacenter: 'dc1'),
+      ),
+    );
+    _changes.add(null);
+  }
+
   @override
   Future<DbExplainPlan> explain(String sessionId, DbQueryRequest request, {bool analyze = false}) async =>
-      DbExplainPlan(
-        engine: _sessions[sessionId]?.engine ?? DbEngine.postgresql,
-        analyzed: analyze,
-        document: {
-          'plan': [
-            {
-              'Plan': {
-                'Node Type': 'Hash Join',
-                'Join Type': 'Inner',
-                'Hash Cond': '(o.customer_id = c.id)',
-                'Total Cost': 412.8,
-                'Plan Rows': 1840,
-                'Plans': [
-                  {
-                    'Node Type': 'Seq Scan',
-                    'Relation Name': 'orders',
-                    'Filter': "(status = 'paid'::text)",
-                    'Total Cost': 288.1,
-                    'Plan Rows': 1840,
-                  },
-                  {
-                    'Node Type': 'Hash',
-                    'Total Cost': 64.5,
-                    'Plans': [
-                      {
-                        'Node Type': 'Index Scan',
-                        'Relation Name': 'customers',
-                        'Index Name': 'customers_pkey',
-                        'Total Cost': 61.2,
-                        'Plan Rows': 950,
-                      },
-                    ],
-                  },
-                ],
+      _sessions[sessionId]?.engine == DbEngine.cassandra
+      ? DbExplainPlan(engine: DbEngine.cassandra, analyzed: analyze, document: _cqlTrace)
+      : DbExplainPlan(
+          engine: _sessions[sessionId]?.engine ?? DbEngine.postgresql,
+          analyzed: analyze,
+          document: {
+            'plan': [
+              {
+                'Plan': {
+                  'Node Type': 'Hash Join',
+                  'Join Type': 'Inner',
+                  'Hash Cond': '(o.customer_id = c.id)',
+                  'Total Cost': 412.8,
+                  'Plan Rows': 1840,
+                  'Plans': [
+                    {
+                      'Node Type': 'Seq Scan',
+                      'Relation Name': 'orders',
+                      'Filter': "(status = 'paid'::text)",
+                      'Total Cost': 288.1,
+                      'Plan Rows': 1840,
+                    },
+                    {
+                      'Node Type': 'Hash',
+                      'Total Cost': 64.5,
+                      'Plans': [
+                        {
+                          'Node Type': 'Index Scan',
+                          'Relation Name': 'customers',
+                          'Index Name': 'customers_pkey',
+                          'Total Cost': 61.2,
+                          'Plan Rows': 950,
+                        },
+                      ],
+                    },
+                  ],
+                },
               },
-            },
-          ],
-        },
-      );
+            ],
+          },
+        );
 
   // History.
 
