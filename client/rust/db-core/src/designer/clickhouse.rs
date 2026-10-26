@@ -317,9 +317,6 @@ impl Dialect for ClickHouse {
         let table = self.table(&before.database, &before.name);
         let alter = |op: String| format!("ALTER TABLE {table} {op}");
         let mut out = Vec::new();
-        if changes.renamed_table || before.database != after.database {
-            issues.error("rename_unsupported", "table.name", &after.name);
-        }
         if changes.primary_key_changed {
             issues.error("primary_key_change_unsupported", "primary_key", &after.name);
         }
@@ -341,29 +338,27 @@ impl Dialect for ClickHouse {
                 ))));
             }
         }
-        for (old, new, position) in &changes.kept_columns {
+        for (old, new, _) in &changes.kept_columns {
             if !TableChanges::definition_changed(old, new) {
                 continue;
-            }
-            if !old.default.trim().is_empty() && new.default.trim().is_empty() {
-                issues.error(
-                    "remove_default_unsupported",
-                    format!("columns.{position}.default"),
-                    &new.name,
-                );
-            }
-            if !old.comment.is_empty() && new.comment.is_empty() {
-                issues.error(
-                    "remove_comment_unsupported",
-                    format!("columns.{position}.comment"),
-                    &new.name,
-                );
             }
             let retyped = self.data_type(old) != self.data_type(new);
             out.push(DesignStatement {
                 sql: alter(format!("MODIFY COLUMN {}", self.column(new))),
                 destructive: retyped,
             });
+            // MODIFY COLUMN keeps a default or comment it does not mention.
+            let name = self.quote(&new.name);
+            if !old.default.trim().is_empty() && new.default.trim().is_empty() {
+                out.push(statement(alter(format!(
+                    "MODIFY COLUMN {name} REMOVE DEFAULT"
+                ))));
+            }
+            if !old.comment.is_empty() && new.comment.is_empty() {
+                out.push(statement(alter(format!(
+                    "MODIFY COLUMN {name} REMOVE COMMENT"
+                ))));
+            }
         }
         let last = after
             .columns
@@ -381,6 +376,13 @@ impl Dialect for ClickHouse {
                 "ADD COLUMN {}",
                 self.column(column)
             ))));
+        }
+        // Everything above addresses the current name; the rename runs last.
+        if changes.renamed_table || before.database != after.database {
+            out.push(statement(format!(
+                "RENAME TABLE {table} TO {}",
+                self.table(&after.database, &after.name)
+            )));
         }
         out
     }
@@ -553,15 +555,29 @@ mod tests {
         assert_guard_accepts(DbEngine::Clickhouse, &plan);
         let mut renamed = before.clone();
         renamed.name = "other".into();
-        renamed.columns[1].default = String::new();
-        let codes: Vec<_> = make_plan(DbEngine::Clickhouse, Some(&before), &renamed)
-            .issues
-            .into_iter()
-            .map(|issue| issue.code)
-            .collect();
-        assert!(
-            codes.contains(&"rename_unsupported") && codes.contains(&"remove_default_unsupported")
+        let plan = make_plan(DbEngine::Clickhouse, Some(&before), &renamed);
+        assert!(plan.issues.is_empty(), "{:?}", plan.issues);
+        let sql: Vec<&str> = plan.statements.iter().map(|s| s.sql.as_str()).collect();
+        assert_eq!(sql, ["RENAME TABLE `demo`.`events` TO `demo`.`other`"]);
+        assert_guard_accepts(DbEngine::Clickhouse, &plan);
+
+        // A removed default or comment is removed explicitly (LIM-06).
+        let mut cleared = before.clone();
+        cleared.columns[1].default = String::new();
+        cleared.columns[2].comment = String::new();
+        let plan = make_plan(DbEngine::Clickhouse, Some(&before), &cleared);
+        assert!(plan.issues.is_empty(), "{:?}", plan.issues);
+        let sql: Vec<&str> = plan.statements.iter().map(|s| s.sql.as_str()).collect();
+        assert_eq!(
+            sql,
+            [
+                "ALTER TABLE `demo`.`events` MODIFY COLUMN `at` DateTime",
+                "ALTER TABLE `demo`.`events` MODIFY COLUMN `at` REMOVE DEFAULT",
+                "ALTER TABLE `demo`.`events` MODIFY COLUMN `kind` LowCardinality(String)",
+                "ALTER TABLE `demo`.`events` MODIFY COLUMN `kind` REMOVE COMMENT",
+            ]
         );
+        assert_guard_accepts(DbEngine::Clickhouse, &plan);
     }
 
     #[test]

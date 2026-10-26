@@ -36,7 +36,7 @@ mysql_async = { version = "0.37.1", default-features = false, features = ["minim
 redis = { version = "1.7.1", default-features = false, features = ["tokio-rustls-comp", "tls-rustls-webpki-roots", "acl", "streams", "num-bigint"] }
 bson = { version = "3.1.0", features = ["serde_json-1"] }
 mongodb = { version = "3.9.1", default-features = false, features = ["compat-3-3-0", "bson-3", "rustls-tls", "dns-resolver", "socks5-proxy", "redact-errors"] }
-sqlparser = { version = "0.62", features = ["visitor"] }
+sqlparser = { version = "0.63", features = ["visitor"] }
 sha2 = "0.11"
 # The workspace's single SQLite build (SQLCipher; plain files open without a
 # key). These features are Rust-side only and leave libsqlite3-sys as is.

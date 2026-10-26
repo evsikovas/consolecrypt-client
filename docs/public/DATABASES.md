@@ -631,12 +631,16 @@ ORDER BY для MergeTree, AUTO_INCREMENT без ключа и т. п.; иден
 При изменении существующей таблицы конструктор сравнивает черновик со
 структурой на сервере и строит ALTER: добавление, удаление и переименование
 столбцов, смена типа, NULL и значения по умолчанию, ключи, индексы и
-проверки. Ограничения: параметры, задаваемые при создании (движок, ключ
-сортировки ClickHouse, секционирование), здесь не меняются; в ClickHouse
-нельзя переименовать таблицу и убрать значение по умолчанию; в PostgreSQL
-нельзя снять identity; комментарий с апострофом пока не поддерживается;
-TTL и SETTINGS ClickHouse, а также UNLOGGED в PostgreSQL добавляются
-вручную в редакторе.
+проверки; в PostgreSQL — снятие identity и смена ALWAYS ↔ BY DEFAULT,
+UNLOGGED (при создании и через `SET LOGGED/UNLOGGED`); в ClickHouse —
+переименование таблицы (`RENAME TABLE`), снятие значения по умолчанию и
+комментария столбца. Комментарии могут содержать апостроф (в MySQL/MariaDB —
+без обратной косой черты). Ограничения: параметры, задаваемые при создании
+(движок, ключ сортировки ClickHouse, секционирование), здесь не меняются;
+переход между serial и identity в PostgreSQL делается в редакторе. TTL и
+SETTINGS ClickHouse приложение не выполняет ни в конструкторе, ни в
+редакторе: их не разбирает анализатор SQL, через который проходит каждый
+запрос, — используйте `clickhouse-client` в терминале.
 
 ### История
 
@@ -1225,12 +1229,16 @@ save / Cancel».
 
 When editing an existing table the designer compares the draft with the
 server structure and generates ALTER statements: added, dropped and renamed
-columns, type, NULL and default changes, keys, indexes and checks. Limits:
-options set at creation (engine, ClickHouse sorting key, partitioning) are
-not changed here; ClickHouse cannot rename the table or remove a default;
-PostgreSQL identity cannot be removed; comments with an apostrophe are not
-supported yet; ClickHouse TTL and SETTINGS and PostgreSQL UNLOGGED are added
-in the editor.
+columns, type, NULL and default changes, keys, indexes and checks; in
+PostgreSQL also dropping an identity and switching ALWAYS ↔ BY DEFAULT, and
+UNLOGGED (at creation and through `SET LOGGED/UNLOGGED`); in ClickHouse
+renaming the table (`RENAME TABLE`) and removing a column default or comment.
+Comments may contain an apostrophe (in MySQL/MariaDB without a backslash).
+Limits: options set at creation (engine, ClickHouse sorting key,
+partitioning) are not changed here; switching between serial and identity in
+PostgreSQL is done in the editor. The app runs ClickHouse TTL and SETTINGS
+neither in the designer nor in the editor: the SQL parser every query goes
+through cannot read them — use `clickhouse-client` in a terminal.
 
 ### Database snippets
 

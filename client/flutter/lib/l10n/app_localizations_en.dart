@@ -12634,7 +12634,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The primary key of a partitioned table must include the partition key.';
 
   @override
-  String get dbDesignIssueCommentQuote => 'This comment cannot contain an apostrophe (\') yet.';
+  String get dbDesignIssueCommentBackslash => 'In MySQL and MariaDB a comment cannot contain a backslash (\\) yet.';
 
   @override
   String dbDesignIssueOptionInvalid(String name) {
@@ -12664,16 +12664,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbDesignIssuePrimaryKeyChange => 'The primary key of this table cannot be changed.';
-
-  @override
-  String dbDesignIssueRemoveDefault(String name) {
-    return '$name: removing a default is not supported here.';
-  }
-
-  @override
-  String dbDesignIssueRemoveComment(String name) {
-    return '$name: removing a comment is not supported here.';
-  }
 
   @override
   String get dbDesignIssueCappedSize => 'A capped collection needs a size.';
@@ -13242,6 +13232,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dbDesignOptStrict => 'STRICT (strict column types)';
+
+  @override
+  String get dbDesignOptUnlogged => 'UNLOGGED (no write-ahead log: faster, emptied after a crash)';
+
+  @override
+  String get dbDesignIssueUnloggedPartitioned => 'A partitioned table cannot be UNLOGGED.';
 
   @override
   String get dbDesignOptWithoutRowid => 'WITHOUT ROWID';

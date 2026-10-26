@@ -12939,7 +12939,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Первичный ключ секционированной таблицы должен включать ключ секционирования.';
 
   @override
-  String get dbDesignIssueCommentQuote => 'Этот комментарий пока не может содержать апостроф (\').';
+  String get dbDesignIssueCommentBackslash =>
+      'В MySQL и MariaDB комментарий пока не может содержать обратную косую черту (\\).';
 
   @override
   String dbDesignIssueOptionInvalid(String name) {
@@ -12969,16 +12970,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbDesignIssuePrimaryKeyChange => 'Первичный ключ этой таблицы изменить нельзя.';
-
-  @override
-  String dbDesignIssueRemoveDefault(String name) {
-    return '$name: удаление значения по умолчанию здесь не поддерживается.';
-  }
-
-  @override
-  String dbDesignIssueRemoveComment(String name) {
-    return '$name: удаление комментария здесь не поддерживается.';
-  }
 
   @override
   String get dbDesignIssueCappedSize => 'Для ограниченной коллекции нужен размер.';
@@ -13554,6 +13545,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dbDesignOptStrict => 'STRICT (строгие типы столбцов)';
+
+  @override
+  String get dbDesignOptUnlogged => 'UNLOGGED (без журнала упреждающей записи: быстрее, после сбоя таблица очищается)';
+
+  @override
+  String get dbDesignIssueUnloggedPartitioned => 'Секционированная таблица не может быть UNLOGGED.';
 
   @override
   String get dbDesignOptWithoutRowid => 'WITHOUT ROWID';

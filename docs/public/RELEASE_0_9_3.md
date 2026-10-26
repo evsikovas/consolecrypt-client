@@ -61,6 +61,9 @@
   через хранилище» переносит такое подключение с паролем в хранилище, если все устройства
   аккаунта работают на 0.9.2 или новее (с сервером 0.2.4 приложение видит их версии и
   перечислит те, что нужно обновить). Файл SQLite на этом компьютере остаётся только здесь.
+- **Конструктор таблиц.** Комментарии с апострофом; в PostgreSQL — снятие identity,
+  смена ALWAYS ↔ BY DEFAULT и UNLOGGED; в ClickHouse — переименование таблицы, снятие
+  значения по умолчанию и комментария столбца.
 - **Cassandra/ScyllaDB: все узлы кластера.** При прямом подключении запросы
   распределяются по всем узлам дата-центра, а при отказе узла переходят на другие;
   раньше сеанс работал через один узел. Через SSH, туннели и пробросы — по-прежнему
@@ -185,6 +188,9 @@ admins and sends invitations only to verified addresses.
   moves such a connection and its password into the vault once every device of the account
   runs 0.9.2 or later (with server 0.2.4 the app sees their versions and lists the ones to
   update). An SQLite file on this computer stays here.
+- **Table designer.** Comments with an apostrophe; in PostgreSQL dropping an identity,
+  switching ALWAYS ↔ BY DEFAULT and UNLOGGED; in ClickHouse renaming the table and removing
+  a column default or comment.
 - **Cassandra/ScyllaDB: every cluster node.** Directly, requests spread over every node
   of the data center and move to other nodes when one fails; before, a session used one
   node. Through SSH, tunnels and forwards it still uses one node.

@@ -304,6 +304,32 @@ async fn postgres_create_load_alter_and_roll_back() {
     let after = session.table_design(&table_ref(&altered)).await.unwrap();
     assert!(!names(&after).contains(&"extra"));
 
+    // LIM-06: apostrophes in comments, UNLOGGED, identity switched and dropped.
+    let mut logged = after.clone();
+    logged.comment = r"Bob's \ orders".into();
+    logged.columns[1].comment = "it's the state".into();
+    logged.columns[0].identity = "always".into();
+    logged.options.insert("unlogged".into(), "true".into());
+    create(&session, Some(&after), &logged).await;
+    let switched = session.table_design(&table_ref(&logged)).await.unwrap();
+    assert_eq!(switched.comment, r"Bob's \ orders");
+    assert_eq!(switched.columns[1].comment, "it's the state");
+    assert_eq!(switched.columns[0].identity, "always");
+    assert_eq!(
+        switched.options.get("unlogged").map(String::as_str),
+        Some("true")
+    );
+    let mut plain = switched.clone();
+    plain.columns[0].identity = String::new();
+    plain.options.remove("unlogged");
+    create(&session, Some(&switched), &plain).await;
+    let dropped = session.table_design(&table_ref(&plain)).await.unwrap();
+    assert_eq!(dropped.columns[0].identity, "");
+    assert!(!dropped.options.contains_key("unlogged"));
+    assert!(plan(DbEngine::Postgresql, Some(&dropped), &dropped)
+        .statements
+        .is_empty());
+
     for name in [&child.name, &parent.name] {
         rows(
             &session,
@@ -328,7 +354,7 @@ async fn mysql_create_load_alter() {
     let design = TableDesign {
         database: database.clone(),
         name: unique("cc_designer `order`"),
-        comment: "Designer test".into(),
+        comment: "Designer's test".into(),
         columns: vec![
             ColumnDesign {
                 identity: "auto_increment".into(),
@@ -388,7 +414,7 @@ async fn mysql_create_load_alter() {
     assert_eq!(loaded.uniques[0].columns, ["select"]);
     assert_eq!(loaded.indexes[0].name, "created_idx");
     assert_eq!(loaded.checks.len(), 1);
-    assert_eq!(loaded.comment, "Designer test");
+    assert_eq!(loaded.comment, "Designer's test");
     assert!(plan(DbEngine::Mysql, Some(&loaded), &loaded)
         .statements
         .is_empty());
@@ -498,9 +524,22 @@ async fn clickhouse_create_load_alter() {
     let reloaded = session.table_design(&table_ref(&altered)).await.unwrap();
     assert_eq!(names(&reloaded), ["id", "at", "kind", "remark", "source"]);
     assert_eq!(reloaded.columns[3].default, "'-'");
+
+    // LIM-06: a default and a comment are removed, the table is renamed.
+    let mut cleared = reloaded.clone();
+    cleared.columns[3].default = String::new();
+    cleared.columns[2].comment = String::new();
+    cleared.name = unique("cc_designer_renamed");
+    create(&session, Some(&reloaded), &cleared).await;
+    let renamed = session.table_design(&table_ref(&cleared)).await.unwrap();
+    assert_eq!(renamed.columns[3].default, "");
+    assert_eq!(renamed.columns[2].comment, "");
+    assert!(plan(DbEngine::Clickhouse, Some(&renamed), &renamed)
+        .statements
+        .is_empty());
     rows(
         &session,
-        &format!("DROP TABLE `{database}`.`{}`", design.name),
+        &format!("DROP TABLE `{database}`.`{}`", cleared.name),
         true,
     )
     .await;
