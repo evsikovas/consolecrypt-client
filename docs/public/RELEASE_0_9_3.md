@@ -73,8 +73,8 @@
   значения по умолчанию и комментария столбца.
 - **Cassandra/ScyllaDB: все узлы кластера.** При прямом подключении запросы
   распределяются по всем узлам дата-центра, а при отказе узла переходят на другие;
-  раньше сеанс работал через один узел. Через SSH, туннели и пробросы — по-прежнему
-  через один узел.
+  раньше сеанс работал через один узел. С ScyllaDB — по соединению на каждый шард
+  через shard-aware порт. Через SSH, туннели и пробросы — по-прежнему через один узел.
 - **Cassandra/ScyllaDB: трассировка запроса** вместо EXPLAIN, которого нет в CQL:
   запрос выполняется один раз с трассировкой, окно показывает шаги и задержки каждого
   узла деревом, как план у SQL. Только для непрод-подключений, с подтверждением.
@@ -207,7 +207,8 @@ admins and sends invitations only to verified addresses.
   a column default or comment.
 - **Cassandra/ScyllaDB: every cluster node.** Directly, requests spread over every node
   of the data center and move to other nodes when one fails; before, a session used one
-  node. Through SSH, tunnels and forwards it still uses one node.
+  node; with ScyllaDB one connection per shard through the shard-aware port. Through SSH,
+  tunnels and forwards it still uses one node.
 - **Cassandra/ScyllaDB: query tracing** in place of EXPLAIN, which CQL lacks: the query
   runs once with tracing, and the window shows each node's steps and delays as a tree,
   like an SQL plan. Non-production connections only, after a confirmation.

@@ -4,7 +4,10 @@ use crate::DbError;
 use async_trait::async_trait;
 use cc_models::database::{DbConnection, DbTlsMode};
 use rustls::{
-    client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier},
+    client::{
+        danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier},
+        WebPkiServerVerifier,
+    },
     pki_types::{CertificateDer, ServerName, UnixTime},
     ClientConfig, DigitallySignedStruct, RootCertStore, SignatureScheme,
 };
@@ -224,6 +227,30 @@ impl TlsProfile {
         })
     }
 
+    /// The configuration for a driver that dials cluster nodes itself
+    /// (ScyllaDB shard-aware ports, FEAT-13). The driver names each node by
+    /// its address, so a verified certificate is accepted when it is valid
+    /// for the configured server name or for that address.
+    pub fn for_nodes(&self, connection: &DbConnection) -> Result<Arc<ClientConfig>, DbError> {
+        if !matches!(self.mode, DbTlsMode::Prefer | DbTlsMode::Verify) {
+            // Require already skips the chain and name check.
+            return Ok(self.config.clone());
+        }
+        let provider = Arc::new(rustls::crypto::ring::default_provider());
+        let inner = WebPkiServerVerifier::builder_with_provider(
+            Arc::new(Self::roots(connection)?),
+            provider,
+        )
+        .build()
+        .map_err(|_| DbError::TlsFailed)?;
+        let name = ServerName::try_from(self.name.clone()).map_err(|_| DbError::TlsFailed)?;
+        let mut config = (*self.config).clone();
+        config
+            .dangerous()
+            .set_certificate_verifier(Arc::new(NamedOrAddress { inner, name }));
+        Ok(Arc::new(config))
+    }
+
     pub async fn connect(&self, stream: DbIo, name: Option<&str>) -> Result<DbIo, DbError> {
         self.connect_checked(stream, name)
             .await
@@ -273,6 +300,57 @@ pub(crate) fn classify_handshake(error: io::Error) -> DbError {
         | io::ErrorKind::BrokenPipe
         | io::ErrorKind::InvalidData => DbError::TlsUnavailable,
         _ => DbError::TlsFailed,
+    }
+}
+
+/// Full verification against the configured server name, else against the
+/// name the driver gave (a node's address).
+#[derive(Debug)]
+struct NamedOrAddress {
+    inner: Arc<WebPkiServerVerifier>,
+    name: ServerName<'static>,
+}
+impl ServerCertVerifier for NamedOrAddress {
+    fn verify_server_cert(
+        &self,
+        end_entity: &CertificateDer<'_>,
+        intermediates: &[CertificateDer<'_>],
+        server_name: &ServerName<'_>,
+        ocsp_response: &[u8],
+        now: UnixTime,
+    ) -> Result<ServerCertVerified, rustls::Error> {
+        self.inner
+            .verify_server_cert(end_entity, intermediates, &self.name, ocsp_response, now)
+            .or_else(|_| {
+                self.inner.verify_server_cert(
+                    end_entity,
+                    intermediates,
+                    server_name,
+                    ocsp_response,
+                    now,
+                )
+            })
+    }
+    fn verify_tls12_signature(
+        &self,
+        message: &[u8],
+        certificate: &CertificateDer<'_>,
+        signature: &DigitallySignedStruct,
+    ) -> Result<HandshakeSignatureValid, rustls::Error> {
+        self.inner
+            .verify_tls12_signature(message, certificate, signature)
+    }
+    fn verify_tls13_signature(
+        &self,
+        message: &[u8],
+        certificate: &CertificateDer<'_>,
+        signature: &DigitallySignedStruct,
+    ) -> Result<HandshakeSignatureValid, rustls::Error> {
+        self.inner
+            .verify_tls13_signature(message, certificate, signature)
+    }
+    fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
+        self.inner.supported_verify_schemes()
     }
 }
 
@@ -598,4 +676,67 @@ async fn socks_request(
         return Err(DbError::PolicyDenied);
     }
     Ok(destination)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cc_models::database::DbEngine;
+
+    /// A CA and a server certificate for `names` signed by it.
+    fn certificates(names: &[&str]) -> (String, rustls::ServerConfig) {
+        let mut authority = rcgen::CertificateParams::new(Vec::<String>::new()).unwrap();
+        authority.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
+        let authority_key = rcgen::KeyPair::generate().unwrap();
+        let authority_pem = authority.self_signed(&authority_key).unwrap().pem();
+        let issuer = rcgen::Issuer::new(authority, authority_key);
+        let key = rcgen::KeyPair::generate().unwrap();
+        let names: Vec<String> = names.iter().map(|n| n.to_string()).collect();
+        let certificate = rcgen::CertificateParams::new(names)
+            .unwrap()
+            .signed_by(&key, &issuer)
+            .unwrap();
+        let server = rustls::ServerConfig::builder_with_provider(Arc::new(
+            rustls::crypto::ring::default_provider(),
+        ))
+        .with_safe_default_protocol_versions()
+        .unwrap()
+        .with_no_client_auth()
+        .with_single_cert(
+            vec![certificate.der().clone()],
+            rustls::pki_types::PrivateKeyDer::Pkcs8(key.serialize_der().into()),
+        )
+        .unwrap();
+        (authority_pem, server)
+    }
+
+    /// Whether a node at `address` with a certificate for `names` passes
+    /// the node configuration of a connection to `host`.
+    async fn accepted(host: &str, names: &[&str], address: &str) -> bool {
+        let (authority, server) = certificates(names);
+        let mut connection = DbConnection::new("t", host, DbEngine::Cassandra);
+        connection.tls.mode = DbTlsMode::Verify;
+        connection.tls.certificate_authority_pem = Some(authority);
+        let profile = TlsProfile::new(&connection, &DbCredentials::default()).unwrap();
+        let config = profile.for_nodes(&connection).unwrap();
+        let (client, server_io) = tokio::io::duplex(64 * 1024);
+        let acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(server));
+        let serving = tokio::spawn(async move { acceptor.accept(server_io).await.is_ok() });
+        let name = ServerName::IpAddress(address.parse::<std::net::IpAddr>().unwrap().into());
+        let ok = tokio_rustls::TlsConnector::from(config)
+            .connect(name, client)
+            .await
+            .is_ok();
+        let _ = serving.await;
+        ok
+    }
+
+    #[tokio::test]
+    async fn nodes_pass_by_the_configured_name_or_their_address() {
+        // The driver names a node by its address (FEAT-13).
+        assert!(accepted("db.example", &["db.example"], "10.0.0.5").await);
+        assert!(accepted("db.example", &["10.0.0.5"], "10.0.0.5").await);
+        assert!(!accepted("db.example", &["other.example"], "10.0.0.5").await);
+        assert!(!accepted("db.example", &["10.0.0.6"], "10.0.0.5").await);
+    }
 }

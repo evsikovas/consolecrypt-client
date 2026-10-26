@@ -94,14 +94,21 @@ MongoDB, Apache Cassandra и ScyllaDB, а также с файлами SQLite. �
   уровни согласованности чтения (по умолчанию `LOCAL_ONE`) и записи
   (`LOCAL_QUORUM`) и размер страницы CQL (500 строк). «Keyspace» — keyspace по
   умолчанию (точное имя). Тайм-аут запроса — «Тайм-аут запроса» из лимитов.
-- **Узлы кластера.** При прямом подключении приложение берёт адреса узлов из
-  `system.peers` и подключается к каждому узлу дата-центра первого ответившего
-  контактного узла (с тем же TLS): запросы распределяются по узлам с учётом
-  токенов, а при отказе узла переходят на другие. Узлы других дата-центров не
-  используются. Через SSH, jump-профиль, прокси, SSH-туннель, проброс
-  Kubernetes или Docker сеанс работает через один узел — первый ответивший
-  (через проброс доступна только одна точка); при недоступности узла
-  используется следующий контактный узел. Shard-aware порт ScyllaDB отключён.
+- **Узлы кластера.** Полноценная работа с кластером — только при прямом
+  подключении из той же сети, что и узлы. Тогда приложение берёт адреса узлов
+  из `system.peers` и подключается к каждому узлу дата-центра первого
+  ответившего контактного узла (с тем же TLS): запросы распределяются по узлам
+  с учётом токенов, а при отказе узла переходят на другие. Узлы других
+  дата-центров не используются. С ScyllaDB драйвер подключается к узлам сам,
+  по одному соединению на каждый шард, через shard-aware порт (19042, должен
+  быть доступен; иначе используется обычный порт). Для проверки TLS сертификат
+  узла должен быть выдан на имя из поля «Хост» (или имя TLS) либо на IP-адрес
+  узла. Если узлы недоступны по адресам, которые сообщают о себе (например,
+  проброшен только один порт), остаётся работа через один узел.
+- **Через туннели — один узел.** Через SSH, jump-профиль, прокси, SSH-туннель,
+  проброс Kubernetes или Docker сеанс работает через один узел — первый
+  ответивший (без распределения по узлам и shard-aware); при его
+  недоступности используется следующий контактный узел.
   Если указан локальный дата-центр, контактный узел должен быть в нём, иначе —
   ошибка «узел в другом дата-центре» (уровни `LOCAL_*` считаются по
   дата-центру координатора).
@@ -828,7 +835,13 @@ works with Apache Cassandra 3.11+, 4.x, 5.x and ScyllaDB.
   centers are not used. Through an SSH host, jump profile, proxy, SSH tunnel,
   Kubernetes or Docker forward the session works through one node, the first
   that answers (a forward reaches one endpoint); the next contact point takes
-  over when it is down. The ScyllaDB shard-aware port is off. With a local
+  over when it is down. Full cluster use therefore needs a direct connection
+  from the nodes' own network. There, with ScyllaDB, the driver dials the
+  nodes itself with one connection per shard through the shard-aware port
+  (19042 must be reachable, else the regular port is used); with TLS
+  verification a node's certificate must name the “Host” (or TLS name) or the
+  node's IP address. Nodes that cannot be reached at the addresses they
+  announce (only one port forwarded, say) leave the session on one node. With a local
   data center set, the contact point must be in it (`LOCAL_*` levels follow
   the coordinator's data center).
 - **TLS** is done by the app (rustls) with the usual modes: “Verify” checks the
