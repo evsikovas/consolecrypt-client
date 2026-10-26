@@ -26,7 +26,7 @@ use crate::store::check_size;
 use cc_models::ObjectPayload;
 use cc_protocol::sync::ChangesQuery;
 use cc_protocol::vaults::VaultInfo;
-use cc_protocol::{ErrorCode, ObjectId};
+use cc_protocol::ObjectId;
 use cc_storage_core::{
     ReconcileCodec, RecoveryPage, RemoteObject, RollbackReason, StorageError, StoredObject,
 };
