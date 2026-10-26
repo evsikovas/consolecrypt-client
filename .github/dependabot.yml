@@ -1,6 +1,8 @@
-# Weekly dependency updates. Patch releases arrive as one grouped PR per
-# ecosystem; major releases only come as security updates (and the weekly
-# dependency-audit.yml issue). Dependabot PRs run only the hosted
+# Version-update PRs are off (open-pull-requests-limit: 0): dependencies are
+# bumped by hand from issues. Security updates are not affected by the limit
+# and still arrive as PRs, alongside the weekly dependency-audit.yml issue.
+# The schedule, groups and ignores stay so version updates can be turned
+# back on by raising the limit. Dependabot PRs run only the hosted
 # dependency-audit.yml checks: no workflow here schedules self-hosted
 # runners on pull_request.
 version: 2
@@ -12,7 +14,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     groups:
       cargo-patch:
         update-types: [patch]
@@ -27,7 +29,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     groups:
       pub-patch:
         update-types: [patch]
@@ -40,7 +42,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     groups:
       actions-patch:
         update-types: [patch]
