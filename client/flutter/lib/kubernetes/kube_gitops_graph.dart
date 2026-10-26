@@ -227,69 +227,86 @@ class _KubeGitOpsGraphState extends State<KubeGitOpsGraph> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // The host (dialog title, insights tab) names the view.
                   Row(
                     children: [
-                      Expanded(child: Text(widget.dependencyLayout ? l.kubeDependencies : l.kubeGitOpsFlow)),
+                      Expanded(
+                        child: GlassField(
+                          fieldKey: const ValueKey('kube-graph-search'),
+                          search: true,
+                          leadingIcon: Icons.search,
+                          placeholder: l.kubeGraphSearch,
+                          onChanged: (value) => setState(() => _search = value.trim().toLowerCase()),
+                        ),
+                      ),
+                      const SizedBox(width: GlassSpacing.s8),
                       FilterChip(
                         label: Text(l.kubeGraphList),
                         selected: list,
                         onSelected: (value) => setState(() => _list = value),
                       ),
-                      if (!list)
-                        GlassIconButton(icon: Icons.center_focus_strong, tooltip: l.kubeGraphReset, onPressed: _fit),
-                    ],
-                  ),
-                  TextField(
-                    key: const ValueKey('kube-graph-search'),
-                    decoration: InputDecoration(labelText: l.kubeGraphSearch, prefixIcon: const Icon(Icons.search)),
-                    onChanged: (value) => setState(() => _search = value.trim().toLowerCase()),
-                  ),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        FilterChip(
-                          label: Text(l.kubeGraphProblems),
-                          selected: _problems,
-                          onSelected: (value) => setState(() => _problems = value),
-                        ),
-                        const SizedBox(width: 8),
-                        FilterChip(
-                          label: Text(l.kubeGraphFold),
-                          selected: _fold,
-                          onSelected: (value) => setState(() => _fold = value),
-                        ),
-                        PopupMenuButton<String>(
-                          key: const ValueKey('kube-graph-namespace'),
-                          tooltip: l.kubeNamespace,
-                          onSelected: (value) => setState(() => _namespace = value.isEmpty ? null : value),
-                          itemBuilder: (_) => [
-                            PopupMenuItem(value: '', child: Text(l.kubeAllNamespaces)),
-                            for (final namespace in namespaces) PopupMenuItem(value: namespace, child: Text(namespace)),
-                          ],
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Text(_namespace ?? l.kubeAllNamespaces),
-                          ),
-                        ),
-                        PopupMenuButton<String>(
-                          key: const ValueKey('kube-graph-label'),
-                          tooltip: l.kubeLabelSelector,
-                          onSelected: (value) => setState(() => _label = value.isEmpty ? null : value),
-                          itemBuilder: (_) => [
-                            PopupMenuItem(value: '', child: Text(l.kubeGitOpsAll)),
-                            for (final label in labels) PopupMenuItem(value: label, child: Text(label)),
-                          ],
-                          child: Padding(padding: const EdgeInsets.all(8), child: Text(_label ?? l.kubeLabelSelector)),
+                      if (!list) ...[
+                        const SizedBox(width: GlassSpacing.s6),
+                        GlassIconButton(
+                          icon: Icons.center_focus_strong,
+                          tooltip: l.kubeGraphReset,
+                          size: 32,
+                          onPressed: _fit,
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                  if (flow.truncated || flow.nodes.length > 200) Text(l.kubeInsightsPartial),
+                  const SizedBox(height: GlassSpacing.s8),
+                  Wrap(
+                    spacing: GlassSpacing.s8,
+                    runSpacing: GlassSpacing.s8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      FilterChip(
+                        label: Text(l.kubeGraphProblems),
+                        selected: _problems,
+                        onSelected: (value) => setState(() => _problems = value),
+                      ),
+                      FilterChip(
+                        label: Text(l.kubeGraphFold),
+                        selected: _fold,
+                        onSelected: (value) => setState(() => _fold = value),
+                      ),
+                      _menuChip(
+                        key: const ValueKey('kube-graph-namespace'),
+                        tooltip: l.kubeNamespace,
+                        label: _namespace ?? l.kubeAllNamespaces,
+                        active: _namespace != null,
+                        items: [
+                          PopupMenuItem(value: '', child: Text(l.kubeAllNamespaces)),
+                          for (final namespace in namespaces) PopupMenuItem(value: namespace, child: Text(namespace)),
+                        ],
+                        onSelected: (value) => setState(() => _namespace = value.isEmpty ? null : value),
+                      ),
+                      _menuChip(
+                        key: const ValueKey('kube-graph-label'),
+                        tooltip: l.kubeLabelSelector,
+                        label: _label ?? l.kubeLabelSelector,
+                        active: _label != null,
+                        items: [
+                          PopupMenuItem(value: '', child: Text(l.kubeGitOpsAll)),
+                          for (final label in labels) PopupMenuItem(value: label, child: Text(label)),
+                        ],
+                        onSelected: (value) => setState(() => _label = value.isEmpty ? null : value),
+                      ),
+                    ],
+                  ),
+                  if (flow.truncated || flow.nodes.length > 200)
+                    Padding(
+                      padding: const EdgeInsets.only(top: GlassSpacing.s8),
+                      child: Text(l.kubeInsightsPartial),
+                    ),
+                  const SizedBox(height: GlassSpacing.s8),
                 ],
               ),
             ),
           ),
+          const Divider(height: 1),
           Expanded(
             child: nodes.isEmpty
                 ? Center(child: Text(l.kubeNoResources))
@@ -371,6 +388,34 @@ class _KubeGitOpsGraphState extends State<KubeGitOpsGraph> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// A filter chip that opens a menu of values; tinted while a value is set.
+  Widget _menuChip({
+    required Key key,
+    required String tooltip,
+    required String label,
+    required bool active,
+    required List<PopupMenuEntry<String>> items,
+    required ValueChanged<String> onSelected,
+  }) {
+    final chips = Theme.of(context).chipTheme;
+    return PopupMenuButton<String>(
+      key: key,
+      tooltip: tooltip,
+      onSelected: onSelected,
+      itemBuilder: (_) => items,
+      child: Chip(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
+            const Icon(Icons.arrow_drop_down, size: 18),
+          ],
+        ),
+        backgroundColor: active ? chips.selectedColor : null,
       ),
     );
   }
