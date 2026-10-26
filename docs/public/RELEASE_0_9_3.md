@@ -4,7 +4,7 @@
 
 Выпуск доступен для macOS, Windows, Linux и Android. Сборка и проверка iOS отложены.
 Исправления команд работают со всеми серверами синхронизации с командами (0.2.1 и новее);
-сервер 0.2.4 дополнительно закрывает изменение чужих ключей команды.
+сервер 0.2.4 дополнительно запрещает участникам менять чужие ключи команды, разрешает назначать администраторов только владельцу и отправляет приглашения только на подтверждённые адреса.
 
 **Новое.**
 
@@ -40,6 +40,10 @@
   `rg --pre`, скрипты `sed` с командами `e`/`w` и флагами `s///e`/`s///w`, `awk` с
   `| getline` или файлом программы, `git -c …`. Для них снова нужно отметить, что вы
   понимаете риск, перед «Выполнить».
+- **Новое устройство: подтверждение без проверки.** Если сервер хоть раз сообщил
+  этому устройству, что поддерживает проверку по коду пары, переключить его на старый
+  способ без проверки он уже не может: такое подтверждение отклоняется. Одобряющее
+  устройство должно быть версии 0.9.2 или новее.
 - **Зависимости.** `crypto-bigint` 0.7.10 (RUSTSEC-2026-0387, неравномерное по
   времени выполнение операций, которые должны быть постоянными), `tokio` 1.54.1
   (RUSTSEC-2026-0386) и плановые обновления `hyper`, `uuid`, `tokio-rustls`, `xml` и
@@ -49,7 +53,8 @@
 
 This release targets macOS, Windows, Linux and Android. The iOS build and testing are deferred.
 The team fixes work with every sync server that has teams (0.2.1 and later); server 0.2.4
-also stops members from changing other members' team keys.
+also stops members from changing other members' team keys, lets only the owner appoint
+admins and sends invitations only to verified addresses.
 
 **New.**
 
@@ -82,6 +87,9 @@ also stops members from changing other members' team keys.
   longer marked read-only: `env -S '…'`, `fd -x/-X`, `rg --pre`, `sed` scripts with the
   `e`/`w` commands or the `s///e`/`s///w` flags, `awk` with `| getline` or a program
   file, `git -c …`. They again need the risk acknowledgement before Run.
+- **New device: approval without a check.** Once the server told this device that it
+  supports the pairing-code check, it can no longer switch it back to the unchecked way:
+  such an approval is refused. The approving device must run 0.9.2 or later.
 - **Dependencies.** `crypto-bigint` 0.7.10 (RUSTSEC-2026-0387, timing variability in
   operations meant to be constant-time), `tokio` 1.54.1 (RUSTSEC-2026-0386) and routine
   updates of `hyper`, `uuid`, `tokio-rustls`, `xml` and other libraries.

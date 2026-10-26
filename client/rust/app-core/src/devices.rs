@@ -30,6 +30,29 @@ const PINNED_APPROVER: &str = "app_core.pinned_approver";
 /// device's request, shown until the user confirmed or rejected the code.
 const SEEN_APPROVER: &str = "app_core.seen_approver";
 
+/// Local setting (new device): the server announced approval v2
+/// (`capabilities.vrk_commitment`) at some point. From then on an approval
+/// without a signed v2 record is never taken for an older server (SEC-11).
+const SERVER_APPROVAL_V2: &str = "app_core.server_approval_v2";
+
+/// Whether approval v2 is expected: the server announces it now, or did so
+/// earlier for this profile (remembered, so it cannot be switched off).
+async fn approval_v2_expected(s: &Session, api: &cc_sync_core::ApiClient) -> AppResult<bool> {
+    let now = api
+        .meta()
+        .await
+        .is_ok_and(|m| m.capabilities.vrk_commitment);
+    let storage = s.storage()?;
+    if now {
+        storage.setting_set(SERVER_APPROVAL_V2, true).await?;
+        return Ok(true);
+    }
+    Ok(storage
+        .setting_get::<bool>(SERVER_APPROVAL_V2)
+        .await?
+        .unwrap_or(false))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SeenApprover {
     request_id: DeviceRequestId,
@@ -178,10 +201,7 @@ impl AppCore {
                 tx.setting_delete(SEEN_APPROVER).map(|_| ())
             })
             .await?;
-        let vrk_commitment = api
-            .meta()
-            .await
-            .is_ok_and(|m| m.capabilities.vrk_commitment);
+        let vrk_commitment = approval_v2_expected(&s, &api).await?;
         Ok(OwnTrustRequestDto {
             request_id: r.request_id.to_string(),
             verification_code: s.identity().verification_code().to_string(),
@@ -202,10 +222,7 @@ impl AppCore {
         let s = self.session().await?;
         let api = s.api()?;
         let rid = parse_request_id(&request_id)?;
-        let vrk_commitment = api
-            .meta()
-            .await
-            .is_ok_and(|m| m.capabilities.vrk_commitment);
+        let vrk_commitment = approval_v2_expected(&s, &api).await?;
         let own = s.identity();
         let approver = self.announced_approver(&s, rid).await?;
         let pairing_code = approver
@@ -377,6 +394,7 @@ impl AppCore {
             return Ok(false);
         };
         let pinned: Option<StoredApprover> = s.storage()?.setting_get(PINNED_APPROVER).await?;
+        let v2_expected = approval_v2_expected(&s, &api).await?;
         let identity = s.identity();
         let (vault, source) = match (&material.device_approval, &pinned) {
             // Approval v2 checked with the key the user confirmed.
@@ -411,6 +429,15 @@ impl AppCore {
             // The user confirmed an approver that signs v2, but the server
             // shows no v2 approval: it was withheld.
             (None, Some(_)) => {
+                let pinned = s.pinned_vault_key().await.and_then(|p| p.commitment());
+                return Err(s
+                    .key_mismatch(vault_id, pinned, None, "approval_missing")
+                    .await);
+            }
+            // The server announced approval v2 before (or does now) but
+            // shows none: it is withheld, or the approver is too old to
+            // sign one. Never fall back to trust on first use (SEC-11).
+            (None, None) if v2_expected => {
                 let pinned = s.pinned_vault_key().await.and_then(|p| p.commitment());
                 return Err(s
                     .key_mismatch(vault_id, pinned, None, "approval_missing")

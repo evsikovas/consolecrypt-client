@@ -378,6 +378,13 @@ impl MockServer {
         self.shared.lock().team_invitation_keys(invitation_id)
     }
 
+    /// Hostile-server hook: stop announcing (and producing) approval v2 at
+    /// run time, as a server would to push a new device onto trust on first
+    /// use.
+    pub fn set_vrk_commitment(&self, on: bool) {
+        self.shared.lock().cfg.vrk_commitment = on;
+    }
+
     /// Hostile-server hook (teams): serve a forged team — the server's own
     /// genesis and an `AddMember` of `keys` it signed itself — and an
     /// envelope of a key it chose. A joining member must refuse it.
