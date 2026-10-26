@@ -11,6 +11,8 @@
 - **Комплект восстановления** можно напечатать или сохранить в PDF.
 - **Вкладки терминала** можно расположить колонкой у левого края; свёрнутая боковая
   панель запоминается.
+- **Порядок вкладок терминала** меняется перетаскиванием (в полосе и в колонке), а в колонке
+  ещё и клавишами Alt+↑ / Alt+↓.
 - **Импорт ключа SSH из файла:** кнопка «Выбрать файл…» в окне импорта ключа.
 - **Пароль к ключу SSH** при подключении спрашивается отдельным окном с именем ключа,
   а не как пароль сервера.
@@ -117,6 +119,8 @@ admins and sends invitations only to verified addresses.
 
 - The **Recovery Kit** can be printed or saved as PDF.
 - **Terminal tabs** can sit in a column at the left edge; a folded sidebar is remembered.
+- **Terminal tabs** are reordered by dragging (in the strip and the column), and with
+  Alt+↑ / Alt+↓ in the column.
 - **Import an SSH key from a file:** “Choose file…” in the import key dialog.
 - **The SSH key passphrase** is asked at connect time in its own prompt naming the key,
   not as the server password.

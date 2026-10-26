@@ -234,6 +234,7 @@ class _TerminalTabs extends ConsumerWidget {
         onClose: (i) => controller.close(state.tabs[i]),
         onContextMenu: menu,
         onAdd: onNewTab,
+        onReorder: controller.moveTab,
         onResize: (width) => runWithFeedback(
           context,
           () => settings.updateLocal(settings.currentLocal.copyWith(terminalTabColumnWidth: width)),
@@ -251,6 +252,7 @@ class _TerminalTabs extends ConsumerWidget {
       onClose: (i) => controller.close(state.tabs[i]),
       onContextMenu: menu,
       onAdd: onNewTab,
+      onReorder: controller.moveTab,
       trailing: AppPlatform.isMobile ? null : _SessionToolbar(tab: active),
     );
   }

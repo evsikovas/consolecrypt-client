@@ -24,6 +24,7 @@ class GlassTabColumn extends StatefulWidget {
     this.onAdd,
     this.onResize,
     this.onCollapsedChanged,
+    this.onReorder,
   });
 
   static const double defaultWidth = 232;
@@ -45,6 +46,9 @@ class GlassTabColumn extends StatefulWidget {
   /// anchor position.
   final void Function(int index, Offset position)? onContextMenu;
   final VoidCallback? onAdd;
+
+  /// Moves the tab at `from` to `to`: drag and drop, or Alt+↑/↓ (desktop).
+  final void Function(int from, int to)? onReorder;
 
   /// Panel width when expanded, kept within [minWidth]–[maxWidth]. A
   /// [maxWidth] below [minWidth] (no room beside the terminal) shows the
@@ -211,16 +215,29 @@ class _GlassTabColumnState extends State<GlassTabColumn> {
                   const SingleActivator(LogicalKeyboardKey.f10, shift: true): () => _menuFor(i),
                   const SingleActivator(LogicalKeyboardKey.contextMenu): () => _menuFor(i),
                 },
+                if (widget.onReorder case final reorder?) ...{
+                  const SingleActivator(LogicalKeyboardKey.arrowUp, alt: true): () {
+                    if (i > 0) reorder(i, i - 1);
+                  },
+                  const SingleActivator(LogicalKeyboardKey.arrowDown, alt: true): () {
+                    if (i < widget.tabs.length - 1) reorder(i, i + 1);
+                  },
+                },
               },
-              child: _ColumnTab(
-                tab: tab,
-                number: i + 1,
-                active: i == widget.activeIndex,
-                folded: folded,
-                twoLines: twoLines,
-                focusNode: _focusNodes[i],
-                onSelect: () => widget.onSelect(i),
-                onClose: widget.onClose == null ? null : () => widget.onClose!(i),
+              child: GlassTabDrag(
+                index: i,
+                axis: Axis.vertical,
+                onReorder: widget.onReorder,
+                child: _ColumnTab(
+                  tab: tab,
+                  number: i + 1,
+                  active: i == widget.activeIndex,
+                  folded: folded,
+                  twoLines: twoLines,
+                  focusNode: _focusNodes[i],
+                  onSelect: () => widget.onSelect(i),
+                  onClose: widget.onClose == null ? null : () => widget.onClose!(i),
+                ),
               ),
             ),
           ),
