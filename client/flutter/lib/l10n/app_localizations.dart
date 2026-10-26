@@ -1370,6 +1370,12 @@ abstract class AppLocalizations {
   /// **'Not saved'**
   String get notesSaveFailed;
 
+  /// System notification text for a note reminder: never the note itself
+  ///
+  /// In en, this message translates to:
+  /// **'A reminder from ConsoleCrypt'**
+  String get notesSystemReminder;
+
   /// Toast when a note reminder goes off.
   ///
   /// In en, this message translates to:

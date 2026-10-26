@@ -13,6 +13,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // flutter_local_notifications schedules with java.time (FEAT-07).
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -50,6 +52,8 @@ dependencies {
     implementation("androidx.browser:browser:1.10.0")
     // Must match rustls-platform-verifier-android in client/rust/Cargo.lock.
     implementation("org.rustls:rustls-platform-verifier:0.2.0")
+    // java.time on older Android for scheduled reminders (GPL-2.0 with Classpath Exception).
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
 flutter {

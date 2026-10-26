@@ -3,13 +3,19 @@ import 'dart:async';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/notes/note_models.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
+import 'package:consolecrypt/notes/system_reminders.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Shows a toast when a reminder goes off while the app is open, then clears
-/// the reminder so other devices do not repeat it once synced.
+/// the reminder so other devices do not repeat it once synced. Future
+/// reminders are also handed to the system (FEAT-07) with neutral text, so
+/// they show while the app is closed; locking keeps them, signing out of
+/// the profile cancels them.
 class NotesReminderWatcher extends ConsumerStatefulWidget {
   const NotesReminderWatcher({required this.child, super.key});
   final Widget child;
@@ -20,6 +26,29 @@ class NotesReminderWatcher extends ConsumerStatefulWidget {
 
 class _NotesReminderWatcherState extends ConsumerState<NotesReminderWatcher> {
   final _shown = <String>{};
+  List<DateTime>? _scheduled;
+
+  /// Hands the unlocked profile's future reminders to the system.
+  void _sync() {
+    if (!mounted || !ref.read(notesUnlockedProvider)) return;
+    final notes = ref.read(notesProvider);
+    if (notes.isLoading || !notes.hasValue) return;
+    final times = systemReminderTimes(notes.requireValue.map((note) => note.remindAt), DateTime.now());
+    if (_scheduled != null && listEquals(times, _scheduled)) return;
+    _scheduled = times;
+    final l = context.l10n;
+    unawaited(
+      ref
+          .read(reminderSchedulerProvider)
+          .replace(times, title: 'ConsoleCrypt', body: l.notesSystemReminder) // l10n-ignore: product name
+          .then((_) {}, onError: (_) {}),
+    );
+  }
+
+  void _profileGone() {
+    _scheduled = const [];
+    unawaited(ref.read(reminderSchedulerProvider).clear().then((_) {}, onError: (_) {}));
+  }
 
   void _check() {
     if (!mounted) return;
@@ -50,7 +79,13 @@ class _NotesReminderWatcherState extends ConsumerState<NotesReminderWatcher> {
   @override
   Widget build(BuildContext context) {
     ref.listen(notesClockProvider, (_, _) => _check());
-    ref.listen(notesProvider, (_, _) => scheduleMicrotask(_check));
+    ref.listen(notesProvider, (_, _) {
+      scheduleMicrotask(_check);
+      scheduleMicrotask(_sync);
+    });
+    ref.listen(activeProfileProvider.select((profile) => profile?.id), (previous, next) {
+      if (next == null && previous != null) _profileGone();
+    });
     return widget.child;
   }
 }

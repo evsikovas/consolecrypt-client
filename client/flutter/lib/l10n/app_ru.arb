@@ -419,6 +419,7 @@
   "@notesSaveFailed": {
     "description": "Note editor: the last save failed."
   },
+  "notesSystemReminder": "Напоминание из ConsoleCrypt",
   "notesReminderToast": "Напоминание: {title}",
   "@notesReminderToast": {
     "description": "Toast when a note reminder goes off.",

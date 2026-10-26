@@ -64,6 +64,10 @@
   через хранилище» переносит такое подключение с паролем в хранилище, если все устройства
   аккаунта работают на 0.9.2 или новее (с сервером 0.2.4 приложение видит их версии и
   перечислит те, что нужно обновить). Файл SQLite на этом компьютере остаётся только здесь.
+- **Напоминания при закрытом приложении.** Напоминания заметок и задач приходят системным
+  уведомлением «Напоминание из ConsoleCrypt» — без текста заметки, центр уведомлений не
+  шифруется. На Android время может сдвинуться на несколько минут, на Linux напоминания
+  по-прежнему работают только при открытом приложении.
 - **QR из Recovery Kit без ввода текста.** При восстановлении доступа QR-код комплекта
   можно отсканировать камерой телефона или прочитать с картинки или скриншота (на любой
   платформе). Распознавание идёт на устройстве открытым кодом, кадры никуда не уходят.
@@ -204,6 +208,10 @@ admins and sends invitations only to verified addresses.
   moves such a connection and its password into the vault once every device of the account
   runs 0.9.2 or later (with server 0.2.4 the app sees their versions and lists the ones to
   update). An SQLite file on this computer stays here.
+- **Reminders with the app closed.** Note and task reminders arrive as a system
+  notification “A reminder from ConsoleCrypt” without the note text, since the notification
+  centre is not encrypted. On Android the time may drift by a few minutes; on Linux reminders
+  still work only while the app is open.
 - **Recovery Kit QR without typing.** Recovery reads the kit's QR code with a phone camera
   or from a picture or screenshot (on any platform). Decoding runs on the device with open
   source code; frames go nowhere.
