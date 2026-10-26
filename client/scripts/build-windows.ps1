@@ -1,4 +1,4 @@
-# Windows: .\client\scripts\build-windows.ps1 -Installer -NoCli
+# Windows: .\client\scripts\build-windows.ps1 -Installer   (-NoCli: without bin\consolecrypt-cli.exe)
 # Prerequisites: docs/public/BUILD_WINDOWS.md
 param([switch]$Debug, [string]$Commit = '', [switch]$Mock, [switch]$NoCli, [switch]$Installer)
 $ErrorActionPreference = 'Stop'
@@ -106,7 +106,10 @@ try {
         Set-Location (Join-Path $Src 'client\rust')
         $env:CARGO_TARGET_DIR = Join-Path $Src 'client\rust\target\dist'
         Invoke-Checked cargo @('build', '--release', '--locked', '-p', 'cc-cli')
-        Copy-Item (Join-Path $env:CARGO_TARGET_DIR 'release\consolecrypt.exe') (Join-Path $Out 'consolecrypt-cli.exe') -Force
+        # Settings → Command line adds this folder to the user's PATH.
+        $CliDir = Join-Path $AppOut 'bin'
+        New-Item -ItemType Directory -Force $CliDir | Out-Null
+        Copy-Item (Join-Path $env:CARGO_TARGET_DIR 'release\consolecrypt-cli.exe') (Join-Path $CliDir 'consolecrypt-cli.exe') -Force
     }
     $Zip = Join-Path $Out 'ConsoleCrypt-windows.zip'
     if (Test-Path $Zip) { Remove-Item -Force $Zip }

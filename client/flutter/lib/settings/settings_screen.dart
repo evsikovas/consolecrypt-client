@@ -17,6 +17,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/language_picker.dart';
 import 'package:consolecrypt/settings/ai_provider_dialog.dart';
 import 'package:consolecrypt/settings/appearance_controls.dart';
+import 'package:consolecrypt/settings/cli_settings.dart';
 import 'package:consolecrypt/settings/clipboard_settings.dart';
 import 'package:consolecrypt/settings/device_unlock_settings.dart';
 import 'package:consolecrypt/settings/local_ai_settings.dart';
@@ -66,6 +67,8 @@ class SettingsScreen extends ConsumerWidget {
           ShortcutSettingsSection(),
           SftpSettingsSection(),
           RdpMobileSettingsSection(),
+          SizedBox(height: GlassSpacing.s16),
+          CliSettingsSection(),
           SizedBox(height: GlassSpacing.s16),
           UpdateSettingsSection(),
           SizedBox(height: GlassSpacing.s16),

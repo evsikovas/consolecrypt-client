@@ -14,7 +14,7 @@ const PASSPHRASE: &str = "cli vault passphrase 42";
 const PASSWORD: &str = "cli-account-password-1234";
 
 fn cc(dir: &Path, envs: &[(&str, &str)], args: &[&str]) -> Output {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_consolecrypt"));
+    let mut c = Command::new(env!("CARGO_BIN_EXE_consolecrypt-cli"));
     c.arg("--data-dir")
         .arg(dir)
         .args(["--secure-store", "file"])
