@@ -723,3 +723,148 @@ async fn a_member_refuses_a_swapped_team_key() {
     alice.shutdown().await.unwrap();
     bob.shutdown().await.unwrap();
 }
+
+/// Security review SEC-03b (protocol 1.12): an admin vouches for the team
+/// key with a signed commitment, so a server cannot hand a member who opens
+/// the team for the first time a key of its own — neither next to the
+/// admin's commitment nor by dropping it. A pre-1.12 server keeps working.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_joiner_opens_only_a_key_an_admin_vouched_for() {
+    let server = MockServer::start().await;
+    let url = server.url().to_string();
+    let tmp = tempfile::tempdir().unwrap();
+    let alice = account(
+        &tmp.path().join("a"),
+        &url,
+        "alice@example.org",
+        AccountMode::Register,
+    )
+    .await;
+    alice.create_vault(PASSPHRASE.into()).await.unwrap();
+    // Bob keeps his secure store across restarts.
+    let bob_dir = tmp.path().join("b");
+    let store = memory_store();
+    let bob = app_with(&bob_dir, store.clone(), false);
+    bob.create_synced_profile(
+        "Work".into(),
+        url.clone(),
+        "bob@example.org".into(),
+        ACCOUNT_PASSWORD.into(),
+        AccountMode::Register,
+    )
+    .await
+    .unwrap();
+    bob.create_vault(PASSPHRASE.into()).await.unwrap();
+    let profile = bob.active_profile().await.unwrap().unwrap().id;
+    bob.shutdown().await.unwrap();
+    let start_bob = || async {
+        let bob = app_with(&bob_dir, store.clone(), false);
+        bob.open_profile(profile.clone()).await.unwrap();
+        bob.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
+        bob
+    };
+
+    // Invite + accept with Bob running, confirm while he is away; returns
+    // the keys Bob sent.
+    let join_while_away = |tid: String| {
+        let (server, alice, start_bob) = (&server, &alice, &start_bob);
+        async move {
+            alice
+                .invite_team_member(
+                    tid.clone(),
+                    "bob@example.org".into(),
+                    TeamRoleDto::Editor,
+                    None,
+                )
+                .await
+                .unwrap();
+            let bob = start_bob().await;
+            let inv = bob
+                .incoming_team_invitations()
+                .await
+                .unwrap()
+                .into_iter()
+                .find(|i| i.vault_id == tid)
+                .unwrap();
+            let joined = bob.accept_team_invitation(inv.invitation_id).await.unwrap();
+            bob.shutdown().await.unwrap();
+            alice.team_join_requests(tid.clone()).await.unwrap();
+            alice
+                .confirm_team_member(tid, joined.invitation_id.clone())
+                .await
+                .unwrap();
+            server
+                .team_invitation_keys(joined.invitation_id.parse().unwrap())
+                .unwrap()
+        }
+    };
+
+    // 1. The server swaps the joiner's key; the owner's commitment exposes it.
+    let t1 = alice
+        .create_team("One".into(), None, None, None)
+        .await
+        .unwrap()
+        .vault_id;
+    let v1 = VaultId::from_str(&t1).unwrap();
+    let keys = join_while_away(t1.clone()).await;
+    let fake = cc_vault_core::UnlockedVault::new_team(v1).unwrap();
+    assert!(server.plant_team_user_envelope(v1, fake.seal_for_member(&keys).unwrap()));
+    let bob = start_bob().await;
+    let _ = bob.refresh_teams().await;
+    let t = team_of(&bob, &t1).await;
+    assert!(
+        t.as_ref().is_none_or(|t| !t.open),
+        "swapped key opened: {t:?}"
+    );
+    bob.shutdown().await.unwrap();
+
+    // 2. … and drops the commitment too: the joiner still refuses.
+    let t2 = alice
+        .create_team("Two".into(), None, None, None)
+        .await
+        .unwrap()
+        .vault_id;
+    let v2 = VaultId::from_str(&t2).unwrap();
+    let keys = join_while_away(t2.clone()).await;
+    assert!(server.strip_team_key_commitments(v2));
+    let fake = cc_vault_core::UnlockedVault::new_team(v2).unwrap();
+    assert!(server.plant_team_user_envelope(v2, fake.seal_for_member(&keys).unwrap()));
+    let bob = start_bob().await;
+    let _ = bob.refresh_teams().await;
+    let t = team_of(&bob, &t2).await;
+    assert!(
+        t.as_ref().is_none_or(|t| !t.open),
+        "unvouched key opened: {t:?}"
+    );
+    bob.shutdown().await.unwrap();
+
+    // 3. An honest join opens; a pre-1.12 server still works.
+    let t3 = alice
+        .create_team("Three".into(), None, None, None)
+        .await
+        .unwrap()
+        .vault_id;
+    join_while_away(t3.clone()).await;
+    let bob = start_bob().await;
+    bob.refresh_teams().await.unwrap();
+    assert!(
+        team_of(&bob, &t3).await.unwrap().open,
+        "an honest join opens"
+    );
+    bob.shutdown().await.unwrap();
+    server.set_team_key_commitment(false);
+    let t4 = alice
+        .create_team("Four".into(), None, None, None)
+        .await
+        .unwrap()
+        .vault_id;
+    join_while_away(t4.clone()).await;
+    let bob = start_bob().await;
+    bob.refresh_teams().await.unwrap();
+    assert!(
+        team_of(&bob, &t4).await.unwrap().open,
+        "pre-1.12 server: TOFU as before"
+    );
+    alice.shutdown().await.unwrap();
+    bob.shutdown().await.unwrap();
+}

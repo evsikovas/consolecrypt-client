@@ -22,6 +22,7 @@ use cc_models::{ObjectId, ObjectKind, VaultObject};
 use cc_protocol::teams::{
     SignedTeamLogEntry, TeamDetail, TeamKeyMaterial, TeamLogOp, TeamMemberKeys,
 };
+use cc_protocol::vaults::VaultRole;
 use cc_protocol::{UserId, VaultId};
 use cc_storage_core::ProfileKind;
 use cc_sync_core::{ApiError, ObjectStore, SyncEngine, SyncEvent};
@@ -277,6 +278,31 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
     }
     let current = UnlockedVault::open_team(&identity, &cache.key.envelope, vault_id, cx.user_id)
         .map_err(AppError::from)?;
+    match vouched(&view, cache.key.key_commitment.as_ref()) {
+        // A commitment signed by an owner or admin of the verified log: the
+        // key must be the one they vouched for (SEC-03b).
+        Some(kc) => {
+            if let Err(e) = cc_crypto_core::teams::verify_key_commitment(
+                &view,
+                kc,
+                cache.key.key_epoch,
+                &current.key_commitment(),
+            ) {
+                tracing::warn!(team = %vault_id, error = %e, "the team key is not the vouched one");
+                return Err(AppError::TeamUntrusted("key_mismatch".into()));
+            }
+        }
+        // A member who just joined through a server with key commitments
+        // opens only a vouched key: the confirming admin published one.
+        None if m.pinned_key_epoch.is_none()
+            && m.join_admin_key.is_some()
+            && server_vouches_keys(cx).await =>
+        {
+            tracing::warn!(team = %vault_id, "no admin vouched for the team key");
+            return Err(AppError::TeamUntrusted("key_unverified".into()));
+        }
+        None => {}
+    }
     if let Err(why) = check_pinned_key(m, &current, &cache.key, complete.then_some(view.key_epoch))
     {
         // A key the server picked for an epoch we already know, or a newer
@@ -361,6 +387,11 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
     if warning.is_none() {
         record_verified_head(writer, m, &view, Some(pin)).await?;
         if online {
+            if let Some(api) = cx.session.api_opt() {
+                if let Err(e) = ensure_key_commitment(&api, &handle, cx.user_id).await {
+                    tracing::warn!(team = %vault_id, error = %e, "team key commitment not published");
+                }
+            }
             start_team_engine(cx, &handle).await?;
         }
     } else {
@@ -374,6 +405,82 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
 
 /// Remember the verified log head (rollback detection) and finish a
 /// pending join in the personal-vault membership object.
+/// The commitment, if an owner or admin of `view` signed it. One signed by
+/// someone who is no longer an admin vouches for nothing (an admin re-signs
+/// it); its signature is checked by the caller.
+fn vouched<'a>(
+    view: &TeamLogView,
+    kc: Option<&'a cc_protocol::teams::TeamKeyCommitment>,
+) -> Option<&'a cc_protocol::teams::TeamKeyCommitment> {
+    kc.filter(|kc| {
+        view.members
+            .get(&kc.signer_user_id)
+            .is_some_and(|m| matches!(m.role, VaultRole::Owner | VaultRole::Admin))
+    })
+}
+
+/// The server announces team key commitments (protocol 1.12).
+async fn server_vouches_keys(cx: &TeamOpenContext<'_>) -> bool {
+    match cx.session.api_opt() {
+        Some(api) => api
+            .meta()
+            .await
+            .is_ok_and(|m| m.capabilities.team_key_commitment),
+        None => false,
+    }
+}
+
+/// Protocol 1.12 (SEC-03b): as an owner or admin, publish the signed
+/// commitment of the current team key unless an admin already vouched for
+/// it. A no-op for other members and on servers without the capability.
+pub(crate) async fn ensure_key_commitment(
+    api: &cc_sync_core::ApiClient,
+    team: &TeamHandle,
+    user_id: UserId,
+) -> AppResult<()> {
+    let st = team.state();
+    let is_admin = st
+        .view
+        .members
+        .get(&user_id)
+        .is_some_and(|m| matches!(m.role, VaultRole::Owner | VaultRole::Admin));
+    if !is_admin
+        || !api
+            .meta()
+            .await
+            .is_ok_and(|m| m.capabilities.team_key_commitment)
+    {
+        return Ok(());
+    }
+    let material = api.team_key(team.vault_id).await?;
+    let vault = team.codec.vault()?;
+    let commitment = vault.key_commitment();
+    if material.key_epoch == st.key_epoch
+        && vouched(&st.view, material.key_commitment.as_ref()).is_some_and(|kc| {
+            cc_crypto_core::teams::verify_key_commitment(&st.view, kc, st.key_epoch, &commitment)
+                .is_ok()
+        })
+    {
+        return Ok(());
+    }
+    if material.key_epoch != st.key_epoch {
+        // A rotation is under way; the next open publishes it.
+        return Ok(());
+    }
+    let key_commitment = team.with_identity(|i| {
+        Ok(i.sign_key_commitment(team.vault_id, user_id, st.key_epoch, commitment))
+    })?;
+    api.put_team_key_commitment(
+        team.vault_id,
+        &cc_protocol::teams::PutTeamKeyCommitmentRequest {
+            vault_access_key: vault.vault_access_key(),
+            key_commitment,
+        },
+    )
+    .await?;
+    Ok(())
+}
+
 /// Record the verified log head and, after a full open, the accepted team
 /// key (`pin`: epoch and commitment).
 async fn record_verified_head(

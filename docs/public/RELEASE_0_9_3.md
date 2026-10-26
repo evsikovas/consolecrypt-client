@@ -27,6 +27,12 @@
   работало. Подменить его сервер больше не может: другой ключ той же эпохи или новый
   ключ, который не связан цепочкой с прежним, приводит к паузе команды, а не к записи
   новых данных под чужим ключом.
+- **Команды: ключ подтверждает администратор.** С сервером 0.2.4 (протокол 1.12)
+  владелец или администратор подписывает отпечаток ключа команды при её создании, при
+  смене ключа и перед добавлением участника. Новый участник открывает команду, только
+  если ключ совпадает с подписанным отпечатком, — подменить ключ сервер не может даже
+  при самом первом открытии. Для команд, созданных раньше, отпечаток публикует первый
+  администратор, открывший команду в 0.9.3.
 - **Общий доступ: свои устройства.** Устройство, которое сервер выдаёт за ваше, больше
   не становится получателем секрета, подключения Kubernetes или базы данных: свои
   устройства получают общий доступ только через подтверждённое подключение. Поиск по
@@ -81,6 +87,12 @@ admins and sends invitations only to verified addresses.
   server can no longer swap it: another key for the same epoch, or a new key that does
   not chain back to the previous one, pauses the team instead of writing new data
   under a foreign key.
+- **Teams: an admin vouches for the key.** With server 0.2.4 (protocol 1.12) the owner or
+  an admin signs the team key's fingerprint when the team is created, when the key is
+  rotated and before a member is added. A new member opens the team only if the key
+  matches the signed fingerprint — the server cannot swap it, not even on the very
+  first open. For teams created earlier, the first admin who opens the team in 0.9.3
+  publishes the fingerprint.
 - **Sharing: your own devices.** A device the server presents as yours no longer
   becomes a recipient of a secret, a Kubernetes or database connection: your own devices
   get shared items only through a verified enrollment. Looking up your own account's

@@ -18,8 +18,9 @@ use cc_protocol::envelopes::{
 };
 use cc_protocol::limits::NONCE_LEN;
 use cc_protocol::teams::{
-    team_key_chain_aad, team_log_hash_input, team_log_message, team_member_code_input,
-    SignedTeamLogEntry, TeamKeyChainLink, TeamLogEntry, TeamLogOp, TeamMemberKeys, TEAM_LOG_FORMAT,
+    team_key_chain_aad, team_key_commitment_message, team_log_hash_input, team_log_message,
+    team_member_code_input, SignedTeamLogEntry, TeamKeyChainLink, TeamKeyCommitment, TeamLogEntry,
+    TeamLogOp, TeamMemberKeys, TEAM_LOG_FORMAT,
 };
 use cc_protocol::vaults::VaultRole;
 use cc_protocol::{Bytes, UserId, VaultId};
@@ -77,6 +78,24 @@ impl TeamIdentity {
     /// The Ed25519 public key.
     pub fn signing_key(&self) -> [u8; 32] {
         self.keys.public_keys().signing
+    }
+
+    /// Protocol 1.12: vouch for the team VRK of `key_epoch` by signing its
+    /// key commitment (`HKDF(VRK)`) as `signer` (an owner or admin).
+    pub fn sign_key_commitment(
+        &self,
+        vault_id: VaultId,
+        signer: UserId,
+        key_epoch: u32,
+        commitment: [u8; 32],
+    ) -> TeamKeyCommitment {
+        let message = team_key_commitment_message(vault_id, key_epoch, &commitment, signer);
+        TeamKeyCommitment {
+            key_epoch,
+            commitment: Bytes::new(commitment.to_vec()),
+            signer_user_id: signer,
+            signature: Bytes::new(self.keys.sign_message(&message).to_vec()),
+        }
     }
 
     /// Build and sign a log entry for `vault_id` after `head` (seq, hash).
@@ -278,6 +297,44 @@ fn verify_signature(key: &[u8], signed: &SignedTeamLogEntry) -> Result<()> {
 
 fn admin(role: VaultRole) -> bool {
     matches!(role, VaultRole::Owner | VaultRole::Admin)
+}
+
+/// Protocol 1.12 (security review SEC-03b): `kc` vouches for the VRK whose
+/// key commitment is `commitment` at `key_epoch`, signed by a member who is
+/// owner or admin in the verified `view`, with that member's key from the
+/// log.
+pub fn verify_key_commitment(
+    view: &TeamLogView,
+    kc: &TeamKeyCommitment,
+    key_epoch: u32,
+    commitment: &[u8; 32],
+) -> Result<()> {
+    kc.validate()
+        .map_err(|_| reject("malformed team key commitment"))?;
+    if kc.key_epoch != key_epoch {
+        return Err(reject("team key commitment of another epoch"));
+    }
+    if kc.commitment.as_slice() != commitment {
+        return Err(reject("the team key does not match its commitment"));
+    }
+    let signer = view
+        .members
+        .get(&kc.signer_user_id)
+        .filter(|m| admin(m.role))
+        .ok_or(reject("team key commitment not signed by an admin"))?;
+    let key: [u8; 32] = signer
+        .keys
+        .signing_key
+        .as_slice()
+        .try_into()
+        .map_err(|_| reject("bad signing key"))?;
+    let vk = VerifyingKey::from_bytes(&key).map_err(|_| reject("bad signing key"))?;
+    let sig = Signature::from_slice(kc.signature.as_slice())
+        .map_err(|_| CryptoError::InvalidSignature)?;
+    let message =
+        team_key_commitment_message(view.vault_id, key_epoch, commitment, kc.signer_user_id);
+    vk.verify_strict(&message, &sig)
+        .map_err(|_| CryptoError::InvalidSignature)
 }
 
 impl TeamLogView {

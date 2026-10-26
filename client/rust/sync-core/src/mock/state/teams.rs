@@ -35,6 +35,9 @@ pub(crate) struct TeamState {
     pub(super) key_epoch: u32,
     pub(super) rotation_required: bool,
     pub(super) chain: Vec<TeamKeyChainLink>,
+    /// Protocol 1.12: published key commitments per epoch (stored as sent;
+    /// clients must verify them anyway).
+    pub(super) key_commitments: BTreeMap<u32, cc_protocol::teams::TeamKeyCommitment>,
 }
 
 #[derive(Debug, Clone)]
@@ -180,6 +183,13 @@ impl State {
                     members,
                     head: entry_hash(&req.genesis),
                     log: vec![req.genesis],
+                    key_commitments: req
+                        .key_commitment
+                        .clone()
+                        .filter(|_| self.cfg.team_key_commitment)
+                        .map(|kc| (0, kc))
+                        .into_iter()
+                        .collect(),
                     ..TeamState::default()
                 }),
             },
@@ -252,6 +262,7 @@ impl State {
             key_epoch: t.key_epoch,
             envelope,
             chain,
+            key_commitment: t.key_commitments.get(&t.key_epoch).cloned(),
         })
     }
 
@@ -538,6 +549,7 @@ impl State {
         let key_epoch = t.key_epoch;
         let mut removed = None;
         let mut rotated = None;
+        let mut rotated_commitment = None;
         let mut new_member: Option<(UserId, MemberRec)> = None;
         let mut user_envelopes: Vec<NewEnvelope> = Vec::new();
         match &req.entry.entry.op {
@@ -587,6 +599,10 @@ impl State {
                 if link.key_epoch != *next || link.validate().is_err() {
                     return Err(bad("invalid chain link"));
                 }
+                rotated_commitment = req
+                    .key_commitment
+                    .clone()
+                    .filter(|kc| kc.key_epoch == *next && self.cfg.team_key_commitment);
                 let mut got: Vec<UserId> = Vec::new();
                 for env in &req.envelopes {
                     let user = env
@@ -636,6 +652,9 @@ impl State {
         }
         if let Some((epoch, vak_hash, link)) = rotated.clone() {
             t.key_epoch = epoch;
+            if let Some(kc) = rotated_commitment.take() {
+                t.key_commitments.insert(epoch, kc);
+            }
             t.rotation_required = false;
             t.chain.push(link);
             v.vak_hash = vak_hash;
@@ -720,6 +739,46 @@ impl State {
         }
         self.store_envelope(vault_id, envelope, cc_protocol::DeviceId::new());
         true
+    }
+
+    /// `PUT /v1/teams/{id}/key-commitment` (protocol 1.12): an owner or
+    /// admin publishes the commitment of the current epoch.
+    pub(crate) fn put_team_key_commitment(
+        &mut self,
+        p: Principal,
+        vault_id: VaultId,
+        req: cc_protocol::teams::PutTeamKeyCommitmentRequest,
+    ) -> MResult<()> {
+        if !self.cfg.team_key_commitment {
+            return Err(not_found());
+        }
+        let (v, t) = self.team_vault(&p, vault_id)?;
+        Self::check_vak(v, &req.vault_access_key)?;
+        let me = t.members.get(&p.user_id).ok_or_else(not_found)?;
+        if !admin(me.role) {
+            return Err(err(ErrorCode::Forbidden, "team admins only"));
+        }
+        if req.key_commitment.key_epoch != t.key_epoch
+            || req.key_commitment.signer_user_id != p.user_id
+        {
+            return Err(bad("key commitment of another epoch or signer"));
+        }
+        let epoch = t.key_epoch;
+        if let Some(t) = self.vaults.get_mut(&vault_id).and_then(|v| v.team.as_mut()) {
+            t.key_commitments.insert(epoch, req.key_commitment);
+        }
+        Ok(())
+    }
+
+    /// Test hook: a hostile server drops every published key commitment.
+    pub(crate) fn strip_team_key_commitments(&mut self, vault_id: VaultId) -> bool {
+        match self.vaults.get_mut(&vault_id).and_then(|v| v.team.as_mut()) {
+            Some(t) => {
+                t.key_commitments.clear();
+                true
+            }
+            None => false,
+        }
     }
 
     /// Test hook: a hostile server replaces a member's user envelope with
