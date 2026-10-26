@@ -80,6 +80,10 @@
   устанавливает их из приложения: отдельная подписанная лента Linux, проверка SHA-256,
   пароль администратора через `pkexec` и установка через apt, dnf или zypper, затем
   «Перезапустить». Саму версию 0.9.3 на Linux установите вручную.
+- **Команды.** Выносить хост из команды может только её владелец. Копирование и перенос
+  хоста больше не плодят копии ключа: такой же ключ в целевом хранилище используется
+  повторно, а командные учётные данные отмечены в списке меткой команды. В боковой панели
+  Docker показан тем же значком, что на телефоне.
 - **QR из Recovery Kit без ввода текста.** При восстановлении доступа QR-код комплекта
   можно отсканировать камерой телефона или прочитать с картинки или скриншота (на любой
   платформе). Распознавание идёт на устройстве открытым кодом, кадры никуда не уходят.
@@ -236,6 +240,9 @@ admins and sends invitations only to verified addresses.
   from the app: a separate signed Linux feed, SHA-256 verification, the administrator
   password through `pkexec` and installation with apt, dnf or zypper, then Restart.
   Install 0.9.3 itself on Linux manually.
+- **Teams.** Only the owner can take a host out of a team. Copying and moving hosts no longer
+  multiplies keys: the same key already in the target vault is reused, and team credentials
+  carry the team label in the list. The sidebar shows Docker with the same icon as on phones.
 - **Recovery Kit QR without typing.** Recovery reads the kit's QR code with a phone camera
   or from a picture or screenshot (on any platform). Decoding runs on the device with open
   source code; frames go nowhere.

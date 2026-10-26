@@ -2,7 +2,10 @@ import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
+import 'package:consolecrypt/core/mock/mock_team_service.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/teams/team_models.dart';
+import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -113,4 +116,23 @@ void main() {
     expect(container.read(terminalTabsProvider).tabs, isEmpty);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  for (final role in [TeamRole.owner, TeamRole.editor]) {
+    testWidgets('only the team owner may move a team host out of the team (${role.name})', (tester) async {
+      final backend = testBackend();
+      addTearDown(backend.dispose);
+      await backend.debugSignInDemoAndUnlock();
+      final teams = MockTeamService(selfEmail: 'me@example.test')
+        ..seedTeam(vaultId: 'team-ops', name: 'Ops', role: role, color: 'orange');
+      final host = backend.inventory.currentHosts.firstWhere((h) => h.name == 'staging-web');
+      teams.objects[host.id.value] = 'team-ops';
+      await pumpApp(tester, backend, overrides: [teamServiceProvider.overrideWithValue(teams)]);
+      await enterKey(tester, 'hosts-search', 'staging-web');
+      expect(find.byKey(const ValueKey('host-team-staging-web')), findsOneWidget);
+      await tapKey(tester, 'host-menu-staging-web');
+      final owner = role == TeamRole.owner;
+      expect(find.byKey(const ValueKey('host-move-personal-staging-web')), owner ? findsOneWidget : findsNothing);
+      expect(tester.takeException(), isNull);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  }
 }

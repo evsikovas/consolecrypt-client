@@ -792,7 +792,8 @@ class _HostTile extends ConsumerWidget {
                   label: l10n.teamsCopyTo,
                   icon: Icons.copy_all_rounded,
                 ),
-                if (team == null || team.canEdit)
+                // Only the owner takes a host out of a team.
+                if (team == null || team.isOwner)
                   GlassMenuItem(
                     key: ValueKey('host-move-team-${host.name}'),
                     value: _HostAction.moveToTeam,
@@ -800,8 +801,9 @@ class _HostTile extends ConsumerWidget {
                     icon: Icons.drive_file_move_rounded,
                   ),
               ],
-              if (team != null && team.canEdit)
+              if (team != null && team.isOwner)
                 GlassMenuItem(
+                  key: ValueKey('host-move-personal-${host.name}'),
                   value: _HostAction.moveToPersonal,
                   label: l10n.teamsMoveToPersonal,
                   icon: Icons.person_rounded,

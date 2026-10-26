@@ -478,7 +478,121 @@ async fn copy_and_move_into_a_team() {
     assert!(alice.get_host(h.id.clone()).await.is_err());
     assert!(alice.get_host(moved[0].clone()).await.is_ok());
     assert_eq!(host_names(&alice).await, vec!["web", "web"]);
+
+    // The move reused the credential the copy had already put in the team:
+    // one copy of a key per vault, however often hosts go back and forth.
+    let in_team = |o: &[ObjectVaultDto]| o.iter().filter(|x| x.vault_id == tid).count();
+    assert_eq!(
+        in_team(&alice.object_vaults().await.unwrap()),
+        5,
+        "group + two hosts + one credential + one secret"
+    );
+    let back = alice
+        .move_to_vault(vec![moved[0].clone()], None)
+        .await
+        .unwrap();
+    let back = alice.get_host(back[0].clone()).await.unwrap();
+    assert_eq!(
+        back.credential_id,
+        Some(cred.id.clone()),
+        "the personal original is reused"
+    );
+    alice
+        .copy_to_vault(vec![back.id.clone()], Some(tid.clone()))
+        .await
+        .unwrap();
+    assert_eq!(in_team(&alice.object_vaults().await.unwrap()), 5);
+    assert_eq!(
+        alice.list_credentials().await.unwrap().len(),
+        2,
+        "one per vault"
+    );
+
+    // A changed credential is a different one: it is copied, not merged.
+    let other = alice
+        .add_password_credential("root".into(), Some("root".into()), "other".into())
+        .await
+        .unwrap();
+    let h2 = alice
+        .save_host(host("db", "192.0.2.11", Some(&other.id)))
+        .await
+        .unwrap();
+    alice
+        .copy_to_vault(vec![h2.id.clone()], Some(tid.clone()))
+        .await
+        .unwrap();
+    assert_eq!(in_team(&alice.object_vaults().await.unwrap()), 8);
     alice.shutdown().await.unwrap();
+}
+
+/// Only the owner takes objects out of a team (testing report 26.10): an
+/// editor can copy a team host to personal but not move it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn only_the_owner_moves_objects_out_of_a_team() {
+    let server = MockServer::start().await;
+    let url = server.url().to_string();
+    let tmp = tempfile::tempdir().unwrap();
+    let alice = account(
+        &tmp.path().join("a"),
+        &url,
+        "alice@example.org",
+        AccountMode::Register,
+    )
+    .await;
+    alice.create_vault(PASSPHRASE.into()).await.unwrap();
+    let bob = account(
+        &tmp.path().join("b"),
+        &url,
+        "bob@example.org",
+        AccountMode::Register,
+    )
+    .await;
+    bob.create_vault(PASSPHRASE.into()).await.unwrap();
+    let tid = alice
+        .create_team("Ops".into(), None, None, None)
+        .await
+        .unwrap()
+        .vault_id;
+    join(&alice, &bob, &tid, "bob@example.org", TeamRoleDto::Editor).await;
+    let h = alice
+        .save_host(host("web", "192.0.2.10", None))
+        .await
+        .unwrap();
+    let in_team = alice
+        .move_to_vault(vec![h.id.clone()], Some(tid.clone()))
+        .await
+        .unwrap();
+    bob.refresh_teams().await.unwrap();
+    bob.sync_now().await.ok();
+    let mut seen = false;
+    for _ in 0..50 {
+        if bob.get_host(in_team[0].clone()).await.is_ok() {
+            seen = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    assert!(seen, "the editor sees the team host");
+    assert_eq!(
+        code(
+            &bob.move_to_vault(vec![in_team[0].clone()], None)
+                .await
+                .unwrap_err()
+        ),
+        "team_read_only"
+    );
+    assert!(bob
+        .copy_to_vault(vec![in_team[0].clone()], None)
+        .await
+        .is_ok());
+    let back = alice
+        .move_to_vault(vec![in_team[0].clone()], None)
+        .await
+        .unwrap();
+    assert!(alice.get_host(back[0].clone()).await.is_ok());
+    for app in [&alice, &bob] {
+        app.shutdown().await.unwrap();
+    }
 }
 
 /// Security review SEC-01: the admin's confirmation seals the team key only

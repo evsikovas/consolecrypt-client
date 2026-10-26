@@ -140,6 +140,7 @@ final class Team {
 
   bool get canEdit => warning == null && (role?.canEdit ?? false);
   bool get isAdmin => warning == null && (role?.isAdmin ?? false);
+  bool get isOwner => warning == null && role == TeamRole.owner;
 }
 
 final class TeamMember {

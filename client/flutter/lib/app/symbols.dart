@@ -20,7 +20,6 @@ enum AppSymbol {
   settings,
   kubernetes,
   databases,
-  docker,
   notes,
 }
 
@@ -184,16 +183,6 @@ class _SymbolPainter extends CustomPainter {
         canvas.drawArc(const Rect.fromLTWH(4, 16.5, 16, 5), 0, math.pi, false, ink);
         line(4, 5, 4, 19);
         line(20, 5, 20, 19);
-      case AppSymbol.docker:
-        // Three stacked shipping containers with ribbed doors.
-        box(2.5, 13.5, 9, 7, 1.2);
-        box(12.5, 13.5, 9, 7, 1.2);
-        box(7.5, 4, 9, 7, 1.2);
-        for (final x in const [5.5, 8.5, 15.5, 18.5]) {
-          line(x, 15.5, x, 18.5);
-        }
-        line(10.5, 6, 10.5, 9);
-        line(13.5, 6, 13.5, 9);
     }
     canvas.restore();
   }

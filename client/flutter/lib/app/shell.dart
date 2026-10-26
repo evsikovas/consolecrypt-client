@@ -373,7 +373,8 @@ class _Sidebar extends ConsumerWidget {
           GlassSidebarItem(
             key: ValueKey('nav-${item.branch.name}'),
             icon: item.icon,
-            leading: item.branch == ShellBranch.rdp
+            // RDP and Docker use the same icon as on phones and inside their screens.
+            leading: item.branch == ShellBranch.rdp || item.branch == ShellBranch.docker
                 ? Icon(item.icon)
                 : AppSymbolIcon(AppSymbol.values.byName(item.branch.name)),
             label: shellBranchLabel(item.branch, l10n),

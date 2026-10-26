@@ -208,7 +208,9 @@ Future<Team?> pickTeam(BuildContext context, List<Team> teams) => showAppDialog<
           for (final t in teams)
             ListTile(
               key: ValueKey('team-pick-${t.vaultId}'),
-              contentPadding: EdgeInsets.zero,
+              // The default inset keeps the colour dot inside the row's
+              // rounded highlight (it used to stick out of its left edge).
+              minLeadingWidth: 14,
               leading: TeamColorDot(team: t, size: 14),
               title: Text(t.name.isEmpty ? l10n.teamsUnnamed : t.name),
               onTap: () => closeDialog(context, t),

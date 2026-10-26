@@ -172,6 +172,16 @@ impl TeamHandle {
         }
     }
 
+    /// Only the owner may take objects out of the team (move to personal or
+    /// to another team); members can still copy what they can read.
+    pub(crate) fn require_owner(&self) -> AppResult<()> {
+        self.require_writable()?;
+        match self.role() {
+            Some(VaultRole::Owner) => Ok(()),
+            _ => Err(AppError::TeamReadOnly),
+        }
+    }
+
     /// Run `f` with the per-team identity (signing, opening envelopes).
     pub(crate) fn with_identity<R>(
         &self,
