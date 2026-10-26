@@ -855,17 +855,21 @@ class _HostTile extends ConsumerWidget {
                 if (target == null || !context.mounted) return;
                 final move = v == _HostAction.moveToTeam;
                 final service = ref.read(teamServiceProvider);
+                final moved = ref.read(movedObjectsProvider.notifier);
                 await runWithFeedback(
                   context,
-                  () => move
-                      ? service.moveObjects([host.id.value], target.vaultId)
-                      : service.copyObjects([host.id.value], target.vaultId),
+                  () async => move
+                      ? moved.record([host.id.value], await service.moveObjects([host.id.value], target.vaultId))
+                      : await service.copyObjects([host.id.value], target.vaultId),
                   success: move ? l10n.teamsMoved(target.name) : l10n.teamsCopied(target.name),
                 );
               case _HostAction.moveToPersonal:
+                final moved = ref.read(movedObjectsProvider.notifier);
                 await runWithFeedback(
                   context,
-                  () => ref.read(teamServiceProvider).moveObjects([host.id.value], null),
+                  () async => moved.record([
+                    host.id.value,
+                  ], await ref.read(teamServiceProvider).moveObjects([host.id.value], null)),
                   success: l10n.teamsMoved(l10n.teamsFilterPersonal),
                 );
               case _HostAction.delete:

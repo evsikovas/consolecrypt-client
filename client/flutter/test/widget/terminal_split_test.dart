@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
+import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
@@ -66,7 +68,10 @@ void main() {
     expect(host.splitAxis, Axis.horizontal);
     expect(state().tabs, hasLength(2), reason: 'a pane is not a tab of the strip');
     expect(identical(state().active, host.panes.first), isTrue, reason: 'the new pane takes the keyboard');
-    expect(identical(host.panes.first.target, host.target) || host.panes.first.target.label == host.target.label, isTrue);
+    expect(
+      identical(host.panes.first.target, host.target) || host.panes.first.target.label == host.target.label,
+      isTrue,
+    );
     expect(find.byKey(const ValueKey('terminal-pane-0')), findsOneWidget);
     expect(find.byKey(const ValueKey('terminal-pane-1')), findsOneWidget);
     final left = tester.getRect(find.byKey(const ValueKey('terminal-pane-0')));
@@ -128,6 +133,42 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('terminal-split')));
     await settle(tester);
     expect(find.text('Next pane'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  }, variant: _desktop);
+
+  testWidgets('a host moved into a team meanwhile is followed when splitting (testing report 26.10)', (tester) async {
+    final (backend, container) = await _terminal(tester);
+    final controller = container.read(terminalTabsProvider.notifier);
+    final tab = container.read(terminalTabsProvider).activeTab!;
+    final old = tab.host!;
+    // A move copies the host under a new id and deletes the original.
+    Host copy(ObjectId id) => Host(
+      id: id,
+      name: old.name,
+      address: old.address,
+      createdAt: old.createdAt,
+      updatedAt: old.updatedAt,
+      port: old.port,
+      username: old.username,
+      credentialId: old.credentialId,
+    );
+    final moved = copy(ObjectId.generate());
+    await backend.inventory.saveHost(moved);
+    await backend.inventory.deleteHost(old.id);
+    await settle(tester);
+    final pane = await tester.runAsync(() => controller.split(tab, Axis.horizontal));
+    expect(pane, isNotNull);
+    expect(pane!.host!.id, moved.id);
+    await _closed(tester);
+
+    // Two equal hosts (an earlier copy and the move): this device's move decides.
+    final other = copy(ObjectId.generate());
+    await backend.inventory.saveHost(other);
+    container.read(movedObjectsProvider.notifier).record([old.id.value], [other.id.value]);
+    controller.focusPane(tab); // Split from the pane that still holds the old host.
+    await settle(tester);
+    final second = await tester.runAsync(() => controller.split(tab, Axis.horizontal));
+    expect(second!.host!.id, other.id);
     expect(tester.takeException(), isNull);
   }, variant: _desktop);
 }
