@@ -95,9 +95,18 @@ below this limit. Do not reset the GitHub run sequence to work around it.
   the previous ad-hoc behavior. Developer ID distribution needs notarization.
 - No iOS job runs; a local iOS build is a Simulator preview and requests no
   provisioning credentials.
-- The update signing key remains confined to the separate update-feed workflow.
-  Native build jobs do not receive production credentials or update signing keys.
-  See [RELEASING.md](RELEASING.md).
+- The update signing keys (`UPDATE_SIGNING_KEY`, and `LINUX_UPDATE_SIGNING_KEY`
+  for the separate Linux feed) remain confined to the separate update-feed
+  workflow. Native build jobs do not receive production credentials or update
+  signing keys. See [RELEASING.md](RELEASING.md) and
+  [UPDATE_FEED_PUBLISHER.md](UPDATE_FEED_PUBLISHER.md).
+- The hosted `announce` job runs after publication. Each channel starts only
+  when the owner has configured it: `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`
+  (project channel), the variable `TELEGRAM_PERSONAL_CHAT_ID` (a second channel;
+  `announce-telegram.py` keeps its journal per channel), and `EVSIKOVNET_TOKEN`
+  (`announce-evsikovnet.py` creates or updates the release on evsikov.net with the
+  Russian notes and consolecrypt.dev download links). The scripts refuse to post
+  outside this release job; locally use `--dry-run`.
 
 Artifacts are retained for 30 days and include only explicit package, checksum
 and version paths. The Linux test report uses a redacted, closed JSON schema;
@@ -201,6 +210,14 @@ release notes, отправьте коммит в `main`, затем тег `vX.
 публикует полный GitHub Release и запускает обновление подписанной ленты.
 Пакеты Android подписываются прежним ключом раннера. iOS в CI не собирается
 (сборки отложены; локально — только Simulator preview).
+
+После публикации задание `announce` объявляет выпуск в каналах, которые
+настроил владелец: Telegram-канал проекта (`TELEGRAM_BOT_TOKEN`,
+`TELEGRAM_CHAT_ID`), второй канал (переменная `TELEGRAM_PERSONAL_CHAT_ID`; журнал
+`announce-telegram.py` ведётся по каналам) и evsikov.net (`EVSIKOVNET_TOKEN`:
+`announce-evsikovnet.py` создаёт или обновляет релиз с русскими заметками и
+ссылками на consolecrypt.dev). Вне этого задания скрипты не публикуют; локально —
+`--dry-run`.
 
 
 ### Диагностический тег Windows
