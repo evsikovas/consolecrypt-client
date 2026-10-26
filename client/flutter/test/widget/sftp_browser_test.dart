@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/services/sftp_browser_service.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
@@ -682,6 +684,41 @@ void main() {
     expect(find.byKey(const ValueKey('transfer-retry-notes.txt')), findsNothing);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('dragging a remote file onto the local pane downloads it', (tester) async {
+    await _openBrowser(tester);
+    await tapKey(tester, 'sftp-toolbar-local-pane');
+    final to = tester.getCenter(find.byKey(const ValueKey('sftp-local-pane')));
+    final gesture = await tester.startGesture(tester.getCenter(_row('$_home/notes.txt')));
+    await tester.pump();
+    await gesture.moveBy(const Offset(40, 0));
+    await tester.pump();
+    await gesture.moveTo(to);
+    await tester.pump();
+    await gesture.up();
+    await settle(tester);
+    expect(find.byKey(const ValueKey('transfer-notes.txt')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('a file dragged to Finder/Explorer leaves no staging folder when the download fails', (tester) async {
+    await _openBrowser(tester);
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    final controller = container.read(sftpControllerProvider.notifier);
+    Future<int> staging() => Directory.systemTemp.list().where((e) => e.path.contains('consolecrypt-drag-')).length;
+    final before = await tester.runAsync(staging);
+    // The demo backend has no real local disk: the download fails.
+    final failure = await tester.runAsync(() async {
+      try {
+        await controller.stageForDrag('$_home/notes.txt', (_) {});
+        return null;
+      } on Object catch (e) {
+        return e;
+      }
+    });
+    expect(failure, isA<AppException>());
+    expect(await tester.runAsync(staging), before, reason: 'the staging folder is removed');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   for (final locale in const [AppLocale.ru, AppLocale.en]) {
     testWidgets('renders every SFTP part at 1024 px in ${locale.wireName} without overflow', (tester) async {

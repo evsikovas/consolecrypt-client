@@ -8,12 +8,12 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
 import 'package:consolecrypt/sftp/file_kind.dart';
 import 'package:consolecrypt/sftp/sftp_actions.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/sftp/sftp_rows.dart';
 import 'package:consolecrypt/sftp/widgets/sftp_drag.dart';
-import 'package:consolecrypt/sftp/widgets/sftp_drop_target.dart';
 import 'package:consolecrypt/sftp/widgets/sftp_folder_failure.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -239,6 +239,18 @@ class _SftpFileListState extends ConsumerState<SftpFileList> {
     await uploadPaths(context, ref, localPaths, target);
   }
 
+  /// The regular files of a drag that Finder/Explorer receive (folders
+  /// stay in the app).
+  List<DragOutFile> _dragOutFiles(List<String> paths) {
+    final entries = {for (final r in _rows) r.path: r.entry};
+    return [
+      for (final path in paths)
+        if (entries[path] case final e?
+            when !e.isDirectory && (!e.isSymlink || e.linkTargetKind == RemoteEntryKind.file))
+          DragOutFile(name: e.name, fetch: (progress) => _controller.stageForDrag(path, progress)),
+    ];
+  }
+
   Future<void> _moveInto(SftpDragData data, String folder) async {
     final l10n = context.l10n;
     final moved = await runWithFeedback(context, () => _controller.move(data.paths, folder));
@@ -310,6 +322,7 @@ class _SftpFileListState extends ConsumerState<SftpFileList> {
                 renaming: state.renaming == row.path,
                 osDropHighlight: _osDropFolder == row.path,
                 dragPaths: dragPaths,
+                dragOut: () => _dragOutFiles(dragPaths),
                 onPointerDown: (e) => _onPointerDown(e, row),
                 onPointerUp: () => _onPointerUp(row),
                 onDoubleTap: () {
@@ -330,7 +343,7 @@ class _SftpFileListState extends ConsumerState<SftpFileList> {
         final list = DragTarget<LocalDragData>(
           onWillAcceptWithDetails: (_) => true,
           onAcceptWithDetails: (d) => unawaited(_uploadInto(d.data.paths, null)),
-          builder: (context, candidates, _) => SftpDropTarget(
+          builder: (context, candidates, _) => OsFileDropTarget(
             onHover: (p) => setState(() {
               _osDragging = true;
               _osDropFolder = _folderAt(p);
@@ -581,6 +594,7 @@ class _RowItem extends StatelessWidget {
     required this.renaming,
     required this.osDropHighlight,
     required this.dragPaths,
+    required this.dragOut,
     required this.onPointerDown,
     required this.onPointerUp,
     required this.onDoubleTap,
@@ -603,6 +617,7 @@ class _RowItem extends StatelessWidget {
   final bool renaming;
   final bool osDropHighlight;
   final List<String> dragPaths;
+  final List<DragOutFile> Function() dragOut;
   final ValueChanged<PointerDownEvent> onPointerDown;
   final VoidCallback onPointerUp;
   final VoidCallback onDoubleTap;
@@ -712,27 +727,22 @@ class _RowItem extends StatelessWidget {
         onDoubleTap: renaming ? null : onDoubleTap,
         onSecondaryTapUp: (d) => onSecondaryTap(d.globalPosition),
         child: e.isDirectory
-            ? DragTarget<Object>(
-                onWillAcceptWithDetails: (d) => switch (d.data) {
-                  SftpDragData(:final paths) => !paths.contains(e.path),
-                  LocalDragData() => true,
-                  _ => false,
-                },
-                onAcceptWithDetails: (d) => switch (d.data) {
-                  final SftpDragData data => onMoveInto(data),
-                  final LocalDragData data => onUploadInto(data),
-                  _ => null,
-                },
-                builder: (context, candidates, _) => content(candidates.isNotEmpty),
+            ? AppDropTarget<SftpDragData>(
+                canAccept: (data) => !data.paths.contains(e.path),
+                onAccept: onMoveInto,
+                builder: (context, moving) => DragTarget<LocalDragData>(
+                  onAcceptWithDetails: (d) => onUploadInto(d.data),
+                  builder: (context, candidates, _) => content(moving || candidates.isNotEmpty),
+                ),
               )
             : content(false),
       ),
     );
     if (!renaming) {
-      item = Draggable<SftpDragData>(
+      item = AppDragSource<SftpDragData>(
         data: SftpDragData(dragPaths),
-        dragAnchorStrategy: pointerDragAnchorStrategy,
         feedback: DragCountChip(count: dragPaths.length, icon: kind.icon),
+        files: dragOut,
         child: item,
       );
     }

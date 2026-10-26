@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
 import 'package:consolecrypt/sftp/file_kind.dart';
 import 'package:consolecrypt/sftp/sftp_actions.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
@@ -46,15 +47,12 @@ class SftpLocalPane extends ConsumerWidget {
       for (final e in entries)
         if (state.prefs.showHidden || !e.name.startsWith('.')) e,
     ];
-    return DragTarget<SftpDragData>(
-      onWillAcceptWithDetails: (_) => true,
-      onAcceptWithDetails: (d) => unawaited(_download(context, ref, d.data, state.localPath)),
-      builder: (context, candidates, _) => DecoratedBox(
+    return AppDropTarget<SftpDragData>(
+      onAccept: (data) => unawaited(_download(context, ref, data, state.localPath)),
+      builder: (context, hovering) => DecoratedBox(
         key: const ValueKey('sftp-local-pane'),
         position: DecorationPosition.foreground,
-        decoration: BoxDecoration(
-          border: candidates.isNotEmpty ? Border.all(color: theme.colorScheme.primary, width: 2) : null,
-        ),
+        decoration: BoxDecoration(border: hovering ? Border.all(color: theme.colorScheme.primary, width: 2) : null),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -156,10 +154,9 @@ class SftpLocalPane extends ConsumerWidget {
                     child: row,
                   );
                   if (!e.isDirectory) return draggable;
-                  return DragTarget<SftpDragData>(
-                    onWillAcceptWithDetails: (_) => true,
-                    onAcceptWithDetails: (d) => unawaited(_download(context, ref, d.data, e.path)),
-                    builder: (context, candidates, _) => candidates.isEmpty
+                  return AppDropTarget<SftpDragData>(
+                    onAccept: (data) => unawaited(_download(context, ref, data, e.path)),
+                    builder: (context, hovering) => !hovering
                         ? draggable
                         : DecoratedBox(
                             position: DecorationPosition.foreground,
