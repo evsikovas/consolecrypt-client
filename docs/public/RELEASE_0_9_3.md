@@ -40,6 +40,10 @@
   `rg --pre`, скрипты `sed` с командами `e`/`w` и флагами `s///e`/`s///w`, `awk` с
   `| getline` или файлом программы, `git -c …`. Для них снова нужно отметить, что вы
   понимаете риск, перед «Выполнить».
+- **Зависимости.** `crypto-bigint` 0.7.10 (RUSTSEC-2026-0387, неравномерное по
+  времени выполнение операций, которые должны быть постоянными), `tokio` 1.54.1
+  (RUSTSEC-2026-0386) и плановые обновления `hyper`, `uuid`, `tokio-rustls`, `xml` и
+  других библиотек.
 
 ## English
 
@@ -78,3 +82,6 @@ also stops members from changing other members' team keys.
   longer marked read-only: `env -S '…'`, `fd -x/-X`, `rg --pre`, `sed` scripts with the
   `e`/`w` commands or the `s///e`/`s///w` flags, `awk` with `| getline` or a program
   file, `git -c …`. They again need the risk acknowledgement before Run.
+- **Dependencies.** `crypto-bigint` 0.7.10 (RUSTSEC-2026-0387, timing variability in
+  operations meant to be constant-time), `tokio` 1.54.1 (RUSTSEC-2026-0386) and routine
+  updates of `hyper`, `uuid`, `tokio-rustls`, `xml` and other libraries.
