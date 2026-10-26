@@ -4392,9 +4392,34 @@
       }
     }
   },
-  "terminalSplitViewLater": "Split view arrives in a later release",
-  "@terminalSplitViewLater": {
-    "description": "Tooltip on the disabled split-view icon in the terminal tab strip."
+  "terminalSplit": "Split",
+  "@terminalSplit": {
+    "description": "Terminal toolbar: split menu"
+  },
+  "terminalSplitRight": "Split right",
+  "@terminalSplitRight": {
+    "description": "Terminal: open another session beside the focused pane"
+  },
+  "terminalSplitDown": "Split down",
+  "@terminalSplitDown": {
+    "description": "Terminal: open another session below the focused pane"
+  },
+  "terminalNextPane": "Next pane",
+  "@terminalNextPane": {
+    "description": "Terminal: move the keyboard to the next pane"
+  },
+  "terminalClosePane": "Close pane",
+  "@terminalClosePane": {
+    "description": "Terminal: close the session of one pane"
+  },
+  "terminalSplitFull": "A tab holds up to {count} panes",
+  "@terminalSplitFull": {
+    "description": "Terminal: split tooltip when the tab is full",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "terminalSnippets": "Snippets",
   "@terminalSnippets": {
