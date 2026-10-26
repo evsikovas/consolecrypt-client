@@ -13,6 +13,7 @@ import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/credentials/credential_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_secrets.dart';
 import 'package:consolecrypt/teams/team_providers.dart';
+import 'package:consolecrypt/teams/teams_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -91,7 +92,22 @@ class CredentialsScreen extends ConsumerWidget {
                         child: Icon(credentialIcon(c.kind), size: 18, color: tokens.secondaryLabel),
                       ),
                     ),
-                    title: Text(c.name, style: t.bodyEmph.copyWith(color: tokens.palette.label)),
+                    // The team label tells a team copy of a key from the personal one.
+                    title: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            c.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.bodyEmph.copyWith(color: tokens.palette.label),
+                          ),
+                        ),
+                        if (teamOf(ref, c.id) case final team?) ...[
+                          const SizedBox(width: GlassSpacing.s6),
+                          TeamChip(key: ValueKey('credential-team-${c.name}'), team: team),
+                        ],
+                      ],
+                    ),
                     subtitle: Text(
                       [
                         c.kind.localized(l10n),

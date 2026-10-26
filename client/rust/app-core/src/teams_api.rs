@@ -849,6 +849,13 @@ impl AppCore {
             .iter()
             .map(|i| crate::dto::parse_id("id", i))
             .collect::<AppResult<Vec<ObjectId>>>()?;
+        for id in &ids {
+            if let Some(source) = u.writer.working.vault_of(*id) {
+                if Some(source) != target {
+                    u.writer.teams.require(source)?.require_owner()?;
+                }
+            }
+        }
         let new_ids = copy_objects(&u, &ids, target).await?;
         let engine = match target {
             Some(v) => u.writer.teams.require(v)?.engine(),
@@ -1087,10 +1094,24 @@ async fn copy_objects(
             }
         }
     }
-    let remap: BTreeMap<ObjectId, ObjectId> =
-        order.iter().map(|id| (*id, ObjectId::new())).collect();
+    // Dependencies first: one the target already holds unchanged (the copy
+    // of a key made by an earlier copy or move) is reused, so copying or
+    // moving back and forth never multiplies credentials and keys.
+    let mut remap: BTreeMap<ObjectId, ObjectId> = BTreeMap::new();
+    let mut reused: BTreeSet<ObjectId> = BTreeSet::new();
+    for id in order.iter().rev() {
+        if !ids.contains(id) {
+            let object = read_object(u, *id).await?;
+            if let Some(existing) = same_in_vault(u, &object, target, &remap).await? {
+                remap.insert(*id, existing);
+                reused.insert(*id);
+                continue;
+            }
+        }
+        remap.insert(*id, ObjectId::new());
+    }
     let mut copies = Vec::with_capacity(order.len());
-    for id in &order {
+    for id in order.iter().filter(|id| !reused.contains(id)) {
         let object = read_object(u, *id).await?;
         copies.push(rewrite_ids(&object, &remap)?);
     }
@@ -1099,6 +1120,36 @@ async fn copy_objects(
         .iter()
         .map(|id| remap.get(id).copied().unwrap_or(*id).to_string())
         .collect())
+}
+
+/// A live object of `vault` equal to `object` once `remap` is applied,
+/// ignoring only the objects' own ids.
+async fn same_in_vault(
+    u: &Unlocked,
+    object: &VaultObject,
+    vault: Option<VaultId>,
+    remap: &BTreeMap<ObjectId, ObjectId>,
+) -> AppResult<Option<ObjectId>> {
+    let ws = &u.writer.working;
+    let anonymous = ObjectId::from(uuid::Uuid::nil());
+    let mut mine = remap.clone();
+    mine.insert(object.id(), anonymous);
+    let wanted = serde_json::to_value(rewrite_ids(object, &mine)?).map_err(AppError::internal)?;
+    for candidate in ws.ids_of(object.kind()) {
+        if ws.vault_of(candidate) != vault {
+            continue;
+        }
+        let Ok(other) = read_object(u, candidate).await else {
+            continue;
+        };
+        let theirs = BTreeMap::from([(candidate, anonymous)]);
+        if serde_json::to_value(rewrite_ids(&other, &theirs)?).map_err(AppError::internal)?
+            == wanted
+        {
+            return Ok(Some(candidate));
+        }
+    }
+    Ok(None)
 }
 
 async fn read_object(u: &Unlocked, id: ObjectId) -> AppResult<VaultObject> {
