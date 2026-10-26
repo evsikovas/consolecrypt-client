@@ -5415,6 +5415,26 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sharingSecretConfirmed => 'Я понимаю и разрешаю передать этот секрет выбранным устройствам';
 
   @override
+  String get sharingRdpHost => 'RDP-хост';
+
+  @override
+  String get sharingRdpHelp =>
+      'В карточке — адрес, порт, пользователь, домен и метки. Заметки и сохранённый пароль передаются, только если отметить их.';
+
+  @override
+  String get sharingRdpIncludePassword => 'Передать сохранённый пароль';
+
+  @override
+  String get sharingRdpPasswordWarning =>
+      'Получатели получат сам пароль и смогут его сохранить. Передавайте его только проверенным людям, которым доверяете.';
+
+  @override
+  String get sharingRdpCopyPassword => 'Сохранить переданный пароль в моей копии';
+
+  @override
+  String get sharingRdpNoPassword => 'Пароль не передан: он будет запрошен при подключении.';
+
+  @override
   String get sharingHost => 'Хост';
 
   @override

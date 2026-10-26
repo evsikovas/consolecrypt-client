@@ -5215,6 +5215,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharingSecretConfirmed => 'I understand and allow this secret to be shared with the selected devices';
 
   @override
+  String get sharingRdpHost => 'RDP host';
+
+  @override
+  String get sharingRdpHelp =>
+      'The card carries the address, port, user, domain and tags. Notes and the saved password are shared only when ticked.';
+
+  @override
+  String get sharingRdpIncludePassword => 'Include the saved password';
+
+  @override
+  String get sharingRdpPasswordWarning =>
+      'Recipients get the password itself and can keep it. Share it only with verified people you trust.';
+
+  @override
+  String get sharingRdpCopyPassword => 'Save the shared password with my copy';
+
+  @override
+  String get sharingRdpNoPassword => 'The password is not shared: it is asked when connecting.';
+
+  @override
   String get sharingHost => 'Host';
 
   @override

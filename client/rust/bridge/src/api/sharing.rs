@@ -175,6 +175,58 @@ pub async fn sharing_publish_db_connection(
     })
     .await
 }
+/// `RdpSharingPreview` of a saved RDP host card (FEAT-05); the password is
+/// never in the preview.
+pub async fn sharing_preview_rdp_host(
+    host_id: String,
+    include_password: bool,
+    include_notes: bool,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move {
+        to_json(
+            &c.sharing_preview_rdp_host(host_id, include_password, include_notes)
+                .await?,
+        )
+    })
+    .await
+}
+pub async fn sharing_publish_rdp_host(
+    host_id: String,
+    include_password: bool,
+    include_notes: bool,
+    expected_stamp: String,
+    grants_json: String,
+) -> Result<String, BridgeError> {
+    let grants = from_json("sharing_grants", &grants_json)?;
+    with_core(move |c| async move {
+        let item = c
+            .sharing_publish_rdp_host(
+                host_id.clone(),
+                include_password,
+                include_notes,
+                expected_stamp,
+                grants,
+            )
+            .await?;
+        link_notes(&c, "rdp_host", &host_id, &item.share_id).await;
+        to_json(&item)
+    })
+    .await
+}
+/// `HostDto` of the saved copy; the shared password only on request.
+pub async fn sharing_copy_rdp_host(
+    share_id: String,
+    include_password: bool,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move {
+        let host = c
+            .sharing_copy_rdp_host(share_id.clone(), include_password)
+            .await?;
+        link_notes(&c, "rdp_host", &host.id, &share_id).await;
+        to_json(&host)
+    })
+    .await
+}
 pub async fn sharing_copy_db_connection(
     share_id: String,
     route_json: String,

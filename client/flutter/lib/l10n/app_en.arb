@@ -7265,6 +7265,30 @@
   "sharingIncludeNotes": "Include host notes",
   "sharingSecretWarning": "The recipient can read and keep this secret. Revoking access cannot remove copies already read. SSH access also requires changing credentials on the target server.",
   "sharingSecretConfirmed": "I understand and allow this secret to be shared with the selected devices",
+  "sharingRdpHost": "RDP host",
+  "@sharingRdpHost": {
+    "description": "Sharing: kind label of an RDP host card"
+  },
+  "sharingRdpHelp": "The card carries the address, port, user, domain and tags. Notes and the saved password are shared only when ticked.",
+  "@sharingRdpHelp": {
+    "description": "Sharing an RDP host: what the card contains"
+  },
+  "sharingRdpIncludePassword": "Include the saved password",
+  "@sharingRdpIncludePassword": {
+    "description": "Sharing an RDP host: share the password too"
+  },
+  "sharingRdpPasswordWarning": "Recipients get the password itself and can keep it. Share it only with verified people you trust.",
+  "@sharingRdpPasswordWarning": {
+    "description": "Sharing an RDP host password warning"
+  },
+  "sharingRdpCopyPassword": "Save the shared password with my copy",
+  "@sharingRdpCopyPassword": {
+    "description": "Receiving an RDP host: import the shared password"
+  },
+  "sharingRdpNoPassword": "The password is not shared: it is asked when connecting.",
+  "@sharingRdpNoPassword": {
+    "description": "Receiving an RDP host without a password"
+  },
   "sharingHost": "Host",
   "sharingSnippet": "Snippet",
   "sharingGroup": "Shared collection",

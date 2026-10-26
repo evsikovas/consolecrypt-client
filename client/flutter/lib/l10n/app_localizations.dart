@@ -9182,6 +9182,42 @@ abstract class AppLocalizations {
   /// **'I understand and allow this secret to be shared with the selected devices'**
   String get sharingSecretConfirmed;
 
+  /// Sharing: kind label of an RDP host card
+  ///
+  /// In en, this message translates to:
+  /// **'RDP host'**
+  String get sharingRdpHost;
+
+  /// Sharing an RDP host: what the card contains
+  ///
+  /// In en, this message translates to:
+  /// **'The card carries the address, port, user, domain and tags. Notes and the saved password are shared only when ticked.'**
+  String get sharingRdpHelp;
+
+  /// Sharing an RDP host: share the password too
+  ///
+  /// In en, this message translates to:
+  /// **'Include the saved password'**
+  String get sharingRdpIncludePassword;
+
+  /// Sharing an RDP host password warning
+  ///
+  /// In en, this message translates to:
+  /// **'Recipients get the password itself and can keep it. Share it only with verified people you trust.'**
+  String get sharingRdpPasswordWarning;
+
+  /// Receiving an RDP host: import the shared password
+  ///
+  /// In en, this message translates to:
+  /// **'Save the shared password with my copy'**
+  String get sharingRdpCopyPassword;
+
+  /// Receiving an RDP host without a password
+  ///
+  /// In en, this message translates to:
+  /// **'The password is not shared: it is asked when connecting.'**
+  String get sharingRdpNoPassword;
+
   /// Selective sharing: Host
   ///
   /// In en, this message translates to:

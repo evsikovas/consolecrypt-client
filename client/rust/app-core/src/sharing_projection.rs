@@ -97,6 +97,8 @@ pub enum SharedProjection {
     Secret(SharedSecretProjection),
     KubeContext(crate::sharing_kubernetes::SharedKubeProjection),
     DbConnection(crate::sharing_database::SharedDbProjection),
+    /// An RDP host card (FEAT-05), carried as a `Host` item.
+    RdpHost(crate::sharing_rdp::SharedRdpProjection),
 }
 
 macro_rules! opaque_debug {
@@ -136,6 +138,7 @@ impl SharedProjection {
             Self::Secret(_) => SharedItemKind::Secret,
             Self::KubeContext(_) => SharedItemKind::KubeContext,
             Self::DbConnection(_) => SharedItemKind::DbConnection,
+            Self::RdpHost(_) => SharedItemKind::Host,
         }
     }
 
@@ -145,6 +148,7 @@ impl SharedProjection {
         match self {
             Self::KubeContext(k) => k.authentication.is_some(),
             Self::DbConnection(d) => d.authentication.is_some(),
+            Self::RdpHost(r) => r.password.is_some(),
             _ => false,
         }
     }
@@ -172,6 +176,7 @@ impl SharedProjection {
             ));
         }
         match &projection {
+            Self::RdpHost(card) => card.validate()?,
             Self::Host(host) => {
                 let mut check = Host::new(&host.name, &host.address);
                 check.port = Some(host.port);

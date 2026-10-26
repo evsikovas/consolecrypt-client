@@ -109,6 +109,7 @@ pub mod sharing_dto;
 pub mod sharing_highwater;
 pub mod sharing_kubernetes;
 pub mod sharing_projection;
+pub mod sharing_rdp;
 pub mod sharing_state;
 mod snippets;
 mod ssh;

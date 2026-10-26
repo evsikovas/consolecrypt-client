@@ -19,6 +19,7 @@ import 'package:consolecrypt/sharing/sharing_dialogs.dart';
 import 'package:consolecrypt/sharing/sharing_management.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
+import 'package:consolecrypt/sharing/sharing_rdp.dart';
 import 'package:consolecrypt/teams/team_models.dart';
 import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/teams/teams_settings.dart';
@@ -762,7 +763,7 @@ class _HostTile extends ConsumerWidget {
             const GlassMenuDivider(),
             if (!host.isRdp)
               GlassMenuItem(value: _HostAction.sftp, label: l10n.hostsOpenSftp, icon: Icons.folder_copy_rounded),
-            if (!host.isRdp && ref.watch(activeProfileProvider)?.isSynced == true)
+            if (ref.watch(activeProfileProvider)?.isSynced == true)
               GlassMenuItem(value: _HostAction.share, label: l10n.sharingPublish, icon: Icons.share_outlined),
             GlassMenuItem(
               key: ValueKey('host-edit-menu-${host.name}'),
@@ -822,7 +823,11 @@ class _HostTile extends ConsumerWidget {
               case _HostAction.notes:
                 showHostNotes(ref, host);
               case _HostAction.share:
-                await showSharingPublish(context, kind: SharingKind.host, objectId: host.id.value);
+                if (host.isRdp) {
+                  await showSharingRdpHost(context, hostId: host.id.value);
+                } else {
+                  await showSharingPublish(context, kind: SharingKind.host, objectId: host.id.value);
+                }
               case _HostAction.group:
                 await _chooseGroup(context, ref);
               case _HostAction.sftp:

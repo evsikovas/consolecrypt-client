@@ -4330,3 +4330,198 @@ async fn devices_reported_under_the_owner_account_are_not_recipients() {
         "invalid_input"
     );
 }
+
+#[tokio::test]
+async fn rdp_host_cards_travel_as_hosts_and_the_password_needs_consent() {
+    let server = Harness::new().await;
+    let directory = tempfile::tempdir().unwrap();
+    let owner = account(
+        &server.url,
+        &directory.path().join("owner"),
+        Arc::new(InMemorySecureStore::new()),
+    )
+    .await;
+    let recipient = account(
+        &server.url,
+        &directory.path().join("recipient"),
+        Arc::new(InMemorySecureStore::new()),
+    )
+    .await;
+    let password = Zeroizing::new(format!("rdp-fixture-{}", Uuid::new_v4()));
+    let mut draft = HostDto::new("Office PC", "office.example.test");
+    draft.protocol = HostProtocol::Rdp;
+    draft.username = Some("Администратор".into());
+    draft.rdp_domain = Some("LAB".into());
+    let host = owner
+        .app
+        .save_host_with_auth(
+            draft,
+            HostAuth::InlinePassword {
+                password: Some(password.to_string()),
+            },
+        )
+        .await
+        .unwrap();
+    let preview = owner
+        .app
+        .sharing_preview_rdp_host(host.id.clone(), false, false)
+        .await
+        .unwrap();
+    assert!(preview.preview_json.contains(r#""kind":"rdp_host""#));
+    assert!(preview
+        .preview_json
+        .contains(r#""includes_password":false"#));
+    assert!(!preview.preview_json.contains(password.as_str()));
+    let owner_identity = owner.app.sharing_identity().await.unwrap();
+    let recipient_identity = recipient.app.sharing_identity().await.unwrap();
+    let recipient_identity = pin(&owner.app, &recipient_identity).await;
+    let grant = grant(recipient_identity, SharingRoleDto::Reader);
+    let card = owner
+        .app
+        .sharing_publish_rdp_host(
+            host.id.clone(),
+            false,
+            false,
+            preview.snapshot_stamp,
+            vec![grant.clone()],
+        )
+        .await
+        .unwrap();
+    owner.app.sharing_flush().await.unwrap();
+    let invitations = recipient.app.sharing_list(true).await.unwrap();
+    assert_eq!(
+        invitations[0].kind,
+        SharingKindDto::Host,
+        "no new kind on the wire"
+    );
+    recipient
+        .app
+        .sharing_accept(
+            card.share_id.clone(),
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let listed = recipient.app.sharing_list(false).await.unwrap();
+    let shown = listed
+        .iter()
+        .find(|item| item.share_id == card.share_id)
+        .and_then(|item| item.preview_json.clone())
+        .unwrap();
+    assert!(shown.contains(r#""kind":"rdp_host""#), "{shown}");
+    assert!(
+        recipient
+            .app
+            .sharing_copy_host(card.share_id.clone(), None)
+            .await
+            .is_err(),
+        "an RDP card never becomes an SSH host"
+    );
+    let copied = recipient
+        .app
+        .sharing_copy_rdp_host(card.share_id.clone(), true)
+        .await
+        .unwrap();
+    assert_eq!(copied.protocol, HostProtocol::Rdp);
+    assert_eq!(copied.address, "office.example.test");
+    assert_eq!(copied.port, Some(3389));
+    assert_eq!(copied.username.as_deref(), Some("Администратор"));
+    assert_eq!(copied.rdp_domain.as_deref(), Some("LAB"));
+    assert_eq!(copied.credential_id, None, "no password was shared");
+    assert_ne!(copied.id, host.id);
+
+    // The password needs the secret capability and explicit consent.
+    let with_password = owner
+        .app
+        .sharing_preview_rdp_host(host.id.clone(), true, false)
+        .await
+        .unwrap();
+    assert!(with_password
+        .preview_json
+        .contains(r#""includes_password":true"#));
+    assert!(!with_password.preview_json.contains(password.as_str()));
+    assert_eq!(
+        owner
+            .app
+            .sharing_publish_rdp_host(
+                host.id.clone(),
+                true,
+                false,
+                with_password.snapshot_stamp.clone(),
+                vec![grant.clone()],
+            )
+            .await
+            .unwrap_err()
+            .code(),
+        "unsupported",
+    );
+    server.state.supports_secrets.store(true, Ordering::SeqCst);
+    owner.app.sharing_status().await.unwrap();
+    let shared = owner
+        .app
+        .sharing_publish_rdp_host(
+            host.id.clone(),
+            true,
+            false,
+            with_password.snapshot_stamp,
+            vec![grant],
+        )
+        .await
+        .unwrap();
+    assert!(!shared
+        .preview_json
+        .as_ref()
+        .unwrap()
+        .contains(password.as_str()));
+    owner.app.sharing_flush().await.unwrap();
+    for history in server.state.shares.lock().unwrap().values() {
+        let wire = serde_json::to_string(&history.state).unwrap();
+        assert!(!wire.contains(password.as_str()));
+        assert!(!wire.contains("office.example.test"));
+    }
+    recipient.app.sharing_list(true).await.unwrap();
+    recipient
+        .app
+        .sharing_accept(
+            shared.share_id.clone(),
+            pin(&recipient.app, &owner_identity)
+                .await
+                .verification_id
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let with_secret = recipient
+        .app
+        .sharing_copy_rdp_host(shared.share_id.clone(), true)
+        .await
+        .unwrap();
+    let credential = with_secret
+        .credential_id
+        .clone()
+        .expect("the shared password");
+    assert!(recipient
+        .app
+        .list_credentials()
+        .await
+        .unwrap()
+        .iter()
+        .any(|c| c.id == credential));
+    let ticket = recipient
+        .app
+        .rdp_saved_host_probe(with_secret.id.clone())
+        .await;
+    // The probe dials the address; only the saved password matters here.
+    if let Ok(ticket) = ticket {
+        assert!(ticket.has_saved_password);
+    }
+    let without = recipient
+        .app
+        .sharing_copy_rdp_host(shared.share_id.clone(), false)
+        .await
+        .unwrap();
+    assert_eq!(without.credential_id, None, "the password only on request");
+}

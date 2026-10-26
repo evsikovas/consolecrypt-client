@@ -7,11 +7,13 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/database_sharing_service.dart';
 import 'package:consolecrypt/core/services/kubernetes_sharing_service.dart';
+import 'package:consolecrypt/core/services/rdp_sharing_service.dart';
 import 'package:consolecrypt/core/services/sharing_service.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/src/rust/api/sharing.dart' as rs;
 
-final class RustSharingService implements SharingService, KubernetesSharingService, DatabaseSharingService {
+final class RustSharingService
+    implements SharingService, KubernetesSharingService, DatabaseSharingService, RdpSharingService {
   RustSharingService(this._hub);
   final RustBackend _hub;
   @override
@@ -140,6 +142,44 @@ final class RustSharingService implements SharingService, KubernetesSharingServi
       ),
     ),
   );
+  @override
+  Future<RdpSharingPreview> previewRdpHost(
+    String hostId, {
+    bool includePassword = false,
+    bool includeNotes = false,
+  }) async => RdpSharingPreview.fromJson(
+    decodeObject(
+      await guard(
+        () => rs.sharingPreviewRdpHost(hostId: hostId, includePassword: includePassword, includeNotes: includeNotes),
+      ),
+    ),
+  );
+  @override
+  Future<SharingItem> publishRdpHost(
+    String hostId,
+    List<SharingGrant> grants, {
+    required String expectedStamp,
+    bool includePassword = false,
+    bool includeNotes = false,
+  }) async => SharingItem.fromJson(
+    decodeObject(
+      await guard(
+        () => rs.sharingPublishRdpHost(
+          hostId: hostId,
+          includePassword: includePassword,
+          includeNotes: includeNotes,
+          expectedStamp: expectedStamp,
+          grantsJson: jsonEncode(grants.map((grant) => grant.toJson()).toList()),
+        ),
+      ),
+    ),
+  );
+  @override
+  Future<void> copyRdpHost(String shareId, {bool includePassword = false}) async {
+    await guard(() => rs.sharingCopyRdpHost(shareId: shareId, includePassword: includePassword));
+    await _hub.reload({'host', 'credential', 'secret'});
+  }
+
   @override
   Future<void> copyDbConnection(
     String shareId, {

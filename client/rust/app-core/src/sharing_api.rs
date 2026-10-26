@@ -522,6 +522,9 @@ fn projection_preview_json(projection: &SharedProjection) -> AppResult<String> {
     if let SharedProjection::DbConnection(connection) = projection {
         return connection.preview_json();
     }
+    if let SharedProjection::RdpHost(card) = projection {
+        return card.preview_json();
+    }
     if let SharedProjection::Secret(secret) = projection {
         #[derive(Serialize)]
         struct SecretMetadata<'a> {
@@ -1898,6 +1901,41 @@ impl AppCore {
             recipients,
         )
         .await
+    }
+
+    /// Publishes a saved RDP host card (FEAT-05); the password only with
+    /// `include_password`, which needs the secret-sharing capability and,
+    /// like any secret, verified recipients.
+    pub async fn sharing_publish_rdp_host(
+        &self,
+        host_id: String,
+        include_password: bool,
+        include_notes: bool,
+        expected_stamp: String,
+        recipients: Vec<SharingGrantDto>,
+    ) -> AppResult<SharingItemDto> {
+        let session = self.session().await?;
+        let _gate = self.sharing_gate(&session).await?;
+        let mut env = self.sharing_environment(session.clone(), false).await?;
+        env.require_kind(SharedItemKind::Host)?;
+        if include_password {
+            env.require_kind(SharedItemKind::Secret)?;
+        }
+        let id = host_id.parse().map_err(|_| invalid("invalid host id"))?;
+        let (projection, stamp) = env
+            .wait(crate::sharing_rdp::prepare(
+                &env.unlocked,
+                id,
+                include_password,
+                include_notes,
+            ))
+            .await?;
+        if stamp != expected_stamp {
+            return Err(invalid("host changed; review it again"));
+        }
+        self.sharing_check(&env).await?;
+        self.sharing_publish_prepared(&mut env, SharedProjection::RdpHost(projection), recipients)
+            .await
     }
 
     /// Explicit Reveal/Copy only. Revalidate access and the complete signed
