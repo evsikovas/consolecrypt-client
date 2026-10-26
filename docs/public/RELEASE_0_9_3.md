@@ -19,6 +19,10 @@
   другие ключи или роль, добавление откажет, и код нужно сверить заново. Раньше
   взломанный сервер мог подменить ключи между сверкой и подтверждением и получить
   доступ к хранилищу команды.
+- **Команды: вступление.** Код, который приглашённый диктует администратору, теперь
+  привязывает команду к ключу этого администратора. Команда откроется, только если
+  участника добавил именно он; поддельную команду, собранную сервером, приложение
+  не откроет.
 
 ## English
 
@@ -38,3 +42,6 @@ also stops members from changing other members' team keys.
   after the check, adding fails and the code has to be compared again. Before, a
   compromised server could swap the keys between the check and the confirmation and
   gain access to the team vault.
+- **Teams: joining.** The code the invitee reads to the admin now ties the team to that
+  admin's key. The team opens only if that admin adds the member; a fake team put
+  together by the server is not opened.

@@ -19,7 +19,9 @@ use base64::Engine as _;
 use cc_crypto_core::teams::{TeamIdentity, TeamLogView};
 use cc_models::team::TeamMembership;
 use cc_models::{ObjectId, ObjectKind, VaultObject};
-use cc_protocol::teams::{SignedTeamLogEntry, TeamDetail, TeamKeyMaterial};
+use cc_protocol::teams::{
+    SignedTeamLogEntry, TeamDetail, TeamKeyMaterial, TeamLogOp, TeamMemberKeys,
+};
 use cc_protocol::{UserId, VaultId};
 use cc_storage_core::ProfileKind;
 use cc_sync_core::{ApiError, ObjectStore, SyncEngine, SyncEvent};
@@ -79,6 +81,28 @@ pub(crate) fn verify_prefix(
         }
     }
     Ok((view, true))
+}
+
+/// Before the first verified head of a join, the latest entry adding `mine`
+/// must be signed by the admin key the member code covered (SEC-02). Once a
+/// head is recorded, the rollback check anchors later logs instead. Owners
+/// and joins from before this check have no compared key to hold to.
+fn joined_by_compared_admin(
+    m: &TeamMembership,
+    log: &[SignedTeamLogEntry],
+    mine: &TeamMemberKeys,
+) -> bool {
+    let first = m.verified_log_seq == 0 && m.verified_log_head.is_empty();
+    let Some(admin) = m.join_admin_key.as_deref().filter(|_| first) else {
+        return true;
+    };
+    let Some(admin) = unhex32(admin) else {
+        return false;
+    };
+    log.iter()
+        .rev()
+        .find(|e| matches!(&e.entry.op, TeamLogOp::AddMember { member, .. } if member == mine))
+        .is_some_and(|e| e.entry.actor_signing_key.as_slice() == admin.as_slice())
 }
 
 fn hex(b: &[u8]) -> String {
@@ -213,6 +237,15 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
         }
         return Err(AppError::TeamUntrusted(
             warning.map(TeamWarning::code).unwrap_or_default().into(),
+        ));
+    }
+    if !joined_by_compared_admin(m, &cache.log, &mine) {
+        // The first log after joining must add us with an entry signed by
+        // the admin whose code we compared; anything else is a team the
+        // server made up (SEC-02).
+        tracing::warn!(team = %vault_id, "the team log does not come from the compared admin");
+        return Err(AppError::TeamUntrusted(
+            TeamWarning::InvalidLog.code().into(),
         ));
     }
     // Already open with the same key: refresh the membership view in place.

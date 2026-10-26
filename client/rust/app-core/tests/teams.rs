@@ -575,3 +575,96 @@ async fn confirm_seals_only_to_the_keys_whose_code_was_compared() {
     alice.shutdown().await.unwrap();
     bob.shutdown().await.unwrap();
 }
+
+/// Security review SEC-02: a joining member holds the team log to the admin
+/// whose code it compared. A server that serves a team of its own — its own
+/// genesis, an `AddMember` it signed, a key it chose — is refused.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_joiner_refuses_a_team_the_server_made_up() {
+    use cc_crypto_core::teams::team_entry_hash;
+    use cc_protocol::teams::TeamLogOp;
+    use cc_protocol::vaults::VaultRole;
+
+    let server = MockServer::start().await;
+    let url = server.url().to_string();
+    let tmp = tempfile::tempdir().unwrap();
+    let alice = account(
+        &tmp.path().join("a"),
+        &url,
+        "alice@example.org",
+        AccountMode::Register,
+    )
+    .await;
+    alice.create_vault(PASSPHRASE.into()).await.unwrap();
+    let bob = account(
+        &tmp.path().join("b"),
+        &url,
+        "bob@example.org",
+        AccountMode::Register,
+    )
+    .await;
+    bob.create_vault(PASSPHRASE.into()).await.unwrap();
+    let team = alice
+        .create_team("Ops".into(), None, None, None)
+        .await
+        .unwrap();
+    let tid = team.vault_id.clone();
+    let vid = VaultId::from_str(&tid).unwrap();
+    alice
+        .invite_team_member(
+            tid.clone(),
+            "bob@example.org".into(),
+            TeamRoleDto::Viewer,
+            None,
+        )
+        .await
+        .unwrap();
+    let inv = bob.incoming_team_invitations().await.unwrap().remove(0);
+    let joined = bob
+        .accept_team_invitation(inv.invitation_id.clone())
+        .await
+        .unwrap();
+    let bob_keys = server
+        .team_invitation_keys(joined.invitation_id.parse().unwrap())
+        .unwrap();
+
+    // Instead of Alice confirming, the server makes up a team around Bob.
+    let attacker = TeamIdentity::generate().unwrap();
+    let attacker_user = UserId::new();
+    let now = chrono::Utc::now().timestamp();
+    let genesis = attacker
+        .sign_entry(
+            vid,
+            attacker_user,
+            None,
+            now,
+            TeamLogOp::Genesis {
+                owner: attacker.member_keys(attacker_user),
+            },
+        )
+        .unwrap();
+    let add = attacker
+        .sign_entry(
+            vid,
+            attacker_user,
+            Some((0, team_entry_hash(&genesis))),
+            now,
+            TeamLogOp::AddMember {
+                member: bob_keys.clone(),
+                role: VaultRole::Editor,
+            },
+        )
+        .unwrap();
+    let fake_key = cc_vault_core::UnlockedVault::new_team(vid).unwrap();
+    let envelope = fake_key.seal_for_member(&bob_keys).unwrap();
+    assert!(server.forge_team(vid, vec![genesis, add], bob_keys, envelope));
+
+    let _ = bob.refresh_teams().await;
+    let t = team_of(&bob, &tid).await;
+    assert!(
+        t.as_ref().is_none_or(|t| !t.open),
+        "a team the server made up must not open: {t:?}"
+    );
+    alice.shutdown().await.unwrap();
+    bob.shutdown().await.unwrap();
+}
