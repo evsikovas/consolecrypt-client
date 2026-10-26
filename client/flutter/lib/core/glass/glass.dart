@@ -28,6 +28,7 @@ export 'package:consolecrypt/core/glass/glass_select.dart';
 export 'package:consolecrypt/core/glass/glass_sidebar.dart';
 export 'package:consolecrypt/core/glass/glass_strings.dart';
 export 'package:consolecrypt/core/glass/glass_surface.dart';
+export 'package:consolecrypt/core/glass/glass_tab_drag.dart';
 export 'package:consolecrypt/core/glass/glass_tab_strip.dart';
 export 'package:consolecrypt/core/glass/glass_toast.dart';
 export 'package:consolecrypt/core/glass/glass_toolbar.dart';

@@ -453,4 +453,44 @@ void main() {
       expect(tester.takeException(), isNull);
     }, variant: _desktop);
   });
+
+  List<String> order(ProviderContainer c) => [for (final t in c.read(terminalTabsProvider).tabs) t.target.label];
+
+  Future<void> dragOnto(WidgetTester tester, Finder from, Finder to) async {
+    final gesture = await tester.startGesture(tester.getCenter(from));
+    await tester.pump();
+    await gesture.moveBy(const Offset(8, 8));
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(to));
+    await tester.pump();
+    await gesture.up();
+    await settle(tester);
+  }
+
+  testWidgets('tabs are reordered by dragging in the strip; the active tab stays active', (tester) async {
+    final (_, c) = await _terminal(tester);
+    expect(order(c), ['raspberry-pi', 'prod-web-1']);
+    final active = c.read(terminalTabsProvider).active;
+    await dragOnto(tester, _row(1, 'prod-web-1'), _row(0, 'raspberry-pi'));
+    expect(order(c), ['prod-web-1', 'raspberry-pi']);
+    expect(identical(c.read(terminalTabsProvider).active, active), isTrue);
+    expect(tester.takeException(), isNull);
+  }, variant: _desktop);
+
+  testWidgets('the tab column reorders by dragging and with Alt+arrows', (tester) async {
+    final (_, c) = await _terminal(tester, placement: TerminalTabPlacement.left);
+    await dragOnto(tester, _row(0, 'raspberry-pi'), _row(1, 'prod-web-1'));
+    expect(order(c), ['prod-web-1', 'raspberry-pi']);
+    // Keyboard: focus the row (as Tab / arrows would) and move it up.
+    tester
+        .widget<FocusableActionDetector>(
+          find.descendant(of: _row(1, 'raspberry-pi'), matching: find.byType(FocusableActionDetector)).first,
+        )
+        .focusNode!
+        .requestFocus();
+    await settle(tester);
+    await _keys(tester, [LogicalKeyboardKey.alt], LogicalKeyboardKey.arrowUp);
+    expect(order(c), ['raspberry-pi', 'prod-web-1']);
+    expect(tester.takeException(), isNull);
+  }, variant: _desktop);
 }

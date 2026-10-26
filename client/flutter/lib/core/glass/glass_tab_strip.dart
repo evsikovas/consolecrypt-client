@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/glass/glass_interaction.dart';
 import 'package:consolecrypt/core/glass/glass_scope.dart';
 import 'package:consolecrypt/core/glass/glass_strings.dart';
 import 'package:consolecrypt/core/glass/glass_surface.dart';
+import 'package:consolecrypt/core/glass/glass_tab_drag.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -68,9 +69,7 @@ final class GlassTab {
 /// 28-high capsules 120–220 wide; the active tab is a `surface.content`
 /// thumb. Overflow shows scroll arrows and 16 px edge fades; "+" is a
 /// 28 px glass circle.
-///
-/// TODO(client): drag-to-reorder with `spring.snappy` — needs the terminal
-/// tabs controller API; next: add `onReorder` in phase 2 with the screen.
+/// With [onReorder] a tab is dragged onto another to move it (desktop).
 class GlassTabStrip extends StatelessWidget {
   const GlassTabStrip({
     required this.tabs,
@@ -81,6 +80,7 @@ class GlassTabStrip extends StatelessWidget {
     this.onAdd,
     this.trailing,
     this.onContextMenu,
+    this.onReorder,
   });
 
   final List<GlassTab> tabs;
@@ -91,6 +91,9 @@ class GlassTabStrip extends StatelessWidget {
   /// Secondary click / long press on a tab, with the global pointer position.
   final void Function(int index, Offset position)? onContextMenu;
   final VoidCallback? onAdd;
+
+  /// Moves the tab at `from` to `to` (drag and drop, desktop).
+  final void Function(int from, int to)? onReorder;
 
   /// Session toolbar group in the same row (SFTP, snippets, split, more).
   final Widget? trailing;
@@ -129,11 +132,16 @@ class GlassTabStrip extends StatelessWidget {
                                 onLongPressStart: onContextMenu == null
                                     ? null
                                     : (details) => onContextMenu!(i, details.globalPosition),
-                                child: _TabChip(
-                                  tab: tab,
-                                  active: i == activeIndex,
-                                  onSelect: () => onSelect(i),
-                                  onClose: onClose == null ? null : () => onClose!(i),
+                                child: GlassTabDrag(
+                                  index: i,
+                                  axis: Axis.horizontal,
+                                  onReorder: onReorder,
+                                  child: _TabChip(
+                                    tab: tab,
+                                    active: i == activeIndex,
+                                    onSelect: () => onSelect(i),
+                                    onClose: onClose == null ? null : () => onClose!(i),
+                                  ),
                                 ),
                               ),
                           ],

@@ -407,6 +407,16 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     await _service.close(tab.sessionId);
   }
 
+  /// Moves the tab at [from] to [to] (drag in the tab strip or column); the
+  /// active tab stays active.
+  void moveTab(int from, int to) {
+    final tabs = [...state.tabs];
+    if (from == to || from < 0 || to < 0 || from >= tabs.length || to >= tabs.length) return;
+    final active = tabs[state.activeIndex.clamp(0, tabs.length - 1)];
+    tabs.insert(to, tabs.removeAt(from));
+    state = state.copyWith(tabs: tabs, activeIndex: tabs.indexOf(active));
+  }
+
   void rename(TerminalTab tab, String? name) {
     final trimmed = name?.trim();
     tab.customTitle = trimmed == null || trimmed.isEmpty ? null : trimmed;
