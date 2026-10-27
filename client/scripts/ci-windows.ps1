@@ -132,9 +132,10 @@ try {
     Invoke-Checked flutter @('analyze')
     # The runner is also a desktop in use: with one test process per CPU the
     # heavier widget tests (vault creation, PDF layout, real file I/O) ran
-    # past the 1-minute limit. Fewer processes and a 3x limit; a real hang
-    # still fails.
-    $FlutterTestProcesses = [string][math]::Max(2, [math]::Floor([Environment]::ProcessorCount / 3))
+    # past the 1-minute limit. Fewer processes and a 3-minute widget test
+    # limit (test/flutter_test_config.dart); a real hang still fails.
+    $FlutterTestProcesses = [string][math]::Max(2, [math]::Floor([Environment]::ProcessorCount / 6))
+    $env:CC_WIDGET_TEST_TIMEOUT_SECONDS = '180'
     Invoke-Checked flutter @('test', "--concurrency=$FlutterTestProcesses", '--timeout=3x')
     # Reuse owned model downloads across failed attempts. Only a published
     # release cleans this checkout cache; SDK/toolchain caches stay separate.
