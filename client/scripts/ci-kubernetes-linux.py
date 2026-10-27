@@ -96,10 +96,19 @@ def load_module(name, path):
     return module
 
 
-def verified_download(name):
+def verified_download(name, attempts=3):
     url, digest = DOWNLOADS[name]
-    with urllib.request.urlopen(url, timeout=60) as response:
-        data = response.read(2 * 1024 * 1024 + 1)
+    # A transient network error on the runner failed a whole release build;
+    # retry the download, never the checksum.
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(url, timeout=60) as response:
+                data = response.read(2 * 1024 * 1024 + 1)
+            break
+        except OSError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(5 * (attempt + 1))
     if len(data) > 2 * 1024 * 1024 or hashlib.sha256(data).hexdigest() != digest:
         raise ValueError("Pinned controller manifest checksum mismatch")
     return data
