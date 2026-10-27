@@ -31,6 +31,14 @@ android {
         versionName = flutter.versionName
     }
 
+    // The APK is ARM64 only; plugins such as CameraX also ship 32-bit ARM and
+    // x86 libraries that verify-android-apk.py refuses.
+    packaging {
+        jniLibs {
+            excludes += listOf("lib/armeabi-v7a/**", "lib/x86/**", "lib/x86_64/**")
+        }
+    }
+
     buildTypes {
         release {
             // Preview APK only. Production distribution requires a private release key.

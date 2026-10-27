@@ -25,6 +25,11 @@ RUN curl --fail --location --proto '=https' --tlsv1.2 \
     && /tmp/rustup-init -y --no-modify-path --profile minimal --default-toolchain "$RUST_VERSION" \
     && rm /tmp/rustup-init /tmp/rustup-init.sha256
 
+# Cargokit builds every Rust plugin (cc_bridge, super_native_extensions,
+# irondash_engine_context) with `rustup run stable`, in parallel CMake targets.
+# Installing stable here keeps them from racing on rustup's download folder.
+RUN rustup toolchain install stable --profile minimal
+
 RUN git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git /opt/flutter \
     && test "$(git -C /opt/flutter rev-parse HEAD)" = "$FLUTTER_REVISION" \
     && flutter config --no-analytics --enable-linux-desktop \
