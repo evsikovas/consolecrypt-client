@@ -11,7 +11,7 @@ RDP_NOTICE_ASSET = 'assets/licenses/RDP-THIRD-PARTY-NOTICES.txt'
 
 
 def require(root, path, expected, forbidden=()):
-    text = (root / path).read_text()
+    text = (root / path).read_text(encoding='utf-8')
     if any(value not in text for value in expected) or any(value in text for value in forbidden):
         raise ValueError('Stable identity policy failed: ' + path)
 
@@ -29,7 +29,7 @@ def verify_notices(root):
 
 
 def verify(root):
-    pubspec = (root / 'client/flutter/pubspec.yaml').read_text()
+    pubspec = (root / 'client/flutter/pubspec.yaml').read_text(encoding='utf-8')
     matches = re.findall(r'^version: ((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\+([1-9][0-9]*)$', pubspec, re.M)
     if len(matches) != 1:
         raise ValueError('A production checkout requires one stable numeric version')
