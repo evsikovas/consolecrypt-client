@@ -393,11 +393,14 @@ void main() {
     );
     expect(service.discoveries, 0);
     await tester.tap(find.byKey(const ValueKey('kube-ai-proposal-review')));
-    // Discovery for the create review finishes on the real clock.
-    for (var i = 0; i < 50 && find.byType(KubeCreateDialog).evaluate().isEmpty; i++) {
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
-      await _settle(tester);
+    // The YAML worker answers on the real clock. Pump frames without moving
+    // the fake clock: settling would fire the parser's 1 s bound before a
+    // slow host (the Windows runner) has answered.
+    for (var i = 0; i < 100 && find.byType(KubeCreateDialog).evaluate().isEmpty; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump();
     }
+    await _settle(tester);
     expect(find.byType(KubeCreateDialog), findsOneWidget);
     final dialog = tester.widget<KubeCreateDialog>(find.byType(KubeCreateDialog));
     expect(dialog.namespace, 'team');
