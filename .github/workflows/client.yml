@@ -107,8 +107,10 @@ jobs:
       run:
         shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
     env:
-      CC_CARGO_TARGET_ROOT: C:\cc-target
-      CC_CI_TOOLS_DIR: C:\cc-tools
+      # D: has the room (C: about 30 GB); scripts read UTF-8 files.
+      CC_CARGO_TARGET_ROOT: D:\cc-target
+      CC_CI_TOOLS_DIR: D:\cc-tools
+      PYTHONUTF8: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

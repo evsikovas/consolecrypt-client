@@ -103,8 +103,8 @@ if ($env:GITHUB_RUN_NUMBER -and -not $NativeOnly) {
 # Exercise native RDP, PTY and Kubernetes before the optional model downloads.
 # Live server tests remain opt-in and use no runner credentials in this pass.
 $OriginalNativeTestTarget = $env:CARGO_TARGET_DIR
-# Cargo target folders are tens of GB: a cloud runner keeps them on its
-# large system drive (CC_CARGO_TARGET_ROOT) instead of the checkout drive.
+# Cargo target folders are tens of GB: a cloud runner keeps them on the
+# drive with room (CC_CARGO_TARGET_ROOT, set by the workflow).
 $CargoTargetRoot = if ($env:CC_CARGO_TARGET_ROOT) { $env:CC_CARGO_TARGET_ROOT } else { Join-Path $Repo 'target' }
 # Test binaries without debug info: their PDB files filled a cloud runner's
 # disk (LNK1201) and hit the PDB size limit (LNK1140).
