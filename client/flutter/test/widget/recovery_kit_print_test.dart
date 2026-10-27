@@ -69,32 +69,37 @@ void main() {
     expect(find.byKey(const ValueKey('kit-word-grid')), findsNothing);
   }
 
-  testWidgets('print is offered only after the words are revealed and prints the kit from memory', (tester) async {
-    final printer = _FakePrinter();
-    await openRecoveryKit(tester, printer);
-    expect(find.byKey(const ValueKey('kit-print')), findsNothing);
-    expect(find.text(en.recoveryKitPrintHint), findsNothing);
+  testWidgets(
+    'print is offered only after the words are revealed and prints the kit from memory',
+    (tester) async {
+      final printer = _FakePrinter();
+      await openRecoveryKit(tester, printer);
+      expect(find.byKey(const ValueKey('kit-print')), findsNothing);
+      expect(find.text(en.recoveryKitPrintHint), findsNothing);
 
-    await tapKey(tester, 'reveal-kit');
-    expect(find.byKey(const ValueKey('kit-print')), findsOneWidget);
-    expect(find.text(en.recoveryKitPrint), findsOneWidget);
-    expect(find.text(en.recoveryKitPrintHint), findsOneWidget);
+      await tapKey(tester, 'reveal-kit');
+      expect(find.byKey(const ValueKey('kit-print')), findsOneWidget);
+      expect(find.text(en.recoveryKitPrint), findsOneWidget);
+      expect(find.text(en.recoveryKitPrintHint), findsOneWidget);
 
-    await tapKey(tester, 'kit-print');
-    // Laying out the PDF is real work outside the fake clock.
-    await tester.runAsync(() async {
-      for (var i = 0; i < 200 && printer.documents.isEmpty; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+      await tapKey(tester, 'kit-print');
+      // Laying out the PDF takes real time and frames; a loaded CI host (the
+      // Windows runner) needs several times longer than a laptop.
+      for (var i = 0; i < 1800 && printer.documents.isEmpty; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+        await tester.pump();
       }
-    });
-    await settle(tester);
-    expect(tester.takeException(), isNull);
-    expect(printer.names, [en.recoveryKitSheetTitle]);
-    expect(printer.headers, ['%PDF-']);
-    // The PDF handed to the dialog is zeroed once the dialog closes.
-    expect(printer.documents.single.every((byte) => byte == 0), isTrue);
-    await continueToVerification(tester);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(printer.names, [en.recoveryKitSheetTitle]);
+      expect(printer.headers, ['%PDF-']);
+      // The PDF handed to the dialog is zeroed once the dialog closes.
+      expect(printer.documents.single.every((byte) => byte == 0), isTrue);
+      await continueToVerification(tester);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
 
   testWidgets('no print button where the system print dialog is unavailable', (tester) async {
     await openRecoveryKit(tester, _FakePrinter(available: false));

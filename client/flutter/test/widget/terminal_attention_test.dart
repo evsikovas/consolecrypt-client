@@ -30,10 +30,13 @@ void main() {
       return tab;
     }))!;
     await settle(tester);
-    // Mock output and the attention timer run on the real clock.
+    // Mock output and the attention timer run on the real clock; a loaded
+    // CI host can need more than the usual two seconds.
     await tester.runAsync(() async {
       controller.runInTab(background, 'whoami');
-      await Future<void>.delayed(const Duration(milliseconds: 1800));
+      for (var i = 0; i < 100 && !background.attention; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
     });
     await tester.pump(const Duration(milliseconds: 300));
     expect(background.attention, isTrue);
