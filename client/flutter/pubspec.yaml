@@ -99,9 +99,9 @@ flutter:
     - assets/kubernetes/
 
 # Gradle 9 builds of the native drag-and-drop plugins: Cargokit in the
-# published packages calls the removed Project.exec (third_party/README.md).
+# published packages calls the removed Project.exec (vendor/super_native_extensions/NOTICE.md).
 dependency_overrides:
   irondash_engine_context:
-    path: third_party/irondash_engine_context
+    path: vendor/irondash_engine_context
   super_native_extensions:
-    path: third_party/super_native_extensions
+    path: vendor/super_native_extensions

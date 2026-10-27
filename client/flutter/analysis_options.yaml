@@ -28,6 +28,9 @@ analyzer:
     # xterm upstream sources retain their own style; the local parser patch
     # is covered by first-party terminal regression tests.
     - vendor/xterm/**
+    # Published drag-and-drop plugins with Android build patches (NOTICE.md).
+    - vendor/irondash_engine_context/**
+    - vendor/super_native_extensions/**
     - android/**
     - linux/**
     - ios/**
