@@ -99,12 +99,16 @@ jobs:
 
   windows:
     needs: validate
-    runs-on: [self-hosted, Windows, X64, consolecrypt, client]
-    # A build from empty target folders (5 GB per cargo job) took 3 hours.
+    # GitHub-hosted since 0.9.12: the self-hosted desktop ran out of memory
+    # and shared it with the owner's applications. Every run starts empty.
+    runs-on: windows-2025
     timeout-minutes: 300
     defaults:
       run:
         shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
+    env:
+      CC_CARGO_TARGET_ROOT: C:\cc-target
+      CC_CI_TOOLS_DIR: C:\cc-tools
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -113,8 +117,6 @@ jobs:
       - name: Register this release workspace
         run: '& client/scripts/cleanup-ci-workspace.ps1 -ClaimWorkspace'
       - name: Check and package Windows
-        env:
-          CC_KUBE_WSL_LIVE: '1'
         run: |
           & client/scripts/ci-windows.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Windows build failed' }
@@ -132,12 +134,19 @@ jobs:
 
   linux:
     needs: validate
-    runs-on: cc-linux-k3s
+    # GitHub-hosted since 0.9.12: the home runner reached some CDNs
+    # (static.crates.io, GitHub downloads) at a few hundred KB/s.
+    runs-on: ubuntu-24.04
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Free disk space for the builder image, k3s and Rust
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          docker image prune --all --force > /dev/null
+          df -h /
       - name: Reserve build number
         run: python3 client/scripts/github-build-number.py linux
       - name: Kubernetes, Flux and Helm acceptance in an isolated cluster

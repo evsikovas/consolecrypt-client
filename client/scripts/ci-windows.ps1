@@ -103,10 +103,13 @@ if ($env:GITHUB_RUN_NUMBER -and -not $NativeOnly) {
 # Exercise native RDP, PTY and Kubernetes before the optional model downloads.
 # Live server tests remain opt-in and use no runner credentials in this pass.
 $OriginalNativeTestTarget = $env:CARGO_TARGET_DIR
+# Cargo target folders are tens of GB: a cloud runner keeps them on its
+# large system drive (CC_CARGO_TARGET_ROOT) instead of the checkout drive.
+$CargoTargetRoot = if ($env:CC_CARGO_TARGET_ROOT) { $env:CC_CARGO_TARGET_ROOT } else { Join-Path $Repo 'target' }
 try {
     # Tests and `cargo check` use separate target folders, so metadata-only
     # check artifacts never stand next to the rlibs the tests link against.
-    $env:CARGO_TARGET_DIR = Join-Path $Repo 'target\windows-native-tests'
+    $env:CARGO_TARGET_DIR = Join-Path $CargoTargetRoot 'windows-native-tests'
     $NativeArguments = @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-terminal-core', '-p', 'cc-k8s-core', '-p', 'cc-app-core', '--all-targets')
     if (-not $NativeOnly) { $NativeArguments += @('-p', 'cc-rdp-core') }
     # Build the test binaries first; one retry reuses every finished artifact
@@ -119,7 +122,7 @@ try {
     if ($env:CC_KUBE_WSL_LIVE -eq '1') { $NativeArguments += @('--', '--nocapture') }
     Invoke-Checked cargo $NativeArguments
     # Compile the production Flutter boundary, including Windows-only cfg paths.
-    $env:CARGO_TARGET_DIR = Join-Path $Repo 'target\windows-bridge-check'
+    $env:CARGO_TARGET_DIR = Join-Path $CargoTargetRoot 'windows-bridge-check'
     Invoke-Checked cargo @('check', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-bridge', '--all-targets')
 } finally { $env:CARGO_TARGET_DIR = $OriginalNativeTestTarget }
 if ($NativeOnly) {

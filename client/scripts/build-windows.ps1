@@ -63,7 +63,7 @@ try {
     $Mode = if ($Debug) { 'debug' } else { 'release' }
     # OpenSSL adds long source paths below Cargo's target directory. Keep it
     # out of Flutter's deeply nested build/windows/.../plugins directory.
-    $env:CONSOLECRYPT_CARGO_TARGET_DIR = Join-Path $Src 'target\windows-rust'
+    $env:CONSOLECRYPT_CARGO_TARGET_DIR = if ($env:CC_CARGO_TARGET_ROOT) { Join-Path $env:CC_CARGO_TARGET_ROOT 'windows-rust' } else { Join-Path $Src 'target\windows-rust' }
     $Out = Join-Path $Repo 'dist\windows'
     New-Item -ItemType Directory -Force -Path $Out | Out-Null
     $BuildVersion = & python (Join-Path $Repo 'client\scripts\bump-version.py') --root $Repo --source-root $Src
