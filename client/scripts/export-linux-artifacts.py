@@ -59,7 +59,7 @@ def export(source, destination):
             raise ValueError("inconsistent package manifest")
         native = manifest["native_sha256"]
         if not isinstance(native, dict) or set(native) != {
-            "consolecrypt", "lib/libapp.so", "lib/libflutter_linux_gtk.so", "lib/libcc_bridge.so",
+            "consolecrypt", "consolecrypt-cli", "lib/libapp.so", "lib/libflutter_linux_gtk.so", "lib/libcc_bridge.so",
         } or any(not isinstance(value, str) or re.fullmatch(r"[a-f0-9]{64}", value) is None for value in native.values()):
             raise ValueError("unexpected native hash manifest")
         names = (prefix + ".deb", prefix + ".rpm")

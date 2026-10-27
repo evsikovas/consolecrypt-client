@@ -134,7 +134,8 @@ if sys.argv[1] == 'run':
         'version': version, 'platform': 'linux-x64', 'deb_version': '0.2.5-' + build_number,
         'rpm_version': '0.2.5', 'rpm_release': build_number,
         'native_sha256': {name: hashlib.sha256(name.encode()).hexdigest() for name in (
-            'consolecrypt', 'lib/libapp.so', 'lib/libflutter_linux_gtk.so', 'lib/libcc_bridge.so',
+            'consolecrypt', 'consolecrypt-cli', 'lib/libapp.so', 'lib/libflutter_linux_gtk.so',
+            'lib/libcc_bridge.so',
         )},
         'packages': {name: {'bytes': len(contents), 'sha256': hashlib.sha256(contents).hexdigest()}
                      for name, contents in payloads.items()},
@@ -382,7 +383,8 @@ class LinuxCiRetentionTest(unittest.TestCase):
         self.assertEqual(metadata["rpm_version"], "0.2.5")
         self.assertEqual(metadata["rpm_release"], str(JOB))
         self.assertEqual(set(metadata["native_sha256"]), {
-            "consolecrypt", "lib/libapp.so", "lib/libflutter_linux_gtk.so", "lib/libcc_bridge.so",
+            "consolecrypt", "consolecrypt-cli", "lib/libapp.so", "lib/libflutter_linux_gtk.so",
+            "lib/libcc_bridge.so",
         })
         self.assertEqual(metadata["packages"], {
             name: {"bytes": len(contents), "sha256": hashlib.sha256(contents).hexdigest()}
