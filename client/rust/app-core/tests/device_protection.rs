@@ -123,6 +123,10 @@ async fn new_device_is_announced_restricted_and_keeps_trusted_devices_signed_in(
         c.list_devices().await.unwrap_err().code(),
         "reauth_required"
     );
+    // Close the storage threads before the process exits (Storage::close).
+    c.shutdown().await.unwrap();
+    b.shutdown().await.unwrap();
+    a.shutdown().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -146,4 +150,7 @@ async fn without_the_capability_the_list_keeps_the_old_shape() {
         .device_id
         .clone();
     b.revoke_device(a_id, None).await.unwrap();
+    // Close the storage threads before the process exits (Storage::close).
+    b.shutdown().await.unwrap();
+    a.shutdown().await.unwrap();
 }

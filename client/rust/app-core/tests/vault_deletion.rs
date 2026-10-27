@@ -50,4 +50,6 @@ async fn a_trusted_device_sees_and_cancels_a_scheduled_deletion() {
     app.lock().await.unwrap();
     assert!(app.vault_deletion_scheduled().await.unwrap().is_some());
     assert!(app.cancel_vault_deletion().await.is_err());
+    // Close the storage threads before the process exits (Storage::close).
+    app.shutdown().await.unwrap();
 }
