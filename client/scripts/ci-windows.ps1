@@ -130,7 +130,12 @@ Push-Location (Join-Path $Repo 'client\flutter')
 try {
     Invoke-Checked flutter @('pub', 'get')
     Invoke-Checked flutter @('analyze')
-    Invoke-Checked flutter @('test')
+    # The runner is also a desktop in use: with one test process per CPU the
+    # heavier widget tests (vault creation, PDF layout, real file I/O) ran
+    # past the 1-minute limit. Fewer processes and a 3x limit; a real hang
+    # still fails.
+    $FlutterTestProcesses = [string][math]::Max(2, [math]::Floor([Environment]::ProcessorCount / 3))
+    Invoke-Checked flutter @('test', "--concurrency=$FlutterTestProcesses", '--timeout=3x')
     # Reuse owned model downloads across failed attempts. Only a published
     # release cleans this checkout cache; SDK/toolchain caches stay separate.
     if ($env:GITHUB_ACTIONS -eq 'true') {

@@ -10,11 +10,15 @@ void main() {
   late Directory root;
   setUp(() => root = Directory.systemTemp.createTempSync('cc-cli-installer-'));
   tearDown(() {
-    for (final entity in root.listSync(recursive: true).whereType<Directory>()) {
-      Process.runSync('chmod', ['755', entity.path]);
+    if (!Platform.isWindows) {
+      for (final entity in root.listSync(recursive: true).whereType<Directory>()) {
+        Process.runSync('chmod', ['755', entity.path]);
+      }
     }
     root.deleteSync(recursive: true);
   });
+  // The Linux and macOS installers link files with POSIX paths and modes.
+  final posixOnly = Platform.isWindows ? 'POSIX links and modes; checked on macOS and Linux hosts' : null;
 
   File touch(String path) => File(path)
     ..createSync(recursive: true)
@@ -67,7 +71,7 @@ void main() {
       expect(state.bundled, isNull);
       expect(state.installed, isFalse);
     });
-  });
+  }, skip: posixOnly);
 
   group('macOS', () {
     late String bundled, systemBin;
@@ -114,7 +118,7 @@ void main() {
         throwsA(isA<CliInstallException>().having((e) => e.code, 'code', 'cancelled')),
       );
     });
-  });
+  }, skip: posixOnly);
 
   group('Windows', () {
     late String folder;

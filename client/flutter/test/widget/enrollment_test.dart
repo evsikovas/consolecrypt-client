@@ -55,10 +55,7 @@ SharingItem _ownedItem() => const SharingItem(
   epoch: 1,
   owned: true,
   trust: SharingTrust.verified,
-  memberRoles: [
-    SharingGrant(_target, SharingRole.reader),
-    SharingGrant(_editor, SharingRole.editor),
-  ],
+  memberRoles: [SharingGrant(_target, SharingRole.reader), SharingGrant(_editor, SharingRole.editor)],
 );
 
 EnrollmentGrant _grant({EnrollmentGrantCreate? from, bool revoked = false}) => EnrollmentGrant(
@@ -241,12 +238,18 @@ Future<void> _review(WidgetTester tester, String packet) async {
 
 Future<T> _io<T>(WidgetTester tester, Future<T> Function() work) async => (await tester.runAsync(work)) as T;
 
-Future<void> _tapFile(WidgetTester tester, String key) async {
+/// Taps a control that reads or writes a real file, then gives the file
+/// system real time: a loaded CI host can need more than one short wait.
+Future<void> _tapFile(WidgetTester tester, String key, {bool Function()? done}) async {
   await tester.runAsync(() async {
     await tester.tap(find.byKey(ValueKey(key)));
     await Future<void>.delayed(const Duration(milliseconds: 100));
   });
   await settle(tester);
+  for (var i = 0; i < 50 && done != null && !done(); i++) {
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await settle(tester);
+  }
 }
 
 Future<void> _anchor(WidgetTester tester, String id) async {
@@ -539,7 +542,7 @@ void main() {
     expect(enrollment.reviews, 1);
     await tapKey(tester, 'enrollment-package-copy');
     expect(clipboard, packet);
-    await _tapFile(tester, 'enrollment-package-save');
+    await _tapFile(tester, 'enrollment-package-save', done: () => files.finished > 0);
     expect(await _io(tester, () => File(files.savePath!).readAsString()), packet);
     expect(files.finished, 1);
     expect(enrollment.preparations + enrollment.endorsements + enrollment.submissions, 0);
@@ -557,8 +560,9 @@ void main() {
     await _pump(tester, enrollment, files: files);
     showEnrollmentPairing(_context(tester), EnrollmentPairingFlow.endorse).ignore();
     await settle(tester);
-    await _tapFile(tester, 'enrollment-open');
-    expect(tester.widget<TextField>(find.byKey(const ValueKey('enrollment-packet'))).controller!.text, packet);
+    String packetText() => tester.widget<TextField>(find.byKey(const ValueKey('enrollment-packet'))).controller!.text;
+    await _tapFile(tester, 'enrollment-open', done: () => packetText().isNotEmpty);
+    expect(packetText(), packet);
     expect(enrollment.reviews, 0);
     expect(isEnabled(tester, 'enrollment-continue'), false);
     await tapKey(tester, 'enrollment-review');
