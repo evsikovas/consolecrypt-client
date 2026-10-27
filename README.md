@@ -147,11 +147,11 @@ Tests that need a native library, a system keyring, or a real SSH/RDP server hav
 additional prerequisites. Do not run Flutter tests alongside a native build
 in the same working directory.
 
-## Release 0.9.10
+## Release 0.9.11
 
-Split terminal panes, a tab column at the left edge and tabs reordered by dragging. The `consolecrypt-cli` command-line client ships with the desktop installers and is installed from Settings → Command line. RDP hosts can be shared with verified colleagues; CSV import and the table designer reach SQLite, Cassandra/ScyllaDB, ClickHouse, MongoDB and Redis; Cassandra/ScyllaDB gets query tracing and every cluster node. Linux copies update themselves from a signed feed; note reminders arrive with the app closed; a custom GGUF model for local AI; SFTP files drag into Finder and Explorer. Team keys are pinned and vouched for by an admin (sync server 0.2.4, protocol 1.12–1.13), and the security review of 26.10.2026 is fixed. See the [0.9.10 notes](docs/public/RELEASE_0_9_10.md).
+Split terminal panes, a tab column at the left edge and tabs reordered by dragging. The `consolecrypt-cli` command-line client ships with the desktop installers and is installed from Settings → Command line. RDP hosts can be shared with verified colleagues; CSV import and the table designer reach SQLite, Cassandra/ScyllaDB, ClickHouse, MongoDB and Redis; Cassandra/ScyllaDB gets query tracing and every cluster node. Linux copies update themselves from a signed feed; note reminders arrive with the app closed; a custom GGUF model for local AI; SFTP files drag into Finder and Explorer. Team keys are pinned and vouched for by an admin (sync server 0.2.4, protocol 1.12–1.13), and the security review of 26.10.2026 is fixed. See the [0.9.11 notes](docs/public/RELEASE_0_9_11.md).
 
-[Release 0.9.10](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.9.10) provides six packages for macOS, Windows, Linux and Android; iOS is deferred. Verify downloads against [the SHA-256 manifest](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.9.10/SHA256SUMS-0.9.10.txt).
+[Release 0.9.11](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.9.11) provides six packages for macOS, Windows, Linux and Android; iOS is deferred. Verify downloads against [the SHA-256 manifest](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.9.11/SHA256SUMS-0.9.11.txt).
 
 ## Release 0.9.2
 
