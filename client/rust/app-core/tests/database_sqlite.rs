@@ -102,4 +102,6 @@ async fn sqlite_connections_are_device_local_and_open_files_read_only() {
         .db_sqlite_create_file(fresh.to_string_lossy().into_owned())
         .await
         .is_err());
+    // Close the storage threads before the process exits (Storage::close).
+    app.shutdown().await.unwrap();
 }

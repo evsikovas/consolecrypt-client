@@ -111,6 +111,8 @@ async fn ldap_profile_vault_reauth_and_disable() {
     app.close_profile().await.unwrap();
     app.remove_profile(pid).await.unwrap();
     assert!(app.list_profiles().await.unwrap().is_empty());
+    // Close the storage threads before the process exits (Storage::close).
+    app.shutdown().await.unwrap();
 }
 
 /// Plays the system browser: follows `/v1/auth/oidc/start` to the app's
@@ -227,6 +229,8 @@ async fn oidc_new_profile_via_loopback_and_cancel() {
         .unwrap_err();
     assert_eq!(browser.await.unwrap(), 200);
     assert_eq!(e.code(), "account_disabled");
+    // Close the storage threads before the process exits (Storage::close).
+    app.shutdown().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -254,6 +258,8 @@ async fn oidc_mobile_callback_checks_state() {
         .unwrap_err();
     assert_eq!(e.reason(), Some("enterprise_callback_invalid"));
     assert!(app.list_profiles().await.unwrap().is_empty());
+    // Close the storage threads before the process exits (Storage::close).
+    app.shutdown().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -284,6 +290,8 @@ async fn standard_server_is_unchanged() {
         Some("enterprise_auth_required")
     );
     assert!(app.list_profiles().await.unwrap().is_empty());
+    // Close the storage threads before the process exits (Storage::close).
+    app.shutdown().await.unwrap();
 }
 
 /// Live stands, env-gated (never started or removed by the tests):

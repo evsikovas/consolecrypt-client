@@ -89,6 +89,8 @@ async fn a_local_profile_moves_cassandra_into_the_vault() {
         .await
         .unwrap_err();
     assert!(format!("{error:?}").contains("device_file"), "{error:?}");
+    // Close the storage threads before the process exits (Storage::close).
+    app.shutdown().await.unwrap();
 }
 
 #[tokio::test]
@@ -159,4 +161,6 @@ async fn a_synced_account_waits_for_its_devices() {
     assert!(current.db_device_only_ids().await.unwrap().is_empty());
     // It reaches the server like any vault object.
     current.sync_now().await.unwrap();
+    current.shutdown().await.unwrap();
+    app.shutdown().await.unwrap();
 }
