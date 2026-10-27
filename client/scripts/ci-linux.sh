@@ -47,11 +47,17 @@ trap finish EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 python3 client/scripts/stage-linux-source.py --output "$task_dir/source"
+# Downloaded crates persist in two Docker volumes of this runner's cache: some
+# CDNs (static.crates.io) reach the runner at a few hundred KB/s, and a fresh
+# download of every crate took longer than the native test's build budget.
+# Cargo still checks each crate against Cargo.lock.
 docker build --platform linux/amd64 -t consolecrypt-linux-builder:3.47.5-rust1.98 client/ci/linux
 docker run --rm --name "$container_name" ${LABELS[@]+"${LABELS[@]}"} --platform linux/amd64 \
   --env "CC_BUILD_NUMBER=${CC_BUILD_NUMBER:-${CI_JOB_ID:?Set CC_BUILD_NUMBER for a native CI build}}" \
   --env "CC_OUTPUT_UID=$(id -u)" --env "CC_OUTPUT_GID=$(id -g)" \
   --mount "type=bind,source=$task_dir/source,target=/work" \
+  --mount "type=volume,source=consolecrypt-linux-cargo-registry,target=/opt/cargo/registry" \
+  --mount "type=volume,source=consolecrypt-linux-cargo-git,target=/opt/cargo/git" \
   consolecrypt-linux-builder:3.47.5-rust1.98 \
-  bash -c 'trap '"'"'chown -R "$CC_OUTPUT_UID:$CC_OUTPUT_GID" /work'"'"' EXIT; python3 client/scripts/verify-release-identity.py && python3 -m unittest discover -s client/scripts -p test_release_identity.py -v && python3 -m unittest discover -s client/scripts -p test_linux_packaging.py -v && python3 -m unittest discover -s client/scripts/tests -p test_linux_native.py -v && python3 -m unittest discover -s client/scripts/tests -p test_linux_ci.py -v && CC_LINUX_DISPOSABLE_BUILDER=1 python3 client/scripts/test-linux-native.py --compiler-diagnostics --receipts /work/dist/linux/acceptance && bash client/scripts/build-linux.sh'
+  bash -c 'trap '"'"'chown -R "$CC_OUTPUT_UID:$CC_OUTPUT_GID" /work'"'"' EXIT; python3 client/scripts/verify-release-identity.py && python3 -m unittest discover -s client/scripts -p test_release_identity.py -v && python3 -m unittest discover -s client/scripts -p test_linux_packaging.py -v && python3 -m unittest discover -s client/scripts/tests -p test_linux_native.py -v && python3 -m unittest discover -s client/scripts/tests -p test_linux_ci.py -v && CC_LINUX_DISPOSABLE_BUILDER=1 python3 client/scripts/test-linux-native.py --compiler-diagnostics --timeout 5400 --receipts /work/dist/linux/acceptance && bash client/scripts/build-linux.sh'
 python3 client/scripts/export-linux-artifacts.py "$task_dir/source" "$repo_dir"
