@@ -85,9 +85,12 @@ Invoke-Checked python @('-m', 'unittest', 'discover', '-s', (Join-Path $Repo 'cl
 # rustc and the MSVC linker need ~3 GB each for the larger test binaries;
 # one job per logical CPU exhausted the commit limit (page file) on the
 # 24-thread runner. Bound the parallelism by memory unless set explicitly.
+# Since 0.9.3 the app-core tests link against 100+ MB rlibs (scylla,
+# kube); at 3 GB per job rustc could not map some of them ("required to be
+# available in rlib format"), so each job now gets 5 GB.
 if (-not $env:CARGO_BUILD_JOBS) {
     $memoryGb = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB
-    $env:CARGO_BUILD_JOBS = [string][math]::Max(2, [math]::Min([Environment]::ProcessorCount, [math]::Floor($memoryGb / 3)))
+    $env:CARGO_BUILD_JOBS = [string][math]::Max(2, [math]::Min([Environment]::ProcessorCount, [math]::Floor($memoryGb / 5)))
     Write-Host "Cargo jobs: $env:CARGO_BUILD_JOBS"
 }
 # Resolve Python/toolchain paths before reserving a GitHub build number.
@@ -101,12 +104,18 @@ if ($env:GITHUB_RUN_NUMBER -and -not $NativeOnly) {
 # Live server tests remain opt-in and use no runner credentials in this pass.
 $OriginalNativeTestTarget = $env:CARGO_TARGET_DIR
 try {
-    # Tests and `cargo check` use separate target folders: metadata-only
-    # check artifacts in the test folder made rustc miss dependency rlibs
-    # when linking test binaries. target\windows-rdp-tests is the old mixed one.
+    # Tests and `cargo check` use separate target folders, so metadata-only
+    # check artifacts never stand next to the rlibs the tests link against.
     $env:CARGO_TARGET_DIR = Join-Path $Repo 'target\windows-native-tests'
     $NativeArguments = @('test', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-terminal-core', '-p', 'cc-k8s-core', '-p', 'cc-app-core', '--all-targets')
     if (-not $NativeOnly) { $NativeArguments += @('-p', 'cc-rdp-core') }
+    # Build the test binaries first; one retry reuses every finished artifact
+    # if memory pressure still made rustc miss an rlib.
+    try { Invoke-Checked cargo ($NativeArguments + @('--no-run')) }
+    catch {
+        Write-Host 'Native test build failed once; retrying with the finished artifacts'
+        Invoke-Checked cargo ($NativeArguments + @('--no-run'))
+    }
     if ($env:CC_KUBE_WSL_LIVE -eq '1') { $NativeArguments += @('--', '--nocapture') }
     Invoke-Checked cargo $NativeArguments
     # Compile the production Flutter boundary, including Windows-only cfg paths.
