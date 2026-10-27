@@ -100,7 +100,8 @@ jobs:
   windows:
     needs: validate
     runs-on: [self-hosted, Windows, X64, consolecrypt, client]
-    timeout-minutes: 180
+    # A build from empty target folders (5 GB per cargo job) took 3 hours.
+    timeout-minutes: 300
     defaults:
       run:
         shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
