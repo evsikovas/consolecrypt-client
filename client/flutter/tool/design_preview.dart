@@ -306,7 +306,8 @@ void main() {
                 if (kube != null) kubeServiceProvider.overrideWithValue(kube),
                 if (screen == 'kube-shell') terminalServiceProvider.overrideWithValue(GuideKubeTerminal()),
                 if (screen.startsWith('db-csv-')) fileDialogServiceProvider.overrideWithValue(GuideCsvFiles()),
-                if (screen == 'settings-cli') cliInstallerProvider.overrideWithValue(GuideCliInstaller()),
+                // Every Settings capture shows the installer build with a bundled CLI.
+                cliInstallerProvider.overrideWithValue(GuideCliInstaller()),
                 if (localAi != null) ...[
                   deviceLocalAiAvailableProvider.overrideWithValue(true),
                   localAiRuntimeProvider.overrideWithValue(localAi),
