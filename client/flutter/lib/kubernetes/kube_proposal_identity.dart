@@ -44,13 +44,15 @@ final class KubeProposalParser {
       }
       cancel();
     });
-    _timer = Timer(const Duration(seconds: 1), cancel);
     try {
       final worker = await Isolate.spawn(_parse, (port.sendPort, text), onError: port.sendPort, onExit: port.sendPort);
       if (!identical(_result, result)) {
         worker.kill(priority: Isolate.immediate);
       } else {
         _worker = worker;
+        // The bound is on parsing, not on starting the worker: a loaded
+        // computer can take longer than a second just to spawn an isolate.
+        _timer = Timer(const Duration(seconds: 1), cancel);
       }
     } catch (_) {
       if (identical(_result, result)) cancel();
