@@ -137,7 +137,7 @@ void main() {
           .listSync(recursive: true)
           .whereType<File>()
           .where((f) => f.path.endsWith('.dart') && f.readAsStringSync().contains('package:printing/'))
-          .map((f) => f.path)
+          .map((f) => f.path.replaceAll(r'\', '/'))
           .toList();
       expect(users, ['lib/vault/recovery_kit_print.dart']);
 
