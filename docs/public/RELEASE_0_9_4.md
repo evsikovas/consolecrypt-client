@@ -1,6 +1,9 @@
-# ConsoleCrypt 0.9.3
+# ConsoleCrypt 0.9.4
 
 ## Русский
+
+Версия 0.9.3 не публиковалась: её сборки для Linux, Android и Windows не прошли
+проверку в CI. Всё, что в неё вошло, выходит в 0.9.4 вместе с исправлениями сборки.
 
 Выпуск доступен для macOS, Windows, Linux и Android. iOS проверяется на Simulator, но её выпуск пока отложен.
 Исправления команд работают со всеми серверами синхронизации с командами (0.2.1 и новее);
@@ -83,7 +86,7 @@
 - **Обновления на Linux.** Копия из DEB или RPM проверяет обновления при запуске и
   устанавливает их из приложения: отдельная подписанная лента Linux, проверка SHA-256,
   пароль администратора через `pkexec` и установка через apt, dnf или zypper, затем
-  «Перезапустить». Саму версию 0.9.3 на Linux установите вручную.
+  «Перезапустить». Саму версию 0.9.4 на Linux установите вручную.
 - **Команды.** Выносить хост из команды может только её владелец. Копирование и перенос
   хоста больше не плодят копии ключа: такой же ключ в целевом хранилище используется
   повторно, а командные учётные данные отмечены в списке меткой команды. В боковой панели
@@ -96,7 +99,7 @@
   платформе). Распознавание идёт на устройстве открытым кодом, кадры никуда не уходят.
 - **Общий доступ к RDP-хостам.** RDP-хостом можно поделиться с проверенным коллегой:
   адрес, порт, пользователь, домен и метки; заметки и сохранённый пароль — только по
-  отметке. Сервер и протокол не меняются; клиенты до 0.9.3 такую карточку не показывают.
+  отметке. Сервер и протокол не меняются; клиенты до 0.9.4 такую карточку не показывают.
 - **Импорт CSV в ClickHouse, MongoDB и Redis.** ClickHouse — пакетами `INSERT` (и
   «Создать таблицу из CSV…» с MergeTree); MongoDB — в коллекцию, с новыми полями по
   заголовкам, пропуском и обновлением по `_id`; Redis — в базу или папку ключей, строками
@@ -143,7 +146,7 @@
   смене ключа и перед добавлением участника. Новый участник открывает команду, только
   если ключ совпадает с подписанным отпечатком, — подменить ключ сервер не может даже
   при самом первом открытии. Для команд, созданных раньше, отпечаток публикует первый
-  администратор, открывший команду в 0.9.3.
+  администратор, открывший команду в 0.9.4.
 - **Общий доступ: свои устройства.** Устройство, которое сервер выдаёт за ваше, больше
   не становится получателем секрета, подключения Kubernetes или базы данных: свои
   устройства получают общий доступ только через подтверждённое подключение. Поиск по
@@ -174,6 +177,9 @@
   вместо неподдерживаемого `rustls-pemfile`.
 
 ## English
+
+Version 0.9.3 was never published: its Linux, Android and Windows builds failed the
+CI checks. Everything it contained ships in 0.9.4 together with the build fixes.
 
 This release targets macOS, Windows, Linux and Android. iOS is built and tested on the Simulator, but its release is still deferred.
 The team fixes work with every sync server that has teams (0.2.1 and later); server 0.2.4
@@ -252,7 +258,7 @@ admins and sends invitations only to verified addresses.
 - **Updates on Linux.** A DEB or RPM copy checks for updates at startup and installs them
   from the app: a separate signed Linux feed, SHA-256 verification, the administrator
   password through `pkexec` and installation with apt, dnf or zypper, then Restart.
-  Install 0.9.3 itself on Linux manually.
+  Install 0.9.4 itself on Linux manually.
 - **Teams.** Only the owner can take a host out of a team. Copying and moving hosts no longer
   multiplies keys: the same key already in the target vault is reused, and team credentials
   carry the team label in the list. The sidebar shows Docker with the same icon as on phones.
@@ -264,7 +270,7 @@ admins and sends invitations only to verified addresses.
   source code; frames go nowhere.
 - **Sharing RDP hosts.** An RDP host can be shared with a verified colleague: address,
   port, user, domain and tags; notes and the saved password only when ticked. Neither the
-  server nor the protocol changes; clients before 0.9.3 do not show such a card.
+  server nor the protocol changes; clients before 0.9.4 do not show such a card.
 - **CSV import into ClickHouse, MongoDB and Redis.** ClickHouse in `INSERT` batches (and
   “Create table from CSV…” with MergeTree); MongoDB into a collection, with new fields from
   the headers, skip and update by `_id`; Redis into a database or key folder, as strings
@@ -308,7 +314,7 @@ trusted yet waits 7 days; a trusted device shows a warning under Sync and can ke
   an admin signs the team key's fingerprint when the team is created, when the key is
   rotated and before a member is added. A new member opens the team only if the key
   matches the signed fingerprint — the server cannot swap it, not even on the very
-  first open. For teams created earlier, the first admin who opens the team in 0.9.3
+  first open. For teams created earlier, the first admin who opens the team in 0.9.4
   publishes the fingerprint.
 - **Sharing: your own devices.** A device the server presents as yours no longer
   becomes a recipient of a secret, a Kubernetes or database connection: your own devices
