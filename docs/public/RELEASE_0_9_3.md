@@ -170,7 +170,8 @@
 - **Зависимости.** `crypto-bigint` 0.7.10 (RUSTSEC-2026-0387, неравномерное по
   времени выполнение операций, которые должны быть постоянными), `tokio` 1.54.1
   (RUSTSEC-2026-0386) и плановые обновления `hyper`, `uuid`, `tokio-rustls`, `xml` и
-  других библиотек.
+  других библиотек. PEM-сертификаты и ключи баз данных читаются через `rustls-pki-types`
+  вместо неподдерживаемого `rustls-pemfile`.
 
 ## English
 
@@ -332,4 +333,6 @@ trusted yet waits 7 days; a trusted device shows a warning under Sync and can ke
   user read access.
 - **Dependencies.** `crypto-bigint` 0.7.10 (RUSTSEC-2026-0387, timing variability in
   operations meant to be constant-time), `tokio` 1.54.1 (RUSTSEC-2026-0386) and routine
-  updates of `hyper`, `uuid`, `tokio-rustls`, `xml` and other libraries.
+  updates of `hyper`, `uuid`, `tokio-rustls`, `xml` and other libraries. Database PEM
+  certificates and keys are read with `rustls-pki-types` instead of the unmaintained
+  `rustls-pemfile`.
