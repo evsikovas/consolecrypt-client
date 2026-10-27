@@ -64,11 +64,11 @@ consolecrypt
 
 ## Обновление и удаление
 
-С версии 0.9.12 копия из DEB или RPM обновляется из приложения: **Настройки →
+С версии 0.9.13 копия из DEB или RPM обновляется из приложения: **Настройки →
 Обновления → Скачать и установить** проверяет пакет по отдельной подписанной ленте
 Linux и SHA-256, спрашивает пароль администратора (`pkexec`) и ставит его через
 `apt-get`, `dnf`, `zypper` или `rpm`; новая версия открывается кнопкой
-«Перезапустить» ([UPDATES.md](UPDATES.md)). Саму 0.9.12, а также копию без
+«Перезапустить» ([UPDATES.md](UPDATES.md)). Саму 0.9.13, а также копию без
 `pkexec` обновляйте вручную: скачайте новый пакет и повторите команду
 `apt install` или `dnf install`. Устанавливаемая версия содержит номер сборки,
 поэтому менеджер пакетов различает повторные сборки одного выпуска.
@@ -187,9 +187,9 @@ Then run `consolecrypt` as your regular desktop user, without `sudo`.
 
 An existing unlocked default persistent Secret Service keyring and session
 D-Bus are required; GNOME Keyring is a suitable provider. The app does not create
-or unlock it and has no plaintext-key fallback. From 0.9.12 a DEB/RPM copy updates
+or unlock it and has no plaintext-key fallback. From 0.9.13 a DEB/RPM copy updates
 from Settings → Updates (a separate signed Linux feed, `pkexec` and apt, dnf or
-zypper; see UPDATES.md); install 0.9.12 itself, or update without `pkexec`, with the
+zypper; see UPDATES.md); install 0.9.13 itself, or update without `pkexec`, with the
 package manager. Keep your profiles, encrypted backups and keyring.
 
 The 0.5.6 CI passed two native Rust bridge tests, one UI vault restart/unlock test

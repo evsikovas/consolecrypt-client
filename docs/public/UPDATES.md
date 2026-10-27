@@ -1,6 +1,6 @@
 # Обновления ConsoleCrypt
 
-С версии 0.1.12 на Windows, macOS и Android (на Linux — с 0.9.12, см. ниже) в настройках есть раздел **Обновления**:
+С версии 0.1.12 на Windows, macOS и Android (на Linux — с 0.9.13, см. ниже) в настройках есть раздел **Обновления**:
 
 - **Проверять обновления при запуске** — сохранённый на этом устройстве
   переключатель. Когда он выключен, запросов при запуске нет.
@@ -55,7 +55,7 @@ macOS и sandbox остаются включены, хранилище и свя
 
 ## Linux и iOS
 
-С версии 0.9.12 копия, установленная из DEB или RPM (пакет `consolecrypt` в
+С версии 0.9.13 копия, установленная из DEB или RPM (пакет `consolecrypt` в
 `/opt/consolecrypt`), обновляется так же, как на других компьютерах: проверка
 при запуске, «Проверить обновления» и «Скачать и установить». У Linux своя лента
 `https://updates.consolecrypt.dev/linux-stable.json`, подписанная отдельным
@@ -69,7 +69,7 @@ macOS и sandbox остаются включены, хранилище и свя
 вручную со [страницы загрузок](https://consolecrypt.dev/download?lang=ru), как
 описано в [инструкции Linux](BUILD_LINUX.md).
 
-Версию 0.9.12 на Linux один раз установите вручную: более ранние версии ленту
+Версию 0.9.13 на Linux один раз установите вручную: более ранние версии ленту
 Linux не читают. Копия, запущенная не из пакета (сборка из исходников,
 скопированная папка), по-прежнему показывает только страницу загрузок.
 
@@ -111,7 +111,7 @@ replacement app.
 Do not delete your vault or Keychain.
 
 
-From 0.9.12, a copy installed from the DEB or RPM (the `consolecrypt` package
+From 0.9.13, a copy installed from the DEB or RPM (the `consolecrypt` package
 in `/opt/consolecrypt`) updates like the other desktops: startup checks, Check
 for updates and Download and install. Linux has its own feed,
 `https://updates.consolecrypt.dev/linux-stable.json`, signed with a separate
@@ -124,7 +124,7 @@ the password dialog cancels and keeps the verified package for a retry. Without
 `pkexec`, or when the package manager fails, install the package manually from
 the [download page](https://consolecrypt.dev/download?lang=en).
 
-Install 0.9.12 on Linux manually once: earlier versions do not read the Linux
+Install 0.9.13 on Linux manually once: earlier versions do not read the Linux
 feed. A copy not run from the package (a source build or a copied folder) still
 shows only the download page. Keep your profiles and system keyring. On iOS, install a new Simulator archive
 manually; an actual iPhone still requires separate signing.

@@ -1,7 +1,7 @@
 # Командная строка: consolecrypt-cli
 
 `consolecrypt-cli` — консольный клиент ConsoleCrypt. Он входит в установщики для
-macOS, Windows и Linux (с версии 0.9.12) и работает с теми же профилями, что и
+macOS, Windows и Linux (с версии 0.9.13) и работает с теми же профилями, что и
 приложение: хранилище, ключи и учётные данные не копируются.
 
 ## Установка
@@ -58,7 +58,7 @@ consolecrypt-cli ai search | ask | ...        # ИИ: поиск, вопросы
 
 ## English
 
-`consolecrypt-cli` is the ConsoleCrypt command-line client. From 0.9.12 it ships
+`consolecrypt-cli` is the ConsoleCrypt command-line client. From 0.9.13 it ships
 with the macOS, Windows and Linux installers and works with the same profiles as
 the app; the vault, keys and credentials are not copied.
 

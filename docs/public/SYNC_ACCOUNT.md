@@ -45,7 +45,7 @@
 другое устройство аккаунта сообщило иной ключ, в **Устройствах** появится
 предупреждение с предложением отозвать его.
 
-### Запрос на удаление хранилища (0.9.12, протокол 1.13)
+### Запрос на удаление хранилища (0.9.13, протокол 1.13)
 
 Сервер 0.2.4 разрешает ещё не доверенному устройству владельца, на котором
 хранилище разблокировано, запросить удаление хранилища. Хранилище при этом не
@@ -56,7 +56,7 @@
 отмените удаление и смените пароль аккаунта. Удаление с доверенного устройства
 по-прежнему происходит сразу.
 
-### Удалённое хранилище и проверка данных (0.9.12)
+### Удалённое хранилище и проверка данных (0.9.13)
 
 Если хранилище удалено на сервере, синхронизация останавливается с понятной
 причиной («хранилище не найдено на сервере») и не повторяет попытки бесконечно.
@@ -164,7 +164,7 @@ vault key is marked "not confirmed" until you enter the vault passphrase once
 device of the account reports a different key, **Devices** warns and offers to
 revoke it.
 
-### A request to delete the vault (0.9.12, protocol 1.13)
+### A request to delete the vault (0.9.13, protocol 1.13)
 
 Server 0.2.4 lets a device of the owner that is not trusted yet, with the
 vault unlocked, ask to delete the vault. It is not deleted at once: for 7
@@ -173,7 +173,7 @@ shows “This vault will be deleted on …” under Sync with **Keep the vault**
 which cancels the deletion. If you did not ask for it, keep the vault and
 change your account password. A trusted device still deletes at once.
 
-### A deleted vault and data checks (0.9.12)
+### A deleted vault and data checks (0.9.13)
 
 When the vault was deleted on the server, sync stops with a clear reason (“vault
 not found on server”) instead of retrying forever. An object from the server that
