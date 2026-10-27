@@ -14,7 +14,6 @@ unmaintained = "workspace"
 # Owner of all exceptions: Alexander Evsikov (@evsikovas).
 ignore = [
     { id = "RUSTSEC-2023-0071", reason = "rsa (Marvin): only SSH user-key and RDP NTLM/CredSSP private-key operations, a few per connection; Ed25519 is the default SSH key; no fixed version; review 2027-01-21" },
-    { id = "RUSTSEC-2025-0134", reason = "rustls-pemfile unmaintained (no vulnerability): db-core PEM parsing; move to rustls-pki-types PemObject; review 2027-01-21" },
 ]
 
 [licenses]

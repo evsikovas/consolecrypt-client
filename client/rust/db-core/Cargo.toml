@@ -28,7 +28,6 @@ reqwest = { workspace = true, features = ["stream"] }
 tokio-util = { version = "0.7", features = ["rt"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
-rustls-pemfile = "2"
 webpki-roots = "1"
 tokio-postgres = { version = "0.7.18", features = ["with-chrono-0_4", "with-serde_json-1", "with-uuid-1", "array-impls"] }
 tokio-postgres-rustls = { version = "0.14", default-features = false, features = ["ring"] }

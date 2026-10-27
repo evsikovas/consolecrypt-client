@@ -8,7 +8,7 @@ use rustls::{
         danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier},
         WebPkiServerVerifier,
     },
-    pki_types::{CertificateDer, ServerName, UnixTime},
+    pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer, ServerName, UnixTime},
     ClientConfig, DigitallySignedStruct, RootCertStore, SignatureScheme,
 };
 use secrecy::{ExposeSecret, SecretString};
@@ -168,7 +168,7 @@ impl TlsProfile {
     pub fn roots(connection: &DbConnection) -> Result<RootCertStore, DbError> {
         let mut roots = RootCertStore::empty();
         if let Some(ca) = &connection.tls.certificate_authority_pem {
-            for certificate in rustls_pemfile::certs(&mut io::Cursor::new(ca)) {
+            for certificate in CertificateDer::pem_slice_iter(ca.as_bytes()) {
                 roots
                     .add(certificate.map_err(|_| DbError::TlsFailed)?)
                     .map_err(|_| DbError::TlsFailed)?;
@@ -190,16 +190,15 @@ impl TlsProfile {
             .map_err(|_| DbError::TlsFailed)?
             .with_root_certificates(roots);
         let mut config = if let Some(cert) = &connection.auth.client_certificate {
-            let certificates = rustls_pemfile::certs(&mut io::Cursor::new(&cert.certificate_pem))
+            let certificates = CertificateDer::pem_slice_iter(cert.certificate_pem.as_bytes())
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|_| DbError::TlsFailed)?;
             let private = credentials
                 .client_key_pem
                 .as_ref()
                 .ok_or(DbError::AuthenticationFailed)?;
-            let key = rustls_pemfile::private_key(&mut io::Cursor::new(private.expose_secret()))
-                .map_err(|_| DbError::TlsFailed)?
-                .ok_or(DbError::TlsFailed)?;
+            let key = PrivateKeyDer::from_pem_slice(private.expose_secret().as_bytes())
+                .map_err(|_| DbError::TlsFailed)?;
             builder
                 .with_client_auth_cert(certificates, key)
                 .map_err(|_| DbError::TlsFailed)?
@@ -704,7 +703,7 @@ mod tests {
         .with_no_client_auth()
         .with_single_cert(
             vec![certificate.der().clone()],
-            rustls::pki_types::PrivateKeyDer::Pkcs8(key.serialize_der().into()),
+            PrivateKeyDer::Pkcs8(key.serialize_der().into()),
         )
         .unwrap();
         (authority_pem, server)
@@ -738,5 +737,46 @@ mod tests {
         assert!(accepted("db.example", &["10.0.0.5"], "10.0.0.5").await);
         assert!(!accepted("db.example", &["other.example"], "10.0.0.5").await);
         assert!(!accepted("db.example", &["10.0.0.6"], "10.0.0.5").await);
+    }
+
+    #[test]
+    fn client_certificate_and_key_are_read_from_pem() {
+        let key = rcgen::KeyPair::generate().unwrap();
+        let certificate = rcgen::CertificateParams::new(vec!["client".to_string()])
+            .unwrap()
+            .self_signed(&key)
+            .unwrap();
+        let mut connection = DbConnection::new("t", "db.example", DbEngine::Postgresql);
+        connection.auth.client_certificate = Some(cc_models::database::DbClientCertificate {
+            certificate_pem: certificate.pem(),
+            key_secret_id: Default::default(),
+        });
+        let credentials = |pem: Option<&str>| DbCredentials {
+            password: None,
+            client_key_pem: pem.map(|pem| SecretString::from(pem.to_string())),
+        };
+        let pem = key.serialize_pem();
+        assert!(TlsProfile::new(&connection, &credentials(Some(&pem))).is_ok());
+        // Text around the PEM block is allowed, as in a pasted file.
+        assert!(
+            TlsProfile::new(&connection, &credentials(Some(&format!("key:\n{pem}\n")))).is_ok()
+        );
+        for (key, error) in [
+            (None, DbError::AuthenticationFailed),
+            (Some("not a key"), DbError::TlsFailed),
+            (Some(certificate.pem().as_str()), DbError::TlsFailed),
+        ] {
+            assert_eq!(
+                TlsProfile::new(&connection, &credentials(key)).unwrap_err(),
+                error
+            );
+        }
+        // A pinned CA without a certificate in it is refused, not ignored.
+        connection.auth.client_certificate = None;
+        connection.tls.certificate_authority_pem = Some("not a certificate".into());
+        assert_eq!(
+            TlsProfile::new(&connection, &DbCredentials::default()).unwrap_err(),
+            DbError::TlsFailed
+        );
     }
 }
