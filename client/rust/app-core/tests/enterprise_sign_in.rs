@@ -97,10 +97,16 @@ async fn ldap_profile_vault_reauth_and_disable() {
         .unwrap_err();
     assert_eq!(e.reason(), Some("account_mismatch"), "{e:?}");
 
-    // Disabled by the administrator: refresh answers account_disabled.
+    // Disabled by the administrator: the server revokes the sessions and
+    // closes the event stream. Whichever the client sees first decides the
+    // sync error (refresh: account_disabled; closed stream: reauth_required);
+    // signing in again always says account_disabled.
     server.disable_account("jdoe@acme.test");
     let e = app.sync_now().await.unwrap_err();
-    assert_eq!(e.code(), "account_disabled", "{e:?}");
+    assert!(
+        matches!(e.code(), "account_disabled" | "reauth_required"),
+        "{e:?}"
+    );
     let e = app
         .reauthenticate_ldap("acme\\jdoe".into(), "directory-pw".into(), false)
         .await
