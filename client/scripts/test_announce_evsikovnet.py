@@ -44,15 +44,14 @@ class _Opener:
 
 
 class EvsikovNetTests(unittest.TestCase):
-    def test_body_has_the_russian_notes_dates_and_site_downloads(self):
+    def test_body_has_the_russian_notes_and_dates_without_downloads(self):
         body = announce.payload(RELEASE)
         self.assertEqual(body['project_id'], announce.PROJECT_ID)
         self.assertEqual((body['version'], body['title'], body['released_at']), ('9.9.9', 'ConsoleCrypt 9.9.9', '2026-10-27'))
         self.assertIn('[руководство](https://github.com/evsikovas/consolecrypt-client/blob/main/docs/public/GUIDE.md)', body['notes_md'])
         self.assertIn('[сайт](https://consolecrypt.dev)', body['notes_md'])
         self.assertNotIn('English only', body['notes_md'])
-        self.assertEqual([d['platform'] for d in body['downloads']], ['macos', 'windows', 'windows', 'linux', 'linux', 'android'])
-        self.assertTrue(all(d['url'].startswith('https://consolecrypt.dev/download#') for d in body['downloads']))
+        self.assertEqual(body['downloads'], [])
 
     def test_drafts_prereleases_and_other_tags_are_refused(self):
         for change in ({'draft': True}, {'prerelease': True}, {'tag_name': 'v9.9.9-rc1'}):

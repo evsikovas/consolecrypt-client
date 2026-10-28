@@ -2,8 +2,9 @@
 """Publish a ConsoleCrypt client release on evsikov.net (project ConsoleCrypt).
 
 Runs in the client CI after `publish`, for a stable vX.Y.Z tag. The notes are
-the Russian section of the GitHub release (docs/public/RELEASE_X_Y_Z.md);
-downloads point at consolecrypt.dev, no files go to evsikov.net. The token is
+the Russian section of the GitHub release (docs/public/RELEASE_X_Y_Z.md).
+The release has no downloads (owner's decision, 28.10.2026): installers live on
+consolecrypt.dev and GitHub, nothing is listed or uploaded on evsikov.net. The token is
 the evsikov.net CI token in the EVSIKOVNET_TOKEN secret; it can only create
 and edit releases. An existing version is updated in place.
 
@@ -28,14 +29,6 @@ API = "https://evsikov.net/api"
 PROJECT_SLUG = "consolecrypt"
 PROJECT_ID = "3cc5d700-6719-4099-bd0d-1c8d206a9755"
 DOCS_BASE = f"https://github.com/{REPO}/blob/main/docs/public/"
-DOWNLOADS = [
-    ("macos", "Universal, .dmg — на consolecrypt.dev", "macos"),
-    ("windows", "Установщик x64, .exe — на consolecrypt.dev", "windows"),
-    ("windows", "Portable x64, .zip — на consolecrypt.dev", "windows"),
-    ("linux", "x64, .deb — на consolecrypt.dev", "linux"),
-    ("linux", "x64, .rpm — на consolecrypt.dev", "linux"),
-    ("android", "arm64, .apk — на consolecrypt.dev", "android"),
-]
 
 
 def github_release(tag: str) -> dict:
@@ -78,10 +71,7 @@ def payload(release: dict) -> dict:
         "notes_md": russian_notes(release.get("body") or "")[:100_000],
         "released_at": published.astimezone(dt.timezone.utc).strftime("%Y-%m-%d"),
         "published": True,
-        "downloads": [
-            {"platform": platform, "label": label, "url": f"https://consolecrypt.dev/download#{anchor}"}
-            for platform, label, anchor in DOWNLOADS
-        ],
+        "downloads": [],
     }
 
 
