@@ -42,6 +42,16 @@ abstract interface class VaultService {
   /// or a biometrics change).
   Future<void> dismissDeviceUnlockOffer();
 
+  /// FIDO2 security key (FEAT-16) → VRK. Only when `securityKey.available`.
+  /// [pin] when `securityKey.pinPrompt == app`; Windows asks itself.
+  /// Failures: `invalidInput` with rule `no_device`, `pin_invalid`,
+  /// `pin_blocked`, `cancelled`, `wrong_key`, …
+  Future<void> unlockWithSecurityKey({SecretText? pin});
+
+  /// Device-local, per-profile opt-in. Enabling registers a credential on
+  /// the key and seals the vault key under its answer (PIN, two touches).
+  Future<void> setSecurityKeyEnabled(bool enabled, {SecretText? pin});
+
   /// Zeroises VRK/KEKs in core memory.
   Future<void> lock();
 

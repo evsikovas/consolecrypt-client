@@ -148,11 +148,19 @@ impl AppCore {
         let prompts = Arc::new(PromptBroker::new(std::time::Duration::from_secs(
             config.prompt_timeout_secs.max(1),
         )));
+        // The OS store means a real installation; tests and the insecure
+        // store get no hardware.
+        let security_keys: Arc<dyn cc_platform_core::SecurityKeyAuthenticator> =
+            match config.secure_store {
+                SecureStoreKind::Os => cc_platform_core::platform_security_keys(),
+                _ => Arc::new(cc_platform_core::UnsupportedSecurityKeys),
+            };
         let ctx = Arc::new(AppCtx {
             config,
             dirs: dirs.clone(),
             secure,
             device_keys,
+            security_keys: std::sync::RwLock::new(security_keys),
             events: broadcast::channel(1024).0,
             prompts,
             file_opener: std::sync::RwLock::new(cc_platform_core::FileOpener::system()),

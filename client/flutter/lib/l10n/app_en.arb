@@ -6587,6 +6587,82 @@
   "@settingsGlassRetryEffects": {
     "description": "Retries glass rendering after automatic performance reduction. OS accessibility restrictions remain in effect."
   },
+  "securityKeyTitle": "Physical security key",
+  "@securityKeyTitle": {
+    "description": "Vault settings / unlock screen: securityKeyTitle (FEAT-16)"
+  },
+  "securityKeyHelp": "Unlock the vault with a USB security key (YubiKey or another FIDO2 key) and its PIN.",
+  "@securityKeyHelp": {
+    "description": "Vault settings / unlock screen: securityKeyHelp (FEAT-16)"
+  },
+  "securityKeyOnHelp": "On: the lock screen offers unlocking with this key. Only for this vault on this device; the passphrase and Recovery Key still work.",
+  "@securityKeyOnHelp": {
+    "description": "Vault settings / unlock screen: securityKeyOnHelp (FEAT-16)"
+  },
+  "securityKeyTouch": "Enter the key PIN if asked and touch the key when it blinks.",
+  "@securityKeyTouch": {
+    "description": "Vault settings / unlock screen: securityKeyTouch (FEAT-16)"
+  },
+  "securityKeyEnabled": "Security key unlock is on",
+  "@securityKeyEnabled": {
+    "description": "Vault settings / unlock screen: securityKeyEnabled (FEAT-16)"
+  },
+  "securityKeyPinTitle": "Security key PIN",
+  "@securityKeyPinTitle": {
+    "description": "Vault settings / unlock screen: securityKeyPinTitle (FEAT-16)"
+  },
+  "securityKeyPinHelp": "Enter the FIDO2 PIN of the key, then touch the key when it blinks.",
+  "@securityKeyPinHelp": {
+    "description": "Vault settings / unlock screen: securityKeyPinHelp (FEAT-16)"
+  },
+  "securityKeyPinLabel": "PIN",
+  "@securityKeyPinLabel": {
+    "description": "Vault settings / unlock screen: securityKeyPinLabel (FEAT-16)"
+  },
+  "securityKeyPinContinue": "Continue",
+  "@securityKeyPinContinue": {
+    "description": "Vault settings / unlock screen: securityKeyPinContinue (FEAT-16)"
+  },
+  "securityKeyErrorNoDevice": "No security key found. Insert the key and try again.",
+  "@securityKeyErrorNoDevice": {
+    "description": "Vault settings / unlock screen: securityKeyErrorNoDevice (FEAT-16)"
+  },
+  "securityKeyErrorSeveral": "Several security keys are connected. Leave only one.",
+  "@securityKeyErrorSeveral": {
+    "description": "Vault settings / unlock screen: securityKeyErrorSeveral (FEAT-16)"
+  },
+  "securityKeyErrorPin": "Wrong PIN of the security key.",
+  "@securityKeyErrorPin": {
+    "description": "Vault settings / unlock screen: securityKeyErrorPin (FEAT-16)"
+  },
+  "securityKeyErrorPinBlocked": "The security key PIN is blocked. Unlock with the passphrase.",
+  "@securityKeyErrorPinBlocked": {
+    "description": "Vault settings / unlock screen: securityKeyErrorPinBlocked (FEAT-16)"
+  },
+  "securityKeyErrorCancelled": "Cancelled or the key was not touched in time.",
+  "@securityKeyErrorCancelled": {
+    "description": "Vault settings / unlock screen: securityKeyErrorCancelled (FEAT-16)"
+  },
+  "securityKeyErrorWrongKey": "This is not the security key set up for this vault.",
+  "@securityKeyErrorWrongKey": {
+    "description": "Vault settings / unlock screen: securityKeyErrorWrongKey (FEAT-16)"
+  },
+  "securityKeyErrorUnsupportedKey": "This key does not support the hmac-secret extension (FIDO2).",
+  "@securityKeyErrorUnsupportedKey": {
+    "description": "Vault settings / unlock screen: securityKeyErrorUnsupportedKey (FEAT-16)"
+  },
+  "securityKeyErrorUnsupported": "Security keys are not supported on this device.",
+  "@securityKeyErrorUnsupported": {
+    "description": "Vault settings / unlock screen: securityKeyErrorUnsupported (FEAT-16)"
+  },
+  "securityKeyErrorDevice": "The security key did not respond. Reconnect it and try again.",
+  "@securityKeyErrorDevice": {
+    "description": "Vault settings / unlock screen: securityKeyErrorDevice (FEAT-16)"
+  },
+  "unlockWithSecurityKey": "Unlock with security key",
+  "@unlockWithSecurityKey": {
+    "description": "Vault settings / unlock screen: unlockWithSecurityKey (FEAT-16)"
+  },
   "deviceUnlockTitle": "Fingerprint unlock",
   "deviceUnlockHelp": "The system releases the vault key only after your fingerprint, face or device password.",
   "deviceUnlockLocalOnly": "Only for this vault on this device. Your passphrase and Recovery Key remain available.",

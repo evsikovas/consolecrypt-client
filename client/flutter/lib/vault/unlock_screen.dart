@@ -1,9 +1,9 @@
 import 'package:consolecrypt/account/profile_switcher.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
-import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
+import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
@@ -11,6 +11,7 @@ import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
+import 'package:consolecrypt/settings/security_key_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -67,6 +68,21 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> with WidgetsBinding
     }
   }
 
+  Future<void> _unlockWithSecurityKey(SecurityKeyInfo info) async {
+    SecretText? pin;
+    if (info.pinPrompt == SecurityKeyPinPrompt.app) {
+      pin = await askSecurityKeyPin(context);
+      if (pin == null || !mounted) return;
+    }
+    await _guard(() async {
+      try {
+        await ref.read(vaultServiceProvider).unlockWithSecurityKey(pin: pin);
+      } finally {
+        pin?.wipe();
+      }
+    });
+  }
+
   Future<void> _unlock() async {
     if (_passphrase.text.isEmpty) return;
     final secret = SecretText(_passphrase.text);
@@ -110,7 +126,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> with WidgetsBinding
           ),
           if (_error != null) ...[
             const SizedBox(height: GlassSpacing.s8),
-            GateErrorText(key: const ValueKey('unlock-error'), text: errorMessage(l10n, _error!)),
+            GateErrorText(key: const ValueKey('unlock-error'), text: securityKeyErrorMessage(l10n, _error!)),
           ],
           const SizedBox(height: GlassSpacing.s16),
           GlassButton.prominent(
@@ -132,6 +148,17 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> with WidgetsBinding
             icon: Icons.fingerprint_rounded,
             label: l10n.unlockWithOsAuth(status?.deviceUnlock.authName(l10n) ?? l10n.platformSystemAuthentication),
           ),
+          if (status?.securityKey.available ?? false) ...[
+            const SizedBox(height: GlassSpacing.s8),
+            GlassButton(
+              key: const ValueKey('unlock-security-key'),
+              size: GlassControlSize.lg,
+              expand: true,
+              onPressed: _busy ? null : () => _unlockWithSecurityKey(status!.securityKey),
+              icon: Icons.usb_rounded,
+              label: l10n.unlockWithSecurityKey,
+            ),
+          ],
           if (synced && !(status?.deviceTrusted ?? true)) ...[
             const SizedBox(height: GlassSpacing.s16),
             InfoBanner(

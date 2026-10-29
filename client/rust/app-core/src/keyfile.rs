@@ -41,6 +41,11 @@ pub(crate) fn unlock_context(profile: ProfileId) -> Vec<u8> {
     format!("device-unlock:{profile}").into_bytes()
 }
 
+/// Seal context of the security key envelope (FEAT-16).
+pub(crate) fn security_key_context(profile: ProfileId) -> Vec<u8> {
+    format!("security-key:{profile}").into_bytes()
+}
+
 /// OS protector label of a profile's device unlock key.
 pub(crate) fn unlock_label(profile: ProfileId) -> String {
     format!("profile-{profile}")
@@ -124,6 +129,18 @@ pub(crate) struct DeviceUnlockRecord {
     pub confirm_actions: bool,
 }
 
+/// Security key unlock switched on (FEAT-16): the credential on the key,
+/// the salt it answers, and the VRK sealed under that answer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct SecurityKeyRecord {
+    /// Non-resident credential id (not secret; meaningless without the key).
+    pub credential_id: Bytes,
+    /// 32 random bytes, PRF input.
+    pub salt: Bytes,
+    pub envelope: LocalSealed,
+    pub created_at: Timestamp,
+}
+
 fn confirm_actions_default() -> bool {
     true
 }
@@ -177,6 +194,8 @@ pub(crate) struct KeyFile {
     pub db_key_next: Option<LocalSealed>,
     #[serde(default)]
     pub device_unlock: Option<DeviceUnlockRecord>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub security_key: Option<SecurityKeyRecord>,
     #[serde(default)]
     pub flags: KeyFileFlags,
     /// Pinned vault key commitment (protocol 1.11).
@@ -195,6 +214,7 @@ impl KeyFile {
             db_key,
             db_key_next: None,
             device_unlock: None,
+            security_key: None,
             flags: KeyFileFlags::default(),
             vault_key: None,
         }

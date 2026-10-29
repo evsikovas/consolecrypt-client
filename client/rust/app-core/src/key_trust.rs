@@ -62,6 +62,8 @@ pub(crate) enum KeySource {
     Backup,
     /// OS-protected device unlock (local envelope sealed by this device).
     DeviceUnlock,
+    /// Security key unlock (local envelope sealed by this device).
+    SecurityKey,
     /// Approval v2 verified with the approver key the user confirmed.
     ApprovalVerified,
     /// Approval without v2 (older server or approver): trust on first use.
@@ -88,6 +90,7 @@ impl KeySource {
             KeySource::RecoveryKey => "recovery_key",
             KeySource::Backup => "backup",
             KeySource::DeviceUnlock => "device_unlock",
+            KeySource::SecurityKey => "security_key",
             KeySource::ApprovalVerified => "approval_v2",
             KeySource::ApprovalUnverified => "approval_unverified",
         }

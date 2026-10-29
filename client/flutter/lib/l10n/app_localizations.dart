@@ -8138,6 +8138,120 @@ abstract class AppLocalizations {
   /// **'Retry glass effects'**
   String get settingsGlassRetryEffects;
 
+  /// Vault settings / unlock screen: securityKeyTitle (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Physical security key'**
+  String get securityKeyTitle;
+
+  /// Vault settings / unlock screen: securityKeyHelp (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock the vault with a USB security key (YubiKey or another FIDO2 key) and its PIN.'**
+  String get securityKeyHelp;
+
+  /// Vault settings / unlock screen: securityKeyOnHelp (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'On: the lock screen offers unlocking with this key. Only for this vault on this device; the passphrase and Recovery Key still work.'**
+  String get securityKeyOnHelp;
+
+  /// Vault settings / unlock screen: securityKeyTouch (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the key PIN if asked and touch the key when it blinks.'**
+  String get securityKeyTouch;
+
+  /// Vault settings / unlock screen: securityKeyEnabled (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Security key unlock is on'**
+  String get securityKeyEnabled;
+
+  /// Vault settings / unlock screen: securityKeyPinTitle (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Security key PIN'**
+  String get securityKeyPinTitle;
+
+  /// Vault settings / unlock screen: securityKeyPinHelp (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the FIDO2 PIN of the key, then touch the key when it blinks.'**
+  String get securityKeyPinHelp;
+
+  /// Vault settings / unlock screen: securityKeyPinLabel (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'PIN'**
+  String get securityKeyPinLabel;
+
+  /// Vault settings / unlock screen: securityKeyPinContinue (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get securityKeyPinContinue;
+
+  /// Vault settings / unlock screen: securityKeyErrorNoDevice (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'No security key found. Insert the key and try again.'**
+  String get securityKeyErrorNoDevice;
+
+  /// Vault settings / unlock screen: securityKeyErrorSeveral (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Several security keys are connected. Leave only one.'**
+  String get securityKeyErrorSeveral;
+
+  /// Vault settings / unlock screen: securityKeyErrorPin (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong PIN of the security key.'**
+  String get securityKeyErrorPin;
+
+  /// Vault settings / unlock screen: securityKeyErrorPinBlocked (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'The security key PIN is blocked. Unlock with the passphrase.'**
+  String get securityKeyErrorPinBlocked;
+
+  /// Vault settings / unlock screen: securityKeyErrorCancelled (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled or the key was not touched in time.'**
+  String get securityKeyErrorCancelled;
+
+  /// Vault settings / unlock screen: securityKeyErrorWrongKey (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'This is not the security key set up for this vault.'**
+  String get securityKeyErrorWrongKey;
+
+  /// Vault settings / unlock screen: securityKeyErrorUnsupportedKey (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'This key does not support the hmac-secret extension (FIDO2).'**
+  String get securityKeyErrorUnsupportedKey;
+
+  /// Vault settings / unlock screen: securityKeyErrorUnsupported (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Security keys are not supported on this device.'**
+  String get securityKeyErrorUnsupported;
+
+  /// Vault settings / unlock screen: securityKeyErrorDevice (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'The security key did not respond. Reconnect it and try again.'**
+  String get securityKeyErrorDevice;
+
+  /// Vault settings / unlock screen: unlockWithSecurityKey (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock with security key'**
+  String get unlockWithSecurityKey;
+
   /// Vault settings: deviceUnlockTitle
   ///
   /// In en, this message translates to:

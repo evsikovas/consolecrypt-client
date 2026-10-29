@@ -93,6 +93,7 @@ pub mod logging;
 mod loopback;
 mod plan;
 mod presence;
+mod security_key;
 pub use presence::{StepUp, StepUpAction, PASSPHRASE_ONLY};
 mod profile_hints;
 mod prompts;

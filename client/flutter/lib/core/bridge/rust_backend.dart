@@ -109,6 +109,7 @@ final class RustBackend {
   /// OS / biometric unlock can be offered for the open, locked profile
   /// (core `device_unlock_info`).
   DeviceUnlockInfo deviceUnlock = const DeviceUnlockInfo();
+  SecurityKeyInfo securityKey = const SecurityKeyInfo();
 
   /// Routes `PromptRequest`s (terminal host keys / passwords). Returns
   /// `false` when nobody can answer; the prompt is then declined.
@@ -248,11 +249,17 @@ final class RustBackend {
       _stopApprovalPoll();
     }
     deviceUnlock = const DeviceUnlockInfo();
+    securityKey = const SecurityKeyInfo();
     if (active != null && (active['vault_state'] == 'locked' || active['vault_state'] == 'unlocked')) {
       try {
         deviceUnlock = deviceUnlockFromJson(decodeObject(await guard(rs_prof.vaultDeviceUnlockInfo)));
       } on AppException {
         deviceUnlock = const DeviceUnlockInfo();
+      }
+      try {
+        securityKey = securityKeyFromJson(decodeObject(await guard(rs_prof.vaultSecurityKeyInfo)));
+      } on AppException {
+        securityKey = const SecurityKeyInfo();
       }
     }
     if (active != null && active['kind'] == 'synced' && active['vault_state'] == 'no_vault' && remoteVaults.isEmpty) {
@@ -322,6 +329,7 @@ final class RustBackend {
           recoveryKitConfirmed: !creatingVault && !kitPendingFor(id),
           deviceTrusted: true,
           deviceUnlock: deviceUnlock,
+          securityKey: securityKey,
         );
       case 'no_vault':
         if (remoteVaults.isEmpty) return VaultStatus(phase: VaultPhase.none, vaultName: name);
@@ -338,6 +346,7 @@ final class RustBackend {
           // A local vault record exists: this device holds an envelope.
           deviceTrusted: local || vaultId != null,
           deviceUnlock: deviceUnlock,
+          securityKey: securityKey,
         );
     }
   }

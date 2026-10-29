@@ -110,6 +110,22 @@ Future<void> vaultSetDeviceUnlockEnabled({
 /// a fingerprint change).
 Future<void> vaultDismissDeviceUnlockOffer() => RustLib.instance.api.crateApiProfilesVaultDismissDeviceUnlockOffer();
 
+/// Security key unlock state of the open profile → `SecurityKeyDto`
+/// (`supported`, `enabled`, `pin`: `system` | `app` | null, `has_vault`,
+/// `created_at_ms`).
+Future<String> vaultSecurityKeyInfo() => RustLib.instance.api.crateApiProfilesVaultSecurityKeyInfo();
+
+/// Switch security key unlock on (the key asks for its PIN and two
+/// touches) or off. `pin`: the key PIN where `pin == "app"`. Failures are
+/// `invalid_input` with field `security_key` and a `rule` such as
+/// `no_device`, `pin_invalid`, `cancelled`.
+Future<void> vaultSetSecurityKeyEnabled({required bool enabled, Uint8List? pin}) =>
+    RustLib.instance.api.crateApiProfilesVaultSetSecurityKeyEnabled(enabled: enabled, pin: pin);
+
+/// Lock screen: unlock with the security key (PIN and touch).
+Future<void> vaultUnlockWithSecurityKey({Uint8List? pin}) =>
+    RustLib.instance.api.crateApiProfilesVaultUnlockWithSecurityKey(pin: pin);
+
 /// The Keystore blob the app decrypts inside `BiometricPrompt` (`None` =
 /// device unlock off).
 Future<Uint8List?> vaultDeviceUnlockHandle() => RustLib.instance.api.crateApiProfilesVaultDeviceUnlockHandle();

@@ -28,6 +28,9 @@ your own sync server, or use the public ConsoleCrypt server.
   full-screen mode, text clipboard sharing, and redirection of a selected folder
   with separate write permission. Works with a standard Microsoft RDP server;
   you do not need to install IronRDP on the remote Windows machine.
+- **Security key unlock (preview):** open the vault with a YubiKey or another
+  FIDO2 key and its PIN on Windows and macOS; optional, per device.
+  [Guide](docs/public/SECURITY_KEY.md).
 - **Hosts and groups:** saved SSH/RDP connections, credentials, search by name
   or address, and a host picker accessible from the global “+” button.
 - **SFTP:** file transfer and preview, editing in an external desktop application,

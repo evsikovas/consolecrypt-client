@@ -30,6 +30,11 @@ pub mod open;
 mod os_store;
 mod paths;
 mod secure_store;
+mod security_key;
+#[cfg(all(feature = "os-keychain", target_os = "macos"))]
+mod security_key_ctap;
+#[cfg(all(feature = "os-keychain", target_os = "windows"))]
+mod security_key_windows;
 
 pub use active::{classify_name, classify_path, is_active_name, is_active_path, ActiveContent};
 pub use auth::{OsAuthError, OsAuthKind};
@@ -57,6 +62,10 @@ pub use paths::strip_verbatim_prefix;
 pub use secure_store::{
     validate_secret_name, InMemorySecureStore, SecureStore, SecureStoreError, MAX_SECRET_LEN,
     MAX_SECRET_NAME_LEN,
+};
+pub use security_key::{
+    platform_security_keys, prf_salt, InMemorySecurityKey, SecurityKeyAuthenticator,
+    SecurityKeyError, SecurityKeyPin, UnsupportedSecurityKeys, SECURITY_KEY_RP_ID,
 };
 
 /// The device unlock protector of this platform: Secure Enclave (macOS,

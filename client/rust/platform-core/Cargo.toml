@@ -23,6 +23,8 @@ os-keychain = [
     "dep:core-foundation",
     "dep:objc2",
     "dep:windows",
+    "dep:ctap-hid-fido2",
+    "dep:anyhow",
 ]
 
 [dependencies]
@@ -36,12 +38,17 @@ opener = "0.8"
 keyring-core = { version = "1", optional = true }
 # Random device unlock keys (Linux keyring, tests); same version as crypto-core.
 getrandom = "0.4"
+# Security key PRF salt (FEAT-16); already in the lockfile.
+sha2 = "0.10"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "1", optional = true, features = ["keychain"] }
 # setxattr: `com.apple.quarantine` on downloaded files (mark.rs). Already in
 # the lockfile.
 libc = "0.2"
+# Security keys (FEAT-16) over CTAP2/HID: the app asks for the PIN. MIT.
+ctap-hid-fido2 = { version = "3.6", optional = true }
+anyhow = { version = "1", optional = true }
 
 # Device unlock (S5): Secure Enclave key + LAContext (Security and
 # LocalAuthentication frameworks). Already in the lockfile; no new crates.
@@ -64,6 +71,7 @@ windows = { version = "0.62", optional = true, features = [
     "Security_Cryptography",
     "Storage_Streams",
     "Win32_Foundation",
+    "Win32_Networking_WindowsWebServices",
     "Win32_UI_WindowsAndMessaging",
 ] }
 

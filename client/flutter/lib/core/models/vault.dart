@@ -22,6 +22,32 @@ enum DeviceUnlockReoffer {
   invalidated,
 }
 
+/// Who asks for the security key PIN (FEAT-16).
+enum SecurityKeyPinPrompt {
+  /// The OS dialog (Windows).
+  system,
+
+  /// The app asks and passes it.
+  app,
+}
+
+/// FIDO2 security key unlock (FEAT-16) for this profile on this
+/// installation. Never synced; the passphrase keeps working.
+final class SecurityKeyInfo {
+  const SecurityKeyInfo({this.supported = false, this.enabled = false, this.pinPrompt, this.hasVault = false});
+
+  /// This platform talks to FIDO2 security keys.
+  final bool supported;
+
+  /// Switched on for this profile here.
+  final bool enabled;
+  final SecurityKeyPinPrompt? pinPrompt;
+  final bool hasVault;
+
+  /// Offer "Unlock with a security key" on the lock screen.
+  bool get available => supported && enabled;
+}
+
 /// Capability and explicit opt-in for this profile on this installation.
 final class DeviceUnlockInfo {
   const DeviceUnlockInfo({
@@ -83,6 +109,7 @@ final class VaultStatus {
     this.recoveryKitConfirmed = true,
     this.deviceTrusted = false,
     this.deviceUnlock = const DeviceUnlockInfo(),
+    this.securityKey = const SecurityKeyInfo(),
   });
 
   static const none = VaultStatus(phase: VaultPhase.none);
@@ -101,6 +128,9 @@ final class VaultStatus {
   /// device's unlock key.
   bool get deviceUnlockAvailable => deviceUnlock.available;
   final DeviceUnlockInfo deviceUnlock;
+
+  /// FIDO2 security key unlock (FEAT-16).
+  final SecurityKeyInfo securityKey;
 
   bool get isUnlocked => phase == VaultPhase.unlocked;
 }

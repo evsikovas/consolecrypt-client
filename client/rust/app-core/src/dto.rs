@@ -222,6 +222,21 @@ pub struct SyncedAccountDto {
     pub vaults: Vec<RemoteVaultDto>,
 }
 
+/// Security key unlock (FEAT-16) of the open profile.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SecurityKeyDto {
+    /// This platform can talk to FIDO2 security keys.
+    pub supported: bool,
+    /// Switched on for this profile on this installation. Never synced.
+    pub enabled: bool,
+    /// `system`: the OS asks for the key PIN (Windows); `app`: the app asks
+    /// and passes it. `None` when unsupported.
+    pub pin: Option<String>,
+    /// The profile has a vault.
+    pub has_vault: bool,
+    pub created_at_ms: Option<i64>,
+}
+
 /// OS / biometric unlock availability of the open profile.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeviceUnlockDto {

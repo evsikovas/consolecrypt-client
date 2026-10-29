@@ -4634,6 +4634,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsGlassRetryEffects => 'Retry glass effects';
 
   @override
+  String get securityKeyTitle => 'Physical security key';
+
+  @override
+  String get securityKeyHelp => 'Unlock the vault with a USB security key (YubiKey or another FIDO2 key) and its PIN.';
+
+  @override
+  String get securityKeyOnHelp =>
+      'On: the lock screen offers unlocking with this key. Only for this vault on this device; the passphrase and Recovery Key still work.';
+
+  @override
+  String get securityKeyTouch => 'Enter the key PIN if asked and touch the key when it blinks.';
+
+  @override
+  String get securityKeyEnabled => 'Security key unlock is on';
+
+  @override
+  String get securityKeyPinTitle => 'Security key PIN';
+
+  @override
+  String get securityKeyPinHelp => 'Enter the FIDO2 PIN of the key, then touch the key when it blinks.';
+
+  @override
+  String get securityKeyPinLabel => 'PIN';
+
+  @override
+  String get securityKeyPinContinue => 'Continue';
+
+  @override
+  String get securityKeyErrorNoDevice => 'No security key found. Insert the key and try again.';
+
+  @override
+  String get securityKeyErrorSeveral => 'Several security keys are connected. Leave only one.';
+
+  @override
+  String get securityKeyErrorPin => 'Wrong PIN of the security key.';
+
+  @override
+  String get securityKeyErrorPinBlocked => 'The security key PIN is blocked. Unlock with the passphrase.';
+
+  @override
+  String get securityKeyErrorCancelled => 'Cancelled or the key was not touched in time.';
+
+  @override
+  String get securityKeyErrorWrongKey => 'This is not the security key set up for this vault.';
+
+  @override
+  String get securityKeyErrorUnsupportedKey => 'This key does not support the hmac-secret extension (FIDO2).';
+
+  @override
+  String get securityKeyErrorUnsupported => 'Security keys are not supported on this device.';
+
+  @override
+  String get securityKeyErrorDevice => 'The security key did not respond. Reconnect it and try again.';
+
+  @override
+  String get unlockWithSecurityKey => 'Unlock with security key';
+
+  @override
   String get deviceUnlockTitle => 'Fingerprint unlock';
 
   @override
