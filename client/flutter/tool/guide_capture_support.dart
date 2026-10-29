@@ -181,6 +181,8 @@ const guideExtraScreens = [
   'login-standard',
   'restore-backup',
   'unlock',
+  'security-key-pin',
+  'security-key-touch',
   'recovery',
   'settings-overview',
   'account-password',

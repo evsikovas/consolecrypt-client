@@ -269,6 +269,12 @@ void main() {
         if (_guide && (screen == 'vault-settings' || screen == 'step-up-biometric')) {
           await backend.vault.setDeviceUnlockEnabled(true, reason: 'guide');
         }
+        // A demo security key (FEAT-16): switched on where the guide shows it.
+        if (_guide && (screen == 'vault-settings' || screen == 'unlock' || screen.startsWith('security-key-'))) {
+          backend.vault
+            ..debugSecurityKey(enabled: true)
+            ..securityKeyHolds = screen == 'security-key-touch';
+        }
         if (_guide && screen == 'devices') {
           backend.devices.debugAnnounceNewDevice('Linux workstation');
         }
@@ -619,6 +625,15 @@ void main() {
             await tester.pump(const Duration(milliseconds: 100));
           }
           await tester.ensureVisible(find.byKey(const ValueKey('device-unlock-switch')));
+          // Device unlock and the security key switch below it, both whole
+          // (FEAT-16).
+          if (_guide) {
+            await Scrollable.ensureVisible(
+              tester.element(find.byKey(const ValueKey('device-unlock-switch'))),
+              alignment: .3,
+            );
+          }
+          await tester.pump(const Duration(milliseconds: 300));
         }
         if (personalized) {
           await tester.tap(find.byKey(const ValueKey('nav-settings')));
@@ -1028,6 +1043,13 @@ Future<void> _extraScreen(
       await settle(tester);
     case 'unlock':
       await tapKey(tester, 'lock-vault');
+    case 'security-key-pin' || 'security-key-touch':
+      await tapKey(tester, 'lock-vault');
+      await tapKey(tester, 'unlock-security-key');
+      if (screen == 'security-key-touch') {
+        await tester.enterText(find.byKey(const ValueKey('security-key-pin')), '123456');
+        await tapKey(tester, 'security-key-pin-ok');
+      }
     case 'recovery':
       await tapKey(tester, 'lock-vault');
       await tapKey(tester, 'forgot-passphrase');
@@ -1830,6 +1852,11 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(find.byKey(const ValueKey('restore-submit')), findsOneWidget);
     case 'unlock':
       expect(find.byKey(const ValueKey('unlock-passphrase')), findsOneWidget);
+      expect(find.byKey(const ValueKey('unlock-security-key')), findsOneWidget);
+    case 'security-key-pin':
+      expect(find.byKey(const ValueKey('security-key-pin')), findsOneWidget);
+    case 'security-key-touch':
+      expect(find.byKey(const ValueKey('security-key-touch-dialog')), findsOneWidget);
     case 'recovery':
       expect(find.byKey(const ValueKey('recovery-method')), findsOneWidget);
     case 'account-password':
@@ -2037,6 +2064,7 @@ void _assertGuideScreen(WidgetTester tester, String screen, AppLocalizations l10
       expect(find.byKey(const ValueKey('workspace-panel-expanded')), findsOneWidget);
     case 'vault-settings':
       expect(find.byKey(const ValueKey('device-unlock-switch')), findsOneWidget);
+      expect(find.byKey(const ValueKey('security-key-switch')), findsOneWidget);
       expect(find.byKey(const ValueKey('device-unlock-protected')), findsOneWidget);
       expect(find.byKey(const ValueKey('auto-lock')), findsOneWidget);
     case 'security-settings':
