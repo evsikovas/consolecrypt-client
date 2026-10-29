@@ -249,8 +249,12 @@ impl Session {
 }
 
 /// Owns all terminal sessions.
+///
+/// The opener (new SSH connections) can be swapped while sessions stay open:
+/// a locked vault has no credentials for new connections, but the shells
+/// already connected keep running until the profile closes.
 pub struct TerminalManager {
-    opener: Arc<dyn ShellOpener>,
+    opener: std::sync::RwLock<Arc<dyn ShellOpener>>,
     config: TerminalConfig,
     sessions: Mutex<HashMap<TerminalId, Arc<Session>>>,
     events: broadcast::Sender<TerminalEvent>,
@@ -279,7 +283,7 @@ impl TerminalManager {
 
     pub fn with_config(opener: Arc<dyn ShellOpener>, config: TerminalConfig) -> Self {
         Self {
-            opener,
+            opener: std::sync::RwLock::new(opener),
             config,
             sessions: Mutex::new(HashMap::new()),
             events: broadcast::channel(256).0,
@@ -306,6 +310,11 @@ impl TerminalManager {
         if self.stopped.load(Ordering::Acquire) {
             session.lock().closing = true;
         }
+    }
+
+    /// Replace the opener used for new SSH shells. Open sessions are untouched.
+    pub fn set_opener(&self, opener: Arc<dyn ShellOpener>) {
+        *self.opener.write().unwrap_or_else(PoisonError::into_inner) = opener;
     }
 
     /// Subscribe to status changes of all sessions.
@@ -357,7 +366,11 @@ impl TerminalManager {
             id,
             status: TerminalStatus::Connecting,
         });
-        let opener = self.opener.clone();
+        let opener = self
+            .opener
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
         let events = self.events.clone();
         let pty = PtyRequest {
             term: self.config.term.clone(),

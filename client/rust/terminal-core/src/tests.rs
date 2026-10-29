@@ -417,3 +417,30 @@ async fn shutdown_between_preparation_and_registration_cannot_publish_connected(
     assert!(manager.status(session.id).unwrap().is_terminal());
     assert!(manager.write(session.id, b"must not run\r").await.is_err());
 }
+
+#[tokio::test]
+async fn swapping_the_opener_keeps_open_sessions() {
+    let (m, _) = manager(false);
+    let size = TerminalSize { cols: 80, rows: 24 };
+    let id = m.open(plan(), size).await.unwrap();
+    let mut out = m.attach(id).unwrap().output;
+
+    // A locked vault: no credentials for new connections.
+    m.set_opener(Arc::new(EchoOpener {
+        resizes: Arc::new(StdMutex::new(Vec::new())),
+        fail: true,
+    }));
+    assert!(m.open(plan(), size).await.is_err());
+    m.write(id, b"still here\r").await.unwrap();
+    read_until(&mut out, "still here").await;
+    assert_eq!(m.status(id).unwrap(), TerminalStatus::Connected);
+
+    // Unlocked again: new connections work and the old shell is the same.
+    m.set_opener(Arc::new(EchoOpener {
+        resizes: Arc::new(StdMutex::new(Vec::new())),
+        fail: false,
+    }));
+    let second = m.open(plan(), size).await.unwrap();
+    assert_ne!(second, id);
+    assert_eq!(m.list().len(), 2);
+}

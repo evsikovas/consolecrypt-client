@@ -446,7 +446,9 @@ pub(crate) struct SshRuntime {
     pub known_hosts: Arc<VaultKnownHosts>,
     pub connector: SshConnector,
     pub planner: ConnectionPlanner,
-    pub terminals: TerminalManager,
+    /// The profile's terminals: they outlive this runtime, so open shells
+    /// survive a lock (see [`LockedShellOpener`]).
+    pub terminals: Arc<TerminalManager>,
     pub tunnels: TunnelManager,
     pool: tokio::sync::Mutex<HashMap<ObjectId, (ConnectionPlan, Arc<SshSession>)>>,
     sftp: tokio::sync::Mutex<HashMap<String, SftpEntry>>,
@@ -459,6 +461,21 @@ impl std::fmt::Debug for SshRuntime {
     }
 }
 
+/// Opener of a locked vault: no credentials, so no new SSH shell. Shells
+/// opened before the lock are not affected.
+pub(crate) struct LockedShellOpener;
+
+#[async_trait]
+impl ShellOpener for LockedShellOpener {
+    async fn open_shell(
+        &self,
+        _plan: &ConnectionPlan,
+        _pty: cc_ssh_core::PtyRequest,
+    ) -> Result<OpenedShell, TerminalError> {
+        Err(TerminalError::Open("the vault is locked".into()))
+    }
+}
+
 /// OS user name — the planner's last-resort username.
 pub(crate) fn os_user() -> Option<String> {
     std::env::var("USER")
@@ -468,7 +485,11 @@ pub(crate) fn os_user() -> Option<String> {
 }
 
 impl SshRuntime {
-    pub(crate) fn new(writer: VaultWriter, prompts: Arc<PromptBroker>) -> Self {
+    pub(crate) fn new(
+        writer: VaultWriter,
+        prompts: Arc<PromptBroker>,
+        terminals: Arc<TerminalManager>,
+    ) -> Self {
         let working = writer.working.clone();
         let inventory = Arc::new(AppInventory {
             working: working.clone(),
@@ -496,7 +517,10 @@ impl SshRuntime {
             known_hosts,
             connector,
             planner,
-            terminals: TerminalManager::new(opener),
+            terminals: {
+                terminals.set_opener(opener);
+                terminals
+            },
             tunnels: TunnelManager::new(),
             pool: tokio::sync::Mutex::new(HashMap::new()),
             sftp: tokio::sync::Mutex::new(HashMap::new()),
@@ -689,10 +713,11 @@ impl SshRuntime {
             .collect())
     }
 
-    /// Stop tunnels, close terminals, SFTP and pooled connections.
+    /// Stop tunnels, SFTP and pooled connections. Open terminals keep
+    /// running; only new SSH shells are refused until the next unlock.
     pub(crate) async fn shutdown(&self) {
         self.tunnels.stop_all().await;
-        self.terminals.shutdown().await;
+        self.terminals.set_opener(Arc::new(LockedShellOpener));
         let sftp: Vec<SftpEntry> = self.sftp.lock().await.drain().map(|(_, e)| e).collect();
         for e in sftp {
             let _ = e.client.close().await;

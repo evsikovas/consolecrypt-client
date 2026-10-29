@@ -199,6 +199,9 @@ pub(crate) struct Session {
     pub pending_kit: Mutex<Option<PendingKit>>,
     /// Serializes sharing actions; contains no plaintext or device keys.
     pub sharing_gate: tokio::sync::Mutex<()>,
+    /// Terminals of this profile. They survive a lock (an idle auto-lock
+    /// must not drop SSH sessions) and close with the profile.
+    terminals: Arc<cc_terminal_core::TerminalManager>,
 }
 
 impl std::fmt::Debug for Session {
@@ -349,7 +352,6 @@ impl Unlocked {
     /// first (their final uploads need SFTP), then transfers.
     async fn shutdown(&self) {
         self.sharing_shutdown.send_replace(true);
-        self.ssh.terminals.begin_shutdown();
         // Fence in-flight RDP connects before waiting for SFTP/SSH cleanup.
         self.rdp.shutdown();
         self.edit.begin_shutdown();
@@ -432,6 +434,7 @@ impl Session {
             unlocked: tokio::sync::RwLock::new(None),
             pending_kit: Mutex::new(None),
             sharing_gate: tokio::sync::Mutex::new(()),
+            terminals: locked_terminals(),
         }))
     }
 
@@ -481,6 +484,7 @@ impl Session {
             unlocked: tokio::sync::RwLock::new(None),
             pending_kit: Mutex::new(None),
             sharing_gate: tokio::sync::Mutex::new(()),
+            terminals: locked_terminals(),
         }))
     }
 
@@ -985,7 +989,11 @@ impl Session {
         // Subscribe before loading so no change is missed.
         let rx = store.subscribe();
         writer.reload_all().await?;
-        let ssh = Arc::new(SshRuntime::new(writer.clone(), self.ctx.prompts.clone()));
+        let ssh = Arc::new(SshRuntime::new(
+            writer.clone(),
+            self.ctx.prompts.clone(),
+            self.terminals.clone(),
+        ));
         let ai = crate::ai::AiSession::new(
             self.ctx.clone(),
             self.profile_id,
@@ -1254,6 +1262,7 @@ impl Session {
     /// (the session is unusable afterwards).
     pub(crate) async fn close(&self) {
         self.lock().await;
+        self.terminals.shutdown().await;
         if let Some(st) = self.storage_opt() {
             st.close().await;
         }
@@ -1271,6 +1280,13 @@ impl Session {
             )),
         }
     }
+}
+
+/// A terminal manager that opens no SSH shell until the vault unlocks.
+fn locked_terminals() -> Arc<cc_terminal_core::TerminalManager> {
+    Arc::new(cc_terminal_core::TerminalManager::new(Arc::new(
+        crate::ssh::LockedShellOpener,
+    )))
 }
 
 // ---- background tasks ------------------------------------------------------------
