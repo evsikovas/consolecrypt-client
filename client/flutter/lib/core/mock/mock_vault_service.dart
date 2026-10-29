@@ -27,6 +27,19 @@ final class MockVaultService implements VaultService {
   bool deviceAuthSucceeds = true;
   DeviceUnlockProtection deviceProtection = DeviceUnlockProtection.system;
 
+  /// Demo security key (FEAT-16), off by default: the demo backend has no
+  /// FIDO2 transport. [securityKeyHolds] keeps every key request waiting
+  /// for a touch that never comes (guide capture of the touch prompt).
+  bool _securityKeySupported = false;
+  bool _securityKeyEnabled = false;
+  bool securityKeyHolds = false;
+
+  void debugSecurityKey({bool supported = true, bool enabled = false}) {
+    _securityKeySupported = supported;
+    _securityKeyEnabled = enabled;
+    _cloud.notifyChanged();
+  }
+
   /// Simulates a new fingerprint: the OS key of the active profile is gone.
   void simulateBiometricChange() {
     final r = _cloud.activeRecord;
@@ -52,6 +65,8 @@ final class MockVaultService implements VaultService {
       deviceAuthKind,
       deviceAuthNotEnrolled,
       deviceProtection,
+      _securityKeySupported,
+      _securityKeyEnabled,
     );
     if (signature == _signature) return;
     _signature = signature;
@@ -79,6 +94,12 @@ final class MockVaultService implements VaultService {
             deviceProtection == DeviceUnlockProtection.system &&
             deviceAuthKind != null &&
             r.phase == VaultPhase.unlocked,
+      ),
+      securityKey: SecurityKeyInfo(
+        supported: _securityKeySupported,
+        enabled: _securityKeyEnabled,
+        pinPrompt: _securityKeySupported ? SecurityKeyPinPrompt.app : null,
+        hasVault: r.vault != null && r.deviceTrusted,
       ),
     );
   }
@@ -274,18 +295,32 @@ final class MockVaultService implements VaultService {
     _cloud.notifyChanged();
   }
 
-  // The demo backend has no FIDO2 transport: security keys need the native
-  // core (FEAT-16).
   @override
   Future<void> unlockWithSecurityKey({SecretText? pin}) async {
     pin?.wipe();
-    throw const AppException(AppErrorCode.unsupported, 'Security keys need the native app');
+    if (!_securityKeySupported || !_securityKeyEnabled) {
+      throw const AppException(AppErrorCode.unsupported, 'Security keys need the native app');
+    }
+    final r = _active();
+    _keys(r);
+    if (securityKeyHolds) await Completer<void>().future;
+    await mockDelay(_cloud.config.latency);
+    r.phase = VaultPhase.unlocked;
+    _cloud.notifyChanged();
   }
 
   @override
   Future<void> setSecurityKeyEnabled(bool enabled, {SecretText? pin}) async {
     pin?.wipe();
-    throw const AppException(AppErrorCode.unsupported, 'Security keys need the native app');
+    if (!_securityKeySupported) {
+      throw const AppException(AppErrorCode.unsupported, 'Security keys need the native app');
+    }
+    if (_active().phase != VaultPhase.unlocked) {
+      throw const AppException(AppErrorCode.notFound, 'Unlock the vault first', reason: AppErrorReason.vaultLocked);
+    }
+    if (enabled && securityKeyHolds) await Completer<void>().future;
+    _securityKeyEnabled = enabled;
+    _cloud.notifyChanged();
   }
 
   @override
