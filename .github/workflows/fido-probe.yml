@@ -1,0 +1,36 @@
+name: fido-probe prototype
+
+# FEAT-16 prototype branch only: builds the Windows security-key probe as
+# an artifact. Not a client build, nothing is published.
+on:
+  push:
+    branches: ['proto/fido-probe']
+    paths: ['client/tools/fido-probe/**', '.github/workflows/fido-probe.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    if: github.repository == 'evsikovas/consolecrypt-client'
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build fido-probe.exe
+        shell: pwsh
+        run: |
+          cd client/tools/fido-probe
+          cargo build --release --locked
+          if ($LASTEXITCODE -ne 0) { throw 'fido-probe build failed' }
+          Get-FileHash target/release/fido-probe.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  fido-probe.exe" } | Set-Content -Encoding ascii target/release/fido-probe.exe.sha256
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fido-probe
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            client/tools/fido-probe/target/release/fido-probe.exe
+            client/tools/fido-probe/target/release/fido-probe.exe.sha256
