@@ -23,6 +23,7 @@ import 'package:consolecrypt/settings/device_unlock_settings.dart';
 import 'package:consolecrypt/settings/local_ai_settings.dart';
 import 'package:consolecrypt/settings/rdp_mobile_settings.dart';
 import 'package:consolecrypt/settings/screen_capture_settings.dart';
+import 'package:consolecrypt/settings/security_key_settings.dart';
 import 'package:consolecrypt/settings/settings_dialogs.dart';
 import 'package:consolecrypt/settings/sftp_settings.dart';
 import 'package:consolecrypt/settings/sharing_policy_settings.dart';
@@ -294,6 +295,7 @@ class _VaultSection extends ConsumerWidget {
           const SizedBox(height: GlassSpacing.s8),
           const VaultKeyUnconfirmedBanner(),
           const DeviceUnlockSettings(),
+          const SecurityKeySettings(),
           const SharingPolicySettings(),
           const SizedBox(height: GlassSpacing.s12),
           Wrap(

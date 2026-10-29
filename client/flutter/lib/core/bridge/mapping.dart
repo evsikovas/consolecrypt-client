@@ -21,6 +21,17 @@ import 'package:consolecrypt/src/rust/api/error.dart';
 
 typedef Json = Map<String, Object?>;
 
+SecurityKeyInfo securityKeyFromJson(Json json) => SecurityKeyInfo(
+  supported: json['supported'] == true,
+  enabled: json['enabled'] == true,
+  pinPrompt: switch (json['pin']) {
+    'system' => SecurityKeyPinPrompt.system,
+    'app' => SecurityKeyPinPrompt.app,
+    _ => null,
+  },
+  hasVault: json['has_vault'] == true,
+);
+
 DeviceUnlockInfo deviceUnlockFromJson(Json json) => DeviceUnlockInfo(
   enabled: json['enabled'] == true,
   kind: switch (json['kind']) {

@@ -4833,6 +4833,64 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsGlassRetryEffects => 'Включить эффекты снова';
 
   @override
+  String get securityKeyTitle => 'Физический ключ безопасности';
+
+  @override
+  String get securityKeyHelp => 'Разблокировка хранилища USB-ключом (YubiKey или другим ключом FIDO2) и его PIN-кодом.';
+
+  @override
+  String get securityKeyOnHelp =>
+      'Включено: на экране блокировки можно открыть хранилище этим ключом. Только для этого хранилища на этом устройстве; парольная фраза и Recovery Key продолжают работать.';
+
+  @override
+  String get securityKeyTouch => 'Введите PIN ключа, если его спросят, и коснитесь ключа, когда он замигает.';
+
+  @override
+  String get securityKeyEnabled => 'Разблокировка ключом безопасности включена';
+
+  @override
+  String get securityKeyPinTitle => 'PIN-код ключа безопасности';
+
+  @override
+  String get securityKeyPinHelp => 'Введите FIDO2 PIN-код ключа, затем коснитесь ключа, когда он замигает.';
+
+  @override
+  String get securityKeyPinLabel => 'PIN-код';
+
+  @override
+  String get securityKeyPinContinue => 'Продолжить';
+
+  @override
+  String get securityKeyErrorNoDevice => 'Ключ безопасности не найден. Вставьте ключ и повторите.';
+
+  @override
+  String get securityKeyErrorSeveral => 'Подключено несколько ключей безопасности. Оставьте один.';
+
+  @override
+  String get securityKeyErrorPin => 'Неверный PIN-код ключа безопасности.';
+
+  @override
+  String get securityKeyErrorPinBlocked => 'PIN-код ключа заблокирован. Разблокируйте хранилище парольной фразой.';
+
+  @override
+  String get securityKeyErrorCancelled => 'Отменено или ключа не коснулись вовремя.';
+
+  @override
+  String get securityKeyErrorWrongKey => 'Это не тот ключ безопасности, который настроен для хранилища.';
+
+  @override
+  String get securityKeyErrorUnsupportedKey => 'Этот ключ не поддерживает расширение hmac-secret (FIDO2).';
+
+  @override
+  String get securityKeyErrorUnsupported => 'Ключи безопасности на этом устройстве не поддерживаются.';
+
+  @override
+  String get securityKeyErrorDevice => 'Ключ безопасности не ответил. Переподключите его и повторите.';
+
+  @override
+  String get unlockWithSecurityKey => 'Разблокировать ключом безопасности';
+
+  @override
   String get deviceUnlockTitle => 'Разблокировка отпечатком пальца';
 
   @override

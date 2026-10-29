@@ -274,6 +274,20 @@ final class MockVaultService implements VaultService {
     _cloud.notifyChanged();
   }
 
+  // The demo backend has no FIDO2 transport: security keys need the native
+  // core (FEAT-16).
+  @override
+  Future<void> unlockWithSecurityKey({SecretText? pin}) async {
+    pin?.wipe();
+    throw const AppException(AppErrorCode.unsupported, 'Security keys need the native app');
+  }
+
+  @override
+  Future<void> setSecurityKeyEnabled(bool enabled, {SecretText? pin}) async {
+    pin?.wipe();
+    throw const AppException(AppErrorCode.unsupported, 'Security keys need the native app');
+  }
+
   @override
   Future<void> lock() async {
     _cloud.lockActive();

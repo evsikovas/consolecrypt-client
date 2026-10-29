@@ -177,6 +177,33 @@ pub async fn vault_dismiss_device_unlock_offer() -> Result<(), BridgeError> {
     with_core(move |c| async move { Ok(c.dismiss_device_unlock_offer().await?) }).await
 }
 
+// ---- Security key unlock (FEAT-16) ----
+
+/// Security key unlock state of the open profile → `SecurityKeyDto`
+/// (`supported`, `enabled`, `pin`: `system` | `app` | null, `has_vault`,
+/// `created_at_ms`).
+pub async fn vault_security_key_info() -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.security_key_info().await?) }).await
+}
+
+/// Switch security key unlock on (the key asks for its PIN and two
+/// touches) or off. `pin`: the key PIN where `pin == "app"`. Failures are
+/// `invalid_input` with field `security_key` and a `rule` such as
+/// `no_device`, `pin_invalid`, `cancelled`.
+pub async fn vault_set_security_key_enabled(
+    enabled: bool,
+    pin: Option<Vec<u8>>,
+) -> Result<(), BridgeError> {
+    let pin = opt_secret_string("pin", pin)?;
+    with_core(move |c| async move { Ok(c.set_security_key_enabled(enabled, pin).await?) }).await
+}
+
+/// Lock screen: unlock with the security key (PIN and touch).
+pub async fn vault_unlock_with_security_key(pin: Option<Vec<u8>>) -> Result<(), BridgeError> {
+    let pin = opt_secret_string("pin", pin)?;
+    with_core(move |c| async move { Ok(c.unlock_with_security_key(pin).await?) }).await
+}
+
 // ---- Android: the app performs the OS step (BiometricPrompt + Keystore) ----
 
 /// The Keystore blob the app decrypts inside `BiometricPrompt` (`None` =

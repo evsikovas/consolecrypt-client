@@ -53,6 +53,8 @@ pub(crate) struct AppCtx {
     pub secure: Arc<dyn SecureStore>,
     /// OS-protected device unlock keys (Secure Enclave, Windows Hello, …).
     pub device_keys: Arc<dyn DeviceKeyProtector>,
+    /// FIDO2 security keys (FEAT-16); replaceable in tests.
+    pub security_keys: RwLock<Arc<dyn cc_platform_core::SecurityKeyAuthenticator>>,
     pub events: broadcast::Sender<AppEvent>,
     pub prompts: Arc<PromptBroker>,
     /// Opens / reveals local files (edit sessions); replaceable in tests.

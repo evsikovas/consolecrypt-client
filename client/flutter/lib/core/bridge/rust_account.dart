@@ -644,6 +644,29 @@ final class RustVaultService implements VaultService {
   }
 
   @override
+  Future<void> unlockWithSecurityKey({SecretText? pin}) async {
+    if (pin == null) {
+      await guard(() => rs_prof.vaultUnlockWithSecurityKey());
+    } else {
+      await withSecret(pin, (p) => guard(() => rs_prof.vaultUnlockWithSecurityKey(pin: p)));
+    }
+    await _afterUnlock();
+  }
+
+  @override
+  Future<void> setSecurityKeyEnabled(bool enabled, {SecretText? pin}) async {
+    try {
+      if (pin == null) {
+        await guard(() => rs_prof.vaultSetSecurityKeyEnabled(enabled: enabled));
+      } else {
+        await withSecret(pin, (p) => guard(() => rs_prof.vaultSetSecurityKeyEnabled(enabled: enabled, pin: p)));
+      }
+    } finally {
+      await _hub.refreshState();
+    }
+  }
+
+  @override
   Future<void> lock() async {
     await guard(rs_prof.vaultLock);
     await _hub.refreshState();
